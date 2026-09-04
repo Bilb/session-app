@@ -47,15 +47,27 @@ export function ConversationListScreen() {
           ) : null}
 
           {/* Settings had a route and no way to reach it, which made the account ID — the one
-              thing someone else needs in order to write to this device — unreachable too. */}
-          <Text
-            size="$5"
-            tone="secondary"
+              thing someone else needs in order to write to this device — unreachable too.
+
+              The hit area is the stack rather than the glyph: a 20pt character is well under
+              the 44pt minimum a finger needs, and a target that small is one people miss
+              rather than one they cannot see. */}
+          <XStack
+            width={44}
+            height={44}
+            alignItems="center"
+            justifyContent="center"
+            cursor="pointer"
+            hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
+            pressStyle={{ backgroundColor: '$backgroundTertiary' }}
+            borderRadius="$full"
             testID={ELEMENT.conversationList.settings}
             onPress={() => nav.push(routes.settings())}
           >
-            ⚙
-          </Text>
+            <Text size="$5" tone="secondary">
+              ⚙
+            </Text>
+          </XStack>
         </XStack>
       </XStack>
 
