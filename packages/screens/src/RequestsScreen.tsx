@@ -4,6 +4,8 @@ import { useRequests, useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { Avatar, Button, Screen, Separator, Text, XStack, YStack } from '@session/ui'
 
+import { conversationTitle } from './conversationTitle'
+
 /**
  * Message requests.
  *
@@ -57,6 +59,7 @@ function RequestRow({
 }) {
   const actions = useSessionActions()
   const name = request.nickname ?? request.displayName
+  const title = conversationTitle(request)
 
   return (
     <XStack
@@ -74,7 +77,7 @@ function RequestRow({
 
       <YStack flex={1} gap="$0.5">
         <Text size="$4" weight="bold" numberOfLines={1}>
-          {name}
+          {title}
         </Text>
         {request.snippet === undefined ? null : (
           <Text size="$3" tone="secondary" numberOfLines={1}>

@@ -4,6 +4,8 @@ import { useConversations, useUnreadRequestCount } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { Avatar, Screen, ScrollView, Separator, Text, XStack, YStack } from '@session/ui'
 
+import { conversationTitle } from './conversationTitle'
+
 /**
  * The conversation list.
  *
@@ -124,6 +126,7 @@ function ConversationRow({
   onPress: () => void
 }) {
   const name = conversation.nickname ?? conversation.displayName
+  const title = conversationTitle(conversation)
 
   return (
     <XStack
@@ -146,7 +149,7 @@ function ConversationRow({
           numberOfLines={1}
           testID={ELEMENT.conversationList.rowName}
         >
-          {name}
+          {title}
         </Text>
         {conversation.snippet === undefined ? null : (
           <Text
