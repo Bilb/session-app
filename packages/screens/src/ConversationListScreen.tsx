@@ -27,23 +27,36 @@ export function ConversationListScreen() {
         <Text size="$6" weight="bold">
           Messages
         </Text>
-        {unreadRequests > 0 ? (
-          <XStack
-            backgroundColor="$primaryColor"
-            borderRadius="$full"
-            paddingHorizontal="$1"
-            minWidth={20}
-            height={20}
-            alignItems="center"
-            justifyContent="center"
-            testID={ELEMENT.requests.badge}
-            onPress={() => nav.push(routes.requests())}
+        <XStack alignItems="center" gap="$1.5">
+          {unreadRequests > 0 ? (
+            <XStack
+              backgroundColor="$primaryColor"
+              borderRadius="$full"
+              paddingHorizontal="$1"
+              minWidth={20}
+              height={20}
+              alignItems="center"
+              justifyContent="center"
+              testID={ELEMENT.requests.badge}
+              onPress={() => nav.push(routes.requests())}
+            >
+              <Text size="$2" weight="bold" color="$backgroundPrimary">
+                {unreadRequests}
+              </Text>
+            </XStack>
+          ) : null}
+
+          {/* Settings had a route and no way to reach it, which made the account ID — the one
+              thing someone else needs in order to write to this device — unreachable too. */}
+          <Text
+            size="$5"
+            tone="secondary"
+            testID={ELEMENT.conversationList.settings}
+            onPress={() => nav.push(routes.settings())}
           >
-            <Text size="$2" weight="bold" color="$backgroundPrimary">
-              {unreadRequests}
-            </Text>
-          </XStack>
-        ) : null}
+            ⚙
+          </Text>
+        </XStack>
       </XStack>
 
       <Separator borderColor="$bordersColor" />

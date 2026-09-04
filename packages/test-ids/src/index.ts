@@ -15,6 +15,7 @@
  */
 export const ELEMENT = {
   conversationList: {
+    settings: 'conversation-list-settings',
     screen: 'conversation-list',
     row: (index: number) => `conversation-row-${index}` as const,
     rowName: 'conversation-row-name',
@@ -60,6 +61,7 @@ export const ELEMENT = {
 /** Every id the registry can produce, including the parameterised ones. */
 export type ElementId =
   | 'conversation-list'
+  | 'conversation-list-settings'
   | `conversation-row-${number}`
   | 'conversation-row-name'
   | 'conversation-row-snippet'
