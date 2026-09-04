@@ -79,6 +79,7 @@ export function ConversationScreen({ conversationId }: { conversationId: string 
         borderTopColor="$bordersColor"
       >
         <Input
+          grow
           value={draft}
           onChangeText={setDraft}
           placeholder="Message"
