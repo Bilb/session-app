@@ -4,15 +4,16 @@ This file is the mutable one: what exists today and what comes next. `ARCHITECTU
 timeless one — how the thing is built and why. `CLAUDE.md` is the rule list. Read all three
 before changing anything; they do not repeat each other.
 
-Last updated 2026-09-04, at commit `377d49c`.
+Last updated 2026-09-04, at commit `4535547`.
 
 ## State
 
-Five commits on `main`. Working tree clean. **No git remote yet** — when one is added, the
+Eight commits on `main`. Working tree clean. **No git remote yet** — when one is added, the
 branch-and-pull-request rule in `CLAUDE.md` starts applying; until then `main` is all there is.
 
-Everything green: `pnpm lint` (14), `pnpm lint:manifests`, `pnpm typecheck` (16),
-`pnpm test` (47 tests), `pnpm boundaries`, `pnpm knip`.
+Everything green: `pnpm format:check`, `pnpm lint` (14), `pnpm lint:manifests`,
+`pnpm boundaries`, `pnpm typecheck` (16), `pnpm test` (47 tests), `pnpm knip`,
+`pnpm codegen:check`, `pnpm dedupe --check` — the whole of `ci.yml`.
 
 The walking skeleton works end to end. `tests/e2e` drives the built Electron app through
 Playwright: it reads a seeded conversation list, opens a conversation, sends a message and
@@ -23,6 +24,7 @@ bridge. Only the C++ is missing from that path.
 
 | package                              | state                                                               |
 | ------------------------------------ | ------------------------------------------------------------------- |
+| `libsession-util/`                   | submodule, `client` at `e19ebd5c` — the SHA session-cli pins        |
 | `@s2/basic-types` `@s2/theme-tokens` | copied from session-pkgs, trimmed                                   |
 | `@s2/localization`                   | copied, plus a markup parser for the `<b>`/`<br/>` in the catalogue |
 | `@s2/test-ids`                       | the element registry                                                |
@@ -44,8 +46,6 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
 
 - `packages/bridge-core` (the C++ shim), `packages/bridge-node` (N-API addon),
   `packages/bridge-rn` (Nitro module). The plan describes all three.
-- **The `libsession-util` submodule is not added.** It is the first step of any bridge work:
-  `git submodule add` it at the repo root, pinned to a `client`-branch SHA.
 - `apps/mobile` has never been run. It needs `expo prebuild` and a dev client, and the Nitro
   spike is unproven in this exact stack (hoisted pnpm + Expo 57).
 - Attachments, onboarding, requests and settings are placeholder screens.
@@ -53,20 +53,20 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
 
 ## Next steps, in order
 
-1. **Add the `libsession-util` submodule** at the root, pinned to a `client` SHA. Check it
-   against `~/pro/contribs/session-cli`, which builds against the same branch and is the
-   closest thing to an embedding guide.
-2. **`packages/bridge-core`** — the C++ `ClientBridge`. `packages/client/src/fake/fakeBridge.ts`
+1. **`packages/bridge-core`** — the C++ `ClientBridge`. `packages/client/src/fake/fakeBridge.ts`
    is the protocol written out in TypeScript and is what it has to match. The
    `libsession-bridge` skill has the procedure; `ARCHITECTURE.md` has the threading rules.
-3. **`packages/bridge-node`** — N-API addon via cmake-js, loaded in the Electron main process.
+   libsession-util's own submodules are not checked out yet — protobuf and session-deps are
+   most of a gigabyte, so init them when there is something to compile, with
+   `--reference ~/pro/contribs/libsession-util` to borrow the objects already on disk.
+2. **`packages/bridge-node`** — N-API addon via cmake-js, loaded in the Electron main process.
    Swap it in at `apps/desktop/src/main/bridge.ts`; nothing above that file changes.
-4. **Contract mode B** — run `@s2/client-contract` against the real addon, offline, feeding
+3. **Contract mode B** — run `@s2/client-contract` against the real addon, offline, feeding
    inbound messages through libsession's own test path (`DeliverTestMessage` is already in the
    schema for this). This is what proves the fake has not been lying.
-5. **`packages/bridge-rn`** — the Nitro module, then run `apps/mobile` on a device. Second
+4. **`packages/bridge-rn`** — the Nitro module, then run `apps/mobile` on a device. Second
    proof point: the same echo flow, on real bindings.
-6. Then features, via the `port-feature` skill.
+5. Then features, via the `port-feature` skill.
 
 ## Open questions that need a person
 
