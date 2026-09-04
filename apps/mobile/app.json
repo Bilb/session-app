@@ -10,7 +10,10 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "org.getsession.session2"
+      "bundleIdentifier": "org.getsession.session2",
+      "entitlements": {
+        "keychain-access-groups": ["$(AppIdentifierPrefix)org.getsession.session2"]
+      }
     },
     "android": {
       "package": "org.getsession.session2",
