@@ -1,0 +1,12 @@
+{
+  "extends": "@s2/typescript-config/bundler.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
+    "types": ["react"]
+  },
+  // The .native variants are typechecked by apps/mobile, which loads react-native's types
+  // and sets moduleSuffixes. Checking them here, against a DOM lib, would only produce
+  // clashes between two sets of globals that are never both present at runtime.
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "src/**/*.native.ts", "src/**/*.native.tsx"]
+}

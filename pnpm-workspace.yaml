@@ -25,6 +25,7 @@ catalog:
 
   # React / React Native — pinned to what the Expo SDK 57 template ships.
   react: 19.2.3
+  '@types/react': 19.2.18
   react-dom: 19.2.3
   react-native: 0.86.3
   react-native-web: ~0.21.0
@@ -67,6 +68,7 @@ catalog:
 # tests/repo/toolchain.test.ts fails if they drift.
 overrides:
   react: 19.2.3
+  '@types/react': 19.2.18
   react-dom: 19.2.3
   react-native: 0.86.3
 
