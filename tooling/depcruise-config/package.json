@@ -1,5 +1,5 @@
 {
-  "name": "@s2/depcruise-config",
+  "name": "@session/depcruise-config",
   "version": "0.0.0",
   "private": true,
   "main": "root.cjs",

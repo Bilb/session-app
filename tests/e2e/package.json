@@ -1,5 +1,5 @@
 {
-  "name": "@s2/e2e",
+  "name": "@session/e2e",
   "version": "0.0.0",
   "private": true,
   "description": "One flow, run against every client",
@@ -12,9 +12,9 @@
   },
   "devDependencies": {
     "@playwright/test": "catalog:",
-    "@s2/eslint-config": "workspace:*",
-    "@s2/test-ids": "workspace:*",
-    "@s2/typescript-config": "workspace:*",
+    "@session/eslint-config": "workspace:*",
+    "@session/test-ids": "workspace:*",
+    "@session/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:"

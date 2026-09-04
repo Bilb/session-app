@@ -1,4 +1,4 @@
-import { FONT_SIZE, RADII, SPACING } from '@s2/theme-tokens'
+import { FONT_SIZE, RADII, SPACING } from '@session/theme-tokens'
 import { createFont, createTamagui, createTokens } from 'tamagui'
 
 import { buildThemes, DEFAULT_THEME, themeName } from './themes'
@@ -46,7 +46,7 @@ const bodyFont = createFont({
 
 export const tokens = createTokens({
   color: {
-    // Deliberately empty: colours come from the themes, which come from @s2/theme-tokens.
+    // Deliberately empty: colours come from the themes, which come from @session/theme-tokens.
     // A colour token here would be one that no theme could restyle.
     transparent: 'transparent',
   },

@@ -5,8 +5,8 @@
  * the fake cannot drift away from the thing it stands in for without this failing.
  */
 
-import { FakeSessionClient, friends, strangers, type FakeWorld } from '@s2/client/fake'
-import type { SessionClient } from '@s2/client'
+import { FakeSessionClient, friends, strangers, type FakeWorld } from '@session/client/fake'
+import type { SessionClient } from '@session/client'
 import { describe, expect, it } from 'vitest'
 
 import { runSessionClientContract, type ContractHarness } from './index'

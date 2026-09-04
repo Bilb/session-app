@@ -1,4 +1,4 @@
-import { memoryPorts, setPorts } from '@s2/app'
+import { memoryPorts, setPorts } from '@session/app'
 
 /**
  * The desktop app's OS ports.

@@ -1,5 +1,5 @@
 {
-  "extends": "@s2/typescript-config/bundler.json",
+  "extends": "@session/typescript-config/bundler.json",
   "compilerOptions": {
     // This pass is the DOM half of the environment split: it re-checks every shared
     // package the renderer pulls in — screens, ui, state, client — against a browser lib.

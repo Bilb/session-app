@@ -1,4 +1,4 @@
-# session-2
+# session-app
 
 One shared UI across an Expo app (Android and iOS, phone and tablet) and an Electron app
 (Linux, macOS, Windows). libsession-util's `client` branch is the backbone: it owns the
@@ -13,14 +13,14 @@ There is no web app. Desktop means Electron.
 libsession-util (C++, submodule)
         │  frames: commands in, responses and events out — one ordered stream
         ▼
-@s2/client ── the SessionClient interface, one facade, three implementations
+@session/client ── the SessionClient interface, one facade, three implementations
         │        Nitro module (mobile) · addon behind preload (desktop) · the fake
         ▼
-@s2/state ── a projection of libsession's events. No optimistic writes.
+@session/state ── a projection of libsession's events. No optimistic writes.
         │
         ▼
-@s2/screens ── the screens, and AdaptiveShell which decides how many panes fit
-        │            drawn with @s2/ui (tamagui) · addressed by @s2/test-ids
+@session/screens ── the screens, and AdaptiveShell which decides how many panes fit
+        │            drawn with @session/ui (tamagui) · addressed by @session/test-ids
         ▼
 apps/mobile · apps/desktop ── route files, OS ports, boot order. Adapters, nothing more.
 ```
@@ -66,11 +66,11 @@ TypeScript and is the reference to match.
 
 ## The fake, and why it is not a stub
 
-`@s2/client/fake` is a working libsession: it delivers between accounts on a manual clock,
+`@session/client/fake` is a working libsession: it delivers between accounts on a manual clock,
 routes a first message into the request list, moves a row between lists on approval, and marks
 anything in flight `interrupted` across a restart. Both apps run on it today.
 
-`@s2/client-contract` is the behavioural suite both implementations must satisfy. It runs
+`@session/client-contract` is the behavioural suite both implementations must satisfy. It runs
 against the fake on every push and will run against the addon offline, feeding messages through
 libsession's own test path rather than a network. It has already earned its keep: it caught the
 fake calling a `pending` send uninterrupted after a restart.
@@ -130,7 +130,7 @@ element. Anything one platform cannot do belongs somewhere narrower until every 
 client. Its `clients` descriptor decides the platforms _and_ the tags, so a spec asking for two
 clients is tagged `@2-devices` without anyone writing it down.
 
-**One id per element**, in `@s2/test-ids`, used as the component's `testID` and as the test's
+**One id per element**, in `@session/test-ids`, used as the component's `testID` and as the test's
 selector. Verified: `testID` reaches the DOM as `data-testid` untouched through
 react-native-web, so the per-platform locator table the appium suite needs does not exist here.
 Release builds strip the attribute; QA builds keep it. An element a test cannot address is a
@@ -165,7 +165,7 @@ Append one paragraph per decision. Undocumented decisions are what rot.
 
 - **2026-09-04 — Responses share the event stream.** Ordering across the boundary is what
   makes hydration race-free; two channels cannot promise it.
-- **2026-09-04 — `@s2/localization` is consumed as built output.** It wraps a vendored
+- **2026-09-04 — `@session/localization` is consumed as built output.** It wraps a vendored
   submodule whose generated files do not satisfy our strict flags and are not ours to change.
   Building it means consumers read declarations, which `skipLibCheck` covers. It is the only
   package resolved to `dist` rather than `src`.

@@ -1,4 +1,4 @@
-import { baseConfig, mobileAppZone } from '@s2/eslint-config'
+import { baseConfig, mobileAppZone } from '@session/eslint-config'
 
 export default [
   { ignores: ['.expo/**', 'android/**', 'ios/**', 'metro.config.js', 'babel.config.js'] },

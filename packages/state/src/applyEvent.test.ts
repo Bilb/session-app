@@ -1,4 +1,4 @@
-import type { Conversation, Message, SessionEvent } from '@s2/client'
+import type { Conversation, Message, SessionEvent } from '@session/client'
 import { describe, expect, it } from 'vitest'
 
 import { applyEvent } from './applyEvent'

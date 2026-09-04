@@ -41,7 +41,7 @@ shim and the fake are both implemented against.
 ## 3. Regenerate
 
 ```
-pnpm --filter @s2/proto codegen
+pnpm --filter @session/proto codegen
 ```
 
 Generated code is committed. CI runs `codegen:check`, which regenerates and fails on a diff.
@@ -70,7 +70,7 @@ it has to pass against the fake today and against the addon later. Assert the be
 the implementation: what a caller can rely on.
 
 ```
-pnpm --filter @s2/client-contract test
+pnpm --filter @session/client-contract test
 ```
 
 ## 7. Wire it into the store, if a screen needs it

@@ -1,5 +1,5 @@
 {
-  "name": "@s2/test-ids",
+  "name": "@session/test-ids",
   "version": "0.0.0",
   "private": true,
   "description": "The element id registry: one string per element, used as testID and as selector",
@@ -15,8 +15,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "devDependencies": {
-    "@s2/eslint-config": "workspace:*",
-    "@s2/typescript-config": "workspace:*",
+    "@session/eslint-config": "workspace:*",
+    "@session/typescript-config": "workspace:*",
     "eslint": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

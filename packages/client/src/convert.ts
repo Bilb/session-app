@@ -15,7 +15,7 @@ import {
   type Conversation as ConversationPb,
   type Message as MessagePb,
   type OutgoingAttachment as OutgoingAttachmentPb,
-} from '@s2/proto'
+} from '@session/proto'
 
 import type {
   Attachment,

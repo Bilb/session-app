@@ -11,7 +11,7 @@ import {
   type MessageSchema,
   type Request,
   type ResponseSchema,
-} from '@s2/proto'
+} from '@session/proto'
 
 import type { BridgeTransport, Conversation, Message, SessionClient, SessionEvent } from '../types'
 

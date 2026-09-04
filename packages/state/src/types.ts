@@ -1,4 +1,10 @@
-import type { AccountInfo, Conversation, ConversationId, Message, MessageCursor } from '@s2/client'
+import type {
+  AccountInfo,
+  Conversation,
+  ConversationId,
+  Message,
+  MessageCursor,
+} from '@session/client'
 
 /**
  * One conversation's loaded history.

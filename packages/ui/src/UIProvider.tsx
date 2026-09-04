@@ -1,4 +1,4 @@
-import type { PrimaryColorState, ThemeState } from '@s2/theme-tokens'
+import type { PrimaryColorState, ThemeState } from '@session/theme-tokens'
 import type { ReactNode } from 'react'
 import { TamaguiProvider } from 'tamagui'
 

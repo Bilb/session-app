@@ -9,7 +9,7 @@
  * Written as a function of a harness so it can be handed either implementation.
  */
 
-import type { Conversation, SessionClient, SessionEvent } from '@s2/client'
+import type { Conversation, SessionClient, SessionEvent } from '@session/client'
 
 export interface ContractHarness {
   /** Two clients that already know each other, with no history. */

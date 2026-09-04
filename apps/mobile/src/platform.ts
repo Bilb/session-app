@@ -1,4 +1,4 @@
-import { memoryPorts, setPorts } from '@s2/app'
+import { memoryPorts, setPorts } from '@session/app'
 import * as SecureStore from 'expo-secure-store'
 
 const DATABASE_KEY = 'session2.database-key'

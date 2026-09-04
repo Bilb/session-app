@@ -15,15 +15,15 @@ const restrict = (patterns) => ({
 
 const NO_TAMAGUI = {
   group: ['tamagui', '@tamagui/*'],
-  message: 'Import the wrapper from @s2/ui. Only packages/ui may reach for tamagui.',
+  message: 'Import the wrapper from @session/ui. Only packages/ui may reach for tamagui.',
 }
 const NO_REACT_NATIVE = {
   group: ['react-native', 'react-native/*'],
-  message: 'Wrap it in @s2/ui, or put it behind a port in @s2/app.',
+  message: 'Wrap it in @session/ui, or put it behind a port in @session/app.',
 }
 const NO_EXPO = {
   group: ['expo', 'expo-*', 'expo-router'],
-  message: 'Expo is mobile-only. Use a port from @s2/app, or the nav registry for routing.',
+  message: 'Expo is mobile-only. Use a port from @session/app, or the nav registry for routing.',
 }
 const NO_ELECTRON = {
   group: ['electron', 'electron/*'],
@@ -34,21 +34,21 @@ const NO_ROUTER = {
   message: 'Build paths with routes.ts and navigate through NavPort.',
 }
 const NO_BRIDGE_RN = {
-  group: ['@s2/bridge-rn', '@s2/bridge-rn/*'],
+  group: ['@session/bridge-rn', '@session/bridge-rn/*'],
   message:
     'Inject a BridgeTransport instead; only packages/client/src/*.native.* links the Nitro module.',
 }
 const NO_BRIDGE_NODE = {
-  group: ['@s2/bridge-node', '@s2/bridge-node/*'],
+  group: ['@session/bridge-node', '@session/bridge-node/*'],
   message:
     'Only the desktop main process loads the addon; the renderer talks over the preload bridge.',
 }
 const NO_FAKE = {
-  group: ['@s2/client/fake', '@s2/client/fake/*'],
+  group: ['@session/client/fake', '@session/client/fake/*'],
   message: 'The fake is for tests and dev entries. Production code takes a SessionClient.',
 }
 const NO_DEEP = {
-  group: ['@s2/*/src/*'],
+  group: ['@session/*/src/*'],
   message: 'Import the package entry point, not a path inside it.',
 }
 

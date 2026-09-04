@@ -1,5 +1,5 @@
 {
-  "extends": "@s2/typescript-config/bundler.json",
+  "extends": "@session/typescript-config/bundler.json",
   "compilerOptions": {
     "types": ["react"],
     // DOM is here for the same reason Expo's own base config includes it: libraries in the

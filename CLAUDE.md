@@ -1,4 +1,4 @@
-# session-2
+# session-app
 
 One shared UI and one set of shared screens across an Expo app (`apps/mobile`, Android + iOS,
 phone + tablet) and an Electron app (`apps/desktop`, Linux/macOS/Windows). libsession-util
@@ -21,7 +21,7 @@ dev entries. When a rule fires, fix the design — not the config.
 
 ## Hard rules
 
-- UI components come only from `@s2/ui`. Never tamagui, react-native primitives or HTML
+- UI components come only from `@session/ui`. Never tamagui, react-native primitives or HTML
   elements in `packages/screens` or in an app.
 - Ports: module-scope `setPorts()` / `requirePorts()` for non-React consumers, installed by a
   side-effecting import at each app's entry; React context for render-scoped ports (NavPort);
@@ -29,7 +29,7 @@ dev entries. When a rule fires, fix the design — not the config.
   `turbo gen port`.
 - Navigation: build paths with `routes.ts` only. Route params are extracted at the route file
   and passed as props — a screen never reads a router. Every route gets a route-contract row.
-- Every interactive element takes its `testID` from `@s2/test-ids`. An element a test cannot
+- Every interactive element takes its `testID` from `@session/test-ids`. An element a test cannot
   address is a missing testID: fix the component, never reach for xpath. Address by id, then
   assert the copy.
 - No `.js`/`.jsx` extensions in import paths. No inline `import('x').T` types — top-level
@@ -37,7 +37,7 @@ dev entries. When a rule fires, fix the design — not the config.
 - The fake mirrors the real bridge. Any bridge change updates `packages/client/src/fake` and
   the contract scenarios **in the same PR**.
 - Tamagui: a missing token resolves to 0 silently, so token names must exist; `defaultFont`
-  must be set; the space scale has half-steps — use them. No hex outside `@s2/theme-tokens`.
+  must be set; the space scale has half-steps — use them. No hex outside `@session/theme-tokens`.
 
 ## Tests required, in the same PR
 

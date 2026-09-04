@@ -1,8 +1,8 @@
-import { routes, useNav } from '@s2/app'
-import type { Conversation } from '@s2/client'
-import { useConversations, useUnreadRequestCount } from '@s2/state'
-import { ELEMENT } from '@s2/test-ids'
-import { Avatar, Screen, ScrollView, Separator, Text, XStack, YStack } from '@s2/ui'
+import { routes, useNav } from '@session/app'
+import type { Conversation } from '@session/client'
+import { useConversations, useUnreadRequestCount } from '@session/state'
+import { ELEMENT } from '@session/test-ids'
+import { Avatar, Screen, ScrollView, Separator, Text, XStack, YStack } from '@session/ui'
 
 /**
  * The conversation list.

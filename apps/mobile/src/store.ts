@@ -1,5 +1,5 @@
-import { createSessionClient, type BridgeTransport } from '@s2/client'
-import { createSessionStore } from '@s2/state'
+import { createSessionClient, type BridgeTransport } from '@session/client'
+import { createSessionStore } from '@session/state'
 
 /**
  * The mobile client.

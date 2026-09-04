@@ -1,4 +1,4 @@
-# Where session-2 is
+# Where session-app is
 
 This file is the mutable one: what exists today and what comes next. `ARCHITECTURE.md` is the
 timeless one — how the thing is built and why. `CLAUDE.md` is the rule list. Read all three
@@ -22,22 +22,22 @@ bridge. Only the C++ is missing from that path.
 
 ## What exists
 
-| package                              | state                                                               |
-| ------------------------------------ | ------------------------------------------------------------------- |
-| `libsession-util/`                   | submodule, `client` at `e19ebd5c` — the SHA session-cli pins        |
-| `@s2/basic-types` `@s2/theme-tokens` | copied from session-pkgs, trimmed                                   |
-| `@s2/localization`                   | copied, plus a markup parser for the `<b>`/`<br/>` in the catalogue |
-| `@s2/test-ids`                       | the element registry                                                |
-| `@s2/proto`                          | the wire schema, `sessionbridge.v1`, codecs committed               |
-| `@s2/client`                         | the SessionClient facade, and the fake                              |
-| `@s2/client-contract`                | 9 behavioural scenarios, running against the fake                   |
-| `@s2/state`                          | the projection store, 9 reducer tests                               |
-| `@s2/ui`                             | tamagui config, 4 themes x 7 accents, a handful of components       |
-| `@s2/app`                            | ports, nav port, route registry, route-contract test                |
-| `@s2/screens`                        | conversation list, conversation, AdaptiveShell                      |
-| `apps/desktop`                       | Electron, runs, drawn by the e2e suite                              |
-| `apps/mobile`                        | Expo, route files in place, typechecks; not yet run on a device     |
-| `tests/e2e`                          | harness + the walking-skeleton spec                                 |
+| package                                        | state                                                               |
+| ---------------------------------------------- | ------------------------------------------------------------------- |
+| `libsession-util/`                             | submodule, `client` at `e19ebd5c` — the SHA session-cli pins        |
+| `@session/basic-types` `@session/theme-tokens` | copied from session-pkgs, trimmed                                   |
+| `@session/localization`                        | copied, plus a markup parser for the `<b>`/`<br/>` in the catalogue |
+| `@session/test-ids`                            | the element registry                                                |
+| `@session/proto`                               | the wire schema, `sessionbridge.v1`, codecs committed               |
+| `@session/client`                              | the SessionClient facade, and the fake                              |
+| `@session/client-contract`                     | 9 behavioural scenarios, running against the fake                   |
+| `@session/state`                               | the projection store, 9 reducer tests                               |
+| `@session/ui`                                  | tamagui config, 4 themes x 7 accents, a handful of components       |
+| `@session/app`                                 | ports, nav port, route registry, route-contract test                |
+| `@session/screens`                             | conversation list, conversation, AdaptiveShell                      |
+| `apps/desktop`                                 | Electron, runs, drawn by the e2e suite                              |
+| `apps/mobile`                                  | Expo, route files in place, typechecks; not yet run on a device     |
+| `tests/e2e`                                    | harness + the walking-skeleton spec                                 |
 
 Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-screen`,
 `ui-component`, `shared-test`, `run`.
@@ -61,7 +61,7 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
    `--reference ~/pro/contribs/libsession-util` to borrow the objects already on disk.
 2. **`packages/bridge-node`** — N-API addon via cmake-js, loaded in the Electron main process.
    Swap it in at `apps/desktop/src/main/bridge.ts`; nothing above that file changes.
-3. **Contract mode B** — run `@s2/client-contract` against the real addon, offline, feeding
+3. **Contract mode B** — run `@session/client-contract` against the real addon, offline, feeding
    inbound messages through libsession's own test path (`DeliverTestMessage` is already in the
    schema for this). This is what proves the fake has not been lying.
 4. **`packages/bridge-rn`** — the Nitro module, then run `apps/mobile` on a device. Second

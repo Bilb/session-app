@@ -3,7 +3,7 @@
  *
  * Nothing outside this package imports tamagui or a react-native primitive, which is why
  * the layout primitives and the provider are re-exported here too: a screen that needs a
- * row should get it from @s2/ui rather than reaching around the rule.
+ * row should get it from @session/ui rather than reaching around the rule.
  */
 
 export { Avatar } from './Avatar'

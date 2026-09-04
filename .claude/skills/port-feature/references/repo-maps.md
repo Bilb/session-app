@@ -22,7 +22,7 @@ Electron, React, Redux Toolkit, styled-components. `ARCHITECTURE.md` is 42k and 
 | main process only            | `ts/node/`                                                       |
 
 The theme mapping is the useful part: `variableColors.tsx` names the same semantic roles that
-`@s2/theme-tokens` does. Match by role, not by hex.
+`@session/theme-tokens` does. Match by role, not by hex.
 
 ## session-android (`~/pro/contribs/session-android`)
 
@@ -41,7 +41,7 @@ is localization.
 | QA hooks                 | `qa/QaLaunchConfig.kt`                                         |
 | libsession (replaced)    | consumed as a published AAR                                    |
 
-`content-descriptions` is the closest thing the old clients have to `@s2/test-ids`, and the
+`content-descriptions` is the closest thing the old clients have to `@session/test-ids`, and the
 model it follows is the one this repo took. When porting a screen, its ids are a good starting
 list.
 
@@ -70,6 +70,6 @@ Android's model is the better one and the one this repo uses.
 ## What the three agree on
 
 Four themes — classic and ocean, each light and dark — and seven accents. Android's
-`ThemeColors` and iOS's `ThemeValue` describe the same semantic roles, and `@s2/theme-tokens`
+`ThemeColors` and iOS's `ThemeValue` describe the same semantic roles, and `@session/theme-tokens`
 carries them forward. That semantic layer is the portable part of the design; the hex values
 underneath it are not.

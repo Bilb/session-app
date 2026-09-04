@@ -1,4 +1,4 @@
-import type { Conversation, ConversationId, Message, SessionEvent } from '@s2/client'
+import type { Conversation, ConversationId, Message, SessionEvent } from '@session/client'
 
 import { compareConversations, transferKey, type MessageWindow, type SessionState } from './types'
 

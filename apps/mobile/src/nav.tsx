@@ -1,4 +1,4 @@
-import { NavProvider, type NavPort } from '@s2/app'
+import { NavProvider, type NavPort } from '@session/app'
 import { router } from 'expo-router'
 import { useMemo, type ReactNode } from 'react'
 

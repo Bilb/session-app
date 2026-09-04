@@ -1,4 +1,4 @@
-import type { Conversation, ConversationId, Message, SessionClient } from '@s2/client'
+import type { Conversation, ConversationId, Message, SessionClient } from '@session/client'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
 import { applyEvent } from './applyEvent'

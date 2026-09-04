@@ -1,5 +1,5 @@
-import { parseMarkupSegments, type LocalizedSegment } from '@s2/localization'
-import { Text } from '@s2/ui'
+import { parseMarkupSegments, type LocalizedSegment } from '@session/localization'
+import { Text } from '@session/ui'
 import type { ComponentProps } from 'react'
 
 /**

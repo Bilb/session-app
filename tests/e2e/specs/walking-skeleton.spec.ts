@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test'
-import { ELEMENT } from '@s2/test-ids'
+import { ELEMENT } from '@session/test-ids'
 
 import { sessionTest } from '../harness/sessionTest'
 

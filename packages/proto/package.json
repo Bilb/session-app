@@ -1,5 +1,5 @@
 {
-  "name": "@s2/proto",
+  "name": "@session/proto",
   "version": "0.0.0",
   "private": true,
   "description": "The bridge wire format: commands, responses and events, plus their generated codecs",
@@ -22,8 +22,8 @@
   "devDependencies": {
     "@bufbuild/buf": "catalog:",
     "@bufbuild/protoc-gen-es": "catalog:",
-    "@s2/eslint-config": "workspace:*",
-    "@s2/typescript-config": "workspace:*",
+    "@session/eslint-config": "workspace:*",
+    "@session/typescript-config": "workspace:*",
     "eslint": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

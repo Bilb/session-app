@@ -5,7 +5,7 @@ import {
   type AttachmentProgress as AttachmentProgressPb,
   type Event as EventPb,
   type Response,
-} from '@s2/proto'
+} from '@session/proto'
 
 import {
   deletionToPb,

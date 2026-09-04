@@ -1,4 +1,4 @@
-import { ConversationScreen } from '@s2/screens'
+import { ConversationScreen } from '@session/screens'
 import { useLocalSearchParams } from 'expo-router'
 
 /**

@@ -1,4 +1,4 @@
-import { ConversationListScreen } from '@s2/screens'
+import { ConversationListScreen } from '@session/screens'
 
 /**
  * The list. On a phone this is the whole screen and a conversation pushes over it; on a

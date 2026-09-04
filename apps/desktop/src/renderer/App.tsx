@@ -1,7 +1,7 @@
-import { conversationFromPath } from '@s2/app'
-import { AdaptiveShell, ConversationListScreen, ConversationScreen } from '@s2/screens'
-import { SessionStoreProvider, useHydrated } from '@s2/state'
-import { Text, UIProvider, YStack } from '@s2/ui'
+import { conversationFromPath } from '@session/app'
+import { AdaptiveShell, ConversationListScreen, ConversationScreen } from '@session/screens'
+import { SessionStoreProvider, useHydrated } from '@session/state'
+import { Text, UIProvider, YStack } from '@session/ui'
 import { useEffect } from 'react'
 import { MemoryRouter, Route, Routes, useLocation, useParams } from 'react-router'
 

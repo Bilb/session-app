@@ -1,4 +1,4 @@
-import { baseConfig, desktopMainZone, desktopRendererZone } from '@s2/eslint-config'
+import { baseConfig, desktopMainZone, desktopRendererZone } from '@session/eslint-config'
 
 export default [
   ...baseConfig({ tsconfigRootDir: import.meta.dirname }),

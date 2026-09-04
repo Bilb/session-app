@@ -1,4 +1,4 @@
-import { useMedia, XStack, YStack } from '@s2/ui'
+import { useMedia, XStack, YStack } from '@session/ui'
 import type { ReactNode } from 'react'
 
 /**

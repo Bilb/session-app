@@ -10,7 +10,7 @@
  *   - approving a request moves it between lists, and both lists are re-sent,
  *   - a restart leaves anything still in flight `interrupted`.
  *
- * @s2/client-contract runs the same scenarios against this and against the real bridge, so
+ * @session/client-contract runs the same scenarios against this and against the real bridge, so
  * the two cannot drift apart quietly.
  */
 

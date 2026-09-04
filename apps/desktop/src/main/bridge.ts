@@ -1,4 +1,4 @@
-import type { BridgeTransport } from '@s2/client'
+import type { BridgeTransport } from '@session/client'
 
 /**
  * Opens the bridge the renderer talks to.

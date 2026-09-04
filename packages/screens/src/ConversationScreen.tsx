@@ -1,8 +1,8 @@
-import { useNav } from '@s2/app'
-import type { Message } from '@s2/client'
-import { useConversation, useMessages, useSessionActions } from '@s2/state'
-import { ELEMENT } from '@s2/test-ids'
-import { Button, Input, Screen, ScrollView, Separator, Text, XStack, YStack } from '@s2/ui'
+import { useNav } from '@session/app'
+import type { Message } from '@session/client'
+import { useConversation, useMessages, useSessionActions } from '@session/state'
+import { ELEMENT } from '@session/test-ids'
+import { Button, Input, Screen, ScrollView, Separator, Text, XStack, YStack } from '@session/ui'
 import { useState } from 'react'
 
 /**

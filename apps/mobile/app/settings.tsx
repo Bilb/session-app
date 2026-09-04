@@ -1,5 +1,5 @@
-import { ELEMENT } from '@s2/test-ids'
-import { Screen, Text, YStack } from '@s2/ui'
+import { ELEMENT } from '@session/test-ids'
+import { Screen, Text, YStack } from '@session/ui'
 
 /** A placeholder screen. The route has to exist for the contract test to pass. */
 export default function SettingsRoute() {

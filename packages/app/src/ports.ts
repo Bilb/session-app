@@ -85,7 +85,7 @@ export function setPorts(ports: Ports): void {
 export function requirePorts(): Ports {
   if (current === null) {
     throw new Error(
-      'No ports installed. Import the app entry that calls setPorts() before rendering anything from @s2/app.',
+      'No ports installed. Import the app entry that calls setPorts() before rendering anything from @session/app.',
     )
   }
   return current

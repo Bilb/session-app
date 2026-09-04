@@ -3,7 +3,7 @@ import {
   type PrimaryColorState,
   type ThemeState,
   type ThemeTokens,
-} from '@s2/theme-tokens'
+} from '@session/theme-tokens'
 
 /**
  * The four themes, each in seven accents, generated rather than written out.
@@ -12,7 +12,7 @@ import {
  * `classicDark_green` is that base with an accent applied. A component asks for
  * `$primaryColor` and gets whichever accent is in force; nothing has to know the list.
  *
- * The token names are the ones @s2/theme-tokens already publishes. Renaming them into a
+ * The token names are the ones @session/theme-tokens already publishes. Renaming them into a
  * second vocabulary here would only create two places to keep in step, and the semantic
  * layer those tokens describe is the portable part of the design across all the clients.
  */

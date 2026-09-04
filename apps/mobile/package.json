@@ -1,5 +1,5 @@
 {
-  "name": "@s2/mobile",
+  "name": "@session/mobile",
   "version": "0.0.0",
   "private": true,
   "description": "The Session mobile app: one Expo app for Android and iOS, phone and tablet",
@@ -14,12 +14,12 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@s2/app": "workspace:*",
-    "@s2/client": "workspace:*",
-    "@s2/screens": "workspace:*",
-    "@s2/state": "workspace:*",
-    "@s2/test-ids": "workspace:*",
-    "@s2/ui": "workspace:*",
+    "@session/app": "workspace:*",
+    "@session/client": "workspace:*",
+    "@session/screens": "workspace:*",
+    "@session/state": "workspace:*",
+    "@session/test-ids": "workspace:*",
+    "@session/ui": "workspace:*",
     "expo": "catalog:",
     "expo-constants": "catalog:",
     "expo-linking": "catalog:",
@@ -33,8 +33,8 @@
     "react-native-web": "catalog:"
   },
   "devDependencies": {
-    "@s2/eslint-config": "workspace:*",
-    "@s2/typescript-config": "workspace:*",
+    "@session/eslint-config": "workspace:*",
+    "@session/typescript-config": "workspace:*",
     "@tamagui/babel-plugin": "catalog:",
     "@types/react": "catalog:",
     "babel-plugin-react-remove-properties": "catalog:",

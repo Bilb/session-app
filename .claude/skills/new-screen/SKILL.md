@@ -1,11 +1,11 @@
 ---
 name: new-screen
-description: Add a screen that both apps render, wired into the route registry and both routers. Use when building any new screen or route in session-2.
+description: Add a screen that both apps render, wired into the route registry and both routers. Use when building any new screen or route in session-app.
 ---
 
 # Adding a screen
 
-A screen lives in `@s2/screens` and is rendered by both apps. What differs between platforms
+A screen lives in `@session/screens` and is rendered by both apps. What differs between platforms
 is the route file that reaches it, never the screen.
 
 ## The screen
@@ -14,10 +14,10 @@ is the route file that reaches it, never the screen.
 
 - **Route params arrive as props.** `function ConversationScreen({ conversationId }: {...})`.
   Reading them from a router inside the screen is the one import that pins it to a platform.
-- Data comes from `@s2/state` hooks. Actions go through `useSessionActions()`.
+- Data comes from `@session/state` hooks. Actions go through `useSessionActions()`.
 - Navigation goes through `useNav()` and paths built by `routes.*`.
-- Every interactive element takes its `testID` from `@s2/test-ids`; add entries there first.
-- Anything OS-shaped — a file picker, a notification — goes through a port from `@s2/app`.
+- Every interactive element takes its `testID` from `@session/test-ids`; add entries there first.
+- Anything OS-shaped — a file picker, a notification — goes through a port from `@session/app`.
 - Responsive behaviour comes from `useMedia()`, not from per-app forks. If a screen needs a
   second pane, that belongs in `AdaptiveShell`.
 

@@ -1,5 +1,5 @@
 {
-  "name": "@s2/ui",
+  "name": "@session/ui",
   "version": "0.0.0",
   "private": true,
   "description": "Every visual component, and the tamagui configuration both apps share",
@@ -17,15 +17,15 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@s2/theme-tokens": "workspace:*",
+    "@session/theme-tokens": "workspace:*",
     "tamagui": "catalog:"
   },
   "peerDependencies": {
     "react": "catalog:"
   },
   "devDependencies": {
-    "@s2/eslint-config": "workspace:*",
-    "@s2/typescript-config": "workspace:*",
+    "@session/eslint-config": "workspace:*",
+    "@session/typescript-config": "workspace:*",
     "@types/react": "catalog:",
     "eslint": "catalog:",
     "react": "catalog:",

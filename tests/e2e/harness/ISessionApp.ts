@@ -1,4 +1,4 @@
-import type { ElementId } from '@s2/test-ids'
+import type { ElementId } from '@session/test-ids'
 
 /**
  * What a test may ask of a running client, whichever one it is.

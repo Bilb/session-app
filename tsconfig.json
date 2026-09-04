@@ -3,10 +3,10 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@s2/*": ["packages/*/src"]
+      "@session/*": ["packages/*/src"]
     }
   },
   // Nothing is checked from here: each package runs its own `typecheck` under its own
-  // profile. This file exists so editors and dependency-cruiser can resolve @s2/* imports.
+  // profile. This file exists so editors and dependency-cruiser can resolve @session/* imports.
   "files": []
 }

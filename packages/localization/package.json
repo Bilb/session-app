@@ -1,5 +1,5 @@
 {
-  "name": "@s2/localization",
+  "name": "@session/localization",
   "version": "0.0.0",
   "private": true,
   "description": "Localized strings and the segment parsers, wrapping the session-localization submodule",
@@ -19,11 +19,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@s2/basic-types": "workspace:*"
+    "@session/basic-types": "workspace:*"
   },
   "devDependencies": {
-    "@s2/eslint-config": "workspace:*",
-    "@s2/typescript-config": "workspace:*",
+    "@session/eslint-config": "workspace:*",
+    "@session/typescript-config": "workspace:*",
     "eslint": "catalog:",
     "tsup": "catalog:",
     "typescript": "catalog:",

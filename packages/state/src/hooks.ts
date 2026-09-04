@@ -1,4 +1,4 @@
-import type { Conversation, ConversationId, Message } from '@s2/client'
+import type { Conversation, ConversationId, Message } from '@session/client'
 import { createContext, createElement, useContext, useEffect, type ReactNode } from 'react'
 import { useStore } from 'zustand'
 

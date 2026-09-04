@@ -1,5 +1,5 @@
 {
-  "name": "@s2/app",
+  "name": "@session/app",
   "version": "0.0.0",
   "private": true,
   "description": "Platform ports, the navigation seam and the route registry both apps share",
@@ -18,8 +18,8 @@
     "react": "catalog:"
   },
   "devDependencies": {
-    "@s2/eslint-config": "workspace:*",
-    "@s2/typescript-config": "workspace:*",
+    "@session/eslint-config": "workspace:*",
+    "@session/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "eslint": "catalog:",

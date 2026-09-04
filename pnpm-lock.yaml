@@ -125,10 +125,10 @@ importers:
 
   .:
     devDependencies:
-      '@s2/eslint-config':
+      '@session/eslint-config':
         specifier: workspace:*
         version: link:tooling/eslint-config
-      '@s2/typescript-config':
+      '@session/typescript-config':
         specifier: workspace:*
         version: link:tooling/typescript-config
       dependency-cruiser:
@@ -155,19 +155,19 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@s2/app':
+      '@session/app':
         specifier: workspace:*
         version: link:../../packages/app
-      '@s2/client':
+      '@session/client':
         specifier: workspace:*
         version: link:../../packages/client
-      '@s2/screens':
+      '@session/screens':
         specifier: workspace:*
         version: link:../../packages/screens
-      '@s2/state':
+      '@session/state':
         specifier: workspace:*
         version: link:../../packages/state
-      '@s2/ui':
+      '@session/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       react:
@@ -183,10 +183,10 @@ importers:
         specifier: 'catalog:'
         version: 8.3.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
     devDependencies:
-      '@s2/eslint-config':
+      '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
-      '@s2/typescript-config':
+      '@session/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript-config
       '@types/node':
@@ -222,22 +222,22 @@ importers:
 
   apps/mobile:
     dependencies:
-      '@s2/app':
+      '@session/app':
         specifier: workspace:*
         version: link:../../packages/app
-      '@s2/client':
+      '@session/client':
         specifier: workspace:*
         version: link:../../packages/client
-      '@s2/screens':
+      '@session/screens':
         specifier: workspace:*
         version: link:../../packages/screens
-      '@s2/state':
+      '@session/state':
         specifier: workspace:*
         version: link:../../packages/state
-      '@s2/test-ids':
+      '@session/test-ids':
         specifier: workspace:*
         version: link:../../packages/test-ids
-      '@s2/ui':
+      '@session/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       expo:
@@ -274,10 +274,10 @@ importers:
         specifier: 'catalog:'
         version: 0.21.2(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
     devDependencies:
-      '@s2/eslint-config':
+      '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
-      '@s2/typescript-config':
+      '@session/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript-config
       '@tamagui/babel-plugin':
@@ -301,10 +301,10 @@ importers:
 
   packages/app:
     devDependencies:
-      '@s2/eslint-config':
+      '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
-      '@s2/typescript-config':
+      '@session/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript-config
       '@types/node':
@@ -328,10 +328,10 @@ importers:
 
   packages/basic-types:
     devDependencies:
-      '@s2/eslint-config':
+      '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
-      '@s2/typescript-config':
+      '@session/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript-config
       eslint:
@@ -349,14 +349,14 @@ importers:
       '@bufbuild/protobuf':
         specifier: 'catalog:'
         version: 2.14.1
-      '@s2/proto':
+      '@session/proto':
         specifier: workspace:*
         version: link:../proto
     devDependencies:
-      '@s2/eslint-config':
+      '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
-      '@s2/typescript-config':
+      '@session/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript-config
       eslint:
@@ -371,14 +371,14 @@ importers:
 
   packages/client-contract:
     dependencies:
-      '@s2/client':
+      '@session/client':
         specifier: workspace:*
         version: link:../client
     devDependencies:
-      '@s2/eslint-config':
+      '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
-      '@s2/typescript-config':
+      '@session/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript-config
       eslint:
@@ -393,14 +393,14 @@ importers:
 
   packages/localization:
     dependencies:
-      '@s2/basic-types':
+      '@session/basic-types':
         specifier: workspace:*
         version: link:../basic-types
     devDependencies:
-      '@s2/eslint-config':
+      '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
-      '@s2/typescript-config':
+      '@session/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript-config
       eslint:
@@ -428,10 +428,10 @@ importers:
       '@bufbuild/protoc-gen-es':
         specifier: 'catalog:'
         version: 2.14.1(@bufbuild/protobuf@2.14.1)
-      '@s2/eslint-config':
+      '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
-      '@s2/typescript-config':
+      '@session/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript-config
       eslint:
@@ -446,29 +446,29 @@ importers:
 
   packages/screens:
     dependencies:
-      '@s2/app':
+      '@session/app':
         specifier: workspace:*
         version: link:../app
-      '@s2/client':
+      '@session/client':
         specifier: workspace:*
         version: link:../client
-      '@s2/localization':
+      '@session/localization':
         specifier: workspace:*
         version: link:../localization
-      '@s2/state':
+      '@session/state':
         specifier: workspace:*
         version: link:../state
-      '@s2/test-ids':
+      '@session/test-ids':
         specifier: workspace:*
         version: link:../test-ids
-      '@s2/ui':
+      '@session/ui':
         specifier: workspace:*
         version: link:../ui
     devDependencies:
-      '@s2/eslint-config':
+      '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
-      '@s2/typescript-config':
+      '@session/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript-config
       '@types/react':
@@ -489,17 +489,17 @@ importers:
 
   packages/state:
     dependencies:
-      '@s2/client':
+      '@session/client':
         specifier: workspace:*
         version: link:../client
       zustand:
         specifier: 'catalog:'
         version: 5.0.15(@types/react@19.2.18)(react@19.2.3)
     devDependencies:
-      '@s2/eslint-config':
+      '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
-      '@s2/typescript-config':
+      '@session/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript-config
       '@types/react':
@@ -520,10 +520,10 @@ importers:
 
   packages/test-ids:
     devDependencies:
-      '@s2/eslint-config':
+      '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
-      '@s2/typescript-config':
+      '@session/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript-config
       eslint:
@@ -538,10 +538,10 @@ importers:
 
   packages/theme-tokens:
     devDependencies:
-      '@s2/eslint-config':
+      '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
-      '@s2/typescript-config':
+      '@session/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript-config
       eslint:
@@ -556,17 +556,17 @@ importers:
 
   packages/ui:
     dependencies:
-      '@s2/theme-tokens':
+      '@session/theme-tokens':
         specifier: workspace:*
         version: link:../theme-tokens
       tamagui:
         specifier: 'catalog:'
         version: 2.7.7(react-dom@19.2.3(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
     devDependencies:
-      '@s2/eslint-config':
+      '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
-      '@s2/typescript-config':
+      '@session/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript-config
       '@types/react':
@@ -590,13 +590,13 @@ importers:
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.62.1
-      '@s2/eslint-config':
+      '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
-      '@s2/test-ids':
+      '@session/test-ids':
         specifier: workspace:*
         version: link:../../packages/test-ids
-      '@s2/typescript-config':
+      '@session/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript-config
       '@types/node':
