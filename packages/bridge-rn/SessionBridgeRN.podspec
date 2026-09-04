@@ -26,6 +26,11 @@ Pod::Spec.new do |s|
   # than the shim — see the note in it about what STATIC_BUNDLE leaves out.
   s.vendored_libraries = "ios/lib/*.a"
 
+  # System libraries the vendored archives expect to find. libunistring wants iconv, which the
+  # NDK bundles into bionic and Apple ships separately — so this is needed here and nowhere
+  # else, and it only surfaces once something reaches the network and pulls gnutls's chain in.
+  s.libraries = "iconv", "resolv", "z"
+
   # client_bridge.hpp is deliberately free of libsession's headers — it is std types and a
   # std::function — so this is the whole of what the HybridObject needs to compile.
   s.pod_target_xcconfig = {
