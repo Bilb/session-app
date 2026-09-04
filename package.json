@@ -11,6 +11,7 @@
     "build": "turbo build",
     "codegen": "turbo codegen",
     "codegen:check": "turbo codegen:check",
+    "codegen:cpp": "node scripts/codegen-proto-cpp.mjs",
     "dev": "turbo dev",
     "dev:desktop": "pnpm --filter @session/desktop dev",
     "dev:desktop:real": "pnpm --filter @session/desktop dev:real",

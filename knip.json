@@ -19,5 +19,6 @@
     "react-native-nitro-modules",
     "react-native-safe-area-context"
   ],
+  "ignoreBinaries": ["brew"],
   "ignore": ["**/*.native.ts", "**/*.native.tsx", "libsession-util/**"]
 }
