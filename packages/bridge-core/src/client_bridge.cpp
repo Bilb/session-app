@@ -6,6 +6,18 @@
 #include <session/mnemonics.hpp>
 #include <session/sqlite.hpp>
 
+#include <oxenc/hex.h>
+
+#ifdef SESSION_BRIDGE_TESTING
+#include <SessionProtos.pb.h>
+
+#include <session/config/namespaces.hpp>
+#include <session/core/swarm_message.hpp>
+#include <session/session_protocol.hpp>
+#endif
+
+#include <cstring>
+#include <ranges>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -303,6 +315,32 @@ void ClientBridge::Impl::dispatch(const pb::Request& request) {
                                      }));
             return;
 
+        case pb::Request::kRestoreAccount: {
+            const auto& cmd = request.restore_account();
+            if (cmd.has_hex_seed()) {
+                auto raw = oxenc::from_hex(cmd.hex_seed());
+                if (raw.size() != 32)
+                    throw std::invalid_argument{"hex_seed must be 32 bytes of hex"};
+                b32 seed;
+                std::memcpy(seed.data(), raw.data(), seed.size());
+                client->core.globals.restore_account(core::predefined_seed{std::span{seed}});
+            } else if (cmd.has_words()) {
+                const auto& from = cmd.words();
+                std::vector<std::string_view> words;
+                words.reserve(static_cast<size_t>(from.words_size()));
+                for (const auto& word : from.words())
+                    words.emplace_back(word);
+                const auto& language = from.language();
+                client->core.globals.restore_account(
+                        language.empty() ? core::predefined_seed{words}
+                                         : core::predefined_seed{words, language});
+            } else {
+                throw std::invalid_argument{"restoreAccount needs words or a hex seed"};
+            }
+            ok(id);
+            return;
+        }
+
         case pb::Request::kGetSeedMnemonic: {
             const auto& language = request.get_seed_mnemonic().language();
             auto words = client->core.globals.seed_mnemonic(
@@ -421,7 +459,11 @@ void ClientBridge::Impl::dispatch(const pb::Request& request) {
                                    pb::Response r;
                                    r.set_request_id(id);
                                    auto* list = r.mutable_message_list();
-                                   for (const auto& m : messages)
+                                   // libsession answers newest first, because that is the
+                                   // direction paging runs. The wire is oldest first, because
+                                   // that is the direction a transcript is read, and reversing
+                                   // once here is cheaper than every caller remembering to.
+                                   for (const auto& m : std::views::reverse(messages))
                                        encode(m, list->add_messages());
                                    emit(std::move(r));
                                }));
@@ -529,6 +571,84 @@ void ClientBridge::Impl::dispatch(const pb::Request& request) {
                  "approveConversation has no libsession counterpart: approval is recorded by "
                  "sending, not set");
             return;
+
+#ifdef SESSION_BRIDGE_TESTING
+
+        case pb::Request::kGetTestAccountSeed: {
+            // Named, because the accessor is what holds the secure buffer readable and the
+            // rvalue overloads are deleted precisely to stop this being a one-liner.
+            auto access = client->core.globals.account_seed();
+            auto raw = access.seed();
+            pb::Response r;
+            r.set_request_id(id);
+            r.mutable_bytes()->set_data(reinterpret_cast<const char*>(raw.data()), raw.size());
+            emit(std::move(r));
+            return;
+        }
+
+        case pb::Request::kDeliverTestMessage: {
+            const auto& cmd = request.deliver_test_message();
+            auto seed = oxenc::from_hex(cmd.sender_seed());
+            if (seed.size() != 32)
+                throw std::invalid_argument{"sender_seed must be 32 bytes of hex"};
+
+            const auto sent = from_epoch_ms(cmd.timestamp());
+
+            SessionProtos::Content content;
+            content.set_sigtimestamp(static_cast<uint64_t>(cmd.timestamp()));
+            content.mutable_datamessage()->set_body(cmd.body());
+            auto plaintext = content.SerializeAsString();
+
+            b33 recipient;
+            std::ranges::copy(client->core.globals.session_id(), recipient.begin());
+
+            auto encoded = encode_dm_v1(
+                    std::as_bytes(std::span{plaintext}),
+                    ed25519::PrivKeySpan::from(std::as_bytes(std::span{seed})),
+                    sent,
+                    recipient);
+
+            // The hash is the swarm's, and a redelivered one is how libsession recognises a
+            // duplicate — so it has to be stable for a message and different between messages.
+            core::SwarmMessage message{
+                    encoded,
+                    "test-" + std::to_string(cmd.timestamp()) + "-" +
+                            std::to_string(std::hash<std::string>{}(cmd.body())),
+                    sent,
+                    from_epoch_ms(cmd.timestamp() + 14 * 24 * 60 * 60 * 1000)};
+
+            // Onto Core's loop, because the connection pool is single-threaded by design and
+            // this is the one place the bridge writes the database from outside it.
+            client->core.loop().call_get([&] {
+                client->core.receive_messages({&message, 1}, config::Namespace::Default, true);
+                return 0;
+            });
+            ok(id);
+            return;
+        }
+
+        case pb::Request::kApproveTestContact: {
+            auto decoded = oxenc::from_hex(request.approve_test_contact().session_id());
+            if (decoded.size() != 33)
+                throw std::invalid_argument{"session_id must be 33 bytes of hex"};
+            b33 sid;
+            std::memcpy(sid.data(), decoded.data(), sid.size());
+            client->core.loop().call_get([&] {
+                auto conn = client->core.database().conn();
+                conn.prepared_exec(
+                        "INSERT OR IGNORE INTO accounts (session_id) VALUES (?)", sid);
+                conn.prepared_exec(
+                        "INSERT INTO contacts (account, approved) VALUES ("
+                        "(SELECT id FROM accounts WHERE session_id = ?), 1) "
+                        "ON CONFLICT (account) DO UPDATE SET approved = 1",
+                        sid);
+                return 0;
+            });
+            ok(id);
+            return;
+        }
+
+#endif
 
         case pb::Request::kPollOnce:
             // Core owns its poll ticker and exposes no one-shot entry point. Asking for one is

@@ -74,9 +74,12 @@ target_link_libraries(session-bridge-core
 set_property(TARGET session-bridge-core PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 option(SESSION_BRIDGE_TESTING
-    "Compile DeliverTestMessage, which feeds Core a message the way the swarm would" OFF)
+    "Compile the test-only commands, which carry messages between clients with no network" OFF)
 if(SESSION_BRIDGE_TESTING)
     target_compile_definitions(session-bridge-core PRIVATE SESSION_BRIDGE_TESTING)
+    # Forging a DM means building the same Content the wire carries. libsession links its protos
+    # privately, so the headers do not arrive with libsession::client.
+    target_link_libraries(session-bridge-core PRIVATE libsession::protos)
 endif()
 
 add_library(session::bridge-core ALIAS session-bridge-core)

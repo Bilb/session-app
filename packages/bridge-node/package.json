@@ -11,10 +11,11 @@
     "./addon": "./build/Release/session_bridge_node.node"
   },
   "scripts": {
-    "build:native": "SESSION_BRIDGE_CC=${SESSION_BRIDGE_CC:-gcc} cmake-js compile --parallel --CDCMAKE_C_COMPILER=\"$PWD/cmake/cc-pic.sh\" --CDCMAKE_CXX_COMPILER=\"${SESSION_BRIDGE_CXX:-g++}\" --CDUSE_LTO=OFF --CDWITH_TESTS=OFF --CDSUBMODULE_CHECK=OFF",
+    "build:native": "SESSION_BRIDGE_CC=${SESSION_BRIDGE_CC:-gcc} cmake-js configure --CDCMAKE_C_COMPILER=\"$PWD/cmake/cc-pic.sh\" --CDCMAKE_CXX_COMPILER=\"${SESSION_BRIDGE_CXX:-g++}\" --CDUSE_LTO=OFF --CDWITH_TESTS=OFF --CDSUBMODULE_CHECK=OFF --CDSESSION_BRIDGE_TESTING=OFF && cmake-js build --parallel",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "build:native:testing": "SESSION_BRIDGE_CC=${SESSION_BRIDGE_CC:-gcc} cmake-js configure --CDCMAKE_C_COMPILER=\"$PWD/cmake/cc-pic.sh\" --CDCMAKE_CXX_COMPILER=\"${SESSION_BRIDGE_CXX:-g++}\" --CDUSE_LTO=OFF --CDWITH_TESTS=OFF --CDSUBMODULE_CHECK=OFF --CDSESSION_BRIDGE_TESTING=ON && cmake-js build --parallel"
   },
   "dependencies": {
     "@session/client": "workspace:*",
@@ -22,13 +23,14 @@
     "@session/proto": "workspace:*"
   },
   "devDependencies": {
+    "@bufbuild/protobuf": "catalog:",
+    "@session/client-contract": "workspace:*",
     "@session/eslint-config": "workspace:*",
     "@session/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "cmake-js": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:",
-    "@bufbuild/protobuf": "catalog:"
+    "vitest": "catalog:"
   }
 }

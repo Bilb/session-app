@@ -205,6 +205,11 @@ export const ConversationResultSchema: GenMessage<ConversationResult> = /*@__PUR
   messageDesc(file_sessionbridge_v1_frames, 5);
 
 /**
+ * Oldest first, whatever page it is — the direction a transcript is read. libsession
+ * answers newest first because that is the direction paging runs; the shim reverses. Getting
+ * this wrong shows up as a conversation that reads bottom to top, which is why it is stated
+ * here rather than left to each implementation to decide.
+ *
  * @generated from message sessionbridge.v1.MessageList
  */
 export type MessageList = Message<"sessionbridge.v1.MessageList"> & {

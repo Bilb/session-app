@@ -57,10 +57,14 @@ message Request {
     GetPref get_pref = 90;
     SetPref set_pref = 91;
 
-    // Compiled into the shim only under SESSION_BRIDGE_TESTING: feeds an inbound message
-    // straight into Core the way the swarm would have, so the contract suite can exercise
-    // the receive path with no network.
+    // Compiled into the shim only under SESSION_BRIDGE_TESTING. These are what let the
+    // contract suite drive the real bridge with no network: one client's messages are
+    // carried to the other by the harness, encrypted and fed in the way the swarm would
+    // have done it. A port of libsession's own test helpers (tests/test_client/common.hpp),
+    // not a second way to do anything the app does.
     DeliverTestMessage deliver_test_message = 200;
+    GetTestAccountSeed get_test_account_seed = 201;
+    ApproveTestContact approve_test_contact = 202;
   }
 }
 
@@ -193,9 +197,26 @@ message SetPref {
   string value = 2;
 }
 
+// Builds, encrypts and delivers a v1 DM as if it had arrived from the swarm. The sender is
+// whoever holds `sender_seed`; the recipient is always the client the command is sent to, since
+// that is the only account it can decrypt for.
 message DeliverTestMessage {
+  // The sender's 32-byte account seed, hex. GetTestAccountSeed is where the harness gets it.
   string sender_seed = 1;
-  string conversation_id = 2;
   string body = 3;
   int64 timestamp = 4;
+
+  // 2 was conversation_id. A DM's conversation is its sender, so naming it separately let it
+  // disagree with the signature, which is what actually decides.
+  reserved 2;
+}
+
+// This client's own account seed, so the harness can forge messages from it to another client.
+message GetTestAccountSeed {}
+
+// Marks a contact approved, which is what having written to them would have done. Setup for
+// scenarios that are about something else: without it a first message is a request, and the
+// list the test is asking about is empty.
+message ApproveTestContact {
+  string session_id = 1;
 }

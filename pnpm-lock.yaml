@@ -368,6 +368,9 @@ importers:
       '@bufbuild/protobuf':
         specifier: 'catalog:'
         version: 2.14.1
+      '@session/client-contract':
+        specifier: workspace:*
+        version: link:../client-contract
       '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config

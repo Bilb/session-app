@@ -187,6 +187,19 @@ Append one paragraph per decision. Undocumented decisions are what rot.
 - **2026-09-04 — dependency-cruiser is the sole boundary authority.** `turbo boundaries` was
   considered and dropped: a second mechanism with its own model, for rules dep-cruiser already
   expresses.
+- **2026-09-04 — History crosses the bridge oldest first.** libsession answers newest first,
+  because that is the direction paging runs; a transcript is read the other way. The shim reverses
+  once rather than leaving every caller to remember, and the order is written into `frames.proto`
+  rather than left for each implementation to decide — which is how the fake and the real thing
+  came to disagree about it in the first place. Getting this wrong shows up as a conversation that
+  reads bottom to top.
+
+- **2026-09-04 — A terminal send state, not a particular one.** The contract asserted that a send
+  ends up `sent`, which is true only where there is a swarm to reach. Offline it ends up `failed`,
+  and that is the same contract: what the scenario is about is that the state arrived as an update
+  rather than a second message. An assertion that only the fake could satisfy was an assertion
+  about the fake.
+
 - **2026-09-04 — A Client creates an account unless told not to.** Opening a database is enough
   to mint an identity, so an app that means to offer "create or restore" has already chosen for
   the user by the time it draws anything. `defer_account` is what holds that open, and it is not

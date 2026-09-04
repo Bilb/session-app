@@ -53,6 +53,10 @@ message Empty {}
 message Mnemonic { repeated string words = 1; }
 message ConversationList { repeated Conversation conversations = 1; }
 message ConversationResult { Conversation conversation = 1; }
+// Oldest first, whatever page it is — the direction a transcript is read. libsession
+// answers newest first because that is the direction paging runs; the shim reverses. Getting
+// this wrong shows up as a conversation that reads bottom to top, which is why it is stated
+// here rather than left to each implementation to decide.
 message MessageList { repeated Message messages = 1; }
 message MessageIdResult { int64 message_id = 1; }
 message BytesResult { bytes data = 1; }

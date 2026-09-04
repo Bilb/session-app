@@ -4,15 +4,15 @@ This file is the mutable one: what exists today and what comes next. `ARCHITECTU
 timeless one — how the thing is built and why. `CLAUDE.md` is the rule list. Read all three
 before changing anything; they do not repeat each other.
 
-Last updated 2026-09-04, at commit `809dab2`.
+Last updated 2026-09-04, at commit `288a770`.
 
 ## State
 
-Ten commits on `main`. Working tree clean. **No git remote yet** — when one is added, the
+Eleven commits on `main`. Working tree clean. **No git remote yet** — when one is added, the
 branch-and-pull-request rule in `CLAUDE.md` starts applying; until then `main` is all there is.
 
 Everything green: `pnpm format:check`, `pnpm lint` (14), `pnpm lint:manifests`,
-`pnpm boundaries`, `pnpm typecheck` (16), `pnpm test` (50 tests), `pnpm knip`,
+`pnpm boundaries`, `pnpm typecheck` (16), `pnpm test` (58 tests), `pnpm knip`,
 `pnpm codegen:check`, `pnpm dedupe --check` — the whole of `ci.yml`.
 
 The walking skeleton works end to end. `tests/e2e` drives the built Electron app through
@@ -48,9 +48,8 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
 
 - `packages/bridge-rn`, the Nitro module. `bridge-core` and `bridge-node` both build, and the
   desktop app loads the addon when `SESSION_FAKE` is unset.
-- Attachment commands (`AttachmentData`, `SaveAttachment`), account restore, push and the
-  testing-only `DeliverTestMessage` are not in the shim's dispatch yet. They answer with an
-  error naming themselves rather than silently doing nothing.
+- Attachment commands (`AttachmentData`, `SaveAttachment`) and push are not in the shim's
+  dispatch yet. They answer with an error naming themselves rather than silently doing nothing.
 - `apps/mobile` has never been run. It needs `expo prebuild` and a dev client, and the Nitro
   spike is unproven in this exact stack (hoisted pnpm + Expo 57).
 - Attachments, onboarding, requests and settings are placeholder screens.
@@ -58,12 +57,9 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
 
 ## Next steps, in order
 
-1. **Contract mode B** — run `@session/client-contract` against the real addon, offline, feeding
-   inbound messages through libsession's own test path (`DeliverTestMessage` is already in the
-   schema for this). This is what proves the fake has not been lying.
-2. **`packages/bridge-rn`** — the Nitro module, then run `apps/mobile` on a device. Second
+1. **`packages/bridge-rn`** — the Nitro module, then run `apps/mobile` on a device. Second
    proof point: the same echo flow, on real bindings.
-3. Then features, via the `port-feature` skill.
+2. Then features, via the `port-feature` skill.
 
 ## Open questions that need a person
 
@@ -90,6 +86,31 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
 - **Mnemonic handling.** libsession owns the word list, so no TypeScript library is needed,
   but once words cross into JavaScript they cannot be wiped. Keep them out of logs and out of
   the store.
+
+## What contract mode B says
+
+`@session/client-contract` runs against the real addon, offline, in
+`packages/bridge-node/src/contract.test.ts`. Nothing reaches a swarm: the harness carries each
+message from one client to the other itself, encrypted and fed in the way the swarm's would be,
+which is a port of what libsession's own tests do. Eleven of the twelve scenarios pass.
+
+It has already earned its keep twice. libsession answers history **newest first** and the fake
+answered oldest first, which nothing had noticed because nothing had run both — that is a
+transcript upside down, and the shim now reverses and `frames.proto` says so. And the contract
+asserted a send ends up `sent`, which is only true where there is a swarm; offline it ends up
+`failed`, and the scenario was really about the state arriving as an update.
+
+The twelfth is skipped with its reason in the test name: `approveConversation` has no libsession
+counterpart. `runSessionClientContract` takes an `unsupported` map of title to reason for exactly
+this, and the reason is what stops it becoming a way to make a failing implementation look green.
+
+```
+pnpm --filter @session/bridge-node build:native:testing
+pnpm --filter @session/bridge-node test
+```
+
+The test commands are compiled in only by that build. A plain `build:native` leaves them out and
+the suite skips itself rather than reporting their absence as a regression.
 
 ## Building the native side
 
