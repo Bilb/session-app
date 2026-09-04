@@ -13,4 +13,8 @@ export interface NativeTransportOptions {
   password?: string
   /** Opens without creating an account, so onboarding gets to ask. */
   deferAccount?: boolean
+  /** 'mainnet' or 'testnet'. Left out, the bridge never attaches a network at all. */
+  netid?: 'mainnet' | 'testnet'
+  /** What the account's other devices are told this is. */
+  deviceType?: 'ios' | 'android'
 }

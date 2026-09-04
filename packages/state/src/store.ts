@@ -18,14 +18,37 @@ export interface SessionActions {
   send: (id: ConversationId, body: string, replyTo?: number) => Promise<void>
   markRead: (id: ConversationId) => Promise<void>
   approve: (id: ConversationId) => Promise<void>
+  /**
+   * Mints an identity, and re-hydrates because everything else waits on there being one.
+   *
+   * The bridge attaches the network on the far side of this, since attaching to an
+   * identity-less Core throws — so this is also the moment the app goes online.
+   */
+  createAccount: () => Promise<void>
   dispose: () => void
 }
 
 export type SessionStore = StoreApi<SessionState> & { actions: SessionActions }
 
+export interface SessionStoreOptions {
+  /**
+   * Where a line of diagnostic text goes.
+   *
+   * Injected rather than assumed: this package typechecks with no DOM and no node types, so
+   * `console` is not declared here — and that is the environment split working rather than an
+   * inconvenience, because which console a line reaches is a per-platform question. Each app
+   * passes its own; leaving it out is silence.
+   */
+  log?: (line: string) => void
+}
+
 const PAGE = 30
 
-export function createSessionStore(client: SessionClient): SessionStore {
+export function createSessionStore(
+  client: SessionClient,
+  options: SessionStoreOptions = {},
+): SessionStore {
+  const log = options.log ?? ((): void => undefined)
   const store = createStore<SessionState>(() => ({ ...emptyState }))
 
   const unsubscribe = client.onEvent((event) => {
@@ -62,6 +85,18 @@ export function createSessionStore(client: SessionClient): SessionStore {
     async hydrate(): Promise<void> {
       const account = await client.getAccountInfo()
       store.setState({ account })
+
+      // Logged, not just held, because the account ID is what someone else needs in order to
+      // write to this device, and reading it off a screen is not always possible — a headless
+      // e2e run, a device you are tailing logs from. One line, on every platform, from the one
+      // place that learns it. `run`'s references say where each platform's console ends up.
+      log(
+        account.haveAccount
+          ? `[session] account ${account.sessionId ?? '(no id)'}, network ${
+              account.networkAttached ? 'attached' : 'not attached'
+            }`
+          : '[session] no account on this device yet',
+      )
 
       if (!account.haveAccount) {
         store.setState({ hydrated: true })
@@ -111,6 +146,11 @@ export function createSessionStore(client: SessionClient): SessionStore {
 
     async approve(id): Promise<void> {
       await client.approveConversation(id)
+    },
+
+    async createAccount(): Promise<void> {
+      await client.createAccount()
+      await actions.hydrate()
     },
 
     dispose(): void {

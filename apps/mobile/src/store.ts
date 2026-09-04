@@ -1,5 +1,6 @@
 import { createSessionClient, type BridgeTransport } from '@session/client'
 import { createSessionStore } from '@session/state'
+import { Platform } from 'react-native'
 
 import { resolveDatabaseKey, sessionPaths } from './storage'
 
@@ -24,9 +25,18 @@ async function openTransport(): Promise<BridgeTransport> {
     // Onboarding has to be asked. Without this libsession creates an account as the database
     // opens, and the first screen is a conversation list for an identity nobody chose.
     deferAccount: true,
+    // Attached by the bridge once an account exists: on open if there is one already, and
+    // after onboarding otherwise.
+    netid: 'mainnet',
+    deviceType: Platform.OS === 'ios' ? 'ios' : 'android',
   })
 }
 
 export const storePromise = openTransport().then((transport) =>
-  createSessionStore(createSessionClient(transport)),
+  createSessionStore(createSessionClient(transport), {
+    // Reaches logcat as ReactNativeJS on Android, and the device console on iOS.
+    log: (line) => {
+      console.log(line)
+    },
+  }),
 )

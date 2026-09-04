@@ -19,4 +19,10 @@ declare global {
 
 const client = createSessionClient(window.sessionBridge)
 
-export const store = createSessionStore(client)
+export const store = createSessionStore(client, {
+  // The renderer's console, which reaches the terminal when Electron is run with
+  // --enable-logging and the DevTools console otherwise.
+  log: (line) => {
+    console.log(line)
+  },
+})

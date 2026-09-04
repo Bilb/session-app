@@ -1,6 +1,12 @@
 import { conversationFromPath } from '@session/app'
-import { AdaptiveShell, ConversationListScreen, ConversationScreen } from '@session/screens'
-import { SessionStoreProvider, useHydrated } from '@session/state'
+import {
+  AdaptiveShell,
+  ConversationListScreen,
+  ConversationScreen,
+  OnboardingScreen,
+  SettingsScreen,
+} from '@session/screens'
+import { SessionStoreProvider, useAccount, useHydrated } from '@session/state'
 import { Text, UIProvider, YStack } from '@session/ui'
 import { useEffect } from 'react'
 import { MemoryRouter, Route, Routes, useLocation, useParams } from 'react-router'
@@ -35,6 +41,7 @@ export function App() {
 
 function Shell() {
   const hydrated = useHydrated()
+  const account = useAccount()
   const location = useLocation()
   const openConversation = conversationFromPath(location.pathname)
 
@@ -51,6 +58,10 @@ function Shell() {
     )
   }
 
+  // Onboarding takes the whole window rather than a pane: there is no list to sit beside it,
+  // and there will not be one until it has minted an identity.
+  if (account?.haveAccount !== true) return <OnboardingScreen />
+
   return (
     <AdaptiveShell
       list={<ConversationListScreen />}
@@ -59,8 +70,8 @@ function Shell() {
           <Route path="" element={null} />
           <Route path="c/:id" element={<ConversationRoute />} />
           <Route path="requests" element={<Placeholder label="Message requests" />} />
-          <Route path="settings" element={<Placeholder label="Settings" />} />
-          <Route path="onboarding" element={<Placeholder label="Welcome" />} />
+          <Route path="settings" element={<SettingsScreen />} />
+          <Route path="onboarding" element={<OnboardingScreen />} />
         </Routes>
       }
       hasDetail={openConversation !== null}

@@ -1,13 +1,6 @@
-import { ELEMENT } from '@session/test-ids'
-import { Screen, Text, YStack } from '@session/ui'
+import { OnboardingScreen } from '@session/screens'
 
-/** A placeholder screen. The route has to exist for the contract test to pass. */
+/** The route file is the boundary: the screen itself never reads a router. */
 export default function OnboardingRoute() {
-  return (
-    <Screen testID={ELEMENT.onboarding.screen}>
-      <YStack flex={1} alignItems="center" justifyContent="center">
-        <Text tone="secondary">Welcome</Text>
-      </YStack>
-    </Screen>
-  )
+  return <OnboardingScreen />
 }

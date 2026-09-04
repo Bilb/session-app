@@ -57,6 +57,10 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
 
         if (options.Has("deferAccount"))
             init.defer_account = options.Get("deferAccount").ToBoolean().Value();
+        if (options.Has("netid") && !options.Get("netid").IsUndefined())
+            init.netid = options.Get("netid").As<Napi::String>().Utf8Value();
+        if (options.Has("deviceType") && !options.Get("deviceType").IsUndefined())
+            init.device_type = options.Get("deviceType").As<Napi::String>().Utf8Value();
 
         // Unlimited queue, so a frame produced on Core's loop is never dropped and BlockingCall
         // never blocks the thread that produced it. The frames are small and the JavaScript side

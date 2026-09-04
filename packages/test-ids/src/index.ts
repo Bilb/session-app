@@ -44,6 +44,8 @@ export const ELEMENT = {
     themeOption: (name: string) => `settings-theme-${name}` as const,
     accentOption: (name: string) => `settings-accent-${name}` as const,
     displayName: 'settings-display-name',
+    accountId: 'settings-account-id',
+    networkStatus: 'settings-network-status',
   },
   onboarding: {
     screen: 'onboarding',
@@ -79,6 +81,8 @@ export type ElementId =
   | `settings-theme-${string}`
   | `settings-accent-${string}`
   | 'settings-display-name'
+  | 'settings-account-id'
+  | 'settings-network-status'
   | 'onboarding'
   | 'onboarding-create-account'
   | 'onboarding-restore-account'

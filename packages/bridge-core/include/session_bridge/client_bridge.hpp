@@ -8,6 +8,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <vector>
 
 namespace session::bridge {
 
@@ -33,6 +34,26 @@ struct InitOptions {
     /// `createAccount` or `restoreAccount` there is no identity, so anything needing one — the
     /// session id, sending, attaching a network — fails until that call.
     bool defer_account = false;
+
+    /// Which network to reach, or empty to never reach one.
+    ///
+    /// "mainnet" or "testnet". Empty is the whole of the offline guarantee: attaching
+    /// is the only thing that gives Core a way off the machine, so declining to do it is more
+    /// dependable than a flag each send has to remember to consult. The contract suite runs this
+    /// way, and so does anything that must not touch a real swarm.
+    ///
+    /// Attached at construction when an account already exists, and again after `createAccount`
+    /// or `restoreAccount`, because attaching to an identity-less Core throws and there would be
+    /// nothing to poll for anyway.
+    std::string netid;
+
+    /// What this client tells the account's other devices it is: "ios", "android" or "desktop".
+    ///
+    /// libsession establishes the device group with these fields blank and says outright that
+    /// filling them in is the application's job; until it happens, every other device lists this
+    /// one as an unrecognised device with no version. There is no device type for this client
+    /// yet — see docs/STATUS.md — so it reports the platform it is running on, which is true.
+    std::string device_type;
 };
 
 /// Receives one encoded `sessionbridge.v1.Frame` per call, in the order libsession produced them.

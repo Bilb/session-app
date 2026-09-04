@@ -3,7 +3,10 @@
 #include <session/client.hpp>
 #include <session/client/conversation.hpp>
 #include <session/client/conversation_id.hpp>
+#include <session/core/devices.hpp>
 #include <session/mnemonics.hpp>
+#include <session/network/network_opt.hpp>
+#include <session/network/session_network.hpp>
 #include <session/sqlite.hpp>
 
 #include <oxenc/hex.h>
@@ -43,8 +46,70 @@ namespace {
 struct ClientBridge::Impl {
     Sink sink;
     std::unique_ptr<client::Client> client;
+    InitOptions options;
 
-    explicit Impl(Sink s) : sink{std::move(s)} {}
+    explicit Impl(Sink s, InitOptions o) : sink{std::move(s)}, options{std::move(o)} {}
+
+    /// What this client tells the account's other devices it is.
+    ///
+    /// Called on every start rather than once: `update_info` compares the user-settable fields
+    /// itself and returns without touching the seqno when they match. Which does mean it has to
+    /// be built from things that do not vary between launches — anything read from the clock or
+    /// the environment would republish this device to the account on every run.
+    void publish_device_info() {
+        using core::device::Type;
+        auto type = options.device_type == "ios"       ? Type::Session_iOS
+                    : options.device_type == "android" ? Type::Session_Android
+                    : options.device_type == "desktop" ? Type::Session_Desktop
+                                                       : Type::Unknown;
+        if (type == Type::Unknown)
+            return;
+
+        auto info = client->core.devices.device_info().first;
+        info.type = type;
+        // Ignored for a known type, but it is what we would have been stored as before that type
+        // existed, and leaving it set keeps a stale string in the record.
+        info.other_device.clear();
+        client->core.devices.update_info(info);
+    }
+
+    /// Gives Core a way off the machine. Idempotent enough to call whenever an account appears:
+    /// make_network replaces whatever was attached.
+    void attach_network() {
+        if (options.netid.empty() || !client->core.globals.have_account())
+            return;
+
+        namespace net = session::network;
+
+        // devnet takes seed nodes, and a seed node is a public key, an address and two ports —
+        // not something a URL can be turned into here. Wiring it means deciding how the app is
+        // told those, which is a devnet question rather than a bridge one, so it refuses rather
+        // than quietly attaching to mainnet instead.
+        if (options.netid == "devnet")
+            throw std::invalid_argument{"devnet is not wired up: it needs seed node details"};
+        if (options.netid != "mainnet" && options.netid != "testnet")
+            throw std::invalid_argument{"netid must be mainnet or testnet"};
+
+        auto netid = options.netid == "testnet" ? net::opt::netid::testnet()
+                                                : net::opt::netid::mainnet();
+
+        // Beside the database rather than in it: freeing space works by unlinking what the
+        // directory holds that nothing accounts for, so this cannot share with anything else.
+        auto cache = options.db_path.parent_path() / "netcache";
+
+        client->core.make_network(
+                std::move(netid),
+                net::opt::router::session_router(),
+                net::opt::cache_directory{cache});
+    }
+
+    /// Both halves of "an account now exists", which is what onboarding signals too. The record
+    /// is published whether or not there is a network to push it over, since being offline stops
+    /// the push rather than the fact.
+    void on_account() {
+        publish_device_info();
+        attach_network();
+    }
 
     /// The only path frames take out of here. Serialising into a reused buffer would be a false
     /// economy: the sink is called from Core's loop and may be called again before the adapter has
@@ -121,7 +186,7 @@ struct ClientBridge::Impl {
 };
 
 ClientBridge::ClientBridge(InitOptions options, Sink sink) :
-        _impl{std::make_unique<Impl>(std::move(sink))} {
+        _impl{std::make_unique<Impl>(std::move(sink), options)} {
 
     auto* impl = _impl.get();
 
@@ -238,6 +303,10 @@ ClientBridge::ClientBridge(InitOptions options, Sink sink) :
 
     if (!options.cache_dir.empty())
         _impl->client->set_cache_dir(options.cache_dir);
+
+    // An account that is already there needs no onboarding, so this is where its network comes
+    // from. A deferred one gets it from createAccount or restoreAccount instead.
+    _impl->on_account();
 }
 
 ClientBridge::~ClientBridge() {
@@ -306,6 +375,7 @@ void ClientBridge::Impl::dispatch(const pb::Request& request) {
 
         case pb::Request::kCreateAccount:
             client->core.globals.create_account();
+            on_account();
             ok(id);
             return;
 
@@ -337,6 +407,7 @@ void ClientBridge::Impl::dispatch(const pb::Request& request) {
             } else {
                 throw std::invalid_argument{"restoreAccount needs words or a hex seed"};
             }
+            on_account();
             ok(id);
             return;
         }
@@ -649,6 +720,13 @@ void ClientBridge::Impl::dispatch(const pb::Request& request) {
         }
 
 #endif
+
+        case pb::Request::kAttachNetwork: {
+            options.netid = request.attach_network().netid();
+            attach_network();
+            ok(id);
+            return;
+        }
 
         case pb::Request::kPollOnce:
             // Core owns its poll ticker and exposes no one-shot entry point. Asking for one is

@@ -20,6 +20,15 @@ export interface NodeBridgeOptions {
    * one on first open and the app has decided for the user before drawing anything.
    */
   deferAccount?: boolean
+  /**
+   * Which network to reach: 'mainnet' or 'testnet'. Left out, the bridge never attaches one,
+   * which is the whole of the offline guarantee — nothing else has to remember to check.
+   *
+   * Attached when an account exists, so a deferred one gets its network from createAccount.
+   */
+  netid?: 'mainnet' | 'testnet'
+  /** What the account's other devices are told this is. */
+  deviceType?: 'ios' | 'android' | 'desktop'
   /** Overrides where the addon is loaded from. `SESSION_BRIDGE_ADDON` does the same. */
   addonPath?: string
 }

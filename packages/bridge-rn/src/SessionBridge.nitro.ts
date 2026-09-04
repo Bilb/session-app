@@ -16,6 +16,13 @@ export interface SessionBridgeOptions {
    * one as the database opens and the app has decided for the user before drawing anything.
    */
   deferAccount: boolean
+  /**
+   * Which network to reach: 'mainnet' or 'testnet'. Empty means never attach one, which is the
+   * whole of the offline guarantee.
+   */
+  netid: string
+  /** What the account's other devices are told this is: 'ios' or 'android'. */
+  deviceType: string
 }
 
 /**

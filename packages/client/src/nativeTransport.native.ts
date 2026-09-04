@@ -32,6 +32,8 @@ export function createNativeBridgeTransport(options: NativeTransportOptions): Br
     ...(options.rawKeyHex === undefined ? {} : { rawKeyHex: options.rawKeyHex }),
     ...(options.password === undefined ? {} : { password: options.password }),
     deferAccount: options.deferAccount ?? false,
+    netid: options.netid ?? '',
+    deviceType: options.deviceType ?? '',
   })
 
   let closed = false
