@@ -9,6 +9,7 @@ it is, which is why a table is worth more than a paragraph.
 | ------------------ | ------------------------- | ------------------------- |
 | Android package    | `org.getsession.session2` | `apps/mobile/app.json`    |
 | Desktop app name   | `session-app`             | `app.setName()` in main   |
+| iOS bundle id      | `org.getsession.session2` | `apps/mobile/app.json`    |
 | Desktop user data  | `~/.config/session-app/`  | `app.getPath('userData')` |
 | Nitro HybridObject | `SessionBridge`           | `SessionBridge.nitro.ts`  |
 | Android JNI lib    | `SessionBridgeRN`         | `android/CMakeLists.txt`  |
@@ -51,9 +52,17 @@ two Session packages on the emulator. `grep -i session` finds the wrong one.
 
 ## iOS
 
-Nothing here is from experience — see [ios.md](ios.md). The four runtime traps under Android are
-platform-neutral C++ and autolinking problems and will apply unchanged; the ones that will be new
-are the podspec's header search paths and the xcframework's architectures.
+| symptom                                                                     | cause                                                                                                                                                                                                                                                        |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `A required entitlement isn't present` from `expo-secure-store`             | The app is not signed. `CODE_SIGNING_ALLOWED=NO` is the obvious flag for a simulator build and it skips the step that applies entitlements, so the keychain refuses the app. Use `CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES`. |
+| Our own `session::bridge::` symbols undefined at link                       | A podspec `source_files` glob reaching outside the pod directory. CocoaPods drops those in silence; the shim is built by CMake and vendored instead.                                                                                                         |
+| `SQLite::Transaction::commit()` undefined                                   | The archives `STATIC_BUNDLE` leaves out. The iOS build script copies them into `ios/lib` and the podspec globs it.                                                                                                                                           |
+| `'RuntimeScheduler' cannot be annotated with either SWIFT_RETURNS_RETAINED` | expo-modules-jsi against Xcode 26's clang. `patches/npm/` carries the fix; `pnpm install` applies it.                                                                                                                                                        |
+| `simctl bootstatus -b` never returns                                        | It does not reliably exit, including on an already-booted device. Poll `simctl spawn <udid> /usr/bin/true` instead.                                                                                                                                          |
+| A device reports `Booted` but nothing works                                 | Wedged CoreSimulator: `simctl spawn` fails with `NSPOSIXErrorDomain code=2` and `get_app_container` prints nothing. `simctl shutdown` then `boot`.                                                                                                           |
+| Thousands of log lines, none of them yours                                  | No `--predicate`. `process == "Session"` is the difference between a diagnosis and a wall of `storekitd`.                                                                                                                                                    |
+
+Device builds and a release xcframework are still untried.
 
 ## C++, when changing the shim
 

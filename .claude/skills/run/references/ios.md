@@ -1,72 +1,91 @@
 # iOS
 
-**None of this runs on the machine this repository has been built on.** It is Linux; iOS needs
-Xcode. Nothing in `packages/bridge-rn/ios` has ever been compiled, and the podspec has never seen
-`pod install`.
+Builds and runs, on a simulator, against real libsession. Done on a remote Mac — Xcode 26.2,
+macOS 15.7 — because the machine most of this repository was built on is Linux, where none of it
+is possible.
 
-Say so and stop, rather than working out the same thing over twenty minutes. Everything below is
-written from the tooling's documented behaviour, not from having run it here, and the first person
-on a Mac should expect to correct it.
+Device builds and a release-shaped xcframework are untried. Everything below has been run.
 
-## Before any of it
-
-Two builds that do not exist yet:
+## Building
 
 ```sh
-pnpm --filter @session/bridge-rn build:libsession      # needs an ios variant; today it is Android only
-cd apps/mobile && npx expo prebuild --platform ios && pod install --project-directory=ios
+pnpm --filter @session/bridge-rn build:libsession:ios     # libsession + the shim, one slice
+cd apps/mobile && npx expo prebuild --platform ios
+cd ios && pod install
+xcodebuild -workspace Session.xcworkspace -scheme Session -configuration Debug \
+  -destination "platform=iOS Simulator,name=iPhone 17 Pro" \
+  -derivedDataPath build/dd \
+  CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES
 ```
 
-libsession's iOS artifact is an xcframework from its own `utils/ios.sh`, for the same reason
-Android's comes from `utils/android.sh`: its dependencies have to be cross-compiled by libsession's
-build rather than by whichever project embeds it. It goes in `packages/bridge-rn/ios/` and is not
-committed.
+The signing flags are not decoration — see [traps.md](traps.md). `CODE_SIGNING_ALLOWED=NO` is the
+obvious thing to pass for a simulator and it breaks the keychain.
+
+The first `build:libsession:ios` takes a long time: it cross-compiles libsession and every
+dependency. After that it is incremental and quick.
+
+Needs `protobuf@21` from brew. bridge-core checks and says so.
 
 ## Simulators
 
 ```sh
 xcrun simctl list devices available
-xcrun simctl boot "iPhone 16"
-xcrun simctl bootstatus "iPhone 16" -b          # bounded, and exits when booted
+xcrun simctl boot "iPhone 17 Pro"
 ```
 
-`bootstatus -b` is the iOS equivalent of polling `sys.boot_completed`, and it terminates on its
-own — prefer it to a loop.
+**Do not wait with `simctl bootstatus -b`.** It is documented as exiting when the device is ready
+and it does not reliably do so — it hung here on an already-booted device and left processes
+behind. Wait on something that proves the device is serving requests:
+
+```sh
+for i in $(seq 30); do
+  xcrun simctl spawn "$UDID" /usr/bin/true >/dev/null 2>&1 && break
+  sleep 4
+done
+```
+
+That check matters for its own sake: a device can report `Booted` and not be working. The tell is
+`simctl spawn` failing with `NSPOSIXErrorDomain code=2` and `get_app_container` printing nothing.
+`simctl shutdown` then `boot` clears it.
+
+Address the device by UDID rather than by name once you have it — names are ambiguous across
+runtimes.
 
 ## Install, launch, look
 
 ```sh
-xcrun simctl install booted path/to/Session.app
-xcrun simctl launch --console-pty booted org.getsession.session2
-xcrun simctl io booted screenshot "$SCRATCH/screen.png"
+D=build/dd/Build/Products/Debug-iphonesimulator
+xcrun simctl install "$UDID" "$D/Session.app"
+xcrun simctl launch "$UDID" org.getsession.session2      # prints the pid
+xcrun simctl io "$UDID" screenshot ~/shot.png
 ```
 
-`--console-pty` puts the app's stdout in the terminal, which is the closest thing to logcat.
-For a filtered stream:
+A screenshot is the fastest way to read a JavaScript error: React Native's LogBox renders it in
+full, and the log will only tell you `RCTLogBoxView` became the key window.
+
+## Logs
 
 ```sh
-xcrun simctl spawn booted log stream --level debug --predicate 'process == "Session"'
+xcrun simctl spawn "$UDID" log show --last 5m --style compact --predicate 'process == "Session"'
 ```
+
+The predicate is essential. Without it the output is thousands of lines from `storekitd`,
+`videosubscriptionsd` and friends, none of it yours.
 
 ## The app's own storage
 
 ```sh
-xcrun simctl get_app_container booted org.getsession.session2 data
+C=$(xcrun simctl get_app_container "$UDID" org.getsession.session2 data)
+ls -la "$C/Documents/session/"
 ```
 
-That prints the container; `session.db` will be under it, wherever the app's paths resolve to.
-The Android note applies unchanged — the database and its `-wal` existing is the proof that the
-bridge carried a command down and an answer back.
+`session.db` with its `-shm` and `-wal` is the proof that the bridge carried a command down and an
+answer back. `Documents/session` holding only `attachments` means the transport was built and
+`init` never completed — read the LogBox.
 
 ## Resetting state
 
 ```sh
-xcrun simctl uninstall booted org.getsession.session2
-xcrun simctl erase booted                        # the whole simulator
+xcrun simctl uninstall "$UDID" org.getsession.session2
+xcrun simctl erase "$UDID"                               # the whole device
 ```
-
-## What to expect to go wrong first
-
-The four runtime traps in [traps.md](traps.md) are all platform-neutral C++ or autolinking
-problems and Android has already paid for them. The iOS-specific ones will be the podspec's
-header search paths and the xcframework's architectures, neither of which anyone has exercised.

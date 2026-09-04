@@ -4,11 +4,11 @@ This file is the mutable one: what exists today and what comes next. `ARCHITECTU
 timeless one — how the thing is built and why. `CLAUDE.md` is the rule list. Read all three
 before changing anything; they do not repeat each other.
 
-Last updated 2026-09-04, at commit `2943342`.
+Last updated 2026-09-04, at commit `23b56e9`.
 
 ## State
 
-Fourteen commits on `main`. Working tree clean. **No git remote yet** — when one is added, the
+Twenty commits, on `feat/ios-build` off `feat/bridge-work`. Working tree clean. **No git remote yet** — when one is added, the
 branch-and-pull-request rule in `CLAUDE.md` starts applying; until then `main` is all there is.
 
 Everything green: `pnpm format:check`, `pnpm lint` (14), `pnpm lint:manifests`,
@@ -46,9 +46,8 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
 
 ## What does not exist yet
 
-- iOS, entirely. The Nitro module's podspec and its C++ are written — the C++ is the same file
-  Android compiles — but this work has been on Linux, where there is no Xcode, so nobody has run
-  `pod install` against it and the xcframework has never been built.
+- iOS device builds and a release-shaped xcframework. The simulator works; only one slice has
+  ever been built, and nothing has been signed with a real identity.
 - Onboarding. Both apps now open a database with `deferAccount`, which means no account and no
   conversations until there is a screen to create or restore one.
 - Attachment commands (`AttachmentData`, `SaveAttachment`) and push are not in the shim's
@@ -123,6 +122,20 @@ The test commands are compiled in only by that build. A plain `build:native` lea
 the suite skips itself rather than reporting their absence as a regression.
 
 ## What runs against the real bridge
+
+**iOS.** Builds and runs on a simulator against real libsession, on a remote Mac — Xcode 26.2,
+macOS 15.7. The shared conversation-list screen draws from an encrypted database the app opened
+itself, keyed from `expo-secure-store`, and `Documents/session/session.db` is in the container
+afterwards. The `run` skill's [ios reference](../.claude/skills/run/references/ios.md) has the
+commands.
+
+Four things stood between "written" and "running", and the skill's traps table has them all. The
+podspec listed bridge-core's sources with a glob reaching outside the pod directory, which
+CocoaPods drops in silence — the shim is a CMake project on iOS too now, which is what it already
+was everywhere else. `STATIC_BUNDLE` left out session-sqlite again. expo-modules-jsi does not
+compile under Xcode 26 and is patched. And `expo-secure-store` failed with "a required entitlement
+isn't present", which turned out to mean the app was not signed at all: `CODE_SIGNING_ALLOWED=NO`
+is the obvious flag for a simulator build and it skips the step that applies entitlements.
 
 **Desktop.** `pnpm dev:desktop:real` loads the addon, and libsession opens an encrypted database
 at `~/.config/session-app/session.db` with the key sealed beside it in `db-key.bin`. Verified by
