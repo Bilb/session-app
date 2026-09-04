@@ -1,3 +1,4 @@
+import { KeyboardAvoidingView, Platform } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { YStack } from 'tamagui'
 
@@ -7,8 +8,10 @@ export type { ScreenProps }
 
 const ALL_EDGES = ['top', 'bottom', 'left', 'right'] as const
 
+const FILL = { flex: 1 } as const
+
 /**
- * The native flavour: the same frame, held clear of the hardware.
+ * The native flavour: the same frame, held clear of the hardware and of the keyboard.
  *
  * Padding rather than a SafeAreaView, because the inset belongs to the content and not to the
  * background — a list that stops short of the bottom of the display looks like a bug, and one
@@ -35,9 +38,21 @@ export function Screen({ children, padded = false, edges = ALL_EDGES, testID }: 
       paddingRight={wanted.has('right') ? insets.right : 0}
       testID={testID}
     >
-      <YStack flex={1} {...(padded ? { padding: '$2' } : {})}>
-        {children}
-      </YStack>
+      {/*
+        iOS puts the keyboard over the window without telling the layout, so a composer at the
+        bottom of a screen ends up behind it — which is a messenger you cannot type into. Android
+        resizes the window itself, and adding the padding there as well would lift the composer
+        by a whole keyboard above the keyboard, hence the platform check.
+
+        Inside the safe-area padding rather than around it, which is what makes the arithmetic
+        come out: the view measures its own bottom edge against the top of the keyboard, and its
+        bottom edge is already short by the home indicator.
+      */}
+      <KeyboardAvoidingView style={FILL} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <YStack flex={1} {...(padded ? { padding: '$2' } : {})}>
+          {children}
+        </YStack>
+      </KeyboardAvoidingView>
     </YStack>
   )
 }
