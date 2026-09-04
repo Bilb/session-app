@@ -1,0 +1,43 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "tui",
+  "tasks": {
+    "codegen": {
+      "inputs": ["proto/**", "src/**/*.nitro.ts", "buf.gen.yaml"],
+      "outputs": ["src/gen/**", "nitrogen/generated/**"]
+    },
+    "codegen:check": {
+      "dependsOn": ["codegen"],
+      "cache": false
+    },
+    "build": {
+      "dependsOn": ["^build", "codegen"],
+      "outputs": ["dist/**", "out/**"]
+    },
+    "build:native": {
+      "inputs": ["src/**", "proto/**", "CMakeLists.txt", "../../libsession-util/**"],
+      "outputs": ["prebuilds/**", "build/Release/**"]
+    },
+    "dev": {
+      "dependsOn": ["^codegen"],
+      "cache": false,
+      "persistent": true
+    },
+    "typecheck": {
+      "dependsOn": ["^codegen", "^build"]
+    },
+    "lint": {},
+    "test": {
+      "dependsOn": ["^codegen"],
+      "outputs": ["coverage/**"]
+    },
+    "test:e2e:fast": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
+    "test:e2e:full": {
+      "dependsOn": ["^build", "^build:native"],
+      "cache": false
+    }
+  }
+}

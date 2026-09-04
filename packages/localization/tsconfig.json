@@ -1,0 +1,14 @@
+{
+  "extends": "@s2/typescript-config/bundler.json",
+  "compilerOptions": {
+    // src/localization-src is the session-localization submodule: generated, vendored, and
+    // maintained in its own repo against its own settings. Our re-export pulls it into this
+    // program, so the two flags it does not satisfy are relaxed here rather than patching
+    // files we do not own. Everything else stays strict, and this is the only package that
+    // needs the exemption.
+    "verbatimModuleSyntax": false,
+    "noImplicitOverride": false
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

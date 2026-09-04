@@ -1,0 +1,33 @@
+{
+  "name": "session-2",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.30.3",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
+  "scripts": {
+    "build": "turbo build",
+    "codegen": "turbo codegen",
+    "codegen:check": "turbo codegen:check",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "boundaries": "depcruise --config tooling/depcruise-config/root.cjs $(ls -d packages apps tests tooling 2>/dev/null)",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "knip": "knip",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@s2/eslint-config": "workspace:*",
+    "@s2/typescript-config": "workspace:*",
+    "dependency-cruiser": "catalog:",
+    "eslint": "catalog:",
+    "knip": "catalog:",
+    "prettier": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:"
+  }
+}

@@ -1,0 +1,3 @@
+[submodule "packages/localization/src/localization-src"]
+	path = packages/localization/src/localization-src
+	url = https://github.com/session-foundation/session-localization

@@ -1,0 +1,75 @@
+packages:
+  - apps/*
+  - packages/*
+  - tooling/*
+  - tests/*
+
+# Every version is written here once; packages reference them with "catalog:".
+# eslint-plugin-pnpm enforces that no package writes a literal version instead.
+catalog:
+  # Toolchain
+  turbo: 2.10.12
+  # TypeScript is held at 5.x: typescript-eslint 8 declares typescript "<6.1.0", and the
+  # typed rules (no-floating-promises across the async bridge) are not optional here.
+  typescript: 5.9.3
+  eslint: 10.9.1
+  '@eslint/js': 10.0.1
+  typescript-eslint: 8.69.0
+  eslint-import-resolver-typescript: 4.4.5
+  eslint-plugin-import-x: 4.17.1
+  eslint-plugin-pnpm: 1.9.1
+  prettier: 3.9.6
+  dependency-cruiser: 18.2.0
+  knip: 6.34.0
+  vitest: 5.0.0
+
+  # React / React Native — pinned to what the Expo SDK 57 template ships.
+  react: 19.2.3
+  react-dom: 19.2.3
+  react-native: 0.86.3
+  react-native-web: ~0.21.0
+
+  # Expo
+  expo: ~57.0.19
+  expo-router: ~57.0.18
+  expo-constants: ~57.0.17
+  expo-linking: ~57.0.9
+  expo-secure-store: ~57.0.1
+  expo-status-bar: ~57.0.1
+  react-native-safe-area-context: ~5.7.0
+  react-native-screens: ~4.26.0
+
+  # UI
+  # @tamagui/vite-plugin is deliberately absent: it peers on vite ^8, and electron-vite 5
+  # tops out at vite ^7. The plugin is an optimizing compiler, not a correctness
+  # requirement — add it to the desktop build once electron-vite supports vite 8.
+  tamagui: 2.7.7
+  '@tamagui/babel-plugin': 2.7.7
+
+  # State / data
+  zustand: 5.0.15
+  '@bufbuild/protobuf': 2.14.1
+  '@bufbuild/protoc-gen-es': 2.14.1
+
+  # Desktop
+  electron: 44.1.1
+  electron-vite: 5.0.0
+  vite: 7.3.6
+  react-router: 8.3.1
+
+  # Test
+  '@playwright/test': 1.62.1
+
+# Transitive clamps. The catalog governs direct dependencies only; these exist because a
+# transitive peer (tamagui's react-native, for one) would otherwise float past the version
+# Expo's Metro is built against and hoist the wrong copy. Keep in step with the catalog —
+# tests/repo/toolchain.test.ts fails if they drift.
+overrides:
+  react: 19.2.3
+  react-dom: 19.2.3
+  react-native: 0.86.3
+
+onlyBuiltDependencies:
+  - electron
+  - esbuild
+  - unrs-resolver

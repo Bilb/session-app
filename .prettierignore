@@ -1,0 +1,12 @@
+node_modules/
+dist/
+out/
+build/
+coverage/
+.turbo/
+pnpm-lock.yaml
+**/gen/
+**/generated/
+apps/mobile/android/
+apps/mobile/ios/
+libsession-util/
