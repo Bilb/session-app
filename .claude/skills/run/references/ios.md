@@ -63,6 +63,40 @@ xcrun simctl io "$UDID" screenshot ~/shot.png
 A screenshot is the fastest way to read a JavaScript error: React Native's LogBox renders it in
 full, and the log will only tell you `RCTLogBoxView` became the key window.
 
+## Driving the UI
+
+`simctl` has no tap. AppleScript can click, which needs assistive access granted by a person at
+the machine — System Settings › Privacy & Security › Accessibility, for `osascript`, and it
+covers an ssh session too. Everything below is in device _points_, which is what a screenshot and
+the layout agree on.
+
+**The window is scaled.** Simulator fits the device into whatever size the window is — 402x874
+points into 391x849 here — so nothing derived from the window frame lands where it should. The
+device view's own accessibility frame is the mapping:
+
+```sh
+osascript -e 'tell application "System Events" to tell process "Simulator" \
+  to tell window 1 to get {position, size} of group 1'       # 309, 107, 391, 849
+```
+
+Screen x is that x plus point x times 391/402, and the same for y. Twenty points out hits the
+label above a field, which looks exactly like a click that did not register.
+
+**Typing does not work.** The hardware keyboard is off, so keystrokes reach Simulator rather than
+the device and some of them are its own shortcuts — a `keystroke` of an account ID opened the
+React Native dev menu. Clicking `Connect Hardware Keyboard` in the I/O menu did not change it.
+The pasteboard is the way in:
+
+```sh
+printf '%s' "$TEXT" | xcrun simctl pbcopy "$UDID"
+```
+
+Then click the field, click it a second time, and the `Paste | AutoFill` callout appears just
+above it; click `Paste`. Simulator's own Edit › Paste stays disabled and is not the way in.
+
+`simctl openurl "$UDID" session:///new` reaches any route in one step and is worth preferring to
+a sequence of clicks. iOS asks "Open in Session?" first, and that dialog has to be clicked.
+
 ## Logs
 
 ```sh

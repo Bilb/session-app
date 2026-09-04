@@ -36,7 +36,7 @@ pnpm install
 pnpm dev:desktop              # the fastest loop: seeded conversations, no network, no C++
 ```
 
-`dev:desktop:fake` runs the whole app against a working fake libsession. It is not a stub — it
+`dev:desktop` runs the whole app against a working fake libsession. It is not a stub — it
 delivers between accounts, routes a first message into the request list, and marks in-flight sends
 `interrupted` across a restart — so most UI work never needs the real thing. Everything else, up to
 and including a native build on a device, is in STATUS.

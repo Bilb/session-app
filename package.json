@@ -16,6 +16,7 @@
     "dev:desktop": "pnpm --filter @session/desktop dev",
     "dev:desktop:real": "pnpm --filter @session/desktop dev:real",
     "dev:mobile": "pnpm --filter @session/mobile dev",
+    "dev:mobile:real": "pnpm --filter @session/mobile dev:real",
     "lint": "turbo lint",
     "boundaries": "depcruise --config tooling/depcruise-config/root.cjs $(ls -d packages apps tests tooling 2>/dev/null)",
     "typecheck": "turbo typecheck",

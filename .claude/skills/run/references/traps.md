@@ -25,6 +25,7 @@ two Session packages on the emulator. `grep -i session` finds the wrong one.
 | A conversation reads bottom to top                    | libsession answers history newest-first. The shim reverses; anything bypassing it will not.                                        |
 | A send never leaves `pending`, offline                | Correct. With no network attached libsession reports `no_network` and the state goes to `failed`, not `sent`.                      |
 | The app shows no conversations and no onboarding      | Also correct, today. Both apps pass `deferAccount`, so there is no account and nothing to list until onboarding exists.            |
+| A send fails in the first seconds after launch        | The router bootstraps for about ten seconds after the bridge attaches, and a QUIC handshake started before then times out. Retry.  |
 
 ## Desktop
 
@@ -61,10 +62,10 @@ two Session packages on the emulator. `grep -i session` finds the wrong one.
 | `simctl bootstatus -b` never returns                                        | It does not reliably exit, including on an already-booted device. Poll `simctl spawn <udid> /usr/bin/true` instead.                                                                                                                                          |
 | A device reports `Booted` but nothing works                                 | Wedged CoreSimulator: `simctl spawn` fails with `NSPOSIXErrorDomain code=2` and `get_app_container` prints nothing. `simctl shutdown` then `boot`.                                                                                                           |
 | Thousands of log lines, none of them yours                                  | No `--predicate`. `process == "Session"` is the difference between a diagnosis and a wall of `storekitd`.                                                                                                                                                    |
-
-| `simctl` cannot tap | There is no tap subcommand. AppleScript can click, which needs assistive access granted from System Settings by a person at the machine — and clicks near the top of the window land unreliably even then. `simctl openurl` with the app's scheme is the dependable way to reach a screen. |
-| A deep link shows "Open in Session?" | iOS confirms a scheme link opened from outside. The dialog has to be clicked; there is no flag to skip it. |
-| The `[session]` account line is nowhere | React Native's console on iOS reaches neither the unified log nor the app's stdout. Read the account ID off the settings screen. |
+| A click lands on the wrong element, about twenty points out                 | Simulator scales the device into the window, so nothing computed from the window frame is right. The device view's accessibility frame is — see [ios.md](ios.md).                                                                                            |
+| `keystroke` types nothing, or opens the dev menu                            | The hardware keyboard is off, so keystrokes reach Simulator rather than the device. Text goes in through `simctl pbcopy` and the field's own Paste callout.                                                                                                  |
+| A deep link shows "Open in Session?"                                        | iOS confirms a scheme link opened from outside. The dialog has to be clicked; there is no flag to skip it.                                                                                                                                                   |
+| The `[session]` account line is nowhere                                     | React Native's console on iOS reaches neither the unified log nor the app's stdout. Read the account ID off the settings screen.                                                                                                                             |
 
 Device builds and a release xcframework are still untried.
 

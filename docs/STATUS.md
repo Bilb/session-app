@@ -4,15 +4,15 @@ This file is the mutable one: what exists today and what comes next. `ARCHITECTU
 timeless one — how the thing is built and why. `CLAUDE.md` is the rule list. Read all three
 before changing anything; they do not repeat each other.
 
-Last updated 2026-09-04, at commit `d6e2053`.
+Last updated 2026-09-04, at commit `46eceb4`.
 
 ## State
 
-On `feat/network-receive`, off `feat/ios-build`. Working tree clean. **No git remote yet** — when one is added, the
-branch-and-pull-request rule in `CLAUDE.md` starts applying; until then `main` is all there is.
+On `feat/message-sending`, off `feat/network-receive`. Working tree clean. `origin` is
+`session-foundation/session-app`, so the branch-and-pull-request rule in `CLAUDE.md` applies.
 
-Everything green: `pnpm format:check`, `pnpm lint` (14), `pnpm lint:manifests`,
-`pnpm boundaries`, `pnpm typecheck` (16), `pnpm test` (61 tests), `pnpm knip`,
+Everything green: `pnpm format:check`, `pnpm lint` (16), `pnpm lint:manifests`,
+`pnpm boundaries`, `pnpm typecheck` (16), `pnpm test` (68 tests), `pnpm knip`,
 `pnpm codegen:check`, `pnpm dedupe --check` — the whole of `ci.yml`.
 
 The walking skeleton works end to end. `tests/e2e` drives the built Electron app through
@@ -22,24 +22,24 @@ bridge. Only the C++ is missing from that path.
 
 ## What exists
 
-| package                                        | state                                                               |
-| ---------------------------------------------- | ------------------------------------------------------------------- |
-| `libsession-util/`                             | submodule, `client` at `e19ebd5c` — the SHA session-cli pins        |
-| `@session/basic-types` `@session/theme-tokens` | copied from session-pkgs, trimmed                                   |
-| `@session/localization`                        | copied, plus a markup parser for the `<b>`/`<br/>` in the catalogue |
-| `@session/test-ids`                            | the element registry                                                |
-| `@session/proto`                               | the wire schema, `sessionbridge.v1`, codecs committed               |
-| `@session/client`                              | the SessionClient facade, and the fake                              |
-| `@session/client-contract`                     | 9 behavioural scenarios, running against the fake                   |
-| `@session/state`                               | the projection store, 9 reducer tests                               |
-| `@session/ui`                                  | tamagui config, 4 themes x 7 accents, a handful of components       |
-| `@session/app`                                 | ports, nav port, route registry, route-contract test                |
-| `@session/screens`                             | conversation list, conversation, AdaptiveShell                      |
-| `apps/desktop`                                 | Electron, runs, drawn by the e2e suite                              |
-| `apps/mobile`                                  | Expo, route files in place, typechecks; not yet run on a device     |
-| `bridge-core`                                  | the C++ shim: all nine callbacks, most of the command set           |
-| `bridge-node`                                  | the N-API addon, loaded by the desktop main process                 |
-| `tests/e2e`                                    | harness + the walking-skeleton spec                                 |
+| package                                        | state                                                                               |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `libsession-util/`                             | submodule, `client` at `e19ebd5c` — the SHA session-cli pins                        |
+| `@session/basic-types` `@session/theme-tokens` | copied from session-pkgs, trimmed                                                   |
+| `@session/localization`                        | copied, plus a markup parser for the `<b>`/`<br/>` in the catalogue                 |
+| `@session/test-ids`                            | the element registry                                                                |
+| `@session/proto`                               | the wire schema, `sessionbridge.v1`, codecs committed                               |
+| `@session/client`                              | the SessionClient facade, and the fake                                              |
+| `@session/client-contract`                     | 9 behavioural scenarios, running against the fake                                   |
+| `@session/state`                               | the projection store, 9 reducer tests                                               |
+| `@session/ui`                                  | tamagui config, 4 themes x 7 accents, a handful of components                       |
+| `@session/app`                                 | ports, nav port, route registry, route-contract test                                |
+| `@session/screens`                             | list, conversation, new conversation, requests, settings, onboarding, AdaptiveShell |
+| `apps/desktop`                                 | Electron, runs, drawn by the e2e suite                                              |
+| `apps/mobile`                                  | Expo, runs on an Android emulator and an iOS simulator                              |
+| `bridge-core`                                  | the C++ shim: all nine callbacks, most of the command set                           |
+| `bridge-node`                                  | the N-API addon, loaded by the desktop main process                                 |
+| `tests/e2e`                                    | harness + the walking-skeleton spec                                                 |
 
 Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-screen`,
 `ui-component`, `shared-test`, `run`.
@@ -48,21 +48,17 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
 
 - iOS device builds and a release-shaped xcframework. The simulator works; only one slice has
   ever been built, and nothing has been signed with a real identity.
-- Onboarding. Both apps now open a database with `deferAccount`, which means no account and no
-  conversations until there is a screen to create or restore one.
 - Attachment commands (`AttachmentData`, `SaveAttachment`) and push are not in the shim's
   dispatch yet. They answer with an error naming themselves rather than silently doing nothing.
-- `apps/mobile` has never been run. It needs `expo prebuild` and a dev client, and the Nitro
-  spike is unproven in this exact stack (hoisted pnpm + Expo 57).
-- Attachments, onboarding, requests and settings are placeholder screens.
+- Attachments. Onboarding is one button and restoring from a recovery phrase has no screen.
+- Anything a message can be beyond text: no reactions, replies, edits, deletes or read receipts.
 - The `e2e-full` workflow is a stub.
 
 ## Next steps, in order
 
-1. **Onboarding**, which is what the two apps now stop at: `getAccountInfo` answers "no account"
-   and there is no screen to create or restore one. `createAccount`, `restoreAccount` and
-   `getSeedMnemonic` are all through the bridge already.
-2. Then features, via the `port-feature` skill.
+1. **Features, via the `port-feature` skill.** The loop is closed on all three platforms — an
+   account is created, the network attaches, messages arrive and messages send — so what is
+   left is one feature at a time rather than another layer.
 
 ## Open questions that need a person
 
@@ -101,7 +97,7 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
 `@session/client-contract` runs against the real addon, offline, in
 `packages/bridge-node/src/contract.test.ts`. Nothing reaches a swarm: the harness carries each
 message from one client to the other itself, encrypted and fed in the way the swarm's would be,
-which is a port of what libsession's own tests do. Eleven of the twelve scenarios pass.
+which is a port of what libsession's own tests do. Eight of the nine scenarios pass.
 
 It has already earned its keep twice. libsession answers history **newest first** and the fake
 answered oldest first, which nothing had noticed because nothing had run both — that is a
@@ -109,7 +105,7 @@ transcript upside down, and the shim now reverses and `frames.proto` says so. An
 asserted a send ends up `sent`, which is only true where there is a swarm; offline it ends up
 `failed`, and the scenario was really about the state arriving as an update.
 
-The twelfth is skipped with its reason in the test name: `approveConversation` has no libsession
+The ninth is skipped with its reason in the test name: `approveConversation` has no libsession
 counterpart. `runSessionClientContract` takes an `unsupported` map of title to reason for exactly
 this, and the reason is what stops it becoming a way to make a failing implementation look green.
 
@@ -151,8 +147,8 @@ had to exist before any of this was visible.
   into. How the app learns those is a devnet question rather than a bridge one.
 - **Onboarding is one button.** Restore from a recovery phrase is a bridge command already
   (`restoreAccount`) with no screen.
-- **Sending has no UI beyond the composer.** There is no way to start a conversation with an
-  account ID from inside the app, which is why the sender above is a script.
+- **There is no contact list and no QR scanner.** Starting a conversation means pasting an
+  account ID into the new-conversation screen.
 
 ### On reading the account ID
 
@@ -161,6 +157,40 @@ Shown on the settings screen, and logged at hydration. The log reaches the termi
 Native's console there goes to neither the unified log nor the app's stdout, so the screen is
 the only way. That is why settings needed a way in at all: it had a route and nothing that
 navigated to it.
+
+## All three send a message to the network
+
+Verified on each platform, over mainnet, through the UI: `+`, paste an account ID, `Start`,
+type, `Send`. The bubble shows `Sending…`, the label goes away — `sent` has no label, so the
+label disappearing is the success — and the message is in the recipient's message requests.
+
+| platform | driven by                                        | arrived at |
+| -------- | ------------------------------------------------ | ---------- |
+| desktop  | Playwright against the built Electron            | Android    |
+| Android  | `adb shell input`                                | desktop    |
+| iOS      | AppleScript clicks and the field's Paste callout | Android    |
+
+The command set was already there — `openDm` then `sendMessage`, both through the bridge — so
+what this took was three screens' worth of defects, each of which only showed up on a device:
+
+- **The composer sat behind the iOS keyboard.** iOS puts the keyboard over the window without
+  changing the layout, so the field took focus and there was nowhere to see what was typed.
+  `@session/ui`'s `Screen` avoids the keyboard on iOS now, in the one place every screen shares.
+  Android resizes its own window, which is why only one platform had ever shown it.
+- **Every row was nameless.** A display name arrives with the other side's profile and
+  libsession reports an empty string until then, which every list rendered faithfully as
+  nothing at all. `conversationTitle` falls back to the account ID, shortened at both ends.
+- **The send state was invisible.** `Sending…` and `Retry` sit inside the outgoing bubble and
+  were coloured for the screen behind it: grey on green and green on green. The retry
+  affordance for a failed send was there and unreadable.
+
+**A send in the first seconds after launch fails.** The router bootstraps for about ten seconds
+after the bridge attaches, and a QUIC handshake started before then times out —
+`ERR_HANDSHAKE_TIMEOUT` in the logs, which are libsession's own, forwarded as `LogRecord`
+frames. That is what a reported "message status failed" was, and Retry is the answer to it.
+Nothing in the app waits for the router, because `networkAttached` goes true when the bridge
+attaches rather than when the router is ready: an indicator built on it would say "connected"
+through the whole window where sending does not work.
 
 ## What runs against the real bridge
 

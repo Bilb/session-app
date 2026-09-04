@@ -6,6 +6,7 @@
   "main": "index.ts",
   "scripts": {
     "dev": "SESSION_FAKE=1 expo start --dev-client",
+    "dev:real": "expo start --dev-client",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "prebuild": "expo prebuild",

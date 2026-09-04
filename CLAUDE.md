@@ -63,7 +63,7 @@ dev entries. When a rule fires, fix the design — not the config.
 ```
 pnpm install
 pnpm dev                       # both apps on the fake; or dev:desktop / dev:mobile
-pnpm dev:desktop:real          # desktop against the addon, which must be built first
+pnpm dev:desktop:real          # against the addon, which must be built first; dev:mobile:real too
 turbo lint typecheck test
 pnpm boundaries
 turbo test:e2e:fast            # Electron + the fake; e2e workflows are manual dispatch in CI
