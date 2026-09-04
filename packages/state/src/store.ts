@@ -40,6 +40,20 @@ export interface SessionStoreOptions {
    * passes its own; leaving it out is silence.
    */
   log?: (line: string) => void
+
+  /**
+   * Mints an account during hydration when there is none.
+   *
+   * A QA hook, and it exists for one reason: iOS has no way to tap a button from a script.
+   * `adb input` drives Android and Playwright drives Electron, but the simulator offers no
+   * equivalent and AppleScript needs an accessibility grant that only a person at the machine
+   * can give — so without this, an automated iOS run cannot get past onboarding.
+   *
+   * The app decides whether to pass it, and both only do so in a development build. It is not
+   * the QA-config surface the plan wants — that is per-platform launch arguments, and it will
+   * subsume this — but it is the smallest thing that unblocks the platform that needs it.
+   */
+  autoCreateAccount?: boolean
 }
 
 const PAGE = 30
@@ -99,6 +113,12 @@ export function createSessionStore(
       )
 
       if (!account.haveAccount) {
+        if (options.autoCreateAccount === true) {
+          log('[session] no account; creating one because autoCreateAccount is set')
+          await client.createAccount()
+          await actions.hydrate()
+          return
+        }
         store.setState({ hydrated: true })
         return
       }
