@@ -1,5 +1,5 @@
 import * as Crypto from 'expo-crypto'
-import { documentDirectory, getInfoAsync, makeDirectoryAsync } from 'expo-file-system/legacy'
+import { documentDirectory, makeDirectoryAsync } from 'expo-file-system/legacy'
 import * as SecureStore from 'expo-secure-store'
 
 const KEY = 'session.db.key'
@@ -19,28 +19,6 @@ export async function resolveDatabaseKey(): Promise<string> {
   const hex = [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('')
   await SecureStore.setItemAsync(KEY, hex)
   return hex
-}
-
-/**
- * Whether a QA run has asked for an account to be minted without anybody tapping.
- *
- * A file rather than an environment variable because Metro inlines `process.env` at build
- * time, so a value set at launch never reaches the bundle. A file in the app's own documents
- * directory is readable at runtime, is the same mechanism on both platforms, and is put there
- * by whoever is driving the device:
- *
- *     xcrun simctl get_app_container <device> org.getsession.session2 data
- *     touch "$container/Documents/qa-auto-account"
- *
- * Development builds only — see where this is consulted.
- */
-export async function qaAutoAccountRequested(): Promise<boolean> {
-  try {
-    const info = await getInfoAsync(`${documentDirectory ?? ''}qa-auto-account`)
-    return info.exists
-  } catch {
-    return false
-  }
 }
 
 /** Where the database and the attachment cache live, both created if they are not there. */

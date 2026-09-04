@@ -2,7 +2,7 @@ import { createSessionClient, type BridgeTransport } from '@session/client'
 import { createSessionStore } from '@session/state'
 import { Platform } from 'react-native'
 
-import { qaAutoAccountRequested, resolveDatabaseKey, sessionPaths } from './storage'
+import { resolveDatabaseKey, sessionPaths } from './storage'
 
 /**
  * The mobile client.
@@ -32,16 +32,11 @@ async function openTransport(): Promise<BridgeTransport> {
   })
 }
 
-export const storePromise = openTransport().then(async (transport) => {
-  // Development builds only: a release bundle has __DEV__ false, so the file is never even
-  // looked for and the flag cannot be turned on from outside.
-  const autoCreateAccount = __DEV__ ? await qaAutoAccountRequested() : false
-
-  return createSessionStore(createSessionClient(transport), {
+export const storePromise = openTransport().then((transport) =>
+  createSessionStore(createSessionClient(transport), {
     // Reaches logcat as ReactNativeJS on Android, and the device console on iOS.
     log: (line) => {
       console.log(line)
     },
-    autoCreateAccount,
-  })
-})
+  }),
+)
