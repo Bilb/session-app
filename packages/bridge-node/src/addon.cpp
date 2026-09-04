@@ -61,6 +61,8 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
             init.netid = options.Get("netid").As<Napi::String>().Utf8Value();
         if (options.Has("deviceType") && !options.Get("deviceType").IsUndefined())
             init.device_type = options.Get("deviceType").As<Napi::String>().Utf8Value();
+        if (options.Has("logLevel") && !options.Get("logLevel").IsUndefined())
+            init.log_level = options.Get("logLevel").As<Napi::String>().Utf8Value();
 
         // Unlimited queue, so a frame produced on Core's loop is never dropped and BlockingCall
         // never blocks the thread that produced it. The frames are small and the JavaScript side

@@ -2,6 +2,7 @@ import {
   AdaptiveShell,
   ConversationListScreen,
   ConversationScreen,
+  NewConversationScreen,
   OnboardingScreen,
   RequestsScreen,
   SettingsScreen,
@@ -68,6 +69,7 @@ function Shell() {
         <Routes>
           <Route path="" element={null} />
           <Route path="c/:id" element={<ConversationRoute />} />
+          <Route path="new" element={<NewConversationScreen />} />
           <Route path="requests" element={<RequestsScreen />} />
           <Route path="settings" element={<SettingsScreen />} />
           <Route path="onboarding" element={<OnboardingScreen />} />

@@ -34,6 +34,7 @@ interface RouteContract {
 const ROUTES: RouteContract[] = [
   { path: routes.home(), desktop: '', mobile: 'index.tsx' },
   { path: routes.conversation('05abc'), desktop: 'c/:id', mobile: 'c/[id].tsx' },
+  { path: routes.newConversation(), desktop: 'new', mobile: 'new.tsx' },
   { path: routes.requests(), desktop: 'requests', mobile: 'requests.tsx' },
   { path: routes.settings(), desktop: 'settings', mobile: 'settings.tsx' },
   { path: routes.onboarding(), desktop: 'onboarding', mobile: 'onboarding.tsx' },

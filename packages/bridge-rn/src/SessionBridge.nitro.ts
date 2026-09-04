@@ -23,6 +23,12 @@ export interface SessionBridgeOptions {
   netid: string
   /** What the account's other devices are told this is: 'ios' or 'android'. */
   deviceType: string
+  /**
+   * How much of libsession's own logging to forward as `log` events: 'debug', 'warn', and so
+   * on, or empty for none. Worth turning up when something fails for no visible reason — the
+   * send state machine says what happened and never why.
+   */
+  logLevel: string
 }
 
 /**

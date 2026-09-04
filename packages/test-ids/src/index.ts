@@ -16,6 +16,7 @@
 export const ELEMENT = {
   conversationList: {
     settings: 'conversation-list-settings',
+    newConversation: 'conversation-list-new',
     screen: 'conversation-list',
     row: (index: number) => `conversation-row-${index}` as const,
     rowName: 'conversation-row-name',
@@ -31,6 +32,7 @@ export const ELEMENT = {
     messageRow: (index: number) => `message-row-${index}` as const,
     messageBody: 'message-body',
     messageState: 'message-state',
+    messageRetry: 'message-retry',
     composerInput: 'message-composer',
     sendButton: 'send-button',
   },
@@ -49,6 +51,12 @@ export const ELEMENT = {
     accountId: 'settings-account-id',
     networkStatus: 'settings-network-status',
   },
+  newConversation: {
+    screen: 'new-conversation',
+    accountIdInput: 'new-conversation-account-id',
+    start: 'new-conversation-start',
+    error: 'new-conversation-error',
+  },
   onboarding: {
     screen: 'onboarding',
     createAccount: 'onboarding-create-account',
@@ -62,6 +70,7 @@ export const ELEMENT = {
 export type ElementId =
   | 'conversation-list'
   | 'conversation-list-settings'
+  | 'conversation-list-new'
   | `conversation-row-${number}`
   | 'conversation-row-name'
   | 'conversation-row-snippet'
@@ -74,6 +83,7 @@ export type ElementId =
   | `message-row-${number}`
   | 'message-body'
   | 'message-state'
+  | 'message-retry'
   | 'message-composer'
   | 'send-button'
   | 'requests'
@@ -87,6 +97,10 @@ export type ElementId =
   | 'settings-display-name'
   | 'settings-account-id'
   | 'settings-network-status'
+  | 'new-conversation'
+  | 'new-conversation-account-id'
+  | 'new-conversation-start'
+  | 'new-conversation-error'
   | 'onboarding'
   | 'onboarding-create-account'
   | 'onboarding-restore-account'

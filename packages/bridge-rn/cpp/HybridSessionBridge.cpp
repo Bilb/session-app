@@ -56,6 +56,7 @@ void HybridSessionBridge::init(const SessionBridgeOptions& options) {
     init.defer_account = options.deferAccount;
     init.netid = options.netid;
     init.device_type = options.deviceType;
+    init.log_level = options.logLevel;
     if (options.rawKeyHex)
         init.raw_key = key_from_hex(*options.rawKeyHex);
     else if (options.password)

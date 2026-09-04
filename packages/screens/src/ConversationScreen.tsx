@@ -108,8 +108,20 @@ const STATE_LABEL: Partial<Record<Message['sendState'], string>> = {
   unsendable: 'Cannot send',
 }
 
+/**
+ * Which states are worth offering a retry for.
+ *
+ * `failed` and `interrupted` are worth another attempt — something was unreachable. `unsendable`
+ * is not: libsession keeps it apart precisely so a client knows which failures to offer a retry
+ * for, and it means something the message needs is gone rather than merely unreachable, so
+ * retrying re-reads the same missing file and fails identically every time.
+ */
+const RETRYABLE: readonly Message['sendState'][] = ['failed', 'interrupted']
+
 function MessageRow({ message, index }: { message: Message; index: number }) {
+  const actions = useSessionActions()
   const label = message.outgoing ? STATE_LABEL[message.sendState] : undefined
+  const retryable = message.outgoing && RETRYABLE.includes(message.sendState)
 
   return (
     <YStack
@@ -130,9 +142,25 @@ function MessageRow({ message, index }: { message: Message; index: number }) {
         {message.body}
       </Text>
       {label === undefined ? null : (
-        <Text size="$2" tone="secondary" testID={ELEMENT.conversation.messageState}>
-          {label}
-        </Text>
+        <XStack alignItems="center" gap="$1">
+          <Text size="$2" tone="secondary" testID={ELEMENT.conversation.messageState}>
+            {label}
+          </Text>
+          {retryable ? (
+            <Text
+              size="$2"
+              tone="accent"
+              testID={ELEMENT.conversation.messageRetry}
+              onPress={() => {
+                // Resumes rather than restarts, so an attachment that already uploaded is not
+                // sent twice. The state comes back as an update; nothing to do here.
+                void actions.retry(message.id)
+              }}
+            >
+              Retry
+            </Text>
+          ) : null}
+        </XStack>
       )}
     </YStack>
   )

@@ -72,5 +72,10 @@ export async function createBridge(): Promise<BridgeTransport> {
     // there is deliberately no way to spell "offline" here: that is what SESSION_FAKE is for.
     netid: process.env['SESSION_NETID'] === 'testnet' ? 'testnet' : 'mainnet',
     deviceType: 'desktop',
+    // Off unless asked for: it is chatty at anything below warn, and the reason to turn it up
+    // is always a specific failure. SESSION_LOG=debug is what a diagnosis looks like.
+    ...(process.env['SESSION_LOG'] === undefined
+      ? {}
+      : { logLevel: process.env['SESSION_LOG'] as 'debug' }),
   })
 }

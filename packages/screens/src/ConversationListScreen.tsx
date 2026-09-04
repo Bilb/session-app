@@ -46,6 +46,25 @@ export function ConversationListScreen() {
             </XStack>
           ) : null}
 
+          {/* Writing to somebody who has not written first was impossible before this: the
+              only way into a conversation was replying to a request. */}
+          <XStack
+            width={44}
+            height={44}
+            alignItems="center"
+            justifyContent="center"
+            cursor="pointer"
+            hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
+            pressStyle={{ backgroundColor: '$backgroundTertiary' }}
+            borderRadius="$full"
+            testID={ELEMENT.conversationList.newConversation}
+            onPress={() => nav.push(routes.newConversation())}
+          >
+            <Text size="$6" tone="secondary">
+              +
+            </Text>
+          </XStack>
+
           {/* Settings had a route and no way to reach it, which made the account ID — the one
               thing someone else needs in order to write to this device — unreachable too.
 

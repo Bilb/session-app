@@ -8,6 +8,7 @@
 export const routes = {
   home: () => '/',
   conversation: (id: string) => `/c/${encodeURIComponent(id)}`,
+  newConversation: () => '/new',
   requests: () => '/requests',
   settings: () => '/settings',
   onboarding: () => '/onboarding',

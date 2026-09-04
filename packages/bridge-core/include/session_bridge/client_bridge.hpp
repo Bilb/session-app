@@ -54,6 +54,16 @@ struct InitOptions {
     /// one as an unrecognised device with no version. There is no device type for this client
     /// yet — see docs/STATUS.md — so it reports the platform it is running on, which is true.
     std::string device_type;
+
+    /// How much of libsession's own logging to forward, as `LogRecord` events.
+    ///
+    /// "trace", "debug", "info", "warn", "error", "critical", or empty for none. Worth having
+    /// because the state machine reports *what* happened and not *why*: a send that ends in
+    /// `failed` carries no reason, and the reason is in these lines.
+    ///
+    /// Registered process-wide — libsession's add_logger has no deregistration — so a second
+    /// bridge in one process would double them up. There is one.
+    std::string log_level;
 };
 
 /// Receives one encoded `sessionbridge.v1.Frame` per call, in the order libsession produced them.

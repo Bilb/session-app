@@ -1,4 +1,5 @@
 export { ConversationListScreen } from './ConversationListScreen'
+export { NewConversationScreen } from './NewConversationScreen'
 export { OnboardingScreen } from './OnboardingScreen'
 export { RequestsScreen } from './RequestsScreen'
 export { SettingsScreen } from './SettingsScreen'

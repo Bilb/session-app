@@ -29,6 +29,13 @@ export interface NodeBridgeOptions {
   netid?: 'mainnet' | 'testnet'
   /** What the account's other devices are told this is. */
   deviceType?: 'ios' | 'android' | 'desktop'
+  /**
+   * How much of libsession's own logging to forward, as `log` events.
+   *
+   * Worth turning on when something fails for no visible reason: the send state machine says
+   * what happened and never why, and the why is in these lines.
+   */
+  logLevel?: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'critical'
   /** Overrides where the addon is loaded from. `SESSION_BRIDGE_ADDON` does the same. */
   addonPath?: string
 }

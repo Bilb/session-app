@@ -47,10 +47,11 @@ namespace margelo::nitro::session::bridge::rn {
     bool deferAccount     SWIFT_PRIVATE;
     std::string netid     SWIFT_PRIVATE;
     std::string deviceType     SWIFT_PRIVATE;
+    std::string logLevel     SWIFT_PRIVATE;
 
   public:
     SessionBridgeOptions() = default;
-    explicit SessionBridgeOptions(std::string dbPath, std::string cacheDir, std::optional<std::string> rawKeyHex, std::optional<std::string> password, bool deferAccount, std::string netid, std::string deviceType): dbPath(dbPath), cacheDir(cacheDir), rawKeyHex(rawKeyHex), password(password), deferAccount(deferAccount), netid(netid), deviceType(deviceType) {}
+    explicit SessionBridgeOptions(std::string dbPath, std::string cacheDir, std::optional<std::string> rawKeyHex, std::optional<std::string> password, bool deferAccount, std::string netid, std::string deviceType, std::string logLevel): dbPath(dbPath), cacheDir(cacheDir), rawKeyHex(rawKeyHex), password(password), deferAccount(deferAccount), netid(netid), deviceType(deviceType), logLevel(logLevel) {}
 
   public:
     friend bool operator==(const SessionBridgeOptions& lhs, const SessionBridgeOptions& rhs) = default;
@@ -72,7 +73,8 @@ namespace margelo::nitro {
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "password"))),
         JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "deferAccount"))),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "netid"))),
-        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "deviceType")))
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "deviceType"))),
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "logLevel")))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::session::bridge::rn::SessionBridgeOptions& arg) {
@@ -84,6 +86,7 @@ namespace margelo::nitro {
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "deferAccount"), JSIConverter<bool>::toJSI(runtime, arg.deferAccount));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "netid"), JSIConverter<std::string>::toJSI(runtime, arg.netid));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "deviceType"), JSIConverter<std::string>::toJSI(runtime, arg.deviceType));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "logLevel"), JSIConverter<std::string>::toJSI(runtime, arg.logLevel));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -101,6 +104,7 @@ namespace margelo::nitro {
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "deferAccount")))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "netid")))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "deviceType")))) return false;
+      if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "logLevel")))) return false;
       return true;
     }
   };

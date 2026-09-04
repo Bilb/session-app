@@ -4,6 +4,7 @@
 #include <session/client/conversation.hpp>
 #include <session/client/conversation_id.hpp>
 #include <session/core/devices.hpp>
+#include <session/logging.hpp>
 #include <session/mnemonics.hpp>
 #include <session/network/network_opt.hpp>
 #include <session/network/session_network.hpp>
@@ -303,6 +304,30 @@ ClientBridge::ClientBridge(InitOptions options, Sink sink) :
 
     if (!options.cache_dir.empty())
         _impl->client->set_cache_dir(options.cache_dir);
+
+    // Set up after the Client exists, so nothing arrives before there is a sink to take it.
+    if (!options.log_level.empty()) {
+        auto level = options.log_level == "trace"      ? LogLevel::trace
+                     : options.log_level == "debug"    ? LogLevel::debug
+                     : options.log_level == "info"     ? LogLevel::info
+                     : options.log_level == "error"    ? LogLevel::error
+                     : options.log_level == "critical" ? LogLevel::critical
+                                                       : LogLevel::warn;
+        logger_reset_level(level);
+
+        auto* impl = _impl.get();
+        add_logger([impl](std::string_view message, std::string_view category, LogLevel lvl) {
+            // Called from whichever thread logged, including Core's loop and the network's own
+            // threads, and after close() has dropped the sink — emit() checks for that, which
+            // is the only reason this is safe to leave registered.
+            pb::Event e;
+            auto* record = e.mutable_log();
+            record->set_message(std::string{message});
+            record->set_category(std::string{category});
+            record->set_level(std::string{lvl.to_string()});
+            impl->emit(std::move(e));
+        });
+    }
 
     // An account that is already there needs no onboarding, so this is where its network comes
     // from. A deferred one gets it from createAccount or restoreAccount instead.

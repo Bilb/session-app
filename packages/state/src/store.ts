@@ -25,6 +25,18 @@ export interface SessionActions {
    * identity-less Core throws — so this is also the moment the app goes online.
    */
   createAccount: () => Promise<void>
+  /**
+   * Opens the conversation with an account, creating it if this is the first contact.
+   *
+   * Returns the conversation id so the caller can navigate to it — which is the app's job, not
+   * the store's.
+   */
+  startConversation: (accountId: string) => Promise<ConversationId>
+  /**
+   * Resumes a send that failed. Resumes rather than restarts: files already uploaded are not
+   * sent again, which is why this is not "send it once more".
+   */
+  retry: (messageId: number) => Promise<boolean>
   dispose: () => void
 }
 
@@ -52,6 +64,13 @@ export function createSessionStore(
   const store = createStore<SessionState>(() => ({ ...emptyState }))
 
   const unsubscribe = client.onEvent((event) => {
+    // libsession's own logging, when the bridge was asked for it. Passed straight through
+    // rather than stored: it is not state, and it is the only place the *reason* for a send
+    // that ends in `failed` shows up — the state machine reports what happened, never why.
+    if (event.type === 'log') {
+      log(`[libsession ${event.level}] ${event.category}: ${event.message}`)
+      return
+    }
     store.setState((state) => applyEvent(state, event))
   })
 
@@ -146,6 +165,17 @@ export function createSessionStore(
 
     async approve(id): Promise<void> {
       await client.approveConversation(id)
+    },
+
+    async startConversation(accountId): Promise<ConversationId> {
+      const trimmed = accountId.trim()
+      // libsession validates the id and throws on a malformed one, which is the error the
+      // caller wants — there is nothing useful this layer could add by checking first.
+      return client.openDm(trimmed)
+    },
+
+    async retry(messageId): Promise<boolean> {
+      return client.retrySend(messageId)
     },
 
     async createAccount(): Promise<void> {

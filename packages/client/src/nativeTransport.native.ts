@@ -34,6 +34,7 @@ export function createNativeBridgeTransport(options: NativeTransportOptions): Br
     deferAccount: options.deferAccount ?? false,
     netid: options.netid ?? '',
     deviceType: options.deviceType ?? '',
+    logLevel: options.logLevel ?? '',
   })
 
   let closed = false

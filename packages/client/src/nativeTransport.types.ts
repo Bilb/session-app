@@ -17,4 +17,6 @@ export interface NativeTransportOptions {
   netid?: 'mainnet' | 'testnet'
   /** What the account's other devices are told this is. */
   deviceType?: 'ios' | 'android'
+  /** How much of libsession's own logging to forward as `log` events. */
+  logLevel?: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'critical'
 }
