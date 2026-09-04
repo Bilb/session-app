@@ -20,6 +20,7 @@
     "@session/proto": "workspace:*"
   },
   "devDependencies": {
+    "@session/bridge-rn": "workspace:*",
     "@session/eslint-config": "workspace:*",
     "@session/typescript-config": "workspace:*",
     "eslint": "catalog:",

@@ -14,7 +14,9 @@
     "@session/typescript-config",
     "eslint-import-resolver-typescript",
     "react-native-web",
-    "node-addon-api"
+    "node-addon-api",
+    "@session/bridge-rn",
+    "react-native-nitro-modules"
   ],
-  "ignore": ["**/*.native.tsx", "libsession-util/**"]
+  "ignore": ["**/*.native.ts", "**/*.native.tsx", "libsession-util/**"]
 }

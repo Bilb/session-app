@@ -187,6 +187,21 @@ Append one paragraph per decision. Undocumented decisions are what rot.
 - **2026-09-04 — dependency-cruiser is the sole boundary authority.** `turbo boundaries` was
   considered and dropped: a second mechanism with its own model, for rules dep-cruiser already
   expresses.
+- **2026-09-04 — libsession is cross-compiled separately for Android, not built in place.**
+  session-deps hands its CMake-based dependencies the NDK compiler without the NDK target, so a
+  build inside the Gradle CMake project produces a simdutf for the host and the link fails on
+  libstdc++ symbols Android does not have. `utils/static-bundle.sh` per ABI is the supported path
+  and `bridge-core` takes a prebuilt archive when given one. The same reasoning will apply to iOS,
+  whose artifact is an xcframework from `utils/ios.sh`.
+
+- **2026-09-04 — Fixes for the submodule live in `patches/` and are applied by the build.** Two so
+  far, both one-liners, both wanted upstream rather than here: libevent built without `-fPIC`, and
+  session-deps not forwarding the Android toolchain to its CMake dependencies. A submodule two
+  levels down cannot be committed from this repository and a build cannot wait for a release, so
+  the build applies them and `scripts/patch-libsession.mjs` makes that idempotent and visible. A
+  native build therefore leaves the submodule with the patches applied; that is expected, and the
+  day the directory is empty the script goes with it.
+
 - **2026-09-04 — History crosses the bridge oldest first.** libsession answers newest first,
   because that is the direction paging runs; a transcript is read the other way. The shim reverses
   once rather than leaving every caller to remember, and the order is written into `frames.proto`

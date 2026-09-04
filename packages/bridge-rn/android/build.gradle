@@ -1,0 +1,81 @@
+buildscript {
+  repositories {
+    google()
+    mavenCentral()
+  }
+  dependencies {
+    classpath "com.android.tools.build:gradle:9.3.1"
+  }
+}
+
+def reactNativeArchitectures() {
+  def value = rootProject.getProperties().get("reactNativeArchitectures")
+  return value ? value.split(",") : ["armeabi-v7a", "x86", "x86_64", "arm64-v8a"]
+}
+
+def getExtOrDefault(name, fallback) {
+  return rootProject.ext.has(name) ? rootProject.ext.get(name) : fallback
+}
+
+apply plugin: "com.android.library"
+apply plugin: "org.jetbrains.kotlin.android"
+apply from: "../nitrogen/generated/android/SessionBridgeRN+autolinking.gradle"
+
+android {
+  namespace "session.bridge.rn"
+
+  ndkVersion getExtOrDefault("ndkVersion", "27.1.12297006")
+  compileSdk getExtOrDefault("compileSdkVersion", 35) as int
+
+  defaultConfig {
+    minSdk getExtOrDefault("minSdkVersion", 24) as int
+
+    externalNativeBuild {
+      cmake {
+        cppFlags "-frtti", "-fexceptions"
+        // Release regardless of the app's build type: this compiles libsession and its
+        // dependencies, which are neither quicker to produce unoptimised nor useful to step
+        // through from here.
+        arguments "-DANDROID_STL=c++_shared", "-DCMAKE_BUILD_TYPE=Release"
+        abiFilters(*reactNativeArchitectures())
+        // Ours and nothing else. The Android Gradle plugin builds every target a CMake project
+        // declares, and libsession's tree declares test binaries whose dependencies we have no
+        // reason to cross-compile.
+        targets "SessionBridgeRN"
+      }
+    }
+  }
+
+  externalNativeBuild {
+    cmake {
+      path "CMakeLists.txt"
+    }
+  }
+
+  buildFeatures {
+    prefab true
+    buildConfig true
+  }
+
+  packagingOptions {
+    // Everything here belongs to another module and arrives with it. Ours is libSessionBridgeRN.so
+    // and nothing else; packaging a second copy of Nitro's or React Native's fails the merge.
+    excludes = [
+      "META-INF/**",
+      "**/libc++_shared.so",
+      "**/libjsi.so",
+      "**/libreactnative.so",
+      "**/libNitroModules.so",
+    ]
+  }
+}
+
+repositories {
+  google()
+  mavenCentral()
+}
+
+dependencies {
+  implementation "com.facebook.react:react-android"
+  implementation project(":react-native-nitro-modules")
+}

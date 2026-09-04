@@ -4,11 +4,11 @@ This file is the mutable one: what exists today and what comes next. `ARCHITECTU
 timeless one — how the thing is built and why. `CLAUDE.md` is the rule list. Read all three
 before changing anything; they do not repeat each other.
 
-Last updated 2026-09-04, at commit `288a770`.
+Last updated 2026-09-04, at commit `115efef`.
 
 ## State
 
-Eleven commits on `main`. Working tree clean. **No git remote yet** — when one is added, the
+Twelve commits on `main`. Working tree clean. **No git remote yet** — when one is added, the
 branch-and-pull-request rule in `CLAUDE.md` starts applying; until then `main` is all there is.
 
 Everything green: `pnpm format:check`, `pnpm lint` (14), `pnpm lint:manifests`,
@@ -46,8 +46,11 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
 
 ## What does not exist yet
 
-- `packages/bridge-rn`, the Nitro module. `bridge-core` and `bridge-node` both build, and the
-  desktop app loads the addon when `SESSION_FAKE` is unset.
+- iOS, entirely. The Nitro module's podspec and its C++ are written — the C++ is the same file
+  Android compiles — but this work has been on Linux, where there is no Xcode, so nobody has run
+  `pod install` against it and the xcframework has never been built.
+- Onboarding. Both apps now open a database with `deferAccount`, which means no account and no
+  conversations until there is a screen to create or restore one.
 - Attachment commands (`AttachmentData`, `SaveAttachment`) and push are not in the shim's
   dispatch yet. They answer with an error naming themselves rather than silently doing nothing.
 - `apps/mobile` has never been run. It needs `expo prebuild` and a dev client, and the Nitro
@@ -57,8 +60,9 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
 
 ## Next steps, in order
 
-1. **`packages/bridge-rn`** — the Nitro module, then run `apps/mobile` on a device. Second
-   proof point: the same echo flow, on real bindings.
+1. **Onboarding**, which is what the two apps now stop at: `getAccountInfo` answers "no account"
+   and there is no screen to create or restore one. `createAccount`, `restoreAccount` and
+   `getSeedMnemonic` are all through the bridge already.
 2. Then features, via the `port-feature` skill.
 
 ## Open questions that need a person
@@ -78,10 +82,16 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
   way to accept without answering, or the button has to mean something else. The shim answers
   this command with an error until that is settled.
 
-- **`--with-pic` for libevent in session-deps.** Its dep script overrides the shared configure
-  command and drops the flag its siblings keep, so its static archive cannot go into a shared
-  object. Nobody has hit it because nobody has built a shared library from this branch on Linux —
-  Android's toolchain is always position-independent. One line, and worth sending upstream.
+- **Three things to send to session-deps and libsession**, all found by building a shared object
+  from this branch, which nobody had done. `patches/` carries the first two and both are one-liners.
+  1. libevent's dep script overrides the shared configure command and drops `--with-pic`, so its
+     archive cannot go into a shared object — the Node addon and the Nitro module both are one.
+  2. session-deps does not forward the Android toolchain to its CMake-based dependencies, so they
+     get the NDK compiler without the NDK target and build for the host. libsession's own Android
+     bundle contains a simdutf full of libstdc++ symbols because of this.
+  3. `STATIC_BUNDLE` says "a single static .a containing everything" and leaves out session-sqlite's
+     archives, sqlite3mc and utf8proc. `bridge-core` names them on the link line; nothing in the
+     bundle says it should have to.
 
 - **Mnemonic handling.** libsession owns the word list, so no TypeScript library is needed,
   but once words cross into JavaScript they cannot be wiped. Keep them out of logs and out of
@@ -111,6 +121,29 @@ pnpm --filter @session/bridge-node test
 
 The test commands are compiled in only by that build. A plain `build:native` leaves them out and
 the suite skips itself rather than reporting their absence as a regression.
+
+## What runs on a device
+
+`apps/mobile` runs on an Android emulator against real libsession. The shared conversation-list
+screen draws from a real, empty, encrypted database that the app opened itself: the key comes from
+`expo-secure-store`, the Nitro module carries the frames, and `session.db` is on the device
+afterwards. That is the second proof point — the same TypeScript, the real bindings.
+
+Two things it showed that need fixing, neither of them the bridge:
+
+- The header sits under the status bar. No safe-area inset is applied on mobile; the desktop
+  window has no such thing, so nothing had asked for one.
+- tamagui warns that `$color` is missing from the `color` category. A missing token resolves to 0
+  in silence, so this is worth chasing rather than muting.
+
+```
+pnpm --filter @session/bridge-rn build:libsession
+cd apps/mobile && npx expo prebuild --platform android
+cd android && ./gradlew :app:assembleDebug -PreactNativeArchitectures=x86_64 --no-configuration-cache
+```
+
+`--no-configuration-cache` is Gradle 9 against Expo, which still calls `node` at configuration
+time. It has nothing to do with this repository.
 
 ## Building the native side
 

@@ -37,6 +37,8 @@ catalog:
   expo-router: ~57.0.18
   expo-constants: ~57.0.17
   expo-linking: ~57.0.9
+  expo-crypto: ~57.0.2
+  expo-file-system: ~57.0.6
   expo-secure-store: ~57.0.1
   react-native-safe-area-context: ~5.7.0
   react-native-screens: ~4.26.0
@@ -66,6 +68,8 @@ catalog:
   # Native bridge
   cmake-js: 8.0.0
   node-addon-api: 8.9.2
+  react-native-nitro-modules: 0.37.1
+  nitrogen: 0.37.1
 
   # Test
   '@playwright/test': 1.62.1

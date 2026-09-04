@@ -1,0 +1,20 @@
+{
+  "$schema": "https://nitro.margelo.com/nitro.schema.json",
+  "cxxNamespace": ["session", "bridge", "rn"],
+  "android": {
+    "androidNamespace": ["session", "bridge", "rn"],
+    "androidCxxLibName": "SessionBridgeRN"
+  },
+  "ios": {
+    "iosModuleName": "SessionBridgeRN"
+  },
+  "autolinking": {
+    "SessionBridge": {
+      "all": {
+        "language": "c++",
+        "implementationClassName": "HybridSessionBridge"
+      }
+    }
+  },
+  "ignorePaths": ["node_modules"]
+}

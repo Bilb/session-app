@@ -1,21 +1,30 @@
 import { createSessionClient, type BridgeTransport } from '@session/client'
 import { createSessionStore } from '@session/state'
 
+import { resolveDatabaseKey, sessionPaths } from './storage'
+
 /**
  * The mobile client.
  *
- * The Nitro module will provide the transport; until it exists the fake is loaded through a
- * dynamic import so that it stays out of a release bundle, exactly as it does on desktop.
+ * The Nitro module is reached through `@session/client`'s `.native` pair rather than imported
+ * here: an app is an adapter, and which bridge it gets is the one decision this file makes.
  */
 async function openTransport(): Promise<BridgeTransport> {
-  if (process.env['SESSION_FAKE'] === '1' || __DEV__) {
+  if (process.env['SESSION_FAKE'] === '1') {
     const { createFakeBridge } = await import('./dev/fakeBridge')
     return createFakeBridge()
   }
 
-  throw new Error(
-    'No libsession bridge available yet. Run with SESSION_FAKE=1 until the Nitro module is built.',
-  )
+  const { createNativeBridgeTransport } = await import('@session/client')
+  const paths = await sessionPaths()
+
+  return createNativeBridgeTransport({
+    ...paths,
+    rawKeyHex: await resolveDatabaseKey(),
+    // Onboarding has to be asked. Without this libsession creates an account as the database
+    // opens, and the first screen is a conversation list for an identity nobody chose.
+    deferAccount: true,
+  })
 }
 
 export const storePromise = openTransport().then((transport) =>

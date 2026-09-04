@@ -17,11 +17,10 @@ pnpm --filter @session/bridge-node build:native
 Takes a while the first time: it builds libsession and its static dependencies. Needs `protoc`,
 `cmake`, `ninja` and gcc — see `packages/bridge-core/README.md` for why gcc rather than clang.
 
-`cmake/cc-pic.sh` is a wrapper that puts `-fPIC` on every C dependency. The addon is a shared
-object, so nothing linked into it may hold absolute relocations; libsession's own targets are
-already position-independent and its autotools dependencies get there through `--with-pic`,
-except libevent, whose dep script overrides the shared configure command and does not carry that
-flag over. Delete the wrapper when session-deps closes that gap.
+The build applies `patches/` to the libsession tree first. There is one patch: libevent's dep
+script overrides session-deps' shared configure command and drops `--with-pic`, so its static
+archive cannot go into a shared object — which the addon is, and so is the Nitro module. It is a
+one-line change waiting on upstream, and it goes away when upstream takes it.
 
 ## Testing
 

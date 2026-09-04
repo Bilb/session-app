@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@session/app": "workspace:*",
+    "@session/bridge-rn": "workspace:*",
     "@session/client": "workspace:*",
     "@session/screens": "workspace:*",
     "@session/state": "workspace:*",
@@ -22,12 +23,15 @@
     "@session/ui": "workspace:*",
     "expo": "catalog:",
     "expo-constants": "catalog:",
+    "expo-crypto": "catalog:",
+    "expo-file-system": "catalog:",
     "expo-linking": "catalog:",
     "expo-router": "catalog:",
     "expo-secure-store": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-native": "catalog:",
+    "react-native-nitro-modules": "catalog:",
     "react-native-safe-area-context": "catalog:",
     "react-native-screens": "catalog:",
     "react-native-web": "catalog:"
