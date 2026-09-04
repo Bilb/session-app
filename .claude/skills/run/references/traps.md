@@ -62,6 +62,10 @@ two Session packages on the emulator. `grep -i session` finds the wrong one.
 | A device reports `Booted` but nothing works                                 | Wedged CoreSimulator: `simctl spawn` fails with `NSPOSIXErrorDomain code=2` and `get_app_container` prints nothing. `simctl shutdown` then `boot`.                                                                                                           |
 | Thousands of log lines, none of them yours                                  | No `--predicate`. `process == "Session"` is the difference between a diagnosis and a wall of `storekitd`.                                                                                                                                                    |
 
+| `simctl` cannot tap | There is no tap subcommand. AppleScript can click, which needs assistive access granted from System Settings by a person at the machine — and clicks near the top of the window land unreliably even then. `simctl openurl` with the app's scheme is the dependable way to reach a screen. |
+| A deep link shows "Open in Session?" | iOS confirms a scheme link opened from outside. The dialog has to be clicked; there is no flag to skip it. |
+| The `[session]` account line is nowhere | React Native's console on iOS reaches neither the unified log nor the app's stdout. Read the account ID off the settings screen. |
+
 Device builds and a release xcframework are still untried.
 
 ## C++, when changing the shim

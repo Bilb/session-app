@@ -4,11 +4,11 @@ This file is the mutable one: what exists today and what comes next. `ARCHITECTU
 timeless one — how the thing is built and why. `CLAUDE.md` is the rule list. Read all three
 before changing anything; they do not repeat each other.
 
-Last updated 2026-09-04, at commit `23b56e9`.
+Last updated 2026-09-04, at commit `d6e2053`.
 
 ## State
 
-Twenty commits, on `feat/ios-build` off `feat/bridge-work`. Working tree clean. **No git remote yet** — when one is added, the
+On `feat/network-receive`, off `feat/ios-build`. Working tree clean. **No git remote yet** — when one is added, the
 branch-and-pull-request rule in `CLAUDE.md` starts applying; until then `main` is all there is.
 
 Everything green: `pnpm format:check`, `pnpm lint` (14), `pnpm lint:manifests`,
@@ -120,6 +120,47 @@ pnpm --filter @session/bridge-node test
 
 The test commands are compiled in only by that build. A plain `build:native` leaves them out and
 the suite skips itself rather than reporting their absence as a regression.
+
+## All three receive a message from the network
+
+Verified on each platform, over mainnet, end to end: onboarding mints an account, the bridge
+attaches, a separate account writes to it, and the message is on screen after navigating in.
+
+| platform | account         | how it was driven                       |
+| -------- | --------------- | --------------------------------------- |
+| desktop  | `05b7f80e…2d20` | Playwright against the built Electron   |
+| Android  | `057fb21c…5d30` | `adb input tap`, ids from uiautomator   |
+| iOS      | `05a30bb6…d251` | AppleScript clicks and `simctl openurl` |
+
+The sender is `packages/bridge-node/src/sendTestMessage.test.ts` — a second real bridge rather
+than a fixture, so the message is built, encrypted and stored by the same libsession the app
+reads. It skips itself unless `SESSION_SEND_TO` is set. qa-seeder was the obvious candidate and
+is the wrong tool: it seeds accounts, friendships, groups and pro access, and has no path that
+sends a message.
+
+A stranger's first message arrives in **message requests**, because libsession records approval
+from messages flowing and nothing has flowed the other way yet. That is why the requests screen
+had to exist before any of this was visible.
+
+### What is deliberately not done
+
+- **Poll interval is libsession's default, 20 seconds.** A message can take that long to appear.
+  `SetPollInterval` is in the plan and not in the schema, so nothing shortens it yet.
+- **devnet refuses rather than half-working.** It takes seed nodes, and a seed node is a public
+  key, an address and two ports — not something the schema's `devnet_seed_url` can be turned
+  into. How the app learns those is a devnet question rather than a bridge one.
+- **Onboarding is one button.** Restore from a recovery phrase is a bridge command already
+  (`restoreAccount`) with no screen.
+- **Sending has no UI beyond the composer.** There is no way to start a conversation with an
+  account ID from inside the app, which is why the sender above is a script.
+
+### On reading the account ID
+
+Shown on the settings screen, and logged at hydration. The log reaches the terminal on desktop
+(with `--enable-logging`) and logcat on Android, and **on iOS it reaches neither** — React
+Native's console there goes to neither the unified log nor the app's stdout, so the screen is
+the only way. That is why settings needed a way in at all: it had a route and nothing that
+navigated to it.
 
 ## What runs against the real bridge
 
