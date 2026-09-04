@@ -73,5 +73,22 @@ cmake -G Ninja -S "$repo/packages/bridge-core" -B "$build" \
 cmake --build "$build" --target session-bridge-core --parallel
 
 mkdir -p "$here/../ios/lib"
+rm -f "$here/../ios/lib"/*.a
 cp "$build/libsession-bridge-core.a" "$build/libsession-bridge-proto.a" "$here/../ios/lib/"
-echo "shim in place: packages/bridge-rn/ios/lib/"
+
+# The pieces STATIC_BUNDLE leaves out despite being "a single static .a containing everything":
+# session-sqlite's own archives and a few static deps. bridge-core's CMake names them on its
+# link line, which is enough for the addon and for Android but cannot travel into a vendored
+# static library — so on iOS the pod has to carry them, and the podspec globs this directory.
+ls="$libsession/build-ios/$slice"
+for lib in \
+    "$ls/external/session-sqlite/libsession_sqlite.a" \
+    "$ls/external/session-sqlite/libsession_secure_buffer.a" \
+    "$ls/external/session-sqlite/SQLiteCpp/libSQLiteCpp.a" \
+    "$ls/static-deps/lib/libsqlite3mc.a" \
+    "$ls/static-deps/lib/libutf8proc.a" \
+    "$ls/static-deps/lib/libsimdutf.a"; do
+    [ -f "$lib" ] && cp "$lib" "$here/../ios/lib/"
+done
+
+echo "shim in place: packages/bridge-rn/ios/lib/ ($(ls "$here/../ios/lib" | wc -l | tr -d " ") archives)"

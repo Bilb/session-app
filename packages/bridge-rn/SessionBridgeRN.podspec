@@ -22,7 +22,9 @@ Pod::Spec.new do |s|
   # libsession, and the shim built against it. Both produced by
   # `pnpm --filter @session/bridge-rn build:libsession:ios`, neither committed.
   s.vendored_frameworks = "ios/libsession-util.xcframework"
-  s.vendored_libraries = "ios/lib/libsession-bridge-core.a", "ios/lib/libsession-bridge-proto.a"
+  # Globbed rather than listed: the build script decides what has to be there, and it is more
+  # than the shim — see the note in it about what STATIC_BUNDLE leaves out.
+  s.vendored_libraries = "ios/lib/*.a"
 
   # client_bridge.hpp is deliberately free of libsession's headers — it is std types and a
   # std::function — so this is the whole of what the HybridObject needs to compile.
