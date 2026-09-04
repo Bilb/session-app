@@ -143,7 +143,8 @@ module.exports = {
       severity: 'warn',
       from: {
         orphan: true,
-        pathNot: '(\\.d\\.ts$|^tooling/|(^|/)[^/]+\\.config\\.[cm]?[jt]s$)',
+        pathNot:
+          '(\\.d\\.ts$|^tooling/|(^|/)[^/]+\\.config\\.[cm]?[jt]s$|^apps/[^/]+/src/(main|preload|renderer)/(index|main)\\.tsx?$)',
       },
       to: {},
     },
@@ -151,7 +152,7 @@ module.exports = {
 
   options: {
     doNotFollow: { path: 'node_modules' },
-    exclude: { path: '(node_modules|/gen/|/generated/|dist/|build/)' },
+    exclude: { path: '(node_modules|/gen/|/generated/|dist/|build/|/out/)' },
     tsPreCompilationDeps: true,
     tsConfig: { fileName: 'tsconfig.json' },
     enhancedResolveOptions: {

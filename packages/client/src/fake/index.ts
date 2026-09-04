@@ -5,6 +5,7 @@
  * rules enforce that, so a production bundle cannot reach it.
  */
 
+export { createFakeTransport } from './fakeBridge'
 export { FakeSessionClient } from './FakeSessionClient'
 export { FakeAccount, FakeWorld, resetFakeIds } from './world'
 export { FIXTURE_NAMES, friends, solo, strangers } from './fixtures'

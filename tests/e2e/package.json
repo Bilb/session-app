@@ -1,0 +1,22 @@
+{
+  "name": "@s2/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "One flow, run against every client",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test:e2e:fast": "playwright test --project desktop",
+    "test:e2e:full": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "catalog:",
+    "@s2/eslint-config": "workspace:*",
+    "@s2/test-ids": "workspace:*",
+    "@s2/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "extends": "@s2/typescript-config/bundler.json",
+  "compilerOptions": {
+    // This pass is the DOM half of the environment split: it re-checks every shared
+    // package the renderer pulls in — screens, ui, state, client — against a browser lib.
+    // apps/mobile checks the same sources again with react-native's types.
+    "lib": ["ES2022", "DOM"],
+    "types": ["react", "react-dom"]
+  },
+  "include": ["src/renderer"]
+}

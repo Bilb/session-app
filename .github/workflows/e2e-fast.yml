@@ -1,0 +1,35 @@
+name: e2e-fast
+
+# Started by hand, never on a pull request.
+on:
+  workflow_dispatch:
+
+jobs:
+  desktop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @s2/localization build
+      - run: pnpm --filter @s2/desktop build
+      - run: pnpm --filter @s2/e2e exec playwright install --with-deps chromium
+
+      # The app runs on the fake libsession here: no devnet, no network, and a seeded
+      # conversation list that is the same on every run.
+      - run: xvfb-run -a pnpm --filter @s2/e2e test:e2e:fast
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/

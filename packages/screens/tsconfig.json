@@ -1,0 +1,11 @@
+{
+  "extends": "@s2/typescript-config/bundler.json",
+  "compilerOptions": {
+    // The web flavour: tamagui's DOM helpers are in this program. apps/mobile checks the
+    // same sources again with react-native's types and the .native suffixes.
+    "lib": ["ES2022", "DOM"],
+    "types": ["react"]
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

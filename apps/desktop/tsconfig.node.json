@@ -1,0 +1,8 @@
+{
+  "extends": "@s2/typescript-config/node.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler"
+  },
+  "include": ["src/main", "electron.vite.config.ts"]
+}

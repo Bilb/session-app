@@ -1,0 +1,7 @@
+{
+  "extends": "@s2/typescript-config/bundler.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": ["harness", "specs", "playwright.config.ts"]
+}

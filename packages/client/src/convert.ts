@@ -34,7 +34,7 @@ import type {
  * conversion is lossless in practice — and it keeps bigint out of every comparison in the
  * store and the UI.
  */
-export function toNumber(value: bigint): number {
+function toNumber(value: bigint): number {
   return Number(value)
 }
 
@@ -80,7 +80,7 @@ function fromDeletionPb(scope: DeletionPb): Deletion | undefined {
   }
 }
 
-export function fromAttachmentPb(pb: AttachmentPb): Attachment {
+function fromAttachmentPb(pb: AttachmentPb): Attachment {
   return {
     index: pb.index,
     ...(pb.contentType === undefined ? {} : { contentType: pb.contentType }),

@@ -22,10 +22,12 @@ catalog:
   dependency-cruiser: 18.2.0
   knip: 6.34.0
   vitest: 5.0.0
+  tsup: 8.5.1
 
   # React / React Native — pinned to what the Expo SDK 57 template ships.
   react: 19.2.3
   '@types/react': 19.2.18
+  '@types/node': 22.20.1
   react-dom: 19.2.3
   react-native: 0.86.3
   react-native-web: ~0.21.0
@@ -36,7 +38,6 @@ catalog:
   expo-constants: ~57.0.17
   expo-linking: ~57.0.9
   expo-secure-store: ~57.0.1
-  expo-status-bar: ~57.0.1
   react-native-safe-area-context: ~5.7.0
   react-native-screens: ~4.26.0
 
@@ -46,6 +47,7 @@ catalog:
   # requirement — add it to the desktop build once electron-vite supports vite 8.
   tamagui: 2.7.7
   '@tamagui/babel-plugin': 2.7.7
+  babel-plugin-react-remove-properties: 0.3.1
 
   # State / data
   zustand: 5.0.15
@@ -58,6 +60,8 @@ catalog:
   electron-vite: 5.0.0
   vite: 7.3.6
   react-router: 8.3.1
+  '@vitejs/plugin-react': 5.2.0
+  '@types/react-dom': 19.2.7
 
   # Test
   '@playwright/test': 1.62.1

@@ -1,0 +1,31 @@
+name: e2e-full
+
+# Started by hand. Needs a devnet and a device pool, so it does not belong on a pull request.
+on:
+  workflow_dispatch:
+    inputs:
+      tags:
+        description: 'Which tests to run, as a Playwright --grep expression'
+        required: false
+        default: '@high-risk'
+
+jobs:
+  full:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Placeholder until the bridge is built: bring up sesh-net-docker, seed with
+      # qa-seeder, boot the device pool, then run the suite against real bindings.
+      - run: echo "The full suite needs the native bridge; see docs/ARCHITECTURE.md"

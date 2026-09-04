@@ -1,0 +1,45 @@
+{
+  "name": "@s2/mobile",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The Session mobile app: one Expo app for Android and iOS, phone and tablet",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "SESSION_FAKE=1 expo start --dev-client",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "prebuild": "expo prebuild",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@s2/app": "workspace:*",
+    "@s2/client": "workspace:*",
+    "@s2/screens": "workspace:*",
+    "@s2/state": "workspace:*",
+    "@s2/test-ids": "workspace:*",
+    "@s2/ui": "workspace:*",
+    "expo": "catalog:",
+    "expo-constants": "catalog:",
+    "expo-linking": "catalog:",
+    "expo-router": "catalog:",
+    "expo-secure-store": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-native": "catalog:",
+    "react-native-safe-area-context": "catalog:",
+    "react-native-screens": "catalog:",
+    "react-native-web": "catalog:"
+  },
+  "devDependencies": {
+    "@s2/eslint-config": "workspace:*",
+    "@s2/typescript-config": "workspace:*",
+    "@tamagui/babel-plugin": "catalog:",
+    "@types/react": "catalog:",
+    "babel-plugin-react-remove-properties": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

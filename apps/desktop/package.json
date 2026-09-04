@@ -1,0 +1,41 @@
+{
+  "name": "@s2/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The Session desktop app: Electron, drawing the shared screens",
+  "type": "module",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "SESSION_FAKE=1 electron-vite dev",
+    "build": "electron-vite build",
+    "start": "SESSION_FAKE=1 electron-vite preview",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.preload.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@s2/app": "workspace:*",
+    "@s2/client": "workspace:*",
+    "@s2/screens": "workspace:*",
+    "@s2/state": "workspace:*",
+    "@s2/ui": "workspace:*",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-native-web": "catalog:",
+    "react-router": "catalog:"
+  },
+  "devDependencies": {
+    "@s2/eslint-config": "workspace:*",
+    "@s2/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "electron": "catalog:",
+    "electron-vite": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}

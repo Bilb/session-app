@@ -1,0 +1,10 @@
+{
+  "extends": "@s2/typescript-config/bundler.json",
+  "compilerOptions": {
+    // The route-contract test reads the two apps' route declarations off disk, which is the
+    // only reason node types are here.
+    "types": ["react", "node"]
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

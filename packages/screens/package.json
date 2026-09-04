@@ -1,0 +1,37 @@
+{
+  "name": "@s2/screens",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The screens both apps render, and the shell that decides how many fit",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@s2/app": "workspace:*",
+    "@s2/client": "workspace:*",
+    "@s2/localization": "workspace:*",
+    "@s2/state": "workspace:*",
+    "@s2/test-ids": "workspace:*",
+    "@s2/ui": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "catalog:"
+  },
+  "devDependencies": {
+    "@s2/eslint-config": "workspace:*",
+    "@s2/typescript-config": "workspace:*",
+    "@types/react": "catalog:",
+    "eslint": "catalog:",
+    "react": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -11,7 +11,6 @@
     "@eslint/js": "catalog:",
     "eslint-import-resolver-typescript": "catalog:",
     "eslint-plugin-import-x": "catalog:",
-    "eslint-plugin-pnpm": "catalog:",
     "typescript-eslint": "catalog:"
   },
   "devDependencies": {

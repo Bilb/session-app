@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Session",
+    "slug": "session-2",
+    "scheme": "session",
+    "version": "0.0.0",
+    "orientation": "default",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "org.getsession.session2"
+    },
+    "android": {
+      "package": "org.getsession.session2",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

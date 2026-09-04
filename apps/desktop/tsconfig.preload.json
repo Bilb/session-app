@@ -1,0 +1,11 @@
+{
+  "extends": "@s2/typescript-config/node.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    // Preload runs beside the page, so MessagePort and MessageEvent here are the DOM ones.
+    // The main process gets no DOM: nothing there should be reaching for a window.
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": ["src/preload"]
+}

@@ -18,13 +18,15 @@
     "test": "turbo test",
     "knip": "knip",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "lint:manifests": "eslint --no-config-lookup --config eslint.config.js \"**/package.json\" pnpm-workspace.yaml"
   },
   "devDependencies": {
     "@s2/eslint-config": "workspace:*",
     "@s2/typescript-config": "workspace:*",
     "dependency-cruiser": "catalog:",
     "eslint": "catalog:",
+    "eslint-plugin-pnpm": "catalog:",
     "knip": "catalog:",
     "prettier": "catalog:",
     "turbo": "catalog:",
