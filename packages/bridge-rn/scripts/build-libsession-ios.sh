@@ -81,13 +81,20 @@ cp "$build/libsession-bridge-core.a" "$build/libsession-bridge-proto.a" "$here/.
 # link line, which is enough for the addon and for Android but cannot travel into a vendored
 # static library — so on iOS the pod has to carry them, and the podspec globs this directory.
 ls="$libsession/build-ios/$slice"
+# Kept in step with the list in packages/bridge-core/CMakeLists.txt, which explains what the
+# bundle leaves out and why the last few only matter once something reaches the network.
 for lib in \
     "$ls/external/session-sqlite/libsession_sqlite.a" \
     "$ls/external/session-sqlite/libsession_secure_buffer.a" \
     "$ls/external/session-sqlite/SQLiteCpp/libSQLiteCpp.a" \
     "$ls/static-deps/lib/libsqlite3mc.a" \
     "$ls/static-deps/lib/libutf8proc.a" \
-    "$ls/static-deps/lib/libsimdutf.a"; do
+    "$ls/static-deps/lib/libsimdutf.a" \
+    "$ls/static-deps/lib/libhogweed.a" \
+    "$ls/static-deps/lib/libtasn1.a" \
+    "$ls/static-deps/lib/libidn2.a" \
+    "$ls/static-deps/lib/libunistring.a" \
+    "$ls/static-deps/lib/libgmp.a"; do
     [ -f "$lib" ] && cp "$lib" "$here/../ios/lib/"
 done
 

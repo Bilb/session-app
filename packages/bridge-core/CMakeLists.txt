@@ -40,20 +40,32 @@ if(SESSION_BRIDGE_LIBSESSION_BUNDLE)
         "${_router}/external/oxen-libquic/include"
         "${_router}/external/oxen-mq/oxen-encoding"
         "${_router}/external/oxen-mq/oxen-logging/fmt/include"
+        "${_router}/external/oxen-mq/oxen-logging/include"
         "${_router}/external/oxen-mq/oxen-logging/spdlog/include"
         "${_router}/external/nlohmann/single_include"
         "${_bundle_dir}/static-deps/include")
-    # STATIC_BUNDLE says "a single static .a containing everything" and does not quite mean it:
-    # session-sqlite's own archives are left out, so a consumer linking only the bundle gets
-    # undefined session::sqlite::Database and session::secure_buffer. Worth raising upstream;
-    # until then they go on the link line beside it.
+    # STATIC_BUNDLE says "a single static .a containing everything (both code and dependencies)"
+    # and does not mean it. What it leaves out, found one undefined symbol at a time:
+    #
+    #   session-sqlite's own archives     session::sqlite::Database, session::secure_buffer
+    #   sqlite3mc, utf8proc               the deps it and libsession::util link
+    #   hogweed, tasn1, idn2, unistring, gmp   gnutls's chain — bundled gnutls, not its deps
+    #
+    # The last group only surfaces once something reaches the network layer, because nothing
+    # else pulls gnutls in. Worth raising upstream; until then they go on the link line beside
+    # the bundle, and each one that is missing from a given build is simply skipped.
     set(_extra)
     foreach(lib
             "${_bundle_dir}/external/session-sqlite/libsession_sqlite.a"
             "${_bundle_dir}/external/session-sqlite/libsession_secure_buffer.a"
             "${_bundle_dir}/external/session-sqlite/SQLiteCpp/libSQLiteCpp.a"
             "${_bundle_dir}/static-deps/lib/libsqlite3mc.a"
-            "${_bundle_dir}/static-deps/lib/libutf8proc.a")
+            "${_bundle_dir}/static-deps/lib/libutf8proc.a"
+            "${_bundle_dir}/static-deps/lib/libhogweed.a"
+            "${_bundle_dir}/static-deps/lib/libtasn1.a"
+            "${_bundle_dir}/static-deps/lib/libidn2.a"
+            "${_bundle_dir}/static-deps/lib/libunistring.a"
+            "${_bundle_dir}/static-deps/lib/libgmp.a")
         if(EXISTS "${lib}")
             list(APPEND _extra "${lib}")
         endif()
