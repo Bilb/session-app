@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@session/theme-tokens": "workspace:*",
+    "react-native-safe-area-context": "catalog:",
     "tamagui": "catalog:"
   },
   "peerDependencies": {

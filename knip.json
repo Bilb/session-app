@@ -16,7 +16,8 @@
     "react-native-web",
     "node-addon-api",
     "@session/bridge-rn",
-    "react-native-nitro-modules"
+    "react-native-nitro-modules",
+    "react-native-safe-area-context"
   ],
   "ignore": ["**/*.native.ts", "**/*.native.tsx", "libsession-util/**"]
 }

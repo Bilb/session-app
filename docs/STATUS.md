@@ -4,15 +4,15 @@ This file is the mutable one: what exists today and what comes next. `ARCHITECTU
 timeless one — how the thing is built and why. `CLAUDE.md` is the rule list. Read all three
 before changing anything; they do not repeat each other.
 
-Last updated 2026-09-04, at commit `115efef`.
+Last updated 2026-09-04, at commit `ce8bbd2`.
 
 ## State
 
-Twelve commits on `main`. Working tree clean. **No git remote yet** — when one is added, the
+Thirteen commits on `main`. Working tree clean. **No git remote yet** — when one is added, the
 branch-and-pull-request rule in `CLAUDE.md` starts applying; until then `main` is all there is.
 
 Everything green: `pnpm format:check`, `pnpm lint` (14), `pnpm lint:manifests`,
-`pnpm boundaries`, `pnpm typecheck` (16), `pnpm test` (58 tests), `pnpm knip`,
+`pnpm boundaries`, `pnpm typecheck` (16), `pnpm test` (61 tests), `pnpm knip`,
 `pnpm codegen:check`, `pnpm dedupe --check` — the whole of `ci.yml`.
 
 The walking skeleton works end to end. `tests/e2e` drives the built Electron app through
@@ -129,12 +129,11 @@ screen draws from a real, empty, encrypted database that the app opened itself: 
 `expo-secure-store`, the Nitro module carries the frames, and `session.db` is on the device
 afterwards. That is the second proof point — the same TypeScript, the real bindings.
 
-Two things it showed that need fixing, neither of them the bridge:
-
-- The header sits under the status bar. No safe-area inset is applied on mobile; the desktop
-  window has no such thing, so nothing had asked for one.
-- tamagui warns that `$color` is missing from the `color` category. A missing token resolves to 0
-  in silence, so this is worth chasing rather than muting.
+It showed two things, both since fixed. The header sat under the status bar — `@session/ui`'s
+`Screen` now has a `.native` variant that reads the insets, which is one place for every screen.
+And tamagui warned about a token no theme defined; chasing it found that tamagui's own components
+ask for a vocabulary of about twenty names Session does not use, so `themes.ts` now maps all of
+them onto Session's rather than adding them one warning at a time.
 
 ```
 pnpm --filter @session/bridge-rn build:libsession
@@ -144,6 +143,25 @@ cd android && ./gradlew :app:assembleDebug -PreactNativeArchitectures=x86_64 --n
 
 `--no-configuration-cache` is Gradle 9 against Expo, which still calls `node` at configuration
 time. It has nothing to do with this repository.
+
+## The token trap, and what now guards it
+
+A tamagui token that does not exist resolves to **0, in silence**. `padding="$1.5"` on a scale
+without a 1.5 loses the padding; `color="$textPrimry"` paints nothing. TypeScript does not help —
+every one of those props is typed as a plain string, so a typo compiles.
+
+`packages/ui/src/tokens.contract.test.ts` is the guard, and it covers both halves:
+
+- Every `$name` written anywhere in `ui`, `screens` or either app names something that exists.
+  It scrapes the source and checks against the scales and the theme keys, and it names the file
+  and the token when it fails.
+- Every theme defines the whole of tamagui's own vocabulary, which is the half our source cannot
+  show: a built-in asks for `$backgroundFocus` and renders invisibly if nothing answers.
+
+A test rather than a lint rule because the valid list is computed rather than written down — it
+comes from the scales and from whatever `@session/theme-tokens` publishes, and a rule would need
+that duplicated to read it. The cost is that it fails on push rather than while typing; a rule
+that reads a generated list is the way to close that gap if it starts to bite.
 
 ## Building the native side
 

@@ -43,9 +43,83 @@ export function themeName(theme: ThemeState, accent?: PrimaryColorState): string
 export const DEFAULT_THEME: ThemeState = 'classic-dark'
 export const DEFAULT_ACCENT: PrimaryColorState = 'green'
 
+/**
+ * The names tamagui's own components reach for.
+ *
+ * Session's vocabulary is semantic and its own — `backgroundPrimary`, `textSecondary` — and
+ * tamagui's built-ins know nothing about it: they ask for `$background`, `$colorHover`,
+ * `$backgroundFocus` and the rest. A name no theme defines resolves to 0 in silence, so a
+ * built-in with a gap here renders an invisible border or a transparent surface and reports
+ * nothing.
+ *
+ * Written out in full rather than added one warning at a time, because that is a game of
+ * whack-a-mole against whichever component someone happens to render next. These are aliases:
+ * every colour still has exactly one definition, in @session/theme-tokens.
+ */
+const TAMAGUI_NAMES = [
+  'background',
+  'backgroundHover',
+  'backgroundPress',
+  'backgroundFocus',
+  'backgroundStrong',
+  'backgroundTransparent',
+  'color',
+  'colorHover',
+  'colorPress',
+  'colorFocus',
+  'colorTransparent',
+  'placeholderColor',
+  'borderColor',
+  'borderColorHover',
+  'borderColorPress',
+  'borderColorFocus',
+  'outlineColor',
+  'shadowColor',
+  'shadowColorHover',
+  'shadowColorPress',
+  'shadowColorFocus',
+] as const
+
+/** The list above is what must exist; this is what each one means in Session's terms. */
+function tamaguiAliases(tokens: ThemeTokens): Record<(typeof TAMAGUI_NAMES)[number], string> {
+  const clear = 'rgba(0, 0, 0, 0)'
+  const shadow = 'rgba(0, 0, 0, 0.25)'
+
+  return {
+    background: tokens.backgroundPrimary,
+    backgroundHover: tokens.backgroundSecondary,
+    backgroundPress: tokens.backgroundTertiary,
+    backgroundFocus: tokens.backgroundSecondary,
+    backgroundStrong: tokens.backgroundPrimary,
+    backgroundTransparent: clear,
+    color: tokens.textPrimary,
+    colorHover: tokens.textPrimary,
+    colorPress: tokens.textPrimary,
+    // Focus is the one that takes the accent: it is the only one of these that is meant to
+    // be noticed, and it is how a keyboard user knows where they are.
+    colorFocus: tokens.textPrimary,
+    colorTransparent: clear,
+    placeholderColor: tokens.textSecondary,
+    borderColor: tokens.bordersColor,
+    borderColorHover: tokens.bordersColor,
+    borderColorPress: tokens.bordersColor,
+    borderColorFocus: tokens.primaryColor,
+    outlineColor: tokens.primaryColor,
+    shadowColor: shadow,
+    shadowColorHover: shadow,
+    shadowColorPress: shadow,
+    shadowColorFocus: shadow,
+  }
+}
+
+export { TAMAGUI_NAMES }
+
 function toTamaguiTheme(tokens: ThemeTokens): Record<string, string> {
-  // Tamagui wants a flat record of colour values; ThemeTokens already is one.
-  return { ...tokens }
+  return {
+    // Tamagui wants a flat record of colour values; ThemeTokens already is one.
+    ...tokens,
+    ...tamaguiAliases(tokens),
+  }
 }
 
 export function buildThemes(): Record<string, Record<string, string>> {
