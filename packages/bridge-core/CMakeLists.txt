@@ -80,6 +80,35 @@ endif()
 # the one we are linking against.
 find_program(SESSION_BRIDGE_PROTOC protoc REQUIRED)
 
+# It has to be the *matching* protoc. Generated protobuf code carries a hard assertion about the
+# runtime it was produced for, so a newer compiler does not degrade — it fails somewhere deep
+# inside a generated header, with an error that says nothing about versions. Checked here so the
+# failure names itself and the fix.
+#
+# The expected version is read out of the submodule rather than written down, so it cannot drift
+# from the pin.
+file(READ "${SESSION_BRIDGE_LIBSESSION}/external/protobuf/version.json" _protobuf_version_json)
+string(REGEX MATCH "\"cpp\"[ \t]*:[ \t]*\"([0-9]+\\.[0-9]+)" _matched "${_protobuf_version_json}")
+set(_protobuf_expected "${CMAKE_MATCH_1}")
+
+execute_process(COMMAND "${SESSION_BRIDGE_PROTOC}" --version
+    OUTPUT_VARIABLE _protoc_reported OUTPUT_STRIP_TRAILING_WHITESPACE
+    COMMAND_ERROR_IS_FATAL ANY)
+string(REGEX MATCH "([0-9]+\\.[0-9]+)" _matched "${_protoc_reported}")
+set(_protoc_found "${CMAKE_MATCH_1}")
+
+if(NOT _protoc_found VERSION_EQUAL _protobuf_expected)
+    message(FATAL_ERROR
+        "protoc ${_protoc_found} cannot generate code for the protobuf runtime libsession "
+        "bundles (${_protobuf_expected}).\n"
+        "  found: ${SESSION_BRIDGE_PROTOC} (${_protoc_reported})\n"
+        "Install a matching one and point at it with -DSESSION_BRIDGE_PROTOC=<path>:\n"
+        "  macOS: brew install protobuf@21\n"
+        "         -DSESSION_BRIDGE_PROTOC=$(brew --prefix protobuf@21)/bin/protoc\n"
+        "  Debian/Ubuntu: protobuf-compiler is 3.21 on trixie and later\n"
+        "  otherwise: the release binary from protocolbuffers/protobuf, tag v${_protobuf_expected}.x")
+endif()
+
 set(bridge_proto_dir "${CMAKE_CURRENT_SOURCE_DIR}/../proto/proto")
 set(bridge_proto_gen "${CMAKE_CURRENT_BINARY_DIR}/gen")
 file(MAKE_DIRECTORY "${bridge_proto_gen}")

@@ -22,7 +22,7 @@ const patches = join(root, 'patches')
 /** Where each patch applies. Named rather than inferred: a patch is for one tree, not any tree. */
 const targets = {
   'session-deps-libevent-with-pic.patch': 'libsession-util/cmake/session-deps',
-  'session-deps-android-cmake-toolchain.patch': 'libsession-util/cmake/session-deps',
+  'session-deps-cross-cmake-toolchain.patch': 'libsession-util/cmake/session-deps',
 }
 
 let applied = 0
