@@ -14,8 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-        with:
-          submodules: recursive
+
+      # Only the localization submodule is built here. libsession-util drags in protobuf and
+      # session-deps, and nothing in these checks compiles C++.
+      - run: git submodule update --init --recursive packages/localization/src/localization-src
 
       - uses: pnpm/action-setup@v4
 

@@ -1,3 +1,7 @@
 [submodule "packages/localization/src/localization-src"]
 	path = packages/localization/src/localization-src
 	url = https://github.com/session-foundation/session-localization
+[submodule "libsession-util"]
+	path = libsession-util
+	url = https://github.com/session-foundation/libsession-util.git
+	branch = client
