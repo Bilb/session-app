@@ -13,48 +13,23 @@ Pod::Spec.new do |s|
   s.platforms    = { :ios => "15.1" }
   s.source       = { :path => "." }
 
-  # CocoaPods compiles the shim itself here. There is no CMake in an Xcode build, so unlike the
-  # Node addon and the Android library — where CMake drives bridge-core — these are listed as
-  # sources and Xcode builds them.  The generated wire-format classes come from
-  # `pnpm --filter @session/proto codegen:cpp`, which the iOS build script runs.
-  s.source_files = [
-    "cpp/**/*.{hpp,cpp}",
-    "../bridge-core/src/**/*.{hpp,cpp}",
-    "../bridge-core/include/**/*.hpp",
-    "../proto/gen-cpp/**/*.{h,cc}",
-  ]
+  # Only the HybridObject. The shim itself is a CMake project on every platform — cmake-js for
+  # the addon, the Android Gradle plugin for Android, and the iOS build script here — because
+  # CocoaPods compiles only what lives inside the pod directory and drops a glob that reaches
+  # out of it without saying so.
+  s.source_files = "cpp/**/*.{hpp,cpp}"
 
-  # libsession's own xcframework, built by its utils/ios.sh for the same reason Android's comes
-  # from utils/android.sh: its dependencies have to be cross-compiled by libsession's build.
+  # libsession, and the shim built against it. Both produced by
+  # `pnpm --filter @session/bridge-rn build:libsession:ios`, neither committed.
   s.vendored_frameworks = "ios/libsession-util.xcframework"
+  s.vendored_libraries = "ios/lib/libsession-bridge-core.a", "ios/lib/libsession-bridge-proto.a"
 
-  libsession = "#{repo}/libsession-util"
-  router = "#{libsession}/external/session-router"
-
-  # The xcframework carries every dependency's code and none of their headers, and libsession's
-  # public headers include several of them — oxenc and oxen/quic in client.hpp alone. The same
-  # list bridge-core's CMake spells out for a prebuilt archive.
-  headers = [
-    "#{__dir__}/cpp",
-    "#{repo}/packages/bridge-core/include",
-    "#{repo}/packages/proto/gen-cpp",
-    "#{libsession}/include",
-    "#{libsession}/external/session-sqlite/include",
-    "#{libsession}/external/session-sqlite/SQLiteCpp/include",
-    "#{libsession}/external/protobuf/src",
-    "#{router}/external/oxen-libquic/include",
-    "#{router}/external/oxen-mq/oxen-encoding",
-    "#{router}/external/oxen-mq/oxen-logging/fmt/include",
-    "#{router}/external/oxen-mq/oxen-logging/spdlog/include",
-    "#{router}/external/nlohmann/single_include",
-    "#{libsession}/build-ios/sim-arm64/static-deps/include",
-  ]
-
+  # client_bridge.hpp is deliberately free of libsession's headers — it is std types and a
+  # std::function — so this is the whole of what the HybridObject needs to compile.
   s.pod_target_xcconfig = {
     "CLANG_CXX_LANGUAGE_STANDARD" => "c++20",
-    "HEADER_SEARCH_PATHS" => headers.map { |h| "\"#{h}\"" }.join(" "),
-    # The generated protobuf classes trip this, exactly as libsession's own protos do.
-    "WARNING_CFLAGS" => "$(inherited) -Wno-unused-parameter",
+    "HEADER_SEARCH_PATHS" =>
+      "\"#{__dir__}/cpp\" \"#{repo}/packages/bridge-core/include\"",
   }
 
   load File.join(__dir__, "nitrogen/generated/ios/SessionBridgeRN+autolinking.rb")

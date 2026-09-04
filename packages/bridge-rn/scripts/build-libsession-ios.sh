@@ -45,3 +45,33 @@ mkdir -p "$here/../ios"
 rm -rf "$here/../ios/libsession-util.xcframework"
 cp -R "$framework" "$here/../ios/libsession-util.xcframework"
 echo "xcframework in place: packages/bridge-rn/ios/libsession-util.xcframework"
+
+# The shim, built by CMake for the same slice.
+#
+# CocoaPods compiles only what lives inside the pod directory — a source glob reaching up into
+# packages/bridge-core is dropped in silence, and the first sign of it is our own ClientBridge
+# symbols missing at link time. So bridge-core is a CMake project here exactly as it is for the
+# Node addon and for Android, and the pod vendors what it produces.
+protoc="$(brew --prefix protobuf@21 2>/dev/null)/bin/protoc"
+[ -x "$protoc" ] || { echo "brew install protobuf@21 — see packages/bridge-core/CMakeLists.txt" >&2; exit 1; }
+
+case "$archs" in
+    arm64) slice="sim-arm64"; cmake_platform="SIMULATORARM64" ;;
+    *)     echo "the shim is only wired for a simulator arm64 slice so far" >&2; exit 1 ;;
+esac
+if [ "$platform" = "iphoneos" ]; then slice="ios-arm64"; cmake_platform="OS64"; fi
+
+build="$repo/packages/bridge-core/build-ios/$slice"
+cmake -G Ninja -S "$repo/packages/bridge-core" -B "$build" \
+    -DCMAKE_TOOLCHAIN_FILE="$libsession/external/ios-cmake/ios.toolchain.cmake" \
+    -DPLATFORM="$cmake_platform" \
+    -DDEPLOYMENT_TARGET=15.1 \
+    -DENABLE_BITCODE=OFF \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DSESSION_BRIDGE_PROTOC="$protoc" \
+    -DSESSION_BRIDGE_LIBSESSION_BUNDLE="$libsession/build-ios/$slice/libsession-util.a"
+cmake --build "$build" --target session-bridge-core --parallel
+
+mkdir -p "$here/../ios/lib"
+cp "$build/libsession-bridge-core.a" "$build/libsession-bridge-proto.a" "$here/../ios/lib/"
+echo "shim in place: packages/bridge-rn/ios/lib/"

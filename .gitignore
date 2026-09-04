@@ -20,6 +20,8 @@ packages/*/build/
 packages/proto/gen-cpp/
 libsession-util/build-ios/
 packages/bridge-rn/ios/*.xcframework/
+packages/bridge-rn/ios/lib/
+packages/bridge-core/build-ios/
 .cxx/
 libsession-util/build-android/
 
