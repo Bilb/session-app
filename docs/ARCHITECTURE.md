@@ -68,6 +68,12 @@ Conversation-scoped commands build a `Conversation` on the stack per call. That 
 handler form copies the client pointer and the id into its lambda — the `wait` form captures
 `this`, which is one more reason the shim never uses it.
 
+`packages/bridge-node` is the addon in front of it. It owns exactly one thing: the hop from
+Core's loop onto the JavaScript thread, through a thread-safe function with an unbounded queue, so
+that a frame produced on the loop is never dropped and producing one never blocks. N-API rather
+than NAN, so one build loads in both Node and Electron — which is what lets the addon be tested
+under vitest without an Electron process at all.
+
 Two commands in the schema have no libsession counterpart and answer with an error rather than
 something that half works. `approveConversation`: approval is not a flag anyone sets, it is
 recorded by messages flowing, so writing to someone is what approves them. `pollOnce`: Core owns
@@ -181,6 +187,22 @@ Append one paragraph per decision. Undocumented decisions are what rot.
 - **2026-09-04 — dependency-cruiser is the sole boundary authority.** `turbo boundaries` was
   considered and dropped: a second mechanism with its own model, for rules dep-cruiser already
   expresses.
+- **2026-09-04 — A Client creates an account unless told not to.** Opening a database is enough
+  to mint an identity, so an app that means to offer "create or restore" has already chosen for
+  the user by the time it draws anything. `defer_account` is what holds that open, and it is not
+  a detail of onboarding: it is a constructor argument, decided before the first frame. The
+  desktop app passes it, and `getAccountInfo` answers without an account rather than asking for a
+  display name that would throw.
+
+- **2026-09-04 — Nothing linked into the addon may hold absolute relocations.** Obvious in
+  hindsight, and it cost a build: libsession's own targets are position-independent, its autotools
+  dependencies get there through `--with-pic`, and libevent is the one exception, because its dep
+  script overrides the shared configure command and does not carry the flag over. There is no hook
+  to add one and session-deps is two submodules down, so the flag goes on the compiler instead —
+  `packages/bridge-node/cmake/cc-pic.sh`, to be deleted when upstream closes the gap. The Nitro
+  module will want the same thing, which is why our own proto target sets POSITION_INDEPENDENT_CODE
+  rather than the addon reaching in to say so.
+
 - **2026-09-04 — The shim's protobuf C++ is generated at build time, not committed.** The
   TypeScript codecs are committed because everything that consumes them is a TypeScript build with
   no toolchain of its own. The C++ classes are the opposite case: the only thing that needs them

@@ -13,7 +13,8 @@
     "@session/eslint-config",
     "@session/typescript-config",
     "eslint-import-resolver-typescript",
-    "react-native-web"
+    "react-native-web",
+    "node-addon-api"
   ],
   "ignore": ["**/*.native.tsx", "libsession-util/**"]
 }

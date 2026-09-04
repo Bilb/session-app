@@ -4,15 +4,15 @@ This file is the mutable one: what exists today and what comes next. `ARCHITECTU
 timeless one — how the thing is built and why. `CLAUDE.md` is the rule list. Read all three
 before changing anything; they do not repeat each other.
 
-Last updated 2026-09-04, at commit `1fb9e23`.
+Last updated 2026-09-04, at commit `809dab2`.
 
 ## State
 
-Nine commits on `main`. Working tree clean. **No git remote yet** — when one is added, the
+Ten commits on `main`. Working tree clean. **No git remote yet** — when one is added, the
 branch-and-pull-request rule in `CLAUDE.md` starts applying; until then `main` is all there is.
 
 Everything green: `pnpm format:check`, `pnpm lint` (14), `pnpm lint:manifests`,
-`pnpm boundaries`, `pnpm typecheck` (16), `pnpm test` (47 tests), `pnpm knip`,
+`pnpm boundaries`, `pnpm typecheck` (16), `pnpm test` (50 tests), `pnpm knip`,
 `pnpm codegen:check`, `pnpm dedupe --check` — the whole of `ci.yml`.
 
 The walking skeleton works end to end. `tests/e2e` drives the built Electron app through
@@ -38,6 +38,7 @@ bridge. Only the C++ is missing from that path.
 | `apps/desktop`                                 | Electron, runs, drawn by the e2e suite                              |
 | `apps/mobile`                                  | Expo, route files in place, typechecks; not yet run on a device     |
 | `bridge-core`                                  | the C++ shim: all nine callbacks, most of the command set           |
+| `bridge-node`                                  | the N-API addon, loaded by the desktop main process                 |
 | `tests/e2e`                                    | harness + the walking-skeleton spec                                 |
 
 Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-screen`,
@@ -45,8 +46,8 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
 
 ## What does not exist yet
 
-- `packages/bridge-node` (N-API addon) and `packages/bridge-rn` (Nitro module). `bridge-core`
-  exists and compiles; nothing loads it yet.
+- `packages/bridge-rn`, the Nitro module. `bridge-core` and `bridge-node` both build, and the
+  desktop app loads the addon when `SESSION_FAKE` is unset.
 - Attachment commands (`AttachmentData`, `SaveAttachment`), account restore, push and the
   testing-only `DeliverTestMessage` are not in the shim's dispatch yet. They answer with an
   error naming themselves rather than silently doing nothing.
@@ -57,14 +58,12 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
 
 ## Next steps, in order
 
-1. **`packages/bridge-node`** — N-API addon via cmake-js, loaded in the Electron main process.
-   Swap it in at `apps/desktop/src/main/bridge.ts`; nothing above that file changes.
-2. **Contract mode B** — run `@session/client-contract` against the real addon, offline, feeding
+1. **Contract mode B** — run `@session/client-contract` against the real addon, offline, feeding
    inbound messages through libsession's own test path (`DeliverTestMessage` is already in the
    schema for this). This is what proves the fake has not been lying.
-3. **`packages/bridge-rn`** — the Nitro module, then run `apps/mobile` on a device. Second
+2. **`packages/bridge-rn`** — the Nitro module, then run `apps/mobile` on a device. Second
    proof point: the same echo flow, on real bindings.
-4. Then features, via the `port-feature` skill.
+3. Then features, via the `port-feature` skill.
 
 ## Open questions that need a person
 
@@ -83,6 +82,11 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
   way to accept without answering, or the button has to mean something else. The shim answers
   this command with an error until that is settled.
 
+- **`--with-pic` for libevent in session-deps.** Its dep script overrides the shared configure
+  command and drops the flag its siblings keep, so its static archive cannot go into a shared
+  object. Nobody has hit it because nobody has built a shared library from this branch on Linux —
+  Android's toolchain is always position-independent. One line, and worth sending upstream.
+
 - **Mnemonic handling.** libsession owns the word list, so no TypeScript library is needed,
   but once words cross into JavaScript they cannot be wiped. Keep them out of logs and out of
   the store.
@@ -99,11 +103,15 @@ next person tries:
   `--reference ~/pro/contribs/libsession-util/.git/modules/<path>` per submodule borrows the
   objects already on disk; a plain recursive init downloads about a gigabyte.
 
+- **gmplib.org drops connections often enough to matter.** It is where gmp comes from and it
+  failed about half the times it was asked. Re-running the build picks up where it left off.
+- **Nothing linked into the addon may hold absolute relocations**, and libevent's dep script is
+  the one that does not pass `--with-pic`. `packages/bridge-node/cmake/cc-pic.sh` puts the flag
+  on the compiler instead; it goes away when session-deps closes the gap, which is a one-line
+  change upstream and worth raising.
+
 ```
-cmake -G Ninja -S packages/bridge-core -B build/bridge-core \
-    -DCMAKE_BUILD_TYPE=Release -DUSE_LTO=OFF \
-    -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++
-cmake --build build/bridge-core --parallel
+pnpm --filter @session/bridge-node build:native
 ```
 
 ## Traps that already cost time

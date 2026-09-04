@@ -20,6 +20,7 @@ const appDir = fileURLToPath(new URL('.', import.meta.url))
  */
 const workspacePackages = [
   '@session/app',
+  '@session/bridge-node',
   '@session/client',
   '@session/localization',
   '@session/proto',

@@ -63,6 +63,10 @@ catalog:
   '@vitejs/plugin-react': 5.2.0
   '@types/react-dom': 19.2.7
 
+  # Native bridge
+  cmake-js: 8.0.0
+  node-addon-api: 8.9.2
+
   # Test
   '@playwright/test': 1.62.1
 

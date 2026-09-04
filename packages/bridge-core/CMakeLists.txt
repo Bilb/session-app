@@ -49,6 +49,9 @@ endforeach()
 
 add_library(session-bridge-proto STATIC ${bridge_proto_srcs})
 target_include_directories(session-bridge-proto PUBLIC ${bridge_proto_gen})
+# Both archives end up inside a shared object — the Node addon is one, and so is the Nitro
+# module — so neither may contain non-relocatable code.
+set_property(TARGET session-bridge-proto PROPERTY POSITION_INDEPENDENT_CODE ON)
 # LITE_RUNTIME, matching what libsession bundles: see the option in the .proto files.
 target_link_libraries(session-bridge-proto PUBLIC protobuf::libprotobuf-lite)
 # The generated code trips -Wunused-parameter, exactly as libsession's own protos do.

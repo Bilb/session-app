@@ -26,6 +26,13 @@ struct InitOptions {
 
     std::optional<std::array<std::byte, 32>> raw_key;
     std::optional<std::string> password;
+
+    /// Opens the database without creating an account, so that `getAccountInfo` can answer "no"
+    /// and the app can show onboarding. **Without this a Client creates one on first open**, and
+    /// an app that meant to ask the user has already decided for them. Between construction and
+    /// `createAccount` or `restoreAccount` there is no identity, so anything needing one — the
+    /// session id, sending, attaching a network — fails until that call.
+    bool defer_account = false;
 };
 
 /// Receives one encoded `sessionbridge.v1.Frame` per call, in the order libsession produced them.

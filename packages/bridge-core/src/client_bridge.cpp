@@ -203,14 +203,26 @@ ClientBridge::ClientBridge(InitOptions options, Sink sink) :
                     },
     };
 
+    // The key options are types rather than values, so which one is used has to be a branch
+    // rather than an argument. Only one of these ever runs, which is what makes moving the
+    // callbacks in each of them safe.
+    auto open = [&](auto&&... key) {
+        if (options.defer_account)
+            return std::make_unique<client::Client>(
+                    options.db_path,
+                    std::move(cbs),
+                    core::defer_account{},
+                    std::forward<decltype(key)>(key)...);
+        return std::make_unique<client::Client>(
+                options.db_path, std::move(cbs), std::forward<decltype(key)>(key)...);
+    };
+
     if (options.raw_key)
-        _impl->client = std::make_unique<client::Client>(
-                options.db_path, std::move(cbs), sqlite::raw_key{*options.raw_key});
+        _impl->client = open(sqlite::raw_key{*options.raw_key});
     else if (options.password)
-        _impl->client = std::make_unique<client::Client>(
-                options.db_path, std::move(cbs), sqlite::argon2id_password{*options.password});
+        _impl->client = open(sqlite::argon2id_password{*options.password});
     else
-        _impl->client = std::make_unique<client::Client>(options.db_path, std::move(cbs));
+        _impl->client = open();
 
     if (!options.cache_dir.empty())
         _impl->client->set_cache_dir(options.cache_dir);
@@ -255,14 +267,23 @@ void ClientBridge::Impl::dispatch(const pb::Request& request) {
     switch (request.cmd_case()) {
 
         case pb::Request::kGetAccountInfo: {
+            // The first call the app makes, and on a fresh install there is no account: asking
+            // for a display name then is asking a question about an account that does not exist.
+            if (!client->core.globals.have_account()) {
+                pb::Response r;
+                r.set_request_id(id);
+                auto* info = r.mutable_account_info();
+                info->set_have_account(false);
+                info->set_network_attached(false);
+                emit(std::move(r));
+                return;
+            }
             client->display_name(on(id, [this, id](std::string name) {
                 pb::Response r;
                 r.set_request_id(id);
                 auto* info = r.mutable_account_info();
-                const bool have = client->core.globals.have_account();
-                info->set_have_account(have);
-                if (have)
-                    info->set_session_id(client->core.globals.session_id_hex());
+                info->set_have_account(true);
+                info->set_session_id(client->core.globals.session_id_hex());
                 if (!name.empty())
                     info->set_display_name(name);
                 info->set_network_attached(client->core.network() != nullptr);

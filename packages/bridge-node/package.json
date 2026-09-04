@@ -1,0 +1,34 @@
+{
+  "name": "@session/bridge-node",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The N-API addon: the C++ shim, loaded in the Electron main process",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./addon": "./build/Release/session_bridge_node.node"
+  },
+  "scripts": {
+    "build:native": "SESSION_BRIDGE_CC=${SESSION_BRIDGE_CC:-gcc} cmake-js compile --parallel --CDCMAKE_C_COMPILER=\"$PWD/cmake/cc-pic.sh\" --CDCMAKE_CXX_COMPILER=\"${SESSION_BRIDGE_CXX:-g++}\" --CDUSE_LTO=OFF --CDWITH_TESTS=OFF --CDSUBMODULE_CHECK=OFF",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@session/client": "workspace:*",
+    "node-addon-api": "catalog:",
+    "@session/proto": "workspace:*"
+  },
+  "devDependencies": {
+    "@session/eslint-config": "workspace:*",
+    "@session/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "cmake-js": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "@bufbuild/protobuf": "catalog:"
+  }
+}
