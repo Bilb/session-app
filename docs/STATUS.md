@@ -4,11 +4,11 @@ This file is the mutable one: what exists today and what comes next. `ARCHITECTU
 timeless one — how the thing is built and why. `CLAUDE.md` is the rule list. Read all three
 before changing anything; they do not repeat each other.
 
-Last updated 2026-09-04, at commit `ce8bbd2`.
+Last updated 2026-09-04, at commit `2943342`.
 
 ## State
 
-Thirteen commits on `main`. Working tree clean. **No git remote yet** — when one is added, the
+Fourteen commits on `main`. Working tree clean. **No git remote yet** — when one is added, the
 branch-and-pull-request rule in `CLAUDE.md` starts applying; until then `main` is all there is.
 
 Everything green: `pnpm format:check`, `pnpm lint` (14), `pnpm lint:manifests`,
@@ -122,6 +122,19 @@ pnpm --filter @session/bridge-node test
 The test commands are compiled in only by that build. A plain `build:native` leaves them out and
 the suite skips itself rather than reporting their absence as a regression.
 
+## What runs against the real bridge
+
+**Desktop.** `pnpm dev:desktop:real` loads the addon, and libsession opens an encrypted database
+at `~/.config/session-app/session.db` with the key sealed beside it in `db-key.bin`. Verified by
+the header not being `SQLite format 3`.
+
+Finding it turned up that the app had no name: `app.getName()` fell back to `Electron`, so its
+data went to `~/.config/Electron` beside every other Electron project on the machine, and the
+scoped package name grew a second half-used `~/.config/@session/desktop` next to it.
+`app.setName('session-app')` now runs before anything resolves a path. Deliberately not
+`Session` — the shipped client owns that directory, and a dev build opening the real client's
+data would be a bad afternoon. It is a placeholder until somebody decides on branding.
+
 ## What runs on a device
 
 `apps/mobile` runs on an Android emulator against real libsession. The shared conversation-list
@@ -143,6 +156,10 @@ cd android && ./gradlew :app:assembleDebug -PreactNativeArchitectures=x86_64 --n
 
 `--no-configuration-cache` is Gradle 9 against Expo, which still calls `node` at configuration
 time. It has nothing to do with this repository.
+
+The `run` skill is the place for all of this now: it holds the recipe for proving the bridge is
+alive on either platform, the mechanics per platform, and a traps table with every symptom either
+app has produced and what actually caused it.
 
 ## The token trap, and what now guards it
 

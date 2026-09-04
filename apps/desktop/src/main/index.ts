@@ -19,6 +19,20 @@ import { createBridge } from './bridge'
  * change a line of it.
  */
 
+/**
+ * What the app calls itself, which decides where its data lives.
+ *
+ * Without this it is "Electron": `app.getName()` falls back to that, so the database lands in
+ * `~/.config/Electron` beside every other Electron project on the machine — and the scoped
+ * package name grows a second, half-used `~/.config/@session/desktop` next to it. Set before
+ * anything reads a path, because `userData` is resolved on first use and then fixed.
+ *
+ * Deliberately not "Session": the shipped client already owns that directory, and a dev build
+ * that opened the real client's data would be a bad afternoon. A placeholder until somebody
+ * decides on branding, not a name anyone chose.
+ */
+app.setName('session-app')
+
 const here = fileURLToPath(new URL('.', import.meta.url))
 
 async function createWindow(): Promise<void> {

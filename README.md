@@ -33,7 +33,7 @@ Each package with anything surprising in it has its own README —
 
 ```
 pnpm install
-turbo dev:desktop:fake        # the fastest loop: seeded conversations, no network, no C++
+pnpm dev:desktop              # the fastest loop: seeded conversations, no network, no C++
 ```
 
 `dev:desktop:fake` runs the whole app against a working fake libsession. It is not a stub — it
@@ -42,7 +42,7 @@ delivers between accounts, routes a first message into the request list, and mar
 and including a native build on a device, is in STATUS.
 
 ```
-turbo lint typecheck test     # what CI runs
+pnpm lint && pnpm typecheck && pnpm test
 pnpm boundaries               # who may import whom, and the authority on it
 ```
 

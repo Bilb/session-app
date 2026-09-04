@@ -6,9 +6,10 @@
   "type": "module",
   "main": "./out/main/index.js",
   "scripts": {
-    "dev": "SESSION_FAKE=1 electron-vite dev",
+    "dev": "SESSION_FAKE=1 env -u ELECTRON_RUN_AS_NODE electron-vite dev",
+    "dev:real": "env -u ELECTRON_RUN_AS_NODE electron-vite dev",
     "build": "electron-vite build",
-    "start": "SESSION_FAKE=1 electron-vite preview",
+    "start": "SESSION_FAKE=1 env -u ELECTRON_RUN_AS_NODE electron-vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.preload.json && tsc --noEmit -p tsconfig.web.json",
     "test": "vitest run --passWithNoTests"
