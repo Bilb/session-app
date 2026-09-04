@@ -31,7 +31,6 @@
     "@types/react": "catalog:",
     "eslint": "catalog:",
     "react": "catalog:",
-    "react-native": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

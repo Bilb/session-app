@@ -5,6 +5,8 @@ import { ELEMENT } from '@session/test-ids'
 import { Button, Input, Screen, ScrollView, Separator, Text, XStack, YStack } from '@session/ui'
 import { useState } from 'react'
 
+import { conversationTitle } from './conversationTitle'
+
 /**
  * One conversation: its transcript and a composer.
  *
@@ -28,7 +30,10 @@ export function ConversationScreen({ conversationId }: { conversationId: string 
     void actions.send(conversationId, body)
   }
 
-  const name = conversation?.nickname ?? conversation?.displayName ?? conversationId
+  // The id stands in for the conversation as well as for the name: opening one from a route
+  // beats the store hydrating it, and a header that says nothing for a moment is a header
+  // that flickers.
+  const title = conversationTitle(conversation ?? { id: conversationId })
 
   return (
     <Screen testID={ELEMENT.conversation.screen}>
@@ -53,7 +58,7 @@ export function ConversationScreen({ conversationId }: { conversationId: string 
           numberOfLines={1}
           testID={ELEMENT.conversation.headerName}
         >
-          {name}
+          {title}
         </Text>
       </XStack>
 
@@ -144,13 +149,23 @@ function MessageRow({ message, index }: { message: Message; index: number }) {
       </Text>
       {label === undefined ? null : (
         <XStack alignItems="center" gap="$1">
-          <Text size="$2" tone="secondary" testID={ELEMENT.conversation.messageState}>
+          {/* Coloured like the bubble rather than by tone: a label only ever appears on an
+              outgoing message, and both the secondary and the accent tone are picked to read
+              against the screen — on the bubble they come out as green on green. */}
+          <Text
+            size="$2"
+            color="$messageBubbleOutgoingText"
+            opacity={0.7}
+            testID={ELEMENT.conversation.messageState}
+          >
             {label}
           </Text>
           {retryable ? (
             <Text
               size="$2"
-              tone="accent"
+              color="$messageBubbleOutgoingText"
+              weight="semibold"
+              textDecorationLine="underline"
               testID={ELEMENT.conversation.messageRetry}
               onPress={() => {
                 // Resumes rather than restarts, so an attachment that already uploaded is not
