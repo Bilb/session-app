@@ -12,7 +12,7 @@ above a `BridgeTransport` is meant to be unable to tell which one it has.
 ## Building
 
 ```
-pnpm --filter @session/bridge-rn build:libsession      # once per ABI, slow
+pnpm --filter @session/bridge-rn build:libsession:android   # once per ABI, slow
 cd apps/mobile && npx expo prebuild --platform android
 cd android && ./gradlew :app:assembleDebug -PreactNativeArchitectures=x86_64 --no-configuration-cache
 ```

@@ -15,7 +15,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "build:libsession": "./scripts/build-libsession-android.sh",
+    "build:libsession:android": "./scripts/build-libsession-android.sh",
     "build:libsession:ios": "./scripts/build-libsession-ios.sh"
   },
   "dependencies": {

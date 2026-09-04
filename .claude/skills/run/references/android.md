@@ -32,6 +32,15 @@ timeout 15 $A devices
 Sixty five-second attempts is five minutes, which is generous for a warm AVD and short enough
 to notice. If it expires, read `$SCRATCH/emulator.log` rather than trying again.
 
+## Building the native side
+
+```sh
+pnpm --filter @session/bridge-rn build:libsession:android    # one ABI by default, or `all`
+```
+
+Slow the first time — it cross-compiles libsession and every dependency for the ABI — and
+incremental after that. `packages/bridge-rn/README.md` has the rest of the chain.
+
 ## Install and launch
 
 ```sh

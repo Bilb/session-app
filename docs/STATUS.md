@@ -162,7 +162,7 @@ ask for a vocabulary of about twenty names Session does not use, so `themes.ts` 
 them onto Session's rather than adding them one warning at a time.
 
 ```
-pnpm --filter @session/bridge-rn build:libsession
+pnpm --filter @session/bridge-rn build:libsession:android
 cd apps/mobile && npx expo prebuild --platform android
 cd android && ./gradlew :app:assembleDebug -PreactNativeArchitectures=x86_64 --no-configuration-cache
 ```

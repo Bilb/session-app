@@ -26,7 +26,7 @@ set(SESSION_BRIDGE_LIBSESSION_BUNDLE "${SESSION_LIBSESSION_ANDROID}/libsession-u
 if(NOT EXISTS "${SESSION_BRIDGE_LIBSESSION_BUNDLE}")
     message(FATAL_ERROR
         "No libsession for ${ANDROID_ABI}. Build it first:\n"
-        "  pnpm --filter @session/bridge-rn build:libsession")
+        "  pnpm --filter @session/bridge-rn build:libsession:android")
 endif()
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/../../bridge-core bridge-core)
