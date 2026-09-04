@@ -2,6 +2,11 @@ syntax = "proto3";
 
 package sessionbridge.v1;
 
+// libsession bundles protobuf-lite and nothing else, and the shim links against that
+// same copy. Lite drops reflection, TextFormat and JSON, none of which cross this
+// bridge. protobuf-es ignores this option, so the TypeScript codecs are unaffected.
+option optimize_for = LITE_RUNTIME;
+
 import "sessionbridge/v1/types.proto";
 
 // Everything the app asks libsession to do.

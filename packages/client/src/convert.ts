@@ -86,11 +86,11 @@ function fromAttachmentPb(pb: AttachmentPb): Attachment {
     ...(pb.contentType === undefined ? {} : { contentType: pb.contentType }),
     ...(pb.filename === undefined ? {} : { filename: pb.filename }),
     ...(pb.caption === undefined ? {} : { caption: pb.caption }),
-    size: toNumber(pb.size),
+    ...(pb.size === undefined ? {} : { size: toNumber(pb.size) }),
     voiceMessage: pb.voiceMessage,
     ...(pb.width === undefined ? {} : { width: pb.width }),
     ...(pb.height === undefined ? {} : { height: pb.height }),
-    downloaded: pb.downloaded,
+    uploaded: pb.uploaded,
   }
 }
 
@@ -118,7 +118,6 @@ export function fromMessagePb(pb: MessagePb): Message {
           },
         }),
     ...(deleted === undefined ? {} : { deleted }),
-    unread: pb.unread,
   }
 }
 

@@ -35,11 +35,13 @@ export interface Attachment {
   contentType?: string
   filename?: string
   caption?: string
-  size: number
+  /** Unset until an outgoing attachment has uploaded; a sender's claim on an incoming one. */
+  size?: number
   voiceMessage: boolean
   width?: number
   height?: number
-  downloaded: boolean
+  /** On the file server — not "the bytes are here". libsession does not record a local path. */
+  uploaded: boolean
 }
 
 export interface OutgoingAttachment {
@@ -71,7 +73,6 @@ export interface Message {
   attachments: Attachment[]
   replyTo?: Reply
   deleted?: Deletion
-  unread: boolean
 }
 
 export interface Conversation {

@@ -54,15 +54,24 @@ ordered and exactly one carries a result; different indexes interleave.
 Every one of them is a unix-millisecond timestamp, a sqlite rowid or a byte count, all far
 inside 2^53. `jstype = JS_NUMBER` is not the way to say this — protobuf-es ignores it.
 
-### The shim, when it lands
+### The shim
 
-One C++ `ClientBridge` compiled against the client-branch headers, per platform, with a Nitro
-module in front of it on mobile and an N-API addon in the Electron main process. It registers
-every libsession callback at construction, serialises each into an `Event` frame, and hands
-them to a sink that only enqueues. It sets **no libsession dispatcher**: handlers run inline on
-Core's loop doing nothing but encode-and-enqueue, and the platform adapter owns the hop onto
-the JS thread. `packages/client/src/fake/fakeBridge.ts` is the protocol written out in
-TypeScript and is the reference to match.
+`packages/bridge-core` is one C++ `ClientBridge` compiled against the client-branch headers, with
+a Nitro module in front of it on mobile and an N-API addon in the Electron main process. It
+registers every libsession callback at construction, serialises each into an `Event` frame, and
+hands them to a sink that only enqueues. It sets **no libsession dispatcher**: handlers run inline
+on Core's loop doing nothing but encode-and-enqueue, and the platform adapter owns the hop onto the
+JS thread. `packages/client/src/fake/fakeBridge.ts` is the protocol written out in TypeScript and
+is the reference to match.
+
+Conversation-scoped commands build a `Conversation` on the stack per call. That is safe because the
+handler form copies the client pointer and the id into its lambda — the `wait` form captures
+`this`, which is one more reason the shim never uses it.
+
+Two commands in the schema have no libsession counterpart and answer with an error rather than
+something that half works. `approveConversation`: approval is not a flag anyone sets, it is
+recorded by messages flowing, so writing to someone is what approves them. `pollOnce`: Core owns
+its poll ticker and exposes no one-shot entry point. Both are open questions in `STATUS.md`.
 
 ## The fake, and why it is not a stub
 
@@ -172,5 +181,26 @@ Append one paragraph per decision. Undocumented decisions are what rot.
 - **2026-09-04 — dependency-cruiser is the sole boundary authority.** `turbo boundaries` was
   considered and dropped: a second mechanism with its own model, for rules dep-cruiser already
   expresses.
+- **2026-09-04 — The shim's protobuf C++ is generated at build time, not committed.** The
+  TypeScript codecs are committed because everything that consumes them is a TypeScript build with
+  no toolchain of its own. The C++ classes are the opposite case: the only thing that needs them
+  already has CMake and a compiler. Committing them would put a pinned `protoc` on the per-PR job,
+  which compiles no C++ at all, and a version drift there would fail `codegen:check` in a job with
+  no way to be right.
+
+- **2026-09-04 — The native build uses gcc on Linux, not clang.** libsession's static dependencies
+  include libtasn1, whose gnulib vendoring skips its own `bool` shim only when the compiler is in
+  C23 mode. gcc 15 defaults to C23; clang 21 still defaults to C17, engages the shim, and cannot
+  compile it, because the `HAVE_STDBOOL_H` the shim needs is never defined. Nothing about our own
+  code prefers either compiler, and the plan's clang+lld preference predates meeting this.
+
+- **2026-09-04 — Three wire fields were wrong, and the shim is what found them.** `Attachment` had
+  `downloaded`, which libsession does not report: what it has is `uploaded` — on the file server —
+  and it deliberately records no local path, because the application chose it and a stored copy
+  would go stale the moment the file moved. `Attachment.size` is optional upstream, unset until an
+  outgoing attachment has uploaded. `Message.unread` had no source at all: unread is a count on the
+  conversation, and the field existed only because the fake had found it convenient. A fake with
+  nothing to check it against had encoded all three as facts.
+
 - **2026-09-04 — Both e2e workflows are manual.** They need a device pool or a devnet, and a
   pull request should not wait on either.
