@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package sessionbridge.v1;
+
+import "sessionbridge/v1/types.proto";
+
+// Everything libsession sends back, on ONE ordered stream.
+//
+// Command responses ride the same stream as change events, rather than resolving on a
+// separate channel, because their relative order is load-bearing. libsession's contract is
+// that a display can be built by asking once and then applying events; that only holds if a
+// list_replaced produced before the answer to get_conversations is also applied before it.
+// Two channels — a promise and a callback — give no such guarantee across an IPC or JSI
+// boundary, and the failure would be a stale row that reappears on a race we cannot
+// reproduce. One FIFO stream carries libsession's own ordering through to TypeScript
+// intact; the facade still hands callers promises, resolved from Response frames.
+
+message Frame {
+  oneof kind {
+    Response response = 1;
+    Event event = 2;
+  }
+}
+
+message Response {
+  uint32 request_id = 1;
+  // libsession reports failures as text — usually SQLite's own message. It is deliberately
+  // not reduced to an enum: the message says which constraint, and inventing codes would
+  // throw that away.
+  optional string error = 2;
+
+  oneof result {
+    Empty empty = 10;
+    AccountInfo account_info = 11;
+    Mnemonic mnemonic = 12;
+    ConversationList conversation_list = 13;
+    ConversationResult conversation = 14;
+    MessageList message_list = 15;
+    MessageIdResult message_id = 16;
+    BytesResult bytes = 17;
+    PathResult path = 18;
+    PrefResult pref = 19;
+    BoolResult bool = 20;
+  }
+}
+
+message Empty {}
+message Mnemonic { repeated string words = 1; }
+message ConversationList { repeated Conversation conversations = 1; }
+message ConversationResult { Conversation conversation = 1; }
+message MessageList { repeated Message messages = 1; }
+message MessageIdResult { int64 message_id = 1; }
+message BytesResult { bytes data = 1; }
+message PathResult { string path = 1; }
+message PrefResult { optional string value = 1; }
+message BoolResult { bool value = 1; }
+
+// Change notifications, one per libsession callback.
+//
+// Every one of these carries the whole new state rather than an id to go and fetch. That is
+// what makes a display bindable, applying the same event twice harmless, and startup
+// race-free: whatever arrives between construction and the first query lands on top of the
+// answer without contradicting it.
+message Event {
+  oneof kind {
+    ConversationEvent conversation_added = 1;
+    ConversationEvent conversation_updated = 2;
+    ConversationIdEvent conversation_removed = 3;
+    ConversationListEvent conversation_list_replaced = 4;
+    ConversationListEvent request_list_replaced = 5;
+    MessageEvent message_added = 6;
+    MessageEvent message_updated = 7;
+    ConversationIdEvent history_replaced = 8;
+    AttachmentProgress attachment_progress = 9;
+    DisplayPictureProgress display_picture_progress = 10;
+    LogRecord log = 11;
+  }
+}
+
+message ConversationEvent { Conversation conversation = 1; }
+message ConversationIdEvent { string conversation_id = 1; }
+message ConversationListEvent { repeated Conversation conversations = 1; }
+message MessageEvent {
+  string conversation_id = 1;
+  Message message = 2;
+}
+
+// Progress for one attachment transfer.
+//
+// The contract, preserved from libsession exactly because tests and UI both depend on the
+// edges: the first report of a transfer is 0/0 and means "started" — not "nothing to do".
+// `result` absent means still under way. `result == 0` means the file server accepted or
+// verified it, and is the ONLY thing that means done: done == total does not. Any other
+// value is a failure — a file server status, a negative network code, or one of the
+// sentinels in the TypeScript facade. Reports for one index arrive in order and exactly one
+// of them carries a result; reports for different indexes interleave freely.
+message AttachmentProgress {
+  // Set when this transfer belongs to a command the app issued.
+  optional uint32 request_id = 1;
+  // Set instead when libsession fetched it on its own (auto-download).
+  optional string conversation_id = 2;
+  int64 message_id = 3;
+  uint32 index = 4;
+  int64 done = 5;
+  int64 total = 6;
+  optional int32 result = 7;
+}
+
+message DisplayPictureProgress {
+  string conversation_id = 1;
+  int64 done = 2;
+  int64 total = 3;
+  optional int32 result = 4;
+}
+
+message LogRecord {
+  string message = 1;
+  string category = 2;
+  string level = 3;
+}

@@ -9,4 +9,7 @@ pnpm-lock.yaml
 **/generated/
 apps/mobile/android/
 apps/mobile/ios/
+
+# Submodules: formatted by the repos that own them.
 libsession-util/
+packages/localization/src/localization-src/

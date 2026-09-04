@@ -1,0 +1,13 @@
+version: v2
+inputs:
+  - directory: proto
+plugins:
+  - local: protoc-gen-es
+    out: src/gen
+    opt:
+      - target=ts
+      # Plain numbers for 64-bit fields. Every int64 that crosses this bridge is a unix
+      # millisecond timestamp, a sqlite rowid or a byte count — all far inside 2^53 — and
+      # bigint would otherwise spread into every comparison in the store and the UI.
+      - json_types=false
+      - import_extension=none

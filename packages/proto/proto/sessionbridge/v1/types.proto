@@ -1,0 +1,137 @@
+syntax = "proto3";
+
+package sessionbridge.v1;
+
+// Data shapes shared by commands, responses and events.
+//
+// Numeric enum values are libsession's own, so a value that crosses the bridge means the
+// same thing on both sides of it.
+//
+// Timestamps are unix milliseconds; ids are sqlite rowids; sizes are byte counts. All are
+// int64 on the wire, which protobuf-es decodes as bigint, and all are converted to plain
+// numbers by the TypeScript facade (see packages/client/src/convert.ts). Every one of them
+// is far inside 2^53 — 2^53 milliseconds is the year 287396 — and letting bigint through
+// would cost a conversion at every comparison in the store and the UI for range we cannot
+// reach. jstype = JS_NUMBER is not the way to say this: protobuf-es ignores it.
+
+enum ConversationKind {
+  CONVERSATION_KIND_UNSPECIFIED = 0;
+  CONVERSATION_KIND_DM = 1;
+  CONVERSATION_KIND_GROUP = 2;
+  CONVERSATION_KIND_COMMUNITY = 3;
+}
+
+// The lifecycle of an outgoing message, as libsession reports it.
+enum SendState {
+  SEND_STATE_PENDING = 0;
+  SEND_STATE_SENDING = 1;
+  SEND_STATE_SENT = 2;
+  SEND_STATE_FAILED = 3;
+  // Left in flight when the process stopped: libsession's send queue does not survive a
+  // restart, so anything still sending at shutdown comes back in this state.
+  SEND_STATE_INTERRUPTED = 4;
+  SEND_STATE_UPLOADING = 5;
+  SEND_STATE_UNSENDABLE = 6;
+}
+
+enum Deletion {
+  DELETION_UNSPECIFIED = 0;
+  DELETION_HERE = 1;
+  DELETION_EVERYWHERE = 2;
+}
+
+enum AutoDownload {
+  AUTO_DOWNLOAD_NONE = 0;
+  AUTO_DOWNLOAD_IMAGE_ATTACHMENTS = 1;
+  AUTO_DOWNLOAD_ALL = 2;
+}
+
+// Where a page of history starts. Newest-first, keyed by (timestamp, id) so that a page
+// seam cannot duplicate or skip a message that shares a timestamp with its neighbour.
+message MessageCursor {
+  int64 timestamp = 1;
+  int64 id = 2;
+}
+
+message Attachment {
+  uint32 index = 1;
+  optional string content_type = 2;
+  optional string filename = 3;
+  optional string caption = 4;
+  int64 size = 5;
+  bool voice_message = 6;
+  optional uint32 width = 7;
+  optional uint32 height = 8;
+  // Set once the bytes are on disk in libsession's cache.
+  bool downloaded = 9;
+}
+
+// A file being attached to a message that has not been sent yet.
+message OutgoingAttachment {
+  string path = 1;
+  optional string content_type = 2;
+  optional string filename = 3;
+  optional string caption = 4;
+  bool voice_message = 5;
+  // libsession does not measure the image itself; whoever picked the file supplies these.
+  optional uint32 width = 6;
+  optional uint32 height = 7;
+}
+
+// The message a reply points at, resolved one level deep only — a reply to a reply shows
+// its own parent, not the whole chain.
+message Reply {
+  string author = 1;
+  int64 timestamp = 2;
+  optional int64 message_id = 3;
+  optional string body = 4;
+}
+
+message Message {
+  int64 id = 1;
+  string conversation_id = 2;
+  string author = 3;
+  int64 timestamp = 4;
+  string body = 5;
+  bool outgoing = 6;
+  SendState send_state = 7;
+  repeated Attachment attachments = 8;
+  optional Reply reply_to = 9;
+  optional Deletion deleted = 10;
+  bool unread = 11;
+}
+
+// A flattened AnyConversation: the fields every kind has, plus the DM-only ones.
+message Conversation {
+  string id = 1;
+  ConversationKind kind = 2;
+  string display_name = 3;
+  optional string nickname = 4;
+  int64 last_activity = 5;
+  int32 priority = 6;
+  uint32 unread_count = 7;
+  bool marked_unread = 8;
+  optional string snippet = 9;
+  optional int64 mute_until = 10;
+  AutoDownload auto_download = 11;
+
+  // DM-only.
+  bool request = 12;
+  bool awaiting_approval = 13;
+  bool note_to_self = 14;
+  bool blocked = 15;
+}
+
+message DeviceInfo {
+  string id = 1;
+  string type = 2;
+  string version = 3;
+  int64 added_at = 4;
+}
+
+message AccountInfo {
+  bool have_account = 1;
+  optional string session_id = 2;
+  optional string display_name = 3;
+  bool network_attached = 4;
+}

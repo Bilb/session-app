@@ -14,11 +14,15 @@ import {
 export { desktopMainZone, desktopRendererZone, mobileAppZone, sharedZone, uiZone, universalZone }
 
 /**
- * The repo-wide base. Every package's eslint.config.js spreads this and adds its zone.
+ * The repo-wide base, plus this package's zone.
  *
- * @param {{ tsconfigRootDir: string }} options
+ * The zone is passed in rather than appended by the caller so that it lands before the
+ * test-file override: a zone spread after it would silently switch the import rules back on
+ * for tests, which is where the fake is supposed to be used.
+ *
+ * @param {{ tsconfigRootDir: string, zone?: import('eslint').Linter.RulesRecord }} options
  */
-export function baseConfig({ tsconfigRootDir }) {
+export function baseConfig({ tsconfigRootDir, zone }) {
   return tseslint.config(
     { ignores: ['dist/**', 'out/**', 'build/**', 'coverage/**', '**/gen/**', '**/generated/**'] },
     js.configs.recommended,
@@ -80,9 +84,16 @@ export function baseConfig({ tsconfigRootDir }) {
       files: ['**/*.config.{js,mjs,cjs,ts}', '**/*.cjs'],
       extends: [tseslint.configs.disableTypeChecked],
     },
+    ...(zone ? [{ rules: zone }] : []),
     {
       files: ['**/*.test.ts', '**/*.test.tsx', '**/*.spec.ts', '**/*.spec.tsx'],
-      rules: { '@typescript-eslint/no-non-null-assertion': 'off' },
+      rules: {
+        '@typescript-eslint/no-non-null-assertion': 'off',
+        // The zone matrix is editor feedback for production code. Tests legitimately reach
+        // for the fake and for platform modules, and dependency-cruiser — which is the
+        // authority — already encodes which of those are allowed and where.
+        'no-restricted-imports': 'off',
+      },
     },
   )
 }
