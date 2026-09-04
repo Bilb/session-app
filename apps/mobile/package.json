@@ -19,7 +19,6 @@
     "@session/client": "workspace:*",
     "@session/screens": "workspace:*",
     "@session/state": "workspace:*",
-    "@session/test-ids": "workspace:*",
     "@session/ui": "workspace:*",
     "expo": "catalog:",
     "expo-constants": "catalog:",

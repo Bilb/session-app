@@ -36,6 +36,7 @@ export const ELEMENT = {
   requests: {
     screen: 'requests',
     row: (index: number) => `request-row-${index}` as const,
+    accept: (index: number) => `request-accept-${index}` as const,
     badge: 'requests-badge',
   },
   settings: {
@@ -75,6 +76,7 @@ export type ElementId =
   | 'send-button'
   | 'requests'
   | `request-row-${number}`
+  | `request-accept-${number}`
   | 'requests-badge'
   | 'settings'
   | 'settings-theme-picker'

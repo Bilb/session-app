@@ -1,9 +1,9 @@
-import { conversationFromPath } from '@session/app'
 import {
   AdaptiveShell,
   ConversationListScreen,
   ConversationScreen,
   OnboardingScreen,
+  RequestsScreen,
   SettingsScreen,
 } from '@session/screens'
 import { SessionStoreProvider, useAccount, useHydrated } from '@session/state'
@@ -43,7 +43,6 @@ function Shell() {
   const hydrated = useHydrated()
   const account = useAccount()
   const location = useLocation()
-  const openConversation = conversationFromPath(location.pathname)
 
   if (!hydrated) {
     return (
@@ -69,12 +68,15 @@ function Shell() {
         <Routes>
           <Route path="" element={null} />
           <Route path="c/:id" element={<ConversationRoute />} />
-          <Route path="requests" element={<Placeholder label="Message requests" />} />
+          <Route path="requests" element={<RequestsScreen />} />
           <Route path="settings" element={<SettingsScreen />} />
           <Route path="onboarding" element={<OnboardingScreen />} />
         </Routes>
       }
-      hasDetail={openConversation !== null}
+      // Any route but the list has something to show in the detail pane, not just a
+      // conversation: requests and settings are detail routes too, and keying this on the
+      // conversation alone left them rendering the placeholder instead of the screen.
+      hasDetail={location.pathname !== '/'}
       placeholder={<Placeholder label="Choose a conversation" />}
     />
   )
