@@ -1,3 +1,4 @@
+import { tr } from '@session/localization'
 import { useAccount } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { Screen, Separator, Text, XStack, YStack } from '@session/ui'
@@ -17,12 +18,12 @@ export function SettingsScreen() {
   return (
     <Screen padded testID={ELEMENT.settings.screen}>
       <Text size="$6" weight="bold">
-        Settings
+        {tr('sessionSettings')}
       </Text>
 
       <YStack paddingVertical="$2" gap="$0.5">
         <Text tone="secondary" size="$2">
-          Account ID
+          {tr('accountId')}
         </Text>
         <XStack alignItems="center" gap="$1">
           <Text
@@ -42,7 +43,7 @@ export function SettingsScreen() {
               void requirePorts().clipboard.setString(account.sessionId ?? '')
             }}
           >
-            Copy
+            {tr('copy')}
           </Text>
         )}
       </YStack>

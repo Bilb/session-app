@@ -3,6 +3,7 @@ import {
   ConversationListScreen,
   ConversationScreen,
   OnboardingScreen,
+  StartingScreen,
   RequestsScreen,
   SettingsScreen,
 } from '@session/screens'
@@ -18,7 +19,7 @@ import { store } from './store'
  * The desktop app.
  *
  * The route table here is one of the three declarations the route-contract test holds
- * together — it scrapes this file for `path="..."`, so the strings below are load-bearing.
+ * together - it scrapes this file for `path="..."`, so the strings below are load-bearing.
  */
 export function App() {
   useEffect(() => {
@@ -44,18 +45,7 @@ function Shell() {
   const account = useAccount()
   const location = useLocation()
 
-  if (!hydrated) {
-    return (
-      <YStack
-        flex={1}
-        alignItems="center"
-        justifyContent="center"
-        backgroundColor="$backgroundPrimary"
-      >
-        <Text tone="secondary">Starting…</Text>
-      </YStack>
-    )
-  }
+  if (!hydrated) return <StartingScreen />
 
   // Onboarding takes the whole window rather than a pane: there is no list to sit beside it,
   // and there will not be one until it has minted an identity.
