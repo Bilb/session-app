@@ -1,20 +1,21 @@
 import type { HybridObject } from 'react-native-nitro-modules'
 
-/** Everything the bridge needs to open a Client, and nothing it can work out for itself. */
+/**
+ * Everything the bridge needs to open a Client, and nothing it can work out for itself.
+ *
+ * `NativeTransportOptions` in @session/client is where this shape is documented and where callers
+ * meet it. It is written out again here because nitrogen generates the C++ struct from this
+ * declaration and cannot follow an import out of the package; `nativeTransport.native.ts` — the
+ * one file allowed to see both — asserts that the two still agree.
+ *
+ * `deferAccount` is required here and optional there on purpose: the default belongs to the
+ * caller-facing type, and making it optional here would only put a second one in the shim.
+ */
 export interface SessionBridgeOptions {
   dbPath: string
   cacheDir: string
-  /**
-   * The 32-byte database key, hex. libsession accepts one but neither derives nor stores it,
-   * so custody is the app's: generated at first boot and kept in the OS keychain.
-   */
   rawKeyHex?: string
-  /** The fallback where there is no keychain to keep a key in. */
   password?: string
-  /**
-   * Opens without creating an account, so onboarding gets to ask. Without it libsession makes
-   * one as the database opens and the app has decided for the user before drawing anything.
-   */
   deferAccount: boolean
 }
 

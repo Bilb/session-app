@@ -1,9 +1,27 @@
 import { createSessionBridge } from '@session/bridge-rn'
 
+import type { SessionBridgeOptions } from '@session/bridge-rn'
 import type { BridgeTransport } from './types'
 import type { NativeTransportOptions } from './nativeTransport.types'
 
 export type { NativeTransportOptions }
+
+/**
+ * The two declarations of the options are the same shape, and this is what keeps them that way.
+ *
+ * They cannot be one declaration: nitrogen generates the C++ struct from the interface written in
+ * `SessionBridge.nitro.ts`, and the boundary rules leave this file as the only one that may see
+ * that package. A field added on either side without the other now fails typecheck here rather
+ * than reaching the bridge as undefined.
+ *
+ * Compared with the optionality stripped, because the one difference is deliberate: see the
+ * interface in `SessionBridge.nitro.ts`.
+ */
+type Assert<T extends true> = T
+type Match<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
+export type _OptionsMatchTheNitroStruct = Assert<
+  Match<Required<NativeTransportOptions>, Required<SessionBridgeOptions>>
+>
 
 /**
  * The bridge, backed by the real libsession, over JSI.
