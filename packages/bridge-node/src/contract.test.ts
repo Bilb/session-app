@@ -104,6 +104,8 @@ async function openPeer(dir: string): Promise<Peer> {
     dbPath: join(dir, 'session.db'),
     cacheDir: join(dir, 'cache'),
     rawKey: new Uint8Array(32).fill(11),
+    // Eagerly, because a peer is only useful once it has an identity to send from.
+    deferAccount: false,
   })
   const { forFacade, ask } = tap(transport)
   const client = createSessionClient(forFacade)

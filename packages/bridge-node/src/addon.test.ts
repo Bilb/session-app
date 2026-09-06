@@ -77,6 +77,7 @@ describeAddon('the N-API addon', () => {
       dbPath: join(dir, 'eager.db'),
       cacheDir: join(dir, 'cache'),
       rawKey: new Uint8Array(32).fill(3),
+      deferAccount: false,
     })
 
     const info = new Promise<{ haveAccount: boolean; sessionId: string | undefined }>((resolve) => {
@@ -108,6 +109,7 @@ describeAddon('the N-API addon', () => {
       dbPath: join(dir, 'second.db'),
       cacheDir: join(dir, 'cache'),
       rawKey: new Uint8Array(32).fill(9),
+      deferAccount: false,
     })
 
     const answered = new Promise<string | undefined>((resolve) => {

@@ -18,6 +18,7 @@
     "build:libsession": "./scripts/build-libsession-android.sh"
   },
   "dependencies": {
+    "@session/bridge-types": "workspace:*",
     "react-native-nitro-modules": "catalog:"
   },
   "devDependencies": {

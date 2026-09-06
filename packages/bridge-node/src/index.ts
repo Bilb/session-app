@@ -1,25 +1,22 @@
 import { createRequire } from 'node:module'
 
 import type { BridgeTransport } from '@session/client'
+import type { SessionBridgeOptions } from '@session/bridge-types'
 
-export interface NodeBridgeOptions {
-  /** The database file. Created if it does not exist. */
-  dbPath: string
-  /** Where attachment bytes are cached. */
-  cacheDir: string
+/**
+ * The shared open options, minus the one the addon takes differently.
+ *
+ * N-API hands a Uint8Array straight to C++, so there is no reason to make the main process
+ * hex-encode a key for a call inside its own process — that is the only field that differs from
+ * what the Nitro bridge is given.
+ */
+export interface NodeBridgeOptions extends Omit<SessionBridgeOptions, 'rawKeyHex'> {
   /**
    * The 32-byte database key. libsession accepts one but neither derives nor stores it, which
    * is why the app has a secure-storage port at all: generate once at first boot, keep it in
    * the OS keyring, and never let it reach the renderer.
    */
   rawKey?: Uint8Array
-  /** The fallback where there is no keyring to keep a key in. */
-  password?: string
-  /**
-   * Opens without creating an account, so onboarding gets to ask. Without it libsession makes
-   * one on first open and the app has decided for the user before drawing anything.
-   */
-  deferAccount?: boolean
   /** Overrides where the addon is loaded from. `SESSION_BRIDGE_ADDON` does the same. */
   addonPath?: string
 }
