@@ -30,6 +30,15 @@ export interface SessionActions {
 
 export type SessionStore = StoreApi<SessionState> & { actions: SessionActions }
 
+/**
+ * How much the reader is meant to care.
+ *
+ * Passed as an argument rather than split into four functions, because an app maps every level
+ * to a console call in one place, and a level added later would otherwise be a breaking change
+ * for every implementation.
+ */
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
+
 export interface SessionStoreOptions {
   /**
    * Where a line of diagnostic text goes.
@@ -39,7 +48,7 @@ export interface SessionStoreOptions {
    * inconvenience, because which console a line reaches is a per-platform question. Each app
    * passes its own; leaving it out is silence.
    */
-  log?: (line: string) => void
+  log?: (level: LogLevel, line: string) => void
 }
 
 const PAGE = 30
@@ -91,6 +100,7 @@ export function createSessionStore(
       // e2e run, a device you are tailing logs from. One line, on every platform, from the one
       // place that learns it. `run`'s references say where each platform's console ends up.
       log(
+        'info',
         account.haveAccount
           ? `[session] account ${account.sessionId ?? '(no id)'}, network ${
               account.networkAttached ? 'attached' : 'not attached'

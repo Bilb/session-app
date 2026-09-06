@@ -35,8 +35,8 @@ async function openTransport(): Promise<BridgeTransport> {
 export const storePromise = openTransport().then((transport) =>
   createSessionStore(createSessionClient(transport), {
     // Reaches logcat as ReactNativeJS on Android, and the device console on iOS.
-    log: (line) => {
-      console.log(line)
+    log: (level, line) => {
+      console[level](line)
     },
   }),
 )

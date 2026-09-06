@@ -10,9 +10,13 @@
  * This test is the thing that notices when one of them moves. It deliberately has no router
  * dependency of its own: it reads the desktop table as text and asks the filesystem about
  * the mobile one.
+ *
+ * Checked in both directions. Every row below has to exist on both platforms, and neither
+ * platform may declare anything that is not a row - a screen reachable on desktop and not on
+ * mobile is the failure this is here to catch, and it does not announce itself.
  */
 
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -41,7 +45,20 @@ const ROUTES: RouteContract[] = [
 
 function declaredDesktopPaths(): string[] {
   const source = readFileSync(join(repoRoot, 'apps/desktop/src/renderer/App.tsx'), 'utf8')
-  return [...source.matchAll(/path="([^"]*)"/g)].map((match) => match[1] ?? '')
+  // `<Route path=` rather than `path=`, so that prose about this scrape is not scraped by it.
+  return [...source.matchAll(/<Route\s+path="([^"]*)"/g)].map((match) => match[1] ?? '')
+}
+
+/** The files expo-router turns into routes: everything but its own layout conventions. */
+function mobileRouteFiles(): string[] {
+  const root = join(repoRoot, 'apps/mobile/app')
+  const walk = (dir: string, prefix: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+      entry.isDirectory()
+        ? walk(join(dir, entry.name), `${prefix}${entry.name}/`)
+        : [`${prefix}${entry.name}`],
+    )
+  return walk(root, '').filter((file) => !file.split('/').some((part) => part.startsWith('_')))
 }
 
 /** Segment count plus literal comparison; a `:param` matches any one non-empty segment. */
@@ -56,6 +73,8 @@ function patternMatches(pattern: string, path: string): boolean {
   })
 }
 
+const sorted = (values: string[]): string[] => [...values].sort()
+
 describe('route contract', () => {
   it.each(ROUTES)('$path is declared by the desktop router', ({ path, desktop }) => {
     const declared = declaredDesktopPaths()
@@ -65,6 +84,14 @@ describe('route contract', () => {
 
   it.each(ROUTES)('$path has a route file in the mobile app', ({ mobile }) => {
     expect(existsSync(join(repoRoot, 'apps/mobile/app', mobile))).toBe(true)
+  })
+
+  it('declares nothing on desktop that is not a route', () => {
+    expect(sorted(declaredDesktopPaths())).toEqual(sorted(ROUTES.map((r) => r.desktop)))
+  })
+
+  it('has no route file on mobile that is not a route', () => {
+    expect(sorted(mobileRouteFiles())).toEqual(sorted(ROUTES.map((r) => r.mobile)))
   })
 
   it('builds every path as an absolute one', () => {

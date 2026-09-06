@@ -19,7 +19,7 @@ import { store } from './store'
  * The desktop app.
  *
  * The route table here is one of the three declarations the route-contract test holds
- * together - it scrapes this file for `path="..."`, so the strings below are load-bearing.
+ * together - it scrapes the path of every Route element below, so those strings are load-bearing.
  */
 export function App() {
   useEffect(() => {
