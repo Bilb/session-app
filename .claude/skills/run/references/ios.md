@@ -65,38 +65,61 @@ full, and the log will only tell you `RCTLogBoxView` became the key window.
 
 ## Driving the UI
 
-`simctl` has no tap. Use [idb](https://fbidb.io), which addresses elements through the
-accessibility system rather than the screen:
+`simctl` has no tap. Use [idb](https://fbidb.io), which reads the app's own view hierarchy, so
+every `testID` is a handle and no coordinate has to be derived from the window:
 
 ```sh
-brew install facebook/fb/idb && pip3 install fb-idb   # needs python 3.10+
-idb ui tap conversation-list-settings --match-key AXUniqueId
-idb ui set-value new-conversation-account-id --match-key AXUniqueId --value "$ACCOUNT_ID"
-idb ui describe-all --key AXUniqueId --key AXLabel --key frame | jq .
+brew trust facebook/fb && brew install facebook/fb/idb    # the tap needs trusting first
 ```
 
-`AXUniqueId` is what iOS calls `accessibilityIdentifier`, which is what react-native renders a
-`testID` as - so every string in `@session/test-ids` is directly addressable, and none of this
-needs a coordinate. `set-value` fills a field with no keyboard involved at all. Marker matching is
-a substring match, so a full id is unambiguous where a label may not be.
+**`--api axbridge` is the whole trick.** idb's default accessibility backend reports only what
+VoiceOver would see - the text leaves - and every one of them has a null `AXUniqueId`. `axbridge`
+walks the real hierarchy instead, where the `RCTViewComponentView` behind each pressable carries
+the `testID` as its `AXUniqueId`:
 
-**Untested from here.** These are idb's documented commands and the identifier chain is the one
-`@session/test-ids` already relies on for the desktop suite, but nobody has run them against this
-app yet. Confirm on the Mac and delete this paragraph.
+```sh
+$ idb ui describe-all --udid "$UDID" --api axbridge | jq -c '.[] | select(.AXUniqueId) | {AXUniqueId, frame}'
+{"AXUniqueId":"conversation-list","frame":{"x":0,"y":59,"width":402,"height":815}}
+{"AXUniqueId":"conversation-list-settings","frame":{"x":343,"y":72,"width":44,"height":44}}
+```
 
-Nothing below is needed once idb works. It is what the app was actually driven with, and what to
-fall back to on a machine without idb.
+`tap`, `set-value` and `text` do not take `--api axbridge`, so a marker cannot be matched against
+a `testID`. Resolve the frame yourself and act on its centre - which is still element-addressed,
+because the frame comes from the app rather than from the window:
+
+```sh
+centre() {
+  idb ui describe-all --udid "$UDID" --api axbridge | python3 -c '
+import json, sys
+[e] = [e for e in json.load(sys.stdin) if e.get("AXUniqueId") == sys.argv[1]]
+f = e["frame"]; print(int(f["x"] + f["width"] / 2), int(f["y"] + f["height"] / 2))' "$1"
+}
+
+read X Y < <(centre conversation-list-settings)
+idb ui tap --udid "$UDID" "$X" "$Y"                             # navigate
+idb ui set-value --udid "$UDID" "$X" "$Y" --value "$ACCOUNT_ID" # fill a field outright
+idb ui text --udid "$UDID" "$ACCOUNT_ID"                        # or type into the focused one
+```
+
+Verified end to end on the mac mini: tapping `conversation-list-settings` lands on the settings
+screen, and both `set-value` and `text` put an account ID in the new-conversation field. **The
+hardware keyboard does not have to be connected for any of it** - `ConnectHardwareKeyboard` is
+`false` on that device and `idb ui text` types anyway, because idb delivers to the target rather
+than to Simulator.
+
+`simctl openurl "$UDID" session:///new` still reaches any route in one step and is worth
+preferring to a sequence of taps. iOS asks "Open in Session?" first, and that dialog has to be
+tapped.
 
 <details>
-<summary>Driving it by coordinates, with AppleScript</summary>
+<summary>Without idb: coordinates, AppleScript, and the hardware keyboard</summary>
 
 Needs assistive access granted by a person at the machine - System Settings › Privacy & Security
-› Accessibility, for `osascript`, and it covers an ssh session too. Everything here is in device
-_points_, which is what a screenshot and the layout agree on.
+› Accessibility, for `osascript`, and it covers an ssh session too.
 
 **The window is scaled.** Simulator fits the device into whatever size the window is - 402x874
-points into 391x849 here - so nothing derived from the window frame lands where it should. The
-device view's own accessibility frame is the mapping:
+points into 391x849 - so nothing derived from the window frame lands where it should. The device
+view's own accessibility frame is the mapping:
 
 ```sh
 osascript -e 'tell application "System Events" to tell process "Simulator" \
@@ -106,20 +129,22 @@ osascript -e 'tell application "System Events" to tell process "Simulator" \
 Screen x is that x plus point x times 391/402, and the same for y. Twenty points out hits the
 label above a field, which looks exactly like a click that did not register.
 
-**Typing needs the hardware keyboard, which is off.** Keystrokes reach Simulator rather than the
-device, and some are its own shortcuts - a `keystroke` of an account ID opened the React Native
-dev menu. The I/O menu item does not stick because the setting is per device and read at boot:
+**Typing needs the hardware keyboard, which is off by default.** Keystrokes otherwise reach
+Simulator rather than the device, and some are its own shortcuts - a `keystroke` of an account ID
+opened the React Native dev menu. The I/O menu item does not stick because the setting is per
+device and read at boot:
 
 ```sh
 xcrun simctl shutdown all && killall Simulator
 /usr/libexec/PlistBuddy \
-  -c "add :DevicePreferences:$UDID:ConnectHardwareKeyboard bool true" \
-  ~/Library/Preferences/com.apple.iphonesimulator.plist   # `set` if the key exists
+  -c "set :DevicePreferences:$UDID:ConnectHardwareKeyboard true" \
+  ~/Library/Preferences/com.apple.iphonesimulator.plist   # `add ... bool true` if absent
 xcrun simctl boot "$UDID" && open -a Simulator
 ```
 
 The bare `defaults write com.apple.iphonesimulator ConnectHardwareKeyboard` form stopped working
-around Xcode 11; it is `DevicePreferences` keyed by UDID now.
+around Xcode 11; it is `DevicePreferences` keyed by UDID now, which is why every older recipe for
+it appears to do nothing.
 
 Or go through the pasteboard, which needs no restart:
 
@@ -131,10 +156,6 @@ Then click the field, click it a second time, and the `Paste | AutoFill` callout
 above it; click `Paste`. Simulator's own Edit › Paste stays disabled and is not the way in.
 
 </details>
-
-`simctl openurl "$UDID" session:///new` reaches any route in one step and is worth preferring to
-a sequence of clicks whichever way you are driving. iOS asks "Open in Session?" first, and that
-dialog has to be clicked.
 
 ## Logs
 
