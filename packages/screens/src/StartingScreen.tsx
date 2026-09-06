@@ -1,3 +1,4 @@
+import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Screen, Text, YStack } from '@session/ui'
 
@@ -12,7 +13,7 @@ export function StartingScreen() {
   return (
     <Screen testID={ELEMENT.starting.screen}>
       <YStack flex={1} alignItems="center" justifyContent="center">
-        <Text tone="secondary">Starting…</Text>
+        <Text tone="secondary">{tr('loading')}</Text>
       </YStack>
     </Screen>
   )

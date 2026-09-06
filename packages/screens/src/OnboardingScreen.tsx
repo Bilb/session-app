@@ -36,7 +36,7 @@ export function OnboardingScreen() {
             })
           }}
         >
-          {busy ? 'Creating…' : tr('onboardingAccountCreate')}
+          {busy ? tr('loading') : tr('onboardingAccountCreate')}
         </Button>
 
         {failed === null ? null : (
