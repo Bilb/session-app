@@ -203,12 +203,8 @@ message SetPref {
 message DeliverTestMessage {
   // The sender's 32-byte account seed, hex. GetTestAccountSeed is where the harness gets it.
   string sender_seed = 1;
-  string body = 3;
-  int64 timestamp = 4;
-
-  // 2 was conversation_id. A DM's conversation is its sender, so naming it separately let it
-  // disagree with the signature, which is what actually decides.
-  reserved 2;
+  string body = 2;
+  int64 timestamp = 3;
 }
 
 // This client's own account seed, so the harness can forge messages from it to another client.
