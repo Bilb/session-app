@@ -12,7 +12,7 @@ export type { ScreenProps }
  * a phone.
  *
  * `edges` is accepted and ignored here. A desktop window has no notch and no home indicator,
- * and the prop exists on both variants so a screen can be written once — see Screen.native.tsx,
+ * and the prop exists on both variants so a screen can be written once - see Screen.native.tsx,
  * where it is the whole point.
  */
 export function Screen({ children, padded = false, testID }: ScreenProps) {

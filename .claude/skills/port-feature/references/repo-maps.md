@@ -1,7 +1,7 @@
 # Where things live in the old clients
 
 Paths are relative to each repo's root. All three have a current `ARCHITECTURE.md` worth
-reading before starting — they are better than any summary of them.
+reading before starting - they are better than any summary of them.
 
 ## session-desktop (`~/pro/contribs/session-desktop`)
 
@@ -9,7 +9,7 @@ Electron, React, Redux Toolkit, styled-components. `ARCHITECTURE.md` is 42k and 
 
 | what                         | where                                                            |
 | ---------------------------- | ---------------------------------------------------------------- |
-| screens and components       | `ts/components/` — 328 tsx across 20 subdirectories              |
+| screens and components       | `ts/components/` - 328 tsx across 20 subdirectories              |
 | conversation surface         | `ts/components/conversation/`                                    |
 | left pane, conversation list | `ts/components/leftpane/`                                        |
 | dialogs                      | `ts/components/dialog/`                                          |
@@ -17,8 +17,8 @@ Electron, React, Redux Toolkit, styled-components. `ARCHITECTURE.md` is 42k and 
 | state (do not port)          | `ts/state/ducks/` (23 slices), `ts/state/selectors/` (22 files)  |
 | protocol (do not port)       | `ts/session/`, `ts/receiver/`                                    |
 | libsession calls (replaced)  | `ts/webworker/workers/browser/libsession_worker_interface.ts`    |
-| themes                       | `ts/themes/` — `variableColors.tsx` is the semantic token list   |
-| strings                      | `ts/localization/` — a submodule, the same one this repo has     |
+| themes                       | `ts/themes/` - `variableColors.tsx` is the semantic token list   |
+| strings                      | `ts/localization/` - a submodule, the same one this repo has     |
 | main process only            | `ts/node/`                                                       |
 
 The theme mapping is the useful part: `variableColors.tsx` names the same semantic roles that
@@ -35,7 +35,7 @@ is localization.
 | newest UI, worth copying | `preferences/prosettings/`, `onboarding/`, `conversation/v3/`  |
 | older UI, being replaced | `conversation/v2/`, `mediasend/`, `home/HomeActivity.kt`       |
 | reusable components      | `ui/components/`                                               |
-| theme                    | `ui/theme/` — `ThemeColors.kt` is the semantic token interface |
+| theme                    | `ui/theme/` - `ThemeColors.kt` is the semantic token interface |
 | strings (generated)      | `app/src/main/res/values/strings.xml`                          |
 | **accessibility ids**    | `content-descriptions/src/main/res/values/strings.xml`         |
 | QA hooks                 | `qa/QaLaunchConfig.kt`                                         |
@@ -46,7 +46,7 @@ model it follows is the one this repo took. When porting a screen, its ids are a
 list.
 
 `QaLaunchConfig.kt` and iOS's `DeveloperSettingsViewModel+Testing.swift` are a deliberate
-cross-platform contract — session-appium is written against the shared field names. Any mock
+cross-platform contract - session-appium is written against the shared field names. Any mock
 lever a feature needs must keep the same name here.
 
 ## session-ios (`~/pro/contribs/session-ios`)
@@ -56,10 +56,10 @@ module layout, §16 UI, §19 localization.
 
 | what                     | where                                                                         |
 | ------------------------ | ----------------------------------------------------------------------------- |
-| design system            | `SessionUIKit/` — components, themes, and the newer shared screens            |
+| design system            | `SessionUIKit/` - components, themes, and the newer shared screens            |
 | newest UI, worth copying | `SessionUIKit/Screens/`, `Session/Onboarding/`                                |
 | older UI, being replaced | `Session/Conversations/ConversationVC*`, `SessionTableViewController`         |
-| theme                    | `SessionUIKit/Style Guide/Themes/` — `Theme+Colors.swift` is the token enum   |
+| theme                    | `SessionUIKit/Style Guide/Themes/` - `Theme+Colors.swift` is the token enum   |
 | strings (generated)      | `Session/Meta/Translations/Localizable.xcstrings`                             |
 | QA hooks                 | `Session/Settings/DeveloperSettings/DeveloperSettingsViewModel+Testing.swift` |
 | libsession (replaced)    | remote SPM package, `import SessionUtil`                                      |
@@ -69,7 +69,7 @@ Android's model is the better one and the one this repo uses.
 
 ## What the three agree on
 
-Four themes — classic and ocean, each light and dark — and seven accents. Android's
+Four themes - classic and ocean, each light and dark - and seven accents. Android's
 `ThemeColors` and iOS's `ThemeValue` describe the same semantic roles, and `@session/theme-tokens`
 carries them forward. That semantic layer is the portable part of the design; the hex values
 underneath it are not.

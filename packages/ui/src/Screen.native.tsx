@@ -11,7 +11,7 @@ const ALL_EDGES = ['top', 'bottom', 'left', 'right'] as const
  * The native flavour: the same frame, held clear of the hardware.
  *
  * Padding rather than a SafeAreaView, because the inset belongs to the content and not to the
- * background — a list that stops short of the bottom of the display looks like a bug, and one
+ * background - a list that stops short of the bottom of the display looks like a bug, and one
  * that scrolls its rows under the home indicator does not.
  *
  * Two stacks rather than one so that the inset and the padding add up: the inset is a number of

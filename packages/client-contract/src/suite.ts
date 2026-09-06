@@ -3,7 +3,7 @@
  *
  * The fake runs this on every PR. The real addon runs the same scenarios offline, feeding
  * inbound messages through libsession's own test path rather than a network. When the two
- * disagree, one of them is wrong and the suite says which behaviour was expected — which is
+ * disagree, one of them is wrong and the suite says which behaviour was expected - which is
  * the whole point: a fake nobody checks is a fake that quietly stops predicting anything.
  *
  * Written as a function of a harness so it can be handed either implementation.
@@ -60,7 +60,7 @@ export interface ContractOptions {
    * Scenarios this implementation cannot satisfy, and why, keyed by title.
    *
    * A written reason rather than a flag, because the only honest use of this is a behaviour
-   * libsession does not have yet — and the reason is what stops it becoming a way to make a
+   * libsession does not have yet - and the reason is what stops it becoming a way to make a
    * failing implementation look green. The skipped titles carry it into the test output.
    */
   unsupported?: Record<string, string>
@@ -76,7 +76,7 @@ export function runSessionClientContract(
   const it: Runner = (name, body) => {
     const reason = unsupported[name]
     if (reason === undefined) t.it(name, body)
-    else t.it.skip(`${name} — ${reason}`, body)
+    else t.it.skip(`${name} - ${reason}`, body)
   }
 
   describe('SessionClient contract', () => {
@@ -86,7 +86,7 @@ export function runSessionClientContract(
 
       const messageId = await alice.sendMessage(bobId, { body: 'hello' })
 
-      // The row exists the moment the call resolves — which is why the app needs no
+      // The row exists the moment the call resolves - which is why the app needs no
       // optimistic copy of its own to reconcile later.
       const added = seen.events.find((e) => e.type === 'message-added')
       expect(added).toBeDefined()
@@ -110,8 +110,8 @@ export function runSessionClientContract(
       expect(updates.length).toBeGreaterThan(0)
       const last = updates[updates.length - 1]
       if (last?.type !== 'message-updated') throw new Error('unreachable')
-      // A terminal state, not a particular one: offline — which is what the addon runs as,
-      // with no swarm to reach — the send terminates in `failed`, and that is the same
+      // A terminal state, not a particular one: offline - which is what the addon runs as,
+      // with no swarm to reach - the send terminates in `failed`, and that is the same
       // contract. What this scenario is about is that it arrived as an update.
       expect(['sent', 'failed']).toContain(last.message.sendState)
 

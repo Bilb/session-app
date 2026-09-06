@@ -15,7 +15,7 @@ set(SESSION_BRIDGE_LIBSESSION "${CMAKE_CURRENT_SOURCE_DIR}/../../libsession-util
 # A prebuilt libsession, for platforms where building it inside the consumer's CMake project is
 # not how libsession is built. Android is one: its dependencies are cross-compiled by
 # utils/android.sh, which is the only path that gets the NDK toolchain as far as the CMake-based
-# ones — build it in-place there and simdutf comes out targeting the host, which shows up as
+# ones - build it in-place there and simdutf comes out targeting the host, which shows up as
 # libstdc++ symbols missing at link time.
 set(SESSION_BRIDGE_LIBSESSION_BUNDLE "" CACHE FILEPATH
     "Prebuilt libsession-util.a from utils/static-bundle.sh; built from source when empty")
@@ -25,12 +25,12 @@ if(SESSION_BRIDGE_LIBSESSION_BUNDLE)
     set_target_properties(session-libsession-prebuilt PROPERTIES
         IMPORTED_LOCATION "${SESSION_BRIDGE_LIBSESSION_BUNDLE}")
     # The bundle carries every dependency's code and none of their headers, and libsession's
-    # public headers include several of them — oxenc and oxen/quic in client.hpp alone. Building
+    # public headers include several of them - oxenc and oxen/quic in client.hpp alone. Building
     # from source gets these through the targets it links; a prebuilt archive has no targets, so
     # the paths are spelled out.
     set(_ls "${SESSION_BRIDGE_LIBSESSION}")
     set(_router "${_ls}/external/session-router")
-    # Dependencies the bundle's own build installed — ngtcp2 and friends — which sit beside it.
+    # Dependencies the bundle's own build installed - ngtcp2 and friends - which sit beside it.
     get_filename_component(_bundle_dir "${SESSION_BRIDGE_LIBSESSION_BUNDLE}" DIRECTORY)
     target_include_directories(session-libsession-prebuilt INTERFACE
         "${_ls}/include"
@@ -49,7 +49,7 @@ if(SESSION_BRIDGE_LIBSESSION_BUNDLE)
     #
     #   session-sqlite's own archives     session::sqlite::Database, session::secure_buffer
     #   sqlite3mc, utf8proc               the deps it and libsession::util link
-    #   hogweed, tasn1, idn2, unistring, gmp   gnutls's chain — bundled gnutls, not its deps
+    #   hogweed, tasn1, idn2, unistring, gmp   gnutls's chain - bundled gnutls, not its deps
     #
     # The last group only surfaces once something reaches the network layer, because nothing
     # else pulls gnutls in. Worth raising upstream; until then they go on the link line beside
@@ -93,7 +93,7 @@ endif()
 find_program(SESSION_BRIDGE_PROTOC protoc REQUIRED)
 
 # It has to be the *matching* protoc. Generated protobuf code carries a hard assertion about the
-# runtime it was produced for, so a newer compiler does not degrade — it fails somewhere deep
+# runtime it was produced for, so a newer compiler does not degrade - it fails somewhere deep
 # inside a generated header, with an error that says nothing about versions. Checked here so the
 # failure names itself and the fix.
 #
@@ -144,8 +144,8 @@ endforeach()
 
 add_library(session-bridge-proto STATIC ${bridge_proto_srcs})
 target_include_directories(session-bridge-proto PUBLIC ${bridge_proto_gen})
-# Both archives end up inside a shared object — the Node addon is one, and so is the Nitro
-# module — so neither may contain non-relocatable code.
+# Both archives end up inside a shared object - the Node addon is one, and so is the Nitro
+# module - so neither may contain non-relocatable code.
 set_property(TARGET session-bridge-proto PROPERTY POSITION_INDEPENDENT_CODE ON)
 # LITE_RUNTIME, matching what libsession bundles: see the option in the .proto files. A prebuilt
 # bundle already contains it, headers and all coming from the imported target above.

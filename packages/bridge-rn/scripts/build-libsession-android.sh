@@ -5,7 +5,7 @@ set -euo pipefail
 #
 # This wraps libsession's own utils/static-bundle.sh with the arguments utils/android.sh uses,
 # rather than calling android.sh itself, because that script always builds all four ABIs and
-# packs a tarball — and an emulator only ever needs one of them.
+# packs a tarball - and an emulator only ever needs one of them.
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 libsession="$here/../../../libsession-util"

@@ -31,7 +31,7 @@ import type {
 /**
  * Every int64 on this bridge is a unix-millisecond timestamp, a sqlite rowid or a byte
  * count. 2^53 milliseconds is the year 287396 and rowids do not get there either, so the
- * conversion is lossless in practice — and it keeps bigint out of every comparison in the
+ * conversion is lossless in practice - and it keeps bigint out of every comparison in the
  * store and the UI.
  */
 function toNumber(value: bigint): number {

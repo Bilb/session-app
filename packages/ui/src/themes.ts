@@ -46,7 +46,7 @@ export const DEFAULT_ACCENT: PrimaryColorState = 'green'
 /**
  * The names tamagui's own components reach for.
  *
- * Session's vocabulary is semantic and its own — `backgroundPrimary`, `textSecondary` — and
+ * Session's vocabulary is semantic and its own - `backgroundPrimary`, `textSecondary` - and
  * tamagui's built-ins know nothing about it: they ask for `$background`, `$colorHover`,
  * `$backgroundFocus` and the rest. A name no theme defines resolves to 0 in silence, so a
  * built-in with a gap here renders an invisible border or a transparent surface and reports

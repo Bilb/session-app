@@ -3,7 +3,7 @@
  * knowing which one it is running on.
  *
  * libsession owns the database, the network and the protocol, so nothing here is about
- * data — these are the things an OS does: pick a file, show a notification, remember a key.
+ * data - these are the things an OS does: pick a file, show a notification, remember a key.
  *
  * Set once at boot, before anything renders, rather than passed through React context: the
  * store and the boot sequence both read ports from outside any component, and a context

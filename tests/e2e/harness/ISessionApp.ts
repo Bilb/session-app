@@ -3,7 +3,7 @@ import type { ElementId } from '@session/test-ids'
 /**
  * What a test may ask of a running client, whichever one it is.
  *
- * Every member here must use platform-neutral signatures only — primitives, enums and plain
+ * Every member here must use platform-neutral signatures only - primitives, enums and plain
  * data. No Playwright Locator and no Appium element type may appear in this file. Anything
  * one platform cannot do today belongs in a narrower interface until every platform can
  * satisfy it, at which point it is promoted here.
@@ -21,7 +21,7 @@ export interface ISessionApp {
   tap(id: ElementId): Promise<void>
   type(id: ElementId, text: string): Promise<void>
   readText(id: ElementId): Promise<string>
-  /** Every occurrence, in the order they appear — a transcript, a conversation list. */
+  /** Every occurrence, in the order they appear - a transcript, a conversation list. */
   readAllText(id: ElementId): Promise<string[]>
   screenshot(name: string): Promise<void>
   close(): Promise<void>

@@ -8,7 +8,7 @@ const KEY = 'session.db.key'
  * The database key.
  *
  * libsession accepts a key but neither derives nor stores one, so custody is the app's. A
- * random 32 bytes at first launch, kept in the OS keychain — which is the entire reason there
+ * random 32 bytes at first launch, kept in the OS keychain - which is the entire reason there
  * is a secure-storage port at all.
  */
 export async function resolveDatabaseKey(): Promise<string> {

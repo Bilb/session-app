@@ -7,7 +7,7 @@ import type { SessionBridgeOptions } from '@session/bridge-types'
  * The shared open options, minus the one the addon takes differently.
  *
  * N-API hands a Uint8Array straight to C++, so there is no reason to make the main process
- * hex-encode a key for a call inside its own process — that is the only field that differs from
+ * hex-encode a key for a call inside its own process - that is the only field that differs from
  * what the Nitro bridge is given.
  */
 export interface NodeBridgeOptions extends Omit<SessionBridgeOptions, 'rawKeyHex'> {
@@ -49,7 +49,7 @@ function loadAddon(explicitPath: string | undefined): Addon {
  * The bridge, backed by the real libsession.
  *
  * Runs in the Electron main process: Core owns its own threads, so nothing here blocks, and the
- * main process already owns the things the bridge needs — the key in safeStorage, the user data
+ * main process already owns the things the bridge needs - the key in safeStorage, the user data
  * directory, and the shutdown that has to close the database. The renderer never sees this, only
  * the frames it produces.
  */

@@ -1,7 +1,7 @@
 # `@session/bridge-rn`
 
 The Nitro module: `session-bridge-core` behind a JSI HybridObject, loaded in the mobile app. Like
-the addon, it holds no logic — what it owns is the hop from Core's loop onto the JavaScript
+the addon, it holds no logic - what it owns is the hop from Core's loop onto the JavaScript
 thread. Nitro's void callbacks are bound to the runtime's dispatcher, so calling the sink from
 Core's loop arrives on the JS thread in order, which is the same guarantee the addon gets from a
 thread-safe function.

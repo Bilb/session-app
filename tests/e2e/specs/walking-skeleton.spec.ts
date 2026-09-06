@@ -36,7 +36,7 @@ sessionTest({
     await alice.tap(ELEMENT.conversation.sendButton)
 
     // libsession stores the row before the send completes, so it is on screen immediately
-    // rather than after a round trip — no optimistic copy was involved.
+    // rather than after a round trip - no optimistic copy was involved.
     await expect
       .poll(async () => alice.readAllText(ELEMENT.conversation.messageBody), { timeout: 10_000 })
       .toContain('Hello from the walking skeleton')

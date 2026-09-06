@@ -7,12 +7,12 @@ import { join } from 'node:path'
 /**
  * The wire format's C++ classes.
  *
- * Here rather than in packages/proto because that package is platform-neutral by rule — no node
- * builtins, checked by `pnpm boundaries` — and this shells out to a compiler. It is tooling that
+ * Here rather than in packages/proto because that package is platform-neutral by rule - no node
+ * builtins, checked by `pnpm boundaries` - and this shells out to a compiler. It is tooling that
  * happens to be about proto, not part of it.
  *
  * CMake generates its own copy when it builds the shim, which covers the Node addon and the
- * Android library. iOS has no CMake in the loop — CocoaPods compiles the sources directly — so
+ * Android library. iOS has no CMake in the loop - CocoaPods compiles the sources directly - so
  * the classes have to exist on disk before `pod install`, and this is what puts them there.
  *
  * Not committed, for the reason in ARCHITECTURE's decision log: committing them would put a

@@ -17,7 +17,7 @@ export const routes = {
  * Which conversation a path is showing, or null.
  *
  * Reading the selection out of the URL rather than holding it in state is what makes the
- * back button — and the Android hardware one — walk back out of a conversation without
+ * back button - and the Android hardware one - walk back out of a conversation without
  * anything having to remember that it should.
  */
 export function conversationFromPath(pathname: string): string | null {

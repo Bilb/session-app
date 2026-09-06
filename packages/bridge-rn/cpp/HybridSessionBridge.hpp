@@ -6,7 +6,7 @@
 
 // Deliberately fully qualified. Nitro puts us in margelo::nitro::session::bridge::rn, so an
 // unqualified session::bridge::ClientBridge resolves to this namespace's own `session` and never
-// reaches the shim — with an error that reads as if the header were missing.
+// reaches the shim - with an error that reads as if the header were missing.
 namespace session::bridge {
 class ClientBridge;
 }

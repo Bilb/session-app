@@ -3,7 +3,7 @@
  *
  * It exists so the UI, the store and the e2e suite can be built and run before the C++ shim
  * does, and so they can keep being tested afterwards without a devnet. It is not a stub:
- * it honours the parts of libsession's contract the app actually depends on —
+ * it honours the parts of libsession's contract the app actually depends on -
  *
  *   - a send stores its row and reports it immediately, then moves through send states,
  *   - every change event carries the whole new state, never an id to go and fetch,
@@ -44,7 +44,7 @@ interface FakeConversationState {
   messages: Message[]
   /**
    * Which incoming messages are still unread. Held beside the messages rather than on them
-   * because libsession counts unread on the conversation and reports nothing per message —
+   * because libsession counts unread on the conversation and reports nothing per message -
    * this is the fake's own bookkeeping and it does not belong on the wire.
    */
   unread: Set<number>
@@ -281,7 +281,7 @@ export class FakeAccount {
       timestamp: now,
       body,
       outgoing: true,
-      // Stored and shown before it is sent — which is why the app needs no optimistic copy.
+      // Stored and shown before it is sent - which is why the app needs no optimistic copy.
       sendState: 'pending',
       attachments: [],
       ...(replyTo === undefined

@@ -1,7 +1,7 @@
 /**
  * The zone matrix: which module may be imported from where.
  *
- * This is the editor-facing half of boundary enforcement — it fires while you type and the
+ * This is the editor-facing half of boundary enforcement - it fires while you type and the
  * message names the sanctioned alternative. The authority is dependency-cruiser
  * (tooling/depcruise-config/root.cjs), which sees the whole graph at once and runs in CI.
  * Both are kept in step deliberately: a rule that only exists here is a rule that only
@@ -68,7 +68,7 @@ export const sharedZone = restrict([
   NO_BRIDGE_NODE,
 ])
 
-/** packages/ui — the one place tamagui and react-native primitives are allowed. */
+/** packages/ui - the one place tamagui and react-native primitives are allowed. */
 export const uiZone = restrict([
   NO_DEEP,
   NO_FAKE,
@@ -79,7 +79,7 @@ export const uiZone = restrict([
   NO_BRIDGE_NODE,
 ])
 
-/** apps/mobile — Expo and react-native are its own; electron and the node addon are not. */
+/** apps/mobile - Expo and react-native are its own; electron and the node addon are not. */
 export const mobileAppZone = restrict([NO_DEEP, NO_ELECTRON, NO_ROUTER, NO_BRIDGE_NODE])
 
 /** The desktop renderer: DOM + react-router, but never electron or the addon directly. */

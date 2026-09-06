@@ -43,7 +43,7 @@ export const config = createTamagui({
   media: {
     /**
      * Phone: one pane at a time, the router provides back.
-     * gtSm: list and detail side by side — a tablet in landscape, or any desktop window.
+     * gtSm: list and detail side by side - a tablet in landscape, or any desktop window.
      * gtLg: the same, with room for a wider list.
      *
      * These are used, not decorative: AdaptiveShell reads them, and it is the only place

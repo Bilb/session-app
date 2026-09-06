@@ -5,7 +5,7 @@ import type { ComponentProps } from 'react'
 /**
  * A translated string, with the emphasis the translators put in it.
  *
- * The catalogue carries a little HTML — bold and line breaks, a few hundred times over —
+ * The catalogue carries a little HTML - bold and line breaks, a few hundred times over -
  * because the clients that render it today are web-based. React Native has no innerHTML, so
  * this walks the parsed segments and nests Text instead. That works identically on both
  * platforms, which is what lets the strings be used as they are rather than generated into

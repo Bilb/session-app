@@ -64,7 +64,7 @@ describe('applyEvent', () => {
     ])
 
     // Approval is an update, not a remove-then-add, so the row has to be taken out of the
-    // list it used to be in — otherwise it shows up in both.
+    // list it used to be in - otherwise it shows up in both.
     expect(state.requestOrder).toEqual([])
     expect(state.requests['05alice']).toBeUndefined()
     expect(state.conversationOrder).toEqual(['05alice'])

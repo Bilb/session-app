@@ -4,7 +4,7 @@ import { SizableText, styled } from 'tamagui'
  * Text.
  *
  * Built on SizableText rather than Text because that is the one whose `size` prop drives
- * the line height as well as the font size — a plain fontSize leaves a 30px title sitting
+ * the line height as well as the font size - a plain fontSize leaves a 30px title sitting
  * in a 20px line box.
  */
 export const Text = styled(SizableText, {

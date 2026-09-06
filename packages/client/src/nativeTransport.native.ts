@@ -7,7 +7,7 @@ import type { BridgeTransport } from './types'
 /**
  * The bridge, backed by the real libsession, over JSI.
  *
- * The one place the Nitro module is linked — the boundary rules say so, and the reason is that
+ * The one place the Nitro module is linked - the boundary rules say so, and the reason is that
  * everything above a BridgeTransport is meant to be unable to tell which one it has.
  */
 export function createNativeBridgeTransport(options: SessionBridgeOptions): BridgeTransport {

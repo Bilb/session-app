@@ -54,7 +54,7 @@ struct ClientBridge::Impl {
     ///
     /// Called on every start rather than once: `update_info` compares the user-settable fields
     /// itself and returns without touching the seqno when they match. Which does mean it has to
-    /// be built from things that do not vary between launches — anything read from the clock or
+    /// be built from things that do not vary between launches - anything read from the clock or
     /// the environment would republish this device to the account on every run.
     void publish_device_info() {
         using core::device::Type;
@@ -81,7 +81,7 @@ struct ClientBridge::Impl {
 
         namespace net = session::network;
 
-        // devnet takes seed nodes, and a seed node is a public key, an address and two ports —
+        // devnet takes seed nodes, and a seed node is a public key, an address and two ports -
         // not something a URL can be turned into here. Wiring it means deciding how the app is
         // told those, which is a devnet question rather than a bridge one, so it refuses rather
         // than quietly attaching to mainnet instead.
@@ -328,7 +328,7 @@ void ClientBridge::call(std::span<const std::byte> request_bytes) {
 
     pb::Request request;
     if (!request.ParseFromArray(request_bytes.data(), static_cast<int>(request_bytes.size()))) {
-        // No id to answer with — the frame that carried it is what failed to parse.
+        // No id to answer with - the frame that carried it is what failed to parse.
         return;
     }
 
@@ -680,7 +680,7 @@ void ClientBridge::Impl::dispatch(const pb::Request& request) {
                     recipient);
 
             // The hash is the swarm's, and a redelivered one is how libsession recognises a
-            // duplicate — so it has to be stable for a message and different between messages.
+            // duplicate - so it has to be stable for a message and different between messages.
             core::SwarmMessage message{
                     encoded,
                     "test-" + std::to_string(cmd.timestamp()) + "-" +

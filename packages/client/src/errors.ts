@@ -1,5 +1,5 @@
 /**
- * libsession reports failures as text — usually SQLite's own message. We keep the message
+ * libsession reports failures as text - usually SQLite's own message. We keep the message
  * verbatim rather than mapping it onto codes we invented: the original says which
  * constraint failed, and a code would throw that away.
  */

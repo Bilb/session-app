@@ -12,7 +12,7 @@ import { createNodeBridgeTransport } from './index'
 /**
  * The addon against the real libsession, with no network attached.
  *
- * Skipped when the addon has not been built, because the per-PR job compiles no C++ — the
+ * Skipped when the addon has not been built, because the per-PR job compiles no C++ - the
  * native workflow is where this runs. `turbo build:native` is what makes it run here.
  */
 const addon = join(import.meta.dirname, '../build/Release/session_bridge_node.node')

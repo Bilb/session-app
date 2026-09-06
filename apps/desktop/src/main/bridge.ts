@@ -16,8 +16,8 @@ const { app, safeStorage } = electron
  * never sees it: it lives in the main process, which is also the only process that can load
  * the addon.
  *
- * safeStorage degrades to plaintext where there is no keyring — a bare Linux session, most
- * often — and says so. Encrypting anyway would be a claim we cannot keep; the fallback that
+ * safeStorage degrades to plaintext where there is no keyring - a bare Linux session, most
+ * often - and says so. Encrypting anyway would be a claim we cannot keep; the fallback that
  * belongs here is the argon2id password path the bridge already supports, which needs a
  * screen to ask on and so waits for onboarding.
  */
@@ -67,7 +67,7 @@ export async function createBridge(): Promise<BridgeTransport> {
     // opens, and the first screen the user sees is a conversation list for an identity nobody
     // chose.
     deferAccount: true,
-    // The bridge attaches this once an account exists — on open if there already is one, and
+    // The bridge attaches this once an account exists - on open if there already is one, and
     // after onboarding otherwise. SESSION_NETID=testnet switches it; unset means mainnet, and
     // there is deliberately no way to spell "offline" here: that is what SESSION_FAKE is for.
     netid: process.env['SESSION_NETID'] === 'testnet' ? 'testnet' : 'mainnet',

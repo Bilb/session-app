@@ -53,7 +53,7 @@ export type Response = Message<"sessionbridge.v1.Response"> & {
   requestId: number;
 
   /**
-   * libsession reports failures as text — usually SQLite's own message. It is deliberately
+   * libsession reports failures as text - usually SQLite's own message. It is deliberately
    * not reduced to an enum: the message says which constraint, and inventing codes would
    * throw that away.
    *
@@ -205,7 +205,7 @@ export const ConversationResultSchema: GenMessage<ConversationResult> = /*@__PUR
   messageDesc(file_sessionbridge_v1_frames, 5);
 
 /**
- * Oldest first, whatever page it is — the direction a transcript is read. libsession
+ * Oldest first, whatever page it is - the direction a transcript is read. libsession
  * answers newest first because that is the direction paging runs; the shim reverses. Getting
  * this wrong shows up as a conversation that reads bottom to top, which is why it is stated
  * here rather than left to each implementation to decide.
@@ -478,10 +478,10 @@ export const MessageEventSchema: GenMessage<MessageEvent> = /*@__PURE__*/
  * Progress for one attachment transfer.
  *
  * The contract, preserved from libsession exactly because tests and UI both depend on the
- * edges: the first report of a transfer is 0/0 and means "started" — not "nothing to do".
+ * edges: the first report of a transfer is 0/0 and means "started" - not "nothing to do".
  * `result` absent means still under way. `result == 0` means the file server accepted or
  * verified it, and is the ONLY thing that means done: done == total does not. Any other
- * value is a failure — a file server status, a negative network code, or one of the
+ * value is a failure - a file server status, a negative network code, or one of the
  * sentinels in the TypeScript facade. Reports for one index arrive in order and exactly one
  * of them carries a result; reports for different indexes interleave freely.
  *

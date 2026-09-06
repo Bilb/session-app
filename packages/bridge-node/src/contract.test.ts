@@ -17,7 +17,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createNodeBridgeTransport } from './index'
 
 /**
- * The contract, run against the real addon with no network — mode B.
+ * The contract, run against the real addon with no network - mode B.
  *
  * Nothing reaches a swarm here. The harness carries each message from one client to the other
  * itself, encrypted and fed in through the same path the swarm's would take, which is a port of
@@ -37,7 +37,7 @@ const addon = join(import.meta.dirname, '../build/Release/session_bridge_node.no
 /**
  * Splits one frame stream in two: the facade's, and the harness's own.
  *
- * The test-only commands must not go through SessionClient — they are not things the app can
+ * The test-only commands must not go through SessionClient - they are not things the app can
  * do, and putting them on that interface would be the first crack in it. So they ride the same
  * transport on request ids the facade will not reach, and their responses are taken off the
  * stream before the facade ever sees them.
@@ -159,7 +159,7 @@ function carrier(a: Peer, b: Peer): () => Promise<void> {
  * Whether the addon that exists was built with the test commands in it.
  *
  * Read from the CMake cache beside it rather than by asking the addon, because a build without
- * them answers "the bridge does not implement this command yet" — which is indistinguishable
+ * them answers "the bridge does not implement this command yet" - which is indistinguishable
  * from a real regression, and would be reported as one.
  */
 function builtForTesting(): boolean {

@@ -86,7 +86,7 @@ export type Attachment = Message$1<"sessionbridge.v1.Attachment"> & {
 
   /**
    * On the file server: that an outgoing attachment's upload finished, and always true for
-   * an incoming one, which is where it came from. Deliberately not "is the file here" —
+   * an incoming one, which is where it came from. Deliberately not "is the file here" -
    * libsession does not record a local path, because the application chose it and anything
    * stored would go stale the moment the file moved.
    *
@@ -154,7 +154,7 @@ export const OutgoingAttachmentSchema: GenMessage<OutgoingAttachment> = /*@__PUR
   messageDesc(file_sessionbridge_v1_types, 2);
 
 /**
- * The message a reply points at, resolved one level deep only — a reply to a reply shows
+ * The message a reply points at, resolved one level deep only - a reply to a reply shows
  * its own parent, not the whole chain.
  *
  * @generated from message sessionbridge.v1.Reply

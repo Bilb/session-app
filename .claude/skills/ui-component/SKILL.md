@@ -14,8 +14,8 @@ This package is the only one allowed to import tamagui. Everything else imports 
 
 - Colours come from theme tokens (`$textPrimary`, `$backgroundSecondary`). **No hex outside
   `@session/theme-tokens`.** A colour written here is one no theme can restyle.
-- Sizes come from the token scales: `$1`–`$4` space, `$6`–`$8` size (component heights),
-  `$1`–`$4` radius.
+- Sizes come from the token scales: `$1`-`$4` space, `$6`-`$8` size (component heights),
+  `$1`-`$4` radius.
 - Take a `testID` prop and pass it through if the component is interactive.
 - Export it from `src/index.ts`.
 
@@ -23,15 +23,15 @@ This package is the only one allowed to import tamagui. Everything else imports 
 
 Three files, not two:
 
-- `X.types.ts` — the props interface, imported by both
-- `X.tsx` — the web flavour
-- `X.native.tsx` — the native flavour
+- `X.types.ts` - the props interface, imported by both
+- `X.tsx` - the web flavour
+- `X.native.tsx` - the native flavour
 
 The shared types file is what stops the two drifting: each app typechecks against whichever
 one its bundler resolves, so a prop added to only one of them would otherwise go unnoticed
 until the other platform was run. `Input` is the worked example.
 
-`packages/ui/tsconfig.json` excludes `*.native.*` — those are typechecked by `apps/mobile`,
+`packages/ui/tsconfig.json` excludes `*.native.*` - those are typechecked by `apps/mobile`,
 which loads react-native's types and sets `moduleSuffixes`. Run `pnpm --filter @session/mobile typecheck`
 after touching one.
 

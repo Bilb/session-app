@@ -4,7 +4,7 @@ import { defineConfig } from '@playwright/test'
  * Projects are platforms. The desktop one needs nothing but a built app; the mobile ones
  * arrive with the Nitro bridge and a device pool.
  *
- * Neither e2e workflow runs on a pull request — they are started by hand — so the timeouts
+ * Neither e2e workflow runs on a pull request - they are started by hand - so the timeouts
  * here are generous rather than tuned for a queue.
  */
 export default defineConfig({

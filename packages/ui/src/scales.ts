@@ -4,7 +4,7 @@ import { FONT_SIZE, RADII, SPACING } from '@session/theme-tokens'
  * The token scales, as plain objects.
  *
  * Apart from tamagui on purpose: a missing token resolves to 0 in silence rather than
- * failing, so something has to be able to check a `$name` against the real list — and
+ * failing, so something has to be able to check a `$name` against the real list - and
  * tokens.contract.test.ts is a node test that has no business loading a UI framework to
  * read four records.
  */

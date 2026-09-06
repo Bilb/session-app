@@ -22,7 +22,7 @@ import {
  *
  * This is the guard for the sharpest edge in the whole UI layer: tamagui resolves a token it
  * does not know to 0 and says nothing. `padding="$1.5"` on a scale without a 1.5 silently
- * loses the padding; `color="$textPrimry"` silently paints nothing. TypeScript does not help —
+ * loses the padding; `color="$textPrimry"` silently paints nothing. TypeScript does not help -
  * every one of those props is typed as a string, so a name with a typo in it compiles.
  *
  * A test rather than a lint rule because the list of valid names is computed, not written
@@ -122,7 +122,7 @@ describe('tamagui tokens', () => {
   it('gives tamagui every name its own components ask for', () => {
     // The other half of the same problem, and the half our own source cannot show: a
     // built-in asks for $backgroundFocus, no theme defines it, and the component renders an
-    // invisible surface. Found exactly that way — one warning at a time, on a device.
+    // invisible surface. Found exactly that way - one warning at a time, on a device.
     const themes = buildThemes()
     const missing: string[] = []
 

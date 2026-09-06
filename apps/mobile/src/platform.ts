@@ -20,7 +20,7 @@ function hexToBytes(hex: string): Uint8Array {
 /**
  * The mobile app's OS ports.
  *
- * Only the secure store is real so far — it is the one the walking skeleton needs, because
+ * Only the secure store is real so far - it is the one the walking skeleton needs, because
  * libsession takes a database key and does not keep one. The rest are the memory
  * implementations until the screens that use them arrive.
  */

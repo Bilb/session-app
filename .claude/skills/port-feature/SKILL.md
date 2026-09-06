@@ -1,13 +1,13 @@
 ---
 name: port-feature
-description: Port a feature from session-desktop, session-android or session-ios into session-app's shared packages. Use when asked to bring over an existing Session feature — a screen, a dialog, a setting, a message type.
+description: Port a feature from session-desktop, session-android or session-ios into session-app's shared packages. Use when asked to bring over an existing Session feature - a screen, a dialog, a setting, a message type.
 ---
 
 # Porting a feature from the old clients
 
 The old clients each own their database, their protocol and their polling. This repo does
 not: libsession owns all of it. So most of what looks like "the feature" in an old client is
-not the feature — it is plumbing that has already been replaced.
+not the feature - it is plumbing that has already been replaced.
 
 Work in this order. Steps 1 and 2 decide how much of the rest you need.
 
@@ -35,14 +35,14 @@ rg -i '<concept>' libsession-util/include/session/client/
 ```
 
 If it is there, **port no logic at all**. The feature becomes a bridge capability plus a
-screen — use the `libsession-bridge` skill for the first half. This is the common case for
+screen - use the `libsession-bridge` skill for the first half. This is the common case for
 anything touching messages, conversations, attachments, requests or profiles.
 
 ## 3. Split what is left
 
 | what it is                                   | where it goes                                          |
 | -------------------------------------------- | ------------------------------------------------------ |
-| protocol, storage, retries, polling          | nowhere — libsession has it                            |
+| protocol, storage, retries, polling          | nowhere - libsession has it                            |
 | what the screen shows and does               | `@session/screens`                                     |
 | a visual component                           | `@session/ui`                                          |
 | derived state                                | `@session/state`, as a selector over the projection    |

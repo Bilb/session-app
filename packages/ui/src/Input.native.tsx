@@ -6,7 +6,7 @@ import { keyboardTypeToNative } from './nativeProps'
 /**
  * The native flavour.
  *
- * Same props as the web one — they share Input.types.ts precisely so they cannot disagree —
+ * Same props as the web one - they share Input.types.ts precisely so they cannot disagree -
  * but the keyboard is chosen with keyboardType, and returnKeyType is worth setting because
  * a soft keyboard has no enter key otherwise.
  */
