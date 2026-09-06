@@ -61,11 +61,16 @@ case "$archs" in
 esac
 if [ "$platform" = "iphoneos" ]; then slice="ios-arm64"; cmake_platform="OS64"; fi
 
+# Read from the podspec rather than written down twice: the shim and the pod that vendors it have
+# to agree on the floor, and the podspec is the one the build actually enforces.
+deployment_target="${IOS_DEPLOYMENT_TARGET:-$(sed -n 's/.*:ios *=> *"\([0-9.]*\)".*/\1/p' "$here/../SessionBridgeRN.podspec")}"
+[ -n "$deployment_target" ] || { echo "no :ios platform in SessionBridgeRN.podspec — set IOS_DEPLOYMENT_TARGET" >&2; exit 1; }
+
 build="$repo/packages/bridge-core/build-ios/$slice"
 cmake -G Ninja -S "$repo/packages/bridge-core" -B "$build" \
     -DCMAKE_TOOLCHAIN_FILE="$libsession/external/ios-cmake/ios.toolchain.cmake" \
     -DPLATFORM="$cmake_platform" \
-    -DDEPLOYMENT_TARGET=15.1 \
+    -DDEPLOYMENT_TARGET="$deployment_target" \
     -DENABLE_BITCODE=OFF \
     -DCMAKE_BUILD_TYPE=Release \
     -DSESSION_BRIDGE_PROTOC="$protoc" \
@@ -80,6 +85,10 @@ cp "$build/libsession-bridge-core.a" "$build/libsession-bridge-proto.a" "$here/.
 # session-sqlite's own archives and a few static deps. bridge-core's CMake names them on its
 # link line, which is enough for the addon and for Android but cannot travel into a vendored
 # static library — so on iOS the pod has to carry them, and the podspec globs this directory.
+#
+# All six are load-bearing — each one defines symbols the bundle leaves undefined, from
+# SQLite::Transaction::commit through utf8proc_map to blake2b_final — so a missing one is fatal
+# here rather than skipped, which is what used to turn it into an undefined symbol at link time.
 ls="$libsession/build-ios/$slice"
 for lib in \
     "$ls/external/session-sqlite/libsession_sqlite.a" \
@@ -88,7 +97,8 @@ for lib in \
     "$ls/static-deps/lib/libsqlite3mc.a" \
     "$ls/static-deps/lib/libutf8proc.a" \
     "$ls/static-deps/lib/libsimdutf.a"; do
-    [ -f "$lib" ] && cp "$lib" "$here/../ios/lib/"
+    [ -f "$lib" ] || { echo "the libsession build did not produce $lib" >&2; exit 1; }
+    cp "$lib" "$here/../ios/lib/"
 done
 
 echo "shim in place: packages/bridge-rn/ios/lib/ ($(ls "$here/../ios/lib" | wc -l | tr -d " ") archives)"
