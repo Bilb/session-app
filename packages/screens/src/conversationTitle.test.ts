@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import { conversationTitle } from './conversationTitle'
 
-describe('conversationTitle', () => {
-  const id = '057fb21c9829fc64380e4d4533635fa23be834a994e40b52cfbc211ede12805d30'
+const id = '057fb21c2cd7e0b1a2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f6805d30'
 
-  it('prefers a nickname over the display name', () => {
+describe('conversationTitle', () => {
+  it('prefers a nickname', () => {
     expect(conversationTitle({ id, nickname: 'Ada', displayName: 'ada.eth' })).toBe('Ada')
   })
 
@@ -13,15 +13,25 @@ describe('conversationTitle', () => {
     expect(conversationTitle({ id, displayName: 'ada.eth' })).toBe('ada.eth')
   })
 
-  it('shortens the account id when nobody has shared a name', () => {
-    expect(conversationTitle({ id, displayName: '' })).toBe('057fb21c…805d30')
+  it('falls through a blank nickname to the display name', () => {
+    // `??` would have stopped here and rendered the blank, which is the bug this replaced.
+    expect(conversationTitle({ id, nickname: '   ', displayName: 'ada.eth' })).toBe('ada.eth')
+    expect(conversationTitle({ id, nickname: '', displayName: 'ada.eth' })).toBe('ada.eth')
   })
 
-  it('treats a blank name as no name', () => {
-    expect(conversationTitle({ id, nickname: '   ', displayName: '' })).toBe('057fb21c…805d30')
+  it('trims the name it returns', () => {
+    expect(conversationTitle({ id, nickname: '  Ada  ' })).toBe('Ada')
+    expect(conversationTitle({ id, displayName: '\tada.eth\n' })).toBe('ada.eth')
   })
 
-  it('leaves an id short enough to read alone', () => {
-    expect(conversationTitle({ id: '05abc', displayName: '' })).toBe('05abc')
+  it('shortens the account id when there is no name, the way desktop does', () => {
+    // session-desktop's PubKey.shorten: four each side, three dots, parenthesised.
+    expect(conversationTitle({ id, displayName: '' })).toBe('(057f...5d30)')
+    expect(conversationTitle({ id, nickname: '   ', displayName: '' })).toBe('(057f...5d30)')
+    expect(conversationTitle({ id })).toBe('(057f...5d30)')
+  })
+
+  it('leaves an id too short to shorten alone', () => {
+    expect(conversationTitle({ id: '05abcdef', displayName: '' })).toBe('05abcdef')
   })
 })

@@ -1,4 +1,5 @@
 import { routes, useNav } from '@session/app'
+import { tr } from '@session/localization'
 import { useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { Button, Input, Screen, Text, YStack } from '@session/ui'
@@ -7,7 +8,7 @@ import { useState } from 'react'
 /**
  * Starting a conversation from an account ID.
  *
- * The only way to write to somebody who has not written first — until this existed, sending
+ * The only way to write to somebody who has not written first - until this existed, sending
  * could only happen by replying to a message request, which is half of a messenger.
  *
  * There is no QR scanner and no contact list yet, so this is a field and a button. libsession
@@ -42,7 +43,7 @@ export function NewConversationScreen() {
     <Screen padded testID={ELEMENT.newConversation.screen}>
       <YStack gap="$1.5">
         <Text size="$6" weight="bold">
-          New conversation
+          {tr('conversationsNew')}
         </Text>
         <Text tone="secondary" size="$3">
           Paste the account ID of whoever you want to write to.
@@ -51,14 +52,14 @@ export function NewConversationScreen() {
         <Input
           value={accountId}
           onChangeText={setAccountId}
-          placeholder="05…"
+          placeholder={tr('accountIdEnter')}
           autoCapitalize="none"
           testID={ELEMENT.newConversation.accountIdInput}
           onSubmit={start}
         />
 
         <Button testID={ELEMENT.newConversation.start} disabled={busy} onPress={start}>
-          {busy ? 'Opening…' : 'Start'}
+          {busy ? tr('loading') : tr('next')}
         </Button>
 
         {failed === null ? null : (

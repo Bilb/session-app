@@ -1,6 +1,7 @@
 import { useNav } from '@session/app'
 import type { Message } from '@session/client'
 import { useConversation, useMessages, useSessionActions } from '@session/state'
+import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Button, Input, Screen, ScrollView, Separator, Text, XStack, YStack } from '@session/ui'
 import { useState } from 'react'
@@ -50,7 +51,7 @@ export function ConversationScreen({ conversationId }: { conversationId: string 
           onPress={() => nav.back()}
           testID={ELEMENT.conversation.back}
         >
-          Back
+          {tr('back')}
         </Button>
         <Text
           size="$5"
@@ -72,7 +73,7 @@ export function ConversationScreen({ conversationId }: { conversationId: string 
             ))}
           </YStack>
         ) : (
-          <Text tone="secondary">Loading…</Text>
+          <Text tone="secondary">{tr('loading')}</Text>
         )}
       </ScrollView>
 
@@ -87,7 +88,7 @@ export function ConversationScreen({ conversationId }: { conversationId: string 
           grow
           value={draft}
           onChangeText={setDraft}
-          placeholder="Message"
+          placeholder={tr('message')}
           onSubmit={send}
           testID={ELEMENT.conversation.composerInput}
         />
@@ -97,27 +98,42 @@ export function ConversationScreen({ conversationId }: { conversationId: string 
           disabled={draft.trim().length === 0}
           testID={ELEMENT.conversation.sendButton}
         >
-          Send
+          {tr('send')}
         </Button>
       </XStack>
     </Screen>
   )
 }
 
-/** What a send state is called on screen. Only the ones worth showing say anything. */
-const STATE_LABEL: Partial<Record<Message['sendState'], string>> = {
-  pending: 'Sending…',
-  sending: 'Sending…',
-  uploading: 'Uploading…',
-  failed: 'Failed',
-  interrupted: 'Interrupted',
-  unsendable: 'Cannot send',
+/**
+ * What a send state is called on screen. Only the ones worth showing say anything.
+ *
+ * A function rather than a table, because `tr` reads the locale when it is called: a table built
+ * at module scope would be resolved once, on import, and keep whatever locale was in use then.
+ */
+function stateLabel(state: Message['sendState']): string | undefined {
+  switch (state) {
+    case 'pending':
+    case 'sending':
+      return tr('sending')
+    case 'uploading':
+      return tr('uploading')
+    case 'failed':
+      return tr('messageStatusFailedToSend')
+    // No catalogue entry for either of these yet, so they say nothing rather than saying it in
+    // English only. `interrupted` offers a retry and `unsendable` does not, which is the part
+    // that matters and is not copy.
+    case 'interrupted':
+    case 'unsendable':
+    default:
+      return undefined
+  }
 }
 
 /**
  * Which states are worth offering a retry for.
  *
- * `failed` and `interrupted` are worth another attempt — something was unreachable. `unsendable`
+ * `failed` and `interrupted` are worth another attempt - something was unreachable. `unsendable`
  * is not: libsession keeps it apart precisely so a client knows which failures to offer a retry
  * for, and it means something the message needs is gone rather than merely unreachable, so
  * retrying re-reads the same missing file and fails identically every time.
@@ -126,7 +142,7 @@ const RETRYABLE: readonly Message['sendState'][] = ['failed', 'interrupted']
 
 function MessageRow({ message, index }: { message: Message; index: number }) {
   const actions = useSessionActions()
-  const label = message.outgoing ? STATE_LABEL[message.sendState] : undefined
+  const label = message.outgoing ? stateLabel(message.sendState) : undefined
   const retryable = message.outgoing && RETRYABLE.includes(message.sendState)
 
   return (
@@ -151,7 +167,7 @@ function MessageRow({ message, index }: { message: Message; index: number }) {
         <XStack alignItems="center" gap="$1">
           {/* Coloured like the bubble rather than by tone: a label only ever appears on an
               outgoing message, and both the secondary and the accent tone are picked to read
-              against the screen — on the bubble they come out as green on green. */}
+              against the screen - on the bubble they come out as green on green. */}
           <Text
             size="$2"
             color="$messageBubbleOutgoingText"
@@ -173,7 +189,7 @@ function MessageRow({ message, index }: { message: Message; index: number }) {
                 void actions.retry(message.id)
               }}
             >
-              Retry
+              {tr('retry')}
             </Text>
           ) : null}
         </XStack>

@@ -59,7 +59,6 @@ function RequestRow({
   onPress: () => void
 }) {
   const actions = useSessionActions()
-  const name = request.nickname ?? request.displayName
   const title = conversationTitle(request)
 
   return (
@@ -74,7 +73,7 @@ function RequestRow({
       onPress={onPress}
       testID={ELEMENT.requests.row(index)}
     >
-      <Avatar id={request.id} name={name} />
+      <Avatar id={request.id} name={title} />
 
       <YStack flex={1} gap="$0.5">
         <Text size="$4" weight="bold" numberOfLines={1}>

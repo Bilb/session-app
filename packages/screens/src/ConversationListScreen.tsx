@@ -125,7 +125,6 @@ function ConversationRow({
   index: number
   onPress: () => void
 }) {
-  const name = conversation.nickname ?? conversation.displayName
   const title = conversationTitle(conversation)
 
   return (
@@ -140,7 +139,7 @@ function ConversationRow({
       onPress={onPress}
       testID={ELEMENT.conversationList.row(index)}
     >
-      <Avatar id={conversation.id} name={name} />
+      <Avatar id={conversation.id} name={title} />
 
       <YStack flex={1} gap="$0.5">
         <Text
