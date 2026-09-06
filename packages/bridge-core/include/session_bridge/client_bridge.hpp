@@ -27,6 +27,9 @@ struct InitOptions {
     std::optional<std::array<std::byte, 32>> raw_key;
     std::optional<std::string> password;
 
+    /// Passes libsession's `session::core::defer_account` to the Client constructor; the bridge
+    /// adds nothing of its own here.
+    ///
     /// Opens the database without creating an account, so that `getAccountInfo` can answer "no"
     /// and the app can show onboarding. **Without this a Client creates one on first open**, and
     /// an app that meant to ask the user has already decided for them. Between construction and
