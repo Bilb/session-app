@@ -33,17 +33,18 @@ module.exports = {
   forbidden: [
     // ---- Package graph -----------------------------------------------------
     mayOnlyDependOn('basic-types', []),
+    mayOnlyDependOn('bridge-types', []),
     mayOnlyDependOn('test-ids', []),
     mayOnlyDependOn('theme-tokens', ['basic-types']),
     mayOnlyDependOn('localization', ['basic-types']),
     mayOnlyDependOn('proto', ['basic-types']),
-    mayOnlyDependOn('client', ['proto', 'basic-types', 'bridge-rn']),
+    mayOnlyDependOn('client', ['proto', 'basic-types', 'bridge-rn', 'bridge-types']),
     mayOnlyDependOn('client-contract', ['client', 'proto', 'basic-types']),
     mayOnlyDependOn('state', ['client', 'basic-types']),
     mayOnlyDependOn('ui', ['theme-tokens', 'test-ids', 'basic-types']),
     mayOnlyDependOn('app', ['client', 'state', 'basic-types']),
-    mayOnlyDependOn('bridge-node', ['client', 'client-contract', 'proto']),
-    mayOnlyDependOn('bridge-rn', []),
+    mayOnlyDependOn('bridge-node', ['client', 'client-contract', 'proto', 'bridge-types']),
+    mayOnlyDependOn('bridge-rn', ['bridge-types']),
     mayOnlyDependOn('screens', [
       'ui',
       'state',

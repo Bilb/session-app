@@ -108,10 +108,6 @@ message Message {
   repeated Attachment attachments = 8;
   optional Reply reply_to = 9;
   optional Deletion deleted = 10;
-
-  // 11 was `unread`. Unread is a property of a conversation, not of a message: libsession
-  // maintains Conversation.unread_count itself and there is nothing per-message to report.
-  reserved 11;
 }
 
 // A flattened AnyConversation: the fields every kind has, plus the DM-only ones.

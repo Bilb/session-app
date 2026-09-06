@@ -1,9 +1,8 @@
 import { createSessionBridge } from '@session/bridge-rn'
 
-import type { BridgeTransport } from './types'
-import type { NativeTransportOptions } from './nativeTransport.types'
+import type { SessionBridgeOptions } from '@session/bridge-types'
 
-export type { NativeTransportOptions }
+import type { BridgeTransport } from './types'
 
 /**
  * The bridge, backed by the real libsession, over JSI.
@@ -11,7 +10,7 @@ export type { NativeTransportOptions }
  * The one place the Nitro module is linked — the boundary rules say so, and the reason is that
  * everything above a BridgeTransport is meant to be unable to tell which one it has.
  */
-export function createNativeBridgeTransport(options: NativeTransportOptions): BridgeTransport {
+export function createNativeBridgeTransport(options: SessionBridgeOptions): BridgeTransport {
   const bridge = createSessionBridge()
 
   // Frames produced while the Client is being constructed would otherwise be dropped:
@@ -26,13 +25,7 @@ export function createNativeBridgeTransport(options: NativeTransportOptions): Br
     else pending.push(bytes)
   })
 
-  bridge.init({
-    dbPath: options.dbPath,
-    cacheDir: options.cacheDir,
-    ...(options.rawKeyHex === undefined ? {} : { rawKeyHex: options.rawKeyHex }),
-    ...(options.password === undefined ? {} : { password: options.password }),
-    deferAccount: options.deferAccount ?? false,
-  })
+  bridge.init(options)
 
   let closed = false
 
