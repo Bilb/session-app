@@ -1,8 +1,8 @@
 import { NitroModules } from 'react-native-nitro-modules'
 
-import type { SessionBridge, SessionBridgeOptions } from './SessionBridge.nitro'
+import type { SessionBridge } from './SessionBridge.nitro'
 
-export type { SessionBridge, SessionBridgeOptions }
+export type { SessionBridge }
 
 /**
  * The HybridObject, created on demand.

@@ -174,7 +174,8 @@ Four things stood between "written" and "running", and the skill's traps table h
 podspec listed bridge-core's sources with a glob reaching outside the pod directory, which
 CocoaPods drops in silence — the shim is a CMake project on iOS too now, which is what it already
 was everywhere else. `STATIC_BUNDLE` left out session-sqlite again. expo-modules-jsi does not
-compile under Xcode 26 and is patched. And `expo-secure-store` failed with "a required entitlement
+compile under Xcode 26 and is patched — still true of 57.0.8 and of the SDK 58 canaries as of
+2026-09-06, so there is no release to move to instead. And `expo-secure-store` failed with "a required entitlement
 isn't present", which turned out to mean the app was not signed at all: `CODE_SIGNING_ALLOWED=NO`
 is the obvious flag for a simulator build and it skips the step that applies entitlements.
 

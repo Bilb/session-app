@@ -19,6 +19,7 @@
     "build:libsession:ios": "./scripts/build-libsession-ios.sh"
   },
   "dependencies": {
+    "@session/bridge-types": "workspace:*",
     "react-native-nitro-modules": "catalog:"
   },
   "devDependencies": {
