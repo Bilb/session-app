@@ -5,7 +5,7 @@ import { compareConversations, transferKey, type MessageWindow, type SessionStat
 /**
  * The whole projection, as one pure function.
  *
- * Every event carries complete state, so this only ever replaces — it never merges a delta
+ * Every event carries complete state, so this only ever replaces - it never merges a delta
  * or goes back to ask for the rest. That is what makes replaying the same event twice
  * harmless, and what lets the store be seeded and then have earlier events land on top of
  * it without contradicting themselves.

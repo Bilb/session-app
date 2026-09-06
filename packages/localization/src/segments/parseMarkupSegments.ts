@@ -3,8 +3,8 @@ import type { LocalizedSegment } from './types'
 /**
  * Turns the markup inside a translated string into segments.
  *
- * The strings carry a little HTML — `<b>`, `<br/>` and `<span>` appear a few hundred times
- * across the English catalogue — because the clients that render them are web-based. React
+ * The strings carry a little HTML - `<b>`, `<br/>` and `<span>` appear a few hundred times
+ * across the English catalogue - because the clients that render them are web-based. React
  * Native has no innerHTML, so a shared component cannot take that route, and stripping the
  * tags would quietly drop emphasis the translators put there deliberately.
  *

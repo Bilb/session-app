@@ -4,17 +4,17 @@
     "types": ["react"],
     // DOM is here for the same reason Expo's own base config includes it: libraries in the
     // tree ship web helpers as TypeScript source and this program compiles them. The real
-    // platform-neutrality guarantee is not here anyway — each shared package has its own
+    // platform-neutrality guarantee is not here anyway - each shared package has its own
     // pass with `types: []` and no DOM, where a stray `window` is an error.
     "lib": ["ES2022", "DOM"],
     // The react-native half of the environment split. This pass re-checks every shared
-    // package the app pulls in — screens, ui, state, client — against react-native's types
+    // package the app pulls in - screens, ui, state, client - against react-native's types
     // instead of the DOM, and moduleSuffixes is what makes it resolve the .native variants.
     // The desktop renderer checks the same sources again under a browser lib.
     "moduleSuffixes": [".native", ".android", ""],
     "jsx": "react-jsx"
   },
-  // The last two are expo prebuild's, and it rewrites this file to add them — losing every
+  // The last two are expo prebuild's, and it rewrites this file to add them - losing every
   // comment above in the process. Check the diff after a prebuild.
   "include": ["index.ts", "app", "src", "*.js", ".expo/types/**/*.ts", "expo-env.d.ts"],
   "exclude": ["node_modules", ".expo", "android", "ios"]

@@ -6,7 +6,7 @@ import { compareConversations, emptyState, type MessageWindow, type SessionState
 
 export interface SessionActions {
   /**
-   * Subscribes first, then asks — never the other way round.
+   * Subscribes first, then asks - never the other way round.
    *
    * Anything that arrives between the two is applied on top of the answer, which is safe
    * precisely because every event carries whole state. Asking first and subscribing after
@@ -22,13 +22,13 @@ export interface SessionActions {
    * Mints an identity, and re-hydrates because everything else waits on there being one.
    *
    * The bridge attaches the network on the far side of this, since attaching to an
-   * identity-less Core throws — so this is also the moment the app goes online.
+   * identity-less Core throws - so this is also the moment the app goes online.
    */
   createAccount: () => Promise<void>
   /**
    * Opens the conversation with an account, creating it if this is the first contact.
    *
-   * Returns the conversation id so the caller can navigate to it — which is the app's job, not
+   * Returns the conversation id so the caller can navigate to it - which is the app's job, not
    * the store's.
    */
   startConversation: (accountId: string) => Promise<ConversationId>
@@ -42,16 +42,46 @@ export interface SessionActions {
 
 export type SessionStore = StoreApi<SessionState> & { actions: SessionActions }
 
+/**
+ * How much the reader is meant to care.
+ *
+ * Passed as an argument rather than split into four functions, because an app maps every level
+ * to a console call in one place, and a level added later would otherwise be a breaking change
+ * for every implementation.
+ */
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
+
 export interface SessionStoreOptions {
   /**
    * Where a line of diagnostic text goes.
    *
    * Injected rather than assumed: this package typechecks with no DOM and no node types, so
-   * `console` is not declared here — and that is the environment split working rather than an
+   * `console` is not declared here - and that is the environment split working rather than an
    * inconvenience, because which console a line reaches is a per-platform question. Each app
    * passes its own; leaving it out is silence.
    */
-  log?: (line: string) => void
+  log?: (level: LogLevel, line: string) => void
+}
+
+/**
+ * libsession's levels onto the app's.
+ *
+ * libsession has two the app does not: `trace`, which is a louder `debug`, and `critical`,
+ * which is an `error` nobody recovers from. Neither earns a console method of its own, and the
+ * original level is still in the line itself.
+ */
+function appLevel(level: string): LogLevel {
+  switch (level) {
+    case 'info':
+      return 'info'
+    case 'warn':
+      return 'warn'
+    case 'error':
+    case 'critical':
+      return 'error'
+    default:
+      return 'debug'
+  }
 }
 
 const PAGE = 30
@@ -66,9 +96,9 @@ export function createSessionStore(
   const unsubscribe = client.onEvent((event) => {
     // libsession's own logging, when the bridge was asked for it. Passed straight through
     // rather than stored: it is not state, and it is the only place the *reason* for a send
-    // that ends in `failed` shows up — the state machine reports what happened, never why.
+    // that ends in `failed` shows up - the state machine reports what happened, never why.
     if (event.type === 'log') {
-      log(`[libsession ${event.level}] ${event.category}: ${event.message}`)
+      log(appLevel(event.level), `[libsession ${event.level}] ${event.category}: ${event.message}`)
       return
     }
     store.setState((state) => applyEvent(state, event))
@@ -106,10 +136,11 @@ export function createSessionStore(
       store.setState({ account })
 
       // Logged, not just held, because the account ID is what someone else needs in order to
-      // write to this device, and reading it off a screen is not always possible — a headless
+      // write to this device, and reading it off a screen is not always possible - a headless
       // e2e run, a device you are tailing logs from. One line, on every platform, from the one
       // place that learns it. `run`'s references say where each platform's console ends up.
       log(
+        'info',
         account.haveAccount
           ? `[session] account ${account.sessionId ?? '(no id)'}, network ${
               account.networkAttached ? 'attached' : 'not attached'
@@ -170,7 +201,7 @@ export function createSessionStore(
     async startConversation(accountId): Promise<ConversationId> {
       const trimmed = accountId.trim()
       // libsession validates the id and throws on a malformed one, which is the error the
-      // caller wants — there is nothing useful this layer could add by checking first.
+      // caller wants - there is nothing useful this layer could add by checking first.
       return client.openDm(trimmed)
     },
 

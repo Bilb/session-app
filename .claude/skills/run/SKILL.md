@@ -17,7 +17,7 @@ picks it.
 Every one of these was learned by losing time to it.
 
 **Bound every wait, and put a `timeout` on every command.** `adb` against a wedged emulator
-blocks for ever, and so does a poll loop with no ceiling — which looks identical to a hung
+blocks for ever, and so does a poll loop with no ceiling - which looks identical to a hung
 session from outside. Prefer one deadline check to a loop; when a loop is unavoidable, cap the
 iterations and print progress so silence is never the only output.
 
@@ -26,7 +26,7 @@ is silent through a crash, and silence is indistinguishable from "still starting
 watching for anything, ask what this would print if the process died right now.
 
 **Name the app exactly, from one source of truth.** `pm list packages | grep session` returns
-other people's Session builds — there are usually two or three on a QA emulator — and reading the
+other people's Session builds - there are usually two or three on a QA emulator - and reading the
 wrong app's logcat is a confusing way to spend ten minutes. The ids are in
 [references/traps.md](references/traps.md); they come from `app.json` and the desktop manifest,
 not from a guess.
@@ -44,7 +44,7 @@ works" in about fifteen seconds. It asks three questions in order, and the order
 one is meaningless if the one before it failed.
 
 1. **Did the native library load?** Nothing above it can work if not.
-2. **Did libsession open its database?** This is the real proof — the file only exists if the
+2. **Did libsession open its database?** This is the real proof - the file only exists if the
    frame stream carried a command down and an answer back.
 3. **Did anything reject?** A promise that failed silently leaves a blank screen and no clue.
 
@@ -60,7 +60,7 @@ sleep 20   # a fixed, bounded wait beats a poll loop for something that takes th
 
 # 1. the library
 timeout 15 $A logcat -d | grep "SessionBridgeRNOnLoad"
-# 2. the database — the answer that matters
+# 2. the database - the answer that matters
 timeout 15 $A shell run-as $PKG ls -la files/session
 # 3. anything that broke
 timeout 15 $A logcat -d | grep -E "ReactNativeJS.*([Ee]rror|Uncaught)|FATAL EXCEPTION"
@@ -71,7 +71,7 @@ alongside `session.db-shm` and `session.db-wal`, then nothing from the third com
 files are the tell that libsession really opened it rather than something creating an empty file.
 
 `files/session` holding only `attachments` means the transport was built and `init` never
-completed — look at step 3.
+completed - look at step 3.
 
 ### Desktop
 
@@ -82,7 +82,7 @@ there:
 cd apps/desktop && env -u ELECTRON_RUN_AS_NODE pnpm exec electron out/main/index.js
 ```
 
-The database lands under the platform's userData directory — see
+The database lands under the platform's userData directory - see
 [references/desktop.md](references/desktop.md). No `session.db` and no error on stdout means the
 renderer never asked, which is the port handshake in
 [references/traps.md](references/traps.md).
@@ -91,16 +91,16 @@ renderer never asked, which is the port handshake in
 
 One file each, because the verbs are the same and only the tooling differs:
 
-- [references/android.md](references/android.md) — emulators, install, logcat, screenshots, app
+- [references/android.md](references/android.md) - emulators, install, logcat, screenshots, app
   storage, resetting state
-- [references/desktop.md](references/desktop.md) — Electron launch, parallel windows, where the
+- [references/desktop.md](references/desktop.md) - Electron launch, parallel windows, where the
   data lives
-- [references/ios.md](references/ios.md) — `simctl`, and why none of it runs on this machine
+- [references/ios.md](references/ios.md) - `simctl`, and why none of it runs on this machine
 
 ## The loops
 
 ```sh
-pnpm dev:desktop            # fake, hot reload — the primary UI loop
+pnpm dev:desktop            # fake, hot reload - the primary UI loop
 pnpm dev:mobile             # fake, needs a dev client
 pnpm dev                    # both at once
 ```
@@ -111,7 +111,7 @@ Against the real bridge:
 pnpm dev:desktop:real       # the addon has to be built; see packages/bridge-node/README.md
 ```
 
-Mobile has no equivalent script because there is nothing to toggle — a dev-client build either
+Mobile has no equivalent script because there is nothing to toggle - a dev-client build either
 has the Nitro module in it or does not, and `SESSION_FAKE=1` in `apps/mobile`'s `dev` is what
 picks the fake over it.
 
@@ -134,4 +134,4 @@ pnpm format:check && pnpm lint && pnpm lint:manifests && pnpm boundaries \
 ## Known traps
 
 [references/traps.md](references/traps.md), one table per platform. Read it when something
-behaves impossibly — most of the entries present as a different problem than they are.
+behaves impossibly - most of the entries present as a different problem than they are.

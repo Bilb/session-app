@@ -182,7 +182,7 @@ function eventInit(event: SessionEvent): EventInit {
  * Wraps a SessionClient as a transport.
  *
  * Handlers are dispatched one at a time and their answers are written to the same sink the
- * events go to, in the order they complete — the ordering guarantee the real shim gets from
+ * events go to, in the order they complete - the ordering guarantee the real shim gets from
  * running everything on Core's loop.
  */
 export function createFakeTransport(client: SessionClient): BridgeTransport {

@@ -5,7 +5,7 @@ set -euo pipefail
 #
 # This wraps libsession's own utils/static-bundle.sh with the arguments utils/android.sh uses,
 # rather than calling android.sh itself, because that script always builds all four ABIs and
-# packs a tarball — and an emulator only ever needs one of them.
+# packs a tarball - and an emulator only ever needs one of them.
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 libsession="$here/../../../libsession-util"
@@ -25,6 +25,10 @@ if [ "${1:-}" = "all" ]; then
     abis=(armeabi-v7a arm64-v8a x86_64 x86)
 fi
 
+# Kept in step with libsession's utils/android.sh rather than with the module's own minSdk: the
+# app may raise its floor without the static libraries having to be rebuilt below it.
+platform="${ANDROID_PLATFORM:-android-23}"
+
 node "$here/../../../scripts/patch-libsession.mjs"
 
 cd "$libsession"
@@ -34,6 +38,6 @@ for abi in "${abis[@]}"; do
         -DCMAKE_TOOLCHAIN_FILE="$ndk/build/cmake/android.toolchain.cmake" \
         -DANDROID_ABI="$abi" \
         -DANDROID_ARM_MODE=arm \
-        -DANDROID_PLATFORM=android-23 \
+        -DANDROID_PLATFORM="$platform" \
         -DANDROID_STL=c++_static
 done

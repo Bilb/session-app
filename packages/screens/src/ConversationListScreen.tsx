@@ -67,8 +67,8 @@ export function ConversationListScreen() {
             </Text>
           </XStack>
 
-          {/* Settings had a route and no way to reach it, which made the account ID — the one
-              thing someone else needs in order to write to this device — unreachable too.
+          {/* Settings had a route and no way to reach it, which made the account ID - the one
+              thing someone else needs in order to write to this device - unreachable too.
 
               The hit area is the stack rather than the glyph: a 20pt character is well under
               the 44pt minimum a finger needs, and a target that small is one people miss

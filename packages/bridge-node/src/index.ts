@@ -1,41 +1,22 @@
 import { createRequire } from 'node:module'
 
 import type { BridgeTransport } from '@session/client'
+import type { SessionBridgeOptions } from '@session/bridge-types'
 
-export interface NodeBridgeOptions {
-  /** The database file. Created if it does not exist. */
-  dbPath: string
-  /** Where attachment bytes are cached. */
-  cacheDir: string
+/**
+ * The shared open options, minus the one the addon takes differently.
+ *
+ * N-API hands a Uint8Array straight to C++, so there is no reason to make the main process
+ * hex-encode a key for a call inside its own process - that is the only field that differs from
+ * what the Nitro bridge is given.
+ */
+export interface NodeBridgeOptions extends Omit<SessionBridgeOptions, 'rawKeyHex'> {
   /**
    * The 32-byte database key. libsession accepts one but neither derives nor stores it, which
    * is why the app has a secure-storage port at all: generate once at first boot, keep it in
    * the OS keyring, and never let it reach the renderer.
    */
   rawKey?: Uint8Array
-  /** The fallback where there is no keyring to keep a key in. */
-  password?: string
-  /**
-   * Opens without creating an account, so onboarding gets to ask. Without it libsession makes
-   * one on first open and the app has decided for the user before drawing anything.
-   */
-  deferAccount?: boolean
-  /**
-   * Which network to reach: 'mainnet' or 'testnet'. Left out, the bridge never attaches one,
-   * which is the whole of the offline guarantee — nothing else has to remember to check.
-   *
-   * Attached when an account exists, so a deferred one gets its network from createAccount.
-   */
-  netid?: 'mainnet' | 'testnet'
-  /** What the account's other devices are told this is. */
-  deviceType?: 'ios' | 'android' | 'desktop'
-  /**
-   * How much of libsession's own logging to forward, as `log` events.
-   *
-   * Worth turning on when something fails for no visible reason: the send state machine says
-   * what happened and never why, and the why is in these lines.
-   */
-  logLevel?: 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'critical'
   /** Overrides where the addon is loaded from. `SESSION_BRIDGE_ADDON` does the same. */
   addonPath?: string
 }
@@ -68,7 +49,7 @@ function loadAddon(explicitPath: string | undefined): Addon {
  * The bridge, backed by the real libsession.
  *
  * Runs in the Electron main process: Core owns its own threads, so nothing here blocks, and the
- * main process already owns the things the bridge needs — the key in safeStorage, the user data
+ * main process already owns the things the bridge needs - the key in safeStorage, the user data
  * directory, and the shutdown that has to close the database. The renderer never sees this, only
  * the frames it produces.
  */

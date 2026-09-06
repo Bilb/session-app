@@ -14,7 +14,7 @@ const FILL = { flex: 1 } as const
  * The native flavour: the same frame, held clear of the hardware and of the keyboard.
  *
  * Padding rather than a SafeAreaView, because the inset belongs to the content and not to the
- * background — a list that stops short of the bottom of the display looks like a bug, and one
+ * background - a list that stops short of the bottom of the display looks like a bug, and one
  * that scrolls its rows under the home indicator does not.
  *
  * Two stacks rather than one so that the inset and the padding add up: the inset is a number of
@@ -40,7 +40,7 @@ export function Screen({ children, padded = false, edges = ALL_EDGES, testID }: 
     >
       {/*
         iOS puts the keyboard over the window without telling the layout, so a composer at the
-        bottom of a screen ends up behind it — which is a messenger you cannot type into. Android
+        bottom of a screen ends up behind it - which is a messenger you cannot type into. Android
         resizes the window itself, and adding the padding there as well would lift the composer
         by a whole keyboard above the keyboard, hence the platform check.
 

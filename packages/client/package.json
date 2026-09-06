@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@bufbuild/protobuf": "catalog:",
+    "@session/bridge-types": "workspace:*",
     "@session/proto": "workspace:*"
   },
   "devDependencies": {

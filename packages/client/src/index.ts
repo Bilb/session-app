@@ -1,6 +1,6 @@
 export { createSessionClient } from './createSessionClient'
 export { createNativeBridgeTransport } from './nativeTransport'
-export type { NativeTransportOptions } from './nativeTransport.types'
+export type { SessionBridgeOptions } from '@session/bridge-types'
 export { BridgeClosedError, SessionClientError } from './errors'
 export type {
   AccountInfo,

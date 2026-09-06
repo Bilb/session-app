@@ -17,7 +17,7 @@ theme-tokens/test-ids/basic-types; `screens` imports ui/state/app/client/localiz
 apps/mobile; `electron` only in desktop main and preload; `react-router` only in the desktop nav
 driver; no node builtins in shared packages; the Nitro module only from
 `packages/client/src/*.native.*`; the addon only from desktop main; the fake only from tests and
-dev entries. When a rule fires, fix the design — not the config.
+dev entries. When a rule fires, fix the design - not the config.
 
 ## Hard rules
 
@@ -28,16 +28,16 @@ dev entries. When a rule fires, fix the design — not the config.
   `.native.tsx` pairs with a shared `.types.ts` for file-level splits. New port =
   `turbo gen port`.
 - Navigation: build paths with `routes.ts` only. Route params are extracted at the route file
-  and passed as props — a screen never reads a router. Every route gets a route-contract row.
+  and passed as props - a screen never reads a router. Every route gets a route-contract row.
 - Every interactive element takes its `testID` from `@session/test-ids`. An element a test cannot
   address is a missing testID: fix the component, never reach for xpath. Address by id, then
   assert the copy.
-- No `.js`/`.jsx` extensions in import paths. No inline `import('x').T` types — top-level
+- No `.js`/`.jsx` extensions in import paths. No inline `import('x').T` types - top-level
   `import type` instead.
 - The fake mirrors the real bridge. Any bridge change updates `packages/client/src/fake` and
   the contract scenarios **in the same PR**.
 - Tamagui: a missing token resolves to 0 silently, so token names must exist; `defaultFont`
-  must be set; the space scale has half-steps — use them. No hex outside `@session/theme-tokens`.
+  must be set; the space scale has half-steps - use them. No hex outside `@session/theme-tokens`.
 
 ## Tests required, in the same PR
 
@@ -72,6 +72,6 @@ turbo gen package|screen|port|bridge-capability
 
 ## Conventions
 
-English everywhere — commits, PRs, comments, docs. Commit subjects are imperative; no AI
+English everywhere - commits, PRs, comments, docs. Commit subjects are imperative; no AI
 attribution or co-author trailers. Branch off `main` and open a PR; never push to `main`.
 Comments explain a constraint or a choice; they never restate the code.

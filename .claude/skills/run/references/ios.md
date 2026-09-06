@@ -1,7 +1,7 @@
 # iOS
 
-Builds and runs, on a simulator, against real libsession. Done on a remote Mac — Xcode 26.2,
-macOS 15.7 — because the machine most of this repository was built on is Linux, where none of it
+Builds and runs, on a simulator, against real libsession. Done on a remote Mac - Xcode 26.2,
+macOS 15.7 - because the machine most of this repository was built on is Linux, where none of it
 is possible.
 
 Device builds and a release-shaped xcframework are untried. Everything below has been run.
@@ -18,7 +18,7 @@ xcodebuild -workspace Session.xcworkspace -scheme Session -configuration Debug \
   CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES
 ```
 
-The signing flags are not decoration — see [traps.md](traps.md). `CODE_SIGNING_ALLOWED=NO` is the
+The signing flags are not decoration - see [traps.md](traps.md). `CODE_SIGNING_ALLOWED=NO` is the
 obvious thing to pass for a simulator and it breaks the keychain.
 
 The first `build:libsession:ios` takes a long time: it cross-compiles libsession and every
@@ -34,7 +34,7 @@ xcrun simctl boot "iPhone 17 Pro"
 ```
 
 **Do not wait with `simctl bootstatus -b`.** It is documented as exiting when the device is ready
-and it does not reliably do so — it hung here on an already-booted device and left processes
+and it does not reliably do so - it hung here on an already-booted device and left processes
 behind. Wait on something that proves the device is serving requests:
 
 ```sh
@@ -48,7 +48,7 @@ That check matters for its own sake: a device can report `Booted` and not be wor
 `simctl spawn` failing with `NSPOSIXErrorDomain code=2` and `get_app_container` printing nothing.
 `simctl shutdown` then `boot` clears it.
 
-Address the device by UDID rather than by name once you have it — names are ambiguous across
+Address the device by UDID rather than by name once you have it - names are ambiguous across
 runtimes.
 
 ## Install, launch, look
@@ -66,12 +66,12 @@ full, and the log will only tell you `RCTLogBoxView` became the key window.
 ## Driving the UI
 
 `simctl` has no tap. AppleScript can click, which needs assistive access granted by a person at
-the machine — System Settings › Privacy & Security › Accessibility, for `osascript`, and it
+the machine - System Settings › Privacy & Security › Accessibility, for `osascript`, and it
 covers an ssh session too. Everything below is in device _points_, which is what a screenshot and
 the layout agree on.
 
-**The window is scaled.** Simulator fits the device into whatever size the window is — 402x874
-points into 391x849 here — so nothing derived from the window frame lands where it should. The
+**The window is scaled.** Simulator fits the device into whatever size the window is - 402x874
+points into 391x849 here - so nothing derived from the window frame lands where it should. The
 device view's own accessibility frame is the mapping:
 
 ```sh
@@ -83,7 +83,7 @@ Screen x is that x plus point x times 391/402, and the same for y. Twenty points
 label above a field, which looks exactly like a click that did not register.
 
 **Typing does not work.** The hardware keyboard is off, so keystrokes reach Simulator rather than
-the device and some of them are its own shortcuts — a `keystroke` of an account ID opened the
+the device and some of them are its own shortcuts - a `keystroke` of an account ID opened the
 React Native dev menu. Clicking `Connect Hardware Keyboard` in the I/O menu did not change it.
 The pasteboard is the way in:
 
@@ -115,7 +115,7 @@ ls -la "$C/Documents/session/"
 
 `session.db` with its `-shm` and `-wal` is the proof that the bridge carried a command down and an
 answer back. `Documents/session` holding only `attachments` means the transport was built and
-`init` never completed — read the LogBox.
+`init` never completed - read the LogBox.
 
 ## Resetting state
 

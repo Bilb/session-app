@@ -11,6 +11,38 @@ namespace margelo::nitro::session::bridge::rn {
 
 namespace {
 
+    // InitOptions carries these as strings, because that is what the wire format and the addon
+    // both hand it. JSI gets a closed enum instead, so an unknown value cannot reach the shim at
+    // all, and this is the one place the two representations meet.
+    std::string netid_name(NetId id) {
+        switch (id) {
+            case NetId::MAINNET: return "mainnet";
+            case NetId::TESTNET: return "testnet";
+        }
+        return "";
+    }
+
+    std::string device_type_name(DeviceType type) {
+        switch (type) {
+            case DeviceType::IOS: return "ios";
+            case DeviceType::ANDROID: return "android";
+            case DeviceType::DESKTOP: return "desktop";
+        }
+        return "";
+    }
+
+    std::string log_level_name(LibsessionLogLevel level) {
+        switch (level) {
+            case LibsessionLogLevel::TRACE: return "trace";
+            case LibsessionLogLevel::DEBUG: return "debug";
+            case LibsessionLogLevel::INFO: return "info";
+            case LibsessionLogLevel::WARN: return "warn";
+            case LibsessionLogLevel::ERROR: return "error";
+            case LibsessionLogLevel::CRITICAL: return "critical";
+        }
+        return "";
+    }
+
     std::array<std::byte, 32> key_from_hex(const std::string& hex) {
         if (hex.size() != 64)
             throw std::invalid_argument{"rawKeyHex must be 64 hex characters"};
@@ -32,7 +64,7 @@ namespace {
 
 }  // namespace
 
-// HybridObject is a virtual base, so the most-derived class is what constructs it — a defaulted
+// HybridObject is a virtual base, so the most-derived class is what constructs it - a defaulted
 // constructor here compiles and then fails at the first createHybridObject with a message about
 // forgetting this exact line.
 HybridSessionBridge::HybridSessionBridge() : HybridObject(TAG) {}
@@ -54,9 +86,12 @@ void HybridSessionBridge::init(const SessionBridgeOptions& options) {
     init.db_path = options.dbPath;
     init.cache_dir = options.cacheDir;
     init.defer_account = options.deferAccount;
-    init.netid = options.netid;
-    init.device_type = options.deviceType;
-    init.log_level = options.logLevel;
+    if (options.netid)
+        init.netid = netid_name(*options.netid);
+    if (options.deviceType)
+        init.device_type = device_type_name(*options.deviceType);
+    if (options.logLevel)
+        init.log_level = log_level_name(*options.logLevel);
     if (options.rawKeyHex)
         init.raw_key = key_from_hex(*options.rawKeyHex);
     else if (options.password)

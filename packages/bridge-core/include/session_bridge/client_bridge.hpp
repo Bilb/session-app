@@ -28,11 +28,14 @@ struct InitOptions {
     std::optional<std::array<std::byte, 32>> raw_key;
     std::optional<std::string> password;
 
+    /// Passes libsession's `session::core::defer_account` to the Client constructor; the bridge
+    /// adds nothing of its own here.
+    ///
     /// Opens the database without creating an account, so that `getAccountInfo` can answer "no"
     /// and the app can show onboarding. **Without this a Client creates one on first open**, and
     /// an app that meant to ask the user has already decided for them. Between construction and
-    /// `createAccount` or `restoreAccount` there is no identity, so anything needing one — the
-    /// session id, sending, attaching a network — fails until that call.
+    /// `createAccount` or `restoreAccount` there is no identity, so anything needing one - the
+    /// session id, sending, attaching a network - fails until that call.
     bool defer_account = false;
 
     /// Which network to reach, or empty to never reach one.
@@ -52,7 +55,7 @@ struct InitOptions {
     /// libsession establishes the device group with these fields blank and says outright that
     /// filling them in is the application's job; until it happens, every other device lists this
     /// one as an unrecognised device with no version. There is no device type for this client
-    /// yet — see docs/STATUS.md — so it reports the platform it is running on, which is true.
+    /// yet - see docs/STATUS.md - so it reports the platform it is running on, which is true.
     std::string device_type;
 
     /// How much of libsession's own logging to forward, as `LogRecord` events.
@@ -61,15 +64,15 @@ struct InitOptions {
     /// because the state machine reports *what* happened and not *why*: a send that ends in
     /// `failed` carries no reason, and the reason is in these lines.
     ///
-    /// Registered process-wide — libsession's add_logger has no deregistration — so a second
+    /// Registered process-wide - libsession's add_logger has no deregistration - so a second
     /// bridge in one process would double them up. There is one.
     std::string log_level;
 };
 
 /// Receives one encoded `sessionbridge.v1.Frame` per call, in the order libsession produced them.
 ///
-/// **Called on Core's event loop, and must only enqueue.** Everything downstream of the queue —
-/// decoding, the hop to the JavaScript thread, delivery — belongs to the platform adapter. A sink
+/// **Called on Core's event loop, and must only enqueue.** Everything downstream of the queue -
+/// decoding, the hop to the JavaScript thread, delivery - belongs to the platform adapter. A sink
 /// that blocks stalls polling, message receipt and every other call in flight; a sink that throws
 /// loses the frame.
 using Sink = std::function<void(std::span<const std::byte>)>;
@@ -78,7 +81,7 @@ using Sink = std::function<void(std::span<const std::byte>)>;
 ///
 /// Deliberately sets **no libsession dispatcher**. `callbacks.hpp` prescribes handlers that copy
 /// their argument into the application's own queue and return, which is exactly what encoding into
-/// a frame and enqueueing it is — so the handlers run inline on Core's loop and the platform
+/// a frame and enqueueing it is - so the handlers run inline on Core's loop and the platform
 /// adapter owns the hop onto the JavaScript thread. Installing a dispatcher as well would add a
 /// second queue in front of ours, buying nothing and costing the ordering guarantee that having
 /// one queue is what provides.
@@ -88,7 +91,7 @@ using Sink = std::function<void(std::span<const std::byte>)>;
 class ClientBridge {
   public:
     /// Opens the database and publishes the initial state. Throws if the database cannot be
-    /// opened — a wrong key, a directory that is not writable — since there is no bridge to
+    /// opened - a wrong key, a directory that is not writable - since there is no bridge to
     /// report that failure over yet.
     ClientBridge(InitOptions options, Sink sink);
     ~ClientBridge();
@@ -107,7 +110,7 @@ class ClientBridge {
 
     /// Stops delivering frames and destroys the Client, which joins Core's loop. Idempotent, and
     /// implied by the destructor. Handlers for calls still in flight are dropped rather than
-    /// completed — the facade rejects their promises, which is where "exactly once" is restored.
+    /// completed - the facade rejects their promises, which is where "exactly once" is restored.
     void close();
 
   private:

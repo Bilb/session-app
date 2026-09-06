@@ -19,7 +19,7 @@ nohup $ANDROID_HOME/emulator/emulator -avd Session_QA_1 \
   -no-snapshot-load -no-audio -no-boot-anim > "$SCRATCH/emulator.log" 2>&1 &
 ```
 
-Waiting for it — a bounded wait, because a boot that fails otherwise never returns:
+Waiting for it - a bounded wait, because a boot that fails otherwise never returns:
 
 ```sh
 for i in $(seq 60); do
@@ -38,7 +38,7 @@ to notice. If it expires, read `$SCRATCH/emulator.log` rather than trying again.
 pnpm --filter @session/bridge-rn build:libsession:android    # one ABI by default, or `all`
 ```
 
-Slow the first time — it cross-compiles libsession and every dependency for the ABI — and
+Slow the first time - it cross-compiles libsession and every dependency for the ABI - and
 incremental after that. `packages/bridge-rn/README.md` has the rest of the chain.
 
 ## Install and launch
@@ -72,7 +72,7 @@ is the native library loading, `ExpoModulesCore` is the JSI interop coming up. E
 timeout 20 $A exec-out screencap -p > "$SCRATCH/screen.png"
 ```
 
-`exec-out` rather than `shell` — `shell` mangles the binary on the way through.
+`exec-out` rather than `shell` - `shell` mangles the binary on the way through.
 
 ## The app's own storage
 

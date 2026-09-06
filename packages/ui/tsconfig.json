@@ -3,7 +3,7 @@
   "compilerOptions": {
     "lib": ["ES2022", "DOM"],
     // The token-contract test reads every source file that uses a `$token` off disk, which is
-    // the only reason node types are here — the same reason packages/app has them.
+    // the only reason node types are here - the same reason packages/app has them.
     "types": ["react", "node"]
   },
   // The .native variants are typechecked by apps/mobile, which loads react-native's types

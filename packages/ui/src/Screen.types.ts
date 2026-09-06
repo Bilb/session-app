@@ -12,7 +12,7 @@ export interface ScreenProps {
   /**
    * Keeps content clear of the status bar, the notch and the home indicator. On by default
    * because a screen is the outermost frame and every one of them wants it; a pane that is
-   * not against the edge of the display — the detail beside a list — passes `edges` instead.
+   * not against the edge of the display - the detail beside a list - passes `edges` instead.
    */
   edges?: readonly ('top' | 'bottom' | 'left' | 'right')[]
   testID?: string

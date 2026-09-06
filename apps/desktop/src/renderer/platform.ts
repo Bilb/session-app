@@ -5,7 +5,7 @@ import { memoryPorts, setPorts } from '@session/app'
  *
  * Only the ones the walking skeleton needs are real; the rest are the memory
  * implementations, which do nothing rather than pretending. Each becomes an IPC call to the
- * main process as its screen arrives — file pickers and notifications live over there,
+ * main process as its screen arrives - file pickers and notifications live over there,
  * because that is where Electron's dialog and Notification are.
  */
 setPorts(

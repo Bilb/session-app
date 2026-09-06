@@ -1,5 +1,6 @@
 import { routes, useNav } from '@session/app'
 import type { Conversation } from '@session/client'
+import { tr } from '@session/localization'
 import { useRequests, useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { Avatar, Button, Screen, Separator, Text, XStack, YStack } from '@session/ui'
@@ -22,7 +23,7 @@ export function RequestsScreen() {
     <Screen testID={ELEMENT.requests.screen}>
       <XStack paddingHorizontal="$2" paddingVertical="$1.5" alignItems="center">
         <Text size="$6" weight="bold">
-          Message requests
+          {tr('sessionMessageRequests')}
         </Text>
       </XStack>
 
@@ -30,7 +31,7 @@ export function RequestsScreen() {
 
       {requests.length === 0 ? (
         <YStack flex={1} alignItems="center" justifyContent="center" padding="$3">
-          <Text tone="secondary">No message requests</Text>
+          <Text tone="secondary">{tr('messageRequestsNonePending')}</Text>
         </YStack>
       ) : (
         <YStack>
@@ -92,11 +93,11 @@ function RequestRow({
         testID={ELEMENT.requests.accept(index)}
         onPress={() => {
           // Approval moves the row between the two lists rather than changing it in place, and
-          // libsession sends both lists again — which is why nothing here has to update it.
+          // libsession sends both lists again - which is why nothing here has to update it.
           void actions.approve(request.id)
         }}
       >
-        Accept
+        {tr('accept')}
       </Button>
     </XStack>
   )

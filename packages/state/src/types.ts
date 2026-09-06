@@ -9,7 +9,7 @@ import type {
 /**
  * One conversation's loaded history.
  *
- * `ready` is what tells an empty conversation apart from one nobody has asked for yet —
+ * `ready` is what tells an empty conversation apart from one nobody has asked for yet -
  * without it a transcript cannot know whether to render "no messages" or a spinner.
  */
 export interface MessageWindow {

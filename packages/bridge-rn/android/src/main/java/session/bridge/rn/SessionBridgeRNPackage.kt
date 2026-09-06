@@ -9,7 +9,7 @@ import com.margelo.nitro.session.bridge.rn.SessionBridgeRNOnLoad
 /**
  * Empty of modules on purpose: everything here is a Nitro HybridObject, registered from C++ when
  * the library loads. What this class is for is autolinking, which looks for a ReactPackage to
- * decide a package is linkable — a pure-C++ module without one is skipped in silence, and shows
+ * decide a package is linkable - a pure-C++ module without one is skipped in silence, and shows
  * up much later as "SessionBridge does not exist".
  */
 class SessionBridgeRNPackage : ReactPackage {

@@ -8,7 +8,7 @@ const config = getDefaultConfig(projectRoot)
 
 /**
  * The workspace packages are consumed as source, so Metro has to watch the whole repo
- * rather than just this app — that is what makes editing a screen show up here without a
+ * rather than just this app - that is what makes editing a screen show up here without a
  * build step.
  *
  * The hoisted node-linker in .npmrc is the other half of this: Metro cannot follow pnpm's

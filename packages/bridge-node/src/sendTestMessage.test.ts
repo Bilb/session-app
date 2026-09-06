@@ -11,7 +11,7 @@ import { createNodeBridgeTransport } from './index'
 /**
  * Sends one real message to one real account, over a real network.
  *
- * Not a test of anything — a tool, shaped as one because it needs the TypeScript codecs and
+ * Not a test of anything - a tool, shaped as one because it needs the TypeScript codecs and
  * vitest is what already loads them. It exists because verifying that an app *receives*
  * requires something to send, and a second bridge is a truer sender than a fixture: the
  * message is built, encrypted and stored by the same libsession the app is reading.

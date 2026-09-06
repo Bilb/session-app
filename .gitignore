@@ -6,7 +6,7 @@ coverage/
 .turbo/
 *.log
 
-# Expo prebuild output — generated, never committed
+# Expo prebuild output - generated, never committed
 apps/mobile/android/
 apps/mobile/ios/
 apps/mobile/.expo/
@@ -36,3 +36,6 @@ blob-report/
 
 .DS_Store
 .vscode/
+
+# Local review worktrees
+.claude/worktrees/

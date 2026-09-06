@@ -90,8 +90,8 @@ export function baseConfig({ tsconfigRootDir, zone }) {
       rules: {
         '@typescript-eslint/no-non-null-assertion': 'off',
         // The zone matrix is editor feedback for production code. Tests legitimately reach
-        // for the fake and for platform modules, and dependency-cruiser — which is the
-        // authority — already encodes which of those are allowed and where.
+        // for the fake and for platform modules, and dependency-cruiser - which is the
+        // authority - already encodes which of those are allowed and where.
         'no-restricted-imports': 'off',
       },
     },

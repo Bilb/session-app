@@ -6,8 +6,8 @@ import type { ReactNode } from 'react'
  *
  * This is the only place that decides whether the app is showing one pane or two. Phones
  * and narrow windows get a single pane and lean on the router's back; anything wider keeps
- * the list beside the detail. The routes are identical either way — only what is drawn
- * changes — so a link, a notification tap and the back button all behave the same on every
+ * the list beside the detail. The routes are identical either way - only what is drawn
+ * changes - so a link, a notification tap and the back button all behave the same on every
  * device.
  */
 export function AdaptiveShell({

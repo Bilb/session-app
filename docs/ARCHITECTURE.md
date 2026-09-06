@@ -11,7 +11,7 @@ There is no web app. Desktop means Electron.
 
 ```
 libsession-util (C++, submodule)
-        │  frames: commands in, responses and events out — one ordered stream
+        │  frames: commands in, responses and events out - one ordered stream
         ▼
 @session/client ── the SessionClient interface, one facade, three implementations
         │        Nitro module (mobile) · addon behind preload (desktop) · the fake
@@ -47,12 +47,12 @@ bindable, applying the same event twice harmless, and startup race-free.
 
 **Progress has sharp edges, kept sharp.** The first report of an attachment transfer is `0/0`
 and means _started_. `result` absent means still going. `result === 0` means accepted and is
-the only thing that means finished — `done === total` does not. Reports for one index are
+the only thing that means finished - `done === total` does not. Reports for one index are
 ordered and exactly one carries a result; different indexes interleave.
 
 64-bit fields decode as `bigint` and become `number` at the facade (`packages/client/src/convert.ts`).
 Every one of them is a unix-millisecond timestamp, a sqlite rowid or a byte count, all far
-inside 2^53. `jstype = JS_NUMBER` is not the way to say this — protobuf-es ignores it.
+inside 2^53. `jstype = JS_NUMBER` is not the way to say this - protobuf-es ignores it.
 
 ### The shim
 
@@ -65,13 +65,13 @@ JS thread. `packages/client/src/fake/fakeBridge.ts` is the protocol written out 
 is the reference to match.
 
 Conversation-scoped commands build a `Conversation` on the stack per call. That is safe because the
-handler form copies the client pointer and the id into its lambda — the `wait` form captures
+handler form copies the client pointer and the id into its lambda - the `wait` form captures
 `this`, which is one more reason the shim never uses it.
 
 `packages/bridge-node` is the addon in front of it. It owns exactly one thing: the hop from
 Core's loop onto the JavaScript thread, through a thread-safe function with an unbounded queue, so
 that a frame produced on the loop is never dropped and producing one never blocks. N-API rather
-than NAN, so one build loads in both Node and Electron — which is what lets the addon be tested
+than NAN, so one build loads in both Node and Electron - which is what lets the addon be tested
 under vitest without an Electron process at all.
 
 Two commands in the schema have no libsession counterpart and answer with an error rather than
@@ -113,7 +113,7 @@ list and detail above it, a wider list above 1100. The routes are identical eith
 link, a notification tap and the back button behave the same on every device.
 
 Route params are extracted at the route file and passed as props. A screen never reads a
-router — that would be the one import that pins it to a platform again. `routes.ts` builds
+router - that would be the one import that pins it to a platform again. `routes.ts` builds
 every path, and `routes.contract.test.ts` holds the three declarations of each route together:
 the builder, the desktop table it scrapes as text, and the expo-router file it looks for on
 disk.
@@ -138,7 +138,7 @@ there names it.
 | full e2e | real bindings, devnet, device pool                        | `e2e-full` workflow, by hand |
 
 `tests/e2e/harness/ISessionApp.ts` is the platform-neutral driver interface. Its rule: every
-member takes and returns primitives, enums or plain data — no Playwright `Locator`, no Appium
+member takes and returns primitives, enums or plain data - no Playwright `Locator`, no Appium
 element. Anything one platform cannot do belongs somewhere narrower until every platform can.
 
 `sessionTest` is the only way to declare a test and the only thing that opens or closes a
@@ -149,7 +149,7 @@ clients is tagged `@2-devices` without anyone writing it down.
 selector. Verified: `testID` reaches the DOM as `data-testid` untouched through
 react-native-web, so the per-platform locator table the appium suite needs does not exist here.
 Release builds strip the attribute; QA builds keep it. An element a test cannot address is a
-missing entry in the registry plus a missing `testID` on the component — never a reason to
+missing entry in the registry plus a missing `testID` on the component - never a reason to
 reach for an xpath.
 
 ## Things that only running the app finds
@@ -178,23 +178,23 @@ Every shared file is checked two or three ways per run, with no synthetic profil
 
 Append one paragraph per decision. Undocumented decisions are what rot.
 
-- **2026-09-04 — Responses share the event stream.** Ordering across the boundary is what
+- **2026-09-04 - Responses share the event stream.** Ordering across the boundary is what
   makes hydration race-free; two channels cannot promise it.
-- **2026-09-04 — `@session/localization` is consumed as built output.** It wraps a vendored
+- **2026-09-04 - `@session/localization` is consumed as built output.** It wraps a vendored
   submodule whose generated files do not satisfy our strict flags and are not ours to change.
   Building it means consumers read declarations, which `skipLibCheck` covers. It is the only
   package resolved to `dist` rather than `src`.
-- **2026-09-04 — dependency-cruiser is the sole boundary authority.** `turbo boundaries` was
+- **2026-09-04 - dependency-cruiser is the sole boundary authority.** `turbo boundaries` was
   considered and dropped: a second mechanism with its own model, for rules dep-cruiser already
   expresses.
-- **2026-09-04 — libsession is cross-compiled separately for Android, not built in place.**
+- **2026-09-04 - libsession is cross-compiled separately for Android, not built in place.**
   session-deps hands its CMake-based dependencies the NDK compiler without the NDK target, so a
   build inside the Gradle CMake project produces a simdutf for the host and the link fails on
   libstdc++ symbols Android does not have. `utils/static-bundle.sh` per ABI is the supported path
   and `bridge-core` takes a prebuilt archive when given one. The same reasoning will apply to iOS,
   whose artifact is an xcframework from `utils/ios.sh`.
 
-- **2026-09-04 — Fixes for the submodule live in `patches/` and are applied by the build.** Two so
+- **2026-09-04 - Fixes for the submodule live in `patches/` and are applied by the build.** Two so
   far, both one-liners, both wanted upstream rather than here: libevent built without `-fPIC`, and
   session-deps not forwarding the Android toolchain to its CMake dependencies. A submodule two
   levels down cannot be committed from this repository and a build cannot wait for a release, so
@@ -202,55 +202,55 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   native build therefore leaves the submodule with the patches applied; that is expected, and the
   day the directory is empty the script goes with it.
 
-- **2026-09-04 — History crosses the bridge oldest first.** libsession answers newest first,
+- **2026-09-04 - History crosses the bridge oldest first.** libsession answers newest first,
   because that is the direction paging runs; a transcript is read the other way. The shim reverses
   once rather than leaving every caller to remember, and the order is written into `frames.proto`
-  rather than left for each implementation to decide — which is how the fake and the real thing
+  rather than left for each implementation to decide - which is how the fake and the real thing
   came to disagree about it in the first place. Getting this wrong shows up as a conversation that
   reads bottom to top.
 
-- **2026-09-04 — A terminal send state, not a particular one.** The contract asserted that a send
+- **2026-09-04 - A terminal send state, not a particular one.** The contract asserted that a send
   ends up `sent`, which is true only where there is a swarm to reach. Offline it ends up `failed`,
   and that is the same contract: what the scenario is about is that the state arrived as an update
   rather than a second message. An assertion that only the fake could satisfy was an assertion
   about the fake.
 
-- **2026-09-04 — A Client creates an account unless told not to.** Opening a database is enough
+- **2026-09-04 - A Client creates an account unless told not to.** Opening a database is enough
   to mint an identity, so an app that means to offer "create or restore" has already chosen for
   the user by the time it draws anything. `defer_account` is what holds that open, and it is not
   a detail of onboarding: it is a constructor argument, decided before the first frame. The
   desktop app passes it, and `getAccountInfo` answers without an account rather than asking for a
   display name that would throw.
 
-- **2026-09-04 — Nothing linked into the addon may hold absolute relocations.** Obvious in
+- **2026-09-04 - Nothing linked into the addon may hold absolute relocations.** Obvious in
   hindsight, and it cost a build: libsession's own targets are position-independent, its autotools
   dependencies get there through `--with-pic`, and libevent is the one exception, because its dep
   script overrides the shared configure command and does not carry the flag over. There is no hook
-  to add one and session-deps is two submodules down, so the flag goes on the compiler instead —
+  to add one and session-deps is two submodules down, so the flag goes on the compiler instead -
   `packages/bridge-node/cmake/cc-pic.sh`, to be deleted when upstream closes the gap. The Nitro
   module will want the same thing, which is why our own proto target sets POSITION_INDEPENDENT_CODE
   rather than the addon reaching in to say so.
 
-- **2026-09-04 — The shim's protobuf C++ is generated at build time, not committed.** The
+- **2026-09-04 - The shim's protobuf C++ is generated at build time, not committed.** The
   TypeScript codecs are committed because everything that consumes them is a TypeScript build with
   no toolchain of its own. The C++ classes are the opposite case: the only thing that needs them
   already has CMake and a compiler. Committing them would put a pinned `protoc` on the per-PR job,
   which compiles no C++ at all, and a version drift there would fail `codegen:check` in a job with
   no way to be right.
 
-- **2026-09-04 — The native build uses gcc on Linux, not clang.** libsession's static dependencies
+- **2026-09-04 - The native build uses gcc on Linux, not clang.** libsession's static dependencies
   include libtasn1, whose gnulib vendoring skips its own `bool` shim only when the compiler is in
   C23 mode. gcc 15 defaults to C23; clang 21 still defaults to C17, engages the shim, and cannot
   compile it, because the `HAVE_STDBOOL_H` the shim needs is never defined. Nothing about our own
   code prefers either compiler, and the plan's clang+lld preference predates meeting this.
 
-- **2026-09-04 — Three wire fields were wrong, and the shim is what found them.** `Attachment` had
-  `downloaded`, which libsession does not report: what it has is `uploaded` — on the file server —
+- **2026-09-04 - Three wire fields were wrong, and the shim is what found them.** `Attachment` had
+  `downloaded`, which libsession does not report: what it has is `uploaded` - on the file server -
   and it deliberately records no local path, because the application chose it and a stored copy
   would go stale the moment the file moved. `Attachment.size` is optional upstream, unset until an
   outgoing attachment has uploaded. `Message.unread` had no source at all: unread is a count on the
   conversation, and the field existed only because the fake had found it convenient. A fake with
   nothing to check it against had encoded all three as facts.
 
-- **2026-09-04 — Both e2e workflows are manual.** They need a device pool or a devnet, and a
+- **2026-09-04 - Both e2e workflows are manual.** They need a device pool or a devnet, and a
   pull request should not wait on either.

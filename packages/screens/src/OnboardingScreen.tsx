@@ -1,3 +1,4 @@
+import { tr } from '@session/localization'
 import { useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { Button, Screen, Text, YStack } from '@session/ui'
@@ -8,7 +9,7 @@ import { useState } from 'react'
  *
  * Creating an account is also the moment the app goes online: the bridge attaches the network
  * on the far side of it, because attaching to an identity-less Core throws. Restoring from a
- * recovery phrase belongs here too and is not built yet — the bridge has the command.
+ * recovery phrase belongs here too and is not built yet - the bridge has the command.
  */
 export function OnboardingScreen() {
   const actions = useSessionActions()
@@ -35,7 +36,7 @@ export function OnboardingScreen() {
             })
           }}
         >
-          {busy ? 'Creating…' : 'Create account'}
+          {busy ? tr('loading') : tr('onboardingAccountCreate')}
         </Button>
 
         {failed === null ? null : (

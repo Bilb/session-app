@@ -4,7 +4,7 @@
  * The same string is the component's `testID` and the test's selector on all three
  * platforms: react-native surfaces it as an Android resource-id and an iOS
  * accessibilityIdentifier, react-native-web renders it as `data-testid`. Because this repo
- * owns every client, there is no per-platform locator table to keep in step — and if a
+ * owns every client, there is no per-platform locator table to keep in step - and if a
  * mapping ever needs an exception, it belongs in the harness's resolver, not here.
  *
  * None of these are user-visible: screen readers announce labels and text, not identifiers,
@@ -57,6 +57,11 @@ export const ELEMENT = {
     start: 'new-conversation-start',
     error: 'new-conversation-error',
   },
+
+  starting: {
+    screen: 'starting',
+  },
+
   onboarding: {
     screen: 'onboarding',
     createAccount: 'onboarding-create-account',
@@ -101,6 +106,7 @@ export type ElementId =
   | 'new-conversation-account-id'
   | 'new-conversation-start'
   | 'new-conversation-error'
+  | 'starting'
   | 'onboarding'
   | 'onboarding-create-account'
   | 'onboarding-restore-account'
