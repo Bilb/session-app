@@ -17,7 +17,7 @@ Everything green: `pnpm format:check`, `pnpm lint` (16), `pnpm lint:manifests`,
 
 The walking skeleton works end to end. `tests/e2e` drives the built Electron app through
 Playwright: it reads a seeded conversation list, opens a conversation, sends a message and
-sees it arrive - through the fake libsession, the real protobuf codec, and the MessagePort
+sees it arrive - through the fake libsession, the typed frame stream, and the MessagePort
 bridge. Only the C++ is missing from that path.
 
 ## What exists
@@ -28,7 +28,8 @@ bridge. Only the C++ is missing from that path.
 | `@session/basic-types` `@session/theme-tokens` | copied from session-pkgs, trimmed                                                   |
 | `@session/localization`                        | copied, plus a markup parser for the `<b>`/`<br/>` in the catalogue                 |
 | `@session/test-ids`                            | the element registry                                                                |
-| `@session/proto`                               | the wire schema, `sessionbridge.v1`, codecs committed                               |
+| `@session/bridge-types`                        | the protocol: domain types, `Command`, `Result`, `BridgeEvent`, `Frame`             |
+| `@session/bridge-codegen`                      | generates the shim's C++ structs and JSI/N-API converters from bridge-types         |
 | `@session/client`                              | the SessionClient facade, and the fake                                              |
 | `@session/client-contract`                     | 9 behavioural scenarios, running against the fake                                   |
 | `@session/state`                               | the projection store, 9 reducer tests                                               |
@@ -93,6 +94,11 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
      archives, sqlite3mc and utf8proc. `bridge-core` names them on the link line; nothing in the
      bundle says it should have to.
 
+- **Attachment bytes.** Neither `attachmentData` nor `saveAttachment` is in the protocol. The
+  cache files libsession writes are encrypted, so reading one for display needs a decrypting
+  path - a custom protocol on desktop, something equivalent on mobile - rather than bytes over
+  the bridge, and that is a design of its own.
+
 - **Mnemonic handling.** libsession owns the word list, so no TypeScript library is needed,
   but once words cross into JavaScript they cannot be wiped. Keep them out of logs and out of
   the store.
@@ -106,7 +112,7 @@ which is a port of what libsession's own tests do. Eight of the nine scenarios p
 
 It has already earned its keep twice. libsession answers history **newest first** and the fake
 answered oldest first, which nothing had noticed because nothing had run both - that is a
-transcript upside down, and the shim now reverses and `frames.proto` says so. And the contract
+transcript upside down, and the shim now reverses and the `messageList` result says so. And the contract
 asserted a send ends up `sent`, which is only true where there is a swarm; offline it ends up
 `failed`, and the scenario was really about the state arriving as an update.
 
@@ -302,6 +308,6 @@ are worth repeating because each one presents as something else:
   height and every element is invisible to a test.
 - `ELECTRON_RUN_AS_NODE=1` is set in this environment. Electron then runs your main file under
   plain Node and refuses Chromium's flags. `env -u ELECTRON_RUN_AS_NODE` before launching.
-- The preload buffers both directions of the MessagePort. The renderer asks for the account
-  before the port arrives; dropping that request strands the app on its loading screen with
-  nothing in the logs.
+- The renderer's port transport buffers both directions of the MessagePort. The renderer asks
+  for the account before the port arrives; dropping that request strands the app on its loading
+  screen with nothing in the logs.

@@ -5,10 +5,10 @@ import type {
   ConversationId,
   Deletion,
   Message,
-  OutgoingMessage,
-  SessionClient,
   SessionEvent,
-} from '../types'
+} from '@session/bridge-types'
+
+import type { OutgoingMessage, SessionClient } from '../types'
 import type { FakeAccount, FakeWorld } from './world'
 
 /**
@@ -207,16 +207,6 @@ export class FakeSessionClient implements SessionClient {
       }
     }
     return Promise.resolve()
-  }
-
-  attachmentData(): Promise<Uint8Array> {
-    this.assertOpen()
-    return Promise.resolve(new Uint8Array())
-  }
-
-  saveAttachment(_messageId: number, _index: number, destination: string): Promise<string> {
-    this.assertOpen()
-    return Promise.resolve(destination)
   }
 
   getPref(key: string): Promise<string | undefined> {

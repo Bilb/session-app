@@ -6,9 +6,9 @@
 #include <functional>
 #include <memory>
 #include <optional>
-#include <span>
 #include <string>
-#include <vector>
+
+#include "session_bridge/gen/types.hpp"
 
 namespace session::bridge {
 
@@ -58,7 +58,7 @@ struct InitOptions {
     /// yet - see docs/STATUS.md - so it reports the platform it is running on, which is true.
     std::string device_type;
 
-    /// How much of libsession's own logging to forward, as `LogRecord` events.
+    /// How much of libsession's own logging to forward, as `log` events.
     ///
     /// "trace", "debug", "info", "warn", "error", "critical", or empty for none. Worth having
     /// because the state machine reports *what* happened and not *why*: a send that ends in
@@ -69,25 +69,25 @@ struct InitOptions {
     std::string log_level;
 };
 
-/// Receives one encoded `sessionbridge.v1.Frame` per call, in the order libsession produced them.
+/// Receives one `Frame` per call, in the order libsession produced them.
 ///
-/// **Called on Core's event loop, and must only enqueue.** Everything downstream of the queue -
-/// decoding, the hop to the JavaScript thread, delivery - belongs to the platform adapter. A sink
-/// that blocks stalls polling, message receipt and every other call in flight; a sink that throws
-/// loses the frame.
-using Sink = std::function<void(std::span<const std::byte>)>;
+/// **Called on Core's event loop, and must only enqueue.** Moving the frame into a queue is the
+/// whole of what belongs here; the hop to the JavaScript thread and turning the struct into a
+/// JavaScript object belong to the platform adapter. A sink that blocks stalls polling, message
+/// receipt and every other call in flight; a sink that throws loses the frame.
+using Sink = std::function<void(Frame)>;
 
 /// One libsession Client behind one ordered frame stream.
 ///
 /// Deliberately sets **no libsession dispatcher**. `callbacks.hpp` prescribes handlers that copy
-/// their argument into the application's own queue and return, which is exactly what encoding into
-/// a frame and enqueueing it is - so the handlers run inline on Core's loop and the platform
+/// their argument into the application's own queue and return, which is exactly what filling a
+/// frame and enqueueing it is - so the handlers run inline on Core's loop and the platform
 /// adapter owns the hop onto the JavaScript thread. Installing a dispatcher as well would add a
 /// second queue in front of ours, buying nothing and costing the ordering guarantee that having
 /// one queue is what provides.
 ///
 /// Command responses go to the same sink as events, correlated by request id, because their
-/// relative order is load-bearing: see frames.proto.
+/// relative order is load-bearing: see `Frame` in @session/bridge-types.
 class ClientBridge {
   public:
     /// Opens the database and publishes the initial state. Throws if the database cannot be
@@ -99,14 +99,13 @@ class ClientBridge {
     ClientBridge(const ClientBridge&) = delete;
     ClientBridge& operator=(const ClientBridge&) = delete;
 
-    /// Decodes one `sessionbridge.v1.Request` and dispatches it. Returns as soon as the work is
-    /// handed to Core; the answer arrives on the sink as a `Response` carrying the same id.
+    /// Dispatches one request. Returns as soon as the work is handed to Core; the answer arrives
+    /// on the sink as a `Response` carrying the same id.
     ///
-    /// Never throws: a request that cannot be decoded, names something that does not exist, or
-    /// fails validation comes back as a Response with `error` set. Throwing here would surface on
-    /// whichever thread the adapter happens to call from, where nothing knows which request it
-    /// belonged to.
-    void call(std::span<const std::byte> request);
+    /// Never throws: a request that names something that does not exist or fails validation
+    /// comes back as a Response with `error` set. Throwing here would surface on whichever thread
+    /// the adapter happens to call from, where nothing knows which request it belonged to.
+    void call(Request request);
 
     /// Stops delivering frames and destroys the Client, which joins Core's loop. Idempotent, and
     /// implied by the destructor. Handlers for calls still in flight are dropped rather than

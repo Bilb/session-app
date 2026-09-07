@@ -24,8 +24,6 @@ obvious thing to pass for a simulator and it breaks the keychain.
 The first `build:libsession:ios` takes a long time: it cross-compiles libsession and every
 dependency. After that it is incremental and quick.
 
-Needs `protobuf@21` from brew. bridge-core checks and says so.
-
 ## Simulators
 
 ```sh

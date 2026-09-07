@@ -22,9 +22,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@bufbuild/protobuf": "catalog:",
-    "@session/bridge-types": "workspace:*",
-    "@session/proto": "workspace:*"
+    "@session/bridge-types": "workspace:*"
   },
   "devDependencies": {
     "@session/bridge-rn": "workspace:*",

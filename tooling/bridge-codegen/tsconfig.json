@@ -1,0 +1,10 @@
+{
+  "extends": "@session/typescript-config/node.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src", "tests"],
+  "exclude": ["node_modules", "tests/fixtures/expected"]
+}

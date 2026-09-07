@@ -2,8 +2,7 @@ import { mkdirSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { create, fromBinary, toBinary, type MessageInitShape } from '@bufbuild/protobuf'
-import { FrameSchema, RequestSchema } from '@session/proto'
+import type { Command } from '@session/bridge-types'
 import { describe, expect, it } from 'vitest'
 
 import { createNodeBridgeTransport } from '#src/index'
@@ -11,8 +10,8 @@ import { createNodeBridgeTransport } from '#src/index'
 /**
  * Sends one real message to one real account, over a real network.
  *
- * Not a test of anything - a tool, shaped as one because it needs the TypeScript codecs and
- * vitest is what already loads them. It exists because verifying that an app *receives*
+ * Not a test of anything - a tool, shaped as one because it needs the addon and the protocol
+ * types, and vitest is what already loads them. It exists because verifying that an app *receives*
  * requires something to send, and a second bridge is a truer sender than a fixture: the
  * message is built, encrypted and stored by the same libsession the app is reading.
  *
@@ -45,39 +44,37 @@ describe.skipIf(target === undefined)('sending a test message', () => {
     type Answer = { error?: string; result: string; haveAccount?: boolean }
     const waiting = new Map<number, (v: Answer) => void>()
     transport.setSink((frame) => {
-      const f = fromBinary(FrameSchema, frame)
-      if (f.kind.case !== 'response') return
-      const done = waiting.get(f.kind.value.requestId)
+      if (frame.type !== 'response') return
+      const done = waiting.get(frame.response.id)
       if (!done) return
-      waiting.delete(f.kind.value.requestId)
-      const r = f.kind.value.result
+      waiting.delete(frame.response.id)
+      const r = frame.response.result
       done({
-        ...(f.kind.value.error === undefined ? {} : { error: f.kind.value.error }),
-        result: r.case ?? 'none',
-        ...(r.case === 'accountInfo' ? { haveAccount: r.value.haveAccount } : {}),
+        ...(frame.response.error === undefined ? {} : { error: frame.response.error }),
+        result: r?.type ?? 'none',
+        ...(r?.type === 'accountInfo' ? { haveAccount: r.info.haveAccount } : {}),
       })
     })
 
     let next = 1
-    type Cmd = NonNullable<MessageInitShape<typeof RequestSchema>['cmd']>
-    const ask = (cmd: Cmd) =>
+    const ask = (command: Command) =>
       new Promise<Answer>((resolve) => {
         const id = next++
         waiting.set(id, resolve)
-        transport.send(toBinary(RequestSchema, create(RequestSchema, { id, cmd })))
+        transport.send({ id, command })
       })
 
-    const info = await ask({ case: 'getAccountInfo', value: {} })
+    const info = await ask({ type: 'getAccountInfo' })
     console.log('sender account info:', JSON.stringify(info))
     if (!info.haveAccount) {
-      const created = await ask({ case: 'createAccount', value: {} })
+      const created = await ask({ type: 'createAccount' })
       console.log('createAccount:', JSON.stringify(created))
     }
 
-    const opened = await ask({ case: 'openDm', value: { sessionId: target } })
+    const opened = await ask({ type: 'openDm', sessionId: target })
     console.log('openDm:', JSON.stringify(opened))
 
-    const sent = await ask({ case: 'sendMessage', value: { conversationId: target, body } })
+    const sent = await ask({ type: 'sendMessage', conversationId: target, body, attachments: [] })
     console.log('sendMessage:', JSON.stringify(sent))
 
     // The send is two-stage and the bridge going away takes the queue with it, so this waits

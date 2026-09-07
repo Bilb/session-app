@@ -23,45 +23,53 @@ looks odd.
 Note which of the two calling conventions you need. The shim uses the handler form always;
 the `wait` form would block Core's loop.
 
-## 2. Add it to the schema
+## 2. Add it to the protocol
 
-`packages/proto/proto/sessionbridge/v1/`:
+`packages/bridge-types/src/protocol.ts`:
 
-- a command message plus an arm in `Request.cmd` in `commands.proto`
-- a result arm in `Response.result` if it returns something that has no existing shape
-- an event arm in `Event.kind` if libsession pushes it
+- an arm in `Command`, tagged by a literal `type`
+- an arm in `Result` if it returns something that has no existing shape
+- an arm in the event union if libsession pushes it
 
-Keep field numbers stable and never reuse one. `buf lint` runs in `pnpm lint`, and
-`buf breaking` guards compatibility against main.
+Domain shapes go in `domain.ts`. Stay inside what the generator accepts: string, number,
+boolean, a string-union alias, an interface, or an array of one; optional with `?`. It refuses
+anything else and names the declaration.
 
-Write the semantics into the `.proto` as a comment, especially the edges - which value means
-finished, what an absent field means, what order things arrive in. That comment is what the
-shim and the fake are both implemented against.
+Write the semantics into the doc comment, especially the edges - which value means finished,
+what an absent field means, what order things arrive in. That comment is what the shim and the
+fake are both implemented against, and it is carried into the generated C++.
 
 ## 3. Regenerate
 
 ```
-pnpm --filter @session/proto codegen
+turbo codegen
 ```
 
-Generated code is committed. CI runs `codegen:check`, which regenerates and fails on a diff.
+`tooling/bridge-codegen` writes `packages/bridge-core/include/session_bridge/gen`; nitrogen
+writes the Nitro spec. Both outputs are committed. CI runs `codegen:check`, which regenerates
+and fails on a diff.
 
-## 4. Add it to the facade
+## 4. Add it to the shim, the facade, and the addon test
 
+`packages/bridge-core/src/client_bridge.cpp` gets a `handle()` overload for the command - the
+build fails until it does - and `convert.cpp` a `to_bridge()` if a new libsession type crosses.
 `packages/client/src/types.ts` for the interface, `createSessionClient.ts` for the
-implementation. Convert 64-bit fields to `number` and numeric enums to string unions in
-`convert.ts` - never let a `bigint` or a raw enum reach a screen.
+implementation. Nothing converts anything: the object the shim builds is the object the screen
+gets.
 
 If the call reports progress, register the callback by request id; the facade routes
-`AttachmentProgress` frames carrying a `request_id` to it and retires the registration when
+`attachment-progress` events carrying a `requestId` to it and retires the registration when
 every index has reported a result.
+
+Add the new shape to the frames in `packages/bridge-node/tests/addon.test.ts`: `echoTestFrame`
+pushes each one through both converter directions and asserts it came back exactly.
 
 ## 5. Update the fake - same pull request
 
-`packages/client/src/fake/FakeSessionClient.ts` for the behaviour, and
-`packages/client/src/fake/fakeBridge.ts` for the wire handling. The fake must be _honest_
-about the edges, not merely present: if libsession reports a state transition, the fake
-reports it too, in the same order.
+`packages/client/src/fake/FakeSessionClient.ts` for the behaviour, and the handler table in
+`packages/client/src/fake/fakeBridge.ts` for the command - the typecheck fails until it has an
+entry. The fake must be _honest_ about the edges, not merely present: if libsession reports a
+state transition, the fake reports it too, in the same order.
 
 ## 6. Add a contract scenario
 
@@ -80,8 +88,8 @@ that replays the event.
 
 ## When the shim exists
 
-Editing `bridge.proto` or the shim's C++ means `turbo codegen && turbo build:native`, then the
-contract suite against the real addon before committing. Bumping the `libsession-util`
+Editing `packages/bridge-types` or the shim's C++ means `turbo codegen && turbo build:native`,
+then the contract suite against the real addon before committing. Bumping the `libsession-util`
 submodule means rebuilding all three targets and running the same suite - the pin and the shim
 move together.
 

@@ -1,223 +1,38 @@
-import { create, fromBinary, toBinary, type MessageInitShape } from '@bufbuild/protobuf'
-import {
-  AutoDownload as AutoDownloadPb,
-  ConversationKind as ConversationKindPb,
-  Deletion as DeletionPb,
-  FrameSchema,
-  RequestSchema,
-  SendState as SendStatePb,
-  type ConversationSchema,
-  type EventSchema,
-  type MessageSchema,
-  type Request,
-  type ResponseSchema,
-} from '@session/proto'
+import type { Command, Frame, Request, Result } from '@session/bridge-types'
 
-import type { BridgeTransport, Conversation, Message, SessionClient, SessionEvent } from '../types'
-
-type EventInit = MessageInitShape<typeof EventSchema>
-type ConversationInit = MessageInitShape<typeof ConversationSchema>
-type MessageInit = MessageInitShape<typeof MessageSchema>
-type ResponseResult = NonNullable<MessageInitShape<typeof ResponseSchema>['result']>
+import type { BridgeTransport, SessionClient } from '../types'
 
 /**
  * Speaks the bridge protocol on top of a plain SessionClient.
  *
  * Two things come out of this. The apps get to run against the fake through the same
- * codec, correlation and transport path they will use for the real thing, so the skeleton
- * exercises everything except the C++. And the shim has a reference implementation to match:
- * this file is the protocol written out in a language that is easy to read.
- */
-
-const SEND_STATE: Record<Message['sendState'], SendStatePb> = {
-  pending: SendStatePb.PENDING,
-  sending: SendStatePb.SENDING,
-  sent: SendStatePb.SENT,
-  failed: SendStatePb.FAILED,
-  interrupted: SendStatePb.INTERRUPTED,
-  uploading: SendStatePb.UPLOADING,
-  unsendable: SendStatePb.UNSENDABLE,
-}
-
-const KIND: Record<Conversation['kind'], ConversationKindPb> = {
-  dm: ConversationKindPb.DM,
-  group: ConversationKindPb.GROUP,
-  community: ConversationKindPb.COMMUNITY,
-}
-
-const AUTO_DOWNLOAD: Record<Conversation['autoDownload'], AutoDownloadPb> = {
-  none: AutoDownloadPb.NONE,
-  'image-attachments': AutoDownloadPb.IMAGE_ATTACHMENTS,
-  all: AutoDownloadPb.ALL,
-}
-
-function conversationToPb(c: Conversation): ConversationInit {
-  return {
-    id: c.id,
-    kind: KIND[c.kind],
-    displayName: c.displayName,
-    ...(c.nickname === undefined ? {} : { nickname: c.nickname }),
-    lastActivity: BigInt(c.lastActivity),
-    priority: c.priority,
-    unreadCount: c.unreadCount,
-    markedUnread: c.markedUnread,
-    ...(c.snippet === undefined ? {} : { snippet: c.snippet }),
-    ...(c.muteUntil === undefined ? {} : { muteUntil: BigInt(c.muteUntil) }),
-    autoDownload: AUTO_DOWNLOAD[c.autoDownload],
-    request: c.request,
-    awaitingApproval: c.awaitingApproval,
-    noteToSelf: c.noteToSelf,
-    blocked: c.blocked,
-  }
-}
-
-function messageToPb(m: Message): MessageInit {
-  return {
-    id: BigInt(m.id),
-    conversationId: m.conversationId,
-    author: m.author,
-    timestamp: BigInt(m.timestamp),
-    body: m.body,
-    outgoing: m.outgoing,
-    sendState: SEND_STATE[m.sendState],
-    attachments: m.attachments.map((a) => ({
-      index: a.index,
-      ...(a.contentType === undefined ? {} : { contentType: a.contentType }),
-      ...(a.filename === undefined ? {} : { filename: a.filename }),
-      ...(a.caption === undefined ? {} : { caption: a.caption }),
-      ...(a.size === undefined ? {} : { size: BigInt(a.size) }),
-      voiceMessage: a.voiceMessage,
-      ...(a.width === undefined ? {} : { width: a.width }),
-      ...(a.height === undefined ? {} : { height: a.height }),
-      uploaded: a.uploaded,
-    })),
-    ...(m.replyTo === undefined
-      ? {}
-      : {
-          replyTo: {
-            author: m.replyTo.author,
-            timestamp: BigInt(m.replyTo.timestamp),
-            ...(m.replyTo.messageId === undefined
-              ? {}
-              : { messageId: BigInt(m.replyTo.messageId) }),
-            ...(m.replyTo.body === undefined ? {} : { body: m.replyTo.body }),
-          },
-        }),
-    ...(m.deleted === undefined
-      ? {}
-      : { deleted: m.deleted === 'here' ? DeletionPb.HERE : DeletionPb.EVERYWHERE }),
-  }
-}
-
-function eventInit(event: SessionEvent): EventInit {
-  switch (event.type) {
-    case 'conversation-added':
-      return {
-        kind: {
-          case: 'conversationAdded' as const,
-          value: { conversation: conversationToPb(event.conversation) },
-        },
-      }
-    case 'conversation-updated':
-      return {
-        kind: {
-          case: 'conversationUpdated' as const,
-          value: { conversation: conversationToPb(event.conversation) },
-        },
-      }
-    case 'conversation-removed':
-      return {
-        kind: {
-          case: 'conversationRemoved' as const,
-          value: { conversationId: event.conversationId },
-        },
-      }
-    case 'conversation-list-replaced':
-      return {
-        kind: {
-          case: 'conversationListReplaced' as const,
-          value: { conversations: event.conversations.map(conversationToPb) },
-        },
-      }
-    case 'request-list-replaced':
-      return {
-        kind: {
-          case: 'requestListReplaced' as const,
-          value: { conversations: event.conversations.map(conversationToPb) },
-        },
-      }
-    case 'message-added':
-      return {
-        kind: {
-          case: 'messageAdded' as const,
-          value: {
-            conversationId: event.conversationId,
-            message: messageToPb(event.message),
-          },
-        },
-      }
-    case 'message-updated':
-      return {
-        kind: {
-          case: 'messageUpdated' as const,
-          value: {
-            conversationId: event.conversationId,
-            message: messageToPb(event.message),
-          },
-        },
-      }
-    case 'history-replaced':
-      return {
-        kind: {
-          case: 'historyReplaced' as const,
-          value: { conversationId: event.conversationId },
-        },
-      }
-    default:
-      return { kind: { case: undefined } }
-  }
-}
-
-/**
- * Wraps a SessionClient as a transport.
+ * correlation and transport path they will use for the real thing, so the skeleton exercises
+ * everything except the C++. And the shim has a reference implementation to match: this file
+ * is the protocol written out in a language that is easy to read.
  *
  * Handlers are dispatched one at a time and their answers are written to the same sink the
  * events go to, in the order they complete - the ordering guarantee the real shim gets from
  * running everything on Core's loop.
  */
 export function createFakeTransport(client: SessionClient): BridgeTransport {
-  let sink: ((frame: Uint8Array) => void) | null = null
+  let sink: ((frame: Frame) => void) | null = null
 
   const unsubscribe = client.onEvent((event) => {
-    const frame = create(FrameSchema, { kind: { case: 'event', value: eventInit(event) } })
-    sink?.(toBinary(FrameSchema, frame))
+    sink?.({ type: 'event', event })
   })
 
-  function respond(requestId: number, result: ResponseResult, error?: string): void {
-    const frame = create(FrameSchema, {
-      kind: {
-        case: 'response',
-        value: {
-          requestId,
-          ...(error === undefined ? {} : { error }),
-          ...(error === undefined ? { result } : {}),
-        },
-      },
-    })
-    sink?.(toBinary(FrameSchema, frame))
+  function respond(id: number, outcome: { result: Result } | { error: string }): void {
+    sink?.({ type: 'response', response: { id, ...outcome } })
   }
 
   return {
-    send(bytes: Uint8Array): void {
-      const request = fromBinary(RequestSchema, bytes)
-      void handle(client, request)
-        .then((result) => respond(request.id, result))
-        .catch((error: unknown) => {
-          respond(request.id, { case: 'empty', value: {} }, describe(error))
-        })
+    send(request: Request): void {
+      void handle(client, request.command)
+        .then((result) => respond(request.id, { result }))
+        .catch((error: unknown) => respond(request.id, { error: describe(error) }))
     },
 
-    setSink(onFrame: (frame: Uint8Array) => void): void {
+    setSink(onFrame: (frame: Frame) => void): void {
       sink = onFrame
     },
 
@@ -233,101 +48,140 @@ function describe(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-async function handle(client: SessionClient, request: Request): Promise<ResponseResult> {
-  const cmd = request.cmd
+const empty: Result = { type: 'empty' }
 
-  switch (cmd.case) {
-    case 'getAccountInfo': {
-      const info = await client.getAccountInfo()
-      return {
-        case: 'accountInfo',
-        value: {
-          haveAccount: info.haveAccount,
-          ...(info.sessionId === undefined ? {} : { sessionId: info.sessionId }),
-          ...(info.displayName === undefined ? {} : { displayName: info.displayName }),
-          networkAttached: info.networkAttached,
-        },
-      }
-    }
-    case 'getConversations': {
-      const conversations = await client.getConversations()
-      return {
-        case: 'conversationList',
-        value: { conversations: conversations.map(conversationToPb) },
-      }
-    }
-    case 'getMessageRequests': {
-      const conversations = await client.getMessageRequests()
-      return {
-        case: 'conversationList',
-        value: { conversations: conversations.map(conversationToPb) },
-      }
-    }
-    case 'getConversation': {
-      const conversation = await client.getConversation(cmd.value.conversationId)
-      return { case: 'conversation', value: { conversation: conversationToPb(conversation) } }
-    }
-    case 'getMessages': {
-      const before = cmd.value.before
-      const messages = await client.getMessages(cmd.value.conversationId, {
-        limit: cmd.value.limit,
-        ...(before === undefined
-          ? {}
-          : { before: { timestamp: Number(before.timestamp), id: Number(before.id) } }),
-      })
-      return { case: 'messageList', value: { messages: messages.map(messageToPb) } }
-    }
-    case 'sendMessage': {
-      const id = await client.sendMessage(cmd.value.conversationId, {
-        body: cmd.value.body,
-        ...(cmd.value.replyTo === undefined ? {} : { replyTo: Number(cmd.value.replyTo) }),
-      })
-      return { case: 'messageId', value: { messageId: BigInt(id) } }
-    }
-    case 'markRead':
-      await client.markRead(cmd.value.conversationId)
-      return { case: 'empty', value: {} }
-    case 'approveConversation':
-      await client.approveConversation(cmd.value.conversationId)
-      return { case: 'empty', value: {} }
-    case 'openDm': {
-      const id = await client.openDm(cmd.value.sessionId)
-      const conversation = await client.getConversation(id)
-      return { case: 'conversation', value: { conversation: conversationToPb(conversation) } }
-    }
-    case 'setBlocked':
-      await client.setBlocked(cmd.value.conversationId, cmd.value.blocked)
-      return { case: 'empty', value: {} }
-    case 'deleteMessage':
-      await client.deleteMessage(
-        Number(cmd.value.messageId),
-        cmd.value.scope === DeletionPb.EVERYWHERE ? 'everywhere' : 'here',
-      )
-      return { case: 'empty', value: {} }
-    case 'pollOnce':
-      await client.pollOnce()
-      return { case: 'empty', value: {} }
-    case 'getPref': {
-      const value = await client.getPref(cmd.value.key)
-      return { case: 'pref', value: value === undefined ? {} : { value } }
-    }
-    case 'setPref':
-      await client.setPref(cmd.value.key, cmd.value.value)
-      return { case: 'empty', value: {} }
-    case 'getSeedMnemonic': {
-      const words = await client.getSeedMnemonic()
-      return { case: 'mnemonic', value: { words } }
-    }
-    case 'createAccount':
-      await client.createAccount()
-      return { case: 'empty', value: {} }
-    case 'setDisplayName':
-      await client.setDisplayName(cmd.value.name)
-      return { case: 'empty', value: {} }
-    case 'attachNetwork':
-      await client.attachNetwork(cmd.value.netid)
-      return { case: 'empty', value: {} }
-    default:
-      throw new Error(`The fake bridge does not implement ${String(cmd.case)} yet`)
-  }
+/** Behaviour the fake has no model of; the real shim answers the same way outside a test build. */
+function unsupported(name: string): never {
+  throw new Error(`The fake bridge does not serve ${name}`)
+}
+
+type Handler<K extends Command['type']> = (
+  client: SessionClient,
+  command: Extract<Command, { type: K }>,
+) => Promise<Result>
+
+// One entry per command, keyed by its tag, so a command added to the protocol without a fake arm
+// is a compile error rather than a request that fails only once a screen sends it.
+const handlers: { [K in Command['type']]: Handler<K> } = {
+  getAccountInfo: async (client) => ({ type: 'accountInfo', info: await client.getAccountInfo() }),
+  createAccount: async (client) => {
+    await client.createAccount()
+    return empty
+  },
+  restoreAccountFromWords: async (client, cmd) => {
+    await client.restoreAccount({
+      words: cmd.words,
+      ...(cmd.language === undefined ? {} : { language: cmd.language }),
+    })
+    return empty
+  },
+  restoreAccountFromSeed: async (client, cmd) => {
+    await client.restoreAccount({ hexSeed: cmd.hexSeed })
+    return empty
+  },
+  getSeedMnemonic: async (client, cmd) => ({
+    type: 'mnemonic',
+    words: await client.getSeedMnemonic(cmd.language),
+  }),
+  setDisplayName: async (client, cmd) => {
+    await client.setDisplayName(cmd.name)
+    return empty
+  },
+  attachNetwork: async (client, cmd) => {
+    await client.attachNetwork(cmd.netid, cmd.devnetSeedUrl)
+    return empty
+  },
+  pollOnce: async (client) => {
+    await client.pollOnce()
+    return empty
+  },
+  setPushToken: () => unsupported('setPushToken'),
+  handlePushPayload: () => unsupported('handlePushPayload'),
+
+  getConversations: async (client) => ({
+    type: 'conversationList',
+    conversations: await client.getConversations(),
+  }),
+  getMessageRequests: async (client) => ({
+    type: 'conversationList',
+    conversations: await client.getMessageRequests(),
+  }),
+  getConversation: async (client, cmd) => ({
+    type: 'conversation',
+    conversation: await client.getConversation(cmd.conversationId),
+  }),
+  openDm: async (client, cmd) => {
+    const id = await client.openDm(cmd.sessionId)
+    return { type: 'conversation', conversation: await client.getConversation(id) }
+  },
+  markRead: async (client, cmd) => {
+    await client.markRead(cmd.conversationId, cmd.upTo)
+    return empty
+  },
+  setBlocked: async (client, cmd) => {
+    await client.setBlocked(cmd.conversationId, cmd.blocked)
+    return empty
+  },
+  setNickname: async (client, cmd) => {
+    await client.setNickname(cmd.conversationId, cmd.nickname)
+    return empty
+  },
+  setPriority: async (client, cmd) => {
+    await client.setPriority(cmd.conversationId, cmd.priority)
+    return empty
+  },
+  approveConversation: async (client, cmd) => {
+    await client.approveConversation(cmd.conversationId)
+    return empty
+  },
+  deleteConversation: async (client, cmd) => {
+    await client.deleteConversation(cmd.conversationId, cmd.keepMessages)
+    return empty
+  },
+
+  getMessages: async (client, cmd) => ({
+    type: 'messageList',
+    messages: await client.getMessages(cmd.conversationId, {
+      limit: cmd.limit,
+      includeDeleted: cmd.includeDeleted,
+      ...(cmd.before === undefined ? {} : { before: cmd.before }),
+    }),
+  }),
+  sendMessage: async (client, cmd) => ({
+    type: 'messageId',
+    messageId: await client.sendMessage(cmd.conversationId, {
+      body: cmd.body,
+      ...(cmd.attachments.length === 0 ? {} : { attachments: cmd.attachments }),
+      ...(cmd.replyTo === undefined ? {} : { replyTo: cmd.replyTo }),
+    }),
+  }),
+  retrySend: async (client, cmd) => ({
+    type: 'bool',
+    value: await client.retrySend(cmd.messageId),
+  }),
+  deleteMessage: async (client, cmd) => {
+    await client.deleteMessage(cmd.messageId, cmd.scope)
+    return { type: 'bool', value: true }
+  },
+
+  getPref: async (client, cmd) => {
+    const value = await client.getPref(cmd.key)
+    return { type: 'pref', ...(value === undefined ? {} : { value }) }
+  },
+  setPref: async (client, cmd) => {
+    await client.setPref(cmd.key, cmd.value)
+    return empty
+  },
+
+  // The contract harness drives the fake through fixtures and a manual clock, not through these.
+  deliverTestMessage: () => unsupported('deliverTestMessage'),
+  getTestAccountSeed: () => unsupported('getTestAccountSeed'),
+  approveTestContact: () => unsupported('approveTestContact'),
+  echoTestFrame: () => unsupported('echoTestFrame'),
+}
+
+// async so that a handler throwing synchronously rejects like one that fails later.
+async function handle(client: SessionClient, command: Command): Promise<Result> {
+  const handler = handlers[command.type] as (c: SessionClient, cmd: Command) => Promise<Result>
+  return handler(client, command)
 }

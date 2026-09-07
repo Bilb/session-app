@@ -14,8 +14,8 @@ both, which is why `vitest` can exercise the addon here without an Electron proc
 pnpm --filter @session/bridge-node build:native
 ```
 
-Takes a while the first time: it builds libsession and its static dependencies. Needs `protoc`,
-`cmake`, `ninja` and gcc - see `packages/bridge-core/README.md` for why gcc rather than clang.
+Takes a while the first time: it builds libsession and its static dependencies. Needs `cmake`,
+`ninja` and gcc - see `packages/bridge-core/README.md` for why gcc rather than clang.
 
 The build applies `patches/` to the libsession tree first. There is one patch: libevent's dep
 script overrides session-deps' shared configure command and drops `--with-pic`, so its static

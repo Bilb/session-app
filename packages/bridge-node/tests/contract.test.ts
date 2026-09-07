@@ -3,15 +3,9 @@ import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { create, fromBinary, toBinary, type MessageInitShape } from '@bufbuild/protobuf'
+import type { Command, Frame, Response } from '@session/bridge-types'
 import { createSessionClient, type BridgeTransport, type SessionClient } from '@session/client'
 import { runSessionClientContract, type ContractHarness } from '@session/client-contract'
-import {
-  FrameSchema,
-  RequestSchema,
-  type RequestSchema as Req,
-  type Response,
-} from '@session/proto'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { createNodeBridgeTransport } from '#src/index'
@@ -30,8 +24,6 @@ import { createNodeBridgeTransport } from '#src/index'
  * `pnpm --filter @session/bridge-node build:native:testing`.
  */
 
-type Cmd = NonNullable<MessageInitShape<typeof Req>['cmd']>
-
 const addon = join(import.meta.dirname, '../build/Release/session_bridge_node.node')
 
 /**
@@ -44,20 +36,19 @@ const addon = join(import.meta.dirname, '../build/Release/session_bridge_node.no
  */
 function tap(transport: BridgeTransport): {
   forFacade: BridgeTransport
-  ask: (cmd: Cmd) => Promise<Response>
+  ask: (command: Command) => Promise<Response>
 } {
-  let facadeSink: ((frame: Uint8Array) => void) | null = null
-  const buffered: Uint8Array[] = []
+  let facadeSink: ((frame: Frame) => void) | null = null
+  const buffered: Frame[] = []
   const waiting = new Map<number, (response: Response) => void>()
   let nextId = 1_000_000
 
   transport.setSink((frame) => {
-    const decoded = fromBinary(FrameSchema, frame)
-    if (decoded.kind.case === 'response') {
-      const resolve = waiting.get(decoded.kind.value.requestId)
+    if (frame.type === 'response') {
+      const resolve = waiting.get(frame.response.id)
       if (resolve) {
-        waiting.delete(decoded.kind.value.requestId)
-        resolve(decoded.kind.value)
+        waiting.delete(frame.response.id)
+        resolve(frame.response)
         return
       }
     }
@@ -78,21 +69,18 @@ function tap(transport: BridgeTransport): {
         transport.close()
       },
     },
-    ask: (cmd) =>
+    ask: (command) =>
       new Promise<Response>((resolve) => {
         const id = nextId++
         waiting.set(id, resolve)
-        transport.send(toBinary(RequestSchema, create(RequestSchema, { id, cmd })))
+        transport.send({ id, command })
       }),
   }
 }
 
-const hex = (bytes: Uint8Array): string =>
-  [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('')
-
 interface Peer {
   client: SessionClient
-  ask: (cmd: Cmd) => Promise<Response>
+  ask: (command: Command) => Promise<Response>
   sessionId: string
   seed: string
   dir: string
@@ -111,14 +99,14 @@ async function openPeer(dir: string): Promise<Peer> {
   const client = createSessionClient(forFacade)
 
   const info = await client.getAccountInfo()
-  const seed = await ask({ case: 'getTestAccountSeed', value: {} })
-  if (seed.result.case !== 'bytes') throw new Error(seed.error ?? 'no seed: build with testing on')
+  const seed = await ask({ type: 'getTestAccountSeed' })
+  if (seed.result?.type !== 'hex') throw new Error(seed.error ?? 'no seed: build with testing on')
 
   return {
     client,
     ask,
     sessionId: info.sessionId ?? '',
-    seed: hex(seed.result.value.data),
+    seed: seed.result.hex,
     dir,
   }
 }
@@ -139,12 +127,10 @@ function carrier(a: Peer, b: Peer): () => Promise<void> {
       if (!message.outgoing || delivered.has(key)) continue
       delivered.add(key)
       await to.ask({
-        case: 'deliverTestMessage',
-        value: {
-          senderSeed: from.seed,
-          body: message.body,
-          timestamp: BigInt(message.timestamp),
-        },
+        type: 'deliverTestMessage',
+        senderSeedHex: from.seed,
+        body: message.body,
+        timestamp: message.timestamp,
       })
     }
   }
@@ -205,8 +191,8 @@ describeAddon('addon', () => {
       // Approval is recorded by messages flowing, so a pair that has never written to each
       // other are strangers by definition. This is the setup libsession's own tests use to
       // say "that is not what this scenario is about".
-      await alice.ask({ case: 'approveTestContact', value: { sessionId: bob.sessionId } })
-      await bob.ask({ case: 'approveTestContact', value: { sessionId: alice.sessionId } })
+      await alice.ask({ type: 'approveTestContact', sessionId: bob.sessionId })
+      await bob.ask({ type: 'approveTestContact', sessionId: alice.sessionId })
       return {
         alice: alice.client,
         bob: bob.client,

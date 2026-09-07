@@ -1,0 +1,29 @@
+{
+  "name": "@session/bridge-codegen",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Generates the shim's C++ structs and their JSI and N-API converters from @session/bridge-types",
+  "type": "module",
+  "imports": {
+    "#src/*": [
+      "./src/*.ts"
+    ]
+  },
+  "scripts": {
+    "codegen": "node --disable-warning=ExperimentalWarning src/cli.ts",
+    "codegen:check": "pnpm codegen && git diff --exit-code -- ../../packages/bridge-core/include/session_bridge/gen",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "typescript": "catalog:"
+  },
+  "devDependencies": {
+    "@session/eslint-config": "workspace:*",
+    "@session/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -1,0 +1,163 @@
+import { BANNER, cppType, fieldType, forEachDeclaration, member, NAMESPACE } from '#src/cpp'
+import type { Field, Model, Struct } from '#src/model'
+
+/**
+ * `margelo::nitro::JSIConverter` specialisations, so Nitro can carry the protocol types through a
+ * HybridObject method or callback without nitrogen generating a struct of its own. Shaped after
+ * nitrogen's output with one deliberate difference: an unset optional is omitted from the object
+ * rather than written as `undefined`, which is what exactOptionalPropertyTypes on the other side
+ * means.
+ */
+export function emitJsi(model: Model, source: string): string {
+  const prop = (name: string) => `PropNameIDCache::get(runtime, "${name}")`
+  const conv = (type: string) => `JSIConverter<${type}>`
+
+  const body = forEachDeclaration(model, {
+    enum: ({ enum: e }) => {
+      const T = `${NAMESPACE}::${e.name}`
+      const traits = `${NAMESPACE}::EnumTraits<${T}>`
+      return `template <>
+struct JSIConverter<${T}> final {
+    static inline ${T} fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+        std::string text = ${conv('std::string')}::fromJSI(runtime, arg);
+        auto parsed = ${traits}::parse(text);
+        if (!parsed) [[unlikely]]
+            throw std::invalid_argument("Cannot convert \\"" + text + "\\" to ${e.name}");
+        return *parsed;
+    }
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, ${T} arg) {
+        return ${conv('std::string')}::toJSI(runtime, std::string{${traits}::to_string(arg)});
+    }
+    static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
+        return value.isString() &&
+               ${traits}::parse(${conv('std::string')}::fromJSI(runtime, value)).has_value();
+    }
+};
+`
+    },
+
+    struct: ({ struct: s }) => emitStruct(s),
+
+    union: ({ union: u }) => {
+      const T = `${NAMESPACE}::${u.name}`
+      const members = u.members.map((m) =>
+        model.declarations.find((d) => d.kind === 'struct' && d.struct.name === m),
+      )
+      const arms = members
+        .map((d) => {
+          if (!d || d.kind !== 'struct' || d.struct.tag === undefined)
+            throw new Error(`${u.name}: member is not tagged`)
+          return `        if (tag == "${d.struct.tag}")
+            return ${conv(`${NAMESPACE}::${d.struct.name}`)}::fromJSI(runtime, arg);`
+        })
+        .join('\n')
+      const tags = members
+        .map((d) => (d && d.kind === 'struct' ? `tag == "${d.struct.tag}"` : 'false'))
+        .join(' || ')
+      return `template <>
+struct JSIConverter<${T}> final {
+    static inline ${T} fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+        jsi::Object obj = arg.asObject(runtime);
+        std::string tag = ${conv('std::string')}::fromJSI(runtime, obj.getProperty(runtime, ${prop('type')}));
+${arms}
+        throw std::invalid_argument("${u.name}: unknown type \\"" + tag + "\\"");
+    }
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ${T}& arg) {
+        return std::visit(
+                [&runtime](const auto& value) -> jsi::Value {
+                    return JSIConverter<std::decay_t<decltype(value)>>::toJSI(runtime, value);
+                },
+                arg);
+    }
+    static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
+        if (!value.isObject())
+            return false;
+        jsi::Value type = value.getObject(runtime).getProperty(runtime, ${prop('type')});
+        if (!type.isString())
+            return false;
+        std::string tag = type.getString(runtime).utf8(runtime);
+        return ${tags};
+    }
+};
+`
+    },
+  })
+
+  function emitStruct(s: Struct): string {
+    const T = `${NAMESPACE}::${s.name}`
+    const read = (f: Field) =>
+      `${conv(fieldType(f))}::fromJSI(runtime, obj.getProperty(runtime, ${prop(f.name)}))`
+    const construct = s.fields.length
+      ? `        return ${T}(\n${s.fields.map((f) => `                ${read(f)}`).join(',\n')});`
+      : `        return ${T}{};`
+    const writes: string[] = []
+    if (s.tag !== undefined) {
+      writes.push(
+        `        obj.setProperty(runtime, ${prop('type')}, ${conv('std::string')}::toJSI(runtime, std::string{${T}::type_tag}));`,
+      )
+    }
+    for (const f of s.fields) {
+      const value = `${conv(cppType(f.type))}::toJSI(runtime, ${f.optional ? '*' : ''}arg.${member(f)})`
+      writes.push(
+        f.optional
+          ? `        if (arg.${member(f)})\n            obj.setProperty(runtime, ${prop(f.name)}, ${value});`
+          : `        obj.setProperty(runtime, ${prop(f.name)}, ${value});`,
+      )
+    }
+    const canConvert =
+      s.tag === undefined
+        ? `        return value.isObject();`
+        : `        if (!value.isObject())
+            return false;
+        jsi::Value type = value.getObject(runtime).getProperty(runtime, ${prop('type')});
+        return type.isString() && type.getString(runtime).utf8(runtime) == ${T}::type_tag;`
+    const fromParams = s.fields.length
+      ? 'jsi::Runtime& runtime, const jsi::Value& arg'
+      : 'jsi::Runtime&, const jsi::Value&'
+    const canParams =
+      s.tag === undefined
+        ? 'jsi::Runtime&, const jsi::Value& value'
+        : 'jsi::Runtime& runtime, const jsi::Value& value'
+    return `template <>
+struct JSIConverter<${T}> final {
+    static inline ${T} fromJSI(${fromParams}) {
+${s.fields.length ? '        jsi::Object obj = arg.asObject(runtime);\n' : ''}${construct}
+    }
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ${T}& arg) {
+        ${s.fields.length ? '' : '(void)arg;\n        '}jsi::Object obj(runtime);
+${writes.join('\n')}
+        return obj;
+    }
+    static inline bool canConvert(${canParams}) {
+${canConvert}
+    }
+};
+`
+  }
+
+  return `${BANNER(source)}
+#pragma once
+
+#if __has_include(<NitroModules/JSIConverter.hpp>)
+#include <NitroModules/JSIConverter.hpp>
+#include <NitroModules/NitroDefines.hpp>
+#include <NitroModules/PropNameIDCache.hpp>
+#else
+#error NitroModules cannot be found. This header is for the Nitro module only.
+#endif
+
+#include <jsi/jsi.h>
+
+#include <stdexcept>
+#include <string>
+#include <type_traits>
+#include <variant>
+
+#include "types.hpp"
+
+namespace margelo::nitro {
+
+${body}
+}  // namespace margelo::nitro
+`
+}

@@ -24,15 +24,12 @@
 #include <ranges>
 #include <stdexcept>
 #include <utility>
+#include <variant>
 #include <vector>
 
-#include "encode.hpp"
-#include "sessionbridge/v1/commands.pb.h"
-#include "sessionbridge/v1/frames.pb.h"
+#include "convert.hpp"
 
 namespace session::bridge {
-
-namespace pb = sessionbridge::v1;
 
 namespace {
 
@@ -40,6 +37,10 @@ namespace {
     /// mean different things to a caller. Said once here so every command spells it the same way.
     std::string not_found(std::string_view what, const std::string& id) {
         return std::string{what} + " " + id + " does not exist";
+    }
+
+    int64_t whole(double value) {
+        return static_cast<int64_t>(value);
     }
 
 }  // namespace
@@ -112,49 +113,35 @@ struct ClientBridge::Impl {
         attach_network();
     }
 
-    /// The only path frames take out of here. Serialising into a reused buffer would be a false
-    /// economy: the sink is called from Core's loop and may be called again before the adapter has
-    /// drained the last one.
-    void emit(const pb::Frame& frame) {
+    /// The only path frames take out of here. Moved, never copied: the adapter's queue takes
+    /// ownership on Core's loop and the JavaScript object is built from it on the JS thread.
+    void emit(Frame frame) {
         if (!sink)
             return;
-        std::string bytes;
-        if (!frame.SerializeToString(&bytes))
-            return;
-        sink(std::as_bytes(std::span{bytes.data(), bytes.size()}));
+        sink(std::move(frame));
     }
 
-    void emit(pb::Event&& event) {
-        pb::Frame frame;
-        *frame.mutable_event() = std::move(event);
-        emit(frame);
+    void event(BridgeEvent e) {
+        emit(EventFrame{std::move(e)});
     }
 
-    void emit(pb::Response&& response) {
-        pb::Frame frame;
-        *frame.mutable_response() = std::move(response);
-        emit(frame);
+    void respond(double id, Result result) {
+        emit(ResponseFrame{Response{id, std::nullopt, std::move(result)}});
     }
 
-    void ok(uint32_t id) {
-        pb::Response r;
-        r.set_request_id(id);
-        r.mutable_empty();
-        emit(std::move(r));
+    void ok(double id) {
+        respond(id, EmptyResult{});
     }
 
-    void fail(uint32_t id, std::string_view message) {
-        pb::Response r;
-        r.set_request_id(id);
-        r.set_error(std::string{message});
-        emit(std::move(r));
+    void fail(double id, std::string_view message) {
+        emit(ResponseFrame{Response{id, std::string{message}, std::nullopt}});
     }
 
     /// Wraps a handler so that the error leg is written once rather than at every call site.
     /// `failable_function`'s leading error argument is the whole convention, and forgetting to
     /// check it is the one mistake it exists to prevent.
     template <typename F>
-    auto on(uint32_t id, F&& f) {
+    auto on(double id, F&& f) {
         return [this, id, f = std::forward<F>(f)](std::optional<std::string> error, auto&&... rest) {
             if (error)
                 fail(id, *error);
@@ -163,27 +150,394 @@ struct ClientBridge::Impl {
         };
     }
 
-    void conversation_list(uint32_t id, const std::vector<client::AnyConversation>& convos) {
-        pb::Response r;
-        r.set_request_id(id);
-        auto* list = r.mutable_conversation_list();
-        for (const auto& c : convos)
-            encode(c, list->add_conversations());
-        emit(std::move(r));
+    static std::vector<Conversation> conversations(const std::vector<client::AnyConversation>& from) {
+        std::vector<Conversation> out;
+        out.reserve(from.size());
+        for (const auto& c : from)
+            out.push_back(to_bridge(c));
+        return out;
     }
 
-    void one_conversation(uint32_t id, const client::AnyConversation& convo) {
-        pb::Response r;
-        r.set_request_id(id);
-        encode(convo, r.mutable_conversation()->mutable_conversation());
-        emit(std::move(r));
+    void conversation_list(double id, const std::vector<client::AnyConversation>& convos) {
+        respond(id, ConversationListResult{conversations(convos)});
+    }
+
+    void one_conversation(double id, const client::AnyConversation& convo) {
+        respond(id, ConversationResult{to_bridge(convo)});
     }
 
     client::Conversation convo(const std::string& id) {
         return client::Conversation{*client, client::ConversationId::parse(id)};
     }
 
-    void dispatch(const pb::Request& request);
+    void attachment_progress(
+            std::optional<double> request_id,
+            std::optional<std::string> conversation_id,
+            int64_t message_id,
+            size_t index,
+            int64_t done,
+            int64_t total,
+            std::optional<int> result) {
+        std::optional<double> outcome;
+        if (result)
+            outcome = static_cast<double>(*result);
+        event(AttachmentProgressBridgeEvent{
+                request_id,
+                std::move(conversation_id),
+                AttachmentProgress{
+                        static_cast<double>(message_id),
+                        static_cast<double>(index),
+                        static_cast<double>(done),
+                        static_cast<double>(total),
+                        outcome}});
+    }
+
+    // One handler per command. Dispatch is a std::visit over the Command variant, so a command
+    // added to @session/bridge-types that has no handler here is a compile error, not a request
+    // that quietly falls through.
+
+    void handle(double id, const GetAccountInfoCommand&) {
+        // The first call the app makes, and on a fresh install there is no account: asking for a
+        // display name then is asking a question about an account that does not exist.
+        if (!client->core.globals.have_account()) {
+            respond(id, AccountInfoResult{AccountInfo{false, std::nullopt, std::nullopt, false}});
+            return;
+        }
+        client->display_name(on(id, [this, id](std::string name) {
+            std::optional<std::string> display_name;
+            if (!name.empty())
+                display_name = std::move(name);
+            respond(id,
+                    AccountInfoResult{AccountInfo{
+                            true,
+                            client->core.globals.session_id_hex(),
+                            std::move(display_name),
+                            client->core.network() != nullptr}});
+        }));
+    }
+
+    void handle(double id, const CreateAccountCommand&) {
+        client->core.globals.create_account();
+        on_account();
+        ok(id);
+    }
+
+    void handle(double id, const SetDisplayNameCommand& cmd) {
+        client->set_display_name(cmd.name, on(id, [this, id] { ok(id); }));
+    }
+
+    void handle(double id, const RestoreAccountFromSeedCommand& cmd) {
+        auto raw = oxenc::from_hex(cmd.hex_seed);
+        if (raw.size() != 32)
+            throw std::invalid_argument{"hexSeed must be 32 bytes of hex"};
+        b32 seed;
+        std::memcpy(seed.data(), raw.data(), seed.size());
+        client->core.globals.restore_account(core::predefined_seed{std::span{seed}});
+        on_account();
+        ok(id);
+    }
+
+    void handle(double id, const RestoreAccountFromWordsCommand& cmd) {
+        std::vector<std::string_view> words;
+        words.reserve(cmd.words.size());
+        for (const auto& word : cmd.words)
+            words.emplace_back(word);
+        client->core.globals.restore_account(
+                cmd.language ? core::predefined_seed{words, *cmd.language}
+                             : core::predefined_seed{words});
+        on_account();
+        ok(id);
+    }
+
+    void handle(double id, const GetSeedMnemonicCommand& cmd) {
+        auto words = client->core.globals.seed_mnemonic(
+                cmd.language ? std::string_view{*cmd.language} : std::string_view{"English"});
+        std::vector<std::string> out;
+        // The span must outlive the loop: it holds the accessor that keeps the secure buffer
+        // unlocked, and iterating over a temporary re-locks it before the body runs.
+        auto opened = words.open();
+        for (const auto& word : opened)
+            out.emplace_back(word);
+        respond(id, MnemonicResult{std::move(out)});
+    }
+
+    void handle(double id, const AttachNetworkCommand& cmd) {
+        options.netid = cmd.netid;
+        attach_network();
+        ok(id);
+    }
+
+    void handle(double id, const PollOnceCommand&) {
+        // Core owns its poll ticker and exposes no one-shot entry point. Asking for one is the
+        // first of the background-and-push questions in docs/STATUS.md; until it is answered
+        // there is nothing honest to call here.
+        fail(id, "pollOnce is not supported by this libsession build");
+    }
+
+    void handle(double id, const SetPushTokenCommand&) {
+        fail(id, "setPushToken is not implemented by the bridge yet");
+    }
+
+    void handle(double id, const HandlePushPayloadCommand&) {
+        fail(id, "handlePushPayload is not implemented by the bridge yet");
+    }
+
+    void handle(double id, const GetConversationsCommand&) {
+        client->conversations(on(id, [this, id](std::vector<client::AnyConversation> convos) {
+            conversation_list(id, convos);
+        }));
+    }
+
+    void handle(double id, const GetMessageRequestsCommand&) {
+        client->message_requests(on(id, [this, id](std::vector<client::AnyConversation> convos) {
+            conversation_list(id, convos);
+        }));
+    }
+
+    void handle(double id, const GetConversationCommand& cmd) {
+        const auto convo_id = cmd.conversation_id;
+        client->conversation(
+                client::ConversationId::parse(convo_id),
+                on(id, [this, id, convo_id](std::optional<client::AnyConversation> convo) {
+                    if (!convo)
+                        fail(id, not_found("conversation", convo_id));
+                    else
+                        one_conversation(id, *convo);
+                }));
+    }
+
+    void handle(double id, const OpenDmCommand& cmd) {
+        const auto session_id = cmd.session_id;
+        client->open_dm(
+                client::ConversationId::parse(session_id),
+                on(id, [this, id, session_id](std::optional<client::DM> dm) {
+                    if (!dm)
+                        fail(id, not_found("account", session_id));
+                    else
+                        one_conversation(id, client::AnyConversation{*dm});
+                }));
+    }
+
+    void handle(double id, const MarkReadCommand& cmd) {
+        std::optional<sys_ms> up_to;
+        if (cmd.up_to)
+            up_to = from_epoch_ms(whole(*cmd.up_to));
+        convo(cmd.conversation_id).mark_read(up_to, on(id, [this, id] { ok(id); }));
+    }
+
+    void handle(double id, const SetBlockedCommand& cmd) {
+        client->set_blocked(
+                client::ConversationId::parse(cmd.conversation_id),
+                cmd.blocked,
+                on(id, [this, id] { ok(id); }));
+    }
+
+    void handle(double id, const SetPriorityCommand& cmd) {
+        convo(cmd.conversation_id)
+                .set_priority(static_cast<int>(cmd.priority), on(id, [this, id] { ok(id); }));
+    }
+
+    void handle(double id, const SetNicknameCommand& cmd) {
+        const auto convo_id = cmd.conversation_id;
+        const auto nickname = cmd.nickname.value_or("");
+        client->dm(
+                client::ConversationId::parse(convo_id),
+                on(id, [this, id, convo_id, nickname](std::optional<client::DM> dm) {
+                    if (!dm)
+                        fail(id, not_found("conversation", convo_id));
+                    else
+                        dm->set_nickname(nickname, on(id, [this, id] { ok(id); }));
+                }));
+    }
+
+    void handle(double id, const ApproveConversationCommand&) {
+        // There is no such call, by design: libsession records approval from messages flowing,
+        // and writing to someone is what approves them (see DM::request). A conversation-layer
+        // way to accept a request without answering it is one of the open questions in
+        // docs/STATUS.md.
+        fail(id,
+             "approveConversation has no libsession counterpart: approval is recorded by "
+             "sending, not set");
+    }
+
+    void handle(double id, const DeleteConversationCommand& cmd) {
+        convo(cmd.conversation_id)
+                .delete_conversation(cmd.keep_messages, on(id, [this, id] { ok(id); }));
+    }
+
+    void handle(double id, const GetMessagesCommand& cmd) {
+        std::optional<client::MessageCursor> before;
+        if (cmd.before)
+            before = client::MessageCursor{
+                    from_epoch_ms(whole(cmd.before->timestamp)), whole(cmd.before->id)};
+        convo(cmd.conversation_id)
+                .messages(
+                        static_cast<int>(cmd.limit),
+                        before,
+                        on(id, [this, id](std::vector<client::Message> messages) {
+                            std::vector<Message> out;
+                            out.reserve(messages.size());
+                            // libsession answers newest first, because that is the direction
+                            // paging runs. The protocol is oldest first, because that is the
+                            // direction a transcript is read, and reversing once here is cheaper
+                            // than every caller remembering to.
+                            for (const auto& m : std::views::reverse(messages))
+                                out.push_back(to_bridge(m));
+                            respond(id, MessageListResult{std::move(out)});
+                        }));
+    }
+
+    void handle(double id, const SendMessageCommand& cmd) {
+        client::OutgoingMessage msg;
+        msg.body = cmd.body;
+        if (cmd.reply_to)
+            msg.reply_to = whole(*cmd.reply_to);
+        for (const auto& a : cmd.attachments) {
+            client::OutgoingAttachment out;
+            out.path = a.path;
+            out.content_type = a.content_type;
+            out.filename = a.filename;
+            out.caption = a.caption;
+            out.voice_message = a.voice_message.value_or(false);
+            if (a.width)
+                out.width = static_cast<uint32_t>(*a.width);
+            if (a.height)
+                out.height = static_cast<uint32_t>(*a.height);
+            msg.attachments.push_back(std::move(out));
+        }
+        convo(cmd.conversation_id)
+                .send_message(std::move(msg), on(id, [this, id](int64_t message_id) {
+                                  respond(id, MessageIdResult{static_cast<double>(message_id)});
+                              }));
+    }
+
+    void handle(double id, const RetrySendCommand& cmd) {
+        const int64_t message_id = whole(cmd.message_id);
+        // A retry re-uploads whatever did not get through, and reports it the way the original
+        // send did. There is no overload without a progress handler, and a retry is where a
+        // file that has since been deleted is discovered, so this is not a formality.
+        client->retry_send(
+                message_id,
+                [this, id, message_id](
+                        size_t index, int64_t sent, int64_t total, std::optional<int> result) {
+                    attachment_progress(id, std::nullopt, message_id, index, sent, total, result);
+                },
+                on(id, [this, id](bool started) { respond(id, BoolResult{started}); }));
+    }
+
+    void handle(double id, const DeleteMessageCommand& cmd) {
+        auto answer = on(id, [this, id](bool deleted) { respond(id, BoolResult{deleted}); });
+        if (cmd.scope == Deletion::everywhere)
+            client->delete_message_everywhere(whole(cmd.message_id), std::move(answer));
+        else
+            client->delete_message(whole(cmd.message_id), std::move(answer));
+    }
+
+    void handle(double id, const GetPrefCommand& cmd) {
+        respond(id, PrefResult{client->core.globals.get_text(cmd.key)});
+    }
+
+    void handle(double id, const SetPrefCommand& cmd) {
+        client->core.globals.set(cmd.key, cmd.value);
+        ok(id);
+    }
+
+    // The test-only commands are part of the protocol on every build, so that the fake and the
+    // TypeScript can name them; only a SESSION_BRIDGE_TESTING build serves them.
+
+    void handle(double id, [[maybe_unused]] const GetTestAccountSeedCommand& cmd) {
+#ifdef SESSION_BRIDGE_TESTING
+        // Named, because the accessor is what holds the secure buffer readable and the rvalue
+        // overloads are deleted precisely to stop this being a one-liner.
+        auto access = client->core.globals.account_seed();
+        auto raw = access.seed();
+        respond(id, HexResult{to_hex(std::as_bytes(std::span{raw}))});
+#else
+        fail(id, "getTestAccountSeed is only served by a SESSION_BRIDGE_TESTING build");
+#endif
+    }
+
+    void handle(double id, [[maybe_unused]] const DeliverTestMessageCommand& cmd) {
+#ifdef SESSION_BRIDGE_TESTING
+        auto seed = oxenc::from_hex(cmd.sender_seed_hex);
+        if (seed.size() != 32)
+            throw std::invalid_argument{"senderSeedHex must be 32 bytes of hex"};
+
+        const int64_t timestamp = whole(cmd.timestamp);
+        const auto sent = from_epoch_ms(timestamp);
+
+        SessionProtos::Content content;
+        content.set_sigtimestamp(static_cast<uint64_t>(timestamp));
+        content.mutable_datamessage()->set_body(cmd.body);
+        auto plaintext = content.SerializeAsString();
+
+        b33 recipient;
+        std::ranges::copy(client->core.globals.session_id(), recipient.begin());
+
+        auto encoded = encode_dm_v1(
+                std::as_bytes(std::span{plaintext}),
+                ed25519::PrivKeySpan::from(std::as_bytes(std::span{seed})),
+                sent,
+                recipient);
+
+        // The hash is the swarm's, and a redelivered one is how libsession recognises a
+        // duplicate - so it has to be stable for a message and different between messages.
+        core::SwarmMessage message{
+                encoded,
+                "test-" + std::to_string(timestamp) + "-" +
+                        std::to_string(std::hash<std::string>{}(cmd.body)),
+                sent,
+                from_epoch_ms(timestamp + 14 * 24 * 60 * 60 * 1000)};
+
+        // Onto Core's loop, because the connection pool is single-threaded by design and this
+        // is the one place the bridge writes the database from outside it.
+        client->core.loop().call_get([&] {
+            client->core.receive_messages({&message, 1}, config::Namespace::Default, true);
+            return 0;
+        });
+        ok(id);
+#else
+        fail(id, "deliverTestMessage is only served by a SESSION_BRIDGE_TESTING build");
+#endif
+    }
+
+    void handle(double id, [[maybe_unused]] const ApproveTestContactCommand& cmd) {
+#ifdef SESSION_BRIDGE_TESTING
+        auto decoded = oxenc::from_hex(cmd.session_id);
+        if (decoded.size() != 33)
+            throw std::invalid_argument{"sessionId must be 33 bytes of hex"};
+        b33 sid;
+        std::memcpy(sid.data(), decoded.data(), sid.size());
+        client->core.loop().call_get([&] {
+            auto conn = client->core.database().conn();
+            conn.prepared_exec("INSERT OR IGNORE INTO accounts (session_id) VALUES (?)", sid);
+            conn.prepared_exec(
+                    "INSERT INTO contacts (account, approved) VALUES ("
+                    "(SELECT id FROM accounts WHERE session_id = ?), 1) "
+                    "ON CONFLICT (account) DO UPDATE SET approved = 1",
+                    sid);
+            return 0;
+        });
+        ok(id);
+#else
+        fail(id, "approveTestContact is only served by a SESSION_BRIDGE_TESTING build");
+#endif
+    }
+
+    void handle(double id, [[maybe_unused]] const EchoTestFrameCommand& cmd) {
+#ifdef SESSION_BRIDGE_TESTING
+        // Straight back out, then the acknowledgement: what arrived through the platform's
+        // from-JS converter leaves through its to-JS converter, field for field.
+        emit(cmd.frame);
+        ok(id);
+#else
+        fail(id, "echoTestFrame is only served by a SESSION_BRIDGE_TESTING build");
+#endif
+    }
+
+    void dispatch(const Request& request) {
+        std::visit([&](const auto& cmd) { handle(request.id, cmd); }, request.command);
+    }
 };
 
 ClientBridge::ClientBridge(InitOptions options, Sink sink) :
@@ -191,93 +545,68 @@ ClientBridge::ClientBridge(InitOptions options, Sink sink) :
 
     auto* impl = _impl.get();
 
-    // Every handler does the same two things and nothing else: encode, and hand to the sink. That
-    // is what makes running them inline on Core's loop correct rather than merely convenient.
+    // Every handler does the same two things and nothing else: fill a frame, and hand it to the
+    // sink. That is what makes running them inline on Core's loop correct rather than merely
+    // convenient.
     client::callbacks cbs{
             .conversation_added =
                     [impl](const client::AnyConversation& c) {
-                        pb::Event e;
-                        encode(c, e.mutable_conversation_added()->mutable_conversation());
-                        impl->emit(std::move(e));
+                        impl->event(ConversationAddedBridgeEvent{to_bridge(c)});
                     },
             .conversation_updated =
                     [impl](const client::AnyConversation& c) {
-                        pb::Event e;
-                        encode(c, e.mutable_conversation_updated()->mutable_conversation());
-                        impl->emit(std::move(e));
+                        impl->event(ConversationUpdatedBridgeEvent{to_bridge(c)});
                     },
             .conversation_removed =
                     [impl](const client::ConversationId& id) {
-                        pb::Event e;
-                        e.mutable_conversation_removed()->set_conversation_id(id.to_string());
-                        impl->emit(std::move(e));
+                        impl->event(ConversationRemovedBridgeEvent{id.to_string()});
                     },
             .conversation_list_replaced =
                     [impl](std::vector<client::AnyConversation> convos) {
-                        pb::Event e;
-                        auto* list = e.mutable_conversation_list_replaced();
-                        for (const auto& c : convos)
-                            encode(c, list->add_conversations());
-                        impl->emit(std::move(e));
+                        impl->event(ConversationListReplacedBridgeEvent{Impl::conversations(convos)});
                     },
             .request_list_replaced =
                     [impl](std::vector<client::AnyConversation> convos) {
-                        pb::Event e;
-                        auto* list = e.mutable_request_list_replaced();
-                        for (const auto& c : convos)
-                            encode(c, list->add_conversations());
-                        impl->emit(std::move(e));
+                        impl->event(RequestListReplacedBridgeEvent{Impl::conversations(convos)});
                     },
             .message_added =
                     [impl](const client::ConversationId& id, const client::Message& m) {
-                        pb::Event e;
-                        auto* added = e.mutable_message_added();
-                        added->set_conversation_id(id.to_string());
-                        encode(m, added->mutable_message());
-                        impl->emit(std::move(e));
+                        impl->event(MessageAddedBridgeEvent{id.to_string(), to_bridge(m)});
                     },
             .message_updated =
                     [impl](const client::ConversationId& id, const client::Message& m) {
-                        pb::Event e;
-                        auto* updated = e.mutable_message_updated();
-                        updated->set_conversation_id(id.to_string());
-                        encode(m, updated->mutable_message());
-                        impl->emit(std::move(e));
+                        impl->event(MessageUpdatedBridgeEvent{id.to_string(), to_bridge(m)});
                     },
             .history_replaced =
                     [impl](const client::ConversationId& id) {
-                        pb::Event e;
-                        e.mutable_history_replaced()->set_conversation_id(id.to_string());
-                        impl->emit(std::move(e));
+                        impl->event(HistoryReplacedBridgeEvent{id.to_string()});
                     },
             .attachment_progress =
                     [impl](const client::ConversationId& id, const client::AttachmentProgress& p) {
-                        pb::Event e;
-                        auto* progress = e.mutable_attachment_progress();
                         // Only background fetches come through here; a transfer the app asked for
                         // reports to that request instead, which is what request_id distinguishes.
-                        progress->set_conversation_id(id.to_string());
-                        progress->set_message_id(p.message_id);
-                        progress->set_index(static_cast<uint32_t>(p.index));
-                        progress->set_done(p.done);
-                        progress->set_total(p.total);
-                        if (p.result)
-                            progress->set_result(*p.result);
-                        impl->emit(std::move(e));
+                        impl->attachment_progress(
+                                std::nullopt,
+                                id.to_string(),
+                                p.message_id,
+                                p.index,
+                                p.done,
+                                p.total,
+                                p.result);
                     },
             .display_picture_progress =
                     [impl](const client::ConversationId& id,
                            int64_t done,
                            int64_t total,
                            std::optional<int> result) {
-                        pb::Event e;
-                        auto* progress = e.mutable_display_picture_progress();
-                        progress->set_conversation_id(id.to_string());
-                        progress->set_done(done);
-                        progress->set_total(total);
+                        std::optional<double> outcome;
                         if (result)
-                            progress->set_result(*result);
-                        impl->emit(std::move(e));
+                            outcome = static_cast<double>(*result);
+                        impl->event(DisplayPictureProgressBridgeEvent{
+                                id.to_string(),
+                                static_cast<double>(done),
+                                static_cast<double>(total),
+                                outcome});
                     },
     };
 
@@ -320,12 +649,8 @@ ClientBridge::ClientBridge(InitOptions options, Sink sink) :
             // Called from whichever thread logged, including Core's loop and the network's own
             // threads, and after close() has dropped the sink - emit() checks for that, which
             // is the only reason this is safe to leave registered.
-            pb::Event e;
-            auto* record = e.mutable_log();
-            record->set_message(std::string{message});
-            record->set_category(std::string{category});
-            record->set_level(std::string{lvl.to_string()});
-            impl->emit(std::move(e));
+            impl->event(LogBridgeEvent{
+                    std::string{message}, std::string{category}, std::string{lvl.to_string()}});
         });
     }
 
@@ -347,15 +672,9 @@ void ClientBridge::close() {
     _impl->client.reset();
 }
 
-void ClientBridge::call(std::span<const std::byte> request_bytes) {
+void ClientBridge::call(Request request) {
     if (!_impl || !_impl->client)
         return;
-
-    pb::Request request;
-    if (!request.ParseFromArray(request_bytes.data(), static_cast<int>(request_bytes.size()))) {
-        // No id to answer with - the frame that carried it is what failed to parse.
-        return;
-    }
 
     try {
         _impl->dispatch(request);
@@ -363,406 +682,7 @@ void ClientBridge::call(std::span<const std::byte> request_bytes) {
         // Validation throws on the calling thread: ConversationId::parse on a malformed id, a
         // reply_to naming a message in another conversation. Those are answers to this request,
         // not bridge failures.
-        _impl->fail(request.id(), e.what());
-    }
-}
-
-void ClientBridge::Impl::dispatch(const pb::Request& request) {
-    const uint32_t id = request.id();
-
-    switch (request.cmd_case()) {
-
-        case pb::Request::kGetAccountInfo: {
-            // The first call the app makes, and on a fresh install there is no account: asking
-            // for a display name then is asking a question about an account that does not exist.
-            if (!client->core.globals.have_account()) {
-                pb::Response r;
-                r.set_request_id(id);
-                auto* info = r.mutable_account_info();
-                info->set_have_account(false);
-                info->set_network_attached(false);
-                emit(std::move(r));
-                return;
-            }
-            client->display_name(on(id, [this, id](std::string name) {
-                pb::Response r;
-                r.set_request_id(id);
-                auto* info = r.mutable_account_info();
-                info->set_have_account(true);
-                info->set_session_id(client->core.globals.session_id_hex());
-                if (!name.empty())
-                    info->set_display_name(name);
-                info->set_network_attached(client->core.network() != nullptr);
-                emit(std::move(r));
-            }));
-            return;
-        }
-
-        case pb::Request::kCreateAccount:
-            client->core.globals.create_account();
-            on_account();
-            ok(id);
-            return;
-
-        case pb::Request::kSetDisplayName:
-            client->set_display_name(request.set_display_name().name(), on(id, [this, id] {
-                                         ok(id);
-                                     }));
-            return;
-
-        case pb::Request::kRestoreAccount: {
-            const auto& cmd = request.restore_account();
-            if (cmd.has_hex_seed()) {
-                auto raw = oxenc::from_hex(cmd.hex_seed());
-                if (raw.size() != 32)
-                    throw std::invalid_argument{"hex_seed must be 32 bytes of hex"};
-                b32 seed;
-                std::memcpy(seed.data(), raw.data(), seed.size());
-                client->core.globals.restore_account(core::predefined_seed{std::span{seed}});
-            } else if (cmd.has_words()) {
-                const auto& from = cmd.words();
-                std::vector<std::string_view> words;
-                words.reserve(static_cast<size_t>(from.words_size()));
-                for (const auto& word : from.words())
-                    words.emplace_back(word);
-                const auto& language = from.language();
-                client->core.globals.restore_account(
-                        language.empty() ? core::predefined_seed{words}
-                                         : core::predefined_seed{words, language});
-            } else {
-                throw std::invalid_argument{"restoreAccount needs words or a hex seed"};
-            }
-            on_account();
-            ok(id);
-            return;
-        }
-
-        case pb::Request::kGetSeedMnemonic: {
-            const auto& language = request.get_seed_mnemonic().language();
-            auto words = client->core.globals.seed_mnemonic(
-                    language.empty() ? std::string_view{"English"} : std::string_view{language});
-            pb::Response r;
-            r.set_request_id(id);
-            auto* mnemonic = r.mutable_mnemonic();
-            // The span must outlive the loop: it holds the accessor that keeps the secure buffer
-            // unlocked, and iterating over a temporary re-locks it before the body runs.
-            auto opened = words.open();
-            for (const auto& word : opened)
-                mnemonic->add_words(std::string{word});
-            emit(std::move(r));
-            return;
-        }
-
-        case pb::Request::kGetConversations:
-            client->conversations(on(id, [this, id](std::vector<client::AnyConversation> convos) {
-                conversation_list(id, convos);
-            }));
-            return;
-
-        case pb::Request::kGetMessageRequests:
-            client->message_requests(
-                    on(id, [this, id](std::vector<client::AnyConversation> convos) {
-                        conversation_list(id, convos);
-                    }));
-            return;
-
-        case pb::Request::kGetConversation: {
-            const auto& convo_id = request.get_conversation().conversation_id();
-            client->conversation(
-                    client::ConversationId::parse(convo_id),
-                    on(id,
-                       [this, id, convo_id](std::optional<client::AnyConversation> convo) {
-                           if (!convo)
-                               fail(id, not_found("conversation", convo_id));
-                           else
-                               one_conversation(id, *convo);
-                       }));
-            return;
-        }
-
-        case pb::Request::kOpenDm: {
-            const auto& session_id = request.open_dm().session_id();
-            client->open_dm(
-                    client::ConversationId::parse(session_id),
-                    on(id, [this, id, session_id](std::optional<client::DM> dm) {
-                        if (!dm)
-                            fail(id, not_found("account", session_id));
-                        else
-                            one_conversation(id, client::AnyConversation{*dm});
-                    }));
-            return;
-        }
-
-        case pb::Request::kMarkRead: {
-            const auto& cmd = request.mark_read();
-            std::optional<sys_ms> up_to;
-            if (cmd.has_up_to())
-                up_to = from_epoch_ms(cmd.up_to());
-            convo(cmd.conversation_id()).mark_read(up_to, on(id, [this, id] { ok(id); }));
-            return;
-        }
-
-        case pb::Request::kSetBlocked: {
-            const auto& cmd = request.set_blocked();
-            client->set_blocked(
-                    client::ConversationId::parse(cmd.conversation_id()),
-                    cmd.blocked(),
-                    on(id, [this, id] { ok(id); }));
-            return;
-        }
-
-        case pb::Request::kSetPriority: {
-            const auto& cmd = request.set_priority();
-            convo(cmd.conversation_id())
-                    .set_priority(cmd.priority(), on(id, [this, id] { ok(id); }));
-            return;
-        }
-
-        case pb::Request::kSetNickname: {
-            const auto& cmd = request.set_nickname();
-            const auto convo_id = cmd.conversation_id();
-            const auto nickname = cmd.nickname();
-            client->dm(
-                    client::ConversationId::parse(convo_id),
-                    on(id, [this, id, convo_id, nickname](std::optional<client::DM> dm) {
-                        if (!dm)
-                            fail(id, not_found("conversation", convo_id));
-                        else
-                            dm->set_nickname(nickname, on(id, [this, id] { ok(id); }));
-                    }));
-            return;
-        }
-
-        case pb::Request::kDeleteConversation: {
-            const auto& cmd = request.delete_conversation();
-            convo(cmd.conversation_id())
-                    .delete_conversation(cmd.keep_messages(), on(id, [this, id] { ok(id); }));
-            return;
-        }
-
-        case pb::Request::kGetMessages: {
-            const auto& cmd = request.get_messages();
-            std::optional<client::MessageCursor> before;
-            if (cmd.has_before())
-                before = client::MessageCursor{
-                        from_epoch_ms(cmd.before().timestamp()), cmd.before().id()};
-            convo(cmd.conversation_id())
-                    .messages(
-                            static_cast<int>(cmd.limit()),
-                            before,
-                            on(id,
-                               [this, id](std::vector<client::Message> messages) {
-                                   pb::Response r;
-                                   r.set_request_id(id);
-                                   auto* list = r.mutable_message_list();
-                                   // libsession answers newest first, because that is the
-                                   // direction paging runs. The wire is oldest first, because
-                                   // that is the direction a transcript is read, and reversing
-                                   // once here is cheaper than every caller remembering to.
-                                   for (const auto& m : std::views::reverse(messages))
-                                       encode(m, list->add_messages());
-                                   emit(std::move(r));
-                               }));
-            return;
-        }
-
-        case pb::Request::kSendMessage: {
-            const auto& cmd = request.send_message();
-            client::OutgoingMessage msg;
-            msg.body = cmd.body();
-            if (cmd.has_reply_to())
-                msg.reply_to = cmd.reply_to();
-            for (const auto& a : cmd.attachments()) {
-                client::OutgoingAttachment out;
-                out.path = a.path();
-                if (a.has_content_type())
-                    out.content_type = a.content_type();
-                if (a.has_filename())
-                    out.filename = a.filename();
-                if (a.has_caption())
-                    out.caption = a.caption();
-                out.voice_message = a.voice_message();
-                if (a.has_width())
-                    out.width = a.width();
-                if (a.has_height())
-                    out.height = a.height();
-                msg.attachments.push_back(std::move(out));
-            }
-            convo(cmd.conversation_id())
-                    .send_message(std::move(msg), on(id, [this, id](int64_t message_id) {
-                                      pb::Response r;
-                                      r.set_request_id(id);
-                                      r.mutable_message_id()->set_message_id(message_id);
-                                      emit(std::move(r));
-                                  }));
-            return;
-        }
-
-        case pb::Request::kRetrySend: {
-            const int64_t message_id = request.retry_send().message_id();
-            // A retry re-uploads whatever did not get through, and reports it the way the original
-            // send did. There is no overload without a progress handler, and a retry is where a
-            // file that has since been deleted is discovered, so this is not a formality.
-            client->retry_send(
-                    message_id,
-                    [this, id, message_id](
-                            size_t index, int64_t sent, int64_t total, std::optional<int> result) {
-                        pb::Event e;
-                        auto* progress = e.mutable_attachment_progress();
-                        progress->set_request_id(id);
-                        progress->set_message_id(message_id);
-                        progress->set_index(static_cast<uint32_t>(index));
-                        progress->set_done(sent);
-                        progress->set_total(total);
-                        if (result)
-                            progress->set_result(*result);
-                        emit(std::move(e));
-                    },
-                    on(id, [this, id](bool started) {
-                        pb::Response r;
-                        r.set_request_id(id);
-                        r.mutable_bool_()->set_value(started);
-                        emit(std::move(r));
-                    }));
-            return;
-        }
-
-        case pb::Request::kDeleteMessage: {
-            const auto& cmd = request.delete_message();
-            auto answer = on(id, [this, id](bool deleted) {
-                pb::Response r;
-                r.set_request_id(id);
-                r.mutable_bool_()->set_value(deleted);
-                emit(std::move(r));
-            });
-            if (cmd.scope() == pb::DELETION_EVERYWHERE)
-                client->delete_message_everywhere(cmd.message_id(), std::move(answer));
-            else
-                client->delete_message(cmd.message_id(), std::move(answer));
-            return;
-        }
-
-        case pb::Request::kGetPref: {
-            auto value = client->core.globals.get_text(request.get_pref().key());
-            pb::Response r;
-            r.set_request_id(id);
-            auto* pref = r.mutable_pref();
-            if (value)
-                pref->set_value(*value);
-            emit(std::move(r));
-            return;
-        }
-
-        case pb::Request::kSetPref:
-            client->core.globals.set(request.set_pref().key(), request.set_pref().value());
-            ok(id);
-            return;
-
-        case pb::Request::kApproveConversation:
-            // There is no such call, by design: libsession records approval from messages
-            // flowing, and writing to someone is what approves them (see DM::request). A
-            // conversation-layer way to accept a request without answering it is one of the
-            // open questions in docs/STATUS.md.
-            fail(id,
-                 "approveConversation has no libsession counterpart: approval is recorded by "
-                 "sending, not set");
-            return;
-
-#ifdef SESSION_BRIDGE_TESTING
-
-        case pb::Request::kGetTestAccountSeed: {
-            // Named, because the accessor is what holds the secure buffer readable and the
-            // rvalue overloads are deleted precisely to stop this being a one-liner.
-            auto access = client->core.globals.account_seed();
-            auto raw = access.seed();
-            pb::Response r;
-            r.set_request_id(id);
-            r.mutable_bytes()->set_data(reinterpret_cast<const char*>(raw.data()), raw.size());
-            emit(std::move(r));
-            return;
-        }
-
-        case pb::Request::kDeliverTestMessage: {
-            const auto& cmd = request.deliver_test_message();
-            auto seed = oxenc::from_hex(cmd.sender_seed());
-            if (seed.size() != 32)
-                throw std::invalid_argument{"sender_seed must be 32 bytes of hex"};
-
-            const auto sent = from_epoch_ms(cmd.timestamp());
-
-            SessionProtos::Content content;
-            content.set_sigtimestamp(static_cast<uint64_t>(cmd.timestamp()));
-            content.mutable_datamessage()->set_body(cmd.body());
-            auto plaintext = content.SerializeAsString();
-
-            b33 recipient;
-            std::ranges::copy(client->core.globals.session_id(), recipient.begin());
-
-            auto encoded = encode_dm_v1(
-                    std::as_bytes(std::span{plaintext}),
-                    ed25519::PrivKeySpan::from(std::as_bytes(std::span{seed})),
-                    sent,
-                    recipient);
-
-            // The hash is the swarm's, and a redelivered one is how libsession recognises a
-            // duplicate - so it has to be stable for a message and different between messages.
-            core::SwarmMessage message{
-                    encoded,
-                    "test-" + std::to_string(cmd.timestamp()) + "-" +
-                            std::to_string(std::hash<std::string>{}(cmd.body())),
-                    sent,
-                    from_epoch_ms(cmd.timestamp() + 14 * 24 * 60 * 60 * 1000)};
-
-            // Onto Core's loop, because the connection pool is single-threaded by design and
-            // this is the one place the bridge writes the database from outside it.
-            client->core.loop().call_get([&] {
-                client->core.receive_messages({&message, 1}, config::Namespace::Default, true);
-                return 0;
-            });
-            ok(id);
-            return;
-        }
-
-        case pb::Request::kApproveTestContact: {
-            auto decoded = oxenc::from_hex(request.approve_test_contact().session_id());
-            if (decoded.size() != 33)
-                throw std::invalid_argument{"session_id must be 33 bytes of hex"};
-            b33 sid;
-            std::memcpy(sid.data(), decoded.data(), sid.size());
-            client->core.loop().call_get([&] {
-                auto conn = client->core.database().conn();
-                conn.prepared_exec(
-                        "INSERT OR IGNORE INTO accounts (session_id) VALUES (?)", sid);
-                conn.prepared_exec(
-                        "INSERT INTO contacts (account, approved) VALUES ("
-                        "(SELECT id FROM accounts WHERE session_id = ?), 1) "
-                        "ON CONFLICT (account) DO UPDATE SET approved = 1",
-                        sid);
-                return 0;
-            });
-            ok(id);
-            return;
-        }
-
-#endif
-
-        case pb::Request::kAttachNetwork: {
-            options.netid = request.attach_network().netid();
-            attach_network();
-            ok(id);
-            return;
-        }
-
-        case pb::Request::kPollOnce:
-            // Core owns its poll ticker and exposes no one-shot entry point. Asking for one is
-            // the first of the background-and-push questions in docs/STATUS.md; until it is
-            // answered there is nothing honest to call here.
-            fail(id, "pollOnce is not supported by this libsession build");
-            return;
-
-        default:
-            fail(id, "the bridge does not implement this command yet");
-            return;
+        _impl->fail(request.id, e.what());
     }
 }
 

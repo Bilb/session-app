@@ -3,7 +3,6 @@
 #include <session_bridge/client_bridge.hpp>
 
 #include <array>
-#include <cstddef>
 #include <stdexcept>
 #include <string>
 
@@ -79,8 +78,7 @@ HybridSessionBridge::~HybridSessionBridge() {
     close();
 }
 
-void HybridSessionBridge::setSink(
-        const std::function<void(const std::shared_ptr<ArrayBuffer>&)>& onFrame) {
+void HybridSessionBridge::setSink(const std::function<void(::session::bridge::Frame)>& onFrame) {
     _sink = onFrame;
 }
 
@@ -104,23 +102,21 @@ void HybridSessionBridge::init(const SessionBridgeOptions& options) {
         init.password = *options.password;
 
     _bridge = std::make_unique<::session::bridge::ClientBridge>(
-            std::move(init), [this](std::span<const std::byte> frame) {
+            std::move(init), [this](::session::bridge::Frame frame) {
                 if (!_sink)
                     return;
-                // Copied rather than wrapped: this runs on Core's loop, the callback is
-                // delivered on the JavaScript thread some time later, and the frame is gone by
-                // then. Nitro's void callbacks carry the hop and the ordering with them, which
-                // is the same guarantee the addon gets from a thread-safe function.
-                _sink(ArrayBuffer::copy(
-                        reinterpret_cast<const uint8_t*>(frame.data()), frame.size()));
+                // This runs on Core's loop. Nitro's void callbacks carry the hop and the ordering
+                // with them - the struct is moved into the dispatched job and becomes a JavaScript
+                // object on the JS thread, through the JSIConverter generated beside it - which is
+                // the same guarantee the addon gets from a thread-safe function.
+                _sink(std::move(frame));
             });
 }
 
-void HybridSessionBridge::call(const std::shared_ptr<ArrayBuffer>& request) {
+void HybridSessionBridge::call(::session::bridge::Request request) {
     if (!_bridge)
         throw std::runtime_error{"call() before init()"};
-    _bridge->call(std::span{
-            reinterpret_cast<const std::byte*>(request->data()), request->size()});
+    _bridge->call(std::move(request));
 }
 
 void HybridSessionBridge::close() {

@@ -50,7 +50,6 @@ const workspacePackages = [
   '@session/bridge-node',
   '@session/client',
   '@session/localization',
-  '@session/proto',
   '@session/state',
 ]
 
@@ -60,6 +59,9 @@ export default defineConfig({
   },
   preload: {
     plugins: [externalizeDepsPlugin({ exclude: workspacePackages })],
+    // A sandboxed preload has to be CommonJS: Electron loads ES module preloads only with the
+    // sandbox off. The main process points at the .cjs this produces.
+    build: { rollupOptions: { output: { format: 'cjs' } } },
   },
   renderer: {
     root: 'src/renderer',

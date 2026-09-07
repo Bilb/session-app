@@ -1,7 +1,8 @@
-import { createSessionClient, type BridgeTransport } from '@session/client'
+import { createSessionClient } from '@session/client'
 import { createSessionStore } from '@session/state'
 
 import './platform'
+import { createPortTransport } from './portTransport'
 
 /**
  * The renderer's client, built on the port the preload handed over.
@@ -11,13 +12,7 @@ import './platform'
  * they exist by then, whatever order the bundler settles on.
  */
 
-declare global {
-  interface Window {
-    sessionBridge: BridgeTransport
-  }
-}
-
-const client = createSessionClient(window.sessionBridge)
+const client = createSessionClient(createPortTransport())
 
 export const store = createSessionStore(client, {
   // The renderer's console, which reaches the terminal when Electron is run with

@@ -26,11 +26,9 @@
   "dependencies": {
     "@session/bridge-types": "workspace:*",
     "@session/client": "workspace:*",
-    "node-addon-api": "catalog:",
-    "@session/proto": "workspace:*"
+    "node-addon-api": "catalog:"
   },
   "devDependencies": {
-    "@bufbuild/protobuf": "catalog:",
     "@session/client-contract": "workspace:*",
     "@session/eslint-config": "workspace:*",
     "@session/typescript-config": "workspace:*",

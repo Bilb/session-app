@@ -22,14 +22,13 @@ class HybridSessionBridge : public HybridSessionBridgeSpec {
     HybridSessionBridge();
     ~HybridSessionBridge() override;
 
-    void setSink(const std::function<void(const std::shared_ptr<ArrayBuffer>& /* frame */)>& onFrame)
-            override;
+    void setSink(const std::function<void(::session::bridge::Frame /* frame */)>& onFrame) override;
     void init(const SessionBridgeOptions& options) override;
-    void call(const std::shared_ptr<ArrayBuffer>& request) override;
+    void call(::session::bridge::Request request) override;
     void close() override;
 
   private:
-    std::function<void(const std::shared_ptr<ArrayBuffer>&)> _sink;
+    std::function<void(::session::bridge::Frame)> _sink;
     std::unique_ptr<::session::bridge::ClientBridge> _bridge;
 };
 

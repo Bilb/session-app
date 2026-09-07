@@ -31,16 +31,20 @@ imports ui, state, app, client and localization; nothing imports an app.
 
 ## The bridge
 
-`packages/proto/proto/sessionbridge/v1` holds the schema. Three decisions in it are worth
-knowing before changing anything:
+`packages/bridge-types` is the protocol: TypeScript types, and nothing else. `Frame` is what the
+shim emits (a `Response` or a `BridgeEvent`), `Request` is what it accepts, and every value that
+crosses is a plain object of exactly the type a screen renders - the C++ builds it, no codec in
+between. Three decisions are worth knowing before changing anything:
 
 **Responses ride the same stream as events.** libsession's contract is that a display can be
-built by asking once and then applying events. That only holds if a `conversation_list_replaced`
+built by asking once and then applying events. That only holds if a `conversation-list-replaced`
 produced _before_ the answer to `getConversations` is also applied before it. A promise
 resolving on one channel while events arrive on another gives no such guarantee across IPC or
 JSI, and the failure would be a stale row appearing on a race nobody can reproduce. One FIFO
 stream carries libsession's own ordering through to TypeScript; the facade still hands callers
-promises, resolved from `Response` frames.
+promises, resolved from `Response` frames. A per-method promise API on Nitro was considered and
+is unsafe: an already-resolved C++ promise settles as a microtask ahead of events already queued
+on the CallInvoker, and half of the shim's commands answer synchronously.
 
 **Every event carries whole state.** Never an id to go and fetch. That is what makes a display
 bindable, applying the same event twice harmless, and startup race-free.
@@ -50,19 +54,35 @@ and means _started_. `result` absent means still going. `result === 0` means acc
 the only thing that means finished - `done === total` does not. Reports for one index are
 ordered and exactly one carries a result; different indexes interleave.
 
-64-bit fields decode as `bigint` and become `number` at the facade (`packages/client/src/convert.ts`).
-Every one of them is a unix-millisecond timestamp, a sqlite rowid or a byte count, all far
-inside 2^53. `jstype = JS_NUMBER` is not the way to say this - protobuf-es ignores it.
+Numbers are `number` on both sides: every 64-bit value is a unix-millisecond timestamp, a sqlite
+rowid or a byte count, all far inside 2^53, and the C++ carries them as doubles.
+
+### The generated C++
+
+`tooling/bridge-codegen` reads `packages/bridge-types` and writes three committed headers under
+`packages/bridge-core/include/session_bridge/gen`: `types.hpp` (plain structs, an `enum class`
+per string union, a `std::variant` per tagged union), `jsi.hpp` (Nitro `JSIConverter`
+specialisations, mobile only) and `napi.hpp` (node-addon-api conversions, desktop only). The
+generator accepts a deliberate subset of TypeScript - string, number, boolean, string-union
+aliases, interfaces, arrays of those, and unions of object literals tagged by a literal `type` -
+and refuses anything else with the offending declaration named. `codegen:check` fails on drift.
+
+A struct with fields has one constructor taking all of them and no default constructor, so a
+field added in TypeScript is a build failure in the shim until it is filled. An unset optional is
+left off the object rather than written as `undefined`, which is what exactOptionalPropertyTypes
+means on the other side.
 
 ### The shim
 
 `packages/bridge-core` is one C++ `ClientBridge` compiled against the client-branch headers, with
 a Nitro module in front of it on mobile and an N-API addon in the Electron main process. It
-registers every libsession callback at construction, serialises each into an `Event` frame, and
-hands them to a sink that only enqueues. It sets **no libsession dispatcher**: handlers run inline
-on Core's loop doing nothing but encode-and-enqueue, and the platform adapter owns the hop onto the
-JS thread. `packages/client/src/fake/fakeBridge.ts` is the protocol written out in TypeScript and
-is the reference to match.
+registers every libsession callback at construction, fills a `Frame` struct from each, and hands
+it to a sink that only enqueues. It sets **no libsession dispatcher**: handlers run inline on
+Core's loop doing nothing but fill-and-enqueue, and the platform adapter owns the hop onto the
+JS thread, where the struct becomes a JavaScript object. Commands arrive as a `Request` struct and
+are dispatched by `std::visit`, so a command added to the protocol without a handler does not
+compile. `packages/client/src/fake/fakeBridge.ts` is the same dispatch written in TypeScript and
+is the reference to match; its handler table is keyed by command tag for the same reason.
 
 Conversation-scoped commands build a `Conversation` on the stack per call. That is safe because the
 handler form copies the client pointer and the id into its lambda - the `wait` form captures
@@ -72,12 +92,20 @@ handler form copies the client pointer and the id into its lambda - the `wait` f
 Core's loop onto the JavaScript thread, through a thread-safe function with an unbounded queue, so
 that a frame produced on the loop is never dropped and producing one never blocks. N-API rather
 than NAN, so one build loads in both Node and Electron - which is what lets the addon be tested
-under vitest without an Electron process at all.
+under vitest without an Electron process at all. On desktop the frame then crosses to the renderer
+by structured clone over one MessagePort, which the preload hands into the page's main world and
+never touches again; the preload needs nothing from Node and the renderer runs sandboxed.
 
-Two commands in the schema have no libsession counterpart and answer with an error rather than
+`packages/bridge-rn` is the Nitro module. Its spec names the protocol types through nitrogen's
+`CustomType` as opaque brands pointing at `jsi.hpp`, because nitrogen cannot generate a struct
+for a TypeScript union; the one adapter that touches the spec casts the brand to the real type.
+
+Two commands in the protocol have no libsession counterpart and answer with an error rather than
 something that half works. `approveConversation`: approval is not a flag anyone sets, it is
 recorded by messages flowing, so writing to someone is what approves them. `pollOnce`: Core owns
 its poll ticker and exposes no one-shot entry point. Both are open questions in `STATUS.md`.
+Attachment bytes do not cross the bridge at all yet: the cache files are encrypted and reading
+them is a design of its own, also in `STATUS.md`.
 
 ## The fake, and why it is not a stub
 
@@ -131,11 +159,11 @@ there names it.
 
 ## Testing
 
-| tier     | what                                                      | when                         |
-| -------- | --------------------------------------------------------- | ---------------------------- |
-| unit     | projections, route contracts, codec round trips, the fake | every push                   |
-| fast e2e | the Electron app on the fake, no network                  | `e2e-fast` workflow, by hand |
-| full e2e | real bindings, devnet, device pool                        | `e2e-full` workflow, by hand |
+| tier     | what                                                  | when                         |
+| -------- | ----------------------------------------------------- | ---------------------------- |
+| unit     | projections, route contracts, the generator, the fake | every push                   |
+| fast e2e | the Electron app on the fake, no network              | `e2e-fast` workflow, by hand |
+| full e2e | real bindings, devnet, device pool                    | `e2e-full` workflow, by hand |
 
 `tests/e2e/harness/ISessionApp.ts` is the platform-neutral driver interface. Its rule: every
 member takes and returns primitives, enums or plain data - no Playwright `Locator`, no Appium
@@ -160,8 +188,8 @@ reach for an xpath.
 - **`ELECTRON_RUN_AS_NODE=1` is set by many terminals**, and Electron then refuses Chromium's
   flags and runs your main file under plain Node. The harness clears it.
 - **The renderer asks for the account before the MessagePort arrives.** Both directions are
-  buffered in the preload; dropping that first request strands the app on its loading screen
-  with nothing in the logs.
+  buffered in the renderer's port transport; dropping that first request strands the app on its
+  loading screen with nothing in the logs.
 - **`@tamagui/vite-plugin` peers on vite 8 and electron-vite is on vite 7.** It is an
   optimising compiler, not a requirement. Add it when electron-vite catches up.
 - **TypeScript is held at 5.x** because typescript-eslint declares `<6.1.0`, and the typed
@@ -254,3 +282,16 @@ Append one paragraph per decision. Undocumented decisions are what rot.
 
 - **2026-09-04 - Both e2e workflows are manual.** They need a device pool or a devnet, and a
   pull request should not wait on either.
+
+- **2026-09-07 - Protobuf is gone from the bridge; the TypeScript types are the protocol.** The
+  wire format cost an encode, a serialise, a decode and a convert on every frame, and on desktop
+  three byte copies besides, for a boundary whose two sides always ship together. Now the shim
+  fills a struct generated from `@session/bridge-types`, Nitro builds the JavaScript object from
+  it on the JS thread, and the addon builds it in the main process and structured-clones it to the
+  renderer. What was kept on purpose: the single ordered stream, the fake behind the same
+  transport interface, the contract suite unchanged. What replaced the codec round-trip test is
+  `echoTestFrame`, a test-only command that pushes a frame through both converter directions and
+  is asserted exactly, absent optionals included. This supersedes the 2026-09-04 entry on not
+  committing generated C++: that argument was a pinned `protoc` on a job with no compiler, and the
+  generator is Node, which every job has. Attachment bytes were deliberately left out of the
+  protocol until attachments are designed; the cache files are encrypted.

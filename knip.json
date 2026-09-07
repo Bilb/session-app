@@ -8,7 +8,6 @@
   "ignoreDependencies": [
     "expo-updates",
     "expo-system-ui",
-    "@bufbuild/protoc-gen-es",
     "dependency-cruiser",
     "@session/eslint-config",
     "@session/typescript-config",
@@ -19,6 +18,10 @@
     "react-native-nitro-modules",
     "react-native-safe-area-context"
   ],
-  "ignoreBinaries": ["brew"],
-  "ignore": ["**/*.native.ts", "**/*.native.tsx", "libsession-util/**"]
+  "ignore": [
+    "**/*.native.ts",
+    "**/*.native.tsx",
+    "libsession-util/**",
+    "tooling/bridge-codegen/tests/fixtures/**"
+  ]
 }

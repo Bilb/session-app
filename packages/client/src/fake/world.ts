@@ -21,7 +21,7 @@ import type {
   Message,
   SendState,
   SessionEvent,
-} from '../types'
+} from '@session/bridge-types'
 
 export interface FakeAccountOptions {
   displayName: string

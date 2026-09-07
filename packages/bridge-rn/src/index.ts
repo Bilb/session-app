@@ -2,6 +2,8 @@ import { NitroModules } from 'react-native-nitro-modules'
 
 import type { SessionBridge } from './SessionBridge.nitro'
 
+export type { NativeFrame, NativeRequest } from './SessionBridge.nitro'
+
 export type { SessionBridge }
 
 /**

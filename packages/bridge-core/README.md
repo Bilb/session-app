@@ -3,6 +3,8 @@
 The C++ shim: one `session::client::Client` behind one ordered frame stream. The N-API addon and
 the Nitro module are transports in front of it and hold no logic of their own.
 
+The frames are the structs under `include/session_bridge/gen`, generated from
+`@session/bridge-types` by `tooling/bridge-codegen` and committed; `pnpm codegen` refreshes them.
 `packages/client/src/fake/fakeBridge.ts` is the same protocol written in TypeScript, and is what
 this has to match. When the two disagree, the contract suite says which one is wrong.
 
@@ -21,14 +23,11 @@ to C23 and sails past; clang still defaults to C17, engages the shim, and fails 
 because the `HAVE_STDBOOL_H` that shim needs is never defined. Nothing about our own code prefers
 either compiler.
 
-`protoc` is needed on `PATH`. The wire format's C++ classes are generated at build time rather
-than committed, so that a pinned protoc is not required by the per-PR CI job, which compiles no
-C++ at all.
-
 ## Layout
 
 | file                                       | what                                                 |
 | ------------------------------------------ | ---------------------------------------------------- |
 | `include/session_bridge/client_bridge.hpp` | the whole public surface: construct, `call`, `close` |
 | `src/client_bridge.cpp`                    | callback wiring and command dispatch                 |
-| `src/encode.cpp`                           | libsession's value types written into the wire types |
+| `src/convert.cpp`                          | libsession's value types as the protocol's structs   |
+| `include/session_bridge/gen/`              | the protocol in C++, generated; never edited by hand |

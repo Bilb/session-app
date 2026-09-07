@@ -7,6 +7,8 @@ import electron from 'electron'
 
 const { app, BrowserWindow, MessageChannelMain, ipcMain } = electron
 
+import type { Request } from '@session/client'
+
 import { createBridge } from './bridge'
 
 /**
@@ -50,8 +52,10 @@ async function createWindow(): Promise<void> {
     // element in it invisible to a test.
     show: true,
     webPreferences: {
-      preload: join(here, '../preload/index.mjs'),
-      sandbox: false,
+      // CommonJS, because a sandboxed preload cannot be an ES module; it is built that way in
+      // electron.vite.config.ts. The preload needs nothing from Node, so the sandbox costs nothing.
+      preload: join(here, '../preload/index.cjs'),
+      sandbox: true,
     },
   })
 
@@ -59,11 +63,12 @@ async function createWindow(): Promise<void> {
   // which is the whole reason responses and events share a single stream.
   const { port1, port2 } = new MessageChannelMain()
 
+  // A frame is a plain object built by the addon; structured clone carries it to the renderer.
   bridge.setSink((frame) => {
     port1.postMessage(frame)
   })
-  port1.on('message', (event: { data: Uint8Array }) => {
-    bridge.send(new Uint8Array(event.data))
+  port1.on('message', (event: { data: Request }) => {
+    bridge.send(event.data)
   })
   port1.start()
 
