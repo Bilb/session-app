@@ -30,7 +30,7 @@ namespace margelo::nitro::session::bridge::rn {
    */
   enum class DeviceType {
     IOS      SWIFT_NAME(ios) = 0,
-    ANDROID      SWIFT_NAME(android) = 1,
+    ANDROID_      SWIFT_NAME(android) = 1,
     DESKTOP      SWIFT_NAME(desktop) = 2,
   } CLOSED_ENUM;
 
@@ -45,7 +45,7 @@ namespace margelo::nitro {
       std::string unionValue = JSIConverter<std::string>::fromJSI(runtime, arg);
       switch (hashString(unionValue.c_str(), unionValue.size())) {
         case hashString("ios"): return margelo::nitro::session::bridge::rn::DeviceType::IOS;
-        case hashString("android"): return margelo::nitro::session::bridge::rn::DeviceType::ANDROID;
+        case hashString("android"): return margelo::nitro::session::bridge::rn::DeviceType::ANDROID_;
         case hashString("desktop"): return margelo::nitro::session::bridge::rn::DeviceType::DESKTOP;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum DeviceType - invalid value!");
@@ -54,7 +54,7 @@ namespace margelo::nitro {
     static inline jsi::Value toJSI(jsi::Runtime& runtime, margelo::nitro::session::bridge::rn::DeviceType arg) {
       switch (arg) {
         case margelo::nitro::session::bridge::rn::DeviceType::IOS: return JSIConverter<std::string>::toJSI(runtime, "ios");
-        case margelo::nitro::session::bridge::rn::DeviceType::ANDROID: return JSIConverter<std::string>::toJSI(runtime, "android");
+        case margelo::nitro::session::bridge::rn::DeviceType::ANDROID_: return JSIConverter<std::string>::toJSI(runtime, "android");
         case margelo::nitro::session::bridge::rn::DeviceType::DESKTOP: return JSIConverter<std::string>::toJSI(runtime, "desktop");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert DeviceType to JS - invalid value: "

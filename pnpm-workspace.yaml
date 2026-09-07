@@ -67,5 +67,6 @@ overrides:
 
 patchedDependencies:
   expo-modules-jsi: patches/npm/expo-modules-jsi.patch
+  nitrogen: patches/npm/nitrogen.patch
 
 patchesDir: patches/npm

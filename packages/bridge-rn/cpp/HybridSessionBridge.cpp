@@ -25,7 +25,7 @@ namespace {
     std::string device_type_name(DeviceType type) {
         switch (type) {
             case DeviceType::IOS: return "ios";
-            case DeviceType::ANDROID: return "android";
+            case DeviceType::ANDROID_: return "android";
             case DeviceType::DESKTOP: return "desktop";
         }
         return "";
@@ -34,7 +34,7 @@ namespace {
     std::string log_level_name(LibsessionLogLevel level) {
         switch (level) {
             case LibsessionLogLevel::TRACE: return "trace";
-            case LibsessionLogLevel::DEBUG: return "debug";
+            case LibsessionLogLevel::DEBUG_: return "debug";
             case LibsessionLogLevel::INFO: return "info";
             case LibsessionLogLevel::WARN: return "warn";
             case LibsessionLogLevel::ERROR: return "error";
