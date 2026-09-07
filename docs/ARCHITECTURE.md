@@ -72,6 +72,13 @@ field added in TypeScript is a build failure in the shim until it is filled. An 
 left off the object rather than written as `undefined`, which is what exactOptionalPropertyTypes
 means on the other side.
 
+The whole bridge is one flat `session_bridge` namespace. `session::bridge` would declare a
+top-level `session`, and Apple's `<sys/sysctl.h>` already declares `struct session` there - which
+these headers meet, because the Nitro spec pulls them into the pod's module umbrella. The
+collision is a module that cannot be built rather than a line that can be fixed locally, so the
+two shim translation units that used to reach libsession's names by enclosing-scope lookup say
+`using namespace ::session` instead.
+
 ### The shim
 
 `packages/bridge-core` is one C++ `ClientBridge` compiled against the client-branch headers, with

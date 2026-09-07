@@ -206,7 +206,9 @@ through the whole window where sending does not work.
 ## What runs against the real bridge
 
 **iOS.** Builds and runs on a simulator against real libsession, on a remote Mac - Xcode 26.2,
-macOS 15.7. The shared conversation-list screen draws from an encrypted database the app opened
+macOS 15.7. Verified again on the typed frame stream: the conversation list draws a real
+conversation out of the encrypted database, and `Documents/session/session.db` plus its WAL are
+the proof a command went down and an answer came back. The shared conversation-list screen draws from an encrypted database the app opened
 itself, keyed from `expo-secure-store`, and `Documents/session/session.db` is in the container
 afterwards. The `run` skill's [ios reference](../.claude/skills/run/references/ios.md) has the
 commands.
