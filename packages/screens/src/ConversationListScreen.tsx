@@ -1,6 +1,7 @@
 import { routes, useNav } from '@session/app'
 import type { Conversation } from '@session/client'
 import { useConversations, useUnreadRequestCount } from '@session/state'
+import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Avatar, Icon, Screen, ScrollView, Separator, Text, XStack, YStack } from '@session/ui'
 
@@ -27,7 +28,7 @@ export function ConversationListScreen() {
         justifyContent="space-between"
       >
         <Text size="$6" weight="bold">
-          Messages
+          {tr('messages')}
         </Text>
         <XStack alignItems="center" gap="$1.5">
           {unreadRequests > 0 ? (

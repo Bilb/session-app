@@ -44,6 +44,7 @@ export const ELEMENT = {
   },
   settings: {
     screen: 'settings',
+    back: 'settings-back',
     themePicker: 'settings-theme-picker',
     themeOption: (name: string) => `settings-theme-${name}` as const,
     accentOption: (name: string) => `settings-accent-${name}` as const,
@@ -97,6 +98,7 @@ export type ElementId =
   | `request-accept-${number}`
   | 'requests-badge'
   | 'settings'
+  | 'settings-back'
   | 'settings-theme-picker'
   | `settings-theme-${string}`
   | `settings-accent-${string}`

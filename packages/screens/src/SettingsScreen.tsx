@@ -5,6 +5,8 @@ import { Screen, Separator, Text, XStack, YStack } from '@session/ui'
 
 import { requirePorts } from '@session/app'
 
+import { BackButton } from './BackButton'
+
 /**
  * Settings, which for now is the account.
  *
@@ -17,9 +19,12 @@ export function SettingsScreen() {
 
   return (
     <Screen padded testID={ELEMENT.settings.screen}>
-      <Text size="$6" weight="bold">
-        {tr('sessionSettings')}
-      </Text>
+      <XStack alignItems="center" gap="$1.5">
+        <BackButton testID={ELEMENT.settings.back} />
+        <Text size="$6" weight="bold">
+          {tr('sessionSettings')}
+        </Text>
+      </XStack>
 
       <YStack paddingVertical="$2" gap="$0.5">
         <Text tone="secondary" size="$2">

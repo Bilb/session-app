@@ -4,7 +4,9 @@
     // The web flavour: tamagui's DOM helpers are in this program. apps/mobile checks the
     // same sources again with react-native's types and the .native suffixes.
     "lib": ["ES2022", "DOM"],
-    "types": ["react"]
+    // The copy-contract test parses every screen off disk, which is the only reason node types
+    // are here - the same reason packages/ui has them.
+    "types": ["react", "node"]
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]

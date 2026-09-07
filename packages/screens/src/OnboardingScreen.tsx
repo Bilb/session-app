@@ -20,7 +20,7 @@ export function OnboardingScreen() {
     <Screen padded testID={ELEMENT.onboarding.screen}>
       <YStack flex={1} alignItems="center" justifyContent="center" gap="$2">
         <Text size="$9" weight="bold">
-          Session
+          {tr('appName')}
         </Text>
         <Text tone="secondary">No account on this device yet.</Text>
 
