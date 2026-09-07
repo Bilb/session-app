@@ -1,13 +1,5 @@
 import { memoryPorts, setPorts } from '@session/app'
-import type { NetworkName } from '@session/app'
-
-/** Replaced at build time by electron.vite.config.ts, from the SESSION_NETID the main process reads. */
-declare const __SESSION_NETID__: string
-
-/** Only testnet is reachable today: the shim refuses devnet until it can be handed seed nodes. */
-function netid(): NetworkName {
-  return __SESSION_NETID__ === 'testnet' ? 'testnet' : 'mainnet'
-}
+import { parseNetworkName } from '@session/basic-types'
 
 /**
  * The desktop app's OS ports.
@@ -19,7 +11,8 @@ function netid(): NetworkName {
  */
 setPorts(
   memoryPorts({
-    network: { name: netid() },
+    // The same variable and the same parser the main process uses, inlined at build time.
+    network: { name: parseNetworkName(import.meta.env.SESSION_NETID) },
     window: {
       isFocused: () => document.hasFocus(),
       onFocusChange: (handler) => {

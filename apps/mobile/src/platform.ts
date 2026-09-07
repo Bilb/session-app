@@ -1,4 +1,5 @@
 import { memoryPorts, setPorts } from '@session/app'
+import { parseNetworkName } from '@session/basic-types'
 import * as Clipboard from 'expo-clipboard'
 import * as SecureStore from 'expo-secure-store'
 
@@ -30,9 +31,10 @@ function hexToBytes(hex: string): Uint8Array {
  */
 setPorts(
   memoryPorts({
-    // The literal the transport is given lives in store.ts; this is the same answer, said where a
-    // screen can reach it. Both move together when devnet lands.
-    network: { name: 'mainnet' },
+    // The same variable and the same parser store.ts gives the transport, so what the overlay
+    // says and what libsession attached to cannot disagree. EXPO_PUBLIC_ because Metro inlines
+    // nothing else.
+    network: { name: parseNetworkName(process.env['EXPO_PUBLIC_SESSION_NETID']) },
     clipboard: {
       setString: (value) => Clipboard.setStringAsync(value).then(() => undefined),
       getString: () => Clipboard.getStringAsync(),

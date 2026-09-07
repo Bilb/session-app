@@ -1,4 +1,4 @@
-import type { NetworkName } from '@session/app'
+import type { NetworkName } from '@session/basic-types'
 
 /**
  * Whether a build should say which network it is on.

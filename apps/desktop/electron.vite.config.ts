@@ -46,6 +46,7 @@ const WEB_FIRST_EXTENSIONS = [
  */
 const workspacePackages = [
   '@session/app',
+  '@session/basic-types',
   '@session/bridge-node',
   '@session/client',
   '@session/localization',
@@ -79,10 +80,10 @@ export default defineConfig({
     },
     define: {
       // The same variable the main process reads to choose the netid (see src/main/bridge.ts), so
-      // the renderer's network overlay and the network libsession actually attached to cannot
-      // disagree. A global rather than `process.env`, which the renderer has no business having:
-      // it is a browser program, and tsc typechecks it as one.
-      __SESSION_NETID__: JSON.stringify(process.env['SESSION_NETID'] ?? 'mainnet'),
+      // the overlay and the network libsession actually attached to cannot disagree. Spelled the
+      // same on both sides - `import.meta.env` rather than a global of its own, because two names
+      // for one variable is one more than anybody will remember.
+      'import.meta.env.SESSION_NETID': JSON.stringify(process.env['SESSION_NETID'] ?? 'mainnet'),
       // react-native-web reads these; without them the bundle throws on first render.
       global: 'globalThis',
       __DEV__: JSON.stringify(process.env['NODE_ENV'] !== 'production'),

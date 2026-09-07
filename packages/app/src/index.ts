@@ -9,7 +9,6 @@ export type {
   MediaProbePort,
   NotificationsPort,
   PickedFile,
-  NetworkName,
   NetworkPort,
   Ports,
   SecureStore,

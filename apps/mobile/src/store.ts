@@ -1,3 +1,4 @@
+import { netidForTransport, parseNetworkName } from '@session/basic-types'
 import { createSessionClient, type BridgeTransport } from '@session/client'
 import { createSessionStore } from '@session/state'
 import { Platform } from 'react-native'
@@ -11,6 +12,8 @@ import { resolveDatabaseKey, sessionPaths } from './storage'
  * here: an app is an adapter, and which bridge it gets is the one decision this file makes.
  */
 async function openTransport(): Promise<BridgeTransport> {
+  const netid = netidForTransport(parseNetworkName(process.env['EXPO_PUBLIC_SESSION_NETID']))
+
   // EXPO_PUBLIC_, and it is not decoration: Metro only inlines an env var into the bundle when it
   // carries that prefix, so the bare name this used to read was `undefined` here however the dev
   // script was invoked. The check fell through, the app took the Nitro module, and every phone ran
@@ -31,7 +34,9 @@ async function openTransport(): Promise<BridgeTransport> {
     deferAccount: true,
     // Attached by the bridge once an account exists: on open if there is one already, and
     // after onboarding otherwise.
-    netid: 'mainnet',
+    // Unset means mainnet, and absent for devnet, which attaches nothing rather than quietly
+    // attaching mainnet. See netidForTransport.
+    ...(netid === undefined ? {} : { netid }),
     deviceType: Platform.OS === 'ios' ? 'ios' : 'android',
   })
 }
