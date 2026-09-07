@@ -7,7 +7,7 @@ const { contextBridge, ipcRenderer } = electron
  *
  * The port arrives from the main process a moment after the page starts, so both
  * directions are buffered until it does. Dropping a request that was sent in that window
- * would strand the app on its loading screen — the first thing it asks for is the account,
+ * would strand the app on its loading screen - the first thing it asks for is the account,
  * and nothing else happens until that comes back.
  */
 

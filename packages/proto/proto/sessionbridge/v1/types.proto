@@ -2,6 +2,11 @@ syntax = "proto3";
 
 package sessionbridge.v1;
 
+// libsession bundles protobuf-lite and nothing else, and the shim links against that
+// same copy. Lite drops reflection, TextFormat and JSON, none of which cross this
+// bridge. protobuf-es ignores this option, so the TypeScript codecs are unaffected.
+option optimize_for = LITE_RUNTIME;
+
 // Data shapes shared by commands, responses and events.
 //
 // Numeric enum values are libsession's own, so a value that crosses the bridge means the
@@ -10,7 +15,7 @@ package sessionbridge.v1;
 // Timestamps are unix milliseconds; ids are sqlite rowids; sizes are byte counts. All are
 // int64 on the wire, which protobuf-es decodes as bigint, and all are converted to plain
 // numbers by the TypeScript facade (see packages/client/src/convert.ts). Every one of them
-// is far inside 2^53 — 2^53 milliseconds is the year 287396 — and letting bigint through
+// is far inside 2^53 - 2^53 milliseconds is the year 287396 - and letting bigint through
 // would cost a conversion at every comparison in the store and the UI for range we cannot
 // reach. jstype = JS_NUMBER is not the way to say this: protobuf-es ignores it.
 
@@ -58,12 +63,17 @@ message Attachment {
   optional string content_type = 2;
   optional string filename = 3;
   optional string caption = 4;
-  int64 size = 5;
+  // Unset on an outgoing attachment that has not been uploaded yet. On an incoming one it
+  // is the sender's claim about the file, not a measurement of it.
+  optional int64 size = 5;
   bool voice_message = 6;
   optional uint32 width = 7;
   optional uint32 height = 8;
-  // Set once the bytes are on disk in libsession's cache.
-  bool downloaded = 9;
+  // On the file server: that an outgoing attachment's upload finished, and always true for
+  // an incoming one, which is where it came from. Deliberately not "is the file here" -
+  // libsession does not record a local path, because the application chose it and anything
+  // stored would go stale the moment the file moved.
+  bool uploaded = 9;
 }
 
 // A file being attached to a message that has not been sent yet.
@@ -78,7 +88,7 @@ message OutgoingAttachment {
   optional uint32 height = 7;
 }
 
-// The message a reply points at, resolved one level deep only — a reply to a reply shows
+// The message a reply points at, resolved one level deep only - a reply to a reply shows
 // its own parent, not the whole chain.
 message Reply {
   string author = 1;
@@ -98,7 +108,6 @@ message Message {
   repeated Attachment attachments = 8;
   optional Reply reply_to = 9;
   optional Deletion deleted = 10;
-  bool unread = 11;
 }
 
 // A flattened AnyConversation: the fields every kind has, plus the DM-only ones.

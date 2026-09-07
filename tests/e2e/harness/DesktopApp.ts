@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { _electron, type ElectronApplication, type Page } from '@playwright/test'
-import type { ElementId } from '@s2/test-ids'
+import type { ElementId } from '@session/test-ids'
 
 import type { ISessionApp } from './ISessionApp'
 

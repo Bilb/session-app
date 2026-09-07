@@ -1,9 +1,15 @@
-import type { AccountInfo, Conversation, ConversationId, Message, MessageCursor } from '@s2/client'
+import type {
+  AccountInfo,
+  Conversation,
+  ConversationId,
+  Message,
+  MessageCursor,
+} from '@session/client'
 
 /**
  * One conversation's loaded history.
  *
- * `ready` is what tells an empty conversation apart from one nobody has asked for yet —
+ * `ready` is what tells an empty conversation apart from one nobody has asked for yet -
  * without it a transcript cannot know whether to render "no messages" or a spinner.
  */
 export interface MessageWindow {

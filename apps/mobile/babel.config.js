@@ -7,7 +7,7 @@ module.exports = function babelConfig(api) {
       [
         '@tamagui/babel-plugin',
         {
-          components: ['tamagui', '@s2/ui'],
+          components: ['tamagui', '@session/ui'],
           // The same file the desktop build reads, so a token added once exists on both.
           config: '../../packages/ui/src/config.ts',
           logTimings: true,

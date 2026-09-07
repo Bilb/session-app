@@ -1,4 +1,4 @@
-import { baseConfig, sharedZone } from '@s2/eslint-config'
+import { baseConfig, sharedZone } from '@session/eslint-config'
 
 export default [
   // src/localization-src is the session-localization submodule: generated and maintained in

@@ -20,11 +20,12 @@ export function Input({
   autoFocus,
   disabled,
   onSubmit,
+  grow = false,
   testID,
 }: InputProps) {
   return (
     <TamaguiInput
-      flex={1}
+      {...(grow ? { flex: 1 } : {})}
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder ?? ''}

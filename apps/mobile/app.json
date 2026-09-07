@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Session",
-    "slug": "session-2",
+    "slug": "session-app",
     "scheme": "session",
     "version": "0.0.0",
     "orientation": "default",
@@ -10,7 +10,10 @@
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "org.getsession.session2"
+      "bundleIdentifier": "org.getsession.session2",
+      "entitlements": {
+        "keychain-access-groups": ["$(AppIdentifierPrefix)org.getsession.session2"]
+      }
     },
     "android": {
       "package": "org.getsession.session2",

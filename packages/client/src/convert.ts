@@ -15,7 +15,7 @@ import {
   type Conversation as ConversationPb,
   type Message as MessagePb,
   type OutgoingAttachment as OutgoingAttachmentPb,
-} from '@s2/proto'
+} from '@session/proto'
 
 import type {
   Attachment,
@@ -31,7 +31,7 @@ import type {
 /**
  * Every int64 on this bridge is a unix-millisecond timestamp, a sqlite rowid or a byte
  * count. 2^53 milliseconds is the year 287396 and rowids do not get there either, so the
- * conversion is lossless in practice — and it keeps bigint out of every comparison in the
+ * conversion is lossless in practice - and it keeps bigint out of every comparison in the
  * store and the UI.
  */
 function toNumber(value: bigint): number {
@@ -86,11 +86,11 @@ function fromAttachmentPb(pb: AttachmentPb): Attachment {
     ...(pb.contentType === undefined ? {} : { contentType: pb.contentType }),
     ...(pb.filename === undefined ? {} : { filename: pb.filename }),
     ...(pb.caption === undefined ? {} : { caption: pb.caption }),
-    size: toNumber(pb.size),
+    ...(pb.size === undefined ? {} : { size: toNumber(pb.size) }),
     voiceMessage: pb.voiceMessage,
     ...(pb.width === undefined ? {} : { width: pb.width }),
     ...(pb.height === undefined ? {} : { height: pb.height }),
-    downloaded: pb.downloaded,
+    uploaded: pb.uploaded,
   }
 }
 
@@ -118,7 +118,6 @@ export function fromMessagePb(pb: MessagePb): Message {
           },
         }),
     ...(deleted === undefined ? {} : { deleted }),
-    unread: pb.unread,
   }
 }
 

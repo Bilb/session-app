@@ -1,4 +1,4 @@
-import { NavProvider, type NavPort } from '@s2/app'
+import { NavProvider, type NavPort } from '@session/app'
 import { useMemo, type ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 

@@ -1,13 +1,6 @@
-import { ELEMENT } from '@s2/test-ids'
-import { Screen, Text, YStack } from '@s2/ui'
+import { RequestsScreen } from '@session/screens'
 
-/** A placeholder screen. The route has to exist for the contract test to pass. */
+/** The route file is the boundary: the screen itself never reads a router. */
 export default function RequestsRoute() {
-  return (
-    <Screen testID={ELEMENT.requests.screen}>
-      <YStack flex={1} alignItems="center" justifyContent="center">
-        <Text tone="secondary">Message requests</Text>
-      </YStack>
-    </Screen>
-  )
+  return <RequestsScreen />
 }

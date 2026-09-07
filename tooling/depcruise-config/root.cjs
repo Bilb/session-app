@@ -25,23 +25,26 @@ const platformOnlyModules = [
   'react-native',
   'expo',
   'expo-router',
-  '@s2/bridge-rn',
-  '@s2/bridge-node',
+  '@session/bridge-rn',
+  '@session/bridge-node',
 ]
 
 module.exports = {
   forbidden: [
     // ---- Package graph -----------------------------------------------------
     mayOnlyDependOn('basic-types', []),
+    mayOnlyDependOn('bridge-types', []),
     mayOnlyDependOn('test-ids', []),
     mayOnlyDependOn('theme-tokens', ['basic-types']),
     mayOnlyDependOn('localization', ['basic-types']),
     mayOnlyDependOn('proto', ['basic-types']),
-    mayOnlyDependOn('client', ['proto', 'basic-types']),
+    mayOnlyDependOn('client', ['proto', 'basic-types', 'bridge-rn', 'bridge-types']),
     mayOnlyDependOn('client-contract', ['client', 'proto', 'basic-types']),
     mayOnlyDependOn('state', ['client', 'basic-types']),
     mayOnlyDependOn('ui', ['theme-tokens', 'test-ids', 'basic-types']),
     mayOnlyDependOn('app', ['client', 'state', 'basic-types']),
+    mayOnlyDependOn('bridge-node', ['client', 'client-contract', 'proto', 'bridge-types']),
+    mayOnlyDependOn('bridge-rn', ['bridge-types']),
     mayOnlyDependOn('screens', [
       'ui',
       'state',
@@ -70,7 +73,7 @@ module.exports = {
     {
       name: 'shared-is-platform-neutral',
       comment:
-        'Shared packages run on Hermes, in a browser and in Node. Wrap platform APIs in @s2/ui or a port.',
+        'Shared packages run on Hermes, in a browser and in Node. Wrap platform APIs in @session/ui or a port.',
       severity: 'error',
       from: {
         path: '^packages/(basic-types|test-ids|theme-tokens|localization|proto|client|client-contract|state|app|screens)/',
@@ -90,7 +93,7 @@ module.exports = {
     {
       name: 'ui-owns-tamagui',
       comment:
-        'Only packages/ui may import tamagui. Everyone else imports the wrapper from @s2/ui.',
+        'Only packages/ui may import tamagui. Everyone else imports the wrapper from @session/ui.',
       severity: 'error',
       from: { path: '^(packages/(?!ui)[^/]+|apps)/' },
       to: { path: '^(tamagui|@tamagui/)', dependencyTypes: ['npm', 'npm-dev'] },

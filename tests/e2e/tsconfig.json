@@ -1,5 +1,5 @@
 {
-  "extends": "@s2/typescript-config/bundler.json",
+  "extends": "@session/typescript-config/bundler.json",
   "compilerOptions": {
     "types": ["node"]
   },

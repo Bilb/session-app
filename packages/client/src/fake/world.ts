@@ -3,14 +3,14 @@
  *
  * It exists so the UI, the store and the e2e suite can be built and run before the C++ shim
  * does, and so they can keep being tested afterwards without a devnet. It is not a stub:
- * it honours the parts of libsession's contract the app actually depends on —
+ * it honours the parts of libsession's contract the app actually depends on -
  *
  *   - a send stores its row and reports it immediately, then moves through send states,
  *   - every change event carries the whole new state, never an id to go and fetch,
  *   - approving a request moves it between lists, and both lists are re-sent,
  *   - a restart leaves anything still in flight `interrupted`.
  *
- * @s2/client-contract runs the same scenarios against this and against the real bridge, so
+ * @session/client-contract runs the same scenarios against this and against the real bridge, so
  * the two cannot drift apart quietly.
  */
 
@@ -42,6 +42,12 @@ export function resetFakeIds(): void {
 interface FakeConversationState {
   conversation: Conversation
   messages: Message[]
+  /**
+   * Which incoming messages are still unread. Held beside the messages rather than on them
+   * because libsession counts unread on the conversation and reports nothing per message -
+   * this is the fake's own bookkeeping and it does not belong on the wire.
+   */
+  unread: Set<number>
 }
 
 export class FakeAccount {
@@ -121,8 +127,8 @@ export class FakeAccount {
   upsertConversation(conversation: Conversation, { announce = true } = {}): Conversation {
     const existing = this.conversations.get(conversation.id)
     const state: FakeConversationState = existing
-      ? { conversation, messages: existing.messages }
-      : { conversation, messages: [] }
+      ? { conversation, messages: existing.messages, unread: existing.unread }
+      : { conversation, messages: [], unread: new Set() }
     this.conversations.set(conversation.id, state)
 
     if (!announce) return conversation
@@ -161,17 +167,18 @@ export class FakeAccount {
   addMessage(id: ConversationId, message: Message): Message {
     const state = this.conversations.get(id)
     if (!state) throw new Error(`No conversation ${id}`)
+    if (!message.outgoing) state.unread.add(message.id)
     state.messages.push(message)
     state.messages.sort((a, b) => a.timestamp - b.timestamp || a.id - b.id)
 
-    const unreadCount = state.messages.filter((m) => m.unread && !m.outgoing).length
+    const unreadCount = state.messages.filter((m) => state.unread.has(m.id) && !m.outgoing).length
     const conversation: Conversation = {
       ...state.conversation,
       lastActivity: message.timestamp,
       snippet: message.body,
       unreadCount,
     }
-    this.conversations.set(id, { conversation, messages: state.messages })
+    this.conversations.set(id, { ...state, conversation })
 
     this.emit({ type: 'message-added', conversationId: id, message })
     this.emit({ type: 'conversation-updated', conversation })
@@ -192,13 +199,13 @@ export class FakeAccount {
   markRead(id: ConversationId): void {
     const state = this.conversations.get(id)
     if (!state) return
-    state.messages = state.messages.map((m) => ({ ...m, unread: false }))
+    state.unread.clear()
     const conversation: Conversation = {
       ...state.conversation,
       unreadCount: 0,
       markedUnread: false,
     }
-    this.conversations.set(id, { conversation, messages: state.messages })
+    this.conversations.set(id, { ...state, conversation })
     this.emit({ type: 'conversation-updated', conversation })
   }
 
@@ -262,7 +269,6 @@ export class FakeAccount {
       outgoing: false,
       sendState: 'sent',
       attachments: [],
-      unread: true,
     })
   }
 
@@ -275,13 +281,12 @@ export class FakeAccount {
       timestamp: now,
       body,
       outgoing: true,
-      // Stored and shown before it is sent — which is why the app needs no optimistic copy.
+      // Stored and shown before it is sent - which is why the app needs no optimistic copy.
       sendState: 'pending',
       attachments: [],
       ...(replyTo === undefined
         ? {}
         : { replyTo: { author: this.sessionId, timestamp: now, messageId: replyTo } }),
-      unread: false,
     }
     this.addMessage(id, message)
     this.world?.scheduleSend(this, id, message)

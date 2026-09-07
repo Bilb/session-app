@@ -1,8 +1,11 @@
-import type { PrimaryColorState, ThemeState } from '@s2/theme-tokens'
+import type { PrimaryColorState, ThemeState } from '@session/theme-tokens'
 import type { ReactNode } from 'react'
 import { TamaguiProvider } from 'tamagui'
 
 import { config } from './config'
+// Side-effecting: puts the compiled themes in the document on the web, and does nothing on native.
+// See tamaguiCSS.ts - without it every `$token` colour resolves to an undefined custom property.
+import './tamaguiCSS'
 import { DEFAULT_ACCENT, DEFAULT_THEME, themeName } from './themes'
 
 export interface UIProviderProps {

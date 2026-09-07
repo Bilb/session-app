@@ -22,13 +22,13 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @s2/localization build
-      - run: pnpm --filter @s2/desktop build
-      - run: pnpm --filter @s2/e2e exec playwright install --with-deps chromium
+      - run: pnpm --filter @session/localization build
+      - run: pnpm --filter @session/desktop build
+      - run: pnpm --filter @session/e2e exec playwright install --with-deps chromium
 
       # The app runs on the fake libsession here: no devnet, no network, and a seeded
       # conversation list that is the same on every run.
-      - run: xvfb-run -a pnpm --filter @s2/e2e test:e2e:fast
+      - run: xvfb-run -a pnpm --filter @session/e2e test:e2e:fast
 
       - uses: actions/upload-artifact@v4
         if: failure()

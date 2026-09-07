@@ -1,5 +1,5 @@
 {
-  "name": "@s2/screens",
+  "name": "@session/screens",
   "version": "0.0.0",
   "private": true,
   "description": "The screens both apps render, and the shell that decides how many fit",
@@ -15,19 +15,19 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@s2/app": "workspace:*",
-    "@s2/client": "workspace:*",
-    "@s2/localization": "workspace:*",
-    "@s2/state": "workspace:*",
-    "@s2/test-ids": "workspace:*",
-    "@s2/ui": "workspace:*"
+    "@session/app": "workspace:*",
+    "@session/client": "workspace:*",
+    "@session/localization": "workspace:*",
+    "@session/state": "workspace:*",
+    "@session/test-ids": "workspace:*",
+    "@session/ui": "workspace:*"
   },
   "peerDependencies": {
     "react": "catalog:"
   },
   "devDependencies": {
-    "@s2/eslint-config": "workspace:*",
-    "@s2/typescript-config": "workspace:*",
+    "@session/eslint-config": "workspace:*",
+    "@session/typescript-config": "workspace:*",
     "@types/react": "catalog:",
     "eslint": "catalog:",
     "react": "catalog:",

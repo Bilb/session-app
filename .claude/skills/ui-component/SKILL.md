@@ -1,21 +1,21 @@
 ---
 name: ui-component
-description: Add or change a component in @s2/ui, including the .native/.web split. Use when building any visual component for session-2.
+description: Add or change a component in @session/ui, including the .native/.web split. Use when building any visual component for session-app.
 ---
 
-# Adding a component to @s2/ui
+# Adding a component to @session/ui
 
 This package is the only one allowed to import tamagui. Everything else imports from
-`@s2/ui`, which is why the barrel re-exports the layout primitives too.
+`@session/ui`, which is why the barrel re-exports the layout primitives too.
 
 ## The component
 
 `packages/ui/src/<Name>.tsx`.
 
 - Colours come from theme tokens (`$textPrimary`, `$backgroundSecondary`). **No hex outside
-  `@s2/theme-tokens`.** A colour written here is one no theme can restyle.
-- Sizes come from the token scales: `$1`–`$4` space, `$6`–`$8` size (component heights),
-  `$1`–`$4` radius.
+  `@session/theme-tokens`.** A colour written here is one no theme can restyle.
+- Sizes come from the token scales: `$1`-`$4` space, `$6`-`$8` size (component heights),
+  `$1`-`$4` radius.
 - Take a `testID` prop and pass it through if the component is interactive.
 - Export it from `src/index.ts`.
 
@@ -23,16 +23,16 @@ This package is the only one allowed to import tamagui. Everything else imports 
 
 Three files, not two:
 
-- `X.types.ts` — the props interface, imported by both
-- `X.tsx` — the web flavour
-- `X.native.tsx` — the native flavour
+- `X.types.ts` - the props interface, imported by both
+- `X.tsx` - the web flavour
+- `X.native.tsx` - the native flavour
 
 The shared types file is what stops the two drifting: each app typechecks against whichever
 one its bundler resolves, so a prop added to only one of them would otherwise go unnoticed
 until the other platform was run. `Input` is the worked example.
 
-`packages/ui/tsconfig.json` excludes `*.native.*` — those are typechecked by `apps/mobile`,
-which loads react-native's types and sets `moduleSuffixes`. Run `pnpm --filter @s2/mobile typecheck`
+`packages/ui/tsconfig.json` excludes `*.native.*` - those are typechecked by `apps/mobile`,
+which loads react-native's types and sets `moduleSuffixes`. Run `pnpm --filter @session/mobile typecheck`
 after touching one.
 
 ## Tamagui edges worth knowing
@@ -46,5 +46,5 @@ after touching one.
 
 ## Check
 
-A render test if it has logic worth asserting, then `pnpm --filter @s2/ui typecheck` and
-`pnpm --filter @s2/mobile typecheck`.
+A render test if it has logic worth asserting, then `pnpm --filter @session/ui typecheck` and
+`pnpm --filter @session/mobile typecheck`.

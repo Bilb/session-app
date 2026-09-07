@@ -1,8 +1,10 @@
-import { routes, useNav } from '@s2/app'
-import type { Conversation } from '@s2/client'
-import { useConversations, useUnreadRequestCount } from '@s2/state'
-import { ELEMENT } from '@s2/test-ids'
-import { Avatar, Screen, ScrollView, Separator, Text, XStack, YStack } from '@s2/ui'
+import { routes, useNav } from '@session/app'
+import type { Conversation } from '@session/client'
+import { useConversations, useUnreadRequestCount } from '@session/state'
+import { ELEMENT } from '@session/test-ids'
+import { Avatar, Icon, Screen, ScrollView, Separator, Text, XStack, YStack } from '@session/ui'
+
+import { conversationTitle } from './conversationTitle'
 
 /**
  * The conversation list.
@@ -27,23 +29,63 @@ export function ConversationListScreen() {
         <Text size="$6" weight="bold">
           Messages
         </Text>
-        {unreadRequests > 0 ? (
+        <XStack alignItems="center" gap="$1.5">
+          {unreadRequests > 0 ? (
+            <XStack
+              backgroundColor="$primaryColor"
+              borderRadius="$full"
+              paddingHorizontal="$1"
+              minWidth={20}
+              height={20}
+              alignItems="center"
+              justifyContent="center"
+              testID={ELEMENT.requests.badge}
+              onPress={() => nav.push(routes.requests())}
+            >
+              <Text size="$2" weight="bold" color="$backgroundPrimary">
+                {unreadRequests}
+              </Text>
+            </XStack>
+          ) : null}
+
+          {/* Writing to somebody who has not written first was impossible before this: the
+              only way into a conversation was replying to a request. */}
           <XStack
-            backgroundColor="$primaryColor"
-            borderRadius="$full"
-            paddingHorizontal="$1"
-            minWidth={20}
-            height={20}
+            width={44}
+            height={44}
             alignItems="center"
             justifyContent="center"
-            testID={ELEMENT.requests.badge}
-            onPress={() => nav.push(routes.requests())}
+            cursor="pointer"
+            hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
+            pressStyle={{ backgroundColor: '$backgroundTertiary' }}
+            borderRadius="$full"
+            testID={ELEMENT.conversationList.newConversation}
+            onPress={() => nav.push(routes.newConversation())}
           >
-            <Text size="$2" weight="bold" color="$backgroundPrimary">
-              {unreadRequests}
-            </Text>
+            <Icon name="plus" size="$5" color="$textSecondary" />
           </XStack>
-        ) : null}
+
+          {/* Settings had a route and no way to reach it, which made the account ID - the one
+              thing someone else needs in order to write to this device - unreachable too.
+
+              The hit area is the stack rather than the glyph: a 24pt icon is well under the
+              44pt minimum a finger needs, and a target that small is one people miss rather
+              than one they cannot see. */}
+          <XStack
+            width={44}
+            height={44}
+            alignItems="center"
+            justifyContent="center"
+            cursor="pointer"
+            hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
+            pressStyle={{ backgroundColor: '$backgroundTertiary' }}
+            borderRadius="$full"
+            testID={ELEMENT.conversationList.settings}
+            onPress={() => nav.push(routes.settings())}
+          >
+            <Icon name="settings" size="$5" color="$textSecondary" />
+          </XStack>
+        </XStack>
       </XStack>
 
       <Separator borderColor="$bordersColor" />
@@ -79,7 +121,7 @@ function ConversationRow({
   index: number
   onPress: () => void
 }) {
-  const name = conversation.nickname ?? conversation.displayName
+  const title = conversationTitle(conversation)
 
   return (
     <XStack
@@ -93,7 +135,7 @@ function ConversationRow({
       onPress={onPress}
       testID={ELEMENT.conversationList.row(index)}
     >
-      <Avatar id={conversation.id} name={name} />
+      <Avatar id={conversation.id} name={title} />
 
       <YStack flex={1} gap="$0.5">
         <Text
@@ -102,7 +144,7 @@ function ConversationRow({
           numberOfLines={1}
           testID={ELEMENT.conversationList.rowName}
         >
-          {name}
+          {title}
         </Text>
         {conversation.snippet === undefined ? null : (
           <Text

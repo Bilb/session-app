@@ -1,5 +1,5 @@
-import { createSessionClient, type BridgeTransport } from '@s2/client'
-import { createSessionStore } from '@s2/state'
+import { createSessionClient, type BridgeTransport } from '@session/client'
+import { createSessionStore } from '@session/state'
 
 import './platform'
 
@@ -19,4 +19,10 @@ declare global {
 
 const client = createSessionClient(window.sessionBridge)
 
-export const store = createSessionStore(client)
+export const store = createSessionStore(client, {
+  // The renderer's console, which reaches the terminal when Electron is run with
+  // --enable-logging and the DevTools console otherwise.
+  log: (level, line) => {
+    console[level](line)
+  },
+})

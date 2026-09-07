@@ -1,4 +1,4 @@
-import { PRIMARY_COLOR_HEX } from '@s2/theme-tokens'
+import { PRIMARY_COLOR_HEX } from '@session/theme-tokens'
 import { XStack } from 'tamagui'
 
 import { Text } from './Text'

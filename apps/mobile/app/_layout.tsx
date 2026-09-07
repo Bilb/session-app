@@ -1,5 +1,5 @@
-import { SessionStoreProvider, type SessionStore } from '@s2/state'
-import { Text, UIProvider, YStack } from '@s2/ui'
+import { SessionStoreProvider, type SessionStore } from '@session/state'
+import { Text, UIProvider, YStack } from '@session/ui'
 import { Slot } from 'expo-router'
 import { useEffect, useState } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'

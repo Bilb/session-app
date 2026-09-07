@@ -35,11 +35,13 @@ export interface Attachment {
   contentType?: string
   filename?: string
   caption?: string
-  size: number
+  /** Unset until an outgoing attachment has uploaded; a sender's claim on an incoming one. */
+  size?: number
   voiceMessage: boolean
   width?: number
   height?: number
-  downloaded: boolean
+  /** On the file server - not "the bytes are here". libsession does not record a local path. */
+  uploaded: boolean
 }
 
 export interface OutgoingAttachment {
@@ -71,7 +73,6 @@ export interface Message {
   attachments: Attachment[]
   replyTo?: Reply
   deleted?: Deletion
-  unread: boolean
 }
 
 export interface Conversation {
@@ -104,7 +105,7 @@ export interface AccountInfo {
  *
  * The first report of a transfer is `{done: 0, total: 0}` and means it started. `result`
  * absent means still going; `result === 0` means accepted and is the only thing that means
- * finished — `done === total` does not. Reports for one index are ordered and exactly one
+ * finished - `done === total` does not. Reports for one index are ordered and exactly one
  * carries a result; different indexes interleave.
  */
 export interface AttachmentProgress {
@@ -160,7 +161,7 @@ export interface SessionClient {
   getSeedMnemonic(language?: string): Promise<string[]>
   setDisplayName(name: string): Promise<void>
   attachNetwork(netid: string, devnetSeedUrl?: string): Promise<void>
-  /** One poll cycle, run to completion — what every OS background budget wants. */
+  /** One poll cycle, run to completion - what every OS background budget wants. */
   pollOnce(): Promise<void>
 
   getConversations(): Promise<Conversation[]>
@@ -179,7 +180,7 @@ export interface SessionClient {
     options?: { limit?: number; before?: MessageCursor; includeDeleted?: boolean },
   ): Promise<Message[]>
   /**
-   * Resolves as soon as libsession has stored the row — which is before it is sent, and
+   * Resolves as soon as libsession has stored the row - which is before it is sent, and
    * before any attachment has uploaded. The states that follow arrive as message-updated.
    */
   sendMessage(

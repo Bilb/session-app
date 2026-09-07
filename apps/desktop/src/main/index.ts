@@ -13,11 +13,25 @@ import { createBridge } from './bridge'
  * The main process owns the bridge.
  *
  * libsession lives here rather than in the renderer because this is where the database key,
- * the user-data directory and the shutdown ordering already are — and because a renderer
+ * the user-data directory and the shutdown ordering already are - and because a renderer
  * cannot load a native addon anyway. The renderer only ever sees an ordered stream of
  * frames over a MessagePort, so moving the bridge into a utility process later would not
  * change a line of it.
  */
+
+/**
+ * What the app calls itself, which decides where its data lives.
+ *
+ * Without this it is "Electron": `app.getName()` falls back to that, so the database lands in
+ * `~/.config/Electron` beside every other Electron project on the machine - and the scoped
+ * package name grows a second, half-used `~/.config/@session/desktop` next to it. Set before
+ * anything reads a path, because `userData` is resolved on first use and then fixed.
+ *
+ * Deliberately not "Session": the shipped client already owns that directory, and a dev build
+ * that opened the real client's data would be a bad afternoon. A placeholder until somebody
+ * decides on branding, not a name anyone chose.
+ */
+app.setName('session-app')
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 

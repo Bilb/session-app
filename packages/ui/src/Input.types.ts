@@ -17,5 +17,13 @@ export interface InputProps {
   autoFocus?: boolean
   disabled?: boolean
   onSubmit?: () => void
+  /**
+   * Take the space the parent offers along its main axis.
+   *
+   * Off by default, and it has to be a choice rather than built in: `flex: 1` grows the width
+   * inside a row and sets `flex-basis: 0` inside a column, where it collapses the field to the
+   * height of its own text. A shared component cannot know which direction it was put in.
+   */
+  grow?: boolean
   testID?: string
 }

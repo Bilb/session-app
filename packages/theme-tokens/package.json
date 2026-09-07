@@ -1,5 +1,5 @@
 {
-  "name": "@s2/theme-tokens",
+  "name": "@session/theme-tokens",
   "version": "0.0.0",
   "private": true,
   "description": "Colour palette and semantic theme tokens shared by every client",
@@ -15,8 +15,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "devDependencies": {
-    "@s2/eslint-config": "workspace:*",
-    "@s2/typescript-config": "workspace:*",
+    "@session/eslint-config": "workspace:*",
+    "@session/typescript-config": "workspace:*",
     "eslint": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

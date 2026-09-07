@@ -1,6 +1,6 @@
 ---
 name: shared-test
-description: Write an end-to-end flow spec that runs against every client. Use when adding e2e coverage for a user-visible flow in session-2.
+description: Write an end-to-end flow spec that runs against every client. Use when adding e2e coverage for a user-visible flow in session-app.
 ---
 
 # Writing a flow spec
@@ -18,8 +18,8 @@ sessionTest({
 })
 ```
 
-The `clients` descriptor decides the platforms _and_ the tags — `@cross-platform`,
-`@medium-risk`, `@2-devices` — which is what CI selects on. Nobody writes tags by hand, so
+The `clients` descriptor decides the platforms _and_ the tags - `@cross-platform`,
+`@medium-risk`, `@2-devices` - which is what CI selects on. Nobody writes tags by hand, so
 they cannot drift from what the test actually needs.
 
 `sessionTest` is the only thing that opens or closes a client. A spec that opened its own
@@ -32,8 +32,8 @@ await alice.tap(ELEMENT.conversation.menu)
 expect(await alice.readText(ELEMENT.conversation.headerName)).toBe('Bob')
 ```
 
-Every id comes from `@s2/test-ids`. **An element you cannot address is a missing `testID` on
-the component** — add it there and to the registry. Never reach for an xpath, a class name or
+Every id comes from `@session/test-ids`. **An element you cannot address is a missing `testID` on
+the component** - add it there and to the registry. Never reach for an xpath, a class name or
 a text selector to get around it: those break on a copy change and hide the real problem,
 which is that the component is not addressable.
 
@@ -48,7 +48,7 @@ verb only one driver can do belongs in a narrower interface until the others cat
 
 ## Sequencing
 
-Assertions against one client run in sequence — a driver session takes one command at a time.
+Assertions against one client run in sequence - a driver session takes one command at a time.
 Assertions across clients can run together:
 
 ```ts
@@ -58,8 +58,8 @@ await Promise.all([verify(alice), verify(bob)])
 ## Run it
 
 ```
-pnpm --filter @s2/desktop build
-xvfb-run -a pnpm --filter @s2/e2e test:e2e:fast
+pnpm --filter @session/desktop build
+xvfb-run -a pnpm --filter @session/e2e test:e2e:fast
 ```
 
 Both e2e workflows are started by hand, never on a pull request.

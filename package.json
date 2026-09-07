@@ -1,5 +1,5 @@
 {
-  "name": "session-2",
+  "name": "session-app",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.30.3",
@@ -11,7 +11,12 @@
     "build": "turbo build",
     "codegen": "turbo codegen",
     "codegen:check": "turbo codegen:check",
+    "codegen:cpp": "node scripts/codegen-proto-cpp.mjs",
     "dev": "turbo dev",
+    "dev:desktop": "pnpm --filter @session/desktop dev",
+    "dev:desktop:real": "pnpm --filter @session/desktop dev:real",
+    "dev:mobile": "pnpm --filter @session/mobile dev",
+    "dev:mobile:real": "pnpm --filter @session/mobile dev:real",
     "lint": "turbo lint",
     "boundaries": "depcruise --config tooling/depcruise-config/root.cjs $(ls -d packages apps tests tooling 2>/dev/null)",
     "typecheck": "turbo typecheck",
@@ -22,8 +27,8 @@
     "lint:manifests": "eslint --no-config-lookup --config eslint.config.js \"**/package.json\" pnpm-workspace.yaml"
   },
   "devDependencies": {
-    "@s2/eslint-config": "workspace:*",
-    "@s2/typescript-config": "workspace:*",
+    "@session/eslint-config": "workspace:*",
+    "@session/typescript-config": "workspace:*",
     "dependency-cruiser": "catalog:",
     "eslint": "catalog:",
     "eslint-plugin-pnpm": "catalog:",

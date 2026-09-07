@@ -26,7 +26,13 @@
     "typecheck": {
       "dependsOn": ["^codegen", "^build"]
     },
-    "lint": {},
+    "lint": {
+      // @session/localization is consumed as built output, so its declarations have to exist
+      // before anything importing it can be type-aware-linted. Without this the typed rules do
+      // not fail, they go blind: tr() resolves to the error type and every rule that touches it
+      // reports "could not be resolved" instead of checking anything.
+      "dependsOn": ["^build", "^codegen"]
+    },
     "test": {
       "dependsOn": ["^codegen"],
       "outputs": ["coverage/**"]

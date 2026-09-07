@@ -1,7 +1,15 @@
-import { conversationFromPath } from '@s2/app'
-import { AdaptiveShell, ConversationListScreen, ConversationScreen } from '@s2/screens'
-import { SessionStoreProvider, useHydrated } from '@s2/state'
-import { Text, UIProvider, YStack } from '@s2/ui'
+import {
+  AdaptiveShell,
+  ConversationListScreen,
+  ConversationScreen,
+  NewConversationScreen,
+  OnboardingScreen,
+  StartingScreen,
+  RequestsScreen,
+  SettingsScreen,
+} from '@session/screens'
+import { SessionStoreProvider, useAccount, useHydrated } from '@session/state'
+import { Text, UIProvider, YStack } from '@session/ui'
 import { useEffect } from 'react'
 import { MemoryRouter, Route, Routes, useLocation, useParams } from 'react-router'
 
@@ -12,7 +20,7 @@ import { store } from './store'
  * The desktop app.
  *
  * The route table here is one of the three declarations the route-contract test holds
- * together — it scrapes this file for `path="..."`, so the strings below are load-bearing.
+ * together - it scrapes the path of every Route element below, so those strings are load-bearing.
  */
 export function App() {
   useEffect(() => {
@@ -35,21 +43,14 @@ export function App() {
 
 function Shell() {
   const hydrated = useHydrated()
+  const account = useAccount()
   const location = useLocation()
-  const openConversation = conversationFromPath(location.pathname)
 
-  if (!hydrated) {
-    return (
-      <YStack
-        flex={1}
-        alignItems="center"
-        justifyContent="center"
-        backgroundColor="$backgroundPrimary"
-      >
-        <Text tone="secondary">Starting…</Text>
-      </YStack>
-    )
-  }
+  if (!hydrated) return <StartingScreen />
+
+  // Onboarding takes the whole window rather than a pane: there is no list to sit beside it,
+  // and there will not be one until it has minted an identity.
+  if (account?.haveAccount !== true) return <OnboardingScreen />
 
   return (
     <AdaptiveShell
@@ -58,12 +59,16 @@ function Shell() {
         <Routes>
           <Route path="" element={null} />
           <Route path="c/:id" element={<ConversationRoute />} />
-          <Route path="requests" element={<Placeholder label="Message requests" />} />
-          <Route path="settings" element={<Placeholder label="Settings" />} />
-          <Route path="onboarding" element={<Placeholder label="Welcome" />} />
+          <Route path="new" element={<NewConversationScreen />} />
+          <Route path="requests" element={<RequestsScreen />} />
+          <Route path="settings" element={<SettingsScreen />} />
+          <Route path="onboarding" element={<OnboardingScreen />} />
         </Routes>
       }
-      hasDetail={openConversation !== null}
+      // Any route but the list has something to show in the detail pane, not just a
+      // conversation: requests and settings are detail routes too, and keying this on the
+      // conversation alone left them rendering the placeholder instead of the screen.
+      hasDetail={location.pathname !== '/'}
       placeholder={<Placeholder label="Choose a conversation" />}
     />
   )

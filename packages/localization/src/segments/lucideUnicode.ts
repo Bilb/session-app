@@ -1,4 +1,4 @@
-import { assertUnreachable } from '@s2/basic-types'
+import { assertUnreachable } from '@session/basic-types'
 
 export enum LUCIDE_ICONS_UNICODE {
   ARROW_DOWN_TO_LINE = '\uE45A',

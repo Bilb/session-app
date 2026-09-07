@@ -21,13 +21,13 @@
     "isolatedModules": true,
     "noEmit": true,
     "paths": {
-      // @s2/localization is the one package consumed as built output rather than source.
+      // @session/localization is the one package consumed as built output rather than source.
       // It wraps the session-localization submodule, whose generated files do not satisfy
-      // this config's strict flags — and are not ours to change. Building it means every
+      // this config's strict flags - and are not ours to change. Building it means every
       // consumer reads declarations, which skipLibCheck covers, instead of pulling vendored
       // sources into its own program. Everything else resolves to src.
-      "@s2/localization": ["${configDir}/../../packages/localization/dist/index.d.ts"],
-      "@s2/*": ["${configDir}/../../packages/*/src"]
+      "@session/localization": ["${configDir}/../../packages/localization/dist/index.d.ts"],
+      "@session/*": ["${configDir}/../../packages/*/src"]
     }
   }
 }

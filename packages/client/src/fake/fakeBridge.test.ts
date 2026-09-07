@@ -8,7 +8,7 @@ import { friends } from './fixtures'
 /**
  * The fake, driven through the real codec and the real facade.
  *
- * This is the whole pipeline the apps use — encode, transport, decode, correlate — with
+ * This is the whole pipeline the apps use - encode, transport, decode, correlate - with
  * only the C++ missing. A break in any of those layers fails here rather than in an app.
  */
 function connect() {

@@ -1,5 +1,5 @@
 {
-  "name": "@s2/typescript-config",
+  "name": "@session/typescript-config",
   "version": "0.0.0",
   "private": true,
   "files": [

@@ -11,7 +11,7 @@ import {
   type MessageSchema,
   type Request,
   type ResponseSchema,
-} from '@s2/proto'
+} from '@session/proto'
 
 import type { BridgeTransport, Conversation, Message, SessionClient, SessionEvent } from '../types'
 
@@ -85,11 +85,11 @@ function messageToPb(m: Message): MessageInit {
       ...(a.contentType === undefined ? {} : { contentType: a.contentType }),
       ...(a.filename === undefined ? {} : { filename: a.filename }),
       ...(a.caption === undefined ? {} : { caption: a.caption }),
-      size: BigInt(a.size),
+      ...(a.size === undefined ? {} : { size: BigInt(a.size) }),
       voiceMessage: a.voiceMessage,
       ...(a.width === undefined ? {} : { width: a.width }),
       ...(a.height === undefined ? {} : { height: a.height }),
-      downloaded: a.downloaded,
+      uploaded: a.uploaded,
     })),
     ...(m.replyTo === undefined
       ? {}
@@ -106,7 +106,6 @@ function messageToPb(m: Message): MessageInit {
     ...(m.deleted === undefined
       ? {}
       : { deleted: m.deleted === 'here' ? DeletionPb.HERE : DeletionPb.EVERYWHERE }),
-    unread: m.unread,
   }
 }
 
@@ -183,7 +182,7 @@ function eventInit(event: SessionEvent): EventInit {
  * Wraps a SessionClient as a transport.
  *
  * Handlers are dispatched one at a time and their answers are written to the same sink the
- * events go to, in the order they complete — the ordering guarantee the real shim gets from
+ * events go to, in the order they complete - the ordering guarantee the real shim gets from
  * running everything on Core's loop.
  */
 export function createFakeTransport(client: SessionClient): BridgeTransport {

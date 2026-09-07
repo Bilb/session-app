@@ -1,4 +1,4 @@
-import { memoryPorts, setPorts } from '@s2/app'
+import { memoryPorts, setPorts } from '@session/app'
 import * as SecureStore from 'expo-secure-store'
 
 const DATABASE_KEY = 'session2.database-key'
@@ -20,7 +20,7 @@ function hexToBytes(hex: string): Uint8Array {
 /**
  * The mobile app's OS ports.
  *
- * Only the secure store is real so far — it is the one the walking skeleton needs, because
+ * Only the secure store is real so far - it is the one the walking skeleton needs, because
  * libsession takes a database key and does not keep one. The rest are the memory
  * implementations until the screens that use them arrive.
  */

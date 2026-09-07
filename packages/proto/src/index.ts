@@ -14,7 +14,7 @@ export * from './gen/sessionbridge/v1/frames_pb'
  * from the file server. Everything else in `AttachmentProgress.result` is either a file
  * server HTTP status or a negative network code.
  *
- * Zero always means accepted — and is the only value that means done.
+ * Zero always means accepted - and is the only value that means done.
  */
 export const ATTACHMENT_OK = 0
 export const ATTACHMENT_FILE_MISSING = -20001

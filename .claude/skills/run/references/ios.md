@@ -1,0 +1,185 @@
+# iOS
+
+Builds and runs, on a simulator, against real libsession. Done on a remote Mac - Xcode 26.2,
+macOS 15.7 - because the machine most of this repository was built on is Linux, where none of it
+is possible.
+
+Device builds and a release-shaped xcframework are untried. Everything below has been run.
+
+## Building
+
+```sh
+pnpm --filter @session/bridge-rn build:libsession:ios     # libsession + the shim, one slice
+cd apps/mobile && npx expo prebuild --platform ios
+cd ios && pod install
+xcodebuild -workspace Session.xcworkspace -scheme Session -configuration Debug \
+  -destination "platform=iOS Simulator,name=iPhone 17 Pro" \
+  -derivedDataPath build/dd \
+  CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES
+```
+
+The signing flags are not decoration - see [traps.md](traps.md). `CODE_SIGNING_ALLOWED=NO` is the
+obvious thing to pass for a simulator and it breaks the keychain.
+
+The first `build:libsession:ios` takes a long time: it cross-compiles libsession and every
+dependency. After that it is incremental and quick.
+
+Needs `protobuf@21` from brew. bridge-core checks and says so.
+
+## Simulators
+
+```sh
+xcrun simctl list devices available
+xcrun simctl boot "iPhone 17 Pro"
+```
+
+**Do not wait with `simctl bootstatus -b`.** It is documented as exiting when the device is ready
+and it does not reliably do so - it hung here on an already-booted device and left processes
+behind. Wait on something that proves the device is serving requests:
+
+```sh
+for i in $(seq 30); do
+  xcrun simctl spawn "$UDID" /usr/bin/true >/dev/null 2>&1 && break
+  sleep 4
+done
+```
+
+That check matters for its own sake: a device can report `Booted` and not be working. The tell is
+`simctl spawn` failing with `NSPOSIXErrorDomain code=2` and `get_app_container` printing nothing.
+`simctl shutdown` then `boot` clears it.
+
+Address the device by UDID rather than by name once you have it - names are ambiguous across
+runtimes.
+
+## Install, launch, look
+
+```sh
+D=build/dd/Build/Products/Debug-iphonesimulator
+xcrun simctl install "$UDID" "$D/Session.app"
+xcrun simctl launch "$UDID" org.getsession.session2      # prints the pid
+xcrun simctl io "$UDID" screenshot ~/shot.png
+```
+
+A screenshot is the fastest way to read a JavaScript error: React Native's LogBox renders it in
+full, and the log will only tell you `RCTLogBoxView` became the key window.
+
+## Driving the UI
+
+`simctl` has no tap. Use [idb](https://fbidb.io), which reads the app's own view hierarchy, so
+every `testID` is a handle and no coordinate has to be derived from the window:
+
+```sh
+brew trust facebook/fb && brew install facebook/fb/idb    # the tap needs trusting first
+```
+
+**`--api axbridge` is the whole trick.** idb's default accessibility backend reports only what
+VoiceOver would see - the text leaves - and every one of them has a null `AXUniqueId`. `axbridge`
+walks the real hierarchy instead, where the `RCTViewComponentView` behind each pressable carries
+the `testID` as its `AXUniqueId`:
+
+```sh
+$ idb ui describe-all --udid "$UDID" --api axbridge | jq -c '.[] | select(.AXUniqueId) | {AXUniqueId, frame}'
+{"AXUniqueId":"conversation-list","frame":{"x":0,"y":59,"width":402,"height":815}}
+{"AXUniqueId":"conversation-list-settings","frame":{"x":343,"y":72,"width":44,"height":44}}
+```
+
+`tap`, `set-value` and `text` do not take `--api axbridge`, so a marker cannot be matched against
+a `testID`. Resolve the frame yourself and act on its centre - which is still element-addressed,
+because the frame comes from the app rather than from the window:
+
+```sh
+centre() {
+  idb ui describe-all --udid "$UDID" --api axbridge | python3 -c '
+import json, sys
+[e] = [e for e in json.load(sys.stdin) if e.get("AXUniqueId") == sys.argv[1]]
+f = e["frame"]; print(int(f["x"] + f["width"] / 2), int(f["y"] + f["height"] / 2))' "$1"
+}
+
+read X Y < <(centre conversation-list-settings)
+idb ui tap --udid "$UDID" "$X" "$Y"                             # navigate
+idb ui set-value --udid "$UDID" "$X" "$Y" --value "$ACCOUNT_ID" # fill a field outright
+idb ui text --udid "$UDID" "$ACCOUNT_ID"                        # or type into the focused one
+```
+
+Verified end to end on the mac mini: tapping `conversation-list-settings` lands on the settings
+screen, and both `set-value` and `text` put an account ID in the new-conversation field. **The
+hardware keyboard does not have to be connected for any of it** - `ConnectHardwareKeyboard` is
+`false` on that device and `idb ui text` types anyway, because idb delivers to the target rather
+than to Simulator.
+
+`simctl openurl "$UDID" session:///new` still reaches any route in one step and is worth
+preferring to a sequence of taps. iOS asks "Open in Session?" first, and that dialog has to be
+tapped.
+
+<details>
+<summary>Without idb: coordinates, AppleScript, and the hardware keyboard</summary>
+
+Needs assistive access granted by a person at the machine - System Settings › Privacy & Security
+› Accessibility, for `osascript`, and it covers an ssh session too.
+
+**The window is scaled.** Simulator fits the device into whatever size the window is - 402x874
+points into 391x849 - so nothing derived from the window frame lands where it should. The device
+view's own accessibility frame is the mapping:
+
+```sh
+osascript -e 'tell application "System Events" to tell process "Simulator" \
+  to tell window 1 to get {position, size} of group 1'       # 309, 107, 391, 849
+```
+
+Screen x is that x plus point x times 391/402, and the same for y. Twenty points out hits the
+label above a field, which looks exactly like a click that did not register.
+
+**Typing needs the hardware keyboard, which is off by default.** Keystrokes otherwise reach
+Simulator rather than the device, and some are its own shortcuts - a `keystroke` of an account ID
+opened the React Native dev menu. The I/O menu item does not stick because the setting is per
+device and read at boot:
+
+```sh
+xcrun simctl shutdown all && killall Simulator
+/usr/libexec/PlistBuddy \
+  -c "set :DevicePreferences:$UDID:ConnectHardwareKeyboard true" \
+  ~/Library/Preferences/com.apple.iphonesimulator.plist   # `add ... bool true` if absent
+xcrun simctl boot "$UDID" && open -a Simulator
+```
+
+The bare `defaults write com.apple.iphonesimulator ConnectHardwareKeyboard` form stopped working
+around Xcode 11; it is `DevicePreferences` keyed by UDID now, which is why every older recipe for
+it appears to do nothing.
+
+Or go through the pasteboard, which needs no restart:
+
+```sh
+printf '%s' "$TEXT" | xcrun simctl pbcopy "$UDID"
+```
+
+Then click the field, click it a second time, and the `Paste | AutoFill` callout appears just
+above it; click `Paste`. Simulator's own Edit › Paste stays disabled and is not the way in.
+
+</details>
+
+## Logs
+
+```sh
+xcrun simctl spawn "$UDID" log show --last 5m --style compact --predicate 'process == "Session"'
+```
+
+The predicate is essential. Without it the output is thousands of lines from `storekitd`,
+`videosubscriptionsd` and friends, none of it yours.
+
+## The app's own storage
+
+```sh
+C=$(xcrun simctl get_app_container "$UDID" org.getsession.session2 data)
+ls -la "$C/Documents/session/"
+```
+
+`session.db` with its `-shm` and `-wal` is the proof that the bridge carried a command down and an
+answer back. `Documents/session` holding only `attachments` means the transport was built and
+`init` never completed - read the LogBox.
+
+## Resetting state
+
+```sh
+xcrun simctl uninstall "$UDID" org.getsession.session2
+xcrun simctl erase "$UDID"                               # the whole device
+```

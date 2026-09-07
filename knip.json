@@ -10,10 +10,15 @@
     "expo-system-ui",
     "@bufbuild/protoc-gen-es",
     "dependency-cruiser",
-    "@s2/eslint-config",
-    "@s2/typescript-config",
+    "@session/eslint-config",
+    "@session/typescript-config",
     "eslint-import-resolver-typescript",
-    "react-native-web"
+    "react-native-web",
+    "node-addon-api",
+    "@session/bridge-rn",
+    "react-native-nitro-modules",
+    "react-native-safe-area-context"
   ],
-  "ignore": ["**/*.native.tsx", "libsession-util/**"]
+  "ignoreBinaries": ["brew"],
+  "ignore": ["**/*.native.ts", "**/*.native.tsx", "libsession-util/**"]
 }

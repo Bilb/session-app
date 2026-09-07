@@ -1,4 +1,4 @@
-import type { Conversation, Message, SessionEvent } from '@s2/client'
+import type { Conversation, Message, SessionEvent } from '@session/client'
 import { describe, expect, it } from 'vitest'
 
 import { applyEvent } from './applyEvent'
@@ -32,7 +32,6 @@ function message(overrides: Partial<Message> = {}): Message {
     outgoing: false,
     sendState: 'sent',
     attachments: [],
-    unread: false,
     ...overrides,
   }
 }
@@ -65,7 +64,7 @@ describe('applyEvent', () => {
     ])
 
     // Approval is an update, not a remove-then-add, so the row has to be taken out of the
-    // list it used to be in — otherwise it shows up in both.
+    // list it used to be in - otherwise it shows up in both.
     expect(state.requestOrder).toEqual([])
     expect(state.requests['05alice']).toBeUndefined()
     expect(state.conversationOrder).toEqual(['05alice'])

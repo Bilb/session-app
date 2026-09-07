@@ -1,4 +1,4 @@
-import type { Conversation, ConversationId, Message } from '@s2/client'
+import type { AccountInfo, Conversation, ConversationId, Message } from '@session/client'
 import { createContext, createElement, useContext, useEffect, type ReactNode } from 'react'
 import { useStore } from 'zustand'
 
@@ -31,7 +31,8 @@ export function useHydrated(): boolean {
   return useStore(store, (state) => state.hydrated)
 }
 
-export function useAccount(): { sessionId?: string; displayName?: string } | null {
+/** The whole of what libsession says about the account, or null before the first answer. */
+export function useAccount(): AccountInfo | null {
   const store = useSessionStore()
   return useStore(store, (state) => state.account)
 }

@@ -5,7 +5,7 @@ import {
   type AttachmentProgress as AttachmentProgressPb,
   type Event as EventPb,
   type Response,
-} from '@s2/proto'
+} from '@session/proto'
 
 import {
   deletionToPb,
@@ -137,7 +137,7 @@ function decodeEvent(pb: EventPb): SessionEvent | null {
  *
  * Requests are submitted and forgotten; their answers come back on the same ordered stream
  * as the change events, tagged with the request id. That is what preserves libsession's
- * ordering across the boundary — see frames.proto for why it is not two channels.
+ * ordering across the boundary - see frames.proto for why it is not two channels.
  */
 export function createSessionClient(transport: BridgeTransport): SessionClient {
   let nextRequestId = 1

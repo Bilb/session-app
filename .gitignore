@@ -6,14 +6,24 @@ coverage/
 .turbo/
 *.log
 
-# Expo prebuild output — generated, never committed
+# Expo prebuild output - generated, never committed
 apps/mobile/android/
 apps/mobile/ios/
 apps/mobile/.expo/
+apps/mobile/.gitignore
+apps/mobile/.tamagui/
+apps/mobile/expo-env.d.ts
 
 # Native build artifacts
 prebuilds/
 packages/*/build/
+packages/proto/gen-cpp/
+libsession-util/build-ios/
+packages/bridge-rn/ios/*.xcframework/
+packages/bridge-rn/ios/lib/
+packages/bridge-core/build-ios/
+.cxx/
+libsession-util/build-android/
 
 # Playwright
 test-results/
@@ -25,3 +35,7 @@ blob-report/
 .env.local
 
 .DS_Store
+.vscode/
+
+# Local review worktrees
+.claude/worktrees/

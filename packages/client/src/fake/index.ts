@@ -1,7 +1,7 @@
 /**
  * The fake libsession.
  *
- * Importable only from tests, the contract suite and an app's dev entry — the boundary
+ * Importable only from tests, the contract suite and an app's dev entry - the boundary
  * rules enforce that, so a production bundle cannot reach it.
  */
 

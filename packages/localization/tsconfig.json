@@ -1,5 +1,5 @@
 {
-  "extends": "@s2/typescript-config/bundler.json",
+  "extends": "@session/typescript-config/bundler.json",
   "compilerOptions": {
     // src/localization-src is the session-localization submodule: generated, vendored, and
     // maintained in its own repo against its own settings. Our re-export pulls it into this
