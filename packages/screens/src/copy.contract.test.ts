@@ -29,25 +29,6 @@ const COPY_PROPS = new Set([
   'label',
 ])
 
-/**
- * Copy that predates this test and has no key in the catalogue to move to.
- *
- * Adding a catalogue entry is a translation-pipeline decision rather than a code one, so these
- * stay listed until somebody makes it. The list is the point: it is short, it is visible, and a
- * new literal cannot hide in it - anything not named here fails.
- */
-const NOT_YET_IN_THE_CATALOGUE = new Set([
-  'No conversations yet',
-  'No account on this device yet.',
-  'No account yet',
-  // Diagnostics rather than copy so far: the settings screen shows whether the bridge attached,
-  // which is a thing a developer reads. If it stays on screen for users it needs keys like the
-  // rest.
-  'Network',
-  'Attached',
-  'Not attached',
-])
-
 const dir = import.meta.dirname
 
 function screenFiles(from: string): string[] {
@@ -74,7 +55,6 @@ function literalsIn(path: string): string[] {
     // Punctuation and whitespace between elements is not copy: a bare `-` or `·` has nothing to
     // translate, and demanding a key for one would be the rule wearing out its welcome.
     if (!/\p{Letter}/u.test(trimmed)) return
-    if (NOT_YET_IN_THE_CATALOGUE.has(trimmed)) return
     const { line } = source.getLineAndCharacterOfPosition(node.getStart(source))
     found.push(`${path.slice(path.indexOf('packages/'))}:${String(line + 1)} ${trimmed}`)
   }
