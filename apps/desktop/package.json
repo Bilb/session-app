@@ -23,6 +23,7 @@
     "@session/ui": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-native-svg": "catalog:",
     "react-native-web": "catalog:",
     "react-router": "catalog:"
   },

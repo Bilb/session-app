@@ -46,8 +46,35 @@ export default defineConfig({
       // Tamagui ships both; the web build has to win here or the DOM flavour never loads.
       mainFields: ['module', 'browser', 'main'],
       conditions: ['browser', 'import', 'default'],
+      // `.web.js` ahead of `.js` is how the react-native-web ecosystem ships a DOM flavour, and
+      // react-native-svg - which the icons draw through - is one of the packages that does. It has
+      // no exports map and no browser field, so the condition list above cannot reach its web
+      // build; only the extension order can. Without this the renderer loads the native flavour
+      // and every icon throws on a host component the DOM does not have.
+      extensions: [
+        '.web.mjs',
+        '.web.js',
+        '.web.tsx',
+        '.web.ts',
+        '.mjs',
+        '.js',
+        '.mts',
+        '.ts',
+        '.jsx',
+        '.tsx',
+        '.json',
+      ],
     },
     define: {
+      // Icons resolve their colour to a value rather than to a CSS variable.
+      //
+      // @tamagui/helpers-icon reads this when each icon is themed, and its default - `auto` -
+      // means "a var() on the web", which assumes the theme's custom properties are defined.
+      // Emitting those is the vite plugin's job, and the plugin is deliberately absent above, so
+      // `var(--textSecondary)` names nothing and the SVG's stroke computes to `none`: an icon that
+      // is present, sized and completely invisible. Every other component already resolves its
+      // colours at runtime, so this only asks the icons to do what the rest of the app does.
+      'process.env.TAMAGUI_ICON_COLOR_RESOLVE': JSON.stringify('value'),
       // react-native-web reads these; without them the bundle throws on first render.
       global: 'globalThis',
       __DEV__: JSON.stringify(process.env['NODE_ENV'] !== 'production'),

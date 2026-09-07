@@ -2,7 +2,7 @@ import { routes, useNav } from '@session/app'
 import type { Conversation } from '@session/client'
 import { useConversations, useUnreadRequestCount } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
-import { Avatar, Screen, ScrollView, Separator, Text, XStack, YStack } from '@session/ui'
+import { Avatar, Icon, Screen, ScrollView, Separator, Text, XStack, YStack } from '@session/ui'
 
 import { conversationTitle } from './conversationTitle'
 
@@ -62,17 +62,15 @@ export function ConversationListScreen() {
             testID={ELEMENT.conversationList.newConversation}
             onPress={() => nav.push(routes.newConversation())}
           >
-            <Text size="$6" tone="secondary">
-              +
-            </Text>
+            <Icon name="plus" size="$5" color="$textSecondary" />
           </XStack>
 
           {/* Settings had a route and no way to reach it, which made the account ID - the one
               thing someone else needs in order to write to this device - unreachable too.
 
-              The hit area is the stack rather than the glyph: a 20pt character is well under
-              the 44pt minimum a finger needs, and a target that small is one people miss
-              rather than one they cannot see. */}
+              The hit area is the stack rather than the glyph: a 24pt icon is well under the
+              44pt minimum a finger needs, and a target that small is one people miss rather
+              than one they cannot see. */}
           <XStack
             width={44}
             height={44}
@@ -85,9 +83,7 @@ export function ConversationListScreen() {
             testID={ELEMENT.conversationList.settings}
             onPress={() => nav.push(routes.settings())}
           >
-            <Text size="$5" tone="secondary">
-              ⚙
-            </Text>
+            <Icon name="settings" size="$5" color="$textSecondary" />
           </XStack>
         </XStack>
       </XStack>
