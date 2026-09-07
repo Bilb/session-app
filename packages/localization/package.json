@@ -5,6 +5,12 @@
   "description": "Localized strings and the segment parsers, wrapping the session-localization submodule",
   "type": "module",
   "main": "./dist/index.js",
+  "imports": {
+    "#src/*": [
+      "./src/*.ts",
+      "./src/*.tsx"
+    ]
+  },
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {

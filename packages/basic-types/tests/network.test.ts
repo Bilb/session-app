@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { netidForTransport, parseNetworkName } from '../src/network'
+import { netidForTransport, parseNetworkName } from '#src/network'
 
 /**
  * The case that matters is `devnet`, in a direction that is easy to get backwards.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { shouldStampNetwork } from '../src/networkStamp'
+import { shouldStampNetwork } from '#src/networkStamp'
 
 /**
  * Both directions matter, for opposite reasons. Stamping mainnet would put a badge across every

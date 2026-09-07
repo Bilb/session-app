@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { parseMarkupSegments } from '../../src/segments/parseMarkupSegments'
+import { parseMarkupSegments } from '#src/segments/parseMarkupSegments'
 
 describe('parseMarkupSegments', () => {
   it('leaves a plain string as one text segment', () => {

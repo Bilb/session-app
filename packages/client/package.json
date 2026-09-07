@@ -5,6 +5,12 @@
   "description": "The SessionClient facade over the libsession bridge, and the fake that stands in for it",
   "type": "module",
   "main": "./src/index.ts",
+  "imports": {
+    "#src/*": [
+      "./src/*.ts",
+      "./src/*.tsx"
+    ]
+  },
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",

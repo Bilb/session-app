@@ -1,8 +1,8 @@
 import type { Conversation, Message, SessionEvent } from '@session/client'
 import { describe, expect, it } from 'vitest'
 
-import { applyEvent } from '../src/applyEvent'
-import { emptyState, type SessionState } from '../src/types'
+import { applyEvent } from '#src/applyEvent'
+import { emptyState, type SessionState } from '#src/types'
 
 function conversation(overrides: Partial<Conversation> = {}): Conversation {
   return {

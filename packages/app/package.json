@@ -5,6 +5,12 @@
   "description": "Platform ports, the navigation seam and the route registry both apps share",
   "type": "module",
   "main": "./src/index.ts",
+  "imports": {
+    "#src/*": [
+      "./src/*.ts",
+      "./src/*.tsx"
+    ]
+  },
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts"
