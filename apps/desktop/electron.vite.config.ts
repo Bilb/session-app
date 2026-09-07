@@ -78,6 +78,11 @@ export default defineConfig({
       esbuildOptions: { resolveExtensions: WEB_FIRST_EXTENSIONS },
     },
     define: {
+      // The same variable the main process reads to choose the netid (see src/main/bridge.ts), so
+      // the renderer's network overlay and the network libsession actually attached to cannot
+      // disagree. A global rather than `process.env`, which the renderer has no business having:
+      // it is a browser program, and tsc typechecks it as one.
+      __SESSION_NETID__: JSON.stringify(process.env['SESSION_NETID'] ?? 'mainnet'),
       // react-native-web reads these; without them the bundle throws on first render.
       global: 'globalThis',
       __DEV__: JSON.stringify(process.env['NODE_ENV'] !== 'production'),

@@ -13,6 +13,8 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
   const focusHandlers = new Set<(focused: boolean) => void>()
 
   return {
+    // Mainnet unless an app says otherwise, which is what a test and the fake both want.
+    network: { name: 'mainnet' },
     secureStore: {
       getDatabaseKey: () => Promise.resolve(databaseKey),
       setDatabaseKey: (key) => {

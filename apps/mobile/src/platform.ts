@@ -30,6 +30,9 @@ function hexToBytes(hex: string): Uint8Array {
  */
 setPorts(
   memoryPorts({
+    // The literal the transport is given lives in store.ts; this is the same answer, said where a
+    // screen can reach it. Both move together when devnet lands.
+    network: { name: 'mainnet' },
     clipboard: {
       setString: (value) => Clipboard.setStringAsync(value).then(() => undefined),
       getString: () => Clipboard.getStringAsync(),

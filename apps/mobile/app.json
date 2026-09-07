@@ -5,6 +5,7 @@
     "scheme": "session",
     "version": "0.0.0",
     "orientation": "default",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "assetBundlePatterns": ["**/*"],
@@ -17,7 +18,12 @@
     },
     "android": {
       "package": "org.getsession.session2",
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "monochromeImage": "./assets/monochrome-icon.png",
+        "backgroundColor": "#333132"
+      }
     },
     "plugins": ["expo-router", "expo-secure-store"],
     "experiments": {

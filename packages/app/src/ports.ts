@@ -66,7 +66,26 @@ export interface WindowPort {
   onFocusChange(handler: (focused: boolean) => void): () => void
 }
 
+/**
+ * Which Session network this build talks to.
+ *
+ * A port rather than a value a screen could read for itself, because the answer lives at each
+ * app's entry and nowhere else: desktop decides it in the main process from `SESSION_NETID`,
+ * mobile passes a literal to the transport. Neither is reachable from a screen, and neither
+ * belongs there.
+ *
+ * `devnet` is in the union because the overlay has to be able to say it. Nothing produces it yet
+ * - the shim refuses devnet until it can be given seed nodes, see docs/STATUS.md - so today this
+ * is always `mainnet` unless somebody sets the env var to `testnet`.
+ */
+export type NetworkName = 'mainnet' | 'testnet' | 'devnet'
+
+export interface NetworkPort {
+  name: NetworkName
+}
+
 export interface Ports {
+  network: NetworkPort
   secureStore: SecureStore
   files: FilesPort
   mediaProbe: MediaProbePort

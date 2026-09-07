@@ -53,6 +53,9 @@ export const ELEMENT = {
     copyAccountId: 'settings-copy-account-id',
     networkStatus: 'settings-network-status',
   },
+  networkOverlay: {
+    badge: 'network-overlay-badge',
+  },
   newConversation: {
     screen: 'new-conversation',
     back: 'new-conversation-back',
@@ -107,6 +110,7 @@ export type ElementId =
   | 'settings-account-id'
   | 'settings-copy-account-id'
   | 'settings-network-status'
+  | 'network-overlay-badge'
   | 'new-conversation'
   | 'new-conversation-back'
   | 'new-conversation-account-id'

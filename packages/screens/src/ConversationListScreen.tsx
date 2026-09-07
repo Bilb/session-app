@@ -5,6 +5,7 @@ import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Avatar, Icon, Screen, ScrollView, Separator, Text, XStack, YStack } from '@session/ui'
 
+import { NetworkOverlay } from './NetworkOverlay'
 import { conversationTitle } from './conversationTitle'
 
 /**
@@ -27,9 +28,11 @@ export function ConversationListScreen() {
         alignItems="center"
         justifyContent="space-between"
       >
-        <Text size="$6" weight="bold">
-          {tr('messages')}
-        </Text>
+        <NetworkOverlay>
+          <Text size="$6" weight="bold">
+            {tr('messages')}
+          </Text>
+        </NetworkOverlay>
         <XStack alignItems="center" gap="$1.5">
           {unreadRequests > 0 ? (
             <XStack
