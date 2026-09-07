@@ -29,7 +29,8 @@ const COPY_PROPS = new Set([
   'label',
 ])
 
-const dir = import.meta.dirname
+/** The screens under test. They are in src; this file is not. */
+const dir = join(import.meta.dirname, '../src')
 
 function screenFiles(from: string): string[] {
   return readdirSync(from, { withFileTypes: true }).flatMap((entry) => {

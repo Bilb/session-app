@@ -5,6 +5,6 @@
     // only reason node types are here.
     "types": ["react", "node"]
   },
-  "include": ["src"],
+  "include": ["src", "tests"],
   "exclude": ["node_modules", "dist"]
 }

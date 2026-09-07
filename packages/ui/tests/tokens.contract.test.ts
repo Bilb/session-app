@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { getThemeTokens } from '@session/theme-tokens'
 import { describe, expect, it } from 'vitest'
 
-import { buildThemes, TAMAGUI_NAMES } from './themes'
+import { buildThemes, TAMAGUI_NAMES } from '../src/themes'
 import {
   COLOR_SCALE,
   FONT_SIZE_SCALE,
@@ -15,7 +15,7 @@ import {
   SIZE_SCALE,
   SPACE_SCALE,
   Z_INDEX_SCALE,
-} from './scales'
+} from '../src/scales'
 
 /**
  * Every `$token` in the repository names something that exists.

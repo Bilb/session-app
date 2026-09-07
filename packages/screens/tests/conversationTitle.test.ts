@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { conversationTitle } from './conversationTitle'
+import { conversationTitle } from '../src/conversationTitle'
 
 const id = '057fb21c2cd7e0b1a2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f6805d30'
 

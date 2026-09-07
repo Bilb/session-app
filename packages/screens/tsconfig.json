@@ -8,6 +8,6 @@
     // are here - the same reason packages/ui has them.
     "types": ["react", "node"]
   },
-  "include": ["src"],
+  "include": ["src", "tests"],
   "exclude": ["node_modules", "dist"]
 }

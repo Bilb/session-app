@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { createSessionClient } from '../createSessionClient'
-import type { SessionEvent } from '../types'
-import { createFakeTransport } from './fakeBridge'
-import { friends } from './fixtures'
+import { createSessionClient } from '../../src/createSessionClient'
+import type { SessionEvent } from '../../src/types'
+import { createFakeTransport } from '../../src/fake/fakeBridge'
+import { friends } from '../../src/fake/fixtures'
 
 /**
  * The fake, driven through the real codec and the real facade.

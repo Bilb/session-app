@@ -9,7 +9,7 @@ import { FakeSessionClient, friends, strangers, type FakeWorld } from '@session/
 import type { SessionClient } from '@session/client'
 import { describe, expect, it } from 'vitest'
 
-import { runSessionClientContract, type ContractHarness } from './index'
+import { runSessionClientContract, type ContractHarness } from '../src/index'
 
 /** The fake's clock is manual, so settling is synchronous and cannot race. */
 function settleWith(world: FakeWorld): () => Promise<void> {

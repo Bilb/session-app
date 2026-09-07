@@ -9,6 +9,6 @@
   // The .native variants are typechecked by apps/mobile, which loads react-native's types
   // and sets moduleSuffixes. Checking them here, against a DOM lib, would only produce
   // clashes between two sets of globals that are never both present at runtime.
-  "include": ["src"],
+  "include": ["src", "tests"],
   "exclude": ["node_modules", "dist", "src/**/*.native.ts", "src/**/*.native.tsx"]
 }

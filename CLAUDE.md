@@ -49,6 +49,13 @@ dev entries. When a rule fires, fix the design - not the config.
 | state projection  | reducer unit test                                  |
 | bug fix           | the test that would have caught it                 |
 
+**Tests live in `tests/`, never in `src/`.** Every package puts them in its own
+`packages/<pkg>/tests/`, mirroring the `src/` path they cover -
+`src/nav/routes.ts` is tested by `tests/nav/routes.contract.test.ts`. Cross-app end-to-end
+specs stay in the repo's top-level `tests/e2e/`. A package's `tsconfig.json` has to list
+`tests` in `include` or nothing there is typechecked; vitest finds them wherever they are, so
+a test in the wrong place still runs and nothing complains.
+
 ## Native rebuild triggers
 
 - `bridge.proto` changed → `turbo codegen && turbo build:native` (generated output is
