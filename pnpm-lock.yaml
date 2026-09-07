@@ -143,6 +143,9 @@ patchedDependencies:
   expo-modules-jsi:
     hash: 0794db2805abb43f770292fea9afbd80a85726082d33709237182a8d1568f133
     path: patches/npm/expo-modules-jsi.patch
+  nitrogen:
+    hash: 5fb7cf4223ccd592b8873d3cf47b081de78001707ea50d94126b01aa92100e7e
+    path: patches/npm/nitrogen.patch
 
 importers:
 
@@ -442,7 +445,7 @@ importers:
         version: 10.9.1(jiti@2.7.0)
       nitrogen:
         specifier: 'catalog:'
-        version: 0.37.1(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
+        version: 0.37.1(patch_hash=5fb7cf4223ccd592b8873d3cf47b081de78001707ea50d94126b01aa92100e7e)(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
       react-native:
         specifier: 0.86.3
         version: 0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3)
@@ -11891,7 +11894,7 @@ snapshots:
     dependencies:
       content-type: 2.1.0
 
-  nitrogen@0.37.1(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3))(react@19.2.3):
+  nitrogen@0.37.1(patch_hash=5fb7cf4223ccd592b8873d3cf47b081de78001707ea50d94126b01aa92100e7e)(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3))(react@19.2.3):
     dependencies:
       chalk: 5.6.2
       react-native-nitro-modules: 0.37.1(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
