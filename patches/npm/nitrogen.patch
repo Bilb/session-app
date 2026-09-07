@@ -1,49 +1,62 @@
 diff --git a/lib/syntax/types/EnumType.js b/lib/syntax/types/EnumType.js
-index 6ef1f6403b834a47c7cd9e32ab01c03739bdd0eb..2f12d35ca5bfcfe06b039a80d8317aa0ada33856 100644
+index 6ef1f6403b834a47c7cd9e32ab01c03739bdd0eb..0cd95bd46fdc7ec82d7b84c463e928a96523cc1b 100644
 --- a/lib/syntax/types/EnumType.js
 +++ b/lib/syntax/types/EnumType.js
-@@ -6,6 +6,26 @@ import { createCppEnum } from '../c++/CppEnum.js';
+@@ -6,6 +6,39 @@ import { createCppEnum } from '../c++/CppEnum.js';
  import { escapeCppName } from '../helpers.js';
  import { createCppUnion } from '../c++/CppUnion.js';
  import { NitroConfig } from '../../config/NitroConfig.js';
 +/**
-+ * Macros the platform toolchains define before a single line of ours is parsed: the NDK passes
-+ * `-DANDROID=1`, an Xcode Debug configuration passes `-DDEBUG=1`, and a Release one `-DNDEBUG=1`.
++ * The prefix every member of a C++ enum carries.
 + *
-+ * A C++ enumerator is the JS value uppercased, so a union carrying `'android'` or `'debug'` -
-+ * both ordinary things to name - produces an enumerator the preprocessor rewrites to `1` before
-+ * the compiler sees an identifier at all. The error surfaces as `expected identifier` pointing at
-+ * generated code that looks perfectly correct.
++ * Two problems that are really one. A C++ enumerator is not scoped as far as the preprocessor is
++ * concerned, so a bare `ANDROID` or `DEBUG` is rewritten to `1` - by the NDK's `-DANDROID=1`, and
++ * by an Xcode Debug configuration's `-DDEBUG=1` - before the compiler ever sees an identifier. The
++ * error is `expected identifier`, pointing at generated code that reads perfectly correctly, and it
++ * says nothing about why. `ERROR` is the same trap waiting on Windows.
 + *
-+ * Add to this only for a macro that is genuinely predefined on a platform Nitrogen builds for.
++ * Renaming only the members that collide fixes today and leaves one odd member per enum, which is
++ * its own problem: nothing tells a reader whether `DEBUG_` is deliberate or a typo, and the next
++ * collision is still there to be found the hard way. So every member is prefixed, colliding or
++ * not, and no member of a Nitrogen enum can be eaten by a bare macro again.
++ *
++ * The names below read better than the type names they stand for, and are the enums in
++ * @session/bridge-types. Anything not listed falls back to its own name, which is safe rather than
++ * short - add an entry when a new enum wants better.
++ *
++ * None of this reaches the API: the JS string and the `SWIFT_NAME(...)` are untouched, so it is a
++ * C++ spelling and nothing else.
 + */
-+const RESERVED_BY_TOOLCHAIN = new Set(['ANDROID', 'DEBUG', 'NDEBUG']);
-+/**
-+ * The C++ enumerator for a JS value. The trailing underscore keeps a colliding name legal while
-+ * leaving the JS string and the Swift name alone, so nothing about the API changes.
-+ */
-+function enumMemberName(value) {
-+    const name = escapeCppName(value).toUpperCase();
-+    return RESERVED_BY_TOOLCHAIN.has(name) ? `${name}_` : name;
++const CPP_ENUM_PREFIXES = {
++    NetId: 'NET',
++    DeviceType: 'DEVICE',
++    LibsessionLogLevel: 'LEVEL'
++};
++function screamingSnake(name) {
++    return name.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toUpperCase();
++}
++function enumMemberName(enumName, value) {
++    const prefix = CPP_ENUM_PREFIXES[enumName] ?? screamingSnake(enumName);
++    return `${prefix}_${escapeCppName(value).toUpperCase()}`;
 +}
  export class EnumType {
      enumName;
      enumMembers;
-@@ -24,7 +44,7 @@ export class EnumType {
+@@ -24,7 +57,7 @@ export class EnumType {
                          `Each enum member must be a number! If you want to use strings, use TypeScript unions ("a" | "b") instead!`);
                  }
                  return {
 -                    name: escapeCppName(name).toUpperCase(),
-+                    name: enumMemberName(name),
++                    name: enumMemberName(enumName, name),
                      value: value,
                      stringValue: name,
                  };
-@@ -43,7 +63,7 @@ export class EnumType {
+@@ -43,7 +76,7 @@ export class EnumType {
                      if (typeof literalValue !== 'string')
                          throw new Error(`${enumName}: Value "${literalValue}" is not a string - it is ${typeof literalValue}!`);
                      return {
 -                        name: escapeCppName(literalValue).toUpperCase(),
-+                        name: enumMemberName(literalValue),
++                        name: enumMemberName(enumName, literalValue),
                          value: i,
                          stringValue: literalValue,
                      };

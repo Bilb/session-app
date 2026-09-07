@@ -16,29 +16,29 @@ namespace {
     // all, and this is the one place the two representations meet.
     std::string netid_name(NetId id) {
         switch (id) {
-            case NetId::MAINNET: return "mainnet";
-            case NetId::TESTNET: return "testnet";
+            case NetId::NET_MAINNET: return "mainnet";
+            case NetId::NET_TESTNET: return "testnet";
         }
         return "";
     }
 
     std::string device_type_name(DeviceType type) {
         switch (type) {
-            case DeviceType::IOS: return "ios";
-            case DeviceType::ANDROID_: return "android";
-            case DeviceType::DESKTOP: return "desktop";
+            case DeviceType::DEVICE_IOS: return "ios";
+            case DeviceType::DEVICE_ANDROID: return "android";
+            case DeviceType::DEVICE_DESKTOP: return "desktop";
         }
         return "";
     }
 
     std::string log_level_name(LibsessionLogLevel level) {
         switch (level) {
-            case LibsessionLogLevel::TRACE: return "trace";
-            case LibsessionLogLevel::DEBUG_: return "debug";
-            case LibsessionLogLevel::INFO: return "info";
-            case LibsessionLogLevel::WARN: return "warn";
-            case LibsessionLogLevel::ERROR: return "error";
-            case LibsessionLogLevel::CRITICAL: return "critical";
+            case LibsessionLogLevel::LEVEL_TRACE: return "trace";
+            case LibsessionLogLevel::LEVEL_DEBUG: return "debug";
+            case LibsessionLogLevel::LEVEL_INFO: return "info";
+            case LibsessionLogLevel::LEVEL_WARN: return "warn";
+            case LibsessionLogLevel::LEVEL_ERROR: return "error";
+            case LibsessionLogLevel::LEVEL_CRITICAL: return "critical";
         }
         return "";
     }
