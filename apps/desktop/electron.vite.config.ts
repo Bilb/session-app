@@ -6,6 +6,32 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 const appDir = fileURLToPath(new URL('.', import.meta.url))
 
 /**
+ * `.web.js` ahead of `.js`, which is how the react-native-web ecosystem ships a DOM flavour beside
+ * a native one. `react-native-svg` - which the icons draw through - is one of the packages that
+ * does, and it has no exports map and no `browser` field, so no condition list can reach its web
+ * build. Only the extension order can.
+ *
+ * It has to be given to esbuild as well as to vite. Vite's own resolver reads `resolve.extensions`,
+ * but the dependency pre-bundler is esbuild with its own, so left to itself the dev server walks
+ * into the native flavour, follows it to `react-native/Libraries/...`, and fails to start on a path
+ * the `react-native` alias has rewritten to one that does not exist. The built app resolves
+ * correctly either way, which is a good way not to notice.
+ */
+const WEB_FIRST_EXTENSIONS = [
+  '.web.mjs',
+  '.web.js',
+  '.web.tsx',
+  '.web.ts',
+  '.mjs',
+  '.js',
+  '.mts',
+  '.ts',
+  '.jsx',
+  '.tsx',
+  '.json',
+]
+
+/**
  * The renderer draws react-native components through react-native-web, so the aliases
  * below are what let @session/ui and @session/screens - written once, in
  * react-native's vocabulary - render in a browser window.
@@ -46,24 +72,10 @@ export default defineConfig({
       // Tamagui ships both; the web build has to win here or the DOM flavour never loads.
       mainFields: ['module', 'browser', 'main'],
       conditions: ['browser', 'import', 'default'],
-      // `.web.js` ahead of `.js` is how the react-native-web ecosystem ships a DOM flavour, and
-      // react-native-svg - which the icons draw through - is one of the packages that does. It has
-      // no exports map and no browser field, so the condition list above cannot reach its web
-      // build; only the extension order can. Without this the renderer loads the native flavour
-      // and every icon throws on a host component the DOM does not have.
-      extensions: [
-        '.web.mjs',
-        '.web.js',
-        '.web.tsx',
-        '.web.ts',
-        '.mjs',
-        '.js',
-        '.mts',
-        '.ts',
-        '.jsx',
-        '.tsx',
-        '.json',
-      ],
+      extensions: WEB_FIRST_EXTENSIONS,
+    },
+    optimizeDeps: {
+      esbuildOptions: { resolveExtensions: WEB_FIRST_EXTENSIONS },
     },
     define: {
       // Icons resolve their colour to a value rather than to a CSS variable.
