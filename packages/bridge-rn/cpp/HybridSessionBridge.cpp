@@ -14,12 +14,18 @@ namespace {
     // InitOptions carries these as strings, because that is what the wire format and the addon
     // both hand it. JSI gets a closed enum instead, so an unknown value cannot reach the shim at
     // all, and this is the one place the two representations meet.
+    //
+    // The fallback below is unreachable - the enum is closed and every member is handled - and is
+    // there for the compiler. It says `<INVALID>` rather than nothing because the two are not
+    // equally harmless if it ever is reached: an empty string is a plausible option value and
+    // would travel on looking like a deliberate one, while this cannot be mistaken for anything
+    // and is greppable in a log.
     std::string netid_name(NetId id) {
         switch (id) {
             case NetId::NET_MAINNET: return "mainnet";
             case NetId::NET_TESTNET: return "testnet";
         }
-        return "";
+        return "<INVALID>";
     }
 
     std::string device_type_name(DeviceType type) {
@@ -28,7 +34,7 @@ namespace {
             case DeviceType::DEVICE_ANDROID: return "android";
             case DeviceType::DEVICE_DESKTOP: return "desktop";
         }
-        return "";
+        return "<INVALID>";
     }
 
     std::string log_level_name(LibsessionLogLevel level) {
@@ -40,7 +46,7 @@ namespace {
             case LibsessionLogLevel::LEVEL_ERROR: return "error";
             case LibsessionLogLevel::LEVEL_CRITICAL: return "critical";
         }
-        return "";
+        return "<INVALID>";
     }
 
     std::array<std::byte, 32> key_from_hex(const std::string& hex) {
