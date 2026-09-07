@@ -77,6 +77,11 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
   way to accept without answering, or the button has to mean something else. The shim answers
   this command with an error until that is settled.
 
+  Not hypothetical, and not only a contract scenario: `RequestsScreen` draws that button and it
+  calls this, so against the real bridge accepting a request does nothing and rejects into a
+  `void`. The fake implements it, which is why every loop except mode B looks correct. Whichever
+  way it is settled, the button and this command have to be settled together.
+
 - **Three things to send to session-deps and libsession**, all found by building a shared object
   from this branch, which nobody had done. `patches/` carries the first two and both are one-liners.
   1. libevent's dep script overrides the shared configure command and drops `--with-pic`, so its
