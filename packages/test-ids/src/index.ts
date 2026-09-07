@@ -53,6 +53,7 @@ export const ELEMENT = {
   },
   newConversation: {
     screen: 'new-conversation',
+    back: 'new-conversation-back',
     accountIdInput: 'new-conversation-account-id',
     start: 'new-conversation-start',
     error: 'new-conversation-error',
@@ -103,6 +104,7 @@ export type ElementId =
   | 'settings-account-id'
   | 'settings-network-status'
   | 'new-conversation'
+  | 'new-conversation-back'
   | 'new-conversation-account-id'
   | 'new-conversation-start'
   | 'new-conversation-error'

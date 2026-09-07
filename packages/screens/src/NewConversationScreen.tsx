@@ -2,7 +2,7 @@ import { routes, useNav } from '@session/app'
 import { tr } from '@session/localization'
 import { useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Input, Screen, Text, YStack } from '@session/ui'
+import { Button, Input, Screen, Text, XStack, YStack } from '@session/ui'
 import { useState } from 'react'
 
 /**
@@ -42,9 +42,22 @@ export function NewConversationScreen() {
   return (
     <Screen padded testID={ELEMENT.newConversation.screen}>
       <YStack gap="$1.5">
-        <Text size="$6" weight="bold">
-          {tr('conversationsNew')}
-        </Text>
+        {/* The way out. Pushed rather than replaced onto the list, so back is where it came from;
+            on a two-pane window that is the placeholder, which is still the right answer - the
+            list never left. */}
+        <XStack alignItems="center" gap="$1.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            onPress={() => nav.back()}
+            testID={ELEMENT.newConversation.back}
+          >
+            {tr('back')}
+          </Button>
+          <Text size="$6" weight="bold">
+            {tr('conversationsNew')}
+          </Text>
+        </XStack>
         <Text tone="secondary" size="$3">
           Paste the account ID of whoever you want to write to.
         </Text>
