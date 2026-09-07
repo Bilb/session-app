@@ -1,4 +1,5 @@
 import { memoryPorts, setPorts } from '@session/app'
+import * as Clipboard from 'expo-clipboard'
 import * as SecureStore from 'expo-secure-store'
 
 const DATABASE_KEY = 'session2.database-key'
@@ -20,12 +21,19 @@ function hexToBytes(hex: string): Uint8Array {
 /**
  * The mobile app's OS ports.
  *
- * Only the secure store is real so far - it is the one the walking skeleton needs, because
- * libsession takes a database key and does not keep one. The rest are the memory
- * implementations until the screens that use them arrive.
+ * Real where a screen has arrived that needs it, and a memory implementation everywhere else.
+ *
+ * The clipboard is real now because settings shows the account ID, and an account ID nobody can
+ * copy is one they have to read out loud. Until this it was the memory port, so Copy wrote to a
+ * variable and the system clipboard never heard about it - the button worked on desktop and did
+ * nothing at all on either phone.
  */
 setPorts(
   memoryPorts({
+    clipboard: {
+      setString: (value) => Clipboard.setStringAsync(value).then(() => undefined),
+      getString: () => Clipboard.getStringAsync(),
+    },
     secureStore: {
       async getDatabaseKey() {
         const stored = await SecureStore.getItemAsync(DATABASE_KEY)

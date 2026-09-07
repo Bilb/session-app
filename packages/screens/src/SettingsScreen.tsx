@@ -1,7 +1,8 @@
 import { tr } from '@session/localization'
 import { useAccount } from '@session/state'
+import { useState } from 'react'
 import { ELEMENT } from '@session/test-ids'
-import { Screen, Separator, Text, XStack, YStack } from '@session/ui'
+import { Button, Screen, Separator, Text, XStack, YStack } from '@session/ui'
 
 import { requirePorts } from '@session/app'
 
@@ -16,6 +17,7 @@ import { BackButton } from './BackButton'
  */
 export function SettingsScreen() {
   const account = useAccount()
+  const [copied, setCopied] = useState(false)
 
   return (
     <Screen padded testID={ELEMENT.settings.screen}>
@@ -40,16 +42,31 @@ export function SettingsScreen() {
             {account?.sessionId ?? 'No account yet'}
           </Text>
         </XStack>
+        {/* A button rather than tappable text. The account ID is the one thing on this screen
+            somebody has to get out of the app, and the old affordance was 11pt of text with no hit
+            area to speak of and nothing to say it had worked. */}
         {account?.sessionId === undefined ? null : (
-          <Text
-            tone="accent"
-            size="$2"
+          <Button
+            variant="outline"
+            size="sm"
+            testID={ELEMENT.settings.copyAccountId}
             onPress={() => {
-              void requirePorts().clipboard.setString(account.sessionId ?? '')
+              const id = account.sessionId
+              if (id === undefined) return
+              void requirePorts()
+                .clipboard.setString(id)
+                .then(() => {
+                  // Says so on the button itself and goes back on its own. Anything longer-lived
+                  // would need somewhere to put a toast, which no screen here has yet.
+                  setCopied(true)
+                  setTimeout(() => {
+                    setCopied(false)
+                  }, 2000)
+                })
             }}
           >
-            {tr('copy')}
-          </Text>
+            {copied ? tr('copied') : tr('copy')}
+          </Button>
         )}
       </YStack>
 

@@ -11,7 +11,11 @@ import { resolveDatabaseKey, sessionPaths } from './storage'
  * here: an app is an adapter, and which bridge it gets is the one decision this file makes.
  */
 async function openTransport(): Promise<BridgeTransport> {
-  if (process.env['SESSION_FAKE'] === '1') {
+  // EXPO_PUBLIC_, and it is not decoration: Metro only inlines an env var into the bundle when it
+  // carries that prefix, so the bare name this used to read was `undefined` here however the dev
+  // script was invoked. The check fell through, the app took the Nitro module, and every phone ran
+  // real libsession against mainnet while its terminal said it was on the fake.
+  if (process.env['EXPO_PUBLIC_SESSION_FAKE'] === '1') {
     const { createFakeBridge } = await import('./dev/fakeBridge')
     return createFakeBridge()
   }

@@ -50,6 +50,7 @@ export const ELEMENT = {
     accentOption: (name: string) => `settings-accent-${name}` as const,
     displayName: 'settings-display-name',
     accountId: 'settings-account-id',
+    copyAccountId: 'settings-copy-account-id',
     networkStatus: 'settings-network-status',
   },
   newConversation: {
@@ -104,6 +105,7 @@ export type ElementId =
   | `settings-accent-${string}`
   | 'settings-display-name'
   | 'settings-account-id'
+  | 'settings-copy-account-id'
   | 'settings-network-status'
   | 'new-conversation'
   | 'new-conversation-back'
