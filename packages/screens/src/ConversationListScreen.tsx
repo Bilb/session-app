@@ -97,7 +97,7 @@ export function ConversationListScreen() {
       {conversations.length === 0 ? (
         <YStack flex={1} alignItems="center" justifyContent="center" padding="$3">
           <Text tone="secondary" testID={ELEMENT.conversationList.empty}>
-            No conversations yet
+            {tr('onboardingHitThePlusButton')}
           </Text>
         </YStack>
       ) : (

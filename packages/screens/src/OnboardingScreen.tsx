@@ -22,8 +22,6 @@ export function OnboardingScreen() {
         <Text size="$9" weight="bold">
           {tr('appName')}
         </Text>
-        <Text tone="secondary">No account on this device yet.</Text>
-
         <Button
           testID={ELEMENT.onboarding.createAccount}
           disabled={busy}

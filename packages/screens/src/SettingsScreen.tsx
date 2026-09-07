@@ -19,6 +19,18 @@ export function SettingsScreen() {
   const account = useAccount()
   const [copied, setCopied] = useState(false)
 
+  // Not a fallback string, because there is no honest one. This screen exists to hand somebody
+  // their account ID; with no account there is nothing to show and no reason to be here, and a
+  // route that reaches it has gone wrong upstream. Throwing says which route, at the moment it
+  // happens - a placeholder would draw a settings screen that quietly lies about having an
+  // account, and somebody would read it out.
+  if (account?.sessionId === undefined)
+    throw new Error('SettingsScreen: no account. Onboarding has to run before this route.')
+
+  // Named, because the check above does not narrow inside a callback: `account` comes from a hook
+  // and could in principle be a different object by the time one runs.
+  const sessionId = account.sessionId
+
   return (
     <Screen padded testID={ELEMENT.settings.screen}>
       <XStack alignItems="center" gap="$1.5">
@@ -39,45 +51,41 @@ export function SettingsScreen() {
             // read out to somebody, which is the only reason it is on screen.
             flex={1}
           >
-            {account?.sessionId ?? 'No account yet'}
+            {sessionId}
           </Text>
         </XStack>
         {/* A button rather than tappable text. The account ID is the one thing on this screen
             somebody has to get out of the app, and the old affordance was 11pt of text with no hit
             area to speak of and nothing to say it had worked. */}
-        {account?.sessionId === undefined ? null : (
-          <Button
-            variant="outline"
-            size="sm"
-            testID={ELEMENT.settings.copyAccountId}
-            onPress={() => {
-              const id = account.sessionId
-              if (id === undefined) return
-              void requirePorts()
-                .clipboard.setString(id)
-                .then(() => {
-                  // Says so on the button itself and goes back on its own. Anything longer-lived
-                  // would need somewhere to put a toast, which no screen here has yet.
-                  setCopied(true)
-                  setTimeout(() => {
-                    setCopied(false)
-                  }, 2000)
-                })
-            }}
-          >
-            {copied ? tr('copied') : tr('copy')}
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          size="sm"
+          testID={ELEMENT.settings.copyAccountId}
+          onPress={() => {
+            void requirePorts()
+              .clipboard.setString(sessionId)
+              .then(() => {
+                // Says so on the button itself and goes back on its own. Anything longer-lived
+                // would need somewhere to put a toast, which no screen here has yet.
+                setCopied(true)
+                setTimeout(() => {
+                  setCopied(false)
+                }, 2000)
+              })
+          }}
+        >
+          {copied ? tr('copied') : tr('copy')}
+        </Button>
       </YStack>
 
       <Separator borderColor="$bordersColor" />
 
       <YStack paddingVertical="$2" gap="$0.5">
         <Text tone="secondary" size="$2">
-          Network
+          {tr('networkName')}
         </Text>
         <Text testID={ELEMENT.settings.networkStatus}>
-          {account?.networkAttached === true ? 'Attached' : 'Not attached'}
+          {account.networkAttached ? tr('enable') : tr('unknown')}
         </Text>
       </YStack>
     </Screen>
