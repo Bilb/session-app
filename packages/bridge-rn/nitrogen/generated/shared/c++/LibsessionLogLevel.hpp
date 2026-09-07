@@ -29,12 +29,12 @@ namespace margelo::nitro::session::bridge::rn {
    * An enum which can be represented as a JavaScript union (LibsessionLogLevel).
    */
   enum class LibsessionLogLevel {
-    TRACE      SWIFT_NAME(trace) = 0,
-    DEBUG_      SWIFT_NAME(debug) = 1,
-    INFO      SWIFT_NAME(info) = 2,
-    WARN      SWIFT_NAME(warn) = 3,
-    ERROR      SWIFT_NAME(error) = 4,
-    CRITICAL      SWIFT_NAME(critical) = 5,
+    LEVEL_TRACE      SWIFT_NAME(levelTrace) = 0,
+    LEVEL_DEBUG      SWIFT_NAME(levelDebug) = 1,
+    LEVEL_INFO      SWIFT_NAME(levelInfo) = 2,
+    LEVEL_WARN      SWIFT_NAME(levelWarn) = 3,
+    LEVEL_ERROR      SWIFT_NAME(levelError) = 4,
+    LEVEL_CRITICAL      SWIFT_NAME(levelCritical) = 5,
   } CLOSED_ENUM;
 
 } // namespace margelo::nitro::session::bridge::rn
@@ -47,24 +47,24 @@ namespace margelo::nitro {
     static inline margelo::nitro::session::bridge::rn::LibsessionLogLevel fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       std::string unionValue = JSIConverter<std::string>::fromJSI(runtime, arg);
       switch (hashString(unionValue.c_str(), unionValue.size())) {
-        case hashString("trace"): return margelo::nitro::session::bridge::rn::LibsessionLogLevel::TRACE;
-        case hashString("debug"): return margelo::nitro::session::bridge::rn::LibsessionLogLevel::DEBUG_;
-        case hashString("info"): return margelo::nitro::session::bridge::rn::LibsessionLogLevel::INFO;
-        case hashString("warn"): return margelo::nitro::session::bridge::rn::LibsessionLogLevel::WARN;
-        case hashString("error"): return margelo::nitro::session::bridge::rn::LibsessionLogLevel::ERROR;
-        case hashString("critical"): return margelo::nitro::session::bridge::rn::LibsessionLogLevel::CRITICAL;
+        case hashString("trace"): return margelo::nitro::session::bridge::rn::LibsessionLogLevel::LEVEL_TRACE;
+        case hashString("debug"): return margelo::nitro::session::bridge::rn::LibsessionLogLevel::LEVEL_DEBUG;
+        case hashString("info"): return margelo::nitro::session::bridge::rn::LibsessionLogLevel::LEVEL_INFO;
+        case hashString("warn"): return margelo::nitro::session::bridge::rn::LibsessionLogLevel::LEVEL_WARN;
+        case hashString("error"): return margelo::nitro::session::bridge::rn::LibsessionLogLevel::LEVEL_ERROR;
+        case hashString("critical"): return margelo::nitro::session::bridge::rn::LibsessionLogLevel::LEVEL_CRITICAL;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum LibsessionLogLevel - invalid value!");
       }
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, margelo::nitro::session::bridge::rn::LibsessionLogLevel arg) {
       switch (arg) {
-        case margelo::nitro::session::bridge::rn::LibsessionLogLevel::TRACE: return JSIConverter<std::string>::toJSI(runtime, "trace");
-        case margelo::nitro::session::bridge::rn::LibsessionLogLevel::DEBUG_: return JSIConverter<std::string>::toJSI(runtime, "debug");
-        case margelo::nitro::session::bridge::rn::LibsessionLogLevel::INFO: return JSIConverter<std::string>::toJSI(runtime, "info");
-        case margelo::nitro::session::bridge::rn::LibsessionLogLevel::WARN: return JSIConverter<std::string>::toJSI(runtime, "warn");
-        case margelo::nitro::session::bridge::rn::LibsessionLogLevel::ERROR: return JSIConverter<std::string>::toJSI(runtime, "error");
-        case margelo::nitro::session::bridge::rn::LibsessionLogLevel::CRITICAL: return JSIConverter<std::string>::toJSI(runtime, "critical");
+        case margelo::nitro::session::bridge::rn::LibsessionLogLevel::LEVEL_TRACE: return JSIConverter<std::string>::toJSI(runtime, "trace");
+        case margelo::nitro::session::bridge::rn::LibsessionLogLevel::LEVEL_DEBUG: return JSIConverter<std::string>::toJSI(runtime, "debug");
+        case margelo::nitro::session::bridge::rn::LibsessionLogLevel::LEVEL_INFO: return JSIConverter<std::string>::toJSI(runtime, "info");
+        case margelo::nitro::session::bridge::rn::LibsessionLogLevel::LEVEL_WARN: return JSIConverter<std::string>::toJSI(runtime, "warn");
+        case margelo::nitro::session::bridge::rn::LibsessionLogLevel::LEVEL_ERROR: return JSIConverter<std::string>::toJSI(runtime, "error");
+        case margelo::nitro::session::bridge::rn::LibsessionLogLevel::LEVEL_CRITICAL: return JSIConverter<std::string>::toJSI(runtime, "critical");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert LibsessionLogLevel to JS - invalid value: "
                                     + std::to_string(static_cast<int>(arg)) + "!");

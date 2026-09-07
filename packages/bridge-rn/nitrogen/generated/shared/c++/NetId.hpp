@@ -29,8 +29,8 @@ namespace margelo::nitro::session::bridge::rn {
    * An enum which can be represented as a JavaScript union (NetId).
    */
   enum class NetId {
-    MAINNET      SWIFT_NAME(mainnet) = 0,
-    TESTNET      SWIFT_NAME(testnet) = 1,
+    NET_MAINNET      SWIFT_NAME(netMainnet) = 0,
+    NET_TESTNET      SWIFT_NAME(netTestnet) = 1,
   } CLOSED_ENUM;
 
 } // namespace margelo::nitro::session::bridge::rn
@@ -43,16 +43,16 @@ namespace margelo::nitro {
     static inline margelo::nitro::session::bridge::rn::NetId fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       std::string unionValue = JSIConverter<std::string>::fromJSI(runtime, arg);
       switch (hashString(unionValue.c_str(), unionValue.size())) {
-        case hashString("mainnet"): return margelo::nitro::session::bridge::rn::NetId::MAINNET;
-        case hashString("testnet"): return margelo::nitro::session::bridge::rn::NetId::TESTNET;
+        case hashString("mainnet"): return margelo::nitro::session::bridge::rn::NetId::NET_MAINNET;
+        case hashString("testnet"): return margelo::nitro::session::bridge::rn::NetId::NET_TESTNET;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum NetId - invalid value!");
       }
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, margelo::nitro::session::bridge::rn::NetId arg) {
       switch (arg) {
-        case margelo::nitro::session::bridge::rn::NetId::MAINNET: return JSIConverter<std::string>::toJSI(runtime, "mainnet");
-        case margelo::nitro::session::bridge::rn::NetId::TESTNET: return JSIConverter<std::string>::toJSI(runtime, "testnet");
+        case margelo::nitro::session::bridge::rn::NetId::NET_MAINNET: return JSIConverter<std::string>::toJSI(runtime, "mainnet");
+        case margelo::nitro::session::bridge::rn::NetId::NET_TESTNET: return JSIConverter<std::string>::toJSI(runtime, "testnet");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert NetId to JS - invalid value: "
                                     + std::to_string(static_cast<int>(arg)) + "!");

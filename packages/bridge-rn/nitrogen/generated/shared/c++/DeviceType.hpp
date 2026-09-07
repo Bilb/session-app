@@ -29,9 +29,9 @@ namespace margelo::nitro::session::bridge::rn {
    * An enum which can be represented as a JavaScript union (DeviceType).
    */
   enum class DeviceType {
-    IOS      SWIFT_NAME(ios) = 0,
-    ANDROID_      SWIFT_NAME(android) = 1,
-    DESKTOP      SWIFT_NAME(desktop) = 2,
+    DEVICE_IOS      SWIFT_NAME(deviceIos) = 0,
+    DEVICE_ANDROID      SWIFT_NAME(deviceAndroid) = 1,
+    DEVICE_DESKTOP      SWIFT_NAME(deviceDesktop) = 2,
   } CLOSED_ENUM;
 
 } // namespace margelo::nitro::session::bridge::rn
@@ -44,18 +44,18 @@ namespace margelo::nitro {
     static inline margelo::nitro::session::bridge::rn::DeviceType fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       std::string unionValue = JSIConverter<std::string>::fromJSI(runtime, arg);
       switch (hashString(unionValue.c_str(), unionValue.size())) {
-        case hashString("ios"): return margelo::nitro::session::bridge::rn::DeviceType::IOS;
-        case hashString("android"): return margelo::nitro::session::bridge::rn::DeviceType::ANDROID_;
-        case hashString("desktop"): return margelo::nitro::session::bridge::rn::DeviceType::DESKTOP;
+        case hashString("ios"): return margelo::nitro::session::bridge::rn::DeviceType::DEVICE_IOS;
+        case hashString("android"): return margelo::nitro::session::bridge::rn::DeviceType::DEVICE_ANDROID;
+        case hashString("desktop"): return margelo::nitro::session::bridge::rn::DeviceType::DEVICE_DESKTOP;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum DeviceType - invalid value!");
       }
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, margelo::nitro::session::bridge::rn::DeviceType arg) {
       switch (arg) {
-        case margelo::nitro::session::bridge::rn::DeviceType::IOS: return JSIConverter<std::string>::toJSI(runtime, "ios");
-        case margelo::nitro::session::bridge::rn::DeviceType::ANDROID_: return JSIConverter<std::string>::toJSI(runtime, "android");
-        case margelo::nitro::session::bridge::rn::DeviceType::DESKTOP: return JSIConverter<std::string>::toJSI(runtime, "desktop");
+        case margelo::nitro::session::bridge::rn::DeviceType::DEVICE_IOS: return JSIConverter<std::string>::toJSI(runtime, "ios");
+        case margelo::nitro::session::bridge::rn::DeviceType::DEVICE_ANDROID: return JSIConverter<std::string>::toJSI(runtime, "android");
+        case margelo::nitro::session::bridge::rn::DeviceType::DEVICE_DESKTOP: return JSIConverter<std::string>::toJSI(runtime, "desktop");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert DeviceType to JS - invalid value: "
                                     + std::to_string(static_cast<int>(arg)) + "!");
