@@ -193,6 +193,9 @@ importers:
       '@session/app':
         specifier: workspace:*
         version: link:../../packages/app
+      '@session/basic-types':
+        specifier: workspace:*
+        version: link:../../packages/basic-types
       '@session/bridge-node':
         specifier: workspace:*
         version: link:../../packages/bridge-node
@@ -266,6 +269,9 @@ importers:
       '@session/app':
         specifier: workspace:*
         version: link:../../packages/app
+      '@session/basic-types':
+        specifier: workspace:*
+        version: link:../../packages/basic-types
       '@session/bridge-rn':
         specifier: workspace:*
         version: link:../../packages/bridge-rn
