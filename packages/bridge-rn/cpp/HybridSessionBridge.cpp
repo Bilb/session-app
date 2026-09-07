@@ -78,7 +78,7 @@ HybridSessionBridge::~HybridSessionBridge() {
     close();
 }
 
-void HybridSessionBridge::setSink(const std::function<void(::session::bridge::Frame)>& onFrame) {
+void HybridSessionBridge::setSink(const std::function<void(::session_bridge::Frame)>& onFrame) {
     _sink = onFrame;
 }
 
@@ -86,7 +86,7 @@ void HybridSessionBridge::init(const SessionBridgeOptions& options) {
     if (_bridge)
         throw std::runtime_error{"the bridge is already open"};
 
-    ::session::bridge::InitOptions init;
+    ::session_bridge::InitOptions init;
     init.db_path = options.dbPath;
     init.cache_dir = options.cacheDir;
     init.defer_account = options.deferAccount;
@@ -101,8 +101,8 @@ void HybridSessionBridge::init(const SessionBridgeOptions& options) {
     else if (options.password)
         init.password = *options.password;
 
-    _bridge = std::make_unique<::session::bridge::ClientBridge>(
-            std::move(init), [this](::session::bridge::Frame frame) {
+    _bridge = std::make_unique<::session_bridge::ClientBridge>(
+            std::move(init), [this](::session_bridge::Frame frame) {
                 if (!_sink)
                     return;
                 // This runs on Core's loop. Nitro's void callbacks carry the hop and the ordering
@@ -113,7 +113,7 @@ void HybridSessionBridge::init(const SessionBridgeOptions& options) {
             });
 }
 
-void HybridSessionBridge::call(::session::bridge::Request request) {
+void HybridSessionBridge::call(::session_bridge::Request request) {
     if (!_bridge)
         throw std::runtime_error{"call() before init()"};
     _bridge->call(std::move(request));

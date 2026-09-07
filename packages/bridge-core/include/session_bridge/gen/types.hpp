@@ -11,7 +11,11 @@
 #include <variant>
 #include <vector>
 
-namespace session::bridge {
+/// One flat namespace, deliberately: session::bridge would declare a top-level 'session', and
+/// Apple's <sys/sysctl.h> already declares 'struct session' there. These headers reach the
+/// CocoaPods module umbrella through the Nitro spec, where that header is visible, and the
+/// collision is a module that cannot be built rather than a line that can be fixed locally.
+namespace session_bridge {
 
 /// Name table for every string-union enum; specialised below, one per enum.
 template <class E>
@@ -34,9 +38,9 @@ struct AccountInfo {
 struct AccountInfoResult {
     static constexpr std::string_view type_tag = "accountInfo";
 
-    ::session::bridge::AccountInfo info;
+    ::session_bridge::AccountInfo info;
 
-    AccountInfoResult(::session::bridge::AccountInfo info_) :
+    AccountInfoResult(::session_bridge::AccountInfo info_) :
             info{std::move(info_)} {}
 };
 
@@ -98,7 +102,7 @@ struct EnumTraits<AutoDownload> {
 /// A flattened AnyConversation: the fields every kind has, plus the DM-only ones.
 struct Conversation {
     std::string id;
-    ::session::bridge::ConversationKind kind;
+    ::session_bridge::ConversationKind kind;
     /// Empty until the other side's profile has arrived; callers fall back to the id.
     std::string display_name;
     std::optional<std::string> nickname;
@@ -110,31 +114,31 @@ struct Conversation {
     std::optional<std::string> snippet;
     std::optional<double> mute_until;
     /// Unset upstream means "inherit the account default" and crosses as `none`; no screen offers the distinction.
-    ::session::bridge::AutoDownload auto_download;
+    ::session_bridge::AutoDownload auto_download;
     bool request;
     bool awaiting_approval;
     bool note_to_self;
     bool blocked;
 
-    Conversation(std::string id_, ::session::bridge::ConversationKind kind_, std::string display_name_, std::optional<std::string> nickname_, double last_activity_, double priority_, double unread_count_, bool marked_unread_, std::optional<std::string> snippet_, std::optional<double> mute_until_, ::session::bridge::AutoDownload auto_download_, bool request_, bool awaiting_approval_, bool note_to_self_, bool blocked_) :
+    Conversation(std::string id_, ::session_bridge::ConversationKind kind_, std::string display_name_, std::optional<std::string> nickname_, double last_activity_, double priority_, double unread_count_, bool marked_unread_, std::optional<std::string> snippet_, std::optional<double> mute_until_, ::session_bridge::AutoDownload auto_download_, bool request_, bool awaiting_approval_, bool note_to_self_, bool blocked_) :
             id{std::move(id_)}, kind{std::move(kind_)}, display_name{std::move(display_name_)}, nickname{std::move(nickname_)}, last_activity{std::move(last_activity_)}, priority{std::move(priority_)}, unread_count{std::move(unread_count_)}, marked_unread{std::move(marked_unread_)}, snippet{std::move(snippet_)}, mute_until{std::move(mute_until_)}, auto_download{std::move(auto_download_)}, request{std::move(request_)}, awaiting_approval{std::move(awaiting_approval_)}, note_to_self{std::move(note_to_self_)}, blocked{std::move(blocked_)} {}
 };
 
 struct ConversationListResult {
     static constexpr std::string_view type_tag = "conversationList";
 
-    std::vector<::session::bridge::Conversation> conversations;
+    std::vector<::session_bridge::Conversation> conversations;
 
-    ConversationListResult(std::vector<::session::bridge::Conversation> conversations_) :
+    ConversationListResult(std::vector<::session_bridge::Conversation> conversations_) :
             conversations{std::move(conversations_)} {}
 };
 
 struct ConversationResult {
     static constexpr std::string_view type_tag = "conversation";
 
-    ::session::bridge::Conversation conversation;
+    ::session_bridge::Conversation conversation;
 
-    ConversationResult(::session::bridge::Conversation conversation_) :
+    ConversationResult(::session_bridge::Conversation conversation_) :
             conversation{std::move(conversation_)} {}
 };
 
@@ -227,12 +231,12 @@ struct Message {
     std::string body;
     bool outgoing;
     /// Incoming messages have no send state of their own and report `sent`.
-    ::session::bridge::SendState send_state;
-    std::vector<::session::bridge::Attachment> attachments;
-    std::optional<::session::bridge::Reply> reply_to;
-    std::optional<::session::bridge::Deletion> deleted;
+    ::session_bridge::SendState send_state;
+    std::vector<::session_bridge::Attachment> attachments;
+    std::optional<::session_bridge::Reply> reply_to;
+    std::optional<::session_bridge::Deletion> deleted;
 
-    Message(double id_, std::string conversation_id_, std::string author_, double timestamp_, std::string body_, bool outgoing_, ::session::bridge::SendState send_state_, std::vector<::session::bridge::Attachment> attachments_, std::optional<::session::bridge::Reply> reply_to_, std::optional<::session::bridge::Deletion> deleted_) :
+    Message(double id_, std::string conversation_id_, std::string author_, double timestamp_, std::string body_, bool outgoing_, ::session_bridge::SendState send_state_, std::vector<::session_bridge::Attachment> attachments_, std::optional<::session_bridge::Reply> reply_to_, std::optional<::session_bridge::Deletion> deleted_) :
             id{std::move(id_)}, conversation_id{std::move(conversation_id_)}, author{std::move(author_)}, timestamp{std::move(timestamp_)}, body{std::move(body_)}, outgoing{std::move(outgoing_)}, send_state{std::move(send_state_)}, attachments{std::move(attachments_)}, reply_to{std::move(reply_to_)}, deleted{std::move(deleted_)} {}
 };
 
@@ -242,9 +246,9 @@ struct Message {
 struct MessageListResult {
     static constexpr std::string_view type_tag = "messageList";
 
-    std::vector<::session::bridge::Message> messages;
+    std::vector<::session_bridge::Message> messages;
 
-    MessageListResult(std::vector<::session::bridge::Message> messages_) :
+    MessageListResult(std::vector<::session_bridge::Message> messages_) :
             messages{std::move(messages_)} {}
 };
 
@@ -303,36 +307,36 @@ struct Response {
     /// enum: the message says which constraint, and inventing codes would throw that away. Set
     /// instead of `result`, never beside it.
     std::optional<std::string> error;
-    std::optional<::session::bridge::Result> result;
+    std::optional<::session_bridge::Result> result;
 
-    Response(double id_, std::optional<std::string> error_, std::optional<::session::bridge::Result> result_) :
+    Response(double id_, std::optional<std::string> error_, std::optional<::session_bridge::Result> result_) :
             id{std::move(id_)}, error{std::move(error_)}, result{std::move(result_)} {}
 };
 
 struct ResponseFrame {
     static constexpr std::string_view type_tag = "response";
 
-    ::session::bridge::Response response;
+    ::session_bridge::Response response;
 
-    ResponseFrame(::session::bridge::Response response_) :
+    ResponseFrame(::session_bridge::Response response_) :
             response{std::move(response_)} {}
 };
 
 struct ConversationAddedBridgeEvent {
     static constexpr std::string_view type_tag = "conversation-added";
 
-    ::session::bridge::Conversation conversation;
+    ::session_bridge::Conversation conversation;
 
-    ConversationAddedBridgeEvent(::session::bridge::Conversation conversation_) :
+    ConversationAddedBridgeEvent(::session_bridge::Conversation conversation_) :
             conversation{std::move(conversation_)} {}
 };
 
 struct ConversationUpdatedBridgeEvent {
     static constexpr std::string_view type_tag = "conversation-updated";
 
-    ::session::bridge::Conversation conversation;
+    ::session_bridge::Conversation conversation;
 
-    ConversationUpdatedBridgeEvent(::session::bridge::Conversation conversation_) :
+    ConversationUpdatedBridgeEvent(::session_bridge::Conversation conversation_) :
             conversation{std::move(conversation_)} {}
 };
 
@@ -348,18 +352,18 @@ struct ConversationRemovedBridgeEvent {
 struct ConversationListReplacedBridgeEvent {
     static constexpr std::string_view type_tag = "conversation-list-replaced";
 
-    std::vector<::session::bridge::Conversation> conversations;
+    std::vector<::session_bridge::Conversation> conversations;
 
-    ConversationListReplacedBridgeEvent(std::vector<::session::bridge::Conversation> conversations_) :
+    ConversationListReplacedBridgeEvent(std::vector<::session_bridge::Conversation> conversations_) :
             conversations{std::move(conversations_)} {}
 };
 
 struct RequestListReplacedBridgeEvent {
     static constexpr std::string_view type_tag = "request-list-replaced";
 
-    std::vector<::session::bridge::Conversation> conversations;
+    std::vector<::session_bridge::Conversation> conversations;
 
-    RequestListReplacedBridgeEvent(std::vector<::session::bridge::Conversation> conversations_) :
+    RequestListReplacedBridgeEvent(std::vector<::session_bridge::Conversation> conversations_) :
             conversations{std::move(conversations_)} {}
 };
 
@@ -367,9 +371,9 @@ struct MessageAddedBridgeEvent {
     static constexpr std::string_view type_tag = "message-added";
 
     std::string conversation_id;
-    ::session::bridge::Message message;
+    ::session_bridge::Message message;
 
-    MessageAddedBridgeEvent(std::string conversation_id_, ::session::bridge::Message message_) :
+    MessageAddedBridgeEvent(std::string conversation_id_, ::session_bridge::Message message_) :
             conversation_id{std::move(conversation_id_)}, message{std::move(message_)} {}
 };
 
@@ -377,9 +381,9 @@ struct MessageUpdatedBridgeEvent {
     static constexpr std::string_view type_tag = "message-updated";
 
     std::string conversation_id;
-    ::session::bridge::Message message;
+    ::session_bridge::Message message;
 
-    MessageUpdatedBridgeEvent(std::string conversation_id_, ::session::bridge::Message message_) :
+    MessageUpdatedBridgeEvent(std::string conversation_id_, ::session_bridge::Message message_) :
             conversation_id{std::move(conversation_id_)}, message{std::move(message_)} {}
 };
 
@@ -442,9 +446,9 @@ struct AttachmentProgressBridgeEvent {
     std::optional<double> request_id;
     /// Set instead when libsession fetched it on its own (auto-download).
     std::optional<std::string> conversation_id;
-    ::session::bridge::AttachmentProgress progress;
+    ::session_bridge::AttachmentProgress progress;
 
-    AttachmentProgressBridgeEvent(std::optional<double> request_id_, std::optional<std::string> conversation_id_, ::session::bridge::AttachmentProgress progress_) :
+    AttachmentProgressBridgeEvent(std::optional<double> request_id_, std::optional<std::string> conversation_id_, ::session_bridge::AttachmentProgress progress_) :
             request_id{std::move(request_id_)}, conversation_id{std::move(conversation_id_)}, progress{std::move(progress_)} {}
 };
 
@@ -467,9 +471,9 @@ using BridgeEvent = std::variant<
 struct EventFrame {
     static constexpr std::string_view type_tag = "event";
 
-    ::session::bridge::BridgeEvent event;
+    ::session_bridge::BridgeEvent event;
 
-    EventFrame(::session::bridge::BridgeEvent event_) :
+    EventFrame(::session_bridge::BridgeEvent event_) :
             event{std::move(event_)} {}
 };
 
@@ -661,10 +665,10 @@ struct GetMessagesCommand {
 
     std::string conversation_id;
     double limit;
-    std::optional<::session::bridge::MessageCursor> before;
+    std::optional<::session_bridge::MessageCursor> before;
     bool include_deleted;
 
-    GetMessagesCommand(std::string conversation_id_, double limit_, std::optional<::session::bridge::MessageCursor> before_, bool include_deleted_) :
+    GetMessagesCommand(std::string conversation_id_, double limit_, std::optional<::session_bridge::MessageCursor> before_, bool include_deleted_) :
             conversation_id{std::move(conversation_id_)}, limit{std::move(limit_)}, before{std::move(before_)}, include_deleted{std::move(include_deleted_)} {}
 };
 
@@ -688,10 +692,10 @@ struct SendMessageCommand {
 
     std::string conversation_id;
     std::string body;
-    std::vector<::session::bridge::OutgoingAttachment> attachments;
+    std::vector<::session_bridge::OutgoingAttachment> attachments;
     std::optional<double> reply_to;
 
-    SendMessageCommand(std::string conversation_id_, std::string body_, std::vector<::session::bridge::OutgoingAttachment> attachments_, std::optional<double> reply_to_) :
+    SendMessageCommand(std::string conversation_id_, std::string body_, std::vector<::session_bridge::OutgoingAttachment> attachments_, std::optional<double> reply_to_) :
             conversation_id{std::move(conversation_id_)}, body{std::move(body_)}, attachments{std::move(attachments_)}, reply_to{std::move(reply_to_)} {}
 };
 
@@ -708,9 +712,9 @@ struct DeleteMessageCommand {
     static constexpr std::string_view type_tag = "deleteMessage";
 
     double message_id;
-    ::session::bridge::Deletion scope;
+    ::session_bridge::Deletion scope;
 
-    DeleteMessageCommand(double message_id_, ::session::bridge::Deletion scope_) :
+    DeleteMessageCommand(double message_id_, ::session_bridge::Deletion scope_) :
             message_id{std::move(message_id_)}, scope{std::move(scope_)} {}
 };
 
@@ -769,9 +773,9 @@ struct ApproveTestContactCommand {
 struct EchoTestFrameCommand {
     static constexpr std::string_view type_tag = "echoTestFrame";
 
-    ::session::bridge::Frame frame;
+    ::session_bridge::Frame frame;
 
-    EchoTestFrameCommand(::session::bridge::Frame frame_) :
+    EchoTestFrameCommand(::session_bridge::Frame frame_) :
             frame{std::move(frame_)} {}
 };
 
@@ -812,10 +816,10 @@ using Command = std::variant<
 
 struct Request {
     double id;
-    ::session::bridge::Command command;
+    ::session_bridge::Command command;
 
-    Request(double id_, ::session::bridge::Command command_) :
+    Request(double id_, ::session_bridge::Command command_) :
             id{std::move(id_)}, command{std::move(command_)} {}
 };
 
-}  // namespace session::bridge
+}  // namespace session_bridge

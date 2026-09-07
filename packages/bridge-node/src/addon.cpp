@@ -36,7 +36,7 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
             throw Napi::TypeError::New(env, "new SessionBridge(options, onFrame)");
 
         Napi::Object options = info[0].As<Napi::Object>();
-        session::bridge::InitOptions init;
+        session_bridge::InitOptions init;
 
         init.db_path = options.Get("dbPath").As<Napi::String>().Utf8Value();
         if (options.Has("cacheDir"))
@@ -73,18 +73,18 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
                 env, info[1].As<Napi::Function>(), "sessionBridgeSink", 0, 1);
 
         try {
-            _bridge = std::make_unique<session::bridge::ClientBridge>(
-                    std::move(init), [this](session::bridge::Frame frame) {
+            _bridge = std::make_unique<session_bridge::ClientBridge>(
+                    std::move(init), [this](session_bridge::Frame frame) {
                         // Moved onto the heap for the queue; the V8 object is built from it on
                         // the JavaScript thread, where alone that is possible.
-                        auto* payload = new session::bridge::Frame(std::move(frame));
+                        auto* payload = new session_bridge::Frame(std::move(frame));
 
                         auto status = _sink.BlockingCall(
                                 payload,
                                 [](Napi::Env cb_env,
                                    Napi::Function cb,
-                                   session::bridge::Frame* f) {
-                                    cb.Call({session::bridge::node::to_napi(cb_env, *f)});
+                                   session_bridge::Frame* f) {
+                                    cb.Call({session_bridge::node::to_napi(cb_env, *f)});
                                     delete f;
                                 });
 
@@ -111,9 +111,9 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
         // A request the converter cannot read never reaches the shim, and is reported to the
         // caller synchronously: the TypeScript in front of this turns it into the error Response
         // the request would otherwise have got.
-        std::optional<session::bridge::Request> request;
+        std::optional<session_bridge::Request> request;
         try {
-            request = session::bridge::node::from_napi<session::bridge::Request>(info[0]);
+            request = session_bridge::node::from_napi<session_bridge::Request>(info[0]);
         } catch (const std::exception& e) {
             throw Napi::TypeError::New(info.Env(), e.what());
         }
@@ -131,7 +131,7 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
         _sink.Release();
     }
 
-    std::unique_ptr<session::bridge::ClientBridge> _bridge;
+    std::unique_ptr<session_bridge::ClientBridge> _bridge;
     Napi::ThreadSafeFunction _sink;
 };
 

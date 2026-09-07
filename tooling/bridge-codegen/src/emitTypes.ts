@@ -79,13 +79,17 @@ ${members}>;
 #include <variant>
 #include <vector>
 
-namespace session::bridge {
+/// One flat namespace, deliberately: session::bridge would declare a top-level 'session', and
+/// Apple's <sys/sysctl.h> already declares 'struct session' there. These headers reach the
+/// CocoaPods module umbrella through the Nitro spec, where that header is visible, and the
+/// collision is a module that cannot be built rather than a line that can be fixed locally.
+namespace session_bridge {
 
 /// Name table for every string-union enum; specialised below, one per enum.
 template <class E>
 struct EnumTraits;
 
 ${body}
-}  // namespace session::bridge
+}  // namespace session_bridge
 `
 }

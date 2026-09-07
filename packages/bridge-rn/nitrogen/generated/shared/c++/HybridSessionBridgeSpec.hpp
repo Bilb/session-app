@@ -51,9 +51,9 @@ namespace margelo::nitro::session::bridge::rn {
 
     public:
       // Methods
-      virtual void setSink(const std::function<void(::session::bridge::Frame /* frame */)>& onFrame) = 0;
+      virtual void setSink(const std::function<void(::session_bridge::Frame /* frame */)>& onFrame) = 0;
       virtual void init(const SessionBridgeOptions& options) = 0;
-      virtual void call(::session::bridge::Request request) = 0;
+      virtual void call(::session_bridge::Request request) = 0;
       virtual void close() = 0;
 
     protected:

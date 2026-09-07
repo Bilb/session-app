@@ -38,7 +38,7 @@ describe('bridge codegen', () => {
 
   it('gives a struct with fields no default constructor', () => {
     expect(files['types.hpp']).toContain(
-      'Shape(::session::bridge::Point origin_, ::session::bridge::Colour colour_, std::optional<std::string> label_, std::vector<::session::bridge::Point> vertices_, std::optional<std::vector<std::string>> tags_, bool filled_)',
+      'Shape(::session_bridge::Point origin_, ::session_bridge::Colour colour_, std::optional<std::string> label_, std::vector<::session_bridge::Point> vertices_, std::optional<std::vector<std::string>> tags_, bool filled_)',
     )
     expect(files['types.hpp']).not.toMatch(/Shape\(\)/)
   })
@@ -60,7 +60,7 @@ describe('bridge codegen', () => {
   it('carries doc comments across', () => {
     expect(files['types.hpp']).toContain('/// Colours, spelled the way libsession spells them.')
     expect(files['types.hpp']).toContain(
-      '    /// Where it sits.\n    ::session::bridge::Point origin;',
+      '    /// Where it sits.\n    ::session_bridge::Point origin;',
     )
     expect(files['types.hpp']).toContain('/// Draws one shape.\nstruct DrawCommand')
   })

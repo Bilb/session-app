@@ -11,7 +11,11 @@
 #include <variant>
 #include <vector>
 
-namespace session::bridge {
+/// One flat namespace, deliberately: session::bridge would declare a top-level 'session', and
+/// Apple's <sys/sysctl.h> already declares 'struct session' there. These headers reach the
+/// CocoaPods module umbrella through the Nitro spec, where that header is visible, and the
+/// collision is a module that cannot be built rather than a line that can be fixed locally.
+namespace session_bridge {
 
 /// Name table for every string-union enum; specialised below, one per enum.
 template <class E>
@@ -50,23 +54,23 @@ struct EnumTraits<Colour> {
 
 struct Shape {
     /// Where it sits.
-    ::session::bridge::Point origin;
-    ::session::bridge::Colour colour;
+    ::session_bridge::Point origin;
+    ::session_bridge::Colour colour;
     std::optional<std::string> label;
-    std::vector<::session::bridge::Point> vertices;
+    std::vector<::session_bridge::Point> vertices;
     std::optional<std::vector<std::string>> tags;
     bool filled;
 
-    Shape(::session::bridge::Point origin_, ::session::bridge::Colour colour_, std::optional<std::string> label_, std::vector<::session::bridge::Point> vertices_, std::optional<std::vector<std::string>> tags_, bool filled_) :
+    Shape(::session_bridge::Point origin_, ::session_bridge::Colour colour_, std::optional<std::string> label_, std::vector<::session_bridge::Point> vertices_, std::optional<std::vector<std::string>> tags_, bool filled_) :
             origin{std::move(origin_)}, colour{std::move(colour_)}, label{std::move(label_)}, vertices{std::move(vertices_)}, tags{std::move(tags_)}, filled{std::move(filled_)} {}
 };
 
 struct ShapeAddedCanvasEvent {
     static constexpr std::string_view type_tag = "shape-added";
 
-    ::session::bridge::Shape shape;
+    ::session_bridge::Shape shape;
 
-    ShapeAddedCanvasEvent(::session::bridge::Shape shape_) :
+    ShapeAddedCanvasEvent(::session_bridge::Shape shape_) :
             shape{std::move(shape_)} {}
 };
 
@@ -78,9 +82,9 @@ struct MovedCanvasEvent {
     static constexpr std::string_view type_tag = "moved";
 
     double id;
-    std::optional<::session::bridge::Point> to;
+    std::optional<::session_bridge::Point> to;
 
-    MovedCanvasEvent(double id_, std::optional<::session::bridge::Point> to_) :
+    MovedCanvasEvent(double id_, std::optional<::session_bridge::Point> to_) :
             id{std::move(id_)}, to{std::move(to_)} {}
 };
 
@@ -93,9 +97,9 @@ using CanvasEvent = std::variant<
 struct EventFrame {
     static constexpr std::string_view type_tag = "event";
 
-    ::session::bridge::CanvasEvent event;
+    ::session_bridge::CanvasEvent event;
 
-    EventFrame(::session::bridge::CanvasEvent event_) :
+    EventFrame(::session_bridge::CanvasEvent event_) :
             event{std::move(event_)} {}
 };
 
@@ -116,9 +120,9 @@ using Frame = std::variant<
 struct DrawCommand {
     static constexpr std::string_view type_tag = "draw";
 
-    ::session::bridge::Shape shape;
+    ::session_bridge::Shape shape;
 
-    DrawCommand(::session::bridge::Shape shape_) :
+    DrawCommand(::session_bridge::Shape shape_) :
             shape{std::move(shape_)} {}
 };
 
@@ -132,10 +136,10 @@ using Command = std::variant<
 
 struct Request {
     double id;
-    ::session::bridge::Command command;
+    ::session_bridge::Command command;
 
-    Request(double id_, ::session::bridge::Command command_) :
+    Request(double id_, ::session_bridge::Command command_) :
             id{std::move(id_)}, command{std::move(command_)} {}
 };
 
-}  // namespace session::bridge
+}  // namespace session_bridge

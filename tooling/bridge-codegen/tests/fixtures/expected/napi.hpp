@@ -16,7 +16,7 @@
 
 #include "types.hpp"
 
-namespace session::bridge::node {
+namespace session_bridge::node {
 
 template <class T>
 struct Codec;
@@ -107,32 +107,32 @@ struct Codec<std::vector<T>> {
 };
 
 template <>
-struct Codec<::session::bridge::Point> {
+struct Codec<::session_bridge::Point> {
     static constexpr std::string_view name = "Point";
-    static Napi::Value to(Napi::Env env, const ::session::bridge::Point& value) {
+    static Napi::Value to(Napi::Env env, const ::session_bridge::Point& value) {
         Napi::Object obj = Napi::Object::New(env);
         obj.Set("x", Codec<double>::to(env, value.x));
         obj.Set("y", Codec<double>::to(env, value.y));
         return obj;
     }
-    static ::session::bridge::Point from(const Napi::Value& value, std::string_view where) {
+    static ::session_bridge::Point from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
-        return ::session::bridge::Point(
+        return ::session_bridge::Point(
                 Codec<double>::from(obj.Get("x"), "Point.x"),
                 Codec<double>::from(obj.Get("y"), "Point.y"));
     }
 };
 
 template <>
-struct Codec<::session::bridge::Colour> {
+struct Codec<::session_bridge::Colour> {
     static constexpr std::string_view name = "Colour";
-    static Napi::Value to(Napi::Env env, ::session::bridge::Colour value) {
-        auto text = ::session::bridge::EnumTraits<::session::bridge::Colour>::to_string(value);
+    static Napi::Value to(Napi::Env env, ::session_bridge::Colour value) {
+        auto text = ::session_bridge::EnumTraits<::session_bridge::Colour>::to_string(value);
         return Napi::String::New(env, text.data(), text.size());
     }
-    static ::session::bridge::Colour from(const Napi::Value& value, std::string_view where) {
+    static ::session_bridge::Colour from(const Napi::Value& value, std::string_view where) {
         std::string text = Codec<std::string>::from(value, where);
-        auto parsed = ::session::bridge::EnumTraits<::session::bridge::Colour>::parse(text);
+        auto parsed = ::session_bridge::EnumTraits<::session_bridge::Colour>::parse(text);
         if (!parsed)
             throw std::invalid_argument(std::string{where} + ": \"" + text + "\" is not a Colour");
         return *parsed;
@@ -140,224 +140,224 @@ struct Codec<::session::bridge::Colour> {
 };
 
 template <>
-struct Codec<::session::bridge::Shape> {
+struct Codec<::session_bridge::Shape> {
     static constexpr std::string_view name = "Shape";
-    static Napi::Value to(Napi::Env env, const ::session::bridge::Shape& value) {
+    static Napi::Value to(Napi::Env env, const ::session_bridge::Shape& value) {
         Napi::Object obj = Napi::Object::New(env);
-        obj.Set("origin", Codec<::session::bridge::Point>::to(env, value.origin));
-        obj.Set("colour", Codec<::session::bridge::Colour>::to(env, value.colour));
+        obj.Set("origin", Codec<::session_bridge::Point>::to(env, value.origin));
+        obj.Set("colour", Codec<::session_bridge::Colour>::to(env, value.colour));
         if (value.label)
             obj.Set("label", Codec<std::string>::to(env, *value.label));
-        obj.Set("vertices", Codec<std::vector<::session::bridge::Point>>::to(env, value.vertices));
+        obj.Set("vertices", Codec<std::vector<::session_bridge::Point>>::to(env, value.vertices));
         if (value.tags)
             obj.Set("tags", Codec<std::vector<std::string>>::to(env, *value.tags));
         obj.Set("filled", Codec<bool>::to(env, value.filled));
         return obj;
     }
-    static ::session::bridge::Shape from(const Napi::Value& value, std::string_view where) {
+    static ::session_bridge::Shape from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
-        return ::session::bridge::Shape(
-                Codec<::session::bridge::Point>::from(obj.Get("origin"), "Shape.origin"),
-                Codec<::session::bridge::Colour>::from(obj.Get("colour"), "Shape.colour"),
+        return ::session_bridge::Shape(
+                Codec<::session_bridge::Point>::from(obj.Get("origin"), "Shape.origin"),
+                Codec<::session_bridge::Colour>::from(obj.Get("colour"), "Shape.colour"),
                 optional<std::string>(obj.Get("label"), "Shape.label"),
-                Codec<std::vector<::session::bridge::Point>>::from(obj.Get("vertices"), "Shape.vertices"),
+                Codec<std::vector<::session_bridge::Point>>::from(obj.Get("vertices"), "Shape.vertices"),
                 optional<std::vector<std::string>>(obj.Get("tags"), "Shape.tags"),
                 Codec<bool>::from(obj.Get("filled"), "Shape.filled"));
     }
 };
 
 template <>
-struct Codec<::session::bridge::ShapeAddedCanvasEvent> {
+struct Codec<::session_bridge::ShapeAddedCanvasEvent> {
     static constexpr std::string_view name = "ShapeAddedCanvasEvent";
-    static Napi::Value to(Napi::Env env, const ::session::bridge::ShapeAddedCanvasEvent& value) {
+    static Napi::Value to(Napi::Env env, const ::session_bridge::ShapeAddedCanvasEvent& value) {
         Napi::Object obj = Napi::Object::New(env);
-        obj.Set("type", Napi::String::New(env, ::session::bridge::ShapeAddedCanvasEvent::type_tag.data(), ::session::bridge::ShapeAddedCanvasEvent::type_tag.size()));
-        obj.Set("shape", Codec<::session::bridge::Shape>::to(env, value.shape));
+        obj.Set("type", Napi::String::New(env, ::session_bridge::ShapeAddedCanvasEvent::type_tag.data(), ::session_bridge::ShapeAddedCanvasEvent::type_tag.size()));
+        obj.Set("shape", Codec<::session_bridge::Shape>::to(env, value.shape));
         return obj;
     }
-    static ::session::bridge::ShapeAddedCanvasEvent from(const Napi::Value& value, std::string_view where) {
+    static ::session_bridge::ShapeAddedCanvasEvent from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
-        return ::session::bridge::ShapeAddedCanvasEvent(
-                Codec<::session::bridge::Shape>::from(obj.Get("shape"), "ShapeAddedCanvasEvent.shape"));
+        return ::session_bridge::ShapeAddedCanvasEvent(
+                Codec<::session_bridge::Shape>::from(obj.Get("shape"), "ShapeAddedCanvasEvent.shape"));
     }
 };
 
 template <>
-struct Codec<::session::bridge::ClearedCanvasEvent> {
+struct Codec<::session_bridge::ClearedCanvasEvent> {
     static constexpr std::string_view name = "ClearedCanvasEvent";
-    static Napi::Value to(Napi::Env env, const ::session::bridge::ClearedCanvasEvent& value) {
+    static Napi::Value to(Napi::Env env, const ::session_bridge::ClearedCanvasEvent& value) {
         (void)value;
         Napi::Object obj = Napi::Object::New(env);
-        obj.Set("type", Napi::String::New(env, ::session::bridge::ClearedCanvasEvent::type_tag.data(), ::session::bridge::ClearedCanvasEvent::type_tag.size()));
+        obj.Set("type", Napi::String::New(env, ::session_bridge::ClearedCanvasEvent::type_tag.data(), ::session_bridge::ClearedCanvasEvent::type_tag.size()));
         return obj;
     }
-    static ::session::bridge::ClearedCanvasEvent from(const Napi::Value& value, std::string_view where) {
+    static ::session_bridge::ClearedCanvasEvent from(const Napi::Value& value, std::string_view where) {
         object(value, where);
-        return ::session::bridge::ClearedCanvasEvent{};
+        return ::session_bridge::ClearedCanvasEvent{};
     }
 };
 
 template <>
-struct Codec<::session::bridge::MovedCanvasEvent> {
+struct Codec<::session_bridge::MovedCanvasEvent> {
     static constexpr std::string_view name = "MovedCanvasEvent";
-    static Napi::Value to(Napi::Env env, const ::session::bridge::MovedCanvasEvent& value) {
+    static Napi::Value to(Napi::Env env, const ::session_bridge::MovedCanvasEvent& value) {
         Napi::Object obj = Napi::Object::New(env);
-        obj.Set("type", Napi::String::New(env, ::session::bridge::MovedCanvasEvent::type_tag.data(), ::session::bridge::MovedCanvasEvent::type_tag.size()));
+        obj.Set("type", Napi::String::New(env, ::session_bridge::MovedCanvasEvent::type_tag.data(), ::session_bridge::MovedCanvasEvent::type_tag.size()));
         obj.Set("id", Codec<double>::to(env, value.id));
         if (value.to)
-            obj.Set("to", Codec<::session::bridge::Point>::to(env, *value.to));
+            obj.Set("to", Codec<::session_bridge::Point>::to(env, *value.to));
         return obj;
     }
-    static ::session::bridge::MovedCanvasEvent from(const Napi::Value& value, std::string_view where) {
+    static ::session_bridge::MovedCanvasEvent from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
-        return ::session::bridge::MovedCanvasEvent(
+        return ::session_bridge::MovedCanvasEvent(
                 Codec<double>::from(obj.Get("id"), "MovedCanvasEvent.id"),
-                optional<::session::bridge::Point>(obj.Get("to"), "MovedCanvasEvent.to"));
+                optional<::session_bridge::Point>(obj.Get("to"), "MovedCanvasEvent.to"));
     }
 };
 
 template <>
-struct Codec<::session::bridge::CanvasEvent> {
+struct Codec<::session_bridge::CanvasEvent> {
     static constexpr std::string_view name = "CanvasEvent";
-    static Napi::Value to(Napi::Env env, const ::session::bridge::CanvasEvent& value) {
+    static Napi::Value to(Napi::Env env, const ::session_bridge::CanvasEvent& value) {
         return std::visit(
                 [env](const auto& member) -> Napi::Value {
                     return Codec<std::decay_t<decltype(member)>>::to(env, member);
                 },
                 value);
     }
-    static ::session::bridge::CanvasEvent from(const Napi::Value& value, std::string_view where) {
+    static ::session_bridge::CanvasEvent from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
         std::string tag = Codec<std::string>::from(obj.Get("type"), "CanvasEvent.type");
         if (tag == "shape-added")
-            return Codec<::session::bridge::ShapeAddedCanvasEvent>::from(value, where);
+            return Codec<::session_bridge::ShapeAddedCanvasEvent>::from(value, where);
         if (tag == "cleared")
-            return Codec<::session::bridge::ClearedCanvasEvent>::from(value, where);
+            return Codec<::session_bridge::ClearedCanvasEvent>::from(value, where);
         if (tag == "moved")
-            return Codec<::session::bridge::MovedCanvasEvent>::from(value, where);
+            return Codec<::session_bridge::MovedCanvasEvent>::from(value, where);
         throw std::invalid_argument(std::string{where} + ": unknown type \"" + tag + "\"");
     }
 };
 
 template <>
-struct Codec<::session::bridge::EventFrame> {
+struct Codec<::session_bridge::EventFrame> {
     static constexpr std::string_view name = "EventFrame";
-    static Napi::Value to(Napi::Env env, const ::session::bridge::EventFrame& value) {
+    static Napi::Value to(Napi::Env env, const ::session_bridge::EventFrame& value) {
         Napi::Object obj = Napi::Object::New(env);
-        obj.Set("type", Napi::String::New(env, ::session::bridge::EventFrame::type_tag.data(), ::session::bridge::EventFrame::type_tag.size()));
-        obj.Set("event", Codec<::session::bridge::CanvasEvent>::to(env, value.event));
+        obj.Set("type", Napi::String::New(env, ::session_bridge::EventFrame::type_tag.data(), ::session_bridge::EventFrame::type_tag.size()));
+        obj.Set("event", Codec<::session_bridge::CanvasEvent>::to(env, value.event));
         return obj;
     }
-    static ::session::bridge::EventFrame from(const Napi::Value& value, std::string_view where) {
+    static ::session_bridge::EventFrame from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
-        return ::session::bridge::EventFrame(
-                Codec<::session::bridge::CanvasEvent>::from(obj.Get("event"), "EventFrame.event"));
+        return ::session_bridge::EventFrame(
+                Codec<::session_bridge::CanvasEvent>::from(obj.Get("event"), "EventFrame.event"));
     }
 };
 
 template <>
-struct Codec<::session::bridge::AckFrame> {
+struct Codec<::session_bridge::AckFrame> {
     static constexpr std::string_view name = "AckFrame";
-    static Napi::Value to(Napi::Env env, const ::session::bridge::AckFrame& value) {
+    static Napi::Value to(Napi::Env env, const ::session_bridge::AckFrame& value) {
         Napi::Object obj = Napi::Object::New(env);
-        obj.Set("type", Napi::String::New(env, ::session::bridge::AckFrame::type_tag.data(), ::session::bridge::AckFrame::type_tag.size()));
+        obj.Set("type", Napi::String::New(env, ::session_bridge::AckFrame::type_tag.data(), ::session_bridge::AckFrame::type_tag.size()));
         obj.Set("id", Codec<double>::to(env, value.id));
         return obj;
     }
-    static ::session::bridge::AckFrame from(const Napi::Value& value, std::string_view where) {
+    static ::session_bridge::AckFrame from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
-        return ::session::bridge::AckFrame(
+        return ::session_bridge::AckFrame(
                 Codec<double>::from(obj.Get("id"), "AckFrame.id"));
     }
 };
 
 template <>
-struct Codec<::session::bridge::Frame> {
+struct Codec<::session_bridge::Frame> {
     static constexpr std::string_view name = "Frame";
-    static Napi::Value to(Napi::Env env, const ::session::bridge::Frame& value) {
+    static Napi::Value to(Napi::Env env, const ::session_bridge::Frame& value) {
         return std::visit(
                 [env](const auto& member) -> Napi::Value {
                     return Codec<std::decay_t<decltype(member)>>::to(env, member);
                 },
                 value);
     }
-    static ::session::bridge::Frame from(const Napi::Value& value, std::string_view where) {
+    static ::session_bridge::Frame from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
         std::string tag = Codec<std::string>::from(obj.Get("type"), "Frame.type");
         if (tag == "event")
-            return Codec<::session::bridge::EventFrame>::from(value, where);
+            return Codec<::session_bridge::EventFrame>::from(value, where);
         if (tag == "ack")
-            return Codec<::session::bridge::AckFrame>::from(value, where);
+            return Codec<::session_bridge::AckFrame>::from(value, where);
         throw std::invalid_argument(std::string{where} + ": unknown type \"" + tag + "\"");
     }
 };
 
 template <>
-struct Codec<::session::bridge::DrawCommand> {
+struct Codec<::session_bridge::DrawCommand> {
     static constexpr std::string_view name = "DrawCommand";
-    static Napi::Value to(Napi::Env env, const ::session::bridge::DrawCommand& value) {
+    static Napi::Value to(Napi::Env env, const ::session_bridge::DrawCommand& value) {
         Napi::Object obj = Napi::Object::New(env);
-        obj.Set("type", Napi::String::New(env, ::session::bridge::DrawCommand::type_tag.data(), ::session::bridge::DrawCommand::type_tag.size()));
-        obj.Set("shape", Codec<::session::bridge::Shape>::to(env, value.shape));
+        obj.Set("type", Napi::String::New(env, ::session_bridge::DrawCommand::type_tag.data(), ::session_bridge::DrawCommand::type_tag.size()));
+        obj.Set("shape", Codec<::session_bridge::Shape>::to(env, value.shape));
         return obj;
     }
-    static ::session::bridge::DrawCommand from(const Napi::Value& value, std::string_view where) {
+    static ::session_bridge::DrawCommand from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
-        return ::session::bridge::DrawCommand(
-                Codec<::session::bridge::Shape>::from(obj.Get("shape"), "DrawCommand.shape"));
+        return ::session_bridge::DrawCommand(
+                Codec<::session_bridge::Shape>::from(obj.Get("shape"), "DrawCommand.shape"));
     }
 };
 
 template <>
-struct Codec<::session::bridge::ClearCommand> {
+struct Codec<::session_bridge::ClearCommand> {
     static constexpr std::string_view name = "ClearCommand";
-    static Napi::Value to(Napi::Env env, const ::session::bridge::ClearCommand& value) {
+    static Napi::Value to(Napi::Env env, const ::session_bridge::ClearCommand& value) {
         (void)value;
         Napi::Object obj = Napi::Object::New(env);
-        obj.Set("type", Napi::String::New(env, ::session::bridge::ClearCommand::type_tag.data(), ::session::bridge::ClearCommand::type_tag.size()));
+        obj.Set("type", Napi::String::New(env, ::session_bridge::ClearCommand::type_tag.data(), ::session_bridge::ClearCommand::type_tag.size()));
         return obj;
     }
-    static ::session::bridge::ClearCommand from(const Napi::Value& value, std::string_view where) {
+    static ::session_bridge::ClearCommand from(const Napi::Value& value, std::string_view where) {
         object(value, where);
-        return ::session::bridge::ClearCommand{};
+        return ::session_bridge::ClearCommand{};
     }
 };
 
 template <>
-struct Codec<::session::bridge::Command> {
+struct Codec<::session_bridge::Command> {
     static constexpr std::string_view name = "Command";
-    static Napi::Value to(Napi::Env env, const ::session::bridge::Command& value) {
+    static Napi::Value to(Napi::Env env, const ::session_bridge::Command& value) {
         return std::visit(
                 [env](const auto& member) -> Napi::Value {
                     return Codec<std::decay_t<decltype(member)>>::to(env, member);
                 },
                 value);
     }
-    static ::session::bridge::Command from(const Napi::Value& value, std::string_view where) {
+    static ::session_bridge::Command from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
         std::string tag = Codec<std::string>::from(obj.Get("type"), "Command.type");
         if (tag == "draw")
-            return Codec<::session::bridge::DrawCommand>::from(value, where);
+            return Codec<::session_bridge::DrawCommand>::from(value, where);
         if (tag == "clear")
-            return Codec<::session::bridge::ClearCommand>::from(value, where);
+            return Codec<::session_bridge::ClearCommand>::from(value, where);
         throw std::invalid_argument(std::string{where} + ": unknown type \"" + tag + "\"");
     }
 };
 
 template <>
-struct Codec<::session::bridge::Request> {
+struct Codec<::session_bridge::Request> {
     static constexpr std::string_view name = "Request";
-    static Napi::Value to(Napi::Env env, const ::session::bridge::Request& value) {
+    static Napi::Value to(Napi::Env env, const ::session_bridge::Request& value) {
         Napi::Object obj = Napi::Object::New(env);
         obj.Set("id", Codec<double>::to(env, value.id));
-        obj.Set("command", Codec<::session::bridge::Command>::to(env, value.command));
+        obj.Set("command", Codec<::session_bridge::Command>::to(env, value.command));
         return obj;
     }
-    static ::session::bridge::Request from(const Napi::Value& value, std::string_view where) {
+    static ::session_bridge::Request from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
-        return ::session::bridge::Request(
+        return ::session_bridge::Request(
                 Codec<double>::from(obj.Get("id"), "Request.id"),
-                Codec<::session::bridge::Command>::from(obj.Get("command"), "Request.command"));
+                Codec<::session_bridge::Command>::from(obj.Get("command"), "Request.command"));
     }
 };
 
@@ -374,4 +374,4 @@ inline T from_napi(const Napi::Value& value) {
     return Codec<T>::from(value, Codec<T>::name);
 }
 
-}  // namespace session::bridge::node
+}  // namespace session_bridge::node

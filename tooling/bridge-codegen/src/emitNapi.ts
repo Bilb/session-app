@@ -126,7 +126,7 @@ ${construct}
 
 #include "types.hpp"
 
-namespace session::bridge::node {
+namespace session_bridge::node {
 
 template <class T>
 struct Codec;
@@ -230,6 +230,6 @@ inline T from_napi(const Napi::Value& value) {
     return Codec<T>::from(value, Codec<T>::name);
 }
 
-}  // namespace session::bridge::node
+}  // namespace session_bridge::node
 `
 }

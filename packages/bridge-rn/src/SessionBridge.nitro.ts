@@ -8,18 +8,18 @@ import type { SessionBridgeOptions } from '@session/bridge-types'
  * header that converts it; the one adapter that calls this casts the brand to the real type.
  *
  * Fully qualified with a leading `::`, because nitrogen puts the spec in
- * `margelo::nitro::session::bridge::rn`, where a bare `session` means something else.
- * `canBePassedByReference` keeps the struct from being copied once more on its way to the
- * dispatcher.
+ * `margelo::nitro::session::bridge::rn`, where a bare `session_bridge` would be looked up inside
+ * that namespace first. `canBePassedByReference` keeps the struct from being copied once more on
+ * its way to the dispatcher.
  */
 export type NativeFrame = CustomType<
   { readonly __frame?: never },
-  '::session::bridge::Frame',
+  '::session_bridge::Frame',
   { include: 'session_bridge/gen/jsi.hpp'; canBePassedByReference: true }
 >
 export type NativeRequest = CustomType<
   { readonly __request?: never },
-  '::session::bridge::Request',
+  '::session_bridge::Request',
   { include: 'session_bridge/gen/jsi.hpp'; canBePassedByReference: true }
 >
 

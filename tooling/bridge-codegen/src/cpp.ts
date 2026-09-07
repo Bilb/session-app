@@ -1,7 +1,7 @@
 import type { Declaration, Field, Model, TypeRef } from '#src/model'
 import { snake } from '#src/names'
 
-export const NAMESPACE = '::session::bridge'
+export const NAMESPACE = '::session_bridge'
 
 export const BANNER = (source: string): string =>
   [

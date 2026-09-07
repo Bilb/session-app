@@ -4,10 +4,10 @@
 
 #include "HybridSessionBridgeSpec.hpp"
 
-// Deliberately fully qualified. Nitro puts us in margelo::nitro::session::bridge::rn, so an
-// unqualified session::bridge::ClientBridge resolves to this namespace's own `session` and never
-// reaches the shim - with an error that reads as if the header were missing.
-namespace session::bridge {
+// Deliberately fully qualified. Nitro puts us in margelo::nitro::session::bridge::rn, so a name
+// starting `session` is looked up inside that namespace first and never reaches the shim - with
+// an error that reads as if the header were missing.
+namespace session_bridge {
 class ClientBridge;
 }
 
@@ -22,14 +22,14 @@ class HybridSessionBridge : public HybridSessionBridgeSpec {
     HybridSessionBridge();
     ~HybridSessionBridge() override;
 
-    void setSink(const std::function<void(::session::bridge::Frame /* frame */)>& onFrame) override;
+    void setSink(const std::function<void(::session_bridge::Frame /* frame */)>& onFrame) override;
     void init(const SessionBridgeOptions& options) override;
-    void call(::session::bridge::Request request) override;
+    void call(::session_bridge::Request request) override;
     void close() override;
 
   private:
-    std::function<void(::session::bridge::Frame)> _sink;
-    std::unique_ptr<::session::bridge::ClientBridge> _bridge;
+    std::function<void(::session_bridge::Frame)> _sink;
+    std::unique_ptr<::session_bridge::ClientBridge> _bridge;
 };
 
 }  // namespace margelo::nitro::session::bridge::rn

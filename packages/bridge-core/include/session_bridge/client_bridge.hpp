@@ -10,7 +10,7 @@
 
 #include "session_bridge/gen/types.hpp"
 
-namespace session::bridge {
+namespace session_bridge {
 
 /// Everything the bridge needs to open a Client, and nothing it can work out for itself.
 ///
@@ -117,4 +117,4 @@ class ClientBridge {
     std::unique_ptr<Impl> _impl;
 };
 
-}  // namespace session::bridge
+}  // namespace session_bridge

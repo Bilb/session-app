@@ -8,7 +8,10 @@
 #include <utility>
 #include <vector>
 
-namespace session::bridge {
+namespace session_bridge {
+
+// libsession's own names, which a flat namespace does not bring into scope on its own.
+using namespace ::session;
 
 std::string to_hex(std::span<const std::byte> bytes) {
     static constexpr char digits[] = "0123456789abcdef";
@@ -71,7 +74,7 @@ namespace {
 
 }  // namespace
 
-Attachment to_bridge(const client::Attachment& from) {
+Attachment to_bridge(const ::session::client::Attachment& from) {
     return Attachment(
             static_cast<double>(from.index),
             from.content_type,
@@ -84,7 +87,7 @@ Attachment to_bridge(const client::Attachment& from) {
             from.uploaded);
 }
 
-Message to_bridge(const client::Message& from) {
+Message to_bridge(const ::session::client::Message& from) {
     std::vector<Attachment> attachments;
     attachments.reserve(from.attachments.size());
     for (const auto& a : from.attachments)
@@ -123,7 +126,7 @@ Message to_bridge(const client::Message& from) {
             deleted);
 }
 
-Conversation to_bridge(const client::AnyConversation& from) {
+Conversation to_bridge(const ::session::client::AnyConversation& from) {
     ConversationKind kind = ConversationKind::community;
     std::optional<std::string> nickname;
     bool request = false, awaiting_approval = false, note_to_self = false, blocked = false;
@@ -162,4 +165,4 @@ Conversation to_bridge(const client::AnyConversation& from) {
             blocked);
 }
 
-}  // namespace session::bridge
+}  // namespace session_bridge

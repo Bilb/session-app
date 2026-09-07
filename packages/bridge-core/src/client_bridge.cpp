@@ -29,7 +29,10 @@
 
 #include "convert.hpp"
 
-namespace session::bridge {
+namespace session_bridge {
+
+// libsession's own names, which a flat namespace does not bring into scope on its own.
+using namespace ::session;
 
 namespace {
 
@@ -686,4 +689,4 @@ void ClientBridge::call(Request request) {
     }
 }
 
-}  // namespace session::bridge
+}  // namespace session_bridge
