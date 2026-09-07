@@ -125,6 +125,23 @@ function toTamaguiTheme(tokens: ThemeTokens): Record<string, string> {
 export function buildThemes(): Record<string, Record<string, string>> {
   const themes: Record<string, Record<string, string>> = {}
 
+  // `dark` and `light` are not spare themes, they are what makes the rest of them work on the web.
+  //
+  // Tamagui compiles a theme into a CSS rule whose selector list it assembles from the theme names,
+  // and it only starts that list for a theme literally called `dark` or `light`
+  // (see getThemeCSSRules). Every name here is `classicDark`-shaped, so the list came out empty and
+  // the rule with it: `, .tm_xxt { ... }`, a leading comma, which is invalid CSS that every browser
+  // drops without a word. The result was a desktop app in which no `$token` colour resolved to
+  // anything and every screen fell back to the browser's black on white, while believing it was
+  // showing classic dark. Native never noticed: there is no CSS there, and a theme reaches a
+  // component through context as resolved values.
+  //
+  // The two are the classic pair, which is what a base light and a base dark are here. Nothing
+  // selects them by name - `themeName()` never produces one - so they cost a rule each and change
+  // nothing about what the app draws.
+  themes['dark'] = toTamaguiTheme(getThemeTokens('classic-dark', DEFAULT_ACCENT))
+  themes['light'] = toTamaguiTheme(getThemeTokens('classic-light', DEFAULT_ACCENT))
+
   for (const theme of THEME_STATES) {
     // The base carries the default accent so a component rendered outside any sub-theme
     // still resolves $primaryColor instead of falling through to nothing.
