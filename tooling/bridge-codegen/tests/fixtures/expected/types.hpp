@@ -70,7 +70,7 @@ struct ShapeAddedCanvasEvent {
 
     ::session_bridge::Shape shape;
 
-    ShapeAddedCanvasEvent(::session_bridge::Shape shape_) :
+    explicit ShapeAddedCanvasEvent(::session_bridge::Shape shape_) :
             shape{std::move(shape_)} {}
 };
 
@@ -99,7 +99,7 @@ struct EventFrame {
 
     ::session_bridge::CanvasEvent event;
 
-    EventFrame(::session_bridge::CanvasEvent event_) :
+    explicit EventFrame(::session_bridge::CanvasEvent event_) :
             event{std::move(event_)} {}
 };
 
@@ -108,7 +108,7 @@ struct AckFrame {
 
     double id;
 
-    AckFrame(double id_) :
+    explicit AckFrame(double id_) :
             id{std::move(id_)} {}
 };
 
@@ -122,7 +122,7 @@ struct DrawCommand {
 
     ::session_bridge::Shape shape;
 
-    DrawCommand(::session_bridge::Shape shape_) :
+    explicit DrawCommand(::session_bridge::Shape shape_) :
             shape{std::move(shape_)} {}
 };
 

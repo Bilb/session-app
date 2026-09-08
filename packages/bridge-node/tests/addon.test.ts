@@ -141,6 +141,30 @@ describeAddon('the N-API addon', () => {
     await expect(answered).resolves.toMatch(/SetDisplayNameCommand\.name: expected a string/)
     transport.close()
   })
+
+  it('refuses a number that no whole number can hold, rather than casting it', async () => {
+    const transport = createNodeBridgeTransport({
+      dbPath: join(dir, 'huge.db'),
+      cacheDir: join(dir, 'cache'),
+      rawKey: new Uint8Array(32).fill(6),
+      deferAccount: true,
+    })
+
+    const answered = new Promise<string | undefined>((resolve) => {
+      transport.setSink((frame) => {
+        if (frame.type === 'response' && frame.response.id === 9) resolve(frame.response.error)
+      })
+    })
+
+    // Casting this to int64_t is undefined behaviour, so the shim has to refuse it first.
+    transport.send({
+      id: 9,
+      command: { type: 'deleteMessage', messageId: 1e300, scope: 'here' },
+    })
+
+    await expect(answered).resolves.toMatch(/deleteMessage\.messageId must be a whole number/)
+    transport.close()
+  })
 })
 
 /**
@@ -335,11 +359,15 @@ describeEcho('the generated converters', () => {
     async function echo(id: number, frame: Frame): Promise<Frame> {
       const done = new Promise<void>((resolve) => settled.set(id, resolve))
       const request: Request = { id, command: { type: 'echoTestFrame', frame } }
+      // Only what arrives from here on belongs to this request, and the acknowledgement is not
+      // guaranteed to sit directly behind the echo - a log line could land between them.
+      const from = received.length
       transport.send(request)
       await done
-      const ack = received.findIndex((f) => f.type === 'response' && f.response.id === id)
-      const echoed = received[ack - 1]
-      if (!echoed) throw new Error('nothing arrived before the acknowledgement')
+      const echoed = received
+        .slice(from)
+        .find((f) => !(f.type === 'response' && f.response.id === id))
+      if (!echoed) throw new Error('the echoed frame did not arrive')
       return echoed
     }
 

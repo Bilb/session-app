@@ -69,7 +69,11 @@ namespace {
     }
 
     Deletion deletion(client::Deletion d) {
-        return d == client::Deletion::here ? Deletion::here : Deletion::everywhere;
+        switch (d) {
+            case client::Deletion::here: return Deletion::here;
+            case client::Deletion::everywhere: return Deletion::everywhere;
+        }
+        return Deletion::here;
     }
 
 }  // namespace

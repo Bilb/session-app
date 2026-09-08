@@ -9,6 +9,9 @@ import { snake } from '#src/names'
  * That is the whole enforcement story on the C++ side: a field added to the TypeScript is a field
  * the shim fails to compile until it supplies. Designated initialisers would not do this - gcc
  * never warns on an omitted member and clang only from 19 - so positional it is.
+ *
+ * A single-field constructor is explicit, so that a payload cannot quietly become the frame that
+ * wraps it: `Response` and `ResponseFrame` are one field apart and mean different things.
  */
 export function emitTypes(model: Model, source: string): string {
   const body = forEachDeclaration(model, {
@@ -52,7 +55,8 @@ struct EnumTraits<${e.name}> {
         const params = s.fields.map((f) => `${fieldType(f)} ${member(f)}_`).join(', ')
         const inits = s.fields.map((f) => `${member(f)}{std::move(${member(f)}_)}`).join(', ')
         lines.push('')
-        lines.push(`    ${s.name}(${params}) :`)
+        const explicitly = s.fields.length === 1 ? 'explicit ' : ''
+        lines.push(`    ${explicitly}${s.name}(${params}) :`)
         lines.push(`            ${inits} {}`)
       }
       lines.push('};\n')

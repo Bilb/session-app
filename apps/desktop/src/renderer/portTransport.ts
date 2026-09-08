@@ -19,7 +19,7 @@ export function createPortTransport(): BridgeTransport {
     else queuedFrames.push(frame)
   }
 
-  window.addEventListener('message', (event: MessageEvent<unknown>) => {
+  function receivePort(event: MessageEvent<unknown>): void {
     if (event.source !== window || event.data !== 'session-bridge-port') return
     const received = event.ports[0]
     if (!received) return
@@ -33,7 +33,9 @@ export function createPortTransport(): BridgeTransport {
     for (const request of queuedRequests.splice(0, queuedRequests.length)) {
       port.postMessage(request)
     }
-  })
+  }
+
+  window.addEventListener('message', receivePort)
 
   return {
     send(request: Request): void {
@@ -47,9 +49,14 @@ export function createPortTransport(): BridgeTransport {
     },
 
     close(): void {
+      // The listener goes too. A port that arrives after this would otherwise be adopted by a
+      // closed transport and flush requests nobody is waiting for any more.
+      window.removeEventListener('message', receivePort)
       port?.close()
       port = null
       onFrame = null
+      queuedRequests.length = 0
+      queuedFrames.length = 0
     },
   }
 }

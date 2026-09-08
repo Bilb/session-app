@@ -20,7 +20,10 @@
 #include <session/session_protocol.hpp>
 #endif
 
+#include <algorithm>
+#include <cmath>
 #include <cstring>
+#include <limits>
 #include <ranges>
 #include <stdexcept>
 #include <utility>
@@ -42,8 +45,24 @@ namespace {
         return std::string{what} + " " + id + " does not exist";
     }
 
-    int64_t whole(double value) {
-        return static_cast<int64_t>(value);
+    /// A number from JavaScript as a whole number of type T, or an error naming the field.
+    ///
+    /// Every numeric field crosses as a double, and `static_cast` to an integer type is undefined
+    /// behaviour when the value does not fit - NaN, an infinity, or anything past the range. A
+    /// caller that sends one gets a Response with an error rather than whatever the cast produced.
+    /// The ceiling is 2^53 for the wide types, which is where a double stops naming one integer.
+    template <typename T>
+    T whole(double value, std::string_view what) {
+        static constexpr double exact = 9007199254740992.0;  // 2^53
+        static constexpr double lo =
+                std::max(static_cast<double>(std::numeric_limits<T>::lowest()), -exact);
+        static constexpr double hi =
+                std::min(static_cast<double>(std::numeric_limits<T>::max()), exact);
+
+        if (!std::isfinite(value) || value != std::trunc(value) || value < lo || value > hi)
+            throw std::invalid_argument{
+                    std::string{what} + " must be a whole number this bridge can carry"};
+        return static_cast<T>(value);
     }
 
 }  // namespace
@@ -324,7 +343,7 @@ struct ClientBridge::Impl {
     void handle(double id, const MarkReadCommand& cmd) {
         std::optional<sys_ms> up_to;
         if (cmd.up_to)
-            up_to = from_epoch_ms(whole(*cmd.up_to));
+            up_to = from_epoch_ms(whole<int64_t>(*cmd.up_to, "markRead.upTo"));
         convo(cmd.conversation_id).mark_read(up_to, on(id, [this, id] { ok(id); }));
     }
 
@@ -337,7 +356,9 @@ struct ClientBridge::Impl {
 
     void handle(double id, const SetPriorityCommand& cmd) {
         convo(cmd.conversation_id)
-                .set_priority(static_cast<int>(cmd.priority), on(id, [this, id] { ok(id); }));
+                .set_priority(
+                        whole<int>(cmd.priority, "setPriority.priority"),
+                        on(id, [this, id] { ok(id); }));
     }
 
     void handle(double id, const SetNicknameCommand& cmd) {
@@ -372,10 +393,11 @@ struct ClientBridge::Impl {
         std::optional<client::MessageCursor> before;
         if (cmd.before)
             before = client::MessageCursor{
-                    from_epoch_ms(whole(cmd.before->timestamp)), whole(cmd.before->id)};
+                    from_epoch_ms(whole<int64_t>(cmd.before->timestamp, "getMessages.before.timestamp")),
+                    whole<int64_t>(cmd.before->id, "getMessages.before.id")};
         convo(cmd.conversation_id)
                 .messages(
-                        static_cast<int>(cmd.limit),
+                        whole<int>(cmd.limit, "getMessages.limit"),
                         before,
                         on(id, [this, id](std::vector<client::Message> messages) {
                             std::vector<Message> out;
@@ -394,7 +416,7 @@ struct ClientBridge::Impl {
         client::OutgoingMessage msg;
         msg.body = cmd.body;
         if (cmd.reply_to)
-            msg.reply_to = whole(*cmd.reply_to);
+            msg.reply_to = whole<int64_t>(*cmd.reply_to, "sendMessage.replyTo");
         for (const auto& a : cmd.attachments) {
             client::OutgoingAttachment out;
             out.path = a.path;
@@ -403,9 +425,9 @@ struct ClientBridge::Impl {
             out.caption = a.caption;
             out.voice_message = a.voice_message.value_or(false);
             if (a.width)
-                out.width = static_cast<uint32_t>(*a.width);
+                out.width = whole<uint32_t>(*a.width, "sendMessage.attachments.width");
             if (a.height)
-                out.height = static_cast<uint32_t>(*a.height);
+                out.height = whole<uint32_t>(*a.height, "sendMessage.attachments.height");
             msg.attachments.push_back(std::move(out));
         }
         convo(cmd.conversation_id)
@@ -415,7 +437,7 @@ struct ClientBridge::Impl {
     }
 
     void handle(double id, const RetrySendCommand& cmd) {
-        const int64_t message_id = whole(cmd.message_id);
+        const int64_t message_id = whole<int64_t>(cmd.message_id, "retrySend.messageId");
         // A retry re-uploads whatever did not get through, and reports it the way the original
         // send did. There is no overload without a progress handler, and a retry is where a
         // file that has since been deleted is discovered, so this is not a formality.
@@ -430,10 +452,11 @@ struct ClientBridge::Impl {
 
     void handle(double id, const DeleteMessageCommand& cmd) {
         auto answer = on(id, [this, id](bool deleted) { respond(id, BoolResult{deleted}); });
+        const int64_t message_id = whole<int64_t>(cmd.message_id, "deleteMessage.messageId");
         if (cmd.scope == Deletion::everywhere)
-            client->delete_message_everywhere(whole(cmd.message_id), std::move(answer));
+            client->delete_message_everywhere(message_id, std::move(answer));
         else
-            client->delete_message(whole(cmd.message_id), std::move(answer));
+            client->delete_message(message_id, std::move(answer));
     }
 
     void handle(double id, const GetPrefCommand& cmd) {
@@ -466,7 +489,7 @@ struct ClientBridge::Impl {
         if (seed.size() != 32)
             throw std::invalid_argument{"senderSeedHex must be 32 bytes of hex"};
 
-        const int64_t timestamp = whole(cmd.timestamp);
+        const int64_t timestamp = whole<int64_t>(cmd.timestamp, "deliverTestMessage.timestamp");
         const auto sent = from_epoch_ms(timestamp);
 
         SessionProtos::Content content;

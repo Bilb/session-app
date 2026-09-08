@@ -65,6 +65,12 @@ class Extractor {
   private readonly declarations: Declaration[] = []
   /** Names currently being resolved, so a cycle is reported rather than looped on. */
   private readonly inProgress = new Set<string>()
+  /**
+   * Which declaration each generated name belongs to. A union member is named
+   * `<Tag><Union>`, which an interface is free to be called as well, and whichever of the two
+   * is resolved second would otherwise silently reuse the first one's struct.
+   */
+  private readonly owners = new Map<string, ts.Node>()
 
   constructor(program: ts.Program) {
     this.program = program
@@ -97,6 +103,9 @@ class Extractor {
 
   private resolveInterface(node: ts.InterfaceDeclaration): TypeRef {
     const name = node.name.text
+    this.claim(name, node)
+    // Set only once the struct is complete, so a type reached twice is emitted once while a
+    // type that reaches itself falls through to the cycle check below.
     if (this.structs.has(name)) return { kind: 'struct', name }
     if (node.heritageClauses?.length) throw fail(node, `${name}: interfaces may not extend`)
     if (node.typeParameters?.length) throw fail(node, `${name}: generics are not supported`)
@@ -115,8 +124,14 @@ class Extractor {
     if (node.typeParameters?.length) throw fail(node, `${name}: generics are not supported`)
 
     if (!ts.isUnionTypeNode(node.type)) {
-      // A transparent alias such as `type ConversationId = string`.
-      return this.resolveTypeNode(node.type, name)
+      // A transparent alias such as `type ConversationId = string`. Tracked like the others, or
+      // a pair that aliases each other recurses until the stack runs out instead of reporting.
+      this.enter(name, node)
+      try {
+        return this.resolveTypeNode(node.type, name)
+      } finally {
+        this.inProgress.delete(name)
+      }
     }
 
     const members = this.flattenUnion(node.type, name)
@@ -192,7 +207,9 @@ class Extractor {
       throw fail(tagMember, `${unionName}: the 'type' tag cannot be optional`)
     const tag = tagMember.type.literal.text
     const name = `${pascal(tag)}${unionName}`
-    if (this.structs.has(name)) throw fail(node, `${unionName}: duplicate member '${tag}'`)
+    // Always a fresh struct: two members of one union cannot share a tag, and no other
+    // declaration may already own the name this one generates.
+    this.claim(name, node)
     const others = node.members.filter((m) => m !== tagMember)
     const struct: Struct = { name, fields: this.fieldsOf(others, name), tag, doc: memberDoc(node) }
     this.structs.set(name, struct)
@@ -251,6 +268,15 @@ class Extractor {
     )
   }
 
+  /** Records that `name` is this declaration's to generate, and rejects anything else claiming it. */
+  private claim(name: string, node: ts.Node): void {
+    const existing = this.owners.get(name)
+    if (existing && existing !== node) {
+      throw fail(node, `${name} is generated twice: this declaration and ${where(existing)}`)
+    }
+    this.owners.set(name, node)
+  }
+
   private enter(name: string, node: ts.Node): void {
     if (this.inProgress.has(name)) {
       throw fail(node, `${name} is part of a cycle; C++ values cannot contain themselves`)
@@ -259,10 +285,14 @@ class Extractor {
   }
 }
 
-function fail(node: ts.Node, message: string): Error {
+function where(node: ts.Node): string {
   const source = node.getSourceFile()
   const { line, character } = source.getLineAndCharacterOfPosition(node.getStart())
-  return new Error(`${source.fileName}:${line + 1}:${character + 1}: ${message}`)
+  return `${source.fileName}:${line + 1}:${character + 1}`
+}
+
+function fail(node: ts.Node, message: string): Error {
+  return new Error(`${where(node)}: ${message}`)
 }
 
 /** The lines of the JSDoc block attached to a declaration, without the comment markers. */

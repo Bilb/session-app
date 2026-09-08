@@ -33,9 +33,14 @@ type ResultOf<K extends Result['type']> = Extract<Result, { type: K }>
 /** A command's own progress reports, routed back to whoever issued it. */
 type ProgressRegistration = {
   callback: ProgressCallback
-  /** Indexes that have reported a result; the registration retires when all have. */
+  /**
+   * How many transfers this command will report on, where the command knows. A retry does not:
+   * libsession decides which files still need uploading, so that registration lives until the
+   * request fails or the client closes rather than guessing from what has reported so far.
+   */
+  expected: number | undefined
+  /** Indexes that have reported a result. */
   settled: Set<number>
-  seen: Set<number>
 }
 
 /** The one arm where the wire event says more than the app is told: the request id is routing. */
@@ -80,17 +85,19 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
     // on its own is broadcast as an event instead.
     if (event.type === 'attachment-progress' && event.requestId !== undefined) {
       const registration = progress.get(event.requestId)
+      // No registration means the command that asked for this has already retired it. Dropped
+      // rather than broadcast: a transfer a command asked for belongs to that command.
       if (registration) {
         const report: AttachmentProgress = event.progress
-        registration.seen.add(report.index)
         registration.callback(report)
         if (report.result !== undefined) {
           registration.settled.add(report.index)
-          // Exactly one report per index carries a result, so once every index we have seen
-          // has settled there is nothing further to route.
-          if (registration.settled.size === registration.seen.size) {
-            progress.delete(event.requestId)
-          }
+          // Exactly one report per index carries a result, so the registration retires once
+          // every transfer the command asked for has produced one.
+          const done =
+            registration.expected !== undefined &&
+            registration.settled.size >= registration.expected
+          if (done) progress.delete(event.requestId)
         }
       }
       return
@@ -100,7 +107,11 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
     for (const listener of listeners) listener(appEvent)
   })
 
-  function call(command: Command, onProgress?: ProgressCallback): Promise<Response> {
+  function call(
+    command: Command,
+    onProgress?: ProgressCallback,
+    expectedTransfers?: number,
+  ): Promise<Response> {
     if (closed) return Promise.reject(new BridgeClosedError())
 
     const id = nextRequestId++
@@ -108,8 +119,10 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
 
     return new Promise<Response>((resolve, reject) => {
       pending.set(id, { resolve, reject })
-      if (onProgress) {
-        progress.set(id, { callback: onProgress, settled: new Set(), seen: new Set() })
+      // A command with nothing to transfer registers nothing: no report is coming, and an entry
+      // that can never retire is a leak.
+      if (onProgress && expectedTransfers !== 0) {
+        progress.set(id, { callback: onProgress, expected: expectedTransfers, settled: new Set() })
       }
       transport.send(request)
     })
@@ -253,6 +266,7 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
           ...(message.replyTo === undefined ? {} : { replyTo: message.replyTo }),
         },
         options?.onUploadProgress,
+        message.attachments?.length ?? 0,
       )
       return expect(response, 'messageId').messageId
     },

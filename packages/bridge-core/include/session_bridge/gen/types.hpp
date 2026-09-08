@@ -40,7 +40,7 @@ struct AccountInfoResult {
 
     ::session_bridge::AccountInfo info;
 
-    AccountInfoResult(::session_bridge::AccountInfo info_) :
+    explicit AccountInfoResult(::session_bridge::AccountInfo info_) :
             info{std::move(info_)} {}
 };
 
@@ -49,7 +49,7 @@ struct MnemonicResult {
 
     std::vector<std::string> words;
 
-    MnemonicResult(std::vector<std::string> words_) :
+    explicit MnemonicResult(std::vector<std::string> words_) :
             words{std::move(words_)} {}
 };
 
@@ -129,7 +129,7 @@ struct ConversationListResult {
 
     std::vector<::session_bridge::Conversation> conversations;
 
-    ConversationListResult(std::vector<::session_bridge::Conversation> conversations_) :
+    explicit ConversationListResult(std::vector<::session_bridge::Conversation> conversations_) :
             conversations{std::move(conversations_)} {}
 };
 
@@ -138,7 +138,7 @@ struct ConversationResult {
 
     ::session_bridge::Conversation conversation;
 
-    ConversationResult(::session_bridge::Conversation conversation_) :
+    explicit ConversationResult(::session_bridge::Conversation conversation_) :
             conversation{std::move(conversation_)} {}
 };
 
@@ -248,7 +248,7 @@ struct MessageListResult {
 
     std::vector<::session_bridge::Message> messages;
 
-    MessageListResult(std::vector<::session_bridge::Message> messages_) :
+    explicit MessageListResult(std::vector<::session_bridge::Message> messages_) :
             messages{std::move(messages_)} {}
 };
 
@@ -257,7 +257,7 @@ struct MessageIdResult {
 
     double message_id;
 
-    MessageIdResult(double message_id_) :
+    explicit MessageIdResult(double message_id_) :
             message_id{std::move(message_id_)} {}
 };
 
@@ -266,7 +266,7 @@ struct HexResult {
 
     std::string hex;
 
-    HexResult(std::string hex_) :
+    explicit HexResult(std::string hex_) :
             hex{std::move(hex_)} {}
 };
 
@@ -275,7 +275,7 @@ struct PrefResult {
 
     std::optional<std::string> value;
 
-    PrefResult(std::optional<std::string> value_) :
+    explicit PrefResult(std::optional<std::string> value_) :
             value{std::move(value_)} {}
 };
 
@@ -284,7 +284,7 @@ struct BoolResult {
 
     bool value;
 
-    BoolResult(bool value_) :
+    explicit BoolResult(bool value_) :
             value{std::move(value_)} {}
 };
 
@@ -318,7 +318,7 @@ struct ResponseFrame {
 
     ::session_bridge::Response response;
 
-    ResponseFrame(::session_bridge::Response response_) :
+    explicit ResponseFrame(::session_bridge::Response response_) :
             response{std::move(response_)} {}
 };
 
@@ -327,7 +327,7 @@ struct ConversationAddedBridgeEvent {
 
     ::session_bridge::Conversation conversation;
 
-    ConversationAddedBridgeEvent(::session_bridge::Conversation conversation_) :
+    explicit ConversationAddedBridgeEvent(::session_bridge::Conversation conversation_) :
             conversation{std::move(conversation_)} {}
 };
 
@@ -336,7 +336,7 @@ struct ConversationUpdatedBridgeEvent {
 
     ::session_bridge::Conversation conversation;
 
-    ConversationUpdatedBridgeEvent(::session_bridge::Conversation conversation_) :
+    explicit ConversationUpdatedBridgeEvent(::session_bridge::Conversation conversation_) :
             conversation{std::move(conversation_)} {}
 };
 
@@ -345,7 +345,7 @@ struct ConversationRemovedBridgeEvent {
 
     std::string conversation_id;
 
-    ConversationRemovedBridgeEvent(std::string conversation_id_) :
+    explicit ConversationRemovedBridgeEvent(std::string conversation_id_) :
             conversation_id{std::move(conversation_id_)} {}
 };
 
@@ -354,7 +354,7 @@ struct ConversationListReplacedBridgeEvent {
 
     std::vector<::session_bridge::Conversation> conversations;
 
-    ConversationListReplacedBridgeEvent(std::vector<::session_bridge::Conversation> conversations_) :
+    explicit ConversationListReplacedBridgeEvent(std::vector<::session_bridge::Conversation> conversations_) :
             conversations{std::move(conversations_)} {}
 };
 
@@ -363,7 +363,7 @@ struct RequestListReplacedBridgeEvent {
 
     std::vector<::session_bridge::Conversation> conversations;
 
-    RequestListReplacedBridgeEvent(std::vector<::session_bridge::Conversation> conversations_) :
+    explicit RequestListReplacedBridgeEvent(std::vector<::session_bridge::Conversation> conversations_) :
             conversations{std::move(conversations_)} {}
 };
 
@@ -392,7 +392,7 @@ struct HistoryReplacedBridgeEvent {
 
     std::string conversation_id;
 
-    HistoryReplacedBridgeEvent(std::string conversation_id_) :
+    explicit HistoryReplacedBridgeEvent(std::string conversation_id_) :
             conversation_id{std::move(conversation_id_)} {}
 };
 
@@ -473,7 +473,7 @@ struct EventFrame {
 
     ::session_bridge::BridgeEvent event;
 
-    EventFrame(::session_bridge::BridgeEvent event_) :
+    explicit EventFrame(::session_bridge::BridgeEvent event_) :
             event{std::move(event_)} {}
 };
 
@@ -505,7 +505,7 @@ struct RestoreAccountFromSeedCommand {
 
     std::string hex_seed;
 
-    RestoreAccountFromSeedCommand(std::string hex_seed_) :
+    explicit RestoreAccountFromSeedCommand(std::string hex_seed_) :
             hex_seed{std::move(hex_seed_)} {}
 };
 
@@ -514,7 +514,7 @@ struct GetSeedMnemonicCommand {
 
     std::optional<std::string> language;
 
-    GetSeedMnemonicCommand(std::optional<std::string> language_) :
+    explicit GetSeedMnemonicCommand(std::optional<std::string> language_) :
             language{std::move(language_)} {}
 };
 
@@ -523,7 +523,7 @@ struct SetDisplayNameCommand {
 
     std::string name;
 
-    SetDisplayNameCommand(std::string name_) :
+    explicit SetDisplayNameCommand(std::string name_) :
             name{std::move(name_)} {}
 };
 
@@ -561,7 +561,7 @@ struct HandlePushPayloadCommand {
 
     std::string payload_hex;
 
-    HandlePushPayloadCommand(std::string payload_hex_) :
+    explicit HandlePushPayloadCommand(std::string payload_hex_) :
             payload_hex{std::move(payload_hex_)} {}
 };
 
@@ -578,7 +578,7 @@ struct GetConversationCommand {
 
     std::string conversation_id;
 
-    GetConversationCommand(std::string conversation_id_) :
+    explicit GetConversationCommand(std::string conversation_id_) :
             conversation_id{std::move(conversation_id_)} {}
 };
 
@@ -587,7 +587,7 @@ struct OpenDmCommand {
 
     std::string session_id;
 
-    OpenDmCommand(std::string session_id_) :
+    explicit OpenDmCommand(std::string session_id_) :
             session_id{std::move(session_id_)} {}
 };
 
@@ -636,7 +636,7 @@ struct ApproveConversationCommand {
 
     std::string conversation_id;
 
-    ApproveConversationCommand(std::string conversation_id_) :
+    explicit ApproveConversationCommand(std::string conversation_id_) :
             conversation_id{std::move(conversation_id_)} {}
 };
 
@@ -704,7 +704,7 @@ struct RetrySendCommand {
 
     double message_id;
 
-    RetrySendCommand(double message_id_) :
+    explicit RetrySendCommand(double message_id_) :
             message_id{std::move(message_id_)} {}
 };
 
@@ -723,7 +723,7 @@ struct GetPrefCommand {
 
     std::string key;
 
-    GetPrefCommand(std::string key_) :
+    explicit GetPrefCommand(std::string key_) :
             key{std::move(key_)} {}
 };
 
@@ -764,7 +764,7 @@ struct ApproveTestContactCommand {
 
     std::string session_id;
 
-    ApproveTestContactCommand(std::string session_id_) :
+    explicit ApproveTestContactCommand(std::string session_id_) :
             session_id{std::move(session_id_)} {}
 };
 
@@ -775,7 +775,7 @@ struct EchoTestFrameCommand {
 
     ::session_bridge::Frame frame;
 
-    EchoTestFrameCommand(::session_bridge::Frame frame_) :
+    explicit EchoTestFrameCommand(::session_bridge::Frame frame_) :
             frame{std::move(frame_)} {}
 };
 

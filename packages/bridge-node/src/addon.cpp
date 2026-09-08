@@ -84,8 +84,10 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
                                 [](Napi::Env cb_env,
                                    Napi::Function cb,
                                    session_bridge::Frame* f) {
-                                    cb.Call({session_bridge::node::to_napi(cb_env, *f)});
-                                    delete f;
+                                    // Owned here, so the frame is released even if building the
+                                    // object or calling into JavaScript throws.
+                                    std::unique_ptr<session_bridge::Frame> owned{f};
+                                    cb.Call({session_bridge::node::to_napi(cb_env, *owned)});
                                 });
 
                         // The only way this fails is a sink already released, which means close()

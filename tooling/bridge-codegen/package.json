@@ -11,7 +11,7 @@
   },
   "scripts": {
     "codegen": "node --disable-warning=ExperimentalWarning src/cli.ts",
-    "codegen:check": "pnpm codegen && git diff --exit-code -- ../../packages/bridge-core/include/session_bridge/gen",
+    "codegen:check": "pnpm codegen && git add --intent-to-add -- ../../packages/bridge-core/include/session_bridge/gen && git diff --exit-code -- ../../packages/bridge-core/include/session_bridge/gen",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
