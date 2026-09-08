@@ -112,7 +112,12 @@ export function useMessages(id: ConversationId | undefined): {
   }, [id, store])
 
   return useMemo(
-    () => ({ messages: window.messages, ready: window.ready, exhausted: window.exhausted, loadOlder }),
+    () => ({
+      messages: window.messages,
+      ready: window.ready,
+      exhausted: window.exhausted,
+      loadOlder,
+    }),
     [window, loadOlder],
   )
 }
@@ -122,7 +127,8 @@ export function useUnreadRequestCount(): number {
   const store = useSessionStore()
   return useStore(store, (state) => {
     let unread = 0
-    for (const id in state.requests) if ((state.requests[id] as Conversation).unreadCount > 0) unread++
+    for (const id in state.requests)
+      if ((state.requests[id] as Conversation).unreadCount > 0) unread++
     return unread
   })
 }

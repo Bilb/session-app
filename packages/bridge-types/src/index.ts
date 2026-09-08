@@ -15,11 +15,4 @@ export type {
   Reply,
   SendState,
 } from './domain'
-export type {
-  Command,
-  Frame,
-  Request,
-  Response,
-  Result,
-  SessionEvent,
-} from './protocol'
+export type { Command, Frame, Request, Response, Result, SessionEvent } from './protocol'

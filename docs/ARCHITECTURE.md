@@ -334,4 +334,3 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   `SendState` keeps `uploading` and `unsendable`, which only attachments can reach: they are
   libsession's states, and the shim's switch over them has to name every one. This supersedes
   the 2026-09-04 entry on the three wrong wire fields, two of which were `Attachment`'s.
-

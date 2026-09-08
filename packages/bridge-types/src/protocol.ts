@@ -163,5 +163,4 @@ export type SessionEvent =
 
 /** Everything the shim sends back, in the order libsession produced it. */
 export type Frame =
-  | { type: 'response'; response: Response }
-  | { type: 'event'; event: SessionEvent }
+  { type: 'response'; response: Response } | { type: 'event'; event: SessionEvent }

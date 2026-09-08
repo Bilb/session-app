@@ -101,9 +101,7 @@ ${arms}
     const writes: string[] = []
     if (s.tag !== undefined) {
       assertAscii(s.tag, `${s.name}.type`)
-      writes.push(
-        `        obj.setProperty(runtime, ${prop('type')}, ${ascii(`${T}::type_tag`)});`,
-      )
+      writes.push(`        obj.setProperty(runtime, ${prop('type')}, ${ascii(`${T}::type_tag`)});`)
     }
     for (const f of s.fields) {
       const value = `${conv(cppType(f.type))}::toJSI(runtime, ${f.optional ? '*' : ''}arg.${member(f)})`
