@@ -2,7 +2,7 @@ import type { Message } from '@session/client'
 import { useConversation, useMessages, useSessionActions } from '@session/state'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Input, Screen, ScrollView, Separator, Text, XStack, YStack } from '@session/ui'
+import { Button, Input, List, Screen, Separator, Text, XStack, YStack } from '@session/ui'
 import { useState } from 'react'
 
 import { BackButton } from './BackButton'
@@ -57,17 +57,22 @@ export function ConversationScreen({ conversationId }: { conversationId: string 
 
       <Separator borderColor="$bordersColor" />
 
-      <ScrollView flex={1} padding="$2">
-        {ready ? (
-          <YStack gap="$1.5">
-            {messages.map((message, index) => (
-              <MessageRow key={message.id} message={message} index={index} />
-            ))}
-          </YStack>
-        ) : (
+      {ready ? (
+        // No itemHeight: a bubble is as tall as its body wraps to, so the list has to measure.
+        <List
+          data={messages}
+          keyExtractor={(message) => String(message.id)}
+          renderItem={(message, index) => (
+            <YStack paddingHorizontal="$2" paddingBottom="$1.5">
+              <MessageRow message={message} index={index} />
+            </YStack>
+          )}
+        />
+      ) : (
+        <YStack flex={1} padding="$2">
           <Text tone="secondary">{tr('loading')}</Text>
-        )}
-      </ScrollView>
+        </YStack>
+      )}
 
       <XStack
         padding="$2"

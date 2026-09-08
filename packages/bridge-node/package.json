@@ -38,6 +38,7 @@
     "cmake-js": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@session/bench": "workspace:*"
   }
 }

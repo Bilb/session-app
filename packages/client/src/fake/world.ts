@@ -123,6 +123,38 @@ export class FakeAccount {
     this.prefs.set(key, value)
   }
 
+  /**
+   * The list a row moved in, when it moved rather than merely changed.
+   *
+   * A conversation's place is decided by `lastActivity` and `priority`, so a subscriber told only
+   * that the row changed would not know it had moved - and could not work it out without
+   * reimplementing a sort that is not even the same for both lists. But most of what changes a
+   * conversation leaves it exactly where it was: a read receipt, a nickname, an expiry. Announcing
+   * there is a list rebuild to say nothing.
+   *
+   * **One list, not both.** A conversation is in exactly one - libsession's two queries are strict
+   * complements, `priority >= 0 AND [NOT] IS_REQUEST` - so replacing both says one true thing and
+   * one false one, and pays for a full rebuild to do it. The exception is a row that crossed
+   * between them, which is the only case where both genuinely changed: one lost it, the other
+   * gained it.
+   */
+  private announceIfMoved(before: Conversation | undefined, after: Conversation): void {
+    const crossed = before !== undefined && before.request !== after.request
+    const moved =
+      before === undefined ||
+      crossed ||
+      before.priority !== after.priority ||
+      before.lastActivity !== after.lastActivity
+    if (!moved) return
+
+    if (crossed || !after.request) {
+      this.emit({ type: 'conversation-list-replaced', conversations: this.list() })
+    }
+    if (crossed || after.request) {
+      this.emit({ type: 'request-list-replaced', conversations: this.requests() })
+    }
+  }
+
   /** Adds a conversation and announces it, the way libsession would on first contact. */
   upsertConversation(conversation: Conversation, { announce = true } = {}): Conversation {
     const existing = this.conversations.get(conversation.id)
@@ -139,10 +171,7 @@ export class FakeAccount {
     })
     // Approval arrives as an update rather than a remove plus an add, so a display that
     // keeps two lists needs both of them re-sent to move the row across.
-    if (!existing || existing.conversation.request !== conversation.request) {
-      this.emit({ type: 'conversation-list-replaced', conversations: this.list() })
-      this.emit({ type: 'request-list-replaced', conversations: this.requests() })
-    }
+    this.announceIfMoved(existing?.conversation, conversation)
     return conversation
   }
 
@@ -161,6 +190,7 @@ export class FakeAccount {
     if (!state) return undefined
     this.conversations.set(conversation.id, { ...state, conversation })
     this.emit({ type: 'conversation-updated', conversation })
+    this.announceIfMoved(state.conversation, conversation)
     return conversation
   }
 
@@ -182,6 +212,8 @@ export class FakeAccount {
 
     this.emit({ type: 'message-added', conversationId: id, message })
     this.emit({ type: 'conversation-updated', conversation })
+    // Always moves: the message it just stored is the newest activity in the conversation.
+    this.announceIfMoved(state.conversation, conversation)
     return message
   }
 
