@@ -1,12 +1,10 @@
 import type {
   AccountInfo,
-  AttachmentProgress,
   Conversation,
   ConversationId,
   Deletion,
   Message,
   MessageCursor,
-  OutgoingAttachment,
 } from './domain'
 
 /**
@@ -71,13 +69,7 @@ export type Command =
       before?: MessageCursor
       includeDeleted: boolean
     }
-  | {
-      type: 'sendMessage'
-      conversationId: ConversationId
-      body: string
-      attachments: OutgoingAttachment[]
-      replyTo?: number
-    }
+  | { type: 'sendMessage'; conversationId: ConversationId; body: string; replyTo?: number }
   | { type: 'retrySend'; messageId: number }
   | { type: 'deleteMessage'; messageId: number; scope: Deletion }
   // App preferences, stored in libsession's globals table so they sit beside the account
@@ -144,14 +136,17 @@ export interface Response {
 }
 
 /**
- * Change notifications, one per libsession callback.
+ * Change notifications, one per libsession callback, and what `SessionClient.onEvent` delivers.
  *
  * Every one of these carries the whole new state rather than an id to go and fetch. That is what
  * makes a display bindable, applying the same event twice harmless, and startup race-free:
  * whatever arrives between construction and the first query lands on top of the answer without
  * contradicting it.
+ *
+ * The shim emits these and the app reads them, with nothing in between rewriting an arm - which
+ * is why there is one type rather than a wire one and an app one.
  */
-type EventArms =
+export type SessionEvent =
   | { type: 'conversation-added'; conversation: Conversation }
   | { type: 'conversation-updated'; conversation: Conversation }
   | { type: 'conversation-removed'; conversationId: ConversationId }
@@ -160,44 +155,13 @@ type EventArms =
   | { type: 'message-added'; conversationId: ConversationId; message: Message }
   | { type: 'message-updated'; conversationId: ConversationId; message: Message }
   | { type: 'history-replaced'; conversationId: ConversationId }
-  | {
-      type: 'display-picture-progress'
-      conversationId: ConversationId
-      done: number
-      total: number
-      result?: number
-    }
   /**
    * libsession's own log lines, forwarded when the bridge was opened with a log level. Worth
    * having because the state machine reports what happened and never why.
    */
   | { type: 'log'; message: string; category: string; level: string }
 
-/**
- * An event as the shim emits it. Differs from `SessionEvent` in exactly one arm: a transfer
- * that a command asked for is tagged with that command's `requestId`, and the facade routes
- * it to the command's progress callback instead of broadcasting it.
- */
-export type BridgeEvent =
-  | EventArms
-  | {
-      type: 'attachment-progress'
-      /** Set when this transfer belongs to a command the app issued. */
-      requestId?: number
-      /** Set instead when libsession fetched it on its own (auto-download). */
-      conversationId?: ConversationId
-      progress: AttachmentProgress
-    }
-
-/** An event as the app sees it: what `SessionClient.onEvent` delivers. */
-export type SessionEvent =
-  | EventArms
-  | {
-      type: 'attachment-progress'
-      /** Set when libsession fetched it unprompted; absent when a command asked for it. */
-      conversationId?: ConversationId
-      progress: AttachmentProgress
-    }
-
 /** Everything the shim sends back, in the order libsession produced it. */
-export type Frame = { type: 'response'; response: Response } | { type: 'event'; event: BridgeEvent }
+export type Frame =
+  | { type: 'response'; response: Response }
+  | { type: 'event'; event: SessionEvent }

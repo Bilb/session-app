@@ -1,6 +1,11 @@
 import type { Conversation, ConversationId, Message, SessionEvent } from '@session/client'
 
-import { compareConversations, transferKey, type MessageWindow, type SessionState } from './types'
+import {
+  compareConversations,
+  compareMessages,
+  type MessageWindow,
+  type SessionState,
+} from './types'
 
 /**
  * The whole projection, as one pure function.
@@ -9,6 +14,9 @@ import { compareConversations, transferKey, type MessageWindow, type SessionStat
  * or goes back to ask for the rest. That is what makes replaying the same event twice
  * harmless, and what lets the store be seeded and then have earlier events land on top of
  * it without contradicting themselves.
+ *
+ * The objects the bridge hands over are stored as they are: this rebuilds the containers on the
+ * path to a change (a map, an id array) and nothing inside them.
  */
 export function applyEvent(state: SessionState, event: SessionEvent): SessionState {
   switch (event.type) {
@@ -45,10 +53,6 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
         },
       }
 
-    case 'attachment-progress':
-      return applyTransfer(state, event.progress)
-
-    case 'display-picture-progress':
     case 'log':
       return state
 
@@ -57,12 +61,21 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
   }
 }
 
-function indexConversations(
+type ListKey = 'conversations' | 'requests'
+type OrderKey = 'conversationOrder' | 'requestOrder'
+
+const LISTS: Record<ListKey, { order: OrderKey; other: ListKey }> = {
+  conversations: { order: 'conversationOrder', other: 'requests' },
+  requests: { order: 'requestOrder', other: 'conversations' },
+}
+
+export function indexConversations(
   conversations: Conversation[],
-  target: 'conversations' | 'requests',
-): Partial<SessionState> {
+  target: ListKey,
+): Partial<Pick<SessionState, ListKey | OrderKey>> {
   const byId: Record<ConversationId, Conversation> = {}
   for (const conversation of conversations) byId[conversation.id] = conversation
+  // A copy of the pointers, so the event's own array is left in the order it arrived.
   const order = [...conversations].sort(compareConversations).map((c) => c.id)
 
   return target === 'conversations'
@@ -70,31 +83,67 @@ function indexConversations(
     : { requests: byId, requestOrder: order }
 }
 
+/** Where `item` goes in `sorted` to stay sorted, after anything that compares equal to it. */
+function insertionIndex<T>(sorted: readonly T[], item: T, compare: (a: T, b: T) => number): number {
+  let low = 0
+  let high = sorted.length
+  while (low < high) {
+    const mid = (low + high) >>> 1
+    if (compare(sorted[mid] as T, item) <= 0) low = mid + 1
+    else high = mid
+  }
+  return low
+}
+
 /**
  * Approval arrives as an update, not as a removal followed by an addition, so a row that
  * changed side has to be taken out of the list it used to be in. Missing this is what makes
  * a conversation appear in both lists at once.
+ *
+ * This runs once per message received or sent, so the order is maintained rather than
+ * recomputed: a row whose rank did not change keeps the order array it was in, and one whose
+ * rank did is moved to where a binary search says it belongs.
  */
 function upsertConversation(state: SessionState, conversation: Conversation): SessionState {
-  const intoRequests = conversation.request
-  const from = intoRequests ? 'conversations' : 'requests'
-  const fromOrder = intoRequests ? 'conversationOrder' : 'requestOrder'
-  const to = intoRequests ? 'requests' : 'conversations'
-  const toOrder = intoRequests ? 'requestOrder' : 'conversationOrder'
+  const to: ListKey = conversation.request ? 'requests' : 'conversations'
+  const { order: toOrder, other: from } = LISTS[to]
+  const fromOrder = LISTS[from].order
 
-  const { [conversation.id]: _removed, ...withoutFromOther } = state[from]
-  const target = { ...state[to], [conversation.id]: conversation }
-  const order = Object.values(target)
-    .sort(compareConversations)
-    .map((c) => c.id)
+  const next: Partial<SessionState> = {}
 
-  return {
-    ...state,
-    [from]: withoutFromOther,
-    [fromOrder]: state[fromOrder].filter((id) => id !== conversation.id),
-    [to]: target,
-    [toOrder]: order,
+  if (conversation.id in state[from]) {
+    const { [conversation.id]: _moved, ...rest } = state[from]
+    next[from] = rest
+    next[fromOrder] = state[fromOrder].filter((id) => id !== conversation.id)
   }
+
+  const previous = state[to][conversation.id]
+  const byId = { ...state[to], [conversation.id]: conversation }
+  next[to] = byId
+  next[toOrder] =
+    previous && sameRank(previous, conversation)
+      ? state[toOrder]
+      : placed(state[toOrder], previous !== undefined, conversation.id, byId)
+
+  return { ...state, ...next }
+}
+
+function sameRank(a: Conversation, b: Conversation): boolean {
+  return a.priority === b.priority && a.lastActivity === b.lastActivity
+}
+
+function placed(
+  order: ConversationId[],
+  present: boolean,
+  id: ConversationId,
+  byId: Record<ConversationId, Conversation>,
+): ConversationId[] {
+  const ids = present ? order.filter((each) => each !== id) : order.slice()
+  const at = insertionIndex(ids, id, (a, b) =>
+    compareConversations(byId[a] as Conversation, byId[b] as Conversation),
+  )
+  ids.splice(at, 0, id)
+  return ids
 }
 
 function removeConversation(state: SessionState, id: ConversationId): SessionState {
@@ -126,28 +175,36 @@ function upsertMessage(
   const window = state.histories[conversationId]
   if (!window?.ready) return state
 
-  const existing = window.messages.findIndex((m) => m.id === message.id)
-  const messages =
-    existing >= 0
-      ? window.messages.map((m) => (m.id === message.id ? message : m))
-      : [...window.messages, message].sort((a, b) => a.timestamp - b.timestamp || a.id - b.id)
+  const current = window.messages
+  const existing = current.findIndex((m) => m.id === message.id)
+  let messages: Message[]
+  if (existing >= 0) {
+    messages = current.slice()
+    messages[existing] = message
+  } else {
+    const last = current[current.length - 1]
+    if (last === undefined || compareMessages(last, message) <= 0) {
+      // The usual case: a message that just happened goes at the end.
+      messages = [...current, message]
+    } else {
+      messages = current.slice()
+      messages.splice(insertionIndex(current, message, compareMessages), 0, message)
+    }
+  }
 
   const updated: MessageWindow = { ...window, messages }
   return { ...state, histories: { ...state.histories, [conversationId]: updated } }
 }
 
-function applyTransfer(
-  state: SessionState,
-  progress: { messageId: number; index: number; done: number; total: number; result?: number },
-): SessionState {
-  const key = transferKey(progress.messageId, progress.index)
-
-  // A report carrying a result is the last one for that index, so the entry retires rather
-  // than sitting at 100% for ever.
-  if (progress.result !== undefined) {
-    const { [key]: _done, ...transfers } = state.transfers
-    return { ...state, transfers }
-  }
-
-  return { ...state, transfers: { ...state.transfers, [key]: { ...progress } } }
+/**
+ * An older page in front of what is already loaded. Both are ascending and the page was asked
+ * for from before the oldest loaded message, so they concatenate; the sort is only for a seam
+ * that turns out not to be one.
+ */
+export function mergePages(older: Message[], previous: Message[]): Message[] {
+  if (previous.length === 0) return older
+  if (older.length === 0) return previous
+  const all = [...older, ...previous]
+  const seam = compareMessages(older[older.length - 1] as Message, previous[0] as Message)
+  return seam <= 0 ? all : all.sort(compareMessages)
 }

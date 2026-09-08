@@ -79,7 +79,7 @@ using Sink = std::function<void(Frame)>;
 
 /// One libsession Client behind one ordered frame stream.
 ///
-/// Deliberately sets **no libsession dispatcher**. `callbacks.hpp` prescribes handlers that copy
+/// Deliberately sets **no libsession dispatcher**. `callbacks.hpp` prescribes handlers that move
 /// their argument into the application's own queue and return, which is exactly what filling a
 /// frame and enqueueing it is - so the handlers run inline on Core's loop and the platform
 /// adapter owns the hop onto the JavaScript thread. Installing a dispatcher as well would add a

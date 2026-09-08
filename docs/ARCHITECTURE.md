@@ -32,9 +32,9 @@ imports ui, state, app, client and localization; nothing imports an app.
 ## The bridge
 
 `packages/bridge-types` is the protocol: TypeScript types, and nothing else. `Frame` is what the
-shim emits (a `Response` or a `BridgeEvent`), `Request` is what it accepts, and every value that
+shim emits (a `Response` or a `SessionEvent`), `Request` is what it accepts, and every value that
 crosses is a plain object of exactly the type a screen renders - the C++ builds it, no codec in
-between. Three decisions are worth knowing before changing anything:
+between. Two decisions are worth knowing before changing anything:
 
 **Responses ride the same stream as events.** libsession's contract is that a display can be
 built by asking once and then applying events. That only holds if a `conversation-list-replaced`
@@ -48,11 +48,6 @@ on the CallInvoker, and half of the shim's commands answer synchronously.
 
 **Every event carries whole state.** Never an id to go and fetch. That is what makes a display
 bindable, applying the same event twice harmless, and startup race-free.
-
-**Progress has sharp edges, kept sharp.** The first report of an attachment transfer is `0/0`
-and means _started_. `result` absent means still going. `result === 0` means accepted and is
-the only thing that means finished - `done === total` does not. Reports for one index are
-ordered and exactly one carries a result; different indexes interleave.
 
 Numbers are `number` on both sides: every 64-bit value is a unix-millisecond timestamp, a sqlite
 rowid or a byte count, all far inside 2^53, and the C++ carries them as doubles.
@@ -106,13 +101,18 @@ never touches again; the preload needs nothing from Node and the renderer runs s
 `packages/bridge-rn` is the Nitro module. Its spec names the protocol types through nitrogen's
 `CustomType` as opaque brands pointing at `jsi.hpp`, because nitrogen cannot generate a struct
 for a TypeScript union; the one adapter that touches the spec casts the brand to the real type.
+`setSink` is not in the spec: the C++ registers it as a raw JSI method and dispatches the frame
+to the JS thread itself, because Nitro's typed callback wrapper copies its arguments once on the
+way there, and the frame is the one thing this module exists not to copy.
 
 Two commands in the protocol have no libsession counterpart and answer with an error rather than
 something that half works. `approveConversation`: approval is not a flag anyone sets, it is
 recorded by messages flowing, so writing to someone is what approves them. `pollOnce`: Core owns
 its poll ticker and exposes no one-shot entry point. Both are open questions in `STATUS.md`.
-Attachment bytes do not cross the bridge at all yet: the cache files are encrypted and reading
-them is a design of its own, also in `STATUS.md`.
+Attachments do not cross the bridge at all: not the bytes, not the metadata on a message, not
+the transfer progress, not the per-conversation auto-download setting. Reading a cache file
+libsession wrote means decrypting it, which is a design of its own - see `STATUS.md` - and the
+rest was protocol surface for a feature no screen offers yet.
 
 ## The fake, and why it is not a stub
 
@@ -302,3 +302,36 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   committing generated C++: that argument was a pinned `protoc` on a job with no compiler, and the
   generator is Node, which every job has. Attachment bytes were deliberately left out of the
   protocol until attachments are designed; the cache files are encrypted.
+
+- **2026-09-08 - One materialisation per frame on mobile; desktop keeps two.** An audit of every
+  copy between libsession and a screen. Fixed here: Nitro's `AsyncJSCallback::operator()` passes
+  its arguments on as lvalues and so deep-copied every frame before the hop, which is why
+  `setSink` is now a raw JSI method; the shim moves out of everything libsession hands over by
+  value (both list-replaced events, every query result); the facade passes events through by
+  reference; the store rebuilds only the containers on the path to a change, maintains the
+  conversation order by insertion instead of re-sorting, and keeps an order array a rank-neutral
+  update did not touch. Left as is, deliberately: the desktop hop. The addon builds V8 objects in
+  the main process and structured clone builds them again in the renderer. JSON text from C++
+  with `JSON.parse` in the renderer would have made it one materialisation plus a string memcpy,
+  at the price of a third codegen emitter and a text hop; the addon in the renderer would have
+  made it one, at the price of nodeIntegration in a window that renders untrusted messages.
+  Neither was worth it for a frame stream this size. The libsession half of the audit - the four
+  `const&` change callbacks hand over a temporary the caller destroys next, and
+  `_emit_lists_replaced` copies both lists into by-value parameters - is fixed on the `client`
+  branch by passing those values by value and moving out of the emit lambdas.
+
+- **2026-09-08 - Attachments left the protocol until there is a design for them.** `Attachment`,
+  `OutgoingAttachment`, `AttachmentProgress`, the `attachment-progress` and
+  `display-picture-progress` events, the `autoDownload` conversation setting and the facade's
+  progress-callback routing are all gone. The bytes were never going to cross (see the entry
+  above), and what was left described a feature nothing renders: a `Message.attachments` every
+  screen ignored, a progress stream nothing subscribed to, and a routing mechanism in the facade
+  whose only user was a retry nobody could observe. Two things fell out of it. `BridgeEvent` and
+  `SessionEvent` differed in exactly one arm - the request id on a transfer report - so with that
+  arm gone there is one union, `SessionEvent`, and the facade hands the shim's own object to
+  listeners rather than rebuilding it. And `retrySend` now passes libsession an empty upload
+  handler, which it documents as "report nothing" rather than a handler that does nothing.
+  `SendState` keeps `uploading` and `unsendable`, which only attachments can reach: they are
+  libsession's states, and the shim's switch over them has to name every one. This supersedes
+  the 2026-09-04 entry on the three wrong wire fields, two of which were `Attachment`'s.
+

@@ -28,7 +28,7 @@ bridge. Only the C++ is missing from that path.
 | `@session/basic-types` `@session/theme-tokens` | copied from session-pkgs, trimmed                                                   |
 | `@session/localization`                        | copied, plus a markup parser for the `<b>`/`<br/>` in the catalogue                 |
 | `@session/test-ids`                            | the element registry                                                                |
-| `@session/bridge-types`                        | the protocol: domain types, `Command`, `Result`, `BridgeEvent`, `Frame`             |
+| `@session/bridge-types`                        | the protocol: domain types, `Command`, `Result`, `SessionEvent`, `Frame`             |
 | `@session/bridge-codegen`                      | generates the shim's C++ structs and JSI/N-API converters from bridge-types         |
 | `@session/client`                              | the SessionClient facade, and the fake                                              |
 | `@session/client-contract`                     | 9 behavioural scenarios, running against the fake                                   |
@@ -49,9 +49,10 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
 
 - iOS device builds and a release-shaped xcframework. The simulator works; only one slice has
   ever been built, and nothing has been signed with a real identity.
-- Attachment commands (`AttachmentData`, `SaveAttachment`) and push are not in the shim's
-  dispatch yet. They answer with an error naming themselves rather than silently doing nothing.
-- Attachments. Onboarding is one button and restoring from a recovery phrase has no screen.
+- Push. `setPushToken` and `handlePushPayload` are in the protocol but not in the shim's
+  dispatch, and answer with an error naming themselves rather than silently doing nothing.
+- Attachments, in any form: nothing about them is in the protocol at all. Onboarding is one
+  button and restoring from a recovery phrase has no screen.
 - Anything a message can be beyond text: no reactions, replies, edits, deletes or read receipts.
 - The `e2e-full` workflow is a stub.
 
@@ -94,10 +95,12 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
      archives, sqlite3mc and utf8proc. `bridge-core` names them on the link line; nothing in the
      bundle says it should have to.
 
-- **Attachment bytes.** Neither `attachmentData` nor `saveAttachment` is in the protocol. The
-  cache files libsession writes are encrypted, so reading one for display needs a decrypting
-  path - a custom protocol on desktop, something equivalent on mobile - rather than bytes over
-  the bridge, and that is a design of its own.
+- **Attachments.** Nothing about them is in the protocol: no metadata on a message, no
+  transfer progress, no auto-download setting, no command to fetch or save one. The cache files
+  libsession writes are encrypted, so reading one for display needs a decrypting path - a custom
+  protocol on desktop, something equivalent on mobile - rather than bytes over the bridge. The
+  metadata and the progress events were there before anything rendered them and went with the
+  bytes; whatever comes back should be designed with the screens that use it.
 
 - **Mnemonic handling.** libsession owns the word list, so no TypeScript library is needed,
   but once words cross into JavaScript they cannot be wiped. Keep them out of logs and out of

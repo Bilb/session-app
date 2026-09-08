@@ -32,3 +32,5 @@ endif()
 add_subdirectory(${CMAKE_SOURCE_DIR}/../../bridge-core bridge-core)
 
 target_link_libraries(SessionBridgeRN session::bridge-core log)
+
+session_bridge_strict_switches(SessionBridgeRN)

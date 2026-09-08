@@ -13,7 +13,13 @@ export type ConversationId = string
 
 export type ConversationKind = 'dm' | 'group' | 'community'
 
-/** Mirrors libsession's own send-state machine, value for value. */
+/**
+ * Mirrors libsession's own send-state machine, value for value.
+ *
+ * Complete rather than trimmed to what this bridge can reach: `uploading` and `unsendable` are
+ * both about attachments, which nothing here can send yet, but they are libsession's states and
+ * the shim's switch over them has to name every one.
+ */
 export type SendState =
   | 'pending'
   | 'sending'
@@ -26,8 +32,6 @@ export type SendState =
 
 export type Deletion = 'here' | 'everywhere'
 
-export type AutoDownload = 'none' | 'image-attachments' | 'all'
-
 /**
  * Where a page of history starts. Newest-first, keyed by (timestamp, id) so that a page seam
  * cannot duplicate or skip a message that shares a timestamp with its neighbour.
@@ -35,36 +39,6 @@ export type AutoDownload = 'none' | 'image-attachments' | 'all'
 export interface MessageCursor {
   timestamp: number
   id: number
-}
-
-export interface Attachment {
-  index: number
-  contentType?: string
-  filename?: string
-  caption?: string
-  /** Unset until an outgoing attachment has uploaded; a sender's claim on an incoming one. */
-  size?: number
-  voiceMessage: boolean
-  width?: number
-  height?: number
-  /**
-   * On the file server: an outgoing attachment's upload finished, and always true for an
-   * incoming one. Deliberately not "the bytes are here" - libsession records no local path,
-   * because the application chose it and a stored copy would go stale the moment the file moved.
-   */
-  uploaded: boolean
-}
-
-/** A file being attached to a message that has not been sent yet. */
-export interface OutgoingAttachment {
-  path: string
-  contentType?: string
-  filename?: string
-  caption?: string
-  voiceMessage?: boolean
-  /** libsession does not measure the image; whoever picked the file supplies these. */
-  width?: number
-  height?: number
 }
 
 /**
@@ -87,7 +61,6 @@ export interface Message {
   outgoing: boolean
   /** Incoming messages have no send state of their own and report `sent`. */
   sendState: SendState
-  attachments: Attachment[]
   replyTo?: Reply
   deleted?: Deletion
 }
@@ -106,8 +79,6 @@ export interface Conversation {
   markedUnread: boolean
   snippet?: string
   muteUntil?: number
-  /** Unset upstream means "inherit the account default" and crosses as `none`; no screen offers the distinction. */
-  autoDownload: AutoDownload
   request: boolean
   awaitingApproval: boolean
   noteToSelf: boolean
@@ -120,24 +91,3 @@ export interface AccountInfo {
   displayName?: string
   networkAttached: boolean
 }
-
-/**
- * One report about one attachment transfer.
- *
- * The first report of a transfer is `{done: 0, total: 0}` and means it started. `result`
- * absent means still going; `result === 0` means accepted and is the only thing that means
- * finished - `done === total` does not. Any other value is a failure: a file server status, a
- * negative network code, or one of the sentinels below. Reports for one index are ordered and
- * exactly one carries a result; different indexes interleave.
- */
-export interface AttachmentProgress {
-  messageId: number
-  index: number
-  done: number
-  total: number
-  result?: number
-}
-
-export const ATTACHMENT_OK = 0
-export const ATTACHMENT_FILE_MISSING = -20001
-export const ATTACHMENT_UNREADABLE = -20002

@@ -8,14 +8,22 @@ import type { Field, Model, Struct } from '#src/model'
  * rather than written as `undefined`, which is what exactOptionalPropertyTypes on the other side
  * means.
  */
+/** `createFromAscii` reads bytes as code points, so a tag with anything else would come out wrong. */
+function assertAscii(text: string, where: string): void {
+  // eslint-disable-next-line no-control-regex
+  if (!/^[\x00-\x7f]*$/.test(text)) throw new Error(`${where}: "${text}" is not ASCII`)
+}
+
 export function emitJsi(model: Model, source: string): string {
   const prop = (name: string) => `PropNameIDCache::get(runtime, "${name}")`
   const conv = (type: string) => `JSIConverter<${type}>`
+  const ascii = (text: string) => `${NAMESPACE}::ascii(runtime, ${text})`
 
   const body = forEachDeclaration(model, {
     enum: ({ enum: e }) => {
       const T = `${NAMESPACE}::${e.name}`
       const traits = `${NAMESPACE}::EnumTraits<${T}>`
+      for (const m of e.members) assertAscii(m, `${e.name}.${m}`)
       return `template <>
 struct JSIConverter<${T}> final {
     static inline ${T} fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
@@ -26,7 +34,7 @@ struct JSIConverter<${T}> final {
         return *parsed;
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, ${T} arg) {
-        return ${conv('std::string')}::toJSI(runtime, std::string{${traits}::to_string(arg)});
+        return ${ascii(`${traits}::to_string(arg)`)};
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
         return value.isString() &&
@@ -92,8 +100,9 @@ ${arms}
       : `        return ${T}{};`
     const writes: string[] = []
     if (s.tag !== undefined) {
+      assertAscii(s.tag, `${s.name}.type`)
       writes.push(
-        `        obj.setProperty(runtime, ${prop('type')}, ${conv('std::string')}::toJSI(runtime, std::string{${T}::type_tag}));`,
+        `        obj.setProperty(runtime, ${prop('type')}, ${ascii(`${T}::type_tag`)});`,
       )
     }
     for (const f of s.fields) {
@@ -150,10 +159,21 @@ ${canConvert}
 
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <variant>
 
 #include "types.hpp"
+
+namespace session_bridge {
+
+/// A tag or enum spelling as a JavaScript string, straight from the constexpr table: the
+/// generator has checked these are ASCII, so no std::string is built in between.
+inline facebook::jsi::Value ascii(facebook::jsi::Runtime& runtime, std::string_view text) {
+    return facebook::jsi::String::createFromAscii(runtime, text.data(), text.size());
+}
+
+}  // namespace session_bridge
 
 namespace margelo::nitro {
 

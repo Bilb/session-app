@@ -1,16 +1,7 @@
 export { createSessionClient } from './createSessionClient'
 export { createNativeBridgeTransport } from './nativeTransport'
-export {
-  ATTACHMENT_FILE_MISSING,
-  ATTACHMENT_OK,
-  ATTACHMENT_UNREADABLE,
-} from '@session/bridge-types'
 export type {
   AccountInfo,
-  Attachment,
-  AttachmentProgress,
-  AutoDownload,
-  BridgeEvent,
   Command,
   Conversation,
   ConversationId,
@@ -19,7 +10,6 @@ export type {
   Frame,
   Message,
   MessageCursor,
-  OutgoingAttachment,
   Reply,
   Request,
   Response,
@@ -29,10 +19,4 @@ export type {
   SessionEvent,
 } from '@session/bridge-types'
 export { BridgeClosedError, SessionClientError } from './errors'
-export type {
-  BridgeTransport,
-  OutgoingMessage,
-  ProgressCallback,
-  SessionClient,
-  Unsubscribe,
-} from './types'
+export type { BridgeTransport, OutgoingMessage, SessionClient, Unsubscribe } from './types'

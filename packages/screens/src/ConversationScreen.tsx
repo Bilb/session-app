@@ -176,8 +176,8 @@ function MessageRow({ message, index }: { message: Message; index: number }) {
               textDecorationLine="underline"
               testID={ELEMENT.conversation.messageRetry}
               onPress={() => {
-                // Resumes rather than restarts, so an attachment that already uploaded is not
-                // sent twice. The state comes back as an update; nothing to do here.
+                // Resumes rather than restarts. The state comes back as an update, so
+                // there is nothing to do here.
                 void actions.retry(message.id)
               }}
             >

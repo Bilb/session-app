@@ -113,7 +113,6 @@ export class FakeSessionClient implements SessionClient {
       priority: 0,
       unreadCount: 0,
       markedUnread: false,
-      autoDownload: 'none',
       request: false,
       awaitingApproval: false,
       noteToSelf: sessionId === this.account.sessionId,

@@ -74,7 +74,7 @@ describe.skipIf(target === undefined)('sending a test message', () => {
     const opened = await ask({ type: 'openDm', sessionId: target })
     console.log('openDm:', JSON.stringify(opened))
 
-    const sent = await ask({ type: 'sendMessage', conversationId: target, body, attachments: [] })
+    const sent = await ask({ type: 'sendMessage', conversationId: target, body })
     console.log('sendMessage:', JSON.stringify(sent))
 
     // The send is two-stage and the bridge going away takes the queue with it, so this waits

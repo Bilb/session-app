@@ -151,7 +151,6 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     type: 'messageId',
     messageId: await client.sendMessage(cmd.conversationId, {
       body: cmd.body,
-      ...(cmd.attachments.length === 0 ? {} : { attachments: cmd.attachments }),
       ...(cmd.replyTo === undefined ? {} : { replyTo: cmd.replyTo }),
     }),
   }),

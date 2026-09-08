@@ -76,29 +76,6 @@ struct EnumTraits<ConversationKind> {
     }
 };
 
-enum class AutoDownload {
-    none,
-    image_attachments,
-    all,
-};
-
-template <>
-struct EnumTraits<AutoDownload> {
-    static constexpr std::string_view name = "AutoDownload";
-    static constexpr std::array<std::string_view, 3> names{"none", "image-attachments", "all"};
-
-    static constexpr std::string_view to_string(AutoDownload value) {
-        return names[static_cast<std::size_t>(value)];
-    }
-
-    static constexpr std::optional<AutoDownload> parse(std::string_view text) {
-        for (std::size_t i = 0; i < names.size(); i++)
-            if (names[i] == text)
-                return static_cast<AutoDownload>(i);
-        return std::nullopt;
-    }
-};
-
 /// A flattened AnyConversation: the fields every kind has, plus the DM-only ones.
 struct Conversation {
     std::string id;
@@ -113,15 +90,13 @@ struct Conversation {
     bool marked_unread;
     std::optional<std::string> snippet;
     std::optional<double> mute_until;
-    /// Unset upstream means "inherit the account default" and crosses as `none`; no screen offers the distinction.
-    ::session_bridge::AutoDownload auto_download;
     bool request;
     bool awaiting_approval;
     bool note_to_self;
     bool blocked;
 
-    Conversation(std::string id_, ::session_bridge::ConversationKind kind_, std::string display_name_, std::optional<std::string> nickname_, double last_activity_, double priority_, double unread_count_, bool marked_unread_, std::optional<std::string> snippet_, std::optional<double> mute_until_, ::session_bridge::AutoDownload auto_download_, bool request_, bool awaiting_approval_, bool note_to_self_, bool blocked_) :
-            id{std::move(id_)}, kind{std::move(kind_)}, display_name{std::move(display_name_)}, nickname{std::move(nickname_)}, last_activity{std::move(last_activity_)}, priority{std::move(priority_)}, unread_count{std::move(unread_count_)}, marked_unread{std::move(marked_unread_)}, snippet{std::move(snippet_)}, mute_until{std::move(mute_until_)}, auto_download{std::move(auto_download_)}, request{std::move(request_)}, awaiting_approval{std::move(awaiting_approval_)}, note_to_self{std::move(note_to_self_)}, blocked{std::move(blocked_)} {}
+    Conversation(std::string id_, ::session_bridge::ConversationKind kind_, std::string display_name_, std::optional<std::string> nickname_, double last_activity_, double priority_, double unread_count_, bool marked_unread_, std::optional<std::string> snippet_, std::optional<double> mute_until_, bool request_, bool awaiting_approval_, bool note_to_self_, bool blocked_) :
+            id{std::move(id_)}, kind{std::move(kind_)}, display_name{std::move(display_name_)}, nickname{std::move(nickname_)}, last_activity{std::move(last_activity_)}, priority{std::move(priority_)}, unread_count{std::move(unread_count_)}, marked_unread{std::move(marked_unread_)}, snippet{std::move(snippet_)}, mute_until{std::move(mute_until_)}, request{std::move(request_)}, awaiting_approval{std::move(awaiting_approval_)}, note_to_self{std::move(note_to_self_)}, blocked{std::move(blocked_)} {}
 };
 
 struct ConversationListResult {
@@ -143,6 +118,10 @@ struct ConversationResult {
 };
 
 /// Mirrors libsession's own send-state machine, value for value.
+///
+/// Complete rather than trimmed to what this bridge can reach: `uploading` and `unsendable` are
+/// both about attachments, which nothing here can send yet, but they are libsession's states and
+/// the shim's switch over them has to name every one.
 enum class SendState {
     pending,
     sending,
@@ -168,25 +147,6 @@ struct EnumTraits<SendState> {
                 return static_cast<SendState>(i);
         return std::nullopt;
     }
-};
-
-struct Attachment {
-    double index;
-    std::optional<std::string> content_type;
-    std::optional<std::string> filename;
-    std::optional<std::string> caption;
-    /// Unset until an outgoing attachment has uploaded; a sender's claim on an incoming one.
-    std::optional<double> size;
-    bool voice_message;
-    std::optional<double> width;
-    std::optional<double> height;
-    /// On the file server: an outgoing attachment's upload finished, and always true for an
-    /// incoming one. Deliberately not "the bytes are here" - libsession records no local path,
-    /// because the application chose it and a stored copy would go stale the moment the file moved.
-    bool uploaded;
-
-    Attachment(double index_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<std::string> caption_, std::optional<double> size_, bool voice_message_, std::optional<double> width_, std::optional<double> height_, bool uploaded_) :
-            index{std::move(index_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, caption{std::move(caption_)}, size{std::move(size_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)}, uploaded{std::move(uploaded_)} {}
 };
 
 /// The message a reply points at, resolved one level deep only: a reply to a reply shows its own
@@ -232,12 +192,11 @@ struct Message {
     bool outgoing;
     /// Incoming messages have no send state of their own and report `sent`.
     ::session_bridge::SendState send_state;
-    std::vector<::session_bridge::Attachment> attachments;
     std::optional<::session_bridge::Reply> reply_to;
     std::optional<::session_bridge::Deletion> deleted;
 
-    Message(double id_, std::string conversation_id_, std::string author_, double timestamp_, std::string body_, bool outgoing_, ::session_bridge::SendState send_state_, std::vector<::session_bridge::Attachment> attachments_, std::optional<::session_bridge::Reply> reply_to_, std::optional<::session_bridge::Deletion> deleted_) :
-            id{std::move(id_)}, conversation_id{std::move(conversation_id_)}, author{std::move(author_)}, timestamp{std::move(timestamp_)}, body{std::move(body_)}, outgoing{std::move(outgoing_)}, send_state{std::move(send_state_)}, attachments{std::move(attachments_)}, reply_to{std::move(reply_to_)}, deleted{std::move(deleted_)} {}
+    Message(double id_, std::string conversation_id_, std::string author_, double timestamp_, std::string body_, bool outgoing_, ::session_bridge::SendState send_state_, std::optional<::session_bridge::Reply> reply_to_, std::optional<::session_bridge::Deletion> deleted_) :
+            id{std::move(id_)}, conversation_id{std::move(conversation_id_)}, author{std::move(author_)}, timestamp{std::move(timestamp_)}, body{std::move(body_)}, outgoing{std::move(outgoing_)}, send_state{std::move(send_state_)}, reply_to{std::move(reply_to_)}, deleted{std::move(deleted_)} {}
 };
 
 /// Oldest first, whatever page it is - the direction a transcript is read. libsession answers
@@ -322,158 +281,119 @@ struct ResponseFrame {
             response{std::move(response_)} {}
 };
 
-struct ConversationAddedBridgeEvent {
+struct ConversationAddedSessionEvent {
     static constexpr std::string_view type_tag = "conversation-added";
 
     ::session_bridge::Conversation conversation;
 
-    explicit ConversationAddedBridgeEvent(::session_bridge::Conversation conversation_) :
+    explicit ConversationAddedSessionEvent(::session_bridge::Conversation conversation_) :
             conversation{std::move(conversation_)} {}
 };
 
-struct ConversationUpdatedBridgeEvent {
+struct ConversationUpdatedSessionEvent {
     static constexpr std::string_view type_tag = "conversation-updated";
 
     ::session_bridge::Conversation conversation;
 
-    explicit ConversationUpdatedBridgeEvent(::session_bridge::Conversation conversation_) :
+    explicit ConversationUpdatedSessionEvent(::session_bridge::Conversation conversation_) :
             conversation{std::move(conversation_)} {}
 };
 
-struct ConversationRemovedBridgeEvent {
+struct ConversationRemovedSessionEvent {
     static constexpr std::string_view type_tag = "conversation-removed";
 
     std::string conversation_id;
 
-    explicit ConversationRemovedBridgeEvent(std::string conversation_id_) :
+    explicit ConversationRemovedSessionEvent(std::string conversation_id_) :
             conversation_id{std::move(conversation_id_)} {}
 };
 
-struct ConversationListReplacedBridgeEvent {
+struct ConversationListReplacedSessionEvent {
     static constexpr std::string_view type_tag = "conversation-list-replaced";
 
     std::vector<::session_bridge::Conversation> conversations;
 
-    explicit ConversationListReplacedBridgeEvent(std::vector<::session_bridge::Conversation> conversations_) :
+    explicit ConversationListReplacedSessionEvent(std::vector<::session_bridge::Conversation> conversations_) :
             conversations{std::move(conversations_)} {}
 };
 
-struct RequestListReplacedBridgeEvent {
+struct RequestListReplacedSessionEvent {
     static constexpr std::string_view type_tag = "request-list-replaced";
 
     std::vector<::session_bridge::Conversation> conversations;
 
-    explicit RequestListReplacedBridgeEvent(std::vector<::session_bridge::Conversation> conversations_) :
+    explicit RequestListReplacedSessionEvent(std::vector<::session_bridge::Conversation> conversations_) :
             conversations{std::move(conversations_)} {}
 };
 
-struct MessageAddedBridgeEvent {
+struct MessageAddedSessionEvent {
     static constexpr std::string_view type_tag = "message-added";
 
     std::string conversation_id;
     ::session_bridge::Message message;
 
-    MessageAddedBridgeEvent(std::string conversation_id_, ::session_bridge::Message message_) :
+    MessageAddedSessionEvent(std::string conversation_id_, ::session_bridge::Message message_) :
             conversation_id{std::move(conversation_id_)}, message{std::move(message_)} {}
 };
 
-struct MessageUpdatedBridgeEvent {
+struct MessageUpdatedSessionEvent {
     static constexpr std::string_view type_tag = "message-updated";
 
     std::string conversation_id;
     ::session_bridge::Message message;
 
-    MessageUpdatedBridgeEvent(std::string conversation_id_, ::session_bridge::Message message_) :
+    MessageUpdatedSessionEvent(std::string conversation_id_, ::session_bridge::Message message_) :
             conversation_id{std::move(conversation_id_)}, message{std::move(message_)} {}
 };
 
-struct HistoryReplacedBridgeEvent {
+struct HistoryReplacedSessionEvent {
     static constexpr std::string_view type_tag = "history-replaced";
 
     std::string conversation_id;
 
-    explicit HistoryReplacedBridgeEvent(std::string conversation_id_) :
+    explicit HistoryReplacedSessionEvent(std::string conversation_id_) :
             conversation_id{std::move(conversation_id_)} {}
-};
-
-struct DisplayPictureProgressBridgeEvent {
-    static constexpr std::string_view type_tag = "display-picture-progress";
-
-    std::string conversation_id;
-    double done;
-    double total;
-    std::optional<double> result;
-
-    DisplayPictureProgressBridgeEvent(std::string conversation_id_, double done_, double total_, std::optional<double> result_) :
-            conversation_id{std::move(conversation_id_)}, done{std::move(done_)}, total{std::move(total_)}, result{std::move(result_)} {}
 };
 
 /// libsession's own log lines, forwarded when the bridge was opened with a log level. Worth
 /// having because the state machine reports what happened and never why.
-struct LogBridgeEvent {
+struct LogSessionEvent {
     static constexpr std::string_view type_tag = "log";
 
     std::string message;
     std::string category;
     std::string level;
 
-    LogBridgeEvent(std::string message_, std::string category_, std::string level_) :
+    LogSessionEvent(std::string message_, std::string category_, std::string level_) :
             message{std::move(message_)}, category{std::move(category_)}, level{std::move(level_)} {}
 };
 
-/// One report about one attachment transfer.
+/// Change notifications, one per libsession callback, and what `SessionClient.onEvent` delivers.
 ///
-/// The first report of a transfer is `{done: 0, total: 0}` and means it started. `result`
-/// absent means still going; `result === 0` means accepted and is the only thing that means
-/// finished - `done === total` does not. Any other value is a failure: a file server status, a
-/// negative network code, or one of the sentinels below. Reports for one index are ordered and
-/// exactly one carries a result; different indexes interleave.
-struct AttachmentProgress {
-    double message_id;
-    double index;
-    double done;
-    double total;
-    std::optional<double> result;
-
-    AttachmentProgress(double message_id_, double index_, double done_, double total_, std::optional<double> result_) :
-            message_id{std::move(message_id_)}, index{std::move(index_)}, done{std::move(done_)}, total{std::move(total_)}, result{std::move(result_)} {}
-};
-
-struct AttachmentProgressBridgeEvent {
-    static constexpr std::string_view type_tag = "attachment-progress";
-
-    /// Set when this transfer belongs to a command the app issued.
-    std::optional<double> request_id;
-    /// Set instead when libsession fetched it on its own (auto-download).
-    std::optional<std::string> conversation_id;
-    ::session_bridge::AttachmentProgress progress;
-
-    AttachmentProgressBridgeEvent(std::optional<double> request_id_, std::optional<std::string> conversation_id_, ::session_bridge::AttachmentProgress progress_) :
-            request_id{std::move(request_id_)}, conversation_id{std::move(conversation_id_)}, progress{std::move(progress_)} {}
-};
-
-/// An event as the shim emits it. Differs from `SessionEvent` in exactly one arm: a transfer
-/// that a command asked for is tagged with that command's `requestId`, and the facade routes
-/// it to the command's progress callback instead of broadcasting it.
-using BridgeEvent = std::variant<
-        ConversationAddedBridgeEvent,
-        ConversationUpdatedBridgeEvent,
-        ConversationRemovedBridgeEvent,
-        ConversationListReplacedBridgeEvent,
-        RequestListReplacedBridgeEvent,
-        MessageAddedBridgeEvent,
-        MessageUpdatedBridgeEvent,
-        HistoryReplacedBridgeEvent,
-        DisplayPictureProgressBridgeEvent,
-        LogBridgeEvent,
-        AttachmentProgressBridgeEvent>;
+/// Every one of these carries the whole new state rather than an id to go and fetch. That is what
+/// makes a display bindable, applying the same event twice harmless, and startup race-free:
+/// whatever arrives between construction and the first query lands on top of the answer without
+/// contradicting it.
+///
+/// The shim emits these and the app reads them, with nothing in between rewriting an arm - which
+/// is why there is one type rather than a wire one and an app one.
+using SessionEvent = std::variant<
+        ConversationAddedSessionEvent,
+        ConversationUpdatedSessionEvent,
+        ConversationRemovedSessionEvent,
+        ConversationListReplacedSessionEvent,
+        RequestListReplacedSessionEvent,
+        MessageAddedSessionEvent,
+        MessageUpdatedSessionEvent,
+        HistoryReplacedSessionEvent,
+        LogSessionEvent>;
 
 struct EventFrame {
     static constexpr std::string_view type_tag = "event";
 
-    ::session_bridge::BridgeEvent event;
+    ::session_bridge::SessionEvent event;
 
-    explicit EventFrame(::session_bridge::BridgeEvent event_) :
+    explicit EventFrame(::session_bridge::SessionEvent event_) :
             event{std::move(event_)} {}
 };
 
@@ -672,31 +592,15 @@ struct GetMessagesCommand {
             conversation_id{std::move(conversation_id_)}, limit{std::move(limit_)}, before{std::move(before_)}, include_deleted{std::move(include_deleted_)} {}
 };
 
-/// A file being attached to a message that has not been sent yet.
-struct OutgoingAttachment {
-    std::string path;
-    std::optional<std::string> content_type;
-    std::optional<std::string> filename;
-    std::optional<std::string> caption;
-    std::optional<bool> voice_message;
-    /// libsession does not measure the image; whoever picked the file supplies these.
-    std::optional<double> width;
-    std::optional<double> height;
-
-    OutgoingAttachment(std::string path_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<std::string> caption_, std::optional<bool> voice_message_, std::optional<double> width_, std::optional<double> height_) :
-            path{std::move(path_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, caption{std::move(caption_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)} {}
-};
-
 struct SendMessageCommand {
     static constexpr std::string_view type_tag = "sendMessage";
 
     std::string conversation_id;
     std::string body;
-    std::vector<::session_bridge::OutgoingAttachment> attachments;
     std::optional<double> reply_to;
 
-    SendMessageCommand(std::string conversation_id_, std::string body_, std::vector<::session_bridge::OutgoingAttachment> attachments_, std::optional<double> reply_to_) :
-            conversation_id{std::move(conversation_id_)}, body{std::move(body_)}, attachments{std::move(attachments_)}, reply_to{std::move(reply_to_)} {}
+    SendMessageCommand(std::string conversation_id_, std::string body_, std::optional<double> reply_to_) :
+            conversation_id{std::move(conversation_id_)}, body{std::move(body_)}, reply_to{std::move(reply_to_)} {}
 };
 
 struct RetrySendCommand {

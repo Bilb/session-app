@@ -82,7 +82,7 @@ export function pascal(name: string): string {
     .join('')
 }
 
-/** `displayName` becomes `display_name`; `image-attachments` becomes `image_attachments`. */
+/** `displayName` becomes `display_name`; `conversation-added` becomes `conversation_added`. */
 export function snake(name: string): string {
   const s = name
     .replace(/([a-z0-9])([A-Z])/g, '$1_$2')

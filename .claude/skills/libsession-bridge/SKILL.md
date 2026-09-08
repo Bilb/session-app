@@ -57,10 +57,6 @@ build fails until it does - and `convert.cpp` a `to_bridge()` if a new libsessio
 implementation. Nothing converts anything: the object the shim builds is the object the screen
 gets.
 
-If the call reports progress, register the callback by request id; the facade routes
-`attachment-progress` events carrying a `requestId` to it and retires the registration when
-every index has reported a result.
-
 Add the new shape to the frames in `packages/bridge-node/tests/addon.test.ts`: `echoTestFrame`
 pushes each one through both converter directions and asserts it came back exactly.
 

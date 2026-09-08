@@ -24,16 +24,15 @@ export type NativeRequest = CustomType<
 >
 
 /**
- * The bridge, as JSI sees it.
+ * The bridge, as nitrogen sees it.
  *
- * Three methods and one callback - the same surface the N-API addon exposes, because both are
- * transports in front of the same shim and neither is allowed an opinion of its own.
- *
- * `setSink` before `init`: libsession publishes the state it already has while the Client is
- * being constructed, so a sink installed afterwards has already missed the first frames.
+ * The same surface the N-API addon exposes, because both are transports in front of the same
+ * shim and neither is allowed an opinion of its own - minus `setSink`, which
+ * `HybridSessionBridge` registers by hand as a raw JSI method. Nitro's typed callback wrapper
+ * copies every argument once before the hop to the JS thread, and the frame is the one thing
+ * this module exists not to copy; `index.ts` puts the method back on the exported type.
  */
 export interface SessionBridge extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
-  setSink(onFrame: (frame: NativeFrame) => void): void
   init(options: SessionBridgeOptions): void
   call(request: NativeRequest): void
   close(): void

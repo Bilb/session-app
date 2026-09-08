@@ -26,6 +26,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".node")
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_JS_INC} ${NODE_ADDON_API_DIR})
 target_link_libraries(${PROJECT_NAME} PRIVATE ${CMAKE_JS_LIB} session::bridge-core)
 
+session_bridge_strict_switches(${PROJECT_NAME})
+
 # N-API 8 is the floor: it is what makes one build load in both Node and Electron, which is the
 # whole reason this is an N-API addon rather than a NAN one.
 target_compile_definitions(${PROJECT_NAME} PRIVATE NAPI_VERSION=8)

@@ -22,14 +22,6 @@ export interface MessageWindow {
   fetching: boolean
 }
 
-export interface TransferProgress {
-  messageId: number
-  index: number
-  done: number
-  total: number
-  result?: number
-}
-
 export interface SessionState {
   hydrated: boolean
   account: AccountInfo | null
@@ -41,7 +33,6 @@ export interface SessionState {
   requestOrder: ConversationId[]
 
   histories: Record<ConversationId, MessageWindow>
-  transfers: Record<string, TransferProgress>
 }
 
 export const emptyState: SessionState = {
@@ -52,7 +43,6 @@ export const emptyState: SessionState = {
   requests: {},
   requestOrder: [],
   histories: {},
-  transfers: {},
 }
 
 /** Pinned first, then most recent, then by id so the order never wobbles between renders. */
@@ -60,6 +50,7 @@ export function compareConversations(a: Conversation, b: Conversation): number {
   return b.priority - a.priority || b.lastActivity - a.lastActivity || a.id.localeCompare(b.id)
 }
 
-export function transferKey(messageId: number, index: number): string {
-  return `${messageId}:${index}`
+/** Ascending by timestamp, then id: the order a transcript renders and a page cursor keys on. */
+export function compareMessages(a: Message, b: Message): number {
+  return a.timestamp - b.timestamp || a.id - b.id
 }

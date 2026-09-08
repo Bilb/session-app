@@ -228,7 +228,7 @@ export class FakeAccount {
    * show a spinner for ever after a crash.
    */
   restart(): void {
-    const inFlight: SendState[] = ['pending', 'sending', 'uploading']
+    const inFlight: SendState[] = ['pending', 'sending']
     for (const [id, state] of this.conversations) {
       for (const message of state.messages) {
         // Pending counts: the row was stored but never handed to the network, and the
@@ -251,7 +251,6 @@ export class FakeAccount {
         priority: 0,
         unreadCount: 0,
         markedUnread: false,
-        autoDownload: 'none',
         // Someone we have never spoken to lands in message requests, not the main list.
         request: true,
         awaitingApproval: false,
@@ -268,7 +267,6 @@ export class FakeAccount {
       body,
       outgoing: false,
       sendState: 'sent',
-      attachments: [],
     })
   }
 
@@ -283,7 +281,6 @@ export class FakeAccount {
       outgoing: true,
       // Stored and shown before it is sent - which is why the app needs no optimistic copy.
       sendState: 'pending',
-      attachments: [],
       ...(replyTo === undefined
         ? {}
         : { replyTo: { author: this.sessionId, timestamp: now, messageId: replyTo } }),

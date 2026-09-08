@@ -1,7 +1,7 @@
 import type { Conversation, Message, SessionEvent } from '@session/client'
 import { describe, expect, it } from 'vitest'
 
-import { applyEvent } from '#src/applyEvent'
+import { applyEvent, mergePages } from '#src/applyEvent'
 import { emptyState, type SessionState } from '#src/types'
 
 function conversation(overrides: Partial<Conversation> = {}): Conversation {
@@ -13,7 +13,6 @@ function conversation(overrides: Partial<Conversation> = {}): Conversation {
     priority: 0,
     unreadCount: 0,
     markedUnread: false,
-    autoDownload: 'none',
     request: false,
     awaitingApproval: false,
     noteToSelf: false,
@@ -31,7 +30,6 @@ function message(overrides: Partial<Message> = {}): Message {
     body: 'hello',
     outgoing: false,
     sendState: 'sent',
-    attachments: [],
     ...overrides,
   }
 }
@@ -149,27 +147,6 @@ describe('applyEvent', () => {
     expect(state.histories['05alice']?.messages).toEqual([])
   })
 
-  it('retires a transfer once a report carries a result', () => {
-    const started = applyEvent(emptyState, {
-      type: 'attachment-progress',
-      progress: { messageId: 1, index: 0, done: 0, total: 0 },
-    })
-    expect(started.transfers['1:0']).toBeDefined()
-
-    const halfway = applyEvent(started, {
-      type: 'attachment-progress',
-      progress: { messageId: 1, index: 0, done: 50, total: 100 },
-    })
-    // done === total is not finished; only a result is.
-    expect(halfway.transfers['1:0']?.done).toBe(50)
-
-    const finished = applyEvent(halfway, {
-      type: 'attachment-progress',
-      progress: { messageId: 1, index: 0, done: 100, total: 100, result: 0 },
-    })
-    expect(finished.transfers['1:0']).toBeUndefined()
-  })
-
   it('forgets a removed conversation everywhere at once', () => {
     const state = replay([
       { type: 'conversation-added', conversation: conversation() },
@@ -179,5 +156,155 @@ describe('applyEvent', () => {
     expect(state.conversations['05alice']).toBeUndefined()
     expect(state.conversationOrder).toEqual([])
     expect(state.histories['05alice']).toBeUndefined()
+  })
+
+  it('places an added conversation by rank without disturbing its neighbours', () => {
+    const seeded = replay([
+      {
+        type: 'conversation-list-replaced',
+        conversations: [
+          conversation({ id: 'pinned', lastActivity: 100, priority: 1 }),
+          conversation({ id: 'newer', lastActivity: 3000 }),
+          conversation({ id: 'older', lastActivity: 1000 }),
+        ],
+      },
+    ])
+
+    const front = applyEvent(seeded, {
+      type: 'conversation-added',
+      conversation: conversation({ id: 'top', lastActivity: 1, priority: 2 }),
+    })
+    const middle = applyEvent(seeded, {
+      type: 'conversation-added',
+      conversation: conversation({ id: 'mid', lastActivity: 2000 }),
+    })
+    const end = applyEvent(seeded, {
+      type: 'conversation-added',
+      conversation: conversation({ id: 'last', lastActivity: 5 }),
+    })
+
+    expect(front.conversationOrder).toEqual(['top', 'pinned', 'newer', 'older'])
+    expect(middle.conversationOrder).toEqual(['pinned', 'newer', 'mid', 'older'])
+    expect(end.conversationOrder).toEqual(['pinned', 'newer', 'older', 'last'])
+  })
+
+  it('moves an updated conversation to its new rank', () => {
+    const seeded = replay([
+      {
+        type: 'conversation-list-replaced',
+        conversations: [
+          conversation({ id: 'a', lastActivity: 3000 }),
+          conversation({ id: 'b', lastActivity: 2000 }),
+          conversation({ id: 'c', lastActivity: 1000 }),
+        ],
+      },
+    ])
+
+    const state = applyEvent(seeded, {
+      type: 'conversation-updated',
+      conversation: conversation({ id: 'c', lastActivity: 4000 }),
+    })
+
+    expect(state.conversationOrder).toEqual(['c', 'a', 'b'])
+    expect(state.conversations['c']?.lastActivity).toBe(4000)
+  })
+
+  it('keeps the order array when an update does not change rank', () => {
+    const seeded = replay([
+      {
+        type: 'conversation-list-replaced',
+        conversations: [
+          conversation({ id: 'a', lastActivity: 3000 }),
+          conversation({ id: 'b', lastActivity: 2000 }),
+        ],
+      },
+    ])
+
+    const state = applyEvent(seeded, {
+      type: 'conversation-updated',
+      conversation: conversation({ id: 'b', lastActivity: 2000, unreadCount: 3 }),
+    })
+
+    // A read count changed, the order did not: the list a screen is subscribed to is the same
+    // array, so nothing that only watches the order re-renders.
+    expect(state.conversationOrder).toBe(seeded.conversationOrder)
+    expect(state.conversations['b']?.unreadCount).toBe(3)
+  })
+
+  it('leaves the other list alone when the conversation was never in it', () => {
+    const seeded = replay([
+      { type: 'conversation-added', conversation: conversation({ id: 'req', request: true }) },
+    ])
+
+    const state = applyEvent(seeded, {
+      type: 'conversation-added',
+      conversation: conversation({ id: 'friend' }),
+    })
+
+    expect(state.requests).toBe(seeded.requests)
+    expect(state.requestOrder).toBe(seeded.requestOrder)
+    expect(state.conversationOrder).toEqual(['friend'])
+  })
+
+  it('appends a message that is newer than the whole window', () => {
+    const seeded: SessionState = {
+      ...emptyState,
+      histories: {
+        '05alice': {
+          ready: true,
+          messages: [message({ id: 1, timestamp: 1000 }), message({ id: 2, timestamp: 2000 })],
+          exhausted: true,
+          fetching: false,
+        },
+      },
+    }
+
+    const state = applyEvent(seeded, {
+      type: 'message-added',
+      conversationId: '05alice',
+      message: message({ id: 3, timestamp: 3000 }),
+    })
+
+    expect(state.histories['05alice']?.messages.map((m) => m.id)).toEqual([1, 2, 3])
+  })
+
+  it('stores the conversation and message objects the events carried', () => {
+    const convo = conversation()
+    const msg = message()
+    const seeded: SessionState = {
+      ...emptyState,
+      histories: { '05alice': { ready: true, messages: [], exhausted: true, fetching: false } },
+    }
+    const state = replay(
+      [
+        { type: 'conversation-added', conversation: convo },
+        { type: 'message-added', conversationId: '05alice', message: msg },
+      ],
+      seeded,
+    )
+
+    expect(state.conversations['05alice']).toBe(convo)
+    expect(state.histories['05alice']?.messages[0]).toBe(msg)
+  })
+})
+
+describe('mergePages', () => {
+  it('puts an older page in front of the loaded window without sorting', () => {
+    const older = [message({ id: 1, timestamp: 1000 }), message({ id: 2, timestamp: 2000 })]
+    const previous = [message({ id: 3, timestamp: 3000 })]
+
+    expect(mergePages(older, previous).map((m) => m.id)).toEqual([1, 2, 3])
+  })
+
+  it('returns the page itself when nothing was loaded yet', () => {
+    const page = [message({ id: 1 })]
+    expect(mergePages(page, [])).toBe(page)
+  })
+
+  it('still sorts when the pages overlap', () => {
+    const older = [message({ id: 1, timestamp: 1000 }), message({ id: 3, timestamp: 3000 })]
+    const previous = [message({ id: 2, timestamp: 2000 })]
+
+    expect(mergePages(older, previous).map((m) => m.id)).toEqual([1, 2, 3])
   })
 })

@@ -143,7 +143,7 @@ struct ClientBridge::Impl {
         sink(std::move(frame));
     }
 
-    void event(BridgeEvent e) {
+    void event(SessionEvent e) {
         emit(EventFrame{std::move(e)});
     }
 
@@ -172,46 +172,26 @@ struct ClientBridge::Impl {
         };
     }
 
-    static std::vector<Conversation> conversations(const std::vector<client::AnyConversation>& from) {
+    /// By value, because every caller was handed the list by libsession and is done with it:
+    /// the strings move into the frame instead of being copied a second time.
+    static std::vector<Conversation> conversations(std::vector<client::AnyConversation> from) {
         std::vector<Conversation> out;
         out.reserve(from.size());
-        for (const auto& c : from)
-            out.push_back(to_bridge(c));
+        for (auto& c : from)
+            out.push_back(to_bridge(std::move(c)));
         return out;
     }
 
-    void conversation_list(double id, const std::vector<client::AnyConversation>& convos) {
-        respond(id, ConversationListResult{conversations(convos)});
+    void conversation_list(double id, std::vector<client::AnyConversation> convos) {
+        respond(id, ConversationListResult{conversations(std::move(convos))});
     }
 
-    void one_conversation(double id, const client::AnyConversation& convo) {
-        respond(id, ConversationResult{to_bridge(convo)});
+    void one_conversation(double id, client::AnyConversation convo) {
+        respond(id, ConversationResult{to_bridge(std::move(convo))});
     }
 
     client::Conversation convo(const std::string& id) {
         return client::Conversation{*client, client::ConversationId::parse(id)};
-    }
-
-    void attachment_progress(
-            std::optional<double> request_id,
-            std::optional<std::string> conversation_id,
-            int64_t message_id,
-            size_t index,
-            int64_t done,
-            int64_t total,
-            std::optional<int> result) {
-        std::optional<double> outcome;
-        if (result)
-            outcome = static_cast<double>(*result);
-        event(AttachmentProgressBridgeEvent{
-                request_id,
-                std::move(conversation_id),
-                AttachmentProgress{
-                        static_cast<double>(message_id),
-                        static_cast<double>(index),
-                        static_cast<double>(done),
-                        static_cast<double>(total),
-                        outcome}});
     }
 
     // One handler per command. Dispatch is a std::visit over the Command variant, so a command
@@ -306,13 +286,13 @@ struct ClientBridge::Impl {
 
     void handle(double id, const GetConversationsCommand&) {
         client->conversations(on(id, [this, id](std::vector<client::AnyConversation> convos) {
-            conversation_list(id, convos);
+            conversation_list(id, std::move(convos));
         }));
     }
 
     void handle(double id, const GetMessageRequestsCommand&) {
         client->message_requests(on(id, [this, id](std::vector<client::AnyConversation> convos) {
-            conversation_list(id, convos);
+            conversation_list(id, std::move(convos));
         }));
     }
 
@@ -324,7 +304,7 @@ struct ClientBridge::Impl {
                     if (!convo)
                         fail(id, not_found("conversation", convo_id));
                     else
-                        one_conversation(id, *convo);
+                        one_conversation(id, std::move(*convo));
                 }));
     }
 
@@ -336,7 +316,7 @@ struct ClientBridge::Impl {
                     if (!dm)
                         fail(id, not_found("account", session_id));
                     else
-                        one_conversation(id, client::AnyConversation{*dm});
+                        one_conversation(id, client::AnyConversation{std::move(*dm)});
                 }));
     }
 
@@ -406,30 +386,18 @@ struct ClientBridge::Impl {
                             // paging runs. The protocol is oldest first, because that is the
                             // direction a transcript is read, and reversing once here is cheaper
                             // than every caller remembering to.
-                            for (const auto& m : std::views::reverse(messages))
-                                out.push_back(to_bridge(m));
+                            for (auto& m : std::views::reverse(messages))
+                                out.push_back(to_bridge(std::move(m)));
                             respond(id, MessageListResult{std::move(out)});
                         }));
     }
 
-    void handle(double id, const SendMessageCommand& cmd) {
+    // Not const: the request is this call's to consume, so the body moves.
+    void handle(double id, SendMessageCommand& cmd) {
         client::OutgoingMessage msg;
-        msg.body = cmd.body;
+        msg.body = std::move(cmd.body);
         if (cmd.reply_to)
             msg.reply_to = whole<int64_t>(*cmd.reply_to, "sendMessage.replyTo");
-        for (const auto& a : cmd.attachments) {
-            client::OutgoingAttachment out;
-            out.path = a.path;
-            out.content_type = a.content_type;
-            out.filename = a.filename;
-            out.caption = a.caption;
-            out.voice_message = a.voice_message.value_or(false);
-            if (a.width)
-                out.width = whole<uint32_t>(*a.width, "sendMessage.attachments.width");
-            if (a.height)
-                out.height = whole<uint32_t>(*a.height, "sendMessage.attachments.height");
-            msg.attachments.push_back(std::move(out));
-        }
         convo(cmd.conversation_id)
                 .send_message(std::move(msg), on(id, [this, id](int64_t message_id) {
                                   respond(id, MessageIdResult{static_cast<double>(message_id)});
@@ -438,15 +406,12 @@ struct ClientBridge::Impl {
 
     void handle(double id, const RetrySendCommand& cmd) {
         const int64_t message_id = whole<int64_t>(cmd.message_id, "retrySend.messageId");
-        // A retry re-uploads whatever did not get through, and reports it the way the original
-        // send did. There is no overload without a progress handler, and a retry is where a
-        // file that has since been deleted is discovered, so this is not a formality.
+        // The callback form takes an upload handler and there is no overload without one, so it
+        // is passed empty - which libsession reads as "report nothing" rather than calling a
+        // handler with an empty body. Nothing about a transfer crosses this bridge.
         client->retry_send(
                 message_id,
-                [this, id, message_id](
-                        size_t index, int64_t sent, int64_t total, std::optional<int> result) {
-                    attachment_progress(id, std::nullopt, message_id, index, sent, total, result);
-                },
+                nullptr,
                 on(id, [this, id](bool started) { respond(id, BoolResult{started}); }));
     }
 
@@ -477,7 +442,7 @@ struct ClientBridge::Impl {
         // overloads are deleted precisely to stop this being a one-liner.
         auto access = client->core.globals.account_seed();
         auto raw = access.seed();
-        respond(id, HexResult{to_hex(std::as_bytes(std::span{raw}))});
+        respond(id, HexResult{oxenc::to_hex(std::as_bytes(std::span{raw}))});
 #else
         fail(id, "getTestAccountSeed is only served by a SESSION_BRIDGE_TESTING build");
 #endif
@@ -550,19 +515,19 @@ struct ClientBridge::Impl {
 #endif
     }
 
-    void handle(double id, [[maybe_unused]] const EchoTestFrameCommand& cmd) {
+    void handle(double id, [[maybe_unused]] EchoTestFrameCommand& cmd) {
 #ifdef SESSION_BRIDGE_TESTING
         // Straight back out, then the acknowledgement: what arrived through the platform's
         // from-JS converter leaves through its to-JS converter, field for field.
-        emit(cmd.frame);
+        emit(std::move(cmd.frame));
         ok(id);
 #else
         fail(id, "echoTestFrame is only served by a SESSION_BRIDGE_TESTING build");
 #endif
     }
 
-    void dispatch(const Request& request) {
-        std::visit([&](const auto& cmd) { handle(request.id, cmd); }, request.command);
+    void dispatch(Request& request) {
+        std::visit([&](auto& cmd) { handle(request.id, cmd); }, request.command);
     }
 };
 
@@ -576,64 +541,43 @@ ClientBridge::ClientBridge(InitOptions options, Sink sink) :
     // convenient.
     client::callbacks cbs{
             .conversation_added =
-                    [impl](const client::AnyConversation& c) {
-                        impl->event(ConversationAddedBridgeEvent{to_bridge(c)});
+                    [impl](client::AnyConversation c) {
+                        impl->event(ConversationAddedSessionEvent{to_bridge(std::move(c))});
                     },
             .conversation_updated =
-                    [impl](const client::AnyConversation& c) {
-                        impl->event(ConversationUpdatedBridgeEvent{to_bridge(c)});
+                    [impl](client::AnyConversation c) {
+                        impl->event(ConversationUpdatedSessionEvent{to_bridge(std::move(c))});
                     },
             .conversation_removed =
                     [impl](const client::ConversationId& id) {
-                        impl->event(ConversationRemovedBridgeEvent{id.to_string()});
+                        impl->event(ConversationRemovedSessionEvent{id.to_string()});
                     },
             .conversation_list_replaced =
                     [impl](std::vector<client::AnyConversation> convos) {
-                        impl->event(ConversationListReplacedBridgeEvent{Impl::conversations(convos)});
+                        impl->event(ConversationListReplacedSessionEvent{
+                                Impl::conversations(std::move(convos))});
                     },
             .request_list_replaced =
                     [impl](std::vector<client::AnyConversation> convos) {
-                        impl->event(RequestListReplacedBridgeEvent{Impl::conversations(convos)});
+                        impl->event(RequestListReplacedSessionEvent{
+                                Impl::conversations(std::move(convos))});
                     },
             .message_added =
-                    [impl](const client::ConversationId& id, const client::Message& m) {
-                        impl->event(MessageAddedBridgeEvent{id.to_string(), to_bridge(m)});
+                    [impl](const client::ConversationId& id, client::Message m) {
+                        impl->event(
+                                MessageAddedSessionEvent{id.to_string(), to_bridge(std::move(m))});
                     },
             .message_updated =
-                    [impl](const client::ConversationId& id, const client::Message& m) {
-                        impl->event(MessageUpdatedBridgeEvent{id.to_string(), to_bridge(m)});
+                    [impl](const client::ConversationId& id, client::Message m) {
+                        impl->event(
+                                MessageUpdatedSessionEvent{id.to_string(), to_bridge(std::move(m))});
                     },
             .history_replaced =
                     [impl](const client::ConversationId& id) {
-                        impl->event(HistoryReplacedBridgeEvent{id.to_string()});
+                        impl->event(HistoryReplacedSessionEvent{id.to_string()});
                     },
-            .attachment_progress =
-                    [impl](const client::ConversationId& id, const client::AttachmentProgress& p) {
-                        // Only background fetches come through here; a transfer the app asked for
-                        // reports to that request instead, which is what request_id distinguishes.
-                        impl->attachment_progress(
-                                std::nullopt,
-                                id.to_string(),
-                                p.message_id,
-                                p.index,
-                                p.done,
-                                p.total,
-                                p.result);
-                    },
-            .display_picture_progress =
-                    [impl](const client::ConversationId& id,
-                           int64_t done,
-                           int64_t total,
-                           std::optional<int> result) {
-                        std::optional<double> outcome;
-                        if (result)
-                            outcome = static_cast<double>(*result);
-                        impl->event(DisplayPictureProgressBridgeEvent{
-                                id.to_string(),
-                                static_cast<double>(done),
-                                static_cast<double>(total),
-                                outcome});
-                    },
+            // attachment_progress and display_picture_progress are deliberately left unset:
+            // no transfer is part of the protocol, so there is no frame to report one on.
     };
 
     // The key options are types rather than values, so which one is used has to be a branch
@@ -675,7 +619,7 @@ ClientBridge::ClientBridge(InitOptions options, Sink sink) :
             // Called from whichever thread logged, including Core's loop and the network's own
             // threads, and after close() has dropped the sink - emit() checks for that, which
             // is the only reason this is safe to leave registered.
-            impl->event(LogBridgeEvent{
+            impl->event(LogSessionEvent{
                     std::string{message}, std::string{category}, std::string{lvl.to_string()}});
         });
     }

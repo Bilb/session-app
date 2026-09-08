@@ -11,25 +11,20 @@
 
 import type {
   AccountInfo,
-  AttachmentProgress,
   Conversation,
   ConversationId,
   Deletion,
   Frame,
   Message,
   MessageCursor,
-  OutgoingAttachment,
   Request,
   SessionEvent,
 } from '@session/bridge-types'
-
-export type ProgressCallback = (progress: AttachmentProgress) => void
 
 export type Unsubscribe = () => void
 
 export interface OutgoingMessage {
   body: string
-  attachments?: OutgoingAttachment[]
   replyTo?: number
 }
 
@@ -63,16 +58,12 @@ export interface SessionClient {
     options?: { limit?: number; before?: MessageCursor; includeDeleted?: boolean },
   ): Promise<Message[]>
   /**
-   * Resolves as soon as libsession has stored the row - which is before it is sent, and
-   * before any attachment has uploaded. The states that follow arrive as message-updated.
+   * Resolves as soon as libsession has stored the row, which is before it is sent. The states
+   * that follow arrive as message-updated.
    */
-  sendMessage(
-    id: ConversationId,
-    message: OutgoingMessage,
-    options?: { onUploadProgress?: ProgressCallback },
-  ): Promise<number>
-  /** Resumes rather than restarts: files already uploaded are not sent again. */
-  retrySend(messageId: number, options?: { onUploadProgress?: ProgressCallback }): Promise<boolean>
+  sendMessage(id: ConversationId, message: OutgoingMessage): Promise<number>
+  /** Resumes a send that failed, and answers whether there was anything left to resume. */
+  retrySend(messageId: number): Promise<boolean>
   deleteMessage(messageId: number, scope: Deletion): Promise<void>
 
   getPref(key: string): Promise<string | undefined>

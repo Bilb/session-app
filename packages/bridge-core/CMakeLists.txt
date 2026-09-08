@@ -83,6 +83,26 @@ elseif(NOT TARGET libsession::client)
     add_subdirectory(${SESSION_BRIDGE_LIBSESSION} libsession-util)
 endif()
 
+# A switch over one of libsession's enums must fail to build when libsession gains a value,
+# rather than falling through to the fallback return after it - which is the whole reason those
+# switches are written out instead of being casts. Per target rather than per directory, because
+# libsession is built from this same tree and its own switches are its business.
+#
+# The switch this catches is one with no `default:`, which is how the bridge writes them. The
+# stricter -Wswitch-enum, which fires even when a default label hides the omission, cannot be
+# used: it also fires on libsession's own switches, since its headers are compiled inside these
+# translation units (core/devices.hpp has one), and those are not ours to complete.
+#
+# Defined here and used by the addon and the Nitro module too: a CMake function outlives the
+# directory it was declared in, and both of them add this project as a subdirectory.
+function(session_bridge_strict_switches target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /we4062)
+    else()
+        target_compile_options(${target} PRIVATE -Werror=switch)
+    endif()
+endfunction()
+
 # The protocol structs under include/session_bridge/gen are generated from @session/bridge-types by
 # tooling/bridge-codegen and committed, so this target needs nothing but a compiler.
 add_library(session-bridge-core STATIC
@@ -96,6 +116,8 @@ target_include_directories(session-bridge-core
 target_link_libraries(session-bridge-core PUBLIC libsession::client)
 
 set_property(TARGET session-bridge-core PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+session_bridge_strict_switches(session-bridge-core)
 
 option(SESSION_BRIDGE_TESTING
     "Compile the test-only commands, which carry messages between clients with no network" OFF)

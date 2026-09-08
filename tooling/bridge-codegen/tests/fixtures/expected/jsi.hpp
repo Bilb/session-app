@@ -14,10 +14,21 @@
 
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <variant>
 
 #include "types.hpp"
+
+namespace session_bridge {
+
+/// A tag or enum spelling as a JavaScript string, straight from the constexpr table: the
+/// generator has checked these are ASCII, so no std::string is built in between.
+inline facebook::jsi::Value ascii(facebook::jsi::Runtime& runtime, std::string_view text) {
+    return facebook::jsi::String::createFromAscii(runtime, text.data(), text.size());
+}
+
+}  // namespace session_bridge
 
 namespace margelo::nitro {
 
@@ -50,7 +61,7 @@ struct JSIConverter<::session_bridge::Colour> final {
         return *parsed;
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, ::session_bridge::Colour arg) {
-        return JSIConverter<std::string>::toJSI(runtime, std::string{::session_bridge::EnumTraits<::session_bridge::Colour>::to_string(arg)});
+        return ::session_bridge::ascii(runtime, ::session_bridge::EnumTraits<::session_bridge::Colour>::to_string(arg));
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
         return value.isString() &&
@@ -96,7 +107,7 @@ struct JSIConverter<::session_bridge::ShapeAddedCanvasEvent> final {
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::ShapeAddedCanvasEvent& arg) {
         jsi::Object obj(runtime);
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), JSIConverter<std::string>::toJSI(runtime, std::string{::session_bridge::ShapeAddedCanvasEvent::type_tag}));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::ShapeAddedCanvasEvent::type_tag));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "shape"), JSIConverter<::session_bridge::Shape>::toJSI(runtime, arg.shape));
         return obj;
     }
@@ -116,7 +127,7 @@ struct JSIConverter<::session_bridge::ClearedCanvasEvent> final {
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::ClearedCanvasEvent& arg) {
         (void)arg;
         jsi::Object obj(runtime);
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), JSIConverter<std::string>::toJSI(runtime, std::string{::session_bridge::ClearedCanvasEvent::type_tag}));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::ClearedCanvasEvent::type_tag));
         return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -137,7 +148,7 @@ struct JSIConverter<::session_bridge::MovedCanvasEvent> final {
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::MovedCanvasEvent& arg) {
         jsi::Object obj(runtime);
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), JSIConverter<std::string>::toJSI(runtime, std::string{::session_bridge::MovedCanvasEvent::type_tag}));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::MovedCanvasEvent::type_tag));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "id"), JSIConverter<double>::toJSI(runtime, arg.id));
         if (arg.to)
             obj.setProperty(runtime, PropNameIDCache::get(runtime, "to"), JSIConverter<::session_bridge::Point>::toJSI(runtime, *arg.to));
@@ -191,7 +202,7 @@ struct JSIConverter<::session_bridge::EventFrame> final {
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::EventFrame& arg) {
         jsi::Object obj(runtime);
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), JSIConverter<std::string>::toJSI(runtime, std::string{::session_bridge::EventFrame::type_tag}));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::EventFrame::type_tag));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "event"), JSIConverter<::session_bridge::CanvasEvent>::toJSI(runtime, arg.event));
         return obj;
     }
@@ -212,7 +223,7 @@ struct JSIConverter<::session_bridge::AckFrame> final {
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::AckFrame& arg) {
         jsi::Object obj(runtime);
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), JSIConverter<std::string>::toJSI(runtime, std::string{::session_bridge::AckFrame::type_tag}));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::AckFrame::type_tag));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "id"), JSIConverter<double>::toJSI(runtime, arg.id));
         return obj;
     }
@@ -262,7 +273,7 @@ struct JSIConverter<::session_bridge::DrawCommand> final {
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::DrawCommand& arg) {
         jsi::Object obj(runtime);
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), JSIConverter<std::string>::toJSI(runtime, std::string{::session_bridge::DrawCommand::type_tag}));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::DrawCommand::type_tag));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "shape"), JSIConverter<::session_bridge::Shape>::toJSI(runtime, arg.shape));
         return obj;
     }
@@ -282,7 +293,7 @@ struct JSIConverter<::session_bridge::ClearCommand> final {
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::ClearCommand& arg) {
         (void)arg;
         jsi::Object obj(runtime);
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), JSIConverter<std::string>::toJSI(runtime, std::string{::session_bridge::ClearCommand::type_tag}));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::ClearCommand::type_tag));
         return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {

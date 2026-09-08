@@ -93,7 +93,7 @@ export function runSessionClientContract(
       if (added?.type !== 'message-added') throw new Error('unreachable')
       expect(added.message.id).toBe(messageId)
       expect(added.message.outgoing).toBe(true)
-      expect(['pending', 'sending', 'uploading']).toContain(added.message.sendState)
+      expect(['pending', 'sending']).toContain(added.message.sendState)
       seen.stop()
     })
 

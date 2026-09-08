@@ -1,9 +1,17 @@
 import type { AccountInfo, Conversation, ConversationId, Message } from '@session/client'
-import { createContext, createElement, useContext, useEffect, type ReactNode } from 'react'
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  type ReactNode,
+} from 'react'
 import { useStore } from 'zustand'
 
 import type { SessionActions, SessionStore } from './store'
-import { transferKey, type MessageWindow, type TransferProgress } from './types'
+import type { MessageWindow } from './types'
 
 const StoreContext = createContext<SessionStore | null>(null)
 
@@ -37,18 +45,29 @@ export function useAccount(): AccountInfo | null {
   return useStore(store, (state) => state.account)
 }
 
+/** Memoised on the two slices it reads, so a render nothing changed for sees the same array. */
+function useOrdered(
+  order: ConversationId[],
+  byId: Record<ConversationId, Conversation>,
+): Conversation[] {
+  return useMemo(
+    () => order.map((id) => byId[id]).filter((c): c is Conversation => c !== undefined),
+    [order, byId],
+  )
+}
+
 export function useConversations(): Conversation[] {
   const store = useSessionStore()
   const order = useStore(store, (state) => state.conversationOrder)
   const byId = useStore(store, (state) => state.conversations)
-  return order.map((id) => byId[id]).filter((c): c is Conversation => c !== undefined)
+  return useOrdered(order, byId)
 }
 
 export function useRequests(): Conversation[] {
   const store = useSessionStore()
   const order = useStore(store, (state) => state.requestOrder)
   const byId = useStore(store, (state) => state.requests)
-  return order.map((id) => byId[id]).filter((c): c is Conversation => c !== undefined)
+  return useOrdered(order, byId)
 }
 
 export function useConversation(id: ConversationId | undefined): Conversation | undefined {
@@ -88,24 +107,22 @@ export function useMessages(id: ConversationId | undefined): {
     if (!window.ready && !window.fetching) void store.actions.loadHistory(id)
   }, [id, window.ready, window.fetching, store])
 
-  return {
-    messages: window.messages,
-    ready: window.ready,
-    exhausted: window.exhausted,
-    loadOlder: () => {
-      if (id !== undefined) void store.actions.loadOlder(id)
-    },
-  }
-}
+  const loadOlder = useCallback(() => {
+    if (id !== undefined) void store.actions.loadOlder(id)
+  }, [id, store])
 
-export function useTransfer(messageId: number, index: number): TransferProgress | undefined {
-  const store = useSessionStore()
-  return useStore(store, (state) => state.transfers[transferKey(messageId, index)])
+  return useMemo(
+    () => ({ messages: window.messages, ready: window.ready, exhausted: window.exhausted, loadOlder }),
+    [window, loadOlder],
+  )
 }
 
 /** Unread requests, which is not the same as the number of requests. */
 export function useUnreadRequestCount(): number {
   const store = useSessionStore()
-  const byId = useStore(store, (state) => state.requests)
-  return Object.values(byId).filter((c) => c.unreadCount > 0).length
+  return useStore(store, (state) => {
+    let unread = 0
+    for (const id in state.requests) if ((state.requests[id] as Conversation).unreadCount > 0) unread++
+    return unread
+  })
 }

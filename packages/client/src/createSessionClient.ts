@@ -1,7 +1,5 @@
 import type {
   AccountInfo,
-  AttachmentProgress,
-  BridgeEvent,
   Command,
   Conversation,
   ConversationId,
@@ -15,13 +13,7 @@ import type {
 } from '@session/bridge-types'
 
 import { BridgeClosedError, SessionClientError } from './errors'
-import type {
-  BridgeTransport,
-  OutgoingMessage,
-  ProgressCallback,
-  SessionClient,
-  Unsubscribe,
-} from './types'
+import type { BridgeTransport, OutgoingMessage, SessionClient, Unsubscribe } from './types'
 
 type Pending = {
   resolve: (response: Response) => void
@@ -29,26 +21,6 @@ type Pending = {
 }
 
 type ResultOf<K extends Result['type']> = Extract<Result, { type: K }>
-
-/** A command's own progress reports, routed back to whoever issued it. */
-type ProgressRegistration = {
-  callback: ProgressCallback
-  /**
-   * How many transfers this command will report on, where the command knows. A retry does not:
-   * libsession decides which files still need uploading, so that registration lives until the
-   * request fails or the client closes rather than guessing from what has reported so far.
-   */
-  expected: number | undefined
-  /** Indexes that have reported a result. */
-  settled: Set<number>
-}
-
-/** The one arm where the wire event says more than the app is told: the request id is routing. */
-function toSessionEvent(event: BridgeEvent): SessionEvent {
-  if (event.type !== 'attachment-progress') return event
-  const { requestId: _requestId, ...broadcast } = event
-  return broadcast
-}
 
 /**
  * Turns a transport into the client everything else is written against.
@@ -61,7 +33,6 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
   let nextRequestId = 1
   let closed = false
   const pending = new Map<number, Pending>()
-  const progress = new Map<number, ProgressRegistration>()
   const listeners = new Set<(event: SessionEvent) => void>()
 
   transport.setSink((frame: Frame) => {
@@ -71,7 +42,6 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       if (!waiting) return
       pending.delete(response.id)
       if (response.error !== undefined) {
-        progress.delete(response.id)
         waiting.reject(new SessionClientError(response.error))
       } else {
         waiting.resolve(response)
@@ -79,39 +49,12 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       return
     }
 
-    const event = frame.event
-
-    // A transfer a command asked for goes to that command's callback; one libsession started
-    // on its own is broadcast as an event instead.
-    if (event.type === 'attachment-progress' && event.requestId !== undefined) {
-      const registration = progress.get(event.requestId)
-      // No registration means the command that asked for this has already retired it. Dropped
-      // rather than broadcast: a transfer a command asked for belongs to that command.
-      if (registration) {
-        const report: AttachmentProgress = event.progress
-        registration.callback(report)
-        if (report.result !== undefined) {
-          registration.settled.add(report.index)
-          // Exactly one report per index carries a result, so the registration retires once
-          // every transfer the command asked for has produced one.
-          const done =
-            registration.expected !== undefined &&
-            registration.settled.size >= registration.expected
-          if (done) progress.delete(event.requestId)
-        }
-      }
-      return
-    }
-
-    const appEvent = toSessionEvent(event)
-    for (const listener of listeners) listener(appEvent)
+    // The event the shim built, handed on as it is: the wire type and the app's are the same
+    // declaration, so there is nothing here to translate.
+    for (const listener of listeners) listener(frame.event)
   })
 
-  function call(
-    command: Command,
-    onProgress?: ProgressCallback,
-    expectedTransfers?: number,
-  ): Promise<Response> {
+  function call(command: Command): Promise<Response> {
     if (closed) return Promise.reject(new BridgeClosedError())
 
     const id = nextRequestId++
@@ -119,11 +62,6 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
 
     return new Promise<Response>((resolve, reject) => {
       pending.set(id, { resolve, reject })
-      // A command with nothing to transfer registers nothing: no report is coming, and an entry
-      // that can never retire is a leak.
-      if (onProgress && expectedTransfers !== 0) {
-        progress.set(id, { callback: onProgress, expected: expectedTransfers, settled: new Set() })
-      }
       transport.send(request)
     })
   }
@@ -256,23 +194,18 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       return expect(response, 'messageList').messages
     },
 
-    async sendMessage(id, message: OutgoingMessage, options): Promise<number> {
-      const response = await call(
-        {
-          type: 'sendMessage',
-          conversationId: id,
-          body: message.body,
-          attachments: message.attachments ?? [],
-          ...(message.replyTo === undefined ? {} : { replyTo: message.replyTo }),
-        },
-        options?.onUploadProgress,
-        message.attachments?.length ?? 0,
-      )
+    async sendMessage(id, message: OutgoingMessage): Promise<number> {
+      const response = await call({
+        type: 'sendMessage',
+        conversationId: id,
+        body: message.body,
+        ...(message.replyTo === undefined ? {} : { replyTo: message.replyTo }),
+      })
       return expect(response, 'messageId').messageId
     },
 
-    async retrySend(messageId, options): Promise<boolean> {
-      const response = await call({ type: 'retrySend', messageId }, options?.onUploadProgress)
+    async retrySend(messageId): Promise<boolean> {
+      const response = await call({ type: 'retrySend', messageId })
       return expect(response, 'bool').value
     },
 
@@ -294,7 +227,6 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       closed = true
       const waiting = [...pending.values()]
       pending.clear()
-      progress.clear()
       listeners.clear()
       for (const request of waiting) request.reject(new BridgeClosedError())
       transport.close()

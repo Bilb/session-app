@@ -1,5 +1,10 @@
 #pragma once
 
+#include <NitroModules/BorrowingReference.hpp>
+#include <NitroModules/Dispatcher.hpp>
+
+#include <jsi/jsi.h>
+
 #include <memory>
 
 #include "HybridSessionBridgeSpec.hpp"
@@ -22,13 +27,31 @@ class HybridSessionBridge : public HybridSessionBridgeSpec {
     HybridSessionBridge();
     ~HybridSessionBridge() override;
 
-    void setSink(const std::function<void(::session_bridge::Frame /* frame */)>& onFrame) override;
     void init(const SessionBridgeOptions& options) override;
     void call(::session_bridge::Request request) override;
     void close() override;
 
+  protected:
+    void loadHybridMethods() override;
+
   private:
-    std::function<void(::session_bridge::Frame)> _sink;
+    /// `setSink(onFrame)`, registered by hand as a raw JSI method rather than declared in the
+    /// spec. Nitro's typed callback wrapper (`AsyncJSCallback::operator()`) passes its arguments
+    /// on as lvalues, which copy-constructs the whole Frame on every call before the hop; holding
+    /// the function ourselves lets the frame move all the way to the converter.
+    jsi::Value setSink(
+            jsi::Runtime& runtime, const jsi::Value& thisArg, const jsi::Value* args, size_t count);
+
+    /// The sink as JavaScript gave it: the function, the runtime it belongs to, and the dispatcher
+    /// that reaches that runtime's thread. Shared with the job that runs on Core's loop, so a
+    /// close() racing a frame in flight cannot leave it dangling.
+    struct Sink {
+        jsi::Runtime* runtime = nullptr;
+        BorrowingReference<jsi::Function> function;
+        std::weak_ptr<Dispatcher> dispatcher;
+    };
+
+    std::shared_ptr<Sink> _sink;
     std::unique_ptr<::session_bridge::ClientBridge> _bridge;
 };
 

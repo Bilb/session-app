@@ -192,7 +192,6 @@ describeEcho('the generated converters', () => {
     markedUnread: true,
     snippet: 'see you',
     muteUntil: 1_700_000_100_000,
-    autoDownload: 'image-attachments',
     request: true,
     awaitingApproval: false,
     noteToSelf: false,
@@ -206,7 +205,6 @@ describeEcho('the generated converters', () => {
     priority: 0,
     unreadCount: 0,
     markedUnread: false,
-    autoDownload: 'none',
     request: false,
     awaitingApproval: false,
     noteToSelf: false,
@@ -220,20 +218,6 @@ describeEcho('the generated converters', () => {
     body: 'héllo',
     outgoing: true,
     sendState: 'uploading',
-    attachments: [
-      {
-        index: 0,
-        contentType: 'image/png',
-        filename: 'a.png',
-        caption: 'c',
-        size: 12,
-        voiceMessage: false,
-        width: 1,
-        height: 2,
-        uploaded: true,
-      },
-      { index: 1, voiceMessage: true, uploaded: false },
-    ],
     replyTo: { author, timestamp: 1_699_999_999_999, messageId: 7, body: 'orig' },
     deleted: 'here',
   }
@@ -245,7 +229,6 @@ describeEcho('the generated converters', () => {
     body: '',
     outgoing: false,
     sendState: 'sent',
-    attachments: [],
   }
 
   const frames: Frame[] = [
@@ -306,36 +289,6 @@ describeEcho('the generated converters', () => {
     { type: 'event', event: { type: 'message-added', conversationId, message: fullMessage } },
     { type: 'event', event: { type: 'message-updated', conversationId, message: bareMessage } },
     { type: 'event', event: { type: 'history-replaced', conversationId } },
-    {
-      type: 'event',
-      event: {
-        type: 'attachment-progress',
-        requestId: 5,
-        progress: { messageId: 1, index: 0, done: 0, total: 0 },
-      },
-    },
-    {
-      type: 'event',
-      event: {
-        type: 'attachment-progress',
-        conversationId,
-        progress: { messageId: 1, index: 2, done: 5, total: 5, result: 0 },
-      },
-    },
-    {
-      type: 'event',
-      event: { type: 'display-picture-progress', conversationId, done: 1, total: 2 },
-    },
-    {
-      type: 'event',
-      event: {
-        type: 'display-picture-progress',
-        conversationId,
-        done: 2,
-        total: 2,
-        result: -20001,
-      },
-    },
     { type: 'event', event: { type: 'log', message: 'm', category: 'c', level: 'info' } },
   ]
 
