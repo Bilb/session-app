@@ -7,6 +7,29 @@ import { _electron, type ElectronApplication, type Page } from '@playwright/test
 import type { ElementId } from '@session/test-ids'
 
 import type { ISessionApp } from './ISessionApp'
+import type { IPerformanceProbe } from './PerformanceProbe'
+
+/**
+ * The handful of browser globals the probe's page-side code touches.
+ *
+ * Declared here rather than by adding `dom` to this package's lib, because the environment split
+ * is deliberate: harness code runs in Node, and a stray `window` in it should stay an error. These
+ * bodies are the exception - they are serialised and run in the renderer - so they get the types
+ * they need and nothing else does.
+ */
+interface LongTask {
+  start: number
+  duration: number
+}
+
+interface PageGlobals {
+  __longTasks?: LongTask[]
+  PerformanceObserver: new (
+    callback: (list: { getEntries: () => { startTime: number; duration: number }[] }) => void,
+  ) => { observe: (options: { type: string; buffered: boolean }) => void }
+  requestAnimationFrame: (callback: () => void) => number
+  performance: { now: () => number }
+}
 
 const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
 
@@ -17,7 +40,7 @@ const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
  * writes is the same string the component was given. There is no per-platform locator table
  * here, and there should not need to be one.
  */
-export class DesktopApp implements ISessionApp {
+export class DesktopApp implements ISessionApp, IPerformanceProbe {
   readonly platform = 'desktop' as const
 
   private constructor(
@@ -88,6 +111,53 @@ export class DesktopApp implements ISessionApp {
 
   async screenshot(name: string): Promise<void> {
     await this.page.screenshot({ path: join(repoRoot, 'test-results', `${name}.png`) })
+  }
+
+  // -- IPerformanceProbe ------------------------------------------------------------------
+
+  async startProbe(): Promise<void> {
+    await this.page.evaluate(() => {
+      const g = globalThis as unknown as PageGlobals
+      if (g.__longTasks) return
+      const collected: LongTask[] = []
+      g.__longTasks = collected
+      // buffered, so a task that ran between load and this call is not lost - which is most of
+      // startup, and startup is the interesting part.
+      new g.PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          collected.push({ start: entry.startTime, duration: entry.duration })
+        }
+      }).observe({ type: 'longtask', buffered: true })
+    })
+  }
+
+  async readLongTasks(): Promise<LongTask[]> {
+    return this.page.evaluate(() => {
+      const g = globalThis as unknown as PageGlobals
+      return g.__longTasks ?? []
+    })
+  }
+
+  async timeUntilVisible(testId: string, timeoutMs = 30_000): Promise<number> {
+    const start = performance.now()
+    await this.page.getByTestId(testId).first().waitFor({ state: 'visible', timeout: timeoutMs })
+    return performance.now() - start
+  }
+
+  async countFrames(windowMs: number): Promise<number> {
+    return this.page.evaluate(async (ms: number) => {
+      const g = globalThis as unknown as PageGlobals
+      return new Promise<number>((resolve) => {
+        let frames = 0
+        const deadline = g.performance.now() + ms
+        const tick = () => {
+          frames++
+          if (g.performance.now() < deadline) g.requestAnimationFrame(tick)
+          else resolve(frames)
+        }
+        g.requestAnimationFrame(tick)
+      })
+    }, windowMs)
   }
 
   async close(): Promise<void> {

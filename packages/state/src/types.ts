@@ -45,12 +45,13 @@ export const emptyState: SessionState = {
   histories: {},
 }
 
-/** Pinned first, then most recent, then by id so the order never wobbles between renders. */
-export function compareConversations(a: Conversation, b: Conversation): number {
-  return b.priority - a.priority || b.lastActivity - a.lastActivity || a.id.localeCompare(b.id)
-}
-
-/** Ascending by timestamp, then id: the order a transcript renders and a page cursor keys on. */
+/**
+ * Ascending by timestamp, then id: the order a transcript renders and a page cursor keys on.
+ *
+ * The only ordering this package still decides. libsession orders the conversation lists in SQL
+ * and they are taken as they arrive, but it returns a page of history newest-first while a
+ * transcript reads oldest-first, so this reversal is ours and has to stay.
+ */
 export function compareMessages(a: Message, b: Message): number {
   return a.timestamp - b.timestamp || a.id - b.id
 }

@@ -6,18 +6,13 @@ import type { ReactNode } from 'react'
 import { shouldStampNetwork } from './networkStamp'
 
 /**
- * Says which network this build is on, across whatever it wraps, and only when that is worth
- * saying.
+ * Lays a rotated label over whatever it wraps on any build that is not mainnet. The rotation
+ * carries the meaning: it reads as a mark across the title rather than a word beside it, so a
+ * devnet build is not mistaken for a real one.
  *
- * A port of what iOS does to its nav bar logo (`NavBarSessionIcon`): on anything but mainnet it
- * lays a rotated label over the title. The angle is the point - it reads as a stamp across the
- * thing rather than as a word beside it, so nobody mistakes a devnet build for a real one, and it
- * costs no layout, because a build that is on mainnet renders the children and nothing else.
- *
- * **Mainnet renders nothing extra, and that is the normal case.** Today it is the only case: the
- * shim refuses devnet until it can be handed seed nodes, and nothing sets testnet on mobile. The
- * seam is here so that whatever wires devnet up has somewhere to arrive, rather than this being
- * designed under time pressure later. See docs/STATUS.md.
+ * Mainnet renders the children and nothing else, so a real build pays no layout for this. Nothing
+ * reaches the other branch yet - devnet stays unreachable until the shim can be handed seed nodes
+ * (docs/STATUS.md) - so treat it as untested against a real network.
  */
 export function NetworkOverlay({ children }: { children: ReactNode }) {
   const network = requirePorts().network.name
@@ -26,16 +21,15 @@ export function NetworkOverlay({ children }: { children: ReactNode }) {
   return (
     <XStack alignItems="center" justifyContent="center">
       {children}
-      {/* Out of the flow, so the title underneath keeps the position and size it would have had:
-          a badge that moved the header would be a badge that changes what is being tested. */}
+      {/* Out of the flow, so the title underneath keeps the position and size it would have had.
+          A badge that shifted the header would change the layout a test is asserting on. */}
       <XStack
         position="absolute"
         alignItems="center"
         justifyContent="center"
         rotate="-30deg"
-        // iOS strokes the text against the background to keep it legible over the logo. React
-        // Native has no text stroke, so this is the same idea with a chip: the label carries its
-        // own contrast rather than depending on whatever it happens to sit on.
+        // The label sits over arbitrary content, and React Native has no text stroke to separate
+        // it from what is underneath, so the chip carries its own contrast instead.
         backgroundColor="$backgroundPrimary"
         borderColor="$textPrimary"
         borderWidth={1}

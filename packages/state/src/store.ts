@@ -220,3 +220,4 @@ export function createSessionStore(
 
   return Object.assign(store, { actions })
 }
+

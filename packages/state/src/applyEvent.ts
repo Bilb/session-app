@@ -1,11 +1,6 @@
 import type { Conversation, ConversationId, Message, SessionEvent } from '@session/client'
 
-import {
-  compareConversations,
-  compareMessages,
-  type MessageWindow,
-  type SessionState,
-} from './types'
+import { compareMessages, type MessageWindow, type SessionState } from './types'
 
 /**
  * The whole projection, as one pure function.
@@ -75,8 +70,13 @@ export function indexConversations(
 ): Partial<Pick<SessionState, ListKey | OrderKey>> {
   const byId: Record<ConversationId, Conversation> = {}
   for (const conversation of conversations) byId[conversation.id] = conversation
-  // A copy of the pointers, so the event's own array is left in the order it arrived.
-  const order = [...conversations].sort(compareConversations).map((c) => c.id)
+  // Arrival order, not our own. libsession orders both queries in SQL, and it does not order them
+  // the same way: conversations are `priority DESC, last_activity DESC, id`, requests are
+  // `last_activity DESC, id` with no priority at all. One comparator applied to both did not
+  // merely repeat work already done - it imposed a priority ordering on the request list that
+  // libsession does not apply, and it would have gone on disagreeing with any later change to
+  // libsession's sort rules.
+  const order = conversations.map((c) => c.id)
 
   return target === 'conversations'
     ? { conversations: byId, conversationOrder: order }
@@ -99,51 +99,29 @@ function insertionIndex<T>(sorted: readonly T[], item: T, compare: (a: T, b: T) 
  * Approval arrives as an update, not as a removal followed by an addition, so a row that
  * changed side has to be taken out of the list it used to be in. Missing this is what makes
  * a conversation appear in both lists at once.
- *
- * This runs once per message received or sent, so the order is maintained rather than
- * recomputed: a row whose rank did not change keeps the order array it was in, and one whose
- * rank did is moved to where a binary search says it belongs.
  */
 function upsertConversation(state: SessionState, conversation: Conversation): SessionState {
   const to: ListKey = conversation.request ? 'requests' : 'conversations'
   const { order: toOrder, other: from } = LISTS[to]
   const fromOrder = LISTS[from].order
 
-  const next: Partial<SessionState> = {}
+  const { [conversation.id]: _removed, ...withoutFromOther } = state[from]
+  const target = { ...state[to], [conversation.id]: conversation }
 
-  if (conversation.id in state[from]) {
-    const { [conversation.id]: _moved, ...rest } = state[from]
-    next[from] = rest
-    next[fromOrder] = state[fromOrder].filter((id) => id !== conversation.id)
+  // The row keeps its place, and a row arriving from the other list goes on the end. Neither is
+  // this file's decision to make: libsession orders the lists, and the only case that moves a
+  // conversation between them - approval - is followed by a replacement carrying the real order,
+  // so an appended row is corrected within the same batch rather than left where it was put.
+  const already = state[toOrder].includes(conversation.id)
+  const order = already ? state[toOrder] : [...state[toOrder], conversation.id]
+
+  return {
+    ...state,
+    [from]: withoutFromOther,
+    [fromOrder]: state[fromOrder].filter((id) => id !== conversation.id),
+    [to]: target,
+    [toOrder]: order,
   }
-
-  const previous = state[to][conversation.id]
-  const byId = { ...state[to], [conversation.id]: conversation }
-  next[to] = byId
-  next[toOrder] =
-    previous && sameRank(previous, conversation)
-      ? state[toOrder]
-      : placed(state[toOrder], previous !== undefined, conversation.id, byId)
-
-  return { ...state, ...next }
-}
-
-function sameRank(a: Conversation, b: Conversation): boolean {
-  return a.priority === b.priority && a.lastActivity === b.lastActivity
-}
-
-function placed(
-  order: ConversationId[],
-  present: boolean,
-  id: ConversationId,
-  byId: Record<ConversationId, Conversation>,
-): ConversationId[] {
-  const ids = present ? order.filter((each) => each !== id) : order.slice()
-  const at = insertionIndex(ids, id, (a, b) =>
-    compareConversations(byId[a] as Conversation, byId[b] as Conversation),
-  )
-  ids.splice(at, 0, id)
-  return ids
 }
 
 function removeConversation(state: SessionState, id: ConversationId): SessionState {

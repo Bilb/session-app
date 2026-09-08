@@ -24,16 +24,14 @@ function hexToBytes(hex: string): Uint8Array {
  *
  * Real where a screen has arrived that needs it, and a memory implementation everywhere else.
  *
- * The clipboard is real now because settings shows the account ID, and an account ID nobody can
- * copy is one they have to read out loud. Until this it was the memory port, so Copy wrote to a
- * variable and the system clipboard never heard about it - the button worked on desktop and did
- * nothing at all on either phone.
+ * A memory port left in place fails silently on a device: the write lands in a variable, nothing
+ * throws, and the screen looks like it worked. So a port stays memory only while nothing on any
+ * screen depends on it reaching the OS.
  */
 setPorts(
   memoryPorts({
-    // The same variable and the same parser store.ts gives the transport, so what the overlay
-    // says and what libsession attached to cannot disagree. EXPO_PUBLIC_ because Metro inlines
-    // nothing else.
+    // The same variable and the same parser store.ts gives the transport, so the overlay cannot
+    // name a network libsession never attached to. EXPO_PUBLIC_ for the reason store.ts gives.
     network: { name: parseNetworkName(process.env['EXPO_PUBLIC_SESSION_NETID']) },
     clipboard: {
       setString: (value) => Clipboard.setStringAsync(value).then(() => undefined),

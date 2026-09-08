@@ -3,10 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { shouldStampNetwork } from '#src/networkStamp'
 
 /**
- * Both directions matter, for opposite reasons. Stamping mainnet would put a badge across every
- * real build. Not stamping devnet is the one that costs somebody an afternoon, because a devnet
- * build that looks like a real one is one people treat as real - which is the entire reason iOS
- * draws this over its nav bar logo.
+ * Both directions are asserted because the failures are opposite and both are silent: a badge over
+ * every real build, or a sandbox build that looks exactly like a real one.
  */
 describe('shouldStampNetwork', () => {
   it('leaves a real build alone', () => {

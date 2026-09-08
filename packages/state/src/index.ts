@@ -13,5 +13,5 @@ export {
   useSessionActions,
   useUnreadRequestCount,
 } from './hooks'
-export { compareConversations, emptyState } from './types'
+export { emptyState } from './types'
 export type { MessageWindow, SessionState } from './types'

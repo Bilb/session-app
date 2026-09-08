@@ -81,10 +81,10 @@ export default defineConfig({
       esbuildOptions: { resolveExtensions: WEB_FIRST_EXTENSIONS },
     },
     define: {
-      // The same variable the main process reads to choose the netid (see src/main/bridge.ts), so
-      // the overlay and the network libsession actually attached to cannot disagree. Spelled the
-      // same on both sides - `import.meta.env` rather than a global of its own, because two names
-      // for one variable is one more than anybody will remember.
+      // The main process reads SESSION_NETID from the environment to pick the netid; the
+      // renderer cannot read the environment at all, so it gets the same value substituted here.
+      // Both readers have to resolve to one value, or the overlay names a network libsession
+      // never attached to.
       'import.meta.env.SESSION_NETID': JSON.stringify(process.env['SESSION_NETID'] ?? 'mainnet'),
       // react-native-web reads these; without them the bundle throws on first render.
       global: 'globalThis',

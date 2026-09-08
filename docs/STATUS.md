@@ -28,7 +28,7 @@ bridge. Only the C++ is missing from that path.
 | `@session/basic-types` `@session/theme-tokens` | copied from session-pkgs, trimmed                                                   |
 | `@session/localization`                        | copied, plus a markup parser for the `<b>`/`<br/>` in the catalogue                 |
 | `@session/test-ids`                            | the element registry                                                                |
-| `@session/bridge-types`                        | the protocol: domain types, `Command`, `Result`, `SessionEvent`, `Frame`             |
+| `@session/bridge-types`                        | the protocol: domain types, `Command`, `Result`, `SessionEvent`, `Frame`            |
 | `@session/bridge-codegen`                      | generates the shim's C++ structs and JSI/N-API converters from bridge-types         |
 | `@session/client`                              | the SessionClient facade, and the fake                                              |
 | `@session/client-contract`                     | 9 behavioural scenarios, running against the fake                                   |
@@ -163,6 +163,13 @@ had to exist before any of this was visible.
   (`restoreAccount`) with no screen.
 - **There is no contact list and no QR scanner.** Starting a conversation means pasting an
   account ID into the new-conversation screen.
+- **A Message still carries its own `conversationId`.** Every container already establishes it:
+  a `message-added` names the conversation beside the message, and a `messageList` answers a
+  request that named one. The protobuf bridge dropped the field for the bytes it saved, which is
+  not the argument here - the shim builds JSI and N-API objects, so what repeats is a string per
+  row rather than 66 bytes per row. Removing it means changing the protocol, the generated
+  converters and the shim together, and the caller then has to thread the id it asked for through
+  the response.
 
 ### On reading the account ID
 
