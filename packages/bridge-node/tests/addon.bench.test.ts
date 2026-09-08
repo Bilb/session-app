@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { createNodeBridgeTransport } from './index'
+import { createNodeBridgeTransport } from '#src/index'
 import { createSessionClient, type SessionClient } from '@session/client'
 import { afterAll, beforeAll, describe, it } from 'vitest'
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { friends, strangers } from './fixtures'
+import { friends, strangers } from '#src/fake/fixtures'
 
 /**
  * Which list the fake announces, and when.
