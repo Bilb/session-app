@@ -94,11 +94,12 @@ function fromAttachmentPb(pb: AttachmentPb): Attachment {
   }
 }
 
-export function fromMessagePb(pb: MessagePb): Message {
+/** The id comes from the envelope: the wire does not carry one per message, only the facade type. */
+export function fromMessagePb(pb: MessagePb, conversationId: string): Message {
   const deleted = fromDeletionPb(pb.deleted ?? DeletionPb.UNSPECIFIED)
   return {
     id: toNumber(pb.id),
-    conversationId: pb.conversationId,
+    conversationId,
     author: pb.author,
     timestamp: toNumber(pb.timestamp),
     body: pb.body,
