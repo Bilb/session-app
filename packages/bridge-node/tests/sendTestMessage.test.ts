@@ -6,7 +6,7 @@ import { create, fromBinary, toBinary, type MessageInitShape } from '@bufbuild/p
 import { FrameSchema, RequestSchema } from '@session/proto'
 import { describe, expect, it } from 'vitest'
 
-import { createNodeBridgeTransport } from './index'
+import { createNodeBridgeTransport } from '#src/index'
 
 /**
  * Sends one real message to one real account, over a real network.

@@ -5,6 +5,12 @@
   "description": "The bridge wire format: commands, responses and events, plus their generated codecs",
   "type": "module",
   "main": "./src/index.ts",
+  "imports": {
+    "#src/*": [
+      "./src/*.ts",
+      "./src/*.tsx"
+    ]
+  },
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts"

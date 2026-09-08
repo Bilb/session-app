@@ -1,3 +1,4 @@
+import { ChevronLeft } from '@tamagui/lucide-icons-2/icons/ChevronLeft'
 import { Plus } from '@tamagui/lucide-icons-2/icons/Plus'
 import { Settings } from '@tamagui/lucide-icons-2/icons/Settings'
 
@@ -15,6 +16,7 @@ import type { IconName, IconProps } from './Icon.types'
  * the values are: every name has a glyph, and a glyph nobody named does not compile.
  */
 const GLYPHS = {
+  chevronLeft: ChevronLeft,
   plus: Plus,
   settings: Settings,
 } satisfies Record<IconName, typeof Plus>

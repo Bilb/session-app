@@ -1,7 +1,7 @@
 import { create, fromBinary, toBinary } from '@bufbuild/protobuf'
 import { describe, expect, it } from 'vitest'
 
-import { ConversationKind, FrameSchema, RequestSchema } from './index'
+import { ConversationKind, FrameSchema, RequestSchema } from '#src/index'
 
 describe('wire format', () => {
   it('carries a send command there and back', () => {

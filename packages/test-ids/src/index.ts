@@ -44,12 +44,17 @@ export const ELEMENT = {
   },
   settings: {
     screen: 'settings',
+    back: 'settings-back',
     themePicker: 'settings-theme-picker',
     themeOption: (name: string) => `settings-theme-${name}` as const,
     accentOption: (name: string) => `settings-accent-${name}` as const,
     displayName: 'settings-display-name',
     accountId: 'settings-account-id',
+    copyAccountId: 'settings-copy-account-id',
     networkStatus: 'settings-network-status',
+  },
+  networkOverlay: {
+    badge: 'network-overlay-badge',
   },
   newConversation: {
     screen: 'new-conversation',
@@ -97,12 +102,15 @@ export type ElementId =
   | `request-accept-${number}`
   | 'requests-badge'
   | 'settings'
+  | 'settings-back'
   | 'settings-theme-picker'
   | `settings-theme-${string}`
   | `settings-accent-${string}`
   | 'settings-display-name'
   | 'settings-account-id'
+  | 'settings-copy-account-id'
   | 'settings-network-status'
+  | 'network-overlay-badge'
   | 'new-conversation'
   | 'new-conversation-back'
   | 'new-conversation-account-id'

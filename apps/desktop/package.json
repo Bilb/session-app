@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@session/app": "workspace:*",
+    "@session/basic-types": "workspace:*",
     "@session/bridge-node": "workspace:*",
     "@session/client": "workspace:*",
     "@session/screens": "workspace:*",

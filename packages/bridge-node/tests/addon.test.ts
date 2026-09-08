@@ -7,7 +7,7 @@ import { create, fromBinary, toBinary } from '@bufbuild/protobuf'
 import { FrameSchema, RequestSchema } from '@session/proto'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { createNodeBridgeTransport } from './index'
+import { createNodeBridgeTransport } from '#src/index'
 
 /**
  * The addon against the real libsession, with no network attached.

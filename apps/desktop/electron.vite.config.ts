@@ -46,6 +46,7 @@ const WEB_FIRST_EXTENSIONS = [
  */
 const workspacePackages = [
   '@session/app',
+  '@session/basic-types',
   '@session/bridge-node',
   '@session/client',
   '@session/localization',
@@ -78,6 +79,11 @@ export default defineConfig({
       esbuildOptions: { resolveExtensions: WEB_FIRST_EXTENSIONS },
     },
     define: {
+      // The main process reads SESSION_NETID from the environment to pick the netid; the
+      // renderer cannot read the environment at all, so it gets the same value substituted here.
+      // Both readers have to resolve to one value, or the overlay names a network libsession
+      // never attached to.
+      'import.meta.env.SESSION_NETID': JSON.stringify(process.env['SESSION_NETID'] ?? 'mainnet'),
       // react-native-web reads these; without them the bundle throws on first render.
       global: 'globalThis',
       __DEV__: JSON.stringify(process.env['NODE_ENV'] !== 'production'),

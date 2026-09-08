@@ -65,6 +65,16 @@ export interface ButtonProps {
   disabled?: boolean
   loading?: boolean
   icon?: ReactNode
+  /**
+   * What a screen reader announces. Needed whenever the button is drawn as an icon alone: the
+   * glyph carries the meaning for everyone who can see it and nothing at all for anyone who
+   * cannot.
+   *
+   * Passed down as `aria-label`, which is the name tamagui takes on both platforms - it maps it
+   * to `accessibilityLabel` itself on native. Spelling it the react-native way here reached the
+   * DOM as nothing whatsoever, which an icon-only button cannot afford.
+   */
+  accessibilityLabel?: string
   testID?: string
 }
 
@@ -76,6 +86,7 @@ export function Button({
   disabled = false,
   loading = false,
   icon,
+  accessibilityLabel,
   testID,
 }: ButtonProps) {
   return (
@@ -84,6 +95,7 @@ export function Button({
       size={size}
       disabled={disabled || loading}
       onPress={onPress}
+      aria-label={accessibilityLabel}
       testID={testID}
     >
       {loading ? <Spinner size="small" color={LABEL_TONE[variant]} /> : icon}

@@ -42,6 +42,9 @@ async function createWindow(): Promise<void> {
     width: 1100,
     height: 760,
     minWidth: 380,
+    // Linux and Windows take the window icon from here; macOS ignores it and uses the bundle's,
+    // which is the packager's job rather than this file's.
+    icon: join(here, '../../resources/icon.png'),
     // Shown straight away rather than on ready-to-show: that event is not dependable on a
     // headless display, and a window that never shows has no layout, which makes every
     // element in it invisible to a test.

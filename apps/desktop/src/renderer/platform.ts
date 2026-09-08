@@ -1,4 +1,5 @@
 import { memoryPorts, setPorts } from '@session/app'
+import { parseNetworkName } from '@session/basic-types'
 
 /**
  * The desktop app's OS ports.
@@ -10,6 +11,8 @@ import { memoryPorts, setPorts } from '@session/app'
  */
 setPorts(
   memoryPorts({
+    // The same variable and the same parser the main process uses, inlined at build time.
+    network: { name: parseNetworkName(import.meta.env.SESSION_NETID) },
     window: {
       isFocused: () => document.hasFocus(),
       onFocusChange: (handler) => {

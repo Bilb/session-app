@@ -3,6 +3,8 @@ import { tr } from '@session/localization'
 import { useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { Button, Input, Screen, Text, XStack, YStack } from '@session/ui'
+
+import { BackButton } from './BackButton'
 import { useState } from 'react'
 
 /**
@@ -46,20 +48,16 @@ export function NewConversationScreen() {
             on a two-pane window that is the placeholder, which is still the right answer - the
             list never left. */}
         <XStack alignItems="center" gap="$1.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            onPress={() => nav.back()}
-            testID={ELEMENT.newConversation.back}
-          >
-            {tr('back')}
-          </Button>
+          <BackButton testID={ELEMENT.newConversation.back} />
           <Text size="$6" weight="bold">
             {tr('conversationsNew')}
           </Text>
         </XStack>
+        {/* The desktop wording of the pair, on both platforms, because it is the one that does
+            not promise a QR scanner - and this screen has none yet. When the scanner lands,
+            mobile wants `messageNewDescriptionMobile` instead. */}
         <Text tone="secondary" size="$3">
-          Paste the account ID of whoever you want to write to.
+          {tr('messageNewDescriptionDesktop')}
         </Text>
 
         <Input

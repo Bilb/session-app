@@ -1,3 +1,4 @@
+import { netidForTransport, parseNetworkName } from '@session/basic-types'
 import { createSessionClient, type BridgeTransport } from '@session/client'
 import { createSessionStore } from '@session/state'
 import { Platform } from 'react-native'
@@ -11,7 +12,12 @@ import { resolveDatabaseKey, sessionPaths } from './storage'
  * here: an app is an adapter, and which bridge it gets is the one decision this file makes.
  */
 async function openTransport(): Promise<BridgeTransport> {
-  if (process.env['SESSION_FAKE'] === '1') {
+  const netid = netidForTransport(parseNetworkName(process.env['EXPO_PUBLIC_SESSION_NETID']))
+
+  // Metro inlines an env var into the bundle only when its name carries EXPO_PUBLIC_; a bare name
+  // reads `undefined` here however the dev script was invoked. Drop the prefix and this check
+  // falls through silently, taking the Nitro module and real libsession on a run meant to be fake.
+  if (process.env['EXPO_PUBLIC_SESSION_FAKE'] === '1') {
     const { createFakeBridge } = await import('./dev/fakeBridge')
     return createFakeBridge()
   }
@@ -27,7 +33,9 @@ async function openTransport(): Promise<BridgeTransport> {
     deferAccount: true,
     // Attached by the bridge once an account exists: on open if there is one already, and
     // after onboarding otherwise.
-    netid: 'mainnet',
+    // Unset means mainnet, and absent for devnet, which attaches nothing rather than quietly
+    // attaching mainnet. See netidForTransport.
+    ...(netid === undefined ? {} : { netid }),
     deviceType: Platform.OS === 'ios' ? 'ios' : 'android',
   })
 }

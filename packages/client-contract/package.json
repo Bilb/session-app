@@ -5,6 +5,12 @@
   "description": "The behavioural suite every SessionClient must satisfy, fake and real alike",
   "type": "module",
   "main": "./src/index.ts",
+  "imports": {
+    "#src/*": [
+      "./src/*.ts",
+      "./src/*.tsx"
+    ]
+  },
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts"

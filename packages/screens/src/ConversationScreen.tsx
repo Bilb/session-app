@@ -1,4 +1,3 @@
-import { useNav } from '@session/app'
 import type { Message } from '@session/client'
 import { useConversation, useMessages, useSessionActions } from '@session/state'
 import { tr } from '@session/localization'
@@ -6,6 +5,7 @@ import { ELEMENT } from '@session/test-ids'
 import { Button, Input, List, Screen, Separator, Text, XStack, YStack } from '@session/ui'
 import { useState } from 'react'
 
+import { BackButton } from './BackButton'
 import { conversationTitle } from './conversationTitle'
 
 /**
@@ -19,7 +19,6 @@ export function ConversationScreen({ conversationId }: { conversationId: string 
   const conversation = useConversation(conversationId)
   const { messages, ready } = useMessages(conversationId)
   const actions = useSessionActions()
-  const nav = useNav()
   const [draft, setDraft] = useState('')
 
   function send(): void {
@@ -45,14 +44,7 @@ export function ConversationScreen({ conversationId }: { conversationId: string 
         alignItems="center"
         testID={ELEMENT.conversation.header}
       >
-        <Button
-          variant="ghost"
-          size="sm"
-          onPress={() => nav.back()}
-          testID={ELEMENT.conversation.back}
-        >
-          {tr('back')}
-        </Button>
+        <BackButton testID={ELEMENT.conversation.back} />
         <Text
           size="$5"
           weight="semibold"

@@ -5,7 +5,7 @@
   "description": "The Session mobile app: one Expo app for Android and iOS, phone and tablet",
   "main": "index.ts",
   "scripts": {
-    "dev": "SESSION_FAKE=1 expo start --dev-client",
+    "dev": "EXPO_PUBLIC_SESSION_FAKE=1 expo start --dev-client",
     "dev:real": "expo start --dev-client",
     "android": "expo run:android",
     "ios": "expo run:ios",
@@ -16,12 +16,14 @@
   },
   "dependencies": {
     "@session/app": "workspace:*",
+    "@session/basic-types": "workspace:*",
     "@session/bridge-rn": "workspace:*",
     "@session/client": "workspace:*",
     "@session/screens": "workspace:*",
     "@session/state": "workspace:*",
     "@session/ui": "workspace:*",
     "expo": "catalog:",
+    "expo-clipboard": "catalog:",
     "expo-constants": "catalog:",
     "expo-crypto": "catalog:",
     "expo-file-system": "catalog:",

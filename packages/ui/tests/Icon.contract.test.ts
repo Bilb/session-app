@@ -13,7 +13,8 @@ import { describe, expect, it } from 'vitest'
  * bundle every one of lucide's ~1500 icons, because Metro does not tree-shake - a mistake with no
  * visible symptom at all, which is exactly the kind worth a test.
  */
-const dir = import.meta.dirname
+/** The sources under test, which live beside src rather than beside this file. */
+const dir = join(import.meta.dirname, '../src')
 const component = readFileSync(join(dir, 'Icon.tsx'), 'utf8')
 const types = readFileSync(join(dir, 'Icon.types.ts'), 'utf8')
 

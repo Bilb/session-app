@@ -1,9 +1,11 @@
 import { routes, useNav } from '@session/app'
 import type { Conversation } from '@session/client'
 import { useConversations, useUnreadRequestCount } from '@session/state'
+import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Avatar, Icon, List, Screen, Separator, Text, XStack, YStack } from '@session/ui'
 
+import { NetworkOverlay } from './NetworkOverlay'
 import { conversationTitle } from './conversationTitle'
 
 /**
@@ -36,9 +38,11 @@ export function ConversationListScreen() {
         alignItems="center"
         justifyContent="space-between"
       >
-        <Text size="$6" weight="bold">
-          Messages
-        </Text>
+        <NetworkOverlay>
+          <Text size="$6" weight="bold">
+            {tr('messages')}
+          </Text>
+        </NetworkOverlay>
         <XStack alignItems="center" gap="$1.5">
           {unreadRequests > 0 ? (
             <XStack
@@ -114,7 +118,7 @@ export function ConversationListScreen() {
         empty={
           <YStack flex={1} alignItems="center" justifyContent="center" padding="$3">
             <Text tone="secondary" testID={ELEMENT.conversationList.empty}>
-              No conversations yet
+              {tr('onboardingHitThePlusButton')}
             </Text>
           </YStack>
         }

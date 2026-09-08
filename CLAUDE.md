@@ -49,6 +49,28 @@ dev entries. When a rule fires, fix the design - not the config.
 | state projection  | reducer unit test                                  |
 | bug fix           | the test that would have caught it                 |
 
+**Tests live in `tests/`, never in `src/`.** Every package puts them in its own
+`packages/<pkg>/tests/`, mirroring the `src/` path they cover -
+`src/nav/routes.ts` is tested by `tests/nav/routes.contract.test.ts`. Cross-app end-to-end
+specs stay in the repo's top-level `tests/e2e/`.
+
+A test reaches its own package through `#src/*`, never `../src/*`:
+
+```ts
+import { shouldStampNetwork } from '#src/networkStamp'
+```
+
+Two lines make that work, and a new package with tests needs both. `package.json` maps the
+subpath, with the extensions spelled out because neither tsc nor Node substitutes one through
+a pattern:
+
+```jsonc
+"imports": { "#src/*": ["./src/*.ts", "./src/*.tsx"] }
+```
+
+and `tsconfig.json` lists `tests` in `include`, or nothing in there is typechecked - vitest
+finds tests wherever they sit, so an unchecked one still runs and nothing complains.
+
 ## Native rebuild triggers
 
 - `bridge.proto` changed → `turbo codegen && turbo build:native` (generated output is

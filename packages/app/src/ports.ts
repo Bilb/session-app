@@ -1,3 +1,4 @@
+import type { NetworkName } from '@session/basic-types'
 /**
  * What the app needs from the operating system, named so shared code can ask without
  * knowing which one it is running on.
@@ -66,7 +67,12 @@ export interface WindowPort {
   onFocusChange(handler: (focused: boolean) => void): () => void
 }
 
+export interface NetworkPort {
+  name: NetworkName
+}
+
 export interface Ports {
+  network: NetworkPort
   secureStore: SecureStore
   files: FilesPort
   mediaProbe: MediaProbePort

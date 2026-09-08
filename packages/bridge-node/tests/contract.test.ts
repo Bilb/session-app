@@ -14,7 +14,7 @@ import {
 } from '@session/proto'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { createNodeBridgeTransport } from './index'
+import { createNodeBridgeTransport } from '#src/index'
 
 /**
  * The contract, run against the real addon with no network - mode B.

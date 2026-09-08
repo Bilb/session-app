@@ -4,6 +4,7 @@ import { join } from 'node:path'
 
 import electron from 'electron'
 
+import { netidForTransport, parseNetworkName } from '@session/basic-types'
 import type { BridgeTransport } from '@session/client'
 
 const { app, safeStorage } = electron
@@ -56,6 +57,10 @@ export async function createBridge(): Promise<BridgeTransport> {
 
   const { createNodeBridgeTransport } = await import('@session/bridge-node')
 
+  // Undefined for a devnet build, which then attaches nothing rather than quietly attaching
+  // mainnet. See netidForTransport.
+  const netid = netidForTransport(parseNetworkName(process.env['SESSION_NETID']))
+
   const dir = app.getPath('userData')
   mkdirSync(dir, { recursive: true })
 
@@ -68,9 +73,9 @@ export async function createBridge(): Promise<BridgeTransport> {
     // chose.
     deferAccount: true,
     // The bridge attaches this once an account exists - on open if there already is one, and
-    // after onboarding otherwise. SESSION_NETID=testnet switches it; unset means mainnet, and
-    // there is deliberately no way to spell "offline" here: that is what SESSION_FAKE is for.
-    netid: process.env['SESSION_NETID'] === 'testnet' ? 'testnet' : 'mainnet',
+    // after onboarding otherwise. SESSION_NETID picks it; unset means mainnet, and there is
+    // deliberately no way to spell "offline" here: that is what SESSION_FAKE is for.
+    ...(netid === undefined ? {} : { netid }),
     deviceType: 'desktop',
     // Off unless asked for: it is chatty at anything below warn, and the reason to turn it up
     // is always a specific failure. SESSION_LOG=debug is what a diagnosis looks like.
