@@ -54,9 +54,9 @@ export function SettingsScreen() {
             {sessionId}
           </Text>
         </XStack>
-        {/* A button rather than tappable text. The account ID is the one thing on this screen
-            somebody has to get out of the app, and the old affordance was 11pt of text with no hit
-            area to speak of and nothing to say it had worked. */}
+        {/* A button rather than tappable text: the account ID is the one thing on this screen a
+            person has to get out of the app, so the control needs a real hit area on a phone and
+            has to say that it worked. */}
         <Button
           variant="outline"
           size="sm"
@@ -65,8 +65,8 @@ export function SettingsScreen() {
             void requirePorts()
               .clipboard.setString(sessionId)
               .then(() => {
-                // Says so on the button itself and goes back on its own. Anything longer-lived
-                // would need somewhere to put a toast, which no screen here has yet.
+                // Confirmed on the button itself because no screen here has a toast surface to
+                // put it on yet.
                 setCopied(true)
                 setTimeout(() => {
                   setCopied(false)

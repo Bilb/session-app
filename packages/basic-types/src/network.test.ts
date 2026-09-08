@@ -3,12 +3,9 @@ import { describe, expect, it } from 'vitest'
 import { netidForTransport, parseNetworkName } from './network'
 
 /**
- * The case that matters is `devnet`, in a direction that is easy to get backwards.
- *
- * This used to be one expression per reader, and each turned anything unrecognised into mainnet.
- * So a build asked for a devnet, attached to mainnet, and - once the overlay arrived - would have
- * been stamped `devnet` while talking to real people. That is the pairing these two functions
- * exist to make impossible.
+ * `devnet` is the case worth pinning, and in both directions: the parser must keep it rather than
+ * widening it to mainnet, and the transport must refuse it rather than narrowing it back. Either
+ * slip alone puts a build meant for a sandbox on the real network.
  */
 describe('parseNetworkName', () => {
   it('defaults to mainnet when nothing is set', () => {

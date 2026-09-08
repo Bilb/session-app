@@ -75,10 +75,6 @@ export async function createBridge(): Promise<BridgeTransport> {
     // The bridge attaches this once an account exists - on open if there already is one, and
     // after onboarding otherwise. SESSION_NETID picks it; unset means mainnet, and there is
     // deliberately no way to spell "offline" here: that is what SESSION_FAKE is for.
-    //
-    // Absent for devnet, which attaches nothing at all. It used to attach mainnet when asked for
-    // a devnet, which is the one outcome nobody wants: real traffic from a build whose owner
-    // believes it is a sandbox.
     ...(netid === undefined ? {} : { netid }),
     deviceType: 'desktop',
     // Off unless asked for: it is chatty at anything below warn, and the reason to turn it up

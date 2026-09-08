@@ -14,10 +14,9 @@ import { resolveDatabaseKey, sessionPaths } from './storage'
 async function openTransport(): Promise<BridgeTransport> {
   const netid = netidForTransport(parseNetworkName(process.env['EXPO_PUBLIC_SESSION_NETID']))
 
-  // EXPO_PUBLIC_, and it is not decoration: Metro only inlines an env var into the bundle when it
-  // carries that prefix, so the bare name this used to read was `undefined` here however the dev
-  // script was invoked. The check fell through, the app took the Nitro module, and every phone ran
-  // real libsession against mainnet while its terminal said it was on the fake.
+  // Metro inlines an env var into the bundle only when its name carries EXPO_PUBLIC_; a bare name
+  // reads `undefined` here however the dev script was invoked. Drop the prefix and this check
+  // falls through silently, taking the Nitro module and real libsession on a run meant to be fake.
   if (process.env['EXPO_PUBLIC_SESSION_FAKE'] === '1') {
     const { createFakeBridge } = await import('./dev/fakeBridge')
     return createFakeBridge()
