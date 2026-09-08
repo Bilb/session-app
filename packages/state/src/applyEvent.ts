@@ -105,23 +105,28 @@ function upsertConversation(state: SessionState, conversation: Conversation): Se
   const { order: toOrder, other: from } = LISTS[to]
   const fromOrder = LISTS[from].order
 
-  const { [conversation.id]: _removed, ...withoutFromOther } = state[from]
-  const target = { ...state[to], [conversation.id]: conversation }
+  const next: Partial<SessionState> = {}
+
+  // Only rebuilt if the row was actually in it. Rebuilding regardless hands a screen subscribed
+  // to the other list a new array on every message that arrives, and it re-renders for a change
+  // that never touched it.
+  if (conversation.id in state[from]) {
+    const { [conversation.id]: _moved, ...rest } = state[from]
+    next[from] = rest
+    next[fromOrder] = state[fromOrder].filter((id) => id !== conversation.id)
+  }
+
+  next[to] = { ...state[to], [conversation.id]: conversation }
 
   // The row keeps its place, and a row arriving from the other list goes on the end. Neither is
   // this file's decision to make: libsession orders the lists, and the only case that moves a
   // conversation between them - approval - is followed by a replacement carrying the real order,
   // so an appended row is corrected within the same batch rather than left where it was put.
-  const already = state[toOrder].includes(conversation.id)
-  const order = already ? state[toOrder] : [...state[toOrder], conversation.id]
+  next[toOrder] = state[toOrder].includes(conversation.id)
+    ? state[toOrder]
+    : [...state[toOrder], conversation.id]
 
-  return {
-    ...state,
-    [from]: withoutFromOther,
-    [fromOrder]: state[fromOrder].filter((id) => id !== conversation.id),
-    [to]: target,
-    [toOrder]: order,
-  }
+  return { ...state, ...next }
 }
 
 function removeConversation(state: SessionState, id: ConversationId): SessionState {

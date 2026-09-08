@@ -162,37 +162,7 @@ describe('applyEvent', () => {
     expect(state.histories['05alice']).toBeUndefined()
   })
 
-  it('places an added conversation by rank without disturbing its neighbours', () => {
-    const seeded = replay([
-      {
-        type: 'conversation-list-replaced',
-        conversations: [
-          conversation({ id: 'pinned', lastActivity: 100, priority: 1 }),
-          conversation({ id: 'newer', lastActivity: 3000 }),
-          conversation({ id: 'older', lastActivity: 1000 }),
-        ],
-      },
-    ])
-
-    const front = applyEvent(seeded, {
-      type: 'conversation-added',
-      conversation: conversation({ id: 'top', lastActivity: 1, priority: 2 }),
-    })
-    const middle = applyEvent(seeded, {
-      type: 'conversation-added',
-      conversation: conversation({ id: 'mid', lastActivity: 2000 }),
-    })
-    const end = applyEvent(seeded, {
-      type: 'conversation-added',
-      conversation: conversation({ id: 'last', lastActivity: 5 }),
-    })
-
-    expect(front.conversationOrder).toEqual(['top', 'pinned', 'newer', 'older'])
-    expect(middle.conversationOrder).toEqual(['pinned', 'newer', 'mid', 'older'])
-    expect(end.conversationOrder).toEqual(['pinned', 'newer', 'older', 'last'])
-  })
-
-  it('moves an updated conversation to its new rank', () => {
+  it('appends a conversation it has not seen, and leaves an updated one where it was', () => {
     const seeded = replay([
       {
         type: 'conversation-list-replaced',
@@ -204,16 +174,23 @@ describe('applyEvent', () => {
       },
     ])
 
-    const state = applyEvent(seeded, {
+    // A rank that would sort to the front under any comparator: it still goes on the end, because
+    // libsession follows with a replacement carrying the real order.
+    const added = applyEvent(seeded, {
+      type: 'conversation-added',
+      conversation: conversation({ id: 'top', lastActivity: 9000, priority: 2 }),
+    })
+    expect(added.conversationOrder).toEqual(['a', 'b', 'c', 'top'])
+
+    const updated = applyEvent(seeded, {
       type: 'conversation-updated',
       conversation: conversation({ id: 'c', lastActivity: 4000 }),
     })
-
-    expect(state.conversationOrder).toEqual(['c', 'a', 'b'])
-    expect(state.conversations['c']?.lastActivity).toBe(4000)
+    expect(updated.conversationOrder).toEqual(['a', 'b', 'c'])
+    expect(updated.conversations['c']?.lastActivity).toBe(4000)
   })
 
-  it('keeps the order array when an update does not change rank', () => {
+  it('keeps the same order array when only a field changed', () => {
     const seeded = replay([
       {
         type: 'conversation-list-replaced',
@@ -229,8 +206,8 @@ describe('applyEvent', () => {
       conversation: conversation({ id: 'b', lastActivity: 2000, unreadCount: 3 }),
     })
 
-    // A read count changed, the order did not: the list a screen is subscribed to is the same
-    // array, so nothing that only watches the order re-renders.
+    // A read count changed and the row was already in the list, so the order array is the same
+    // one: nothing that only watches the order re-renders.
     expect(state.conversationOrder).toBe(seeded.conversationOrder)
     expect(state.conversations['b']?.unreadCount).toBe(3)
   })
