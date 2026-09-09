@@ -317,9 +317,15 @@ describeEcho('the generated converters', () => {
       const from = received.length
       transport.send(request)
       await done
-      const echoed = received
-        .slice(from)
-        .find((f) => !(f.type === 'response' && f.response.id === id))
+      const echoingALog = frame.type === 'event' && frame.event.type === 'log'
+      const echoed = received.slice(from).find((f) => {
+        if (f.type === 'response' && f.response.id === id) return false
+        // The logger emits its own log events, and one landing here would otherwise be compared
+        // against the frame this request carried. Only skipped when that frame is not itself a
+        // log, or the case that exists to prove logs round-trip would skip its own answer.
+        if (!echoingALog && f.type === 'event' && f.event.type === 'log') return false
+        return true
+      })
       if (!echoed) throw new Error('the echoed frame did not arrive')
       return echoed
     }

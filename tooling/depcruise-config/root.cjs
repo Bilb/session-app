@@ -75,7 +75,7 @@ module.exports = {
         'Shared packages run on Hermes, in a browser and in Node. Wrap platform APIs in @session/ui or a port.',
       severity: 'error',
       from: {
-        path: '^packages/(basic-types|test-ids|theme-tokens|localization|client|client-contract|state|app|screens)/',
+        path: '^packages/(basic-types|bridge-types|test-ids|theme-tokens|localization|client|client-contract|state|app|screens)/',
         pathNot: '\\.(native|web|ios|android)\\.tsx?$',
       },
       to: { dependencyTypes: ['npm', 'npm-dev'], path: `^(${platformOnlyModules.join('|')})($|/)` },
@@ -84,7 +84,7 @@ module.exports = {
       name: 'shared-has-no-node-builtins',
       severity: 'error',
       from: {
-        path: '^packages/(basic-types|test-ids|theme-tokens|localization|client|client-contract|state|app|screens|ui)/',
+        path: '^packages/(basic-types|bridge-types|test-ids|theme-tokens|localization|client|client-contract|state|app|screens|ui)/',
         pathNot: '\\.(test|spec)\\.tsx?$',
       },
       to: { dependencyTypes: ['core'] },

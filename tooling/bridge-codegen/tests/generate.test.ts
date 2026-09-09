@@ -71,6 +71,12 @@ describe('bridge codegen', () => {
     ['inlineUnion.ts', /unsupported type ''a' \| 'b''/],
     ['untagged.ts', /needs a string-literal 'type' property/],
     ['cycle.ts', /part of a cycle/],
+    ['aliasCycle.ts', /part of a cycle/],
+    ['unionCycle.ts', /part of a cycle/],
+    ['collision.ts', /is generated twice/],
+    ['badLiteral.ts', /cannot be written as a C\+\+ string literal/],
+    ['enumCollision.ts', /both spell deep_red/],
+    ['badTag.ts', /does not make a C\+\+ identifier/],
   ]
   for (const [file, message] of rejects) {
     it(`refuses ${file}`, () => {

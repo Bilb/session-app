@@ -264,8 +264,16 @@ struct ClientBridge::Impl {
     }
 
     void handle(double id, const AttachNetworkCommand& cmd) {
-        options.netid = cmd.netid;
-        attach_network();
+        // attach_network reads options.netid and throws on one it will not attach to, so the
+        // field is put back on that path. Left set, a refused netid is one every later
+        // on_account() - onboarding's, in particular - would throw on without being asked to.
+        auto previous = std::exchange(options.netid, cmd.netid);
+        try {
+            attach_network();
+        } catch (...) {
+            options.netid = std::move(previous);
+            throw;
+        }
         ok(id);
     }
 
@@ -418,10 +426,16 @@ struct ClientBridge::Impl {
     void handle(double id, const DeleteMessageCommand& cmd) {
         auto answer = on(id, [this, id](bool deleted) { respond(id, BoolResult{deleted}); });
         const int64_t message_id = whole<int64_t>(cmd.message_id, "deleteMessage.messageId");
-        if (cmd.scope == Deletion::everywhere)
-            client->delete_message_everywhere(message_id, std::move(answer));
-        else
-            client->delete_message(message_id, std::move(answer));
+        // No default label, so -Werror=switch makes a new Deletion value a build failure here
+        // rather than one that silently deletes locally. See session_bridge_strict_switches.
+        switch (cmd.scope) {
+            case Deletion::everywhere:
+                client->delete_message_everywhere(message_id, std::move(answer));
+                break;
+            case Deletion::here:
+                client->delete_message(message_id, std::move(answer));
+                break;
+        }
     }
 
     void handle(double id, const GetPrefCommand& cmd) {

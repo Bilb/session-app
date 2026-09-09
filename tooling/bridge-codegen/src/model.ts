@@ -1,6 +1,6 @@
 import ts from 'typescript'
 
-import { pascal } from '#src/names'
+import { pascal, snake } from '#src/names'
 
 /**
  * The subset of TypeScript the bridge protocol is allowed to use, as a model the emitters can
@@ -65,6 +65,12 @@ class Extractor {
   private readonly declarations: Declaration[] = []
   /** Names currently being resolved, so a cycle is reported rather than looped on. */
   private readonly inProgress = new Set<string>()
+  /**
+   * Union aliases currently being flattened. Separate from `inProgress` because flattening runs
+   * before the alias is entered - the members are what decide whether it is an enum or a variant
+   * - so a pair of unions naming each other would recurse until the stack ran out.
+   */
+  private readonly flattening = new Set<string>()
   /**
    * Which declaration each generated name belongs to. A union member is named
    * `<Tag><Union>`, which an interface is free to be called as well, and whichever of the two
@@ -140,6 +146,18 @@ class Extractor {
     )
     if (literals.length === members.length) {
       this.enter(name, node)
+      const spellings = new Map<string, string>()
+      for (const [i, literal] of literals.entries()) {
+        const at = members[i] ?? node
+        checkLiteral(literal, at, name)
+        const spelling = snake(literal)
+        if (!IDENTIFIER.test(spelling))
+          throw fail(at, `${name}: '${literal}' does not spell a C++ enumerator`)
+        const already = spellings.get(spelling)
+        if (already !== undefined)
+          throw fail(at, `${name}: '${literal}' and '${already}' both spell ${spelling}`)
+        spellings.set(spelling, literal)
+      }
       const enumeration: Enum = { name, members: literals, doc: jsDoc(node) }
       this.enums.set(name, enumeration)
       this.declarations.push({ kind: 'enum', enum: enumeration })
@@ -180,7 +198,15 @@ class Extractor {
           ts.isTypeAliasDeclaration(declaration) &&
           ts.isUnionTypeNode(declaration.type)
         ) {
-          out.push(...this.flattenUnion(declaration.type, context))
+          const alias = declaration.name.text
+          if (this.flattening.has(alias))
+            throw fail(member, `${alias} is part of a cycle; C++ values cannot contain themselves`)
+          this.flattening.add(alias)
+          try {
+            out.push(...this.flattenUnion(declaration.type, context))
+          } finally {
+            this.flattening.delete(alias)
+          }
           continue
         }
         throw fail(member, `${context}: a union member must be an object literal, not a reference`)
@@ -206,6 +232,9 @@ class Extractor {
     if (tagMember.questionToken)
       throw fail(tagMember, `${unionName}: the 'type' tag cannot be optional`)
     const tag = tagMember.type.literal.text
+    checkLiteral(tag, tagMember, unionName)
+    if (!IDENTIFIER.test(`${pascal(tag)}${unionName}`))
+      throw fail(tagMember, `${unionName}: the tag '${tag}' does not make a C++ identifier`)
     const name = `${pascal(tag)}${unionName}`
     // Always a fresh struct: two members of one union cannot share a tag, and no other
     // declaration may already own the name this one generates.
@@ -283,6 +312,19 @@ class Extractor {
     }
     this.inProgress.add(name)
   }
+}
+
+const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/
+
+/**
+ * A literal that reaches C++ twice: once inside a string literal, once as part of an identifier.
+ * Neither survives a quote, a backslash or anything outside printable ASCII, and the generator
+ * refuses rather than emitting a header that will not compile.
+ */
+function checkLiteral(text: string, node: ts.Node, context: string): void {
+  if (text === '') throw fail(node, `${context}: an empty string literal has no C++ spelling`)
+  if (!/^[\x20-\x7e]*$/.test(text) || /["\\]/.test(text))
+    throw fail(node, `${context}: '${text}' cannot be written as a C++ string literal`)
 }
 
 function where(node: ts.Node): string {
