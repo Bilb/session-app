@@ -218,6 +218,7 @@ describeEcho('the generated converters', () => {
     body: 'héllo',
     outgoing: true,
     sendState: 'uploading',
+    syncState: 'pending',
     replyTo: { author, timestamp: 1_699_999_999_999, messageId: 7, body: 'orig' },
     deleted: 'here',
   }

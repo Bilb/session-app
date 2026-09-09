@@ -90,6 +90,11 @@ Message to_bridge(::session::client::Message&& from) {
             // Incoming messages have no send state; every consumer reads it behind `outgoing`,
             // so an absent value would only move the question.
             from.send_state ? send_state(*from.send_state) : SendState::sent,
+            // The sync send is carried across unset rather than defaulted: libsession leaves it
+            // unset on an incoming message and on a note to self, and `sent` there would report
+            // a delivery to our other devices that was never attempted.
+            from.sync_send_state ? std::optional<SendState>{send_state(*from.sync_send_state)}
+                                 : std::nullopt,
             std::move(reply),
             deleted);
 }

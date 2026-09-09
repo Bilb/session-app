@@ -297,6 +297,7 @@ struct JSIConverter<::session_bridge::Message> final {
                 JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "body"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "outgoing"))),
                 JSIConverter<::session_bridge::SendState>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "sendState"))),
+                JSIConverter<std::optional<::session_bridge::SendState>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "syncState"))),
                 JSIConverter<std::optional<::session_bridge::Reply>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "replyTo"))),
                 JSIConverter<std::optional<::session_bridge::Deletion>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "deleted"))));
     }
@@ -309,6 +310,8 @@ struct JSIConverter<::session_bridge::Message> final {
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "body"), JSIConverter<std::string>::toJSI(runtime, arg.body));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "outgoing"), JSIConverter<bool>::toJSI(runtime, arg.outgoing));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "sendState"), JSIConverter<::session_bridge::SendState>::toJSI(runtime, arg.send_state));
+        if (arg.sync_state)
+            obj.setProperty(runtime, PropNameIDCache::get(runtime, "syncState"), JSIConverter<::session_bridge::SendState>::toJSI(runtime, *arg.sync_state));
         if (arg.reply_to)
             obj.setProperty(runtime, PropNameIDCache::get(runtime, "replyTo"), JSIConverter<::session_bridge::Reply>::toJSI(runtime, *arg.reply_to));
         if (arg.deleted)

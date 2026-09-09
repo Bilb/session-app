@@ -190,13 +190,24 @@ struct Message {
     double timestamp;
     std::string body;
     bool outgoing;
-    /// Incoming messages have no send state of their own and report `sent`.
+    /// Delivery to the recipient - what "did it arrive" means, and what a transcript shows.
+    ///
+    /// Incoming messages have no send state of their own and report `sent`; every consumer reads
+    /// this behind `outgoing`, so an absent value would only move the question.
     ::session_bridge::SendState send_state;
+    /// Delivery of the copy deposited in our own swarm, which is how our other devices come to see
+    /// a message we sent. A separate send, retried separately, so it can still be pending when the
+    /// recipient already has the message - which is why it is not what a transcript shows.
+    ///
+    /// Unset where there was no such send to report: an incoming message, and a note to self, whose
+    /// recipient swarm is our own and whose `sendState` already covers the only send there was.
+    /// Optional rather than defaulted, because `sent` here would claim a sync that never happened.
+    std::optional<::session_bridge::SendState> sync_state;
     std::optional<::session_bridge::Reply> reply_to;
     std::optional<::session_bridge::Deletion> deleted;
 
-    Message(double id_, std::string conversation_id_, std::string author_, double timestamp_, std::string body_, bool outgoing_, ::session_bridge::SendState send_state_, std::optional<::session_bridge::Reply> reply_to_, std::optional<::session_bridge::Deletion> deleted_) :
-            id{std::move(id_)}, conversation_id{std::move(conversation_id_)}, author{std::move(author_)}, timestamp{std::move(timestamp_)}, body{std::move(body_)}, outgoing{std::move(outgoing_)}, send_state{std::move(send_state_)}, reply_to{std::move(reply_to_)}, deleted{std::move(deleted_)} {}
+    Message(double id_, std::string conversation_id_, std::string author_, double timestamp_, std::string body_, bool outgoing_, ::session_bridge::SendState send_state_, std::optional<::session_bridge::SendState> sync_state_, std::optional<::session_bridge::Reply> reply_to_, std::optional<::session_bridge::Deletion> deleted_) :
+            id{std::move(id_)}, conversation_id{std::move(conversation_id_)}, author{std::move(author_)}, timestamp{std::move(timestamp_)}, body{std::move(body_)}, outgoing{std::move(outgoing_)}, send_state{std::move(send_state_)}, sync_state{std::move(sync_state_)}, reply_to{std::move(reply_to_)}, deleted{std::move(deleted_)} {}
 };
 
 /// Oldest first, whatever page it is - the direction a transcript is read. libsession answers

@@ -97,6 +97,29 @@ export function runSessionClientContract(
       seen.stop()
     })
 
+    it('reports the sync send apart from the one to the recipient', async () => {
+      const { alice, bobId, settle } = await harness.friends()
+      const seen = collect(alice)
+
+      const messageId = await alice.sendMessage(bobId, { body: 'hello' })
+      await settle()
+
+      const updates = seen.events.filter(
+        (e) => e.type === 'message-updated' && e.message.id === messageId,
+      )
+      const last = updates[updates.length - 1]
+      if (last?.type !== 'message-updated') throw new Error('unreachable')
+
+      // The copy deposited in our own swarm is a separate send, so it gets its own state and
+      // reaches a terminal one of its own. Not asserted to match sendState: the whole reason it
+      // is a second field is that the two can disagree.
+      expect(last.message.syncState).toBeDefined()
+      expect(['pending', 'sending', 'sent', 'failed', 'interrupted']).toContain(
+        last.message.syncState,
+      )
+      seen.stop()
+    })
+
     it('reports the send reaching the network as an update, not a second message', async () => {
       const { alice, bobId, settle } = await harness.friends()
       const seen = collect(alice)

@@ -59,8 +59,23 @@ export interface Message {
   timestamp: number
   body: string
   outgoing: boolean
-  /** Incoming messages have no send state of their own and report `sent`. */
+  /**
+   * Delivery to the recipient - what "did it arrive" means, and what a transcript shows.
+   *
+   * Incoming messages have no send state of their own and report `sent`; every consumer reads
+   * this behind `outgoing`, so an absent value would only move the question.
+   */
   sendState: SendState
+  /**
+   * Delivery of the copy deposited in our own swarm, which is how our other devices come to see
+   * a message we sent. A separate send, retried separately, so it can still be pending when the
+   * recipient already has the message - which is why it is not what a transcript shows.
+   *
+   * Unset where there was no such send to report: an incoming message, and a note to self, whose
+   * recipient swarm is our own and whose `sendState` already covers the only send there was.
+   * Optional rather than defaulted, because `sent` here would claim a sync that never happened.
+   */
+  syncState?: SendState
   replyTo?: Reply
   deleted?: Deletion
 }

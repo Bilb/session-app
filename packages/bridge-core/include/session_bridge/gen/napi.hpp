@@ -335,6 +335,8 @@ struct Codec<::session_bridge::Message> {
         obj.Set("body", Codec<std::string>::to(env, value.body));
         obj.Set("outgoing", Codec<bool>::to(env, value.outgoing));
         obj.Set("sendState", Codec<::session_bridge::SendState>::to(env, value.send_state));
+        if (value.sync_state)
+            obj.Set("syncState", Codec<::session_bridge::SendState>::to(env, *value.sync_state));
         if (value.reply_to)
             obj.Set("replyTo", Codec<::session_bridge::Reply>::to(env, *value.reply_to));
         if (value.deleted)
@@ -351,6 +353,7 @@ struct Codec<::session_bridge::Message> {
                 Codec<std::string>::from(obj.Get("body"), "Message.body"),
                 Codec<bool>::from(obj.Get("outgoing"), "Message.outgoing"),
                 Codec<::session_bridge::SendState>::from(obj.Get("sendState"), "Message.sendState"),
+                optional<::session_bridge::SendState>(obj.Get("syncState"), "Message.syncState"),
                 optional<::session_bridge::Reply>(obj.Get("replyTo"), "Message.replyTo"),
                 optional<::session_bridge::Deletion>(obj.Get("deleted"), "Message.deleted"));
     }
