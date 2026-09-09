@@ -124,7 +124,12 @@ Conversation to_bridge(::session::client::AnyConversation&& from) {
             static_cast<double>(base.priority),
             static_cast<double>(std::max(0, base.unread)),
             base.marked_unread,
-            non_empty(std::move(base.last_message)),
+            // libsession previews the last message as a struct now, and the protocol carries a
+            // snippet string. An unset preview means the conversation has nothing to show; a set
+            // one with an empty body means the message was attachments alone, which this bridge
+            // has no way to describe until attachments are in the protocol. Both are no snippet,
+            // which is what the row already renders for a conversation nobody has written in.
+            non_empty(base.last_preview ? std::move(base.last_preview->body) : std::string{}),
             mute_ms > 0 ? std::optional<double>{static_cast<double>(mute_ms)} : std::nullopt,
             request,
             awaiting_approval,
