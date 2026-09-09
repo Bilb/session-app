@@ -2,21 +2,28 @@
   "name": "@session/bench",
   "version": "0.0.0",
   "private": true,
-  "description": "Helpers the addon benchmarks measure with",
+  "description": "What the bridge costs on the JavaScript thread",
   "type": "module",
   "scripts": {
+    "bench": "vitest bench --run",
+    "report": "vitest run src/report.test.ts",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
   },
   "devDependencies": {
+    "@session/client": "workspace:*",
     "@session/eslint-config": "workspace:*",
+    "@session/state": "workspace:*",
     "@session/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "eslint": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   },
   "exports": {
     "./fixtures": "./src/fixtures.ts",
-    "./measure": "./src/measure.ts"
+    "./measure": "./src/measure.ts",
+    "./pipeline": "./src/pipeline.ts"
   }
 }
