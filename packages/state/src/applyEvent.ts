@@ -58,11 +58,6 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
 
 type ListKey = 'conversations' | 'requests'
 
-const OTHER: Record<ListKey, ListKey> = {
-  conversations: 'requests',
-  requests: 'conversations',
-}
-
 /**
  * The list without `id`, or the same array when it was not in it.
  *
@@ -93,7 +88,7 @@ function insertionIndex<T>(sorted: readonly T[], item: T, compare: (a: T, b: T) 
  */
 function upsertConversation(state: SessionState, conversation: Conversation): SessionState {
   const to: ListKey = conversation.request ? 'requests' : 'conversations'
-  const from = OTHER[to]
+  const from: ListKey = conversation.request ? 'conversations' : 'requests'
 
   const at = state[to].findIndex((c) => c.id === conversation.id)
   let target: Conversation[]
