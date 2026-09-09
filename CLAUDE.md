@@ -85,8 +85,8 @@ finds tests wherever they sit, so an unchecked one still runs and nothing compla
 
 ```
 pnpm install
-pnpm dev                       # both apps on the fake; or dev:desktop / dev:mobile
-pnpm dev:desktop:real          # against the addon, which must be built first; dev:mobile:real too
+pnpm dev                       # both apps against libsession; or dev:desktop / dev:mobile
+pnpm dev:fake                  # the same on the fake: no network, seeded history, dev:*:fake too
 turbo lint typecheck test
 pnpm boundaries
 turbo test:e2e:fast            # Electron + the fake; e2e workflows are manual dispatch in CI

@@ -232,7 +232,7 @@ compile under Xcode 26 and is patched - still true of 57.0.8 and of the SDK 58 c
 isn't present", which turned out to mean the app was not signed at all: `CODE_SIGNING_ALLOWED=NO`
 is the obvious flag for a simulator build and it skips the step that applies entitlements.
 
-**Desktop.** `pnpm dev:desktop:real` loads the addon, and libsession opens an encrypted database
+**Desktop.** `pnpm dev:desktop` loads the addon, and libsession opens an encrypted database
 at `~/.config/session-app/session.db` with the key sealed beside it in `db-key.bin`. Verified by
 the header not being `SQLite format 3`.
 

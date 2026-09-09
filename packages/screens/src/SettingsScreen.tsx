@@ -84,9 +84,10 @@ export function SettingsScreen() {
         <Text tone="secondary" size="$2">
           {tr('networkName')}
         </Text>
-        <Text testID={ELEMENT.settings.networkStatus}>
-          {account.networkAttached ? tr('enable') : tr('unknown')}
-        </Text>
+        {/* The network this build talks to, which it knows from its own configuration whether or
+            not libsession has attached yet. `enable` and `unknown` were standing in for a status
+            the catalogue has no words for, and both read as a fault on a build that is working. */}
+        <Text testID={ELEMENT.settings.networkStatus}>{requirePorts().network.name}</Text>
       </YStack>
     </Screen>
   )

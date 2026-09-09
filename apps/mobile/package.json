@@ -5,8 +5,8 @@
   "description": "The Session mobile app: one Expo app for Android and iOS, phone and tablet",
   "main": "index.ts",
   "scripts": {
-    "dev": "EXPO_PUBLIC_SESSION_FAKE=1 expo start --dev-client",
-    "dev:real": "expo start --dev-client",
+    "dev": "expo start --dev-client --clear",
+    "dev:fake": "EXPO_PUBLIC_SESSION_FAKE=1 expo start --dev-client --clear",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "prebuild": "expo prebuild",

@@ -8,9 +8,9 @@ description: Launch the desktop or mobile app, drive a device or emulator, read 
 Two jobs: starting the thing, and finding out what it did. The second is where the time goes,
 and the rules below are why.
 
-Both apps run on the fake libsession with no network and a seeded history, which is the loop to
-reach for unless the question is specifically about the real bridge. `SESSION_FAKE=1` is what
-picks it.
+Both apps run against real libsession by default. `SESSION_FAKE=1` picks the fake instead - no
+network, a seeded history, and nothing to wait for - which is the loop to reach for unless the
+question is specifically about the real bridge.
 
 ## Five rules for driving a device
 
@@ -100,20 +100,23 @@ One file each, because the verbs are the same and only the tooling differs:
 ## The loops
 
 ```sh
-pnpm dev:desktop            # fake, hot reload - the primary UI loop
-pnpm dev:mobile             # fake, needs a dev client
+pnpm dev:desktop            # libsession, hot reload - the primary UI loop
+pnpm dev:mobile             # libsession, needs a dev client
 pnpm dev                    # both at once
 ```
 
-Against the real bridge:
+The desktop app needs the addon built before any of those will start; see
+`packages/bridge-node/README.md`. On the fake it does not.
+
+Against the fake:
 
 ```sh
-pnpm dev:desktop:real       # the addon has to be built; see packages/bridge-node/README.md
+pnpm dev:fake               # both; or dev:desktop:fake / dev:mobile:fake
 ```
 
-Mobile has no equivalent script because there is nothing to toggle - a dev-client build either
-has the Nitro module in it or does not, and `SESSION_FAKE=1` in `apps/mobile`'s `dev` is what
-picks the fake over it.
+Mobile reads `EXPO_PUBLIC_SESSION_FAKE`, not `SESSION_FAKE`: Metro inlines a variable into the
+bundle only when its name carries that prefix, and it caches the transform - so a Metro that was
+started without it keeps serving a bundle that ignores it until `expo start --clear`.
 
 ## The e2e suite
 
