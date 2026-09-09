@@ -41,35 +41,27 @@ it('conversation list: where the time goes', () => {
       applyEvent(emptyState, event)
     })
 
-    // What every store notification costs before React starts: useConversations rebuilds the
-    // visible array from the order array and the index on each notification.
-    const projected = applyEvent(emptyState, event)
-    const select = time('select', () => {
-      projected.conversationOrder
-        .map((id) => projected.conversations[id])
-        .filter((c) => c !== undefined)
-    })
-
-    const total = facade.median + project.median + select.median
+    // There is no select stage any more. useConversations() used to rebuild the visible array
+    // from an order array and an index on every store notification; the state holds the list
+    // libsession sent, so the hook returns it and there is nothing to measure.
+    const total = facade.median + project.median
 
     rows.push([
       String(n),
       ms(facade.median),
       ms(project.median),
-      ms(select.median),
       ms(total),
-      ms(facade.p95 + project.p95 + select.p95),
+      ms(facade.p95 + project.p95),
       total === 0 ? '-' : `${((facade.median / total) * 100).toFixed(0)}%`,
     ])
   }
 
   report(
     '\n\n== CONVERSATION LIST ==  one conversation-list-replaced, milliseconds, median\n\n' +
-      table(rows, ['rows', 'facade', 'project', 'select', 'TOTAL', 'p95', 'deliver%']) +
+      table(rows, ['rows', 'facade', 'project', 'TOTAL', 'p95', 'deliver%']) +
       '\n' +
       '  facade    routing one frame to its listeners; no decode is left in front of it\n' +
-      '  project   applyEvent - a new index and a new order array\n' +
-      '  select    what useConversations() rebuilds on every single store notification\n' +
+      '  project   applyEvent - which for a whole list is now the assignment of it\n' +
       '  deliver%  the share still spent getting the frame there rather than using it\n',
   )
 })

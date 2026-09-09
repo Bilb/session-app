@@ -38,6 +38,8 @@ function replay(events: SessionEvent[], from: SessionState = emptyState): Sessio
   return events.reduce(applyEvent, from)
 }
 
+const ids = (list: Conversation[]): string[] => list.map((c) => c.id)
+
 describe('applyEvent', () => {
   it('keeps the order libsession sent, rather than imposing one', () => {
     // Deliberately not the order our own comparator would produce: libsession orders both lists
@@ -55,7 +57,7 @@ describe('applyEvent', () => {
       },
     ])
 
-    expect(state.conversationOrder).toEqual(['a', 'b', 'c'])
+    expect(ids(state.conversations)).toEqual(['a', 'b', 'c'])
   })
 
   it('moves an approved conversation out of the request list', () => {
@@ -67,9 +69,8 @@ describe('applyEvent', () => {
 
     // Approval is an update, not a remove-then-add, so the row has to be taken out of the
     // list it used to be in - otherwise it shows up in both.
-    expect(state.requestOrder).toEqual([])
-    expect(state.requests['05alice']).toBeUndefined()
-    expect(state.conversationOrder).toEqual(['05alice'])
+    expect(ids(state.requests)).toEqual([])
+    expect(ids(state.conversations)).toEqual(['05alice'])
   })
 
   it('is unchanged by replaying the same event', () => {
@@ -77,7 +78,6 @@ describe('applyEvent', () => {
     const once = replay([event])
     const twice = replay([event, event])
 
-    expect(twice.conversationOrder).toEqual(once.conversationOrder)
     expect(twice.conversations).toEqual(once.conversations)
   })
 
@@ -157,8 +157,7 @@ describe('applyEvent', () => {
       { type: 'conversation-removed', conversationId: '05alice' },
     ])
 
-    expect(state.conversations['05alice']).toBeUndefined()
-    expect(state.conversationOrder).toEqual([])
+    expect(ids(state.conversations)).toEqual([])
     expect(state.histories['05alice']).toBeUndefined()
   })
 
@@ -180,14 +179,14 @@ describe('applyEvent', () => {
       type: 'conversation-added',
       conversation: conversation({ id: 'top', lastActivity: 9000, priority: 2 }),
     })
-    expect(added.conversationOrder).toEqual(['a', 'b', 'c', 'top'])
+    expect(ids(added.conversations)).toEqual(['a', 'b', 'c', 'top'])
 
     const updated = applyEvent(seeded, {
       type: 'conversation-updated',
       conversation: conversation({ id: 'c', lastActivity: 4000 }),
     })
-    expect(updated.conversationOrder).toEqual(['a', 'b', 'c'])
-    expect(updated.conversations['c']?.lastActivity).toBe(4000)
+    expect(ids(updated.conversations)).toEqual(['a', 'b', 'c'])
+    expect(updated.conversations.find((c) => c.id === 'c')?.lastActivity).toBe(4000)
   })
 
   it('keeps the same order array when only a field changed', () => {
@@ -206,10 +205,9 @@ describe('applyEvent', () => {
       conversation: conversation({ id: 'b', lastActivity: 2000, unreadCount: 3 }),
     })
 
-    // A read count changed and the row was already in the list, so the order array is the same
-    // one: nothing that only watches the order re-renders.
-    expect(state.conversationOrder).toBe(seeded.conversationOrder)
-    expect(state.conversations['b']?.unreadCount).toBe(3)
+    // The row it replaced keeps its place, so the list still reads in libsession's order.
+    expect(ids(state.conversations)).toEqual(ids(seeded.conversations))
+    expect(state.conversations.find((c) => c.id === 'b')?.unreadCount).toBe(3)
   })
 
   it('leaves the other list alone when the conversation was never in it', () => {
@@ -222,9 +220,10 @@ describe('applyEvent', () => {
       conversation: conversation({ id: 'friend' }),
     })
 
+    // The same array, not merely an equal one: a screen watching the request list must not
+    // re-render because a conversation it does not hold changed.
     expect(state.requests).toBe(seeded.requests)
-    expect(state.requestOrder).toBe(seeded.requestOrder)
-    expect(state.conversationOrder).toEqual(['friend'])
+    expect(ids(state.conversations)).toEqual(['friend'])
   })
 
   it('appends a message that is newer than the whole window', () => {
@@ -264,7 +263,7 @@ describe('applyEvent', () => {
       seeded,
     )
 
-    expect(state.conversations['05alice']).toBe(convo)
+    expect(state.conversations[0]).toBe(convo)
     expect(state.histories['05alice']?.messages[0]).toBe(msg)
   })
 })

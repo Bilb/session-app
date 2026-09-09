@@ -23,10 +23,10 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
       return removeConversation(state, event.conversationId)
 
     case 'conversation-list-replaced':
-      return { ...state, ...indexConversations(event.conversations, 'conversations') }
+      return { ...state, conversations: event.conversations }
 
     case 'request-list-replaced':
-      return { ...state, ...indexConversations(event.conversations, 'requests') }
+      return { ...state, requests: event.conversations }
 
     case 'message-added':
     case 'message-updated':
@@ -57,30 +57,21 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
 }
 
 type ListKey = 'conversations' | 'requests'
-type OrderKey = 'conversationOrder' | 'requestOrder'
 
-const LISTS: Record<ListKey, { order: OrderKey; other: ListKey }> = {
-  conversations: { order: 'conversationOrder', other: 'requests' },
-  requests: { order: 'requestOrder', other: 'conversations' },
+const OTHER: Record<ListKey, ListKey> = {
+  conversations: 'requests',
+  requests: 'conversations',
 }
 
-export function indexConversations(
-  conversations: Conversation[],
-  target: ListKey,
-): Partial<Pick<SessionState, ListKey | OrderKey>> {
-  const byId: Record<ConversationId, Conversation> = {}
-  for (const conversation of conversations) byId[conversation.id] = conversation
-  // Arrival order, not our own. libsession orders both queries in SQL, and it does not order them
-  // the same way: conversations are `priority DESC, last_activity DESC, id`, requests are
-  // `last_activity DESC, id` with no priority at all. One comparator applied to both did not
-  // merely repeat work already done - it imposed a priority ordering on the request list that
-  // libsession does not apply, and it would have gone on disagreeing with any later change to
-  // libsession's sort rules.
-  const order = conversations.map((c) => c.id)
-
-  return target === 'conversations'
-    ? { conversations: byId, conversationOrder: order }
-    : { requests: byId, requestOrder: order }
+/**
+ * The list without `id`, or the same array when it was not in it.
+ *
+ * Returning the same one matters: a screen subscribed to the request list would otherwise be
+ * handed a new array on every message that arrives in a conversation, and re-render for a change
+ * that never touched it.
+ */
+function without(list: Conversation[], id: ConversationId): Conversation[] {
+  return list.some((c) => c.id === id) ? list.filter((c) => c.id !== id) : list
 }
 
 /** Where `item` goes in `sorted` to stay sorted, after anything that compares equal to it. */
@@ -102,45 +93,32 @@ function insertionIndex<T>(sorted: readonly T[], item: T, compare: (a: T, b: T) 
  */
 function upsertConversation(state: SessionState, conversation: Conversation): SessionState {
   const to: ListKey = conversation.request ? 'requests' : 'conversations'
-  const { order: toOrder, other: from } = LISTS[to]
-  const fromOrder = LISTS[from].order
+  const from = OTHER[to]
 
-  const next: Partial<SessionState> = {}
-
-  // Only rebuilt if the row was actually in it. Rebuilding regardless hands a screen subscribed
-  // to the other list a new array on every message that arrives, and it re-renders for a change
-  // that never touched it.
-  if (conversation.id in state[from]) {
-    const { [conversation.id]: _moved, ...rest } = state[from]
-    next[from] = rest
-    next[fromOrder] = state[fromOrder].filter((id) => id !== conversation.id)
+  const at = state[to].findIndex((c) => c.id === conversation.id)
+  let target: Conversation[]
+  if (at === -1) {
+    // Appended, because where it belongs is not this file's decision: libsession orders the
+    // lists, and the only case that moves a conversation between them - approval - is followed
+    // by a replacement carrying the real order, so an appended row is corrected within the same
+    // batch rather than left where it was put.
+    target = [...state[to], conversation]
+  } else {
+    target = state[to].slice()
+    target[at] = conversation
   }
 
-  next[to] = { ...state[to], [conversation.id]: conversation }
-
-  // The row keeps its place, and a row arriving from the other list goes on the end. Neither is
-  // this file's decision to make: libsession orders the lists, and the only case that moves a
-  // conversation between them - approval - is followed by a replacement carrying the real order,
-  // so an appended row is corrected within the same batch rather than left where it was put.
-  next[toOrder] = state[toOrder].includes(conversation.id)
-    ? state[toOrder]
-    : [...state[toOrder], conversation.id]
-
-  return { ...state, ...next }
+  return { ...state, [from]: without(state[from], conversation.id), [to]: target }
 }
 
 function removeConversation(state: SessionState, id: ConversationId): SessionState {
-  const { [id]: _fromList, ...conversations } = state.conversations
-  const { [id]: _fromRequests, ...requests } = state.requests
   const { [id]: _history, ...histories } = state.histories
 
   return {
     ...state,
-    conversations,
-    requests,
+    conversations: without(state.conversations, id),
+    requests: without(state.requests, id),
     histories,
-    conversationOrder: state.conversationOrder.filter((each) => each !== id),
-    requestOrder: state.requestOrder.filter((each) => each !== id),
   }
 }
 

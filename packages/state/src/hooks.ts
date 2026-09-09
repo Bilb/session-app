@@ -45,35 +45,28 @@ export function useAccount(): AccountInfo | null {
   return useStore(store, (state) => state.account)
 }
 
-/** Memoised on the two slices it reads, so a render nothing changed for sees the same array. */
-function useOrdered(
-  order: ConversationId[],
-  byId: Record<ConversationId, Conversation>,
-): Conversation[] {
-  return useMemo(
-    () => order.map((id) => byId[id]).filter((c): c is Conversation => c !== undefined),
-    [order, byId],
-  )
-}
-
+/**
+ * The list libsession sent, handed on as it is.
+ *
+ * Nothing to memoise and nothing to rebuild: the state holds the array a screen renders, so a
+ * notification that did not change it hands back the same reference.
+ */
 export function useConversations(): Conversation[] {
   const store = useSessionStore()
-  const order = useStore(store, (state) => state.conversationOrder)
-  const byId = useStore(store, (state) => state.conversations)
-  return useOrdered(order, byId)
+  return useStore(store, (state) => state.conversations)
 }
 
 export function useRequests(): Conversation[] {
   const store = useSessionStore()
-  const order = useStore(store, (state) => state.requestOrder)
-  const byId = useStore(store, (state) => state.requests)
-  return useOrdered(order, byId)
+  return useStore(store, (state) => state.requests)
 }
 
 export function useConversation(id: ConversationId | undefined): Conversation | undefined {
   const store = useSessionStore()
   return useStore(store, (state) =>
-    id === undefined ? undefined : (state.conversations[id] ?? state.requests[id]),
+    id === undefined
+      ? undefined
+      : (state.conversations.find((c) => c.id === id) ?? state.requests.find((c) => c.id === id)),
   )
 }
 
@@ -125,10 +118,5 @@ export function useMessages(id: ConversationId | undefined): {
 /** Unread requests, which is not the same as the number of requests. */
 export function useUnreadRequestCount(): number {
   const store = useSessionStore()
-  return useStore(store, (state) => {
-    let unread = 0
-    for (const id in state.requests)
-      if ((state.requests[id] as Conversation).unreadCount > 0) unread++
-    return unread
-  })
+  return useStore(store, (state) => state.requests.filter((c) => c.unreadCount > 0).length)
 }

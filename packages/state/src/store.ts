@@ -1,7 +1,7 @@
 import type { ConversationId, Message, SessionClient } from '@session/client'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
-import { applyEvent, indexConversations, mergePages } from './applyEvent'
+import { applyEvent, mergePages } from './applyEvent'
 import { emptyState, type MessageWindow, type SessionState } from './types'
 
 export interface SessionActions {
@@ -158,11 +158,7 @@ export function createSessionStore(
         client.getMessageRequests(),
       ])
 
-      store.setState({
-        ...indexConversations(conversations, 'conversations'),
-        ...indexConversations(requests, 'requests'),
-        hydrated: true,
-      })
+      store.setState({ conversations, requests, hydrated: true })
     },
 
     async loadHistory(id): Promise<void> {
