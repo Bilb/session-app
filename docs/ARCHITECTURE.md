@@ -307,30 +307,25 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   copy between libsession and a screen. Fixed here: Nitro's `AsyncJSCallback::operator()` passes
   its arguments on as lvalues and so deep-copied every frame before the hop, which is why
   `setSink` is now a raw JSI method; the shim moves out of everything libsession hands over by
-  value (both list-replaced events, every query result); the facade passes events through by
-  reference; the store rebuilds only the containers on the path to a change, maintains the
-  conversation order by insertion instead of re-sorting, and keeps an order array a rank-neutral
-  update did not touch. Left as is, deliberately: the desktop hop. The addon builds V8 objects in
-  the main process and structured clone builds them again in the renderer. JSON text from C++
-  with `JSON.parse` in the renderer would have made it one materialisation plus a string memcpy,
-  at the price of a third codegen emitter and a text hop; the addon in the renderer would have
-  made it one, at the price of nodeIntegration in a window that renders untrusted messages.
-  Neither was worth it for a frame stream this size. The libsession half of the audit - the four
-  `const&` change callbacks hand over a temporary the caller destroys next, and
-  `_emit_lists_replaced` copies both lists into by-value parameters - is fixed on the `client`
-  branch by passing those values by value and moving out of the emit lambdas.
+  value; the facade passes events through by reference; the store rebuilds only the containers on
+  the path to a change. Left as is, deliberately: the desktop hop, where the addon builds V8
+  objects in the main process and structured clone builds them again in the renderer. JSON text
+  parsed in the renderer would have made it one materialisation plus a string memcpy, at the price
+  of a third codegen emitter; the addon in the renderer would have made it one, at the price of
+  nodeIntegration in a window that renders untrusted messages. Neither is worth it for a frame
+  stream this size. The libsession half - four `const&` change callbacks handing over a temporary
+  the caller destroys next, and `_emit_lists_replaced` copying both lists into by-value
+  parameters - is fixed on the `client` branch.
 
-- **2026-09-08 - Attachments left the protocol until there is a design for them.** `Attachment`,
-  `OutgoingAttachment`, `AttachmentProgress`, the `attachment-progress` and
-  `display-picture-progress` events, the `autoDownload` conversation setting and the facade's
-  progress-callback routing are all gone. The bytes were never going to cross (see the entry
-  above), and what was left described a feature nothing renders: a `Message.attachments` every
-  screen ignored, a progress stream nothing subscribed to, and a routing mechanism in the facade
-  whose only user was a retry nobody could observe. Two things fell out of it. `BridgeEvent` and
-  `SessionEvent` differed in exactly one arm - the request id on a transfer report - so with that
-  arm gone there is one union, `SessionEvent`, and the facade hands the shim's own object to
-  listeners rather than rebuilding it. And `retrySend` now passes libsession an empty upload
-  handler, which it documents as "report nothing" rather than a handler that does nothing.
-  `SendState` keeps `uploading` and `unsendable`, which only attachments can reach: they are
-  libsession's states, and the shim's switch over them has to name every one. This supersedes
-  the 2026-09-04 entry on the three wrong wire fields, two of which were `Attachment`'s.
+- **2026-09-08 - Attachments left the protocol until there is a design for them.** The types, the
+  two progress events, the `autoDownload` setting and the facade's progress-callback routing are
+  all gone. The bytes were never going to cross (see the entry above), and what was left described
+  a feature nothing renders: a `Message.attachments` every screen ignored, a progress stream
+  nothing subscribed to, and routing whose only user was a retry nobody could observe. Two things
+  fell out of it. `BridgeEvent` and `SessionEvent` differed in exactly one arm - the request id on
+  a transfer report - so there is now one union, `SessionEvent`, and the facade hands the shim's
+  own object to listeners rather than rebuilding it. And `retrySend` passes libsession an empty
+  upload handler, which it documents as "report nothing" rather than a handler that does nothing.
+  `SendState` keeps `uploading` and `unsendable`: only attachments reach them, but they are
+  libsession's states and the shim's switch has to name every one. This supersedes the 2026-09-04
+  entry on the three wrong wire fields, two of which were `Attachment`'s.
