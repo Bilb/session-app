@@ -66,7 +66,15 @@ function sourceFiles(dir: string): string[] {
  * Deliberately not every `$` in the file: a template literal or a regex may hold one, and a
  * test that flags those teaches people to ignore it.
  */
-const TOKEN_USE = /(?:[a-zA-Z]+=|[a-zA-Z]+:\s*)['"]\$([\w.-]+)['"]/g
+/**
+ * Any `'$name'` or `"$name"` string literal, wherever it appears.
+ *
+ * Deliberately not anchored to `prop=` or `prop:`, which is what it used to require: a token named
+ * inside an expression -- `color={outgoing ? '$a' : '$b'}` -- matched nothing, so a token deleted
+ * from the palette went unnoticed in exactly the place a conditional style puts it. That is the
+ * case this test exists for, since the symptom is a component rendering at zero.
+ */
+const TOKEN_USE = /['"]\$([\w.-]+)['"]/g
 
 function known(): Set<string> {
   const names = new Set<string>()

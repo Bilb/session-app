@@ -39,7 +39,7 @@ export function ConversationListScreen() {
         justifyContent="space-between"
       >
         <NetworkOverlay>
-          <Text size="$6" weight="bold">
+          <Text size="$title" weight="bold">
             {tr('messages')}
           </Text>
         </NetworkOverlay>
@@ -56,7 +56,7 @@ export function ConversationListScreen() {
               testID={ELEMENT.requests.badge}
               onPress={() => nav.push(routes.requests())}
             >
-              <Text size="$2" weight="bold" color="$backgroundPrimary">
+              <Text size="$caption" weight="bold" color="$onAccent">
                 {unreadRequests}
               </Text>
             </XStack>
@@ -154,7 +154,7 @@ function ConversationRow({
 
       <YStack flex={1} gap="$0.5">
         <Text
-          size="$4"
+          size="$body"
           weight={conversation.unreadCount > 0 ? 'bold' : 'regular'}
           numberOfLines={1}
           testID={ELEMENT.conversationList.rowName}
@@ -163,7 +163,7 @@ function ConversationRow({
         </Text>
         {conversation.snippet === undefined ? null : (
           <Text
-            size="$3"
+            size="$label"
             tone="secondary"
             numberOfLines={1}
             testID={ELEMENT.conversationList.rowSnippet}
@@ -184,7 +184,7 @@ function ConversationRow({
           justifyContent="center"
           testID={ELEMENT.conversationList.rowUnreadBadge}
         >
-          <Text size="$2" weight="bold" color="$backgroundPrimary">
+          <Text size="$caption" weight="bold" color="$onAccent">
             {conversation.unreadCount}
           </Text>
         </XStack>

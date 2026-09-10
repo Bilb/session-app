@@ -38,6 +38,9 @@ dev entries. When a rule fires, fix the design - not the config.
   the contract scenarios **in the same PR**.
 - Tamagui: a missing token resolves to 0 silently, so token names must exist; `defaultFont`
   must be set; the space scale has half-steps - use them. No hex outside `@session/theme-tokens`.
+- Colour and type: `docs/THEMING.md` says which role to reach for and why. A theme is authored
+  knobs plus derived roles - never add a hex, and never derive a value from the base when it is
+  drawn on a card.
 
 ## Tests required, in the same PR
 

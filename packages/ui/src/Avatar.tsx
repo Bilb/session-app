@@ -43,7 +43,7 @@ export function Avatar({ id, name, size = 40, testID }: AvatarProps) {
       justifyContent="center"
       testID={testID}
     >
-      <Text size={size >= 40 ? '$4' : '$2'} weight="bold" color="#000000">
+      <Text size={size >= 40 ? '$body' : '$caption'} weight="bold" color="#000000">
         {initials(name)}
       </Text>
     </XStack>

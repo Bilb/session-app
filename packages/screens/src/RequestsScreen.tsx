@@ -33,7 +33,7 @@ export function RequestsScreen() {
     <Screen testID={ELEMENT.requests.screen}>
       <XStack paddingHorizontal="$2" paddingVertical="$1.5" alignItems="center" gap="$1.5">
         <BackButton testID={ELEMENT.requests.back} />
-        <Text size="$6" weight="bold">
+        <Text size="$title" weight="bold">
           {tr('sessionMessageRequests')}
         </Text>
       </XStack>
@@ -88,11 +88,11 @@ function RequestRow({
       <Avatar id={request.id} name={title} />
 
       <YStack flex={1} gap="$0.5">
-        <Text size="$4" weight="bold" numberOfLines={1}>
+        <Text size="$body" weight="bold" numberOfLines={1}>
           {title}
         </Text>
         {request.snippet === undefined ? null : (
-          <Text size="$3" tone="secondary" numberOfLines={1}>
+          <Text size="$label" tone="secondary" numberOfLines={1}>
             {request.snippet}
           </Text>
         )}

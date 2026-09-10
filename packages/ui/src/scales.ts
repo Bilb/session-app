@@ -1,4 +1,4 @@
-import { FONT_SIZE, RADII, SPACING } from '@session/theme-tokens'
+import { FONT_SIZE, LINE_HEIGHT_RATIO, RADII, SPACING } from '@session/theme-tokens'
 
 /**
  * The token scales, as plain objects.
@@ -60,33 +60,19 @@ export const RADIUS_SCALE = {
 export const Z_INDEX_SCALE = { 0: 0, 1: 100, 2: 200, 3: 300, 4: 400, true: 0 }
 
 export const FONT_SIZE_SCALE = {
-  1: FONT_SIZE.xxs,
-  2: FONT_SIZE.xs,
-  3: FONT_SIZE.sm,
-  4: FONT_SIZE.md,
-  5: FONT_SIZE.lg,
-  6: FONT_SIZE.xl,
-  7: FONT_SIZE.h7,
-  8: FONT_SIZE.h6,
-  9: FONT_SIZE.h3,
-  10: FONT_SIZE.h2,
-  11: FONT_SIZE.h1,
-  true: FONT_SIZE.md,
+  ...FONT_SIZE,
+  // Tamagui resolves an unqualified size through `true`, so it has to name a position rather than
+  // a value of its own -- one that is not in the ramp would be a twelfth size nothing declared.
+  true: FONT_SIZE.body,
 }
 
+// Derived, not a second ladder to keep in step. The old one was hand-written and had already
+// drifted: it repeated 26 at positions 6 and 7 where the sizes differed.
 export const LINE_HEIGHT_SCALE = {
-  1: 14,
-  2: 16,
-  3: 18,
-  4: 20,
-  5: 24,
-  6: 26,
-  7: 26,
-  8: 28,
-  9: 32,
-  10: 36,
-  11: 42,
-  true: 20,
+  ...(Object.fromEntries(
+    Object.entries(FONT_SIZE).map(([k, v]) => [k, Math.round(v * LINE_HEIGHT_RATIO)])
+  ) as Record<keyof typeof FONT_SIZE, number>),
+  true: Math.round(FONT_SIZE.body * LINE_HEIGHT_RATIO),
 }
 
 export const FONT_WEIGHT_SCALE = { 4: '400', 6: '600', 7: '700', true: '400' }

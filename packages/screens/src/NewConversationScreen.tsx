@@ -49,14 +49,14 @@ export function NewConversationScreen() {
             list never left. */}
         <XStack alignItems="center" gap="$1.5">
           <BackButton testID={ELEMENT.newConversation.back} />
-          <Text size="$6" weight="bold">
+          <Text size="$title" weight="bold">
             {tr('conversationsNew')}
           </Text>
         </XStack>
         {/* The desktop wording of the pair, on both platforms, because it is the one that does
             not promise a QR scanner - and this screen has none yet. When the scanner lands,
             mobile wants `messageNewDescriptionMobile` instead. */}
-        <Text tone="secondary" size="$3">
+        <Text tone="secondary" size="$label">
           {tr('messageNewDescriptionDesktop')}
         </Text>
 
@@ -74,7 +74,7 @@ export function NewConversationScreen() {
         </Button>
 
         {failed === null ? null : (
-          <Text tone="danger" size="$2" testID={ELEMENT.newConversation.error}>
+          <Text tone="danger" size="$caption" testID={ELEMENT.newConversation.error}>
             {failed}
           </Text>
         )}

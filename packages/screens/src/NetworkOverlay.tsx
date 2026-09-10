@@ -39,7 +39,7 @@ export function NetworkOverlay({ children }: { children: ReactNode }) {
         pointerEvents="none"
         testID={ELEMENT.networkOverlay.badge}
       >
-        <Text size="$2" weight="bold" color="$textPrimary">
+        <Text size="$caption" weight="bold" color="$textPrimary">
           {network}
         </Text>
       </XStack>

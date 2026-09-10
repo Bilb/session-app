@@ -25,6 +25,9 @@ libsession-util (C++, submodule)
 apps/mobile · apps/desktop ── route files, OS ports, boot order. Adapters, nothing more.
 ```
 
+Colour and type live in `@session/theme-tokens` and are derived from a few authored knobs rather
+than listed per theme; `docs/THEMING.md` is the map for that.
+
 Who may import whom is in `tooling/depcruise-config/root.cjs` and enforced by
 `pnpm boundaries`. The short version: `ui` imports no sibling but tokens and ids; `screens`
 imports ui, state, app, client and localization; nothing imports an app.

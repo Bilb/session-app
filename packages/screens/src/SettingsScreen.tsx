@@ -35,13 +35,13 @@ export function SettingsScreen() {
     <Screen padded testID={ELEMENT.settings.screen}>
       <XStack alignItems="center" gap="$1.5">
         <BackButton testID={ELEMENT.settings.back} />
-        <Text size="$6" weight="bold">
+        <Text size="$title" weight="bold">
           {tr('sessionSettings')}
         </Text>
       </XStack>
 
       <YStack paddingVertical="$2" gap="$0.5">
-        <Text tone="secondary" size="$2">
+        <Text tone="secondary" size="$caption">
           {tr('accountId')}
         </Text>
         <XStack alignItems="center" gap="$1">
@@ -81,7 +81,7 @@ export function SettingsScreen() {
       <Separator borderColor="$bordersColor" />
 
       <YStack paddingVertical="$2" gap="$0.5">
-        <Text tone="secondary" size="$2">
+        <Text tone="secondary" size="$caption">
           {tr('networkName')}
         </Text>
         {/* The network this build talks to, which it knows from its own configuration whether or

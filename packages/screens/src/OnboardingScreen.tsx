@@ -19,7 +19,7 @@ export function OnboardingScreen() {
   return (
     <Screen padded testID={ELEMENT.onboarding.screen}>
       <YStack flex={1} alignItems="center" justifyContent="center" gap="$2">
-        <Text size="$9" weight="bold">
+        <Text size="$headingLarge" weight="bold">
           {tr('appName')}
         </Text>
         <Button
@@ -38,7 +38,7 @@ export function OnboardingScreen() {
         </Button>
 
         {failed === null ? null : (
-          <Text tone="danger" size="$2">
+          <Text tone="danger" size="$caption">
             {failed}
           </Text>
         )}

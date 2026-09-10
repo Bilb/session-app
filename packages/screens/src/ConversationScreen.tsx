@@ -46,7 +46,7 @@ export function ConversationScreen({ conversationId }: { conversationId: string 
       >
         <BackButton testID={ELEMENT.conversation.back} />
         <Text
-          size="$5"
+          size="$bodyLarge"
           weight="semibold"
           numberOfLines={1}
           testID={ELEMENT.conversation.headerName}
@@ -146,7 +146,7 @@ function MessageRow({ message, index }: { message: Message; index: number }) {
     <YStack
       alignSelf={message.outgoing ? 'flex-end' : 'flex-start'}
       maxWidth="80%"
-      backgroundColor={message.outgoing ? '$messageBubbleOutgoingBg' : '$messageBubbleIncomingBg'}
+      backgroundColor={message.outgoing ? '$primaryColor' : '$messageBubbleIncomingBg'}
       borderRadius="$3"
       paddingHorizontal="$2"
       paddingVertical="$1.5"
@@ -154,8 +154,8 @@ function MessageRow({ message, index }: { message: Message; index: number }) {
       testID={ELEMENT.conversation.messageRow(index)}
     >
       <Text
-        size="$4"
-        color={message.outgoing ? '$messageBubbleOutgoingText' : '$messageBubbleIncomingText'}
+        size="$body"
+        color={message.outgoing ? '$onAccent' : '$messageBubbleIncomingText'}
         testID={ELEMENT.conversation.messageBody}
       >
         {message.body}
@@ -166,8 +166,8 @@ function MessageRow({ message, index }: { message: Message; index: number }) {
               outgoing message, and both the secondary and the accent tone are picked to read
               against the screen - on the bubble they come out as green on green. */}
           <Text
-            size="$2"
-            color="$messageBubbleOutgoingText"
+            size="$caption"
+            color="$onAccent"
             opacity={0.7}
             testID={ELEMENT.conversation.messageState}
           >
@@ -175,8 +175,8 @@ function MessageRow({ message, index }: { message: Message; index: number }) {
           </Text>
           {retryable ? (
             <Text
-              size="$2"
-              color="$messageBubbleOutgoingText"
+              size="$caption"
+              color="$onAccent"
               weight="semibold"
               textDecorationLine="underline"
               testID={ELEMENT.conversation.messageRetry}

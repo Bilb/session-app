@@ -21,14 +21,16 @@ const Frame = styled(XStack, {
         pressStyle: { opacity: 0.8 },
       },
       outline: {
-        backgroundColor: '$buttonOutlineBg',
-        borderColor: '$buttonOutlineBorder',
-        pressStyle: { backgroundColor: '$buttonOutlineBgHover' },
+        backgroundColor: 'transparent',
+        borderColor: '$textPrimary',
+        // A surface rather than a brightness step: a ghost or outline control on white has no
+        // headroom to brighten into, so the pressed state has to come off the surface ladder.
+        pressStyle: { backgroundColor: '$backgroundTertiary' },
       },
       ghost: {
         backgroundColor: 'transparent',
         borderColor: 'transparent',
-        pressStyle: { opacity: 0.6 },
+        pressStyle: { backgroundColor: '$backgroundTertiary' },
       },
       danger: {
         backgroundColor: '$dangerColor',
@@ -49,12 +51,18 @@ const Frame = styled(XStack, {
   defaultVariants: { variant: 'solid', size: 'md' },
 })
 
-/** Label colour follows the variant; a solid button's text sits on the accent. */
+/**
+ * Label colour follows the variant.
+ *
+ * A filled button's label sits on the fill, not on the page, so it takes the fill's own on-colour.
+ * Both filled variants previously took the body text, which is white in the dark themes -- white
+ * on the accent green measures about 1.6:1.
+ */
 const LABEL_TONE = {
-  solid: '$buttonSolidTextHover',
-  outline: '$buttonOutlineText',
+  solid: '$onAccent',
+  outline: '$textPrimary',
   ghost: '$textPrimary',
-  danger: '$textPrimary',
+  danger: '$onDanger',
 } as const
 
 export interface ButtonProps {
@@ -100,7 +108,7 @@ export function Button({
     >
       {loading ? <Spinner size="small" color={LABEL_TONE[variant]} /> : icon}
       {typeof children === 'string' ? (
-        <Text size={size === 'sm' ? '$3' : '$4'} weight="semibold" color={LABEL_TONE[variant]}>
+        <Text size={size === 'sm' ? '$label' : '$body'} weight="semibold" color={LABEL_TONE[variant]}>
           {children}
         </Text>
       ) : (
