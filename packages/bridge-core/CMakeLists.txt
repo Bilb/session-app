@@ -83,95 +83,41 @@ elseif(NOT TARGET libsession::client)
     add_subdirectory(${SESSION_BRIDGE_LIBSESSION} libsession-util)
 endif()
 
-# The wire format is generated here rather than committed, because the only thing that needs the
-# C++ classes is a build that already has a C++ toolchain and CMake. Committing them would put a
-# pinned protoc on the fast CI path, where a version drift shows up as a codegen:check failure in
-# a job that compiles nothing.
-# protoc only. The runtime comes from libsession's own bundled protobuf target: asking
-# find_package for it as well would define a second protobuf::libprotobuf-lite over the top of
-# the one we are linking against.
-find_program(SESSION_BRIDGE_PROTOC protoc REQUIRED)
-
-# It has to be the *matching* protoc. Generated protobuf code carries a hard assertion about the
-# runtime it was produced for, so a newer compiler does not degrade - it fails somewhere deep
-# inside a generated header, with an error that says nothing about versions. Checked here so the
-# failure names itself and the fix.
+# A switch over one of libsession's enums must fail to build when libsession gains a value,
+# rather than falling through to the fallback return after it - which is the whole reason those
+# switches are written out instead of being casts. Per target rather than per directory, because
+# libsession is built from this same tree and its own switches are its business.
 #
-# The expected version is read out of the submodule rather than written down, so it cannot drift
-# from the pin.
-file(READ "${SESSION_BRIDGE_LIBSESSION}/external/protobuf/version.json" _protobuf_version_json)
-string(REGEX MATCH "\"cpp\"[ \t]*:[ \t]*\"([0-9]+\\.[0-9]+)" _matched "${_protobuf_version_json}")
-set(_protobuf_expected "${CMAKE_MATCH_1}")
+# The switch this catches is one with no `default:`, which is how the bridge writes them. The
+# stricter -Wswitch-enum, which fires even when a default label hides the omission, cannot be
+# used: it also fires on libsession's own switches, since its headers are compiled inside these
+# translation units (core/devices.hpp has one), and those are not ours to complete.
+#
+# Defined here and used by the addon and the Nitro module too: a CMake function outlives the
+# directory it was declared in, and both of them add this project as a subdirectory.
+function(session_bridge_strict_switches target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /we4062)
+    else()
+        target_compile_options(${target} PRIVATE -Werror=switch)
+    endif()
+endfunction()
 
-execute_process(COMMAND "${SESSION_BRIDGE_PROTOC}" --version
-    OUTPUT_VARIABLE _protoc_reported OUTPUT_STRIP_TRAILING_WHITESPACE
-    COMMAND_ERROR_IS_FATAL ANY)
-string(REGEX MATCH "([0-9]+\\.[0-9]+)" _matched "${_protoc_reported}")
-set(_protoc_found "${CMAKE_MATCH_1}")
-
-if(NOT _protoc_found VERSION_EQUAL _protobuf_expected)
-    message(FATAL_ERROR
-        "protoc ${_protoc_found} cannot generate code for the protobuf runtime libsession "
-        "bundles (${_protobuf_expected}).\n"
-        "  found: ${SESSION_BRIDGE_PROTOC} (${_protoc_reported})\n"
-        "Install a matching one and point at it with -DSESSION_BRIDGE_PROTOC=<path>:\n"
-        "  macOS: brew install protobuf@21\n"
-        "         -DSESSION_BRIDGE_PROTOC=$(brew --prefix protobuf@21)/bin/protoc\n"
-        "  Debian/Ubuntu: protobuf-compiler is 3.21 on trixie and later\n"
-        "  otherwise: the release binary from protocolbuffers/protobuf, tag v${_protobuf_expected}.x")
-endif()
-
-set(bridge_proto_dir "${CMAKE_CURRENT_SOURCE_DIR}/../proto/proto")
-set(bridge_proto_gen "${CMAKE_CURRENT_BINARY_DIR}/gen")
-file(MAKE_DIRECTORY "${bridge_proto_gen}")
-
-set(bridge_protos types commands frames)
-set(bridge_proto_srcs)
-foreach(name IN LISTS bridge_protos)
-    set(src "${bridge_proto_gen}/sessionbridge/v1/${name}.pb.cc")
-    set(hdr "${bridge_proto_gen}/sessionbridge/v1/${name}.pb.h")
-    add_custom_command(
-        OUTPUT ${src} ${hdr}
-        COMMAND ${SESSION_BRIDGE_PROTOC}
-            --proto_path=${bridge_proto_dir}
-            --cpp_out=${bridge_proto_gen}
-            sessionbridge/v1/${name}.proto
-        DEPENDS ${bridge_proto_dir}/sessionbridge/v1/${name}.proto
-        COMMENT "protoc sessionbridge/v1/${name}.proto"
-        VERBATIM)
-    list(APPEND bridge_proto_srcs ${src})
-endforeach()
-
-add_library(session-bridge-proto STATIC ${bridge_proto_srcs})
-target_include_directories(session-bridge-proto PUBLIC ${bridge_proto_gen})
-# Both archives end up inside a shared object - the Node addon is one, and so is the Nitro
-# module - so neither may contain non-relocatable code.
-set_property(TARGET session-bridge-proto PROPERTY POSITION_INDEPENDENT_CODE ON)
-# LITE_RUNTIME, matching what libsession bundles: see the option in the .proto files. A prebuilt
-# bundle already contains it, headers and all coming from the imported target above.
-if(SESSION_BRIDGE_LIBSESSION_BUNDLE)
-    target_link_libraries(session-bridge-proto PUBLIC session-libsession-prebuilt)
-else()
-    target_link_libraries(session-bridge-proto PUBLIC protobuf::libprotobuf-lite)
-endif()
-# The generated code trips -Wunused-parameter, exactly as libsession's own protos do.
-if(NOT MSVC)
-    target_compile_options(session-bridge-proto PRIVATE -Wno-unused-parameter)
-endif()
-
+# The protocol structs under include/session_bridge/gen are generated from @session/bridge-types by
+# tooling/bridge-codegen and committed, so this target needs nothing but a compiler.
 add_library(session-bridge-core STATIC
     src/client_bridge.cpp
-    src/encode.cpp)
+    src/convert.cpp)
 
 target_include_directories(session-bridge-core
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-target_link_libraries(session-bridge-core
-    PUBLIC libsession::client
-    PRIVATE session-bridge-proto)
+target_link_libraries(session-bridge-core PUBLIC libsession::client)
 
 set_property(TARGET session-bridge-core PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+session_bridge_strict_switches(session-bridge-core)
 
 option(SESSION_BRIDGE_TESTING
     "Compile the test-only commands, which carry messages between clients with no network" OFF)

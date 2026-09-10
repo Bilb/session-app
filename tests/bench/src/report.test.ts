@@ -1,20 +1,20 @@
-import { fromBinary } from '@bufbuild/protobuf'
-import { FrameSchema } from '@session/proto'
 import { applyEvent, emptyState, type SessionState } from '@session/state'
 import { afterAll, it } from 'vitest'
 
 import { conversationListFrame, makeCorpus, messageAddedFrame } from './fixtures'
 import { ms, report, table, time } from './measure'
-import { decodeOne, loopback, type Loopback } from './pipeline'
+import { deliverOne, loopback, type Loopback } from './pipeline'
 
 /**
  * Where the JavaScript thread's time goes, stage by stage.
  *
- * Tier one of the benchmark plan: no bridge, no device, no Electron. It exists to answer one
- * question before anyone changes the bridge - is the serialisation the expensive part, or is
- * everything downstream of it? Printed rather than asserted, because the only numbers worth
- * holding a build to are ones taken on the slowest device that ships, and this runs on whatever
- * the developer happens to have.
+ * Tier one of the benchmark plan: no bridge, no device, no Electron. It asked whether the
+ * serialisation was the expensive part or everything downstream of it, and the answer is why
+ * there is no serialisation left to measure - the shim builds the structs the facade hands on.
+ * What remains is everything the wire format could never have reached, which is the half that
+ * decides whether a list feels immediate. Printed rather than asserted, because the only numbers
+ * worth holding a build to are ones taken on the slowest device that ships, and this runs on
+ * whatever the developer happens to have.
  */
 
 const pipe: Loopback = loopback()
@@ -27,58 +27,42 @@ it('conversation list: where the time goes', () => {
 
   for (const n of [100, 500, 1000, 5000]) {
     const { conversations } = makeCorpus({ conversations: n, messages: 0 })
-    const bytes = conversationListFrame(conversations)
+    const frame = conversationListFrame(conversations)
 
-    // Stage 1 alone. Stage 2 is only measurable as (facade - parse), because decodeEvent and
-    // the convert.ts remap are private to the facade and running a copy of them would be
-    // measuring the copy.
-    const parse = time('parse', () => {
-      fromBinary(FrameSchema, bytes)
-    })
+    // No parse stage: the frame arrives as the struct the shim built. What is left in `facade`
+    // is the routing to listeners, which used to be inseparable from the decode in front of it.
     const facade = time('facade', () => {
-      pipe.push(bytes)
+      pipe.push(frame)
       pipe.drain()
     })
-    const remap = Math.max(facade.median - parse.median, 0)
 
-    const event = decodeOne(pipe, bytes)
+    const event = deliverOne(pipe, frame)
     const project = time('project', () => {
       applyEvent(emptyState, event)
     })
 
-    // What every store notification costs before React starts: useConversations rebuilds the
-    // visible array from the order array and the index on each notification.
-    const projected = applyEvent(emptyState, event)
-    const select = time('select', () => {
-      projected.conversationOrder
-        .map((id) => projected.conversations[id])
-        .filter((c) => c !== undefined)
-    })
-
-    const total = facade.median + project.median + select.median
+    // There is no select stage any more. useConversations() used to rebuild the visible array
+    // from an order array and an index on every store notification; the state holds the list
+    // libsession sent, so the hook returns it and there is nothing to measure.
+    const total = facade.median + project.median
 
     rows.push([
       String(n),
-      (bytes.length / 1024).toFixed(1),
-      ms(parse.median),
-      ms(remap),
+      ms(facade.median),
       ms(project.median),
-      ms(select.median),
       ms(total),
-      ms(facade.p95 + project.p95 + select.p95),
+      ms(facade.p95 + project.p95),
       total === 0 ? '-' : `${((facade.median / total) * 100).toFixed(0)}%`,
     ])
   }
 
   report(
-    '\n\n== CONVERSATION LIST ==  one conversation_list_replaced, milliseconds, median\n\n' +
-      table(rows, ['rows', 'KB', 'parse', 'remap', 'project', 'select', 'TOTAL', 'p95', 'ser%']) +
+    '\n\n== CONVERSATION LIST ==  one conversation-list-replaced, milliseconds, median\n\n' +
+      table(rows, ['rows', 'facade', 'project', 'TOTAL', 'p95', 'deliver%']) +
       '\n' +
-      '  parse    fromBinary - protobuf-es decode\n' +
-      '  remap    decodeEvent + convert.ts, measured as (facade - parse)\n' +
-      '  project  applyEvent - builds a new index, sorts the whole list, new order array\n' +
-      '  select   what useConversations() rebuilds on every single store notification\n' +
-      '  ser%     the share direct JSI structs could remove. Everything else stays.\n',
+      '  facade    routing one frame to its listeners; no decode is left in front of it\n' +
+      '  project   applyEvent - which for a whole list is now the assignment of it\n' +
+      '  deliver%  the share still spent getting the frame there rather than using it\n',
   )
 })
 
@@ -94,16 +78,7 @@ it('one new message arriving in a transcript that is already loaded', () => {
       histories: {
         [conversationId]: {
           ready: true,
-          messages: messages.map((m) => ({
-            id: Number(m.id),
-            conversationId,
-            author: m.author,
-            timestamp: Number(m.timestamp),
-            body: m.body,
-            outgoing: m.outgoing,
-            sendState: 'sent' as const,
-            attachments: [],
-          })),
+          messages,
           exhausted: true,
           fetching: false,
         },
@@ -112,24 +87,23 @@ it('one new message arriving in a transcript that is already loaded', () => {
 
     const last = messages[messages.length - 1]
     if (!last) throw new Error('no fixture message')
-    const bytes = messageAddedFrame(conversationId, {
+    const frame = messageAddedFrame(conversationId, {
       ...last,
-      id: BigInt(n + 1),
-      timestamp: BigInt(Number(last.timestamp) + 1000),
+      id: n + 1,
+      timestamp: last.timestamp + 1000,
     })
 
     const facade = time('facade', () => {
-      pipe.push(bytes)
+      pipe.push(frame)
       pipe.drain()
     })
-    const event = decodeOne(pipe, bytes)
+    const event = deliverOne(pipe, frame)
     const project = time('project', () => {
       applyEvent(state, event)
     })
 
     rows.push([
       String(n),
-      (bytes.length / 1024).toFixed(2),
       ms(facade.median),
       ms(project.median),
       ms(project.p95),
@@ -139,14 +113,14 @@ it('one new message arriving in a transcript that is already loaded', () => {
 
   report(
     '\n\n== ONE NEW MESSAGE ==  the payload is a single message however long the transcript is\n\n' +
-      table(rows, ['loaded', 'KB', 'decode', 'project', 'proj p95', 'TOTAL']) +
+      table(rows, ['loaded', 'deliver', 'project', 'proj p95', 'TOTAL']) +
       '\n' +
       '  The payload does not grow with the transcript. If `project` does, the cost is in\n' +
-      '  applyEvent and nothing about the bridge or the wire format can reach it.\n',
+      '  applyEvent and nothing about the bridge can reach it.\n',
   )
 })
 
-it('account ids: what they cost on the wire', () => {
+it('account ids: what a page of messages spends on identity', () => {
   const rows: string[][] = []
 
   for (const [label, authors] of [
@@ -172,9 +146,10 @@ it('account ids: what they cost on the wire', () => {
   }
 
   report(
-    '\n\n== ACCOUNT IDS ==  500 messages, bytes spent on identity\n\n' +
+    '\n\n== ACCOUNT IDS ==  500 messages, characters spent on identity\n\n' +
       table(rows, ['shape', 'msgs', 'uniq', 'id KB', 'total KB', 'id %']) +
       '\n' +
-      '  id %  share of a message page that is account ids, as hex strings\n',
+      '  id %  share of a message page that is account ids, as hex strings. Still repeated\n' +
+      '        per row on the typed bridge - as a string rather than as bytes.\n',
   )
 })

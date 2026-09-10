@@ -1,14 +1,4 @@
-import { create, toBinary } from '@bufbuild/protobuf'
-import {
-  ConversationKind,
-  ConversationSchema,
-  EventSchema,
-  FrameSchema,
-  MessageSchema,
-  SendState,
-  type Conversation as ConversationPb,
-  type Message as MessagePb,
-} from '@session/proto'
+import type { Conversation, Frame, Message } from '@session/client'
 
 import { mulberry32, words } from './text'
 
@@ -17,7 +7,11 @@ import { mulberry32, words } from './text'
  *
  * Field sizes are what decide these numbers, so they are taken from the real thing rather than
  * rounded: an account ID is `05` plus 64 hex characters, and at 66 bytes it is most of what a
- * Message weighs. A fixture with short ids would understate every decode measurement here.
+ * Message weighs. A fixture with short ids would understate every measurement here.
+ *
+ * The frames are the shim's own structs now rather than encoded protobuf, so a builder is an
+ * object literal and there is no `Uint8Array` anywhere. What that removes from the numbers is
+ * the point: the serialisation these benchmarks were built to size no longer happens.
  */
 
 const HEX = '0123456789abcdef'
@@ -31,14 +25,14 @@ export function accountId(random: () => number): string {
 export interface Corpus {
   /** Distinct account ids, reused across the corpus the way real ones are. */
   accounts: string[]
-  conversations: ConversationPb[]
-  messages: MessagePb[]
+  conversations: Conversation[]
+  messages: Message[]
 }
 
 /**
- * `authorCount` is the lever that matters for the interning question: a DM has two authors and a
- * group has as many as it has members, so the win from a string table is entirely a function of
- * this number against the message count.
+ * `authorCount` is the lever that matters for the identity question: a DM has two authors and a
+ * group has as many as it has members, so what repeating an account id costs is entirely a
+ * function of this number against the message count.
  */
 export function makeCorpus(options: {
   conversations: number
@@ -56,86 +50,57 @@ export function makeCorpus(options: {
 
   const now = 1_760_000_000_000
 
-  const conversations: ConversationPb[] = []
+  const conversations: Conversation[] = []
   for (let i = 0; i < options.conversations; i++) {
-    conversations.push(
-      create(ConversationSchema, {
-        id: accounts[i] as string,
-        kind: ConversationKind.DM,
-        displayName: words(random, 2),
-        lastActivity: BigInt(now - i * 60_000),
-        priority: 0,
-        unreadCount: i % 7,
-        markedUnread: false,
-        snippet: words(random, 8),
-        autoDownload: 0,
-        request: false,
-        awaitingApproval: false,
-        noteToSelf: false,
-        blocked: false,
-      }),
-    )
+    conversations.push({
+      id: accounts[i] as string,
+      kind: 'dm',
+      displayName: words(random, 2),
+      lastActivity: now - i * 60_000,
+      priority: 0,
+      unreadCount: i % 7,
+      markedUnread: false,
+      snippet: words(random, 8),
+      request: false,
+      awaitingApproval: false,
+      noteToSelf: false,
+      blocked: false,
+    })
   }
 
-  const messages: MessagePb[] = []
+  const conversationId = accounts[0] as string
+  const messages: Message[] = []
   for (let i = 0; i < options.messages; i++) {
-    messages.push(
-      create(MessageSchema, {
-        id: BigInt(i + 1),
-        author: accounts[i % authorCount] as string,
-        timestamp: BigInt(now - (options.messages - i) * 30_000),
-        // Real message bodies are mostly short with a long tail; a flat length would flatter
-        // the decode numbers.
-        body: words(random, 3 + Math.floor(random() * 30)),
-        outgoing: i % 2 === 0,
-        sendState: SendState.SENT,
-        attachments: [],
-      }),
-    )
+    messages.push({
+      id: i + 1,
+      conversationId,
+      author: accounts[i % authorCount] as string,
+      timestamp: now - (options.messages - i) * 30_000,
+      // Real message bodies are mostly short with a long tail; a flat length would flatter
+      // every number taken from them.
+      body: words(random, 3 + Math.floor(random() * 30)),
+      outgoing: i % 2 === 0,
+      sendState: 'sent',
+    })
   }
 
   return { accounts, conversations, messages }
 }
 
-export function conversationListFrame(conversations: ConversationPb[]): Uint8Array {
-  return toBinary(
-    FrameSchema,
-    create(FrameSchema, {
-      kind: {
-        case: 'event',
-        value: create(EventSchema, {
-          kind: { case: 'conversationListReplaced', value: { conversations } },
-        }),
-      },
-    }),
-  )
+export function conversationListFrame(conversations: Conversation[]): Frame {
+  return { type: 'event', event: { type: 'conversation-list-replaced', conversations } }
 }
 
-export function messageAddedFrame(conversationId: string, message: MessagePb): Uint8Array {
-  return toBinary(
-    FrameSchema,
-    create(FrameSchema, {
-      kind: {
-        case: 'event',
-        value: create(EventSchema, {
-          kind: { case: 'messageAdded', value: { conversationId, message } },
-        }),
-      },
-    }),
-  )
+export function messageAddedFrame(conversationId: string, message: Message): Frame {
+  return { type: 'event', event: { type: 'message-added', conversationId, message } }
 }
 
 /** A single-conversation update - the event a poll produces when an unread count moves. */
-export function conversationUpdatedFrame(conversation: ConversationPb): Uint8Array {
-  return toBinary(
-    FrameSchema,
-    create(FrameSchema, {
-      kind: {
-        case: 'event',
-        value: create(EventSchema, {
-          kind: { case: 'conversationUpdated', value: { conversation } },
-        }),
-      },
-    }),
-  )
+export function conversationUpdatedFrame(conversation: Conversation): Frame {
+  return { type: 'event', event: { type: 'conversation-updated', conversation } }
+}
+
+/** A Response frame the size a small command's answer really is. */
+export function emptyResponseFrame(id: number): Frame {
+  return { type: 'response', response: { id, result: { type: 'empty' } } }
 }

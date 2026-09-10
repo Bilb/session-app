@@ -1,6 +1,6 @@
 import type { Conversation, ConversationId, Message, SessionEvent } from '@session/client'
 
-import { transferKey, type MessageWindow, type SessionState } from './types'
+import type { MessageWindow, SessionState } from './types'
 
 /**
  * The whole projection, as one pure function.
@@ -9,6 +9,9 @@ import { transferKey, type MessageWindow, type SessionState } from './types'
  * or goes back to ask for the rest. That is what makes replaying the same event twice
  * harmless, and what lets the store be seeded and then have earlier events land on top of
  * it without contradicting themselves.
+ *
+ * The objects the bridge hands over are stored as they are: this rebuilds the containers on the
+ * path to a change (a map, an id array) and nothing inside them.
  */
 export function applyEvent(state: SessionState, event: SessionEvent): SessionState {
   switch (event.type) {
@@ -20,10 +23,10 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
       return removeConversation(state, event.conversationId)
 
     case 'conversation-list-replaced':
-      return { ...state, ...indexConversations(event.conversations, 'conversations') }
+      return { ...state, conversations: event.conversations }
 
     case 'request-list-replaced':
-      return { ...state, ...indexConversations(event.conversations, 'requests') }
+      return { ...state, requests: event.conversations }
 
     case 'message-added':
     case 'message-updated':
@@ -45,10 +48,6 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
         },
       }
 
-    case 'attachment-progress':
-      return applyTransfer(state, event.progress)
-
-    case 'display-picture-progress':
     case 'log':
       return state
 
@@ -57,23 +56,17 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
   }
 }
 
-function indexConversations(
-  conversations: Conversation[],
-  target: 'conversations' | 'requests',
-): Partial<SessionState> {
-  const byId: Record<ConversationId, Conversation> = {}
-  for (const conversation of conversations) byId[conversation.id] = conversation
-  // Arrival order, not our own. libsession orders both queries in SQL, and it does not order them
-  // the same way: conversations are `priority DESC, last_activity DESC, id`, requests are
-  // `last_activity DESC, id` with no priority at all. One comparator applied to both did not
-  // merely repeat work already done - it imposed a priority ordering on the request list that
-  // libsession does not apply, and it would have gone on disagreeing with any later change to
-  // libsession's sort rules.
-  const order = conversations.map((c) => c.id)
+type ListKey = 'conversations' | 'requests'
 
-  return target === 'conversations'
-    ? { conversations: byId, conversationOrder: order }
-    : { requests: byId, requestOrder: order }
+/**
+ * The list without `id`, or the same array when it was not in it.
+ *
+ * Returning the same one matters: a screen subscribed to the request list would otherwise be
+ * handed a new array on every message that arrives in a conversation, and re-render for a change
+ * that never touched it.
+ */
+function without(list: Conversation[], id: ConversationId): Conversation[] {
+  return list.some((c) => c.id === id) ? list.filter((c) => c.id !== id) : list
 }
 
 /**
@@ -82,43 +75,33 @@ function indexConversations(
  * a conversation appear in both lists at once.
  */
 function upsertConversation(state: SessionState, conversation: Conversation): SessionState {
-  const intoRequests = conversation.request
-  const from = intoRequests ? 'conversations' : 'requests'
-  const fromOrder = intoRequests ? 'conversationOrder' : 'requestOrder'
-  const to = intoRequests ? 'requests' : 'conversations'
-  const toOrder = intoRequests ? 'requestOrder' : 'conversationOrder'
+  const to: ListKey = conversation.request ? 'requests' : 'conversations'
+  const from: ListKey = conversation.request ? 'conversations' : 'requests'
 
-  const { [conversation.id]: _removed, ...withoutFromOther } = state[from]
-  const target = { ...state[to], [conversation.id]: conversation }
-
-  // The row keeps its place, and a row arriving from the other list goes on the end. Neither is
-  // this file's decision to make: libsession orders the lists, and the only case that moves a
-  // conversation between them - approval - is followed by a replacement carrying the real order,
-  // so an appended row is corrected within the same batch rather than left where it was put.
-  const already = state[toOrder].includes(conversation.id)
-  const order = already ? state[toOrder] : [...state[toOrder], conversation.id]
-
-  return {
-    ...state,
-    [from]: withoutFromOther,
-    [fromOrder]: state[fromOrder].filter((id) => id !== conversation.id),
-    [to]: target,
-    [toOrder]: order,
+  const at = state[to].findIndex((c) => c.id === conversation.id)
+  let target: Conversation[]
+  if (at === -1) {
+    // Appended, because where it belongs is not this file's decision: libsession orders the
+    // lists, and the only case that moves a conversation between them - approval - is followed
+    // by a replacement carrying the real order, so an appended row is corrected within the same
+    // batch rather than left where it was put.
+    target = [...state[to], conversation]
+  } else {
+    target = state[to].slice()
+    target[at] = conversation
   }
+
+  return { ...state, [from]: without(state[from], conversation.id), [to]: target }
 }
 
 function removeConversation(state: SessionState, id: ConversationId): SessionState {
-  const { [id]: _fromList, ...conversations } = state.conversations
-  const { [id]: _fromRequests, ...requests } = state.requests
   const { [id]: _history, ...histories } = state.histories
 
   return {
     ...state,
-    conversations,
-    requests,
+    conversations: without(state.conversations, id),
+    requests: without(state.requests, id),
     histories,
-    conversationOrder: state.conversationOrder.filter((each) => each !== id),
-    requestOrder: state.requestOrder.filter((each) => each !== id),
   }
 }
 
@@ -128,26 +111,6 @@ function removeConversation(state: SessionState, id: ConversationId): SessionSta
  * Starting a window from a single event would leave a transcript that looks complete and is
  * not; the screen asks for the history it wants and events keep it current from there.
  */
-/**
- * Place one message, rather than re-sorting the transcript around it.
- *
- * This ordering is not libsession's repeated: libsession returns a page newest-first and a
- * transcript reads oldest-first, so the reversal is ours and has to stay. What does not have to
- * stay is sorting the whole window on every arrival. A message almost always belongs at the end -
- * it just arrived - so the scan starts there and usually stops immediately, and an out-of-order
- * backfill still lands in the right place.
- */
-function insertInOrder(messages: Message[], message: Message): Message[] {
-  const before = (m: Message) =>
-    m.timestamp < message.timestamp || (m.timestamp === message.timestamp && m.id < message.id)
-
-  let at = messages.length
-  while (at > 0 && !before(messages[at - 1] as Message)) at--
-
-  if (at === messages.length) return [...messages, message]
-  return [...messages.slice(0, at), message, ...messages.slice(at)]
-}
-
 function upsertMessage(
   state: SessionState,
   conversationId: ConversationId,
@@ -156,28 +119,32 @@ function upsertMessage(
   const window = state.histories[conversationId]
   if (!window?.ready) return state
 
-  const existing = window.messages.findIndex((m) => m.id === message.id)
-  const messages =
-    existing >= 0
-      ? window.messages.map((m) => (m.id === message.id ? message : m))
-      : insertInOrder(window.messages, message)
+  const current = window.messages
+  const existing = current.findIndex((m) => m.id === message.id)
+  let messages: Message[]
+  if (existing >= 0) {
+    messages = current.slice()
+    messages[existing] = message
+  } else {
+    // On the end, without checking where it belongs. The event reports a message that has just
+    // happened, and libsession decides the order a transcript reads in - the shim already turns
+    // its newest-first page around. A comparator here would be this package deciding it again.
+    messages = [...current, message]
+  }
 
   const updated: MessageWindow = { ...window, messages }
   return { ...state, histories: { ...state.histories, [conversationId]: updated } }
 }
 
-function applyTransfer(
-  state: SessionState,
-  progress: { messageId: number; index: number; done: number; total: number; result?: number },
-): SessionState {
-  const key = transferKey(progress.messageId, progress.index)
-
-  // A report carrying a result is the last one for that index, so the entry retires rather
-  // than sitting at 100% for ever.
-  if (progress.result !== undefined) {
-    const { [key]: _done, ...transfers } = state.transfers
-    return { ...state, transfers }
-  }
-
-  return { ...state, transfers: { ...state.transfers, [key]: { ...progress } } }
+/**
+ * An older page in front of what is already loaded.
+ *
+ * A concatenation and nothing else: the page was asked for from before the oldest message the
+ * window holds, and both come from libsession in the order it reads them out, so joining them
+ * is the whole operation.
+ */
+export function mergePages(older: Message[], previous: Message[]): Message[] {
+  if (previous.length === 0) return older
+  if (older.length === 0) return previous
+  return [...older, ...previous]
 }

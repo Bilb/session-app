@@ -13,12 +13,25 @@ ndk="${ANDROID_NDK:-${NDK:-}}"
 
 if [ -z "$ndk" ]; then
     sdk="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/Android/Sdk}}"
-    ndk="$(ls -d "$sdk"/ndk/* 2>/dev/null | sort -V | tail -1 || true)"
+    # The version the module pins, read from its build.gradle rather than written down twice -
+    # and emphatically not the newest installed. These static libraries and SessionBridgeRN link
+    # into one .so, so two NDKs means two libc++ runtimes: the tell is `undefined symbol:
+    # __cxa_init_primary_exception` at link time, which names nothing about NDK versions. A
+    # machine with only the pinned NDK installed never sees it; one that has a newer one too
+    # builds a libsession that cannot be linked against.
+    pinned="$(sed -n 's/.*getExtOrDefault("ndkVersion", "\([^"]*\)").*/\1/p' \
+        "$here/../android/build.gradle" | head -1)"
+    if [ -z "$pinned" ]; then
+        echo "could not read ndkVersion from packages/bridge-rn/android/build.gradle" >&2
+        exit 1
+    fi
+    ndk="$sdk/ndk/$pinned"
 fi
 if [ -z "$ndk" ] || [ ! -d "$ndk" ]; then
-    echo "Set ANDROID_NDK (or install an NDK under \$ANDROID_SDK_ROOT/ndk)" >&2
+    echo "NDK not found at '$ndk'. Install it, or set ANDROID_NDK to the one the module pins." >&2
     exit 1
 fi
+echo "Using NDK: $ndk"
 
 abis=("${@:-x86_64}")
 if [ "${1:-}" = "all" ]; then
@@ -28,8 +41,6 @@ fi
 # Kept in step with libsession's utils/android.sh rather than with the module's own minSdk: the
 # app may raise its floor without the static libraries having to be rebuilt below it.
 platform="${ANDROID_PLATFORM:-android-23}"
-
-node "$here/../../../scripts/patch-libsession.mjs"
 
 cd "$libsession"
 for abi in "${abis[@]}"; do

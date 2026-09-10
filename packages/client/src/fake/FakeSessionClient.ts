@@ -5,10 +5,10 @@ import type {
   ConversationId,
   Deletion,
   Message,
-  OutgoingMessage,
-  SessionClient,
   SessionEvent,
-} from '../types'
+} from '@session/bridge-types'
+
+import type { OutgoingMessage, SessionClient } from '../types'
 import type { FakeAccount, FakeWorld } from './world'
 
 /**
@@ -48,8 +48,14 @@ export class FakeSessionClient implements SessionClient {
     return Promise.resolve()
   }
 
-  restoreAccount(): Promise<void> {
+  restoreAccount(
+    from: { words: string[]; language?: string } | { hexSeed: string },
+  ): Promise<void> {
     this.assertOpen()
+    // The shim rejects a seed it cannot decode rather than guessing at one, so onboarding sees
+    // the same refusal here as it will against libsession.
+    if ('hexSeed' in from && !/^[0-9a-fA-F]{64}$/.test(from.hexSeed))
+      return Promise.reject(new Error('hexSeed must be 32 bytes of hex'))
     this.account.haveAccount = true
     return Promise.resolve()
   }
@@ -113,7 +119,6 @@ export class FakeSessionClient implements SessionClient {
       priority: 0,
       unreadCount: 0,
       markedUnread: false,
-      autoDownload: 'none',
       request: false,
       awaitingApproval: false,
       noteToSelf: sessionId === this.account.sessionId,
@@ -170,10 +175,19 @@ export class FakeSessionClient implements SessionClient {
 
   getMessages(
     id: ConversationId,
-    options?: { limit?: number; before?: { timestamp: number; id: number } },
+    options?: {
+      limit?: number
+      before?: { timestamp: number; id: number }
+      includeDeleted?: boolean
+    },
   ): Promise<Message[]> {
     this.assertOpen()
-    const all = this.account.messages(id)
+    // Deleted rows are dropped before the limit is applied, as libsession drops them in the
+    // query: filtering a page after the fact would hand back short pages with nothing to say
+    // that another page is warranted.
+    const all = options?.includeDeleted
+      ? this.account.messages(id)
+      : this.account.messages(id).filter((m) => m.deleted === undefined)
     const before = options?.before
     const older = before
       ? all.filter(
@@ -207,16 +221,6 @@ export class FakeSessionClient implements SessionClient {
       }
     }
     return Promise.resolve()
-  }
-
-  attachmentData(): Promise<Uint8Array> {
-    this.assertOpen()
-    return Promise.resolve(new Uint8Array())
-  }
-
-  saveAttachment(_messageId: number, _index: number, destination: string): Promise<string> {
-    this.assertOpen()
-    return Promise.resolve(destination)
   }
 
   getPref(key: string): Promise<string | undefined> {

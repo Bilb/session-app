@@ -25,7 +25,6 @@ apps/mobile/expo-env.d.ts
 # Native build artifacts
 prebuilds/
 packages/*/build/
-packages/proto/gen-cpp/
 libsession-util/build-ios/
 packages/bridge-rn/ios/*.xcframework/
 packages/bridge-rn/ios/lib/

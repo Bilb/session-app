@@ -1,9 +1,13 @@
-import { create, toBinary } from '@bufbuild/protobuf'
-import { FrameSchema, ResponseSchema } from '@session/proto'
+import type { Frame } from '@session/client'
 import { applyEvent, emptyState } from '@session/state'
 import { afterAll, it } from 'vitest'
 
-import { conversationListFrame, conversationUpdatedFrame, makeCorpus } from './fixtures'
+import {
+  conversationListFrame,
+  conversationUpdatedFrame,
+  emptyResponseFrame,
+  makeCorpus,
+} from './fixtures'
 import { ms, report, table } from './measure'
 import { loopback, type Loopback } from './pipeline'
 
@@ -12,12 +16,14 @@ import { loopback, type Loopback } from './pipeline'
  *
  * This is the question the whole exercise exists for, and it is a latency measurement rather
  * than a throughput one. Responses and events share one FIFO stream by design - see
- * frames.proto - so an event queued ahead of a response is decoded before it, on the one
- * thread, with no preemption. The number below is how much that costs.
+ * @session/bridge-types - so an event queued ahead of a response is handled before it, on the
+ * one thread, with no preemption. The number below is how much that costs.
  *
- * Deliberately not measuring the transport: this runs the facade's own sink, which is where the
- * decode happens, so the figure is the JavaScript half alone. The C++ encode and the thread hop
- * are tier two.
+ * Removing the wire format did not remove this: the queue is what guarantees the ordering, so
+ * whatever the event in front costs to project is still spent before the answer is reached.
+ *
+ * Deliberately not measuring the transport: this runs the facade's own sink, so the figure is
+ * the JavaScript half alone. The C++ side and the thread hop are tier two.
  */
 
 const pipe: Loopback = loopback()
@@ -25,28 +31,12 @@ afterAll(() => {
   pipe.close()
 })
 
-/** A Response frame the size a small command's answer really is. */
-function smallResponse(id: number): Uint8Array {
-  return toBinary(
-    FrameSchema,
-    create(FrameSchema, {
-      kind: {
-        case: 'response',
-        value: create(ResponseSchema, {
-          requestId: id,
-          result: { case: 'empty', value: {} },
-        }),
-      },
-    }),
-  )
-}
-
 it('a small response arriving behind a conversation list', () => {
   const rows: string[][] = []
-  const response = smallResponse(1)
+  const response = emptyResponseFrame(1)
 
   for (const n of [0, 100, 500, 1000, 5000]) {
-    const frames: Uint8Array[] = []
+    const frames: Frame[] = []
     if (n > 0) {
       const { conversations } = makeCorpus({ conversations: n, messages: 0 })
       frames.push(conversationListFrame(conversations))
@@ -82,7 +72,7 @@ it('a small response arriving behind a conversation list', () => {
       table(rows, ['in front', 'median', 'p95', 'max', 'at 60Hz']) +
       '\n' +
       '  The first row is the floor: a response with nothing ahead of it.\n' +
-      '  Every other row is that floor plus the decode and projection of the event\n' +
+      '  Every other row is that floor plus the delivery and projection of the event\n' +
       '  queued in front, because one FIFO stream is what guarantees the ordering.\n',
   )
 })
@@ -101,8 +91,8 @@ it('a storm of single-conversation updates, as polling produces', () => {
 
     const single = conversations[0]
     if (!single) throw new Error('no fixture conversation')
-    // conversation_updated, not a one-row list_replaced: only the former reaches
-    // upsertConversation, which is the function that re-sorts everything.
+    // conversation-updated, not a one-row list-replaced: only the former reaches
+    // upsertConversation, which is where a single row's cost is decided.
     const updateFrame = conversationUpdatedFrame({ ...single, unreadCount: 9 })
 
     pipe.push(updateFrame)
@@ -129,8 +119,8 @@ it('a storm of single-conversation updates, as polling produces', () => {
     '\n\n== ONE ROW CHANGES ==  applyEvent cost when the store already holds N conversations\n\n' +
       table(rows, ['store holds', 'median', 'p95', 'x20 events']) +
       '\n' +
-      '  upsertConversation re-sorts the entire list and rebuilds the order array for\n' +
-      '  every single row that changes. The payload is one conversation; the work is N.\n' +
+      '  The payload is one conversation. Whether the work is one or N is upsertConversation\n' +
+      '  business, and this is the number that says which it currently is.\n' +
       '  The last column is one poll cycle that touches twenty rows.\n',
   )
 })

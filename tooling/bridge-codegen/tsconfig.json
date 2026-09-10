@@ -1,0 +1,12 @@
+{
+  "extends": "@session/typescript-config/node.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src", "tests"],
+  // The invalid fixtures are generator input, not code: each one is a construct the generator
+  // has to refuse, and one of them is a circular alias TypeScript refuses first.
+  "exclude": ["node_modules", "tests/fixtures/expected", "tests/fixtures/invalid"]
+}

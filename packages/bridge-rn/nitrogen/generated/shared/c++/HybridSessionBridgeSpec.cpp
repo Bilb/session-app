@@ -14,7 +14,6 @@ namespace margelo::nitro::session::bridge::rn {
     HybridObject::loadHybridMethods();
     // load custom methods/properties
     registerHybrids(this, [](Prototype& prototype) {
-      prototype.registerHybridMethod("setSink", &HybridSessionBridgeSpec::setSink);
       prototype.registerHybridMethod("init", &HybridSessionBridgeSpec::init);
       prototype.registerHybridMethod("call", &HybridSessionBridgeSpec::call);
       prototype.registerHybridMethod("close", &HybridSessionBridgeSpec::close);

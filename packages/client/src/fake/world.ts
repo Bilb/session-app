@@ -21,7 +21,7 @@ import type {
   Message,
   SendState,
   SessionEvent,
-} from '../types'
+} from '@session/bridge-types'
 
 export interface FakeAccountOptions {
   displayName: string
@@ -260,13 +260,18 @@ export class FakeAccount {
    * show a spinner for ever after a crash.
    */
   restart(): void {
-    const inFlight: SendState[] = ['pending', 'sending', 'uploading']
+    const inFlight: SendState[] = ['pending', 'sending']
     for (const [id, state] of this.conversations) {
       for (const message of state.messages) {
         // Pending counts: the row was stored but never handed to the network, and the
         // queue that would have done it is gone with the process.
         if (inFlight.includes(message.sendState)) {
           this.updateMessage(id, message.id, { sendState: 'interrupted' })
+        }
+        // The sync send is its own queue entry, so it is interrupted on its own terms - a
+        // message whose recipient copy landed before the crash still has a sync that did not.
+        if (message.syncState !== undefined && inFlight.includes(message.syncState)) {
+          this.updateMessage(id, message.id, { syncState: 'interrupted' })
         }
       }
     }
@@ -283,7 +288,6 @@ export class FakeAccount {
         priority: 0,
         unreadCount: 0,
         markedUnread: false,
-        autoDownload: 'none',
         // Someone we have never spoken to lands in message requests, not the main list.
         request: true,
         awaitingApproval: false,
@@ -300,7 +304,6 @@ export class FakeAccount {
       body,
       outgoing: false,
       sendState: 'sent',
-      attachments: [],
     })
   }
 
@@ -315,7 +318,9 @@ export class FakeAccount {
       outgoing: true,
       // Stored and shown before it is sent - which is why the app needs no optimistic copy.
       sendState: 'pending',
-      attachments: [],
+      // A second send, to our own swarm, so our other devices see it. Left unset on an incoming
+      // message, which is why `deliverFrom` does not set one.
+      syncState: 'pending',
       ...(replyTo === undefined
         ? {}
         : { replyTo: { author: this.sessionId, timestamp: now, messageId: replyTo } }),
@@ -327,6 +332,10 @@ export class FakeAccount {
 
   setSendState(id: ConversationId, messageId: number, sendState: SendState): void {
     this.updateMessage(id, messageId, { sendState })
+  }
+
+  setSyncState(id: ConversationId, messageId: number, syncState: SendState): void {
+    this.updateMessage(id, messageId, { syncState })
   }
 }
 
@@ -372,6 +381,18 @@ export class FakeWorld {
         const recipient = this.find(conversationId)
         if (recipient) recipient.deliverFrom(sender, message.body, this.clock)
       },
+    })
+
+    // Behind the recipient's copy on purpose. The two are separate sends, and a sync still
+    // pending after the message has arrived is the case a caller has to be able to represent -
+    // a fake that settled both together would never produce it.
+    this.queue.push({
+      at: this.clock + this.stepMs * 3,
+      run: () => sender.setSyncState(conversationId, message.id, 'sending'),
+    })
+    this.queue.push({
+      at: this.clock + this.stepMs * 4,
+      run: () => sender.setSyncState(conversationId, message.id, 'sent'),
     })
   }
 

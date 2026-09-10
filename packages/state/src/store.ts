@@ -1,7 +1,7 @@
-import type { Conversation, ConversationId, Message, SessionClient } from '@session/client'
+import type { ConversationId, Message, SessionClient } from '@session/client'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
-import { applyEvent } from './applyEvent'
+import { applyEvent, mergePages } from './applyEvent'
 import { emptyState, type MessageWindow, type SessionState } from './types'
 
 export interface SessionActions {
@@ -117,7 +117,7 @@ export function createSessionStore(
   }
 
   function windowFrom(messages: Message[], previous: Message[] = []): Partial<MessageWindow> {
-    const all = [...previous, ...messages].sort((a, b) => a.timestamp - b.timestamp || a.id - b.id)
+    const all = mergePages(messages, previous)
     const oldest = all[0]
     return {
       ready: true,
@@ -158,12 +158,7 @@ export function createSessionStore(
         client.getMessageRequests(),
       ])
 
-      store.setState((state) => ({
-        ...state,
-        ...index(conversations, 'conversations'),
-        ...index(requests, 'requests'),
-        hydrated: true,
-      }))
+      store.setState({ conversations, requests, hydrated: true })
     },
 
     async loadHistory(id): Promise<void> {
@@ -220,19 +215,4 @@ export function createSessionStore(
   }
 
   return Object.assign(store, { actions })
-}
-
-function index(
-  conversations: Conversation[],
-  target: 'conversations' | 'requests',
-): Partial<SessionState> {
-  const byId: Record<ConversationId, Conversation> = {}
-  for (const conversation of conversations) byId[conversation.id] = conversation
-  // Arrival order - see the note on the twin of this function in applyEvent.ts. libsession orders
-  // both lists in SQL and does not order them the same way, so re-sorting here disagreed with the
-  // request list rather than duplicating work.
-  const order = conversations.map((c) => c.id)
-  return target === 'conversations'
-    ? { conversations: byId, conversationOrder: order }
-    : { requests: byId, requestOrder: order }
 }

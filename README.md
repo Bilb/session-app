@@ -50,8 +50,7 @@ pnpm boundaries               # who may import whom, and the authority on it
 
 ```
 libsession-util/    the submodule everything stands on, pinned
-packages/proto      the wire format between it and TypeScript
-packages/bridge-*   C++ shim, and the two transports that carry it to each app
+packages/bridge-*   the protocol as types, the C++ shim generated against them, two transports
 packages/client     the one interface every consumer sees, and the fake
 packages/state      libsession's events, projected. No optimistic writes.
 packages/ui         the components. Nothing else may import tamagui.

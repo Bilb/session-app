@@ -20,7 +20,6 @@ function ensureDm(self: FakeAccount, peer: FakeAccount, world: FakeWorld, reques
       priority: 0,
       unreadCount: 0,
       markedUnread: false,
-      autoDownload: 'none',
       request,
       awaitingApproval: false,
       noteToSelf: false,

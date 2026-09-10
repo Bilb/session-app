@@ -10,15 +10,24 @@
       "dependsOn": ["codegen"],
       "cache": false
     },
+    "@session/bridge-codegen#codegen": {
+      "inputs": ["src/**", "../../packages/bridge-types/src/**"],
+      "cache": false
+    },
     "build": {
       "dependsOn": ["^build", "codegen"],
       "outputs": ["dist/**", "out/**"]
     },
     "build:native": {
-      "inputs": ["src/**", "proto/**", "CMakeLists.txt", "../../libsession-util/**"],
+      "inputs": ["src/**", "CMakeLists.txt", "../bridge-core/**", "../../libsession-util/**"],
       "outputs": ["prebuilds/**", "build/Release/**"]
     },
     "dev": {
+      "dependsOn": ["^codegen"],
+      "cache": false,
+      "persistent": true
+    },
+    "dev:fake": {
       "dependsOn": ["^codegen"],
       "cache": false,
       "persistent": true

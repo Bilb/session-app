@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module'
 
-import type { BridgeTransport } from '@session/client'
+import type { BridgeTransport, Frame, Request } from '@session/client'
 import type { SessionBridgeOptions } from '@session/bridge-types'
 
 /**
@@ -22,14 +22,14 @@ export interface NodeBridgeOptions extends Omit<SessionBridgeOptions, 'rawKeyHex
 }
 
 interface NativeBridge {
-  call(request: Uint8Array): void
+  call(request: Request): void
   close(): void
 }
 
 interface Addon {
   SessionBridge: new (
     options: Omit<NodeBridgeOptions, 'addonPath'>,
-    onFrame: (frame: Uint8Array) => void,
+    onFrame: (frame: Frame) => void,
   ) => NativeBridge
 }
 
@@ -59,23 +59,33 @@ export function createNodeBridgeTransport(options: NodeBridgeOptions): BridgeTra
 
   // Frames produced between construction and setSink would otherwise be dropped: libsession
   // publishes the initial state as the Client is built, which is before any caller can have
-  // subscribed. Buffering is the same handshake the preload does for the same reason.
-  let sink: ((frame: Uint8Array) => void) | null = null
-  const pending: Uint8Array[] = []
+  // subscribed.
+  let sink: ((frame: Frame) => void) | null = null
+  const pending: Frame[] = []
 
-  const bridge = new SessionBridge(init, (frame) => {
+  function deliver(frame: Frame): void {
     if (sink) sink(frame)
     else pending.push(frame)
-  })
+  }
+
+  const bridge = new SessionBridge(init, deliver)
 
   let closed = false
 
   return {
-    send(request: Uint8Array): void {
-      if (!closed) bridge.call(request)
+    send(request: Request): void {
+      if (closed) return
+      try {
+        bridge.call(request)
+      } catch (error) {
+        // The addon could not read the request, so the shim never saw it. Answered the way any
+        // other failed request is, on the stream, rather than thrown at whoever forwarded it.
+        const message = error instanceof Error ? error.message : String(error)
+        deliver({ type: 'response', response: { id: request.id, error: message } })
+      }
     },
 
-    setSink(onFrame: (frame: Uint8Array) => void): void {
+    setSink(onFrame: (frame: Frame) => void): void {
       sink = onFrame
       const buffered = pending.splice(0, pending.length)
       for (const frame of buffered) onFrame(frame)

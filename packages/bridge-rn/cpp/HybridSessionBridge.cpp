@@ -1,11 +1,13 @@
 #include "HybridSessionBridge.hpp"
 
+#include <NitroModules/JSICache.hpp>
 #include <session_bridge/client_bridge.hpp>
+#include <session_bridge/gen/jsi.hpp>
 
 #include <array>
-#include <cstddef>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace margelo::nitro::session::bridge::rn {
 
@@ -79,16 +81,40 @@ HybridSessionBridge::~HybridSessionBridge() {
     close();
 }
 
-void HybridSessionBridge::setSink(
-        const std::function<void(const std::shared_ptr<ArrayBuffer>&)>& onFrame) {
-    _sink = onFrame;
+void HybridSessionBridge::loadHybridMethods() {
+    HybridSessionBridgeSpec::loadHybridMethods();
+    registerHybrids(this, [](Prototype& prototype) {
+        prototype.registerRawHybridMethod("setSink", 1, &HybridSessionBridge::setSink);
+    });
+}
+
+jsi::Value HybridSessionBridge::setSink(
+        jsi::Runtime& runtime, const jsi::Value&, const jsi::Value* args, size_t count) {
+    if (count < 1 || !args[0].isObject() || !args[0].getObject(runtime).isFunction(runtime))
+        throw jsi::JSError(runtime, "setSink(onFrame) takes a function");
+
+    auto sink = std::make_shared<Sink>();
+    sink->runtime = &runtime;
+    {
+        // Owned by the runtime's cache, so the reference goes null rather than dangling if the
+        // runtime is torn down first; the scope keeps the cache lock short, as Nitro does.
+        JSICacheReference cache = JSICache::getOrCreateCache(runtime);
+        sink->function = cache.makeShared(args[0].getObject(runtime).getFunction(runtime));
+    }
+    sink->dispatcher = Dispatcher::getRuntimeGlobalDispatcher(runtime);
+    _sink = std::move(sink);
+    return jsi::Value::undefined();
 }
 
 void HybridSessionBridge::init(const SessionBridgeOptions& options) {
     if (_bridge)
         throw std::runtime_error{"the bridge is already open"};
+    // libsession publishes the state it already has while the Client is constructed, so a sink
+    // installed afterwards has missed the first frames. Refused rather than allowed to lose them.
+    if (!_sink)
+        throw std::runtime_error{"setSink() before init()"};
 
-    ::session::bridge::InitOptions init;
+    ::session_bridge::InitOptions init;
     init.db_path = options.dbPath;
     init.cache_dir = options.cacheDir;
     init.defer_account = options.deferAccount;
@@ -103,31 +129,38 @@ void HybridSessionBridge::init(const SessionBridgeOptions& options) {
     else if (options.password)
         init.password = *options.password;
 
-    _bridge = std::make_unique<::session::bridge::ClientBridge>(
-            std::move(init), [this](std::span<const std::byte> frame) {
-                if (!_sink)
+    _bridge = std::make_unique<::session_bridge::ClientBridge>(
+            std::move(init), [sink = _sink](::session_bridge::Frame frame) {
+                // This runs on Core's loop. The frame is moved into the job and becomes a
+                // JavaScript object on the JS thread, through the JSIConverter generated beside
+                // it; the dispatcher's queue is FIFO, which is the same ordering guarantee the
+                // addon gets from a thread-safe function. Nothing between here and the converter
+                // copies it - the reason setSink is a raw method.
+                auto dispatcher = sink->dispatcher.lock();
+                if (!dispatcher)
                     return;
-                // Copied rather than wrapped: this runs on Core's loop, the callback is
-                // delivered on the JavaScript thread some time later, and the frame is gone by
-                // then. Nitro's void callbacks carry the hop and the ordering with them, which
-                // is the same guarantee the addon gets from a thread-safe function.
-                _sink(ArrayBuffer::copy(
-                        reinterpret_cast<const uint8_t*>(frame.data()), frame.size()));
+                dispatcher->runAsync([sink, frame = std::move(frame)]() mutable {
+                    if (!sink->function)
+                        return;
+                    auto& runtime = *sink->runtime;
+                    sink->function->call(
+                            runtime,
+                            JSIConverter<::session_bridge::Frame>::toJSI(runtime, frame));
+                });
             });
 }
 
-void HybridSessionBridge::call(const std::shared_ptr<ArrayBuffer>& request) {
+void HybridSessionBridge::call(::session_bridge::Request request) {
     if (!_bridge)
         throw std::runtime_error{"call() before init()"};
-    _bridge->call(std::span{
-            reinterpret_cast<const std::byte*>(request->data()), request->size()});
+    _bridge->call(std::move(request));
 }
 
 void HybridSessionBridge::close() {
     // Destroy before dropping the sink: destroying joins Core's loop, so nothing can be
     // produced afterwards, and a frame in flight still has somewhere to go.
     _bridge.reset();
-    _sink = nullptr;
+    _sink.reset();
 }
 
 }  // namespace margelo::nitro::session::bridge::rn

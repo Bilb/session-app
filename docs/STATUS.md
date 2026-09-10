@@ -17,7 +17,7 @@ Everything green: `pnpm format:check`, `pnpm lint` (16), `pnpm lint:manifests`,
 
 The walking skeleton works end to end. `tests/e2e` drives the built Electron app through
 Playwright: it reads a seeded conversation list, opens a conversation, sends a message and
-sees it arrive - through the fake libsession, the real protobuf codec, and the MessagePort
+sees it arrive - through the fake libsession, the typed frame stream, and the MessagePort
 bridge. Only the C++ is missing from that path.
 
 ## What exists
@@ -28,7 +28,8 @@ bridge. Only the C++ is missing from that path.
 | `@session/basic-types` `@session/theme-tokens` | copied from session-pkgs, trimmed                                                   |
 | `@session/localization`                        | copied, plus a markup parser for the `<b>`/`<br/>` in the catalogue                 |
 | `@session/test-ids`                            | the element registry                                                                |
-| `@session/proto`                               | the wire schema, `sessionbridge.v1`, codecs committed                               |
+| `@session/bridge-types`                        | the protocol: domain types, `Command`, `Result`, `SessionEvent`, `Frame`            |
+| `@session/bridge-codegen`                      | generates the shim's C++ structs and JSI/N-API converters from bridge-types         |
 | `@session/client`                              | the SessionClient facade, and the fake                                              |
 | `@session/client-contract`                     | 9 behavioural scenarios, running against the fake                                   |
 | `@session/state`                               | the projection store, 9 reducer tests                                               |
@@ -48,9 +49,10 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
 
 - iOS device builds and a release-shaped xcframework. The simulator works; only one slice has
   ever been built, and nothing has been signed with a real identity.
-- Attachment commands (`AttachmentData`, `SaveAttachment`) and push are not in the shim's
-  dispatch yet. They answer with an error naming themselves rather than silently doing nothing.
-- Attachments. Onboarding is one button and restoring from a recovery phrase has no screen.
+- Push. `setPushToken` and `handlePushPayload` are in the protocol but not in the shim's
+  dispatch, and answer with an error naming themselves rather than silently doing nothing.
+- Attachments, in any form: nothing about them is in the protocol at all. Onboarding is one
+  button and restoring from a recovery phrase has no screen.
 - Anything a message can be beyond text: no reactions, replies, edits, deletes or read receipts.
 - The `e2e-full` workflow is a stub.
 
@@ -93,6 +95,13 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
      archives, sqlite3mc and utf8proc. `bridge-core` names them on the link line; nothing in the
      bundle says it should have to.
 
+- **Attachments.** Nothing about them is in the protocol: no metadata on a message, no
+  transfer progress, no auto-download setting, no command to fetch or save one. The cache files
+  libsession writes are encrypted, so reading one for display needs a decrypting path - a custom
+  protocol on desktop, something equivalent on mobile - rather than bytes over the bridge. The
+  metadata and the progress events were there before anything rendered them and went with the
+  bytes; whatever comes back should be designed with the screens that use it.
+
 - **Mnemonic handling.** libsession owns the word list, so no TypeScript library is needed,
   but once words cross into JavaScript they cannot be wiped. Keep them out of logs and out of
   the store.
@@ -106,7 +115,7 @@ which is a port of what libsession's own tests do. Eight of the nine scenarios p
 
 It has already earned its keep twice. libsession answers history **newest first** and the fake
 answered oldest first, which nothing had noticed because nothing had run both - that is a
-transcript upside down, and the shim now reverses and `frames.proto` says so. And the contract
+transcript upside down, and the shim now reverses and the `messageList` result says so. And the contract
 asserted a send ends up `sent`, which is only true where there is a swarm; offline it ends up
 `failed`, and the scenario was really about the state arriving as an update.
 
@@ -154,6 +163,13 @@ had to exist before any of this was visible.
   (`restoreAccount`) with no screen.
 - **There is no contact list and no QR scanner.** Starting a conversation means pasting an
   account ID into the new-conversation screen.
+- **A Message still carries its own `conversationId`.** Every container already establishes it:
+  a `message-added` names the conversation beside the message, and a `messageList` answers a
+  request that named one. The protobuf bridge dropped the field for the bytes it saved, which is
+  not the argument here - the shim builds JSI and N-API objects, so what repeats is a string per
+  row rather than 66 bytes per row. Removing it means changing the protocol, the generated
+  converters and the shim together, and the caller then has to thread the id it asked for through
+  the response.
 
 ### On reading the account ID
 
@@ -200,7 +216,9 @@ through the whole window where sending does not work.
 ## What runs against the real bridge
 
 **iOS.** Builds and runs on a simulator against real libsession, on a remote Mac - Xcode 26.2,
-macOS 15.7. The shared conversation-list screen draws from an encrypted database the app opened
+macOS 15.7. Verified again on the typed frame stream: the conversation list draws a real
+conversation out of the encrypted database, and `Documents/session/session.db` plus its WAL are
+the proof a command went down and an answer came back. The shared conversation-list screen draws from an encrypted database the app opened
 itself, keyed from `expo-secure-store`, and `Documents/session/session.db` is in the container
 afterwards. The `run` skill's [ios reference](../.claude/skills/run/references/ios.md) has the
 commands.
@@ -214,7 +232,7 @@ compile under Xcode 26 and is patched - still true of 57.0.8 and of the SDK 58 c
 isn't present", which turned out to mean the app was not signed at all: `CODE_SIGNING_ALLOWED=NO`
 is the obvious flag for a simulator build and it skips the step that applies entitlements.
 
-**Desktop.** `pnpm dev:desktop:real` loads the addon, and libsession opens an encrypted database
+**Desktop.** `pnpm dev:desktop` loads the addon, and libsession opens an encrypted database
 at `~/.config/session-app/session.db` with the key sealed beside it in `db-key.bin`. Verified by
 the header not being `SQLite format 3`.
 
@@ -302,6 +320,6 @@ are worth repeating because each one presents as something else:
   height and every element is invisible to a test.
 - `ELECTRON_RUN_AS_NODE=1` is set in this environment. Electron then runs your main file under
   plain Node and refuses Chromium's flags. `env -u ELECTRON_RUN_AS_NODE` before launching.
-- The preload buffers both directions of the MessagePort. The renderer asks for the account
-  before the port arrives; dropping that request strands the app on its loading screen with
-  nothing in the logs.
+- The renderer's port transport buffers both directions of the MessagePort. The renderer asks
+  for the account before the port arrives; dropping that request strands the app on its loading
+  screen with nothing in the logs.

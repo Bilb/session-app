@@ -1,22 +1,23 @@
+import type { Frame, SessionEvent } from '@session/bridge-types'
 import { describe, expect, it } from 'vitest'
 
 import { createSessionClient } from '#src/createSessionClient'
-import type { SessionEvent } from '#src/types'
 import { createFakeTransport } from '#src/fake/fakeBridge'
 import { friends } from '#src/fake/fixtures'
 
 /**
- * The fake, driven through the real codec and the real facade.
+ * The fake, driven through the real facade over the transport interface.
  *
- * This is the whole pipeline the apps use - encode, transport, decode, correlate - with
- * only the C++ missing. A break in any of those layers fails here rather than in an app.
+ * This is the whole pipeline the apps use - request, transport, correlate, event - with only the
+ * C++ missing. A break in any of those layers fails here rather than in an app.
  */
 function connect() {
   const { world, clients } = friends(['Alice', 'Bob'])
   const alice = clients['Alice']
   if (!alice) throw new Error('fixture did not produce Alice')
 
-  const client = createSessionClient(createFakeTransport(alice))
+  const transport = createFakeTransport(alice)
+  const client = createSessionClient(transport)
   const events: SessionEvent[] = []
   client.onEvent((event) => events.push(event))
 
@@ -24,7 +25,7 @@ function connect() {
 }
 
 describe('the bridge protocol, end to end', () => {
-  it('answers a request through the codec', async () => {
+  it('answers a request on the stream', async () => {
     const { client } = connect()
     const info = await client.getAccountInfo()
     expect(info.haveAccount).toBe(true)
@@ -62,14 +63,22 @@ describe('the bridge protocol, end to end', () => {
     await expect(client.getConversation('05nope')).rejects.toThrow(/No such conversation/)
   })
 
-  it("keeps a message's numbers as numbers on the far side", async () => {
-    const { client, world, bobId } = connect()
-    await client.sendMessage(bobId, { body: 'hello' })
-    world.settle()
+  it('answers a command it does not serve with an error on the stream, like the shim', async () => {
+    const { clients } = friends(['Alice', 'Bob'])
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce Alice')
+    const transport = createFakeTransport(alice)
 
-    const messages = await client.getMessages(bobId)
-    const message = messages[0]
-    expect(typeof message?.id).toBe('number')
-    expect(typeof message?.timestamp).toBe('number')
+    const answered = new Promise<Frame>((resolve) => {
+      transport.setSink((frame) => {
+        if (frame.type === 'response' && frame.response.id === 7) resolve(frame)
+      })
+    })
+    transport.send({ id: 7, command: { type: 'getTestAccountSeed' } })
+
+    const frame = await answered
+    if (frame.type !== 'response') throw new Error('unreachable')
+    expect(frame.response.error).toContain('getTestAccountSeed')
+    expect(frame.response.result).toBeUndefined()
   })
 })

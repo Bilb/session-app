@@ -14,7 +14,7 @@ import type {
  */
 export interface MessageWindow {
   ready: boolean
-  /** Ascending by (timestamp, id): the order a transcript renders. */
+  /** In the order a transcript renders, which is the order libsession read them out. */
   messages: Message[]
   oldestCursor?: MessageCursor
   exhausted: boolean
@@ -22,40 +22,31 @@ export interface MessageWindow {
   fetching: boolean
 }
 
-export interface TransferProgress {
-  messageId: number
-  index: number
-  done: number
-  total: number
-  result?: number
-}
-
 export interface SessionState {
   hydrated: boolean
   account: AccountInfo | null
 
-  /** Complete lists. libsession sends whole state, so partial copies would only rot. */
-  conversations: Record<ConversationId, Conversation>
-  conversationOrder: ConversationId[]
-  requests: Record<ConversationId, Conversation>
-  requestOrder: ConversationId[]
+  /**
+   * Complete lists, in the order libsession sent them. libsession sends whole state, so partial
+   * copies would only rot.
+   *
+   * A list and nothing beside it. libsession orders both queries in SQL and does not order them
+   * the same way - conversations are `priority DESC, last_activity DESC, id`, requests are
+   * `last_activity DESC, id` with no priority at all - so any order of this package's own
+   * disagreed with one of the two. An index keyed by id was the other half of that arrangement,
+   * and with the order gone it bought nothing: a screen renders the list, and the one lookup by
+   * id is a `find` over an array already in memory.
+   */
+  conversations: Conversation[]
+  requests: Conversation[]
 
   histories: Record<ConversationId, MessageWindow>
-  transfers: Record<string, TransferProgress>
 }
 
 export const emptyState: SessionState = {
   hydrated: false,
   account: null,
-  conversations: {},
-  conversationOrder: [],
-  requests: {},
-  requestOrder: [],
+  conversations: [],
+  requests: [],
   histories: {},
-  transfers: {},
-}
-
-/** Pinned first, then most recent, then by id so the order never wobbles between renders. */
-export function transferKey(messageId: number, index: number): string {
-  return `${messageId}:${index}`
 }

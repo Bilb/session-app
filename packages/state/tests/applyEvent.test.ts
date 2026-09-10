@@ -1,7 +1,7 @@
 import type { Conversation, Message, SessionEvent } from '@session/client'
 import { describe, expect, it } from 'vitest'
 
-import { applyEvent } from '#src/applyEvent'
+import { applyEvent, mergePages } from '#src/applyEvent'
 import { emptyState, type SessionState } from '#src/types'
 
 function conversation(overrides: Partial<Conversation> = {}): Conversation {
@@ -13,7 +13,6 @@ function conversation(overrides: Partial<Conversation> = {}): Conversation {
     priority: 0,
     unreadCount: 0,
     markedUnread: false,
-    autoDownload: 'none',
     request: false,
     awaitingApproval: false,
     noteToSelf: false,
@@ -31,7 +30,6 @@ function message(overrides: Partial<Message> = {}): Message {
     body: 'hello',
     outgoing: false,
     sendState: 'sent',
-    attachments: [],
     ...overrides,
   }
 }
@@ -39,6 +37,8 @@ function message(overrides: Partial<Message> = {}): Message {
 function replay(events: SessionEvent[], from: SessionState = emptyState): SessionState {
   return events.reduce(applyEvent, from)
 }
+
+const ids = (list: Conversation[]): string[] => list.map((c) => c.id)
 
 describe('applyEvent', () => {
   it('keeps the order libsession sent, rather than imposing one', () => {
@@ -57,7 +57,7 @@ describe('applyEvent', () => {
       },
     ])
 
-    expect(state.conversationOrder).toEqual(['a', 'b', 'c'])
+    expect(ids(state.conversations)).toEqual(['a', 'b', 'c'])
   })
 
   it('moves an approved conversation out of the request list', () => {
@@ -69,9 +69,8 @@ describe('applyEvent', () => {
 
     // Approval is an update, not a remove-then-add, so the row has to be taken out of the
     // list it used to be in - otherwise it shows up in both.
-    expect(state.requestOrder).toEqual([])
-    expect(state.requests['05alice']).toBeUndefined()
-    expect(state.conversationOrder).toEqual(['05alice'])
+    expect(ids(state.requests)).toEqual([])
+    expect(ids(state.conversations)).toEqual(['05alice'])
   })
 
   it('is unchanged by replaying the same event', () => {
@@ -79,7 +78,6 @@ describe('applyEvent', () => {
     const once = replay([event])
     const twice = replay([event, event])
 
-    expect(twice.conversationOrder).toEqual(once.conversationOrder)
     expect(twice.conversations).toEqual(once.conversations)
   })
 
@@ -93,7 +91,7 @@ describe('applyEvent', () => {
     expect(state.histories['05alice']).toBeUndefined()
   })
 
-  it('inserts a message into a loaded window in timestamp order', () => {
+  it('puts an added message on the end, rather than deciding where it belongs', () => {
     const seeded: SessionState = {
       ...emptyState,
       histories: {
@@ -106,13 +104,15 @@ describe('applyEvent', () => {
       },
     }
 
+    // A timestamp that would sort between the two, to show it is not sorted in: the event
+    // reports what libsession just recorded, and the transcript reads in libsession's order.
     const state = applyEvent(seeded, {
       type: 'message-added',
       conversationId: '05alice',
       message: message({ id: 2, timestamp: 2000 }),
     })
 
-    expect(state.histories['05alice']?.messages.map((m) => m.id)).toEqual([1, 2, 3])
+    expect(state.histories['05alice']?.messages.map((m) => m.id)).toEqual([1, 3, 2])
   })
 
   it('replaces a message in place when its send state changes', () => {
@@ -153,35 +153,143 @@ describe('applyEvent', () => {
     expect(state.histories['05alice']?.messages).toEqual([])
   })
 
-  it('retires a transfer once a report carries a result', () => {
-    const started = applyEvent(emptyState, {
-      type: 'attachment-progress',
-      progress: { messageId: 1, index: 0, done: 0, total: 0 },
-    })
-    expect(started.transfers['1:0']).toBeDefined()
-
-    const halfway = applyEvent(started, {
-      type: 'attachment-progress',
-      progress: { messageId: 1, index: 0, done: 50, total: 100 },
-    })
-    // done === total is not finished; only a result is.
-    expect(halfway.transfers['1:0']?.done).toBe(50)
-
-    const finished = applyEvent(halfway, {
-      type: 'attachment-progress',
-      progress: { messageId: 1, index: 0, done: 100, total: 100, result: 0 },
-    })
-    expect(finished.transfers['1:0']).toBeUndefined()
-  })
-
   it('forgets a removed conversation everywhere at once', () => {
     const state = replay([
       { type: 'conversation-added', conversation: conversation() },
       { type: 'conversation-removed', conversationId: '05alice' },
     ])
 
-    expect(state.conversations['05alice']).toBeUndefined()
-    expect(state.conversationOrder).toEqual([])
+    expect(ids(state.conversations)).toEqual([])
     expect(state.histories['05alice']).toBeUndefined()
+  })
+
+  it('appends a conversation it has not seen, and leaves an updated one where it was', () => {
+    const seeded = replay([
+      {
+        type: 'conversation-list-replaced',
+        conversations: [
+          conversation({ id: 'a', lastActivity: 3000 }),
+          conversation({ id: 'b', lastActivity: 2000 }),
+          conversation({ id: 'c', lastActivity: 1000 }),
+        ],
+      },
+    ])
+
+    // A rank that would sort to the front under any comparator: it still goes on the end, because
+    // libsession follows with a replacement carrying the real order.
+    const added = applyEvent(seeded, {
+      type: 'conversation-added',
+      conversation: conversation({ id: 'top', lastActivity: 9000, priority: 2 }),
+    })
+    expect(ids(added.conversations)).toEqual(['a', 'b', 'c', 'top'])
+
+    const updated = applyEvent(seeded, {
+      type: 'conversation-updated',
+      conversation: conversation({ id: 'c', lastActivity: 4000 }),
+    })
+    expect(ids(updated.conversations)).toEqual(['a', 'b', 'c'])
+    expect(updated.conversations.find((c) => c.id === 'c')?.lastActivity).toBe(4000)
+  })
+
+  it('keeps the same order array when only a field changed', () => {
+    const seeded = replay([
+      {
+        type: 'conversation-list-replaced',
+        conversations: [
+          conversation({ id: 'a', lastActivity: 3000 }),
+          conversation({ id: 'b', lastActivity: 2000 }),
+        ],
+      },
+    ])
+
+    const state = applyEvent(seeded, {
+      type: 'conversation-updated',
+      conversation: conversation({ id: 'b', lastActivity: 2000, unreadCount: 3 }),
+    })
+
+    // The row it replaced keeps its place, so the list still reads in libsession's order.
+    expect(ids(state.conversations)).toEqual(ids(seeded.conversations))
+    expect(state.conversations.find((c) => c.id === 'b')?.unreadCount).toBe(3)
+  })
+
+  it('leaves the other list alone when the conversation was never in it', () => {
+    const seeded = replay([
+      { type: 'conversation-added', conversation: conversation({ id: 'req', request: true }) },
+    ])
+
+    const state = applyEvent(seeded, {
+      type: 'conversation-added',
+      conversation: conversation({ id: 'friend' }),
+    })
+
+    // The same array, not merely an equal one: a screen watching the request list must not
+    // re-render because a conversation it does not hold changed.
+    expect(state.requests).toBe(seeded.requests)
+    expect(ids(state.conversations)).toEqual(['friend'])
+  })
+
+  it('appends a message that is newer than the whole window', () => {
+    const seeded: SessionState = {
+      ...emptyState,
+      histories: {
+        '05alice': {
+          ready: true,
+          messages: [message({ id: 1, timestamp: 1000 }), message({ id: 2, timestamp: 2000 })],
+          exhausted: true,
+          fetching: false,
+        },
+      },
+    }
+
+    const state = applyEvent(seeded, {
+      type: 'message-added',
+      conversationId: '05alice',
+      message: message({ id: 3, timestamp: 3000 }),
+    })
+
+    expect(state.histories['05alice']?.messages.map((m) => m.id)).toEqual([1, 2, 3])
+  })
+
+  it('stores the conversation and message objects the events carried', () => {
+    const convo = conversation()
+    const msg = message()
+    const seeded: SessionState = {
+      ...emptyState,
+      histories: { '05alice': { ready: true, messages: [], exhausted: true, fetching: false } },
+    }
+    const state = replay(
+      [
+        { type: 'conversation-added', conversation: convo },
+        { type: 'message-added', conversationId: '05alice', message: msg },
+      ],
+      seeded,
+    )
+
+    expect(state.conversations[0]).toBe(convo)
+    expect(state.histories['05alice']?.messages[0]).toBe(msg)
+  })
+})
+
+describe('mergePages', () => {
+  it('puts an older page in front of the loaded window without sorting', () => {
+    const older = [message({ id: 1, timestamp: 1000 }), message({ id: 2, timestamp: 2000 })]
+    const previous = [message({ id: 3, timestamp: 3000 })]
+
+    expect(mergePages(older, previous).map((m) => m.id)).toEqual([1, 2, 3])
+  })
+
+  it('returns the page itself when nothing was loaded yet', () => {
+    const page = [message({ id: 1 })]
+    expect(mergePages(page, [])).toBe(page)
+  })
+
+  it('joins the pages as they came, without reordering the seam', () => {
+    const older = [message({ id: 1, timestamp: 1000 }), message({ id: 3, timestamp: 3000 })]
+    const previous = [message({ id: 2, timestamp: 2000 })]
+
+    // Timestamps that interleave across the seam, which a sort would have straightened out.
+    // A page is asked for from before the oldest message loaded, so an overlap is libsession
+    // answering something other than what was asked - not something to paper over here.
+    expect(mergePages(older, previous).map((m) => m.id)).toEqual([1, 3, 2])
   })
 })

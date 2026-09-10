@@ -16,9 +16,8 @@
 // Forward declaration of `SessionBridgeOptions` to properly resolve imports.
 namespace margelo::nitro::session::bridge::rn { struct SessionBridgeOptions; }
 
-#include <NitroModules/ArrayBuffer.hpp>
-#include <functional>
 #include "SessionBridgeOptions.hpp"
+#include "session_bridge/gen/jsi.hpp"
 
 namespace margelo::nitro::session::bridge::rn {
 
@@ -51,9 +50,8 @@ namespace margelo::nitro::session::bridge::rn {
 
     public:
       // Methods
-      virtual void setSink(const std::function<void(const std::shared_ptr<ArrayBuffer>& /* frame */)>& onFrame) = 0;
       virtual void init(const SessionBridgeOptions& options) = 0;
-      virtual void call(const std::shared_ptr<ArrayBuffer>& request) = 0;
+      virtual void call(::session_bridge::Request request) = 0;
       virtual void close() = 0;
 
     protected:

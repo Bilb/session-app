@@ -41,13 +41,13 @@ dev entries. When a rule fires, fix the design - not the config.
 
 ## Tests required, in the same PR
 
-| change            | test                                               |
-| ----------------- | -------------------------------------------------- |
-| bridge capability | contract scenario + fake update + codec round-trip |
-| screen            | route-contract row + fast-tier e2e smoke           |
-| ui component      | render test                                        |
-| state projection  | reducer unit test                                  |
-| bug fix           | the test that would have caught it                 |
+| change            | test                                              |
+| ----------------- | ------------------------------------------------- |
+| bridge capability | contract scenario + fake update + echo-frame case |
+| screen            | route-contract row + fast-tier e2e smoke          |
+| ui component      | render test                                       |
+| state projection  | reducer unit test                                 |
+| bug fix           | the test that would have caught it                |
 
 **Tests live in `tests/`, never in `src/`.** Every package puts them in its own
 `packages/<pkg>/tests/`, mirroring the `src/` path they cover -
@@ -73,8 +73,9 @@ finds tests wherever they sit, so an unchecked one still runs and nothing compla
 
 ## Native rebuild triggers
 
-- `bridge.proto` changed → `turbo codegen && turbo build:native` (generated output is
-  committed; CI's `codegen:check` fails otherwise)
+- `packages/bridge-types` changed → `turbo codegen && turbo build:native` (the generated C++
+  under `packages/bridge-core/include/session_bridge/gen` is committed; CI's `codegen:check`
+  fails otherwise)
 - shim C++ changed → `turbo build:native`
 - `*.nitro.ts` changed → `turbo codegen`, then rebuild the mobile dev client
 - `libsession-util/` submodule bumped → the `build-native` skill's procedure: rebuild all three
@@ -84,8 +85,8 @@ finds tests wherever they sit, so an unchecked one still runs and nothing compla
 
 ```
 pnpm install
-pnpm dev                       # both apps on the fake; or dev:desktop / dev:mobile
-pnpm dev:desktop:real          # against the addon, which must be built first; dev:mobile:real too
+pnpm dev                       # both apps against libsession; or dev:desktop / dev:mobile
+pnpm dev:fake                  # the same on the fake: no network, seeded history, dev:*:fake too
 turbo lint typecheck test
 pnpm boundaries
 turbo test:e2e:fast            # Electron + the fake; e2e workflows are manual dispatch in CI

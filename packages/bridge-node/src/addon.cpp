@@ -1,11 +1,11 @@
 #include <napi.h>
 #include <session_bridge/client_bridge.hpp>
+#include <session_bridge/gen/napi.hpp>
 
 #include <cstring>
 #include <memory>
 #include <optional>
 #include <string>
-#include <vector>
 
 namespace {
 
@@ -13,7 +13,8 @@ namespace {
 ///
 /// The addon is the whole of the "platform adapter owns the hop onto the JS thread" half of the
 /// shim's contract. Everything below it runs on Core's loop and only enqueues; everything above it
-/// is JavaScript.
+/// is JavaScript. The frame crosses as the struct the shim filled and becomes a V8 object on the
+/// JavaScript thread, through the converters generated beside the struct.
 class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
   public:
     static Napi::Object Init(Napi::Env env, Napi::Object exports) {
@@ -35,7 +36,7 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
             throw Napi::TypeError::New(env, "new SessionBridge(options, onFrame)");
 
         Napi::Object options = info[0].As<Napi::Object>();
-        session::bridge::InitOptions init;
+        session_bridge::InitOptions init;
 
         init.db_path = options.Get("dbPath").As<Napi::String>().Utf8Value();
         if (options.Has("cacheDir"))
@@ -65,33 +66,34 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
             init.log_level = options.Get("logLevel").As<Napi::String>().Utf8Value();
 
         // Unlimited queue, so a frame produced on Core's loop is never dropped and BlockingCall
-        // never blocks the thread that produced it. The frames are small and the JavaScript side
-        // drains them on its next tick; bounding this would trade a bounded queue for lost
-        // ordering, which is the one thing this stream exists to keep.
+        // never blocks the thread that produced it. The JavaScript side drains the queue on its
+        // next tick; bounding this would trade a bounded queue for lost ordering, which is the
+        // one thing this stream exists to keep.
         _sink = Napi::ThreadSafeFunction::New(
                 env, info[1].As<Napi::Function>(), "sessionBridgeSink", 0, 1);
 
         try {
-            _bridge = std::make_unique<session::bridge::ClientBridge>(
-                    std::move(init), [this](std::span<const std::byte> frame) {
-                        auto* copy = new std::vector<uint8_t>(
-                                reinterpret_cast<const uint8_t*>(frame.data()),
-                                reinterpret_cast<const uint8_t*>(frame.data()) + frame.size());
+            _bridge = std::make_unique<session_bridge::ClientBridge>(
+                    std::move(init), [this](session_bridge::Frame frame) {
+                        // Moved onto the heap for the queue; the V8 object is built from it on
+                        // the JavaScript thread, where alone that is possible.
+                        auto* payload = new session_bridge::Frame(std::move(frame));
 
                         auto status = _sink.BlockingCall(
-                                copy,
+                                payload,
                                 [](Napi::Env cb_env,
                                    Napi::Function cb,
-                                   std::vector<uint8_t>* bytes) {
-                                    cb.Call({Napi::Buffer<uint8_t>::Copy(
-                                            cb_env, bytes->data(), bytes->size())});
-                                    delete bytes;
+                                   session_bridge::Frame* f) {
+                                    // Owned here, so the frame is released even if building the
+                                    // object or calling into JavaScript throws.
+                                    std::unique_ptr<session_bridge::Frame> owned{f};
+                                    cb.Call({session_bridge::node::to_napi(cb_env, *owned)});
                                 });
 
                         // The only way this fails is a sink already released, which means close()
                         // won the race. Dropping the frame is then correct; leaking it is not.
                         if (status != napi_ok)
-                            delete copy;
+                            delete payload;
                     });
         } catch (const std::exception& e) {
             _sink.Release();
@@ -105,12 +107,19 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
     void Call(const Napi::CallbackInfo& info) {
         if (!_bridge)
             return;
-        if (info.Length() < 1 || !info[0].IsTypedArray())
-            throw Napi::TypeError::New(info.Env(), "call(request) takes a Uint8Array");
+        if (info.Length() < 1 || !info[0].IsObject())
+            throw Napi::TypeError::New(info.Env(), "call(request) takes a Request object");
 
-        auto request = info[0].As<Napi::Uint8Array>();
-        _bridge->call(std::span{
-                reinterpret_cast<const std::byte*>(request.Data()), request.ElementLength()});
+        // A request the converter cannot read never reaches the shim, and is reported to the
+        // caller synchronously: the TypeScript in front of this turns it into the error Response
+        // the request would otherwise have got.
+        std::optional<session_bridge::Request> request;
+        try {
+            request = session_bridge::node::from_napi<session_bridge::Request>(info[0]);
+        } catch (const std::exception& e) {
+            throw Napi::TypeError::New(info.Env(), e.what());
+        }
+        _bridge->call(std::move(*request));
     }
 
     void Close(const Napi::CallbackInfo&) { Shutdown(); }
@@ -124,7 +133,7 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
         _sink.Release();
     }
 
-    std::unique_ptr<session::bridge::ClientBridge> _bridge;
+    std::unique_ptr<session_bridge::ClientBridge> _bridge;
     Napi::ThreadSafeFunction _sink;
 };
 

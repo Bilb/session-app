@@ -11,8 +11,7 @@ export {
   useMessages,
   useRequests,
   useSessionActions,
-  useTransfer,
   useUnreadRequestCount,
 } from './hooks'
-export { emptyState, transferKey } from './types'
-export type { MessageWindow, SessionState, TransferProgress } from './types'
+export { emptyState } from './types'
+export type { MessageWindow, SessionState } from './types'

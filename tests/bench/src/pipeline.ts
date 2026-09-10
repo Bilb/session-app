@@ -1,15 +1,21 @@
-import { createSessionClient, type BridgeTransport, type SessionEvent } from '@session/client'
+import {
+  createSessionClient,
+  type BridgeTransport,
+  type Frame,
+  type SessionEvent,
+} from '@session/client'
 
 /**
- * The real decode path, with the transport replaced and nothing else.
+ * The real delivery path, with the transport replaced and nothing else.
  *
- * `decodeEvent` and `fromConversationPb` are private to the facade, and re-implementing them here
- * to make them measurable would measure the copy rather than the code. Feeding frames into the
- * real `createSessionClient` costs one function call of overhead and measures what actually runs.
+ * Frames are the shim's own structs, so nothing is decoded here any more - what is left is the
+ * facade's routing to its listeners, which is the part that was never the wire format's to pay.
+ * Feeding frames into the real `createSessionClient` costs one function call of overhead and
+ * measures what actually runs, rather than a copy of it written to be measurable.
  */
 export interface Loopback {
   /** Hand the facade a frame exactly as an adapter's sink would. */
-  push: (frame: Uint8Array) => void
+  push: (frame: Frame) => void
   /** Every event the facade broadcast, in order. Cleared by `drain`. */
   events: SessionEvent[]
   drain: () => SessionEvent[]
@@ -17,7 +23,7 @@ export interface Loopback {
 }
 
 export function loopback(): Loopback {
-  let sink: ((frame: Uint8Array) => void) | null = null
+  let sink: ((frame: Frame) => void) | null = null
 
   const transport: BridgeTransport = {
     send() {
@@ -52,7 +58,7 @@ export function loopback(): Loopback {
 }
 
 /** One frame through the whole facade, returning what a listener would have been handed. */
-export function decodeOne(pipe: Loopback, frame: Uint8Array): SessionEvent {
+export function deliverOne(pipe: Loopback, frame: Frame): SessionEvent {
   pipe.drain()
   pipe.push(frame)
   const event = pipe.events[0]

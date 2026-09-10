@@ -1,25 +1,22 @@
 export { createSessionClient } from './createSessionClient'
 export { createNativeBridgeTransport } from './nativeTransport'
-export type { SessionBridgeOptions } from '@session/bridge-types'
-export { BridgeClosedError, SessionClientError } from './errors'
 export type {
   AccountInfo,
-  Attachment,
-  AttachmentProgress,
-  AutoDownload,
-  BridgeTransport,
+  Command,
   Conversation,
   ConversationId,
   ConversationKind,
   Deletion,
+  Frame,
   Message,
   MessageCursor,
-  OutgoingAttachment,
-  OutgoingMessage,
-  ProgressCallback,
   Reply,
+  Request,
+  Response,
+  Result,
   SendState,
-  SessionClient,
+  SessionBridgeOptions,
   SessionEvent,
-  Unsubscribe,
-} from './types'
+} from '@session/bridge-types'
+export { BridgeClosedError, SessionClientError } from './errors'
+export type { BridgeTransport, OutgoingMessage, SessionClient, Unsubscribe } from './types'

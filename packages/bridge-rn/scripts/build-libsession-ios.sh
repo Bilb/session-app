@@ -26,16 +26,8 @@ case "${1:-simulator}" in
     *) echo "usage: $0 [simulator|device|all]" >&2; exit 1 ;;
 esac
 
-node "$repo/scripts/patch-libsession.mjs"
-
-# The wire format's C++, which CocoaPods compiles rather than CMake - so it has to exist before
-# `pod install`, not during the build.
-(cd "$repo" && pnpm codegen:cpp)
-
 cd "$libsession"
-# Debug_Compile_LibSession is libsession's own name for "skip the submodule freshness check",
-# which we need because patches/ leaves session-deps deliberately modified.
-env ARCHS="$archs" PLATFORM_NAME="$platform" CONFIGURATION=Debug_Compile_LibSession \
+env ARCHS="$archs" PLATFORM_NAME="$platform" CONFIGURATION=Debug \
     ./utils/ios.sh "" true true true false
 
 framework="$libsession/build-ios/libsession-util.xcframework"
@@ -52,9 +44,6 @@ echo "xcframework in place: packages/bridge-rn/ios/libsession-util.xcframework"
 # packages/bridge-core is dropped in silence, and the first sign of it is our own ClientBridge
 # symbols missing at link time. So bridge-core is a CMake project here exactly as it is for the
 # Node addon and for Android, and the pod vendors what it produces.
-protoc="$(brew --prefix protobuf@21 2>/dev/null)/bin/protoc"
-[ -x "$protoc" ] || { echo "brew install protobuf@21 - see packages/bridge-core/CMakeLists.txt" >&2; exit 1; }
-
 case "$archs" in
     arm64) slice="sim-arm64"; cmake_platform="SIMULATORARM64" ;;
     *)     echo "the shim is only wired for a simulator arm64 slice so far" >&2; exit 1 ;;
@@ -73,13 +62,12 @@ cmake -G Ninja -S "$repo/packages/bridge-core" -B "$build" \
     -DDEPLOYMENT_TARGET="$deployment_target" \
     -DENABLE_BITCODE=OFF \
     -DCMAKE_BUILD_TYPE=Release \
-    -DSESSION_BRIDGE_PROTOC="$protoc" \
     -DSESSION_BRIDGE_LIBSESSION_BUNDLE="$libsession/build-ios/$slice/libsession-util.a"
 cmake --build "$build" --target session-bridge-core --parallel
 
 mkdir -p "$here/../ios/lib"
 rm -f "$here/../ios/lib"/*.a
-cp "$build/libsession-bridge-core.a" "$build/libsession-bridge-proto.a" "$here/../ios/lib/"
+cp "$build/libsession-bridge-core.a" "$here/../ios/lib/"
 
 # The pieces STATIC_BUNDLE leaves out despite being "a single static .a containing everything".
 # bridge-core's CMake names them on its link line, which is enough for the addon and for Android

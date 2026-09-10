@@ -12,10 +12,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "devDependencies": {
-    "@bufbuild/protobuf": "catalog:",
     "@session/client": "workspace:*",
     "@session/eslint-config": "workspace:*",
-    "@session/proto": "workspace:*",
     "@session/state": "workspace:*",
     "@session/typescript-config": "workspace:*",
     "@types/node": "catalog:",

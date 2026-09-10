@@ -1,9 +1,17 @@
 import type { AccountInfo, Conversation, ConversationId, Message } from '@session/client'
-import { createContext, createElement, useContext, useEffect, type ReactNode } from 'react'
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  type ReactNode,
+} from 'react'
 import { useStore } from 'zustand'
 
 import type { SessionActions, SessionStore } from './store'
-import { transferKey, type MessageWindow, type TransferProgress } from './types'
+import type { MessageWindow } from './types'
 
 const StoreContext = createContext<SessionStore | null>(null)
 
@@ -37,24 +45,28 @@ export function useAccount(): AccountInfo | null {
   return useStore(store, (state) => state.account)
 }
 
+/**
+ * The list libsession sent, handed on as it is.
+ *
+ * Nothing to memoise and nothing to rebuild: the state holds the array a screen renders, so a
+ * notification that did not change it hands back the same reference.
+ */
 export function useConversations(): Conversation[] {
   const store = useSessionStore()
-  const order = useStore(store, (state) => state.conversationOrder)
-  const byId = useStore(store, (state) => state.conversations)
-  return order.map((id) => byId[id]).filter((c): c is Conversation => c !== undefined)
+  return useStore(store, (state) => state.conversations)
 }
 
 export function useRequests(): Conversation[] {
   const store = useSessionStore()
-  const order = useStore(store, (state) => state.requestOrder)
-  const byId = useStore(store, (state) => state.requests)
-  return order.map((id) => byId[id]).filter((c): c is Conversation => c !== undefined)
+  return useStore(store, (state) => state.requests)
 }
 
 export function useConversation(id: ConversationId | undefined): Conversation | undefined {
   const store = useSessionStore()
   return useStore(store, (state) =>
-    id === undefined ? undefined : (state.conversations[id] ?? state.requests[id]),
+    id === undefined
+      ? undefined
+      : (state.conversations.find((c) => c.id === id) ?? state.requests.find((c) => c.id === id)),
   )
 }
 
@@ -88,24 +100,23 @@ export function useMessages(id: ConversationId | undefined): {
     if (!window.ready && !window.fetching) void store.actions.loadHistory(id)
   }, [id, window.ready, window.fetching, store])
 
-  return {
-    messages: window.messages,
-    ready: window.ready,
-    exhausted: window.exhausted,
-    loadOlder: () => {
-      if (id !== undefined) void store.actions.loadOlder(id)
-    },
-  }
-}
+  const loadOlder = useCallback(() => {
+    if (id !== undefined) void store.actions.loadOlder(id)
+  }, [id, store])
 
-export function useTransfer(messageId: number, index: number): TransferProgress | undefined {
-  const store = useSessionStore()
-  return useStore(store, (state) => state.transfers[transferKey(messageId, index)])
+  return useMemo(
+    () => ({
+      messages: window.messages,
+      ready: window.ready,
+      exhausted: window.exhausted,
+      loadOlder,
+    }),
+    [window, loadOlder],
+  )
 }
 
 /** Unread requests, which is not the same as the number of requests. */
 export function useUnreadRequestCount(): number {
   const store = useSessionStore()
-  const byId = useStore(store, (state) => state.requests)
-  return Object.values(byId).filter((c) => c.unreadCount > 0).length
+  return useStore(store, (state) => state.requests.filter((c) => c.unreadCount > 0).length)
 }
