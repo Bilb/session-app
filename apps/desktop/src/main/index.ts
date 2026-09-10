@@ -61,22 +61,35 @@ async function createWindow(): Promise<void> {
 
   // One MessagePort, which is FIFO: libsession's ordering survives the process boundary,
   // which is the whole reason responses and events share a single stream.
-  const { port1, port2 } = new MessageChannelMain()
+  let port: InstanceType<typeof MessageChannelMain>['port1'] | null = null
 
-  // A frame is a plain object built by the addon; structured clone carries it to the renderer.
-  bridge.setSink((frame) => {
-    port1.postMessage(frame)
-  })
-  port1.on('message', (event: { data: Request }) => {
-    bridge.send(event.data)
-  })
-  port1.start()
+  // A channel per load: transferring port2 neuters it, so a reloaded document needs a new one.
+  function openChannel(): void {
+    port?.close()
+    const { port1, port2 } = new MessageChannelMain()
+    port = port1
 
-  window.webContents.once('did-finish-load', () => {
+    // A frame is a plain object built by the addon; structured clone carries it to the renderer.
+    bridge.setSink((frame) => {
+      port?.postMessage(frame)
+    })
+    port1.on('message', (event: { data: unknown }) => {
+      // Renderer input: an exception escaping here is an uncaught one in the main process.
+      try {
+        bridge.send(event.data as Request)
+      } catch {
+        // No id to answer on, so there is nobody to tell.
+      }
+    })
+    port1.start()
     window.webContents.postMessage('session-bridge-port', null, [port2])
-  })
+  }
+
+  window.webContents.on('did-finish-load', openChannel)
 
   window.on('closed', () => {
+    port?.close()
+    port = null
     bridge.close()
   })
 
