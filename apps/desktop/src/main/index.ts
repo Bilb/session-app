@@ -1,15 +1,16 @@
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 // Electron's module is CommonJS, and the ESM loader cannot see named exports through it.
 // The default import plus a destructure is the form that works under both loaders.
 import electron from 'electron'
 
-const { app, BrowserWindow, MessageChannelMain, ipcMain } = electron
+const { app, BrowserWindow, MessageChannelMain, ipcMain, session } = electron
 
 import type { Request } from '@session/client'
 
 import { createBridge } from './bridge'
+import { denyAllPermissions, guardNavigation, hardenedWebPreferences } from './security'
 
 /**
  * The main process owns the bridge.
@@ -52,12 +53,17 @@ async function createWindow(): Promise<void> {
     // element in it invisible to a test.
     show: true,
     webPreferences: {
+      ...hardenedWebPreferences,
       // CommonJS, because a sandboxed preload cannot be an ES module; it is built that way in
       // electron.vite.config.ts. The preload needs nothing from Node, so the sandbox costs nothing.
       preload: join(here, '../preload/index.cjs'),
-      sandbox: true,
     },
   })
+
+  const appUrl =
+    process.env['ELECTRON_RENDERER_URL'] ??
+    pathToFileURL(join(here, '../renderer/index.html')).toString()
+  guardNavigation(window.webContents, appUrl)
 
   // One MessagePort, which is FIFO: libsession's ordering survives the process boundary,
   // which is the whole reason responses and events share a single stream.
@@ -100,7 +106,17 @@ async function createWindow(): Promise<void> {
   }
 }
 
+// Anything that creates a WebContents the app did not, gets the same refusals. createWindow's own
+// call is what covers the window itself, since this fires before its URL is known.
+app.on('web-contents-created', (_event, contents) => {
+  contents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  contents.on('will-attach-webview', (event) => {
+    event.preventDefault()
+  })
+})
+
 void app.whenReady().then(async () => {
+  denyAllPermissions(session.defaultSession)
   ipcMain.handle('session-ping', () => 'pong')
   await createWindow()
 
