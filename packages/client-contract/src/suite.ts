@@ -269,13 +269,33 @@ export function runSessionClientContract(
     it('refuses a seed that is not 32 bytes of hex', async () => {
       const { alice } = await harness.friends()
 
-      // An odd-length or non-hex seed is undefined behaviour in the decoder rather than an
-      // error it reports, so nothing below this call is in a position to refuse one.
+      // oxenc's from_hex is UB on non-hex or odd-length input, so the refusal precedes the decode.
       for (const hexSeed of ['', 'zz'.repeat(32), `${'ab'.repeat(31)}a`]) {
         const error = await failure(() => alice.restoreAccount({ hexSeed }))
         expect(error instanceof Error).toBe(true)
         expect(String(error)).toContain('hexSeed')
       }
+    })
+
+    it('refuses a page size that is not a page', async () => {
+      const { alice, bobId } = await harness.friends()
+
+      // SQLite reads a negative LIMIT as no limit at all, and zero as the end of the history.
+      for (const limit of [0, -1]) {
+        const error = await failure(() => alice.getMessages(bobId, { limit }))
+        expect(error instanceof Error).toBe(true)
+      }
+    })
+
+    it('refuses a nickname on note to self rather than never answering', async () => {
+      const { alice } = await harness.friends()
+      const { sessionId } = await alice.getAccountInfo()
+      if (!sessionId) throw new Error('unreachable')
+      const noteToSelf = await alice.openDm(sessionId)
+
+      // libsession refuses this from inside a callback, where a throw is only logged.
+      const error = await failure(() => alice.setNickname(noteToSelf, 'me'))
+      expect(error instanceof Error).toBe(true)
     })
 
     it('rejects everything still waiting when it closes', async () => {

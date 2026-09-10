@@ -65,6 +65,15 @@ namespace {
         return static_cast<T>(value);
     }
 
+    /// SQLite reads a negative LIMIT as no limit at all, and zero as the end of the history.
+    template <typename T>
+    T page_size(double value, std::string_view what) {
+        auto n = whole<T>(value, what);
+        if (n <= 0)
+            throw std::invalid_argument{std::string{what} + " must be greater than zero"};
+        return n;
+    }
+
     /// The bytes a hex field names, or an error naming the field.
     ///
     /// oxenc::from_hex is undefined behaviour on anything but an even-length run of hex digits:
@@ -184,10 +193,17 @@ struct ClientBridge::Impl {
     template <typename F>
     auto on(double id, F&& f) {
         return [this, id, f = std::forward<F>(f)](std::optional<std::string> error, auto&&... rest) {
-            if (error)
+            if (error) {
                 fail(id, *error);
-            else
+                return;
+            }
+            // Client::_dispatch_out only logs what escapes a handler, so an uncaught throw here
+            // is a request that never gets a Response. setNickname on note to self is one.
+            try {
                 f(std::forward<decltype(rest)>(rest)...);
+            } catch (const std::exception& e) {
+                fail(id, e.what());
+            }
         };
     }
 
@@ -402,7 +418,7 @@ struct ClientBridge::Impl {
                     whole<int64_t>(cmd.before->id, "getMessages.before.id")};
         convo(cmd.conversation_id)
                 .messages(
-                        whole<int>(cmd.limit, "getMessages.limit"),
+                        page_size<int>(cmd.limit, "getMessages.limit"),
                         before,
                         cmd.include_deleted,
                         on(id, [this, id](std::vector<client::Message> messages) {
@@ -560,7 +576,7 @@ struct ClientBridge::Impl {
 };
 
 ClientBridge::ClientBridge(InitOptions options, Sink sink) :
-        _impl{std::make_unique<Impl>(std::move(sink), options)} {
+        _impl{std::make_shared<Impl>(std::move(sink), options)} {
 
     auto* impl = _impl.get();
 
@@ -642,13 +658,15 @@ ClientBridge::ClientBridge(InitOptions options, Sink sink) :
                                                        : LogLevel::warn;
         logger_reset_level(level);
 
-        auto* impl = _impl.get();
-        add_logger([impl](std::string_view message, std::string_view category, LogLevel lvl) {
-            // Called from whichever thread logged, including Core's loop and the network's own
-            // threads, and after close() has dropped the sink - emit() checks for that, which
-            // is the only reason this is safe to leave registered.
-            impl->event(LogSessionEvent{
-                    std::string{message}, std::string{category}, std::string{lvl.to_string()}});
+        // Weakly: libsession cannot unregister a logger, and this fires from threads close()
+        // has no way to join.
+        std::weak_ptr<Impl> weak = _impl;
+        add_logger([weak](std::string_view message, std::string_view category, LogLevel lvl) {
+            if (auto impl = weak.lock())
+                impl->event(LogSessionEvent{
+                        std::string{message},
+                        std::string{category},
+                        std::string{lvl.to_string()}});
         });
     }
 
@@ -664,10 +682,10 @@ ClientBridge::~ClientBridge() {
 void ClientBridge::close() {
     if (!_impl)
         return;
-    // Order matters: stop delivering before destroying, or a callback fired during teardown
-    // reaches a sink the adapter has already torn down.
-    _impl->sink = nullptr;
+    // Order matters: destroying the Client joins Core's loop, so nothing is mid-emit afterwards.
+    // The sink goes with the Impl rather than being nulled first, which would race the logger.
     _impl->client.reset();
+    _impl.reset();
 }
 
 void ClientBridge::call(Request request) {

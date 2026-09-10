@@ -65,7 +65,8 @@ struct InitOptions {
     /// `failed` carries no reason, and the reason is in these lines.
     ///
     /// Registered process-wide - libsession's add_logger has no deregistration - so a second
-    /// bridge in one process would double them up. There is one.
+    /// bridge in one process would double them up. There is one. A line logged after its bridge
+    /// closed is dropped: the logger holds the bridge weakly.
     std::string log_level;
 };
 
@@ -114,7 +115,9 @@ class ClientBridge {
 
   private:
     struct Impl;
-    std::unique_ptr<Impl> _impl;
+    /// Shared rather than unique because the process-wide logger holds a `weak_ptr` to it and
+    /// can fire from a thread `close()` has no way to join.
+    std::shared_ptr<Impl> _impl;
 };
 
 }  // namespace session_bridge
