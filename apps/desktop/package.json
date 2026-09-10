@@ -2,6 +2,12 @@
   "name": "@session/desktop",
   "version": "0.0.0",
   "private": true,
+  "imports": {
+    "#src/*": [
+      "./src/*.ts",
+      "./src/*.tsx"
+    ]
+  },
   "description": "The Session desktop app: Electron, drawing the shared screens",
   "type": "module",
   "main": "./out/main/index.js",

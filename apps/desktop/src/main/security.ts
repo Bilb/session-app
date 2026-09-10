@@ -1,0 +1,95 @@
+import type { Session, WebContents, WebPreferences } from 'electron'
+
+/**
+ * The renderer's privileges, and what it is allowed to reach.
+ *
+ * Every flag here is Electron's current default. They are written out because a default is a
+ * decision someone else gets to change: an upgrade that flips one is a silent privilege grant to a
+ * window that draws message bodies from strangers.
+ */
+export const hardenedWebPreferences: WebPreferences = {
+  sandbox: true,
+  contextIsolation: true,
+  nodeIntegration: false,
+  nodeIntegrationInWorker: false,
+  nodeIntegrationInSubFrames: false,
+  webviewTag: false,
+  webSecurity: true,
+  allowRunningInsecureContent: false,
+  experimentalFeatures: false,
+  // No dictionary downloads, and no context-menu suggestions built from message text.
+  spellcheck: false,
+}
+
+/**
+ * `unsafe-inline` for styles is react-native-web and Tamagui, which both inject a stylesheet at
+ * runtime. In dev it also covers the react-refresh preamble, which vite inlines, and `ws:` is HMR.
+ */
+export function contentSecurityPolicy({ dev }: { dev: boolean }): string {
+  return [
+    "default-src 'none'",
+    `script-src 'self'${dev ? " 'unsafe-inline'" : ''}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    `connect-src 'self'${dev ? ' ws:' : ''}`,
+    "base-uri 'none'",
+    "form-action 'none'",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+  ].join('; ')
+}
+
+/**
+ * Whether a navigation stays inside the app's own document.
+ *
+ * The renderer routes with MemoryRouter and never touches the URL, so the only legitimate
+ * navigation is a reload of the page already loaded. Anything else is a link in content the app
+ * did not write.
+ */
+export function isAppNavigation(target: string, appUrl: string): boolean {
+  let to: URL
+  let app: URL
+  try {
+    to = new URL(target)
+    app = new URL(appUrl)
+  } catch {
+    return false
+  }
+  // file: has an opaque origin, so compare the path instead.
+  if (app.protocol === 'file:') return to.protocol === 'file:' && to.pathname === app.pathname
+  return to.origin === app.origin
+}
+
+/** Refuses every navigation and every new window that is not the app reloading itself. */
+export function guardNavigation(contents: WebContents, appUrl: string): void {
+  contents.setWindowOpenHandler(() => ({ action: 'deny' }))
+
+  contents.on('will-navigate', (event, target) => {
+    if (!isAppNavigation(target, appUrl)) event.preventDefault()
+  })
+
+  // will-navigate is the main frame only. Frames are refused by the CSP as well; this is what
+  // stops one that is somehow already there from navigating.
+  contents.on('will-frame-navigate', (event) => {
+    if (!isAppNavigation(event.url, appUrl)) event.preventDefault()
+  })
+
+  // webviewTag is off, so this is only reachable if something turns it back on.
+  contents.on('will-attach-webview', (event) => {
+    event.preventDefault()
+  })
+}
+
+/**
+ * Denies every permission, which is every permission the app does not yet ask for.
+ *
+ * Notifications are the first one it will want; granting it means deciding that here rather than
+ * letting Chromium's prompt decide it in a window showing remote content.
+ */
+export function denyAllPermissions(session: Session): void {
+  session.setPermissionRequestHandler((_contents, _permission, callback) => {
+    callback(false)
+  })
+  session.setPermissionCheckHandler(() => false)
+}
