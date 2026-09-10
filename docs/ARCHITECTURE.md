@@ -333,3 +333,19 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   `SendState` keeps `uploading` and `unsendable`: only attachments reach them, but they are
   libsession's states and the shim's switch has to name every one. This supersedes the 2026-09-04
   entry on the three wrong wire fields, two of which were `Attachment`'s.
+
+- **2026-09-10 - The renderer's privileges are written out rather than inherited.** Every flag in
+  `apps/desktop/src/main/security.ts` is already Electron's default. They are spelled anyway
+  because a default is a decision someone else can change: an upgrade that flips one is a silent
+  privilege grant to a window that draws message bodies from strangers. Beside them, a deny-by-
+  default posture the app has no reason to relax yet - every permission refused, every navigation
+  that is not the app reloading itself refused, `window.open` refused, and a CSP of
+  `default-src 'none'` with `'self'` for the bundle. The CSP is a meta tag rather than a header
+  because a packaged renderer loads over `file:`, where nothing carries one, and it is injected at
+  build time because the dev server needs `'unsafe-inline'` for vite's react-refresh preamble and
+  `ws:` for HMR - relaxations the shipped app must not have. Notifications are the first permission
+  this will have to grant, and `security.ts` is where that decision goes.
+
+  Electron's fuses - `runAsNode`, `nodeCliInspect`, `onlyLoadAppFromAsar` - are the other half of
+  this and belong to a packaging step the repo does not have yet. `ELECTRON_RUN_AS_NODE` being set
+  in this environment (see `docs/STATUS.md`) is exactly the fuse that would refuse it.
