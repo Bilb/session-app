@@ -10,7 +10,12 @@ const { app, BrowserWindow, MessageChannelMain, ipcMain, session } = electron
 import type { Request } from '@session/client'
 
 import { createBridge } from './bridge'
-import { denyAllPermissions, guardNavigation, hardenedWebPreferences } from './security'
+import {
+  denyAllPermissions,
+  guardNavigation,
+  hardenedWebPreferences,
+  refuseNewContents,
+} from './security'
 
 /**
  * The main process owns the bridge.
@@ -60,9 +65,13 @@ async function createWindow(): Promise<void> {
     },
   })
 
+  // The dev server when electron-vite sets it, the built file otherwise. Resolved once because
+  // the navigation guard has to allow exactly what the window is about to load: computing it
+  // twice is how the guard comes to refuse the app's own reload.
   const appUrl =
     process.env['ELECTRON_RENDERER_URL'] ??
     pathToFileURL(join(here, '../renderer/index.html')).toString()
+
   guardNavigation(window.webContents, appUrl)
 
   // One MessagePort, which is FIFO: libsession's ordering survives the process boundary,
@@ -99,20 +108,15 @@ async function createWindow(): Promise<void> {
     bridge.close()
   })
 
-  if (process.env['ELECTRON_RENDERER_URL']) {
-    await window.loadURL(process.env['ELECTRON_RENDERER_URL'])
-  } else {
-    await window.loadFile(join(here, '../renderer/index.html'))
-  }
+  await window.loadURL(appUrl)
 }
 
-// Anything that creates a WebContents the app did not, gets the same refusals. createWindow's own
-// call is what covers the window itself, since this fires before its URL is known.
+// Covers any WebContents the app did not make. Deliberately not guardNavigation: this fires from
+// inside `new BrowserWindow`, before the window has a URL, so a navigation guard installed here
+// could only refuse every navigation - including the app's own reload. createWindow installs that
+// half itself, once it knows what the app's URL is.
 app.on('web-contents-created', (_event, contents) => {
-  contents.setWindowOpenHandler(() => ({ action: 'deny' }))
-  contents.on('will-attach-webview', (event) => {
-    event.preventDefault()
-  })
+  refuseNewContents(contents)
 })
 
 void app.whenReady().then(async () => {

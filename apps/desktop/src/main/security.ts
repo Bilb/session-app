@@ -61,9 +61,23 @@ export function isAppNavigation(target: string, appUrl: string): boolean {
   return to.origin === app.origin
 }
 
+/**
+ * Refuses every way a WebContents can become a second one.
+ *
+ * Separate from `guardNavigation` because it needs no URL, so it can be installed from
+ * `web-contents-created` on contents this app did not make and knows nothing about.
+ */
+export function refuseNewContents(contents: WebContents): void {
+  contents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  // webviewTag is off, so this is only reachable if something turns it back on.
+  contents.on('will-attach-webview', (event) => {
+    event.preventDefault()
+  })
+}
+
 /** Refuses every navigation and every new window that is not the app reloading itself. */
 export function guardNavigation(contents: WebContents, appUrl: string): void {
-  contents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  refuseNewContents(contents)
 
   contents.on('will-navigate', (event, target) => {
     if (!isAppNavigation(target, appUrl)) event.preventDefault()
@@ -73,11 +87,6 @@ export function guardNavigation(contents: WebContents, appUrl: string): void {
   // stops one that is somehow already there from navigating.
   contents.on('will-frame-navigate', (event) => {
     if (!isAppNavigation(event.url, appUrl)) event.preventDefault()
-  })
-
-  // webviewTag is off, so this is only reachable if something turns it back on.
-  contents.on('will-attach-webview', (event) => {
-    event.preventDefault()
   })
 }
 
