@@ -14,7 +14,7 @@ import type {
  */
 export interface MessageWindow {
   ready: boolean
-  /** Ascending by (timestamp, id): the order a transcript renders. */
+  /** In the order a transcript renders, which is the order libsession read them out. */
   messages: Message[]
   oldestCursor?: MessageCursor
   exhausted: boolean
@@ -49,15 +49,4 @@ export const emptyState: SessionState = {
   conversations: [],
   requests: [],
   histories: {},
-}
-
-/**
- * Ascending by timestamp, then id: the order a transcript renders and a page cursor keys on.
- *
- * The only ordering this package decides at all. The conversation lists are taken as libsession
- * sent them, but it returns a page of history newest-first while a transcript reads oldest-first,
- * so this reversal is ours and has to stay.
- */
-export function compareMessages(a: Message, b: Message): number {
-  return a.timestamp - b.timestamp || a.id - b.id
 }

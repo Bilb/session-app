@@ -29,8 +29,6 @@ fi
 # app may raise its floor without the static libraries having to be rebuilt below it.
 platform="${ANDROID_PLATFORM:-android-23}"
 
-node "$here/../../../scripts/patch-libsession.mjs"
-
 cd "$libsession"
 for abi in "${abis[@]}"; do
     echo "Building libsession for $abi"

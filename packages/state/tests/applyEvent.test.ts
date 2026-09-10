@@ -91,7 +91,7 @@ describe('applyEvent', () => {
     expect(state.histories['05alice']).toBeUndefined()
   })
 
-  it('inserts a message into a loaded window in timestamp order', () => {
+  it('puts an added message on the end, rather than deciding where it belongs', () => {
     const seeded: SessionState = {
       ...emptyState,
       histories: {
@@ -104,13 +104,15 @@ describe('applyEvent', () => {
       },
     }
 
+    // A timestamp that would sort between the two, to show it is not sorted in: the event
+    // reports what libsession just recorded, and the transcript reads in libsession's order.
     const state = applyEvent(seeded, {
       type: 'message-added',
       conversationId: '05alice',
       message: message({ id: 2, timestamp: 2000 }),
     })
 
-    expect(state.histories['05alice']?.messages.map((m) => m.id)).toEqual([1, 2, 3])
+    expect(state.histories['05alice']?.messages.map((m) => m.id)).toEqual([1, 3, 2])
   })
 
   it('replaces a message in place when its send state changes', () => {
@@ -281,10 +283,13 @@ describe('mergePages', () => {
     expect(mergePages(page, [])).toBe(page)
   })
 
-  it('still sorts when the pages overlap', () => {
+  it('joins the pages as they came, without reordering the seam', () => {
     const older = [message({ id: 1, timestamp: 1000 }), message({ id: 3, timestamp: 3000 })]
     const previous = [message({ id: 2, timestamp: 2000 })]
 
-    expect(mergePages(older, previous).map((m) => m.id)).toEqual([1, 2, 3])
+    // Timestamps that interleave across the seam, which a sort would have straightened out.
+    // A page is asked for from before the oldest message loaded, so an overlap is libsession
+    // answering something other than what was asked - not something to paper over here.
+    expect(mergePages(older, previous).map((m) => m.id)).toEqual([1, 3, 2])
   })
 })

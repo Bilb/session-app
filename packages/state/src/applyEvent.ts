@@ -1,6 +1,6 @@
 import type { Conversation, ConversationId, Message, SessionEvent } from '@session/client'
 
-import { compareMessages, type MessageWindow, type SessionState } from './types'
+import type { MessageWindow, SessionState } from './types'
 
 /**
  * The whole projection, as one pure function.
@@ -69,18 +69,6 @@ function without(list: Conversation[], id: ConversationId): Conversation[] {
   return list.some((c) => c.id === id) ? list.filter((c) => c.id !== id) : list
 }
 
-/** Where `item` goes in `sorted` to stay sorted, after anything that compares equal to it. */
-function insertionIndex<T>(sorted: readonly T[], item: T, compare: (a: T, b: T) => number): number {
-  let low = 0
-  let high = sorted.length
-  while (low < high) {
-    const mid = (low + high) >>> 1
-    if (compare(sorted[mid] as T, item) <= 0) low = mid + 1
-    else high = mid
-  }
-  return low
-}
-
 /**
  * Approval arrives as an update, not as a removal followed by an addition, so a row that
  * changed side has to be taken out of the list it used to be in. Missing this is what makes
@@ -138,14 +126,10 @@ function upsertMessage(
     messages = current.slice()
     messages[existing] = message
   } else {
-    const last = current[current.length - 1]
-    if (last === undefined || compareMessages(last, message) <= 0) {
-      // The usual case: a message that just happened goes at the end.
-      messages = [...current, message]
-    } else {
-      messages = current.slice()
-      messages.splice(insertionIndex(current, message, compareMessages), 0, message)
-    }
+    // On the end, without checking where it belongs. The event reports a message that has just
+    // happened, and libsession decides the order a transcript reads in - the shim already turns
+    // its newest-first page around. A comparator here would be this package deciding it again.
+    messages = [...current, message]
   }
 
   const updated: MessageWindow = { ...window, messages }
@@ -153,14 +137,14 @@ function upsertMessage(
 }
 
 /**
- * An older page in front of what is already loaded. Both are ascending and the page was asked
- * for from before the oldest loaded message, so they concatenate; the sort is only for a seam
- * that turns out not to be one.
+ * An older page in front of what is already loaded.
+ *
+ * A concatenation and nothing else: the page was asked for from before the oldest message the
+ * window holds, and both come from libsession in the order it reads them out, so joining them
+ * is the whole operation.
  */
 export function mergePages(older: Message[], previous: Message[]): Message[] {
   if (previous.length === 0) return older
   if (older.length === 0) return previous
-  const all = [...older, ...previous]
-  const seam = compareMessages(older[older.length - 1] as Message, previous[0] as Message)
-  return seam <= 0 ? all : all.sort(compareMessages)
+  return [...older, ...previous]
 }

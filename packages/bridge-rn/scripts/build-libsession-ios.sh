@@ -26,8 +26,6 @@ case "${1:-simulator}" in
     *) echo "usage: $0 [simulator|device|all]" >&2; exit 1 ;;
 esac
 
-node "$repo/scripts/patch-libsession.mjs"
-
 cd "$libsession"
 # Debug_Compile_LibSession is libsession's own name for "skip the submodule freshness check",
 # which we need because patches/ leaves session-deps deliberately modified.
