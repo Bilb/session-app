@@ -229,13 +229,17 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   and `bridge-core` takes a prebuilt archive when given one. The same reasoning will apply to iOS,
   whose artifact is an xcframework from `utils/ios.sh`.
 
-- **2026-09-04 - Fixes for the submodule live in `patches/` and are applied by the build.** Two so
-  far, both one-liners, both wanted upstream rather than here: libevent built without `-fPIC`, and
-  session-deps not forwarding the Android toolchain to its CMake dependencies. A submodule two
-  levels down cannot be committed from this repository and a build cannot wait for a release, so
-  the build applies them and `scripts/patch-libsession.mjs` makes that idempotent and visible. A
-  native build therefore leaves the submodule with the patches applied; that is expected, and the
-  day the directory is empty the script goes with it.
+- **2026-09-04 - Fixes for the submodule lived in `patches/` until they landed upstream.** Three
+  in the end, all wanted in the repository that owned them rather than here: libevent built
+  without `-fPIC`, session-deps not forwarding the cross toolchain to its CMake dependencies, and
+  session-router refusing `arm64` on macOS. A submodule two levels down cannot be committed from
+  this repository and a build cannot wait for a release, so the build applied them and a script
+  made that idempotent and visible.
+
+  All three are upstream as of session-deps `30b20092` and session-router `054d3b9f`, so the
+  directory, the script and the build step that ran it are gone. Kept as an entry because the
+  arrangement is worth reaching for again: a patch that is a diff to send, applied by the build
+  and deleted on merge, rather than a fork to maintain.
 
 - **2026-09-04 - History crosses the bridge oldest first.** libsession answers newest first,
   because that is the direction paging runs; a transcript is read the other way. The shim reverses
