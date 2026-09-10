@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { contentSecurityPolicy, hardenedWebPreferences, isAppNavigation } from '#src/main/security'
+import {
+  contentSecurityPolicy,
+  hardenedWebPreferences,
+  isAppNavigation,
+  shouldProtectContent,
+} from '#src/main/security'
 
 describe('the renderer window', () => {
   it('grants nothing the renderer does not need', () => {
-    expect(hardenedWebPreferences).toMatchObject({
+    expect(hardenedWebPreferences({ packaged: true })).toMatchObject({
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
@@ -14,7 +19,19 @@ describe('the renderer window', () => {
       webSecurity: true,
       allowRunningInsecureContent: false,
       experimentalFeatures: false,
+      spellcheck: false,
     })
+  })
+
+  it('keeps devtools out of a shipped build', () => {
+    expect(hardenedWebPreferences({ packaged: true }).devTools).toBe(false)
+    expect(hardenedWebPreferences({ packaged: false }).devTools).toBe(true)
+  })
+
+  it('keeps the window out of screen captures where the OS can', () => {
+    expect(shouldProtectContent('win32')).toBe(true)
+    expect(shouldProtectContent('darwin')).toBe(false)
+    expect(shouldProtectContent('linux')).toBe(false)
   })
 })
 

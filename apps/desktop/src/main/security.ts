@@ -1,4 +1,4 @@
-import type { Session, WebContents, WebPreferences } from 'electron'
+import type { BrowserWindow, Session, WebContents, WebPreferences } from 'electron'
 
 /**
  * The renderer's privileges, and what it is allowed to reach.
@@ -7,18 +7,37 @@ import type { Session, WebContents, WebPreferences } from 'electron'
  * decision someone else gets to change: an upgrade that flips one is a silent privilege grant to a
  * window that draws message bodies from strangers.
  */
-export const hardenedWebPreferences: WebPreferences = {
-  sandbox: true,
-  contextIsolation: true,
-  nodeIntegration: false,
-  nodeIntegrationInWorker: false,
-  nodeIntegrationInSubFrames: false,
-  webviewTag: false,
-  webSecurity: true,
-  allowRunningInsecureContent: false,
-  experimentalFeatures: false,
-  // No dictionary downloads, and no context-menu suggestions built from message text.
-  spellcheck: false,
+export function hardenedWebPreferences({ packaged }: { packaged: boolean }): WebPreferences {
+  return {
+    sandbox: true,
+    contextIsolation: true,
+    nodeIntegration: false,
+    nodeIntegrationInWorker: false,
+    nodeIntegrationInSubFrames: false,
+    webviewTag: false,
+    webSecurity: true,
+    allowRunningInsecureContent: false,
+    experimentalFeatures: false,
+    // No dictionary downloads, and no context-menu suggestions built from message text.
+    spellcheck: false,
+    // A shipped build has no use for them, and they are a way into a privileged page.
+    devTools: !packaged,
+  }
+}
+
+/**
+ * Excludes the window from screenshots and screen recordings, where the OS can do it.
+ *
+ * Windows only, which is where Signal draws the same line: it is a real defence against
+ * screen-scraping malware there, and elsewhere it either does nothing or breaks the screen sharing
+ * someone doing support would ask for. A user-facing setting is what this wants to become.
+ */
+export function shouldProtectContent(platform: NodeJS.Platform): boolean {
+  return platform === 'win32'
+}
+
+export function applyContentProtection(window: BrowserWindow, platform: NodeJS.Platform): void {
+  if (shouldProtectContent(platform)) window.setContentProtection(true)
 }
 
 /**
