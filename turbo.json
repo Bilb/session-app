@@ -10,8 +10,6 @@
       "dependsOn": ["codegen"],
       "cache": false
     },
-    // The generated C++ lives in packages/bridge-core, outside the package that writes it, and
-    // turbo cannot cache outputs beyond a package's own directory.
     "@session/bridge-codegen#codegen": {
       "inputs": ["src/**", "../../packages/bridge-types/src/**"],
       "cache": false

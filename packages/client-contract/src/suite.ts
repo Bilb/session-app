@@ -49,6 +49,16 @@ type TestFns = {
   }
 }
 
+/** Whatever a call failed with, whether it threw or rejected. */
+async function failure(call: () => Promise<unknown>): Promise<unknown> {
+  try {
+    await call()
+    return undefined
+  } catch (error) {
+    return error
+  }
+}
+
 function collect(client: SessionClient): { events: SessionEvent[]; stop: () => void } {
   const events: SessionEvent[] = []
   const stop = client.onEvent((event) => events.push(event))
@@ -235,6 +245,37 @@ export function runSessionClientContract(
       await alice.deleteMessage((await alice.getMessages(bobId))[0]?.id ?? 0, 'here')
       expect(seen.events.some((e) => e.type === 'conversation-removed')).toBe(false)
       seen.stop()
+    })
+
+    it('leaves a deleted message out of history unless it is asked for', async () => {
+      const { alice, bobId, settle } = await harness.friends()
+      await alice.sendMessage(bobId, { body: 'hello' })
+      await settle()
+
+      const before = await alice.getMessages(bobId)
+      const target = before[0]
+      if (!target) throw new Error('unreachable')
+      await alice.deleteMessage(target.id, 'here')
+      await settle()
+
+      const visible = await alice.getMessages(bobId)
+      expect(visible.some((m) => m.id === target.id)).toBe(false)
+
+      const withDeleted = await alice.getMessages(bobId, { includeDeleted: true })
+      const deleted = withDeleted.find((m) => m.id === target.id)
+      expect(deleted?.deleted).toBe('here')
+    })
+
+    it('refuses a seed that is not 32 bytes of hex', async () => {
+      const { alice } = await harness.friends()
+
+      // An odd-length or non-hex seed is undefined behaviour in the decoder rather than an
+      // error it reports, so nothing below this call is in a position to refuse one.
+      for (const hexSeed of ['', 'zz'.repeat(32), `${'ab'.repeat(31)}a`]) {
+        const error = await failure(() => alice.restoreAccount({ hexSeed }))
+        expect(error instanceof Error).toBe(true)
+        expect(String(error)).toContain('hexSeed')
+      }
     })
 
     it('rejects everything still waiting when it closes', async () => {

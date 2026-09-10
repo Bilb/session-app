@@ -23,10 +23,13 @@ export function createNativeBridgeTransport(options: SessionBridgeOptions): Brid
   let sink: ((frame: Frame) => void) | null = null
   const pending: Frame[] = []
 
+  function deliver(frame: Frame): void {
+    if (sink) sink(frame)
+    else pending.push(frame)
+  }
+
   bridge.setSink((frame: NativeFrame) => {
-    const typed = frame as unknown as Frame
-    if (sink) sink(typed)
-    else pending.push(typed)
+    deliver(frame as unknown as Frame)
   })
 
   bridge.init(options)
@@ -36,7 +39,16 @@ export function createNativeBridgeTransport(options: SessionBridgeOptions): Brid
   return {
     send(request: Request): void {
       if (closed) return
-      bridge.call(request as unknown as NativeRequest)
+      try {
+        bridge.call(request as unknown as NativeRequest)
+      } catch (error) {
+        // JSI could not read the request, so the shim never saw it. Answered on the stream the
+        // way the addon answers the same failure, rather than thrown at whoever forwarded it:
+        // a throw here rejects the caller's promise with the pending entry still in the map,
+        // and it is the one thing above a BridgeTransport that could tell the two apart.
+        const message = error instanceof Error ? error.message : String(error)
+        deliver({ type: 'response', response: { id: request.id, error: message } })
+      }
     },
 
     setSink(onFrame: (frame: Frame) => void): void {

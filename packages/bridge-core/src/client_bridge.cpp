@@ -65,6 +65,19 @@ namespace {
         return static_cast<T>(value);
     }
 
+    /// The bytes a hex field names, or an error naming the field.
+    ///
+    /// oxenc::from_hex is undefined behaviour on anything but an even-length run of hex digits:
+    /// its own assert is gone from a release build, and its decoder then reads pairs straight
+    /// past the end of the input. Every hex field here arrives from JavaScript, so the length
+    /// and the alphabet are checked before decoding rather than after.
+    std::string hex_bytes(std::string_view hex, size_t bytes, std::string_view what) {
+        if (hex.size() != bytes * 2 || !oxenc::is_hex(hex))
+            throw std::invalid_argument{
+                    std::string{what} + " must be " + std::to_string(bytes) + " bytes of hex"};
+        return oxenc::from_hex(hex);
+    }
+
 }  // namespace
 
 struct ClientBridge::Impl {
@@ -100,7 +113,7 @@ struct ClientBridge::Impl {
     /// Gives Core a way off the machine. Idempotent enough to call whenever an account appears:
     /// make_network replaces whatever was attached.
     void attach_network() {
-        if (options.netid.empty() || !client->core.globals.have_account())
+        if (options.netid.empty())
             return;
 
         namespace net = session::network;
@@ -113,6 +126,12 @@ struct ClientBridge::Impl {
             throw std::invalid_argument{"devnet is not wired up: it needs seed node details"};
         if (options.netid != "mainnet" && options.netid != "testnet")
             throw std::invalid_argument{"netid must be mainnet or testnet"};
+
+        // Judged before the account is, so that a netid nothing can attach to is refused by
+        // whoever supplied it. Onboarding is exactly the case with no account yet, and one
+        // accepted here would instead be thrown by the createAccount that brings it into being.
+        if (!client->core.globals.have_account())
+            return;
 
         auto netid = options.netid == "testnet" ? net::opt::netid::testnet()
                                                 : net::opt::netid::mainnet();
@@ -229,9 +248,7 @@ struct ClientBridge::Impl {
     }
 
     void handle(double id, const RestoreAccountFromSeedCommand& cmd) {
-        auto raw = oxenc::from_hex(cmd.hex_seed);
-        if (raw.size() != 32)
-            throw std::invalid_argument{"hexSeed must be 32 bytes of hex"};
+        auto raw = hex_bytes(cmd.hex_seed, 32, "hexSeed");
         b32 seed;
         std::memcpy(seed.data(), raw.data(), seed.size());
         client->core.globals.restore_account(core::predefined_seed{std::span{seed}});
@@ -387,6 +404,7 @@ struct ClientBridge::Impl {
                 .messages(
                         whole<int>(cmd.limit, "getMessages.limit"),
                         before,
+                        cmd.include_deleted,
                         on(id, [this, id](std::vector<client::Message> messages) {
                             std::vector<Message> out;
                             out.reserve(messages.size());
@@ -464,9 +482,7 @@ struct ClientBridge::Impl {
 
     void handle(double id, [[maybe_unused]] const DeliverTestMessageCommand& cmd) {
 #ifdef SESSION_BRIDGE_TESTING
-        auto seed = oxenc::from_hex(cmd.sender_seed_hex);
-        if (seed.size() != 32)
-            throw std::invalid_argument{"senderSeedHex must be 32 bytes of hex"};
+        auto seed = hex_bytes(cmd.sender_seed_hex, 32, "senderSeedHex");
 
         const int64_t timestamp = whole<int64_t>(cmd.timestamp, "deliverTestMessage.timestamp");
         const auto sent = from_epoch_ms(timestamp);
@@ -508,9 +524,7 @@ struct ClientBridge::Impl {
 
     void handle(double id, [[maybe_unused]] const ApproveTestContactCommand& cmd) {
 #ifdef SESSION_BRIDGE_TESTING
-        auto decoded = oxenc::from_hex(cmd.session_id);
-        if (decoded.size() != 33)
-            throw std::invalid_argument{"sessionId must be 33 bytes of hex"};
+        auto decoded = hex_bytes(cmd.session_id, 33, "sessionId");
         b33 sid;
         std::memcpy(sid.data(), decoded.data(), sid.size());
         client->core.loop().call_get([&] {
