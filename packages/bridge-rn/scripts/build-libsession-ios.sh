@@ -27,9 +27,7 @@ case "${1:-simulator}" in
 esac
 
 cd "$libsession"
-# Debug_Compile_LibSession is libsession's own name for "skip the submodule freshness check",
-# which we need because patches/ leaves session-deps deliberately modified.
-env ARCHS="$archs" PLATFORM_NAME="$platform" CONFIGURATION=Debug_Compile_LibSession \
+env ARCHS="$archs" PLATFORM_NAME="$platform" CONFIGURATION=Debug \
     ./utils/ios.sh "" true true true false
 
 framework="$libsession/build-ios/libsession-util.xcframework"
