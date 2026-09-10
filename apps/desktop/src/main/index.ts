@@ -11,6 +11,7 @@ import type { Request } from '@session/client'
 
 import { createBridge } from './bridge'
 import {
+  applyContentProtection,
   denyAllPermissions,
   guardNavigation,
   hardenedWebPreferences,
@@ -58,7 +59,7 @@ async function createWindow(): Promise<void> {
     // element in it invisible to a test.
     show: true,
     webPreferences: {
-      ...hardenedWebPreferences,
+      ...hardenedWebPreferences({ packaged: app.isPackaged }),
       // CommonJS, because a sandboxed preload cannot be an ES module; it is built that way in
       // electron.vite.config.ts. The preload needs nothing from Node, so the sandbox costs nothing.
       preload: join(here, '../preload/index.cjs'),
@@ -73,6 +74,7 @@ async function createWindow(): Promise<void> {
     pathToFileURL(join(here, '../renderer/index.html')).toString()
 
   guardNavigation(window.webContents, appUrl)
+  applyContentProtection(window, process.platform)
 
   // One MessagePort, which is FIFO: libsession's ordering survives the process boundary,
   // which is the whole reason responses and events share a single stream.
