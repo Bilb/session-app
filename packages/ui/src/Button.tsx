@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Spinner, styled, XStack } from 'tamagui'
 
 import { Text } from './Text'
@@ -144,15 +144,25 @@ const LABEL_TONE = {
 } as const
 
 /**
- * What the label becomes on hover, for the variants whose fill arrives then.
+ * What the label becomes once the button has a fill under it.
  *
- * Only the inverting ones need it: an outline that fills with the text colour has to stop drawing
- * its label in that same colour, or the label disappears into the fill it is sitting on.
+ * Only the inverting variants need it: an outline that fills with the text colour has to stop
+ * drawing its label in that same colour, or the label disappears into the fill it is sitting on.
+ *
+ * **Driven by React state rather than the label's own `hoverStyle`.** A `hoverStyle` on the label
+ * responds to the pointer being over *the label*, not over the button -- so hovering the padding
+ * filled the background and left the text unchanged, and moving onto the glyph flipped it. The
+ * frame is what knows it is hovered, and only the frame can tell the label.
  */
-const LABEL_HOVER = {
+const LABEL_FILLED = {
   outline: '$backgroundPrimary',
   danger: '$onDanger',
 } as const
+
+/** Whether this variant's label has to change once its fill arrives. */
+function inverts(variant: keyof typeof LABEL_TONE): variant is keyof typeof LABEL_FILLED {
+  return variant in LABEL_FILLED
+}
 
 export interface ButtonProps {
   children?: ReactNode
@@ -206,8 +216,42 @@ export function Button({
   accessibilityLabel,
   testID,
 }: ButtonProps) {
+  /**
+   * Whether the frame has a fill under its label right now.
+   *
+   * Tracked rather than styled, for the reason on `LABEL_FILLED`. On native `onHoverIn` never
+   * fires and there is no hover to represent, so this only ever moves on a press there -- which is
+   * correct rather than a limitation.
+   */
+  const [filled, setFilled] = useState(false)
+  const highlighted = inverts(variant) && filled && !disabled && !loading
+
+  const labelColor =
+    disabled || loading
+      ? '$textDisabled'
+      : highlighted
+        ? LABEL_FILLED[variant]
+        : destructive
+          ? '$dangerColor'
+          : LABEL_TONE[variant]
+
   return (
     <Frame
+      // Pointer events rather than `onHoverIn`, which this tamagui's styled props do not carry.
+      // These are in both type programs -- react-native has had pointer events since 0.71 -- so
+      // one file serves both platforms, and on a touch screen only the press pair ever fires.
+      onPointerEnter={() => {
+        setFilled(true)
+      }}
+      onPointerLeave={() => {
+        setFilled(false)
+      }}
+      onPressIn={() => {
+        setFilled(true)
+      }}
+      onPressOut={() => {
+        setFilled(false)
+      }}
       variant={variant}
       size={size}
       circular={circular}
@@ -217,27 +261,14 @@ export function Button({
       aria-label={accessibilityLabel}
       testID={testID}
     >
-      {loading ? (
-        <Spinner size="small" color={destructive ? '$dangerColor' : LABEL_TONE[variant]} />
-      ) : (
-        icon
-      )}
+      {loading ? <Spinner size="small" color={labelColor} /> : icon}
       {typeof children === 'string' ? (
         <Text
           size={size === 'xs' || size === 'sm' ? '$label' : '$body'}
           // Bold, which is what the desktop client's button is: `font-weight: 700` unless a caller
           // says otherwise, and none of the onboarding callers do.
           weight="bold"
-          color={
-            disabled || loading
-              ? '$textDisabled'
-              : destructive
-                ? '$dangerColor'
-                : LABEL_TONE[variant]
-          }
-          {...(variant in LABEL_HOVER
-            ? { hoverStyle: { color: LABEL_HOVER[variant as keyof typeof LABEL_HOVER] } }
-            : {})}
+          color={labelColor}
         >
           {children}
         </Text>
