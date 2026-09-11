@@ -1,6 +1,7 @@
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Spinner, styled, XStack } from 'tamagui'
 
+import { INHERITED_LABEL } from './labelColor'
 import { Text } from './Text'
 
 const Frame = styled(XStack, {
@@ -28,6 +29,7 @@ const Frame = styled(XStack, {
       solid: {
         backgroundColor: '$primaryColor',
         borderColor: '$primaryColor',
+        color: '$onAccent',
         hoverStyle: { backgroundColor: '$accentHover', borderColor: '$accentHover' },
         pressStyle: { backgroundColor: '$accentPressed', borderColor: '$accentPressed' },
       },
@@ -39,8 +41,20 @@ const Frame = styled(XStack, {
       outline: {
         backgroundColor: 'transparent',
         borderColor: '$textPrimary',
-        hoverStyle: { backgroundColor: '$textPrimary', borderColor: '$textPrimary' },
-        pressStyle: { backgroundColor: '$textPrimary', borderColor: '$textPrimary', opacity: 0.82 },
+        color: '$textPrimary',
+        // The label colour moves with the fill, declared here rather than tracked in JS so the two
+        // can never disagree. See labelColor.ts.
+        hoverStyle: {
+          backgroundColor: '$textPrimary',
+          borderColor: '$textPrimary',
+          color: '$backgroundPrimary',
+        },
+        pressStyle: {
+          backgroundColor: '$textPrimary',
+          borderColor: '$textPrimary',
+          color: '$backgroundPrimary',
+          opacity: 0.82,
+        },
       },
       /**
        * The outline, in the accent rather than in the text colour.
@@ -69,6 +83,7 @@ const Frame = styled(XStack, {
       ghost: {
         backgroundColor: 'transparent',
         borderColor: 'transparent',
+        color: '$textPrimary',
         hoverStyle: { backgroundColor: '$backgroundTertiary' },
         pressStyle: { backgroundColor: '$backgroundNested' },
       },
@@ -80,6 +95,7 @@ const Frame = styled(XStack, {
       simple: {
         backgroundColor: 'transparent',
         borderColor: 'transparent',
+        color: '$textPrimary',
         hoverStyle: { opacity: 0.7 },
         pressStyle: { opacity: 0.55 },
       },
@@ -87,8 +103,18 @@ const Frame = styled(XStack, {
       danger: {
         backgroundColor: 'transparent',
         borderColor: '$dangerColor',
-        hoverStyle: { backgroundColor: '$dangerColor', borderColor: '$dangerColor' },
-        pressStyle: { backgroundColor: '$dangerColor', borderColor: '$dangerColor', opacity: 0.82 },
+        color: '$dangerColor',
+        hoverStyle: {
+          backgroundColor: '$dangerColor',
+          borderColor: '$dangerColor',
+          color: '$onDanger',
+        },
+        pressStyle: {
+          backgroundColor: '$dangerColor',
+          borderColor: '$dangerColor',
+          color: '$onDanger',
+          opacity: 0.82,
+        },
       },
     },
     size: {
@@ -115,11 +141,26 @@ const Frame = styled(XStack, {
      * A blanket `opacity: .5` dims a disabled control toward whatever is behind it, so on a
      * recessed surface it fades further than on the page -- and it takes the border with it.
      */
+    /**
+     * A danger-coloured label without a fill, declared on the frame so the web label inherits it.
+     *
+     * Every destructive action in a modal is drawn this way in the desktop client -- red text
+     * beside plain text, no fill on either. Applied after `variant` so it overrides that variant's
+     * colour, which is the whole point of it.
+     */
+    destructive: {
+      true: {
+        color: '$dangerColor',
+        hoverStyle: { color: '$dangerColor', opacity: 0.7 },
+        pressStyle: { color: '$dangerColor', opacity: 0.55 },
+      },
+    },
     disabled: {
       true: {
         pointerEvents: 'none',
         backgroundColor: 'transparent',
         borderColor: '$bordersColor',
+        color: '$textDisabled',
       },
     },
   } as const,
@@ -142,27 +183,6 @@ const LABEL_TONE = {
   simple: '$textPrimary',
   danger: '$dangerColor',
 } as const
-
-/**
- * What the label becomes once the button has a fill under it.
- *
- * Only the inverting variants need it: an outline that fills with the text colour has to stop
- * drawing its label in that same colour, or the label disappears into the fill it is sitting on.
- *
- * **Driven by React state rather than the label's own `hoverStyle`.** A `hoverStyle` on the label
- * responds to the pointer being over *the label*, not over the button -- so hovering the padding
- * filled the background and left the text unchanged, and moving onto the glyph flipped it. The
- * frame is what knows it is hovered, and only the frame can tell the label.
- */
-const LABEL_FILLED = {
-  outline: '$backgroundPrimary',
-  danger: '$onDanger',
-} as const
-
-/** Whether this variant's label has to change once its fill arrives. */
-function inverts(variant: keyof typeof LABEL_TONE): variant is keyof typeof LABEL_FILLED {
-  return variant in LABEL_FILLED
-}
 
 export interface ButtonProps {
   children?: ReactNode
@@ -217,58 +237,35 @@ export function Button({
   testID,
 }: ButtonProps) {
   /**
-   * Whether the frame has a fill under its label right now.
+   * The label's colour where it cannot be inherited.
    *
-   * Tracked rather than styled, for the reason on `LABEL_FILLED`. On native `onHoverIn` never
-   * fires and there is no hover to represent, so this only ever moves on a press there -- which is
-   * correct rather than a limitation.
+   * On the web this is unused -- `INHERITED_LABEL` is `'inherit'` and the frame's variant supplies
+   * every state. On native the frame's `color` reaches nothing, so the label is told; there is no
+   * hover on a touch screen, so a resting colour is the whole story.
    */
-  const [filled, setFilled] = useState(false)
-  const highlighted = inverts(variant) && filled && !disabled && !loading
-
-  const labelColor =
-    disabled || loading
-      ? '$textDisabled'
-      : highlighted
-        ? LABEL_FILLED[variant]
-        : destructive
-          ? '$dangerColor'
-          : LABEL_TONE[variant]
+  const nativeLabel =
+    disabled || loading ? '$textDisabled' : destructive ? '$dangerColor' : LABEL_TONE[variant]
 
   return (
     <Frame
-      // Pointer events rather than `onHoverIn`, which this tamagui's styled props do not carry.
-      // These are in both type programs -- react-native has had pointer events since 0.71 -- so
-      // one file serves both platforms, and on a touch screen only the press pair ever fires.
-      onPointerEnter={() => {
-        setFilled(true)
-      }}
-      onPointerLeave={() => {
-        setFilled(false)
-      }}
-      onPressIn={() => {
-        setFilled(true)
-      }}
-      onPressOut={() => {
-        setFilled(false)
-      }}
       variant={variant}
       size={size}
       circular={circular}
+      destructive={destructive}
       {...(paddingHorizontal === undefined ? {} : { paddingHorizontal })}
       disabled={disabled || loading}
       onPress={onPress}
       aria-label={accessibilityLabel}
       testID={testID}
     >
-      {loading ? <Spinner size="small" color={labelColor} /> : icon}
+      {loading ? <Spinner size="small" color={nativeLabel} /> : icon}
       {typeof children === 'string' ? (
         <Text
           size={size === 'xs' || size === 'sm' ? '$label' : '$body'}
           // Bold, which is what the desktop client's button is: `font-weight: 700` unless a caller
           // says otherwise, and none of the onboarding callers do.
           weight="bold"
-          color={labelColor}
+          color={INHERITED_LABEL ?? nativeLabel}
         >
           {children}
         </Text>
