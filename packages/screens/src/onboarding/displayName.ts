@@ -16,10 +16,17 @@ export const DISPLAY_NAME_MAX_BYTES = 100
  * settled on for display names, group names and nicknames alike.
  *
  * **Code points rather than graphemes**, matching the limit Pro message lengths use. Graphemes are
- * the more human unit -- a family emoji is one grapheme and seven code points -- but counting them
- * needs `Intl.Segmenter`, and Hermes has no `Intl` beyond `Collator`, `DateTimeFormat` and
- * `NumberFormat`. Mobile would need a polyfill to agree with desktop, and a limit the platforms
- * disagree about is worse than one that is slightly generous to emoji.
+ * the more human unit: the emoji the desktop client's own comment picks out, `👨🏻‍❤️‍💋‍👨🏻`, is one
+ * grapheme, ten code points, fifteen UTF-16 units and thirty-five bytes -- four different answers
+ * to "how long is this". But counting graphemes needs `Intl.Segmenter`, and Hermes has no `Intl`
+ * beyond `Collator`, `DateTimeFormat` and `NumberFormat`, so mobile would need a segmentation
+ * library to agree with desktop. A limit the platforms disagree about is worse than one that is
+ * slightly generous to emoji.
+ *
+ * **The generosity is bounded by the byte cap**, which is why the pathological case is not one.
+ * Under the code-point limit alone that emoji would fit three times over; the hundred bytes stop
+ * it at two, and the counter shows whichever limit is nearer. So the worst a grapheme-blind count
+ * costs is that a name of pure multi-code-point emoji is refused sooner than 35 of them, not later.
  */
 export const DISPLAY_NAME_MAX_CODE_POINTS = 35
 

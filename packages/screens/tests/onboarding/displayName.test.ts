@@ -91,3 +91,27 @@ describe('validating a name', () => {
     expect(displayNameProblem('  🦀 <script> ünïcødé ')).toBeNull()
   })
 })
+
+describe('a grapheme that is many code points', () => {
+  // The emoji the desktop client's own comment names: one grapheme, ten code points, 35 bytes.
+  // The limit is counted in code points, so this is where that choice is most visible - and where
+  // the byte cap is what keeps it bounded.
+  const FAMILY = '👨🏻‍❤️‍💋‍👨🏻'
+
+  it('is one thing to a reader and ten to the counter', () => {
+    expect(codePointLength(FAMILY)).toBe(10)
+    expect(utf8Length(FAMILY)).toBe(35)
+  })
+
+  it('is stopped by the byte limit before the code-point one', () => {
+    // Two fit; a third is 105 bytes. Under the character cap alone three would have been accepted,
+    // which is the case a grapheme count would have handled differently.
+    expect(displayNameProblem(FAMILY.repeat(2))).toBeNull()
+    expect(displayNameProblem(FAMILY.repeat(3))).toBe('tooLong')
+  })
+
+  it('counts down whichever limit is nearer', () => {
+    // Not 35 - 20: the bytes are closer, so the number shown is the bytes.
+    expect(displayNameRemaining(FAMILY.repeat(2))).toBe(15)
+  })
+})
