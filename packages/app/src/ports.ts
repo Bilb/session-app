@@ -59,6 +59,21 @@ export interface ClipboardPort {
 
 export interface LinkingPort {
   openUrl(url: string): Promise<void>
+  /**
+   * The OS's own per-app language screen, or null where the build has not got one.
+   *
+   * Null is the normal answer and not a stub. Both mobile platforms have such a screen, and
+   * neither shows it for an app like this one: iOS lists Preferred Language only for a bundle that
+   * declares more than one localization, and Android shows App Language only on 13 or newer and
+   * only for an app that ships a `localeConfig`. This app declares its languages to neither OS
+   * yet, so sending somebody to the settings page would land them on one with no language row on
+   * it -- worse than the picker doing the job itself.
+   *
+   * It is the capability check the language picker reads, so this turns non-null in the same
+   * change that teaches the two builds to declare their locales, and the picker starts handing
+   * over on its own. Desktop stays null: there is no such screen to hand over to.
+   */
+  openLanguageSettings: (() => Promise<void>) | null
 }
 
 export interface WindowPort {

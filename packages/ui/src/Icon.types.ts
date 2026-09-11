@@ -13,7 +13,7 @@ import type { Plus } from '@tamagui/lucide-icons-2/icons/Plus'
  * up in more than one place, and a name like `newConversation` is either duplicated or wrong the
  * second time somebody reaches for it.
  */
-export type IconName = 'chevronLeft' | 'plus' | 'settings'
+export type IconName = 'check' | 'chevronDown' | 'chevronLeft' | 'plus' | 'search' | 'settings'
 
 /**
  * Whatever a themed lucide icon accepts, plus which one to draw.

@@ -7,6 +7,7 @@ import {
   StartingScreen,
   RequestsScreen,
   SettingsScreen,
+  useLocale,
 } from '@session/screens'
 import { SessionStoreProvider, useAccount, useHydrated } from '@session/state'
 import { Text, UIProvider, YStack } from '@session/ui'
@@ -23,6 +24,12 @@ import { store } from './store'
  * together - it scrapes the path of every Route element below, so those strings are load-bearing.
  */
 export function App() {
+  // Subscribes the whole tree to the app's language. `tr()` reads a module-scope variable, so
+  // nothing below re-renders when that changes unless something above it does -- and it has to be
+  // here rather than in a provider, because a provider's `children` arrive as an element created
+  // by its own parent, and React skips a subtree whose element has not changed.
+  useLocale()
+
   useEffect(() => {
     void store.actions.hydrate()
     return () => store.actions.dispose()

@@ -69,6 +69,15 @@ export const ELEMENT = {
     screen: 'starting',
   },
 
+  languagePicker: {
+    trigger: 'language-picker',
+    panel: 'language-picker-panel',
+    search: 'language-picker-search',
+    close: 'language-picker-close',
+    systemSettings: 'language-picker-system-settings',
+    option: (locale: string) => `language-picker-option-${locale}` as const,
+  },
+
   onboarding: {
     screen: 'onboarding',
     createAccount: 'onboarding-create-account',

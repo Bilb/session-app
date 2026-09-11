@@ -1,5 +1,8 @@
+import { Check } from '@tamagui/lucide-icons-2/icons/Check'
+import { ChevronDown } from '@tamagui/lucide-icons-2/icons/ChevronDown'
 import { ChevronLeft } from '@tamagui/lucide-icons-2/icons/ChevronLeft'
 import { Plus } from '@tamagui/lucide-icons-2/icons/Plus'
+import { Search } from '@tamagui/lucide-icons-2/icons/Search'
 import { Settings } from '@tamagui/lucide-icons-2/icons/Settings'
 
 import type { IconName, IconProps } from './Icon.types'
@@ -16,8 +19,11 @@ import type { IconName, IconProps } from './Icon.types'
  * the values are: every name has a glyph, and a glyph nobody named does not compile.
  */
 const GLYPHS = {
+  check: Check,
+  chevronDown: ChevronDown,
   chevronLeft: ChevronLeft,
   plus: Plus,
+  search: Search,
   settings: Settings,
 } satisfies Record<IconName, typeof Plus>
 

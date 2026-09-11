@@ -54,6 +54,9 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
     },
     linking: {
       openUrl: () => Promise.resolve(),
+      // Null, not a no-op: the language picker reads this as "does the OS have a language screen",
+      // and a function that did nothing would answer yes and then do nothing.
+      openLanguageSettings: null,
     },
     window: {
       isFocused: () => true,

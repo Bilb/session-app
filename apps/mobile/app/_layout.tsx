@@ -1,3 +1,4 @@
+import { useLocale } from '@session/screens'
 import { SessionStoreProvider, type SessionStore } from '@session/state'
 import { Text, UIProvider, YStack } from '@session/ui'
 import { Slot } from 'expo-router'
@@ -14,6 +15,10 @@ import { storePromise } from '../src/store'
  * before rendering anything that would read from it.
  */
 export default function RootLayout() {
+  // Subscribes the whole tree to the app's language -- see the note on the desktop root. It has to
+  // be the component that creates the subtree, not a provider wrapped around one.
+  useLocale()
+
   const [store, setStore] = useState<SessionStore | null>(null)
 
   useEffect(() => {

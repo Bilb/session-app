@@ -13,6 +13,12 @@ export type { ButtonProps } from './Button'
 export { Icon } from './Icon'
 export type { IconName, IconProps } from './Icon.types'
 export { Input } from './Input'
+export { LanguagePicker } from './LanguagePicker'
+export type {
+  LanguageChoice,
+  LanguagePickerProps,
+  LanguagePickerTestIDs,
+} from './LanguagePicker.types'
 export { List } from './List'
 export type { ListProps } from './List'
 export type { InputProps } from './Input.types'
