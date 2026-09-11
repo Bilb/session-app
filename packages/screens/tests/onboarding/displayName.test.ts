@@ -6,6 +6,7 @@ import {
   DISPLAY_NAME_MAX_CODE_POINTS,
   displayNameProblem,
   displayNameRemaining,
+  normalizeDisplayName,
   utf8Length,
 } from '#src/onboarding/displayName'
 
@@ -113,5 +114,45 @@ describe('a grapheme that is many code points', () => {
   it('counts down whichever limit is nearer', () => {
     // Not 35 - 20: the bytes are closer, so the number shown is the bytes.
     expect(displayNameRemaining(FAMILY.repeat(2))).toBe(15)
+  })
+})
+
+describe('the same name typed two ways', () => {
+  // macOS hands back decomposed text from some input paths, so this is not a contrived string:
+  // it is what a name can arrive as.
+  const COMPOSED = 'é'
+  const DECOMPOSED = 'é'
+
+  it('is the same name, and the counter used to disagree', () => {
+    expect(COMPOSED.normalize('NFC')).toBe(DECOMPOSED.normalize('NFC'))
+    expect(codePointLength(COMPOSED)).toBe(1)
+    expect(codePointLength(DECOMPOSED)).toBe(2)
+  })
+
+  it('leaves the same room either way', () => {
+    expect(displayNameRemaining(DECOMPOSED.repeat(20))).toBe(
+      displayNameRemaining(COMPOSED.repeat(20)),
+    )
+  })
+
+  it('admits 35 of them decomposed, where counting as typed admitted 17', () => {
+    expect(displayNameProblem(DECOMPOSED.repeat(35))).toBeNull()
+    expect(displayNameProblem(DECOMPOSED.repeat(36))).toBe('tooLong')
+  })
+
+  it('normalises the value, not only the count', () => {
+    // Counting one form and sending the other is the hazard: 35 of these are 70 bytes composed
+    // and 105 decomposed, so libSession would refuse what this screen accepted.
+    expect(utf8Length(DECOMPOSED.repeat(35))).toBeGreaterThan(DISPLAY_NAME_MAX_BYTES)
+    expect(utf8Length(normalizeDisplayName(DECOMPOSED.repeat(35)))).toBe(70)
+  })
+
+  it('does not pretend to fix the scripts that have no composed form', () => {
+    // Thai combining vowels and tones do not compose, so this one stays where it was. Noted
+    // rather than smoothed over: it is the residual a grapheme count would have covered.
+    const THAI = 'สี่'
+    expect(normalizeDisplayName(THAI)).toBe(THAI)
+    expect(displayNameProblem(THAI.repeat(11))).toBeNull()
+    expect(displayNameProblem(THAI.repeat(12))).toBe('tooLong')
   })
 })

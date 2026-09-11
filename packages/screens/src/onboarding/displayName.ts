@@ -27,8 +27,38 @@ export const DISPLAY_NAME_MAX_BYTES = 100
  * Under the code-point limit alone that emoji would fit three times over; the hundred bytes stop
  * it at two, and the counter shows whichever limit is nearer. So the worst a grapheme-blind count
  * costs is that a name of pure multi-code-point emoji is refused sooner than 35 of them, not later.
+ *
+ * Emoji are therefore the *least* affected case, being byte-bound either way. What the unit really
+ * costs falls on combining marks, and `normalizeDisplayName` is why it costs less than it looks.
  */
 export const DISPLAY_NAME_MAX_CODE_POINTS = 35
+
+/**
+ * A name in the one form its length can fairly be counted in.
+ *
+ * **The same name can be two different strings**, and the code-point cap notices while a reader
+ * cannot. `é` is one code point composed and two decomposed; a Vietnamese `ệ` is one or three.
+ * Counting the decomposed form admits 17 Latin letters where the composed form admits 35, and
+ * macOS hands back decomposed text from some input paths -- so whether a name fits could depend on
+ * where it was typed, which is not a rule anybody could be expected to predict.
+ *
+ * NFC is the composed form and the one the web platform standardises on for interchange. It is not
+ * a substitute for counting graphemes: Thai and Devanagari have no precomposed forms, so a Thai
+ * name is still bound at around eleven visible characters. It recovers the Latin and Vietnamese
+ * cases entirely, which are the ones a European or Vietnamese name actually lands in, and it costs
+ * one call.
+ *
+ * **Available on all three platforms**, unlike `Intl.Segmenter`: `stringPrototypeNormalize` and the
+ * normalization forms are in the Hermes binary that ships, checked in
+ * `apps/mobile/ios/Pods/hermes-engine` rather than assumed.
+ *
+ * **Applied to the value, not only to the count.** Counting one form and sending another would let
+ * a name pass here and be refused by libSession -- decomposed text is longer in bytes, so a name
+ * inside 100 bytes composed can be outside it decomposed. The screen submits what was counted.
+ */
+export function normalizeDisplayName(value: string): string {
+  return value.normalize('NFC')
+}
 
 /** What is wrong with a name, or null when nothing is. */
 export type DisplayNameProblem = 'empty' | 'tooLong'
@@ -67,9 +97,10 @@ export function codePointLength(value: string): number {
  * has to stop accepting input rather than explain itself afterwards.
  */
 export function displayNameRemaining(name: string): number {
+  const normalized = normalizeDisplayName(name)
   return Math.min(
-    DISPLAY_NAME_MAX_CODE_POINTS - codePointLength(name),
-    DISPLAY_NAME_MAX_BYTES - utf8Length(name),
+    DISPLAY_NAME_MAX_CODE_POINTS - codePointLength(normalized),
+    DISPLAY_NAME_MAX_BYTES - utf8Length(normalized),
   )
 }
 

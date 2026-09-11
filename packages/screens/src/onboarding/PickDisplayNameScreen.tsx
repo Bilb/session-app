@@ -3,7 +3,7 @@ import { ELEMENT } from '@session/test-ids'
 import { Button, Input, Text } from '@session/ui'
 import { useEffect, useState } from 'react'
 
-import { displayNameProblem, displayNameRemaining } from './displayName'
+import { displayNameProblem, displayNameRemaining, normalizeDisplayName } from './displayName'
 import { OnboardingStep } from './OnboardingStep'
 
 /** How close to the limit before the count is worth showing. */
@@ -74,7 +74,10 @@ export function PickDisplayNameScreen({
   const submit = () => {
     const problem = displayNameProblem(name)
     if (problem === null) {
-      onContinue(name)
+      // The composed form, which is the one that was counted. Sending what was typed instead would
+      // let a decomposed name pass a check it does not pass on the wire: the same name is longer
+      // in bytes decomposed, and libSession counts bytes.
+      onContinue(normalizeDisplayName(name))
       return
     }
     setRejected(true)
