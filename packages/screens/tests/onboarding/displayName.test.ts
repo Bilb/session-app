@@ -156,3 +156,35 @@ describe('the same name typed two ways', () => {
     expect(displayNameProblem(THAI.repeat(12))).toBe('tooLong')
   })
 })
+
+describe('the letters NFC takes apart rather than puts together', () => {
+  /**
+   * `U+0958 DEVANAGARI LETTER QA`, a Unicode composition exclusion: NFC turns it into `क` plus a
+   * nukta, so it gets longer rather than shorter. Named by code point rather than pasted, because
+   * the whole point is that it is not the sequence it looks like.
+   */
+  const QA = String.fromCodePoint(0x0958)
+
+  it('grows under normalisation instead of shrinking', () => {
+    expect(codePointLength(QA)).toBe(1)
+    expect(codePointLength(normalizeDisplayName(QA))).toBe(2)
+    expect(utf8Length(normalizeDisplayName(QA))).toBe(6)
+  })
+
+  it('costs headroom rather than recovering it', () => {
+    // 33 of them fit as typed and 16 normalised, so for these letters normalising is the expense.
+    // Accepted deliberately: these are the deprecated precomposed forms, and modern input produces
+    // the decomposed pair that normalising leaves alone.
+    expect(displayNameProblem(QA.repeat(16))).toBeNull()
+    expect(displayNameProblem(QA.repeat(17))).toBe('tooLong')
+  })
+
+  it('is refused consistently, rather than passing here and failing on the wire', () => {
+    // The mirror of the decomposed-acute hazard: 30 of these are 90 bytes as typed and 180
+    // normalised. Counting the typed form would admit a name libSession then refuses. The value
+    // and the count are the same string, so both sides see 180.
+    expect(utf8Length(QA.repeat(30))).toBe(90)
+    expect(utf8Length(normalizeDisplayName(QA.repeat(30)))).toBe(180)
+    expect(displayNameProblem(QA.repeat(30))).toBe('tooLong')
+  })
+})

@@ -43,10 +43,19 @@ export const DISPLAY_NAME_MAX_CODE_POINTS = 35
  * where it was typed, which is not a rule anybody could be expected to predict.
  *
  * NFC is the composed form and the one the web platform standardises on for interchange. It is not
- * a substitute for counting graphemes: Thai and Devanagari have no precomposed forms, so a Thai
- * name is still bound at around eleven visible characters. It recovers the Latin and Vietnamese
- * cases entirely, which are the ones a European or Vietnamese name actually lands in, and it costs
- * one call.
+ * a substitute for counting graphemes: Thai and Devanagari matras have no precomposed forms, so a
+ * Thai name is still bound at around eleven visible characters. It recovers the Latin and
+ * Vietnamese cases entirely, which are the ones a European or Vietnamese name actually lands in,
+ * and it costs one call.
+ *
+ * **It is not a reduction everywhere, and that is not a bug in it.** 85 code points get *longer*
+ * under NFC -- 92 counted in bytes -- because Unicode's composition exclusions decompose rather
+ * than compose: `U+0958 DEVANAGARI LETTER QA` becomes `क` plus a nukta, one code point becoming
+ * two. A name of those admits 33 as typed and 16 normalised. They are the deprecated precomposed
+ * forms left over from older encodings -- modern Devanagari input produces the pair, not the
+ * singleton -- so this is canonical consistency costing headroom in the legacy case, which is the
+ * right way round but is **not** the "strictly more permissive" the first version of this comment
+ * implied.
  *
  * **Available on all three platforms**, unlike `Intl.Segmenter`: `stringPrototypeNormalize` and the
  * normalization forms are in the Hermes binary that ships, checked in
