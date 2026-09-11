@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  asksAboutNotifications,
   backNeedsConfirming,
+  isWideDesign,
   initialOnboarding,
   onboardingReducer,
   type OnboardingDesign,
@@ -202,5 +204,33 @@ describe('the wait for a restored profile', () => {
     expect(run([RESTORE, PHRASE, FAST, { type: 'restoreFailed' }]).recovery).toEqual({
       words: ['one', 'two'],
     })
+  })
+})
+
+describe('the tablet sequences', () => {
+  // The desktop layout with the phone's notification step. The two are separate questions: the
+  // width decides the frame, and whether the OS suspends the app decides whether there is a
+  // delivery mode to choose at all.
+  it('creates: landing, name, notifications, done - the phone sequence', () => {
+    expect(run([CREATE], 'tablet').step).toBe('pickDisplayName')
+    expect(run([CREATE, NAME], 'tablet').step).toBe('messageNotifications')
+    expect(run([CREATE, NAME, FAST], 'tablet').step).toBe('done')
+  })
+
+  it('restores: landing, phrase, notifications, loading', () => {
+    expect(run([RESTORE, PHRASE], 'tablet').step).toBe('messageNotifications')
+    expect(run([RESTORE, PHRASE, FAST], 'tablet').step).toBe('loading')
+  })
+
+  it('asks about notifications, where the desktop design does not', () => {
+    expect(asksAboutNotifications('tablet')).toBe(true)
+    expect(asksAboutNotifications('phone')).toBe(true)
+    expect(asksAboutNotifications('desktop')).toBe(false)
+  })
+
+  it('draws the wide frame, where the phone design does not', () => {
+    expect(isWideDesign('tablet')).toBe(true)
+    expect(isWideDesign('desktop')).toBe(true)
+    expect(isWideDesign('phone')).toBe(false)
   })
 })

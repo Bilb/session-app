@@ -3,6 +3,8 @@
  *
  *     PHONE    CREATE   landing -> pickDisplayName -> messageNotifications -> done
  *     PHONE    RESTORE  landing -> loadAccount     -> messageNotifications -> loading -> done
+ *     TABLET   CREATE   landing -> pickDisplayName -> messageNotifications -> done
+ *     TABLET   RESTORE  landing -> loadAccount     -> messageNotifications -> loading -> done
  *     DESKTOP  CREATE   landing -> pickDisplayName -> done
  *     DESKTOP  RESTORE  landing -> loadAccount     -> loading -> done
  *
@@ -34,13 +36,25 @@ type OnboardingStep =
 type OnboardingBranch = 'create' | 'restore'
 
 /**
- * Which client's onboarding this is.
+ * Which client's onboarding this is: a layout and a sequence, which are not the same question.
  *
- * Named for the design rather than the platform, because a tablet takes the desktop one: the
- * instruction is that an iPad gets the desktop flow rather than a stretched phone flow, so this
- * follows the window's width and can change under a rotation.
+ * A tablet is **the desktop layout with the phone's notification step** -- artwork and a centred
+ * column, and still asked how it should hear about a message, because the OS suspends it the way a
+ * phone's does. Reading the sequence off the layout is what put a phone's question on a desktop
+ * screen the first time, so the two inputs stay separate: the width says which layout, and the
+ * notifications port says whether there is a mode to choose.
  */
-export type OnboardingDesign = 'phone' | 'desktop'
+export type OnboardingDesign = 'phone' | 'desktop' | 'tablet'
+
+/** Whether this design draws the desktop client's two-column frame rather than filling a phone. */
+export function isWideDesign(design: OnboardingDesign): boolean {
+  return design !== 'phone'
+}
+
+/** Whether this design asks which way notifications should arrive. */
+export function asksAboutNotifications(design: OnboardingDesign): boolean {
+  return design !== 'desktop'
+}
 
 /** What the recovery screen collected, in the shape the bridge takes it. */
 export type RecoveryInput = { words: string[]; language?: string } | { hexSeed: string }
@@ -167,14 +181,16 @@ export function onboardingReducer(state: OnboardingState, event: OnboardingEvent
         displayName: event.name,
         commitFailed: false,
         step:
-          state.afterFailedRestore || state.design === 'desktop' ? 'done' : 'messageNotifications',
+          state.afterFailedRestore || !asksAboutNotifications(state.design)
+            ? 'done'
+            : 'messageNotifications',
       }
 
     case 'phraseEntered':
       return {
         ...state,
         recovery: event.from,
-        step: state.design === 'desktop' ? 'loading' : 'messageNotifications',
+        step: asksAboutNotifications(state.design) ? 'messageNotifications' : 'loading',
       }
 
     case 'notificationsChosen':

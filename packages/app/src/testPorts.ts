@@ -40,6 +40,9 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
       // No push service on any build yet, so onboarding marks fast mode unavailable rather than
       // recommending something that would never arrive.
       fastModeAvailable: false,
+      // Nothing suspends a memory implementation. The mobile app overrides this; desktop is
+      // genuinely this case.
+      notificationModesApply: false,
       requestPermission: () => Promise.resolve(true),
       show: () => Promise.resolve(),
       onTap: (handler) => {

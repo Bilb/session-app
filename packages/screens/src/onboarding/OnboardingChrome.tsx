@@ -10,6 +10,7 @@ import {
   SessionBrand,
   SessionWordmark,
   useMedia,
+  useWindowSize,
   XStack,
   YStack,
 } from '@session/ui'
@@ -79,6 +80,15 @@ const CONTENT_MIN_HEIGHT = 276
 const HERO_FRACTION = '40%'
 
 /**
+ * The hero's share of the height when it runs across the top instead of down the side.
+ *
+ * Ours rather than a port: neither the desktop client nor the phones have a tablet held upright,
+ * and the designs at this size are still being drawn. A third is enough to read as artwork and
+ * leaves the column the same room it has everywhere else.
+ */
+const HERO_BAND_FRACTION = '33%'
+
+/**
  * Where the two documentation links go.
  *
  * Hardcoded for the same reason the terms are: this is reachable before anybody has decided to
@@ -101,8 +111,12 @@ const WEBSITE_URL = 'https://getsession.org'
  */
 export function OnboardingChrome({ children, testID }: { children: ReactNode; testID: string }) {
   const wide = useMedia().gtSm
+  // Only a wide window asks this. A phone is portrait by definition and has no artwork to place.
+  const { portrait } = useWindowSize()
   // Fades the content in when the step changes. `testID` is the step's identity, so a new step
   // remounts this and the animation runs; the artwork and the lockup sit outside it and do not.
+  // Desktop only: the mobile clients cut between steps, and an opacity with nothing interpolating
+  // it is a frame of invisible content rather than a transition.
   const fading = useFadeIn(testID)
 
   if (!wide) {
@@ -111,7 +125,51 @@ export function OnboardingChrome({ children, testID }: { children: ReactNode; te
         <XStack justifyContent="flex-end" minHeight="$7">
           {flag('onboardingLanguageSelect') ? <LanguageButton /> : null}
         </XStack>
-        <YStack opacity={fading}>{children}</YStack>
+        {/* `flex` is load-bearing. Without it this box takes its content's height, and a child
+            asking for `flex: 1` inside it resolves against nothing and collapses to zero -- which
+            drew the landing screen's heading and its conversation straight over the buttons
+            underneath. The step is what fills the phone screen, so the box holding it has to. */}
+        <YStack flex={1}>{children}</YStack>
+      </Screen>
+    )
+  }
+
+  const column = (
+    // Centred both ways in whatever is left, which is the rule the designs state.
+    <YStack flex={1} alignItems="center" justifyContent="center" padding="$3">
+      <YStack width={COLUMN_WIDTH} gap="$3">
+        <OnboardingHeader />
+        <YStack
+          minHeight={CONTENT_MIN_HEIGHT}
+          opacity={fading}
+          // No animation driver is configured, so the transition is declared directly. On
+          // native this property is ignored and the step simply appears, which is the same
+          // thing the mobile clients do -- only Desktop crossfades.
+          style={{ transition: `opacity ${String(FADE_MS)}ms ease-out` }}
+        >
+          {children}
+        </YStack>
+      </YStack>
+    </YStack>
+  )
+
+  /**
+   * Upright, the artwork goes across the top instead of down the side.
+   *
+   * Side by side, the picture is as tall as the window and a third as wide, so it is scaled to
+   * that height and cropped to that width -- which on a tablet in portrait magnifies it about
+   * threefold and leaves a slice of a single phone. Same layout otherwise: the column is what
+   * moves, not what changes.
+   */
+  if (portrait) {
+    return (
+      <Screen testID={testID}>
+        <YStack flex={1}>
+          <YStack height={HERO_BAND_FRACTION} testID={ELEMENT.onboarding.hero}>
+            <HeroImage band />
+          </YStack>
+          {column}
+        </YStack>
       </Screen>
     )
   }
@@ -124,23 +182,7 @@ export function OnboardingChrome({ children, testID }: { children: ReactNode; te
         <YStack width={HERO_FRACTION} maxWidth={640} testID={ELEMENT.onboarding.hero}>
           <HeroImage />
         </YStack>
-
-        {/* Centred both ways in whatever is left, which is the rule the designs state. */}
-        <YStack flex={1} alignItems="center" justifyContent="center" padding="$3">
-          <YStack width={COLUMN_WIDTH} gap="$3">
-            <OnboardingHeader />
-            <YStack
-              minHeight={CONTENT_MIN_HEIGHT}
-              opacity={fading}
-              // No animation driver is configured, so the transition is declared directly. On
-              // native this property is ignored and the step simply appears, which is the same
-              // thing the mobile clients do -- only Desktop crossfades.
-              style={{ transition: `opacity ${String(FADE_MS)}ms ease-out` }}
-            >
-              {children}
-            </YStack>
-          </YStack>
-        </YStack>
+        {column}
       </XStack>
     </Screen>
   )

@@ -58,6 +58,19 @@ export interface NotificationsPort {
    * per build as one arrives.
    */
   readonly fastModeAvailable: boolean
+  /**
+   * Whether this platform suspends the app and so makes notification delivery a choice.
+   *
+   * A phone or a tablet stops running Session the moment it is put down, so somebody has to say
+   * how it should hear about a message in the meantime - a push service, or the background windows
+   * the OS grants. A desktop app just keeps running and keeps polling, so there is nothing to
+   * choose between and onboarding skips the question entirely.
+   *
+   * Answered at the app edge rather than from the window's width, because a tablet gets the
+   * desktop *layout* and still has to be asked: the two are different questions and reading one
+   * off the other is what put a phone's question on a desktop screen.
+   */
+  readonly notificationModesApply: boolean
   requestPermission(): Promise<boolean>
   show(notification: { conversationId: string; title: string; body: string }): Promise<void>
   onTap(handler: (conversationId: string) => void): () => void

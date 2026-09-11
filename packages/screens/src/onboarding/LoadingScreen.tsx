@@ -1,6 +1,6 @@
 import { getLocale, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { ProgressRing, Text, useMedia, XStack, YStack } from '@session/ui'
+import { ProgressRing, Screen, Text, useMedia, XStack, YStack } from '@session/ui'
 import { useEffect, useRef, useState } from 'react'
 
 import { OnboardingChrome } from './OnboardingChrome'
@@ -19,6 +19,16 @@ const TICK_MS = 40
 
 /** The desktop client's bar height. Much thicker than a hairline, and deliberately so. */
 const BAR_HEIGHT = 17
+
+/**
+ * The phone ring.
+ *
+ * Both mobile clients draw something much larger than an ordinary spinner -- iOS pads it by its
+ * `massiveSpacing` on each side, so it spans most of the width -- because on a phone this is the
+ * whole screen rather than one element on it.
+ */
+const RING_SIZE = 160
+const RING_THICKNESS = 8
 
 interface LoadingScreenProps {
   onGaveUp: () => void
@@ -70,47 +80,56 @@ export function LoadingScreen({ onGaveUp }: LoadingScreenProps) {
     maximumFractionDigits: 0,
   }).format(fraction)
 
-  return (
-    <OnboardingChrome testID={ELEMENT.onboarding.loadingScreen}>
-      {wide ? (
-        <YStack>
-          <Text size="$headingLarge" weight="bold" userSelect="none">
-            {tr('waitOneMoment')}
-          </Text>
-          {/* Subtitle and percentage on one line, the client's arrangement: the number belongs
-              with the thing it is counting rather than floating beside the bar. */}
-          <XStack justifyContent="space-between" alignItems="center" gap="$1" paddingTop="$1.5">
-            <Text size="$body">{tr('loadAccountProgressMessage')}</Text>
-            <Text size="$body" fontVariant={['tabular-nums']} userSelect="none">
-              {percent}
-            </Text>
-          </XStack>
-          <YStack
-            marginTop="$2.5"
-            height={BAR_HEIGHT}
-            borderRadius="$2"
-            backgroundColor="$bordersColor"
-            overflow="hidden"
-          >
-            <YStack
-              width={`${String(Math.round(fraction * 100))}%`}
-              height="100%"
-              borderRadius="$2"
-              backgroundColor="$primaryColor"
-            />
-          </YStack>
-        </YStack>
-      ) : (
-        <YStack flex={1} alignItems="center" justifyContent="center" gap="$2">
-          <ProgressRing progress={fraction} size={96} thickness={6} />
+  // **The phone loader takes over the screen; the desktop one is a step.** Both mobile clients draw
+  // this over the whole background with nothing else on it -- iOS's ignores the safe area to do it
+  // -- where the desktop client renders it inside the same registration column as every other
+  // stage. So this is the one step that is not always inside the chrome.
+  if (!wide) {
+    return (
+      <Screen testID={ELEMENT.onboarding.loadingScreen}>
+        <YStack flex={1} alignItems="center" justifyContent="center" gap="$2" padding="$3">
+          <ProgressRing progress={fraction} size={RING_SIZE} thickness={RING_THICKNESS} />
+          {/* No number beside it. The ring is the whole indicator on both phones -- the percentage
+              drives it and is never shown, which is just as well given it is a fixed ramp rather
+              than a measurement. */}
           <Text size="$titleLarge" weight="bold" textAlign="center">
             {tr('waitOneMoment')}
           </Text>
-          <Text tone="secondary" textAlign="center">
-            {tr('loadAccountProgressMessage')}
-          </Text>
+          <Text textAlign="center">{tr('loadAccountProgressMessage')}</Text>
         </YStack>
-      )}
+      </Screen>
+    )
+  }
+
+  return (
+    <OnboardingChrome testID={ELEMENT.onboarding.loadingScreen}>
+      <YStack>
+        <Text size="$headingLarge" weight="bold" userSelect="none">
+          {tr('waitOneMoment')}
+        </Text>
+        {/* Subtitle and percentage on one line, the client's arrangement: the number belongs
+              with the thing it is counting rather than floating beside the bar. */}
+        <XStack justifyContent="space-between" alignItems="center" gap="$1" paddingTop="$1.5">
+          <Text size="$body">{tr('loadAccountProgressMessage')}</Text>
+          <Text size="$body" fontVariant={['tabular-nums']} userSelect="none">
+            {percent}
+          </Text>
+        </XStack>
+        <YStack
+          marginTop="$2.5"
+          height={BAR_HEIGHT}
+          borderRadius="$2"
+          backgroundColor="$bordersColor"
+          overflow="hidden"
+        >
+          <YStack
+            width={`${String(Math.round(fraction * 100))}%`}
+            height="100%"
+            borderRadius="$2"
+            backgroundColor="$primaryColor"
+          />
+        </YStack>
+      </YStack>
     </OnboardingChrome>
   )
 }

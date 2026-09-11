@@ -33,6 +33,19 @@ export const FLAGS = {
 
   /** Choose the app's language during onboarding, before an account exists. */
   onboardingLanguageSelect: false,
+
+  /**
+   * Take the tablet's onboarding on any wide window, rather than only where the OS suspends the app.
+   *
+   * A tablet is the desktop layout plus the notification-mode step, and which of those two a build
+   * gets is decided by the notifications port -- an OS fact, not a window size. That is correct and
+   * it makes the tablet flow unreachable on a desktop, so the one design nobody can open is the one
+   * hardest to check. This flag makes a desktop window answer the way a tablet does.
+   *
+   * Off by default. It changes which screens appear, so it is a thing to look at deliberately
+   * rather than something to leave on.
+   */
+  onboardingTabletDesign: false,
 } as const
 
 export type FlagName = keyof typeof FLAGS

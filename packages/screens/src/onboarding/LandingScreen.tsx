@@ -28,6 +28,16 @@ const BUBBLES = [
 const FIRST_BUBBLE_MS = 500
 const BUBBLE_INTERVAL_MS = 1500
 
+/**
+ * How wide a bubble is allowed to get.
+ *
+ * iOS's number, from its bespoke `FakeChat`. A share of the width instead let a bubble run almost
+ * edge to edge on a large phone, which stops reading as a conversation and starts reading as
+ * paragraphs with rounded corners. Android draws these with the real message components and gets
+ * the same effect from their own constraints.
+ */
+const BUBBLE_MAX_WIDTH = 230
+
 interface LandingScreenProps {
   onCreate: () => void
   onRestore: () => void
@@ -48,7 +58,15 @@ export function LandingScreen({ onCreate, onRestore }: LandingScreenProps) {
     <OnboardingChrome testID={ELEMENT.onboarding.screen}>
       {wide ? null : <PhoneOpening />}
       <YStack gap="$1.5">
-        <Button variant="outline" testID={ELEMENT.onboarding.createAccount} onPress={onCreate}>
+        {/* **The two designs weight these differently.** Both mobile clients fill the create
+            button and outline the other, so the new account is the obvious one; the desktop client
+            outlines both and leaves them level. Ported rather than unified -- a phone is somebody's
+            first ten seconds with the app and a desktop install rarely is. */}
+        <Button
+          variant={wide ? 'outline' : 'solid'}
+          testID={ELEMENT.onboarding.createAccount}
+          onPress={onCreate}
+        >
           {tr('onboardingAccountCreate')}
         </Button>
         <Button variant="outline" testID={ELEMENT.onboarding.restoreAccount} onPress={onRestore}>
@@ -93,7 +111,7 @@ function PhoneOpening() {
         {BUBBLES.slice(0, shown).map((bubble) => (
           <YStack
             key={bubble.text}
-            maxWidth="85%"
+            maxWidth={BUBBLE_MAX_WIDTH}
             alignSelf={bubble.outgoing ? 'flex-end' : 'flex-start'}
             paddingVertical="$1.5"
             paddingHorizontal="$2"

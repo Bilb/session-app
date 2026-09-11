@@ -35,6 +35,19 @@ setPorts(
     network: { name: parseNetworkName(process.env['EXPO_PUBLIC_SESSION_NETID']) },
     // Expo inlines every EXPO_PUBLIC_* variable, so a flag is read by its prefixed name.
     flags: { override: (name) => process.env[`EXPO_PUBLIC_${name}`] ?? null },
+    notifications: {
+      // Both mobile operating systems stop the app when it leaves the screen, which is what makes
+      // notification delivery something to choose rather than something that just happens. True on
+      // a tablet as well as a phone: it is the OS that decides this, not the screen size.
+      notificationModesApply: true,
+      // Unchanged, and repeated because a port override replaces the whole object rather than
+      // merging into it. See memoryPorts.
+      fastModeAvailable: false,
+      requestPermission: () => Promise.resolve(true),
+      show: () => Promise.resolve(),
+      onTap: () => () => undefined,
+      setBadgeCount: () => Promise.resolve(),
+    },
     clipboard: {
       setString: (value) => Clipboard.setStringAsync(value).then(() => undefined),
       getString: () => Clipboard.getStringAsync(),

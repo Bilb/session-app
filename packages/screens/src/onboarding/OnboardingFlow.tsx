@@ -1,4 +1,4 @@
-import { requirePorts } from '@session/app'
+import { flag, requirePorts } from '@session/app'
 import { useAccount, useSessionActions } from '@session/state'
 import { useMedia } from '@session/ui'
 import { useEffect, useReducer, useRef, useState } from 'react'
@@ -14,6 +14,7 @@ import {
   backNeedsConfirming,
   initialOnboarding,
   onboardingReducer,
+  type OnboardingDesign,
   type OnboardingState,
   type RecoveryInput,
 } from './flow'
@@ -55,9 +56,7 @@ interface OnboardingFlowProps {
 
 export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
   const actions = useSessionActions()
-  // Which client's onboarding this is, from the window's width: a tablet takes the desktop flow
-  // rather than a stretched phone one, and `gtSm` is >700px.
-  const design = useMedia().gtSm ? 'desktop' : 'phone'
+  const design = useOnboardingDesign()
   const [state, dispatch] = useReducer(onboardingReducer, design, initialOnboarding)
   const [busy, setBusy] = useState(false)
   const [rejected, setRejected] = useState(false)
@@ -246,6 +245,23 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
         return null
     }
   }
+}
+
+/**
+ * Which of the three onboardings this is.
+ *
+ * Two inputs, because they are two questions. The window's width says which layout -- `gtSm` is
+ * >700px, so a tablet takes the desktop frame rather than a stretched phone one, and a resize or a
+ * rotation changes the answer. The notifications port says whether there is a delivery mode to
+ * choose, which is an OS fact and does not change at all.
+ */
+function useOnboardingDesign(): OnboardingDesign {
+  const wide = useMedia().gtSm
+  // The flag is an override for looking at it, not a second source of truth: see its entry in the
+  // flag table for why the tablet design is otherwise unreachable on the machines it is built on.
+  const asks = requirePorts().notifications.notificationModesApply || flag('onboardingTabletDesign')
+  if (!wide) return 'phone'
+  return asks ? 'tablet' : 'desktop'
 }
 
 /**
