@@ -245,5 +245,11 @@ describe('the unit that is nobody`s unit', () => {
     // Encoding it does not throw -- it substitutes the replacement character, which is the quiet
     // failure: the name reaches the wire with a U+FFFD where the emoji was.
     expect(new TextDecoder().decode(new TextEncoder().encode(cut)).endsWith('\ufffd')).toBe(true)
+
+    // And it overshoots the limit it was truncating to. The replacement character is three bytes
+    // where the two units it replaced were four, so 100 units is 102 bytes against a cap of 100:
+    // the slice corrupts the name and still fails at the one job it had.
+    expect(utf8Length(cut)).toBe(102)
+    expect(utf8Length(cut)).toBeGreaterThan(DISPLAY_NAME_MAX_BYTES)
   })
 })
