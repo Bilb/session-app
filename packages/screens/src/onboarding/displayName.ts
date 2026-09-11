@@ -1,4 +1,25 @@
 /**
+ * What a name may be, and in which unit.
+ *
+ * **The same 35 and the same 100 bytes apply to group names and nicknames**, so when either of
+ * those grows an editor it should import these rather than write its own check. The whole subject
+ * is one where two correct answers disagree, and this module is where that is worked out once.
+ *
+ * ⚠️ **`String.length` and `String.slice` are the trap, and they are nobody's unit.** They count
+ * UTF-16 code units: neither bytes, nor code points, nor graphemes. They coincide with all three
+ * for ASCII, which is what makes the mistake invisible until somebody types outside it -- one CJK
+ * character is 1 unit and 3 bytes, one emoji is 2 units and 4 bytes. A `.length` check against a
+ * byte limit therefore admits three times the limit in Chinese and twice it in emoji, and a
+ * `.slice` to that limit shortens neither.
+ *
+ * Worse, `.slice` can cut a surrogate pair in half and leave a lone surrogate -- half a character,
+ * which is not valid text to encode at all. A name field is exactly where somebody puts an emoji.
+ *
+ * So: `utf8Length` for the wire, `codePointLength` for the felt limit, `normalizeDisplayName`
+ * first, and count the same string that gets sent.
+ */
+
+/**
  * How long a display name may be, in **UTF-8 bytes rather than characters**.
  *
  * libSession's limit -- `contact_info::MAX_NAME_LENGTH` -- and therefore the hard one: the bridge

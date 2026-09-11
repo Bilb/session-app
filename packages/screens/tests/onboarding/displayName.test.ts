@@ -206,3 +206,44 @@ describe('the characters normalisation replaces outright', () => {
     expect(typed.normalize('NFC')).toBe(stored.normalize('NFC'))
   })
 })
+
+describe('the unit that is nobody`s unit', () => {
+  // `String.length` counts UTF-16 code units. It agrees with bytes, code points and graphemes for
+  // ASCII and with none of them otherwise, which is what makes a `.length` check against a byte
+  // limit look correct until somebody types outside ASCII. Pinned as an example rather than a
+  // rule, so the next name field that needs a limit can see the three numbers disagree.
+  it('agrees with every other unit for ASCII and none of them otherwise', () => {
+    const ascii = 'a'.repeat(100)
+    expect(ascii.length).toBe(100)
+    expect(utf8Length(ascii)).toBe(100)
+    expect(codePointLength(ascii)).toBe(100)
+
+    // A hundred UTF-16 units of Chinese is three hundred bytes: a `.length` check against the
+    // hundred-byte limit would admit three times it.
+    const cjk = '漢'.repeat(100)
+    expect(cjk.length).toBe(100)
+    expect(utf8Length(cjk)).toBe(300)
+    expect(displayNameProblem(cjk)).toBe('tooLong')
+
+    // And an emoji is two units, so fifty of them pass a `.length` check and are two hundred bytes.
+    const emoji = '😀'.repeat(50)
+    expect(emoji.length).toBe(100)
+    expect(codePointLength(emoji)).toBe(50)
+    expect(utf8Length(emoji)).toBe(200)
+    expect(displayNameProblem(emoji)).toBe('tooLong')
+  })
+
+  it('cannot be sliced safely, because half a character is not a character', () => {
+    // 99 ASCII plus one emoji is 101 UTF-16 units. Cutting at 100 ends mid-pair.
+    const name = `${'a'.repeat(99)}😀`
+    expect(name.length).toBe(101)
+    const cut = name.slice(0, 100)
+    // A lone high surrogate: not a character, and not something that can be encoded as text.
+    expect(cut.length).toBe(100)
+    expect(cut.codePointAt(99)).toBeGreaterThanOrEqual(0xd800)
+    expect(cut.codePointAt(99)).toBeLessThanOrEqual(0xdbff)
+    // Encoding it does not throw -- it substitutes the replacement character, which is the quiet
+    // failure: the name reaches the wire with a U+FFFD where the emoji was.
+    expect(new TextDecoder().decode(new TextEncoder().encode(cut)).endsWith('\ufffd')).toBe(true)
+  })
+})
