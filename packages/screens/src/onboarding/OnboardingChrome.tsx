@@ -18,6 +18,20 @@ import { LanguageButton } from '../LanguageButton'
 
 /** The desktop client's registration column. Everything inside onboarding is this wide. */
 const COLUMN_WIDTH = 348
+
+/**
+ * How tall every step's content is, whatever is in it.
+ *
+ * The desktop client's own number, and its comment says why: *"Min height should match the
+ * onboarding step with the largest height -- this prevents the loading spinner from jumping around
+ * while still keeping things centered."*
+ *
+ * It belongs on the column rather than on a step, because the whole column is what is centred: the
+ * lockup sits above the step, so a step one line shorter than the last moves the lockup too. The
+ * client puts it on the steps only, and its own Start screen does move as a result -- this is the
+ * same fix applied one level up, which is where it actually holds still.
+ */
+const CONTENT_MIN_HEIGHT = 276
 /** The hero's share of the window. A maximum, not a fixed split. */
 const HERO_FRACTION = '40%'
 
@@ -69,7 +83,7 @@ export function OnboardingChrome({ children, testID }: { children: ReactNode; te
         <YStack flex={1} alignItems="center" justifyContent="center" padding="$3">
           <YStack width={COLUMN_WIDTH} gap="$3">
             <OnboardingHeader />
-            {children}
+            <YStack minHeight={CONTENT_MIN_HEIGHT}>{children}</YStack>
           </YStack>
         </YStack>
       </XStack>
@@ -99,8 +113,9 @@ function OnboardingHeader() {
       <SessionBrand size={26} color="var(--primaryColor)" />
       <SessionWordmark size={15} color="var(--textPrimary)" />
       <YStack flex={1} />
-      {/* Tight, because these read as one group of three rather than three separate controls. */}
-      <XStack alignItems="center" gap="$0.5">
+      {/* One group of three. The designs give 8px between them; the space ladder has 5 and 10 and
+          no 8, so this takes the rung above rather than stepping off the ladder for one row. */}
+      <XStack alignItems="center" gap="$1.5">
         {flag('onboardingLanguageSelect') ? <LanguageButton /> : null}
         {/* Ghost, because `circleHelp` brings its own circle: a border here would draw a second
             ring around the first. The glyph is therefore the full control size, where the bordered
@@ -125,7 +140,7 @@ function OnboardingHeader() {
           onPress={() => {
             open(WEBSITE_URL)
           }}
-          icon={<Icon name="link" size="$3" color="$textPrimary" />}
+          icon={<Icon name="link" size="$2" color="$textPrimary" />}
         />
       </XStack>
     </XStack>

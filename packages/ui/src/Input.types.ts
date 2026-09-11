@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 /**
  * The props both Input variants accept.
  *
@@ -25,5 +27,15 @@ export interface InputProps {
    * height of its own text. A shared component cannot know which direction it was put in.
    */
   grow?: boolean
+  /**
+   * Drawn inside the field, against its trailing edge.
+   *
+   * Inside rather than beside, because everything that goes here is *about* the field -- a
+   * character count, a reveal toggle -- and a control under a field pushes whatever follows it down
+   * the moment it appears. The field's own trailing padding grows to make room.
+   */
+  end?: ReactNode
+  /** How much room to leave for `end`. Given by the caller, which is the only thing that knows. */
+  endWidth?: number
   testID?: string
 }

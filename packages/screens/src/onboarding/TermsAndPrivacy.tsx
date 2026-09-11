@@ -1,7 +1,7 @@
 import { requirePorts } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Text, XStack, YStack } from '@session/ui'
+import { Button, Icon, Modal, Text, XStack, YStack } from '@session/ui'
 import { useState } from 'react'
 
 import { LocalizedText } from '../LocalizedText'
@@ -13,20 +13,23 @@ import { LocalizedText } from '../LocalizedText'
  * that a translation could change is a phishing surface, and this is the one screen reached before
  * anybody has decided to trust the app.
  */
-const TERMS_URL = 'https://getsession.org/terms-of-service'
-const PRIVACY_URL = 'https://getsession.org/privacy-policy'
+const LINKS = [
+  { url: 'https://getsession.org/terms-of-service', testID: ELEMENT.onboarding.openTerms },
+  { url: 'https://getsession.org/privacy-policy', testID: ELEMENT.onboarding.openPrivacy },
+] as const
 
 /**
  * The footer of the landing screen: what using this commits you to.
  *
- * **The whole sentence is one control**, which is how the legacy clients do it -- Android renders
- * `onboardingTosPrivacy` as a single borderless button. The alternative, making the two bold runs
- * tappable, cannot survive translation: every language reorders them, and some do not keep them as
- * contiguous runs at all.
+ * **The whole sentence is one control and it opens a dialog offering both documents.** That is the
+ * newer of the two patterns in the product -- the older one made each document's name its own tap
+ * target and opened a dialog about that one link. The newer one is better for a phone, where two
+ * three-word targets inside a paragraph are hard to hit, and it is better for translation, where
+ * every language reorders those names and some do not keep them as contiguous runs at all.
  *
- * **It asks before it leaves.** Tapping opens a dialog offering the two documents rather than
- * launching a browser. Worth keeping rather than smoothing away for the same reason the URLs are
- * hardcoded: nobody here has chosen to trust this app yet.
+ * It asks before it leaves rather than launching a browser, which is worth keeping for the same
+ * reason the URLs are hardcoded: nobody here has chosen to trust this app yet. The dialog shows the
+ * addresses themselves, so what you are agreeing to visit is legible before you go.
  */
 export function TermsAndPrivacy() {
   const [open, setOpen] = useState(false)
@@ -48,8 +51,6 @@ export function TermsAndPrivacy() {
       >
         {/* Not the Button's own label, because the sentence carries the emphasis the translators
             put in it and a plain label would flatten it. */}
-        {/* 12pt, emphasis included -- the bold runs are the two documents' names and are the
-            only thing in the sentence anybody is looking for. */}
         <LocalizedText
           text={tr('onboardingTosPrivacy')}
           tone="secondary"
@@ -58,54 +59,79 @@ export function TermsAndPrivacy() {
         />
       </Button>
 
-      {!open ? null : (
+      {/* A modal over the page rather than a panel under the sentence. Inline, it pushed the
+          screen around and read as part of it; this is a question being asked, and the thing it is
+          asking about should still be visible behind it. */}
+      <Modal
+        open={open}
+        onClose={() => {
+          setOpen(false)
+        }}
+      >
         <YStack
+          width="100%"
+          maxWidth={360}
           gap="$1.5"
           padding="$2"
-          borderRadius="$2"
+          borderRadius="$3"
           borderWidth={1}
           borderColor="$bordersColor"
           backgroundColor="$backgroundTertiary"
           testID={ELEMENT.onboarding.openUrlDialog}
         >
-          <Text weight="semibold">{tr('urlOpen')}</Text>
-          <Text tone="secondary" size="$label">
-            {tr('urlOpenBrowser')}
-          </Text>
-          <XStack gap="$1" flexWrap="wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              testID={ELEMENT.onboarding.openTerms}
-              onPress={() => {
-                leaveFor(TERMS_URL)
-              }}
-            >
-              {tr('onboardingTos')}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              testID={ELEMENT.onboarding.openPrivacy}
-              onPress={() => {
-                leaveFor(PRIVACY_URL)
-              }}
-            >
-              {tr('onboardingPrivacy')}
-            </Button>
+          <XStack alignItems="flex-start" gap="$1">
+            <YStack flex={1} alignItems="center" gap="$0.5">
+              <Text weight="bold">{tr('urlOpen')}</Text>
+              {/* The plural wording, because the dialog offers both links rather than confirming
+                  one. The catalogue has it as the "alternative" description. */}
+              <Text size="$label" textAlign="center">
+                {tr('urlOpenDescriptionAlternative')}
+              </Text>
+            </YStack>
             <Button
               variant="ghost"
-              size="sm"
+              size="xs"
+              circular
+              accessibilityLabel={tr('close')}
               testID={ELEMENT.onboarding.openUrlCancel}
               onPress={() => {
                 setOpen(false)
               }}
-            >
-              {tr('cancel')}
-            </Button>
+              icon={<Icon name="x" size="$4" color="$textPrimary" />}
+            />
           </XStack>
+
+          {/* The addresses themselves, each opening immediately. Showing the URL rather than the
+              document's name is the point of the dialog: it is the last moment before leaving, and
+              the thing worth reading is where you are going. */}
+          <YStack borderRadius="$2" backgroundColor="$backgroundSecondary" overflow="hidden">
+            {LINKS.map((link, index) => (
+              <XStack
+                key={link.url}
+                role="button"
+                alignItems="center"
+                gap="$1"
+                padding="$1.5"
+                cursor="pointer"
+                pressStyle={{ backgroundColor: '$backgroundTertiary' }}
+                borderTopWidth={index === 0 ? 0 : 1}
+                borderColor="$separatorColor"
+                testID={link.testID}
+                onPress={() => {
+                  leaveFor(link.url)
+                }}
+              >
+                {/* Wraps rather than truncates: half an address is worse than a tall row, because
+                    the half that gets cut is the part that says which site it is. */}
+                <Text flex={1} size="$label" weight="bold">
+                  {link.url}
+                </Text>
+                <Icon name="externalLink" size="$4" color="$textPrimary" />
+              </XStack>
+            ))}
+          </YStack>
         </YStack>
-      )}
+      </Modal>
     </YStack>
   )
 }

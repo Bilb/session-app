@@ -7,7 +7,7 @@
  */
 
 export { Avatar } from './Avatar'
-export { SessionBrand, SessionWordmark } from './Brand'
+export { RecoveryPasswordMark, SessionBrand, SessionWordmark } from './Brand'
 export { HeroImage } from './HeroImage'
 export { ProgressRing } from './ProgressRing'
 export type { AvatarProps } from './Avatar'
@@ -23,6 +23,7 @@ export type {
   LanguagePickerTestIDs,
 } from './LanguagePicker.types'
 export { List } from './List'
+export { Modal } from './Modal'
 export type { ListProps } from './List'
 export type { InputProps } from './Input.types'
 export { Screen } from './Screen'

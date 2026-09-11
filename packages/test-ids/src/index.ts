@@ -101,6 +101,7 @@ export const ELEMENT = {
 
     loadAccountScreen: 'onboarding-load-account-screen',
     recoveryPhraseInput: 'onboarding-recovery-phrase',
+    recoveryPhraseReveal: 'onboarding-recovery-phrase-reveal',
     recoveryPhraseError: 'onboarding-recovery-phrase-error',
 
     notificationsScreen: 'onboarding-notifications-screen',
