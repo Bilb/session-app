@@ -89,7 +89,7 @@ export function contrastPick(candidates: readonly string[], against: string): st
  * 57 degrees to 29, which is the danger red's hue, and then to black. A desaturated amber is still
  * an amber; a red-black is a different colour wearing the same name.
  */
-export function inGamut(l: number, c: number, h: number): string {
+function inGamut(l: number, c: number, h: number): string {
   if (holdsHue(l, c, h)) return oklchToHex({ l, c, h })
 
   // The gamut boundary is monotonic in chroma at a fixed lightness and hue, so this bisects rather
@@ -127,27 +127,12 @@ export function contrastPickAll(candidates: readonly string[], against: readonly
 }
 
 export function contrastPrefer(
-        candidates: readonly string[], against: string, min: number): string {
-  for (const candidate of candidates)
-    if (contrastRatio(candidate, against) >= min) return candidate
+  candidates: readonly string[],
+  against: string,
+  min: number,
+): string {
+  for (const candidate of candidates) if (contrastRatio(candidate, against) >= min) return candidate
   return contrastPick(candidates, against)
-}
-
-/**
- * Whichever of the two is lighter.
- *
- * For the handful of elements whose polarity is fixed rather than themed: a switch thumb and the
- * panel a QR code is printed on are light in every theme, because one is read as a physical object
- * and the other has to scan. Stepping them off the surface ladder makes a dark theme's thumb dark,
- * which reads as switched off.
- */
-export function lighter(a: string, b: string): string {
-  return hexToOklch(a).l >= hexToOklch(b).l ? a : b
-}
-
-/** The other end of the same rule. See `lighter`. */
-export function darker(a: string, b: string): string {
-  return hexToOklch(a).l < hexToOklch(b).l ? a : b
 }
 
 export function contrastAdjust(colour: string, against: string, min: number): string {
@@ -207,7 +192,10 @@ export const MIN_SEMANTIC_CHROMA = 0.08
  * accent link legible on the page can fail on a card two steps up.
  */
 export function contrastPreferAll(
-        candidates: readonly string[], against: readonly string[], min: number): string {
+  candidates: readonly string[],
+  against: readonly string[],
+  min: number,
+): string {
   const worst = (hex: string) => Math.min(...against.map((a) => contrastRatio(hex, a)))
   for (const candidate of candidates) if (worst(candidate) >= min) return candidate
   return candidates.reduce((best, c) => (worst(c) > worst(best) ? c : best), candidates[0]!)
@@ -228,8 +216,7 @@ export function contrastPreferAll(
  * When no lightness clears every surface, the best available is returned: that is a signal about
  * the *base*, not about this colour, and `baseFits` is what detects it.
  */
-export function contrastAdjustAll(
-        colour: string, against: readonly string[], min: number): string {
+export function contrastAdjustAll(colour: string, against: readonly string[], min: number): string {
   const { l, c, h } = hexToOklch(colour)
   const worst = (hex: string) => Math.min(...against.map((a) => contrastRatio(hex, a)))
   const floor = c * CHROMA_KEEP
@@ -297,8 +284,7 @@ const MAX_BASE_CHROMA = 0.12
 export function step(colour: string, n: number, awayFrom: string): string {
   const { l, c, h } = hexToOklch(colour)
   const direction = hexToOklch(awayFrom).l < 0.5 ? 1 : -1
-  const move = (by: number) =>
-    oklchToHex({ l: Math.min(1, Math.max(0, l + direction * by)), c, h })
+  const move = (by: number) => oklchToHex({ l: Math.min(1, Math.max(0, l + direction * by)), c, h })
 
   let out = move(n * STEP)
   // Keep going until the result is far enough from where it started to be seen. This is what

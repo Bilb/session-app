@@ -1,7 +1,7 @@
 # Theming
 
 A theme is a handful of authored numbers. Everything else is computed from them, so a colour a
-*user* picks goes through the same derivation as one we shipped — a custom accent is not a second
+_user_ picks goes through the same derivation as one we shipped — a custom accent is not a second
 code path.
 
 `packages/theme-tokens` owns it and has **zero runtime dependencies**, so the OKLCh conversions and
@@ -16,15 +16,15 @@ tint ─────┤     surfaces · text · borders · semantic · accent va
 accent ───┘
 ```
 
-| knob | what it is |
-| --- | --- |
-| `polarity` | `light` or `dark`. Sets the step direction *and* which contrast targets apply. |
-| `background` | The base. Where the ladder starts. |
-| `tint` | `{ hue, surface, emphasis }`. Two chromas, because surfaces and identity need different amounts. |
-| `textTint?` | Optional `{ chroma, hue? }`, if the theme's text carries its identity. Ocean Light's navy. Hue defaults to the theme's. |
-| `semantic?` | Optional authored `danger` / `warning`, for a preset whose reds are recognisable. |
-| `defaultAccent` | The accent the theme comes up as. Changes nothing derived. |
-| `overrides?` | Last resort. A stated departure from the rules. Two presets use it, one role each. |
+| knob            | what it is                                                                                                                                                                                                                                                                |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `polarity`      | `light` or `dark`. Sets the step direction _and_ which contrast targets apply.                                                                                                                                                                                            |
+| `background`    | The base. Where the ladder starts.                                                                                                                                                                                                                                        |
+| `tint`          | `{ hue, surface, emphasis }`. Two chromas, because surfaces and identity need different amounts.                                                                                                                                                                          |
+| `textTint?`     | Optional `{ chroma, hue? }`, if the theme's text carries its identity. Ocean Light's navy. Hue defaults to the theme's.                                                                                                                                                   |
+| `semantic?`     | Optional authored `danger` / `warning`, for a preset whose reds are recognisable.                                                                                                                                                                                         |
+| `defaultAccent` | The accent the theme comes up as. Changes nothing derived.                                                                                                                                                                                                                |
+| `overrides?`    | Last resort. A stated departure from the rules. Two presets use it, one role each. Surface overrides are resolved _before_ anything derives from them — four roles hang off the recessed surface, so an override applied on the way out arrives too late for all of them. |
 
 Every one of these is settable in the playground's Advanced mode, including turning `textTint` off —
 which is what makes Ocean Light constructible rather than special.
@@ -38,29 +38,29 @@ is read from the base's lightness; the tint hue comes from whichever pick carrie
 
 ## Which role do I reach for?
 
-Ask what the thing *is*, not what colour you want.
+Ask what the thing _is_, not what colour you want.
 
-| you are drawing | use |
-| --- | --- |
-| the page | `backgroundPrimary` |
-| a card, a list panel, a recessed pane | `backgroundSecondary` |
-| a selected row, a filled input, a hover surface | `backgroundTertiary` |
-| a card **inside** a card | `backgroundNested` |
-| body text | `textPrimary` |
-| a caption, a timestamp, a section label, a snippet | `textSecondary` |
-| a disabled label | `textDisabled` |
-| an outline control's edge, an input, an illustration frame | `bordersColor` |
-| a divider inside a card, a pane edge | `separatorColor` |
-| a filled accent button, a badge, an avatar, a bubble you sent | `primaryColor` |
-| text or a glyph sitting **on** that fill | `onAccent` |
-| a link, an inline emphasis, a large numeral | `accentText` |
-| an accent button's hover / pressed | `accentHover` / `accentPressed` |
-| destructive text, a destructive outline | `dangerColor` |
-| text on a danger fill | `onDanger` |
-| a caution line | `warningColor` |
-| a switch thumb, a QR panel | `surfaceInverted` |
-| the modules printed on that panel | `surfaceInk` |
-| an incoming bubble, and its text | `messageBubbleIncomingBg` / `Text` |
+| you are drawing                                               | use                                |
+| ------------------------------------------------------------- | ---------------------------------- |
+| the page                                                      | `backgroundPrimary`                |
+| a card, a list panel, a recessed pane                         | `backgroundSecondary`              |
+| a selected row, a filled input, a hover surface               | `backgroundTertiary`               |
+| a card **inside** a card                                      | `backgroundNested`                 |
+| body text                                                     | `textPrimary`                      |
+| a caption, a timestamp, a section label, a snippet            | `textSecondary`                    |
+| a disabled label                                              | `textDisabled`                     |
+| an outline control's edge, an input, an illustration frame    | `bordersColor`                     |
+| a divider inside a card, a pane edge                          | `separatorColor`                   |
+| a filled accent button, a badge, an avatar, a bubble you sent | `primaryColor`                     |
+| text or a glyph sitting **on** that fill                      | `onAccent`                         |
+| a link, an inline emphasis, a large numeral                   | `accentText`                       |
+| an accent button's hover / pressed                            | `accentHover` / `accentPressed`    |
+| destructive text, a destructive outline                       | `dangerColor`                      |
+| text on a danger fill                                         | `onDanger`                         |
+| a caution line                                                | `warningColor`                     |
+| a switch thumb, a QR panel                                    | `surfaceInverted`                  |
+| the modules printed on that panel                             | `surfaceInk`                       |
+| an incoming bubble, and its text                              | `messageBubbleIncomingBg` / `Text` |
 
 No hex outside `@session/theme-tokens`. `pnpm --filter @session/ui test` fails on a token name that
 does not exist, because tamagui resolves a missing token to `0` silently.
@@ -80,17 +80,17 @@ feature-row description.
 way — which produced black body text above light muted text on the same card.
 
 If you add a role, derive it from its parent (`above()`, not `at()`) and clear its floor against
-*every* surface it can appear on (`contrastAdjustAll`, `contrastPreferAll`, `contrastPickAll`).
+_every_ surface it can appear on (`contrastAdjustAll`, `contrastPreferAll`, `contrastPickAll`).
 Assume it will be drawn on a card until proven otherwise. Unit tests over the four shipped themes
 all passed while muted text was broken; the sweep caught it.
 
-Worth knowing what the fix explained: dimming muted text only as far as the *worst* surface allows
+Worth knowing what the fix explained: dimming muted text only as far as the _worst_ surface allows
 puts light-theme muted text at 5.14:1 against white. The shipped value is 5.17. What had looked
 like an arbitrarily dark grey turns out to be exactly what working on a card costs.
 
 **Accent-as-fill and accent-as-text are two roles.** Session's accents are chosen to be vivid on a
 bubble. The green accent as link text on white measures under 1.6:1, and the accent is a brand
-colour, so it is not ours to darken. `accentText` therefore *picks* between the accent and the body
+colour, so it is not ours to darken. `accentText` therefore _picks_ between the accent and the body
 text. On a light ground it resolves to the body text — which is why a light theme looks less
 accented, and that is correct rather than a bug.
 
@@ -98,11 +98,23 @@ accented, and that is correct rather than a bug.
 the body text, which is white in the dark themes: white on the accent green is about 1.6:1.
 
 **Off and disabled states come from the surface ladder, never the border role.** In a theme whose
-border is a saturated identity colour, a border-coloured switch track reads as switched *on*.
+border is a saturated identity colour, a border-coloured switch track reads as switched _on_.
 
-**Some elements have fixed polarity but not fixed identity.** A switch thumb and a QR panel are
-light in every theme — one reads as a physical object, the other has to scan. But light is not
-white: Ocean Light's QR panel is a tinted blue. That is `surfaceInverted`.
+**Fixed polarity is a role swap, not a pinned colour.** A QR code has to be dark-on-light in every
+theme, and the clients get that by swapping which existing role feeds which slot rather than by
+hardcoding anything:
+
+|             | modules (`surfaceInk`) | panel (`surfaceInverted`) |
+| ----------- | ---------------------- | ------------------------- |
+| light theme | `textPrimary`          | `backgroundSecondary`     |
+| dark theme  | `backgroundSecondary`  | `textPrimary`             |
+
+Both values stay themed, so Ocean Light's modules are its navy and Ocean Dark's are its slate — not
+a flat black. Deriving the modules as "the darker of the two anchors" is right on light themes and
+wrong on both dark ones, which is what an earlier version of this did.
+
+The switch thumb takes `surfaceInverted` for the same reason: light in every theme, because a dark
+thumb reads as switched off.
 
 **Illustrations are exempt. Text and controls are not.** The Session mark and the network diagram
 keep the brand green even on white.
@@ -118,7 +130,7 @@ both into a narrow band of lightness, so separating them means driving one of th
 whichever yields loses its colour — the warning became a brown at chroma 0.074 that read as body
 text. Dropping the requirement raised knob-space coverage from 36% to 47%.
 
-This is also what the standard asks. WCAG 1.4.1 forbids colour as the *sole* carrier of meaning, and
+This is also what the standard asks. WCAG 1.4.1 forbids colour as the _sole_ carrier of meaning, and
 these are sentences — "Do not share your recovery password", "Delete account" — which say what they
 mean in words. A bare status dot would be a different question, and should not rely on the pair.
 
@@ -135,13 +147,13 @@ recognisable and which the derivation would otherwise place visibly elsewhere.
 Ocean Light's row dividers measure `#cddce3` (1.31 from the card, surface chroma) while its authored
 border is `#5CAACC` (2.59 from the page, emphasis chroma). Conflating them made every divider a
 vivid blue rule, and it manufactured a phantom outlier — the 1.33 target fitted to "borders" was the
-separator's value all along. Note what this did *not* do: Ocean Light still authors its control
+separator's value all along. Note what this did _not_ do: Ocean Light still authors its control
 edge, because 2.59 really is louder than the rule's 1.32. The contradiction went; the departure
 stayed.
 
 **A surface takes the theme's hue unconditionally; text keeps its own.** These are different
 questions and answering them the same way breaks something either direction. `tintFloor` raises a
-*surface's* chroma to the floor at the theme hue always — because the tint knob exists to say what
+_surface's_ chroma to the floor at the theme hue always — because the tint knob exists to say what
 colour the surfaces are, and a base with chroma of its own must not be able to veto it. `dim` does
 the opposite for text, where a colour that carries hue keeps it, which is what stops a navy muted
 text turning teal.
@@ -156,7 +168,7 @@ searches were given targets that white and black satisfy perfectly, and both dul
 raising the danger/warning separation produced a `#ffffff` warning on one base and `#000000` on
 another, and squeezing the last contrast out of an amber on a saturated base gave `#fdfdfd` — 4.56:1
 and invisible. `contrastAdjustAll` and `distinguish` share a `CHROMA_KEEP` floor. On a base too
-hostile to carry a full palette the guarantee downgrades to *recognisable*, not to *high contrast*,
+hostile to carry a full palette the guarantee downgrades to _recognisable_, not to _high contrast_,
 because a warning that no longer looks like a warning is worse than one with less contrast.
 
 **Ask the gamut, do not assume it.** Requesting a chroma sRGB cannot hold at some lightness does not
@@ -189,17 +201,17 @@ emit a palette that cannot work.
 One monotonic ramp, named by role in four groups. Never pin an absolute root font size — that is
 what keeps OS text scaling reachable, and it is asserted by a contract test.
 
-| group | tokens |
-| --- | --- |
-| label | `micro` 9 · `caption` 11 · `label` 12 |
-| body | `body` 14 · `bodyLarge` 16 |
-| header | `title` 18 · `titleLarge` 20 · `heading` 23 · `headingLarge` 26 |
-| display | `display` 29 · `displayLarge` 36 |
+| group   | tokens                                                          |
+| ------- | --------------------------------------------------------------- |
+| label   | `micro` 9 · `caption` 11 · `label` 12                           |
+| body    | `body` 14 · `bodyLarge` 16                                      |
+| header  | `title` 18 · `titleLarge` 20 · `heading` 23 · `headingLarge` 26 |
+| display | `display` 29 · `displayLarge` 36                                |
 
 Line height is derived at `LINE_HEIGHT_RATIO` (1.2), not declared, so a size added to the ramp
 cannot arrive without one.
 
-`size="$body"` on `Text` is the font ramp. `size="$6"` on `Icon` is the *size* scale — component
+`size="$body"` on `Text` is the font ramp. `size="$6"` on `Icon` is the _size_ scale — component
 heights. They are different scales that both accept `size`.
 
 Scaling is split by platform: **mobile follows system dynamic text scaling**, **desktop uses zoom**

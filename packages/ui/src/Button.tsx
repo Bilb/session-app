@@ -108,7 +108,11 @@ export function Button({
     >
       {loading ? <Spinner size="small" color={LABEL_TONE[variant]} /> : icon}
       {typeof children === 'string' ? (
-        <Text size={size === 'sm' ? '$label' : '$body'} weight="semibold" color={LABEL_TONE[variant]}>
+        <Text
+          size={size === 'sm' ? '$label' : '$body'}
+          weight="semibold"
+          color={LABEL_TONE[variant]}
+        >
           {children}
         </Text>
       ) : (

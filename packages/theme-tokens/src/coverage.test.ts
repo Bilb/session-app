@@ -17,8 +17,18 @@ import { coverage, maxChroma, sample } from './coverage'
 
 const SAMPLES = 2000
 
+/**
+ * Drawn once and shared.
+ *
+ * Every draw runs the whole derivation, so sampling per test made this the slowest thing in the
+ * suite and it timed out on CI's slower runners at the default five seconds. Nothing here needs its
+ * own draw: the seed is fixed, so a second call returns the same samples anyway -- which is the
+ * property the determinism test exists to prove, and it can prove it with far fewer.
+ */
+const SAMPLED = sample(SAMPLES)
+
 describe('knob-space coverage', () => {
-  const c = coverage(sample(SAMPLES))
+  const c = coverage(SAMPLED)
 
   it('holds up across bases the system says it can support', () => {
     // Measured ~95%. Nothing is promised about bases `baseFits` rejects; those are covered by the
@@ -33,16 +43,15 @@ describe('knob-space coverage', () => {
   it('is near-total once the base is also near-neutral', () => {
     // Measured ~97% (light 93%, dark 98%). The residue is almost all light bases, where the
     // surfaces step down into a narrow band and semantic colours have less room to work in.
-    const low = sample(SAMPLES).filter(
-      (s) => s.fits && hexToOklch(s.knobs.background).c <= 0.06,
-    )
+    const low = SAMPLED.filter((s) => s.fits && hexToOklch(s.knobs.background).c <= 0.06)
     const valid = low.filter((s) => s.failed.length === 0).length
     expect(valid / low.length).toBeGreaterThan(0.94)
   })
 
   it('reports the same numbers every run', () => {
-    // The seeded generator is the point: a figure quoted in a review has to be reproducible.
-    expect(coverage(sample(SAMPLES)).valid).toBe(c.valid)
+    // The seeded generator is the point: a figure quoted in a review has to be reproducible. Two
+    // small independent draws prove that as well as two large ones and cost a fraction as much.
+    expect(coverage(sample(200)).valid).toBe(coverage(sample(200)).valid)
   })
 
   it('knows what chroma sRGB can actually hold', () => {

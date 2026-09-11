@@ -19,7 +19,7 @@ import type { ThemeKnobs, ThemeTokens } from './themeTokens'
 const ACCENTS = Object.values(PRIMARY_COLOR_HEX)
 
 /** Every predicate a palette owes, and what it means when one fails. */
-export type Check =
+type Check =
   | 'body text'
   | 'muted text'
   | 'accent as text'
@@ -118,7 +118,7 @@ function draw(random: () => number): Sample {
   }
 }
 
-export function sample(count: number, seed = 0x5EED): Sample[] {
+export function sample(count: number, seed = 0x5eed): Sample[] {
   const random = lcg(seed)
   return Array.from({ length: count }, () => draw(random))
 }

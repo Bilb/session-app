@@ -8,8 +8,6 @@ import {
   contrastPrefer,
   contrastPreferAll,
   contrastTo,
-  darker,
-  lighter,
   step,
   tint,
   tintFloor,
@@ -129,18 +127,6 @@ const DANGER_BASE = '#E12D19'
  */
 const WARNING_BASE = { light: '#A64B00', dark: '#FCB159' } as const
 
-
-/**
- * What a QR code needs between its modules and the panel they are printed on.
- *
- * Far above any text floor, because this is not about reading -- it is about a camera in poor light
- * resolving a 49x49 grid. It is also what decides *which* surface the panel is: the four shipped
- * screens use the recessed surface where it is light enough to print on (Classic Light's grey
- * panel, Ocean Light's cyan one) and fall back to plain white where it is not (both dark themes).
- * One rule, and the fallback is a consequence rather than a special case.
- */
-const SCANNABLE = 10
-
 /** What a disabled label still has to manage, on every surface. Below AA on purpose. */
 const DISABLED_FLOOR = 2
 
@@ -190,8 +176,22 @@ const CHROMA_DECAY = 0.66
  * 1.32). The override remains, it just no longer has to stand in for a broken target.
  */
 const TARGETS = {
-  light: { surfaceRaised: 1.055, surfaceOverlay: 1.135, bubble: 1.2, border: 1.33, mutedText: 4.6, disabledText: 2.4 },
-  dark: { surfaceRaised: 1.18, surfaceOverlay: 1.25, bubble: 1.6, border: 1.785, mutedText: 7.05, disabledText: 3.4 },
+  light: {
+    surfaceRaised: 1.055,
+    surfaceOverlay: 1.135,
+    bubble: 1.2,
+    border: 1.33,
+    mutedText: 4.6,
+    disabledText: 2.4,
+  },
+  dark: {
+    surfaceRaised: 1.18,
+    surfaceOverlay: 1.25,
+    bubble: 1.6,
+    border: 1.785,
+    mutedText: 7.05,
+    disabledText: 3.4,
+  },
 } as const
 
 const KNOBS: Record<ThemeState, ThemeKnobs> = {
@@ -263,9 +263,8 @@ const KNOBS: Record<ThemeState, ThemeKnobs> = {
 export function knobsFor(base: string, accent: string): ThemeKnobs {
   const { l, c, h } = hexToOklch(base)
   const polarity = l >= 0.5 ? 'light' : 'dark'
-  const fitted = polarity === 'light'
-    ? { surface: 0.013, emphasis: 0.059 }
-    : { surface: 0.026, emphasis: 0.045 }
+  const fitted =
+    polarity === 'light' ? { surface: 0.013, emphasis: 0.059 } : { surface: 0.026, emphasis: 0.045 }
 
   return {
     polarity,
@@ -312,21 +311,24 @@ export type ThemeTokens = {
    * as a physical object and a QR panel has to scan. A dark theme that steps these off its own
    * surface ladder gets a dark thumb, which reads as switched off.
    *
-   * Light, but not necessarily white: where the recessed surface is light enough to print on, it
-   * is used, so Ocean Light's panel is its cyan and Classic Light's is its grey. Fixed polarity is
-   * not the same as no identity.
+   * Light, but not necessarily white, and not a derived colour either: it is one of two existing
+   * roles, chosen by polarity. See `surfaceInk`.
    */
   surfaceInverted: string
   /**
    * The counterpart, and the reason `surfaceInverted` exists at all: what gets *printed* on it.
    *
    * A QR code has to be dark-on-light in every theme, so neither half of it can follow the theme's
-   * polarity. The panel takes the lighter anchor and the modules take the darker one — which is
-   * what makes Ocean Light's modules its navy rather than a flat black, and Classic Dark's its own
-   * near-black rather than white. Two fixed-polarity roles, one rule, read from opposite ends.
+   * polarity. What the clients do -- and it is better than deriving a new colour -- is **swap which
+   * existing role feeds which slot**:
    *
-   * Deriving the modules from the *text* role instead would be the obvious mistake: in a dark theme
-   * the text is white, and white modules on a light panel do not scan.
+   *   light theme:  modules = text,                panel = backgroundSecondary
+   *   dark theme:   modules = backgroundSecondary, panel = text
+   *
+   * The panel comes out light and the modules dark either way, and *both* stay themed, so Ocean
+   * Light's modules are its navy and Ocean Dark's are its slate rather than a flat black. An
+   * earlier version here derived the modules as the darker of the two anchors, which happens to be
+   * right on light themes and wrong on both dark ones.
    */
   surfaceInk: string
   textPrimary: string
@@ -413,9 +415,21 @@ export function deriveTokens(knobs: ThemeKnobs, accent: string): ThemeTokens {
 
   const at = (ratio: number, chroma: number) => above(background, ratio, chroma)
 
-  const backgroundSecondary = at(target.surfaceRaised, t.surface)
-  const backgroundTertiary = at(target.surfaceOverlay, t.surface)
-  const backgroundNested = above(backgroundSecondary, target.surfaceRaised, t.surface)
+  /**
+   * Surface overrides are resolved *here*, not on the way out.
+   *
+   * Four roles are derived from the recessed surface -- the nested surface, the incoming bubble,
+   * the separator and, in a dark theme, the QR modules -- so an override applied to the returned
+   * object arrives too late for any of them. Classic Dark's pure-black surface was overridden on
+   * the way out and its QR modules still came from the unoverridden `#292929`.
+   *
+   * Same shape as the `semantic` knob, and for the same reason: a value other values depend on has
+   * to be settled before they are computed, which makes it an input rather than a patch.
+   */
+  const backgroundSecondary = overrides?.backgroundSecondary ?? at(target.surfaceRaised, t.surface)
+  const backgroundTertiary = overrides?.backgroundTertiary ?? at(target.surfaceOverlay, t.surface)
+  const backgroundNested =
+    overrides?.backgroundNested ?? above(backgroundSecondary, target.surfaceRaised, t.surface)
 
   /** Every surface a role might be drawn on, since a role is not owned by the page. */
   const surfaces = [background, backgroundSecondary, backgroundTertiary, backgroundNested]
@@ -429,16 +443,13 @@ export function deriveTokens(knobs: ThemeKnobs, accent: string): ThemeTokens {
    * disagreed because they were answering different questions.
    */
   const pole = contrastPickAll(['#000000', '#FFFFFF'], surfaces)
-  const text = textTint ? tintedPole(pole, textTint.chroma, textTint.hue ?? t.hue, background) : pole
+  const text = textTint
+    ? tintedPole(pole, textTint.chroma, textTint.hue ?? t.hue, background)
+    : pole
 
-  /**
-   * What a QR code's modules are printed in: the darker of the theme's two anchors, untouched.
-   *
-   * No tint applied. This is derived from the *text*, not from a surface, so putting it through the
-   * surface tint turns Ocean Light's navy into a teal -- the same mistake as before, one call site
-   * along. The anchors already carry whatever hue the theme wanted; the darker one is the answer.
-   */
-  const ink = darker(text, background)
+  /** The two QR slots, fed by the same pair of roles with the assignment swapped by polarity. */
+  const ink = polarity === 'light' ? text : backgroundSecondary
+  const panel = polarity === 'light' ? backgroundSecondary : text
   // Neither yields to the other any more, so both are simply the most saturated version of
   // themselves that clears text contrast on every surface.
   const danger = semantic?.danger ?? contrastAdjustAll(DANGER_BASE, surfaces, CONTRAST.normal)
@@ -476,9 +487,7 @@ export function deriveTokens(knobs: ThemeKnobs, accent: string): ThemeTokens {
     backgroundSecondary,
     backgroundTertiary,
     backgroundNested,
-    // The recessed surface where it can carry the modules, plain white where it cannot. Both light
-    // themes keep their tinted panel; both dark ones fall back, which is what the real screens do.
-    surfaceInverted: contrastPrefer([backgroundSecondary, lighter(text, background)], ink, SCANNABLE),
+    surfaceInverted: panel,
     surfaceInk: ink,
     textPrimary: text,
     // Muted text is the body text dimmed, not the page lifted: deriving it from the background
@@ -498,9 +507,11 @@ export function deriveTokens(knobs: ThemeKnobs, accent: string): ThemeTokens {
     bordersColor: at(target.border, t.emphasis),
     separatorColor: above(backgroundSecondary, target.border, t.surface),
     messageBubbleIncomingBg: incomingBg,
-    messageBubbleIncomingText: contrastPrefer([text, '#000000', '#FFFFFF'], incomingBg,
-      CONTRAST.normal),
+    messageBubbleIncomingText: contrastPrefer(
+      [text, '#000000', '#FFFFFF'],
+      incomingBg,
+      CONTRAST.normal,
+    ),
     ...overrides,
   }
 }
-

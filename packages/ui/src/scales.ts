@@ -70,7 +70,7 @@ export const FONT_SIZE_SCALE = {
 // drifted: it repeated 26 at positions 6 and 7 where the sizes differed.
 export const LINE_HEIGHT_SCALE = {
   ...(Object.fromEntries(
-    Object.entries(FONT_SIZE).map(([k, v]) => [k, Math.round(v * LINE_HEIGHT_RATIO)])
+    Object.entries(FONT_SIZE).map(([k, v]) => [k, Math.round(v * LINE_HEIGHT_RATIO)]),
   ) as Record<keyof typeof FONT_SIZE, number>),
   true: Math.round(FONT_SIZE.body * LINE_HEIGHT_RATIO),
 }

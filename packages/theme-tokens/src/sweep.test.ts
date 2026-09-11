@@ -22,8 +22,18 @@ const ACCENTS = Object.keys(PRIMARY_COLOR_HEX) as PrimaryColorState[]
 
 /** Bases a person might plausibly land on, including two that are deliberately awkward. */
 const BASES = [
-  '#FFFFFF', '#FCFFFF', '#FBF7F2', '#F4F6FF', '#EFEFEF',
-  '#1B1B1B', '#000000', '#1A1C28', '#141B2E', '#22181F', '#0E1712', '#2A2A2E',
+  '#FFFFFF',
+  '#FCFFFF',
+  '#FBF7F2',
+  '#F4F6FF',
+  '#EFEFEF',
+  '#1B1B1B',
+  '#000000',
+  '#1A1C28',
+  '#141B2E',
+  '#22181F',
+  '#0E1712',
+  '#2A2A2E',
 ]
 
 const surfaces = (t: ThemeTokens): string[] => [
@@ -85,7 +95,9 @@ describe('derivation sweep', () => {
       // is under test here is the derivation.
       const { semantic: _authored, ...knobs } = getThemeKnobs(theme)
       for (const accent of ACCENTS) {
-        found.push(...shortfalls(deriveTokens(knobs, PRIMARY_COLOR_HEX[accent]), `${theme}/${accent}`))
+        found.push(
+          ...shortfalls(deriveTokens(knobs, PRIMARY_COLOR_HEX[accent]), `${theme}/${accent}`),
+        )
       }
     }
 
@@ -114,7 +126,10 @@ describe('derivation sweep', () => {
       const knobs = knobsFor(base, hex)
       expect(baseFits(base, knobs.polarity)).toBe(false)
       const t = deriveTokens(knobs, hex)
-      for (const [name, role] of [['danger', t.dangerColor], ['warning', t.warningColor]] as const) {
+      for (const [name, role] of [
+        ['danger', t.dangerColor],
+        ['warning', t.warningColor],
+      ] as const) {
         if (hexToOklch(role).c < 0.05) colourless.push(`${base}: ${name} ${role}`)
       }
     }
@@ -135,7 +150,10 @@ describe('derivation sweep', () => {
       const knobs = knobsFor(base, hex)
       if (!baseFits(base, knobs.polarity)) continue
       const t = deriveTokens(knobs, hex)
-      for (const [name, role] of [['danger', t.dangerColor], ['warning', t.warningColor]] as const) {
+      for (const [name, role] of [
+        ['danger', t.dangerColor],
+        ['warning', t.warningColor],
+      ] as const) {
         if (hexToOklch(role).c < MIN_SEMANTIC_CHROMA) dull.push(`${base}: ${name} ${role}`)
       }
     }
@@ -178,7 +196,8 @@ describe('default accent', () => {
   })
 
   it('starts a custom theme on the accent it was built from', () => {
-    expect(knobsFor('#1B1B1B', PRIMARY_COLOR_HEX.purple).defaultAccent)
-      .toBe(PRIMARY_COLOR_HEX.purple)
+    expect(knobsFor('#1B1B1B', PRIMARY_COLOR_HEX.purple).defaultAccent).toBe(
+      PRIMARY_COLOR_HEX.purple,
+    )
   })
 })
