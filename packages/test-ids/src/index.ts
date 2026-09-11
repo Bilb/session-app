@@ -84,6 +84,8 @@ export const ELEMENT = {
     createAccount: 'onboarding-create-account',
     restoreAccount: 'onboarding-restore-account',
     hero: 'onboarding-hero',
+    faqLink: 'onboarding-faq-link',
+    websiteLink: 'onboarding-website-link',
     termsOfService: 'onboarding-tos',
     openUrlDialog: 'onboarding-open-url',
     openTerms: 'onboarding-open-terms',

@@ -1,9 +1,9 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Screen, Text, useMedia, XStack, YStack } from '@session/ui'
+import { Button, Text, useMedia, YStack } from '@session/ui'
 import { useEffect, useState } from 'react'
 
-import { LanguageButton } from '../LanguageButton'
+import { OnboardingChrome } from './OnboardingChrome'
 import { TermsAndPrivacy } from './TermsAndPrivacy'
 
 /**
@@ -31,46 +31,43 @@ const BUBBLE_INTERVAL_MS = 1500
 interface LandingScreenProps {
   onCreate: () => void
   onRestore: () => void
-  /** Whether the language picker is offered here at all. */
-  showLanguagePicker: boolean
 }
 
 /**
  * The first screen, and the only one that exists before an identity does.
  *
  * **The two designs share only the buttons and the terms.** The mobile clients open with a heading
- * and a fake conversation that plays itself out; the desktop client has neither -- its Start is a
- * hero image down one side and the two buttons beside it. So "hero" means text on a phone and
- * artwork on a desktop, and this is a fork rather than a reflow.
- *
- * The language picker is the one thing here no legacy client has -- they follow the OS and offer no
- * in-app override at all -- so there is no placement to match and this one is ours.
+ * and a fake conversation that plays itself out; the desktop client has neither -- artwork and the
+ * Session lockup come from the frame around it, and the screen itself is two buttons. So "hero"
+ * means text on a phone and artwork on a desktop, and this is a fork rather than a reflow.
  */
-export function LandingScreen({ onCreate, onRestore, showLanguagePicker }: LandingScreenProps) {
+export function LandingScreen({ onCreate, onRestore }: LandingScreenProps) {
   const wide = useMedia().gtSm
 
   return (
-    <Screen padded testID={ELEMENT.onboarding.screen}>
-      <XStack justifyContent="flex-end" minHeight="$7">
-        {showLanguagePicker ? <LanguageButton /> : null}
-      </XStack>
-
-      {wide ? (
-        <DesktopStart onCreate={onCreate} onRestore={onRestore} />
-      ) : (
-        <PhoneLanding onCreate={onCreate} onRestore={onRestore} />
-      )}
-    </Screen>
+    <OnboardingChrome testID={ELEMENT.onboarding.screen}>
+      {wide ? null : <PhoneOpening />}
+      <YStack gap="$1.5">
+        <Button variant="outline" testID={ELEMENT.onboarding.createAccount} onPress={onCreate}>
+          {tr('onboardingAccountCreate')}
+        </Button>
+        <Button variant="outline" testID={ELEMENT.onboarding.restoreAccount} onPress={onRestore}>
+          {tr('onboardingAccountExists')}
+        </Button>
+        <TermsAndPrivacy />
+      </YStack>
+    </OnboardingChrome>
   )
 }
 
 /**
- * The mobile opening: a heading, then a conversation that arrives a line at a time.
+ * The heading and the conversation that plays itself out. Mobile only.
  *
- * The bubble region is the only part that flexes -- the heading and the buttons take the height
- * they need, which is how Android's column is weighted.
+ * The bubble region is the only part that flexes -- the heading takes the height it needs, which is
+ * how Android's column is weighted -- and it holds that height from the start, so the buttons below
+ * do not walk down the screen while the conversation arrives.
  */
-function PhoneLanding({ onCreate, onRestore }: Omit<LandingScreenProps, 'showLanguagePicker'>) {
+function PhoneOpening() {
   const [shown, setShown] = useState(0)
 
   useEffect(() => {
@@ -92,8 +89,6 @@ function PhoneLanding({ onCreate, onRestore }: Omit<LandingScreenProps, 'showLan
         {tr('onboardingBubblePrivacyInYourPocket')}
       </Text>
 
-      {/* Holds its height from the start rather than growing line by line, so the buttons below do
-          not walk down the screen while the conversation plays. */}
       <YStack flex={1} justifyContent="center" gap="$1" minHeight={200}>
         {BUBBLES.slice(0, shown).map((bubble) => (
           <YStack
@@ -111,46 +106,6 @@ function PhoneLanding({ onCreate, onRestore }: Omit<LandingScreenProps, 'showLan
           </YStack>
         ))}
       </YStack>
-
-      <StartButtons onCreate={onCreate} onRestore={onRestore} />
-    </YStack>
-  )
-}
-
-/**
- * The desktop opening: artwork down one side, the two buttons beside it.
- *
- * **The hero artwork is not in this repo yet**, so the column it belongs in is held open and left
- * empty rather than filled with a stand-in. An empty 40% is obviously unfinished; a placeholder
- * graphic is something somebody has to notice is wrong.
- *
- * The 40% is the desktop client's, and it is a percentage rather than a breakpoint -- which is why
- * it scales to a tablet at all. It has no portrait rule anywhere, because no client has ever run
- * this design in portrait; a 40% column on a portrait tablet is a tall thin strip, and what it
- * should do instead is still an open question.
- */
-function DesktopStart({ onCreate, onRestore }: Omit<LandingScreenProps, 'showLanguagePicker'>) {
-  return (
-    <XStack flex={1} gap="$3">
-      <YStack width="40%" testID={ELEMENT.onboarding.hero} />
-      <YStack flex={1} justifyContent="center" maxWidth={360} alignSelf="center">
-        <StartButtons onCreate={onCreate} onRestore={onRestore} />
-      </YStack>
-    </XStack>
-  )
-}
-
-/** The only part both designs share: what you can do, and what you are agreeing to. */
-function StartButtons({ onCreate, onRestore }: Omit<LandingScreenProps, 'showLanguagePicker'>) {
-  return (
-    <YStack gap="$1.5">
-      <Button testID={ELEMENT.onboarding.createAccount} onPress={onCreate}>
-        {tr('onboardingAccountCreate')}
-      </Button>
-      <Button variant="outline" testID={ELEMENT.onboarding.restoreAccount} onPress={onRestore}>
-        {tr('onboardingAccountExists')}
-      </Button>
-      <TermsAndPrivacy />
     </YStack>
   )
 }

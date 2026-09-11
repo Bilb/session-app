@@ -1,4 +1,3 @@
-import { flag } from '@session/app'
 import { useSessionActions } from '@session/state'
 import { useMedia } from '@session/ui'
 import { useEffect, useReducer, useState } from 'react'
@@ -48,7 +47,6 @@ export function OnboardingFlow() {
     case 'landing':
       return (
         <LandingScreen
-          showLanguagePicker={flag('onboardingLanguageSelect')}
           onCreate={() => {
             dispatch({ type: 'chooseCreate' })
           }}

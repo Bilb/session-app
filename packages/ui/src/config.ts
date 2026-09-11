@@ -21,7 +21,11 @@ import { buildThemes, DEFAULT_THEME, themeName } from './themes'
  */
 
 const bodyFont = createFont({
-  family: 'System',
+  // Roboto, which is what the desktop client uses. Shipped with the app rather than assumed -- see
+  // tamaguiCSS.ts, which declares the faces on the web. The fallbacks matter: Android has Roboto
+  // system-wide, iOS does not, and a stack that ends in `sans-serif` is what stops an unlinked
+  // font resolving to a serif.
+  family: 'Roboto, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
   size: FONT_SIZE_SCALE,
   lineHeight: LINE_HEIGHT_SCALE,
   weight: FONT_WEIGHT_SCALE,
