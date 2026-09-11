@@ -278,6 +278,45 @@ export function runSessionClientContract(
       }
     })
 
+    it('refuses a network it cannot build, and stays where it was', async () => {
+      const { alice } = await harness.friends()
+      const before = (await alice.getAccountInfo()).networkAttached
+
+      // devnet is the only netid libsession has no seeds of its own for, and a seed node is
+      // dialled directly: a name where an address belongs never becomes one.
+      const refused = [
+        { netid: 'nonsense' },
+        { netid: 'devnet' },
+        {
+          netid: 'devnet',
+          seedNodes: [
+            {
+              ed25519PubkeyHex: 'a'.repeat(64),
+              ip: 'seed.devnet.test',
+              httpsPort: 1300,
+              omqPort: 1305,
+            },
+          ],
+        },
+        {
+          netid: 'devnet',
+          seedNodes: [
+            { ed25519PubkeyHex: 'nothex', ip: '10.0.0.1', httpsPort: 1300, omqPort: 1305 },
+          ],
+        },
+      ]
+
+      const accepted: string[] = []
+      for (const config of refused)
+        if ((await failure(() => alice.attachNetwork(config))) === undefined)
+          accepted.push(JSON.stringify(config))
+      expect(accepted).toEqual([])
+
+      // Refused whole: a network half applied is one nobody asked for, and the next call that
+      // brings an account into being would be the one to throw on it.
+      expect((await alice.getAccountInfo()).networkAttached).toBe(before)
+    })
+
     it('rejects everything still waiting when it closes', async () => {
       const { alice, bobId } = await harness.friends()
       const pending = alice.sendMessage(bobId, { body: 'never' }).catch((error: unknown) => error)

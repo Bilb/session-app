@@ -78,6 +78,111 @@ namespace {
         return oxenc::from_hex(hex);
     }
 
+    /// libsession's seed records from the app's, or an error naming the one that is wrong.
+    ///
+    /// Every message names the index and the field, because a seed list comes from a launch
+    /// configuration and libsession's refusals name neither: a bad key throws out of `from_hex`
+    /// and a host name where an address belongs throws out of libquic, both far below anything
+    /// that knows this was the second entry's `ip`.
+    std::vector<network::service_node> service_nodes(const std::vector<SeedNode>& seeds) {
+        std::vector<network::service_node> nodes;
+        nodes.reserve(seeds.size());
+
+        for (size_t i = 0; i < seeds.size(); i++) {
+            const auto& seed = seeds[i];
+            const auto where = "seedNodes[" + std::to_string(i) + "].";
+
+            auto key = network::ed25519_pubkey::maybe_from_hex(seed.ed25519_pubkey_hex);
+            if (!key)
+                throw std::invalid_argument{where + "ed25519PubkeyHex must be 64 hex characters"};
+
+            std::optional<oxen::quic::ipv4> ip;
+            try {
+                ip = oxen::quic::ipv4{seed.ip};
+            } catch (const std::exception&) {
+                throw std::invalid_argument{
+                        where + "ip must be an IPv4 address, not \"" + seed.ip +
+                        "\": libsession dials it and resolves no host names"};
+            }
+
+            nodes.push_back(network::service_node{
+                    *key,
+                    *ip,
+                    whole<uint16_t>(seed.https_port, where + "httpsPort"),
+                    whole<uint16_t>(seed.omq_port, where + "omqPort"),
+                    // What the built-in seeds are declared with. Nothing reads it: the first cache
+                    // refresh replaces these with nodes that report their own version.
+                    {2, 11, 0},
+                    network::swarm::INVALID_SWARM_ID});
+        }
+
+        return nodes;
+    }
+
+    /// Everything a Network is built from, or nothing when there is none to build.
+    ///
+    /// Assembled whole before anything is replaced, so a configuration that does not hold up
+    /// leaves the client on whatever it had.
+    std::optional<std::vector<network::opt::any>> plan_network(
+            const NetworkOptions& network, const std::filesystem::path& db_path) {
+        if (network.netid.empty())
+            return std::nullopt;
+
+        const bool devnet = network.netid == "devnet";
+        if (!devnet && network.netid != "mainnet" && network.netid != "testnet")
+            throw std::invalid_argument{
+                    "netid must be mainnet, testnet or devnet, not \"" + network.netid + "\""};
+
+        std::vector<network::opt::any> opts;
+
+        if (devnet) {
+            // netid::devnet refuses an empty list too, from a constructor that does not know the
+            // list came from an option called seedNodes.
+            if (network.seed_nodes.empty())
+                throw std::invalid_argument{
+                        "devnet needs at least one seed node: libsession has built-in seeds for "
+                        "mainnet and testnet only"};
+            opts.emplace_back(network::opt::netid::devnet(service_nodes(network.seed_nodes)));
+        } else if (network.netid == "testnet")
+            opts.emplace_back(network::opt::netid::testnet());
+        else
+            opts.emplace_back(network::opt::netid::mainnet());
+
+        // Session Router has no devnet: it refuses one outright, and the router library's own
+        // netid knows the two public networks only. Onion requests reach the same swarms.
+        opts.emplace_back(
+                devnet ? network::opt::router::onion_requests()
+                       : network::opt::router::session_router());
+
+        // A devnet is usually one machine, and path building will not put two nodes from a /24 in
+        // one path - so left enforced it builds no paths at all and every request times out.
+        if (devnet)
+            opts.emplace_back(network::opt::disable_subnet_diversity{});
+
+        if (network.file_server) {
+            const auto& fs = *network.file_server;
+            if (fs.host.empty())
+                throw std::invalid_argument{"fileServer.host must not be empty"};
+            if (fs.x25519_pubkey_hex.size() != 64 || !oxenc::is_hex(fs.x25519_pubkey_hex))
+                throw std::invalid_argument{
+                        "fileServer.x25519PubkeyHex must be 64 hex characters: the server's "
+                        "X25519 key, not the Ed25519 one its QUIC endpoint is named by"};
+
+            opts.emplace_back(network::opt::file_server_scheme{
+                    std::string{EnumTraits<UrlScheme>::to_string(fs.scheme)}});
+            opts.emplace_back(network::opt::file_server_host{fs.host});
+            opts.emplace_back(network::opt::file_server_port{
+                    whole<uint16_t>(fs.port, "fileServer.port")});
+            opts.emplace_back(network::opt::file_server_pubkey_hex{fs.x25519_pubkey_hex});
+        }
+
+        // Beside the database rather than in it: freeing space works by unlinking what the
+        // directory holds that nothing accounts for, so this cannot share with anything else.
+        opts.emplace_back(network::opt::cache_directory{db_path.parent_path() / "netcache"});
+
+        return opts;
+    }
+
 }  // namespace
 
 struct ClientBridge::Impl {
@@ -113,37 +218,14 @@ struct ClientBridge::Impl {
     /// Gives Core a way off the machine. Idempotent enough to call whenever an account appears:
     /// make_network replaces whatever was attached.
     void attach_network() {
-        if (options.netid.empty())
-            return;
-
-        namespace net = session::network;
-
-        // devnet takes seed nodes, and a seed node is a public key, an address and two ports -
-        // not something a URL can be turned into here. Wiring it means deciding how the app is
-        // told those, which is a devnet question rather than a bridge one, so it refuses rather
-        // than quietly attaching to mainnet instead.
-        if (options.netid == "devnet")
-            throw std::invalid_argument{"devnet is not wired up: it needs seed node details"};
-        if (options.netid != "mainnet" && options.netid != "testnet")
-            throw std::invalid_argument{"netid must be mainnet or testnet"};
-
-        // Judged before the account is, so that a netid nothing can attach to is refused by
+        // Judged before the account is, so that a network nothing can attach to is refused by
         // whoever supplied it. Onboarding is exactly the case with no account yet, and one
         // accepted here would instead be thrown by the createAccount that brings it into being.
-        if (!client->core.globals.have_account())
+        auto planned = plan_network(options.network, options.db_path);
+        if (!planned || !client->core.globals.have_account())
             return;
 
-        auto netid = options.netid == "testnet" ? net::opt::netid::testnet()
-                                                : net::opt::netid::mainnet();
-
-        // Beside the database rather than in it: freeing space works by unlinking what the
-        // directory holds that nothing accounts for, so this cannot share with anything else.
-        auto cache = options.db_path.parent_path() / "netcache";
-
-        client->core.make_network(
-                std::move(netid),
-                net::opt::router::session_router(),
-                net::opt::cache_directory{cache});
+        client->core.make_network(network::config::Config{*planned});
     }
 
     /// Both halves of "an account now exists", which is what onboarding signals too. The record
@@ -281,14 +363,18 @@ struct ClientBridge::Impl {
     }
 
     void handle(double id, const AttachNetworkCommand& cmd) {
-        // attach_network reads options.netid and throws on one it will not attach to, so the
-        // field is put back on that path. Left set, a refused netid is one every later
-        // on_account() - onboarding's, in particular - would throw on without being asked to.
-        auto previous = std::exchange(options.netid, cmd.netid);
+        // attach_network throws on a network it will not attach to, so the whole config is put
+        // back on that path. Left set, a refused one is what every later on_account() -
+        // onboarding's, in particular - would throw on without being asked to.
+        NetworkOptions wanted{
+                cmd.netid,
+                cmd.seed_nodes.value_or(std::vector<SeedNode>{}),
+                cmd.file_server};
+        auto previous = std::exchange(options.network, std::move(wanted));
         try {
             attach_network();
         } catch (...) {
-            options.netid = std::move(previous);
+            options.network = std::move(previous);
             throw;
         }
         ok(id);

@@ -1,11 +1,50 @@
 /**
  * The networks libsession will attach to.
  *
- * devnet exists upstream and the shim refuses it on purpose: it takes seed node details, which is
- * a public key, an address and two ports per node, and none of that fits in a name. Offering it
- * here would be offering something that always throws.
+ * devnet is the one that cannot be reached by name: libsession ships mainnet's and testnet's seed
+ * lists and lets neither be replaced, so a devnet has to be handed `seedNodes` as well.
  */
-export type NetId = 'mainnet' | 'testnet'
+export type NetId = 'mainnet' | 'testnet' | 'devnet'
+
+/**
+ * One node to bootstrap a devnet from.
+ *
+ * Declared here rather than taken from @session/basic-types, which is where the environment that
+ * supplies it is parsed: nitrogen generates the C++ struct by reading this package, so it may not
+ * import one. The two are structurally identical and the apps assign across, which is what checks
+ * they stay that way.
+ */
+export interface SeedNode {
+  /** Ed25519, 64 hex characters. Not the X25519 key a session id is built from. */
+  ed25519PubkeyHex: string
+
+  /** A dotted quad: libsession dials it itself and resolves no host names anywhere. */
+  ip: string
+
+  httpsPort: number
+  omqPort: number
+}
+
+export type UrlScheme = 'http' | 'https'
+
+/**
+ * A file server that is not the built-in one.
+ *
+ * Left out, every network uses the built-in server for its netid - and devnet has none of its own,
+ * so it would use **mainnet's**: production storage, reached over a sandbox, with nothing
+ * afterwards to show it happened.
+ */
+export interface FileServerConfig {
+  scheme: UrlScheme
+  host: string
+  port: number
+
+  /**
+   * The server's **X25519** pubkey, which is what onion requests to it are encrypted with, and a
+   * different key from the Ed25519 one its QUIC endpoint is identified by.
+   */
+  x25519PubkeyHex: string
+}
 
 /**
  * What the account's other devices are told this is.
@@ -66,6 +105,12 @@ export interface SessionBridgeOptions {
    * Attached once an account exists, so a deferred one gets its network from createAccount.
    */
   netid?: NetId
+
+  /** Required when `netid` is devnet, which libsession has no seeds for; ignored otherwise. */
+  seedNodes?: SeedNode[]
+
+  /** Left out, uploads go to the built-in file server for the netid. */
+  fileServer?: FileServerConfig
 
   /** Left out, this device is not published to the account's device list. */
   deviceType?: DeviceType

@@ -59,7 +59,40 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
         if (options.Has("deferAccount"))
             init.defer_account = options.Get("deferAccount").ToBoolean().Value();
         if (options.Has("netid") && !options.Get("netid").IsUndefined())
-            init.netid = options.Get("netid").As<Napi::String>().Utf8Value();
+            init.network.netid = options.Get("netid").As<Napi::String>().Utf8Value();
+        if (options.Has("seedNodes") && !options.Get("seedNodes").IsUndefined()) {
+            Napi::Value seeds = options.Get("seedNodes");
+            if (!seeds.IsArray())
+                throw Napi::TypeError::New(env, "seedNodes must be an array");
+            auto list = seeds.As<Napi::Array>();
+            for (uint32_t i = 0; i < list.Length(); i++) {
+                Napi::Value entry = list.Get(i);
+                if (!entry.IsObject())
+                    throw Napi::TypeError::New(
+                            env, "seedNodes[" + std::to_string(i) + "] must be an object");
+                auto seed = entry.As<Napi::Object>();
+                init.network.seed_nodes.push_back(
+                        {seed.Get("ed25519PubkeyHex").As<Napi::String>().Utf8Value(),
+                         seed.Get("ip").As<Napi::String>().Utf8Value(),
+                         seed.Get("httpsPort").As<Napi::Number>().DoubleValue(),
+                         seed.Get("omqPort").As<Napi::Number>().DoubleValue()});
+            }
+        }
+        if (options.Has("fileServer") && !options.Get("fileServer").IsUndefined()) {
+            Napi::Value value = options.Get("fileServer");
+            if (!value.IsObject())
+                throw Napi::TypeError::New(env, "fileServer must be an object");
+            auto fs = value.As<Napi::Object>();
+            auto scheme = session_bridge::EnumTraits<session_bridge::UrlScheme>::parse(
+                    fs.Get("scheme").As<Napi::String>().Utf8Value());
+            if (!scheme)
+                throw Napi::TypeError::New(env, "fileServer.scheme must be http or https");
+            init.network.file_server = session_bridge::FileServerConfig{
+                    *scheme,
+                    fs.Get("host").As<Napi::String>().Utf8Value(),
+                    fs.Get("port").As<Napi::Number>().DoubleValue(),
+                    fs.Get("x25519PubkeyHex").As<Napi::String>().Utf8Value()};
+        }
         if (options.Has("deviceType") && !options.Get("deviceType").IsUndefined())
             init.device_type = options.Get("deviceType").As<Napi::String>().Utf8Value();
         if (options.Has("logLevel") && !options.Get("logLevel").IsUndefined())

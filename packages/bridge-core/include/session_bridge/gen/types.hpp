@@ -458,15 +458,74 @@ struct SetDisplayNameCommand {
             name{std::move(name_)} {}
 };
 
-/// "mainnet" | "testnet" | "devnet". Declining to attach is how an app stays offline.
+/// One node to bootstrap a devnet from.
+///
+/// Declared here rather than taken from
+struct SeedNode {
+    /// Ed25519, 64 hex characters. Not the X25519 key a session id is built from.
+    std::string ed25519_pubkey_hex;
+    /// A dotted quad: libsession dials it itself and resolves no host names anywhere.
+    std::string ip;
+    double https_port;
+    double omq_port;
+
+    SeedNode(std::string ed25519_pubkey_hex_, std::string ip_, double https_port_, double omq_port_) :
+            ed25519_pubkey_hex{std::move(ed25519_pubkey_hex_)}, ip{std::move(ip_)}, https_port{std::move(https_port_)}, omq_port{std::move(omq_port_)} {}
+};
+
+/// A file server that is not the built-in one.
+///
+/// Left out, every network uses the built-in server for its netid - and devnet has none of its own,
+/// so it would use **mainnet's**: production storage, reached over a sandbox, with nothing
+/// afterwards to show it happened.
+enum class UrlScheme {
+    http,
+    https,
+};
+
+template <>
+struct EnumTraits<UrlScheme> {
+    static constexpr std::string_view name = "UrlScheme";
+    static constexpr std::array<std::string_view, 2> names{"http", "https"};
+
+    static constexpr std::string_view to_string(UrlScheme value) {
+        return names[static_cast<std::size_t>(value)];
+    }
+
+    static constexpr std::optional<UrlScheme> parse(std::string_view text) {
+        for (std::size_t i = 0; i < names.size(); i++)
+            if (names[i] == text)
+                return static_cast<UrlScheme>(i);
+        return std::nullopt;
+    }
+};
+
+struct FileServerConfig {
+    ::session_bridge::UrlScheme scheme;
+    std::string host;
+    double port;
+    /// The server's **X25519** pubkey, which is what onion requests to it are encrypted with, and a
+    /// different key from the Ed25519 one its QUIC endpoint is identified by.
+    std::string x25519_pubkey_hex;
+
+    FileServerConfig(::session_bridge::UrlScheme scheme_, std::string host_, double port_, std::string x25519_pubkey_hex_) :
+            scheme{std::move(scheme_)}, host{std::move(host_)}, port{std::move(port_)}, x25519_pubkey_hex{std::move(x25519_pubkey_hex_)} {}
+};
+
+/// Attach a network, or replace the one attached. Declining to attach is how an app stays
+/// offline, and that is an init option rather than a command.
+///
+/// Carries everything the network needs rather than leaving half of it remembered from init, so
+/// that a refusal leaves the client on whatever it had. "mainnet", "testnet" or "devnet".
 struct AttachNetworkCommand {
     static constexpr std::string_view type_tag = "attachNetwork";
 
     std::string netid;
-    std::optional<std::string> devnet_seed_url;
+    std::optional<std::vector<::session_bridge::SeedNode>> seed_nodes;
+    std::optional<::session_bridge::FileServerConfig> file_server;
 
-    AttachNetworkCommand(std::string netid_, std::optional<std::string> devnet_seed_url_) :
-            netid{std::move(netid_)}, devnet_seed_url{std::move(devnet_seed_url_)} {}
+    AttachNetworkCommand(std::string netid_, std::optional<std::vector<::session_bridge::SeedNode>> seed_nodes_, std::optional<::session_bridge::FileServerConfig> file_server_) :
+            netid{std::move(netid_)}, seed_nodes{std::move(seed_nodes_)}, file_server{std::move(file_server_)} {}
 };
 
 /// Run one poll cycle to completion: the primitive every OS background budget wants. Android's

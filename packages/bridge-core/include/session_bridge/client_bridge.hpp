@@ -7,10 +7,36 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "session_bridge/gen/types.hpp"
 
 namespace session_bridge {
+
+/// Which network to reach and how to find it.
+///
+/// Also what `attachNetwork` carries, so the two ways in cannot describe a network differently.
+struct NetworkOptions {
+    /// "mainnet", "testnet", "devnet", or empty to never reach one.
+    ///
+    /// Empty is the whole of the offline guarantee: attaching is the only thing that gives Core a
+    /// way off the machine, so declining to do it is more dependable than a flag each send has to
+    /// remember to consult. The contract suite runs this way, and so does anything that must not
+    /// touch a real swarm.
+    ///
+    /// Attached at construction when an account already exists, and again after `createAccount`
+    /// or `restoreAccount`, because attaching to an identity-less Core throws and there would be
+    /// nothing to poll for anyway.
+    std::string netid;
+
+    /// Where a devnet starts, and the one thing it has no default for: libsession ships mainnet's
+    /// and testnet's seed lists behind a private constructor and lets neither be replaced, so a
+    /// devnet that names none has nowhere to begin. Ignored on the other two.
+    std::vector<SeedNode> seed_nodes;
+
+    /// Empty leaves the built-in file server for the netid, which for devnet is **mainnet's**.
+    std::optional<FileServerConfig> file_server;
+};
 
 /// Everything the bridge needs to open a Client, and nothing it can work out for itself.
 ///
@@ -38,17 +64,12 @@ struct InitOptions {
     /// session id, sending, attaching a network - fails until that call.
     bool defer_account = false;
 
-    /// Which network to reach, or empty to never reach one.
+    /// Which network to reach and how to find it, or nothing to never reach one.
     ///
-    /// "mainnet" or "testnet". Empty is the whole of the offline guarantee: attaching
-    /// is the only thing that gives Core a way off the machine, so declining to do it is more
-    /// dependable than a flag each send has to remember to consult. The contract suite runs this
-    /// way, and so does anything that must not touch a real swarm.
-    ///
-    /// Attached at construction when an account already exists, and again after `createAccount`
-    /// or `restoreAccount`, because attaching to an identity-less Core throws and there would be
-    /// nothing to poll for anyway.
-    std::string netid;
+    /// One struct rather than three fields because `attachNetwork` replaces all of it at once: a
+    /// netid that took effect while the seed nodes it needs did not would be a network nobody
+    /// asked for.
+    NetworkOptions network;
 
     /// What this client tells the account's other devices it is: "ios", "android" or "desktop".
     ///

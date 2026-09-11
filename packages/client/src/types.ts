@@ -14,14 +14,24 @@ import type {
   Conversation,
   ConversationId,
   Deletion,
+  FileServerConfig,
   Frame,
   Message,
   MessageCursor,
   Request,
+  SeedNode,
   SessionEvent,
 } from '@session/bridge-types'
 
 export type Unsubscribe = () => void
+
+/** Everything a network needs, so that attaching one is a single decision. */
+export interface NetworkAttachment {
+  netid: string
+  /** Required for devnet, which libsession has no seeds of its own for. */
+  seedNodes?: SeedNode[]
+  fileServer?: FileServerConfig
+}
 
 export interface OutgoingMessage {
   body: string
@@ -38,7 +48,11 @@ export interface SessionClient {
   /** libsession owns the word list, so onboarding needs no mnemonic library of its own. */
   getSeedMnemonic(language?: string): Promise<string[]>
   setDisplayName(name: string): Promise<void>
-  attachNetwork(netid: string, devnetSeedUrl?: string): Promise<void>
+  /**
+   * Attach a network, or replace the one attached. Refused whole: a network that will not build
+   * leaves the client on whatever it had.
+   */
+  attachNetwork(config: NetworkAttachment): Promise<void>
   /** One poll cycle, run to completion - what every OS background budget wants. */
   pollOnce(): Promise<void>
 

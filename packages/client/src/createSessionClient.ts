@@ -118,11 +118,12 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       await call({ type: 'setDisplayName', name })
     },
 
-    async attachNetwork(netid, devnetSeedUrl): Promise<void> {
+    async attachNetwork(config): Promise<void> {
       await call({
         type: 'attachNetwork',
-        netid,
-        ...(devnetSeedUrl === undefined ? {} : { devnetSeedUrl }),
+        netid: config.netid,
+        ...(config.seedNodes === undefined ? {} : { seedNodes: config.seedNodes }),
+        ...(config.fileServer === undefined ? {} : { fileServer: config.fileServer }),
       })
     },
 

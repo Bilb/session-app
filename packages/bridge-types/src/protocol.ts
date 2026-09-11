@@ -6,6 +6,7 @@ import type {
   Message,
   MessageCursor,
 } from './domain'
+import type { FileServerConfig, SeedNode } from './sessionBridgeOptions'
 
 /**
  * The bridge protocol: what goes in, what comes out, on one ordered stream.
@@ -37,8 +38,14 @@ export type Command =
   | { type: 'restoreAccountFromSeed'; hexSeed: string }
   | { type: 'getSeedMnemonic'; language?: string }
   | { type: 'setDisplayName'; name: string }
-  /** "mainnet" | "testnet" | "devnet". Declining to attach is how an app stays offline. */
-  | { type: 'attachNetwork'; netid: string; devnetSeedUrl?: string }
+  /**
+   * Attach a network, or replace the one attached. Declining to attach is how an app stays
+   * offline, and that is an init option rather than a command.
+   *
+   * Carries everything the network needs rather than leaving half of it remembered from init, so
+   * that a refusal leaves the client on whatever it had. "mainnet", "testnet" or "devnet".
+   */
+  | { type: 'attachNetwork'; netid: string; seedNodes?: SeedNode[]; fileServer?: FileServerConfig }
   /**
    * Run one poll cycle to completion: the primitive every OS background budget wants. Android's
    * WorkManager job, iOS's BGAppRefreshTask and a push-triggered fetch all reduce to it.
