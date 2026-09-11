@@ -3,7 +3,7 @@ import {
   ConversationListScreen,
   ConversationScreen,
   NewConversationScreen,
-  OnboardingScreen,
+  OnboardingFlow,
   StartingScreen,
   RequestsScreen,
   SettingsScreen,
@@ -57,7 +57,7 @@ function Shell() {
 
   // Onboarding takes the whole window rather than a pane: there is no list to sit beside it,
   // and there will not be one until it has minted an identity.
-  if (account?.haveAccount !== true) return <OnboardingScreen />
+  if (account?.haveAccount !== true) return <OnboardingFlow />
 
   return (
     <AdaptiveShell
@@ -69,7 +69,7 @@ function Shell() {
           <Route path="new" element={<NewConversationScreen />} />
           <Route path="requests" element={<RequestsScreen />} />
           <Route path="settings" element={<SettingsScreen />} />
-          <Route path="onboarding" element={<OnboardingScreen />} />
+          <Route path="onboarding" element={<OnboardingFlow />} />
         </Routes>
       }
       // Any route but the list has something to show in the detail pane, not just a

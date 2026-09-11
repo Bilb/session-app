@@ -46,6 +46,18 @@ export interface MediaProbePort {
 }
 
 export interface NotificationsPort {
+  /**
+   * Whether this build has a push service behind it.
+   *
+   * Onboarding asks which of two notification modes to use, and marks the push one either
+   * `recommended` or `unavailable`. Which of those it is depends on how the build was assembled --
+   * a Play build has FCM, an F-Droid or web-download build does not, and desktop has neither --
+   * so it is answered at the app edge rather than guessed at from the platform.
+   *
+   * False everywhere today: there is no push service wired up on any of the three. It turns true
+   * per build as one arrives.
+   */
+  readonly fastModeAvailable: boolean
   requestPermission(): Promise<boolean>
   show(notification: { conversationId: string; title: string; body: string }): Promise<void>
   onTap(handler: (conversationId: string) => void): () => void

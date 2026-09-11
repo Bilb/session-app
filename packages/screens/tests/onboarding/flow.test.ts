@@ -1,0 +1,150 @@
+import { describe, expect, it } from 'vitest'
+
+import {
+  backNeedsConfirming,
+  initialOnboarding,
+  onboardingReducer,
+  type OnboardingDesign,
+  type OnboardingEvent,
+  type OnboardingState,
+} from '#src/onboarding/flow'
+
+/**
+ * The sequences, as the legacy clients run them. Ported rather than designed, so the tests that
+ * matter pin what a redesign would quietly get wrong: when the account is made, when notifications
+ * are asked about, where a failed restore lands -- and that the two designs are different flows
+ * rather than one flow laid out two ways.
+ */
+function run(events: OnboardingEvent[], design: OnboardingDesign = 'phone'): OnboardingState {
+  return events.reduce(onboardingReducer, initialOnboarding(design))
+}
+
+const NAME: OnboardingEvent = { type: 'nameEntered', name: 'Ada' }
+const PHRASE: OnboardingEvent = { type: 'phraseEntered', from: { words: ['one', 'two'] } }
+const FAST: OnboardingEvent = { type: 'notificationsChosen', mode: 'fast' }
+const CREATE: OnboardingEvent = { type: 'chooseCreate' }
+const RESTORE: OnboardingEvent = { type: 'chooseRestore' }
+
+describe('the phone sequences', () => {
+  it('creates: landing, name, notifications, done', () => {
+    expect(run([CREATE]).step).toBe('pickDisplayName')
+    expect(run([CREATE, NAME]).step).toBe('messageNotifications')
+    expect(run([CREATE, NAME, FAST]).step).toBe('done')
+  })
+
+  it('restores: landing, phrase, notifications, loading', () => {
+    expect(run([RESTORE]).step).toBe('loadAccount')
+    expect(run([RESTORE, PHRASE]).step).toBe('messageNotifications')
+    expect(run([RESTORE, PHRASE, FAST]).step).toBe('loading')
+  })
+
+  it('asks about notifications before the wait, not after', () => {
+    // Restoring can take fifteen seconds. Asking afterwards means fifteen seconds of nothing and
+    // then a question, which is the order this test exists to prevent.
+    const state = run([RESTORE, PHRASE])
+    expect(state.step).toBe('messageNotifications')
+    expect(state.notifications).toBeNull()
+  })
+})
+
+describe('the desktop sequences', () => {
+  it('never asks about notification mode', () => {
+    // Fast mode is a push service and desktop has none, so the question has no answer worth
+    // asking for. A different flow, not the phone flow in a wider column.
+    expect(run([CREATE, NAME], 'desktop').step).toBe('done')
+    expect(run([RESTORE, PHRASE], 'desktop').step).toBe('loading')
+  })
+
+  it('never records a notification mode either', () => {
+    expect(run([CREATE, NAME], 'desktop').notifications).toBeNull()
+  })
+})
+
+describe('what the create branch does with the name', () => {
+  it('holds it rather than applying it, because there is no account yet', () => {
+    // The account is minted at the end of create. A name applied at the name step would be a name
+    // applied to nothing, and backing out would leave a half-made account behind.
+    const held = run([CREATE, NAME])
+    expect(held.displayName).toBe('Ada')
+    expect(held.step).toBe('messageNotifications')
+  })
+})
+
+describe('a restore that gives up', () => {
+  const gaveUp = run([RESTORE, PHRASE, FAST, { type: 'restoreGaveUp' }])
+
+  it('lands in the name picker, not back at the phrase', () => {
+    // The phrase decoded -- the profile simply never arrived. There is nothing to retype, and
+    // sending someone back to the phrase field says there is.
+    expect(gaveUp.step).toBe('pickDisplayName')
+    expect(gaveUp.afterFailedRestore).toBe(true)
+  })
+
+  it('finishes at the name, because the account already exists', () => {
+    expect(onboardingReducer(gaveUp, NAME).step).toBe('done')
+  })
+
+  it('does the same on the desktop design', () => {
+    const desktop = run([RESTORE, PHRASE, { type: 'restoreGaveUp' }], 'desktop')
+    expect(desktop.step).toBe('pickDisplayName')
+    expect(onboardingReducer(desktop, NAME).step).toBe('done')
+  })
+})
+
+describe('going back', () => {
+  it('returns to the landing screen from either branch’s first step', () => {
+    expect(run([CREATE, { type: 'back' }]).step).toBe('landing')
+    expect(run([RESTORE, { type: 'back' }]).step).toBe('landing')
+  })
+
+  it('returns to whichever step led to notifications', () => {
+    expect(run([CREATE, NAME, { type: 'back' }]).step).toBe('pickDisplayName')
+    expect(run([RESTORE, PHRASE, { type: 'back' }]).step).toBe('loadAccount')
+  })
+
+  it('does nothing at the landing screen', () => {
+    expect(run([{ type: 'back' }])).toEqual(initialOnboarding('phone'))
+  })
+
+  it('does nothing once an account exists', () => {
+    // Backing out of naming a restored account would leave it nameless rather than undo anything.
+    const gaveUp = run([RESTORE, PHRASE, FAST, { type: 'restoreGaveUp' }])
+    expect(onboardingReducer(gaveUp, { type: 'back' }).step).toBe('pickDisplayName')
+    // And on desktop, where `loading` is reached straight from the phrase.
+    expect(onboardingReducer(run([RESTORE, PHRASE], 'desktop'), { type: 'back' }).step).toBe(
+      'loading',
+    )
+  })
+
+  it('asks for confirmation only where there is something to lose', () => {
+    expect(backNeedsConfirming(run([CREATE]))).toBe(true)
+    // Restoring: the phrase is written down somewhere already, so leaving costs nothing.
+    expect(backNeedsConfirming(run([RESTORE]))).toBe(false)
+    expect(backNeedsConfirming(initialOnboarding('phone'))).toBe(false)
+    expect(backNeedsConfirming(run([RESTORE, PHRASE, FAST, { type: 'restoreGaveUp' }]))).toBe(false)
+  })
+})
+
+describe('the window changing width mid-flow', () => {
+  it('switches which sequence the remaining steps follow', () => {
+    // A tablet rotated, or a desktop window dragged narrow. The design follows the width, so what
+    // comes next follows it too, rather than finishing in a shape the window no longer is.
+    const rotated = run([CREATE, { type: 'designChanged', design: 'desktop' }])
+    expect(onboardingReducer(rotated, NAME).step).toBe('done')
+  })
+
+  it('leaves everything already collected alone', () => {
+    const rotated = run([CREATE, NAME, { type: 'designChanged', design: 'desktop' }])
+    expect(rotated.displayName).toBe('Ada')
+    expect(rotated.step).toBe('messageNotifications')
+  })
+})
+
+describe('changing branch', () => {
+  it('clears the failed-restore copy if the landing screen is reached again', () => {
+    // Otherwise the create branch inherits "your account could not be restored" from a previous
+    // attempt, which is both wrong and alarming.
+    const again = run([RESTORE, PHRASE, FAST, { type: 'restoreGaveUp' }, CREATE])
+    expect(again.afterFailedRestore).toBe(false)
+  })
+})

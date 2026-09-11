@@ -1,4 +1,4 @@
-import { ConversationListScreen, OnboardingScreen, StartingScreen } from '@session/screens'
+import { ConversationListScreen, OnboardingFlow, StartingScreen } from '@session/screens'
 import { useAccount, useHydrated } from '@session/state'
 
 /**
@@ -20,6 +20,6 @@ export default function IndexRoute() {
   const account = useAccount()
 
   if (!hydrated) return <StartingScreen />
-  if (account?.haveAccount !== true) return <OnboardingScreen />
+  if (account?.haveAccount !== true) return <OnboardingFlow />
   return <ConversationListScreen />
 }

@@ -1,6 +1,6 @@
 export { ConversationListScreen } from './ConversationListScreen'
 export { NewConversationScreen } from './NewConversationScreen'
-export { OnboardingScreen } from './OnboardingScreen'
+export { OnboardingFlow } from './onboarding/OnboardingFlow'
 export { RequestsScreen } from './RequestsScreen'
 export { SettingsScreen } from './SettingsScreen'
 export { ConversationScreen } from './ConversationScreen'

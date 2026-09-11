@@ -26,6 +26,27 @@ export interface SessionActions {
    */
   createAccount: () => Promise<void>
   /**
+   * Takes over an identity that already exists, from its recovery phrase or its raw seed.
+   *
+   * Re-hydrates for the same reason `createAccount` does, and goes online at the same point: as
+   * far as everything above here is concerned the two are the same event, and only the screens
+   * that led to them differ.
+   *
+   * The words are handed down as they were typed. libsession owns the word list and the codec, so
+   * it is the only thing that can say whether a phrase is a phrase -- a second copy of that
+   * judgement up here would be a second answer to disagree with.
+   */
+  restoreAccount: (
+    from: { words: string[]; language?: string } | { hexSeed: string },
+  ) => Promise<void>
+  /**
+   * Names the account, during onboarding and afterwards.
+   *
+   * Re-hydrates rather than waiting for an event, because the name is read back on the very next
+   * screen and a whole-state push that has not arrived yet would show the previous one.
+   */
+  setDisplayName: (name: string) => Promise<void>
+  /**
    * Opens the conversation with an account, creating it if this is the first contact.
    *
    * Returns the conversation id so the caller can navigate to it - which is the app's job, not
@@ -206,6 +227,16 @@ export function createSessionStore(
 
     async createAccount(): Promise<void> {
       await client.createAccount()
+      await actions.hydrate()
+    },
+
+    async restoreAccount(from): Promise<void> {
+      await client.restoreAccount(from)
+      await actions.hydrate()
+    },
+
+    async setDisplayName(name): Promise<void> {
+      await client.setDisplayName(name)
       await actions.hydrate()
     },
 

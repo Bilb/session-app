@@ -80,10 +80,25 @@ export const ELEMENT = {
 
   onboarding: {
     screen: 'onboarding',
+    back: 'onboarding-back',
     createAccount: 'onboarding-create-account',
     restoreAccount: 'onboarding-restore-account',
-    recoveryPhraseInput: 'onboarding-recovery-phrase',
+    termsOfService: 'onboarding-tos',
+    privacyPolicy: 'onboarding-privacy',
     continueButton: 'onboarding-continue',
+
+    displayNameScreen: 'onboarding-display-name-screen',
+    displayNameInput: 'onboarding-display-name',
+    displayNameError: 'onboarding-display-name-error',
+
+    loadAccountScreen: 'onboarding-load-account-screen',
+    recoveryPhraseInput: 'onboarding-recovery-phrase',
+    recoveryPhraseError: 'onboarding-recovery-phrase-error',
+
+    notificationsScreen: 'onboarding-notifications-screen',
+    notificationsOption: (mode: string) => `onboarding-notifications-${mode}` as const,
+
+    loadingScreen: 'onboarding-loading-screen',
   },
 } as const
 
