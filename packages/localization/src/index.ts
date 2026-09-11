@@ -1,3 +1,6 @@
 export * from './localization-src/index'
 export * from './segments/index'
-export { LANGUAGE_NAMES, languageName } from './generated/languageNames'
+export { LANGUAGE_NAMES, LANGUAGE_REGIONS } from './generated/languages'
+export { LANGUAGES, languageFlag, languageName, matchLocale, NO_FLAG } from './languageList'
+export type { LanguageOption } from './languageList'
+export { deviceLocale, getLocale, resetLocale, setLocale, subscribeLocale } from './localeStore'
