@@ -75,5 +75,7 @@ export const LINE_HEIGHT_SCALE = {
   true: Math.round(FONT_SIZE.body * LINE_HEIGHT_RATIO),
 }
 
-export const FONT_WEIGHT_SCALE = { 4: '400', 6: '600', 7: '700', true: '400' }
+// Roboto's own weights. 600 is deliberately absent: the face does not have one, and naming it
+// would get a synthesised bold rather than a drawn one.
+export const FONT_WEIGHT_SCALE = { 4: '400', 5: '500', 7: '700', true: '400' }
 export const LETTER_SPACING_SCALE = { 4: 0, true: 0 }

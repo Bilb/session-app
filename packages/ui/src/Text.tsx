@@ -23,9 +23,15 @@ export const Text = styled(SizableText, {
       danger: { color: '$dangerColor' },
       accent: { color: '$primaryColor' },
     },
+    /**
+     * **Roboto has no 600.** Its weights are 100, 300, 400, 500, 700 and 900, so asking for 600
+     * gets a browser-synthesised bold -- the regular face algorithmically thickened -- which is
+     * blurrier and wider than a drawn one and does not match anything a design tool renders.
+     * `semibold` therefore means Medium, which is the weight that actually exists between the two.
+     */
     weight: {
       regular: { fontWeight: '400' },
-      semibold: { fontWeight: '600' },
+      semibold: { fontWeight: '500' },
       bold: { fontWeight: '700' },
     },
   } as const,

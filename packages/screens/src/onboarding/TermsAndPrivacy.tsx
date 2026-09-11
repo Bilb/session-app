@@ -76,7 +76,11 @@ export function TermsAndPrivacy() {
           borderRadius="$3"
           borderWidth={1}
           borderColor="$bordersColor"
-          backgroundColor="$backgroundTertiary"
+          // The page's own colour, which is what the desktop client gives a modal's content in
+          // Classic Dark -- `--modal-background-content-color: var(--background-primary-color)`.
+          // The rows inside it lift off it; having the panel be the lighter of the two put the
+          // elevation the wrong way round.
+          backgroundColor="$backgroundPrimary"
           testID={ELEMENT.onboarding.openUrlDialog}
         >
           <XStack alignItems="flex-start" gap="$1">
@@ -104,7 +108,7 @@ export function TermsAndPrivacy() {
           {/* The addresses themselves, each opening immediately. Showing the URL rather than the
               document's name is the point of the dialog: it is the last moment before leaving, and
               the thing worth reading is where you are going. */}
-          <YStack borderRadius="$2" backgroundColor="$backgroundSecondary" overflow="hidden">
+          <YStack borderRadius="$2" backgroundColor="$backgroundTertiary" overflow="hidden">
             {LINKS.map((link, index) => (
               <XStack
                 key={link.url}
@@ -113,7 +117,7 @@ export function TermsAndPrivacy() {
                 gap="$1"
                 padding="$1.5"
                 cursor="pointer"
-                pressStyle={{ backgroundColor: '$backgroundTertiary' }}
+                pressStyle={{ backgroundColor: '$backgroundNested' }}
                 borderTopWidth={index === 0 ? 0 : 1}
                 borderColor="$separatorColor"
                 testID={link.testID}
