@@ -431,6 +431,27 @@ struct RestoreAccountFromWordsCommand {
             words{std::move(words_)}, language{std::move(language_)} {}
 };
 
+/// Ask whether a recovery phrase would restore, without restoring it.
+///
+/// Onboarding needs to tell somebody their phrase is wrong while they can still fix it, and
+/// `restoreAccountFromWords` answers that question by doing it: the account exists from the
+/// moment the phrase is accepted, so every step after that has an identity behind it that going
+/// back cannot take away. This decodes the phrase and throws the result away, which leaves the
+/// decision of when to mint where it belongs -- at the end of the flow, as it already is for a
+/// new account.
+///
+/// Succeeds or fails; there is nothing to return. The seed deliberately does not come back: the
+/// words are already in the app's memory and a second copy of the same secret buys nothing.
+struct CheckRecoveryPhraseCommand {
+    static constexpr std::string_view type_tag = "checkRecoveryPhrase";
+
+    std::vector<std::string> words;
+    std::optional<std::string> language;
+
+    CheckRecoveryPhraseCommand(std::vector<std::string> words_, std::optional<std::string> language_) :
+            words{std::move(words_)}, language{std::move(language_)} {}
+};
+
 struct RestoreAccountFromSeedCommand {
     static constexpr std::string_view type_tag = "restoreAccountFromSeed";
 
@@ -813,6 +834,7 @@ using Command = std::variant<
         GetAccountInfoCommand,
         CreateAccountCommand,
         RestoreAccountFromWordsCommand,
+        CheckRecoveryPhraseCommand,
         RestoreAccountFromSeedCommand,
         GetSeedMnemonicCommand,
         SetDisplayNameCommand,

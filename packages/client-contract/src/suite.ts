@@ -30,6 +30,14 @@ export interface ContractHarness {
   }>
   /** Stops and restarts a client against the same data. */
   restart(client: SessionClient): Promise<SessionClient>
+  /**
+   * One client with no account at all: where onboarding starts.
+   *
+   * `phrase` is a recovery phrase this implementation accepts. Supplied by the harness rather
+   * than written into the suite, because only the implementation knows what it considers a real
+   * one - the fake has a canonical phrase and libsession has a word list.
+   */
+  newcomer(): Promise<{ client: SessionClient; phrase: string[] }>
 }
 
 type Runner = (name: string, body: () => Promise<void> | void) => void
@@ -90,6 +98,33 @@ export function runSessionClientContract(
   }
 
   describe('SessionClient contract', () => {
+    it('has no account until it is asked for one', async () => {
+      // What makes onboarding reachable. A client that mints an identity as its database opens
+      // has already answered the question the first screen exists to ask.
+      const { client } = await harness.newcomer()
+      const info = await client.getAccountInfo()
+      expect(info.haveAccount).toBe(false)
+      expect(info.sessionId).toBeUndefined()
+    })
+
+    it('checks a recovery phrase without making an account out of it', async () => {
+      // The whole point of the call: onboarding can tell somebody their phrase is wrong while
+      // they can still fix it, and still leave the flow with nothing to undo if they go back.
+      const { client, phrase } = await harness.newcomer()
+
+      await client.checkRecoveryPhrase(phrase)
+
+      expect((await client.getAccountInfo()).haveAccount).toBe(false)
+    })
+
+    it('refuses a phrase of the wrong length, and still makes nothing', async () => {
+      const { client, phrase } = await harness.newcomer()
+
+      expect(await failure(() => client.checkRecoveryPhrase(phrase.slice(0, 5)))).toBeDefined()
+
+      expect((await client.getAccountInfo()).haveAccount).toBe(false)
+    })
+
     it('stores an outgoing message before it is sent', async () => {
       const { alice, bobId } = await harness.friends()
       const seen = collect(alice)

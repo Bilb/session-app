@@ -64,6 +64,13 @@ export class FakeAccount {
   displayName: string
   haveAccount: boolean
   networkAttached = false
+  /**
+   * When a restored profile becomes visible, or 0 where there is nothing outstanding.
+   *
+   * Only a restore sets it. A new account names itself the moment it is named, and an account
+   * that was already here has had its name all along.
+   */
+  profileArrivesAt = 0
 
   private readonly conversations = new Map<ConversationId, FakeConversationState>()
   private readonly listeners = new Set<(event: SessionEvent) => void>()
@@ -90,10 +97,19 @@ export class FakeAccount {
   }
 
   accountInfo(): AccountInfo {
+    // An ID and a name only once there is an account to have them. The fake knows this account's
+    // ID from the moment the world is built, because the world wires conversations up by it -
+    // but libsession has nothing to report before the seed exists, and a screen that reads an ID
+    // off an account that has not been made yet works here and throws there.
+    if (!this.haveAccount) return { haveAccount: false, networkAttached: this.networkAttached }
+    // A restore has the identity before it has the profile. Reported the way libsession reports
+    // it -- the field is simply absent -- rather than as an empty string, which a screen would
+    // have to know to treat as missing.
+    const named = this.profileArrivesAt === 0 || Date.now() >= this.profileArrivesAt
     return {
-      haveAccount: this.haveAccount,
+      haveAccount: true,
       sessionId: this.sessionId,
-      displayName: this.displayName,
+      ...(named ? { displayName: this.displayName } : {}),
       networkAttached: this.networkAttached,
     }
   }

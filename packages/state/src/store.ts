@@ -40,6 +40,24 @@ export interface SessionActions {
     from: { words: string[]; language?: string } | { hexSeed: string },
   ) => Promise<void>
   /**
+   * Asks whether a phrase would restore, and changes nothing either way.
+   *
+   * Does not re-hydrate, because by design nothing has happened: this is what lets onboarding
+   * refuse a phrase at the screen that asked for it while still leaving the person free to go
+   * back to a device with no account on it.
+   */
+  checkRecoveryPhrase: (words: string[], language?: string) => Promise<void>
+  /**
+   * Re-reads the account and nothing else.
+   *
+   * libsession pushes conversations and messages but has no event for the account itself, so a
+   * display name that arrives from the swarm after a restore is invisible until something asks
+   * again. Onboarding's wait is the one place that has to notice, and it has fifteen seconds to
+   * do it in - so it asks. `hydrate` would do the job and would refetch every conversation each
+   * time, which during a restore is the whole history.
+   */
+  refreshAccount: () => Promise<void>
+  /**
    * Names the account, during onboarding and afterwards.
    *
    * Re-hydrates rather than waiting for an event, because the name is read back on the very next
@@ -233,6 +251,14 @@ export function createSessionStore(
     async restoreAccount(from): Promise<void> {
       await client.restoreAccount(from)
       await actions.hydrate()
+    },
+
+    async checkRecoveryPhrase(words, language): Promise<void> {
+      await client.checkRecoveryPhrase(words, language)
+    },
+
+    async refreshAccount(): Promise<void> {
+      store.setState({ account: await client.getAccountInfo() })
     },
 
     async setDisplayName(name): Promise<void> {

@@ -5,7 +5,13 @@
  * the fake cannot drift away from the thing it stands in for without this failing.
  */
 
-import { FakeSessionClient, friends, strangers, type FakeWorld } from '@session/client/fake'
+import {
+  FakeSessionClient,
+  friends,
+  newcomer as newcomerFixture,
+  strangers,
+  type FakeWorld,
+} from '@session/client/fake'
 import type { SessionClient } from '@session/client'
 import { describe, expect, it } from 'vitest'
 
@@ -45,6 +51,14 @@ const harness: ContractHarness = {
       bobId: world.account('Bob').sessionId,
       settle: settleWith(world),
     })
+  },
+
+  async newcomer() {
+    const { clients } = newcomerFixture()
+    const client = Object.values(clients)[0]
+    if (!client) throw new Error('fixture did not produce a client')
+    // The fake's own phrase, which is the only one it can be asked to agree is genuine.
+    return { client, phrase: await client.getSeedMnemonic() }
   },
 
   restart(client: SessionClient) {

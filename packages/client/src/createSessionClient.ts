@@ -106,6 +106,14 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       })
     },
 
+    async checkRecoveryPhrase(words, language): Promise<void> {
+      await call({
+        type: 'checkRecoveryPhrase',
+        words,
+        ...(language === undefined ? {} : { language }),
+      })
+    },
+
     async getSeedMnemonic(language): Promise<string[]> {
       const response = await call({
         type: 'getSeedMnemonic',

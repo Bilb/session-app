@@ -48,6 +48,13 @@ export interface SessionClient {
   getAccountInfo(): Promise<AccountInfo>
   createAccount(): Promise<void>
   restoreAccount(from: { words: string[]; language?: string } | { hexSeed: string }): Promise<void>
+  /**
+   * Whether a phrase would restore, without restoring it.
+   *
+   * Rejects the way `restoreAccount` would - same decode, same errors - so onboarding can say a
+   * phrase is wrong at the screen that asked for it, and still mint nothing until the end.
+   */
+  checkRecoveryPhrase(words: string[], language?: string): Promise<void>
   /** libsession owns the word list, so onboarding needs no mnemonic library of its own. */
   getSeedMnemonic(language?: string): Promise<string[]>
   setDisplayName(name: string): Promise<void>

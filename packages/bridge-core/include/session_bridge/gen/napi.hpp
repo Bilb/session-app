@@ -788,6 +788,25 @@ struct Codec<::session_bridge::RestoreAccountFromWordsCommand> {
 };
 
 template <>
+struct Codec<::session_bridge::CheckRecoveryPhraseCommand> {
+    static constexpr std::string_view name = "CheckRecoveryPhraseCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::CheckRecoveryPhraseCommand& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::CheckRecoveryPhraseCommand::type_tag.data(), ::session_bridge::CheckRecoveryPhraseCommand::type_tag.size()));
+        obj.Set("words", Codec<std::vector<std::string>>::to(env, value.words));
+        if (value.language)
+            obj.Set("language", Codec<std::string>::to(env, *value.language));
+        return obj;
+    }
+    static ::session_bridge::CheckRecoveryPhraseCommand from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::CheckRecoveryPhraseCommand(
+                Codec<std::vector<std::string>>::from(obj.Get("words"), "CheckRecoveryPhraseCommand.words"),
+                optional<std::string>(obj.Get("language"), "CheckRecoveryPhraseCommand.language"));
+    }
+};
+
+template <>
 struct Codec<::session_bridge::RestoreAccountFromSeedCommand> {
     static constexpr std::string_view name = "RestoreAccountFromSeedCommand";
     static Napi::Value to(Napi::Env env, const ::session_bridge::RestoreAccountFromSeedCommand& value) {
@@ -1385,6 +1404,8 @@ struct Codec<::session_bridge::Command> {
             return Codec<::session_bridge::CreateAccountCommand>::from(value, where);
         if (tag == "restoreAccountFromWords")
             return Codec<::session_bridge::RestoreAccountFromWordsCommand>::from(value, where);
+        if (tag == "checkRecoveryPhrase")
+            return Codec<::session_bridge::CheckRecoveryPhraseCommand>::from(value, where);
         if (tag == "restoreAccountFromSeed")
             return Codec<::session_bridge::RestoreAccountFromSeedCommand>::from(value, where);
         if (tag == "getSeedMnemonic")

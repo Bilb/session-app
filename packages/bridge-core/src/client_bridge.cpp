@@ -389,6 +389,22 @@ struct ClientBridge::Impl {
         ok(id);
     }
 
+    void handle(double id, const CheckRecoveryPhraseCommand& cmd) {
+        std::vector<std::string_view> words;
+        words.reserve(cmd.words.size());
+        for (const auto& word : cmd.words)
+            words.emplace_back(word);
+        // Built and thrown away. Deliberately the same constructor RestoreAccountFromWords uses
+        // rather than a decode of its own: a phrase this accepts is then a phrase that restores,
+        // and the word-count rule and the checksum cannot drift apart between the two answers.
+        // Whatever it throws is carried back as the error, which is where libsession names the
+        // unknown word.
+        auto discarded = core::predefined_seed{
+                words, cmd.language ? std::string_view{*cmd.language} : std::string_view{"English"}};
+        static_cast<void>(discarded);
+        ok(id);
+    }
+
     void handle(double id, const GetSeedMnemonicCommand& cmd) {
         auto words = client->core.globals.seed_mnemonic(
                 cmd.language ? std::string_view{*cmd.language} : std::string_view{"English"});

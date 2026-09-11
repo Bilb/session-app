@@ -49,6 +49,14 @@ function networkRefusal(config: NetworkAttachment): string | undefined {
 }
 
 /**
+ * How long a restored profile takes to turn up in the fake.
+ *
+ * Short enough not to be a wait anybody sits through, long enough that the screen covering it is
+ * actually drawn. The real one is a swarm round trip and the app gives it fifteen seconds.
+ */
+const FAKE_PROFILE_DELAY_MS = 2500
+
+/**
  * The fake behind the same interface the real bridge implements.
  *
  * Everything here is synchronous underneath; the promises exist because the interface has
@@ -99,6 +107,21 @@ export class FakeSessionClient implements SessionClient {
     // screen is only reachable against the real bridge - noted rather than faked, because a
     // made-up rule here would predict nothing about the one that matters.
     this.account.haveAccount = true
+    // The account comes back before its profile does: libsession has the identity the moment the
+    // seed decodes, and the display name only once the swarm answers. The fake said both at once,
+    // which made the wait that exists to cover that gap finish before it was drawn.
+    this.account.profileArrivesAt = Date.now() + FAKE_PROFILE_DELAY_MS
+    return Promise.resolve()
+  }
+
+  checkRecoveryPhrase(words: string[]): Promise<void> {
+    this.assertOpen()
+    // The word count is the one rule the fake can apply honestly: libsession takes 12, 13, 24 or
+    // 25 words and refuses anything else by length alone, before it looks a single word up. The
+    // rest of what it checks needs the word lists, so a phrase of the right length is accepted
+    // here whatever it says - see restoreAccount.
+    if (![12, 13, 24, 25].includes(words.length))
+      return Promise.reject(new Error(`a recovery phrase is 13 words, not ${words.length}`))
     return Promise.resolve()
   }
 

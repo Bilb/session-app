@@ -149,6 +149,68 @@ describeAddon('onboarding, against libsession', () => {
     }
   })
 
+  it('checks a phrase without making an account out of it', async () => {
+    // What lets the recovery screen refuse a phrase and still leave nothing behind to undo, so
+    // going back from it needs no warning and no cleanup.
+    const origin = await newcomer(19)
+    const checker = await newcomer(20)
+
+    try {
+      await origin.client.createAccount()
+      const words = await origin.client.getSeedMnemonic()
+
+      await checker.client.checkRecoveryPhrase(words)
+      expect((await checker.client.getAccountInfo()).haveAccount).toBe(false)
+
+      // And the phrase it accepted is then a phrase that restores. The check is the restore's own
+      // decode with the result discarded, so these two answers cannot come apart.
+      await checker.client.restoreAccount({ words })
+      expect((await checker.client.getAccountInfo()).sessionId).toBe(
+        (await origin.client.getAccountInfo()).sessionId,
+      )
+    } finally {
+      await origin.dispose()
+      await checker.dispose()
+    }
+  })
+
+  it('refuses the same phrases the restore would, and by the same names', async () => {
+    const origin = await newcomer(21)
+    const checker = await newcomer(22)
+
+    try {
+      await origin.client.createAccount()
+      const words = await origin.client.getSeedMnemonic()
+
+      const misspelt = [...words]
+      misspelt[0] = 'zzzzz'
+      const unknownWord = await checker.client
+        .checkRecoveryPhrase(misspelt)
+        .catch((e: unknown) => e)
+      expect(String(unknownWord)).toContain('zzzzz')
+
+      const swapped = [...words]
+      const [a, b] = [swapped[0], swapped[1]]
+      if (a === undefined || b === undefined) throw new Error('a phrase this short cannot happen')
+      swapped[0] = b
+      swapped[1] = a
+      const badChecksum = await checker.client.checkRecoveryPhrase(swapped).catch((e: unknown) => e)
+      expect(String(badChecksum)).toMatch(/checksum/i)
+
+      // Half a phrase. libsession takes 12, 13, 24 or 25 words and refuses every other length
+      // before it looks a single word up, which is the rule the fake mirrors.
+      const halfOfIt = await checker.client
+        .checkRecoveryPhrase(words.slice(0, 7))
+        .catch((e: unknown) => e)
+      expect(halfOfIt).toBeInstanceOf(Error)
+
+      expect((await checker.client.getAccountInfo()).haveAccount).toBe(false)
+    } finally {
+      await origin.dispose()
+      await checker.dispose()
+    }
+  })
+
   it('refuses a seed it cannot read, leaving the account unmade', async () => {
     // The restore screen shows the phrase back with an error on it, which is only possible if a
     // refusal leaves the flow where it was rather than half an account behind.

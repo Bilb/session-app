@@ -209,6 +209,39 @@ describeAddon('addon', () => {
       return { alice: alice.client, bob: bob.client, bobId: bob.sessionId, settle }
     },
 
+    async newcomer() {
+      sequence += 1
+      // Its own database, opened deferred: this is the only harness entry that has to reach a
+      // client with no identity, because it is the only scenario about not having one yet.
+      const dir = join(root, `newcomer-${String(sequence)}`)
+      await mkdir(join(dir, 'cache'), { recursive: true })
+      const client = createSessionClient(
+        createNodeBridgeTransport({
+          dbPath: join(dir, 'session.db'),
+          cacheDir: join(dir, 'cache'),
+          rawKey: new Uint8Array(32).fill(12),
+          deferAccount: true,
+        }),
+      )
+      open.push({
+        client,
+        // Only here so the client is closed and its directory removed with the rest. A newcomer
+        // has no identity, so none of the test commands mean anything to it.
+        ask: () => Promise.reject(new Error('a newcomer answers no test commands')),
+        sessionId: '',
+        seed: '',
+        dir,
+      })
+
+      // A phrase libsession really issued, from an account made and thrown away for the purpose.
+      // Nothing else can produce one: the word list is libsession's.
+      const source = await openPeer(join(root, `phrase-${String(sequence)}`))
+      open.push(source)
+      const phrase = await source.client.getSeedMnemonic()
+
+      return { client, phrase }
+    },
+
     async restart(client: SessionClient) {
       const peer = peers.get(client)
       if (!peer) throw new Error('restart was given a client this harness did not open')

@@ -100,6 +100,10 @@ export type OnboardingEvent =
   | { type: 'notificationsChosen'; mode: NotificationMode }
   /** The restore wait ran out. See `afterFailedRestore`. */
   | { type: 'restoreGaveUp' }
+  /** The restored profile came back from the swarm, so there is nothing left to ask. */
+  | { type: 'restoreArrived' }
+  /** libsession would not take the phrase over, after having said it was a phrase. */
+  | { type: 'restoreFailed' }
   /** The bridge refused to make or name the account. See `commitFailed`. */
   | { type: 'commitFailed' }
   /** The window crossed the width that decides which design is in use -- a rotation, or a resize. */
@@ -130,11 +134,20 @@ function previousStep(state: OnboardingState): OnboardingStep | null {
   }
 }
 
-/** Whether `back` from here needs the "are you sure" the legacy clients show. */
+/**
+ * Whether `back` from here has to offer to quit instead of going back.
+ *
+ * **One step, and only one.** Everything else in the flow can be backed out of freely, because
+ * nothing exists yet to abandon: creating holds the name and mints at the end, and restoring now
+ * checks the phrase without taking the account over -- the mint waits for the step that covers it.
+ *
+ * What is left is the name picker reached by a restore that gave up waiting. By then the account
+ * has genuinely been taken over: it exists, it is on the network, and it is somebody's. Going back
+ * from there would have to delete a real account's database rather than discard a half-made one,
+ * which is a different act and wants asking about.
+ */
 export function backNeedsConfirming(state: OnboardingState): boolean {
-  // Only while creating: the name has been typed and would be lost, and nothing has been made yet
-  // that leaving would abandon. Restoring has a phrase the person already had written down.
-  return state.step === 'pickDisplayName' && !state.afterFailedRestore
+  return state.step === 'pickDisplayName' && state.afterFailedRestore
 }
 
 export function onboardingReducer(state: OnboardingState, event: OnboardingEvent): OnboardingState {
@@ -177,6 +190,16 @@ export function onboardingReducer(state: OnboardingState, event: OnboardingEvent
       // Not back to the phrase: it decoded, so there is nothing to retype. The account exists and
       // wants a name, which is the create branch's screen wearing different words.
       return { ...state, step: 'pickDisplayName', afterFailedRestore: true }
+
+    case 'restoreArrived':
+      // The name came with the account, so the flow is over: asking for one now would be asking
+      // somebody to rename themselves.
+      return { ...state, step: 'done' }
+
+    case 'restoreFailed':
+      // Back to the phrase. It decoded a moment ago, so this is not a typo -- but this is the step
+      // that owns the field, and it is the only one that can be tried again.
+      return { ...state, step: 'loadAccount' }
 
     case 'commitFailed':
       // Back to the name picker whichever way `done` was reached: it is the only step left that

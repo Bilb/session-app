@@ -75,6 +75,10 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     })
     return empty
   },
+  checkRecoveryPhrase: async (client, cmd) => {
+    await client.checkRecoveryPhrase(cmd.words, cmd.language)
+    return empty
+  },
   restoreAccountFromSeed: async (client, cmd) => {
     await client.restoreAccount({ hexSeed: cmd.hexSeed })
     return empty

@@ -116,12 +116,17 @@ describe('going back', () => {
     )
   })
 
-  it('asks for confirmation only where there is something to lose', () => {
-    expect(backNeedsConfirming(run([CREATE]))).toBe(true)
-    // Restoring: the phrase is written down somewhere already, so leaving costs nothing.
+  it('asks only where an account has really been taken over', () => {
+    // The one step where going back would have to delete somebody's actual account, rather than
+    // discard something half-made: the restore succeeded and only its name never arrived.
+    expect(backNeedsConfirming(run([RESTORE, PHRASE, FAST, { type: 'restoreGaveUp' }]))).toBe(true)
+
+    // Everywhere else nothing exists yet to abandon. Creating holds the name and mints at the end;
+    // restoring checks the phrase and mints at the wait.
+    expect(backNeedsConfirming(run([CREATE]))).toBe(false)
     expect(backNeedsConfirming(run([RESTORE]))).toBe(false)
+    expect(backNeedsConfirming(run([RESTORE, PHRASE]))).toBe(false)
     expect(backNeedsConfirming(initialOnboarding('phone'))).toBe(false)
-    expect(backNeedsConfirming(run([RESTORE, PHRASE, FAST, { type: 'restoreGaveUp' }]))).toBe(false)
   })
 })
 
@@ -177,5 +182,25 @@ describe('a bridge that refuses the last step', () => {
 
   it('clears the refusal when the name is submitted again', () => {
     expect(run([CREATE, NAME, FAST, FAILED, NAME]).commitFailed).toBe(false)
+  })
+})
+
+describe('the wait for a restored profile', () => {
+  it('ends as soon as the name arrives, rather than always running out', () => {
+    // The timeout used to be the only way out, so a swarm that answered in two seconds still cost
+    // fifteen and then asked somebody to rename themselves.
+    expect(run([RESTORE, PHRASE, FAST, { type: 'restoreArrived' }]).step).toBe('done')
+  })
+
+  it('goes back to the phrase if libsession will not take the account over', () => {
+    // Not a typo - the phrase decoded a moment earlier - but that screen owns the field, so it is
+    // the only one that can be tried again.
+    expect(run([RESTORE, PHRASE, FAST, { type: 'restoreFailed' }]).step).toBe('loadAccount')
+  })
+
+  it('still holds the phrase, so going back does not mean retyping it', () => {
+    expect(run([RESTORE, PHRASE, FAST, { type: 'restoreFailed' }]).recovery).toEqual({
+      words: ['one', 'two'],
+    })
   })
 })

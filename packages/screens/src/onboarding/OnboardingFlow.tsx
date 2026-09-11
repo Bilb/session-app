@@ -1,7 +1,7 @@
 import { requirePorts } from '@session/app'
-import { useSessionActions } from '@session/state'
+import { useAccount, useSessionActions } from '@session/state'
 import { useMedia } from '@session/ui'
-import { useEffect, useReducer, useState } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 
 import { ConfirmUrlProvider } from './ConfirmUrl'
 import { LandingScreen } from './LandingScreen'
@@ -10,7 +10,13 @@ import { LoadAccountScreen } from './LoadAccountScreen'
 import { LoadingScreen } from './LoadingScreen'
 import { MessageNotificationsScreen } from './MessageNotificationsScreen'
 import { PickDisplayNameScreen } from './PickDisplayNameScreen'
-import { initialOnboarding, onboardingReducer, type OnboardingState } from './flow'
+import {
+  backNeedsConfirming,
+  initialOnboarding,
+  onboardingReducer,
+  type OnboardingState,
+  type RecoveryInput,
+} from './flow'
 
 /**
  * Onboarding, from the first screen to an account.
@@ -24,6 +30,14 @@ import { initialOnboarding, onboardingReducer, type OnboardingState } from './fl
  * what has been collected; this is the only thing that turns that into an account, which is what
  * keeps "when is the account actually made" answerable by reading one file.
  */
+/**
+ * How often the restore wait asks whether the profile has landed.
+ *
+ * A second is far below anything anybody perceives against a fifteen-second wait, and well above
+ * what a local database read costs.
+ */
+const PROFILE_POLL_MS = 1000
+
 interface OnboardingFlowProps {
   /**
    * Whether onboarding still owns the screen.
@@ -48,6 +62,56 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
   const [busy, setBusy] = useState(false)
   const [rejected, setRejected] = useState(false)
   const [quitting, setQuitting] = useState(false)
+  const account = useAccount()
+  /** Guards the one call that mints a restored account, so a re-render cannot make two of them. */
+  const restoring = useRef(false)
+
+  /**
+   * The restore itself, at the wait rather than at the phrase.
+   *
+   * This is the step the wait is a wait *for*, and putting it here is what leaves every step
+   * before it free of an account: the phrase screen only asks libsession whether the words decode.
+   */
+  useEffect(() => {
+    if (state.step !== 'loading' || state.recovery === null || restoring.current) return
+    restoring.current = true
+    void actions.restoreAccount(state.recovery).catch(() => {
+      restoring.current = false
+      dispatch({ type: 'restoreFailed' })
+      setRejected(true)
+    })
+  }, [state.step, state.recovery, actions])
+
+  /**
+   * The profile arriving is what ends the wait early.
+   *
+   * Without this the wait always ran its full fifteen seconds and then asked for a name, even when
+   * the swarm had already answered -- which is the timeout doing the work the arrival was supposed
+   * to do, and it renames anybody patient enough to sit through it.
+   *
+   * Asked for rather than waited on: libsession pushes conversations and messages but has no event
+   * for the account, so nothing tells the app the name has landed. Once a second for at most
+   * fifteen of them, only while this step is on screen.
+   */
+  useEffect(() => {
+    if (state.step !== 'loading') return
+    const timer = setInterval(() => {
+      void actions.refreshAccount().catch(() => {
+        // The wait's own timeout covers this: a refresh that fails is one the next tick repeats,
+        // and if they all fail the step ends the way it would have anyway.
+      })
+    }, PROFILE_POLL_MS)
+    return () => {
+      clearInterval(timer)
+    }
+  }, [state.step, actions])
+
+  useEffect(() => {
+    if (state.step !== 'loading') return
+    if (account?.haveAccount !== true) return
+    if (account.displayName === undefined || account.displayName.length === 0) return
+    dispatch({ type: 'restoreArrived' })
+  }, [state.step, account])
 
   useEffect(() => {
     // A rotation or a resize mid-flow changes what comes next, so the reducer is told rather than
@@ -114,10 +178,9 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
             rejected={state.commitFailed}
             busy={busy}
             onBack={() => {
-              // After a failed restore there is an account already and nothing to undo, so back
-              // cannot navigate -- it offers to quit, which is what the legacy clients do. Creating
-              // is different: nothing has been minted yet, so back just goes back.
-              if (state.afterFailedRestore) setQuitting(true)
+              // The rule lives in the reducer, which is the thing that knows what has been made
+              // by now. See backNeedsConfirming: this is the only step it is ever true on.
+              if (backNeedsConfirming(state)) setQuitting(true)
               else dispatch({ type: 'back' })
             }}
             onContinue={(name) => {
@@ -135,12 +198,13 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
               dispatch({ type: 'back' })
             }}
             onContinue={(from) => {
-              // Restoring happens here rather than at `done`, because a phrase the bridge refuses
-              // has to put somebody back on this screen with the field they typed into still on it.
+              // Checked here and restored at the wait. A phrase the bridge refuses has to put
+              // somebody back on this screen with what they typed still on it, and restoring to
+              // find that out would leave an account behind every time somebody got it wrong --
+              // which is what the warning on the way back used to be apologising for.
               setBusy(true)
               setRejected(false)
-              void actions
-                .restoreAccount(from)
+              void check(from, actions)
                 .then(() => {
                   dispatch({ type: 'phraseEntered', from })
                 })
@@ -185,12 +249,26 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
 }
 
 /**
+ * Whether a phrase would restore, asked without restoring it.
+ *
+ * A raw seed has nothing to check that the restore does not check anyway, so it goes straight
+ * through -- there is no phrase to put back on a screen and no word list involved.
+ */
+async function check(
+  from: RecoveryInput,
+  actions: ReturnType<typeof useSessionActions>,
+): Promise<void> {
+  if ('hexSeed' in from) return
+  await actions.checkRecoveryPhrase(from.words, from.language)
+}
+
+/**
  * Everything that has to happen before the app has an account, once the questions are answered.
  *
  * Create mints the identity here, at the end, because that is where the legacy clients do it: a
- * name typed and then abandoned should leave nothing behind. Restore has already minted one by
- * this point -- the phrase had to be checked against libsession to be accepted at all -- so this
- * only names it.
+ * name typed and then abandoned should leave nothing behind. Restore has minted one by this point
+ * too -- at the wait, which is the step that exists to cover it -- so this only names it, and only
+ * when the swarm never sent one.
  */
 async function commit(
   state: OnboardingState,
