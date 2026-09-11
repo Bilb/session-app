@@ -83,8 +83,12 @@ export const ELEMENT = {
     back: 'onboarding-back',
     createAccount: 'onboarding-create-account',
     restoreAccount: 'onboarding-restore-account',
+    hero: 'onboarding-hero',
     termsOfService: 'onboarding-tos',
-    privacyPolicy: 'onboarding-privacy',
+    openUrlDialog: 'onboarding-open-url',
+    openTerms: 'onboarding-open-terms',
+    openPrivacy: 'onboarding-open-privacy',
+    openUrlCancel: 'onboarding-open-url-cancel',
     continueButton: 'onboarding-continue',
 
     displayNameScreen: 'onboarding-display-name-screen',

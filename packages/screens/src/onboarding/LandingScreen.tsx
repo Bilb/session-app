@@ -1,31 +1,32 @@
-import { requirePorts } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Button, Screen, Text, useMedia, XStack, YStack } from '@session/ui'
 import { useEffect, useState } from 'react'
 
 import { LanguageButton } from '../LanguageButton'
-import { LocalizedText } from '../LocalizedText'
+import { TermsAndPrivacy } from './TermsAndPrivacy'
 
 /**
- * The four lines that arrive as a conversation, in the order the legacy clients send them.
+ * The four lines the mobile clients play out as a conversation, in order.
  *
- * They are written as messages rather than as a feature list -- "Welcome to Session", then an
- * answer, then another -- so they are drawn as messages. Two of them carry an `{emoji}` argument,
- * which is the other tell: the catalogue expects them in bubbles.
- *
- * Alternating sides, starting incoming, because a one-sided run of four reads as one long message
- * and the copy is written as an exchange.
+ * **The emoji are not in the catalogue.** Android injects them from Kotlin -- `👋` on the welcome
+ * and `👇` on the last line -- with a TODO about moving them into the strings one day. Pulling the
+ * tokens alone yields the text without them, which reads as a missing translation rather than as a
+ * deliberate omission, so they are supplied here for the same reason Android supplies them there.
  */
 const BUBBLES = [
   { text: tr('onboardingBubbleWelcomeToSession', { emoji: '👋' }), outgoing: false },
   { text: tr('onboardingBubbleSessionIsEngineered'), outgoing: true },
   { text: tr('onboardingBubbleNoPhoneNumber'), outgoing: false },
-  { text: tr('onboardingBubbleCreatingAnAccountIsEasy', { emoji: '🚀' }), outgoing: true },
+  { text: tr('onboardingBubbleCreatingAnAccountIsEasy', { emoji: '👇' }), outgoing: true },
 ] as const
 
-/** How long between one bubble arriving and the next. */
-const BUBBLE_INTERVAL_MS = 900
+/**
+ * The cadence both mobile clients use: a beat before the first line, then one every second and a
+ * half. Android and iOS agree on these to within 300ms, which is close enough to be deliberate.
+ */
+const FIRST_BUBBLE_MS = 500
+const BUBBLE_INTERVAL_MS = 1500
 
 interface LandingScreenProps {
   onCreate: () => void
@@ -37,32 +38,16 @@ interface LandingScreenProps {
 /**
  * The first screen, and the only one that exists before an identity does.
  *
- * A headline, four lines of conversation, the two things you can do, and the terms. The bubbles
- * arrive one at a time: the copy is written as an exchange, and an exchange that is all present at
- * once is a list.
+ * **The two designs share only the buttons and the terms.** The mobile clients open with a heading
+ * and a fake conversation that plays itself out; the desktop client has neither -- its Start is a
+ * hero image down one side and the two buttons beside it. So "hero" means text on a phone and
+ * artwork on a desktop, and this is a fork rather than a reflow.
  *
- * The language picker is the one thing here the legacy clients do not have -- they follow the OS
- * and offer no in-app override at all -- so there is no placement to match and this one is ours.
+ * The language picker is the one thing here no legacy client has -- they follow the OS and offer no
+ * in-app override at all -- so there is no placement to match and this one is ours.
  */
 export function LandingScreen({ onCreate, onRestore, showLanguagePicker }: LandingScreenProps) {
   const wide = useMedia().gtSm
-  const [shown, setShown] = useState(1)
-
-  useEffect(() => {
-    if (shown >= BUBBLES.length) return
-    const timer = setTimeout(() => {
-      setShown((count) => count + 1)
-    }, BUBBLE_INTERVAL_MS)
-    return () => {
-      clearTimeout(timer)
-    }
-  }, [shown])
-
-  const openTerms = (url: string) => {
-    // The legacy clients confirm before leaving for a browser rather than leaving straight away.
-    // Kept because this screen is the one place somebody has not yet chosen to trust the app.
-    void requirePorts().linking.openUrl(url)
-  }
 
   return (
     <Screen padded testID={ELEMENT.onboarding.screen}>
@@ -70,60 +55,102 @@ export function LandingScreen({ onCreate, onRestore, showLanguagePicker }: Landi
         {showLanguagePicker ? <LanguageButton /> : null}
       </XStack>
 
-      <YStack
-        flex={1}
-        gap="$3"
-        {...(wide
-          ? { alignSelf: 'center', width: '100%', maxWidth: 460, justifyContent: 'center' }
-          : {})}
-      >
-        <Text size="$displayLarge" weight="bold">
-          {tr('onboardingBubblePrivacyInYourPocket')}
-        </Text>
-
-        <YStack gap="$1" flex={wide ? undefined : 1}>
-          {BUBBLES.slice(0, shown).map((bubble) => (
-            <YStack
-              key={bubble.text}
-              maxWidth="85%"
-              alignSelf={bubble.outgoing ? 'flex-end' : 'flex-start'}
-              paddingVertical="$1.5"
-              paddingHorizontal="$2"
-              borderRadius="$3"
-              backgroundColor={bubble.outgoing ? '$primaryColor' : '$messageBubbleIncomingBg'}
-            >
-              <Text
-                size="$body"
-                color={bubble.outgoing ? '$onAccent' : '$messageBubbleIncomingText'}
-              >
-                {bubble.text}
-              </Text>
-            </YStack>
-          ))}
-        </YStack>
-
-        <YStack gap="$1.5">
-          <Button testID={ELEMENT.onboarding.createAccount} onPress={onCreate}>
-            {tr('onboardingAccountCreate')}
-          </Button>
-          <Button variant="outline" testID={ELEMENT.onboarding.restoreAccount} onPress={onRestore}>
-            {tr('onboardingAccountExists')}
-          </Button>
-
-          {/* The only place in the app the terms appear, which is why they are here rather than in
-              settings: this is the screen where agreeing to them happens. */}
-          <LocalizedText
-            text={tr('onboardingTosPrivacy')}
-            tone="secondary"
-            size="$caption"
-            textAlign="center"
-            testID={ELEMENT.onboarding.termsOfService}
-            onPress={() => {
-              openTerms('https://getsession.org/terms-of-service')
-            }}
-          />
-        </YStack>
-      </YStack>
+      {wide ? (
+        <DesktopStart onCreate={onCreate} onRestore={onRestore} />
+      ) : (
+        <PhoneLanding onCreate={onCreate} onRestore={onRestore} />
+      )}
     </Screen>
+  )
+}
+
+/**
+ * The mobile opening: a heading, then a conversation that arrives a line at a time.
+ *
+ * The bubble region is the only part that flexes -- the heading and the buttons take the height
+ * they need, which is how Android's column is weighted.
+ */
+function PhoneLanding({ onCreate, onRestore }: Omit<LandingScreenProps, 'showLanguagePicker'>) {
+  const [shown, setShown] = useState(0)
+
+  useEffect(() => {
+    if (shown >= BUBBLES.length) return
+    const timer = setTimeout(
+      () => {
+        setShown((count) => count + 1)
+      },
+      shown === 0 ? FIRST_BUBBLE_MS : BUBBLE_INTERVAL_MS,
+    )
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [shown])
+
+  return (
+    <YStack flex={1} gap="$3">
+      <Text size="$displayLarge" weight="bold" textAlign="center">
+        {tr('onboardingBubblePrivacyInYourPocket')}
+      </Text>
+
+      {/* Holds its height from the start rather than growing line by line, so the buttons below do
+          not walk down the screen while the conversation plays. */}
+      <YStack flex={1} justifyContent="center" gap="$1" minHeight={200}>
+        {BUBBLES.slice(0, shown).map((bubble) => (
+          <YStack
+            key={bubble.text}
+            maxWidth="85%"
+            alignSelf={bubble.outgoing ? 'flex-end' : 'flex-start'}
+            paddingVertical="$1.5"
+            paddingHorizontal="$2"
+            borderRadius="$3"
+            backgroundColor={bubble.outgoing ? '$primaryColor' : '$messageBubbleIncomingBg'}
+          >
+            <Text size="$body" color={bubble.outgoing ? '$onAccent' : '$messageBubbleIncomingText'}>
+              {bubble.text}
+            </Text>
+          </YStack>
+        ))}
+      </YStack>
+
+      <StartButtons onCreate={onCreate} onRestore={onRestore} />
+    </YStack>
+  )
+}
+
+/**
+ * The desktop opening: artwork down one side, the two buttons beside it.
+ *
+ * **The hero artwork is not in this repo yet**, so the column it belongs in is held open and left
+ * empty rather than filled with a stand-in. An empty 40% is obviously unfinished; a placeholder
+ * graphic is something somebody has to notice is wrong.
+ *
+ * The 40% is the desktop client's, and it is a percentage rather than a breakpoint -- which is why
+ * it scales to a tablet at all. It has no portrait rule anywhere, because no client has ever run
+ * this design in portrait; a 40% column on a portrait tablet is a tall thin strip, and what it
+ * should do instead is still an open question.
+ */
+function DesktopStart({ onCreate, onRestore }: Omit<LandingScreenProps, 'showLanguagePicker'>) {
+  return (
+    <XStack flex={1} gap="$3">
+      <YStack width="40%" testID={ELEMENT.onboarding.hero} />
+      <YStack flex={1} justifyContent="center" maxWidth={360} alignSelf="center">
+        <StartButtons onCreate={onCreate} onRestore={onRestore} />
+      </YStack>
+    </XStack>
+  )
+}
+
+/** The only part both designs share: what you can do, and what you are agreeing to. */
+function StartButtons({ onCreate, onRestore }: Omit<LandingScreenProps, 'showLanguagePicker'>) {
+  return (
+    <YStack gap="$1.5">
+      <Button testID={ELEMENT.onboarding.createAccount} onPress={onCreate}>
+        {tr('onboardingAccountCreate')}
+      </Button>
+      <Button variant="outline" testID={ELEMENT.onboarding.restoreAccount} onPress={onRestore}>
+        {tr('onboardingAccountExists')}
+      </Button>
+      <TermsAndPrivacy />
+    </YStack>
   )
 }
