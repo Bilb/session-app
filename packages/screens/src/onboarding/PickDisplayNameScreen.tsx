@@ -1,7 +1,7 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Button, Input, Text } from '@session/ui'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { displayNameProblem, displayNameRemaining } from './displayName'
 import { OnboardingStep } from './OnboardingStep'
@@ -23,6 +23,10 @@ interface PickDisplayNameScreenProps {
   afterFailedRestore: boolean
   onBack: () => void
   onContinue: (name: string) => void
+  /** What was typed last time, when this screen is being asked again. */
+  initialName?: string
+  /** The bridge refused to make or name the account. Nothing about the name itself is wrong. */
+  rejected?: boolean
   busy?: boolean
 }
 
@@ -43,13 +47,26 @@ export function PickDisplayNameScreen({
   afterFailedRestore,
   onBack,
   onContinue,
+  initialName = '',
+  rejected: refused = false,
   busy = false,
 }: PickDisplayNameScreenProps) {
-  const [name, setName] = useState('')
+  const [name, setName] = useState(initialName)
   /** The last submit failed. Sticky: it is what keeps the border red while a correction is typed. */
   const [rejected, setRejected] = useState(false)
   /** Nothing has been typed since that failure, so the message and the red text still stand. */
   const [showing, setShowing] = useState(false)
+  /** The refusal came from the bridge rather than from the name, which is a different message. */
+  const [failedToCommit, setFailedToCommit] = useState(false)
+
+  // Latched rather than read from the prop: the prop describes an attempt that is over, and the
+  // message has to clear on the next keystroke like every other error on this screen does.
+  useEffect(() => {
+    if (!refused) return
+    setRejected(true)
+    setShowing(true)
+    setFailedToCommit(true)
+  }, [refused])
 
   const remaining = displayNameRemaining(name)
   const tooLong = remaining < 0
@@ -62,6 +79,7 @@ export function PickDisplayNameScreen({
     }
     setRejected(true)
     setShowing(true)
+    setFailedToCommit(false)
   }
 
   return (
@@ -78,7 +96,14 @@ export function PickDisplayNameScreen({
             weight="bold"
             testID={ELEMENT.onboarding.displayNameError}
           >
-            {tooLong ? tr('displayNameErrorDescriptionShorter') : tr('displayNameErrorDescription')}
+            {/* A refusal from the bridge is not a complaint about the name, so it must not be
+                dressed as one: the name that was typed may be perfectly good and the account
+                simply could not be made. */}
+            {failedToCommit
+              ? tr('errorGeneric')
+              : tooLong
+                ? tr('displayNameErrorDescriptionShorter')
+                : tr('displayNameErrorDescription')}
           </Text>
         ) : undefined
       }
@@ -87,8 +112,10 @@ export function PickDisplayNameScreen({
           variant="outline"
           testID={ELEMENT.onboarding.continueButton}
           loading={busy}
-          // Nothing to submit, or the last submit was refused and nothing has changed since.
-          disabled={name.trim().length === 0 || showing}
+          // Nothing to submit, or the name was refused and nothing has changed since. A refusal
+          // from the bridge is the exception: the name may be fine and the account simply could
+          // not be made, so pressing again is the right thing to be able to do.
+          disabled={name.trim().length === 0 || (showing && !failedToCommit)}
           onPress={submit}
         >
           {tr('theContinue')}

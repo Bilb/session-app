@@ -65,9 +65,16 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
     if (state.step !== 'done') return
     // `done` is reached from two places and means something different at each: the end of create,
     // where there is no account yet, and the end of a restore that had to ask for a name.
-    void commit(state, actions, setBusy).then(() => {
-      onRunningChange?.(false)
-    })
+    void commit(state, actions, setBusy).then(
+      () => {
+        onRunningChange?.(false)
+      },
+      () => {
+        // Nothing renders at `done`, so a rejection here would otherwise be an empty window with
+        // nothing said and nowhere to go.
+        dispatch({ type: 'commitFailed' })
+      },
+    )
   }, [state, actions, onRunningChange])
 
   return (
@@ -103,6 +110,8 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
         return (
           <PickDisplayNameScreen
             afterFailedRestore={state.afterFailedRestore}
+            initialName={state.displayName ?? ''}
+            rejected={state.commitFailed}
             busy={busy}
             onBack={() => {
               // After a failed restore there is an account already and nothing to undo, so back

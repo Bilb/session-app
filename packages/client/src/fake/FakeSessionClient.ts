@@ -93,6 +93,11 @@ export class FakeSessionClient implements SessionClient {
     // the same refusal here as it will against libsession.
     if ('hexSeed' in from && !/^[0-9a-fA-F]{64}$/.test(from.hexSeed))
       return Promise.reject(new Error('hexSeed must be 32 bytes of hex'))
+    // A phrase, though, is taken on trust: libsession refuses an unknown word by name and a
+    // checksum that does not add up, and neither check can be made without its word list, which
+    // is a megabyte of data this has no business carrying. So the refusal half of the recovery
+    // screen is only reachable against the real bridge - noted rather than faked, because a
+    // made-up rule here would predict nothing about the one that matters.
     this.account.haveAccount = true
     return Promise.resolve()
   }

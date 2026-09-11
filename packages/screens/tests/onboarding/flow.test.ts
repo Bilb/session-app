@@ -148,3 +148,34 @@ describe('changing branch', () => {
     expect(again.afterFailedRestore).toBe(false)
   })
 })
+
+describe('a bridge that refuses the last step', () => {
+  const FAILED: OnboardingEvent = { type: 'commitFailed' }
+
+  it('goes back to the name picker rather than staying on a step that draws nothing', () => {
+    // `done` renders null, so a rejection left there is an empty window: no message, no way on,
+    // and nothing to press. Found by running the flow against real libsession.
+    const stuck = run([CREATE, NAME, FAST, FAILED])
+    expect(stuck.step).toBe('pickDisplayName')
+    expect(stuck.commitFailed).toBe(true)
+  })
+
+  it('keeps the name that was typed, so it does not have to be typed again', () => {
+    expect(run([CREATE, NAME, FAST, FAILED]).displayName).toBe('Ada')
+  })
+
+  it('does the same on the desktop design, where done follows the name directly', () => {
+    expect(run([CREATE, NAME, FAILED], 'desktop').step).toBe('pickDisplayName')
+  })
+
+  it('lands there after a restore that had to ask for a name too', () => {
+    const failed = run([RESTORE, PHRASE, FAST, { type: 'restoreGaveUp' }, NAME, FAILED])
+    expect(failed.step).toBe('pickDisplayName')
+    // Still the restore branch's copy: what failed was naming the account, not restoring it.
+    expect(failed.afterFailedRestore).toBe(true)
+  })
+
+  it('clears the refusal when the name is submitted again', () => {
+    expect(run([CREATE, NAME, FAST, FAILED, NAME]).commitFailed).toBe(false)
+  })
+})

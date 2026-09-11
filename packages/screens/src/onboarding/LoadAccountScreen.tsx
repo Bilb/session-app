@@ -1,7 +1,7 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Button, Icon, Input, RecoveryPasswordMark, Text } from '@session/ui'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { OnboardingStep } from './OnboardingStep'
 import { phraseIsTooShort, phraseWords } from './recoveryPhrase'
@@ -46,10 +46,21 @@ export function LoadAccountScreen({
   const [showing, setShowing] = useState(false)
   const [tooShort, setTooShort] = useState(false)
 
-  // A refusal from the bridge arrives as a prop rather than from `submit`, so it has to fold into
-  // the same two flags the local check sets.
-  const failed = refused || rejected
-  const visible = showing || rejected
+  /**
+   * A refusal from the bridge is latched into the same two flags the local check sets, rather
+   * than read straight from the prop.
+   *
+   * Read directly it was a dead end: the prop only goes false when the *next* submit starts, so
+   * the error stayed up and the continue button stayed disabled no matter what was typed -- and
+   * the field cannot be submitted again to clear it. Against the fake this was invisible, because
+   * the fake accepts every phrase; it takes a wrong phrase and real libsession to reach at all.
+   */
+  useEffect(() => {
+    if (!rejected) return
+    setRefused(true)
+    setShowing(true)
+    setTooShort(false)
+  }, [rejected])
 
   const submit = () => {
     const short = phraseIsTooShort(phrase)
@@ -73,7 +84,7 @@ export function LoadAccountScreen({
       onBack={onBack}
       testID={ELEMENT.onboarding.loadAccountScreen}
       error={
-        visible ? (
+        showing ? (
           <Text
             tone="danger"
             size="$label"
@@ -93,7 +104,7 @@ export function LoadAccountScreen({
           variant="outline"
           testID={ELEMENT.onboarding.continueButton}
           loading={busy}
-          disabled={phrase.trim().length === 0 || visible}
+          disabled={phrase.trim().length === 0 || showing}
           onPress={submit}
         >
           {tr('theContinue')}
@@ -113,8 +124,8 @@ export function LoadAccountScreen({
         // Concealed until asked for. The toggle is the only way to read it back, which is the
         // point -- a phrase typed blind cannot be checked over.
         secureTextEntry={!revealed}
-        error={failed}
-        errorText={visible}
+        error={refused}
+        errorText={showing}
         testID={ELEMENT.onboarding.recoveryPhraseInput}
         endWidth={TOGGLE_WIDTH}
         end={
@@ -131,7 +142,7 @@ export function LoadAccountScreen({
               <Icon
                 name={revealed ? 'eyeOff' : 'eye'}
                 size="$5"
-                color={visible ? '$dangerColor' : '$textSecondary'}
+                color={showing ? '$dangerColor' : '$textSecondary'}
               />
             }
           />

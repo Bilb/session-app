@@ -68,6 +68,15 @@ export interface OnboardingState {
   displayName: string | null
   recovery: RecoveryInput | null
   notifications: NotificationMode | null
+  /**
+   * The bridge refused the last step, the one that actually makes the account.
+   *
+   * There has to be somewhere for that failure to go. `done` renders nothing -- it is a call or
+   * two behind whatever was last on screen -- so a rejection there left an empty window with no
+   * way forward and nothing said. This sends it back to the name picker, which is the last screen
+   * that can be asked again.
+   */
+  commitFailed: boolean
 }
 
 export function initialOnboarding(design: OnboardingDesign): OnboardingState {
@@ -79,6 +88,7 @@ export function initialOnboarding(design: OnboardingDesign): OnboardingState {
     displayName: null,
     recovery: null,
     notifications: null,
+    commitFailed: false,
   }
 }
 
@@ -90,6 +100,8 @@ export type OnboardingEvent =
   | { type: 'notificationsChosen'; mode: NotificationMode }
   /** The restore wait ran out. See `afterFailedRestore`. */
   | { type: 'restoreGaveUp' }
+  /** The bridge refused to make or name the account. See `commitFailed`. */
+  | { type: 'commitFailed' }
   /** The window crossed the width that decides which design is in use -- a rotation, or a resize. */
   | { type: 'designChanged'; design: OnboardingDesign }
   | { type: 'back' }
@@ -140,6 +152,7 @@ export function onboardingReducer(state: OnboardingState, event: OnboardingEvent
       return {
         ...state,
         displayName: event.name,
+        commitFailed: false,
         step:
           state.afterFailedRestore || state.design === 'desktop' ? 'done' : 'messageNotifications',
       }
@@ -164,6 +177,11 @@ export function onboardingReducer(state: OnboardingState, event: OnboardingEvent
       // Not back to the phrase: it decoded, so there is nothing to retype. The account exists and
       // wants a name, which is the create branch's screen wearing different words.
       return { ...state, step: 'pickDisplayName', afterFailedRestore: true }
+
+    case 'commitFailed':
+      // Back to the name picker whichever way `done` was reached: it is the only step left that
+      // asks a question, and the name it collected is still held so nothing has to be retyped.
+      return { ...state, step: 'pickDisplayName', commitFailed: true }
 
     case 'designChanged':
       return { ...state, design: event.design }
