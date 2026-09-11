@@ -188,3 +188,21 @@ describe('the letters NFC takes apart rather than puts together', () => {
     expect(displayNameProblem(QA.repeat(30))).toBe('tooLong')
   })
 })
+
+describe('the characters normalisation replaces outright', () => {
+  // Canonical singletons: one code point maps to a different one. Pinned so that nobody later
+  // reads "the stored name is not what was typed" as a bug and drops the normalisation of the
+  // value - which would put back the mismatch between what is counted and what is sent.
+  it.each([
+    ['U+037E GREEK QUESTION MARK', 0x037e, 0x003b],
+    ['U+2126 OHM SIGN', 0x2126, 0x03a9],
+    ['U+212B ANGSTROM SIGN', 0x212b, 0x00c5],
+  ])('replaces %s, and that is canonical rather than lossy', (_name, from, to) => {
+    const typed = String.fromCodePoint(from)
+    const stored = normalizeDisplayName(typed)
+    expect(stored).not.toBe(typed)
+    expect(stored.codePointAt(0)).toBe(to)
+    // Canonically equivalent, which is what makes the substitution safe: both sides agree.
+    expect(typed.normalize('NFC')).toBe(stored.normalize('NFC'))
+  })
+})

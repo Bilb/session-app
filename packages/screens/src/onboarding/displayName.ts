@@ -64,6 +64,15 @@ export const DISPLAY_NAME_MAX_CODE_POINTS = 35
  * **Applied to the value, not only to the count.** Counting one form and sending another would let
  * a name pass here and be refused by libSession -- decomposed text is longer in bytes, so a name
  * inside 100 bytes composed can be outside it decomposed. The screen submits what was counted.
+ *
+ * **The consequence of that, which is not obvious: this can store a different character than was
+ * typed.** Canonical singletons map one code point to another -- `U+037E GREEK QUESTION MARK`
+ * becomes an ASCII semicolon, `U+2126 OHM SIGN` becomes `U+03A9 GREEK CAPITAL OMEGA`, `U+212B
+ * ANGSTROM SIGN` becomes `U+00C5`. That is correct: they are canonically equivalent and render
+ * identically. But it means a stored name is not always byte-identical or even code-point-identical
+ * to the input, so anything that ever diffs a name against what somebody typed will see a
+ * difference that is not a bug. Deliberate, and not to be "fixed" by dropping the normalisation of
+ * the value -- that reintroduces the mismatch this exists to prevent.
  */
 export function normalizeDisplayName(value: string): string {
   return value.normalize('NFC')
