@@ -24,6 +24,8 @@ export function Input({
   grow = false,
   end,
   endWidth = 0,
+  error = false,
+  errorText = false,
   testID,
 }: InputProps) {
   const field = (
@@ -44,12 +46,18 @@ export function Input({
       blurOnSubmit={false}
       testID={testID}
       backgroundColor="$backgroundSecondary"
-      borderColor="$bordersColor"
-      color="$textPrimary"
-      placeholderTextColor="$textSecondary"
-      borderRadius="$2"
-      height="$7"
-      paddingHorizontal="$2"
+      borderColor={error ? '$dangerColor' : '$bordersColor'}
+      // The error border has to beat the focus ring, or correcting the value turns the border
+      // accent-coloured the moment the field is focused -- which is exactly when it is being
+      // corrected, and the rule is that it stays red until the value is submitted again.
+      {...(error ? { focusStyle: { borderColor: '$dangerColor' } } : {})}
+      color={errorText ? '$dangerColor' : '$textPrimary'}
+      placeholderTextColor={error ? '$dangerColor' : '$textSecondary'}
+      borderRadius="$3"
+      // Taller and more generously padded than a list field: the desktop client pads its
+      // onboarding input by 20px on every side, which is most of why its fields read as roomy.
+      height="$10"
+      paddingHorizontal="$2.5"
       // Room for whatever sits against the trailing edge, so the text does not run under it.
       paddingRight={endWidth === 0 ? '$2' : endWidth}
     />

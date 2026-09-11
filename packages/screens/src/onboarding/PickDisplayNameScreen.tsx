@@ -1,6 +1,6 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Input, Text, YStack } from '@session/ui'
+import { Button, Input, Text } from '@session/ui'
 import { useState } from 'react'
 
 import { displayNameProblem, displayNameRemaining } from './displayName'
@@ -11,14 +11,6 @@ const COUNTER_THRESHOLD = 10
 
 /** Room reserved inside the field for the count, so the text never runs under it. */
 const COUNTER_WIDTH = 44
-
-/**
- * Space held for the error, whether or not there is one.
- *
- * An error that appears between a field and a button pushes the button down as you type, so the
- * control moves out from under the cursor at exactly the moment it is about to be pressed.
- */
-const ERROR_HEIGHT = 18
 
 interface PickDisplayNameScreenProps {
   /**
@@ -37,13 +29,15 @@ interface PickDisplayNameScreenProps {
 /**
  * Naming the account.
  *
- * **The field accepts whatever is typed and says what is wrong**, rather than refusing keystrokes.
- * That is what the desktop client does where it validates a name at all: free input, an error
- * underneath, and the confirm control disabled while the error stands.
+ * **The error rules are the designs', and the fourth one is the interesting one.** On a failed
+ * submit the border, the text and the placeholder all turn red. Typing then returns the *text* to
+ * its normal colour and clears the message — but **the border stays red** until the field is
+ * submitted again. So the state is two flags, not one: whether the last submit failed, and whether
+ * the value has been touched since.
  *
- * Blank is checked on submit and length is checked as you type. The difference is that one of them
- * you can see coming: a counter that runs down is useful, where "please enter a display name" under
- * an empty field you have not finished filling in is just telling you off.
+ * The message itself disappears on the first keystroke rather than persisting, which is a
+ * deliberate departure from the written rules — a product call, on the grounds that a stale error
+ * under a field somebody is actively correcting is confusing.
  */
 export function PickDisplayNameScreen({
   afterFailedRestore,
@@ -52,15 +46,22 @@ export function PickDisplayNameScreen({
   busy = false,
 }: PickDisplayNameScreenProps) {
   const [name, setName] = useState('')
-  const [submittedEmpty, setSubmittedEmpty] = useState(false)
+  /** The last submit failed. Sticky: it is what keeps the border red while a correction is typed. */
+  const [rejected, setRejected] = useState(false)
+  /** Nothing has been typed since that failure, so the message and the red text still stand. */
+  const [showing, setShowing] = useState(false)
 
   const remaining = displayNameRemaining(name)
   const tooLong = remaining < 0
 
   const submit = () => {
     const problem = displayNameProblem(name)
-    setSubmittedEmpty(problem === 'empty')
-    if (problem === null) onContinue(name)
+    if (problem === null) {
+      onContinue(name)
+      return
+    }
+    setRejected(true)
+    setShowing(true)
   }
 
   return (
@@ -69,62 +70,65 @@ export function PickDisplayNameScreen({
       description={afterFailedRestore ? tr('displayNameErrorNew') : tr('displayNameDescription')}
       onBack={onBack}
       testID={ELEMENT.onboarding.displayNameScreen}
+      error={
+        showing ? (
+          <Text
+            tone="danger"
+            size="$label"
+            weight="bold"
+            testID={ELEMENT.onboarding.displayNameError}
+          >
+            {tooLong ? tr('displayNameErrorDescriptionShorter') : tr('displayNameErrorDescription')}
+          </Text>
+        ) : undefined
+      }
       footer={
         <Button
           variant="outline"
           testID={ELEMENT.onboarding.continueButton}
           loading={busy}
-          disabled={tooLong}
+          // Nothing to submit, or the last submit was refused and nothing has changed since.
+          disabled={name.trim().length === 0 || showing}
           onPress={submit}
         >
           {tr('theContinue')}
         </Button>
       }
     >
-      <YStack>
-        <Input
-          value={name}
-          onChangeText={(next) => {
-            setName(next)
-            setSubmittedEmpty(false)
-          }}
-          placeholder={tr('displayNameEnter')}
-          autoCapitalize="words"
-          autoFocus
-          onSubmit={submit}
-          testID={ELEMENT.onboarding.displayNameInput}
-          endWidth={remaining <= COUNTER_THRESHOLD ? COUNTER_WIDTH : 0}
-          /* Inside the field, which is where the desktop client puts the message composer's count
-             too. A counter underneath is one more thing that appears and shifts what is below it.
-
-             A bare number, deliberately: a count rather than copy, so it needs no string in the
-             catalogue and reads the same in every language. It shows only near the limit, and goes
-             negative to say how far over -- which is the thing worth knowing once it is. */
-          end={
-            remaining <= COUNTER_THRESHOLD ? (
-              <Text
-                tone={tooLong ? 'danger' : 'secondary'}
-                size="$label"
-                fontVariant={['tabular-nums']}
-                testID={ELEMENT.onboarding.displayNameCounter}
-              >
-                {remaining}
-              </Text>
-            ) : undefined
-          }
-        />
-
-        {/* Always present, so nothing below it moves when the message arrives. */}
-        <YStack height={ERROR_HEIGHT} justifyContent="center">
-          {submittedEmpty || tooLong ? (
-            <Text tone="danger" size="$label" testID={ELEMENT.onboarding.displayNameError}>
-              {tooLong
-                ? tr('displayNameErrorDescriptionShorter')
-                : tr('displayNameErrorDescription')}
+      <Input
+        value={name}
+        onChangeText={(next) => {
+          setName(next)
+          // The message and the red text go; the border stays, because the field has not been
+          // accepted yet and pretending otherwise invites the same refusal twice.
+          setShowing(false)
+        }}
+        placeholder={tr('displayNameEnter')}
+        autoCapitalize="words"
+        autoFocus
+        onSubmit={submit}
+        error={rejected}
+        errorText={showing}
+        testID={ELEMENT.onboarding.displayNameInput}
+        endWidth={remaining <= COUNTER_THRESHOLD ? COUNTER_WIDTH : 0}
+        /* Inside the field, which is where the desktop client puts the message composer's count.
+           A bare number: a count rather than copy, so it needs no string in the catalogue and
+           reads the same in every language. It shows only near the limit and goes negative to say
+           how far over. */
+        end={
+          remaining <= COUNTER_THRESHOLD ? (
+            <Text
+              tone={tooLong ? 'danger' : 'secondary'}
+              size="$label"
+              fontVariant={['tabular-nums']}
+              userSelect="none"
+              testID={ELEMENT.onboarding.displayNameCounter}
+            >
+              {remaining}
             </Text>
-          ) : null}
-        </YStack>
-      </YStack>
+          ) : undefined
+        }
+      />
     </OnboardingStep>
   )
 }

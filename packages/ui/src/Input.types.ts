@@ -37,5 +37,16 @@ export interface InputProps {
   end?: ReactNode
   /** How much room to leave for `end`. Given by the caller, which is the only thing that knows. */
   endWidth?: number
+  /**
+   * Whether the field is in an error state, which is a different thing from what the error says.
+   *
+   * Three rules, all the desktop client's: the border turns red, the typed text turns red, and the
+   * placeholder turns red. The fourth is the one that is not obvious -- **the border stays red
+   * after the text is corrected**, until the field is submitted again. So the caller keeps two
+   * pieces of state and this takes both.
+   */
+  error?: boolean
+  /** True while the typed text should be red too. Cleared as soon as the value changes. */
+  errorText?: boolean
   testID?: string
 }

@@ -12,20 +12,26 @@ const Frame = styled(XStack, {
   borderRadius: '$full',
   borderWidth: 1,
   cursor: 'pointer',
+  // A label is not text you select; dragging across a control should do nothing. The desktop
+  // client sets the same thing on its button for the same reason.
+  userSelect: 'none',
 
   variants: {
     variant: {
       solid: {
         backgroundColor: '$primaryColor',
         borderColor: '$primaryColor',
-        pressStyle: { opacity: 0.8 },
+        hoverStyle: { backgroundColor: '$accentHover', borderColor: '$accentHover' },
+        pressStyle: { backgroundColor: '$accentPressed', borderColor: '$accentPressed' },
       },
       outline: {
         backgroundColor: 'transparent',
         borderColor: '$textPrimary',
-        // A surface rather than a brightness step: a ghost or outline control on white has no
-        // headroom to brighten into, so the pressed state has to come off the surface ladder.
-        pressStyle: { backgroundColor: '$backgroundTertiary' },
+        // A surface rather than a brightness step: an outline control on white has no headroom to
+        // brighten into, so both states come off the surface ladder. The desktop client uses its
+        // text colour at 30% for the hover, which is the same idea by a different route.
+        hoverStyle: { backgroundColor: '$backgroundTertiary' },
+        pressStyle: { backgroundColor: '$backgroundNested' },
       },
       /**
        * The outline, in the accent rather than in the text colour.
@@ -54,12 +60,25 @@ const Frame = styled(XStack, {
       ghost: {
         backgroundColor: 'transparent',
         borderColor: 'transparent',
-        pressStyle: { backgroundColor: '$backgroundTertiary' },
+        hoverStyle: { backgroundColor: '$backgroundTertiary' },
+        pressStyle: { backgroundColor: '$backgroundNested' },
+      },
+      /**
+       * Text on its own, no frame -- what the desktop client calls Simple and uses for every
+       * modal action. Its hover dims the label rather than lighting a surface, because there is
+       * no surface to light.
+       */
+      simple: {
+        backgroundColor: 'transparent',
+        borderColor: 'transparent',
+        hoverStyle: { opacity: 0.7 },
+        pressStyle: { opacity: 0.55 },
       },
       danger: {
         backgroundColor: '$dangerColor',
         borderColor: '$dangerColor',
-        pressStyle: { opacity: 0.8 },
+        hoverStyle: { opacity: 0.85 },
+        pressStyle: { opacity: 0.7 },
       },
     },
     size: {
@@ -101,6 +120,7 @@ const LABEL_TONE = {
   outline: '$textPrimary',
   outlineAccent: '$primaryColor',
   ghost: '$textPrimary',
+  simple: '$textPrimary',
   danger: '$onDanger',
 } as const
 
@@ -111,6 +131,21 @@ export interface ButtonProps {
   size?: 'xs' | 'sm' | 'md' | 'lg'
   /** For an icon on its own: equal width and height, so the full radius is a circle. */
   circular?: boolean
+  /**
+   * Overrides the size variant's horizontal padding.
+   *
+   * For a control whose content is already the right width -- a flag and a chevron, say -- where
+   * the variant's padding is what makes it look further from its neighbours than it is.
+   */
+  paddingHorizontal?: number
+  /**
+   * Colour the label danger without filling the button.
+   *
+   * Every destructive action in a modal is drawn this way in the desktop client -- red text beside
+   * plain text, no fill on either. A filled red button in a dialog reads as the safe default
+   * because it is the one that looks like a primary action.
+   */
+  destructive?: boolean
   disabled?: boolean
   loading?: boolean
   icon?: ReactNode
@@ -135,6 +170,8 @@ export function Button({
   disabled = false,
   loading = false,
   circular = false,
+  destructive = false,
+  paddingHorizontal,
   icon,
   accessibilityLabel,
   testID,
@@ -144,19 +181,24 @@ export function Button({
       variant={variant}
       size={size}
       circular={circular}
+      {...(paddingHorizontal === undefined ? {} : { paddingHorizontal })}
       disabled={disabled || loading}
       onPress={onPress}
       aria-label={accessibilityLabel}
       testID={testID}
     >
-      {loading ? <Spinner size="small" color={LABEL_TONE[variant]} /> : icon}
+      {loading ? (
+        <Spinner size="small" color={destructive ? '$dangerColor' : LABEL_TONE[variant]} />
+      ) : (
+        icon
+      )}
       {typeof children === 'string' ? (
         <Text
           size={size === 'xs' || size === 'sm' ? '$label' : '$body'}
           // Bold, which is what the desktop client's button is: `font-weight: 700` unless a caller
           // says otherwise, and none of the onboarding callers do.
           weight="bold"
-          color={LABEL_TONE[variant]}
+          color={destructive ? '$dangerColor' : LABEL_TONE[variant]}
         >
           {children}
         </Text>

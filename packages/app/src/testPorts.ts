@@ -62,6 +62,8 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
       openLanguageSettings: null,
     },
     window: {
+      // Nothing to close in a test or on a phone. See the port.
+      close: () => undefined,
       isFocused: () => true,
       onFocusChange: (handler) => {
         focusHandlers.add(handler)

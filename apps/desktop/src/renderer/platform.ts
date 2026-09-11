@@ -21,6 +21,11 @@ setPorts(
       override: (name) => import.meta.env.SESSION_FLAGS?.[name] ?? null,
     },
     window: {
+      // One window, so closing it is quitting. `window.close()` rather than an IPC call because
+      // there is no IPC surface in the preload yet and this needs none.
+      close: () => {
+        window.close()
+      },
       isFocused: () => document.hasFocus(),
       onFocusChange: (handler) => {
         const onFocus = () => handler(true)

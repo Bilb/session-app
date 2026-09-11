@@ -1,4 +1,4 @@
-import { requirePorts, flag } from '@session/app'
+import { flag } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import {
@@ -13,9 +13,42 @@ import {
   XStack,
   YStack,
 } from '@session/ui'
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 import { LanguageButton } from '../LanguageButton'
+import { useConfirmUrl } from './ConfirmUrl'
+
+/**
+ * How long the content takes to fade in when a step changes.
+ *
+ * The desktop client's `--duration-fadein`. Long enough to read as a transition rather than a
+ * flicker, which is what makes moving between steps feel like one screen changing its mind rather
+ * than four screens replacing each other.
+ */
+const FADE_MS = 400
+
+/**
+ * Fades from nothing to full whenever `key` changes.
+ *
+ * Two frames, not an easing curve: the opacity is handed to a tamagui stack, which animates it for
+ * us. Written by hand rather than with an animation library because this is the only thing in the
+ * app that needs it and a driver is a dependency.
+ */
+function useFadeIn(key: string): number {
+  const [shown, setShown] = useState(false)
+  useEffect(() => {
+    setShown(false)
+    // Next frame rather than immediately: setting both values in one tick gives no transition to
+    // interpolate and the content simply appears.
+    const raf = setTimeout(() => {
+      setShown(true)
+    }, 16)
+    return () => {
+      clearTimeout(raf)
+    }
+  }, [key])
+  return shown ? 1 : 0
+}
 
 /** The desktop client's registration column. Everything inside onboarding is this wide. */
 const COLUMN_WIDTH = 348
@@ -59,6 +92,9 @@ const WEBSITE_URL = 'https://getsession.org'
  */
 export function OnboardingChrome({ children, testID }: { children: ReactNode; testID: string }) {
   const wide = useMedia().gtSm
+  // Fades the content in when the step changes. `testID` is the step's identity, so a new step
+  // remounts this and the animation runs; the artwork and the lockup sit outside it and do not.
+  const fading = useFadeIn(testID)
 
   if (!wide) {
     return (
@@ -66,7 +102,7 @@ export function OnboardingChrome({ children, testID }: { children: ReactNode; te
         <XStack justifyContent="flex-end" minHeight="$7">
           {flag('onboardingLanguageSelect') ? <LanguageButton /> : null}
         </XStack>
-        {children}
+        <YStack opacity={fading}>{children}</YStack>
       </Screen>
     )
   }
@@ -84,7 +120,16 @@ export function OnboardingChrome({ children, testID }: { children: ReactNode; te
         <YStack flex={1} alignItems="center" justifyContent="center" padding="$3">
           <YStack width={COLUMN_WIDTH} gap="$3">
             <OnboardingHeader />
-            <YStack minHeight={CONTENT_MIN_HEIGHT}>{children}</YStack>
+            <YStack
+              minHeight={CONTENT_MIN_HEIGHT}
+              opacity={fading}
+              // No animation driver is configured, so the transition is declared directly. On
+              // native this property is ignored and the step simply appears, which is the same
+              // thing the mobile clients do -- only Desktop crossfades.
+              style={{ transition: `opacity ${String(FADE_MS)}ms ease-out` }}
+            >
+              {children}
+            </YStack>
           </YStack>
         </YStack>
       </XStack>
@@ -104,9 +149,9 @@ export function OnboardingChrome({ children, testID }: { children: ReactNode; te
  * button and no website one at all, so the second is a design addition rather than a port.
  */
 function OnboardingHeader() {
-  const open = (url: string) => {
-    void requirePorts().linking.openUrl(url)
-  }
+  // Confirmed before leaving, like every other link here. The desktop client routes its FAQ button
+  // through the same dialog rather than opening the browser from the button.
+  const open = useConfirmUrl()
 
   return (
     <XStack alignItems="center" gap="$1" height={30}>

@@ -69,9 +69,13 @@ export function LanguagePicker({
       {/* The ref is on a wrapper because `Button` is a plain function component and forwards none.
           Measuring the wrapper measures the button: it wraps it exactly. */}
       <XStack ref={trigger}>
+        {/* `compact` removes the text button's horizontal padding entirely. The flag and chevron
+            are wider than a glyph, so the padding sat to the right of the chevron and read as a
+            gap twice the size of the ones between the round buttons beside it. */}
         <Button
           variant="ghost"
           size={compact ? 'xs' : 'sm'}
+          {...(compact ? { paddingHorizontal: 0 } : {})}
           accessibilityLabel={accessibilityLabel}
           testID={testIDs.trigger}
           onPress={() => {

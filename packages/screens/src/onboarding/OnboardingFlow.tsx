@@ -1,8 +1,11 @@
+import { requirePorts } from '@session/app'
 import { useSessionActions } from '@session/state'
 import { useMedia } from '@session/ui'
 import { useEffect, useReducer, useState } from 'react'
 
+import { ConfirmUrlProvider } from './ConfirmUrl'
 import { LandingScreen } from './LandingScreen'
+import { QuitWarningModal } from './QuitWarningModal'
 import { LoadAccountScreen } from './LoadAccountScreen'
 import { LoadingScreen } from './LoadingScreen'
 import { MessageNotificationsScreen } from './MessageNotificationsScreen'
@@ -44,6 +47,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
   const [state, dispatch] = useReducer(onboardingReducer, design, initialOnboarding)
   const [busy, setBusy] = useState(false)
   const [rejected, setRejected] = useState(false)
+  const [quitting, setQuitting] = useState(false)
 
   useEffect(() => {
     // A rotation or a resize mid-flow changes what comes next, so the reducer is told rather than
@@ -66,87 +70,108 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
     })
   }, [state, actions, onRunningChange])
 
-  switch (state.step) {
-    case 'landing':
-      return (
-        <LandingScreen
-          onCreate={() => {
-            dispatch({ type: 'chooseCreate' })
-          }}
-          onRestore={() => {
-            dispatch({ type: 'chooseRestore' })
-          }}
-        />
-      )
+  return (
+    <ConfirmUrlProvider>
+      {screen()}
+      <QuitWarningModal
+        open={quitting}
+        onQuit={() => {
+          requirePorts().window.close()
+        }}
+        onCancel={() => {
+          setQuitting(false)
+        }}
+      />
+    </ConfirmUrlProvider>
+  )
 
-    case 'pickDisplayName':
-      return (
-        <PickDisplayNameScreen
-          afterFailedRestore={state.afterFailedRestore}
-          busy={busy}
-          onBack={() => {
-            dispatch({ type: 'back' })
-          }}
-          onContinue={(name) => {
-            dispatch({ type: 'nameEntered', name })
-          }}
-        />
-      )
+  function screen() {
+    switch (state.step) {
+      case 'landing':
+        return (
+          <LandingScreen
+            onCreate={() => {
+              dispatch({ type: 'chooseCreate' })
+            }}
+            onRestore={() => {
+              dispatch({ type: 'chooseRestore' })
+            }}
+          />
+        )
 
-    case 'loadAccount':
-      return (
-        <LoadAccountScreen
-          busy={busy}
-          rejected={rejected}
-          onBack={() => {
-            dispatch({ type: 'back' })
-          }}
-          onContinue={(from) => {
-            // Restoring happens here rather than at `done`, because a phrase the bridge refuses
-            // has to put somebody back on this screen with the field they typed into still on it.
-            setBusy(true)
-            setRejected(false)
-            void actions
-              .restoreAccount(from)
-              .then(() => {
-                dispatch({ type: 'phraseEntered', from })
-              })
-              .catch(() => {
-                setRejected(true)
-              })
-              .finally(() => {
-                setBusy(false)
-              })
-          }}
-        />
-      )
+      case 'pickDisplayName':
+        return (
+          <PickDisplayNameScreen
+            afterFailedRestore={state.afterFailedRestore}
+            busy={busy}
+            onBack={() => {
+              // After a failed restore there is an account already and nothing to undo, so back
+              // cannot navigate -- it offers to quit, which is what the legacy clients do. Creating
+              // is different: nothing has been minted yet, so back just goes back.
+              if (state.afterFailedRestore) setQuitting(true)
+              else dispatch({ type: 'back' })
+            }}
+            onContinue={(name) => {
+              dispatch({ type: 'nameEntered', name })
+            }}
+          />
+        )
 
-    case 'messageNotifications':
-      return (
-        <MessageNotificationsScreen
-          busy={busy}
-          onBack={() => {
-            dispatch({ type: 'back' })
-          }}
-          onContinue={(mode) => {
-            dispatch({ type: 'notificationsChosen', mode })
-          }}
-        />
-      )
+      case 'loadAccount':
+        return (
+          <LoadAccountScreen
+            busy={busy}
+            rejected={rejected}
+            onBack={() => {
+              dispatch({ type: 'back' })
+            }}
+            onContinue={(from) => {
+              // Restoring happens here rather than at `done`, because a phrase the bridge refuses
+              // has to put somebody back on this screen with the field they typed into still on it.
+              setBusy(true)
+              setRejected(false)
+              void actions
+                .restoreAccount(from)
+                .then(() => {
+                  dispatch({ type: 'phraseEntered', from })
+                })
+                .catch(() => {
+                  setRejected(true)
+                })
+                .finally(() => {
+                  setBusy(false)
+                })
+            }}
+          />
+        )
 
-    case 'loading':
-      return (
-        <LoadingScreen
-          onGaveUp={() => {
-            dispatch({ type: 'restoreGaveUp' })
-          }}
-        />
-      )
+      case 'messageNotifications':
+        return (
+          <MessageNotificationsScreen
+            busy={busy}
+            onBack={() => {
+              dispatch({ type: 'back' })
+            }}
+            onContinue={(mode) => {
+              dispatch({ type: 'notificationsChosen', mode })
+            }}
+          />
+        )
 
-    case 'done':
-      // Whatever was on screen stays there while the account is made. There is no screen of its
-      // own for this: it is a call or two, and a flash of something else would read as a step.
-      return null
+      case 'loading':
+        return (
+          <LoadingScreen
+            onGaveUp={() => {
+              dispatch({ type: 'restoreGaveUp' })
+            }}
+          />
+        )
+
+      case 'done':
+        // Whatever was on screen stays there while the account is made. There is no screen of its
+        // own for this: it is a call or two, and a flash of something else would read as a step.
+        return null
+    }
   }
 }
 

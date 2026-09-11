@@ -89,6 +89,15 @@ export interface LinkingPort {
 }
 
 export interface WindowPort {
+  /**
+   * Shuts the app down, for the one dialog that offers to.
+   *
+   * Only onboarding needs it, and only where back has nowhere to go and something has already been
+   * made that leaving would abandon. Desktop closes its window, which with one window is quitting.
+   * Mobile does nothing: iOS forbids an app terminating itself and Android merely discourages it,
+   * so a phone shows the dialog without that door.
+   */
+  close(): void
   isFocused(): boolean
   /** Drives read receipts and whether a notification is worth showing. */
   onFocusChange(handler: (focused: boolean) => void): () => void

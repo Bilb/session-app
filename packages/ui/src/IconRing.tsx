@@ -6,7 +6,7 @@ import { YStack } from 'tamagui'
  * lucide's own stroke width. Every glyph in the set is drawn at 2 against a 24 viewBox, so a ring
  * drawn at the same numbers sits on the same optical weight as one that is part of a glyph.
  */
-const STROKE = 2
+const STROKE = 2.1
 
 interface IconRingProps {
   size: number
@@ -25,8 +25,28 @@ interface IconRingProps {
  */
 export function IconRing({ size, color, children }: IconRingProps) {
   return (
-    <YStack width={size} height={size} alignItems="center" justifyContent="center">
-      <YStack position="absolute" top={0} left={0}>
+    // `position="relative"` is load-bearing, and for the second time: react-native makes every
+    // view a containing block and the web makes none, so without it the absolute layer below
+    // resolves against whichever ancestor happens to be positioned and the ring lands somewhere
+    // else on the page entirely.
+    <YStack
+      width={size}
+      height={size}
+      position="relative"
+      alignItems="center"
+      justifyContent="center"
+    >
+      {/* `fullscreen` rather than top/left zero: the parent is the 24-square, and an absolute
+          child with only two edges pinned takes its own intrinsic size and lands wherever that
+          leaves it -- which put the ring in the corner of the window. */}
+      <YStack
+        fullscreen
+        alignItems="center"
+        justifyContent="center"
+        // Decoration only. An absolute layer over a button swallows the press otherwise -- it sits
+        // above the glyph and covers the whole target.
+        pointerEvents="none"
+      >
         <Svg width={size} height={size} viewBox="0 0 24 24">
           <Circle
             cx={12}

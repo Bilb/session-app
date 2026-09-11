@@ -1,7 +1,7 @@
 import { Input as TamaguiInput, XStack } from 'tamagui'
 
 import type { InputProps } from './Input.types'
-import { keyboardTypeToInputMode } from './nativeProps'
+import { domInputType, keyboardTypeToInputMode } from './nativeProps'
 
 /**
  * The web flavour, drawn by react-native-web in the Electron renderer.
@@ -23,6 +23,8 @@ export function Input({
   grow = false,
   end,
   endWidth = 0,
+  error = false,
+  errorText = false,
   testID,
 }: InputProps) {
   const field = (
@@ -34,19 +36,29 @@ export function Input({
       placeholder={placeholder ?? ''}
       inputMode={keyboardTypeToInputMode(keyboardType) as never}
       autoCapitalize={autoCapitalize ?? 'sentences'}
+      // `secureTextEntry` is a react-native prop and tamagui's web Input does not translate it,
+      // so the field stayed readable however the toggle was set. `domInputType` exists for exactly
+      // this and was written before anything needed it.
       secureTextEntry={secureTextEntry ?? false}
+      type={domInputType(secureTextEntry)}
       multiline={multiline ?? false}
       autoFocus={autoFocus ?? false}
       disabled={disabled ?? false}
       {...(onSubmit ? { onSubmitEditing: () => onSubmit() } : {})}
       testID={testID}
       backgroundColor="$backgroundSecondary"
-      borderColor="$bordersColor"
-      color="$textPrimary"
-      placeholderTextColor="$textSecondary"
-      borderRadius="$2"
-      height="$7"
-      paddingHorizontal="$2"
+      borderColor={error ? '$dangerColor' : '$bordersColor'}
+      // The error border has to beat the focus ring, or correcting the value turns the border
+      // accent-coloured the moment the field is focused -- which is exactly when it is being
+      // corrected, and the rule is that it stays red until the value is submitted again.
+      {...(error ? { focusStyle: { borderColor: '$dangerColor' } } : {})}
+      color={errorText ? '$dangerColor' : '$textPrimary'}
+      placeholderTextColor={error ? '$dangerColor' : '$textSecondary'}
+      borderRadius="$3"
+      // Taller and more generously padded than a list field: the desktop client pads its
+      // onboarding input by 20px on every side, which is most of why its fields read as roomy.
+      height="$10"
+      paddingHorizontal="$2.5"
       // Room for whatever sits against the trailing edge, so the text does not run under it.
       paddingRight={endWidth === 0 ? '$2' : endWidth}
     />

@@ -5,19 +5,27 @@ import type { ReactNode } from 'react'
 
 import { OnboardingChrome } from './OnboardingChrome'
 
-/** How far the back button sits outside the content column, and how far down. Both the client's. */
+/** How far the back button sits outside the content column. The desktop client's own offset. */
 const BACK_OFFSET = -36
-const BACK_TOP = 6
+
+/**
+ * Room for two lines of error before anything below it moves.
+ *
+ * One line is the common case and two is reachable -- the recovery-phrase messages are long. Past
+ * two it grows and pushes the button down, which is the designs' rule: the control sliding is
+ * acceptable for an unusually long message, but not for the ordinary one.
+ */
+const ERROR_MIN_HEIGHT = 34
 
 interface OnboardingStepProps {
   title: string
   description?: string
   /** Drawn beside the title. The recovery screen has one; nothing else does. */
   titleMark?: ReactNode
-  /** Omitted on the steps there is nowhere to go back from. */
   onBack?: () => void
   children: ReactNode
-  /** The control that moves on. */
+  /** Sits between the field and the control, in space that is held whether or not it is filled. */
+  error?: ReactNode
   footer?: ReactNode
   testID: string
 }
@@ -25,15 +33,14 @@ interface OnboardingStepProps {
 /**
  * The heading, content and control every onboarding step after the landing screen shares.
  *
- * One shape rather than five screens each arranging their own: the steps are read one after
- * another, and a title that moves between them reads as a different app each time.
+ * The back button hangs outside the column to the left and is centred on the title rather than
+ * sitting above it -- the content keeps its left edge across every step and the chevron does not
+ * push the heading down or across.
  *
- * The back button hangs outside the column to the left rather than sitting above the title, which
- * is what the desktop client does -- the content keeps its left edge across every step and the
- * chevron does not push the heading down or across.
- *
- * The artwork, the Session lockup and the column width all come from `OnboardingChrome`, which is
- * where the two designs actually differ.
+ * The gap below the field is larger than the gap above the control, which is the designs' spacing
+ * and not an accident: the error belongs to the field it is about, so it sits closer to the button
+ * than to the input it describes would be wrong -- it reads as a caption on the field, and the
+ * button is a separate thing further down.
  */
 export function OnboardingStep({
   title,
@@ -41,6 +48,7 @@ export function OnboardingStep({
   titleMark,
   onBack,
   children,
+  error,
   footer,
   testID,
 }: OnboardingStepProps) {
@@ -48,7 +56,9 @@ export function OnboardingStep({
     <OnboardingChrome testID={testID}>
       <XStack>
         {onBack === undefined ? null : (
-          <YStack marginLeft={BACK_OFFSET} marginTop={BACK_TOP}>
+          // Centred on the title's line rather than the column: `alignSelf` against the heading
+          // row keeps it level however many lines the title wraps to.
+          <YStack marginLeft={BACK_OFFSET} height={34} justifyContent="center">
             <Button
               variant="ghost"
               size="xs"
@@ -61,11 +71,11 @@ export function OnboardingStep({
           </YStack>
         )}
 
-        <YStack flex={1} gap="$1.5">
-          <XStack alignItems="center" gap="$1.5">
-            {/* 26/700, from the designs -- and the desktop client agrees: its `OnboardHeading`
-                is an h3 at `--font-size-h4`, which is 26px. */}
-            <Text size="$headingLarge" weight="bold">
+        <YStack flex={1}>
+          <XStack alignItems="center" gap="$1.5" minHeight={34}>
+            {/* 26/700, from the designs -- and the desktop client agrees: its `OnboardHeading` is
+                an h3 at `--font-size-h4`, which is 26px. */}
+            <Text size="$headingLarge" weight="bold" userSelect="none">
               {title}
             </Text>
             {titleMark}
@@ -74,13 +84,19 @@ export function OnboardingStep({
           {description === undefined ? null : (
             // 14/400, and not muted: the desktop client draws this in the primary text colour, and
             // it is the only explanation of what the field below is for -- content, not a caption.
-            <Text size="$body">{description}</Text>
+            <Text size="$body" paddingTop="$1">
+              {description}
+            </Text>
           )}
 
-          <YStack paddingTop="$1.5" gap="$2.5">
-            {children}
-            {footer}
+          <YStack paddingTop="$2.5">{children}</YStack>
+
+          {/* Held open, so the button does not move when a message arrives. */}
+          <YStack minHeight={ERROR_MIN_HEIGHT} paddingTop="$1.5">
+            {error}
           </YStack>
+
+          {footer}
         </YStack>
       </XStack>
     </OnboardingChrome>

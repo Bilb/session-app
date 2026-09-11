@@ -1,7 +1,9 @@
 import { getLocale, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { ProgressRing, Screen, Text, useMedia, XStack, YStack } from '@session/ui'
+import { ProgressRing, Text, useMedia, XStack, YStack } from '@session/ui'
 import { useEffect, useRef, useState } from 'react'
+
+import { OnboardingChrome } from './OnboardingChrome'
 
 /**
  * How long to wait for a restored profile before giving up and asking for a name.
@@ -15,6 +17,9 @@ const RESTORE_TIMEOUT_MS = 15_000
 /** How often the indicator moves. Twenty-five frames a second is smooth and costs nothing. */
 const TICK_MS = 40
 
+/** The desktop client's bar height. Much thicker than a hairline, and deliberately so. */
+const BAR_HEIGHT = 17
+
 interface LoadingScreenProps {
   onGaveUp: () => void
 }
@@ -22,14 +27,17 @@ interface LoadingScreenProps {
 /**
  * The wait while a restored account's profile comes back from the swarm.
  *
- * **The indicator differs by design, like everything else here.** The desktop client draws a
- * horizontal bar with the percentage beside it; both mobile clients draw a ring with no number.
- * Same two strings on all three.
+ * **It is a step, not a takeover** -- inside the same chrome as every other one, so the artwork and
+ * the Session lockup stay put and only the content changes. Replacing the whole screen was wrong:
+ * the desktop client renders this stage inside the same registration column as the rest.
+ *
+ * **The indicator differs by design.** Desktop draws a thick horizontal bar with the percentage
+ * beside the subtitle; both mobile clients draw a ring with no number. Same two strings on all
+ * three.
  *
  * **It is a clock, not a measurement.** All three ramp to full over a fixed fifteen seconds with
  * nothing reporting real progress, and 2.0 keeps that knowingly rather than by imitation: what it
- * is really showing is how much longer this can go on before the app gives up, which is the
- * question being asked while looking at it.
+ * is really showing is how much longer this can go on before the app gives up.
  */
 export function LoadingScreen({ onGaveUp }: LoadingScreenProps) {
   const wide = useMedia().gtSm
@@ -57,66 +65,52 @@ export function LoadingScreen({ onGaveUp }: LoadingScreenProps) {
   }, [])
 
   const fraction = Math.min(1, elapsed / RESTORE_TIMEOUT_MS)
-
-  return (
-    <Screen padded testID={ELEMENT.onboarding.loadingScreen}>
-      <YStack
-        flex={1}
-        alignItems="center"
-        justifyContent="center"
-        gap="$2"
-        maxWidth={360}
-        alignSelf="center"
-      >
-        {wide ? (
-          <ProgressBar fraction={fraction} />
-        ) : (
-          <ProgressRing progress={fraction} size={96} thickness={6} />
-        )}
-        <Text size="$titleLarge" weight="bold" textAlign="center">
-          {tr('waitOneMoment')}
-        </Text>
-        <Text tone="secondary" textAlign="center">
-          {tr('loadAccountProgressMessage')}
-        </Text>
-      </YStack>
-    </Screen>
-  )
-}
-
-/**
- * The desktop shape: a bar with the percentage beside it.
- *
- * The number is formatted rather than concatenated, because where the per-cent sign goes and
- * whether there is a space before it are both per-language. `Intl.NumberFormat` is one of the three
- * `Intl` constructors Hermes actually ships, so this works on a phone too -- which matters, because
- * a tablet in landscape draws this.
- */
-function ProgressBar({ fraction }: { fraction: number }) {
   const percent = new Intl.NumberFormat(getLocale(), {
     style: 'percent',
     maximumFractionDigits: 0,
   }).format(fraction)
 
   return (
-    <XStack width="100%" alignItems="center" gap="$1.5">
-      <YStack
-        flex={1}
-        height={6}
-        borderRadius="$full"
-        backgroundColor="$backgroundTertiary"
-        overflow="hidden"
-      >
-        <YStack
-          width={`${String(Math.round(fraction * 100))}%`}
-          height="100%"
-          backgroundColor="$primaryColor"
-        />
-      </YStack>
-      {/* Tabular figures, so the bar does not shift sideways as the number grows a digit. */}
-      <Text size="$label" tone="secondary" fontVariant={['tabular-nums']}>
-        {percent}
-      </Text>
-    </XStack>
+    <OnboardingChrome testID={ELEMENT.onboarding.loadingScreen}>
+      {wide ? (
+        <YStack>
+          <Text size="$headingLarge" weight="bold" userSelect="none">
+            {tr('waitOneMoment')}
+          </Text>
+          {/* Subtitle and percentage on one line, the client's arrangement: the number belongs
+              with the thing it is counting rather than floating beside the bar. */}
+          <XStack justifyContent="space-between" alignItems="center" gap="$1" paddingTop="$1.5">
+            <Text size="$body">{tr('loadAccountProgressMessage')}</Text>
+            <Text size="$body" fontVariant={['tabular-nums']} userSelect="none">
+              {percent}
+            </Text>
+          </XStack>
+          <YStack
+            marginTop="$2.5"
+            height={BAR_HEIGHT}
+            borderRadius="$2"
+            backgroundColor="$bordersColor"
+            overflow="hidden"
+          >
+            <YStack
+              width={`${String(Math.round(fraction * 100))}%`}
+              height="100%"
+              borderRadius="$2"
+              backgroundColor="$primaryColor"
+            />
+          </YStack>
+        </YStack>
+      ) : (
+        <YStack flex={1} alignItems="center" justifyContent="center" gap="$2">
+          <ProgressRing progress={fraction} size={96} thickness={6} />
+          <Text size="$titleLarge" weight="bold" textAlign="center">
+            {tr('waitOneMoment')}
+          </Text>
+          <Text tone="secondary" textAlign="center">
+            {tr('loadAccountProgressMessage')}
+          </Text>
+        </YStack>
+      )}
+    </OnboardingChrome>
   )
 }
