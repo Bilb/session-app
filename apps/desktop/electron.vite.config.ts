@@ -1,9 +1,16 @@
+import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import react from '@vitejs/plugin-react'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 
 const appDir = fileURLToPath(new URL('.', import.meta.url))
+
+// The renderer's network stamp is substituted at build time from this process's environment, so
+// the repo-root .env has to be loaded before the define below reads it. The main process loads it
+// again at runtime for its own use: an explicit variable wins in both, so the two agree.
+const dotEnv = fileURLToPath(new URL('../../.env', import.meta.url))
+if (existsSync(dotEnv)) process.loadEnvFile(dotEnv)
 
 /**
  * `.web.js` ahead of `.js`, which is how the react-native-web ecosystem ships a DOM flavour beside

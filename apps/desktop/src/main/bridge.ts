@@ -1,10 +1,11 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { randomBytes } from 'node:crypto'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import electron from 'electron'
 
-import { netidForTransport, parseNetworkName } from '@session/basic-types'
+import { netidForTransport, parseDevnetConfig, parseNetworkName } from '@session/basic-types'
 import type { BridgeTransport } from '@session/client'
 
 const { app, safeStorage } = electron
@@ -44,25 +45,103 @@ function resolveDatabaseKey(dir: string): Uint8Array {
 }
 
 /**
+ * The repo-root `.env`, for a build run out of the checkout.
+ *
+ * Here rather than in a dev script because the same values have to reach `electron-vite dev`,
+ * `preview`, the e2e harness and a bare `electron out/main/index.js`, and this is the only code
+ * all four run. An explicit environment variable wins, which is what lets the harness pin
+ * SESSION_FAKE whatever a developer keeps in their file.
+ */
+function loadDotEnv(): void {
+  if (app.isPackaged) return
+  const file = fileURLToPath(new URL('../../../../.env', import.meta.url))
+  if (existsSync(file)) process.loadEnvFile(file)
+}
+
+/**
+ * Moves a pre-per-network database into `mainnet/`.
+ *
+ * Everything used to sit directly in userData, which is now where the per-network directories
+ * go, so without this an existing account becomes unreachable and the app offers onboarding for
+ * a new one. The `-wal` matters as much as the database: leaving it behind loses whatever was in
+ * it.
+ */
+function migrateLegacyLayout(root: string): void {
+  const legacy = join(root, 'session.db')
+  const target = join(root, 'mainnet')
+  if (!existsSync(legacy) || existsSync(join(target, 'session.db'))) return
+
+  mkdirSync(target, { recursive: true })
+  for (const name of [
+    'session.db',
+    'session.db-wal',
+    'session.db-shm',
+    'db-key.bin',
+    'attachments',
+    'netcache',
+  ]) {
+    const from = join(root, name)
+    if (existsSync(from)) renameSync(from, join(target, name))
+  }
+}
+
+/**
  * Opens the bridge the renderer talks to.
  *
  * The fake is reached through a dynamic import from a dev-only module, so a production build
  * has no path to it at all. Everything above this file sees frames either way.
  */
 export async function createBridge(): Promise<BridgeTransport> {
+  loadDotEnv()
+
   if (process.env['SESSION_FAKE'] === '1') {
     const { createFakeBridge } = await import('./dev/fakeBridge')
     return createFakeBridge()
   }
 
   const { createNodeBridgeTransport } = await import('@session/bridge-node')
+  const { discoverSeedNodes } = await import('@session/client')
 
-  // Undefined for a devnet build, which then attaches nothing rather than quietly attaching
-  // mainnet. See netidForTransport.
-  const netid = netidForTransport(parseNetworkName(process.env['SESSION_NETID']))
+  const name = parseNetworkName(process.env['SESSION_NETID'])
+  const devnet =
+    name === 'devnet'
+      ? parseDevnetConfig(
+          {
+            seedUrl: process.env['SESSION_DEVNET_SEED_URL'],
+            fileServerUrl: process.env['SESSION_FILE_SERVER_URL'],
+            fileServerX25519Pubkey: process.env['SESSION_FILE_SERVER_X25519_PUBKEY'],
+            proBackendUrl: process.env['SESSION_PRO_BACKEND_URL'],
+            proBackendEd25519Pubkey: process.env['SESSION_PRO_BACKEND_ED25519_PUBKEY'],
+          },
+          'SESSION_',
+        )
+      : undefined
 
-  const dir = app.getPath('userData')
+  const netid = netidForTransport(name, devnet)
+
+  // Per network, so a devnet identity and a mainnet one can both exist and switching back loses
+  // neither. libsession derives its own snode cache from the database's directory, which puts
+  // that on the right side of the split too.
+  const dir = join(app.getPath('userData'), name)
+  migrateLegacyLayout(app.getPath('userData'))
   mkdirSync(dir, { recursive: true })
+
+  const seedNodes =
+    devnet === undefined
+      ? undefined
+      : await discoverSeedNodes(devnet.seedUrl, {
+          fetch: (url, init) => fetch(url, { ...init, signal: AbortSignal.timeout(8_000) }),
+          variable: 'SESSION_DEVNET_SEED_URL',
+        })
+
+  if (devnet?.fileServer === undefined && name === 'devnet')
+    console.warn(
+      'SESSION_FILE_SERVER_URL is unset on a devnet build: attachments would upload to the mainnet file server.',
+    )
+  if (devnet?.proBackend !== undefined)
+    console.warn(
+      `SESSION_PRO_BACKEND_URL is set and nothing reads it: libsession fixes the Pro backend at build time and this app has no Pro code.`,
+    )
 
   return createNodeBridgeTransport({
     dbPath: join(dir, 'session.db'),
@@ -76,6 +155,8 @@ export async function createBridge(): Promise<BridgeTransport> {
     // after onboarding otherwise. SESSION_NETID picks it; unset means mainnet, and there is
     // deliberately no way to spell "offline" here: that is what SESSION_FAKE is for.
     ...(netid === undefined ? {} : { netid }),
+    ...(seedNodes === undefined ? {} : { seedNodes }),
+    ...(devnet?.fileServer === undefined ? {} : { fileServer: devnet.fileServer }),
     deviceType: 'desktop',
     // Off unless asked for: it is chatty at anything below warn, and the reason to turn it up
     // is always a specific failure. SESSION_LOG=debug is what a diagnosis looks like.

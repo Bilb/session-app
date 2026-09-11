@@ -1,3 +1,4 @@
+import type { NetworkName } from '@session/basic-types'
 import * as Crypto from 'expo-crypto'
 import { documentDirectory, makeDirectoryAsync } from 'expo-file-system/legacy'
 import * as SecureStore from 'expo-secure-store'
@@ -21,9 +22,18 @@ export async function resolveDatabaseKey(): Promise<string> {
   return hex
 }
 
-/** Where the database and the attachment cache live, both created if they are not there. */
-export async function sessionPaths(): Promise<{ dbPath: string; cacheDir: string }> {
-  const root = `${documentDirectory ?? ''}session`
+/**
+ * Where the database and the attachment cache live, both created if they are not there.
+ *
+ * Split by network, so a devnet identity and a mainnet one can both exist and switching back
+ * loses neither. libsession derives its own snode cache from the database's directory, which puts
+ * that on the right side of the split too - a cache of nodes that do not exist on the other
+ * network is worse than none.
+ */
+export async function sessionPaths(
+  network: NetworkName,
+): Promise<{ dbPath: string; cacheDir: string }> {
+  const root = `${documentDirectory ?? ''}session/${network}`
   await makeDirectoryAsync(root, { intermediates: true })
   const cacheDir = `${root}/attachments`
   await makeDirectoryAsync(cacheDir, { intermediates: true })

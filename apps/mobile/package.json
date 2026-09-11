@@ -5,7 +5,7 @@
   "description": "The Session mobile app: one Expo app for Android and iOS, phone and tablet",
   "main": "index.ts",
   "scripts": {
-    "dev": "expo start --dev-client --clear",
+    "dev": "node --env-file-if-exists=../../.env ../../node_modules/expo/bin/cli start --dev-client --clear",
     "dev:fake": "EXPO_PUBLIC_SESSION_FAKE=1 expo start --dev-client --clear",
     "android": "expo run:android",
     "ios": "expo run:ios",

@@ -156,9 +156,9 @@ had to exist before any of this was visible.
 
 - **Poll interval is libsession's default, 20 seconds.** A message can take that long to appear.
   `SetPollInterval` is in the plan and not in the schema, so nothing shortens it yet.
-- **devnet refuses rather than half-working.** It takes seed nodes, and a seed node is a public
-  key, an address and two ports - not something the schema's `devnet_seed_url` can be turned
-  into. How the app learns those is a devnet question rather than a bridge one.
+- **A devnet's Pro backend is configured and read by nothing.** libsession fixes the Pro
+  backend's URL and pubkey at build time with no override, and this repository has no Pro code,
+  so the two variables are validated and carried and the apps say so at startup.
 - **Onboarding is one button.** Restore from a recovery phrase is a bridge command already
   (`restoreAccount`) with no screen.
 - **There is no contact list and no QR scanner.** Starting a conversation means pasting an
