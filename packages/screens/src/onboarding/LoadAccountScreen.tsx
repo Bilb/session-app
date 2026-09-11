@@ -53,10 +53,16 @@ export function LoadAccountScreen({
 
   const submit = () => {
     const short = phraseIsTooShort(phrase)
-    setTooShort(short)
+    if (!short) {
+      // No error state on the way out. Setting the flags before handing the phrase over painted
+      // the field red for the frames between the press and the step changing, so a phrase that was
+      // accepted flashed as refused first. The bridge's own refusal arrives as `rejected`.
+      onContinue({ words: phraseWords(phrase) })
+      return
+    }
+    setTooShort(true)
     setRefused(true)
     setShowing(true)
-    if (!short) onContinue({ words: phraseWords(phrase) })
   }
 
   return (

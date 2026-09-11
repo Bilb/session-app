@@ -19,6 +19,15 @@ import { LanguageButton } from '../LanguageButton'
 import { useConfirmUrl } from './ConfirmUrl'
 
 /**
+ * The pixel size both header rings are drawn at.
+ *
+ * One number for both, because `circleHelp` brings its own ring and `IconRing` draws the other:
+ * they share a viewBox, so equal boxes make equal circles and unequal boxes make the difference
+ * that kept being reported.
+ */
+const RING_SIZE = 22
+
+/**
  * How long the content takes to fade in when a step changes.
  *
  * The desktop client's `--duration-fadein`. Long enough to read as a transition rather than a
@@ -174,7 +183,9 @@ function OnboardingHeader() {
           onPress={() => {
             open(FAQ_URL)
           }}
-          icon={<Icon name="circleHelp" size="$5" color="$textPrimary" />}
+          // An explicit number rather than a token, because the ring beside it has to be drawn at
+          // the same pixel size for the two circles to match -- and `IconRing` takes a number.
+          icon={<Icon name="circleHelp" size={RING_SIZE} color="$textPrimary" />}
         />
         {/* Ghost like its neighbour, with the ring drawn rather than bordered -- a CSS border is
             visibly a different weight beside a glyph's own stroke. */}
@@ -188,8 +199,10 @@ function OnboardingHeader() {
             open(WEBSITE_URL)
           }}
           icon={
-            <IconRing size={24} color="var(--textPrimary)">
-              <Icon name="link" size="$3" color="$textPrimary" />
+            <IconRing size={RING_SIZE} color="var(--textPrimary)">
+              {/* A rung down from the ? glyph's own mark: inside a ring this size, 16 crowds the
+                  stroke and 12 sits in it. */}
+              <Icon name="link" size="$2" color="$textPrimary" />
             </IconRing>
           }
         />

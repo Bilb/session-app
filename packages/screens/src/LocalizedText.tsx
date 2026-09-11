@@ -36,7 +36,7 @@ function renderSegment(segment: LocalizedSegment, index: number, size: TextSize)
   switch (segment.type) {
     case 'bold':
       return (
-        <Text key={key} weight="bold" size={size}>
+        <Text key={key} size={size} weight="bold">
           {segment.value}
         </Text>
       )

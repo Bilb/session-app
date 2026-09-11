@@ -75,7 +75,33 @@ export const LINE_HEIGHT_SCALE = {
   true: Math.round(FONT_SIZE.body * LINE_HEIGHT_RATIO),
 }
 
-// Roboto's own weights. 600 is deliberately absent: the face does not have one, and naming it
-// would get a synthesised bold rather than a drawn one.
-export const FONT_WEIGHT_SCALE = { 4: '400', 5: '500', 7: '700', true: '400' }
-export const LETTER_SPACING_SCALE = { 4: 0, true: 0 }
+/**
+ * **Every font scale is keyed by the same names as `FONT_SIZE`, and that is not cosmetic.**
+ *
+ * Tamagui resolves a `size="$label"` on text by looking up `size.label`, `lineHeight.label`,
+ * `weight.label` and `letterSpacing.label` together. A scale keyed differently does not error --
+ * the lookup misses, falls through to `true`, and the element silently gets the default. When these
+ * two were keyed `{ 4, 5, 7 }` against named sizes, *every* piece of text in the app resolved its
+ * weight and letter-spacing through the fallback, which is why bold inside a translated string came
+ * out at 400 and why letter-spacing computed to `normal` rather than 0.
+ *
+ * Derived from `FONT_SIZE` rather than written out, so a size added to the ramp cannot arrive
+ * without its companions. `tests/fontScales.contract.test.ts` asserts the four key sets match.
+ */
+const perSize = <T>(value: T): Record<keyof typeof FONT_SIZE, T> =>
+  Object.fromEntries(Object.keys(FONT_SIZE).map((key) => [key, value])) as Record<
+    keyof typeof FONT_SIZE,
+    T
+  >
+
+/**
+ * The weight text is drawn at unless it asks for another.
+ *
+ * One value for every size: the ramp is a size ramp, not a size-and-weight ramp, and a heading is
+ * bold because it says `weight="bold"` rather than because of how large it is. Roboto's own weights
+ * are 100/300/400/500/700/900 -- there is no 600, which is why `semibold` means 500.
+ */
+export const FONT_WEIGHT_SCALE = { ...perSize('400'), true: '400' }
+
+/** Zero everywhere. Uppercase micro-labels set their own; nothing else wants tracking. */
+export const LETTER_SPACING_SCALE = { ...perSize(0), true: 0 }

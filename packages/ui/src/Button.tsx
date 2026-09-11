@@ -17,6 +17,13 @@ const Frame = styled(XStack, {
   userSelect: 'none',
 
   variants: {
+    /**
+     * Every state here is the table in `docs/THEMING.md` and the derivation page, which is the
+     * spec this is meant to implement: four variants against default, hover, pressed and disabled.
+     * It had drifted -- outline hovered onto a surface where the table inverts it, and disabled was
+     * a flat opacity where the table names roles -- which is the kind of drift nobody sees until
+     * the two are put side by side.
+     */
     variant: {
       solid: {
         backgroundColor: '$primaryColor',
@@ -24,14 +31,16 @@ const Frame = styled(XStack, {
         hoverStyle: { backgroundColor: '$accentHover', borderColor: '$accentHover' },
         pressStyle: { backgroundColor: '$accentPressed', borderColor: '$accentPressed' },
       },
+      /**
+       * Hover **inverts** rather than tinting: the outline fills with the text colour and the label
+       * takes the page. An outline control on white has no headroom to brighten into, so a surface
+       * step is nearly invisible there -- inverting works in both polarities.
+       */
       outline: {
         backgroundColor: 'transparent',
         borderColor: '$textPrimary',
-        // A surface rather than a brightness step: an outline control on white has no headroom to
-        // brighten into, so both states come off the surface ladder. The desktop client uses its
-        // text colour at 30% for the hover, which is the same idea by a different route.
-        hoverStyle: { backgroundColor: '$backgroundTertiary' },
-        pressStyle: { backgroundColor: '$backgroundNested' },
+        hoverStyle: { backgroundColor: '$textPrimary', borderColor: '$textPrimary' },
+        pressStyle: { backgroundColor: '$textPrimary', borderColor: '$textPrimary', opacity: 0.82 },
       },
       /**
        * The outline, in the accent rather than in the text colour.
@@ -64,9 +73,9 @@ const Frame = styled(XStack, {
         pressStyle: { backgroundColor: '$backgroundNested' },
       },
       /**
-       * Text on its own, no frame -- what the desktop client calls Simple and uses for every
-       * modal action. Its hover dims the label rather than lighting a surface, because there is
-       * no surface to light.
+       * Text on its own, no frame -- what the desktop client calls Simple and uses for every modal
+       * action. Its hover dims the label rather than lighting a surface, because there is no
+       * surface to light.
        */
       simple: {
         backgroundColor: 'transparent',
@@ -74,11 +83,12 @@ const Frame = styled(XStack, {
         hoverStyle: { opacity: 0.7 },
         pressStyle: { opacity: 0.55 },
       },
+      /** Danger text on a transparent ground, filling on hover. The table's destructive row. */
       danger: {
-        backgroundColor: '$dangerColor',
+        backgroundColor: 'transparent',
         borderColor: '$dangerColor',
-        hoverStyle: { opacity: 0.85 },
-        pressStyle: { opacity: 0.7 },
+        hoverStyle: { backgroundColor: '$dangerColor', borderColor: '$dangerColor' },
+        pressStyle: { backgroundColor: '$dangerColor', borderColor: '$dangerColor', opacity: 0.82 },
       },
     },
     size: {
@@ -100,8 +110,17 @@ const Frame = styled(XStack, {
       // stays circular at whichever size it is given.
       true: { aspectRatio: 1, paddingHorizontal: 0 },
     },
+    /**
+     * Named roles rather than an opacity, which is what the table says and what a theme can act on.
+     * A blanket `opacity: .5` dims a disabled control toward whatever is behind it, so on a
+     * recessed surface it fades further than on the page -- and it takes the border with it.
+     */
     disabled: {
-      true: { opacity: 0.5, pointerEvents: 'none' },
+      true: {
+        pointerEvents: 'none',
+        backgroundColor: 'transparent',
+        borderColor: '$bordersColor',
+      },
     },
   } as const,
 
@@ -121,6 +140,17 @@ const LABEL_TONE = {
   outlineAccent: '$primaryColor',
   ghost: '$textPrimary',
   simple: '$textPrimary',
+  danger: '$dangerColor',
+} as const
+
+/**
+ * What the label becomes on hover, for the variants whose fill arrives then.
+ *
+ * Only the inverting ones need it: an outline that fills with the text colour has to stop drawing
+ * its label in that same colour, or the label disappears into the fill it is sitting on.
+ */
+const LABEL_HOVER = {
+  outline: '$backgroundPrimary',
   danger: '$onDanger',
 } as const
 
@@ -198,7 +228,16 @@ export function Button({
           // Bold, which is what the desktop client's button is: `font-weight: 700` unless a caller
           // says otherwise, and none of the onboarding callers do.
           weight="bold"
-          color={destructive ? '$dangerColor' : LABEL_TONE[variant]}
+          color={
+            disabled || loading
+              ? '$textDisabled'
+              : destructive
+                ? '$dangerColor'
+                : LABEL_TONE[variant]
+          }
+          {...(variant in LABEL_HOVER
+            ? { hoverStyle: { color: LABEL_HOVER[variant as keyof typeof LABEL_HOVER] } }
+            : {})}
         >
           {children}
         </Text>

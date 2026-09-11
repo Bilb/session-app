@@ -2,6 +2,7 @@ import { requirePorts } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Button, Modal, ScrollView } from '@session/ui'
+import { useEffect, useRef } from 'react'
 
 import { LocalizedText } from '../LocalizedText'
 
@@ -28,6 +29,18 @@ interface OpenUrlModalProps {
  * all because the app is about to hand an address to another program.
  */
 export function OpenUrlModal({ url, onClose }: OpenUrlModalProps) {
+  /**
+   * The last address shown, kept after `url` goes null.
+   *
+   * The dialog fades out rather than vanishing, and clearing the text at the same moment emptied
+   * it mid-animation -- the box collapsed while it was still visible, which reads as a glitch
+   * rather than a dismissal. So the body keeps rendering what it was showing until it is gone.
+   */
+  const shown = useRef<string>('')
+  useEffect(() => {
+    if (url !== null) shown.current = url
+  }, [url])
+
   return (
     <Modal
       open={url !== null}
@@ -66,7 +79,7 @@ export function OpenUrlModal({ url, onClose }: OpenUrlModalProps) {
         {/* The catalogue string carries the address in a bold run and two line breaks before it,
             so the question and the URL are one piece of copy rather than two stacked elements. */}
         <LocalizedText
-          text={tr('urlOpenDescription', { url: url ?? '' })}
+          text={tr('urlOpenDescription', { url: url ?? shown.current })}
           size="$body"
           textAlign="center"
         />

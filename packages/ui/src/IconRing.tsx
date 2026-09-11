@@ -3,10 +3,16 @@ import Svg, { Circle } from 'react-native-svg'
 import { YStack } from 'tamagui'
 
 /**
- * lucide's own stroke width. Every glyph in the set is drawn at 2 against a 24 viewBox, so a ring
- * drawn at the same numbers sits on the same optical weight as one that is part of a glyph.
+ * lucide's `circle-help`, read out of the icon set: `<circle cx=12 cy=12 r=10>` at
+ * `stroke-width: 2` in a 24 viewBox, with round caps and joins.
+ *
+ * Copied rather than approximated, because a ring beside a glyph that carries its own is either
+ * exactly the same or visibly wrong -- and "visibly wrong" here was 2px, twice. A stroke of 2 in a
+ * 24 box *measures* about 2.1 once it is scaled down to the box the glyph renders into, which is
+ * why measuring the rendered SVG and copying that number made this one thicker rather than equal.
  */
-const STROKE = 2.1
+const STROKE = 2
+const RADIUS = 10
 
 interface IconRingProps {
   size: number
@@ -51,11 +57,11 @@ export function IconRing({ size, color, children }: IconRingProps) {
           <Circle
             cx={12}
             cy={12}
-            // Inset by half the stroke, so the ring's outer edge is the icon's edge rather than
-            // half a stroke outside it.
-            r={12 - STROKE / 2}
+            r={RADIUS}
             stroke={color}
             strokeWidth={STROKE}
+            strokeLinecap="round"
+            strokeLinejoin="round"
             fill="none"
           />
         </Svg>

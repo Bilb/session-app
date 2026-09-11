@@ -47,10 +47,13 @@ export function Input({
       testID={testID}
       backgroundColor="$backgroundSecondary"
       borderColor={error ? '$dangerColor' : '$bordersColor'}
-      // The error border has to beat the focus ring, or correcting the value turns the border
-      // accent-coloured the moment the field is focused -- which is exactly when it is being
-      // corrected, and the rule is that it stays red until the value is submitted again.
-      {...(error ? { focusStyle: { borderColor: '$dangerColor' } } : {})}
+      // The focus ring wins while the field is focused, so the two are never drawn at once -- a
+      // red border inside a green one reads as two separate states arguing. The red returns on
+      // blur, because the value still has not been accepted.
+      //
+      // This exists only because there *is* a focus ring: the legacy client has none. If the ring
+      // goes before this merges, delete this line and the red border becomes unconditional again.
+      {...(error ? { focusStyle: { borderColor: '$primaryColor' } } : {})}
       color={errorText ? '$dangerColor' : '$textPrimary'}
       placeholderTextColor={error ? '$dangerColor' : '$textSecondary'}
       borderRadius="$3"

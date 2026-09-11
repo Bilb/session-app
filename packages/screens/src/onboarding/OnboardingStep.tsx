@@ -91,8 +91,10 @@ export function OnboardingStep({
 
           <YStack paddingTop="$2.5">{children}</YStack>
 
-          {/* Held open, so the button does not move when a message arrives. */}
-          <YStack minHeight={ERROR_MIN_HEIGHT} paddingTop="$1.5">
+          {/* Held open, so the button does not move when a message arrives. The padding below is
+              the error's own rather than the button's: a message that runs to two lines otherwise
+              ends up almost touching the control. */}
+          <YStack minHeight={ERROR_MIN_HEIGHT} paddingTop="$1.5" paddingBottom="$1.5">
             {error}
           </YStack>
 
