@@ -52,6 +52,22 @@ export interface FakeSetup {
 }
 
 /**
+ * One client with no identity yet: the state the app is in on first launch.
+ *
+ * The only fixture that reaches the onboarding screens. The app chooses between onboarding and
+ * everything else on `haveAccount`, so a world where every account already has one leaves that
+ * whole branch unreachable -- which is why this exists separately rather than as an option on
+ * `solo`: there are no peers, no conversations and no history to seed, because there is nobody to
+ * seed them for yet.
+ */
+export function newcomer(name: FixtureName = 'Alice'): FakeSetup {
+  resetFakeIds()
+  const world = new FakeWorld()
+  const self = world.account(name, { haveAccount: false })
+  return { world, clients: { [self.displayName]: new FakeSessionClient(self, world) } }
+}
+
+/**
  * Two accounts that already know each other, with a little history.
  *
  * This is the shape the seeded states in the e2e suite take, so a flow written against the

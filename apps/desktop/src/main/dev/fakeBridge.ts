@@ -1,5 +1,5 @@
 import type { BridgeTransport } from '@session/client'
-import { createFakeTransport, crowd, friends } from '@session/client/fake'
+import { createFakeTransport, crowd, friends, newcomer } from '@session/client/fake'
 
 /**
  * The bridge, backed by the fake.
@@ -12,8 +12,12 @@ export function createFakeBridge(): BridgeTransport {
   // A conversation list big enough to measure, when something asks for one. The default stays the
   // two-account fixture, so nothing about the ordinary dev loop changes.
   const peers = Number(process.env['SESSION_FAKE_CONVERSATIONS'] ?? '0')
-  const { world, clients } =
-    peers > 0
+  // No identity yet, which is the only way to reach onboarding: everywhere else the app sees an
+  // account and goes straight past it.
+  const fresh = process.env['SESSION_FAKE_NO_ACCOUNT'] === '1'
+  const { world, clients } = fresh
+    ? newcomer()
+    : peers > 0
       ? crowd({ peers, history: Number(process.env['SESSION_FAKE_HISTORY'] ?? '1') })
       : friends(['Alice', 'Bob'], { history: 4 })
   const alice = clients['Alice']

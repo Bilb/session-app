@@ -26,6 +26,15 @@ import type {
 export interface FakeAccountOptions {
   displayName: string
   sessionId?: string
+  /**
+   * Whether an identity has been minted yet. True unless a fixture says otherwise, because almost
+   * every scenario is about an app that is already past onboarding.
+   *
+   * False is the first-launch state, and it is the only way to reach the onboarding screens at
+   * all: the app decides which to render from `haveAccount`, so a fake that is always true makes
+   * that whole branch unreachable to anything driving the app.
+   */
+  haveAccount?: boolean
 }
 
 let seq = 0
@@ -53,7 +62,7 @@ interface FakeConversationState {
 export class FakeAccount {
   readonly sessionId: string
   displayName: string
-  haveAccount = true
+  haveAccount: boolean
   networkAttached = false
 
   private readonly conversations = new Map<ConversationId, FakeConversationState>()
@@ -64,6 +73,7 @@ export class FakeAccount {
   constructor(options: FakeAccountOptions) {
     this.displayName = options.displayName
     this.sessionId = options.sessionId ?? `05${options.displayName.toLowerCase().padEnd(64, '0')}`
+    this.haveAccount = options.haveAccount ?? true
   }
 
   attachTo(world: FakeWorld): void {
