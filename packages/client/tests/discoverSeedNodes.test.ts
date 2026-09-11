@@ -126,6 +126,12 @@ describe('discoverSeedNodes', () => {
     expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe('http://10.0.0.1:1280/json_rpc')
   })
 
+  it('accepts the bare host:port a node table is copied from', async () => {
+    const fetch = answering(REAL_REPLY)
+    await discoverSeedNodes('10.0.0.1:1280', { fetch })
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe('http://10.0.0.1:1280/json_rpc')
+  })
+
   it('names the variable when the RPC cannot be reached', async () => {
     const fetch: FetchLike = () => Promise.reject(new Error('fetch failed'))
     await expect(

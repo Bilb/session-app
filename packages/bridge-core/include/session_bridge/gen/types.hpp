@@ -473,11 +473,6 @@ struct SeedNode {
             ed25519_pubkey_hex{std::move(ed25519_pubkey_hex_)}, ip{std::move(ip_)}, https_port{std::move(https_port_)}, omq_port{std::move(omq_port_)} {}
 };
 
-/// A file server that is not the built-in one.
-///
-/// Left out, every network uses the built-in server for its netid - and devnet has none of its own,
-/// so it would use **mainnet's**: production storage, reached over a sandbox, with nothing
-/// afterwards to show it happened.
 enum class UrlScheme {
     http,
     https,
@@ -500,6 +495,11 @@ struct EnumTraits<UrlScheme> {
     }
 };
 
+/// A file server that is not the built-in one.
+///
+/// Left out, every network uses the built-in server for its netid - and devnet has none of its own,
+/// so it would use **mainnet's**: production storage, reached over a sandbox, with nothing
+/// afterwards to show it happened.
 struct FileServerConfig {
     ::session_bridge::UrlScheme scheme;
     std::string host;

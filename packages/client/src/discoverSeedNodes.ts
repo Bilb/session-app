@@ -101,7 +101,10 @@ export async function discoverSeedNodes(
   seedUrl: string,
   deps: { fetch: FetchLike; variable?: string },
 ): Promise<SeedNode[]> {
-  const endpoint = `${seedUrl.replace(/\/+$/, '')}/json_rpc`
+  // A scheme is added rather than required: a bare host:port is what gets copied out of a node
+  // table and what the sample environment says is accepted, and `fetch` refuses it outright.
+  const base = /^[a-z][a-z0-9+.-]*:\/\//i.test(seedUrl) ? seedUrl : `http://${seedUrl}`
+  const endpoint = `${base.replace(/\/+$/, '')}/json_rpc`
   const variable = deps.variable ?? 'the devnet seed URL'
 
   let payload: unknown
