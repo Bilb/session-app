@@ -6,10 +6,14 @@ import { SizableText, styled } from 'tamagui'
  * Built on SizableText rather than Text because that is the one whose `size` prop drives
  * the line height as well as the font size - a plain fontSize leaves a 30px title sitting
  * in a 20px line box.
+ *
+ * **The colour comes from the `tone` variant and never from the base style.** A `color` written
+ * alongside the variants below wins over them, so `tone="danger"` rendered as body text - and it
+ * did it silently, in the one situation where the colour *is* the message. `defaultVariants` is
+ * what makes plain `<Text>` primary, and it is the only thing that should.
  */
 export const Text = styled(SizableText, {
   name: 'Text',
-  color: '$textPrimary',
   fontFamily: '$body',
 
   variants: {
