@@ -33,6 +33,8 @@ setPorts(
     // The same variable and the same parser store.ts gives the transport, so the overlay cannot
     // name a network libsession never attached to. EXPO_PUBLIC_ for the reason store.ts gives.
     network: { name: parseNetworkName(process.env['EXPO_PUBLIC_SESSION_NETID']) },
+    // Expo inlines every EXPO_PUBLIC_* variable, so a flag is read by its prefixed name.
+    flags: { override: (name) => process.env[`EXPO_PUBLIC_${name}`] ?? null },
     clipboard: {
       setString: (value) => Clipboard.setStringAsync(value).then(() => undefined),
       getString: () => Clipboard.getStringAsync(),

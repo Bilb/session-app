@@ -71,8 +71,21 @@ export interface NetworkPort {
   name: NetworkName
 }
 
+export interface FlagsPort {
+  /**
+   * The raw value of an environment variable, or null when it is unset.
+   *
+   * A port because the three platforms expose the environment differently -- `process.env` in the
+   * Electron main process, a build-time define in the renderer, and Expo's config extras on
+   * mobile -- and shared code should not know which of those it is standing on. It returns the raw
+   * string rather than a boolean so the parsing rule lives in one place, next to the flag table.
+   */
+  override(name: string): string | null
+}
+
 export interface Ports {
   network: NetworkPort
+  flags: FlagsPort
   secureStore: SecureStore
   files: FilesPort
   mediaProbe: MediaProbePort

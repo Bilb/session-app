@@ -41,6 +41,11 @@ dev entries. When a rule fires, fix the design - not the config.
 - Colour and type: `docs/THEMING.md` says which role to reach for and why. A theme is authored
   knobs plus derived roles - never add a hex, and never derive a value from the base when it is
   drawn on a card.
+- Feature flags: every flag must be overridable by an environment variable **on all three
+  platforms**, unless the flag's own doc comment says why it cannot be. A flag that can only be
+  flipped by editing source cannot be used to bisect a bug on someone else's device, which is most
+  of what a flag is for. The default belongs in the shared flag table; reading the override is a
+  port, because each platform exposes the environment differently.
 
 ## Tests required, in the same PR
 
