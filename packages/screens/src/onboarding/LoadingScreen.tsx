@@ -1,6 +1,6 @@
-import { tr } from '@session/localization'
+import { getLocale, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { ProgressRing, Screen, Text, YStack } from '@session/ui'
+import { ProgressRing, Screen, Text, useMedia, XStack, YStack } from '@session/ui'
 import { useEffect, useRef, useState } from 'react'
 
 /**
@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from 'react'
  */
 const RESTORE_TIMEOUT_MS = 15_000
 
-/** How often the bar moves. Twenty-five frames a second is smooth and costs nothing. */
+/** How often the indicator moves. Twenty-five frames a second is smooth and costs nothing. */
 const TICK_MS = 40
 
 interface LoadingScreenProps {
@@ -22,14 +22,17 @@ interface LoadingScreenProps {
 /**
  * The wait while a restored account's profile comes back from the swarm.
  *
- * **The ring is a clock, not a measurement.** All three legacy clients do the same -- a fixed ramp
- * to 99% over fifteen seconds, with nothing downstream reporting real progress -- so this inherits
- * the shape knowingly rather than by imitation. The defence is that the number it is really showing
- * is how much longer this can go on before the app gives up, which is the question being asked
- * while looking at it. If that is not good enough, the honest alternative is an indeterminate
- * spinner, and that is a decision rather than a fix.
+ * **The indicator differs by design, like everything else here.** The desktop client draws a
+ * horizontal bar with the percentage beside it; both mobile clients draw a ring with no number.
+ * Same two strings on all three.
+ *
+ * **It is a clock, not a measurement.** All three ramp to full over a fixed fifteen seconds with
+ * nothing reporting real progress, and 2.0 keeps that knowingly rather than by imitation: what it
+ * is really showing is how much longer this can go on before the app gives up, which is the
+ * question being asked while looking at it.
  */
 export function LoadingScreen({ onGaveUp }: LoadingScreenProps) {
+  const wide = useMedia().gtSm
   const [elapsed, setElapsed] = useState(0)
   // Held in a ref so the interval's identity never depends on it: re-creating the timer on every
   // tick would drift, and clearing it in the cleanup would restart the wait.
@@ -57,10 +60,19 @@ export function LoadingScreen({ onGaveUp }: LoadingScreenProps) {
 
   return (
     <Screen padded testID={ELEMENT.onboarding.loadingScreen}>
-      <YStack flex={1} alignItems="center" justifyContent="center" gap="$2">
-        {/* A ring, because that is what both mobile clients draw here -- iOS's
-            CircularProgressView and Android's ProgressArc -- alongside the same two strings. */}
-        <ProgressRing progress={fraction} size={96} thickness={6} />
+      <YStack
+        flex={1}
+        alignItems="center"
+        justifyContent="center"
+        gap="$2"
+        maxWidth={360}
+        alignSelf="center"
+      >
+        {wide ? (
+          <ProgressBar fraction={fraction} />
+        ) : (
+          <ProgressRing progress={fraction} size={96} thickness={6} />
+        )}
         <Text size="$titleLarge" weight="bold" textAlign="center">
           {tr('waitOneMoment')}
         </Text>
@@ -69,5 +81,42 @@ export function LoadingScreen({ onGaveUp }: LoadingScreenProps) {
         </Text>
       </YStack>
     </Screen>
+  )
+}
+
+/**
+ * The desktop shape: a bar with the percentage beside it.
+ *
+ * The number is formatted rather than concatenated, because where the per-cent sign goes and
+ * whether there is a space before it are both per-language. `Intl.NumberFormat` is one of the three
+ * `Intl` constructors Hermes actually ships, so this works on a phone too -- which matters, because
+ * a tablet in landscape draws this.
+ */
+function ProgressBar({ fraction }: { fraction: number }) {
+  const percent = new Intl.NumberFormat(getLocale(), {
+    style: 'percent',
+    maximumFractionDigits: 0,
+  }).format(fraction)
+
+  return (
+    <XStack width="100%" alignItems="center" gap="$1.5">
+      <YStack
+        flex={1}
+        height={6}
+        borderRadius="$full"
+        backgroundColor="$backgroundTertiary"
+        overflow="hidden"
+      >
+        <YStack
+          width={`${String(Math.round(fraction * 100))}%`}
+          height="100%"
+          backgroundColor="$primaryColor"
+        />
+      </YStack>
+      {/* Tabular figures, so the bar does not shift sideways as the number grows a digit. */}
+      <Text size="$label" tone="secondary" fontVariant={['tabular-nums']}>
+        {percent}
+      </Text>
+    </XStack>
   )
 }

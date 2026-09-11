@@ -59,6 +59,7 @@ export function LanguageButton() {
       searchPlaceholder={tr('search')}
       emptyLabel={tr('searchMatchesNone')}
       closeLabel={tr('close')}
+      compact
       testIDs={ELEMENT.languagePicker}
     />
   )

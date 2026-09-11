@@ -33,6 +33,20 @@ setPorts(
         }
       },
     },
+    linking: {
+      /**
+       * Handed to the main process, which shells it out to the real browser -- see the window-open
+       * handler there. `window.open` rather than an IPC call of our own because the handler is
+       * already the seam Electron gives for this, and adding a second one would mean two places
+       * that decide which URLs may leave.
+       */
+      openUrl: (url) => {
+        window.open(url, '_blank', 'noopener,noreferrer')
+        return Promise.resolve()
+      },
+      // No per-app language screen to hand over to on desktop. See the port.
+      openLanguageSettings: null,
+    },
     clipboard: {
       setString: (value) => navigator.clipboard.writeText(value),
       getString: () => navigator.clipboard.readText(),

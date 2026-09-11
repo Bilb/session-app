@@ -50,6 +50,7 @@ export function LanguagePicker({
   emptyLabel,
   systemSettingsLabel,
   closeLabel,
+  compact = false,
   testIDs,
 }: LanguagePickerProps) {
   // The anchor is also whether the panel is open: there is nowhere to draw it until the trigger
@@ -70,7 +71,7 @@ export function LanguagePicker({
       <XStack ref={trigger}>
         <Button
           variant="ghost"
-          size="sm"
+          size={compact ? 'xs' : 'sm'}
           accessibilityLabel={accessibilityLabel}
           testID={testIDs.trigger}
           onPress={() => {

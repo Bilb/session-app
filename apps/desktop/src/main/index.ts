@@ -5,7 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 // The default import plus a destructure is the form that works under both loaders.
 import electron from 'electron'
 
-const { app, BrowserWindow, MessageChannelMain, ipcMain, session } = electron
+const { app, BrowserWindow, MessageChannelMain, ipcMain, session, shell } = electron
 
 import type { Request } from '@session/client'
 
@@ -75,6 +75,22 @@ async function createWindow(): Promise<void> {
 
   guardNavigation(window.webContents, appUrl)
   applyContentProtection(window, process.platform)
+
+  /**
+   * Links leave for the person's own browser rather than opening a window here.
+   *
+   * Without this, `window.open` gets an Electron `BrowserWindow` -- a chromeless frame with no
+   * address bar, no extensions and none of the browser's own protections, showing a page the app
+   * told you it was handing to your browser. Denying and shelling out is the only honest reading
+   * of "this will open in your browser", and it is the standard Electron shape for the same reason.
+   *
+   * Restricted to http(s): `openExternal` will hand any scheme to the OS, and a `file:` or a
+   * custom scheme reaching it is how a link turns into a launched program.
+   */
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//.test(url)) void shell.openExternal(url)
+    return { action: 'deny' }
+  })
 
   // One MessagePort, which is FIFO: libsession's ordering survives the process boundary,
   // which is the whole reason responses and events share a single stream.

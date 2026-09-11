@@ -61,6 +61,14 @@ interface LanguagePickerBaseProps {
   /** Shown in place of the list when a search matches nothing. */
   emptyLabel: string
   closeLabel: string
+  /**
+   * Sit in a row of icon buttons rather than on its own.
+   *
+   * The trigger is a flag and a chevron, which is wider than a glyph, so by default it carries a
+   * button's horizontal padding. In a row of round icon buttons that padding reads as a gap twice
+   * the size of the others, and the control looks further away than it is.
+   */
+  compact?: boolean
   testIDs: LanguagePickerTestIDs
 }
 

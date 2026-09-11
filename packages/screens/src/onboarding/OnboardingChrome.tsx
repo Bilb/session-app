@@ -5,6 +5,7 @@ import {
   Button,
   HeroImage,
   Icon,
+  IconRing,
   Screen,
   SessionBrand,
   SessionWordmark,
@@ -97,11 +98,10 @@ export function OnboardingChrome({ children, testID }: { children: ReactNode; te
  * Order is language, FAQ, website. The wordmark takes the space between, so the controls stay
  * pinned to the right edge of the column however wide the mark renders.
  *
- * ⚠️ The designs show both links as a glyph inside a thin circle, and the two circles get there
- * differently. lucide has no bare question mark -- every help glyph carries its own shape -- so the
- * FAQ ring is the glyph's and the website ring is a button border, sized to match. The desktop
- * client has only the FAQ button and draws it exactly this way; there is no client rendering of the
- * website one to copy. Worth checking against a real instance.
+ * The designs show both links as a glyph inside a thin circle. lucide has no bare question mark --
+ * every help glyph carries its own shape -- so the FAQ ring comes free with `circleHelp`, and the
+ * website's is drawn at lucide's own stroke width to match it. The desktop client has only the FAQ
+ * button and no website one at all, so the second is a design addition rather than a port.
  */
 function OnboardingHeader() {
   const open = (url: string) => {
@@ -131,8 +131,10 @@ function OnboardingHeader() {
           }}
           icon={<Icon name="circleHelp" size="$5" color="$textPrimary" />}
         />
+        {/* Ghost like its neighbour, with the ring drawn rather than bordered -- a CSS border is
+            visibly a different weight beside a glyph's own stroke. */}
         <Button
-          variant="outline"
+          variant="ghost"
           size="xs"
           circular
           accessibilityLabel={tr('openPlatformWebsite', { platform: tr('appName') })}
@@ -140,7 +142,11 @@ function OnboardingHeader() {
           onPress={() => {
             open(WEBSITE_URL)
           }}
-          icon={<Icon name="link" size="$2" color="$textPrimary" />}
+          icon={
+            <IconRing size={24} color="var(--textPrimary)">
+              <Icon name="link" size="$3" color="$textPrimary" />
+            </IconRing>
+          }
         />
       </XStack>
     </XStack>
