@@ -96,6 +96,7 @@ export const ELEMENT = {
     displayNameScreen: 'onboarding-display-name-screen',
     displayNameInput: 'onboarding-display-name',
     displayNameError: 'onboarding-display-name-error',
+    displayNameCounter: 'onboarding-display-name-counter',
 
     loadAccountScreen: 'onboarding-load-account-screen',
     recoveryPhraseInput: 'onboarding-recovery-phrase',
