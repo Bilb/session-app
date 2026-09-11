@@ -4,16 +4,16 @@ This file is the mutable one: what exists today and what comes next. `ARCHITECTU
 timeless one - how the thing is built and why. `CLAUDE.md` is the rule list. Read all three
 before changing anything; they do not repeat each other.
 
-Last updated 2026-09-04, at commit `46eceb4`.
+Last updated 2026-09-11, on `feat/local-devnet`.
 
 ## State
 
-On `feat/message-sending`, off `feat/network-receive`. Working tree clean. `origin` is
-`session-foundation/session-app`, so the branch-and-pull-request rule in `CLAUDE.md` applies.
+On `feat/local-devnet`, off `main`. `origin` is `session-foundation/session-app`, so the
+branch-and-pull-request rule in `CLAUDE.md` applies.
 
-Everything green: `pnpm format:check`, `pnpm lint` (16), `pnpm lint:manifests`,
-`pnpm boundaries`, `pnpm typecheck` (16), `pnpm test` (68 tests), `pnpm knip`,
-`pnpm codegen:check`, `pnpm dedupe --check` - the whole of `ci.yml`.
+Everything green: `pnpm format:check`, `pnpm lint`, `pnpm lint:manifests`, `pnpm boundaries`,
+`pnpm typecheck`, `pnpm test`, `pnpm knip`, `pnpm codegen:check`, `pnpm dedupe --check` - the
+whole of `ci.yml`.
 
 The walking skeleton works end to end. `tests/e2e` drives the built Electron app through
 Playwright: it reads a seeded conversation list, opens a conversation, sends a message and
@@ -212,6 +212,69 @@ frames. That is what a reported "message status failed" was, and Retry is the an
 Nothing in the app waits for the router, because `networkAttached` goes true when the bridge
 attaches rather than when the router is ready: an indicator built on it would say "connected"
 through the whole window where sending does not work.
+
+## Pointing a build at a local devnet
+
+One uncommitted `.env` at the repo root, `.env.sample` beside it as the documentation. Both apps
+read the same names: the desktop main process from the environment, and mobile with `EXPO_PUBLIC_`
+in front, because Metro inlines a variable into the bundle only when the name carries that prefix
+and is written out literally - a name built from a prefix at runtime reads `undefined`.
+
+```
+SESSION_NETID=devnet
+SESSION_DEVNET_SEED_URL=192.168.1.114:1280
+```
+
+**The seed node's oxend RPC is the only devnet value configured.** Every record libsession needs -
+an Ed25519 pubkey, an IPv4 address and both storage ports, per node - is read from it at startup
+with `get_n_service_nodes`. A devnet regenerates those keys whenever it is rebuilt, so anything
+written down by hand goes stale without saying so; that bug used to break iOS alone, because iOS
+was the only old client that needed the pubkey rather than a URL.
+
+Three things devnet needs that the other two networks do not, all decided in the shim rather than
+configured:
+
+- **Session Router refuses devnet** outright, so it routes over onion requests. A devnet run
+  therefore does not exercise the routing path mainnet uses.
+- **Subnet diversity is off.** A devnet is usually one machine, and path building will not put two
+  nodes from a `/24` in one path - left enforced it builds no paths and every request times out.
+- **The file server has to be named.** Only testnet has one of its own, so an unconfigured devnet
+  uploads to _mainnet's_: production storage reached over a sandbox, and the upload succeeds with
+  nothing afterwards to show it. Both apps say so at startup when it is unset.
+
+`SESSION_FILE_SERVER_X25519_PUBKEY` is the server's **X25519** key, which is what onion requests
+to it are encrypted with, and not the Ed25519 one its QUIC endpoint is named by. The container
+prints both and they are both 64 hex characters; the wrong one fails as a decryption error
+part-way through an upload, which nothing local can catch.
+
+**Each network gets its own database directory** - `userData/<netid>/` on desktop,
+`documentDirectory/session/<netid>/` on mobile - so a devnet identity and a mainnet one coexist
+and switching back loses neither. libsession derives its snode cache from the database's
+directory, which puts a cache of nodes that do not exist on the other network on the right side of
+the split. An existing pre-split database is moved into `mainnet/` on first run, `-wal` and all.
+
+A devnet with nothing configured attaches **nothing**, never mainnet: real traffic on a build
+whose owner believes it is a sandbox is the failure worth preventing, and the overlay stamping
+`devnet` over it would confirm the belief rather than contradict it.
+
+### What was verified, and how
+
+| what                                                              | how                                                     |
+| ----------------------------------------------------------------- | ------------------------------------------------------- |
+| 15 seed nodes discovered, account created, `networkAttached` true | `tests/devnet.test.ts`, against the real addon          |
+| a message between two devnet accounts, arriving in 21s            | the same tool, second scenario                          |
+| desktop onboarding on devnet, `network attached` in its log       | Playwright against the built app, real bridge           |
+| the per-network split, and a pre-split database surviving         | `~/.config/session-app/{mainnet,devnet}/` after the run |
+
+`packages/bridge-node/tests/devnet.test.ts` is a tool shaped as a test, skipped without
+`SESSION_DEVNET_SEED_URL`. Every refusal is covered offline by the contract suite and the fake, so
+this is the only thing that covers an _acceptance_: that the records a devnet advertises are ones
+libsession can bootstrap from.
+
+**Mobile is wired and compiles, and has not been run on devnet.** The shim changed, so both dev
+clients need a native rebuild before they can reach one; the JSI adapter that carries the seed
+nodes across is compile-checked and nothing more. The Pro backend variables are parsed, validated
+and read by nothing - see "What is deliberately not done".
 
 ## What runs against the real bridge
 

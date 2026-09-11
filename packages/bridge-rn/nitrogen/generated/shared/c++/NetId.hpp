@@ -31,7 +31,6 @@ namespace margelo::nitro::session::bridge::rn {
   enum class NetId {
     NET_MAINNET      SWIFT_NAME(netMainnet) = 0,
     NET_TESTNET      SWIFT_NAME(netTestnet) = 1,
-    NET_DEVNET      SWIFT_NAME(netDevnet) = 2,
   } CLOSED_ENUM;
 
 } // namespace margelo::nitro::session::bridge::rn
@@ -46,7 +45,6 @@ namespace margelo::nitro {
       switch (hashString(unionValue.c_str(), unionValue.size())) {
         case hashString("mainnet"): return margelo::nitro::session::bridge::rn::NetId::NET_MAINNET;
         case hashString("testnet"): return margelo::nitro::session::bridge::rn::NetId::NET_TESTNET;
-        case hashString("devnet"): return margelo::nitro::session::bridge::rn::NetId::NET_DEVNET;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum NetId - invalid value!");
       }
@@ -55,7 +53,6 @@ namespace margelo::nitro {
       switch (arg) {
         case margelo::nitro::session::bridge::rn::NetId::NET_MAINNET: return JSIConverter<std::string>::toJSI(runtime, "mainnet");
         case margelo::nitro::session::bridge::rn::NetId::NET_TESTNET: return JSIConverter<std::string>::toJSI(runtime, "testnet");
-        case margelo::nitro::session::bridge::rn::NetId::NET_DEVNET: return JSIConverter<std::string>::toJSI(runtime, "devnet");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert NetId to JS - invalid value: "
                                     + std::to_string(static_cast<int>(arg)) + "!");
@@ -69,7 +66,6 @@ namespace margelo::nitro {
       switch (hashString(unionValue.c_str(), unionValue.size())) {
         case hashString("mainnet"):
         case hashString("testnet"):
-        case hashString("devnet"):
           return true;
         default:
           return false;

@@ -118,6 +118,36 @@ Mobile reads `EXPO_PUBLIC_SESSION_FAKE`, not `SESSION_FAKE`: Metro inlines a var
 bundle only when its name carries that prefix, and it caches the transform - so a Metro that was
 started without it keeps serving a bundle that ignores it until `expo start --clear`.
 
+## Against a local devnet
+
+`.env` at the repo root, which both apps load; `.env.sample` says what goes in it. The whole of a
+devnet run is two lines, and `docs/STATUS.md` has the reasoning:
+
+```sh
+SESSION_NETID=devnet
+SESSION_DEVNET_SEED_URL=192.168.1.114:1280      # the seed node's oxend RPC, not a storage port
+```
+
+Check the devnet is reachable before blaming the app - oxend binds that RPC to the devnet host's
+own address while the storage servers bind everything, so a machine that can reach the swarm can
+still fail here:
+
+```sh
+curl -s -m 5 -X POST http://192.168.1.114:1280/json_rpc -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":"0","method":"get_info"}' | head -c 200
+```
+
+One command says whether the bridge can attach to it at all, without an app in the way:
+
+```sh
+SESSION_DEVNET_SEED_URL=192.168.1.114:1280 \
+  pnpm --filter @session/bridge-node exec vitest run tests/devnet --reporter=verbose
+```
+
+A devnet build keeps its own database - `userData/devnet/` - so it onboards from scratch the
+first time and leaves a mainnet account where it was. Mobile needs the same names with
+`EXPO_PUBLIC_` in front, and a dev client built since the shim last changed.
+
 ## The e2e suite
 
 ```sh
