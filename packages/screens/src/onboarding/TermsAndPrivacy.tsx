@@ -48,10 +48,12 @@ export function TermsAndPrivacy() {
       >
         {/* Not the Button's own label, because the sentence carries the emphasis the translators
             put in it and a plain label would flatten it. */}
+        {/* 12pt, emphasis included -- the bold runs are the two documents' names and are the
+            only thing in the sentence anybody is looking for. */}
         <LocalizedText
           text={tr('onboardingTosPrivacy')}
           tone="secondary"
-          size="$caption"
+          size="$label"
           textAlign="center"
         />
       </Button>

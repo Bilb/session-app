@@ -18,29 +18,37 @@ export function LocalizedText({
   const segments = parseMarkupSegments(text)
 
   return (
-    <Text {...textProps}>{segments.map((segment, index) => renderSegment(segment, index))}</Text>
+    <Text {...textProps}>
+      {/* The size goes to each emphasised run as well as to the wrapper. A nested `Text` does not
+          inherit it -- tamagui gives every one its own default -- so a bold run inside a caption
+          rendered at body size, which read as the emphasis being a different piece of text rather
+          than the same sentence. */}
+      {segments.map((segment, index) => renderSegment(segment, index, textProps.size))}
+    </Text>
   )
 }
 
-function renderSegment(segment: LocalizedSegment, index: number) {
+type TextSize = ComponentProps<typeof Text>['size']
+
+function renderSegment(segment: LocalizedSegment, index: number, size: TextSize) {
   const key = `${segment.type}-${String(index)}`
 
   switch (segment.type) {
     case 'bold':
       return (
-        <Text key={key} weight="bold">
+        <Text key={key} weight="bold" size={size}>
           {segment.value}
         </Text>
       )
     case 'italic':
       return (
-        <Text key={key} fontStyle="italic">
+        <Text key={key} fontStyle="italic" size={size}>
           {segment.value}
         </Text>
       )
     case 'mono':
       return (
-        <Text key={key} fontFamily="$body">
+        <Text key={key} fontFamily="$body" size={size}>
           {segment.value}
         </Text>
       )

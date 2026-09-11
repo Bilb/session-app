@@ -103,28 +103,29 @@ function OnboardingHeader() {
       <XStack alignItems="center" gap="$0.5">
         {flag('onboardingLanguageSelect') ? <LanguageButton /> : null}
         {/* Ghost, because `circleHelp` brings its own circle: a border here would draw a second
-            ring around the first. Sized to the same 32px the bordered one measures. */}
+            ring around the first. The glyph is therefore the full control size, where the bordered
+            one below has the border at that size and a smaller glyph inside it. */}
         <Button
           variant="ghost"
-          size="sm"
+          size="xs"
           circular
           accessibilityLabel={tr('helpFAQ')}
           testID={ELEMENT.onboarding.faqLink}
           onPress={() => {
             open(FAQ_URL)
           }}
-          icon={<Icon name="circleHelp" size="$6" color="$textPrimary" />}
+          icon={<Icon name="circleHelp" size="$5" color="$textPrimary" />}
         />
         <Button
           variant="outline"
-          size="sm"
+          size="xs"
           circular
           accessibilityLabel={tr('openPlatformWebsite', { platform: tr('appName') })}
           testID={ELEMENT.onboarding.websiteLink}
           onPress={() => {
             open(WEBSITE_URL)
           }}
-          icon={<Icon name="link" size="$4" color="$textPrimary" />}
+          icon={<Icon name="link" size="$3" color="$textPrimary" />}
         />
       </XStack>
     </XStack>

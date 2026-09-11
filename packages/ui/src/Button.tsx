@@ -63,6 +63,9 @@ const Frame = styled(XStack, {
       },
     },
     size: {
+      // `xs` is for an icon on its own, where the ladder's next rung up is bigger than any glyph
+      // needs. It is not a smaller text button: there is no padding on it worth speaking of.
+      xs: { height: '$5', paddingHorizontal: '$1' },
       sm: { height: '$6', paddingHorizontal: '$2' },
       md: { height: '$7', paddingHorizontal: '$2.5' },
       lg: { height: '$8', paddingHorizontal: '$3' },
@@ -70,11 +73,13 @@ const Frame = styled(XStack, {
     /**
      * Square, so the full radius draws a circle rather than a pill.
      *
-     * Applied after `size` so its width wins over that variant's horizontal padding -- tamagui
-     * merges variants in declaration order, and a pill with a circle's width is neither.
+     * Applied after `size` so the padding it clears is that variant's -- tamagui merges variants in
+     * declaration order, and a circle with a pill's padding is neither.
      */
     circular: {
-      true: { width: '$6', paddingHorizontal: 0 },
+      // The width follows the height rather than naming a token of its own, so a circular button
+      // stays circular at whichever size it is given.
+      true: { aspectRatio: 1, paddingHorizontal: 0 },
     },
     disabled: {
       true: { opacity: 0.5, pointerEvents: 'none' },
@@ -103,7 +108,7 @@ export interface ButtonProps {
   children?: ReactNode
   onPress?: () => void
   variant?: keyof typeof LABEL_TONE
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
   /** For an icon on its own: equal width and height, so the full radius is a circle. */
   circular?: boolean
   disabled?: boolean
@@ -147,7 +152,7 @@ export function Button({
       {loading ? <Spinner size="small" color={LABEL_TONE[variant]} /> : icon}
       {typeof children === 'string' ? (
         <Text
-          size={size === 'sm' ? '$label' : '$body'}
+          size={size === 'xs' || size === 'sm' ? '$label' : '$body'}
           weight="semibold"
           color={LABEL_TONE[variant]}
         >
