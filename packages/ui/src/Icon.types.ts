@@ -14,7 +14,15 @@ import type { Plus } from '@tamagui/lucide-icons-2/icons/Plus'
  * second time somebody reaches for it.
  */
 export type IconName =
-  'check' | 'chevronDown' | 'chevronLeft' | 'circleHelp' | 'link' | 'plus' | 'search' | 'settings'
+  | 'check'
+  | 'chevronDown'
+  | 'chevronLeft'
+  | 'circleHelp'
+  | 'link'
+  | 'plus'
+  | 'search'
+  | 'settings'
+  | 'x'
 
 /**
  * Whatever a themed lucide icon accepts, plus which one to draw.

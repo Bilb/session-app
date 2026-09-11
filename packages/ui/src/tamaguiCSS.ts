@@ -54,10 +54,24 @@ const FONT_FACES = [
   )
   .join('\n')
 
+/**
+ * What selected text looks like.
+ *
+ * The browser's default selection is a blue wash that a dark theme renders as near-invisible: on
+ * the language picker's search field, selecting all of it looked exactly like selecting none of it.
+ * There is no token for this because nothing else in the app needed one -- the accent at low opacity
+ * is the same treatment every other selected surface gets, and it keeps the text readable rather
+ * than inverting it.
+ */
+const SELECTION = `::selection {
+  background: color-mix(in srgb, var(--primaryColor) 35%, transparent);
+  color: var(--textPrimary);
+}`
+
 if (!document.getElementById(ID)) {
   const style = document.createElement('style')
   style.id = ID
-  style.textContent = `${FONT_FACES}\n${config.getCSS()}`
+  style.textContent = `${FONT_FACES}\n${SELECTION}\n${config.getCSS()}`
   // Prepended, not appended: index.html's own rules come after and must keep winning, and so must
   // anything a component inserts at runtime.
   document.head.prepend(style)

@@ -139,17 +139,20 @@ export function LanguagePicker({
                 <Text size="$title" weight="bold">
                   {title}
                 </Text>
+                {/* A cross rather than the word: it is the corner of a panel, where a cross is
+                    read without being read, and the label still carries the meaning for anyone
+                    who cannot see it. */}
                 <Button
                   variant="ghost"
                   size="sm"
+                  circular
                   accessibilityLabel={closeLabel}
                   testID={testIDs.close}
                   onPress={() => {
                     setAnchor(null)
                   }}
-                >
-                  {closeLabel}
-                </Button>
+                  icon={<Icon name="x" size="$4" color="$textPrimary" />}
+                />
               </XStack>
 
               {onOpenSystemSettings === undefined ? (

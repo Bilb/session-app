@@ -78,10 +78,16 @@ export function OnboardingChrome({ children, testID }: { children: ReactNode; te
 }
 
 /**
- * The lockup and the two links out.
+ * The lockup and the controls beside it.
  *
- * The wordmark takes the space between them, so the links stay pinned to the right edge of the
- * column however wide the mark renders.
+ * Order is language, FAQ, website. The wordmark takes the space between, so the controls stay
+ * pinned to the right edge of the column however wide the mark renders.
+ *
+ * ⚠️ The designs show both links as a glyph inside a thin circle, and the two circles get there
+ * differently. lucide has no bare question mark -- every help glyph carries its own shape -- so the
+ * FAQ ring is the glyph's and the website ring is a button border, sized to match. The desktop
+ * client has only the FAQ button and draws it exactly this way; there is no client rendering of the
+ * website one to copy. Worth checking against a real instance.
  */
 function OnboardingHeader() {
   const open = (url: string) => {
@@ -93,30 +99,33 @@ function OnboardingHeader() {
       <SessionBrand size={26} color="var(--primaryColor)" />
       <SessionWordmark size={15} color="var(--textPrimary)" />
       <YStack flex={1} />
-      <XStack alignItems="center">
+      {/* Tight, because these read as one group of three rather than three separate controls. */}
+      <XStack alignItems="center" gap="$0.5">
+        {flag('onboardingLanguageSelect') ? <LanguageButton /> : null}
+        {/* Ghost, because `circleHelp` brings its own circle: a border here would draw a second
+            ring around the first. Sized to the same 32px the bordered one measures. */}
         <Button
           variant="ghost"
           size="sm"
+          circular
           accessibilityLabel={tr('helpFAQ')}
           testID={ELEMENT.onboarding.faqLink}
           onPress={() => {
             open(FAQ_URL)
           }}
-          icon={<Icon name="circleHelp" size="$5" color="$textPrimary" />}
+          icon={<Icon name="circleHelp" size="$6" color="$textPrimary" />}
         />
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
+          circular
           accessibilityLabel={tr('openPlatformWebsite', { platform: tr('appName') })}
           testID={ELEMENT.onboarding.websiteLink}
           onPress={() => {
             open(WEBSITE_URL)
           }}
-          icon={<Icon name="link" size="$5" color="$textPrimary" />}
+          icon={<Icon name="link" size="$4" color="$textPrimary" />}
         />
-        {/* Beside the other two, because it is the same kind of control: something about the app
-            rather than something about the step you are on. */}
-        {flag('onboardingLanguageSelect') ? <LanguageButton /> : null}
       </XStack>
     </XStack>
   )

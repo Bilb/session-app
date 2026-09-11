@@ -6,6 +6,7 @@ import { Link } from '@tamagui/lucide-icons-2/icons/Link'
 import { Plus } from '@tamagui/lucide-icons-2/icons/Plus'
 import { Search } from '@tamagui/lucide-icons-2/icons/Search'
 import { Settings } from '@tamagui/lucide-icons-2/icons/Settings'
+import { X } from '@tamagui/lucide-icons-2/icons/X'
 
 import type { IconName, IconProps } from './Icon.types'
 
@@ -29,6 +30,7 @@ const GLYPHS = {
   plus: Plus,
   search: Search,
   settings: Settings,
+  x: X,
 } satisfies Record<IconName, typeof Plus>
 
 /**

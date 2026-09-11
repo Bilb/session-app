@@ -5,6 +5,7 @@
    these sources -- screens and both apps -- fails on the .png and .ttf imports below. */
 /// <reference path="./assets.d.ts" />
 import { Image } from 'react-native'
+import { YStack } from 'tamagui'
 
 import heroSource from '../assets/onboarding-hero.png'
 
@@ -14,30 +15,48 @@ import heroSource from '../assets/onboarding-hero.png'
  * Vite emits the file and returns its URL as a string, which has to be wrapped as `{ uri }`. Metro
  * registers it and returns an opaque asset id, which `Image` takes as-is. Checking the type is the
  * only way to tell them apart, and it is checked rather than assumed because getting it wrong
- * renders an `<img>` with no `src` -- an element of exactly the right size showing nothing, which
- * is what it did before this.
+ * renders an `<img>` with no `src` -- an element of exactly the right size showing nothing.
  */
 const source = typeof heroSource === 'string' ? { uri: heroSource } : heroSource
+
+/** The artwork's own proportions, so the crop can be anchored rather than centred. */
+const ASPECT = 1629 / 2160
 
 /**
  * The artwork down one side of the desktop onboarding.
  *
- * Cropped rather than fitted -- `cover` with the right edge pinned, which is the desktop client's
- * own rule. The image is a tall arrangement of phones and the subject sits on its right-hand side,
- * so a centred crop loses it in a narrow column and `contain` would letterbox the whole thing to
- * show the empty left.
+ * **Anchored to its right edge**, which is the desktop client's rule -- `object-position: right
+ * center`. The subject sits on the right of a tall arrangement of phones, so a centred crop takes
+ * a slice out of the middle and loses it.
+ *
+ * `resizeMode="cover"` cannot do that: it centres, and react-native has no `object-position`. So
+ * the image is sized from its own aspect ratio, pinned to the right of a clipping container, and
+ * allowed to overflow to the left -- which is what anchoring a crop actually means, and works the
+ * same on both platforms rather than only in a browser.
  */
 export function HeroImage() {
   return (
-    <Image
-      source={source}
-      style={{ width: '100%', height: '100%' }}
-      resizeMode="cover"
-      // The subject is on the right. react-native has no object-position, so the crop is steered
-      // by the alignment of the resized image instead.
-      alt=""
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    />
+    // `position="relative"` is load-bearing: react-native makes every view a containing block, but
+    // the web does not, so without it the absolutely-positioned image resolves against the viewport
+    // and covers the whole window.
+    <YStack flex={1} position="relative" overflow="hidden">
+      <Image
+        source={source}
+        style={{
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          right: 0,
+          // Height comes from top/bottom, width follows the artwork. A `minWidth` here would beat
+          // the aspect ratio and fit the image to the column instead -- which shrinks it to show
+          // the whole picture, and showing the whole picture is the opposite of a crop.
+          aspectRatio: ASPECT,
+        }}
+        resizeMode="cover"
+        alt=""
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      />
+    </YStack>
   )
 }

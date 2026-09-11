@@ -67,6 +67,15 @@ const Frame = styled(XStack, {
       md: { height: '$7', paddingHorizontal: '$2.5' },
       lg: { height: '$8', paddingHorizontal: '$3' },
     },
+    /**
+     * Square, so the full radius draws a circle rather than a pill.
+     *
+     * Applied after `size` so its width wins over that variant's horizontal padding -- tamagui
+     * merges variants in declaration order, and a pill with a circle's width is neither.
+     */
+    circular: {
+      true: { width: '$6', paddingHorizontal: 0 },
+    },
     disabled: {
       true: { opacity: 0.5, pointerEvents: 'none' },
     },
@@ -95,6 +104,8 @@ export interface ButtonProps {
   onPress?: () => void
   variant?: keyof typeof LABEL_TONE
   size?: 'sm' | 'md' | 'lg'
+  /** For an icon on its own: equal width and height, so the full radius is a circle. */
+  circular?: boolean
   disabled?: boolean
   loading?: boolean
   icon?: ReactNode
@@ -118,6 +129,7 @@ export function Button({
   size = 'md',
   disabled = false,
   loading = false,
+  circular = false,
   icon,
   accessibilityLabel,
   testID,
@@ -126,6 +138,7 @@ export function Button({
     <Frame
       variant={variant}
       size={size}
+      circular={circular}
       disabled={disabled || loading}
       onPress={onPress}
       aria-label={accessibilityLabel}
