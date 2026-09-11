@@ -11,7 +11,7 @@ import {
 } from '@session/screens'
 import { SessionStoreProvider, useAccount, useHydrated } from '@session/state'
 import { Text, UIProvider, YStack } from '@session/ui'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { MemoryRouter, Route, Routes, useLocation, useParams } from 'react-router'
 
 import { DesktopNavProvider } from './nav'
@@ -52,12 +52,16 @@ function Shell() {
   const hydrated = useHydrated()
   const account = useAccount()
   const location = useLocation()
+  const [onboarding, setOnboarding] = useState(false)
 
   if (!hydrated) return <StartingScreen />
 
   // Onboarding takes the whole window rather than a pane: there is no list to sit beside it,
   // and there will not be one until it has minted an identity.
-  if (account?.haveAccount !== true) return <OnboardingFlow />
+  // `|| onboarding` because an account appearing is not the same as onboarding being over: a
+  // restore mints one the moment the phrase is accepted and still has a wait to sit through.
+  if (account?.haveAccount !== true || onboarding)
+    return <OnboardingFlow onRunningChange={setOnboarding} />
 
   return (
     <AdaptiveShell

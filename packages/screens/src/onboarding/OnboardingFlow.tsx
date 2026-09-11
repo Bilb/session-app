@@ -21,7 +21,22 @@ import { initialOnboarding, onboardingReducer, type OnboardingState } from './fl
  * what has been collected; this is the only thing that turns that into an account, which is what
  * keeps "when is the account actually made" answerable by reading one file.
  */
-export function OnboardingFlow() {
+interface OnboardingFlowProps {
+  /**
+   * Whether onboarding still owns the screen.
+   *
+   * The apps choose onboarding by asking whether there is an account, which stops being the right
+   * question the moment a restore succeeds: the account exists from the instant the phrase is
+   * accepted, but the flow is not finished -- it still has to wait for the profile, and on a phone
+   * it has not asked about notifications yet. Without this the app swapped the conversation list in
+   * underneath a restore that was still running, and the wait screen was never seen at all.
+   *
+   * True from the first step past the landing screen until everything has been committed.
+   */
+  onRunningChange?: (running: boolean) => void
+}
+
+export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
   const actions = useSessionActions()
   // Which client's onboarding this is, from the window's width: a tablet takes the desktop flow
   // rather than a stretched phone one, and `gtSm` is >700px.
@@ -36,12 +51,20 @@ export function OnboardingFlow() {
     if (state.design !== design) dispatch({ type: 'designChanged', design })
   }, [design, state.design])
 
+  // Reported rather than derived, because only the flow knows the difference between "there is an
+  // account now" and "this is over".
+  useEffect(() => {
+    onRunningChange?.(state.step !== 'landing')
+  }, [state.step, onRunningChange])
+
   useEffect(() => {
     if (state.step !== 'done') return
     // `done` is reached from two places and means something different at each: the end of create,
     // where there is no account yet, and the end of a restore that had to ask for a name.
-    void commit(state, actions, setBusy)
-  }, [state, actions])
+    void commit(state, actions, setBusy).then(() => {
+      onRunningChange?.(false)
+    })
+  }, [state, actions, onRunningChange])
 
   switch (state.step) {
     case 'landing':

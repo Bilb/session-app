@@ -67,6 +67,7 @@ export const ELEMENT = {
 
   starting: {
     screen: 'starting',
+    slowMessage: 'starting-slow-message',
   },
 
   languagePicker: {

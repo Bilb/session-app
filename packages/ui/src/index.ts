@@ -9,6 +9,7 @@
 export { Avatar } from './Avatar'
 export { SessionBrand, SessionWordmark } from './Brand'
 export { HeroImage } from './HeroImage'
+export { ProgressRing } from './ProgressRing'
 export type { AvatarProps } from './Avatar'
 export { Button } from './Button'
 export type { ButtonProps } from './Button'

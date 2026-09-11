@@ -1,5 +1,6 @@
 import { ConversationListScreen, OnboardingFlow, StartingScreen } from '@session/screens'
 import { useAccount, useHydrated } from '@session/state'
+import { useState } from 'react'
 
 /**
  * The list, or onboarding when there is no account to list anything for.
@@ -18,8 +19,12 @@ import { useAccount, useHydrated } from '@session/state'
 export default function IndexRoute() {
   const hydrated = useHydrated()
   const account = useAccount()
+  const [onboarding, setOnboarding] = useState(false)
 
   if (!hydrated) return <StartingScreen />
-  if (account?.haveAccount !== true) return <OnboardingFlow />
+  // `|| onboarding` because an account appearing is not the same as onboarding being over: a
+  // restore mints one the moment the phrase is accepted and still has a wait to sit through.
+  if (account?.haveAccount !== true || onboarding)
+    return <OnboardingFlow onRunningChange={setOnboarding} />
   return <ConversationListScreen />
 }

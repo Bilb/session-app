@@ -1,6 +1,6 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Screen, Text, YStack } from '@session/ui'
+import { ProgressRing, Screen, Text, YStack } from '@session/ui'
 import { useEffect, useRef, useState } from 'react'
 
 /**
@@ -22,10 +22,12 @@ interface LoadingScreenProps {
 /**
  * The wait while a restored account's profile comes back from the swarm.
  *
- * **The bar is a clock, not a measurement**, which is how the legacy clients draw it too: nothing
- * downstream reports progress, so the only honest alternative would be an indeterminate spinner.
- * A bar that fills over the timeout at least tells somebody how much longer this can go on, which
- * is the question being asked while looking at it.
+ * **The ring is a clock, not a measurement.** All three legacy clients do the same -- a fixed ramp
+ * to 99% over fifteen seconds, with nothing downstream reporting real progress -- so this inherits
+ * the shape knowingly rather than by imitation. The defence is that the number it is really showing
+ * is how much longer this can go on before the app gives up, which is the question being asked
+ * while looking at it. If that is not good enough, the honest alternative is an indeterminate
+ * spinner, and that is a decision rather than a fix.
  */
 export function LoadingScreen({ onGaveUp }: LoadingScreenProps) {
   const [elapsed, setElapsed] = useState(0)
@@ -56,26 +58,15 @@ export function LoadingScreen({ onGaveUp }: LoadingScreenProps) {
   return (
     <Screen padded testID={ELEMENT.onboarding.loadingScreen}>
       <YStack flex={1} alignItems="center" justifyContent="center" gap="$2">
-        <Text size="$headingLarge" weight="bold">
+        {/* A ring, because that is what both mobile clients draw here -- iOS's
+            CircularProgressView and Android's ProgressArc -- alongside the same two strings. */}
+        <ProgressRing progress={fraction} size={96} thickness={6} />
+        <Text size="$titleLarge" weight="bold" textAlign="center">
           {tr('waitOneMoment')}
         </Text>
-        <Text tone="secondary" size="$body">
+        <Text tone="secondary" textAlign="center">
           {tr('loadAccountProgressMessage')}
         </Text>
-        <YStack
-          width="100%"
-          maxWidth={320}
-          height={4}
-          borderRadius="$full"
-          backgroundColor="$backgroundTertiary"
-          overflow="hidden"
-        >
-          <YStack
-            width={`${String(Math.round(fraction * 100))}%`}
-            height="100%"
-            backgroundColor="$primaryColor"
-          />
-        </YStack>
       </YStack>
     </Screen>
   )
