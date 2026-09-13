@@ -44,16 +44,14 @@ if(SESSION_BRIDGE_LIBSESSION_BUNDLE)
         "${_router}/external/oxen-mq/oxen-logging/spdlog/include"
         "${_router}/external/nlohmann/single_include"
         "${_bundle_dir}/static-deps/include")
-    # STATIC_BUNDLE says "a single static .a containing everything (both code and dependencies)"
-    # and does not mean it. What it leaves out, found one undefined symbol at a time:
+    # The archives STATIC_BUNDLE does not carry, and the symbols each supplies:
     #
     #   session-sqlite's own archives     session::sqlite::Database, session::secure_buffer
     #   sqlite3mc, utf8proc               the deps it and libsession::util link
     #   hogweed, tasn1, idn2, unistring, gmp   gnutls's chain - bundled gnutls, not its deps
     #
     # The last group only surfaces once something reaches the network layer, because nothing
-    # else pulls gnutls in. Worth raising upstream; until then they go on the link line beside
-    # the bundle, and each one that is missing from a given build is simply skipped.
+    # else pulls gnutls in. Each one missing from a given build is skipped.
     set(_extra)
     foreach(lib
             "${_bundle_dir}/external/session-sqlite/libsession_sqlite.a"
