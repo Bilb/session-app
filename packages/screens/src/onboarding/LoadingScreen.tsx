@@ -88,10 +88,22 @@ export function LoadingScreen({ onGaveUp }: LoadingScreenProps) {
     return (
       <Screen testID={ELEMENT.onboarding.loadingScreen}>
         <YStack flex={1} alignItems="center" justifyContent="center" gap="$2" padding="$3">
-          <ProgressRing progress={fraction} size={RING_SIZE} thickness={RING_THICKNESS} />
-          {/* No number beside it. The ring is the whole indicator on both phones -- the percentage
-              drives it and is never shown, which is just as well given it is a fixed ramp rather
-              than a measurement. */}
+          {/* The number sits **inside** the ring on both clients -- iOS overlays it, Android
+              centres it in the arc -- rather than beside it as the desktop bar does. */}
+          <YStack
+            width={RING_SIZE}
+            height={RING_SIZE}
+            position="relative"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <ProgressRing progress={fraction} size={RING_SIZE} thickness={RING_THICKNESS} />
+            <YStack fullscreen alignItems="center" justifyContent="center" pointerEvents="none">
+              <Text size="$displayLarge" weight="bold" fontVariant={['tabular-nums']}>
+                {percent}
+              </Text>
+            </YStack>
+          </YStack>
           <Text size="$titleLarge" weight="bold" textAlign="center">
             {tr('waitOneMoment')}
           </Text>
