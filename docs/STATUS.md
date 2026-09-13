@@ -84,15 +84,6 @@ Six skills in `.claude/skills/`: `port-feature`, `libsession-bridge`, `new-scree
   `void`. The fake implements it, which is why every loop except mode B looks correct. Whichever
   way it is settled, the button and this command have to be settled together.
 
-- **One thing still to send to session-deps**, the last of three found by building a shared object
-  from this branch, which nobody had done. The other two are upstream as of session-deps
-  `30b20092` - libevent's dep script dropping `--with-pic`, and the Android toolchain not reaching
-  its CMake-based dependencies - and `docs/ARCHITECTURE.md` records how they got there.
-
-  `STATIC_BUNDLE` says "a single static .a containing everything" and leaves out session-sqlite's
-  archives, sqlite3mc and utf8proc. `bridge-core` names them on the link line; nothing in the
-  bundle says it should have to.
-
 - **Attachments.** Nothing about them is in the protocol: no metadata on a message, no
   transfer progress, no auto-download setting, no command to fetch or save one. The cache files
   libsession writes are encrypted, so reading one for display needs a decrypting path - a custom

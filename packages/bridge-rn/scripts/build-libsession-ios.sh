@@ -69,11 +69,11 @@ mkdir -p "$here/../ios/lib"
 rm -f "$here/../ios/lib"/*.a
 cp "$build/libsession-bridge-core.a" "$here/../ios/lib/"
 
-# The pieces STATIC_BUNDLE leaves out despite being "a single static .a containing everything".
-# bridge-core's CMake names them on its link line, which is enough for the addon and for Android
-# but cannot travel into a vendored static library, so on iOS the pod has to carry them and the
-# podspec globs this directory. The same ten, in the same order, as the list in
-# packages/bridge-core/CMakeLists.txt, which is where the grouping is explained.
+# The archives STATIC_BUNDLE does not carry. bridge-core's CMake names them on its link line,
+# which is enough for the addon and for Android but cannot travel into a vendored static library,
+# so on iOS the pod has to carry them and the podspec globs this directory. The same ten, in the
+# same order, as the list in packages/bridge-core/CMakeLists.txt, which is where the grouping is
+# explained.
 #
 # All ten are load-bearing: resolving the bundle's undefined symbols and then the ones each
 # archive brings with it pulls in every one, from SQLite::Transaction::commit to blake2b_final.
