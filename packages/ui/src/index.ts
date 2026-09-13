@@ -9,7 +9,6 @@
 export { Avatar } from './Avatar'
 export { RecoveryPasswordMark, SessionBrand, SessionWordmark } from './Brand'
 export { HeroImage } from './HeroImage'
-export { useWindowSize } from './useWindowSize'
 export { ProgressRing } from './ProgressRing'
 export type { AvatarProps } from './Avatar'
 export { Button } from './Button'

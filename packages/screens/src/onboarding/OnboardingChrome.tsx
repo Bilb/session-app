@@ -10,7 +10,6 @@ import {
   SessionBrand,
   SessionWordmark,
   useMedia,
-  useWindowSize,
   XStack,
   YStack,
 } from '@session/ui'
@@ -80,15 +79,6 @@ const CONTENT_MIN_HEIGHT = 276
 const HERO_FRACTION = '40%'
 
 /**
- * The hero's share of the height when it runs across the top instead of down the side.
- *
- * Ours rather than a port: neither the desktop client nor the phones have a tablet held upright,
- * and the designs at this size are still being drawn. A third is enough to read as artwork and
- * leaves the column the same room it has everywhere else.
- */
-const HERO_BAND_FRACTION = '33%'
-
-/**
  * Where the two documentation links go.
  *
  * Hardcoded for the same reason the terms are: this is reachable before anybody has decided to
@@ -111,8 +101,6 @@ const WEBSITE_URL = 'https://getsession.org'
  */
 export function OnboardingChrome({ children, testID }: { children: ReactNode; testID: string }) {
   const wide = useMedia().gtSm
-  // Only a wide window asks this. A phone is portrait by definition and has no artwork to place.
-  const { portrait } = useWindowSize()
   // Fades the content in when the step changes. `testID` is the step's identity, so a new step
   // remounts this and the animation runs; the artwork and the lockup sit outside it and do not.
   // Desktop only: the mobile clients cut between steps, and an opacity with nothing interpolating
@@ -152,27 +140,6 @@ export function OnboardingChrome({ children, testID }: { children: ReactNode; te
       </YStack>
     </YStack>
   )
-
-  /**
-   * Upright, the artwork goes across the top instead of down the side.
-   *
-   * Side by side, the picture is as tall as the window and a third as wide, so it is scaled to
-   * that height and cropped to that width -- which on a tablet in portrait magnifies it about
-   * threefold and leaves a slice of a single phone. Same layout otherwise: the column is what
-   * moves, not what changes.
-   */
-  if (portrait) {
-    return (
-      <Screen testID={testID}>
-        <YStack flex={1}>
-          <YStack height={HERO_BAND_FRACTION} testID={ELEMENT.onboarding.hero}>
-            <HeroImage band />
-          </YStack>
-          {column}
-        </YStack>
-      </Screen>
-    )
-  }
 
   return (
     <Screen testID={testID}>

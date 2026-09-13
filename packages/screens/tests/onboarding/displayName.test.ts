@@ -6,7 +6,6 @@ import {
   DISPLAY_NAME_MAX_CODE_POINTS,
   displayNameProblem,
   displayNameRemaining,
-  normalizeDisplayName,
   utf8Length,
 } from '#src/onboarding/displayName'
 
@@ -118,92 +117,38 @@ describe('a grapheme that is many code points', () => {
 })
 
 describe('the same name typed two ways', () => {
-  // macOS hands back decomposed text from some input paths, so this is not a contrived string:
-  // it is what a name can arrive as.
-  const COMPOSED = 'é'
-  const DECOMPOSED = 'é'
+  // macOS hands back decomposed text from some input paths, so this is not a contrived string: it
+  // is what a name can arrive as. Normalising would even these out, and was tried and reverted --
+  // see displayName.ts. The cost of that decision is asserted here rather than left implicit.
+  const COMPOSED = '\u00e9'
+  const DECOMPOSED = 'e\u0301'
 
-  it('is the same name, and the counter used to disagree', () => {
+  it('is the same name to a reader and two different strings to the counter', () => {
     expect(COMPOSED.normalize('NFC')).toBe(DECOMPOSED.normalize('NFC'))
     expect(codePointLength(COMPOSED)).toBe(1)
     expect(codePointLength(DECOMPOSED)).toBe(2)
   })
 
-  it('leaves the same room either way', () => {
-    expect(displayNameRemaining(DECOMPOSED.repeat(20))).toBe(
-      displayNameRemaining(COMPOSED.repeat(20)),
-    )
-  })
-
-  it('admits 35 of them decomposed, where counting as typed admitted 17', () => {
-    expect(displayNameProblem(DECOMPOSED.repeat(35))).toBeNull()
-    expect(displayNameProblem(DECOMPOSED.repeat(36))).toBe('tooLong')
-  })
-
-  it('normalises the value, not only the count', () => {
-    // Counting one form and sending the other is the hazard: 35 of these are 70 bytes composed
-    // and 105 decomposed, so libSession would refuse what this screen accepted.
-    expect(utf8Length(DECOMPOSED.repeat(35))).toBeGreaterThan(DISPLAY_NAME_MAX_BYTES)
-    expect(utf8Length(normalizeDisplayName(DECOMPOSED.repeat(35)))).toBe(70)
-  })
-
-  it('does not pretend to fix the scripts that have no composed form', () => {
-    // Thai combining vowels and tones do not compose, so this one stays where it was. Noted
-    // rather than smoothed over: it is the residual a grapheme count would have covered.
-    const THAI = 'สี่'
-    expect(normalizeDisplayName(THAI)).toBe(THAI)
-    expect(displayNameProblem(THAI.repeat(11))).toBeNull()
-    expect(displayNameProblem(THAI.repeat(12))).toBe('tooLong')
+  it('gives the decomposed form less room, which is the accepted cost', () => {
+    // 35 composed, 17 decomposed. A reader cannot tell the two apart, so this is a real cost -
+    // taken deliberately, because the alternative changed the name that gets stored.
+    expect(displayNameProblem(COMPOSED.repeat(35))).toBeNull()
+    expect(displayNameProblem(DECOMPOSED.repeat(17))).toBeNull()
+    expect(displayNameProblem(DECOMPOSED.repeat(18))).toBe('tooLong')
   })
 })
 
-describe('the letters NFC takes apart rather than puts together', () => {
-  /**
-   * `U+0958 DEVANAGARI LETTER QA`, a Unicode composition exclusion: NFC turns it into `क` plus a
-   * nukta, so it gets longer rather than shorter. Named by code point rather than pasted, because
-   * the whole point is that it is not the sequence it looks like.
-   */
-  const QA = String.fromCodePoint(0x0958)
-
-  it('grows under normalisation instead of shrinking', () => {
-    expect(codePointLength(QA)).toBe(1)
-    expect(codePointLength(normalizeDisplayName(QA))).toBe(2)
-    expect(utf8Length(normalizeDisplayName(QA))).toBe(6)
-  })
-
-  it('costs headroom rather than recovering it', () => {
-    // 33 of them fit as typed and 16 normalised, so for these letters normalising is the expense.
-    // Accepted deliberately: these are the deprecated precomposed forms, and modern input produces
-    // the decomposed pair that normalising leaves alone.
-    expect(displayNameProblem(QA.repeat(16))).toBeNull()
-    expect(displayNameProblem(QA.repeat(17))).toBe('tooLong')
-  })
-
-  it('is refused consistently, rather than passing here and failing on the wire', () => {
-    // The mirror of the decomposed-acute hazard: 30 of these are 90 bytes as typed and 180
-    // normalised. Counting the typed form would admit a name libSession then refuses. The value
-    // and the count are the same string, so both sides see 180.
-    expect(utf8Length(QA.repeat(30))).toBe(90)
-    expect(utf8Length(normalizeDisplayName(QA.repeat(30)))).toBe(180)
-    expect(displayNameProblem(QA.repeat(30))).toBe('tooLong')
-  })
-})
-
-describe('the characters normalisation replaces outright', () => {
-  // Canonical singletons: one code point maps to a different one. Pinned so that nobody later
-  // reads "the stored name is not what was typed" as a bug and drops the normalisation of the
-  // value - which would put back the mismatch between what is counted and what is sent.
-  it.each([
-    ['U+037E GREEK QUESTION MARK', 0x037e, 0x003b],
-    ['U+2126 OHM SIGN', 0x2126, 0x03a9],
-    ['U+212B ANGSTROM SIGN', 0x212b, 0x00c5],
-  ])('replaces %s, and that is canonical rather than lossy', (_name, from, to) => {
-    const typed = String.fromCodePoint(from)
-    const stored = normalizeDisplayName(typed)
-    expect(stored).not.toBe(typed)
-    expect(stored.codePointAt(0)).toBe(to)
-    // Canonically equivalent, which is what makes the substitution safe: both sides agree.
-    expect(typed.normalize('NFC')).toBe(stored.normalize('NFC'))
+describe('the name that is stored', () => {
+  it('is the name that was typed, character for character', () => {
+    // The guarantee that replaced normalisation. Canonical singletons are the reason it matters:
+    // normalising would have turned each of these into a different character, so somebody who
+    // typed one and linked a second device would have seen a name they did not type.
+    for (const codePoint of [0x037e, 0x2126, 0x212b]) {
+      const typed = String.fromCodePoint(codePoint)
+      // Nothing in the module rewrites a name; the check is a measurement, not a transform.
+      expect(displayNameProblem(typed)).toBeNull()
+      expect(typed.normalize('NFC')).not.toBe(typed)
+    }
   })
 })
 

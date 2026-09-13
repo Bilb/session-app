@@ -15,8 +15,8 @@
  * Worse, `.slice` can cut a surrogate pair in half and leave a lone surrogate -- half a character,
  * which is not valid text to encode at all. A name field is exactly where somebody puts an emoji.
  *
- * So: `utf8Length` for the wire, `codePointLength` for the felt limit, `normalizeDisplayName`
- * first, and count the same string that gets sent.
+ * So: `utf8Length` for the wire and `codePointLength` for the felt limit, both over the string
+ * exactly as it was typed -- see below for why it is not normalised first.
  */
 
 /**
@@ -50,54 +50,29 @@ export const DISPLAY_NAME_MAX_BYTES = 100
  * costs is that a name of pure multi-code-point emoji is refused sooner than 35 of them, not later.
  *
  * Emoji are therefore the *least* affected case, being byte-bound either way. What the unit really
- * costs falls on combining marks, and `normalizeDisplayName` is why it costs less than it looks.
+ * costs falls on combining marks: decomposed text spends more code points than the same name
+ * composed, and that cost is accepted rather than normalised away, for the reason below.
  */
 export const DISPLAY_NAME_MAX_CODE_POINTS = 35
 
 /**
- * A name in the one form its length can fairly be counted in.
+ * **Deliberately not normalised.** The name that is stored is the name that was typed.
  *
- * **The same name can be two different strings**, and the code-point cap notices while a reader
- * cannot. `é` is one code point composed and two decomposed; a Vietnamese `ệ` is one or three.
- * Counting the decomposed form admits 17 Latin letters where the composed form admits 35, and
- * macOS hands back decomposed text from some input paths -- so whether a name fits could depend on
- * where it was typed, which is not a rule anybody could be expected to predict.
+ * Normalising to NFC was tried and reverted. It made the limit fairer -- decomposed text counts
+ * more code points than the same name composed, so `é` typed on a Mac could cost twice what the
+ * same letter cost elsewhere -- but it changed the value as well as the count, and canonical
+ * singletons replace characters outright: `U+2126 OHM SIGN` becomes a capital omega, `U+212B
+ * ANGSTROM SIGN` becomes an A-ring.
  *
- * NFC is the composed form and the one the web platform standardises on for interchange. It is not
- * a substitute for counting graphemes: Thai and Devanagari matras have no precomposed forms, so a
- * Thai name is still bound at around eleven visible characters. It recovers the Latin and
- * Vietnamese cases entirely, which are the ones a European or Vietnamese name actually lands in,
- * and it costs one call.
+ * The objection to it, and it is right: **a person would not read that as canonical
+ * equivalence, they would read it as their name coming back wrong.** Type a name on one device,
+ * link a second, and see something you did not type. A stricter limit for decomposed text is a
+ * cost paid once by a few people; a name that changes under you is a bug report.
  *
- * **It is not a reduction everywhere, and that is not a bug in it.** 85 code points get *longer*
- * under NFC -- 92 counted in bytes -- because Unicode's composition exclusions decompose rather
- * than compose: `U+0958 DEVANAGARI LETTER QA` becomes `क` plus a nukta, one code point becoming
- * two. A name of those admits 33 as typed and 16 normalised. They are the deprecated precomposed
- * forms left over from older encodings -- modern Devanagari input produces the pair, not the
- * singleton -- so this is canonical consistency costing headroom in the legacy case, which is the
- * right way round but is **not** the "strictly more permissive" the first version of this comment
- * implied.
- *
- * **Available on all three platforms**, unlike `Intl.Segmenter`: `stringPrototypeNormalize` and the
- * normalization forms are in the Hermes binary that ships, checked in
- * `apps/mobile/ios/Pods/hermes-engine` rather than assumed.
- *
- * **Applied to the value, not only to the count.** Counting one form and sending another would let
- * a name pass here and be refused by libSession -- decomposed text is longer in bytes, so a name
- * inside 100 bytes composed can be outside it decomposed. The screen submits what was counted.
- *
- * **The consequence of that, which is not obvious: this can store a different character than was
- * typed.** Canonical singletons map one code point to another -- `U+037E GREEK QUESTION MARK`
- * becomes an ASCII semicolon, `U+2126 OHM SIGN` becomes `U+03A9 GREEK CAPITAL OMEGA`, `U+212B
- * ANGSTROM SIGN` becomes `U+00C5`. That is correct: they are canonically equivalent and render
- * identically. But it means a stored name is not always byte-identical or even code-point-identical
- * to the input, so anything that ever diffs a name against what somebody typed will see a
- * difference that is not a bug. Deliberate, and not to be "fixed" by dropping the normalisation of
- * the value -- that reintroduces the mismatch this exists to prevent.
+ * So both limits count the string as typed, and decomposed input simply has less room. The
+ * consequence worth knowing: `displayNameRemaining` can differ for two names a reader cannot tell
+ * apart, and that is the accepted trade rather than an oversight.
  */
-export function normalizeDisplayName(value: string): string {
-  return value.normalize('NFC')
-}
 
 /** What is wrong with a name, or null when nothing is. */
 export type DisplayNameProblem = 'empty' | 'tooLong'
@@ -136,10 +111,9 @@ export function codePointLength(value: string): number {
  * has to stop accepting input rather than explain itself afterwards.
  */
 export function displayNameRemaining(name: string): number {
-  const normalized = normalizeDisplayName(name)
   return Math.min(
-    DISPLAY_NAME_MAX_CODE_POINTS - codePointLength(normalized),
-    DISPLAY_NAME_MAX_BYTES - utf8Length(normalized),
+    DISPLAY_NAME_MAX_CODE_POINTS - codePointLength(name),
+    DISPLAY_NAME_MAX_BYTES - utf8Length(name),
   )
 }
 

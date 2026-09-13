@@ -34,19 +34,7 @@ const ASPECT = 1629 / 2160
  * allowed to overflow to the left -- which is what anchoring a crop actually means, and works the
  * same on both platforms rather than only in a browser.
  */
-interface HeroImageProps {
-  /**
-   * Lay the artwork across the top rather than down the side.
-   *
-   * For a tablet held upright, where the side column is taller than it is wide by a factor of
-   * three: scaling a portrait image to that height magnifies it until the crop is a slice of one
-   * phone rather than a picture of several. A band is sized from its width instead, so the
-   * artwork stays the size it looks like it should be.
-   */
-  band?: boolean
-}
-
-export function HeroImage({ band = false }: HeroImageProps) {
+export function HeroImage() {
   return (
     // `position="relative"` is load-bearing: react-native makes every view a containing block, but
     // the web does not, so without it the absolutely-positioned image resolves against the viewport
@@ -56,13 +44,12 @@ export function HeroImage({ band = false }: HeroImageProps) {
         source={source}
         style={{
           position: 'absolute',
-          // Down the side: height comes from top/bottom and width follows the artwork, overflowing
-          // to the left of a right-anchored crop. Across the top: width comes from left/right and
-          // the height follows, overflowing downwards. Either way one pair of edges is pinned and
-          // the aspect ratio supplies the other dimension -- a `minWidth` or a `minHeight` here
-          // would beat the ratio and fit the whole picture into the box, which is the opposite of
-          // a crop.
-          ...(band ? { top: 0, left: 0, right: 0 } : { top: 0, bottom: 0, right: 0 }),
+          top: 0,
+          bottom: 0,
+          right: 0,
+          // Height comes from top/bottom, width follows the artwork. A `minWidth` here would beat
+          // the aspect ratio and fit the image to the column instead -- which shrinks it to show
+          // the whole picture, and showing the whole picture is the opposite of a crop.
           aspectRatio: ASPECT,
         }}
         resizeMode="cover"
