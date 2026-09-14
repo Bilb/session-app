@@ -5,6 +5,7 @@
 #include <array>
 #include <cstddef>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -20,6 +21,59 @@ namespace session_bridge {
 /// Name table for every string-union enum; specialised below, one per enum.
 template <class E>
 struct EnumTraits;
+
+/// Bytes that are wiped when they go.
+///
+/// For the fields the protocol marks `SecretBytes` rather than `Uint8Array` -- a seed, a recovery
+/// phrase -- so that the wiping is a property of the type and not of whoever remembered. Ordinary
+/// binary stays a plain `std::vector<std::byte>`; there is no cost to paying for this only where
+/// it is wanted.
+///
+/// Copying is deleted rather than allowed: a copy is a second place the secret lives, and the
+/// whole point is to know where it is. Moving leaves the source empty.
+class SecretBytes {
+  public:
+    SecretBytes() = default;
+    explicit SecretBytes(std::vector<std::byte> bytes) : _bytes{std::move(bytes)} {}
+    ~SecretBytes() { wipe(); }
+
+    SecretBytes(const SecretBytes&) = delete;
+    SecretBytes& operator=(const SecretBytes&) = delete;
+
+    SecretBytes(SecretBytes&& other) noexcept : _bytes{std::move(other._bytes)} { other.clear(); }
+    SecretBytes& operator=(SecretBytes&& other) noexcept {
+        if (this != &other) {
+            wipe();
+            _bytes = std::move(other._bytes);
+            other.clear();
+        }
+        return *this;
+    }
+
+    std::span<const std::byte> bytes() const { return _bytes; }
+    std::size_t size() const { return _bytes.size(); }
+    bool empty() const { return _bytes.empty(); }
+
+    /// Zeroes the storage and then releases it.
+    ///
+    /// Written through a volatile pointer because a compiler is entitled to delete a write to
+    /// memory nothing reads again, which is exactly what this is -- `std::fill` here would be
+    /// correct C++ and might emit nothing at all.
+    void wipe() {
+        volatile auto* p = reinterpret_cast<volatile unsigned char*>(_bytes.data());
+        for (std::size_t i = 0; i < _bytes.size(); i++)
+            p[i] = 0;
+        clear();
+    }
+
+  private:
+    void clear() {
+        _bytes.clear();
+        _bytes.shrink_to_fit();
+    }
+
+    std::vector<std::byte> _bytes;
+};
 
 struct Point {
     double x;
@@ -126,12 +180,33 @@ struct DrawCommand {
             shape{std::move(shape_)} {}
 };
 
+/// The two binary kinds, in their own struct so the shape above keeps its reviewed signature.
+struct Attachment {
+    /// Ordinary binary: a plain vector on the C++ side.
+    std::vector<std::byte> data;
+    /// Binary the C++ side wipes rather than merely dropping.
+    std::optional<::session_bridge::SecretBytes> key;
+
+    Attachment(std::vector<std::byte> data_, std::optional<::session_bridge::SecretBytes> key_) :
+            data{std::move(data_)}, key{std::move(key_)} {}
+};
+
+struct AttachCommand {
+    static constexpr std::string_view type_tag = "attach";
+
+    ::session_bridge::Attachment attachment;
+
+    explicit AttachCommand(::session_bridge::Attachment attachment_) :
+            attachment{std::move(attachment_)} {}
+};
+
 struct ClearCommand {
     static constexpr std::string_view type_tag = "clear";
 };
 
 using Command = std::variant<
         DrawCommand,
+        AttachCommand,
         ClearCommand>;
 
 struct Request {

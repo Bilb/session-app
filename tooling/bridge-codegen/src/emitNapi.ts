@@ -169,6 +169,38 @@ struct Codec<std::string> {
 };
 
 template <>
+struct Codec<std::vector<std::byte>> {
+    static constexpr std::string_view name = "Uint8Array";
+    static Napi::Value to(Napi::Env env, const std::vector<std::byte>& value) {
+        return Napi::Buffer<std::byte>::Copy(env, value.data(), value.size());
+    }
+    static std::vector<std::byte> from(const Napi::Value& value, std::string_view where) {
+        if (!value.IsTypedArray())
+            throw std::invalid_argument(std::string{where} + ": expected a Uint8Array, got " + describe(value));
+        auto array = value.As<Napi::Uint8Array>();
+        const auto* first = reinterpret_cast<const std::byte*>(array.Data());
+        return {first, first + array.ByteLength()};
+    }
+};
+
+/// The same wire shape as plain bytes; the difference is what holds them on this side.
+///
+/// Nothing can be done about the JavaScript half -- a Uint8Array reaching here was allocated by
+/// V8 and is V8's to collect -- but from the moment it lands it is a SecretBytes, and the copy
+/// this makes is the last one that is not wiped on the way out.
+template <>
+struct Codec<SecretBytes> {
+    static constexpr std::string_view name = "Uint8Array";
+    static Napi::Value to(Napi::Env env, const SecretBytes& value) {
+        auto bytes = value.bytes();
+        return Napi::Buffer<std::byte>::Copy(env, bytes.data(), bytes.size());
+    }
+    static SecretBytes from(const Napi::Value& value, std::string_view where) {
+        return SecretBytes{Codec<std::vector<std::byte>>::from(value, where)};
+    }
+};
+
+template <>
 struct Codec<double> {
     static constexpr std::string_view name = "number";
     static Napi::Value to(Napi::Env env, double value) {

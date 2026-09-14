@@ -59,6 +59,38 @@ struct Codec<std::string> {
 };
 
 template <>
+struct Codec<std::vector<std::byte>> {
+    static constexpr std::string_view name = "Uint8Array";
+    static Napi::Value to(Napi::Env env, const std::vector<std::byte>& value) {
+        return Napi::Buffer<std::byte>::Copy(env, value.data(), value.size());
+    }
+    static std::vector<std::byte> from(const Napi::Value& value, std::string_view where) {
+        if (!value.IsTypedArray())
+            throw std::invalid_argument(std::string{where} + ": expected a Uint8Array, got " + describe(value));
+        auto array = value.As<Napi::Uint8Array>();
+        const auto* first = reinterpret_cast<const std::byte*>(array.Data());
+        return {first, first + array.ByteLength()};
+    }
+};
+
+/// The same wire shape as plain bytes; the difference is what holds them on this side.
+///
+/// Nothing can be done about the JavaScript half -- a Uint8Array reaching here was allocated by
+/// V8 and is V8's to collect -- but from the moment it lands it is a SecretBytes, and the copy
+/// this makes is the last one that is not wiped on the way out.
+template <>
+struct Codec<SecretBytes> {
+    static constexpr std::string_view name = "Uint8Array";
+    static Napi::Value to(Napi::Env env, const SecretBytes& value) {
+        auto bytes = value.bytes();
+        return Napi::Buffer<std::byte>::Copy(env, bytes.data(), bytes.size());
+    }
+    static SecretBytes from(const Napi::Value& value, std::string_view where) {
+        return SecretBytes{Codec<std::vector<std::byte>>::from(value, where)};
+    }
+};
+
+template <>
 struct Codec<double> {
     static constexpr std::string_view name = "number";
     static Napi::Value to(Napi::Env env, double value) {
@@ -309,6 +341,40 @@ struct Codec<::session_bridge::DrawCommand> {
 };
 
 template <>
+struct Codec<::session_bridge::Attachment> {
+    static constexpr std::string_view name = "Attachment";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::Attachment& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("data", Codec<std::vector<std::byte>>::to(env, value.data));
+        if (value.key)
+            obj.Set("key", Codec<::session_bridge::SecretBytes>::to(env, *value.key));
+        return obj;
+    }
+    static ::session_bridge::Attachment from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::Attachment(
+                Codec<std::vector<std::byte>>::from(obj.Get("data"), "Attachment.data"),
+                optional<::session_bridge::SecretBytes>(obj.Get("key"), "Attachment.key"));
+    }
+};
+
+template <>
+struct Codec<::session_bridge::AttachCommand> {
+    static constexpr std::string_view name = "AttachCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::AttachCommand& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::AttachCommand::type_tag.data(), ::session_bridge::AttachCommand::type_tag.size()));
+        obj.Set("attachment", Codec<::session_bridge::Attachment>::to(env, value.attachment));
+        return obj;
+    }
+    static ::session_bridge::AttachCommand from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::AttachCommand(
+                Codec<::session_bridge::Attachment>::from(obj.Get("attachment"), "AttachCommand.attachment"));
+    }
+};
+
+template <>
 struct Codec<::session_bridge::ClearCommand> {
     static constexpr std::string_view name = "ClearCommand";
     static Napi::Value to(Napi::Env env, const ::session_bridge::ClearCommand& value) {
@@ -338,6 +404,8 @@ struct Codec<::session_bridge::Command> {
         std::string tag = Codec<std::string>::from(obj.Get("type"), "Command.type");
         if (tag == "draw")
             return Codec<::session_bridge::DrawCommand>::from(value, where);
+        if (tag == "attach")
+            return Codec<::session_bridge::AttachCommand>::from(value, where);
         if (tag == "clear")
             return Codec<::session_bridge::ClearCommand>::from(value, where);
         throw std::invalid_argument(std::string{where} + ": unknown type \"" + tag + "\"");
