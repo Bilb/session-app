@@ -115,9 +115,7 @@ class ClientBridge {
 
   private:
     struct Impl;
-    /// Shared rather than unique because the process-wide logger holds a `weak_ptr` to it and
-    /// can fire from a thread `close()` has no way to join.
-    std::shared_ptr<Impl> _impl;
+    std::unique_ptr<Impl> _impl;
 };
 
 }  // namespace session_bridge

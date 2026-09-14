@@ -65,15 +65,6 @@ namespace {
         return static_cast<T>(value);
     }
 
-    /// SQLite reads a negative LIMIT as no limit at all, and zero as the end of the history.
-    template <typename T>
-    T page_size(double value, std::string_view what) {
-        auto n = whole<T>(value, what);
-        if (n <= 0)
-            throw std::invalid_argument{std::string{what} + " must be greater than zero"};
-        return n;
-    }
-
     /// The bytes a hex field names, or an error naming the field.
     ///
     /// oxenc::from_hex is undefined behaviour on anything but an even-length run of hex digits:
@@ -93,6 +84,7 @@ struct ClientBridge::Impl {
     Sink sink;
     std::unique_ptr<client::Client> client;
     InitOptions options;
+    session::LoggerHandle logger;
 
     explicit Impl(Sink s, InitOptions o) : sink{std::move(s)}, options{std::move(o)} {}
 
@@ -418,7 +410,7 @@ struct ClientBridge::Impl {
                     whole<int64_t>(cmd.before->id, "getMessages.before.id")};
         convo(cmd.conversation_id)
                 .messages(
-                        page_size<int>(cmd.limit, "getMessages.limit"),
+                        whole<int>(cmd.limit, "getMessages.limit"),
                         before,
                         cmd.include_deleted,
                         on(id, [this, id](std::vector<client::Message> messages) {
@@ -576,7 +568,7 @@ struct ClientBridge::Impl {
 };
 
 ClientBridge::ClientBridge(InitOptions options, Sink sink) :
-        _impl{std::make_shared<Impl>(std::move(sink), options)} {
+        _impl{std::make_unique<Impl>(std::move(sink), options)} {
 
     auto* impl = _impl.get();
 
@@ -658,16 +650,17 @@ ClientBridge::ClientBridge(InitOptions options, Sink sink) :
                                                        : LogLevel::warn;
         logger_reset_level(level);
 
-        // Weakly: libsession cannot unregister a logger, and this fires from threads close()
-        // has no way to join.
-        std::weak_ptr<Impl> weak = _impl;
-        add_logger([weak](std::string_view message, std::string_view category, LogLevel lvl) {
-            if (auto impl = weak.lock())
-                impl->event(LogSessionEvent{
-                        std::string{message},
-                        std::string{category},
-                        std::string{lvl.to_string()}});
-        });
+        // Kept so close() can take it back off: this fires from threads close() cannot join,
+        // and what it writes to does not outlive the bridge.
+        impl->logger =
+                add_logger([impl](std::string_view message,
+                                  std::string_view category,
+                                  LogLevel lvl) {
+                    impl->event(LogSessionEvent{
+                            std::string{message},
+                            std::string{category},
+                            std::string{lvl.to_string()}});
+                });
     }
 
     // An account that is already there needs no onboarding, so this is where its network comes
@@ -682,8 +675,10 @@ ClientBridge::~ClientBridge() {
 void ClientBridge::close() {
     if (!_impl)
         return;
-    // Order matters: destroying the Client joins Core's loop, so nothing is mid-emit afterwards.
-    // The sink goes with the Impl rather than being nulled first, which would race the logger.
+    // Order matters. remove_logger is serialised against logging, so once it returns the callback
+    // is neither running nor reachable; destroying the Client then joins Core's loop, so nothing
+    // is mid-emit by the time the Impl the two of them write to goes.
+    remove_logger(_impl->logger);
     _impl->client.reset();
     _impl.reset();
 }
