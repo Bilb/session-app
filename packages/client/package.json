@@ -22,6 +22,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@session/basic-types": "workspace:*",
     "@session/bridge-types": "workspace:*"
   },
   "devDependencies": {

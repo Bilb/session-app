@@ -488,6 +488,9 @@ importers:
 
   packages/client:
     dependencies:
+      '@session/basic-types':
+        specifier: workspace:*
+        version: link:../basic-types
       '@session/bridge-types':
         specifier: workspace:*
         version: link:../bridge-types

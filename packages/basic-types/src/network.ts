@@ -64,6 +64,29 @@ export interface DevnetEnv {
 
 const DEFAULT_SEED_RPC_PORT = 1280
 const HEX64 = /^[0-9a-f]{64}$/i
+const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/
+
+/**
+ * The three shapes a seed node is made of, as predicates over `unknown`.
+ *
+ * Here rather than beside each caller because there are three of them - the environment parsing
+ * below, the discovery that reads an oxend reply, and the fake's refusal - and a validator that
+ * disagrees with its siblings accepts on one path what another rejects.
+ */
+export function isHex64(value: unknown): value is string {
+  return typeof value === 'string' && HEX64.test(value)
+}
+
+/** libsession dials a seed directly and resolves no host names, so a name here never becomes one. */
+export function isIpv4(value: unknown): value is string {
+  if (typeof value !== 'string') return false
+  const match = IPV4.exec(value)
+  return match !== null && match.slice(1).every((octet) => Number(octet) <= 255)
+}
+
+export function isPort(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0 && value <= 65535
+}
 
 /** The trimmed value, or undefined for both unset and whitespace: a blank line in a .env is unset. */
 function set(value: string | undefined): string | undefined {
@@ -72,7 +95,7 @@ function set(value: string | undefined): string | undefined {
 }
 
 function pubkey(value: string, variable: string): string {
-  if (!HEX64.test(value.trim()))
+  if (!isHex64(value.trim()))
     throw new Error(`${variable} must be 64 hex characters, not ${JSON.stringify(value)}`)
   return value.trim().toLowerCase()
 }

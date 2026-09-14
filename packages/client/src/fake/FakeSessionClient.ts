@@ -1,3 +1,5 @@
+import { isHex64, isIpv4, isPort } from '@session/basic-types'
+
 import { BridgeClosedError, SessionClientError } from '../errors'
 import type {
   AccountInfo,
@@ -11,18 +13,6 @@ import type {
 import type { NetworkAttachment, OutgoingMessage, SessionClient } from '../types'
 import type { FakeAccount, FakeWorld } from './world'
 
-const HEX64 = /^[0-9a-f]{64}$/i
-const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/
-
-function port(value: number): boolean {
-  return Number.isInteger(value) && value > 0 && value <= 65535
-}
-
-function ipv4(value: string): boolean {
-  const match = IPV4.exec(value)
-  return match !== null && match.slice(1).every((octet) => Number(octet) <= 255)
-}
-
 /** Why this network will not attach, or undefined when it will. */
 function networkRefusal(config: NetworkAttachment): string | undefined {
   if (!['mainnet', 'testnet', 'devnet'].includes(config.netid))
@@ -35,21 +25,20 @@ function networkRefusal(config: NetworkAttachment): string | undefined {
 
     for (const [index, seed] of seeds.entries()) {
       const at = `seedNodes[${index}].`
-      if (!HEX64.test(seed.ed25519PubkeyHex))
-        return `${at}ed25519PubkeyHex must be 64 hex characters`
+      if (!isHex64(seed.ed25519PubkeyHex)) return `${at}ed25519PubkeyHex must be 64 hex characters`
       // libsession dials the address itself and resolves no host names, so a name is a
       // configuration error rather than a lookup that happens later.
-      if (!ipv4(seed.ip)) return `${at}ip must be an IPv4 address, not ${JSON.stringify(seed.ip)}`
-      if (!port(seed.httpsPort)) return `${at}httpsPort must be a port`
-      if (!port(seed.omqPort)) return `${at}omqPort must be a port`
+      if (!isIpv4(seed.ip)) return `${at}ip must be an IPv4 address, not ${JSON.stringify(seed.ip)}`
+      if (!isPort(seed.httpsPort)) return `${at}httpsPort must be a port`
+      if (!isPort(seed.omqPort)) return `${at}omqPort must be a port`
     }
   }
 
   if (config.fileServer) {
     if (config.fileServer.host.length === 0) return 'fileServer.host must not be empty'
-    if (!HEX64.test(config.fileServer.x25519PubkeyHex))
+    if (!isHex64(config.fileServer.x25519PubkeyHex))
       return 'fileServer.x25519PubkeyHex must be 64 hex characters'
-    if (!port(config.fileServer.port)) return 'fileServer.port must be a port'
+    if (!isPort(config.fileServer.port)) return 'fileServer.port must be a port'
   }
 
   return undefined

@@ -1,3 +1,4 @@
+import { isHex64, isIpv4, isPort } from '@session/basic-types'
 import type { SeedNode } from '@session/bridge-types'
 
 /**
@@ -44,19 +45,6 @@ interface ServiceNodeState {
   storage_server_reachable?: unknown
 }
 
-const HEX64 = /^[0-9a-f]{64}$/i
-const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/
-
-function port(value: unknown): value is number {
-  return typeof value === 'number' && Number.isInteger(value) && value > 0 && value <= 65535
-}
-
-function ipv4(value: unknown): value is string {
-  if (typeof value !== 'string') return false
-  const match = IPV4.exec(value)
-  return match !== null && match.slice(1).every((octet) => Number(octet) <= 255)
-}
-
 function states(payload: unknown): ServiceNodeState[] | undefined {
   if (typeof payload !== 'object' || payload === null) return undefined
   const result = (payload as { result?: unknown }).result
@@ -75,9 +63,9 @@ function states(payload: unknown): ServiceNodeState[] | undefined {
 export function seedNodesFrom(payload: unknown): SeedNode[] {
   return (states(payload) ?? []).flatMap((state) => {
     if (state.storage_server_reachable !== true) return []
-    if (typeof state.pubkey_ed25519 !== 'string' || !HEX64.test(state.pubkey_ed25519)) return []
-    if (!ipv4(state.public_ip)) return []
-    if (!port(state.storage_port) || !port(state.storage_lmq_port)) return []
+    if (!isHex64(state.pubkey_ed25519)) return []
+    if (!isIpv4(state.public_ip)) return []
+    if (!isPort(state.storage_port) || !isPort(state.storage_lmq_port)) return []
 
     return [
       {
