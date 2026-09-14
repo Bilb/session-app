@@ -67,9 +67,6 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
     window: {
       // Nothing to close in a test or on a phone. See the port.
       close: () => undefined,
-      // Null rather than a no-op: a caller reads this as "is there a process to throw away", and
-      // a function that did nothing would answer yes and then do nothing.
-      recycle: null,
       isFocused: () => true,
       onFocusChange: (handler) => {
         focusHandlers.add(handler)

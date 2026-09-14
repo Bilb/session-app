@@ -124,34 +124,6 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
     onRunningChange?.(state.step !== 'landing')
   }, [state.step, onRunningChange])
 
-  /**
-   * Throws the renderer process away when onboarding ends, where there is one to throw.
-   *
-   * Both endings, not just the abandoned one: what is left behind is the same either way, and
-   * whether it is worth doing on the finished path is a question about whether anybody can see it
-   * happen. Behind `recycleWindowAfterOnboarding` so that can be looked at rather than guessed.
-   */
-  const recycle = () => {
-    if (!flag('recycleWindowAfterOnboarding')) return
-    // Null on every platform but desktop. A phone shares one process between JavaScript and
-    // libsession, so there is nothing to replace that would not take the account with it.
-    void requirePorts().window.recycle?.()
-  }
-
-  /**
-   * Reaching the landing screen from anywhere else is somebody backing all the way out.
-   *
-   * The case this is really for: a phrase was typed for one account, abandoned, and another is
-   * about to be entered. That is the leak the isolation is about, and it is the moment the strings
-   * from the first are still in the heap.
-   */
-  const wasAt = useRef(state.step)
-  useEffect(() => {
-    const from = wasAt.current
-    wasAt.current = state.step
-    if (state.step === 'landing' && from !== 'landing') recycle()
-  })
-
   useEffect(() => {
     if (state.step !== 'done') return
     // `done` is reached from two places and means something different at each: the end of create,
@@ -159,8 +131,6 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
     void commit(state, actions, setBusy).then(
       () => {
         onRunningChange?.(false)
-        // Last, so the account is committed before the process holding the phrase goes.
-        recycle()
       },
       () => {
         // Nothing renders at `done`, so a rejection here would otherwise be an empty window with

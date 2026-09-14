@@ -1,6 +1,6 @@
 import electron from 'electron'
 
-const { contextBridge, ipcRenderer } = electron
+const { ipcRenderer } = electron
 
 /**
  * Hands the bridge's MessagePort to the page and steps aside.
@@ -14,16 +14,4 @@ const { contextBridge, ipcRenderer } = electron
  */
 ipcRenderer.on('session-bridge-port', (event) => {
   window.postMessage('session-bridge-port', '*', event.ports)
-})
-
-/**
- * The one thing the page may ask the main process to do.
- *
- * Deliberately a single method that takes nothing and returns nothing: the renderer can ask to be
- * replaced and can say nothing else through this channel. Exposed with `contextBridge` rather than
- * by listening for a window message, because a message listener is open to anything running in the
- * page and this is not.
- */
-contextBridge.exposeInMainWorld('sessionWindow', {
-  recycle: () => ipcRenderer.invoke('session-recycle-window'),
 })

@@ -47,10 +47,13 @@ const here = fileURLToPath(new URL('.', import.meta.url))
 /**
  * The bridge, which outlives any particular window.
  *
- * It used to be created inside `createWindow`, which was fine while there was exactly one window
- * for the life of the app. It is not fine once a window can be replaced: a second window would
- * open a second libSession on the same database, and closing the first would close the bridge the
- * second was using. So it is made once and every window is wired to it.
+ * It used to be built inside `createWindow` and closed when that window closed, which held
+ * together only because there was exactly one window. It is not the same thing as the window:
+ * `app.on('activate')` below opens another when the last one has gone, which on macOS is the
+ * ordinary way an app comes back from the dock -- and that reopened libsession's database rather
+ * than carrying on with the one already open.
+ *
+ * So it is built once, every window is wired to it, and it is closed when the app quits.
  */
 let bridge: Awaited<ReturnType<typeof createBridge>> | null = null
 
@@ -149,6 +152,31 @@ async function createWindow({ show = true } = {}): Promise<Electron.BrowserWindo
 
   return window
 }
+
+/**
+ * Replaces the window with a fresh one, and with it the renderer process.
+ *
+ * **The point is the process, not the page.** A reload tears down the document and the JavaScript
+ * context but keeps the same renderer process -- measured: the pid is unchanged either side -- so
+ * nothing typed into it is actually freed on our schedule. A new window is a new process, and when
+ * the old one goes its heap goes with it, including the strings a recovery phrase leaves behind
+ * that JavaScript gives no way to wipe.
+ *
+ * Staged so it is not a flash: the replacement is created hidden, loaded, and shown in the same
+ * beat that the old one closes, with the same bounds. What the person should see is the content
+ * changing, which it was about to do anyway.
+ */
+async function recycleWindow(): Promise<void> {
+  const previous = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
+  if (!previous) return
+
+  const bounds = previous.getBounds()
+  const next = await createWindow({ show: false })
+  next.setBounds(bounds)
+  next.show()
+  // Destroy rather than close: `close` is cancellable and fires the same lifecycle a person
+  // quitting would, and this is neither a person nor a quit.
+  previous.destroy()
 }
 
 // Covers any WebContents the app did not make. Deliberately not guardNavigation: this fires from

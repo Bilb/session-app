@@ -26,10 +26,6 @@ setPorts(
       close: () => {
         window.close()
       },
-      // The main process owns this: the page cannot replace the process it is running in.
-      recycle: async () => {
-        await window.sessionWindow?.recycle()
-      },
       isFocused: () => document.hasFocus(),
       onFocusChange: (handler) => {
         const onFocus = () => handler(true)

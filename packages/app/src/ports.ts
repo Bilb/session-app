@@ -111,19 +111,6 @@ export interface WindowPort {
    * so a phone shows the dialog without that door.
    */
   close(): void
-  /**
-   * Replaces the window, and with it the process the page is running in.
-   *
-   * For the one thing JavaScript cannot do for itself: a string cannot be wiped, and a recovery
-   * phrase leaves several behind -- the field's own value, the state holding it, the copies made on
-   * the way to the bridge. Throwing the process away frees them wholesale, which is the only actual
-   * guarantee available. A reload is not the same thing: it keeps the process.
-   *
-   * **Null wherever there is no process to throw away.** On a phone the JavaScript context and
-   * libsession share one, so killing it takes the account with it; there the answer is for the
-   * phrase never to become a string in the first place.
-   */
-  recycle: (() => Promise<void>) | null
   isFocused(): boolean
   /** Drives read receipts and whether a notification is worth showing. */
   onFocusChange(handler: (focused: boolean) => void): () => void
