@@ -53,6 +53,10 @@ export const ELEMENT = {
     accountId: 'settings-account-id',
     copyAccountId: 'settings-copy-account-id',
     networkStatus: 'settings-network-status',
+    clearData: 'settings-clear-data',
+    confirmClearData: 'settings-confirm-clear-data',
+    confirmClearDataButton: 'settings-confirm-clear-data-button',
+    cancelClearData: 'settings-cancel-clear-data',
   },
   networkOverlay: {
     badge: 'network-overlay-badge',
