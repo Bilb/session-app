@@ -15,12 +15,12 @@ adapters: route files, OS integration, boot order. There is no web app - desktop
 
 Four documents, none of which repeats another:
 
-| document                                     | what it is                                                                      |
-| -------------------------------------------- | ------------------------------------------------------------------------------- |
-| [docs/STATUS.md](docs/STATUS.md)             | where the build actually is, what is missing, what to do next. The mutable one. |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | how it is put together and why, with a decision log. The timeless one.          |
-| [CLAUDE.md](CLAUDE.md)                       | the rules - boundaries, ports, testIDs, fake parity. Short, and load-bearing.   |
-| [.claude/skills/](.claude/skills/)           | the procedures: adding a bridge capability, a screen, a component, a test.      |
+| document                                     | what it is                                                                    |
+| -------------------------------------------- | ----------------------------------------------------------------------------- |
+| [docs/STATUS.md](docs/STATUS.md)             | what is missing and what needs deciding. The mutable one.                     |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | how it is put together and why, with a decision log. The timeless one.        |
+| [CLAUDE.md](CLAUDE.md)                       | the rules - boundaries, ports, testIDs, fake parity. Short, and load-bearing. |
+| [.claude/skills/](.claude/skills/)           | the procedures: adding a bridge capability, a screen, a component, a test.    |
 
 Start with STATUS. It tells you which of the rest you need.
 
