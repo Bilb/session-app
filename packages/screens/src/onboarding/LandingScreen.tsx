@@ -71,7 +71,15 @@ export function LandingScreen({ onCreate, onRestore }: LandingScreenProps) {
         >
           {tr('onboardingAccountCreate')}
         </Button>
-        <Button variant="outline" testID={ELEMENT.onboarding.restoreAccount} onPress={onRestore}>
+        {/* Outlined in the accent on a phone, which is what the legacy client does: stroke and
+            label both in the primary colour, so the two buttons read as one accented pair with the
+            new account filled. The desktop client outlines both in the text colour and leaves them
+            level, which is the `wide` branch. */}
+        <Button
+          variant={wide ? 'outline' : 'outlineAccent'}
+          testID={ELEMENT.onboarding.restoreAccount}
+          onPress={onRestore}
+        >
           {tr('onboardingAccountExists')}
         </Button>
         <TermsAndPrivacy />

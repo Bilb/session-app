@@ -60,22 +60,23 @@ setPorts(
       /**
        * **iOS only, and only because iOS is the only one of the two that can show the row.**
        *
-       * `app-settings:` rather than react-native's `Linking.openSettings()`, which landed on the
-       * Settings app's own root -- the list of every app -- rather than on this app's page. The
-       * string is the literal value of `UIApplication.openSettingsURLString`, which is what the
-       * legacy client opens and what actually works.
+       * `openSettings()` rather than a hard-coded `app-settings:`, which is what this was for a
+       * while. react-native's implementation is the legacy client's line exactly --
+       * `[NSURL URLWithString:UIApplicationOpenSettingsURLString]` then `openURL:` -- so it reads
+       * the constant for whichever iOS this is running on. The literal string happened to be the
+       * same value today and would be the kind of thing that works on one OS version and not the
+       * next.
        *
-       * The page it opens lists Preferred Language, but only for a bundle that declares more than
-       * one localization, which is what the `CFBundleLocalizations` list in `app.config.ts` is
-       * for. Without that list the row is not there and this would land somebody on a settings
-       * page with nothing to change.
+       * The page it opens is Settings -> Apps -> Session, which exists for any installed app. It
+       * lists Preferred Language once the bundle declares more than one localization, which is
+       * what the `CFBundleLocalizations` list in `app.config.ts` is for.
        *
        * Null on Android, which is not a stub: App Language exists there from 13 onwards and only
        * for an app shipping a `localeConfig`, and this app has no Android build to put one in yet.
        * Null is what the picker reads to mean "do it yourself", which is the right answer until
        * then -- see the port.
        */
-      openLanguageSettings: Platform.OS === 'ios' ? () => Linking.openURL('app-settings:') : null,
+      openLanguageSettings: Platform.OS === 'ios' ? () => Linking.openSettings() : null,
     },
     secureStore: {
       async getDatabaseKey() {
