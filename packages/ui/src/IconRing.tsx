@@ -1,3 +1,4 @@
+import { useTokenColor } from './useTokenColor'
 import type { ReactNode } from 'react'
 import Svg, { Circle } from 'react-native-svg'
 import { YStack } from 'tamagui'
@@ -30,6 +31,7 @@ interface IconRingProps {
  * ring is drawn the same way the first one is, at lucide's own numbers.
  */
 export function IconRing({ size, color, children }: IconRingProps) {
+  const stroke = useTokenColor(color)
   return (
     // `position="relative"` is load-bearing, and for the second time: react-native makes every
     // view a containing block and the web makes none, so without it the absolute layer below
@@ -58,7 +60,7 @@ export function IconRing({ size, color, children }: IconRingProps) {
             cx={12}
             cy={12}
             r={RADIUS}
-            stroke={color}
+            stroke={stroke}
             strokeWidth={STROKE}
             strokeLinecap="round"
             strokeLinejoin="round"

@@ -79,7 +79,7 @@ export function LoadAccountScreen({
   return (
     <OnboardingStep
       title={tr('sessionRecoveryPassword')}
-      titleMark={<RecoveryPasswordMark size={22} color="var(--textPrimary)" />}
+      titleMark={<RecoveryPasswordMark size={22} color="$textPrimary" />}
       description={tr('recoveryPasswordRestoreDescription')}
       onBack={onBack}
       testID={ELEMENT.onboarding.loadAccountScreen}

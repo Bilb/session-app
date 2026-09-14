@@ -1,3 +1,4 @@
+import { useTokenColor } from './useTokenColor'
 import Svg, { Circle } from 'react-native-svg'
 
 /**
@@ -41,6 +42,8 @@ interface ProgressRingProps {
  * clients' own numbers rather than a translation of them.
  */
 export function ProgressRing({ progress, size, thickness = 4 }: ProgressRingProps) {
+  const track = useTokenColor('$bordersColor')
+  const fill = useTokenColor('$primaryColor')
   const radius = (size - thickness) / 2
   const circumference = 2 * Math.PI * radius
   const fraction = Math.min(1, Math.max(0, progress))
@@ -57,7 +60,7 @@ export function ProgressRing({ progress, size, thickness = 4 }: ProgressRingProp
         cx={size / 2}
         cy={size / 2}
         r={radius}
-        stroke="var(--bordersColor)"
+        stroke={track}
         strokeWidth={thickness}
         fill="none"
         strokeLinecap="round"
@@ -69,7 +72,7 @@ export function ProgressRing({ progress, size, thickness = 4 }: ProgressRingProp
         cx={size / 2}
         cy={size / 2}
         r={radius}
-        stroke="var(--primaryColor)"
+        stroke={fill}
         strokeWidth={thickness}
         fill="none"
         strokeLinecap="round"

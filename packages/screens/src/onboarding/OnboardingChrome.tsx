@@ -173,8 +173,8 @@ function OnboardingHeader() {
 
   return (
     <XStack alignItems="center" gap="$1" height={30}>
-      <SessionBrand size={26} color="var(--primaryColor)" />
-      <SessionWordmark size={15} color="var(--textPrimary)" />
+      <SessionBrand size={26} color="$primaryColor" />
+      <SessionWordmark size={15} color="$textPrimary" />
       <YStack flex={1} />
       {/* One group of three. The designs give 8px between them; the space ladder has 5 and 10 and
           no 8, so this takes the rung above rather than stepping off the ladder for one row. */}
@@ -208,7 +208,7 @@ function OnboardingHeader() {
             open(WEBSITE_URL)
           }}
           icon={
-            <IconRing size={RING_SIZE} color="var(--textPrimary)">
+            <IconRing size={RING_SIZE} color="$textPrimary">
               {/* A rung down from the ? glyph's own mark: inside a ring this size, 16 crowds the
                   stroke and 12 sits in it. */}
               <Icon name="link" size="$2" color="$textPrimary" />
