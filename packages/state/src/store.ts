@@ -188,7 +188,11 @@ export function createSessionStore(
       )
 
       if (!account.haveAccount) {
-        store.setState({ hydrated: true })
+        // **Everything derived goes, not just the account.** `setState` merges, so setting only
+        // the account left the previous one's conversations, requests and message windows sitting
+        // in the store -- which is fine on a first launch, where there were none, and is a leak
+        // between accounts the moment onboarding can be backed out of and started again.
+        store.setState({ ...emptyState, account, hydrated: true })
         return
       }
 
