@@ -73,7 +73,10 @@ export function LanguagePicker({
             gap twice the size of the ones between the round buttons beside it. */}
         <Button
           variant="ghost"
-          size={compact ? 'xs' : 'sm'}
+          // `md` either way: this is a bar control, and a bar control is the size of its touch
+          // target rather than of its glyph. `compact` still removes the horizontal padding below,
+          // so the flag and chevron sit tight inside it rather than spread by a text button's.
+          size="md"
           {...(compact ? { paddingHorizontal: 0 } : {})}
           accessibilityLabel={accessibilityLabel}
           testID={testIDs.trigger}

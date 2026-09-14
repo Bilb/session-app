@@ -162,7 +162,11 @@ export function OnboardingChrome({
           {onBack === undefined ? null : (
             <Button
               variant="ghost"
-              size="xs"
+              // `md` rather than `xs`: the glyph is the same, and the control is the size of the
+              // touch target rather than of the icon, so the pressed highlight covers what a
+              // finger covers. An `xs` button grown only by `hitSlop` presses in a 24pt square
+              // inside a 40pt target, which reads as a mis-hit even when it worked.
+              size="md"
               circular
               accessibilityLabel={tr('back')}
               testID={ELEMENT.onboarding.back}

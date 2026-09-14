@@ -3,6 +3,7 @@ import { Spinner, styled, XStack } from 'tamagui'
 
 import { INHERITED_LABEL } from './labelColor'
 import { hitSlopFor } from './buttonHitTarget'
+import { PressArea } from './PressArea'
 import { Text } from './Text'
 
 const Frame = styled(XStack, {
@@ -176,6 +177,37 @@ const Frame = styled(XStack, {
  * rather than the body text. The body text is white in the dark themes, and white on the accent
  * green measures about 1.6:1.
  */
+/**
+ * What a variant looks like while it is held down, as plain values.
+ *
+ * The same styles the `pressStyle` above declares, restated here because **native cannot use
+ * those**: the frame no longer owns the press -- `PressArea` does, so that a finger sliding off
+ * the control clears the highlight the way the platform does -- and tamagui only applies
+ * `pressStyle` for presses it handled itself. On the web nothing reads this; the pseudo-class
+ * still does the work.
+ *
+ * Kept next to the variants rather than derived from them, so the pair is visible in one screen
+ * and a change to one is an obvious prompt to change the other.
+ */
+const PRESSED = {
+  solid: { backgroundColor: '$accentPressed', borderColor: '$accentPressed' },
+  outline: { backgroundColor: '$textPrimary', borderColor: '$textPrimary', opacity: 0.82 },
+  outlineAccent: { backgroundColor: '$primaryColor', borderColor: '$primaryColor', opacity: 0.82 },
+  ghost: { backgroundColor: '$backgroundNested' },
+  simple: { opacity: 0.7 },
+  danger: { opacity: 0.7 },
+} as const
+
+/** The label colour while held, where the fill it sits on has changed underneath it. */
+const PRESSED_LABEL = {
+  solid: '$onAccent',
+  outline: '$backgroundPrimary',
+  outlineAccent: '$onAccent',
+  ghost: '$textPrimary',
+  simple: '$textPrimary',
+  danger: '$dangerColor',
+} as const
+
 const LABEL_TONE = {
   solid: '$onAccent',
   outline: '$textPrimary',
@@ -248,36 +280,44 @@ export function Button({
     disabled || loading ? '$textDisabled' : destructive ? '$dangerColor' : LABEL_TONE[variant]
 
   const hitSlop = hitSlopFor(size)
+  const inert = disabled || loading
 
   return (
-    <Frame
-      variant={variant}
-      size={size}
-      circular={circular}
-      destructive={destructive}
-      {...(paddingHorizontal === undefined ? {} : { paddingHorizontal })}
-      disabled={disabled || loading}
-      onPress={onPress}
+    <PressArea
+      {...(inert || onPress === undefined ? {} : { onPress })}
+      disabled={inert}
       // Grown outwards rather than drawn larger: the control keeps the size the designs give it and
       // the target reaches the floor. Ignored on the web, where a pointer does not need it.
-      {...(hitSlop === 0 ? {} : { hitSlop })}
-      aria-label={accessibilityLabel}
-      testID={testID}
+      hitSlop={hitSlop}
+      {...(accessibilityLabel === undefined ? {} : { accessibilityLabel })}
+      {...(testID === undefined ? {} : { testID })}
     >
-      {loading ? <Spinner size="small" color={nativeLabel} /> : icon}
-      {typeof children === 'string' ? (
-        <Text
-          size={size === 'xs' || size === 'sm' ? '$label' : '$body'}
-          // Bold, which is what the desktop client's button is: `font-weight: 700` unless a caller
-          // says otherwise, and none of the onboarding callers do.
-          weight="bold"
-          color={INHERITED_LABEL ?? nativeLabel}
+      {(pressed) => (
+        <Frame
+          variant={variant}
+          size={size}
+          circular={circular}
+          destructive={destructive}
+          {...(paddingHorizontal === undefined ? {} : { paddingHorizontal })}
+          disabled={inert}
+          {...(pressed && !inert ? PRESSED[variant] : {})}
         >
-          {children}
-        </Text>
-      ) : (
-        children
+          {loading ? <Spinner size="small" color={nativeLabel} /> : icon}
+          {typeof children === 'string' ? (
+            <Text
+              size={size === 'xs' || size === 'sm' ? '$label' : '$body'}
+              // Bold, which is what the desktop client's button is: `font-weight: 700` unless a caller
+              // says otherwise, and none of the onboarding callers do.
+              weight="bold"
+              color={INHERITED_LABEL ?? (pressed && !inert ? PRESSED_LABEL[variant] : nativeLabel)}
+            >
+              {children}
+            </Text>
+          ) : (
+            children
+          )}
+        </Frame>
       )}
-    </Frame>
+    </PressArea>
   )
 }

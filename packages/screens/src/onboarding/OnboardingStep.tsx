@@ -69,7 +69,8 @@ export function OnboardingStep({
           <YStack marginLeft={BACK_OFFSET} height={34} justifyContent="center">
             <Button
               variant="ghost"
-              size="xs"
+              // The size of the touch target rather than of the glyph. See the phone bar's.
+              size="md"
               circular
               accessibilityLabel={tr('back')}
               testID={ELEMENT.onboarding.back}
