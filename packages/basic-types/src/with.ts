@@ -12,7 +12,6 @@ export type WithMessageHash = { messageHash: string }
 export type WithMessageHashOrNull = { messageHash: string | null }
 export type WithPlaintext = { plaintext: Uint8Array }
 export type WithServerId = { serverId: number }
-export type WithProBackendPubkeyHex = { proBackendPubkeyHex: string }
 export type WithEnvelopePayload = { envelopePayload: Uint8Array }
 export type WithSenderEd25519Seed = { senderEd25519Seed: Uint8Array }
 export type WithSentTimestampMs = { sentTimestampMs: number }

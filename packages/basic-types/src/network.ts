@@ -48,25 +48,11 @@ export interface FileServerConfig {
   x25519PubkeyHex: string
 }
 
-/**
- * Where a local Pro backend lives.
- *
- * Carried and consumed by nothing: this repository has no Pro code yet. The URL is ours to use
- * whenever it does - libsession never calls the backend itself - but the signing key it verifies
- * proofs against is a `constexpr` with no override. Parsed anyway so the value is checked where it
- * is written rather than the day Pro arrives.
- */
-export interface ProBackendConfig {
-  url: string
-  ed25519PubkeyHex: string
-}
-
 /** What a devnet build needs told beyond its name, none of which has a sensible default. */
 export interface DevnetConfig {
   /** The seed node's oxend RPC, canonicalised to `http://host:port`. */
   seedUrl: string
   fileServer?: FileServerConfig
-  proBackend?: ProBackendConfig
 }
 
 /** The raw strings a devnet build is configured with, read by each app under its own prefix. */
@@ -74,8 +60,6 @@ export interface DevnetEnv {
   seedUrl: string | undefined
   fileServerUrl: string | undefined
   fileServerX25519Pubkey: string | undefined
-  proBackendUrl: string | undefined
-  proBackendEd25519Pubkey: string | undefined
 }
 
 const DEFAULT_SEED_RPC_PORT = 1280
@@ -186,16 +170,6 @@ export function parseDevnetConfig(env: DevnetEnv, prefix: string): DevnetConfig 
       pubkey(fsKey, `${prefix}FILE_SERVER_X25519_PUBKEY`),
       `${prefix}FILE_SERVER_URL`,
     )
-
-  const proUrl = set(env.proBackendUrl)
-  const proKey = set(env.proBackendEd25519Pubkey)
-  if ((proUrl === undefined) !== (proKey === undefined))
-    throw new Error(`${prefix}PRO_BACKEND_URL and ${prefix}PRO_BACKEND_ED25519_PUBKEY go together.`)
-  if (proUrl !== undefined && proKey !== undefined)
-    config.proBackend = {
-      url: proUrl,
-      ed25519PubkeyHex: pubkey(proKey, `${prefix}PRO_BACKEND_ED25519_PUBKEY`),
-    }
 
   return config
 }

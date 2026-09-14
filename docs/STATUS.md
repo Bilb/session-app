@@ -16,12 +16,9 @@ a time, via the `port-feature` skill.
 - **Attachments**, in any form - nothing about them is in the protocol. See the decision log.
 - **Anything a message can be beyond text**: no reactions, replies, edits, deletes or read
   receipts.
-- **A devnet's Pro backend is configured and read by nothing.** This repository has no Pro code,
-  so the two variables are parsed, validated and reported at startup. The URL is ours to use once
-  something uses it - libsession never calls the backend itself. The signing pubkey is the part
-  that is compiled in: `core.cpp` verifies a Pro proof on an incoming DM against
-  `pro_backend::PUBKEY`, with no override, so a backend signing with a different key needs a
-  libsession change. See the question below.
+- **A devnet cannot have its own Pro backend.** The key libsession verifies proofs against is a
+  `constexpr` read at one call site in `core.cpp`, so pointing a build at another deployment needs
+  a libsession change. Nothing here configures one, and nothing here has Pro code to configure.
 - **Mobile has never been run against a devnet.** It is wired and compiles; the JSI adapter that
   carries the seed nodes across is compile-checked and nothing more. Both dev clients need a native
   rebuild before they can reach one.
@@ -55,11 +52,11 @@ a time, via the `port-feature` skill.
 - **The desktop app's name is a placeholder.** `app.setName('session-app')` deliberately avoids
   `Session`: the shipped client owns that directory, and a dev build opening the real client's data
   would be a bad afternoon. Somebody has to decide on branding before a release.
-- **Whether libsession's Pro backend key should be settable.** It is one `constexpr` read at one
-  call site, so the plumbing is small; the question is that it is a trust anchor, and a wrong value
-  either accepts forged proofs or rejects real ones. It belongs with whatever already carries
-  network identity rather than as a standalone option, since a devnet already brings its own seed
-  nodes and file server.
+- **libsession verifies a Pro proof and discards the answer.** `decode_dm_envelope` returns a
+  `DecodedPro` whose own comment says the caller must check its status; `Core` never reads it and
+  copies only the raw signature off the wire, so `pro_signature` on a received message means "a
+  signature was present" rather than "a valid proof". Worth raising upstream on its own account -
+  it is not about which backend signs.
 - **Mnemonic handling.** libsession owns the word list, so no TypeScript library is needed, but
   once words cross into JavaScript they cannot be wiped. Keep them out of logs and out of the
   store.

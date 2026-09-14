@@ -48,14 +48,11 @@ describe('netidForTransport', () => {
 })
 
 const KEY_A = 'a'.repeat(64)
-const KEY_B = 'b'.repeat(64)
 
 const nothing: DevnetEnv = {
   seedUrl: undefined,
   fileServerUrl: undefined,
   fileServerX25519Pubkey: undefined,
-  proBackendUrl: undefined,
-  proBackendEd25519Pubkey: undefined,
 }
 
 const env = (over: Partial<DevnetEnv>): DevnetEnv => ({ ...nothing, ...over })
@@ -155,21 +152,8 @@ describe('parseDevnetConfig', () => {
       ).toThrow(/SESSION_FILE_SERVER_X25519_PUBKEY must be 64 hex characters/)
   })
 
-  it('carries a pro backend that nothing reads yet', () => {
-    const { proBackend } = parseDevnetConfig(
-      env({
-        seedUrl: '10.0.0.1',
-        proBackendUrl: 'http://10.0.0.1:8090',
-        proBackendEd25519Pubkey: KEY_B,
-      }),
-      'SESSION_',
-    )
-    expect(proBackend).toEqual({ url: 'http://10.0.0.1:8090', ed25519PubkeyHex: KEY_B })
-  })
-
-  it('leaves both services out when neither is configured', () => {
+  it('leaves the file server out when it is not configured', () => {
     const config = parseDevnetConfig(env({ seedUrl: '10.0.0.1' }), 'SESSION_')
     expect(config.fileServer).toBeUndefined()
-    expect(config.proBackend).toBeUndefined()
   })
 })

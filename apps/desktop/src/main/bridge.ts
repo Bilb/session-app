@@ -50,7 +50,7 @@ function resolveDatabaseKey(dir: string): Uint8Array {
  * Here rather than in a dev script because the same values have to reach `electron-vite dev`,
  * `preview`, the e2e harness and a bare `electron out/main/index.js`, and this is the only code
  * all four run. An explicit environment variable wins, which is what lets the harness pin
- * SESSION_FAKE whatever a developer keeps in their file.
+ * EXPO_PUBLIC_SESSION_FAKE whatever a developer keeps in their file.
  */
 function loadDotEnv(): void {
   if (app.isPackaged) return
@@ -110,8 +110,6 @@ export async function createBridge(): Promise<BridgeTransport> {
             seedUrl: process.env['EXPO_PUBLIC_SESSION_DEVNET_SEED_URL'],
             fileServerUrl: process.env['EXPO_PUBLIC_SESSION_FILE_SERVER_URL'],
             fileServerX25519Pubkey: process.env['EXPO_PUBLIC_SESSION_FILE_SERVER_X25519_PUBKEY'],
-            proBackendUrl: process.env['EXPO_PUBLIC_SESSION_PRO_BACKEND_URL'],
-            proBackendEd25519Pubkey: process.env['EXPO_PUBLIC_SESSION_PRO_BACKEND_ED25519_PUBKEY'],
           },
           'EXPO_PUBLIC_SESSION_',
         )
@@ -131,16 +129,12 @@ export async function createBridge(): Promise<BridgeTransport> {
       ? undefined
       : await discoverSeedNodes(devnet.seedUrl, {
           fetch: (url, init) => fetch(url, { ...init, signal: AbortSignal.timeout(8_000) }),
-          variable: 'SESSION_DEVNET_SEED_URL',
+          variable: 'EXPO_PUBLIC_SESSION_DEVNET_SEED_URL',
         })
 
   if (devnet?.fileServer === undefined && name === 'devnet')
     console.warn(
-      'SESSION_FILE_SERVER_URL is unset on a devnet build: attachments would upload to the mainnet file server.',
-    )
-  if (devnet?.proBackend !== undefined)
-    console.warn(
-      `SESSION_PRO_BACKEND_URL is set and nothing reads it: libsession fixes the Pro backend at build time and this app has no Pro code.`,
+      'EXPO_PUBLIC_SESSION_FILE_SERVER_URL is unset on a devnet build: attachments would upload to the mainnet file server.',
     )
 
   return createNodeBridgeTransport({
@@ -152,14 +146,14 @@ export async function createBridge(): Promise<BridgeTransport> {
     // chose.
     deferAccount: true,
     // The bridge attaches this once an account exists - on open if there already is one, and
-    // after onboarding otherwise. SESSION_NETID picks it; unset means mainnet, and there is
-    // deliberately no way to spell "offline" here: that is what SESSION_FAKE is for.
+    // after onboarding otherwise. EXPO_PUBLIC_SESSION_NETID picks it; unset means mainnet, and there is
+    // deliberately no way to spell "offline" here: that is what EXPO_PUBLIC_SESSION_FAKE is for.
     ...(netid === undefined ? {} : { netid }),
     ...(seedNodes === undefined ? {} : { seedNodes }),
     ...(devnet?.fileServer === undefined ? {} : { fileServer: devnet.fileServer }),
     deviceType: 'desktop',
     // Off unless asked for: it is chatty at anything below warn, and the reason to turn it up
-    // is always a specific failure. SESSION_LOG=debug is what a diagnosis looks like.
+    // is always a specific failure. EXPO_PUBLIC_SESSION_LOG=debug is what a diagnosis looks like.
     ...(process.env['EXPO_PUBLIC_SESSION_LOG'] === undefined
       ? {}
       : { logLevel: process.env['EXPO_PUBLIC_SESSION_LOG'] as 'debug' }),
