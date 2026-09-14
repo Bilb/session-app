@@ -35,7 +35,12 @@ export const FLAGS = {
   onboardingLanguageSelect: false,
 
   /**
-   * Take the tablet's onboarding on any wide window, rather than only where the OS suspends the app.
+   * **Force** the tablet's onboarding on any wide window, rather than only where the OS suspends
+   * the app.
+   *
+   * Named for the forcing rather than for the design, because the unprefixed name read as though it
+   * were the switch that decides which design is used. It is not: the design is decided by the
+   * window's width and the notifications port, and this only overrides the second of those.
    *
    * A tablet is the desktop layout plus the notification-mode step, and which of those two a build
    * gets is decided by the notifications port -- an OS fact, not a window size. That is correct and
@@ -45,7 +50,7 @@ export const FLAGS = {
    * Off by default. It changes which screens appear, so it is a thing to look at deliberately
    * rather than something to leave on.
    */
-  onboardingTabletDesign: false,
+  forceOnboardingTabletDesign: false,
 } as const
 
 export type FlagName = keyof typeof FLAGS

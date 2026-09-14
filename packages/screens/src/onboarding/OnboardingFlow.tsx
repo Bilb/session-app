@@ -259,7 +259,8 @@ function useOnboardingDesign(): OnboardingDesign {
   const wide = useMedia().gtSm
   // The flag is an override for looking at it, not a second source of truth: see its entry in the
   // flag table for why the tablet design is otherwise unreachable on the machines it is built on.
-  const asks = requirePorts().notifications.notificationModesApply || flag('onboardingTabletDesign')
+  const asks =
+    requirePorts().notifications.notificationModesApply || flag('forceOnboardingTabletDesign')
   if (!wide) return 'phone'
   return asks ? 'tablet' : 'desktop'
 }
