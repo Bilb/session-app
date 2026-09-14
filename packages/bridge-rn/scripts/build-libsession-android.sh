@@ -42,6 +42,25 @@ fi
 # app may raise its floor without the static libraries having to be rebuilt below it.
 platform="${ANDROID_PLATFORM:-android-23}"
 
+# **macOS's `ar` cannot do the last step of this build.** libsession merges its static libraries
+# with an MRI script -- `ar -M < session-util.mri`, cmake/combine_archives.cmake -- which is a
+# GNU binutils feature. Apple's cctools `ar` has no `-M` and answers with its usage text, so the
+# build dies at 100% on `Generating libsession-util.a` with nothing that names the cause.
+#
+# The NDK ships `llvm-ar`, which does understand MRI scripts. The command in that cmake file is a
+# bare `ar`, resolved from PATH, so a shim ahead of PATH is enough and nothing in libsession has
+# to change. Scoped to this script, and to the one name.
+host="$(uname -s | tr '[:upper:]' '[:lower:]')-x86_64"
+llvm_ar="$ndk/toolchains/llvm/prebuilt/$host/bin/llvm-ar"
+if [ ! -x "$llvm_ar" ]; then
+    echo "no llvm-ar in the NDK at $llvm_ar" >&2
+    exit 1
+fi
+shim="$(mktemp -d)"
+trap 'rm -rf "$shim"' EXIT
+ln -s "$llvm_ar" "$shim/ar"
+export PATH="$shim:$PATH"
+
 cd "$libsession"
 for abi in "${abis[@]}"; do
     echo "Building libsession for $abi"
