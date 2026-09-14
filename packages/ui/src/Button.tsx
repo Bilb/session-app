@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Spinner, styled, XStack } from 'tamagui'
 
 import { INHERITED_LABEL } from './labelColor'
+import { hitSlopFor } from './buttonHitTarget'
 import { Text } from './Text'
 
 const Frame = styled(XStack, {
@@ -246,6 +247,8 @@ export function Button({
   const nativeLabel =
     disabled || loading ? '$textDisabled' : destructive ? '$dangerColor' : LABEL_TONE[variant]
 
+  const hitSlop = hitSlopFor(size)
+
   return (
     <Frame
       variant={variant}
@@ -255,6 +258,9 @@ export function Button({
       {...(paddingHorizontal === undefined ? {} : { paddingHorizontal })}
       disabled={disabled || loading}
       onPress={onPress}
+      // Grown outwards rather than drawn larger: the control keeps the size the designs give it and
+      // the target reaches the floor. Ignored on the web, where a pointer does not need it.
+      {...(hitSlop === 0 ? {} : { hitSlop })}
       aria-label={accessibilityLabel}
       testID={testID}
     >

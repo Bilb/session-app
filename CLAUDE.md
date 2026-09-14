@@ -48,6 +48,16 @@ dev entries. When a rule fires, fix the design - not the config.
   of what a flag is for. The default belongs in the shared flag table; reading the override is a
   port, because each platform exposes the environment differently.
 
+## Porting a screen
+
+**Put it side by side with the legacy client and compare, before calling it done.** Reading the
+legacy source and reasoning about what it should look like is not the same check and does not
+catch the same things: a screen whose flow completes can still have the wrong background, the
+wrong button filled, missing chrome, wrong type sizes and a control nobody can hit. Walk the list
+deliberately — colours, which button is primary, chrome present in one and not the other, type
+sizes, control sizes and hit areas, spacing, transitions. An already-ported sibling counts as a
+reference: the tablet layout will catch most of a phone layout's mistakes.
+
 ## Tests required, in the same PR
 
 | change            | test                                              |

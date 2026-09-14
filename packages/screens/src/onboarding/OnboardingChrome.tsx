@@ -155,7 +155,10 @@ export function OnboardingChrome({
       // Not `padded`: onboarding has its own inset, which is more than twice the screen default
       // and is the clients' own. See the constants.
       <Screen testID={testID}>
-        <XStack alignItems="center" minHeight="$7" paddingHorizontal="$1">
+        {/* The bar the phone design puts above the step. Its controls sit in from the edge by the
+            space the platform's own navigation bar uses, not by the hairline the content inset
+            would leave them. */}
+        <XStack alignItems="center" minHeight="$7" paddingHorizontal="$2" paddingTop="$1">
           {onBack === undefined ? null : (
             <Button
               variant="ghost"
