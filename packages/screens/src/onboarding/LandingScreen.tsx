@@ -128,7 +128,9 @@ function PhoneOpening() {
 
   return (
     <YStack flex={1} gap="$3">
-      <Text size="$displayLarge" weight="bold" textAlign="center">
+      {/* 26 bold, which both clients use for every onboarding heading -- iOS's `veryLargeFontSize`
+          and Android's `h4`. Ours was 36, which wrapped a line the clients fit on one. */}
+      <Text size="$headingLarge" weight="bold" textAlign="center">
         {tr('onboardingBubblePrivacyInYourPocket')}
       </Text>
 
