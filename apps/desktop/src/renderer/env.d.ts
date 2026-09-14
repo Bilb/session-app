@@ -19,3 +19,14 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+/**
+ * What the preload exposes on the page.
+ *
+ * One method, taking nothing and returning nothing: the renderer can ask the main process to
+ * replace the window it is running in, and can say nothing else through this channel. Optional
+ * because the page also runs under a bare browser in some tooling, where no preload has run.
+ */
+interface Window {
+  readonly sessionWindow?: { recycle: () => Promise<void> }
+}

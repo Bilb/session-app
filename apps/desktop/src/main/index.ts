@@ -44,8 +44,23 @@ app.setName('session-app')
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 
-async function createWindow(): Promise<void> {
-  const bridge = await createBridge()
+/**
+ * The bridge, which outlives any particular window.
+ *
+ * It used to be created inside `createWindow`, which was fine while there was exactly one window
+ * for the life of the app. It is not fine once a window can be replaced: a second window would
+ * open a second libSession on the same database, and closing the first would close the bridge the
+ * second was using. So it is made once and every window is wired to it.
+ */
+let bridge: Awaited<ReturnType<typeof createBridge>> | null = null
+
+async function requireBridge(): Promise<NonNullable<typeof bridge>> {
+  bridge ??= await createBridge()
+  return bridge
+}
+
+async function createWindow({ show = true } = {}): Promise<Electron.BrowserWindow> {
+  const open = await requireBridge()
 
   const window = new BrowserWindow({
     width: 1100,
@@ -56,8 +71,9 @@ async function createWindow(): Promise<void> {
     icon: join(here, '../../resources/icon.png'),
     // Shown straight away rather than on ready-to-show: that event is not dependable on a
     // headless display, and a window that never shows has no layout, which makes every
-    // element in it invisible to a test.
-    show: true,
+    // element in it invisible to a test. A replacement window is the exception -- it is loaded
+    // hidden and shown only once it has painted, which is what makes the swap not a flash.
+    show,
     webPreferences: {
       ...hardenedWebPreferences({ packaged: app.isPackaged }),
       // CommonJS, because a sandboxed preload cannot be an ES module; it is built that way in
@@ -103,13 +119,13 @@ async function createWindow(): Promise<void> {
     port = port1
 
     // A frame is a plain object built by the addon; structured clone carries it to the renderer.
-    bridge.setSink((frame) => {
+    open.setSink((frame) => {
       port?.postMessage(frame)
     })
     port1.on('message', (event: { data: unknown }) => {
       // Renderer input: an exception escaping here is an uncaught one in the main process.
       try {
-        bridge.send(event.data as Request)
+        open.send(event.data as Request)
       } catch {
         // No id to answer on, so there is nobody to tell.
       }
@@ -120,13 +136,19 @@ async function createWindow(): Promise<void> {
 
   window.webContents.on('did-finish-load', openChannel)
 
+  // **The port, and not the bridge.** The port is this window's, and nothing loads after a close
+  // to retire it, so without this the last one of every window stays open. The bridge is the
+  // app's -- a window being replaced must not take libsession down with the outgoing one -- and it
+  // is closed on 'before-quit'.
   window.on('closed', () => {
     port?.close()
     port = null
-    bridge.close()
   })
 
   await window.loadURL(appUrl)
+
+  return window
+}
 }
 
 // Covers any WebContents the app did not make. Deliberately not guardNavigation: this fires from
@@ -140,6 +162,11 @@ app.on('web-contents-created', (_event, contents) => {
 void app.whenReady().then(async () => {
   denyAllPermissions(session.defaultSession)
   ipcMain.handle('session-ping', () => 'pong')
+  // No arguments and no return: the renderer can ask to be replaced and can say nothing else
+  // through it, which is the whole surface.
+  ipcMain.handle('session-recycle-window', async () => {
+    await recycleWindow()
+  })
   await createWindow()
 
   app.on('activate', () => {
@@ -149,4 +176,10 @@ void app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+// The bridge outlives every window, so it is closed here rather than with one of them.
+app.on('before-quit', () => {
+  bridge?.close()
+  bridge = null
 })

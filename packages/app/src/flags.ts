@@ -51,6 +51,19 @@ export const FLAGS = {
    * rather than something to leave on.
    */
   forceOnboardingTabletDesign: false,
+
+  /**
+   * Replace the window when onboarding ends, on both the finished and the abandoned path.
+   *
+   * A recovery phrase leaves strings behind that JavaScript cannot wipe, and throwing the renderer
+   * process away is the only thing that actually frees them. Whether it is worth doing turns on
+   * whether anybody can see it happen, which is a question about how it looks rather than about
+   * what it costs -- so it ships behind a flag to be looked at before it is decided.
+   *
+   * Off by default, and does nothing where `window.recycle` is null, which is everywhere but
+   * desktop: a phone has no separate process to throw away.
+   */
+  recycleWindowAfterOnboarding: false,
 } as const
 
 export type FlagName = keyof typeof FLAGS
