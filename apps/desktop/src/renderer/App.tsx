@@ -5,11 +5,12 @@ import {
   NewConversationScreen,
   OnboardingFlow,
   StartingScreen,
+  StartupFailedScreen,
   RequestsScreen,
   SettingsScreen,
   useLocale,
 } from '@session/screens'
-import { SessionStoreProvider, useAccount, useHydrated } from '@session/state'
+import { SessionStoreProvider, useAccount, useHydrated, useStartupError } from '@session/state'
 import { Text, UIProvider, YStack } from '@session/ui'
 import { useEffect, useState } from 'react'
 import { MemoryRouter, Route, Routes, useLocation, useParams } from 'react-router'
@@ -31,7 +32,9 @@ export function App() {
   useLocale()
 
   useEffect(() => {
-    void store.actions.hydrate()
+    // `start`, not `hydrate`: a rejection here has no screen to land on, so the store turns it
+    // into state instead. See the action.
+    void store.actions.start()
     return () => store.actions.dispose()
   }, [])
 
@@ -50,10 +53,14 @@ export function App() {
 
 function Shell() {
   const hydrated = useHydrated()
+  const startupError = useStartupError()
   const account = useAccount()
   const location = useLocation()
   const [onboarding, setOnboarding] = useState(false)
 
+  // Asked before `hydrated`, because both are false when a start has failed and only one of them
+  // says so. The other order leaves the launch screen up over a failure that is already known.
+  if (startupError !== null) return <StartupFailedScreen error={startupError} />
   if (!hydrated) return <StartingScreen />
 
   // Onboarding takes the whole window rather than a pane: there is no list to sit beside it,

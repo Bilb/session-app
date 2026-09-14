@@ -1,5 +1,10 @@
-import { ConversationListScreen, OnboardingFlow, StartingScreen } from '@session/screens'
-import { useAccount, useHydrated } from '@session/state'
+import {
+  ConversationListScreen,
+  OnboardingFlow,
+  StartingScreen,
+  StartupFailedScreen,
+} from '@session/screens'
+import { useAccount, useHydrated, useStartupError } from '@session/state'
 import { useState } from 'react'
 
 /**
@@ -18,9 +23,13 @@ import { useState } from 'react'
  */
 export default function IndexRoute() {
   const hydrated = useHydrated()
+  const startupError = useStartupError()
   const account = useAccount()
   const [onboarding, setOnboarding] = useState(false)
 
+  // Asked before `hydrated`, because both are false when a start has failed and only one of them
+  // says so. The other order leaves the launch screen up over a failure that is already known.
+  if (startupError !== null) return <StartupFailedScreen error={startupError} />
   if (!hydrated) return <StartingScreen />
   // `|| onboarding` because an account appearing is not the same as onboarding being over: a
   // restore mints one the moment the phrase is accepted and still has a wait to sit through.

@@ -11,6 +11,7 @@ export {
   useMessages,
   useRequests,
   useSessionActions,
+  useStartupError,
   useUnreadRequestCount,
 } from './hooks'
 export { emptyState } from './types'

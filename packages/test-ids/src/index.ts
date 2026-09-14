@@ -68,6 +68,18 @@ export const ELEMENT = {
   starting: {
     screen: 'starting',
     slowMessage: 'starting-slow-message',
+    slowDialog: 'starting-slow-dialog',
+    slowDialogClose: 'starting-slow-dialog-close',
+  },
+
+  startupFailed: {
+    screen: 'startup-failed',
+    reason: 'startup-failed-reason',
+    clear: 'startup-failed-clear',
+    quit: 'startup-failed-quit',
+    confirmClear: 'startup-failed-confirm-clear',
+    confirmClearButton: 'startup-failed-confirm-clear-button',
+    cancelClear: 'startup-failed-cancel-clear',
   },
 
   languagePicker: {
@@ -154,6 +166,15 @@ export type ElementId =
   | 'new-conversation-start'
   | 'new-conversation-error'
   | 'starting'
+  | 'starting-slow-dialog'
+  | 'starting-slow-dialog-close'
+  | 'startup-failed'
+  | 'startup-failed-reason'
+  | 'startup-failed-clear'
+  | 'startup-failed-quit'
+  | 'startup-failed-confirm-clear'
+  | 'startup-failed-confirm-clear-button'
+  | 'startup-failed-cancel-clear'
   | 'onboarding'
   | 'onboarding-create-account'
   | 'onboarding-restore-account'

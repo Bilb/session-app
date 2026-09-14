@@ -6,6 +6,23 @@ import { emptyState, type MessageWindow, type SessionState } from './types'
 
 export interface SessionActions {
   /**
+   * Starts the app, and is the only call that is allowed to fail without throwing.
+   *
+   * `hydrate` still throws, because every other caller is a screen that has somewhere to put a
+   * refusal. This one has not: it runs before there is a screen, from an app's root, and a
+   * rejection there is an unhandled promise and a launch screen that stays up for ever. So the
+   * failure becomes `startupError` instead -- one catch site, which is what the legacy iOS client
+   * has and what it has instead of a timeout.
+   */
+  start: () => Promise<void>
+  /**
+   * Deletes everything on this device and starts again from nothing.
+   *
+   * The way out of a database that cannot be opened. Destructive and unrecoverable without a
+   * recovery phrase, so nothing calls it without asking twice.
+   */
+  clearDeviceData: () => Promise<void>
+  /**
    * Subscribes first, then asks - never the other way round.
    *
    * Anything that arrives between the two is applied on top of the answer, which is safe
@@ -185,6 +202,33 @@ export function createSessionStore(
   }
 
   const actions: SessionActions = {
+    async start(): Promise<void> {
+      store.setState({ startupError: null })
+      try {
+        await actions.hydrate()
+      } catch (error) {
+        // **The one place a failed start is allowed to end up.** Everything that can go wrong
+        // between the app opening and libsession answering throws, and every one of those throws
+        // arrives here -- which is what makes "it did not start" a state the screens can render
+        // rather than a promise nobody was holding. Left uncaught it was an unhandled rejection
+        // and a launch screen that never went away, identical from the outside to a slow start.
+        const message = error instanceof Error ? error.message : String(error)
+        log('error', `[session] could not start: ${message}`)
+        store.setState({ startupError: message })
+      }
+    },
+
+    async clearDeviceData(): Promise<void> {
+      // The same call onboarding's back uses: the database, its journals and the attachment cache
+      // are removed and a fresh one is opened. What follows is a device with no account on it,
+      // which is where somebody restores from their recovery phrase -- so this is both of the
+      // legacy client's options, clear and clear-then-restore, which differ there only in what
+      // they do next.
+      await client.discardAccount()
+      store.setState({ ...emptyState })
+      await actions.start()
+    },
+
     async hydrate(): Promise<void> {
       const account = await client.getAccountInfo()
       store.setState({ account })

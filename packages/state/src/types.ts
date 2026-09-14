@@ -27,6 +27,16 @@ export interface SessionState {
   account: AccountInfo | null
 
   /**
+   * Why the app could not start, or null while it still might.
+   *
+   * The only outcome of a start used to be `hydrated`, so a start that failed was
+   * indistinguishable from one still running and the launch screen stayed up for ever. This is
+   * the second outcome. It carries the message rather than a boolean because the message is the
+   * only thing that tells anybody which failure it was, and there is nowhere else it survives.
+   */
+  startupError: string | null
+
+  /**
    * Complete lists, in the order libsession sent them. libsession sends whole state, so partial
    * copies would only rot.
    *
@@ -46,6 +56,7 @@ export interface SessionState {
 export const emptyState: SessionState = {
   hydrated: false,
   account: null,
+  startupError: null,
   conversations: [],
   requests: [],
   histories: {},

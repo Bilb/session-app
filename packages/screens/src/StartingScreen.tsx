@@ -1,7 +1,10 @@
+import { requirePorts } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Screen, SessionBrand, Text, YStack } from '@session/ui'
+import { Button, Modal, Screen, SessionBrand, Text, YStack } from '@session/ui'
 import { useEffect, useState } from 'react'
+
+import { LocalizedText } from './LocalizedText'
 
 /**
  * How long a wait has to run before it is worth saying anything about it.
@@ -15,6 +18,22 @@ const SAY_SOMETHING_AFTER_MS = 5_000
 
 /** And this much longer before admitting it might be a while. Also iOS's. */
 const ADMIT_ITS_LONG_AFTER_MS = 15_000
+
+/**
+ * And this much longer before saying so over the top of the screen.
+ *
+ * A failure that *throws* lands on the failure screen, which is the path that matters and the one
+ * the legacy client relies on entirely -- it has no timeout on its migrations either, and would sit
+ * here just as long as we would if one hung rather than threw. This covers what a catch site
+ * cannot: a start that never comes back at all, from a deadlock or a wait on something that never
+ * arrives, where there is no error to catch and the screen is otherwise indistinguishable from a
+ * database that is simply large.
+ *
+ * Twice the previous threshold rather than another five seconds: a real migration is allowed to
+ * take a while, and a dialog thrown over a launch that was going to finish is worse than silence.
+ * It needs no dismissing when the wait ends -- this screen is gone by then, and the dialog with it.
+ */
+const SAY_SO_IN_A_DIALOG_AFTER_MS = 30_000
 
 /**
  * What both apps show before the first state has arrived.
@@ -35,6 +54,9 @@ const ADMIT_ITS_LONG_AFTER_MS = 15_000
  */
 export function StartingScreen() {
   const [waited, setWaited] = useState(0)
+  /** Dismissed rather than answered: the copy's own first suggestion is to keep waiting. */
+  const [dismissed, setDismissed] = useState(false)
+  const close = requirePorts().window.close
 
   useEffect(() => {
     const started = Date.now()
@@ -68,6 +90,32 @@ export function StartingScreen() {
           </YStack>
         )}
       </YStack>
+
+      <Modal
+        open={waited >= SAY_SO_IN_A_DIALOG_AFTER_MS && !dismissed}
+        onClose={() => {
+          setDismissed(true)
+        }}
+        title={tr('databaseOptimizing')}
+        closeLabel={tr('cancel')}
+        testID={ELEMENT.starting.slowDialog}
+        closeTestID={ELEMENT.starting.slowDialogClose}
+        actions={
+          close === null ? undefined : (
+            <Button
+              variant="ghost"
+              testID={ELEMENT.startupFailed.quit}
+              onPress={() => {
+                close()
+              }}
+            >
+              {tr('quit')}
+            </Button>
+          )
+        }
+      >
+        <LocalizedText text={tr('databaseErrorTimeout')} />
+      </Modal>
     </Screen>
   )
 }

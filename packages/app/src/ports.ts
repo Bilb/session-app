@@ -103,14 +103,14 @@ export interface LinkingPort {
 
 export interface WindowPort {
   /**
-   * Shuts the app down, for the one dialog that offers to.
+   * Shuts the app down, or null where the platform has no such thing.
    *
-   * Only onboarding needs it, and only where back has nowhere to go and something has already been
-   * made that leaving would abandon. Desktop closes its window, which with one window is quitting.
-   * Mobile does nothing: iOS forbids an app terminating itself and Android merely discourages it,
-   * so a phone shows the dialog without that door.
+   * Desktop closes its window, which with one window is quitting. **Null on mobile**, for the same
+   * reason `openLanguageSettings` is null where there is no language screen: iOS forbids an app
+   * terminating itself and Android merely discourages it, and a button that did nothing would
+   * answer "yes, you can quit" and then not. A screen offering this reads the null and omits it.
    */
-  close(): void
+  close: (() => void) | null
   isFocused(): boolean
   /** Drives read receipts and whether a notification is worth showing. */
   onFocusChange(handler: (focused: boolean) => void): () => void

@@ -26,7 +26,9 @@ export default function RootLayout() {
     void storePromise.then((created) => {
       if (!live) return
       setStore(created)
-      void created.actions.hydrate()
+      // `start`, not `hydrate`: a rejection here has no screen to land on, so the store turns it
+      // into state instead. See the action.
+      void created.actions.start()
     })
     return () => {
       live = false
