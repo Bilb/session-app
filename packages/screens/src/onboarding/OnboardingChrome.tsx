@@ -63,19 +63,6 @@ function useFadeIn(key: string): number {
 /** The desktop client's registration column. Everything inside onboarding is this wide. */
 const COLUMN_WIDTH = 348
 
-/**
- * How tall every step's content is, whatever is in it.
- *
- * The desktop client's own number, and its comment says why: *"Min height should match the
- * onboarding step with the largest height -- this prevents the loading spinner from jumping around
- * while still keeping things centered."*
- *
- * It belongs on the column rather than on a step, because the whole column is what is centred: the
- * lockup sits above the step, so a step one line shorter than the last moves the lockup too. The
- * client puts it on the steps only, and its own Start screen does move as a result -- this is the
- * same fix applied one level up, which is where it actually holds still.
- */
-const CONTENT_MIN_HEIGHT = 276
 /** The hero's share of the window. A maximum, not a fixed split. */
 const HERO_FRACTION = '40%'
 
@@ -129,7 +116,6 @@ export function OnboardingChrome({ children, testID }: { children: ReactNode; te
       <YStack width={COLUMN_WIDTH} gap="$3">
         <OnboardingHeader />
         <YStack
-          minHeight={CONTENT_MIN_HEIGHT}
           opacity={fading}
           // No animation driver is configured, so the transition is declared directly. On
           // native this property is ignored and the step simply appears, which is the same
