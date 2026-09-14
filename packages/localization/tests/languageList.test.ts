@@ -94,4 +94,30 @@ describe('matching a device language tag', () => {
   it('returns null rather than guessing English', () => {
     expect(matchLocale('zz')).toBeNull()
   })
+
+  it('resolves Chinese by script, which is how every platform reports it', () => {
+    // The catalogue names Chinese by region, every platform reports it by script, and there is no
+    // bare `zh` to fall back to -- so this matched nothing and the app stayed in English for
+    // anybody whose language was Chinese. `zh-Hans-AU` is what iOS reports when the app's language
+    // is Simplified Chinese on an Australian device.
+    expect(matchLocale('zh-Hans')).toBe('zh-CN')
+    expect(matchLocale('zh-Hant')).toBe('zh-TW')
+    expect(matchLocale('zh-Hans-AU')).toBe('zh-CN')
+    expect(matchLocale('zh-Hant-TW')).toBe('zh-TW')
+  })
+
+  it('truncates one subtag at a time rather than jumping to the base', () => {
+    expect(matchLocale('pt-BR-u-ca-gregory')).toBe('pt-BR')
+  })
+
+  it('takes a language with exactly one shipped variant', () => {
+    expect(matchLocale('hy')).toBe('hy-AM')
+  })
+
+  it('refuses to choose between two variants of the same language', () => {
+    // `pt` could be either Portuguese. Picking one would be inventing an answer the tag did not
+    // give, and the caller has a better fallback than a guess.
+    expect(matchLocale('pt')).toBeNull()
+    expect(matchLocale('zh')).toBeNull()
+  })
 })

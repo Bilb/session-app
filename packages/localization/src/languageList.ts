@@ -81,15 +81,44 @@ export const LANGUAGES: readonly LanguageOption[] = [...crowdinLocales]
   .sort((a, b) => a.name.localeCompare(b.name))
 
 /**
+ * Where a script says which region's catalogue to use.
+ *
+ * The catalogue names Chinese by region and every platform reports it by script, so `zh-Hans` and
+ * `zh-CN` are the same language written two ways and nothing in the tag says so. This is the only
+ * such pair today; it is a table rather than a rule because the mapping is a fact about written
+ * Chinese, not something derivable from the tag.
+ */
+const SCRIPT_TO_LOCALE: Record<string, CrowdinLocale> = {
+  'zh-hans': 'zh-CN',
+  'zh-hant': 'zh-TW',
+}
+
+/**
  * The best match for a language tag the device reported, or null when nothing matches.
  *
- * Tries the whole tag before its base, so `pt-BR` finds Brazilian Portuguese rather than falling
- * straight to European. Null rather than English: the caller decides what an unsupported system
- * language should do, and silently showing a flag nobody chose states something untrue about the
- * current setting.
+ * **Truncated one subtag at a time, which is how BCP-47 says to do it.** `pt-BR` finds Brazilian
+ * Portuguese rather than falling straight to European, and `zh-Hans-AU` -- what iOS reports when
+ * the app's language is Simplified Chinese on an Australian device -- reaches `zh-Hans` and then
+ * the table above. Trying only the whole tag and then its bare base missed both of those: the
+ * catalogue has no bare `zh`, so Chinese matched nothing at all and the app stayed in English.
+ *
+ * Last, a language with exactly one shipped variant matches it, so bare `hy` finds `hy-AM`. Only
+ * when there is exactly one: bare `pt` could be either Portuguese and picking one would be
+ * inventing an answer the tag did not give.
+ *
+ * Null rather than English: the caller decides what an unsupported system language should do, and
+ * silently showing a flag nobody chose states something untrue about the current setting.
  */
 export function matchLocale(tag: string): CrowdinLocale | null {
-  if (isCrowdinLocale(tag)) return tag
-  const base = tag.split('-')[0] ?? ''
-  return isCrowdinLocale(base) ? base : null
+  const subtags = tag.split('-')
+  for (let length = subtags.length; length > 0; length -= 1) {
+    const candidate = subtags.slice(0, length).join('-')
+    if (isCrowdinLocale(candidate)) return candidate
+    const byScript = SCRIPT_TO_LOCALE[candidate.toLowerCase()]
+    if (byScript !== undefined) return byScript
+  }
+
+  const base = `${subtags[0] ?? ''}-`.toLowerCase()
+  const variants = crowdinLocales.filter((locale) => locale.toLowerCase().startsWith(base))
+  return variants.length === 1 ? (variants[0] ?? null) : null
 }
