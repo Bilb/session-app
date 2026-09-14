@@ -47,6 +47,19 @@ export type Command =
    */
   | { type: 'attachNetwork'; netid: string; seedNodes?: SeedNode[]; fileServer?: FileServerConfig }
   /**
+   * How often libsession polls the swarm, in milliseconds. Its default is 20 seconds, which is a
+   * long time to wait for a test and about right for a person.
+   *
+   * Takes effect by replacing the running ticker, so the next poll is a full interval away rather
+   * than when the old one would have fired; setting it before a network is attached therefore
+   * costs no initial delay. Nothing serialises polls against each other, so an interval short
+   * enough that one is still outstanding when the next fires gets overlapping requests - wasteful
+   * rather than wrong, since a handler already has to tolerate seeing a message twice.
+   *
+   * The floor is 1ms: zero or negative is refused rather than read as "never" or "always".
+   */
+  | { type: 'setPollInterval'; intervalMs: number }
+  /**
    * Run one poll cycle to completion: the primitive every OS background budget wants. Android's
    * WorkManager job, iOS's BGAppRefreshTask and a push-triggered fetch all reduce to it.
    */

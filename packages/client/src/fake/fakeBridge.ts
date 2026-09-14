@@ -122,6 +122,10 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     await client.markRead(cmd.conversationId, cmd.upTo)
     return empty
   },
+  setPollInterval: async (client, cmd) => {
+    await client.setPollInterval(cmd.intervalMs)
+    return empty
+  },
   setBlocked: async (client, cmd) => {
     await client.setBlocked(cmd.conversationId, cmd.blocked)
     return empty

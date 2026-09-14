@@ -21,6 +21,7 @@
 #endif
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstring>
 #include <limits>
@@ -385,6 +386,16 @@ struct ClientBridge::Impl {
             options.network = std::move(previous);
             throw;
         }
+        ok(id);
+    }
+
+    void handle(double id, const SetPollIntervalCommand& cmd) {
+        auto ms = whole<int64_t>(cmd.interval_ms, "setPollInterval.intervalMs");
+        // Core reads a non-positive interval as "as fast as the loop will go" rather than
+        // refusing it, which is a busy loop against the swarm.
+        if (ms <= 0)
+            throw std::invalid_argument{"setPollInterval.intervalMs must be greater than zero"};
+        client->core.set_poll_interval(std::chrono::milliseconds{ms});
         ok(id);
     }
 

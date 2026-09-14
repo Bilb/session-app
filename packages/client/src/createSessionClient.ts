@@ -159,6 +159,9 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       })
     },
 
+    async setPollInterval(intervalMs): Promise<void> {
+      await call({ type: 'setPollInterval', intervalMs })
+    },
     async setBlocked(id, blocked): Promise<void> {
       await call({ type: 'setBlocked', conversationId: id, blocked })
     },

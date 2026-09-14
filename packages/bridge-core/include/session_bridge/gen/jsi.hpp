@@ -1037,6 +1037,27 @@ struct JSIConverter<::session_bridge::AttachNetworkCommand> final {
 };
 
 template <>
+struct JSIConverter<::session_bridge::SetPollIntervalCommand> final {
+    static inline ::session_bridge::SetPollIntervalCommand fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+        jsi::Object obj = arg.asObject(runtime);
+        return ::session_bridge::SetPollIntervalCommand(
+                JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "intervalMs"))));
+    }
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::SetPollIntervalCommand& arg) {
+        jsi::Object obj(runtime);
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::SetPollIntervalCommand::type_tag));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "intervalMs"), JSIConverter<double>::toJSI(runtime, arg.interval_ms));
+        return obj;
+    }
+    static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
+        if (!value.isObject())
+            return false;
+        jsi::Value type = value.getObject(runtime).getProperty(runtime, PropNameIDCache::get(runtime, "type"));
+        return type.isString() && type.getString(runtime).utf8(runtime) == ::session_bridge::SetPollIntervalCommand::type_tag;
+    }
+};
+
+template <>
 struct JSIConverter<::session_bridge::PollOnceCommand> final {
     static inline ::session_bridge::PollOnceCommand fromJSI(jsi::Runtime&, const jsi::Value&) {
         return ::session_bridge::PollOnceCommand{};
@@ -1583,6 +1604,8 @@ struct JSIConverter<::session_bridge::Command> final {
             return JSIConverter<::session_bridge::SetDisplayNameCommand>::fromJSI(runtime, arg);
         if (tag == "attachNetwork")
             return JSIConverter<::session_bridge::AttachNetworkCommand>::fromJSI(runtime, arg);
+        if (tag == "setPollInterval")
+            return JSIConverter<::session_bridge::SetPollIntervalCommand>::fromJSI(runtime, arg);
         if (tag == "pollOnce")
             return JSIConverter<::session_bridge::PollOnceCommand>::fromJSI(runtime, arg);
         if (tag == "setPushToken")
@@ -1645,7 +1668,7 @@ struct JSIConverter<::session_bridge::Command> final {
         if (!type.isString())
             return false;
         std::string tag = type.getString(runtime).utf8(runtime);
-        return tag == "getAccountInfo" || tag == "createAccount" || tag == "restoreAccountFromWords" || tag == "restoreAccountFromSeed" || tag == "getSeedMnemonic" || tag == "setDisplayName" || tag == "attachNetwork" || tag == "pollOnce" || tag == "setPushToken" || tag == "handlePushPayload" || tag == "getConversations" || tag == "getMessageRequests" || tag == "getConversation" || tag == "openDm" || tag == "markRead" || tag == "setBlocked" || tag == "setNickname" || tag == "setPriority" || tag == "approveConversation" || tag == "deleteConversation" || tag == "getMessages" || tag == "sendMessage" || tag == "retrySend" || tag == "deleteMessage" || tag == "getPref" || tag == "setPref" || tag == "deliverTestMessage" || tag == "getTestAccountSeed" || tag == "approveTestContact" || tag == "echoTestFrame";
+        return tag == "getAccountInfo" || tag == "createAccount" || tag == "restoreAccountFromWords" || tag == "restoreAccountFromSeed" || tag == "getSeedMnemonic" || tag == "setDisplayName" || tag == "attachNetwork" || tag == "setPollInterval" || tag == "pollOnce" || tag == "setPushToken" || tag == "handlePushPayload" || tag == "getConversations" || tag == "getMessageRequests" || tag == "getConversation" || tag == "openDm" || tag == "markRead" || tag == "setBlocked" || tag == "setNickname" || tag == "setPriority" || tag == "approveConversation" || tag == "deleteConversation" || tag == "getMessages" || tag == "sendMessage" || tag == "retrySend" || tag == "deleteMessage" || tag == "getPref" || tag == "setPref" || tag == "deliverTestMessage" || tag == "getTestAccountSeed" || tag == "approveTestContact" || tag == "echoTestFrame";
     }
 };
 

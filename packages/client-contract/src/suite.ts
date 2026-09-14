@@ -277,6 +277,20 @@ export function runSessionClientContract(
       }
     })
 
+    it('refuses a poll interval that is not one, and accepts a short one', async () => {
+      const { alice } = await harness.friends()
+
+      // Core reads a non-positive interval as "as fast as the loop will go", which is a busy loop
+      // against the swarm rather than a slow poll.
+      for (const intervalMs of [0, -1]) {
+        const error = await failure(() => alice.setPollInterval(intervalMs))
+        expect(error instanceof Error).toBe(true)
+      }
+
+      // The reason this exists: a test should not wait out the 20-second default.
+      await alice.setPollInterval(50)
+    })
+
     it('refuses a page size that is not a page', async () => {
       const { alice, bobId } = await harness.friends()
 

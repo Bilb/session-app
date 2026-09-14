@@ -185,6 +185,18 @@ export class FakeSessionClient implements SessionClient {
     return Promise.resolve()
   }
 
+  setPollInterval(intervalMs: number): Promise<void> {
+    this.assertOpen()
+    // The fake has no ticker to retune; refusing the same values the real one refuses is the
+    // whole of what it owes a caller here.
+    if (!Number.isFinite(intervalMs) || intervalMs <= 0) {
+      return Promise.reject(
+        new SessionClientError('setPollInterval.intervalMs must be greater than zero'),
+      )
+    }
+    return Promise.resolve()
+  }
+
   setBlocked(id: ConversationId, blocked: boolean): Promise<void> {
     this.assertOpen()
     this.account.touch(id, { blocked })

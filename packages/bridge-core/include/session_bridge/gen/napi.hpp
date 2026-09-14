@@ -917,6 +917,22 @@ struct Codec<::session_bridge::AttachNetworkCommand> {
 };
 
 template <>
+struct Codec<::session_bridge::SetPollIntervalCommand> {
+    static constexpr std::string_view name = "SetPollIntervalCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::SetPollIntervalCommand& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::SetPollIntervalCommand::type_tag.data(), ::session_bridge::SetPollIntervalCommand::type_tag.size()));
+        obj.Set("intervalMs", Codec<double>::to(env, value.interval_ms));
+        return obj;
+    }
+    static ::session_bridge::SetPollIntervalCommand from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::SetPollIntervalCommand(
+                Codec<double>::from(obj.Get("intervalMs"), "SetPollIntervalCommand.intervalMs"));
+    }
+};
+
+template <>
 struct Codec<::session_bridge::PollOnceCommand> {
     static constexpr std::string_view name = "PollOnceCommand";
     static Napi::Value to(Napi::Env env, const ::session_bridge::PollOnceCommand& value) {
@@ -1358,6 +1374,8 @@ struct Codec<::session_bridge::Command> {
             return Codec<::session_bridge::SetDisplayNameCommand>::from(value, where);
         if (tag == "attachNetwork")
             return Codec<::session_bridge::AttachNetworkCommand>::from(value, where);
+        if (tag == "setPollInterval")
+            return Codec<::session_bridge::SetPollIntervalCommand>::from(value, where);
         if (tag == "pollOnce")
             return Codec<::session_bridge::PollOnceCommand>::from(value, where);
         if (tag == "setPushToken")

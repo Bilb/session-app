@@ -55,6 +55,12 @@ export interface SessionClient {
   attachNetwork(config: NetworkAttachment): Promise<void>
   /** One poll cycle, run to completion - what every OS background budget wants. */
   pollOnce(): Promise<void>
+  /**
+   * How often libsession polls the swarm. Its default of 20 seconds is about right for a
+   * person and far too long for a test; a positive number of milliseconds is the only valid
+   * argument.
+   */
+  setPollInterval(intervalMs: number): Promise<void>
 
   getConversations(): Promise<Conversation[]>
   getMessageRequests(): Promise<Conversation[]>
