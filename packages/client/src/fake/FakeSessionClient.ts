@@ -188,7 +188,8 @@ export class FakeSessionClient implements SessionClient {
     },
   ): Promise<Message[]> {
     this.assertOpen()
-    // SQLite reads a negative LIMIT as no limit at all, and zero as the end of the history.
+    // A limit is a page size, not a sentinel: there is no value meaning "all of it", because
+    // history grows without bound.
     if (options?.limit !== undefined && options.limit <= 0) {
       return Promise.reject(new SessionClientError('getMessages.limit must be greater than zero'))
     }
