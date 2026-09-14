@@ -6,6 +6,7 @@ import {
   HeroImage,
   Icon,
   IconRing,
+  SafeArea,
   Screen,
   SessionBrand,
   SessionWordmark,
@@ -142,14 +143,18 @@ export function OnboardingChrome({ children, testID }: { children: ReactNode; te
   )
 
   return (
-    <Screen testID={testID}>
+    // **The screen claims no safe area, and the column takes it instead.** Artwork that stops short
+    // of the status bar and the home indicator reads as a picture in a frame rather than as the
+    // background of the app -- it has to run to the edges of the glass. The column cannot: text
+    // under a notch is text nobody can read. So the two are asked separately.
+    <Screen testID={testID} edges={[]}>
       <XStack flex={1}>
         {/* A maximum rather than a fixed share: the artwork is decoration, and on a very wide
             window 40% of it is more picture than anyone needs. */}
         <YStack width={HERO_FRACTION} maxWidth={640} testID={ELEMENT.onboarding.hero}>
           <HeroImage />
         </YStack>
-        {column}
+        <SafeArea>{column}</SafeArea>
       </XStack>
     </Screen>
   )

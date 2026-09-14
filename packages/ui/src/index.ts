@@ -9,6 +9,7 @@
 export { Avatar } from './Avatar'
 export { RecoveryPasswordMark, SessionBrand, SessionWordmark } from './Brand'
 export { HeroImage } from './HeroImage'
+export { SafeArea, type SafeAreaProps } from './SafeArea'
 export { useTokenColor } from './useTokenColor'
 export { ProgressRing } from './ProgressRing'
 export type { AvatarProps } from './Avatar'
