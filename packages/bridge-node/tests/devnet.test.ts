@@ -15,12 +15,12 @@ import { createNodeBridgeTransport } from '#src/index'
  * the seed nodes a devnet advertises are ones libsession can actually bootstrap from. Every
  * refusal is covered offline; only this covers an acceptance.
  *
- *     SESSION_DEVNET_SEED_URL=http://192.168.1.114:1280 \
+ *     EXPO_PUBLIC_SESSION_DEVNET_SEED_URL=http://192.168.1.114:1280 \
  *       pnpm --filter @session/bridge-node exec vitest run tests/devnet
  *
  * Skipped without that variable, so `pnpm test` never opens a socket.
  */
-const seedUrl = process.env['SESSION_DEVNET_SEED_URL']
+const seedUrl = process.env['EXPO_PUBLIC_SESSION_DEVNET_SEED_URL']
 
 describe.skipIf(seedUrl === undefined)('a local devnet', () => {
   it('attaches, and libsession says so', async () => {
@@ -28,7 +28,7 @@ describe.skipIf(seedUrl === undefined)('a local devnet', () => {
 
     const seedNodes = await discoverSeedNodes(seedUrl, {
       fetch: (url, init) => fetch(url, { ...init, signal: AbortSignal.timeout(8_000) }),
-      variable: 'SESSION_DEVNET_SEED_URL',
+      variable: 'EXPO_PUBLIC_SESSION_DEVNET_SEED_URL',
     })
     console.log(`discovered ${String(seedNodes.length)} seed node(s):`, seedNodes)
     expect(seedNodes.length).toBeGreaterThan(0)

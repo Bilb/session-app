@@ -7,7 +7,7 @@
 export type NetworkName = 'mainnet' | 'testnet' | 'devnet'
 
 /**
- * Reads `SESSION_NETID` into a network name, for whoever is doing the reading.
+ * Reads `EXPO_PUBLIC_SESSION_NETID` into a network name, for whoever is doing the reading.
  *
  * One function because every app has two readers that must not diverge: the transport, which
  * decides what libsession attaches to, and the overlay, which tells a person what that was. Parse
@@ -51,9 +51,10 @@ export interface FileServerConfig {
 /**
  * Where a local Pro backend lives.
  *
- * Carried and consumed by nothing: libsession hardcodes the Pro backend's URL and pubkey as
- * `constexpr` with no override, and nothing in this repository talks to one yet. Parsed anyway so
- * the value is checked where it is written rather than the day Pro arrives.
+ * Carried and consumed by nothing: this repository has no Pro code yet. The URL is ours to use
+ * whenever it does - libsession never calls the backend itself - but the signing key it verifies
+ * proofs against is a `constexpr` with no override. Parsed anyway so the value is checked where it
+ * is written rather than the day Pro arrives.
  */
 export interface ProBackendConfig {
   url: string

@@ -94,7 +94,7 @@ function migrateLegacyLayout(root: string): void {
 export async function createBridge(): Promise<BridgeTransport> {
   loadDotEnv()
 
-  if (process.env['SESSION_FAKE'] === '1') {
+  if (process.env['EXPO_PUBLIC_SESSION_FAKE'] === '1') {
     const { createFakeBridge } = await import('./dev/fakeBridge')
     return createFakeBridge()
   }
@@ -102,18 +102,18 @@ export async function createBridge(): Promise<BridgeTransport> {
   const { createNodeBridgeTransport } = await import('@session/bridge-node')
   const { discoverSeedNodes } = await import('@session/client')
 
-  const name = parseNetworkName(process.env['SESSION_NETID'])
+  const name = parseNetworkName(process.env['EXPO_PUBLIC_SESSION_NETID'])
   const devnet =
     name === 'devnet'
       ? parseDevnetConfig(
           {
-            seedUrl: process.env['SESSION_DEVNET_SEED_URL'],
-            fileServerUrl: process.env['SESSION_FILE_SERVER_URL'],
-            fileServerX25519Pubkey: process.env['SESSION_FILE_SERVER_X25519_PUBKEY'],
-            proBackendUrl: process.env['SESSION_PRO_BACKEND_URL'],
-            proBackendEd25519Pubkey: process.env['SESSION_PRO_BACKEND_ED25519_PUBKEY'],
+            seedUrl: process.env['EXPO_PUBLIC_SESSION_DEVNET_SEED_URL'],
+            fileServerUrl: process.env['EXPO_PUBLIC_SESSION_FILE_SERVER_URL'],
+            fileServerX25519Pubkey: process.env['EXPO_PUBLIC_SESSION_FILE_SERVER_X25519_PUBKEY'],
+            proBackendUrl: process.env['EXPO_PUBLIC_SESSION_PRO_BACKEND_URL'],
+            proBackendEd25519Pubkey: process.env['EXPO_PUBLIC_SESSION_PRO_BACKEND_ED25519_PUBKEY'],
           },
-          'SESSION_',
+          'EXPO_PUBLIC_SESSION_',
         )
       : undefined
 
@@ -160,8 +160,8 @@ export async function createBridge(): Promise<BridgeTransport> {
     deviceType: 'desktop',
     // Off unless asked for: it is chatty at anything below warn, and the reason to turn it up
     // is always a specific failure. SESSION_LOG=debug is what a diagnosis looks like.
-    ...(process.env['SESSION_LOG'] === undefined
+    ...(process.env['EXPO_PUBLIC_SESSION_LOG'] === undefined
       ? {}
-      : { logLevel: process.env['SESSION_LOG'] as 'debug' }),
+      : { logLevel: process.env['EXPO_PUBLIC_SESSION_LOG'] as 'debug' }),
   })
 }

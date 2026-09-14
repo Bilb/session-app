@@ -124,8 +124,8 @@ started without it keeps serving a bundle that ignores it until `expo start --cl
 devnet run is two lines, and `docs/ARCHITECTURE.md` has the reasoning:
 
 ```sh
-SESSION_NETID=devnet
-SESSION_DEVNET_SEED_URL=192.168.1.114:1280      # the seed node's oxend RPC, not a storage port
+EXPO_PUBLIC_SESSION_NETID=devnet
+EXPO_PUBLIC_SESSION_DEVNET_SEED_URL=192.168.1.114:1280      # the seed node's oxend RPC, not a storage port
 ```
 
 Check the devnet is reachable before blaming the app - oxend binds that RPC to the devnet host's
@@ -140,13 +140,14 @@ curl -s -m 5 -X POST http://192.168.1.114:1280/json_rpc -H 'Content-Type: applic
 One command says whether the bridge can attach to it at all, without an app in the way:
 
 ```sh
-SESSION_DEVNET_SEED_URL=192.168.1.114:1280 \
+EXPO_PUBLIC_SESSION_DEVNET_SEED_URL=192.168.1.114:1280 \
   pnpm --filter @session/bridge-node exec vitest run tests/devnet --reporter=verbose
 ```
 
 A devnet build keeps its own database - `userData/devnet/` - so it onboards from scratch the
-first time and leaves a mainnet account where it was. Mobile needs the same names with
-`EXPO_PUBLIC_` in front, and a dev client built since the shim last changed.
+first time and leaves a mainnet account where it was. Mobile needs the same names - they already carry
+`EXPO_PUBLIC_` for Metro's sake, and desktop reads that spelling too - and a dev client built
+since the shim last changed.
 
 ## The e2e suite
 

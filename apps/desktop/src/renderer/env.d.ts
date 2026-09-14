@@ -6,7 +6,7 @@
  */
 interface ImportMetaEnv {
   /** The Session network this build talks to. See parseNetworkName. */
-  readonly SESSION_NETID?: string
+  readonly EXPO_PUBLIC_SESSION_NETID?: string
 }
 
 interface ImportMeta {
