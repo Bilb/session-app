@@ -387,3 +387,79 @@ describeAddon('an in-memory onboarding', () => {
     }
   })
 })
+
+/**
+ * Discarding an account, against real libsession.
+ *
+ * The contract suite asserts what both implementations can promise — that what the old account
+ * stored is gone. These are the parts only the real bridge can be held to: that the identity is
+ * genuinely new, and that whether there is an account afterwards follows how the client was
+ * opened rather than the discard itself.
+ */
+describeAddon('discarding an account', () => {
+  it('leaves a deferred client with no account at all', async () => {
+    const { client, dispose } = await newcomer(41)
+
+    try {
+      await client.createAccount()
+      await client.setDisplayName('Abandoned')
+      const before = await client.getAccountInfo()
+      expect(before.haveAccount).toBe(true)
+
+      await client.discardAccount()
+
+      // Deferred, so reopening mints nothing: this is the first screen again.
+      const after = await client.getAccountInfo()
+      expect(after.haveAccount).toBe(false)
+      expect(after.sessionId).toBeUndefined()
+      expect(after.displayName).toBeUndefined()
+    } finally {
+      await dispose()
+    }
+  })
+
+  it('gives a genuinely different identity to the next account', async () => {
+    // The property the isolation rests on. A name-derived or reused ID would satisfy every other
+    // assertion here and still be the leak.
+    const { client, dispose } = await newcomer(42)
+
+    try {
+      await client.createAccount()
+      const first = (await client.getAccountInfo()).sessionId
+
+      await client.discardAccount()
+      await client.createAccount()
+      const second = (await client.getAccountInfo()).sessionId
+
+      expect(first).toMatch(/^05[0-9a-f]{64}$/)
+      expect(second).toMatch(/^05[0-9a-f]{64}$/)
+      expect(second).not.toBe(first)
+    } finally {
+      await dispose()
+    }
+  })
+
+  it('does not take the recovery phrase of the discarded account with it', async () => {
+    // Restoring one account, changing your mind, and restoring another: the exact case.
+    const origin = await newcomer(43)
+    const device = await newcomer(44)
+
+    try {
+      await origin.client.createAccount()
+      const words = await origin.client.getSeedMnemonic()
+      const theirs = (await origin.client.getAccountInfo()).sessionId
+
+      await device.client.restoreAccount({ words })
+      expect((await device.client.getAccountInfo()).sessionId).toBe(theirs)
+
+      await device.client.discardAccount()
+      await device.client.createAccount()
+
+      // A fresh identity, not the restored one coming back.
+      expect((await device.client.getAccountInfo()).sessionId).not.toBe(theirs)
+    } finally {
+      await origin.dispose()
+      await device.dispose()
+    }
+  })
+})

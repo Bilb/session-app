@@ -83,6 +83,10 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     await client.restoreAccount({ hexSeed: cmd.hexSeed })
     return empty
   },
+  discardAccount: async (client) => {
+    await client.discardAccount()
+    return empty
+  },
   getSeedMnemonic: async (client, cmd) => ({
     type: 'mnemonic',
     words: await client.getSeedMnemonic(cmd.language),

@@ -114,6 +114,10 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       })
     },
 
+    async discardAccount(): Promise<void> {
+      await call({ type: 'discardAccount' })
+    },
+
     async getSeedMnemonic(language): Promise<string[]> {
       const response = await call({
         type: 'getSeedMnemonic',

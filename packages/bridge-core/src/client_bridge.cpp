@@ -24,6 +24,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstring>
+#include <filesystem>
 #include <limits>
 #include <ranges>
 #include <stdexcept>
@@ -216,6 +217,105 @@ struct ClientBridge::Impl {
 
     explicit Impl(Sink s, InitOptions o) : sink{std::move(s)}, options{std::move(o)} {}
 
+    /// Builds the Client, and can do it again.
+    ///
+    /// Lifted out of the constructor because discarding an account destroys the Client and makes
+    /// another: the callbacks below capture `this`, which outlives any particular Client, so they
+    /// can be rebuilt as often as needed. They are moved into the Client, which is why they are
+    /// constructed here on each call rather than held.
+    void open_client() {
+        auto* impl = this;
+
+        // Every handler does the same two things and nothing else: fill a frame, and hand it to the
+        // sink. That is what makes running them inline on Core's loop correct rather than merely
+        // convenient.
+        client::callbacks cbs{
+                .conversation_added =
+                        [impl](client::AnyConversation c) {
+                            impl->event(ConversationAddedSessionEvent{to_bridge(std::move(c))});
+                        },
+                .conversation_updated =
+                        [impl](client::AnyConversation c) {
+                            impl->event(ConversationUpdatedSessionEvent{to_bridge(std::move(c))});
+                        },
+                .conversation_removed =
+                        [impl](const client::ConversationId& id) {
+                            impl->event(ConversationRemovedSessionEvent{id.to_string()});
+                        },
+                .conversation_list_replaced =
+                        [impl](std::vector<client::AnyConversation> convos) {
+                            impl->event(ConversationListReplacedSessionEvent{
+                                    Impl::conversations(std::move(convos))});
+                        },
+                .request_list_replaced =
+                        [impl](std::vector<client::AnyConversation> convos) {
+                            impl->event(RequestListReplacedSessionEvent{
+                                    Impl::conversations(std::move(convos))});
+                        },
+                .message_added =
+                        [impl](const client::ConversationId& id, client::Message m) {
+                            impl->event(
+                                    MessageAddedSessionEvent{id.to_string(), to_bridge(std::move(m))});
+                        },
+                .message_updated =
+                        [impl](const client::ConversationId& id, client::Message m) {
+                            impl->event(
+                                    MessageUpdatedSessionEvent{id.to_string(), to_bridge(std::move(m))});
+                        },
+                .history_replaced =
+                        [impl](const client::ConversationId& id) {
+                            impl->event(HistoryReplacedSessionEvent{id.to_string()});
+                        },
+                // attachment_progress and display_picture_progress are deliberately left unset:
+                // no transfer is part of the protocol, so there is no frame to report one on.
+        };
+
+        // The key options are types rather than values, so which one is used has to be a branch
+        // rather than an argument. Only one of these ever runs, which is what makes moving the
+        // callbacks in each of them safe.
+        auto open = [&](auto&&... key) {
+            if (options.defer_account)
+                return std::make_unique<client::Client>(
+                        options.db_path,
+                        std::move(cbs),
+                        core::defer_account{},
+                        std::forward<decltype(key)>(key)...);
+            return std::make_unique<client::Client>(
+                    options.db_path, std::move(cbs), std::forward<decltype(key)>(key)...);
+        };
+
+        if (options.raw_key)
+            client = open(sqlite::raw_key{*options.raw_key});
+        else if (options.password)
+            client = open(sqlite::argon2id_password{*options.password});
+        else
+            client = open();
+
+        if (!options.cache_dir.empty())
+            client->set_cache_dir(options.cache_dir);
+
+        // Set up after the Client exists, so nothing arrives before there is a sink to take it.
+        if (!options.log_level.empty()) {
+            auto level = options.log_level == "trace"      ? LogLevel::trace
+                         : options.log_level == "debug"    ? LogLevel::debug
+                         : options.log_level == "info"     ? LogLevel::info
+                         : options.log_level == "error"    ? LogLevel::error
+                         : options.log_level == "critical" ? LogLevel::critical
+                                                           : LogLevel::warn;
+            logger_reset_level(level);
+
+                auto* impl = this;
+            add_logger([impl](std::string_view message, std::string_view category, LogLevel lvl) {
+                // Called from whichever thread logged, including Core's loop and the network's own
+                // threads, and after close() has dropped the sink - emit() checks for that, which
+                // is the only reason this is safe to leave registered.
+                impl->event(LogSessionEvent{
+                        std::string{message}, std::string{category}, std::string{lvl.to_string()}});
+            });
+        }
+
+    }
+
     /// What this client tells the account's other devices it is.
     ///
     /// Called on every start rather than once: `update_info` compares the user-settable fields
@@ -402,6 +502,38 @@ struct ClientBridge::Impl {
         auto discarded = core::predefined_seed{
                 words, cmd.language ? std::string_view{*cmd.language} : std::string_view{"English"}};
         static_cast<void>(discarded);
+        ok(id);
+    }
+
+    void handle(double id, const DiscardAccountCommand&) {
+        // Closed before anything is removed. Deleting a database out from under an open handle
+        // leaves its pages alive until the last descriptor closes, which looks exactly like having
+        // worked and is not.
+        client.reset();
+
+        std::error_code ec;
+        std::filesystem::remove(options.db_path, ec);
+        // The write-ahead log and its shared-memory index. A clean close checkpoints and removes
+        // both, so ordinarily there is nothing here -- but a close is not guaranteed to be clean,
+        // and a stale -wal beside a new database is a database that will not open.
+        for (const auto* suffix : {"-wal", "-shm"}) {
+            auto path = options.db_path;
+            path += suffix;
+            std::filesystem::remove(path, ec);
+        }
+
+        // The attachment cache goes too. Its contents are encrypted under a key that lived in the
+        // database just deleted, so they are already unreadable -- this is tidiness rather than
+        // safety, and skipping it would leave an account's pictures on disk for ever.
+        if (!options.cache_dir.empty())
+            std::filesystem::remove_all(options.cache_dir, ec);
+
+        // `netcache` is deliberately NOT removed. It sits beside the database and holds the public
+        // service-node list -- no account data whatsoever -- and it is what makes the next attempt
+        // fast. A discard that cleaned everything beside the database would throw away the one
+        // thing worth keeping.
+
+        open_client();
         ok(id);
     }
 
@@ -714,98 +846,7 @@ struct ClientBridge::Impl {
 ClientBridge::ClientBridge(InitOptions options, Sink sink) :
         _impl{std::make_unique<Impl>(std::move(sink), options)} {
 
-    auto* impl = _impl.get();
-
-    // Every handler does the same two things and nothing else: fill a frame, and hand it to the
-    // sink. That is what makes running them inline on Core's loop correct rather than merely
-    // convenient.
-    client::callbacks cbs{
-            .conversation_added =
-                    [impl](client::AnyConversation c) {
-                        impl->event(ConversationAddedSessionEvent{to_bridge(std::move(c))});
-                    },
-            .conversation_updated =
-                    [impl](client::AnyConversation c) {
-                        impl->event(ConversationUpdatedSessionEvent{to_bridge(std::move(c))});
-                    },
-            .conversation_removed =
-                    [impl](const client::ConversationId& id) {
-                        impl->event(ConversationRemovedSessionEvent{id.to_string()});
-                    },
-            .conversation_list_replaced =
-                    [impl](std::vector<client::AnyConversation> convos) {
-                        impl->event(ConversationListReplacedSessionEvent{
-                                Impl::conversations(std::move(convos))});
-                    },
-            .request_list_replaced =
-                    [impl](std::vector<client::AnyConversation> convos) {
-                        impl->event(RequestListReplacedSessionEvent{
-                                Impl::conversations(std::move(convos))});
-                    },
-            .message_added =
-                    [impl](const client::ConversationId& id, client::Message m) {
-                        impl->event(
-                                MessageAddedSessionEvent{id.to_string(), to_bridge(std::move(m))});
-                    },
-            .message_updated =
-                    [impl](const client::ConversationId& id, client::Message m) {
-                        impl->event(
-                                MessageUpdatedSessionEvent{id.to_string(), to_bridge(std::move(m))});
-                    },
-            .history_replaced =
-                    [impl](const client::ConversationId& id) {
-                        impl->event(HistoryReplacedSessionEvent{id.to_string()});
-                    },
-            // attachment_progress and display_picture_progress are deliberately left unset:
-            // no transfer is part of the protocol, so there is no frame to report one on.
-    };
-
-    // The key options are types rather than values, so which one is used has to be a branch
-    // rather than an argument. Only one of these ever runs, which is what makes moving the
-    // callbacks in each of them safe.
-    auto open = [&](auto&&... key) {
-        if (options.defer_account)
-            return std::make_unique<client::Client>(
-                    options.db_path,
-                    std::move(cbs),
-                    core::defer_account{},
-                    std::forward<decltype(key)>(key)...);
-        return std::make_unique<client::Client>(
-                options.db_path, std::move(cbs), std::forward<decltype(key)>(key)...);
-    };
-
-    if (options.raw_key)
-        _impl->client = open(sqlite::raw_key{*options.raw_key});
-    else if (options.password)
-        _impl->client = open(sqlite::argon2id_password{*options.password});
-    else
-        _impl->client = open();
-
-    if (!options.cache_dir.empty())
-        _impl->client->set_cache_dir(options.cache_dir);
-
-    // Set up after the Client exists, so nothing arrives before there is a sink to take it.
-    if (!options.log_level.empty() || !options.log_categories.empty()) {
-        if (!options.log_level.empty())
-            logger_reset_level(log_level_of(options.log_level));
-
-        // After the default, because reset_level sets every existing category: the other order
-        // would hand each override straight back to the level it was overriding.
-        for (const auto& each : options.log_categories)
-            logger_set_level(each.category, log_level_of(each.level));
-
-        // Kept so close() can take it back off: this fires from threads close() cannot join,
-        // and what it writes to does not outlive the bridge.
-        impl->logger =
-                add_logger([impl](std::string_view message,
-                                  std::string_view category,
-                                  LogLevel lvl) {
-                    impl->event(LogSessionEvent{
-                            std::string{message},
-                            std::string{category},
-                            std::string{lvl.to_string()}});
-                });
-    }
+    _impl->open_client();
 
     // An account that is already there needs no onboarding, so this is where its network comes
     // from. A deferred one gets it from createAccount or restoreAccount instead.

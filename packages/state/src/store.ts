@@ -48,6 +48,14 @@ export interface SessionActions {
    */
   checkRecoveryPhrase: (words: string[], language?: string) => Promise<void>
   /**
+   * Throws the account away and starts from nothing, then re-hydrates onto the empty result.
+   *
+   * Onboarding's undo. Re-hydrating is not optional: the bridge has deleted the database and
+   * opened a new one, so every conversation and message window the store is holding belongs to an
+   * account that no longer exists on this device.
+   */
+  discardAccount: () => Promise<void>
+  /**
    * Re-reads the account and nothing else.
    *
    * libsession pushes conversations and messages but has no event for the account itself, so a
@@ -259,6 +267,11 @@ export function createSessionStore(
 
     async checkRecoveryPhrase(words, language): Promise<void> {
       await client.checkRecoveryPhrase(words, language)
+    },
+
+    async discardAccount(): Promise<void> {
+      await client.discardAccount()
+      await actions.hydrate()
     },
 
     async refreshAccount(): Promise<void> {

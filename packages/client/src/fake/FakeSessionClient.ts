@@ -125,6 +125,15 @@ export class FakeSessionClient implements SessionClient {
     return Promise.resolve()
   }
 
+  discardAccount(): Promise<void> {
+    this.assertOpen()
+    // The real bridge deletes the database and opens a new one, so what survives is nothing the
+    // account put there. Modelled as the account being emptied rather than the client being
+    // replaced, because a caller keeps the same client across a discard either way.
+    this.account.discard()
+    return Promise.resolve()
+  }
+
   getSeedMnemonic(): Promise<string[]> {
     this.assertOpen()
     // libsession owns the real word list; the shape is what onboarding is written against.

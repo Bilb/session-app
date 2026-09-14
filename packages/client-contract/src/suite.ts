@@ -125,6 +125,26 @@ export function runSessionClientContract(
       expect((await client.getAccountInfo()).haveAccount).toBe(false)
     })
 
+    it('leaves nothing of an account behind when it is discarded', async () => {
+      // Onboarding's undo, and the reason the whole thing exists: somebody who starts restoring
+      // one account and changes their mind must not carry any of it into the next.
+      //
+      // Asserted on what was stored rather than on `haveAccount`, because whether there is an
+      // account afterwards is not a property of the discard -- it is a property of how the client
+      // was opened. A deferred client comes back with none; one opened eagerly comes back with a
+      // *new* one, because that is what opening eagerly means. Either way what the old account put
+      // here is gone, and that is the promise.
+      const { alice, bobId, settle } = await harness.friends()
+      await alice.sendMessage(bobId, { body: 'before' })
+      await settle()
+      expect((await alice.getConversations()).length).toBeGreaterThan(0)
+
+      await alice.discardAccount()
+
+      expect(await alice.getConversations()).toEqual([])
+      expect(await alice.getMessageRequests()).toEqual([])
+    })
+
     it('stores an outgoing message before it is sent', async () => {
       const { alice, bobId } = await harness.friends()
       const seen = collect(alice)

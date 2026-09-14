@@ -114,6 +114,21 @@ export class FakeAccount {
     }
   }
 
+  /**
+   * Back to a device with nothing on it, the way discarding an account leaves one.
+   *
+   * Everything the account accumulated goes: the identity, the conversations, the history, the
+   * preferences. The session ID is kept because it is derived from the fixture's name and the
+   * world wires peers up by it -- what matters for the behaviour under test is that
+   * `haveAccount` is false, which is what `accountInfo` reports off.
+   */
+  discard(): void {
+    this.haveAccount = false
+    this.profileArrivesAt = 0
+    this.conversations.clear()
+    this.prefs.clear()
+  }
+
   /** Approved conversations, ordered the way the app shows them. */
   list(): Conversation[] {
     return this.ordered((c) => !c.request)

@@ -72,6 +72,22 @@ export type Command =
    */
   | { type: 'checkRecoveryPhrase'; words: string[]; language?: string }
   | { type: 'restoreAccountFromSeed'; hexSeed: string }
+  /**
+   * Throws away the account and everything stored under it, and starts again from nothing.
+   *
+   * **Onboarding's undo.** Somebody who starts restoring one account and changes their mind must
+   * not carry any of it into the next: the identity, the configs fetched under it and the message
+   * history all have to go, not merely stop being displayed. Doing that properly means the
+   * database, so this closes libSession, deletes it and opens a fresh one on the same path.
+   *
+   * Deliberately **not** a way to "log out" -- there is nothing to log back in to. It is the same
+   * act as never having onboarded, and the app that calls it is expected to be showing the first
+   * screen afterwards.
+   *
+   * The network cache is left alone. It holds the public list of service nodes and nothing about
+   * any account, and it is what makes the next attempt fast rather than slow.
+   */
+  | { type: 'discardAccount' }
   | { type: 'getSeedMnemonic'; language?: string }
   | { type: 'setDisplayName'; name: string }
   /**

@@ -55,6 +55,14 @@ export interface SessionClient {
    * phrase is wrong at the screen that asked for it, and still mint nothing until the end.
    */
   checkRecoveryPhrase(words: string[], language?: string): Promise<void>
+  /**
+   * Throws the account away and starts from nothing: onboarding's undo.
+   *
+   * The database goes, so the identity, the configs fetched under it and the history go with it.
+   * Not a logout -- there is nothing to log back in to, and the caller is expected to be showing
+   * the first screen afterwards.
+   */
+  discardAccount(): Promise<void>
   /** libsession owns the word list, so onboarding needs no mnemonic library of its own. */
   getSeedMnemonic(language?: string): Promise<string[]>
   setDisplayName(name: string): Promise<void>
