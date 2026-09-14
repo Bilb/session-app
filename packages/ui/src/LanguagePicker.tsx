@@ -27,10 +27,10 @@ const MIN_PANEL_HEIGHT = 260
  * splits. The two platforms do behave differently -- desktop always picks the language itself,
  * where a phone should hand over to the OS's own per-app language screen when it has one -- but
  * that difference is *whether the OS offers the screen*, not *which bundler resolved the file*.
- * So it arrives as `onOpenSystemSettings`: present, and the panel offers to leave for the system
- * screen; absent, and the panel does the work. Desktop never passes it. A phone passes it only on
- * an OS version that has somewhere to go. Splitting by platform instead would have hard-coded
- * "Android has this" into the file name, and Android has had it only since 13.
+ * So it arrives as `onOpenSystemSettings`: present, and the trigger hands straight over and no
+ * panel opens at all; absent, and the panel does the work. Desktop never passes it. A phone passes
+ * it only on an OS version that has somewhere to go. Splitting by platform instead would have
+ * hard-coded "Android has this" into the file name, and Android has had it only since 13.
  *
  * Drawn in a `Modal` rather than an absolutely-positioned sibling, because a dropdown has to
  * escape its parent's bounds and a child that overflows its parent is clipped on Android. The cost
@@ -48,7 +48,6 @@ export function LanguagePicker({
   title,
   searchPlaceholder,
   emptyLabel,
-  systemSettingsLabel,
   closeLabel,
   compact = false,
   testIDs,
@@ -79,6 +78,13 @@ export function LanguagePicker({
           accessibilityLabel={accessibilityLabel}
           testID={testIDs.trigger}
           onPress={() => {
+            // **Where the OS owns the setting there is no panel at all.** A dropdown whose only
+            // row is "go somewhere else" is a step that asks a question it already knows the
+            // answer to, so the trigger raises the hand-off directly and the caller confirms it.
+            if (onOpenSystemSettings !== undefined) {
+              onOpenSystemSettings()
+              return
+            }
             // Measured on each open rather than once on layout: the window can be resized while
             // the picker is closed, and a stale rectangle puts the panel where the button was.
             measureAnchor(trigger.current, setAnchor)
@@ -160,7 +166,7 @@ export function LanguagePicker({
                 />
               </XStack>
 
-              {onOpenSystemSettings === undefined ? (
+              {
                 <LanguageChoiceList
                   value={value}
                   options={options}
@@ -175,20 +181,7 @@ export function LanguagePicker({
                     setAnchor(null)
                   }}
                 />
-              ) : (
-                /* Where the OS owns the setting, the app must not keep a second copy of it: two
-                   places to change the language disagree the moment somebody uses the other. */
-                <Button
-                  variant="outline"
-                  testID={testIDs.systemSettings}
-                  onPress={() => {
-                    setAnchor(null)
-                    onOpenSystemSettings()
-                  }}
-                >
-                  {systemSettingsLabel}
-                </Button>
-              )}
+              }
             </YStack>
           )}
         </YStack>

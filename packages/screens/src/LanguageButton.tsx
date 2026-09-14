@@ -54,14 +54,14 @@ export function LanguageButton() {
         // where the answer is known.
         //
         // Opening is confirmed rather than immediate, so what the picker gets here raises the
-        // question and the answer is what leaves.
+        // question and the answer is what leaves. Given this, the picker's trigger hands straight
+        // over and no dropdown opens -- there is nothing in one worth a tap.
         {...(openLanguageSettings === null
           ? {}
           : {
               onOpenSystemSettings: () => {
                 setConfirming(true)
               },
-              systemSettingsLabel: tr('openSettings'),
             })}
         accessibilityLabel={tr('appearanceLanguage')}
         title={tr('appearanceLanguage')}

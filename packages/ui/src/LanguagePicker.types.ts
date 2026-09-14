@@ -23,22 +23,19 @@ export interface LanguagePickerTestIDs {
   panel: string
   search: string
   close: string
-  systemSettings: string
   option: (value: string) => string
 }
 
 /**
- * Whether the OS has a per-app language screen to hand over to, and what the control that goes
- * there is called.
+ * Whether the OS has a per-app language screen to hand over to.
  *
- * A union rather than two optional props, so the two cannot be passed apart. A handler with no
- * label renders a button with nothing written on it, and a label with no handler renders nothing
- * at all -- both are the kind of mistake that only shows up on the one OS version that takes the
- * branch.
+ * When it does, the trigger calls this and no panel opens: the picker has nothing to offer that
+ * the OS does not own, and a dropdown whose only row says "go somewhere else" is a step for its
+ * own sake. It carried a label for that row until the row existed; the caller now owns the whole
+ * of what happens next, confirmation included.
  */
 type SystemSettingsHandover =
-  | { onOpenSystemSettings: () => void; systemSettingsLabel: string }
-  | { onOpenSystemSettings?: never; systemSettingsLabel?: never }
+  { onOpenSystemSettings: () => void } | { onOpenSystemSettings?: never }
 
 /**
  * The props the LanguagePicker accepts.
