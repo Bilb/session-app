@@ -421,6 +421,26 @@ struct CreateAccountCommand {
     static constexpr std::string_view type_tag = "createAccount";
 };
 
+/// **The words are strings, and that is the known weak point of the whole seed story.**
+///
+/// A JavaScript string cannot be wiped: it is immutable, the engine may copy or intern it, and
+/// nothing can zero it on demand. By the time a phrase reaches here it exists several times over
+/// -- the text field's own value, the state holding it, the array split out of it, the copy
+/// structured-cloned across the process boundary -- and none of those can be cleared, only
+/// abandoned to a collector that runs when it likes.
+///
+/// **It stays this way deliberately, for now, because the alternatives are worse.** Collecting
+/// the phrase without a string means giving up paste, and a phrase arrives pasted out of a
+/// password manager at least as often as it is typed; every current client has the same flaw for
+/// the same reason.
+///
+/// **What should replace it** is bytes rather than words, *transferred* rather than copied:
+/// `postMessage(request, [buffer])` detaches the sender's `ArrayBuffer`, so the bytes end up in
+/// exactly one process instead of two, and an `ArrayBuffer` -- unlike a string -- can be zeroed
+/// with `fill(0)` once the shim has taken it. That needs a binary type in this protocol, which
+/// the generator does not have yet (`tooling/bridge-codegen/src/model.ts` knows string, number
+/// and boolean). The same binary type is what returning a rendered phrase as an image would
+/// need, so it is worth adding once rather than twice.
 struct RestoreAccountFromWordsCommand {
     static constexpr std::string_view type_tag = "restoreAccountFromWords";
 

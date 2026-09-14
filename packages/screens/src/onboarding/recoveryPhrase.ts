@@ -15,6 +15,10 @@ export const SHORTEST_PHRASE_WORDS = 13
  * phrase that is perfectly correct.
  */
 export function phraseWords(input: string): string[] {
+  // Every call makes more strings that cannot be wiped -- the lowercased copy, the split parts.
+  // Accepted rather than overlooked: see the note on `restoreAccountFromWords` in the protocol for
+  // why the phrase is a string at all and what would replace it. Called once per submit rather
+  // than on every keystroke, which is the one thing this file can do about it.
   return input
     .toLowerCase()
     .split(/[^\p{Letter}\p{Mark}]+/u)
