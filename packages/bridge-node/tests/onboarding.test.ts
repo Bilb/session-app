@@ -463,3 +463,48 @@ describeAddon('discarding an account', () => {
     }
   })
 })
+
+describeAddon('the conversation list a new account starts with', () => {
+  it('can be read back', async () => {
+    // The flow re-hydrates the moment an account exists, and re-hydrating lists conversations.
+    // libsession refused that list on a freshly created account -- "Invalid conversation id: not
+    // a hex session or group ID" -- which surfaced as an unexplained "something went wrong" at the
+    // end of onboarding on every platform, and on a relaunch as a launch screen that never left.
+    const { client, dispose } = await newcomer(23)
+
+    try {
+      await client.createAccount()
+      await expect(client.getConversations()).resolves.toBeInstanceOf(Array)
+      await expect(client.getMessageRequests()).resolves.toBeInstanceOf(Array)
+    } finally {
+      await dispose()
+    }
+  })
+})
+
+describeAddon('the conversation list a new account starts with, on a real device type', () => {
+  it('can be read back', async () => {
+    // The apps declare what they are, which makes `createAccount` publish a device record before
+    // it answers. The harness above declares nothing, so it never took that path -- and that path
+    // is the difference between a list that reads back and one libsession refuses.
+    const dir = await mkdtemp(join(tmpdir(), 'session-device-type-'))
+    await mkdir(join(dir, 'cache'), { recursive: true })
+    const client = createSessionClient(
+      createNodeBridgeTransport({
+        dbPath: join(dir, 'session.db'),
+        cacheDir: join(dir, 'cache'),
+        rawKey: new Uint8Array(32).fill(31),
+        deferAccount: true,
+        deviceType: 'desktop',
+      }),
+    )
+
+    try {
+      await client.createAccount()
+      await expect(client.getConversations()).resolves.toBeInstanceOf(Array)
+    } finally {
+      client.close()
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+})

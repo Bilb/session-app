@@ -201,6 +201,31 @@ export function createSessionStore(
     }
   }
 
+  /**
+   * Runs an onboarding step and says so when it fails.
+   *
+   * These are the calls whose refusal the screens flatten into one sentence -- "something went
+   * wrong", because there is nothing useful to tell somebody halfway through making an account.
+   * That is right for the screen and leaves nobody able to say *what* went wrong: a create that
+   * failed and a rename that failed looked identical from outside, and neither reached a log.
+   * The rejection still propagates; this only makes sure it was heard on the way past.
+   *
+   * It wraps the **whole** action, re-hydrate included. Wrapping only the bridge call left the
+   * first real failure silent anyway: the account was minted, and it was the read-back afterwards
+   * that threw.
+   */
+  async function onboardingStep<T>(name: string, run: () => Promise<T>): Promise<T> {
+    try {
+      return await run()
+    } catch (error) {
+      log(
+        'error',
+        `[session] ${name} failed: ${error instanceof Error ? error.message : String(error)}`,
+      )
+      throw error
+    }
+  }
+
   const actions: SessionActions = {
     async start(): Promise<void> {
       store.setState({ startupError: null })
@@ -307,13 +332,17 @@ export function createSessionStore(
     },
 
     async createAccount(): Promise<void> {
-      await client.createAccount()
-      await actions.hydrate()
+      await onboardingStep('createAccount', async () => {
+        await client.createAccount()
+        await actions.hydrate()
+      })
     },
 
     async restoreAccount(from): Promise<void> {
-      await client.restoreAccount(from)
-      await actions.hydrate()
+      await onboardingStep('restoreAccount', async () => {
+        await client.restoreAccount(from)
+        await actions.hydrate()
+      })
     },
 
     async checkRecoveryPhrase(words, language): Promise<void> {
@@ -321,12 +350,14 @@ export function createSessionStore(
     },
 
     async discardAccount(): Promise<void> {
-      await client.discardAccount()
-      await actions.hydrate()
+      await onboardingStep('discardAccount', async () => {
+        await client.discardAccount()
+        await actions.hydrate()
+      })
     },
 
     async keepAccount(): Promise<void> {
-      await client.keepAccount()
+      await onboardingStep('keepAccount', () => client.keepAccount())
     },
 
     async refreshAccount(): Promise<void> {
@@ -334,8 +365,10 @@ export function createSessionStore(
     },
 
     async setDisplayName(name): Promise<void> {
-      await client.setDisplayName(name)
-      await actions.hydrate()
+      await onboardingStep('setDisplayName', async () => {
+        await client.setDisplayName(name)
+        await actions.hydrate()
+      })
     },
 
     dispose(): void {
