@@ -278,6 +278,9 @@ importers:
       '@session/client':
         specifier: workspace:*
         version: link:../../packages/client
+      '@session/localization':
+        specifier: workspace:*
+        version: link:../../packages/localization
       '@session/screens':
         specifier: workspace:*
         version: link:../../packages/screens
@@ -8333,9 +8336,7 @@ snapshots:
       metro-runtime: 0.84.6
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/metro-config@0.87.1(@babel/core@7.29.7)':
     dependencies:

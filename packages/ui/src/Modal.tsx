@@ -13,6 +13,15 @@ interface ModalProps {
   title: string
   /** Names the close control for a screen reader, since it is drawn as a cross. */
   closeLabel: string
+  /**
+   * Whether the cross in the corner is drawn.
+   *
+   * On for a dialog that shows something, where closing is the only thing to do with it. **Off for
+   * one that asks a question**: a cross is a third answer next to the two in the actions row, and
+   * an unlabelled one -- somebody deciding whether to leave the app wants to read the word Cancel,
+   * not infer it from a glyph. Such a dialog puts its own cancel in `actions`.
+   */
+  showClose?: boolean
   children: ReactNode
   /** The row of actions along the bottom. Text buttons, in the client's shape. */
   actions?: ReactNode
@@ -43,6 +52,7 @@ export function Modal({
   closeLabel,
   children,
   actions,
+  showClose = true,
   testID,
   closeTestID,
 }: ModalProps) {
@@ -71,17 +81,19 @@ export function Modal({
             <Text flex={1} size="$titleLarge" weight="bold" textAlign="center" userSelect="none">
               {title}
             </Text>
-            <YStack position="absolute" top={0} right={0}>
-              <Button
-                variant="ghost"
-                size="xs"
-                circular
-                accessibilityLabel={closeLabel}
-                testID={closeTestID}
-                onPress={onClose}
-                icon={<Icon name="x" size="$5" color="$textPrimary" />}
-              />
-            </YStack>
+            {!showClose ? null : (
+              <YStack position="absolute" top={0} right={0}>
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  circular
+                  accessibilityLabel={closeLabel}
+                  testID={closeTestID}
+                  onPress={onClose}
+                  icon={<Icon name="x" size="$5" color="$textPrimary" />}
+                />
+              </YStack>
+            )}
           </XStack>
 
           {children}

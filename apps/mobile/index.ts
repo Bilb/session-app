@@ -7,5 +7,8 @@
  * way in.
  */
 import './src/platform'
+// After the ports, before the routes: it reads react-native's own settings modules and sets the
+// app's language from them, so the first screen is drawn in the right one.
+import './src/locale'
 
 import 'expo-router/entry'

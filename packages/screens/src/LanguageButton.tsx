@@ -81,17 +81,30 @@ export function LanguageButton() {
         closeLabel={tr('cancel')}
         testID={ELEMENT.languagePicker.confirmSettings}
         closeTestID={ELEMENT.languagePicker.confirmSettingsCancel}
+        // A question, so it gets two words rather than a word and a glyph. See the prop.
+        showClose={false}
         actions={
-          <Button
-            variant="ghost"
-            testID={ELEMENT.languagePicker.confirmSettingsOpen}
-            onPress={() => {
-              setConfirming(false)
-              if (openLanguageSettings !== null) void openLanguageSettings()
-            }}
-          >
-            {tr('openSettings')}
-          </Button>
+          <>
+            <Button
+              variant="ghost"
+              testID={ELEMENT.languagePicker.confirmSettingsCancel}
+              onPress={() => {
+                setConfirming(false)
+              }}
+            >
+              {tr('cancel')}
+            </Button>
+            <Button
+              variant="ghost"
+              testID={ELEMENT.languagePicker.confirmSettingsOpen}
+              onPress={() => {
+                setConfirming(false)
+                if (openLanguageSettings !== null) void openLanguageSettings()
+              }}
+            >
+              {tr('openSettings')}
+            </Button>
+          </>
         }
       >
         {/* The catalogue's own description of the setting. It is written for the in-app picker and

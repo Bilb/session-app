@@ -38,6 +38,7 @@ dev entries. When a rule fires, fix the design - not the config.
   the contract scenarios **in the same PR**.
 - Tamagui: a missing token resolves to 0 silently, so token names must exist; `defaultFont`
   must be set; the space scale has half-steps - use them. No hex outside `@session/theme-tokens`.
+- **Every user-visible string comes from the Crowdin catalogue.** `packages/localization/src/**/generated/` is regenerated wholesale by the shared translation scripts, so a key added there is lost on the next run and fails the lint meanwhile. Use a key that exists, or hard-code the English and raise the missing key -- never add one to the generated files.
 - Colour and type: `docs/THEMING.md` says which role to reach for and why. A theme is authored
   knobs plus derived roles - never add a hex, and never derive a value from the base when it is
   drawn on a card.

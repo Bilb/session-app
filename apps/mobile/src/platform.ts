@@ -60,17 +60,22 @@ setPorts(
       /**
        * **iOS only, and only because iOS is the only one of the two that can show the row.**
        *
-       * `openSettings` opens this app's own page in Settings, where iOS lists Preferred Language --
-       * but only for a bundle that declares more than one localization, which is what the
-       * `CFBundleLocalizations` list in `app.config.ts` is for. Without that list the row is not
-       * there and this would land somebody on a settings page with nothing to change.
+       * `app-settings:` rather than react-native's `Linking.openSettings()`, which landed on the
+       * Settings app's own root -- the list of every app -- rather than on this app's page. The
+       * string is the literal value of `UIApplication.openSettingsURLString`, which is what the
+       * legacy client opens and what actually works.
+       *
+       * The page it opens lists Preferred Language, but only for a bundle that declares more than
+       * one localization, which is what the `CFBundleLocalizations` list in `app.config.ts` is
+       * for. Without that list the row is not there and this would land somebody on a settings
+       * page with nothing to change.
        *
        * Null on Android, which is not a stub: App Language exists there from 13 onwards and only
        * for an app shipping a `localeConfig`, and this app has no Android build to put one in yet.
        * Null is what the picker reads to mean "do it yourself", which is the right answer until
        * then -- see the port.
        */
-      openLanguageSettings: Platform.OS === 'ios' ? () => Linking.openSettings() : null,
+      openLanguageSettings: Platform.OS === 'ios' ? () => Linking.openURL('app-settings:') : null,
     },
     secureStore: {
       async getDatabaseKey() {
