@@ -63,6 +63,27 @@ function useFadeIn(key: string): number {
 /** The desktop client's registration column. Everything inside onboarding is this wide. */
 const COLUMN_WIDTH = 348
 
+/**
+ * The height every step's content is given, however short it really is.
+ *
+ * The desktop client's own number, taken from the tallest step, and its comment says what it is
+ * for: *"Min height should match the onboarding step with the largest height -- this prevents the
+ * loading spinner from jumping around while still keeping things centered."*
+ *
+ * **It sits on the column rather than on the step, which is where the client puts it.** In the
+ * client the reserve is on the back-button wrapper, so only a step with a back button gets it and
+ * the landing screen stands at its own height -- the block is then centred at two different heights
+ * and the lockup, the heading and the buttons all move as you go from the landing screen to the
+ * next one. Here every screen reserves the same box, so the block is one size and the content
+ * starts at the same place throughout: nothing jumps, at the cost of the short screens sitting
+ * above the middle rather than on it. A product call, and the reason for the difference.
+ *
+ * That upward bias is the reserve's own doing rather than a separate nudge: short content
+ * top-aligns in the box and the empty part of it hangs below. The landing screen, the shortest,
+ * reads about 70px high; the steps read about 20px high.
+ */
+const CONTENT_MIN_HEIGHT = 276
+
 /** The hero's share of the window. A maximum, not a fixed split. */
 const HERO_FRACTION = '40%'
 
@@ -116,6 +137,7 @@ export function OnboardingChrome({ children, testID }: { children: ReactNode; te
       <YStack width={COLUMN_WIDTH} gap="$3">
         <OnboardingHeader />
         <YStack
+          minHeight={CONTENT_MIN_HEIGHT}
           opacity={fading}
           // No animation driver is configured, so the transition is declared directly. On
           // native this property is ignored and the step simply appears, which is the same
