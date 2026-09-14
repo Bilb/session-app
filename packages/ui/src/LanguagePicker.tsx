@@ -77,7 +77,9 @@ export function LanguagePicker({
           // target rather than of its glyph. `compact` still removes the horizontal padding below,
           // so the flag and chevron sit tight inside it rather than spread by a text button's.
           size="md"
-          {...(compact ? { paddingHorizontal: 0 } : {})}
+          // `compact` trims the text button's padding rather than removing it: at zero the
+          // highlight sat hard against the flag on one side and the chevron on the other.
+          {...(compact ? { paddingHorizontal: 8 } : {})}
           accessibilityLabel={accessibilityLabel}
           testID={testIDs.trigger}
           onPress={() => {

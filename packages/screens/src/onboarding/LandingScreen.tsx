@@ -1,6 +1,6 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Text, useMedia, YStack } from '@session/ui'
+import { Button, Reveal, Text, useMedia, YStack } from '@session/ui'
 import { useEffect, useState } from 'react'
 
 import { EXTRA_ACTION_INSET, OnboardingChrome } from './OnboardingChrome'
@@ -37,6 +37,21 @@ const BUBBLE_INTERVAL_MS = 1500
  * the same effect from their own constraints.
  */
 const BUBBLE_MAX_WIDTH = 230
+
+/**
+ * The height the conversation is played out in, and why the earlier lines move.
+ *
+ * The legacy client bottom-aligns the stack inside a box of this fixed height, so each bubble that
+ * arrives pushes the ones above it upward. Ours grew downward from a centred stack instead, which
+ * is why the conversation read as a list filling in rather than as messages arriving -- the
+ * movement is most of the effect, and it belongs to the container rather than to the bubble.
+ */
+const CONVERSATION_HEIGHT = 320
+
+/** The gap between bubbles, and the bubble's own metrics. The client's numbers. */
+const BUBBLE_GAP = 18
+const BUBBLE_PADDING = 12
+const BUBBLE_RADIUS = 13
 
 interface LandingScreenProps {
   onCreate: () => void
@@ -117,21 +132,24 @@ function PhoneOpening() {
         {tr('onboardingBubblePrivacyInYourPocket')}
       </Text>
 
-      <YStack flex={1} justifyContent="center" gap="$1" minHeight={200}>
+      <YStack height={CONVERSATION_HEIGHT} justifyContent="flex-end" gap={BUBBLE_GAP}>
         {BUBBLES.slice(0, shown).map((bubble) => (
-          <YStack
-            key={bubble.text}
-            maxWidth={BUBBLE_MAX_WIDTH}
-            alignSelf={bubble.outgoing ? 'flex-end' : 'flex-start'}
-            paddingVertical="$1.5"
-            paddingHorizontal="$2"
-            borderRadius="$3"
-            backgroundColor={bubble.outgoing ? '$primaryColor' : '$messageBubbleIncomingBg'}
-          >
-            <Text size="$body" color={bubble.outgoing ? '$onAccent' : '$messageBubbleIncomingText'}>
-              {bubble.text}
-            </Text>
-          </YStack>
+          <Reveal key={bubble.text}>
+            <YStack
+              maxWidth={BUBBLE_MAX_WIDTH}
+              alignSelf={bubble.outgoing ? 'flex-end' : 'flex-start'}
+              padding={BUBBLE_PADDING}
+              borderRadius={BUBBLE_RADIUS}
+              backgroundColor={bubble.outgoing ? '$primaryColor' : '$messageBubbleIncomingBg'}
+            >
+              <Text
+                size="$body"
+                color={bubble.outgoing ? '$onAccent' : '$messageBubbleIncomingText'}
+              >
+                {bubble.text}
+              </Text>
+            </YStack>
+          </Reveal>
         ))}
       </YStack>
     </YStack>

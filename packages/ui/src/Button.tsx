@@ -3,6 +3,7 @@ import { Spinner, styled, XStack } from 'tamagui'
 
 import { INHERITED_LABEL } from './labelColor'
 import { hitSlopFor } from './buttonHitTarget'
+import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import { PressArea } from './PressArea'
 import { Text } from './Text'
 
@@ -300,6 +301,7 @@ export function Button({
           destructive={destructive}
           {...(paddingHorizontal === undefined ? {} : { paddingHorizontal })}
           disabled={inert}
+          {...PRESS_PASSTHROUGH}
           {...(pressed && !inert ? PRESSED[variant] : {})}
         >
           {loading ? <Spinner size="small" color={nativeLabel} /> : icon}

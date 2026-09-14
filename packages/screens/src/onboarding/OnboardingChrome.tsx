@@ -98,6 +98,9 @@ const CONTENT_MIN_HEIGHT = 276
  * rung for one value would make the scale less useful rather than more.
  */
 const CONTENT_INSET = 35
+
+/** The legacy client's navigation-bar mark: `SessionGreen32`, pinned to a 32pt square. */
+const BAR_LOGO_SIZE = 32
 const ACTION_INSET = 64
 
 /** What an action needs on top of the content inset it already sits inside. */
@@ -175,6 +178,14 @@ export function OnboardingChrome({
             />
           )}
           <YStack flex={1} />
+          {/* **The Session mark, centred in the bar.** The legacy client puts it there as the
+              navigation bar's `titleView` -- the brand mark alone at 32pt, no wordmark -- which is
+              why it looked absent here: there is nothing to add to the screen's body, it belongs
+              to the chrome. Absolutely positioned so it is centred on the *bar* rather than on
+              whatever space the two controls leave, which is what a title view does. */}
+          <YStack position="absolute" left={0} right={0} alignItems="center" pointerEvents="none">
+            <SessionBrand size={BAR_LOGO_SIZE} color="$primaryColor" />
+          </YStack>
           {flag('onboardingLanguageSelect') ? <LanguageButton /> : null}
         </XStack>
         {/* `flex` is load-bearing. Without it this box takes its content's height, and a child
