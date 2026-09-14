@@ -9,7 +9,7 @@
  */
 
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -305,6 +305,85 @@ describeAddon('backing out of onboarding', () => {
       await first.dispose()
       await second.dispose()
       await device.dispose()
+    }
+  })
+})
+
+/**
+ * An onboarding that never touches the disk.
+ *
+ * libSession opens on `:memory:` as readily as on a file, which is what makes a discardable
+ * onboarding possible: the account is real -- it mints, it names itself, it hands back a mnemonic,
+ * it attaches a network -- and there is no file behind it to survive a crash or need deleting.
+ *
+ * These are the assertions that turn "nothing is left behind" from a claim into something CI can
+ * check, which was the question asked: not how it is discarded, but how we *know*.
+ */
+describeAddon('an in-memory onboarding', () => {
+  /** A client on a database that exists only in this process. */
+  function inMemory(seed: number, dir: string): SessionClient {
+    return createSessionClient(
+      createNodeBridgeTransport({
+        dbPath: ':memory:',
+        cacheDir: join(dir, 'cache'),
+        rawKey: new Uint8Array(32).fill(seed),
+        deferAccount: true,
+      }),
+    )
+  }
+
+  it('does everything onboarding needs, and writes nothing', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'session-inmemory-'))
+    await mkdir(join(dir, 'cache'), { recursive: true })
+    // Everything in the directory before, so the comparison is against reality rather than an
+    // assumption about which files libSession would have created.
+    const before = (await readdir(dir)).sort()
+    const client = inMemory(31, dir)
+
+    try {
+      await client.createAccount()
+      await client.setDisplayName('Provisional')
+
+      const info = await client.getAccountInfo()
+      expect(info.haveAccount).toBe(true)
+      expect(info.sessionId).toMatch(/^05[0-9a-f]{64}$/)
+      expect(info.displayName).toBe('Provisional')
+      // The phrase is available too, which is what a restore would need to hand on.
+      expect(await client.getSeedMnemonic()).toHaveLength(13)
+
+      expect((await readdir(dir)).sort()).toEqual(before)
+    } finally {
+      client.close()
+      // And still nothing, after it is gone.
+      expect((await readdir(dir)).sort()).toEqual(before)
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
+
+  it('takes the account with it when it is discarded', async () => {
+    // The discard itself: close the client and the database goes, because the database was never
+    // anywhere but in it. A second client on the same settings starts from nothing, which is the
+    // property that makes going back safe.
+    const dir = await mkdtemp(join(tmpdir(), 'session-inmemory-'))
+    await mkdir(join(dir, 'cache'), { recursive: true })
+
+    try {
+      const abandoned = inMemory(32, dir)
+      await abandoned.createAccount()
+      const gone = (await abandoned.getAccountInfo()).sessionId
+      expect(gone).toBeDefined()
+      abandoned.close()
+
+      const next = inMemory(32, dir)
+      try {
+        const fresh = await next.getAccountInfo()
+        expect(fresh.haveAccount).toBe(false)
+        expect(fresh.sessionId).toBeUndefined()
+      } finally {
+        next.close()
+      }
+    } finally {
+      await rm(dir, { recursive: true, force: true })
     }
   })
 })
