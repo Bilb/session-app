@@ -2,6 +2,7 @@ import { memoryPorts, setPorts } from '@session/app'
 import { parseNetworkName } from '@session/basic-types'
 import * as Clipboard from 'expo-clipboard'
 import * as SecureStore from 'expo-secure-store'
+import { Linking, Platform } from 'react-native'
 
 const DATABASE_KEY = 'session2.database-key'
 
@@ -51,6 +52,25 @@ setPorts(
     clipboard: {
       setString: (value) => Clipboard.setStringAsync(value).then(() => undefined),
       getString: () => Clipboard.getStringAsync(),
+    },
+    linking: {
+      // Unchanged, and repeated because a port override replaces the whole object rather than
+      // merging into it. See memoryPorts.
+      openUrl: (url) => Linking.openURL(url),
+      /**
+       * **iOS only, and only because iOS is the only one of the two that can show the row.**
+       *
+       * `openSettings` opens this app's own page in Settings, where iOS lists Preferred Language --
+       * but only for a bundle that declares more than one localization, which is what the
+       * `CFBundleLocalizations` list in `app.config.ts` is for. Without that list the row is not
+       * there and this would land somebody on a settings page with nothing to change.
+       *
+       * Null on Android, which is not a stub: App Language exists there from 13 onwards and only
+       * for an app shipping a `localeConfig`, and this app has no Android build to put one in yet.
+       * Null is what the picker reads to mean "do it yourself", which is the right answer until
+       * then -- see the port.
+       */
+      openLanguageSettings: Platform.OS === 'ios' ? () => Linking.openSettings() : null,
     },
     secureStore: {
       async getDatabaseKey() {

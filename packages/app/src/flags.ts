@@ -31,8 +31,14 @@ export const FLAGS = {
    */
   recoveryPhraseLanguage: false,
 
-  /** Choose the app's language during onboarding, before an account exists. */
-  onboardingLanguageSelect: false,
+  /**
+   * Offer the language control during onboarding, before an account exists.
+   *
+   * On by default since 2026-09-14. It was off while the control had nowhere to send a phone: the
+   * mobile branch hands over to the OS's own per-app language screen, and until the builds declared
+   * their localizations there was no such screen to hand over to. Both halves exist now.
+   */
+  onboardingLanguageSelect: true,
 
   /**
    * **Force** the tablet's onboarding on any wide window, rather than only where the OS suspends
