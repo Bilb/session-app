@@ -121,7 +121,7 @@ started without it keeps serving a bundle that ignores it until `expo start --cl
 ## Against a local devnet
 
 `.env` at the repo root, which both apps load; `.env.sample` says what goes in it. The whole of a
-devnet run is two lines, and `docs/STATUS.md` has the reasoning:
+devnet run is two lines, and `docs/ARCHITECTURE.md` has the reasoning:
 
 ```sh
 SESSION_NETID=devnet

@@ -80,8 +80,11 @@ export function createNodeBridgeTransport(options: NodeBridgeOptions): BridgeTra
       } catch (error) {
         // The addon could not read the request, so the shim never saw it. Answered the way any
         // other failed request is, on the stream, rather than thrown at whoever forwarded it.
+        // The id is read defensively: `request` is renderer input and need not be an object.
         const message = error instanceof Error ? error.message : String(error)
-        deliver({ type: 'response', response: { id: request.id, error: message } })
+        const id: unknown = (request as { id?: unknown } | null | undefined)?.id
+        if (typeof id !== 'number') return
+        deliver({ type: 'response', response: { id, error: message } })
       }
     },
 

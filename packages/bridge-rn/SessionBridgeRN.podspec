@@ -23,7 +23,7 @@ Pod::Spec.new do |s|
   # `pnpm --filter @session/bridge-rn build:libsession:ios`, neither committed.
   s.vendored_frameworks = "ios/libsession-util.xcframework"
   # Globbed rather than listed: the build script decides what has to be there, and it is more
-  # than the shim - see the note in it about what STATIC_BUNDLE leaves out.
+  # than the shim.
   s.vendored_libraries = "ios/lib/*.a"
 
   # System libraries the vendored archives expect to find. libunistring wants iconv, which the

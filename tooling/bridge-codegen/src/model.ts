@@ -125,6 +125,8 @@ class Extractor {
 
   private resolveAlias(node: ts.TypeAliasDeclaration): TypeRef {
     const name = node.name.text
+    // Before the memo checks: two aliases spelling one name would otherwise collapse silently.
+    this.claim(name, node)
     if (this.enums.has(name)) return { kind: 'enum', name }
     if (this.unions.has(name)) return { kind: 'union', name }
     if (node.typeParameters?.length) throw fail(node, `${name}: generics are not supported`)
@@ -251,6 +253,8 @@ class Extractor {
     owner: string,
   ): Field[] {
     const fields: Field[] = []
+    // `sessionId` and `sessionID` both snake to `session_id`, which is a duplicate C++ member.
+    const spellings = new Map<string, string>()
     for (const member of members) {
       if (!ts.isPropertySignature(member) || !ts.isIdentifier(member.name) || !member.type) {
         throw fail(member, `${owner}: only plain named properties are supported`)
@@ -259,6 +263,11 @@ class Extractor {
         throw fail(member, `${owner}.${member.name.text}: readonly has no C++ meaning here`)
       }
       const name = member.name.text
+      const spelling = snake(name)
+      const already = spellings.get(spelling)
+      if (already !== undefined)
+        throw fail(member, `${owner}: '${name}' and '${already}' both spell ${spelling}`)
+      spellings.set(spelling, name)
       fields.push({
         name,
         type: this.resolveTypeNode(member.type, `${owner}.${name}`),

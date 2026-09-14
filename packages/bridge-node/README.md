@@ -17,11 +17,6 @@ pnpm --filter @session/bridge-node build:native
 Takes a while the first time: it builds libsession and its static dependencies. Needs `cmake`,
 `ninja` and gcc - see `packages/bridge-core/README.md` for why gcc rather than clang.
 
-The build applies `patches/` to the libsession tree first. There is one patch: libevent's dep
-script overrides session-deps' shared configure command and drops `--with-pic`, so its static
-archive cannot go into a shared object - which the addon is, and so is the Nitro module. It is a
-one-line change waiting on upstream, and it goes away when upstream takes it.
-
 ## Testing
 
 `src/addon.test.ts` opens a real encrypted database and round-trips a request. It skips itself

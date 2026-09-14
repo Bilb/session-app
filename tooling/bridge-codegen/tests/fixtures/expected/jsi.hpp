@@ -12,6 +12,7 @@
 
 #include <jsi/jsi.h>
 
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -26,6 +27,16 @@ namespace session_bridge {
 /// generator has checked these are ASCII, so no std::string is built in between.
 inline facebook::jsi::Value ascii(facebook::jsi::Runtime& runtime, std::string_view text) {
     return facebook::jsi::String::createFromAscii(runtime, text.data(), text.size());
+}
+
+/// Unset is null or undefined, matching napi.hpp. Nitro's own optional takes only undefined and
+/// throws on null, which would make the two platforms disagree.
+template <class T>
+inline std::optional<T> optional_from_jsi(
+        facebook::jsi::Runtime& runtime, const facebook::jsi::Value& value) {
+    if (value.isUndefined() || value.isNull())
+        return std::nullopt;
+    return margelo::nitro::JSIConverter<T>::fromJSI(runtime, value);
 }
 
 }  // namespace session_bridge
@@ -76,9 +87,9 @@ struct JSIConverter<::session_bridge::Shape> final {
         return ::session_bridge::Shape(
                 JSIConverter<::session_bridge::Point>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "origin"))),
                 JSIConverter<::session_bridge::Colour>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "colour"))),
-                JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "label"))),
+                ::session_bridge::optional_from_jsi<std::string>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "label"))),
                 JSIConverter<std::vector<::session_bridge::Point>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "vertices"))),
-                JSIConverter<std::optional<std::vector<std::string>>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "tags"))),
+                ::session_bridge::optional_from_jsi<std::vector<std::string>>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "tags"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "filled"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::Shape& arg) {
@@ -144,7 +155,7 @@ struct JSIConverter<::session_bridge::MovedCanvasEvent> final {
         jsi::Object obj = arg.asObject(runtime);
         return ::session_bridge::MovedCanvasEvent(
                 JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "id"))),
-                JSIConverter<std::optional<::session_bridge::Point>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "to"))));
+                ::session_bridge::optional_from_jsi<::session_bridge::Point>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "to"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::MovedCanvasEvent& arg) {
         jsi::Object obj(runtime);

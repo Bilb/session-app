@@ -189,6 +189,7 @@ struct ClientBridge::Impl {
     Sink sink;
     std::unique_ptr<client::Client> client;
     InitOptions options;
+    session::LoggerHandle logger;
 
     explicit Impl(Sink s, InitOptions o) : sink{std::move(s)}, options{std::move(o)} {}
 
@@ -266,10 +267,17 @@ struct ClientBridge::Impl {
     template <typename F>
     auto on(double id, F&& f) {
         return [this, id, f = std::forward<F>(f)](std::optional<std::string> error, auto&&... rest) {
-            if (error)
+            if (error) {
                 fail(id, *error);
-            else
+                return;
+            }
+            // Client::_dispatch_out only logs what escapes a handler, so an uncaught throw here
+            // is a request that never gets a Response. setNickname on note to self is one.
+            try {
                 f(std::forward<decltype(rest)>(rest)...);
+            } catch (const std::exception& e) {
+                fail(id, e.what());
+            }
         };
     }
 
@@ -728,14 +736,17 @@ ClientBridge::ClientBridge(InitOptions options, Sink sink) :
                                                        : LogLevel::warn;
         logger_reset_level(level);
 
-        auto* impl = _impl.get();
-        add_logger([impl](std::string_view message, std::string_view category, LogLevel lvl) {
-            // Called from whichever thread logged, including Core's loop and the network's own
-            // threads, and after close() has dropped the sink - emit() checks for that, which
-            // is the only reason this is safe to leave registered.
-            impl->event(LogSessionEvent{
-                    std::string{message}, std::string{category}, std::string{lvl.to_string()}});
-        });
+        // Kept so close() can take it back off: this fires from threads close() cannot join,
+        // and what it writes to does not outlive the bridge.
+        impl->logger =
+                add_logger([impl](std::string_view message,
+                                  std::string_view category,
+                                  LogLevel lvl) {
+                    impl->event(LogSessionEvent{
+                            std::string{message},
+                            std::string{category},
+                            std::string{lvl.to_string()}});
+                });
     }
 
     // An account that is already there needs no onboarding, so this is where its network comes
@@ -750,10 +761,12 @@ ClientBridge::~ClientBridge() {
 void ClientBridge::close() {
     if (!_impl)
         return;
-    // Order matters: stop delivering before destroying, or a callback fired during teardown
-    // reaches a sink the adapter has already torn down.
-    _impl->sink = nullptr;
+    // Order matters. remove_logger is serialised against logging, so once it returns the callback
+    // is neither running nor reachable; destroying the Client then joins Core's loop, so nothing
+    // is mid-emit by the time the Impl the two of them write to goes.
+    remove_logger(_impl->logger);
     _impl->client.reset();
+    _impl.reset();
 }
 
 void ClientBridge::call(Request request) {

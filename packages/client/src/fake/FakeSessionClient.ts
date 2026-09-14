@@ -195,6 +195,12 @@ export class FakeSessionClient implements SessionClient {
     this.assertOpen()
     const current = this.account.get(id)
     if (!current) return Promise.resolve()
+    // Our own account is not a contact, so there is no entry to hold a nickname.
+    if (current.noteToSelf) {
+      return Promise.reject(
+        new SessionClientError('setNickname: not applicable to your own account'),
+      )
+    }
     if (nickname === undefined) {
       const { nickname: _cleared, ...withoutNickname } = current
       this.account.replace(withoutNickname)
@@ -234,6 +240,11 @@ export class FakeSessionClient implements SessionClient {
     },
   ): Promise<Message[]> {
     this.assertOpen()
+    // A limit is a page size, not a sentinel: there is no value meaning "all of it", because
+    // history grows without bound.
+    if (options?.limit !== undefined && options.limit <= 0) {
+      return Promise.reject(new SessionClientError('getMessages.limit must be greater than zero'))
+    }
     // Deleted rows are dropped before the limit is applied, as libsession drops them in the
     // query: filtering a page after the fact would hand back short pages with nothing to say
     // that another page is warranted.

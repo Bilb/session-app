@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 
+import { contentSecurityPolicy } from './src/main/security'
+
 const appDir = fileURLToPath(new URL('.', import.meta.url))
 
 // The renderer's network stamp is substituted at build time from this process's environment, so
@@ -11,6 +13,28 @@ const appDir = fileURLToPath(new URL('.', import.meta.url))
 // again at runtime for its own use: an explicit variable wins in both, so the two agree.
 const dotEnv = fileURLToPath(new URL('../../.env', import.meta.url))
 if (existsSync(dotEnv)) process.loadEnvFile(dotEnv)
+
+/**
+ * The renderer loads from `file:` once packaged, where no response header can carry a CSP, so it
+ * has to be a meta tag. Injected rather than written into index.html because the dev server needs
+ * a looser one than the shipped app: vite inlines the react-refresh preamble and talks HMR over a
+ * websocket, and both are refused by the policy the built app should have.
+ */
+function contentSecurityPolicyPlugin() {
+  return {
+    name: 'session-csp',
+    transformIndexHtml: {
+      order: 'pre' as const,
+      handler(html: string, ctx: { server?: unknown }) {
+        const policy = contentSecurityPolicy({ dev: ctx.server !== undefined })
+        return html.replace(
+          '<head>',
+          `<head>\n    <meta http-equiv="Content-Security-Policy" content="${policy}" />`,
+        )
+      },
+    },
+  }
+}
 
 /**
  * `.web.js` ahead of `.js`, which is how the react-native-web ecosystem ships a DOM flavour beside
@@ -98,6 +122,6 @@ export default defineConfig({
       __DEV__: JSON.stringify(process.env['NODE_ENV'] !== 'production'),
       'process.env.NODE_ENV': JSON.stringify(process.env['NODE_ENV'] ?? 'development'),
     },
-    plugins: [react()],
+    plugins: [react(), contentSecurityPolicyPlugin()],
   },
 })
