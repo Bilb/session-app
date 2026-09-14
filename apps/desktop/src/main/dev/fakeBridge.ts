@@ -30,5 +30,14 @@ export function createFakeBridge(): BridgeTransport {
   }, 50)
   ticking.unref?.()
 
+  // A start that refuses, which is otherwise only reachable with a database somebody has already
+  // broken. The failure screen is the one screen nobody sees by accident, so there has to be a way
+  // to open it on purpose -- the message is libsession's own words for the failure that produced
+  // it, so the screen looks the way it does in the wild rather than the way a placeholder does.
+  if (process.env['SESSION_FAKE_FAILED_START'] === '1') {
+    alice.getAccountInfo = () =>
+      Promise.reject(new Error('getConversations: Invalid conversation id: not a hex session ID'))
+  }
+
   return createFakeTransport(alice)
 }
