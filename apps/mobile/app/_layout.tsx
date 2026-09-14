@@ -2,6 +2,7 @@ import { useLocale } from '@session/screens'
 import { SessionStoreProvider, type SessionStore } from '@session/state'
 import { Text, UIProvider, YStack } from '@session/ui'
 import { Slot } from 'expo-router'
+import { KeyboardProvider } from 'react-native-keyboard-controller'
 import { useEffect, useState } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
@@ -36,25 +37,30 @@ export default function RootLayout() {
   }, [])
 
   return (
-    <SafeAreaProvider>
-      <UIProvider>
-        {store === null ? (
-          <YStack
-            flex={1}
-            alignItems="center"
-            justifyContent="center"
-            backgroundColor="$backgroundPrimary"
-          >
-            <Text tone="secondary">Starting…</Text>
-          </YStack>
-        ) : (
-          <SessionStoreProvider store={store}>
-            <MobileNavProvider>
-              <Slot />
-            </MobileNavProvider>
-          </SessionStoreProvider>
-        )}
-      </UIProvider>
-    </SafeAreaProvider>
+    // The keyboard's own animation progress, read once for the whole tree. Every avoiding view
+    // below here is driven from it, which is what lets them move on the keyboard's curve rather
+    // than on one of their own.
+    <KeyboardProvider>
+      <SafeAreaProvider>
+        <UIProvider>
+          {store === null ? (
+            <YStack
+              flex={1}
+              alignItems="center"
+              justifyContent="center"
+              backgroundColor="$backgroundPrimary"
+            >
+              <Text tone="secondary">Starting…</Text>
+            </YStack>
+          ) : (
+            <SessionStoreProvider store={store}>
+              <MobileNavProvider>
+                <Slot />
+              </MobileNavProvider>
+            </SessionStoreProvider>
+          )}
+        </UIProvider>
+      </SafeAreaProvider>
+    </KeyboardProvider>
   )
 }

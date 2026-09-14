@@ -33,11 +33,14 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-native": "catalog:",
+    "react-native-keyboard-controller": "catalog:",
     "react-native-nitro-modules": "catalog:",
+    "react-native-reanimated": "catalog:",
     "react-native-safe-area-context": "catalog:",
     "react-native-screens": "catalog:",
     "react-native-svg": "catalog:",
-    "react-native-web": "catalog:"
+    "react-native-web": "catalog:",
+    "react-native-worklets": "catalog:"
   },
   "devDependencies": {
     "@session/eslint-config": "workspace:*",

@@ -6,6 +6,7 @@ import {
   HeroImage,
   Icon,
   IconRing,
+  KeyboardAvoiding,
   SafeArea,
   Screen,
   SessionBrand,
@@ -152,12 +153,17 @@ export function OnboardingChrome({ children, testID }: { children: ReactNode; te
     // of the status bar and the home indicator reads as a picture in a frame rather than as the
     // background of the app -- it has to run to the edges of the glass. The column cannot: text
     // under a notch is text nobody can read. So the two are asked separately.
-    <Screen testID={testID} edges={[]}>
+    <Screen testID={testID} edges={[]} avoidsKeyboard={false}>
       <XStack flex={1}>
         <YStack width={heroWidth(window)} testID={ELEMENT.onboarding.hero}>
           <HeroImage />
         </YStack>
-        <SafeArea>{column}</SafeArea>
+        {/* **Only the column moves for the keyboard.** The frame opts out, because lifting the
+            frame lifts the artwork with it -- a picture visibly shrinking while somebody types
+            their name into a field it is nowhere near. */}
+        <SafeArea>
+          <KeyboardAvoiding>{column}</KeyboardAvoiding>
+        </SafeArea>
       </XStack>
     </Screen>
   )

@@ -13,6 +13,10 @@ module.exports = function babelConfig(api) {
           logTimings: true,
         },
       ],
+      // Last, and it has to stay last: it rewrites the worklets every other plugin has finished
+      // with. react-native-reanimated is what drives the keyboard avoidance off the JS thread,
+      // and it does nothing at all without this.
+      'react-native-worklets/plugin',
     ],
     env: {
       production: {

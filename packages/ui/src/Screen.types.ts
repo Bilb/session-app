@@ -15,5 +15,14 @@ export interface ScreenProps {
    * not against the edge of the display - the detail beside a list - passes `edges` instead.
    */
   edges?: readonly ('top' | 'bottom' | 'left' | 'right')[]
+  /**
+   * Lifts the whole frame clear of the keyboard. On by default, because on almost every screen the
+   * frame *is* the column being typed into.
+   *
+   * Off where the frame holds something beside that column -- onboarding's artwork on a tablet,
+   * which was visibly shrinking as the keyboard came up. Such a screen wraps the part that should
+   * move in `KeyboardAvoiding` itself.
+   */
+  avoidsKeyboard?: boolean
   testID?: string
 }

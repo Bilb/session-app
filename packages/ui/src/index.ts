@@ -9,6 +9,7 @@
 export { Avatar } from './Avatar'
 export { RecoveryPasswordMark, SessionBrand, SessionWordmark } from './Brand'
 export { HeroImage } from './HeroImage'
+export { KeyboardAvoiding } from './KeyboardAvoiding'
 export { SafeArea, type SafeAreaProps } from './SafeArea'
 export { useTokenColor } from './useTokenColor'
 export { useWindowSize } from './useWindowSize'
