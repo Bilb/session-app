@@ -68,7 +68,7 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe {
         ...process.env,
         // Electron refuses Chromium's flags when this is set, and terminals set it.
         ELECTRON_RUN_AS_NODE: '',
-        SESSION_FAKE: '1',
+        EXPO_PUBLIC_SESSION_FAKE: '1',
         SESSION_IDENTITY: identity,
         SESSION_DATA_DIR: dataDir,
       },

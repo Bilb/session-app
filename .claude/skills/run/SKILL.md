@@ -8,7 +8,7 @@ description: Launch the desktop or mobile app, drive a device or emulator, read 
 Two jobs: starting the thing, and finding out what it did. The second is where the time goes,
 and the rules below are why.
 
-Both apps run against real libsession by default. `SESSION_FAKE=1` picks the fake instead - no
+Both apps run against real libsession by default. `EXPO_PUBLIC_SESSION_FAKE=1` picks the fake instead - no
 network, a seeded history, and nothing to wait for - which is the loop to reach for unless the
 question is specifically about the real bridge.
 
@@ -114,7 +114,7 @@ Against the fake:
 pnpm dev:fake               # both; or dev:desktop:fake / dev:mobile:fake
 ```
 
-Mobile reads `EXPO_PUBLIC_SESSION_FAKE`, not `SESSION_FAKE`: Metro inlines a variable into the
+Mobile reads `EXPO_PUBLIC_SESSION_FAKE`, not `EXPO_PUBLIC_SESSION_FAKE`: Metro inlines a variable into the
 bundle only when its name carries that prefix, and it caches the transform - so a Metro that was
 started without it keeps serving a bundle that ignores it until `expo start --clear`.
 

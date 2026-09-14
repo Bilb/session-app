@@ -404,7 +404,7 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   uploads to _mainnet's_, which is production storage reached over a sandbox, and the upload
   succeeds with nothing afterwards to show for it.
 
-  `SESSION_FILE_SERVER_X25519_PUBKEY` is the server's X25519 key, which is what onion requests to
+  `EXPO_PUBLIC_SESSION_FILE_SERVER_X25519_PUBKEY` is the server's X25519 key, which is what onion requests to
   it are encrypted with, not the Ed25519 one its QUIC endpoint is named by. Both are 64 hex
   characters, and the wrong one fails as a decryption error part-way through an upload.
 

@@ -162,7 +162,7 @@ function fileServer(url: string, key: string, variable: string): FileServerConfi
  * Every refusal names the variable, because these are set once in a file nobody looks at again and
  * libsession's own errors name none of them: a bad seed pubkey throws out of `from_hex` and a host
  * name where an address belongs throws out of libquic, both far below anything that knows the
- * value came from `SESSION_DEVNET_SEED_URL`.
+ * value came from `EXPO_PUBLIC_SESSION_DEVNET_SEED_URL`.
  *
  * Takes the values rather than the environment: Metro only inlines `process.env.EXPO_PUBLIC_X`
  * where the name is written out literally, so each app has to do its own reading.

@@ -59,9 +59,11 @@ const env = (over: Partial<DevnetEnv>): DevnetEnv => ({ ...nothing, ...over })
 
 describe('parseDevnetConfig', () => {
   it('names the variable when the seed node is missing', () => {
-    expect(() => parseDevnetConfig(nothing, 'SESSION_')).toThrow(/SESSION_DEVNET_SEED_URL/)
-    expect(() => parseDevnetConfig(env({ seedUrl: '   ' }), 'SESSION_')).toThrow(
-      /SESSION_DEVNET_SEED_URL/,
+    expect(() => parseDevnetConfig(nothing, 'EXPO_PUBLIC_SESSION_')).toThrow(
+      /EXPO_PUBLIC_SESSION_DEVNET_SEED_URL/,
+    )
+    expect(() => parseDevnetConfig(env({ seedUrl: '   ' }), 'EXPO_PUBLIC_SESSION_')).toThrow(
+      /EXPO_PUBLIC_SESSION_DEVNET_SEED_URL/,
     )
   })
 
@@ -79,32 +81,35 @@ describe('parseDevnetConfig', () => {
       'http://192.168.1.114:1280/',
       '  192.168.1.114:1280  ',
     ])
-      expect(parseDevnetConfig(env({ seedUrl: value }), 'SESSION_').seedUrl).toBe(
+      expect(parseDevnetConfig(env({ seedUrl: value }), 'EXPO_PUBLIC_SESSION_').seedUrl).toBe(
         'http://192.168.1.114:1280',
       )
   })
 
   it('keeps a port that is not the default', () => {
-    expect(parseDevnetConfig(env({ seedUrl: '10.0.0.1:2280' }), 'SESSION_').seedUrl).toBe(
-      'http://10.0.0.1:2280',
-    )
+    expect(
+      parseDevnetConfig(env({ seedUrl: '10.0.0.1:2280' }), 'EXPO_PUBLIC_SESSION_').seedUrl,
+    ).toBe('http://10.0.0.1:2280')
   })
 
   it('refuses a seed node that is not an http address', () => {
-    expect(() => parseDevnetConfig(env({ seedUrl: 'ftp://10.0.0.1:1280' }), 'SESSION_')).toThrow(
-      /must be http/,
-    )
+    expect(() =>
+      parseDevnetConfig(env({ seedUrl: 'ftp://10.0.0.1:1280' }), 'EXPO_PUBLIC_SESSION_'),
+    ).toThrow(/must be http/)
   })
 
   it('takes a file server as a pair, because half of one is worse than none', () => {
     expect(() =>
       parseDevnetConfig(
         env({ seedUrl: '10.0.0.1', fileServerUrl: 'http://10.0.0.1:8000' }),
-        'SESSION_',
+        'EXPO_PUBLIC_SESSION_',
       ),
     ).toThrow(/FILE_SERVER_X25519_PUBKEY/)
     expect(() =>
-      parseDevnetConfig(env({ seedUrl: '10.0.0.1', fileServerX25519Pubkey: KEY_A }), 'SESSION_'),
+      parseDevnetConfig(
+        env({ seedUrl: '10.0.0.1', fileServerX25519Pubkey: KEY_A }),
+        'EXPO_PUBLIC_SESSION_',
+      ),
     ).toThrow(/FILE_SERVER_URL/)
   })
 
@@ -115,7 +120,7 @@ describe('parseDevnetConfig', () => {
         fileServerUrl: 'http://10.0.0.1:8000',
         fileServerX25519Pubkey: KEY_A.toUpperCase(),
       }),
-      'SESSION_',
+      'EXPO_PUBLIC_SESSION_',
     )
     expect(fileServer).toEqual({
       scheme: 'http',
@@ -133,7 +138,7 @@ describe('parseDevnetConfig', () => {
           fileServerUrl: 'http://10.0.0.1',
           fileServerX25519Pubkey: KEY_A,
         }),
-        'SESSION_',
+        'EXPO_PUBLIC_SESSION_',
       ),
     ).toThrow(/must name a port/)
   })
@@ -147,13 +152,13 @@ describe('parseDevnetConfig', () => {
             fileServerUrl: 'http://10.0.0.1:8000',
             fileServerX25519Pubkey: bad,
           }),
-          'SESSION_',
+          'EXPO_PUBLIC_SESSION_',
         ),
-      ).toThrow(/SESSION_FILE_SERVER_X25519_PUBKEY must be 64 hex characters/)
+      ).toThrow(/EXPO_PUBLIC_SESSION_FILE_SERVER_X25519_PUBKEY must be 64 hex characters/)
   })
 
   it('leaves the file server out when it is not configured', () => {
-    const config = parseDevnetConfig(env({ seedUrl: '10.0.0.1' }), 'SESSION_')
+    const config = parseDevnetConfig(env({ seedUrl: '10.0.0.1' }), 'EXPO_PUBLIC_SESSION_')
     expect(config.fileServer).toBeUndefined()
   })
 })

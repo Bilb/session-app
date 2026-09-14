@@ -16,7 +16,7 @@ pnpm --filter @session/desktop build
 cd apps/desktop && env -u ELECTRON_RUN_AS_NODE pnpm exec electron out/main/index.js
 ```
 
-`SESSION_FAKE=1` in front of that runs the fake; without it the app loads the addon, which has
+`EXPO_PUBLIC_SESSION_FAKE=1` in front of that runs the fake; without it the app loads the addon, which has
 to have been built - see [packages/bridge-node/README.md](../../../../packages/bridge-node/README.md).
 
 `env -u ELECTRON_RUN_AS_NODE` is not optional here. See

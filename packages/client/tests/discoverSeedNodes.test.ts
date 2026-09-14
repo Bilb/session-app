@@ -135,8 +135,11 @@ describe('discoverSeedNodes', () => {
   it('names the variable when the RPC cannot be reached', async () => {
     const fetch: FetchLike = () => Promise.reject(new Error('fetch failed'))
     await expect(
-      discoverSeedNodes('http://10.0.0.1:1280', { fetch, variable: 'SESSION_DEVNET_SEED_URL' }),
-    ).rejects.toThrow(/SESSION_DEVNET_SEED_URL/)
+      discoverSeedNodes('http://10.0.0.1:1280', {
+        fetch,
+        variable: 'EXPO_PUBLIC_SESSION_DEVNET_SEED_URL',
+      }),
+    ).rejects.toThrow(/EXPO_PUBLIC_SESSION_DEVNET_SEED_URL/)
   })
 
   it('reports a status that is not a node list', async () => {
