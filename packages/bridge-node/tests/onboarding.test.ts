@@ -226,3 +226,85 @@ describeAddon('onboarding, against libsession', () => {
     }
   })
 })
+
+/**
+ * What must be true of a database somebody backed out of.
+ *
+ * A product ask, and the reason for it is the sharp end of onboarding: a person who starts to restore
+ * one account, changes their mind and restores a different one must not carry anything of the first
+ * into the second. The flow is built so that nothing is minted until the last step, and these are
+ * the assertions that say so against real libsession rather than against the fake, which would agree
+ * whatever libsession did.
+ *
+ * **This is the half that can be tested today.** The design is changing -- the account will be minted
+ * early and discarded on the way back, rather than minted late -- and when it does, the invariant
+ * below is exactly the one that has to keep holding. So the test is written against the guarantee
+ * rather than against the mechanism, and should survive that change unedited.
+ */
+describeAddon('backing out of onboarding', () => {
+  it('leaves a database nothing can be recovered from', async () => {
+    const abandoned = await newcomer(23)
+
+    try {
+      const words = await (async () => {
+        const origin = await newcomer(24)
+        try {
+          await origin.client.createAccount()
+          return await origin.client.getSeedMnemonic()
+        } finally {
+          await origin.dispose()
+        }
+      })()
+
+      // As far into restore as the flow goes before it commits: the phrase is checked, and
+      // checking is all it does.
+      await abandoned.client.checkRecoveryPhrase(words)
+
+      // Now back out. There is nothing to undo, which is the point.
+      const info = await abandoned.client.getAccountInfo()
+      expect(info.haveAccount).toBe(false)
+      expect(info.sessionId).toBeUndefined()
+      expect(info.displayName).toBeUndefined()
+      expect(await abandoned.client.getConversations()).toEqual([])
+      expect(await abandoned.client.getMessageRequests()).toEqual([])
+    } finally {
+      await abandoned.dispose()
+    }
+  })
+
+  it('does not carry one account into the next', async () => {
+    // Two phrases, the same database: start restoring the first, change your mind, restore the
+    // second. Nothing of the first may survive - which is the case the whole guarantee exists for.
+    const first = await newcomer(25)
+    const second = await newcomer(26)
+    const device = await newcomer(27)
+
+    try {
+      await first.client.createAccount()
+      await first.client.setDisplayName('First')
+      const firstWords = await first.client.getSeedMnemonic()
+      const firstId = (await first.client.getAccountInfo()).sessionId
+
+      await second.client.createAccount()
+      const secondWords = await second.client.getSeedMnemonic()
+      const secondId = (await second.client.getAccountInfo()).sessionId
+      expect(secondId).not.toBe(firstId)
+
+      // Started, then abandoned.
+      await device.client.checkRecoveryPhrase(firstWords)
+      expect((await device.client.getAccountInfo()).haveAccount).toBe(false)
+
+      // And the one actually chosen.
+      await device.client.restoreAccount({ words: secondWords })
+      const settled = await device.client.getAccountInfo()
+      expect(settled.sessionId).toBe(secondId)
+      expect(settled.sessionId).not.toBe(firstId)
+      // The first account's name was never reachable from here, and still is not.
+      expect(settled.displayName).not.toBe('First')
+    } finally {
+      await first.dispose()
+      await second.dispose()
+      await device.dispose()
+    }
+  })
+})
