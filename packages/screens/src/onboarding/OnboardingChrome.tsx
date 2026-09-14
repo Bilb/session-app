@@ -85,6 +85,25 @@ function useFadeIn(key: string): number {
 const CONTENT_MIN_HEIGHT = 276
 
 /**
+ * The phone design's two horizontal insets.
+ *
+ * **Both clients use two, not one**, and they agree with each other: the reading column is inset
+ * 35 on iOS (`Values.veryLargeSpacing`) and 36 on Android (`mediumSpacing`), and the primary
+ * button is inset 64 on both (`massiveSpacing` / `xlargeSpacing`). The relationship is the part
+ * worth porting rather than either number: **the button is deliberately narrower than the text it
+ * sits under.** Ours was a single 15 everywhere, under half the body inset and under a quarter of
+ * the button's.
+ *
+ * 35 is the space scale's `$4`; 64 is not on the scale and is written as itself, since inventing a
+ * rung for one value would make the scale less useful rather than more.
+ */
+const CONTENT_INSET = 35
+const ACTION_INSET = 64
+
+/** What an action needs on top of the content inset it already sits inside. */
+export const EXTRA_ACTION_INSET = ACTION_INSET - CONTENT_INSET
+
+/**
  * Where the two documentation links go.
  *
  * Hardcoded for the same reason the terms are: this is reachable before anybody has decided to
@@ -133,8 +152,10 @@ export function OnboardingChrome({
 
   if (!wide) {
     return (
-      <Screen padded testID={testID}>
-        <XStack alignItems="center" minHeight="$7">
+      // Not `padded`: onboarding has its own inset, which is more than twice the screen default
+      // and is the clients' own. See the constants.
+      <Screen testID={testID}>
+        <XStack alignItems="center" minHeight="$7" paddingHorizontal="$1">
           {onBack === undefined ? null : (
             <Button
               variant="ghost"
@@ -153,7 +174,9 @@ export function OnboardingChrome({
             asking for `flex: 1` inside it resolves against nothing and collapses to zero -- which
             drew the landing screen's heading and its conversation straight over the buttons
             underneath. The step is what fills the phone screen, so the box holding it has to. */}
-        <YStack flex={1}>{children}</YStack>
+        <YStack flex={1} paddingHorizontal={CONTENT_INSET} paddingBottom="$2">
+          {children}
+        </YStack>
       </Screen>
     )
   }

@@ -3,7 +3,7 @@ import { ELEMENT } from '@session/test-ids'
 import { Button, Text, useMedia, YStack } from '@session/ui'
 import { useEffect, useState } from 'react'
 
-import { OnboardingChrome } from './OnboardingChrome'
+import { EXTRA_ACTION_INSET, OnboardingChrome } from './OnboardingChrome'
 import { TermsAndPrivacy } from './TermsAndPrivacy'
 
 /**
@@ -57,7 +57,9 @@ export function LandingScreen({ onCreate, onRestore }: LandingScreenProps) {
   return (
     <OnboardingChrome testID={ELEMENT.onboarding.screen}>
       {wide ? null : <PhoneOpening />}
-      <YStack gap="$1.5">
+      {/* The buttons and the terms sit further in than the text above them on a phone, which is
+          what both clients do -- see the insets. The wide design's column is already fixed. */}
+      <YStack gap="$1.5" {...(wide ? {} : { paddingHorizontal: EXTRA_ACTION_INSET })}>
         {/* **The two designs weight these differently.** Both mobile clients fill the create
             button and outline the other, so the new account is the obvious one; the desktop client
             outlines both and leaves them level. Ported rather than unified -- a phone is somebody's

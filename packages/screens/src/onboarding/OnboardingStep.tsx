@@ -3,7 +3,7 @@ import { ELEMENT } from '@session/test-ids'
 import { Button, Icon, Text, useMedia, XStack, YStack } from '@session/ui'
 import type { ReactNode } from 'react'
 
-import { OnboardingChrome } from './OnboardingChrome'
+import { EXTRA_ACTION_INSET, OnboardingChrome } from './OnboardingChrome'
 
 /**
  * How far the back button sits outside the content column. The desktop client's own offset.
@@ -106,7 +106,10 @@ export function OnboardingStep({
             {error}
           </YStack>
 
-          {footer}
+          {/* The primary action is inset further than the text above it, which is what both
+              clients do and is deliberate rather than incidental -- see the insets. Nothing on the
+              wide design, where the column is already a fixed width. */}
+          <YStack {...(wide ? {} : { paddingHorizontal: EXTRA_ACTION_INSET })}>{footer}</YStack>
         </YStack>
       </XStack>
     </OnboardingChrome>
