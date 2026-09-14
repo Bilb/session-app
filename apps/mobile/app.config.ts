@@ -34,12 +34,40 @@ function shippedLocales(): string[] {
  * This file exists for `CFBundleLocalizations` and nothing else so far; everything static stays in
  * the JSON, where it is easier to read.
  */
+/**
+ * What a local build's bundle identifier gets on the end.
+ *
+ * **`-test` by default, and deliberately so.** An identifier is reserved with Apple by the first
+ * account that builds it to a device, so a development build carrying the real one can take
+ * `org.getsession.session2` against the wrong developer account -- quietly, and not easily undone.
+ * The suffix keeps local builds out of that, and a release sets `SESSION_BUNDLE_SUFFIX=` (empty)
+ * to ship the real identifier.
+ *
+ * This lived in the Xcode project until the project was regenerated, which lost it. Here it
+ * survives a prebuild.
+ */
+const BUNDLE_SUFFIX = process.env['SESSION_BUNDLE_SUFFIX'] ?? '-test'
+
+/** The identifier this build ships under: what `app.json` names, plus the suffix above. */
+function bundleId(config: ConfigContext['config']): string {
+  return `${config.ios?.bundleIdentifier ?? 'org.getsession.session2'}${BUNDLE_SUFFIX}`
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: config.name ?? 'Session',
   slug: config.slug ?? 'session-app',
   ios: {
     ...config.ios,
+    bundleIdentifier: bundleId(config),
+    entitlements: {
+      ...config.ios?.entitlements,
+      // **Follows the identifier, because it has to.** The access group is the app's own identifier
+      // prefixed by the team, so a `-test` build entitled to the unsuffixed group is entitled to a
+      // group it is not in -- and the keychain refuses it. That surfaces as expo-secure-store
+      // failing to store the database key, which is the app not starting rather than a warning.
+      'keychain-access-groups': [`$(AppIdentifierPrefix)${bundleId(config)}`],
+    },
     infoPlist: {
       ...config.ios?.infoPlist,
       /**
