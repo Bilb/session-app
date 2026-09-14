@@ -29,8 +29,6 @@ a time, via the `port-feature` skill.
 - **No contact list and no QR scanner.** Starting a conversation means pasting an account ID.
 - **iOS device builds and a release-shaped xcframework.** The simulator works; nothing has been
   signed with a real identity.
-- **Nothing shortens the poll interval.** libsession's default is 20 seconds, so a message can
-  take that long to appear. `SetPollInterval` is not in the schema.
 - **devnet refuses rather than half-working.** It needs seed nodes - a public key, an address and
   two ports each - which is not something a `devnet_seed_url` can be turned into. How the app
   learns those is a devnet question rather than a bridge one.
