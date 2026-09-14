@@ -69,6 +69,44 @@ describeAddon('the N-API addon', () => {
     transport.close()
   })
 
+  it('forwards libsession logging, and takes only its own logger off when it closes', async () => {
+    // libsession's logger is process-wide and fires from threads close() cannot join, so one left
+    // registered writes into a freed bridge. Removing it has to be surgical: clear_loggers would
+    // silence every other bridge in the process as well.
+    const open = (name: string) => {
+      const transport = createNodeBridgeTransport({
+        dbPath: join(dir, `${name}.db`),
+        cacheDir: join(dir, 'cache'),
+        rawKey: new Uint8Array(32).fill(7),
+        deferAccount: false,
+        logLevel: 'trace',
+      })
+      let seen = 0
+      transport.setSink((frame) => {
+        if (frame.type === 'event' && frame.event.type === 'log') seen += 1
+      })
+      // libsession logs on a timer rather than on demand, so the wait is for the next tick.
+      const nextLine = async () => {
+        const from = seen
+        for (let i = 0; i < 100 && seen === from; i++)
+          await new Promise((resolve) => setTimeout(resolve, 100))
+        return seen > from
+      }
+      return { transport, nextLine, lines: () => seen }
+    }
+
+    const first = open('logger-first')
+    const second = open('logger-second')
+    expect(await first.nextLine()).toBe(true)
+    expect(await second.nextLine()).toBe(true)
+
+    first.transport.close()
+
+    // The one still open keeps its own logger, and closing the other did not take it with it.
+    expect(await second.nextLine()).toBe(true)
+    second.transport.close()
+  }, 30000)
+
   it('creates an account when it is not asked to defer', async () => {
     const transport = createNodeBridgeTransport({
       dbPath: join(dir, 'eager.db'),
