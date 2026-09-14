@@ -13,12 +13,14 @@ export type { PressAreaProps }
 export function PressArea({
   onPress,
   disabled = false,
+  fill = false,
   accessibilityLabel,
   testID,
   children,
 }: PressAreaProps) {
   return (
     <XStack
+      {...(fill ? { flex: 1 } : {})}
       role="button"
       disabled={disabled}
       onPress={disabled ? undefined : onPress}

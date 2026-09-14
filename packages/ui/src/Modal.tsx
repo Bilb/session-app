@@ -45,6 +45,21 @@ interface ModalProps {
  * in a dialog reads as the safe default purely by looking like a primary action -- and in these
  * dialogs the emphasised option is usually the one to think twice about.
  */
+/**
+ * The dialog's own metrics, from the legacy client rather than from our scales.
+ *
+ * `Modal.swift` builds this with numbers that are not on either type or space ladder -- an 11pt
+ * radius, a 51pt button, 24 above the title and 4 below the buttons -- so they are written here as
+ * themselves. Rounding them onto the nearest rung is what made ours read as a different dialog:
+ * the padding was heavier, the corners rounder and the buttons shorter.
+ */
+const RADIUS = 11
+const SIDE_INSET = 35
+const TOP_INSET = 24
+const BOTTOM_INSET = 4
+const CONTENT_GAP = 8
+const ACTION_HEIGHT = 51
+
 export function Modal({
   open,
   onClose,
@@ -65,10 +80,13 @@ export function Modal({
         <YStack
           width="100%"
           maxWidth={360}
-          gap="$2"
-          padding="$2.5"
-          borderRadius="$4"
-          backgroundColor="$backgroundPrimary"
+          gap={CONTENT_GAP}
+          paddingTop={TOP_INSET}
+          paddingHorizontal={SIDE_INSET}
+          paddingBottom={BOTTOM_INSET}
+          borderRadius={RADIUS}
+          // The surface above the page, which is what an alert sits on in the client.
+          backgroundColor="$backgroundSecondary"
           // Swallows the press, so a tap inside the dialog does not reach the backdrop.
           onPress={(event) => {
             event.stopPropagation()
@@ -78,7 +96,8 @@ export function Modal({
           <XStack alignItems="flex-start" gap="$1">
             {/* Centred across the full width, with the cross overlaid rather than taking a column,
                 so the title is centred on the dialog and not on what is left of it. */}
-            <Text flex={1} size="$titleLarge" weight="bold" textAlign="center" userSelect="none">
+            {/* 17 on iOS, 16 on Android; ours was 20. */}
+            <Text flex={1} size="$bodyLarge" weight="bold" textAlign="center" userSelect="none">
               {title}
             </Text>
             {!showClose ? null : (
@@ -99,7 +118,14 @@ export function Modal({
           {children}
 
           {actions === undefined ? null : (
-            <XStack justifyContent="space-around" alignItems="center" gap="$1">
+            /* Equal widths running the full width of the dialog, with no gap and no side margins
+               -- the client's `fillEqually`. Each action is as tall as a control rather than as
+               tall as its label. */
+            <XStack alignItems="stretch" marginHorizontal={-SIDE_INSET} height={ACTION_HEIGHT}>
+              {/* Each action takes an equal share of the full width -- the client's `fillEqually`
+                  -- with no gap, so the two share an edge the way its alert's buttons do. The
+                  actions ask for that themselves with `fill`, because a fragment of them arrives
+                  here as one child and cannot be divided from the outside. */}
               {actions}
             </XStack>
           )}

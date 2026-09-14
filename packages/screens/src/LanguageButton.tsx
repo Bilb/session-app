@@ -84,18 +84,12 @@ export function LanguageButton() {
         // A question, so it gets two words rather than a word and a glyph. See the prop.
         showClose={false}
         actions={
+          /* Confirm first, which is the order the legacy client's alert uses -- its row is
+             `[confirm, cancel]` with equal widths, so the affirmative sits on the left. */
           <>
             <Button
-              variant="ghost"
-              testID={ELEMENT.languagePicker.confirmSettingsCancel}
-              onPress={() => {
-                setConfirming(false)
-              }}
-            >
-              {tr('cancel')}
-            </Button>
-            <Button
-              variant="ghost"
+              variant="simple"
+              fill
               testID={ELEMENT.languagePicker.confirmSettingsOpen}
               onPress={() => {
                 setConfirming(false)
@@ -103,6 +97,16 @@ export function LanguageButton() {
               }}
             >
               {tr('openSettings')}
+            </Button>
+            <Button
+              variant="simple"
+              fill
+              testID={ELEMENT.languagePicker.confirmSettingsCancel}
+              onPress={() => {
+                setConfirming(false)
+              }}
+            >
+              {tr('cancel')}
             </Button>
           </>
         }

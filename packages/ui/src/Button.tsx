@@ -225,6 +225,8 @@ export interface ButtonProps {
   size?: 'xs' | 'sm' | 'md' | 'lg'
   /** For an icon on its own: equal width and height, so the full radius is a circle. */
   circular?: boolean
+  /** Takes an equal share of the row it is in. What a dialog's actions do. */
+  fill?: boolean
   /**
    * Overrides the size variant's horizontal padding.
    *
@@ -265,6 +267,7 @@ export function Button({
   loading = false,
   circular = false,
   destructive = false,
+  fill = false,
   paddingHorizontal,
   icon,
   accessibilityLabel,
@@ -285,6 +288,7 @@ export function Button({
 
   return (
     <PressArea
+      fill={fill}
       {...(inert || onPress === undefined ? {} : { onPress })}
       disabled={inert}
       // Grown outwards rather than drawn larger: the control keeps the size the designs give it and
@@ -295,6 +299,7 @@ export function Button({
     >
       {(pressed) => (
         <Frame
+          {...(fill ? { flex: 1 } : {})}
           variant={variant}
           size={size}
           circular={circular}

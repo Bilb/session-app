@@ -11,6 +11,8 @@ export interface PressAreaProps {
   disabled?: boolean
   /** How far outside the control a touch still counts. Native only; a pointer needs no slop. */
   hitSlop?: number
+  /** Takes an equal share of the row it is in, so a dialog's actions can share their width. */
+  fill?: boolean
   accessibilityLabel?: string
   testID?: string
   /**

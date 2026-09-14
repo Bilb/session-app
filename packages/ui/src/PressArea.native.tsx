@@ -22,6 +22,7 @@ export type { PressAreaProps }
 export function PressArea({
   onPress,
   disabled = false,
+  fill = false,
   hitSlop,
   accessibilityLabel,
   testID,
@@ -29,6 +30,7 @@ export function PressArea({
 }: PressAreaProps) {
   return (
     <Pressable
+      {...(fill ? { style: { flex: 1 } } : {})}
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
