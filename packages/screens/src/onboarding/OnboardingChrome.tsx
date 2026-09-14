@@ -105,7 +105,24 @@ const WEBSITE_URL = 'https://getsession.org'
  *
  * Keyed on width rather than platform, because a tablet in landscape takes the desktop design.
  */
-export function OnboardingChrome({ children, testID }: { children: ReactNode; testID: string }) {
+export function OnboardingChrome({
+  children,
+  testID,
+  onBack,
+}: {
+  children: ReactNode
+  testID: string
+  /**
+   * Drawn by the **phone** design only, in the row above the step.
+   *
+   * The wide design hangs its own chevron off the side of the column, outside the content, and
+   * ignores this. A phone has no such margin to hang into: the same offset put the control 21
+   * points off the left edge of the screen, three of it visible and none of it tappable, so there
+   * was no way back from any step. Both mobile clients put it in a bar above the content instead,
+   * which is what this row is.
+   */
+  onBack?: () => void
+}) {
   const wide = useMedia().gtSm
   const window = useWindowSize()
   // Fades the content in when the step changes. `testID` is the step's identity, so a new step
@@ -117,7 +134,19 @@ export function OnboardingChrome({ children, testID }: { children: ReactNode; te
   if (!wide) {
     return (
       <Screen padded testID={testID}>
-        <XStack justifyContent="flex-end" minHeight="$7">
+        <XStack alignItems="center" minHeight="$7">
+          {onBack === undefined ? null : (
+            <Button
+              variant="ghost"
+              size="xs"
+              circular
+              accessibilityLabel={tr('back')}
+              testID={ELEMENT.onboarding.back}
+              onPress={onBack}
+              icon={<Icon name="chevronLeft" size="$5" color="$textPrimary" />}
+            />
+          )}
+          <YStack flex={1} />
           {flag('onboardingLanguageSelect') ? <LanguageButton /> : null}
         </XStack>
         {/* `flex` is load-bearing. Without it this box takes its content's height, and a child

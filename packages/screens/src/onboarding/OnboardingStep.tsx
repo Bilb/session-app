@@ -1,11 +1,17 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Icon, Text, XStack, YStack } from '@session/ui'
+import { Button, Icon, Text, useMedia, XStack, YStack } from '@session/ui'
 import type { ReactNode } from 'react'
 
 import { OnboardingChrome } from './OnboardingChrome'
 
-/** How far the back button sits outside the content column. The desktop client's own offset. */
+/**
+ * How far the back button sits outside the content column. The desktop client's own offset.
+ *
+ * **Only where there is a margin to hang into.** On a phone the content is the screen, so this put
+ * the control off the left edge of the display; the phone design draws its own in the row above
+ * instead. See `OnboardingChrome`.
+ */
 const BACK_OFFSET = -36
 
 /**
@@ -52,10 +58,12 @@ export function OnboardingStep({
   footer,
   testID,
 }: OnboardingStepProps) {
+  const wide = useMedia().gtSm
+
   return (
-    <OnboardingChrome testID={testID}>
+    <OnboardingChrome testID={testID} {...(wide ? {} : { onBack })}>
       <XStack>
-        {onBack === undefined ? null : (
+        {!wide || onBack === undefined ? null : (
           // Centred on the title's line rather than the column: `alignSelf` against the heading
           // row keeps it level however many lines the title wraps to.
           <YStack marginLeft={BACK_OFFSET} height={34} justifyContent="center">
