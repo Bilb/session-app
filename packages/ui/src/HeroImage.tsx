@@ -36,12 +36,20 @@ const ASPECT = 1629 / 2160
  */
 export function HeroImage() {
   return (
-    // `position="relative"` is load-bearing: react-native makes every view a containing block, but
-    // the web does not, so without it the absolutely-positioned artwork resolves against the
-    // viewport and covers the whole window.
-    <YStack flex={1} position="relative" overflow="hidden">
+    /**
+     * **The panel aligns the artwork; the artwork does not position itself.**
+     *
+     * It was an absolutely-positioned child pinned to `right: 0`, which is the same picture at
+     * rest and a different one during a rotation: the panel's width is animated, an absolute
+     * child is laid out against the bounds rather than with them, and the artwork's right edge
+     * lagged the panel's -- so the clip appeared on the right, over the subject, instead of on the
+     * left where the crop already is. Aligning a normal child to the end puts both in the same
+     * layout pass, and a child wider than its container overflows away from the edge it is
+     * aligned to.
+     */
+    <YStack flex={1} overflow="hidden" alignItems="flex-end">
       {/**
-       * **The aspect ratio goes on this box, not on the image inside it.**
+       * The aspect ratio goes on this box, not on the image inside it.
        *
        * An `Image` measures itself from its source and that measurement wins, so `aspectRatio` on
        * the image is silently ignored on native -- asked for a full-height box at the artwork's
@@ -54,7 +62,7 @@ export function HeroImage() {
        * A plain view has no such measurement, so the ratio resolves. Measured on an iPad, asking
        * three ways at once: view 913x1210, image 1629x1210, image with insets 1629x2160.
        */}
-      <YStack position="absolute" top={0} right={0} height="100%" aspectRatio={ASPECT}>
+      <YStack height="100%" aspectRatio={ASPECT}>
         {/* Percentages, so the image takes the box rather than describing one. A `minWidth`
             anywhere here would fit the artwork to the panel instead -- which shrinks it to show
             the whole picture, and showing the whole picture is the opposite of a crop. */}
