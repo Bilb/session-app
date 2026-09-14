@@ -11,12 +11,14 @@ import {
   SessionBrand,
   SessionWordmark,
   useMedia,
+  useWindowSize,
   XStack,
   YStack,
 } from '@session/ui'
 import { useEffect, useState, type ReactNode } from 'react'
 
 import { LanguageButton } from '../LanguageButton'
+import { COLUMN_WIDTH, heroWidth } from './heroPanel'
 import { useConfirmUrl } from './ConfirmUrl'
 
 /**
@@ -60,9 +62,6 @@ function useFadeIn(key: string): number {
   return shown ? 1 : 0
 }
 
-/** The desktop client's registration column. Everything inside onboarding is this wide. */
-const COLUMN_WIDTH = 348
-
 /**
  * The height every step's content is given, however short it really is.
  *
@@ -83,9 +82,6 @@ const COLUMN_WIDTH = 348
  * reads about 70px high; the steps read about 20px high.
  */
 const CONTENT_MIN_HEIGHT = 276
-
-/** The hero's share of the window. A maximum, not a fixed split. */
-const HERO_FRACTION = '40%'
 
 /**
  * Where the two documentation links go.
@@ -110,6 +106,7 @@ const WEBSITE_URL = 'https://getsession.org'
  */
 export function OnboardingChrome({ children, testID }: { children: ReactNode; testID: string }) {
   const wide = useMedia().gtSm
+  const window = useWindowSize()
   // Fades the content in when the step changes. `testID` is the step's identity, so a new step
   // remounts this and the animation runs; the artwork and the lockup sit outside it and do not.
   // Desktop only: the mobile clients cut between steps, and an opacity with nothing interpolating
@@ -157,9 +154,7 @@ export function OnboardingChrome({ children, testID }: { children: ReactNode; te
     // under a notch is text nobody can read. So the two are asked separately.
     <Screen testID={testID} edges={[]}>
       <XStack flex={1}>
-        {/* A maximum rather than a fixed share: the artwork is decoration, and on a very wide
-            window 40% of it is more picture than anyone needs. */}
-        <YStack width={HERO_FRACTION} maxWidth={640} testID={ELEMENT.onboarding.hero}>
+        <YStack width={heroWidth(window)} testID={ELEMENT.onboarding.hero}>
           <HeroImage />
         </YStack>
         <SafeArea>{column}</SafeArea>
