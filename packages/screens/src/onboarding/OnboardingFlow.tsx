@@ -1,17 +1,16 @@
 import { flag, requirePorts } from '@session/app'
 import { useAccount, useSessionActions } from '@session/state'
 import { useMedia } from '@session/ui'
-import { useEffect, useReducer, useRef, useState } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 
 import { ConfirmUrlProvider } from './ConfirmUrl'
 import { LandingScreen } from './LandingScreen'
-import { QuitWarningModal } from './QuitWarningModal'
 import { LoadAccountScreen } from './LoadAccountScreen'
 import { LoadingScreen } from './LoadingScreen'
 import { MessageNotificationsScreen } from './MessageNotificationsScreen'
 import { PickDisplayNameScreen } from './PickDisplayNameScreen'
 import {
-  backNeedsConfirming,
+  backDiscardsAccount,
   initialOnboarding,
   onboardingReducer,
   type OnboardingDesign,
@@ -60,26 +59,34 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
   const [state, dispatch] = useReducer(onboardingReducer, design, initialOnboarding)
   const [busy, setBusy] = useState(false)
   const [rejected, setRejected] = useState(false)
-  const [quitting, setQuitting] = useState(false)
   const account = useAccount()
-  /** Guards the one call that mints a restored account, so a re-render cannot make two of them. */
-  const restoring = useRef(false)
 
   /**
-   * The restore itself, at the wait rather than at the phrase.
+   * Going back, with whatever has been minted thrown away first.
    *
-   * This is the step the wait is a wait *for*, and putting it here is what leaves every step
-   * before it free of an account: the phrase screen only asks libsession whether the words decode.
+   * The account is real by the time the restore branch is past its phrase screen, so backing out
+   * of it is not a navigation -- it is a decision to be rid of an account. `discardAccount` deletes
+   * the database and opens a fresh one, which is what lets back go back at all rather than offering
+   * to quit.
    */
-  useEffect(() => {
-    if (state.step !== 'loading' || state.recovery === null || restoring.current) return
-    restoring.current = true
-    void actions.restoreAccount(state.recovery).catch(() => {
-      restoring.current = false
-      dispatch({ type: 'restoreFailed' })
-      setRejected(true)
-    })
-  }, [state.step, state.recovery, actions])
+  const goBack = () => {
+    if (!backDiscardsAccount(state)) {
+      dispatch({ type: 'back' })
+      return
+    }
+    setBusy(true)
+    void actions
+      .discardAccount()
+      .catch(() => {
+        // Nothing to tell the person: the screen they are going back to is the one that starts
+        // again from nothing, and a discard that failed leaves an account they are about to
+        // replace anyway. Logged by the store.
+      })
+      .finally(() => {
+        setBusy(false)
+        dispatch({ type: 'back' })
+      })
+  }
 
   /**
    * The profile arriving is what ends the wait early.
@@ -140,20 +147,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
     )
   }, [state, actions, onRunningChange])
 
-  return (
-    <ConfirmUrlProvider>
-      {screen()}
-      <QuitWarningModal
-        open={quitting}
-        onQuit={() => {
-          requirePorts().window.close()
-        }}
-        onCancel={() => {
-          setQuitting(false)
-        }}
-      />
-    </ConfirmUrlProvider>
-  )
+  return <ConfirmUrlProvider>{screen()}</ConfirmUrlProvider>
 
   function screen() {
     switch (state.step) {
@@ -176,12 +170,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
             initialName={state.displayName ?? ''}
             rejected={state.commitFailed}
             busy={busy}
-            onBack={() => {
-              // The rule lives in the reducer, which is the thing that knows what has been made
-              // by now. See backNeedsConfirming: this is the only step it is ever true on.
-              if (backNeedsConfirming(state)) setQuitting(true)
-              else dispatch({ type: 'back' })
-            }}
+            onBack={goBack}
             onContinue={(name) => {
               dispatch({ type: 'nameEntered', name })
             }}
@@ -197,13 +186,20 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
               dispatch({ type: 'back' })
             }}
             onContinue={(from) => {
-              // Checked here and restored at the wait. A phrase the bridge refuses has to put
-              // somebody back on this screen with what they typed still on it, and restoring to
-              // find that out would leave an account behind every time somebody got it wrong --
-              // which is what the warning on the way back used to be apologising for.
+              // **Checked, then taken over, both before leaving this screen.**
+              //
+              // Checked first so that a phrase with a typo in it never mints anything: the refusal
+              // puts somebody back on this screen with what they typed still on it, and nothing
+              // has happened. Taken over immediately after, so that fetching the profile runs
+              // while the next screen is being read -- on a phone that is the notification
+              // question, and the wait after it is often over before it is drawn, which is what
+              // both mobile clients do and what this used to lose by minting late.
+              //
+              // Going back from here on is a discard rather than a navigation. See `goBack`.
               setBusy(true)
               setRejected(false)
               void check(from, actions)
+                .then(() => actions.restoreAccount(from))
                 .then(() => {
                   dispatch({ type: 'phraseEntered', from })
                 })
@@ -221,9 +217,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
         return (
           <MessageNotificationsScreen
             busy={busy}
-            onBack={() => {
-              dispatch({ type: 'back' })
-            }}
+            onBack={goBack}
             onContinue={(mode) => {
               dispatch({ type: 'notificationsChosen', mode })
             }}

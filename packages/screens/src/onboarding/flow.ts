@@ -134,7 +134,10 @@ export type OnboardingEvent =
 function previousStep(state: OnboardingState): OnboardingStep | null {
   switch (state.step) {
     case 'pickDisplayName':
-      return state.afterFailedRestore ? null : 'landing'
+      // Both ways in lead back to the start. It used to be null after a failed restore, because
+      // the account had been taken over and nothing could untake it; `discardAccount` can, so
+      // there is no longer a step this flow cannot be backed out of.
+      return 'landing'
     case 'loadAccount':
       return 'landing'
     case 'messageNotifications':
@@ -149,19 +152,19 @@ function previousStep(state: OnboardingState): OnboardingStep | null {
 }
 
 /**
- * Whether `back` from here has to offer to quit instead of going back.
+ * Whether going back from here has to throw an account away first.
  *
- * **One step, and only one.** Everything else in the flow can be backed out of freely, because
- * nothing exists yet to abandon: creating holds the name and mints at the end, and restoring now
- * checks the phrase without taking the account over -- the mint waits for the step that covers it.
+ * **True wherever one has been minted**, which after the move to minting early is every step of the
+ * restore branch past the phrase, plus the name picker a failed restore lands in. Creating still
+ * holds the name and mints at the end, so backing out of it has nothing to undo.
  *
- * What is left is the name picker reached by a restore that gave up waiting. By then the account
- * has genuinely been taken over: it exists, it is on the network, and it is somebody's. Going back
- * from there would have to delete a real account's database rather than discard a half-made one,
- * which is a different act and wants asking about.
+ * There is no longer a step that has to *ask*. The warning existed because an account had been
+ * taken over and nothing could untake it; `discardAccount` can, so back goes back everywhere and
+ * the dialog is gone.
  */
-export function backNeedsConfirming(state: OnboardingState): boolean {
-  return state.step === 'pickDisplayName' && state.afterFailedRestore
+export function backDiscardsAccount(state: OnboardingState): boolean {
+  if (state.branch !== 'restore') return false
+  return state.step === 'messageNotifications' || state.step === 'pickDisplayName'
 }
 
 export function onboardingReducer(state: OnboardingState, event: OnboardingEvent): OnboardingState {
@@ -205,12 +208,16 @@ export function onboardingReducer(state: OnboardingState, event: OnboardingEvent
     case 'restoreGaveUp':
       // Not back to the phrase: it decoded, so there is nothing to retype. The account exists and
       // wants a name, which is the create branch's screen wearing different words.
-      return { ...state, step: 'pickDisplayName', afterFailedRestore: true }
+      //
+      // The words go here. They have done their work -- the account is taken over -- and holding
+      // them for the rest of the flow is a copy of the whole account sitting in memory for no
+      // reason. They cannot be wiped, so the most that can be done is to stop referencing them.
+      return { ...state, step: 'pickDisplayName', afterFailedRestore: true, recovery: null }
 
     case 'restoreArrived':
       // The name came with the account, so the flow is over: asking for one now would be asking
-      // somebody to rename themselves.
-      return { ...state, step: 'done' }
+      // somebody to rename themselves. The words are dropped for the reason above.
+      return { ...state, step: 'done', recovery: null }
 
     case 'restoreFailed':
       // Back to the phrase. It decoded a moment ago, so this is not a typo -- but this is the step
@@ -227,7 +234,14 @@ export function onboardingReducer(state: OnboardingState, event: OnboardingEvent
 
     case 'back': {
       const previous = previousStep(state)
-      return previous === null ? state : { ...state, step: previous }
+      if (previous === null) return state
+      // **Reaching the landing screen is starting over, not merely a step backwards.** Anything
+      // collected on the way belongs to an attempt that has been abandoned -- and after a discard
+      // it belongs to an account that no longer exists on this device. Carrying a display name or
+      // a recovery phrase into the next attempt is the leak this flow exists to prevent, one level
+      // above the database.
+      if (previous === 'landing') return { ...initialOnboarding(state.design), step: 'landing' }
+      return { ...state, step: previous }
     }
   }
 }

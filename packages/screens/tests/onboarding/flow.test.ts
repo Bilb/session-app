@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   asksAboutNotifications,
-  backNeedsConfirming,
+  backDiscardsAccount,
   isWideDesign,
   initialOnboarding,
   onboardingReducer,
@@ -108,27 +108,44 @@ describe('going back', () => {
     expect(run([{ type: 'back' }])).toEqual(initialOnboarding('phone'))
   })
 
-  it('does nothing once an account exists', () => {
-    // Backing out of naming a restored account would leave it nameless rather than undo anything.
+  it('goes back even from naming a restored account, because that can now be discarded', () => {
+    // It used to do nothing here: an account had been taken over and there was no way to untake
+    // it, so the screen offered to quit instead. `discardAccount` deletes it, so back goes back.
     const gaveUp = run([RESTORE, PHRASE, FAST, { type: 'restoreGaveUp' }])
-    expect(onboardingReducer(gaveUp, { type: 'back' }).step).toBe('pickDisplayName')
-    // And on desktop, where `loading` is reached straight from the phrase.
+    expect(onboardingReducer(gaveUp, { type: 'back' }).step).toBe('landing')
+  })
+
+  it('still does nothing during the wait, which has nothing behind it', () => {
+    // Desktop reaches `loading` straight from the phrase, and there is no screen between them to
+    // go back to that is not the phrase itself.
     expect(onboardingReducer(run([RESTORE, PHRASE], 'desktop'), { type: 'back' }).step).toBe(
       'loading',
     )
   })
 
-  it('asks only where an account has really been taken over', () => {
-    // The one step where going back would have to delete somebody's actual account, rather than
-    // discard something half-made: the restore succeeded and only its name never arrived.
-    expect(backNeedsConfirming(run([RESTORE, PHRASE, FAST, { type: 'restoreGaveUp' }]))).toBe(true)
+  it('forgets everything collected when it reaches the landing screen', () => {
+    // The leak one level above the database: a display name or a phrase carried into the next
+    // attempt would belong to the account just abandoned.
+    // Two steps in with a name typed, then all the way out.
+    const backedOut = run([CREATE, NAME, { type: 'back' }, { type: 'back' }])
+    expect(backedOut.step).toBe('landing')
+    expect(backedOut.recovery).toBeNull()
+    expect(backedOut.displayName).toBeNull()
+    expect(backedOut.afterFailedRestore).toBe(false)
+  })
 
-    // Everywhere else nothing exists yet to abandon. Creating holds the name and mints at the end;
-    // restoring checks the phrase and mints at the wait.
-    expect(backNeedsConfirming(run([CREATE]))).toBe(false)
-    expect(backNeedsConfirming(run([RESTORE]))).toBe(false)
-    expect(backNeedsConfirming(run([RESTORE, PHRASE]))).toBe(false)
-    expect(backNeedsConfirming(initialOnboarding('phone'))).toBe(false)
+  it('throws the account away wherever one has been minted', () => {
+    // Restoring mints as it leaves the phrase screen, so every step after it is backing out of a
+    // real account -- which is a discard rather than a navigation.
+    expect(backDiscardsAccount(run([RESTORE, PHRASE]))).toBe(true)
+    expect(backDiscardsAccount(run([RESTORE, PHRASE, FAST, { type: 'restoreGaveUp' }]))).toBe(true)
+
+    // Creating holds the name and mints at the very end, so backing out of it has nothing to undo.
+    expect(backDiscardsAccount(run([CREATE]))).toBe(false)
+    expect(backDiscardsAccount(run([CREATE, NAME]))).toBe(false)
+    // And the phrase screen itself: checked but not yet taken over.
+    expect(backDiscardsAccount(run([RESTORE]))).toBe(false)
+    expect(backDiscardsAccount(initialOnboarding('phone'))).toBe(false)
   })
 })
 

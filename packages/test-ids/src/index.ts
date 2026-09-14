@@ -94,9 +94,6 @@ export const ELEMENT = {
     openTerms: 'onboarding-open-terms',
     openPrivacy: 'onboarding-open-privacy',
     openUrlCancel: 'onboarding-open-url-cancel',
-    quitDialog: 'onboarding-quit',
-    quitConfirm: 'onboarding-quit-confirm',
-    quitCancel: 'onboarding-quit-cancel',
     continueButton: 'onboarding-continue',
 
     displayNameScreen: 'onboarding-display-name-screen',
