@@ -56,6 +56,13 @@ export interface SessionActions {
    */
   discardAccount: () => Promise<void>
   /**
+   * Says the account is here to stay, so a start that finds it does not sweep it away.
+   *
+   * The last thing onboarding does. Does not re-hydrate: nothing observable changes, which is the
+   * point -- it is the difference between an account that survives a restart and one that does not.
+   */
+  keepAccount: () => Promise<void>
+  /**
    * Re-reads the account and nothing else.
    *
    * libsession pushes conversations and messages but has no event for the account itself, so a
@@ -272,6 +279,10 @@ export function createSessionStore(
     async discardAccount(): Promise<void> {
       await client.discardAccount()
       await actions.hydrate()
+    },
+
+    async keepAccount(): Promise<void> {
+      await client.keepAccount()
     },
 
     async refreshAccount(): Promise<void> {

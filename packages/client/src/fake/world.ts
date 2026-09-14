@@ -71,6 +71,15 @@ export class FakeAccount {
    * that was already here has had its name all along.
    */
   profileArrivesAt = 0
+  /**
+   * Whether this account was minted and never confirmed.
+   *
+   * Set the moment one comes into being and cleared by `keepAccount`. A restart with it still set
+   * is a crash partway through setting the account up, and the account does not survive it — the
+   * real bridge sweeps the database, this empties the account, and both leave a device that starts
+   * over rather than one holding an identity nobody finished with.
+   */
+  provisional = false
 
   private readonly conversations = new Map<ConversationId, FakeConversationState>()
   private readonly listeners = new Set<(event: SessionEvent) => void>()
@@ -124,6 +133,7 @@ export class FakeAccount {
    */
   discard(): void {
     this.haveAccount = false
+    this.provisional = false
     this.profileArrivesAt = 0
     this.conversations.clear()
     this.prefs.clear()
@@ -301,6 +311,14 @@ export class FakeAccount {
    * show a spinner for ever after a crash.
    */
   restart(): void {
+    // An account nobody confirmed does not survive a restart, the way it does not survive one
+    // against the real bridge. Checked before anything else, because there is no point settling
+    // the send states of messages that are about to be thrown away with the account.
+    if (this.provisional && this.haveAccount) {
+      this.discard()
+      return
+    }
+
     const inFlight: SendState[] = ['pending', 'sending']
     for (const [id, state] of this.conversations) {
       for (const message of state.messages) {

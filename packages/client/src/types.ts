@@ -63,6 +63,13 @@ export interface SessionClient {
    * the first screen afterwards.
    */
   discardAccount(): Promise<void>
+  /**
+   * Says the account is here to stay.
+   *
+   * Until this is called the account is provisional, and a start that finds an unconfirmed one
+   * throws it away — so this is what turns "an account was made" into "an account was kept".
+   */
+  keepAccount(): Promise<void>
   /** libsession owns the word list, so onboarding needs no mnemonic library of its own. */
   getSeedMnemonic(language?: string): Promise<string[]>
   setDisplayName(name: string): Promise<void>

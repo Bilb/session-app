@@ -985,6 +985,25 @@ struct JSIConverter<::session_bridge::DiscardAccountCommand> final {
 };
 
 template <>
+struct JSIConverter<::session_bridge::KeepAccountCommand> final {
+    static inline ::session_bridge::KeepAccountCommand fromJSI(jsi::Runtime&, const jsi::Value&) {
+        return ::session_bridge::KeepAccountCommand{};
+    }
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::KeepAccountCommand& arg) {
+        (void)arg;
+        jsi::Object obj(runtime);
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::KeepAccountCommand::type_tag));
+        return obj;
+    }
+    static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
+        if (!value.isObject())
+            return false;
+        jsi::Value type = value.getObject(runtime).getProperty(runtime, PropNameIDCache::get(runtime, "type"));
+        return type.isString() && type.getString(runtime).utf8(runtime) == ::session_bridge::KeepAccountCommand::type_tag;
+    }
+};
+
+template <>
 struct JSIConverter<::session_bridge::GetSeedMnemonicCommand> final {
     static inline ::session_bridge::GetSeedMnemonicCommand fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
         jsi::Object obj = arg.asObject(runtime);
@@ -1596,6 +1615,8 @@ struct JSIConverter<::session_bridge::Command> final {
             return JSIConverter<::session_bridge::RestoreAccountFromSeedCommand>::fromJSI(runtime, arg);
         if (tag == "discardAccount")
             return JSIConverter<::session_bridge::DiscardAccountCommand>::fromJSI(runtime, arg);
+        if (tag == "keepAccount")
+            return JSIConverter<::session_bridge::KeepAccountCommand>::fromJSI(runtime, arg);
         if (tag == "getSeedMnemonic")
             return JSIConverter<::session_bridge::GetSeedMnemonicCommand>::fromJSI(runtime, arg);
         if (tag == "setDisplayName")
@@ -1664,7 +1685,7 @@ struct JSIConverter<::session_bridge::Command> final {
         if (!type.isString())
             return false;
         std::string tag = type.getString(runtime).utf8(runtime);
-        return tag == "getAccountInfo" || tag == "createAccount" || tag == "restoreAccountFromWords" || tag == "checkRecoveryPhrase" || tag == "restoreAccountFromSeed" || tag == "discardAccount" || tag == "getSeedMnemonic" || tag == "setDisplayName" || tag == "attachNetwork" || tag == "pollOnce" || tag == "setPushToken" || tag == "handlePushPayload" || tag == "getConversations" || tag == "getMessageRequests" || tag == "getConversation" || tag == "openDm" || tag == "markRead" || tag == "setBlocked" || tag == "setNickname" || tag == "setPriority" || tag == "approveConversation" || tag == "deleteConversation" || tag == "getMessages" || tag == "sendMessage" || tag == "retrySend" || tag == "deleteMessage" || tag == "getPref" || tag == "setPref" || tag == "deliverTestMessage" || tag == "getTestAccountSeed" || tag == "approveTestContact" || tag == "echoTestFrame";
+        return tag == "getAccountInfo" || tag == "createAccount" || tag == "restoreAccountFromWords" || tag == "checkRecoveryPhrase" || tag == "restoreAccountFromSeed" || tag == "discardAccount" || tag == "keepAccount" || tag == "getSeedMnemonic" || tag == "setDisplayName" || tag == "attachNetwork" || tag == "pollOnce" || tag == "setPushToken" || tag == "handlePushPayload" || tag == "getConversations" || tag == "getMessageRequests" || tag == "getConversation" || tag == "openDm" || tag == "markRead" || tag == "setBlocked" || tag == "setNickname" || tag == "setPriority" || tag == "approveConversation" || tag == "deleteConversation" || tag == "getMessages" || tag == "sendMessage" || tag == "retrySend" || tag == "deleteMessage" || tag == "getPref" || tag == "setPref" || tag == "deliverTestMessage" || tag == "getTestAccountSeed" || tag == "approveTestContact" || tag == "echoTestFrame";
     }
 };
 

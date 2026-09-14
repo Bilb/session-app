@@ -206,6 +206,11 @@ namespace {
 
         return opts;
     }
+    /// Set while an account exists that nobody has confirmed they want to keep.
+    ///
+    /// Written when one is minted and erased by `keepAccount`, so its presence at startup means
+    /// the last attempt did not finish -- a crash, or a kill, somewhere in the middle of it.
+    constexpr std::string_view provisional_account_key = "account.provisional";
 
 }  // namespace
 
@@ -368,6 +373,23 @@ struct ClientBridge::Impl {
         attach_network();
     }
 
+    /// Marks the account provisional, and brings it online.
+    ///
+    /// **Only the paths where an application is deciding.** `on_account` also runs for an account
+    /// that was simply there when the database opened, and for one libSession minted itself
+    /// because the Core was not opened deferred -- neither of those is a decision anybody is
+    /// partway through, and marking them would sweep away a working account on the next start.
+    void on_account_requested() {
+        client->core.globals.set(provisional_account_key, std::string_view{"1"});
+        on_account();
+    }
+
+    /// Whether an account exists that was never confirmed.
+    bool account_is_provisional() {
+        return client->core.globals.have_account() &&
+               client->core.globals.get_text(provisional_account_key).has_value();
+    }
+
     /// The only path frames take out of here. Moved, never copied: the adapter's queue takes
     /// ownership on Core's loop and the JavaScript object is built from it on the JS thread.
     void emit(Frame frame) {
@@ -460,7 +482,7 @@ struct ClientBridge::Impl {
 
     void handle(double id, const CreateAccountCommand&) {
         client->core.globals.create_account();
-        on_account();
+        on_account_requested();
         ok(id);
     }
 
@@ -473,7 +495,7 @@ struct ClientBridge::Impl {
         b32 seed;
         std::memcpy(seed.data(), raw.data(), seed.size());
         client->core.globals.restore_account(core::predefined_seed{std::span{seed}});
-        on_account();
+        on_account_requested();
         ok(id);
     }
 
@@ -485,7 +507,7 @@ struct ClientBridge::Impl {
         client->core.globals.restore_account(
                 cmd.language ? core::predefined_seed{words, *cmd.language}
                              : core::predefined_seed{words});
-        on_account();
+        on_account_requested();
         ok(id);
     }
 
@@ -505,7 +527,12 @@ struct ClientBridge::Impl {
         ok(id);
     }
 
-    void handle(double id, const DiscardAccountCommand&) {
+    /// Throws the account away and opens a new database in its place.
+    ///
+    /// Shared by the command and by the sweep at startup, which want exactly the same thing for
+    /// different reasons: one because somebody went back, the other because nobody ever confirmed
+    /// the account was wanted.
+    void discard_account() {
         // Closed before anything is removed. Deleting a database out from under an open handle
         // leaves its pages alive until the last descriptor closes, which looks exactly like having
         // worked and is not.
@@ -534,6 +561,17 @@ struct ClientBridge::Impl {
         // thing worth keeping.
 
         open_client();
+    }
+
+    void handle(double id, const DiscardAccountCommand&) {
+        discard_account();
+        ok(id);
+    }
+
+    void handle(double id, const KeepAccountCommand&) {
+        // Erasing the marker is the whole of it: what it was protecting against is a start that
+        // finds an account nobody confirmed.
+        client->core.globals.erase(provisional_account_key);
         ok(id);
     }
 
@@ -847,6 +885,17 @@ ClientBridge::ClientBridge(InitOptions options, Sink sink) :
         _impl{std::make_unique<Impl>(std::move(sink), options)} {
 
     _impl->open_client();
+
+    // **An account nobody confirmed does not survive a restart.** Between minting one and the end
+    // of whatever was setting it up there is a window, and a crash in it leaves an identity behind
+    // that was never finished with. Finding it here and throwing it away puts the application back
+    // at its first screen rather than partway through a setup it has no memory of.
+    //
+    // For a restore that matters more than it sounds: such an account has the right identity and
+    // no display name yet, so an application that carried on would be asking somebody to name an
+    // account that already has a name on the network -- and taking the answer.
+    if (_impl->account_is_provisional())
+        _impl->discard_account();
 
     // An account that is already there needs no onboarding, so this is where its network comes
     // from. A deferred one gets it from createAccount or restoreAccount instead.

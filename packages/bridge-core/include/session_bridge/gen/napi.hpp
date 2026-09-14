@@ -870,6 +870,21 @@ struct Codec<::session_bridge::DiscardAccountCommand> {
 };
 
 template <>
+struct Codec<::session_bridge::KeepAccountCommand> {
+    static constexpr std::string_view name = "KeepAccountCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::KeepAccountCommand& value) {
+        (void)value;
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::KeepAccountCommand::type_tag.data(), ::session_bridge::KeepAccountCommand::type_tag.size()));
+        return obj;
+    }
+    static ::session_bridge::KeepAccountCommand from(const Napi::Value& value, std::string_view where) {
+        object(value, where);
+        return ::session_bridge::KeepAccountCommand{};
+    }
+};
+
+template <>
 struct Codec<::session_bridge::GetSeedMnemonicCommand> {
     static constexpr std::string_view name = "GetSeedMnemonicCommand";
     static Napi::Value to(Napi::Env env, const ::session_bridge::GetSeedMnemonicCommand& value) {
@@ -1457,6 +1472,8 @@ struct Codec<::session_bridge::Command> {
             return Codec<::session_bridge::RestoreAccountFromSeedCommand>::from(value, where);
         if (tag == "discardAccount")
             return Codec<::session_bridge::DiscardAccountCommand>::from(value, where);
+        if (tag == "keepAccount")
+            return Codec<::session_bridge::KeepAccountCommand>::from(value, where);
         if (tag == "getSeedMnemonic")
             return Codec<::session_bridge::GetSeedMnemonicCommand>::from(value, where);
         if (tag == "setDisplayName")

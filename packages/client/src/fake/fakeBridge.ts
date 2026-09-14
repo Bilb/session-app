@@ -87,6 +87,10 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     await client.discardAccount()
     return empty
   },
+  keepAccount: async (client) => {
+    await client.keepAccount()
+    return empty
+  },
   getSeedMnemonic: async (client, cmd) => ({
     type: 'mnemonic',
     words: await client.getSeedMnemonic(cmd.language),

@@ -290,6 +290,10 @@ async function commit(
   try {
     if (state.branch === 'create') await actions.createAccount()
     if (state.displayName !== null) await actions.setDisplayName(state.displayName)
+    // Last, and only once the rest has worked. Until this lands the account is provisional and a
+    // restart throws it away -- which is exactly what should happen if onboarding died before
+    // reaching here, and exactly what must not happen now that it has.
+    await actions.keepAccount()
   } finally {
     setBusy(false)
   }

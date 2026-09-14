@@ -90,6 +90,8 @@ export class FakeSessionClient implements SessionClient {
   createAccount(): Promise<void> {
     this.assertOpen()
     this.account.haveAccount = true
+    // Provisional until `keepAccount` says otherwise. See FakeAccount.provisional.
+    this.account.provisional = true
     return Promise.resolve()
   }
 
@@ -107,6 +109,7 @@ export class FakeSessionClient implements SessionClient {
     // screen is only reachable against the real bridge - noted rather than faked, because a
     // made-up rule here would predict nothing about the one that matters.
     this.account.haveAccount = true
+    this.account.provisional = true
     // The account comes back before its profile does: libsession has the identity the moment the
     // seed decodes, and the display name only once the swarm answers. The fake said both at once,
     // which made the wait that exists to cover that gap finish before it was drawn.
@@ -131,6 +134,12 @@ export class FakeSessionClient implements SessionClient {
     // account put there. Modelled as the account being emptied rather than the client being
     // replaced, because a caller keeps the same client across a discard either way.
     this.account.discard()
+    return Promise.resolve()
+  }
+
+  keepAccount(): Promise<void> {
+    this.assertOpen()
+    this.account.provisional = false
     return Promise.resolve()
   }
 

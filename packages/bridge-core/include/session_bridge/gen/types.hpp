@@ -552,6 +552,26 @@ struct DiscardAccountCommand {
     static constexpr std::string_view type_tag = "discardAccount";
 };
 
+/// Says the account is here to stay, and stops it being swept away on the next start.
+///
+/// **An account is provisional until this is called.** Minting one is not the same as deciding to
+/// keep it: between `createAccount` and the end of onboarding there is a window where the app has
+/// an identity nobody has finished setting up, and a crash in that window leaves it behind. The
+/// next start finds it, sees that nothing ever confirmed it, and throws it away -- so the person
+/// begins again rather than inheriting a half-made account.
+///
+/// **Which matters most for a restore**: an account recovered but never confirmed has the right
+/// identity and no display name yet, and putting somebody in front of "pick a display name" would
+/// let them overwrite the name their account already has on the network. Starting over and
+/// restoring again is the recoverable version of that mistake.
+///
+/// Deliberately not called "finish onboarding": the bridge has no notion of onboarding, and a
+/// client that never onboards -- a bot, a test -- calls this once after `createAccount` and is
+/// done.
+struct KeepAccountCommand {
+    static constexpr std::string_view type_tag = "keepAccount";
+};
+
 struct GetSeedMnemonicCommand {
     static constexpr std::string_view type_tag = "getSeedMnemonic";
 
@@ -928,6 +948,7 @@ using Command = std::variant<
         CheckRecoveryPhraseCommand,
         RestoreAccountFromSeedCommand,
         DiscardAccountCommand,
+        KeepAccountCommand,
         GetSeedMnemonicCommand,
         SetDisplayNameCommand,
         AttachNetworkCommand,

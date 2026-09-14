@@ -125,6 +125,33 @@ export function runSessionClientContract(
       expect((await client.getAccountInfo()).haveAccount).toBe(false)
     })
 
+    it('does not keep an account nobody confirmed across a restart', async () => {
+      // The crash case. Minting an account is not the same as deciding to keep it, and a restart
+      // that found an unconfirmed one would carry somebody into a setup they never finished --
+      // which for a restore means offering to name an account that already has a name.
+      const { client } = await harness.newcomer()
+      await client.createAccount()
+      expect((await client.getAccountInfo()).haveAccount).toBe(true)
+
+      const restarted = await harness.restart(client)
+
+      expect((await restarted.getAccountInfo()).haveAccount).toBe(false)
+    })
+
+    it('keeps one that was confirmed', async () => {
+      // The other half, and the one that would make the sweep a disaster if it were wrong.
+      const { client } = await harness.newcomer()
+      await client.createAccount()
+      await client.keepAccount()
+      const kept = (await client.getAccountInfo()).sessionId
+
+      const restarted = await harness.restart(client)
+
+      const after = await restarted.getAccountInfo()
+      expect(after.haveAccount).toBe(true)
+      expect(after.sessionId).toBe(kept)
+    })
+
     it('leaves nothing of an account behind when it is discarded', async () => {
       // Onboarding's undo, and the reason the whole thing exists: somebody who starts restoring
       // one account and changes their mind must not carry any of it into the next.
