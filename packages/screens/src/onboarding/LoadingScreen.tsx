@@ -28,7 +28,15 @@ const BAR_HEIGHT = 17
  * whole screen rather than one element on it.
  */
 const RING_SIZE = 160
-const RING_THICKNESS = 8
+
+/**
+ * The ring's stroke. **The legacy client's own number**, and ours was under half of it.
+ *
+ * iOS draws this gauge with `StrokeStyle(lineWidth: 20, lineCap: .round)`. At 8 it read as a thin
+ * progress ring rather than as the heavy gauge the client shows, which is the difference that
+ * was reported. The round cap we already had; only the weight was wrong.
+ */
+const RING_THICKNESS = 20
 
 interface LoadingScreenProps {
   onGaveUp: () => void
@@ -99,12 +107,15 @@ export function LoadingScreen({ onGaveUp }: LoadingScreenProps) {
           >
             <ProgressRing progress={fraction} size={RING_SIZE} thickness={RING_THICKNESS} />
             <YStack fullscreen alignItems="center" justifyContent="center" pointerEvents="none">
-              <Text size="$displayLarge" weight="bold" fontVariant={['tabular-nums']}>
+              {/* 32, the size Android draws this at; iOS's is 33. Ours reached past the rung to
+                  36 because the ladder was missing it. */}
+              <Text size="$displayMedium" weight="bold" fontVariant={['tabular-nums']}>
                 {percent}
               </Text>
             </YStack>
           </YStack>
-          <Text size="$titleLarge" weight="bold" textAlign="center">
+          {/* 18 on Android, 19 on iOS. Ours was 20. */}
+          <Text size="$title" weight="bold" textAlign="center">
             {tr('waitOneMoment')}
           </Text>
           <Text textAlign="center">{tr('loadAccountProgressMessage')}</Text>

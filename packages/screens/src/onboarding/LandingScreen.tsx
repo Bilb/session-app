@@ -142,8 +142,11 @@ function PhoneOpening() {
               borderRadius={BUBBLE_RADIUS}
               backgroundColor={bubble.outgoing ? '$primaryColor' : '$messageBubbleIncomingBg'}
             >
+              {/* 16, which is the one size both clients agree on for this: iOS hardcodes
+                  `.system(size: 16)` in its bespoke bubble and Android's landing reuses the real
+                  conversation bubble, whose body is 16. Ours was 14. */}
               <Text
-                size="$body"
+                size="$bodyLarge"
                 color={bubble.outgoing ? '$onAccent' : '$messageBubbleIncomingText'}
               >
                 {bubble.text}
