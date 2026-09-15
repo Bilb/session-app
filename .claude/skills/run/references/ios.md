@@ -241,3 +241,41 @@ and the Podfile. `pnpm install` does neither, and `pod install` alone applies no
 permission string simply never reaches the bundle, and the failure arrives much later as the OS
 killing the app when it touches the API. `npx expo prebuild -p ios` is the step that applies them;
 `apps/mobile/ios` is generated and gitignored, so there is nothing to review afterwards.
+
+### `plutil -extract` overwrites the file it reads
+
+Reading one key out of a built `Info.plist` with
+
+```sh
+plutil -extract CFBundleLocalizations json Session.app/Info.plist
+```
+
+prints the value **and replaces the plist with it**. The next read then fails with
+`Unexpected character [ at line 1`, and the app no longer installs: `Missing bundle ID`. The
+damage is to the build product rather than to any source, so the fix is to delete the `.app` and
+build again — but the bundle looks fine in Finder, and the install error names nothing that
+suggests a clobbered plist.
+
+Always send the output somewhere explicitly:
+
+```sh
+plutil -extract CFBundleLocalizations json -o - Session.app/Info.plist
+```
+
+### Whose language the permission prompts are in
+
+The camera and notification prompts are drawn by the system, not by the app, and the system
+chooses the `.lproj` by the **device's** preferred languages. Launching the app with
+`-AppleLanguages "(ja)"` localizes everything the app draws and leaves the prompt in English,
+which reads as the localized strings not being in the bundle at all.
+
+To see the real thing, set the language on the simulator and reboot it:
+
+```sh
+xcrun simctl spawn "$UDID" defaults write -g AppleLanguages -array ja
+xcrun simctl spawn "$UDID" defaults write -g AppleLocale -string ja_JP
+xcrun simctl shutdown "$UDID" && xcrun simctl boot "$UDID"
+```
+
+`xcrun simctl privacy "$UDID" reset camera <bundle id>` puts the prompt back so it can be asked
+for again.

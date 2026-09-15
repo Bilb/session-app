@@ -50,6 +50,7 @@
     "react-native-worklets": "catalog:"
   },
   "devDependencies": {
+    "@expo/config-plugins": "catalog:",
     "@session/eslint-config": "workspace:*",
     "@session/typescript-config": "workspace:*",
     "@tamagui/babel-plugin": "catalog:",

@@ -6,6 +6,7 @@ packages:
 
 catalog:
   '@eslint/js': 10.0.1
+  '@expo/config-plugins': ~57.0.9
   '@playwright/test': 1.62.1
   '@tamagui/babel-plugin': 2.7.7
   '@tamagui/lucide-icons-2': 2.7.7
