@@ -9,6 +9,7 @@ import {
   netidForTransport,
   parseDevnetConfig,
   parseNetworkName,
+  parseLogSpec,
   parseRouterKind,
 } from '@session/basic-types'
 import type { BridgeTransport } from '@session/client'
@@ -122,6 +123,12 @@ export async function createBridge(): Promise<BridgeTransport> {
 
   const netid = netidForTransport(name, devnet)
   const router = parseRouterKind(process.env['EXPO_PUBLIC_SESSION_ROUTER'])
+  const logs = parseLogSpec(process.env['EXPO_PUBLIC_SESSION_LOG'])
+  // A category nothing declares makes a logger that matches nothing, so it fails silently.
+  if (logs !== undefined && logs.unknown.length > 0)
+    console.warn(
+      `EXPO_PUBLIC_SESSION_LOG: ignoring ${logs.unknown.join(', ')} - not a level or a known category.`,
+    )
 
   // Per network, so a devnet identity and a mainnet one can both exist and switching back loses
   // neither. libsession derives its own snode cache from the database's directory, which puts
@@ -162,10 +169,12 @@ export async function createBridge(): Promise<BridgeTransport> {
     // only way to exercise a transport we ship on a network that has it.
     ...(router === undefined ? {} : { router }),
     deviceType: 'desktop',
-    // Off unless asked for: it is chatty at anything below warn, and the reason to turn it up
-    // is always a specific failure. EXPO_PUBLIC_SESSION_LOG=debug is what a diagnosis looks like.
-    ...(process.env['EXPO_PUBLIC_SESSION_LOG'] === undefined
+    // Off unless asked for: it is chatty at anything below warn, and the reason to turn it up is
+    // always a specific failure. `warn,network=debug` is what a diagnosis looks like - a flat
+    // `debug` buries it under quic and the router.
+    ...(logs?.level === undefined ? {} : { logLevel: logs.level }),
+    ...(logs === undefined || logs.categories.length === 0
       ? {}
-      : { logLevel: process.env['EXPO_PUBLIC_SESSION_LOG'] as 'debug' }),
+      : { logCategories: logs.categories }),
   })
 }

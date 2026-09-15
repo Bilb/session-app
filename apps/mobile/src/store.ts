@@ -1,6 +1,7 @@
 import {
   netidForTransport,
   parseDevnetConfig,
+  parseLogSpec,
   parseNetworkName,
   parseRouterKind,
 } from '@session/basic-types'
@@ -55,6 +56,11 @@ async function openTransport(): Promise<BridgeTransport> {
 
   const netid = netidForTransport(name, devnet)
   const router = parseRouterKind(process.env['EXPO_PUBLIC_SESSION_ROUTER'])
+  const logs = parseLogSpec(process.env['EXPO_PUBLIC_SESSION_LOG'])
+  if (logs !== undefined && logs.unknown.length > 0)
+    console.warn(
+      `EXPO_PUBLIC_SESSION_LOG: ignoring ${logs.unknown.join(', ')} - not a level or a known category.`,
+    )
 
   const { createNativeBridgeTransport, discoverSeedNodes } = await import('@session/client')
   const paths = await sessionPaths(name)
@@ -87,9 +93,10 @@ async function openTransport(): Promise<BridgeTransport> {
     // Off unless asked for, as on desktop: libsession is chatty below warn, and the reason to turn
     // it up is always a specific failure. It is also the only place the network and the transport
     // actually chosen are reported, which no screen shows.
-    ...(process.env['EXPO_PUBLIC_SESSION_LOG'] === undefined
+    ...(logs?.level === undefined ? {} : { logLevel: logs.level }),
+    ...(logs === undefined || logs.categories.length === 0
       ? {}
-      : { logLevel: process.env['EXPO_PUBLIC_SESSION_LOG'] as 'debug' }),
+      : { logCategories: logs.categories }),
   })
 }
 

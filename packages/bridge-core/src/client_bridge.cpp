@@ -66,6 +66,15 @@ namespace {
         return static_cast<T>(value);
     }
 
+    LogLevel log_level_of(std::string_view name) {
+        return name == "trace"      ? LogLevel::trace
+             : name == "debug"      ? LogLevel::debug
+             : name == "info"       ? LogLevel::info
+             : name == "error"      ? LogLevel::error
+             : name == "critical"   ? LogLevel::critical
+                                    : LogLevel::warn;
+    }
+
     /// The bytes a hex field names, or an error naming the field.
     ///
     /// oxenc::from_hex is undefined behaviour on anything but an even-length run of hex digits:
@@ -745,14 +754,14 @@ ClientBridge::ClientBridge(InitOptions options, Sink sink) :
         _impl->client->set_cache_dir(options.cache_dir);
 
     // Set up after the Client exists, so nothing arrives before there is a sink to take it.
-    if (!options.log_level.empty()) {
-        auto level = options.log_level == "trace"      ? LogLevel::trace
-                     : options.log_level == "debug"    ? LogLevel::debug
-                     : options.log_level == "info"     ? LogLevel::info
-                     : options.log_level == "error"    ? LogLevel::error
-                     : options.log_level == "critical" ? LogLevel::critical
-                                                       : LogLevel::warn;
-        logger_reset_level(level);
+    if (!options.log_level.empty() || !options.log_categories.empty()) {
+        if (!options.log_level.empty())
+            logger_reset_level(log_level_of(options.log_level));
+
+        // After the default, because reset_level sets every existing category: the other order
+        // would hand each override straight back to the level it was overriding.
+        for (const auto& each : options.log_categories)
+            logger_set_level(each.category, log_level_of(each.level));
 
         // Kept so close() can take it back off: this fires from threads close() cannot join,
         // and what it writes to does not outlive the bridge.

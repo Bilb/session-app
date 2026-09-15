@@ -2,6 +2,7 @@ export type {
   DeviceType,
   FileServerConfig,
   LibsessionLogLevel,
+  LogCategoryLevel,
   NetId,
   RouterKind,
   SeedNode,

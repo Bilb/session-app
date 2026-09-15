@@ -79,6 +79,19 @@ export type DeviceType = 'ios' | 'android' | 'desktop'
 export type LibsessionLogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'critical'
 
 /**
+ * One category turned up or down, on top of `logLevel`.
+ *
+ * A single level is unusable in practice: `quic` and `session-router` produce thousands of lines a
+ * second at debug and bury whatever was being looked for. Applied after `logLevel`, so these are
+ * overrides rather than the whole set, and a category nothing declares is created rather than
+ * refused - it simply matches nothing.
+ */
+export interface LogCategoryLevel {
+  category: string
+  level: LibsessionLogLevel
+}
+
+/**
  * Everything the bridge needs to open a Client, and nothing it can work out for itself.
  *
  * This package exists so there is one declaration rather than one per transport. `@session/client`
@@ -95,6 +108,9 @@ export interface SessionBridgeOptions {
 
   /** Defaults to session-router on mainnet and testnet, onion requests on devnet. */
   router?: RouterKind
+
+  /** Per-category overrides on top of `logLevel`, which is the default for every category. */
+  logCategories?: LogCategoryLevel[]
 
   /**
    * The 32-byte database key, hex. libsession accepts one but neither derives nor stores it, so

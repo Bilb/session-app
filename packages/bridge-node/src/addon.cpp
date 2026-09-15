@@ -103,6 +103,22 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
         }
         if (options.Has("deviceType") && !options.Get("deviceType").IsUndefined())
             init.device_type = options.Get("deviceType").As<Napi::String>().Utf8Value();
+        if (options.Has("logCategories") && !options.Get("logCategories").IsUndefined()) {
+            Napi::Value value = options.Get("logCategories");
+            if (!value.IsArray())
+                throw Napi::TypeError::New(env, "logCategories must be an array");
+            auto list = value.As<Napi::Array>();
+            for (uint32_t i = 0; i < list.Length(); i++) {
+                Napi::Value entry = list.Get(i);
+                if (!entry.IsObject())
+                    throw Napi::TypeError::New(
+                            env, "logCategories[" + std::to_string(i) + "] must be an object");
+                auto each = entry.As<Napi::Object>();
+                init.log_categories.push_back(
+                        {each.Get("category").As<Napi::String>().Utf8Value(),
+                         each.Get("level").As<Napi::String>().Utf8Value()});
+            }
+        }
         if (options.Has("logLevel") && !options.Get("logLevel").IsUndefined())
             init.log_level = options.Get("logLevel").As<Napi::String>().Utf8Value();
 

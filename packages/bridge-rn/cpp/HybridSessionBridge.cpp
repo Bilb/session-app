@@ -155,6 +155,9 @@ void HybridSessionBridge::init(const SessionBridgeOptions& options) {
         init.device_type = device_type_name(*options.deviceType);
     if (options.logLevel)
         init.log_level = log_level_name(*options.logLevel);
+    if (options.logCategories)
+        for (const auto& each : *options.logCategories)
+            init.log_categories.push_back({each.category, log_level_name(each.level)});
     if (options.rawKeyHex)
         init.raw_key = key_from_hex(*options.rawKeyHex);
     else if (options.password)

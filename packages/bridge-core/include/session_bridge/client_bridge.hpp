@@ -13,6 +13,17 @@
 
 namespace session_bridge {
 
+/// One log category turned up or down.
+///
+/// Declared here rather than generated: `SessionBridgeOptions` is read by each adapter directly
+/// rather than crossing as a protocol frame, so the generator never sees this type. It mirrors
+/// `@session/bridge-types`' `LogCategoryLevel`, and the level is a plain string for the same
+/// reason `log_level` is - libsession takes the name, not an enum this side.
+struct LogCategoryLevel {
+    std::string category;
+    std::string level;
+};
+
 /// Which network to reach and how to find it.
 ///
 /// Also what `attachNetwork` carries, so the two ways in cannot describe a network differently.
@@ -89,10 +100,17 @@ struct InitOptions {
     /// because the state machine reports *what* happened and not *why*: a send that ends in
     /// `failed` carries no reason, and the reason is in these lines.
     ///
-    /// Registered process-wide - libsession's add_logger has no deregistration - so a second
-    /// bridge in one process would double them up. There is one. A line logged after its bridge
-    /// closed is dropped: the logger holds the bridge weakly.
+    /// Registered process-wide, so a second bridge in one process would double them up. There is
+    /// one, and `close()` takes its logger back off again.
     std::string log_level;
+
+    /// Per-category overrides, applied after `log_level` has been given to every category.
+    ///
+    /// A single level is unusable: `quic` and `session-router` produce thousands of lines a second
+    /// at debug and bury whatever was being looked for. A category no dependency declares is
+    /// created rather than refused - libsession's `Cat()` makes one on demand - so it matches
+    /// nothing and costs nothing, which is why the names are checked before they get here.
+    std::vector<LogCategoryLevel> log_categories;
 };
 
 /// Receives one `Frame` per call, in the order libsession produced them.
