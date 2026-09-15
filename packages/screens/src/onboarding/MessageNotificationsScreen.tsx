@@ -61,7 +61,8 @@ export function MessageNotificationsScreen({
         testID={ELEMENT.onboarding.notificationsOption(value)}
       >
         <XStack alignItems="center" gap="$1">
-          <Text size="$body" weight="semibold" flex={1}>
+          {/* 17 on iOS and 16 on Android -- `h8`, and bold rather than semibold. Ours was 14. */}
+          <Text size="$bodyLarge" weight="bold" flex={1}>
             {title}
           </Text>
           {badge === null ? null : (

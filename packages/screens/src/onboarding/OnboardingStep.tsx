@@ -23,6 +23,15 @@ const BACK_OFFSET = -36
  */
 const ERROR_MIN_HEIGHT = 34
 
+/**
+ * How far above centre the block sits on a phone.
+ *
+ * iOS spends a button's height on this -- `largeButtonHeight`, 45 -- plus a capped spacer, and
+ * Android reaches the same place by weighting the space above and below 1:2. Ours does both: the
+ * 1:2 split carries most of it and this is the client's own remainder.
+ */
+const UPWARD_BIAS = 45
+
 interface OnboardingStepProps {
   title: string
   description?: string
@@ -62,7 +71,17 @@ export function OnboardingStep({
 
   return (
     <OnboardingChrome testID={testID} {...(wide ? {} : { onBack })}>
-      <XStack>
+      {/**
+       * **Centred, and pulled upward — not top-aligned.** The legacy client splits the free space
+       * with a spacer above and below, then pulls the block up again with a bottom padding of a
+       * button's height and a third capped spacer. The result sits above the middle of the screen,
+       * and ours started hard under the bar instead, which is the discrepancy that could not be seen
+       * past to judge the keyboard avoidance.
+       *
+       * Only on the phone: the wide design centres its own reserved block already.
+       */}
+      {wide ? null : <YStack flex={1} />}
+      <XStack {...(wide ? {} : { paddingBottom: UPWARD_BIAS })}>
         {!wide || onBack === undefined ? null : (
           // Centred on the title's line rather than the column: `alignSelf` against the heading
           // row keeps it level however many lines the title wraps to.
@@ -107,12 +126,26 @@ export function OnboardingStep({
             {error}
           </YStack>
 
-          {/* The primary action is inset further than the text above it, which is what both
-              clients do and is deliberate rather than incidental -- see the insets. Nothing on the
-              wide design, where the column is already a fixed width. */}
-          <YStack {...(wide ? {} : { paddingHorizontal: EXTRA_ACTION_INSET })}>{footer}</YStack>
+          {/* On the wide design the action stays with the content, in a column that is already a
+              fixed width. The phone's lives at the bottom of the screen -- see below. */}
+          {wide ? footer : null}
         </YStack>
       </XStack>
+      {/* Twice the weight of the spacer above, which is what leaves the block above centre. */}
+      {wide ? null : <YStack flex={2} />}
+      {wide ? null : (
+        /**
+         * **The action sits at the bottom of the screen, and that is also what makes the keyboard
+         * behave.** Both clients pin it there. Because it is the last thing in a column the
+         * keyboard-avoiding view is shrinking, it rises by the whole height of the keyboard --
+         * while the content above, being centred in what is left, rises by about half of that.
+         * Which is exactly what iOS does: the button comes up to meet the keyboard and the field
+         * follows by less, rather than the whole screen sliding as one.
+         */
+        <YStack paddingHorizontal={EXTRA_ACTION_INSET} paddingBottom="$2">
+          {footer}
+        </YStack>
+      )}
     </OnboardingChrome>
   )
 }

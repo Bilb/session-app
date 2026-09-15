@@ -46,7 +46,10 @@ export function Input({
       disabled={disabled ?? false}
       {...(onSubmit ? { onSubmitEditing: () => onSubmit() } : {})}
       testID={testID}
-      backgroundColor="$backgroundSecondary"
+      // **No fill.** The legacy clients draw this field as a bordered box on the page, and a
+      // surface behind it read as a different control -- one that belongs to a card rather than to
+      // the screen.
+      backgroundColor="transparent"
       borderColor={error ? '$dangerColor' : '$bordersColor'}
       // The focus ring wins while the field is focused, so the two are never drawn at once -- a
       // red border inside a green one reads as two separate states arguing. The red returns on

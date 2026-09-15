@@ -181,3 +181,20 @@ answer back. `Documents/session` holding only `attachments` means the transport 
 xcrun simctl uninstall "$UDID" org.getsession.session2
 xcrun simctl erase "$UDID"                               # the whole device
 ```
+
+## Driving a simulator without hanging
+
+**Reach for these in this order.** Appium is last, not first -- its session-create is what hangs,
+and a hang costs twenty minutes rather than failing.
+
+1. **Screenshots**: `xcrun simctl io <udid> screenshot out.png`. Seconds, no driver, never hangs.
+2. **Taps, typing, the accessibility tree**: the desktop app's iOS Simulator tool
+   (`mcp__Claude_Code_iOS_Simulator__control`) -- `tap`, `text`, `inspect`, `screenshot`. Instant,
+   no server. The first use of a device asks the user once; a refusal errors immediately rather
+   than blocking.
+3. **Appium** only for what neither can do, and then **in the background with a timeout of 180s or
+   less**. Never in the foreground, and never with a multi-minute timeout -- a stuck
+   `createSession` looks exactly like a slow one.
+
+The rule behind it: a foreground command that can block gets a short `timeout` so it fails fast and
+says so. Long waits belong in the background, where they can be checked on.

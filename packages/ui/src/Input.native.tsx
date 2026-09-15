@@ -45,7 +45,10 @@ export function Input({
       returnKeyType={onSubmit ? 'send' : 'default'}
       blurOnSubmit={false}
       testID={testID}
-      backgroundColor="$backgroundSecondary"
+      // **No fill.** The legacy clients draw this field as a bordered box on the page, and a
+      // surface behind it read as a different control -- one that belongs to a card rather than to
+      // the screen.
+      backgroundColor="transparent"
       borderColor={error ? '$dangerColor' : '$bordersColor'}
       // The focus ring wins while the field is focused, so the two are never drawn at once -- a
       // red border inside a green one reads as two separate states arguing. The red returns on
@@ -55,6 +58,10 @@ export function Input({
       // goes before this merges, delete this line and the red border becomes unconditional again.
       {...(error ? { focusStyle: { borderColor: '$primaryColor' } } : {})}
       color={errorText ? '$dangerColor' : '$textPrimary'}
+      // The caret and the selection take the text colour. iOS tints both with the system blue by
+      // default, which is the one colour on this screen that belongs to no theme.
+      cursorColor="$textPrimary"
+      selectionColor="$textPrimary"
       placeholderTextColor={error ? '$dangerColor' : '$textSecondary'}
       borderRadius="$3"
       // Taller and more generously padded than a list field: the desktop client pads its

@@ -1,6 +1,6 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Reveal, Text, useMedia, YStack } from '@session/ui'
+import { animateNextLayout, Button, Reveal, Text, useMedia, YStack } from '@session/ui'
 import { useEffect, useState } from 'react'
 
 import { EXTRA_ACTION_INSET, OnboardingChrome } from './OnboardingChrome'
@@ -117,6 +117,9 @@ function PhoneOpening() {
     if (shown >= BUBBLES.length) return
     const timer = setTimeout(
       () => {
+        // Asked for before the state changes, so the bubbles already on screen *slide* up to make
+        // room rather than jumping there in one frame while the new one fades in beside them.
+        animateNextLayout()
         setShown((count) => count + 1)
       },
       shown === 0 ? FIRST_BUBBLE_MS : BUBBLE_INTERVAL_MS,

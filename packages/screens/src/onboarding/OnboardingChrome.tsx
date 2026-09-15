@@ -192,7 +192,9 @@ export function OnboardingChrome({
             asking for `flex: 1` inside it resolves against nothing and collapses to zero -- which
             drew the landing screen's heading and its conversation straight over the buttons
             underneath. The step is what fills the phone screen, so the box holding it has to. */}
-        <YStack flex={1} paddingHorizontal={CONTENT_INSET} paddingBottom="$2">
+        {/* The bar and the title were almost touching. The client leaves a navigation bar's worth
+            of air under the logo before the content begins. */}
+        <YStack flex={1} paddingHorizontal={CONTENT_INSET} paddingTop="$3" paddingBottom="$2">
           {children}
         </YStack>
       </Screen>
