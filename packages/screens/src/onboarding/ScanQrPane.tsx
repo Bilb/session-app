@@ -1,8 +1,11 @@
 import { requirePorts, useCamera } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, ScannerFrame, Text, YStack } from '@session/ui'
+import { Button, ScannerFrame, Text, useScreenInsets, YStack } from '@session/ui'
 import type { ReactNode } from 'react'
+
+/** How far the message floats above the home indicator. */
+const MESSAGE_LIFT = 16
 
 interface ScanQrPaneProps {
   /** A scanned code, as read. Whether it is a recovery seed is not this pane's to decide. */
@@ -23,6 +26,7 @@ interface ScanQrPaneProps {
  */
 export function ScanQrPane({ onScan, error = null }: ScanQrPaneProps) {
   const camera = useCamera()
+  const insets = useScreenInsets()
 
   if (camera === null) {
     // Desktop. Nothing to offer and nothing to ask for, so the pane says what is true rather than
@@ -32,22 +36,41 @@ export function ScanQrPane({ onScan, error = null }: ScanQrPaneProps) {
 
   if (camera.access === 'granted') {
     return (
-      <YStack flex={1} testID={ELEMENT.onboarding.scanQrPane}>
-        <YStack flex={1} overflow="hidden">
-          <camera.Preview onScan={onScan} testID={ELEMENT.onboarding.scanQrPreview} />
-          {/* Over the picture rather than around it: the dimming is what says where to point the
-              camera, so it has to be on the same surface as what the camera sees. */}
-          <ScannerFrame />
-        </YStack>
-        {/* Under the frame rather than over it: a message printed on the picture is unreadable
-            against whatever the camera happens to be pointed at. */}
-        <YStack minHeight="$5" paddingTop="$2" paddingHorizontal="$4" alignItems="center">
-          {error === null ? null : (
+      /**
+       * **To the bottom of the window, under the home indicator.** A camera that stops at the
+       * content box leaves a black bar along the bottom, which reads as the preview having failed
+       * rather than as the device's own furniture.
+       */
+      <YStack
+        flex={1}
+        overflow="hidden"
+        marginBottom={-insets.bottom}
+        testID={ELEMENT.onboarding.scanQrPane}
+      >
+        <camera.Preview onScan={onScan} testID={ELEMENT.onboarding.scanQrPreview} />
+        <ScannerFrame />
+        {/* Over the picture rather than under it, which is where the client puts it -- a row
+            beneath would take a strip of the preview away permanently for a message that is
+            usually not there. On its own surface, because red on whatever the camera happens to be
+            pointed at is not reliably readable. */}
+        {error === null ? null : (
+          <YStack
+            position="absolute"
+            left="$3"
+            right="$3"
+            bottom={insets.bottom + MESSAGE_LIFT}
+            pointerEvents="none"
+            alignItems="center"
+            paddingHorizontal="$3"
+            paddingVertical="$2"
+            borderRadius="$3"
+            backgroundColor="$backgroundSecondary"
+          >
             <Text tone="danger" size="$label" weight="bold" textAlign="center">
               {error}
             </Text>
-          )}
-        </YStack>
+          </YStack>
+        )}
       </YStack>
     )
   }

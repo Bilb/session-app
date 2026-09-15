@@ -47,7 +47,10 @@ export function SlidePager({ index, instant = false, children }: SlidePagerProps
   }, [index, instant, at])
 
   return (
-    <View style={{ flex: 1, overflow: 'hidden' }}>
+    // Not clipped. A page at rest off screen is a full width away, so it is outside the window
+    // already and there is nothing for a clip to catch -- and clipping here would stop a page
+    // reaching under the home indicator, which a camera preview is supposed to do.
+    <View style={{ flex: 1 }}>
       {children.map((page, at_) => (
         <Animated.View
           // The pages are a fixed list in source order, so their position is what identifies them.
