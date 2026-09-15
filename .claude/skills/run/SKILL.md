@@ -103,6 +103,7 @@ One file each, because the verbs are the same and only the tooling differs:
 pnpm dev:desktop            # libsession, hot reload - the primary UI loop
 pnpm dev:mobile             # libsession, needs a dev client
 pnpm dev                    # both at once
+pnpm android                # build and install the dev client itself, then start Metro
 ```
 
 The desktop app needs the addon built before any of those will start; see

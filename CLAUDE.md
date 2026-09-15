@@ -87,6 +87,7 @@ finds tests wherever they sit, so an unchecked one still runs and nothing compla
 pnpm install
 pnpm dev                       # both apps against libsession; or dev:desktop / dev:mobile
 pnpm dev:fake                  # the same on the fake: no network, seeded history, dev:*:fake too
+pnpm android                   # build and install the mobile dev client; or ios
 turbo lint typecheck test
 pnpm boundaries
 turbo test:e2e:fast            # Electron + the fake; e2e workflows are manual dispatch in CI
