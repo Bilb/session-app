@@ -198,3 +198,21 @@ and a hang costs twenty minutes rather than failing.
 
 The rule behind it: a foreground command that can block gets a short `timeout` so it fails fast and
 says so. Long waits belong in the background, where they can be checked on.
+
+### Typing drops characters, silently
+
+`text` injection loses letters - reproducibly `g`, and most shifted keys. Typing
+`Flag Check` into a field lands `flck`, and a thirteen-word recovery phrase arrives with a word
+missing a letter. Nothing reports it: the app sees exactly the characters it was given and refuses
+the phrase, which reads as a bug in the field.
+
+**So do not type anything whose exact contents matter.** Put it on the device's pasteboard and
+paste it instead:
+
+```sh
+printf '%s' "$PHRASE" | xcrun simctl pbcopy "$UDID"
+```
+
+then long-press the field (`tap` with `duration: 1.2`) and press **Paste**. Where typing is
+unavoidable, reveal the field and read back what actually landed before drawing any conclusion
+from what the app did with it.
