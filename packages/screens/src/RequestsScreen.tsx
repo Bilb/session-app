@@ -5,6 +5,7 @@ import { useRequests, useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { Avatar, Button, List, Screen, Separator, Text, XStack, YStack } from '@session/ui'
 
+import { BackButton } from './BackButton'
 import { conversationTitle } from './conversationTitle'
 
 /**
@@ -30,7 +31,8 @@ export function RequestsScreen() {
 
   return (
     <Screen testID={ELEMENT.requests.screen}>
-      <XStack paddingHorizontal="$2" paddingVertical="$1.5" alignItems="center">
+      <XStack paddingHorizontal="$2" paddingVertical="$1.5" alignItems="center" gap="$1.5">
+        <BackButton testID={ELEMENT.requests.back} />
         <Text size="$6" weight="bold">
           {tr('sessionMessageRequests')}
         </Text>

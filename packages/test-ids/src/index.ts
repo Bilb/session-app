@@ -38,6 +38,7 @@ export const ELEMENT = {
   },
   requests: {
     screen: 'requests',
+    back: 'requests-back',
     row: (index: number) => `request-row-${index}` as const,
     accept: (index: number) => `request-accept-${index}` as const,
     badge: 'requests-badge',
@@ -98,6 +99,7 @@ export type ElementId =
   | 'message-composer'
   | 'send-button'
   | 'requests'
+  | 'requests-back'
   | `request-row-${number}`
   | `request-accept-${number}`
   | 'requests-badge'
