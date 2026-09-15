@@ -29,6 +29,7 @@
     "@session/state": "workspace:*",
     "@session/ui": "workspace:*",
     "expo": "catalog:",
+    "expo-blur": "catalog:",
     "expo-camera": "catalog:",
     "expo-clipboard": "catalog:",
     "expo-constants": "catalog:",

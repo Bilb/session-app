@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Modal as NativeModal } from 'react-native'
 import { XStack, YStack } from 'tamagui'
 
+import { useBackdropBlur } from './backdropBlur'
 import { Button } from './Button'
 import { Icon } from './Icon'
 import { Text } from './Text'
@@ -81,6 +82,16 @@ const ACTIONS_GAP = 16
 const CLOSE_INSET = 2
 const ACTION_HEIGHT = 51
 
+/**
+ * How dark the scrim is where there is no blur behind the dialog.
+ *
+ * **Where there is one there is no scrim at all**, which is the legacy client's arrangement:
+ * `Modal.dimmingView` is a bare `UIVisualEffectView` pinned to the window, with no tint and no
+ * alpha over it. The two do the same job, and a dim on top of a blur hides the thing the blur
+ * exists to show -- a dark rectangle that might as well not have been blurred.
+ */
+const SCRIM_OPACITY = 0.6
+
 export function Modal({
   open,
   onClose,
@@ -92,11 +103,24 @@ export function Modal({
   testID,
   closeTestID,
 }: ModalProps) {
+  /**
+   * **iOS blurs what is behind a dialog; Android and the desktop client only darken it.** Null on
+   * both of those, and the scrim below is then the whole backdrop.
+   */
+  const Blur = useBackdropBlur()
+
   return (
     <NativeModal visible={open} transparent animationType="fade" onRequestClose={onClose}>
+      {Blur === null ? null : (
+        <YStack fullscreen>
+          <Blur />
+        </YStack>
+      )}
       {/* The scrim is its own layer so its opacity does not reach the dialog: an opacity on a
           parent applies to every descendant, which would make the dialog translucent too. */}
-      <YStack fullscreen backgroundColor="$surfaceInk" opacity={0.6} />
+      {Blur !== null ? null : (
+        <YStack fullscreen backgroundColor="$surfaceInk" opacity={SCRIM_OPACITY} />
+      )}
       <YStack fullscreen alignItems="center" justifyContent="center" padding="$3" onPress={onClose}>
         <YStack
           width="100%"

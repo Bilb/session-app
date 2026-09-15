@@ -6,6 +6,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller'
 import { useEffect, useState } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
+import { mobileBackdropBlur } from '../src/backdrop'
 import { MobileCameraProvider } from '../src/camera'
 import { MobileNavProvider } from '../src/nav'
 import { storePromise } from '../src/store'
@@ -43,7 +44,7 @@ export default function RootLayout() {
     // than on one of their own.
     <KeyboardProvider>
       <SafeAreaProvider>
-        <UIProvider>
+        <UIProvider backdropBlur={mobileBackdropBlur}>
           {store === null ? (
             <YStack
               flex={1}

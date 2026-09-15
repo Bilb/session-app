@@ -47,6 +47,7 @@ export { Screen } from './Screen'
 export { Text } from './Text'
 export { UIProvider } from './UIProvider'
 export type { UIProviderProps } from './UIProvider'
+export type { BackdropBlur } from './backdropBlur'
 
 export { config, tokens } from './config'
 export {
