@@ -1,4 +1,4 @@
-import { requirePorts } from '@session/app'
+import { flag, type NotificationsPort, requirePorts } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Button, RadioIndicator, Text, XStack, YStack } from '@session/ui'
@@ -34,12 +34,28 @@ const BOX_PADDING_Y = 12
 const TEXT_GAP = 8
 const ROW_GAP = 24
 
+/**
+ * The description of fast mode, by whose servers it would use.
+ *
+ * Three strings in the catalogue and only one of them is true of any given build -- an iOS build
+ * saying "Google's notification Servers" is simply wrong, and it is what ours said. The fallback is
+ * the unqualified one, for a build with no push service to name at all.
+ */
+function fastModeDescription(service: NotificationsPort['pushService']): string {
+  if (service === 'apple') return tr('notificationsFastModeDescriptionIos')
+  if (service === 'huawei') return tr('notificationsFastModeDescriptionHuawei')
+  return tr('notificationsFastModeDescription')
+}
+
 export function MessageNotificationsScreen({
   onBack,
   onContinue,
   busy = false,
 }: MessageNotificationsScreenProps) {
-  const fastAvailable = requirePorts().notifications.fastModeAvailable
+  // The flag is a way to look at the screen, not a second source of truth: see its entry in the
+  // flag table for why the recommended state is otherwise unreachable on a development machine.
+  const notifications = requirePorts().notifications
+  const fastAvailable = notifications.fastModeAvailable || flag('forceFastModeAvailable')
   // Slow mode preselected where fast is unavailable, so the button is never the one that cannot
   // be used.
   const [mode, setMode] = useState<NotificationMode>(fastAvailable ? 'fast' : 'slow')
@@ -132,7 +148,7 @@ export function MessageNotificationsScreen({
         {option(
           'fast',
           tr('notificationsFastMode'),
-          tr('notificationsFastModeDescription'),
+          fastModeDescription(notifications.pushService),
           fastAvailable ? tr('recommended') : tr('unavailable'),
           !fastAvailable,
         )}

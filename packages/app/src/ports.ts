@@ -59,6 +59,18 @@ export interface NotificationsPort {
    */
   readonly fastModeAvailable: boolean
   /**
+   * Which push service fast mode would use.
+   *
+   * Not decoration: the catalogue carries three descriptions of fast mode -- Apple's, Google's and
+   * Huawei's -- and onboarding has to name the one this build would actually talk to. Reading it
+   * off `Platform.OS` would be wrong on Android, where a Play build and a Huawei build are the
+   * same platform and different services, so this is answered where the build is assembled.
+   *
+   * Null where there is none. The screen then falls back to the unqualified description, which is
+   * all it can honestly say about a mode it is about to mark unavailable.
+   */
+  readonly pushService: 'apple' | 'google' | 'huawei' | null
+  /**
    * Whether this platform suspends the app and so makes notification delivery a choice.
    *
    * A phone or a tablet stops running Session the moment it is put down, so somebody has to say
