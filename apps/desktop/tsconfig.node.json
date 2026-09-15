@@ -4,5 +4,5 @@
     "module": "ESNext",
     "moduleResolution": "Bundler"
   },
-  "include": ["src/main", "electron.vite.config.ts"]
+  "include": ["src/main", "tests", "electron.vite.config.ts"]
 }

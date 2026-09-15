@@ -69,6 +69,53 @@ describeAddon('the N-API addon', () => {
     transport.close()
   })
 
+  it('forwards libsession logging, and takes only its own logger off when it closes', async () => {
+    // libsession's logger is process-wide and fires from threads close() cannot join, so one left
+    // registered writes into a freed bridge. Removing it has to be surgical: clear_loggers would
+    // silence every other bridge in the process as well.
+    const open = (name: string) => {
+      const transport = createNodeBridgeTransport({
+        dbPath: join(dir, `${name}.db`),
+        cacheDir: join(dir, 'cache'),
+        rawKey: new Uint8Array(32).fill(7),
+        deferAccount: false,
+        logLevel: 'trace',
+      })
+      let seen = 0
+      transport.setSink((frame) => {
+        if (frame.type === 'event' && frame.event.type === 'log') seen += 1
+      })
+      // libsession logs on a timer rather than on demand, so the wait is for the next tick.
+      const nextLine = async () => {
+        const from = seen
+        for (let i = 0; i < 100 && seen === from; i++)
+          await new Promise((resolve) => setTimeout(resolve, 100))
+        return seen > from
+      }
+      return { transport, nextLine, lines: () => seen }
+    }
+
+    const first = open('logger-first')
+    const second = open('logger-second')
+    expect(await first.nextLine()).toBe(true)
+    expect(await second.nextLine()).toBe(true)
+
+    const closedAt = first.lines()
+    first.transport.close()
+
+    // With no network attached libsession is silent between a start and a close, so opening a
+    // third bridge is what produces the lines the other two are then measured against.
+    const third = open('logger-third')
+
+    // The one still open keeps its own logger; the closed one is left with none. The logger set
+    // is process-wide, so the two are measured on the same lines.
+    expect(await second.nextLine()).toBe(true)
+    expect(first.lines()).toBe(closedAt)
+
+    third.transport.close()
+    second.transport.close()
+  }, 30000)
+
   it('creates an account when it is not asked to defer', async () => {
     const transport = createNodeBridgeTransport({
       dbPath: join(dir, 'eager.db'),

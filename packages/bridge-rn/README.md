@@ -17,11 +17,8 @@ cd apps/mobile && npx expo prebuild --platform android
 cd android && ./gradlew :app:assembleDebug -PreactNativeArchitectures=x86_64 --no-configuration-cache
 ```
 
-libsession is cross-compiled separately rather than from inside the Gradle CMake project. That is
-not a preference: session-deps hands its CMake-based dependencies the NDK compiler without the NDK
-target, so building in place produces a simdutf for the host and the link fails on libstdc++
-symbols that do not exist on Android. `patches/` carries the fix for that and it is applied by the
-build; `docs/STATUS.md` says what is waiting on upstream.
+libsession is cross-compiled separately rather than from inside the Gradle CMake project, by
+`scripts/build-libsession-android.sh`.
 
 `--no-configuration-cache` is Gradle 9 against Expo, which still calls `node` at configuration
 time. Nothing to do with this module.

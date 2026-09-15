@@ -93,8 +93,12 @@ ${arms}
 
   function emitStruct(s: Struct): string {
     const T = `${NAMESPACE}::${s.name}`
-    const read = (f: Field) =>
-      `${conv(fieldType(f))}::fromJSI(runtime, obj.getProperty(runtime, ${prop(f.name)}))`
+    const read = (f: Field) => {
+      const value = `obj.getProperty(runtime, ${prop(f.name)})`
+      return f.optional
+        ? `${NAMESPACE}::optional_from_jsi<${cppType(f.type)}>(runtime, ${value})`
+        : `${conv(fieldType(f))}::fromJSI(runtime, ${value})`
+    }
     const construct = s.fields.length
       ? `        return ${T}(\n${s.fields.map((f) => `                ${read(f)}`).join(',\n')});`
       : `        return ${T}{};`
@@ -155,6 +159,7 @@ ${canConvert}
 
 #include <jsi/jsi.h>
 
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -169,6 +174,16 @@ namespace session_bridge {
 /// generator has checked these are ASCII, so no std::string is built in between.
 inline facebook::jsi::Value ascii(facebook::jsi::Runtime& runtime, std::string_view text) {
     return facebook::jsi::String::createFromAscii(runtime, text.data(), text.size());
+}
+
+/// Unset is null or undefined, matching napi.hpp. Nitro's own optional takes only undefined and
+/// throws on null, which would make the two platforms disagree.
+template <class T>
+inline std::optional<T> optional_from_jsi(
+        facebook::jsi::Runtime& runtime, const facebook::jsi::Value& value) {
+    if (value.isUndefined() || value.isNull())
+        return std::nullopt;
+    return margelo::nitro::JSIConverter<T>::fromJSI(runtime, value);
 }
 
 }  // namespace session_bridge

@@ -52,6 +52,9 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
       return state
 
     default:
+      // A new SessionEvent arm is a compile error here, as it is in the shim and the fake.
+      // Still returns state: a bridge newer than the app is survivable.
+      event satisfies never
       return state
   }
 }

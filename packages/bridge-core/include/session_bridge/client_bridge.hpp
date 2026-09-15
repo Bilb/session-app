@@ -65,7 +65,8 @@ struct InitOptions {
     /// `failed` carries no reason, and the reason is in these lines.
     ///
     /// Registered process-wide - libsession's add_logger has no deregistration - so a second
-    /// bridge in one process would double them up. There is one.
+    /// bridge in one process would double them up. There is one. A line logged after its bridge
+    /// closed is dropped: the logger holds the bridge weakly.
     std::string log_level;
 };
 

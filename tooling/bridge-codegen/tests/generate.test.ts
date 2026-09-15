@@ -49,6 +49,15 @@ describe('bridge codegen', () => {
     expect(files['jsi.hpp']).not.toContain('jsi::Value::undefined()')
   })
 
+  it('reads null and undefined alike as an unset optional, on both platforms', () => {
+    expect(files['jsi.hpp']).toContain('value.isUndefined() || value.isNull()')
+    expect(files['napi.hpp']).toContain('value.IsUndefined() || value.IsNull()')
+    // Nitro's own optional converter takes undefined and throws on null, so delegating to it is
+    // what made the two platforms disagree. Nothing here may go back to it.
+    expect(files['jsi.hpp']).not.toContain('JSIConverter<std::optional<')
+    expect(files['jsi.hpp']).toContain('::session_bridge::optional_from_jsi<std::string>')
+  })
+
   it('names union members after their tag and the union', () => {
     expect(files['types.hpp']).toContain('struct ShapeAddedCanvasEvent')
     expect(files['types.hpp']).toContain(
@@ -74,6 +83,8 @@ describe('bridge codegen', () => {
     ['aliasCycle.ts', /part of a cycle/],
     ['unionCycle.ts', /part of a cycle/],
     ['collision.ts', /is generated twice/],
+    ['aliasCollision.ts', /is generated twice/],
+    ['fieldCollision.ts', /both spell session_id/],
     ['badLiteral.ts', /cannot be written as a C\+\+ string literal/],
     ['enumCollision.ts', /both spell deep_red/],
     ['badTag.ts', /does not make a C\+\+ identifier/],

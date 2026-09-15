@@ -187,6 +187,21 @@ Release builds strip the attribute; QA builds keep it. An element a test cannot 
 missing entry in the registry plus a missing `testID` on the component - never a reason to
 reach for an xpath.
 
+### The token trap, and what guards it
+
+A tamagui token that does not exist resolves to **0, in silence**. `padding="$1.5"` on a scale
+without a 1.5 loses the padding; `color="$textPrimry"` paints nothing. TypeScript does not help -
+every one of those props is typed as a plain string, so a typo compiles.
+
+`packages/ui/tests/tokens.contract.test.ts` guards both halves: every `$name` written in `ui`,
+`screens` or either app names something that exists, and every theme defines the whole of
+tamagui's own vocabulary - a built-in asks for `$backgroundFocus` and renders invisibly if
+nothing answers.
+
+A test rather than a lint rule because the valid list is computed rather than written down: it
+comes from the scales and from whatever `@session/theme-tokens` publishes, and a rule would need
+that duplicated to read it. The cost is that it fails on push rather than while typing.
+
 ## Things that only running the app finds
 
 - **react-native's layout wants every ancestor to be a flex container.** A browser's root is
@@ -201,6 +216,21 @@ reach for an xpath.
   optimising compiler, not a requirement. Add it when electron-vite catches up.
 - **TypeScript is held at 5.x** because typescript-eslint declares `<6.1.0`, and the typed
   rules are the most valuable ones in a repo whose bridge is entirely async.
+
+## Building the native side
+
+Two things cost real time on a first clone, and neither is discoverable from a failure message:
+
+- **libsession-util's submodule tree is 37 deep.** `--reference
+~/pro/contribs/libsession-util/.git/modules/<path>` per submodule borrows the objects already on
+  disk; a plain recursive init downloads about a gigabyte.
+- **gmplib.org drops connections often enough to matter**, and it is where gmp comes from.
+  `-DLOCAL_MIRROR=https://oxen.rocks/deps` is tried ahead of every dependency's own mirror, so one
+  flag takes the whole static build off the upstream hosts rather than just gmp. The hashes are
+  checked either way.
+
+Which compiler, and why, is in the decision log. How to build and run each client is the `run`
+skill's.
 
 ## Environment split
 
@@ -333,3 +363,27 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   `SendState` keeps `uploading` and `unsendable`: only attachments reach them, but they are
   libsession's states and the shim's switch has to name every one. This supersedes the 2026-09-04
   entry on the three wrong wire fields, two of which were `Attachment`'s.
+
+- **2026-09-10 - The renderer's privileges are written out rather than inherited.** Every flag in
+  `apps/desktop/src/main/security.ts` is already Electron's default. They are spelled anyway
+  because a default is a decision someone else can change: an upgrade that flips one is a silent
+  privilege grant to a window that draws message bodies from strangers. Beside them, a deny-by-
+  default posture the app has no reason to relax yet - every permission refused, every navigation
+  that is not the app reloading itself refused, `window.open` refused, and a CSP of
+  `default-src 'none'` with `'self'` for the bundle. The CSP is a meta tag rather than a header
+  because a packaged renderer loads over `file:`, where nothing carries one, and it is injected at
+  build time because the dev server needs `'unsafe-inline'` for vite's react-refresh preamble and
+  `ws:` for HMR - relaxations the shipped app must not have. Notifications are the first permission
+  this will have to grant, and `security.ts` is where that decision goes.
+
+  Electron's fuses - `runAsNode`, `nodeCliInspect`, `onlyLoadAppFromAsar` - are the other half of
+  this and belong to a packaging step the repo does not have yet. `ELECTRON_RUN_AS_NODE` being set
+  in this environment (above) is exactly the fuse that would refuse it.
+
+- **2026-09-15 - A `Message` keeps its own `conversationId`.** Every container already establishes
+  it: a `message-added` names the conversation beside the message, and a `messageList` answers a
+  request that named one. The protobuf bridge dropped the field for the bytes it saved, which is
+  not the argument here - the shim builds JSI and N-API objects, so what repeats is a string per
+  row rather than 66 bytes per row. Removing it means changing the protocol, the generated
+  converters and the shim together, and every caller would then have to thread the id it asked for
+  through the response.
