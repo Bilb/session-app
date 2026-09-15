@@ -1,6 +1,6 @@
 import { flag, requirePorts } from '@session/app'
 import { useAccount, useSessionActions } from '@session/state'
-import { useMedia } from '@session/ui'
+import { StepTransition, useMedia } from '@session/ui'
 import { useEffect, useReducer, useState } from 'react'
 
 import { ConfirmUrlProvider } from './ConfirmUrl'
@@ -147,7 +147,26 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
     )
   }, [state, actions, onRunningChange])
 
-  return <ConfirmUrlProvider>{screen()}</ConfirmUrlProvider>
+  const body = screen()
+
+  return (
+    <ConfirmUrlProvider>
+      {/* **Phone only.** The wide designs cross-fade inside the chrome, which is what the desktop
+          client does; a horizontal push is a mobile idiom. Nothing renders at `done`, so there is
+          nothing to slide in either -- wrapping it would animate a blank pane over the last step. */}
+      {design === 'phone' && body !== null ? (
+        <StepTransition
+          stepKey={state.step}
+          direction={state.lastMove}
+          instant={flag('disableAnimations')}
+        >
+          {body}
+        </StepTransition>
+      ) : (
+        body
+      )}
+    </ConfirmUrlProvider>
+  )
 
   function screen() {
     switch (state.step) {

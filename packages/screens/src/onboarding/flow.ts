@@ -91,6 +91,15 @@ export interface OnboardingState {
    * that can be asked again.
    */
   commitFailed: boolean
+  /**
+   * Which way the last move went.
+   *
+   * For the transition between steps, which has to travel the way a stack would move it: forward
+   * slides the new step in from the trailing edge, back sends it the other way. A flow with no
+   * stack behind it has nothing else to ask -- and `back` is not the only event that goes
+   * backwards, so it is recorded rather than inferred from the step.
+   */
+  lastMove: 'forward' | 'back'
 }
 
 export function initialOnboarding(design: OnboardingDesign): OnboardingState {
@@ -103,6 +112,7 @@ export function initialOnboarding(design: OnboardingDesign): OnboardingState {
     recovery: null,
     notifications: null,
     commitFailed: false,
+    lastMove: 'forward',
   }
 }
 
@@ -177,6 +187,33 @@ export function backDiscardsAccount(state: OnboardingState): boolean {
 }
 
 export function onboardingReducer(state: OnboardingState, event: OnboardingEvent): OnboardingState {
+  const next = advance(state, event)
+  const move = moveOf(event)
+  if (move === null || next === state) return next
+  return { ...next, lastMove: move }
+}
+
+/**
+ * Which way an event travels.
+ *
+ * `back` is not the only one that goes backwards: a refused phrase and a refused commit both
+ * return to a screen that has already been seen, and sliding those in from the far side would say
+ * the flow had moved on. A resize is not a move at all and leaves the last one alone.
+ */
+function moveOf(event: OnboardingEvent): 'forward' | 'back' | null {
+  switch (event.type) {
+    case 'back':
+    case 'restoreFailed':
+    case 'commitFailed':
+      return 'back'
+    case 'designChanged':
+      return null
+    default:
+      return 'forward'
+  }
+}
+
+function advance(state: OnboardingState, event: OnboardingEvent): OnboardingState {
   switch (event.type) {
     case 'chooseCreate':
       return { ...state, branch: 'create', step: 'pickDisplayName', afterFailedRestore: false }

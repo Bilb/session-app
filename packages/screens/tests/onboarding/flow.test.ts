@@ -267,3 +267,35 @@ describe('the tablet sequences', () => {
     expect(isWideDesign('phone')).toBe(false)
   })
 })
+
+describe('which way a move goes', () => {
+  it('goes forward through the sequence', () => {
+    expect(run([CREATE]).lastMove).toBe('forward')
+    expect(run([CREATE, NAME]).lastMove).toBe('forward')
+    expect(run([CREATE, NAME, FAST]).lastMove).toBe('forward')
+  })
+
+  it('goes back when somebody backs out', () => {
+    expect(run([CREATE, { type: 'back' }]).lastMove).toBe('back')
+  })
+
+  it('goes back when a step is returned to after a refusal', () => {
+    // Both land on a screen that has already been seen, so sliding them in from the far side
+    // would say the flow had moved on.
+    expect(run([RESTORE, PHRASE, { type: 'restoreFailed' }]).lastMove).toBe('back')
+    expect(run([CREATE, NAME, FAST, { type: 'commitFailed' }]).lastMove).toBe('back')
+  })
+
+  it('leaves the last move alone when the window resizes', () => {
+    const backed = run([CREATE, { type: 'back' }])
+    const resized = onboardingReducer(backed, { type: 'designChanged', design: 'desktop' })
+    expect(resized.lastMove).toBe('back')
+  })
+
+  it('records the move even where back starts the flow over', () => {
+    // `back` to the landing screen rebuilds the state from scratch, which would otherwise hand
+    // the transition a fresh `forward`.
+    expect(run([RESTORE, { type: 'back' }]).step).toBe('landing')
+    expect(run([RESTORE, { type: 'back' }]).lastMove).toBe('back')
+  })
+})
