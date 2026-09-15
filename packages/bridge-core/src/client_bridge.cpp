@@ -384,6 +384,22 @@ struct ClientBridge::Impl {
         on_account();
     }
 
+    /// Asks the whole swarm for the restored account's profile at once.
+    ///
+    /// **Only on the restore paths**, because only there is there something on the swarm that this
+    /// device has never seen: a created account has nothing to fetch, and an account that was
+    /// simply already here has its config in the database.
+    ///
+    /// Not waited on, and the restore does not report it. The name arrives the way any config
+    /// does -- merged, then pushed to the app as state -- and the wait screen is watching the
+    /// account rather than this call. Waiting would only delay the screen that exists to cover it.
+    void fetch_restored_profile() {
+        client->core.fetch_user_profile([](bool) {
+            // Nothing to do either way. Failure leaves the ordinary poll to find it, which is
+            // where this started.
+        });
+    }
+
     /// Whether an account exists that was never confirmed.
     bool account_is_provisional() {
         return client->core.globals.have_account() &&
@@ -496,6 +512,7 @@ struct ClientBridge::Impl {
         std::memcpy(seed.data(), raw.data(), seed.size());
         client->core.globals.restore_account(core::predefined_seed{std::span{seed}});
         on_account_requested();
+        fetch_restored_profile();
         ok(id);
     }
 
@@ -508,6 +525,7 @@ struct ClientBridge::Impl {
                 cmd.language ? core::predefined_seed{words, *cmd.language}
                              : core::predefined_seed{words});
         on_account_requested();
+        fetch_restored_profile();
         ok(id);
     }
 
