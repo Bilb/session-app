@@ -50,9 +50,12 @@ dev entries. When a rule fires, fix the design - not the config.
 
 ## Porting a screen
 
-**Put it side by side with the legacy client and compare, before calling it done.** Reading the
-legacy source and reasoning about what it should look like is not the same check and does not
-catch the same things: a screen whose flow completes can still have the wrong background, the
+**Put it side by side with the legacy clients — all three of them — and compare, before calling
+it done.** Most UI exists on iOS, Android and Desktop, and where they differ the point is to pick
+the best of the three for 2.0 rather than to follow whichever one was read first. Onboarding is the
+exception that proves it: Desktop's is a different design, so there the mobile pair is the
+reference. Reading the legacy source and reasoning about what it should look like is not the same
+check and does not catch the same things: a screen whose flow completes can still have the wrong background, the
 wrong button filled, missing chrome, wrong type sizes and a control nobody can hit. Walk the list
 deliberately — colours, which button is primary, chrome present in one and not the other, type
 sizes, control sizes and hit areas, spacing, transitions. An already-ported sibling counts as a
