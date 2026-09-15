@@ -1,6 +1,6 @@
 import { getLocale, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { ProgressRing, Screen, Text, useMedia, XStack, YStack } from '@session/ui'
+import { Button, Icon, ProgressRing, Screen, Text, useMedia, XStack, YStack } from '@session/ui'
 import { useEffect, useRef, useState } from 'react'
 
 import { OnboardingChrome } from './OnboardingChrome'
@@ -40,6 +40,14 @@ const RING_THICKNESS = 20
 
 interface LoadingScreenProps {
   onGaveUp: () => void
+  /**
+   * Leaving the wait, which throws the restored account away.
+   *
+   * The legacy Android client offers this, and without it a mistyped phrase means fifteen seconds
+   * of sitting there. Safe to offer because backing out of a restore already discards -- see
+   * `backDiscardsAccount`.
+   */
+  onBack: () => void
 }
 
 /**
@@ -57,7 +65,7 @@ interface LoadingScreenProps {
  * nothing reporting real progress, and 2.0 keeps that knowingly rather than by imitation: what it
  * is really showing is how much longer this can go on before the app gives up.
  */
-export function LoadingScreen({ onGaveUp }: LoadingScreenProps) {
+export function LoadingScreen({ onGaveUp, onBack }: LoadingScreenProps) {
   const wide = useMedia().gtSm
   const [elapsed, setElapsed] = useState(0)
   // Held in a ref so the interval's identity never depends on it: re-creating the timer on every
@@ -95,6 +103,17 @@ export function LoadingScreen({ onGaveUp }: LoadingScreenProps) {
   if (!wide) {
     return (
       <Screen testID={ELEMENT.onboarding.loadingScreen}>
+        <XStack alignItems="center" minHeight="$7" paddingHorizontal="$2" paddingTop="$1">
+          <Button
+            variant="ghost"
+            size="md"
+            circular
+            accessibilityLabel={tr('back')}
+            testID={ELEMENT.onboarding.back}
+            onPress={onBack}
+            icon={<Icon name="chevronLeft" size="$5" color="$textPrimary" />}
+          />
+        </XStack>
         <YStack flex={1} alignItems="center" justifyContent="center" gap="$2" padding="$3">
           {/* The number sits **inside** the ring on both clients -- iOS overlays it, Android
               centres it in the arc -- rather than beside it as the desktop bar does. */}

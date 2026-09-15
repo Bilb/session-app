@@ -227,6 +227,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
       case 'loading':
         return (
           <LoadingScreen
+            onBack={goBack}
             onGaveUp={() => {
               dispatch({ type: 'restoreGaveUp' })
             }}

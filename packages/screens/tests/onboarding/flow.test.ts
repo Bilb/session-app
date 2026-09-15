@@ -108,19 +108,35 @@ describe('going back', () => {
     expect(run([{ type: 'back' }])).toEqual(initialOnboarding('phone'))
   })
 
-  it('goes back even from naming a restored account, because that can now be discarded', () => {
-    // It used to do nothing here: an account had been taken over and there was no way to untake
-    // it, so the screen offered to quit instead. `discardAccount` deletes it, so back goes back.
+  it('goes back to the phrase from naming an account whose restore gave up', () => {
+    // Not to the start. Somebody whose restore timed out and who then presses back is far more
+    // likely to want to try the phrase again -- on a better connection, say -- than to begin from
+    // nothing. The account that was taken over is discarded on the way, which is what makes this
+    // possible at all.
     const gaveUp = run([RESTORE, PHRASE, FAST, { type: 'restoreGaveUp' }])
-    expect(onboardingReducer(gaveUp, { type: 'back' }).step).toBe('landing')
+    expect(onboardingReducer(gaveUp, { type: 'back' }).step).toBe('loadAccount')
   })
 
-  it('still does nothing during the wait, which has nothing behind it', () => {
-    // Desktop reaches `loading` straight from the phrase, and there is no screen between them to
-    // go back to that is not the phrase itself.
+  it('goes back to the start from naming a newly created account', () => {
+    // The other way into this screen has nothing behind it but the beginning.
+    const named = run([CREATE])
+    expect(onboardingReducer(named, { type: 'back' }).step).toBe('landing')
+  })
+
+  it('leaves the wait, which used to be a fifteen-second trap', () => {
+    // This was null on the reasoning that an account existed by then and nothing could undo it --
+    // which stopped being true when the bridge learned to discard one. The legacy Android client
+    // offers back here for the same reason.
     expect(onboardingReducer(run([RESTORE, PHRASE], 'desktop'), { type: 'back' }).step).toBe(
-      'loading',
+      'loadAccount',
     )
+    expect(onboardingReducer(run([RESTORE, PHRASE, FAST]), { type: 'back' }).step).toBe(
+      'messageNotifications',
+    )
+  })
+
+  it('throws the account away when leaving the wait', () => {
+    expect(backDiscardsAccount(run([RESTORE, PHRASE, FAST]))).toBe(true)
   })
 
   it('forgets everything collected when it reaches the landing screen', () => {

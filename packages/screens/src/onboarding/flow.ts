@@ -134,18 +134,22 @@ export type OnboardingEvent =
 function previousStep(state: OnboardingState): OnboardingStep | null {
   switch (state.step) {
     case 'pickDisplayName':
-      // Both ways in lead back to the start. It used to be null after a failed restore, because
-      // the account had been taken over and nothing could untake it; `discardAccount` can, so
-      // there is no longer a step this flow cannot be backed out of.
-      return 'landing'
+      // **After a failed restore, back goes to the phrase rather than to the start.** Somebody
+      // whose restore timed out and who then presses back is far more likely to want to try the
+      // phrase again -- perhaps on a better connection -- than to begin from nothing. Creating
+      // still leads back to the start, because there is nothing behind it.
+      return state.afterFailedRestore ? 'loadAccount' : 'landing'
     case 'loadAccount':
       return 'landing'
     case 'messageNotifications':
       return state.branch === 'create' ? 'pickDisplayName' : 'loadAccount'
     case 'loading':
-      // Only reachable as a back on the desktop design, where nothing was asked between the phrase
-      // and the wait. There is an account by now, so there is nothing to undo.
-      return null
+      // **The wait can be left.** This used to be null, on the reasoning that an account existed
+      // by then and nothing could undo it -- which stopped being true when the bridge learned to
+      // discard one. Without it somebody who mistyped a phrase, or who simply changed their mind,
+      // sat through fifteen seconds with no way out; the legacy Android client offers back here
+      // for the same reason. It leads where it came from, so a second press reaches the phrase.
+      return asksAboutNotifications(state.design) ? 'messageNotifications' : 'loadAccount'
     default:
       return null
   }
@@ -164,7 +168,12 @@ function previousStep(state: OnboardingState): OnboardingStep | null {
  */
 export function backDiscardsAccount(state: OnboardingState): boolean {
   if (state.branch !== 'restore') return false
-  return state.step === 'messageNotifications' || state.step === 'pickDisplayName'
+  return (
+    state.step === 'messageNotifications' ||
+    state.step === 'pickDisplayName' ||
+    // The wait is past the phrase, so an account exists behind it too.
+    state.step === 'loading'
+  )
 }
 
 export function onboardingReducer(state: OnboardingState, event: OnboardingEvent): OnboardingState {
