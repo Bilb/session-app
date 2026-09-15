@@ -7,22 +7,31 @@ import { YStack } from 'tamagui'
  * A tick says "this is done"; a radio says "this one, of these".
  *
  * The two agree on everything but the size: iOS draws a 22pt ring with a 17pt dot, Android a 24dp
- * ring with a 19dp one. Android's are used here, as the tie-break. The ring is the text colour in
- * both states and only the dot appears -- neither client changes the ring or the box on selection,
- * so the dot carries the whole signal.
+ * ring with a 19dp one. Android's are used here, as the tie-break.
+ *
+ * **The ring is the text colour whether or not it is chosen**, and only the dot appears: neither
+ * client changes the ring on selection, so the dot carries the whole signal. An option that cannot
+ * be taken dims the ring instead, which is the one case where its colour says something.
  */
 const SIZE = 24
 const RING = 1
 const DOT_INSET = 2.5
 
-export function RadioIndicator({ selected }: { selected: boolean }) {
+export function RadioIndicator({
+  selected,
+  disabled = false,
+}: {
+  selected: boolean
+  /** The option cannot be taken. Dims the ring; a disabled radio is never the chosen one. */
+  disabled?: boolean
+}) {
   return (
     <YStack
       width={SIZE}
       height={SIZE}
       borderRadius={SIZE / 2}
       borderWidth={RING}
-      borderColor={selected ? '$primaryColor' : '$bordersColor'}
+      borderColor={disabled ? '$textDisabled' : '$textPrimary'}
       alignItems="center"
       justifyContent="center"
     >

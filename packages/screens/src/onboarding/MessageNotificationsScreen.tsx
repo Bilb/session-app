@@ -121,7 +121,7 @@ export function MessageNotificationsScreen({
             </Text>
           )}
         </YStack>
-        <RadioIndicator selected={selected} />
+        <RadioIndicator selected={selected} disabled={disabled} />
       </XStack>
     )
   }
