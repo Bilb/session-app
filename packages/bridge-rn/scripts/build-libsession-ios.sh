@@ -164,10 +164,26 @@ rm -rf "$here/../ios/lib"
 # discoverable by listing the directories -- so a build that is quietly a rebuild of one slice
 # against a submodule that has since moved looks exactly like a complete one. This is what to read
 # when something links and then behaves like an older libsession.
+#
+# **The hash is the honest half of that**; the commit alone is not. The nested submodules are
+# routinely carrying uncommitted patches -- the `StaticBuild.cmake` ones are, right now -- and a
+# commit says nothing about them. It is the legacy client's own check
+# (`Scripts/build_libSession_util.sh`): every tracked path across every submodule, hashed by
+# content from the working tree, so an uncommitted edit changes it. Tests, docs and markdown are
+# left out because they cannot affect what gets linked.
+source_hash=$( \
+    ( cd "$libsession" && git ls-files --recurse-submodules ) \
+    | grep -vE '/(tests?|docs?|examples?)/|\.md$|/(\.DS_Store|\.gitignore)$' \
+    | sort | tr '\n' '\0' \
+    | ( cd "$libsession" && xargs -0 md5 -r ) \
+    | awk '{print $1}' | sort | md5 -q \
+)
+
 cat > "$here/../ios/BUILT.json" <<MANIFEST
 {
   "slices": [$(for slice in $slices; do printf '"%s",' "$slice"; done | sed 's/,$//')],
   "libsession": "$(git -C "$libsession" rev-parse HEAD)",
+  "sourceHash": "$source_hash",
   "built": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 MANIFEST

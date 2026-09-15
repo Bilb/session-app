@@ -17,7 +17,12 @@ The shim is an xcframework rather than a directory of archives because `vendored
 no per-SDK form: a directory of `.a` files is a directory for exactly one slice, and the two have
 to coexist.
 
-`BUILT.json` beside them records which slices are present and which libsession commit they came
-from. Neither xcframework carries that, and a rebuild of one slice against a submodule that has
-since moved looks exactly like a complete build -- so this is the file to read when something
-links and then behaves like an older libsession.
+`BUILT.json` beside them records which slices are present, which libsession commit they came
+from, and a hash of the whole source tree. Neither xcframework carries any of that, and a rebuild
+of one slice against a submodule that has since moved looks exactly like a complete build -- so
+this is the file to read when something links and then behaves like an older libsession.
+
+**The hash matters more than the commit.** The nested submodules routinely carry uncommitted
+patches, and a commit says nothing about them; the hash is over every tracked path's working-tree
+contents, so an uncommitted edit changes it. It is the legacy client's own check, from
+`Scripts/build_libSession_util.sh`.
