@@ -17,6 +17,8 @@
     "dev:desktop:fake": "pnpm --filter @session/desktop dev:fake",
     "dev:mobile": "pnpm --filter @session/mobile dev",
     "dev:mobile:fake": "pnpm --filter @session/mobile dev:fake",
+    "android": "pnpm --filter @session/mobile android",
+    "ios": "pnpm --filter @session/mobile ios",
     "lint": "turbo lint",
     "boundaries": "depcruise --config tooling/depcruise-config/root.cjs $(ls -d packages apps tests tooling 2>/dev/null)",
     "typecheck": "turbo typecheck",
