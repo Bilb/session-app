@@ -48,9 +48,12 @@ const FADE_MS = 400
  * us. Written by hand rather than with an animation library because this is the only thing in the
  * app that needs it and a driver is a dependency.
  */
-function useFadeIn(key: string): number {
-  const [shown, setShown] = useState(false)
+function useFadeIn(key: string, instant: boolean): number {
+  const [shown, setShown] = useState(instant)
   useEffect(() => {
+    // The flag exists so an automated run is not racing a transition it cannot see. Nothing to
+    // schedule and nothing to undo: the content is simply already there.
+    if (instant) return
     setShown(false)
     // Next frame rather than immediately: setting both values in one tick gives no transition to
     // interpolate and the content simply appears.
@@ -60,7 +63,7 @@ function useFadeIn(key: string): number {
     return () => {
       clearTimeout(raf)
     }
-  }, [key])
+  }, [key, instant])
   return shown ? 1 : 0
 }
 
@@ -152,7 +155,7 @@ export function OnboardingChrome({
   // remounts this and the animation runs; the artwork and the lockup sit outside it and do not.
   // Desktop only: the mobile clients cut between steps, and an opacity with nothing interpolating
   // it is a frame of invisible content rather than a transition.
-  const fading = useFadeIn(testID)
+  const fading = useFadeIn(testID, flag('disableAnimations'))
 
   if (!wide) {
     return (

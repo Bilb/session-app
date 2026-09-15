@@ -1,6 +1,7 @@
+import { flag } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { animateNextLayout, Button, Reveal, Text, useMedia, YStack } from '@session/ui'
+import { Button, Reveal, Text, useMedia, YStack } from '@session/ui'
 import { useEffect, useState } from 'react'
 
 import { EXTRA_ACTION_INSET, OnboardingChrome } from './OnboardingChrome'
@@ -117,9 +118,9 @@ function PhoneOpening() {
     if (shown >= BUBBLES.length) return
     const timer = setTimeout(
       () => {
-        // Asked for before the state changes, so the bubbles already on screen *slide* up to make
-        // room rather than jumping there in one frame while the new one fades in beside them.
-        animateNextLayout()
+        // No layout animation here: the arriving bubble grows into its own space, which moves the
+        // ones above it exactly as far, in the same frame. Asking a layout animation to slide them
+        // as well put two animations in charge of one distance and they overlapped.
         setShown((count) => count + 1)
       },
       shown === 0 ? FIRST_BUBBLE_MS : BUBBLE_INTERVAL_MS,
@@ -139,7 +140,7 @@ function PhoneOpening() {
 
       <YStack height={CONVERSATION_HEIGHT} justifyContent="flex-end" gap={BUBBLE_GAP}>
         {BUBBLES.slice(0, shown).map((bubble) => (
-          <Reveal key={bubble.text}>
+          <Reveal key={bubble.text} instant={flag('disableAnimations')}>
             <YStack
               maxWidth={BUBBLE_MAX_WIDTH}
               alignSelf={bubble.outgoing ? 'flex-end' : 'flex-start'}
