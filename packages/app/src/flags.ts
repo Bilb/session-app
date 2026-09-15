@@ -57,6 +57,26 @@ export const FLAGS = {
    * rather than something to leave on.
    */
   forceOnboardingTabletDesign: false,
+
+  /**
+   * **Force** fast notifications to look available, whatever the build can actually do.
+   *
+   * Availability is a fact about the build -- a direct-download Android has no Play Services and
+   * no iOS build has any push yet -- so the "Recommended" state of the notification screen is
+   * unreachable on the machines it is developed on. This makes it reachable. It changes only what
+   * the screen says about the option, never what a notification does.
+   */
+  forceFastModeAvailable: false,
+
+  /**
+   * Turn off every animation and transition.
+   *
+   * For automated tests, which otherwise race whatever is still moving: a screenshot taken while a
+   * bubble is growing or a screen is sliding is a different picture each run, and a tap aimed at a
+   * control that has not settled misses. Off by default, because the animations are most of what
+   * makes the app feel finished.
+   */
+  disableAnimations: false,
 } as const
 
 export type FlagName = keyof typeof FLAGS
