@@ -1,11 +1,12 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Icon, Input, RecoveryPasswordMark, Text, TopTabs, YStack } from '@session/ui'
+import { flag } from '@session/app'
+import { Button, Icon, Input, RecoveryPasswordMark, SlidePager, Text, TopTabs } from '@session/ui'
 import { useEffect, useState } from 'react'
 
 import { OnboardingChrome } from './OnboardingChrome'
-
-import { OnboardingStep } from './OnboardingStep'
+import { OnboardingStepBody } from './OnboardingStep'
+import { ScanQrPane } from './ScanQrPane'
 import { phraseIsTooShort, phraseWords } from './recoveryPhrase'
 import type { RecoveryInput } from './flow'
 
@@ -82,122 +83,118 @@ export function LoadAccountScreen({
     setShowing(true)
   }
 
-  const tabs = (
-    <TopTabs
-      active={tab}
-      onChange={(next) => {
-        setTab(next === 'qr' ? 'qr' : 'phrase')
-      }}
-      tabs={[
-        {
-          key: 'phrase',
-          label: tr('sessionRecoveryPassword'),
-          testID: ELEMENT.onboarding.recoveryPhraseTab,
-        },
-        { key: 'qr', label: tr('qrScan'), testID: ELEMENT.onboarding.scanQrTab },
-      ]}
-    />
-  )
-
-  if (tab === 'qr') {
-    return (
-      // The chrome rather than a step: this pane has no heading, no description and no action of
-      // its own, which is all a step adds.
-      <OnboardingChrome
-        testID={ELEMENT.onboarding.loadAccountScreen}
-        onBack={onBack}
-        barTitle={tr('loadAccount')}
-        banner={tabs}
-      >
-        <YStack
-          flex={1}
-          alignItems="center"
-          justifyContent="center"
-          gap="$2"
-          testID={ELEMENT.onboarding.scanQrPane}
-        >
-          <Text textAlign="center">{tr('cameraGrantAccessQr')}</Text>
-        </YStack>
-      </OnboardingChrome>
-    )
-  }
+  const cut = flag('disableAnimations')
 
   return (
-    <OnboardingStep
-      barTitle={tr('loadAccount')}
-      banner={tabs}
-      title={tr('sessionRecoveryPassword')}
-      titleMark={<RecoveryPasswordMark size={22} color="$textPrimary" />}
-      description={tr('recoveryPasswordRestoreDescription')}
-      onBack={onBack}
+    <OnboardingChrome
       testID={ELEMENT.onboarding.loadAccountScreen}
-      error={
-        showing ? (
-          <Text
-            tone="danger"
-            size="$label"
-            weight="bold"
-            testID={ELEMENT.onboarding.recoveryPhraseError}
-          >
-            {tooShort
-              ? tr('recoveryPasswordErrorMessageShort')
-              : // Generic rather than "incorrect", because the bridge flattens libsession's
-                // several refusals into one message and this cannot tell which it was.
-                tr('recoveryPasswordErrorMessageGeneric')}
-          </Text>
-        ) : undefined
-      }
-      footer={
-        <Button
-          // Outlined in the accent, like the landing screen's second button: the legacy clients
-          // draw every onboarding Continue that way, stroke and label in the primary colour.
-          variant="outlineAccent"
-          testID={ELEMENT.onboarding.continueButton}
-          loading={busy}
-          disabled={phrase.trim().length === 0 || showing}
-          onPress={submit}
-        >
-          {tr('theContinue')}
-        </Button>
+      onBack={onBack}
+      barTitle={tr('loadAccount')}
+      banner={
+        <TopTabs
+          active={tab}
+          instant={cut}
+          onChange={(next) => {
+            setTab(next === 'qr' ? 'qr' : 'phrase')
+          }}
+          tabs={[
+            {
+              key: 'phrase',
+              label: tr('sessionRecoveryPassword'),
+              testID: ELEMENT.onboarding.recoveryPhraseTab,
+            },
+            { key: 'qr', label: tr('qrScan'), testID: ELEMENT.onboarding.scanQrTab },
+          ]}
+        />
       }
     >
-      <Input
-        value={phrase}
-        onChangeText={(next) => {
-          setPhrase(next)
-          setShowing(false)
-          setTooShort(false)
-        }}
-        placeholder={tr('recoveryPasswordEnter')}
-        autoCapitalize="none"
-        autoFocus
-        // Concealed until asked for. The toggle is the only way to read it back, which is the
-        // point -- a phrase typed blind cannot be checked over.
-        secureTextEntry={!revealed}
-        error={refused}
-        errorText={showing}
-        testID={ELEMENT.onboarding.recoveryPhraseInput}
-        endWidth={TOGGLE_WIDTH}
-        end={
-          <Button
-            variant="ghost"
-            size="xs"
-            circular
-            accessibilityLabel={revealed ? tr('hide') : tr('show')}
-            testID={ELEMENT.onboarding.recoveryPhraseReveal}
-            onPress={() => {
-              setRevealed((shown) => !shown)
+      {/* One chrome and two panes rather than two screens: the bar, the title and the tabs stay
+          put and only what is under them slides, which is what makes the indicator and the pane
+          read as one movement. */}
+      <SlidePager index={tab === 'qr' ? 1 : 0} instant={cut}>
+        <OnboardingStepBody
+          title={tr('sessionRecoveryPassword')}
+          titleMark={<RecoveryPasswordMark size={22} color="$textPrimary" />}
+          description={tr('recoveryPasswordRestoreDescription')}
+          onBack={onBack}
+          error={
+            showing ? (
+              <Text
+                tone="danger"
+                size="$label"
+                weight="bold"
+                testID={ELEMENT.onboarding.recoveryPhraseError}
+              >
+                {tooShort
+                  ? tr('recoveryPasswordErrorMessageShort')
+                  : // Generic rather than "incorrect", because the bridge flattens libsession's
+                    // several refusals into one message and this cannot tell which it was.
+                    tr('recoveryPasswordErrorMessageGeneric')}
+              </Text>
+            ) : undefined
+          }
+          footer={
+            <Button
+              // Outlined in the accent, like the landing screen's second button: the legacy
+              // clients draw every onboarding Continue that way, stroke and label in the primary
+              // colour.
+              variant="outlineAccent"
+              testID={ELEMENT.onboarding.continueButton}
+              loading={busy}
+              disabled={phrase.trim().length === 0 || showing}
+              onPress={submit}
+            >
+              {tr('theContinue')}
+            </Button>
+          }
+        >
+          <Input
+            value={phrase}
+            onChangeText={(next) => {
+              setPhrase(next)
+              setShowing(false)
+              setTooShort(false)
             }}
-            icon={
-              <Icon
-                name={revealed ? 'eyeOff' : 'eye'}
-                size="$5"
-                color={showing ? '$dangerColor' : '$textSecondary'}
+            placeholder={tr('recoveryPasswordEnter')}
+            autoCapitalize="none"
+            autoFocus
+            // Concealed until asked for. The toggle is the only way to read it back, which is the
+            // point -- a phrase typed blind cannot be checked over.
+            secureTextEntry={!revealed}
+            error={refused}
+            errorText={showing}
+            testID={ELEMENT.onboarding.recoveryPhraseInput}
+            endWidth={TOGGLE_WIDTH}
+            end={
+              <Button
+                variant="ghost"
+                size="xs"
+                circular
+                accessibilityLabel={revealed ? tr('hide') : tr('show')}
+                testID={ELEMENT.onboarding.recoveryPhraseReveal}
+                onPress={() => {
+                  setRevealed((shown) => !shown)
+                }}
+                icon={
+                  <Icon
+                    name={revealed ? 'eyeOff' : 'eye'}
+                    size="$5"
+                    color={showing ? '$dangerColor' : '$textSecondary'}
+                  />
+                }
               />
             }
           />
-        }
-      />
-    </OnboardingStep>
+        </OnboardingStepBody>
+        <ScanQrPane
+          onScan={(value) => {
+            // Handed over as it was read. Whether it decodes to a seed is libsession's to say, and
+            // its refusal comes back the same way a typed phrase's does.
+            onContinue({ hexSeed: value })
+          }}
+          error={rejected ? tr('qrNotRecoveryPassword') : null}
+        />
+      </SlidePager>
+    </OnboardingChrome>
   )
 }

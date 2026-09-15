@@ -6,6 +6,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller'
 import { useEffect, useState } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
+import { MobileCameraProvider } from '../src/camera'
 import { MobileNavProvider } from '../src/nav'
 import { storePromise } from '../src/store'
 
@@ -55,7 +56,9 @@ export default function RootLayout() {
           ) : (
             <SessionStoreProvider store={store}>
               <MobileNavProvider>
-                <Slot />
+                <MobileCameraProvider>
+                  <Slot />
+                </MobileCameraProvider>
               </MobileNavProvider>
             </SessionStoreProvider>
           )}

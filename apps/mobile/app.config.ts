@@ -53,10 +53,37 @@ function bundleId(config: ConfigContext['config']): string {
   return `${config.ios?.bundleIdentifier ?? 'org.getsession.session2'}${BUNDLE_SUFFIX}`
 }
 
+/**
+ * The camera permission's explanation, read out of the catalogue rather than written again here.
+ *
+ * iOS shows this string in its own prompt, so it is a user-visible string like any other and
+ * belongs to Crowdin -- but a plist value is baked at build time, where `tr()` has no locale to
+ * read. Same trick as the locale list above: the generated English is read as text. **Only English
+ * for now**; localising a plist means the per-language `InfoPlist.strings` mechanism the legacy
+ * client has, which is its own piece of work.
+ */
+function cameraPermissionText(): string {
+  const generated = join(
+    dirname(fileURLToPath(import.meta.url)),
+    '../../packages/localization/src/localization-src/generated/english.ts',
+  )
+  const found = /cameraGrantAccessDescription:\s*'((?:[^'\\]|\\.)*)'/.exec(
+    readFileSync(generated, 'utf8'),
+  )
+  if (!found?.[1]) throw new Error(`cameraGrantAccessDescription not found in ${generated}`)
+  return found[1].replace(/\\'/g, "'")
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: config.name ?? 'Session',
   slug: config.slug ?? 'session-app',
+  // The camera is the scanner behind the restore screen's QR tab. Declared through the plugin
+  // rather than by writing the plist key directly, so the Android permission comes with it.
+  plugins: [
+    ...(config.plugins ?? []),
+    ['expo-camera', { cameraPermission: cameraPermissionText() }],
+  ],
   ios: {
     ...config.ios,
     bundleIdentifier: bundleId(config),

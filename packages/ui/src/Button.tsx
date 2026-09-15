@@ -91,6 +91,21 @@ const Frame = styled(XStack, {
         pressStyle: { backgroundColor: '$backgroundNested' },
       },
       /**
+       * `ghost`, in the accent.
+       *
+       * For a bare label that is the only thing to do on the screen it is on -- the clients' camera
+       * permission prompt is the one this was added for, and they draw it as text in the primary
+       * colour with nothing around it. An outlined control would read as a form's action, which is
+       * not what a single offer in the middle of an empty pane is.
+       */
+      ghostAccent: {
+        backgroundColor: 'transparent',
+        borderColor: 'transparent',
+        color: '$primaryColor',
+        hoverStyle: { backgroundColor: '$backgroundTertiary' },
+        pressStyle: { backgroundColor: '$backgroundNested' },
+      },
+      /**
        * Text on its own, no frame -- what the desktop client calls Simple and uses for every modal
        * action. Its hover dims the label rather than lighting a surface, because there is no
        * surface to light.
@@ -195,6 +210,7 @@ const PRESSED = {
   outline: { backgroundColor: '$textPrimary', borderColor: '$textPrimary', opacity: 0.82 },
   outlineAccent: { backgroundColor: '$primaryColor', borderColor: '$primaryColor', opacity: 0.82 },
   ghost: { backgroundColor: '$backgroundNested' },
+  ghostAccent: { backgroundColor: '$backgroundNested' },
   simple: { opacity: 0.7 },
   danger: { opacity: 0.7 },
 } as const
@@ -205,6 +221,7 @@ const PRESSED_LABEL = {
   outline: '$backgroundPrimary',
   outlineAccent: '$onAccent',
   ghost: '$textPrimary',
+  ghostAccent: '$primaryColor',
   simple: '$textPrimary',
   danger: '$dangerColor',
 } as const
@@ -214,6 +231,7 @@ const LABEL_TONE = {
   outline: '$textPrimary',
   outlineAccent: '$primaryColor',
   ghost: '$textPrimary',
+  ghostAccent: '$primaryColor',
   simple: '$textPrimary',
   danger: '$dangerColor',
 } as const

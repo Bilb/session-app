@@ -65,6 +65,9 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
       // Null, not a no-op: the language picker reads this as "does the OS have a language screen",
       // and a function that did nothing would answer yes and then do nothing.
       openLanguageSettings: null,
+      // Same reasoning: desktop has no page to send anybody to, and a function that did nothing
+      // would claim it had.
+      openAppSettings: null,
     },
     window: {
       // Null, not a no-op: nothing in a test or on a phone can close the app, and a screen asks

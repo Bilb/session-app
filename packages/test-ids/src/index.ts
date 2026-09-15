@@ -126,6 +126,8 @@ export const ELEMENT = {
     recoveryPhraseTab: 'onboarding-recovery-phrase-tab',
     scanQrTab: 'onboarding-scan-qr-tab',
     scanQrPane: 'onboarding-scan-qr-pane',
+    scanQrPreview: 'onboarding-scan-qr-preview',
+    cameraAccess: 'onboarding-camera-access',
 
     notificationsScreen: 'onboarding-notifications-screen',
     notificationsOption: (mode: string) => `onboarding-notifications-${mode}` as const,

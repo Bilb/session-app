@@ -89,6 +89,9 @@ setPorts(
        * then -- see the port.
        */
       openLanguageSettings: Platform.OS === 'ios' ? () => Linking.openSettings() : null,
+      // Both platforms, unlike the language row above: every installed app has a settings page,
+      // and it is where a camera permission the OS will not ask about again is turned back on.
+      openAppSettings: () => Linking.openSettings(),
     },
     secureStore: {
       async getDatabaseKey() {
