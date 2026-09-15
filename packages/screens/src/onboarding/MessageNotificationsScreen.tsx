@@ -134,6 +134,9 @@ export function MessageNotificationsScreen({
       testID={ELEMENT.onboarding.notificationsScreen}
       footer={
         <Button
+          // Outlined in the accent, like every other onboarding Continue. This screen had the
+          // filled one, which made it look like the end of the flow rather than one step of it.
+          variant="outlineAccent"
           testID={ELEMENT.onboarding.continueButton}
           loading={busy}
           onPress={() => {
