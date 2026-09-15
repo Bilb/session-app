@@ -9,7 +9,7 @@
  */
 
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -25,7 +25,7 @@ const describeAddon = existsSync(addon) ? describe : describe.skip
 /** A client on its own database, with no account: where onboarding starts. */
 async function newcomer(
   seed: number,
-): Promise<{ client: SessionClient; dispose: () => Promise<void> }> {
+): Promise<{ client: SessionClient; dir: string; dispose: () => Promise<void> }> {
   const dir = await mkdtemp(join(tmpdir(), 'session-onboarding-'))
   await mkdir(join(dir, 'cache'), { recursive: true })
   const client = createSessionClient(
@@ -40,6 +40,9 @@ async function newcomer(
   )
   return {
     client,
+    // Handed back so a test can look at what the discard left on disk: the database is the part
+    // the bridge reports on, and the attachment cache is the part nothing else would notice.
+    dir,
     dispose: async () => {
       client.close()
       await rm(dir, { recursive: true, force: true })
@@ -413,6 +416,30 @@ describeAddon('discarding an account', () => {
       expect(after.haveAccount).toBe(false)
       expect(after.sessionId).toBeUndefined()
       expect(after.displayName).toBeUndefined()
+    } finally {
+      await dispose()
+    }
+  })
+
+  it('takes the attachment cache with it', async () => {
+    // **The part the bridge cannot report on.** Everything else here is asked of the client, and
+    // the client would answer exactly the same way with somebody's downloaded profile pictures
+    // still sitting beside the database -- unreadable, since their key went with it, but present.
+    // Backing out of onboarding is supposed to leave nothing.
+    const { client, dir, dispose } = await newcomer(45)
+
+    try {
+      await client.createAccount()
+      const downloaded = join(dir, 'cache', 'profile-picture')
+      await writeFile(downloaded, 'pretend this is an avatar')
+
+      await client.discardAccount()
+
+      expect(existsSync(downloaded)).toBe(false)
+      // Not asserted here: that the old database's journals are gone. The discard opens a fresh
+      // database immediately, which writes journals of its own, so their presence afterwards says
+      // nothing about whether the previous ones were removed. That the account is genuinely new is
+      // the test below.
     } finally {
       await dispose()
     }
