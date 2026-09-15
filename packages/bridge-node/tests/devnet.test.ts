@@ -100,17 +100,21 @@ describe.skipIf(seedUrl === undefined)('a local devnet', () => {
       await alice.sendMessage(conversation, { body })
 
       // A real swarm and libsession's own poll ticker, so this waits rather than settling a
-      // clock. The first attempt can fall inside the window where the router is still
-      // bootstrapping, which is why the deadline is generous.
-      const deadline = Date.now() + 90_000
+      // clock. Asking before waiting, and waiting only when the answer was no: a sleep at the
+      // top of the loop is a floor on whatever this reports, so at 3s it could only ever say
+      // "3 seconds" for a devnet that delivers in half of one. The deadline stays generous
+      // because a first attempt can fall inside the window where the router is bootstrapping.
+      const started = Date.now()
+      const deadline = started + 90_000
       let arrived = false
-      while (!arrived && Date.now() < deadline) {
-        await new Promise((resolve) => setTimeout(resolve, 3_000))
+      while (Date.now() < deadline) {
         const messages = await bob.getMessages(aliceId)
         arrived = messages.some((message) => message.body === body)
+        if (arrived) break
+        await new Promise((resolve) => setTimeout(resolve, 50))
       }
 
-      console.log(`arrived at bob: ${String(arrived)}`)
+      console.log(`arrived at bob: ${String(arrived)} after ${String(Date.now() - started)}ms`)
       expect(arrived).toBe(true)
     } finally {
       alice.close()

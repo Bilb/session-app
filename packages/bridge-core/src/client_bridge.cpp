@@ -66,6 +66,13 @@ namespace {
         return static_cast<T>(value);
     }
 
+    /// What a devnet polls at, in place of libsession's 20 seconds.
+    ///
+    /// Short enough that a message arrives while somebody is still looking at the screen, and far
+    /// enough above zero that the polls do not overlap: nothing serialises them, so an interval
+    /// below a round trip gets concurrent requests rather than faster ones.
+    constexpr auto DEVNET_POLL_INTERVAL = std::chrono::milliseconds{500};
+
     LogLevel log_level_of(std::string_view name) {
         return name == "trace"      ? LogLevel::trace
              : name == "debug"      ? LogLevel::debug
@@ -243,6 +250,14 @@ struct ClientBridge::Impl {
             return;
 
         client->core.make_network(network::config::Config{*planned});
+
+        // A devnet is a handful of nodes on one machine with nothing else talking to them, so
+        // libsession's 20-second default is all latency and no saving. Decided here rather than
+        // configured, for the same reason the router and subnet diversity are: on a devnet it is
+        // not a choice anyone would make differently. An app that wants another value can still
+        // call setPollInterval, which runs after this.
+        if (options.network.netid == "devnet")
+            client->core.set_poll_interval(DEVNET_POLL_INTERVAL);
     }
 
     /// Both halves of "an account now exists", which is what onboarding signals too. The record
