@@ -60,6 +60,14 @@ const BOTTOM_INSET = 4
 const CONTENT_GAP = 8
 
 /**
+ * The extra air above the actions, on top of the body's own rhythm.
+ *
+ * The row is a different kind of thing from the lines above it -- it runs the full width and is
+ * held down at the dialog's edge -- and at the body's gap it read as another line of the copy.
+ */
+const ACTIONS_GAP = 16
+
+/**
  * How far the close's **touch target** sits from the dialog's own corner.
  *
  * It belongs to the dialog and not to the column of text, so it is pulled back out of the content
@@ -145,6 +153,7 @@ export function Modal({
                stops at the rounded bottom edge rather than squaring it off. */
             <XStack
               alignItems="stretch"
+              marginTop={ACTIONS_GAP}
               marginHorizontal={-SIDE_INSET}
               marginBottom={-BOTTOM_INSET}
               height={ACTION_HEIGHT}

@@ -1,19 +1,24 @@
 import { requirePorts } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Modal, ScrollView } from '@session/ui'
+import { Button, Modal, ScrollView, textHeight } from '@session/ui'
 import { useEffect, useRef } from 'react'
 
 import { LocalizedText } from '../LocalizedText'
 
 /**
- * Five lines of a wrapped URL. Past that it scrolls.
+ * How much of the question and the address is shown before it scrolls.
  *
- * The desktop client caps the same container at 150px. The address is always shown in full rather
- * than truncated -- the part a long URL loses to an ellipsis is the end, and the end is where a
- * deceptive one hides what it really is.
+ * **Five lines, counted rather than measured.** The desktop client caps the same container at
+ * 150px, which at its type is about five lines -- taken literally here it was seven, and it cut
+ * the seventh in half, which reads as a rendering fault rather than as something to scroll.
+ *
+ * The address is always shown in full rather than truncated: the part a long URL loses to an
+ * ellipsis is the end, and the end is where a deceptive one hides what it really is. So it is the
+ * view that is bounded, never the text.
  */
-const MAX_URL_HEIGHT = 150
+const MAX_LINES = 5
+const MAX_URL_HEIGHT = textHeight('body', MAX_LINES)
 
 interface OpenUrlModalProps {
   /** The address to confirm, or null when the dialog is closed. */
