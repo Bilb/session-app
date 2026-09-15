@@ -100,10 +100,19 @@ describeAddon('the N-API addon', () => {
     expect(await first.nextLine()).toBe(true)
     expect(await second.nextLine()).toBe(true)
 
+    const closedAt = first.lines()
     first.transport.close()
 
-    // The one still open keeps its own logger, and closing the other did not take it with it.
+    // With no network attached libsession is silent between a start and a close, so opening a
+    // third bridge is what produces the lines the other two are then measured against.
+    const third = open('logger-third')
+
+    // The one still open keeps its own logger; the closed one is left with none. The logger set
+    // is process-wide, so the two are measured on the same lines.
     expect(await second.nextLine()).toBe(true)
+    expect(first.lines()).toBe(closedAt)
+
+    third.transport.close()
     second.transport.close()
   }, 30000)
 

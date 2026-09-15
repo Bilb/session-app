@@ -19,9 +19,10 @@ a time, via the `port-feature` skill.
 - **A devnet cannot have its own Pro backend.** The key libsession verifies proofs against is a
   `constexpr` read at one call site in `core.cpp`, so pointing a build at another deployment needs
   a libsession change. Nothing here configures one, and nothing here has Pro code to configure.
-- **Mobile has never been run against a devnet.** It is wired and compiles; the JSI adapter that
-  carries the seed nodes across is compile-checked and nothing more. Both dev clients need a native
-  rebuild before they can reach one.
+- **Android has not been run against a devnet.** iOS has - it discovered 15 seed nodes, built its
+  paths and polled its swarm - and the two share everything above the Nitro module, so what is
+  untried is the Android side of that module rather than any of the logic. A dev client built
+  since the shim last changed is what it needs.
 - **Onboarding is one button.** `restoreAccount` is a bridge command already, with no screen.
 - **No contact list and no QR scanner.** Starting a conversation means pasting an account ID.
 - **iOS device builds and a release-shaped xcframework.** The simulator works; nothing has been
