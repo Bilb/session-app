@@ -1,6 +1,16 @@
 import { getLocale, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Icon, ProgressRing, Screen, Text, useMedia, XStack, YStack } from '@session/ui'
+import {
+  Button,
+  Icon,
+  ProgressRing,
+  Screen,
+  Text,
+  useMedia,
+  useWindowSize,
+  XStack,
+  YStack,
+} from '@session/ui'
 import { useEffect, useRef, useState } from 'react'
 
 import { OnboardingChrome } from './OnboardingChrome'
@@ -27,7 +37,15 @@ const BAR_HEIGHT = 17
  * `massiveSpacing` on each side, so it spans most of the width -- because on a phone this is the
  * whole screen rather than one element on it.
  */
-const RING_SIZE = 160
+/**
+ * How much of the width the gauge leaves either side. iOS's `massiveSpacing`.
+ *
+ * The size follows from it rather than being a number of its own, which is what the client does --
+ * `.padding(.horizontal, Values.massiveSpacing)` on the gauge -- and why it reads as filling the
+ * screen. Ours was a fixed 160, well under half the width of a modern phone, so it sat there
+ * looking like a spinner.
+ */
+const RING_INSET = 64
 
 /**
  * The ring's stroke. **The legacy client's own number**, and ours was under half of it.
@@ -67,6 +85,8 @@ interface LoadingScreenProps {
  */
 export function LoadingScreen({ onGaveUp, onBack }: LoadingScreenProps) {
   const wide = useMedia().gtSm
+  const window = useWindowSize()
+  const ringSize = Math.max(160, window.width - RING_INSET * 2)
   const [elapsed, setElapsed] = useState(0)
   // Held in a ref so the interval's identity never depends on it: re-creating the timer on every
   // tick would drift, and clearing it in the cleanup would restart the wait.
@@ -118,13 +138,13 @@ export function LoadingScreen({ onGaveUp, onBack }: LoadingScreenProps) {
           {/* The number sits **inside** the ring on both clients -- iOS overlays it, Android
               centres it in the arc -- rather than beside it as the desktop bar does. */}
           <YStack
-            width={RING_SIZE}
-            height={RING_SIZE}
+            width={ringSize}
+            height={ringSize}
             position="relative"
             alignItems="center"
             justifyContent="center"
           >
-            <ProgressRing progress={fraction} size={RING_SIZE} thickness={RING_THICKNESS} />
+            <ProgressRing progress={fraction} size={ringSize} thickness={RING_THICKNESS} />
             <YStack fullscreen alignItems="center" justifyContent="center" pointerEvents="none">
               {/* 32, the size Android draws this at; iOS's is 33. Ours reached past the rung to
                   36 because the ladder was missing it. */}
