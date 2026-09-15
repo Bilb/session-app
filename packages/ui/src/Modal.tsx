@@ -58,6 +58,15 @@ const SIDE_INSET = 35
 const TOP_INSET = 24
 const BOTTOM_INSET = 4
 const CONTENT_GAP = 8
+
+/**
+ * How far the close sits from the dialog's own corner, rather than from the content's.
+ *
+ * It belongs to the dialog and not to the column of text, so it is pulled back out of the content
+ * inset: at 35 from the side it floated a third of the way across the title, which is where the
+ * client has nothing at all.
+ */
+const CLOSE_INSET = 4
 const ACTION_HEIGHT = 51
 
 export function Modal({
@@ -101,7 +110,11 @@ export function Modal({
               {title}
             </Text>
             {!showClose ? null : (
-              <YStack position="absolute" top={0} right={0}>
+              <YStack
+                position="absolute"
+                top={-(TOP_INSET - CLOSE_INSET)}
+                right={-(SIDE_INSET - CLOSE_INSET)}
+              >
                 <Button
                   variant="ghost"
                   size="xs"
