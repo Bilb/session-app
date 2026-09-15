@@ -216,3 +216,28 @@ printf '%s' "$PHRASE" | xcrun simctl pbcopy "$UDID"
 then long-press the field (`tap` with `duration: 1.2`) and press **Paste**. Where typing is
 unavoidable, reveal the field and read back what actually landed before drawing any conclusion
 from what the app did with it.
+
+### CocoaPods dies while printing its own error
+
+`pod install` — and so `expo prebuild` and `expo run:ios` — can fail with a Ruby backtrace ending
+in `UnicodeNormalize.normalize: Unicode Normalization not appropriate for ASCII-8BIT`. That is
+CocoaPods crashing inside its _error reporter_, so whatever actually went wrong is never printed,
+and the trace points at `error_report.rb` rather than at the problem.
+
+It is the locale. Run it with a UTF-8 one and it both reports properly and, in the case seen here,
+simply succeeds:
+
+```sh
+LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 npx expo prebuild -p ios
+```
+
+Worth setting on any `pod`, `expo prebuild` or `expo run:ios` invocation rather than reaching for
+it after a failure.
+
+### A new native module needs a prebuild, not just an install
+
+Adding an `expo-*` package with a config plugin (a camera, say) changes the generated `Info.plist`
+and the Podfile. `pnpm install` does neither, and `pod install` alone applies no plugins — the
+permission string simply never reaches the bundle, and the failure arrives much later as the OS
+killing the app when it touches the API. `npx expo prebuild -p ios` is the step that applies them;
+`apps/mobile/ios` is generated and gitignored, so there is nothing to review afterwards.
