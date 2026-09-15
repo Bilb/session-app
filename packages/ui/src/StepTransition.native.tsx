@@ -6,8 +6,13 @@ import { stepTravel } from './stepTravel'
 
 export type { StepTransitionProps }
 
-/** How long a push takes. UIKit's own default for a navigation controller. */
-const DURATION_MS = 350
+/**
+ * How long a push takes.
+ *
+ * UIKit's own is 0.35s, but the system transition is interruptible and spends much of that
+ * settling, so matched exactly it reads as slower than the real thing beside it.
+ */
+const DURATION_MS = 280
 
 interface Leaving {
   node: ReactNode
@@ -62,7 +67,7 @@ export function StepTransition({
     progress.setValue(instant ? 1 : 0)
     setShowing({
       key: stepKey,
-      pane: showing.pane === 'a' ? 'b' : 'a',
+      pane: otherPane(showing.pane),
       leaving: instant ? null : { node: previous.current, direction },
     })
   }
@@ -98,13 +103,19 @@ export function StepTransition({
   return (
     <Animated.View style={styles.frame}>
       <Animated.View
-        style={[styles.pane, { transform: [{ translateX: paneOffset('a') }] }]}
+        style={[
+          styles.pane,
+          { zIndex: paneLayer('a'), transform: [{ translateX: paneOffset('a') }] },
+        ]}
         pointerEvents={showing.pane === 'a' ? 'auto' : 'none'}
       >
         {paneContent('a')}
       </Animated.View>
       <Animated.View
-        style={[styles.pane, { transform: [{ translateX: paneOffset('b') }] }]}
+        style={[
+          styles.pane,
+          { zIndex: paneLayer('b'), transform: [{ translateX: paneOffset('b') }] },
+        ]}
         pointerEvents={showing.pane === 'b' ? 'auto' : 'none'}
       >
         {paneContent('b')}
@@ -121,6 +132,23 @@ export function StepTransition({
     if (moving === null) return pane === showing.pane ? 0 : width
     return pane === showing.pane ? entering : leaving
   }
+
+  /**
+   * Which of the two is on top.
+   *
+   * **It changes with the direction, and it has to.** Pushing, the arriving screen covers the one
+   * it is leaving; popping, the departing screen is what uncovers the one behind it. Which pane is
+   * which alternates every step, so leaving this to the order they are written in puts the wrong
+   * one in front every other transition.
+   */
+  function paneLayer(pane: 'a' | 'b'): number {
+    const front = way === 'forward' ? showing.pane : otherPane(showing.pane)
+    return pane === front ? 1 : 0
+  }
+}
+
+function otherPane(pane: 'a' | 'b'): 'a' | 'b' {
+  return pane === 'a' ? 'b' : 'a'
 }
 
 const styles = StyleSheet.create({
