@@ -133,11 +133,25 @@ describeAddon('onboarding, against libsession', () => {
         .catch((e: unknown) => e)
 
       // The same words, two of them swapped: every word is real and the checksum is not.
+      //
+      // **Which two is not free.** The checksum reads the first three letters of each word, so
+      // swapping a pair that shares a prefix leaves it valid and the phrase restores -- which is a
+      // real phrase, a real account, and this test failing roughly one run in six on the accident
+      // of which words a random seed produced. The first pair that actually differs is chosen.
       const swapped = [...words]
-      const [a, b] = [swapped[0], swapped[1]]
-      if (a === undefined || b === undefined) throw new Error('a phrase this short cannot happen')
-      swapped[0] = b
-      swapped[1] = a
+      const prefix = (word: string) => word.slice(0, 3)
+      const head = words[0]
+      if (head === undefined) throw new Error('a phrase this short cannot happen')
+      // Among the twelve the checksum is computed over, never the thirteenth: that one is a repeat
+      // of one of them, and moving it is a different kind of wrong.
+      const other = words
+        .slice(0, 12)
+        .findIndex((word, at) => at > 0 && prefix(word) !== prefix(head))
+      if (other < 1) throw new Error('a phrase of twelve identical prefixes cannot happen')
+      const partner = swapped[other]
+      if (partner === undefined) throw new Error('a phrase this short cannot happen')
+      swapped[0] = partner
+      swapped[other] = head
       const swappedError = await client.restoreAccount({ words: swapped }).catch((e: unknown) => e)
 
       expect(String(misspeltError)).toContain('zzzzz')
