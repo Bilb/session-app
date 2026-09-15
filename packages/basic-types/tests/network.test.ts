@@ -4,6 +4,7 @@ import {
   netidForTransport,
   parseDevnetConfig,
   parseNetworkName,
+  parseRouterKind,
   type DevnetEnv,
 } from '#src/network'
 
@@ -12,6 +13,25 @@ import {
  * widening it to mainnet, and the transport must refuse an unconfigured one rather than narrowing
  * it back. Either slip alone puts a build meant for a sandbox on the real network.
  */
+describe('parseRouterKind', () => {
+  it('leaves the choice to the netid when unset', () => {
+    expect(parseRouterKind(undefined)).toBeUndefined()
+    expect(parseRouterKind('')).toBeUndefined()
+  })
+
+  it('reads the two transports', () => {
+    expect(parseRouterKind('onion-requests')).toBe('onion-requests')
+    expect(parseRouterKind('session-router')).toBe('session-router')
+  })
+
+  it('treats a typo as unset rather than picking one', () => {
+    // Guessing would put a build on a transport nobody asked for, which is the failure this
+    // variable exists to make visible.
+    expect(parseRouterKind('onion')).toBeUndefined()
+    expect(parseRouterKind('session_router')).toBeUndefined()
+  })
+})
+
 describe('parseNetworkName', () => {
   it('defaults to mainnet when nothing is set', () => {
     expect(parseNetworkName(undefined)).toBe('mainnet')

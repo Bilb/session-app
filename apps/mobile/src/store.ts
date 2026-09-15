@@ -84,6 +84,12 @@ async function openTransport(): Promise<BridgeTransport> {
     // devnet, which is the only thing a devnet can use.
     ...(router === undefined ? {} : { router }),
     deviceType: Platform.OS === 'ios' ? 'ios' : 'android',
+    // Off unless asked for, as on desktop: libsession is chatty below warn, and the reason to turn
+    // it up is always a specific failure. It is also the only place the network and the transport
+    // actually chosen are reported, which no screen shows.
+    ...(process.env['EXPO_PUBLIC_SESSION_LOG'] === undefined
+      ? {}
+      : { logLevel: process.env['EXPO_PUBLIC_SESSION_LOG'] as 'debug' }),
   })
 }
 
