@@ -8,7 +8,8 @@ set -euo pipefail
 # CMake-based ones.
 #
 # Defaults to the simulator on this machine's architecture, which is the debug loop. `all` builds
-# what a release needs: device arm64 plus both simulator slices.
+# what a release needs: device arm64 plus both simulator slices -- and it is also what a
+# "Designed for iPad" run on an Apple silicon Mac needs, because that runs the *device* slice.
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$here/../../.."
@@ -38,60 +39,118 @@ rm -rf "$here/../ios/libsession-util.xcframework"
 cp -R "$framework" "$here/../ios/libsession-util.xcframework"
 echo "xcframework in place: packages/bridge-rn/ios/libsession-util.xcframework"
 
-# The shim, built by CMake for the same slice.
+# The shim, built by CMake for each slice.
 #
 # CocoaPods compiles only what lives inside the pod directory - a source glob reaching up into
 # packages/bridge-core is dropped in silence, and the first sign of it is our own ClientBridge
 # symbols missing at link time. So bridge-core is a CMake project here exactly as it is for the
 # Node addon and for Android, and the pod vendors what it produces.
-case "$archs" in
-    arm64) slice="sim-arm64"; cmake_platform="SIMULATORARM64" ;;
-    *)     echo "the shim is only wired for a simulator arm64 slice so far" >&2; exit 1 ;;
+
+# Which slices libsession just built, named as its own build directories are.
+slices=""
+for arch in $archs; do
+    case "$platform" in
+        iphoneos) ;;
+        *) slices="$slices sim-$arch" ;;
+    esac
+done
+case "$platform" in
+    iphonesimulator) ;;
+    *) case " $archs " in *" arm64 "*) slices="$slices ios-arm64" ;; esac ;;
 esac
-if [ "$platform" = "iphoneos" ]; then slice="ios-arm64"; cmake_platform="OS64"; fi
 
 # Read from the podspec rather than written down twice: the shim and the pod that vendors it have
 # to agree on the floor, and the podspec is the one the build actually enforces.
 deployment_target="${IOS_DEPLOYMENT_TARGET:-$(sed -n 's/.*:ios *=> *"\([0-9.]*\)".*/\1/p' "$here/../SessionBridgeRN.podspec")}"
 [ -n "$deployment_target" ] || { echo "no :ios platform in SessionBridgeRN.podspec - set IOS_DEPLOYMENT_TARGET" >&2; exit 1; }
 
-build="$repo/packages/bridge-core/build-ios/$slice"
-cmake -G Ninja -S "$repo/packages/bridge-core" -B "$build" \
-    -DCMAKE_TOOLCHAIN_FILE="$libsession/external/ios-cmake/ios.toolchain.cmake" \
-    -DPLATFORM="$cmake_platform" \
-    -DDEPLOYMENT_TARGET="$deployment_target" \
-    -DENABLE_BITCODE=OFF \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DSESSION_BRIDGE_LIBSESSION_BUNDLE="$libsession/build-ios/$slice/libsession-util.a"
-cmake --build "$build" --target session-bridge-core --parallel
+staging="$repo/packages/bridge-core/build-ios/staging"
+rm -rf "$staging"
+mkdir -p "$staging"
 
-mkdir -p "$here/../ios/lib"
-rm -f "$here/../ios/lib"/*.a
-cp "$build/libsession-bridge-core.a" "$here/../ios/lib/"
+for slice in $slices; do
+    case "$slice" in
+        sim-arm64)  cmake_platform="SIMULATORARM64" ;;
+        sim-x86_64) cmake_platform="SIMULATOR64" ;;
+        ios-arm64)  cmake_platform="OS64" ;;
+        *) echo "no CMake platform known for slice $slice" >&2; exit 1 ;;
+    esac
 
-# The archives STATIC_BUNDLE does not carry. bridge-core's CMake names them on its link line,
-# which is enough for the addon and for Android but cannot travel into a vendored static library,
-# so on iOS the pod has to carry them and the podspec globs this directory - the same ten as
-# bridge-core's CMake list.
-#
-# All ten are load-bearing: resolving the bundle's undefined symbols and then the ones each
-# archive brings with it pulls in every one, from SQLite::Transaction::commit to blake2b_final.
-# A missing one is fatal here rather than skipped, because skipping it only defers the failure to
-# an undefined symbol in a later Xcode build.
-ls="$libsession/build-ios/$slice"
-for lib in \
-    "$ls/external/session-sqlite/libsession_sqlite.a" \
-    "$ls/external/session-sqlite/libsession_secure_buffer.a" \
-    "$ls/external/session-sqlite/SQLiteCpp/libSQLiteCpp.a" \
-    "$ls/static-deps/lib/libsqlite3mc.a" \
-    "$ls/static-deps/lib/libutf8proc.a" \
-    "$ls/static-deps/lib/libhogweed.a" \
-    "$ls/static-deps/lib/libtasn1.a" \
-    "$ls/static-deps/lib/libidn2.a" \
-    "$ls/static-deps/lib/libunistring.a" \
-    "$ls/static-deps/lib/libgmp.a"; do
-    [ -f "$lib" ] || { echo "the libsession build did not produce $lib" >&2; exit 1; }
-    cp "$lib" "$here/../ios/lib/"
+    build="$repo/packages/bridge-core/build-ios/$slice"
+    cmake -G Ninja -S "$repo/packages/bridge-core" -B "$build" \
+        -DCMAKE_TOOLCHAIN_FILE="$libsession/external/ios-cmake/ios.toolchain.cmake" \
+        -DPLATFORM="$cmake_platform" \
+        -DDEPLOYMENT_TARGET="$deployment_target" \
+        -DENABLE_BITCODE=OFF \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DSESSION_BRIDGE_LIBSESSION_BUNDLE="$libsession/build-ios/$slice/libsession-util.a"
+    cmake --build "$build" --target session-bridge-core --parallel
+
+    # The pieces STATIC_BUNDLE leaves out despite being "a single static .a containing
+    # everything". bridge-core's CMake names them on its link line, which is enough for the addon
+    # and for Android but cannot travel into a vendored static library, so on iOS the pod has to
+    # carry them. The same ten, in the same order, as the list in
+    # packages/bridge-core/CMakeLists.txt, which is where the grouping is explained.
+    #
+    # All ten are load-bearing: resolving the bundle's undefined symbols and then the ones each
+    # archive brings with it pulls in every one, from SQLite::Transaction::commit to blake2b_final.
+    # A missing one is fatal here rather than skipped, because skipping it only defers the failure
+    # to an undefined symbol in a later Xcode build.
+    ls="$libsession/build-ios/$slice"
+    archives="$build/libsession-bridge-core.a"
+    for lib in \
+        "$ls/external/session-sqlite/libsession_sqlite.a" \
+        "$ls/external/session-sqlite/libsession_secure_buffer.a" \
+        "$ls/external/session-sqlite/SQLiteCpp/libSQLiteCpp.a" \
+        "$ls/static-deps/lib/libsqlite3mc.a" \
+        "$ls/static-deps/lib/libutf8proc.a" \
+        "$ls/static-deps/lib/libhogweed.a" \
+        "$ls/static-deps/lib/libtasn1.a" \
+        "$ls/static-deps/lib/libidn2.a" \
+        "$ls/static-deps/lib/libunistring.a" \
+        "$ls/static-deps/lib/libgmp.a"; do
+        [ -f "$lib" ] || { echo "the libsession build did not produce $lib" >&2; exit 1; }
+        archives="$archives $lib"
+    done
+
+    # Merged into one archive per slice, because an xcframework holds a single library per slice
+    # and the pod has to be able to carry both a device and a simulator one. The eleven cannot
+    # simply be vendored as files any more: `vendored_libraries` has no per-SDK form, so a
+    # directory of archives is a directory for exactly one slice.
+    mkdir -p "$staging/$slice"
+    libtool -static -no_warning_for_no_symbols -o "$staging/$slice/libSessionBridgeCore.a" $archives
 done
 
-echo "shim in place: packages/bridge-rn/ios/lib/ ($(ls "$here/../ios/lib" | wc -l | tr -d " ") archives)"
+# One library per platform: the simulator arches are a single fat archive, the device its own.
+#
+# **Every slice's library has to have the same filename**, which is why each lives in a directory
+# of its own rather than being named after its slice. CocoaPods refuses an xcframework whose
+# slices disagree about it, and says so as "because it contains static libraries" -- which reads
+# as static libraries being unsupported rather than as two files being named differently.
+#
+# Headers go in beside them, as libsession's own xcframework gives its slices theirs.
+headers="$repo/packages/bridge-core/include"
+sim_slices=""
+for slice in $slices; do
+    case "$slice" in sim-*) sim_slices="$sim_slices $staging/$slice/libSessionBridgeCore.a" ;; esac
+done
+create_args=""
+if [ -n "$sim_slices" ]; then
+    mkdir -p "$staging/simulator"
+    lipo -create $sim_slices -output "$staging/simulator/libSessionBridgeCore.a"
+    create_args="$create_args -library $staging/simulator/libSessionBridgeCore.a -headers $headers"
+fi
+case " $slices " in
+    *" ios-arm64 "*)
+        create_args="$create_args -library $staging/ios-arm64/libSessionBridgeCore.a -headers $headers" ;;
+esac
+
+mkdir -p "$here/../ios"
+rm -rf "$here/../ios/SessionBridgeCore.xcframework"
+xcodebuild -create-xcframework $create_args -output "$here/../ios/SessionBridgeCore.xcframework"
+
+# What builds before this one left behind. The podspec no longer globs it, and an archive of a
+# slice this build did not produce is exactly the kind of thing that links and then fails to run.
+rm -rf "$here/../ios/lib"
+
+echo "shim in place: packages/bridge-rn/ios/SessionBridgeCore.xcframework ($slices )"

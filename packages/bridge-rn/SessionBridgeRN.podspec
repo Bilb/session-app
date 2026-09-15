@@ -21,10 +21,13 @@ Pod::Spec.new do |s|
 
   # libsession, and the shim built against it. Both produced by
   # `pnpm --filter @session/bridge-rn build:libsession:ios`, neither committed.
-  s.vendored_frameworks = "ios/libsession-util.xcframework"
-  # Globbed rather than listed: the build script decides what has to be there, and it is more
-  # than the shim.
-  s.vendored_libraries = "ios/lib/*.a"
+  #
+  # Both are xcframeworks rather than plain archives so the pod can carry a device slice and a
+  # simulator one at once: `vendored_libraries` has no per-SDK form, so a directory of archives
+  # is a directory for exactly one slice -- and the iOS build running on an Apple silicon Mac is
+  # the device slice, so the two have to coexist. The shim's xcframework holds one merged archive
+  # per slice; see the build script for what goes into it.
+  s.vendored_frameworks = "ios/libsession-util.xcframework", "ios/SessionBridgeCore.xcframework"
 
   # System libraries the vendored archives expect to find. libunistring wants iconv, which the
   # NDK bundles into bionic and Apple ships separately - so this is needed here and nowhere
