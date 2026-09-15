@@ -38,14 +38,20 @@ const BAR_HEIGHT = 17
  * whole screen rather than one element on it.
  */
 /**
- * How much of the width the gauge leaves either side. iOS's `massiveSpacing`.
+ * How much of the width the gauge leaves either side.
  *
- * The size follows from it rather than being a number of its own, which is what the client does --
- * `.padding(.horizontal, Values.massiveSpacing)` on the gauge -- and why it reads as filling the
- * screen. Ours was a fixed 160, well under half the width of a modern phone, so it sat there
- * looking like a spinner.
+ * **Two insets, not one, because the client nests them**: the column takes
+ * `.padding(.horizontal, Values.veryLargeSpacing)` (35) and the gauge inside it takes another
+ * `.padding(.horizontal, Values.massiveSpacing)` (64). Reading only the inner one made the ring
+ * two thirds of a phone's width rather than half of it -- large enough to look wrong in the other
+ * direction, which is what a fixed 160 had been.
+ *
+ * The size follows from these rather than being a number of its own, which is what the client
+ * does, and why it reads as filling the screen without touching the edges.
  */
-const RING_INSET = 64
+const COLUMN_INSET = 35
+const GAUGE_INSET = 64
+const RING_INSET = COLUMN_INSET + GAUGE_INSET
 
 /**
  * The ring's stroke. **The legacy client's own number**, and ours was under half of it.
