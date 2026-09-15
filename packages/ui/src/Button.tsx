@@ -226,6 +226,15 @@ const PRESSED_LABEL = {
   danger: '$dangerColor',
 } as const
 
+/**
+ * The variants that replace the ground under the label when held, rather than tinting it.
+ *
+ * They are the ones whose pressed label colour exists for contrast against a new fill, so it has
+ * to win over anything else. Everything else only shades the surface behind the label, and the
+ * label's own meaning survives -- see `destructive` below.
+ */
+const INVERTS_ON_PRESS = new Set(['solid', 'outline', 'outlineAccent'])
+
 const LABEL_TONE = {
   solid: '$onAccent',
   outline: '$textPrimary',
@@ -310,6 +319,21 @@ export function Button({
   const nativeLabel =
     disabled || loading ? '$textDisabled' : destructive ? '$dangerColor' : LABEL_TONE[variant]
 
+  /**
+   * The label while held.
+   *
+   * **`destructive` survives the press** on any variant that merely tints the surface behind the
+   * label: a red action that turns white the moment somebody commits to it says it has stopped
+   * being the dangerous one. Only the variants that put a new fill under the label override it,
+   * because their pressed colour exists for contrast against that fill.
+   *
+   * The web half already behaves: `destructive` is applied to the frame after `variant`, and its
+   * own `pressStyle` keeps the colour. This is the native label, which is told rather than
+   * inheriting.
+   */
+  const pressedLabel =
+    destructive && !INVERTS_ON_PRESS.has(variant) ? '$dangerColor' : PRESSED_LABEL[variant]
+
   const hitSlop = hitSlopFor(size)
   const inert = disabled || loading
 
@@ -344,7 +368,7 @@ export function Button({
               // Bold, which is what the desktop client's button is: `font-weight: 700` unless a caller
               // says otherwise, and none of the onboarding callers do.
               weight="bold"
-              color={INHERITED_LABEL ?? (pressed && !inert ? PRESSED_LABEL[variant] : nativeLabel)}
+              color={INHERITED_LABEL ?? (pressed && !inert ? pressedLabel : nativeLabel)}
             >
               {children}
             </Text>
