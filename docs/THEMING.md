@@ -283,3 +283,19 @@ Marked so nobody implements one by accident:
    authored values bypass it by design. A red-green colour-blind viewer would struggle to separate
    them. Pinned by a test rather than changed, because they are the shipped colours.
 4. **Whether desktop should honour system text scaling** as well as zoom, and what that costs.
+
+## Porting a spacing value from a legacy client
+
+**The two mobile clients' spacing tokens have inverted names, and the values are nearly equal.**
+
+| value   | iOS name           | Android name    |
+| ------- | ------------------ | --------------- |
+| 35 / 36 | `veryLargeSpacing` | `mediumSpacing` |
+| 64      | `massiveSpacing`   | `xlargeSpacing` |
+
+So iOS's _very large_ is Android's _medium_, and iOS's _massive_ is Android's _extra large_. Reading
+a number out of one client and then looking up "the same" token in the other picks the wrong value,
+in the wrong direction, and the result is close enough to look deliberate.
+
+Port the **number and the role** — "the reading column's inset", "the action's inset" — and cite the
+client and symbol it came from, as the onboarding constants do. Never port a token by its name.
