@@ -895,6 +895,22 @@ struct Codec<::session_bridge::FileServerConfig> {
 };
 
 template <>
+struct Codec<::session_bridge::RouterKind> {
+    static constexpr std::string_view name = "RouterKind";
+    static Napi::Value to(Napi::Env env, ::session_bridge::RouterKind value) {
+        auto text = ::session_bridge::EnumTraits<::session_bridge::RouterKind>::to_string(value);
+        return Napi::String::New(env, text.data(), text.size());
+    }
+    static ::session_bridge::RouterKind from(const Napi::Value& value, std::string_view where) {
+        std::string text = Codec<std::string>::from(value, where);
+        auto parsed = ::session_bridge::EnumTraits<::session_bridge::RouterKind>::parse(text);
+        if (!parsed)
+            throw std::invalid_argument(std::string{where} + ": \"" + text + "\" is not a RouterKind");
+        return *parsed;
+    }
+};
+
+template <>
 struct Codec<::session_bridge::AttachNetworkCommand> {
     static constexpr std::string_view name = "AttachNetworkCommand";
     static Napi::Value to(Napi::Env env, const ::session_bridge::AttachNetworkCommand& value) {
@@ -905,6 +921,8 @@ struct Codec<::session_bridge::AttachNetworkCommand> {
             obj.Set("seedNodes", Codec<std::vector<::session_bridge::SeedNode>>::to(env, *value.seed_nodes));
         if (value.file_server)
             obj.Set("fileServer", Codec<::session_bridge::FileServerConfig>::to(env, *value.file_server));
+        if (value.router)
+            obj.Set("router", Codec<::session_bridge::RouterKind>::to(env, *value.router));
         return obj;
     }
     static ::session_bridge::AttachNetworkCommand from(const Napi::Value& value, std::string_view where) {
@@ -912,7 +930,8 @@ struct Codec<::session_bridge::AttachNetworkCommand> {
         return ::session_bridge::AttachNetworkCommand(
                 Codec<std::string>::from(obj.Get("netid"), "AttachNetworkCommand.netid"),
                 optional<std::vector<::session_bridge::SeedNode>>(obj.Get("seedNodes"), "AttachNetworkCommand.seedNodes"),
-                optional<::session_bridge::FileServerConfig>(obj.Get("fileServer"), "AttachNetworkCommand.fileServer"));
+                optional<::session_bridge::FileServerConfig>(obj.Get("fileServer"), "AttachNetworkCommand.fileServer"),
+                optional<::session_bridge::RouterKind>(obj.Get("router"), "AttachNetworkCommand.router"));
     }
 };
 

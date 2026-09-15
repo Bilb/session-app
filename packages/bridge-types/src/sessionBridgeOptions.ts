@@ -53,6 +53,20 @@ export interface FileServerConfig {
  * reason to say 'desktop', but the shim maps all three and narrowing the JSI copy would take an
  * `Exclude<>`, which nitrogen refuses because it only reads a named alias.
  */
+/**
+ * How requests reach the network.
+ *
+ * Session Router is what mainnet and testnet ship, and is the default for both. Onion requests are
+ * the other production path and the only one a devnet has - Session Router refuses a devnet
+ * outright, so devnet defaults to onion requests and cannot be moved off them.
+ *
+ * Settable so that the transport can be chosen independently of the network: the two paths share
+ * only a ten-method interface, and uploads, downloads, connection status and retry behaviour are
+ * separate implementations on each side. Without this, testing the shipped transport and using a
+ * disposable network are mutually exclusive.
+ */
+export type RouterKind = 'onion-requests' | 'session-router'
+
 export type DeviceType = 'ios' | 'android' | 'desktop'
 
 /**
@@ -78,6 +92,9 @@ export interface SessionBridgeOptions {
 
   /** Where attachment bytes are cached. Must be writable and is the application's to clear. */
   cacheDir: string
+
+  /** Defaults to session-router on mainnet and testnet, onion requests on devnet. */
+  router?: RouterKind
 
   /**
    * The 32-byte database key, hex. libsession accepts one but neither derives nor stores it, so

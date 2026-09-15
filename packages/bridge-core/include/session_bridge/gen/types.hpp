@@ -512,6 +512,38 @@ struct FileServerConfig {
             scheme{std::move(scheme_)}, host{std::move(host_)}, port{std::move(port_)}, x25519_pubkey_hex{std::move(x25519_pubkey_hex_)} {}
 };
 
+/// How requests reach the network.
+///
+/// Session Router is what mainnet and testnet ship, and is the default for both. Onion requests are
+/// the other production path and the only one a devnet has - Session Router refuses a devnet
+/// outright, so devnet defaults to onion requests and cannot be moved off them.
+///
+/// Settable so that the transport can be chosen independently of the network: the two paths share
+/// only a ten-method interface, and uploads, downloads, connection status and retry behaviour are
+/// separate implementations on each side. Without this, testing the shipped transport and using a
+/// disposable network are mutually exclusive.
+enum class RouterKind {
+    onion_requests,
+    session_router,
+};
+
+template <>
+struct EnumTraits<RouterKind> {
+    static constexpr std::string_view name = "RouterKind";
+    static constexpr std::array<std::string_view, 2> names{"onion-requests", "session-router"};
+
+    static constexpr std::string_view to_string(RouterKind value) {
+        return names[static_cast<std::size_t>(value)];
+    }
+
+    static constexpr std::optional<RouterKind> parse(std::string_view text) {
+        for (std::size_t i = 0; i < names.size(); i++)
+            if (names[i] == text)
+                return static_cast<RouterKind>(i);
+        return std::nullopt;
+    }
+};
+
 /// Attach a network, or replace the one attached. Declining to attach is how an app stays
 /// offline, and that is an init option rather than a command.
 ///
@@ -523,9 +555,11 @@ struct AttachNetworkCommand {
     std::string netid;
     std::optional<std::vector<::session_bridge::SeedNode>> seed_nodes;
     std::optional<::session_bridge::FileServerConfig> file_server;
+    /// Defaults to session-router on mainnet and testnet, onion requests on devnet.
+    std::optional<::session_bridge::RouterKind> router;
 
-    AttachNetworkCommand(std::string netid_, std::optional<std::vector<::session_bridge::SeedNode>> seed_nodes_, std::optional<::session_bridge::FileServerConfig> file_server_) :
-            netid{std::move(netid_)}, seed_nodes{std::move(seed_nodes_)}, file_server{std::move(file_server_)} {}
+    AttachNetworkCommand(std::string netid_, std::optional<std::vector<::session_bridge::SeedNode>> seed_nodes_, std::optional<::session_bridge::FileServerConfig> file_server_, std::optional<::session_bridge::RouterKind> router_) :
+            netid{std::move(netid_)}, seed_nodes{std::move(seed_nodes_)}, file_server{std::move(file_server_)}, router{std::move(router_)} {}
 };
 
 /// How often libsession polls the swarm, in milliseconds. Its default is 20 seconds, which is a

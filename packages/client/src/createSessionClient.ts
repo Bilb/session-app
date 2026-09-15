@@ -124,6 +124,7 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
         netid: config.netid,
         ...(config.seedNodes === undefined ? {} : { seedNodes: config.seedNodes }),
         ...(config.fileServer === undefined ? {} : { fileServer: config.fileServer }),
+        ...(config.router === undefined ? {} : { router: config.router }),
       })
     },
 

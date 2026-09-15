@@ -5,7 +5,12 @@ import { fileURLToPath } from 'node:url'
 
 import electron from 'electron'
 
-import { netidForTransport, parseDevnetConfig, parseNetworkName } from '@session/basic-types'
+import {
+  netidForTransport,
+  parseDevnetConfig,
+  parseNetworkName,
+  parseRouterKind,
+} from '@session/basic-types'
 import type { BridgeTransport } from '@session/client'
 
 const { app, safeStorage } = electron
@@ -116,6 +121,7 @@ export async function createBridge(): Promise<BridgeTransport> {
       : undefined
 
   const netid = netidForTransport(name, devnet)
+  const router = parseRouterKind(process.env['EXPO_PUBLIC_SESSION_ROUTER'])
 
   // Per network, so a devnet identity and a mainnet one can both exist and switching back loses
   // neither. libsession derives its own snode cache from the database's directory, which puts
@@ -151,6 +157,10 @@ export async function createBridge(): Promise<BridgeTransport> {
     ...(netid === undefined ? {} : { netid }),
     ...(seedNodes === undefined ? {} : { seedNodes }),
     ...(devnet?.fileServer === undefined ? {} : { fileServer: devnet.fileServer }),
+    // Unset takes the netid's default: Session Router on the public networks, onion requests on a
+    // devnet. EXPO_PUBLIC_SESSION_ROUTER moves a public network onto the other one, which is the
+    // only way to exercise a transport we ship on a network that has it.
+    ...(router === undefined ? {} : { router }),
     deviceType: 'desktop',
     // Off unless asked for: it is chatty at anything below warn, and the reason to turn it up
     // is always a specific failure. EXPO_PUBLIC_SESSION_LOG=debug is what a diagnosis looks like.

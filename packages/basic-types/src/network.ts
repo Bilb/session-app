@@ -34,6 +34,14 @@ export interface SeedNode {
   omqPort: number
 }
 
+/**
+ * How requests reach the network.
+ *
+ * Structurally identical to `@session/bridge-types`' `RouterKind`, and declared here for the same
+ * reason `SeedNode` is: this package may not import that one, and the apps assign across.
+ */
+export type RouterKind = 'onion-requests' | 'session-router'
+
 /** A file server that is not the built-in one. */
 export interface FileServerConfig {
   scheme: 'http' | 'https'
@@ -46,6 +54,17 @@ export interface FileServerConfig {
    * upload rather than as anything this can catch.
    */
   x25519PubkeyHex: string
+}
+
+/**
+ * Which transport a build uses, from the environment.
+ *
+ * Unset takes the netid's default rather than forcing one, so nothing changes unless it is asked
+ * for. An unrecognised value is unset, the same way an unrecognised netid is mainnet: there is
+ * nothing better to do with a typo than the documented default.
+ */
+export function parseRouterKind(value: string | undefined): RouterKind | undefined {
+  return value === 'onion-requests' || value === 'session-router' ? value : undefined
 }
 
 /** What a devnet build needs told beyond its name, none of which has a sensible default. */

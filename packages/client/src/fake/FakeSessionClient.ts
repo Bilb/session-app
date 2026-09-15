@@ -18,6 +18,10 @@ function networkRefusal(config: NetworkAttachment): string | undefined {
   if (!['mainnet', 'testnet', 'devnet'].includes(config.netid))
     return `netid must be mainnet, testnet or devnet, not ${JSON.stringify(config.netid)}`
 
+  // Session Router has no devnet, so the real bridge refuses the pair and so does this.
+  if (config.netid === 'devnet' && config.router === 'session-router')
+    return 'router must be onion-requests on a devnet: Session Router has no devnet'
+
   if (config.netid === 'devnet') {
     const seeds = config.seedNodes ?? []
     if (seeds.length === 0)

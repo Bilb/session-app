@@ -1010,13 +1010,32 @@ struct JSIConverter<::session_bridge::FileServerConfig> final {
 };
 
 template <>
+struct JSIConverter<::session_bridge::RouterKind> final {
+    static inline ::session_bridge::RouterKind fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+        std::string text = JSIConverter<std::string>::fromJSI(runtime, arg);
+        auto parsed = ::session_bridge::EnumTraits<::session_bridge::RouterKind>::parse(text);
+        if (!parsed) [[unlikely]]
+            throw std::invalid_argument("Cannot convert \"" + text + "\" to RouterKind");
+        return *parsed;
+    }
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, ::session_bridge::RouterKind arg) {
+        return ::session_bridge::ascii(runtime, ::session_bridge::EnumTraits<::session_bridge::RouterKind>::to_string(arg));
+    }
+    static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
+        return value.isString() &&
+               ::session_bridge::EnumTraits<::session_bridge::RouterKind>::parse(JSIConverter<std::string>::fromJSI(runtime, value)).has_value();
+    }
+};
+
+template <>
 struct JSIConverter<::session_bridge::AttachNetworkCommand> final {
     static inline ::session_bridge::AttachNetworkCommand fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
         jsi::Object obj = arg.asObject(runtime);
         return ::session_bridge::AttachNetworkCommand(
                 JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "netid"))),
                 ::session_bridge::optional_from_jsi<std::vector<::session_bridge::SeedNode>>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "seedNodes"))),
-                ::session_bridge::optional_from_jsi<::session_bridge::FileServerConfig>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fileServer"))));
+                ::session_bridge::optional_from_jsi<::session_bridge::FileServerConfig>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fileServer"))),
+                ::session_bridge::optional_from_jsi<::session_bridge::RouterKind>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "router"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::AttachNetworkCommand& arg) {
         jsi::Object obj(runtime);
@@ -1026,6 +1045,8 @@ struct JSIConverter<::session_bridge::AttachNetworkCommand> final {
             obj.setProperty(runtime, PropNameIDCache::get(runtime, "seedNodes"), JSIConverter<std::vector<::session_bridge::SeedNode>>::toJSI(runtime, *arg.seed_nodes));
         if (arg.file_server)
             obj.setProperty(runtime, PropNameIDCache::get(runtime, "fileServer"), JSIConverter<::session_bridge::FileServerConfig>::toJSI(runtime, *arg.file_server));
+        if (arg.router)
+            obj.setProperty(runtime, PropNameIDCache::get(runtime, "router"), JSIConverter<::session_bridge::RouterKind>::toJSI(runtime, *arg.router));
         return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {

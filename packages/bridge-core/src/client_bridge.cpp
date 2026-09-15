@@ -150,10 +150,16 @@ namespace {
             opts.emplace_back(network::opt::netid::mainnet());
 
         // Session Router has no devnet: it refuses one outright, and the router library's own
-        // netid knows the two public networks only. Onion requests reach the same swarms.
+        // netid knows the two public networks only. Onion requests reach the same swarms, which is
+        // why a devnet defaults to them and cannot be moved off them.
+        const bool session_router =
+                network.router ? *network.router == RouterKind::session_router : !devnet;
+        if (devnet && session_router)
+            throw std::invalid_argument{
+                    "router must be onion-requests on a devnet: Session Router has no devnet"};
         opts.emplace_back(
-                devnet ? network::opt::router::onion_requests()
-                       : network::opt::router::session_router());
+                session_router ? network::opt::router::session_router()
+                               : network::opt::router::onion_requests());
 
         // A devnet is usually one machine, and path building will not put two nodes from a /24 in
         // one path - so left enforced it builds no paths at all and every request times out.
@@ -378,7 +384,8 @@ struct ClientBridge::Impl {
         NetworkOptions wanted{
                 cmd.netid,
                 cmd.seed_nodes.value_or(std::vector<SeedNode>{}),
-                cmd.file_server};
+                cmd.file_server,
+                cmd.router};
         auto previous = std::exchange(options.network, std::move(wanted));
         try {
             attach_network();

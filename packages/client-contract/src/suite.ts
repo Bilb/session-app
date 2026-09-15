@@ -338,6 +338,14 @@ export function runSessionClientContract(
             { ed25519PubkeyHex: 'nothex', ip: '10.0.0.1', httpsPort: 1300, omqPort: 1305 },
           ],
         },
+        // Session Router has no devnet, so this pair is refused however well-formed it is.
+        {
+          netid: 'devnet',
+          router: 'session-router' as const,
+          seedNodes: [
+            { ed25519PubkeyHex: 'a'.repeat(64), ip: '10.0.0.1', httpsPort: 1300, omqPort: 1305 },
+          ],
+        },
       ]
 
       const accepted: string[] = []

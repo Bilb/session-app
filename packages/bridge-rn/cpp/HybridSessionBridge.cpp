@@ -31,6 +31,16 @@ namespace {
         return "<INVALID>";
     }
 
+    ::session_bridge::RouterKind router_of(RouterKind kind) {
+        switch (kind) {
+            case RouterKind::ROUTER_KIND_ONION_REQUESTS:
+                return ::session_bridge::RouterKind::onion_requests;
+            case RouterKind::ROUTER_KIND_SESSION_ROUTER:
+                return ::session_bridge::RouterKind::session_router;
+        }
+        return ::session_bridge::RouterKind::session_router;
+    }
+
     ::session_bridge::UrlScheme scheme_of(UrlScheme scheme) {
         switch (scheme) {
             case UrlScheme::URL_SCHEME_HTTP: return ::session_bridge::UrlScheme::http;
@@ -139,6 +149,8 @@ void HybridSessionBridge::init(const SessionBridgeOptions& options) {
                 options.fileServer->host,
                 options.fileServer->port,
                 options.fileServer->x25519PubkeyHex};
+    if (options.router)
+        init.network.router = router_of(*options.router);
     if (options.deviceType)
         init.device_type = device_type_name(*options.deviceType);
     if (options.logLevel)

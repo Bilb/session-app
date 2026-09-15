@@ -93,6 +93,14 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
                     fs.Get("port").As<Napi::Number>().DoubleValue(),
                     fs.Get("x25519PubkeyHex").As<Napi::String>().Utf8Value()};
         }
+        if (options.Has("router") && !options.Get("router").IsUndefined()) {
+            auto kind = session_bridge::EnumTraits<session_bridge::RouterKind>::parse(
+                    options.Get("router").As<Napi::String>().Utf8Value());
+            if (!kind)
+                throw Napi::TypeError::New(
+                        env, "router must be onion-requests or session-router");
+            init.network.router = *kind;
+        }
         if (options.Has("deviceType") && !options.Get("deviceType").IsUndefined())
             init.device_type = options.Get("deviceType").As<Napi::String>().Utf8Value();
         if (options.Has("logLevel") && !options.Get("logLevel").IsUndefined())

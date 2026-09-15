@@ -3,6 +3,7 @@ export type {
   FileServerConfig,
   LibsessionLogLevel,
   NetId,
+  RouterKind,
   SeedNode,
   SessionBridgeOptions,
   UrlScheme,

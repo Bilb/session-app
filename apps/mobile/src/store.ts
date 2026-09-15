@@ -1,4 +1,9 @@
-import { netidForTransport, parseDevnetConfig, parseNetworkName } from '@session/basic-types'
+import {
+  netidForTransport,
+  parseDevnetConfig,
+  parseNetworkName,
+  parseRouterKind,
+} from '@session/basic-types'
 import { createSessionClient, type BridgeTransport, type FetchLike } from '@session/client'
 import { createSessionStore } from '@session/state'
 import { Platform } from 'react-native'
@@ -49,6 +54,7 @@ async function openTransport(): Promise<BridgeTransport> {
       : undefined
 
   const netid = netidForTransport(name, devnet)
+  const router = parseRouterKind(process.env['EXPO_PUBLIC_SESSION_ROUTER'])
 
   const { createNativeBridgeTransport, discoverSeedNodes } = await import('@session/client')
   const paths = await sessionPaths(name)
@@ -74,6 +80,9 @@ async function openTransport(): Promise<BridgeTransport> {
     ...(netid === undefined ? {} : { netid }),
     ...(seedNodes === undefined ? {} : { seedNodes }),
     ...(devnet?.fileServer === undefined ? {} : { fileServer: devnet.fileServer }),
+    // Unset takes the netid's default: Session Router on the public networks, onion requests on a
+    // devnet, which is the only thing a devnet can use.
+    ...(router === undefined ? {} : { router }),
     deviceType: Platform.OS === 'ios' ? 'ios' : 'android',
   })
 }

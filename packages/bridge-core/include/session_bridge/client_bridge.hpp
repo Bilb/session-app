@@ -36,6 +36,10 @@ struct NetworkOptions {
 
     /// Empty leaves the built-in file server for the netid, which for devnet is **mainnet's**.
     std::optional<FileServerConfig> file_server;
+
+    /// Unset takes the netid's default: Session Router on mainnet and testnet, onion requests on
+    /// devnet, which is the only thing a devnet can use.
+    std::optional<RouterKind> router;
 };
 
 /// Everything the bridge needs to open a Client, and nothing it can work out for itself.

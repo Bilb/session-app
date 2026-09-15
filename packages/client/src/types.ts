@@ -19,6 +19,7 @@ import type {
   Message,
   MessageCursor,
   Request,
+  RouterKind,
   SeedNode,
   SessionEvent,
 } from '@session/bridge-types'
@@ -31,6 +32,8 @@ export interface NetworkAttachment {
   /** Required for devnet, which libsession has no seeds of its own for. */
   seedNodes?: SeedNode[]
   fileServer?: FileServerConfig
+  /** Defaults to session-router on mainnet and testnet, onion requests on devnet. */
+  router?: RouterKind
 }
 
 export interface OutgoingMessage {

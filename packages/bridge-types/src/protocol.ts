@@ -6,7 +6,7 @@ import type {
   Message,
   MessageCursor,
 } from './domain'
-import type { FileServerConfig, SeedNode } from './sessionBridgeOptions'
+import type { FileServerConfig, RouterKind, SeedNode } from './sessionBridgeOptions'
 
 /**
  * The bridge protocol: what goes in, what comes out, on one ordered stream.
@@ -45,7 +45,14 @@ export type Command =
    * Carries everything the network needs rather than leaving half of it remembered from init, so
    * that a refusal leaves the client on whatever it had. "mainnet", "testnet" or "devnet".
    */
-  | { type: 'attachNetwork'; netid: string; seedNodes?: SeedNode[]; fileServer?: FileServerConfig }
+  | {
+      type: 'attachNetwork'
+      netid: string
+      seedNodes?: SeedNode[]
+      fileServer?: FileServerConfig
+      /** Defaults to session-router on mainnet and testnet, onion requests on devnet. */
+      router?: RouterKind
+    }
   /**
    * How often libsession polls the swarm, in milliseconds. Its default is 20 seconds, which is a
    * long time to wait for a test and about right for a person.
