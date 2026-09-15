@@ -4,6 +4,8 @@ import * as Clipboard from 'expo-clipboard'
 import * as SecureStore from 'expo-secure-store'
 import { Linking, Platform } from 'react-native'
 
+import { flagOverride } from './flagOverrides'
+
 const DATABASE_KEY = 'session2.database-key'
 
 // Hex rather than base64: the keychain stores strings, and hex needs no polyfill on either
@@ -39,8 +41,9 @@ setPorts(
       // disagree with what is actually running.
       usingFake: process.env['EXPO_PUBLIC_SESSION_FAKE'] === '1',
     },
-    // Expo inlines every EXPO_PUBLIC_* variable, so a flag is read by its prefixed name.
-    flags: { override: (name) => process.env[`EXPO_PUBLIC_${name}`] ?? null },
+    // One literal per flag, in `flagOverrides.ts`, because a computed variable name is not a
+    // variable Expo carries into the bundle at all.
+    flags: { override: flagOverride },
     notifications: {
       // Both mobile operating systems stop the app when it leaves the screen, which is what makes
       // notification delivery something to choose rather than something that just happens. True on
@@ -49,6 +52,10 @@ setPorts(
       // Unchanged, and repeated because a port override replaces the whole object rather than
       // merging into it. See memoryPorts.
       fastModeAvailable: false,
+      // **Whose servers fast mode would use, which is what the screen has to name.** Apple's on
+      // iOS; on Android it depends on how the build was assembled rather than on the platform, and
+      // Google's is the only one wired up so far -- a Huawei build sets this to 'huawei'.
+      pushService: Platform.OS === 'ios' ? 'apple' : 'google',
       requestPermission: () => Promise.resolve(true),
       show: () => Promise.resolve(),
       onTap: () => () => undefined,
