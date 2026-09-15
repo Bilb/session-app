@@ -1,3 +1,4 @@
+import { Keyboard, TouchableWithoutFeedback } from 'react-native'
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { YStack } from 'tamagui'
@@ -60,17 +61,26 @@ export function Screen({
         come out: the view measures its own bottom edge against the top of the keyboard, and its
         bottom edge is already short by the home indicator.
       */}
-      {avoidsKeyboard ? (
-        <KeyboardAvoidingView style={FILL} behavior="padding">
+      {/*
+        Tapping anywhere that is not a control puts the keyboard away, which is the convention on
+        both platforms and costs nothing here. `TouchableWithoutFeedback` rather than a Pressable
+        because there is deliberately no feedback: this is the background, not a button, and
+        `accessible={false}` stops the whole screen announcing itself to a screen reader as one
+        control.
+      */}
+      <TouchableWithoutFeedback accessible={false} onPress={() => Keyboard.dismiss()}>
+        {avoidsKeyboard ? (
+          <KeyboardAvoidingView style={FILL} behavior="padding">
+            <YStack flex={1} {...(padded ? { padding: '$2' } : {})}>
+              {children}
+            </YStack>
+          </KeyboardAvoidingView>
+        ) : (
           <YStack flex={1} {...(padded ? { padding: '$2' } : {})}>
             {children}
           </YStack>
-        </KeyboardAvoidingView>
-      ) : (
-        <YStack flex={1} {...(padded ? { padding: '$2' } : {})}>
-          {children}
-        </YStack>
-      )}
+        )}
+      </TouchableWithoutFeedback>
     </YStack>
   )
 }

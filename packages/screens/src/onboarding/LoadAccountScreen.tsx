@@ -101,7 +101,9 @@ export function LoadAccountScreen({
       }
       footer={
         <Button
-          variant="outline"
+          // Outlined in the accent, like the landing screen's second button: the legacy clients
+          // draw every onboarding Continue that way, stroke and label in the primary colour.
+          variant="outlineAccent"
           testID={ELEMENT.onboarding.continueButton}
           loading={busy}
           disabled={phrase.trim().length === 0 || showing}

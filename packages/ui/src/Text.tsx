@@ -22,6 +22,14 @@ export const Text = styled(SizableText, {
       secondary: { color: '$textSecondary' },
       danger: { color: '$dangerColor' },
       accent: { color: '$primaryColor' },
+      /**
+       * Text that names something a person cannot use yet.
+       *
+       * Its own tone rather than `secondary`, because the two mean different things: muted text is
+       * still live, and this is not. Both clients dim exactly the words and leave the border and
+       * the surface alone, so a disabled option still reads as a control.
+       */
+      disabled: { color: '$textDisabled' },
     },
     /**
      * **Roboto has no 600.** Its weights are 100, 300, 400, 500, 700 and 900, so asking for 600

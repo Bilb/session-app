@@ -18,32 +18,26 @@ export type { RevealProps }
  * to the bubble, and the landing screen does it.
  */
 const DURATION_MS = 680
-const RISE_FROM = 12
 
+/**
+ * **Fade only — no movement of its own.**
+ *
+ * It used to rise as it appeared, and that is what made the arrival read as an overlap rather than
+ * a push: the layout animation is already sliding everything into its new place, so a bubble that
+ * *also* translated itself was moving through the gap while the gap was still opening. The push is
+ * the layout's job and the fade is this one's; doing both here fought the other.
+ */
 export function Reveal({ children }: RevealProps) {
   const progress = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(progress, {
-        toValue: 1,
-        duration: DURATION_MS,
-        easing: Easing.in(Easing.ease),
-        useNativeDriver: true,
-      }),
-    ]).start()
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: DURATION_MS,
+      easing: Easing.in(Easing.ease),
+      useNativeDriver: true,
+    }).start()
   }, [progress])
 
-  return (
-    <Animated.View
-      style={{
-        opacity: progress,
-        transform: [
-          { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [RISE_FROM, 0] }) },
-        ],
-      }}
-    >
-      {children}
-    </Animated.View>
-  )
+  return <Animated.View style={{ opacity: progress }}>{children}</Animated.View>
 }

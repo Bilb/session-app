@@ -110,7 +110,9 @@ export function PickDisplayNameScreen({
       }
       footer={
         <Button
-          variant="outline"
+          // Outlined in the accent, like the landing screen's second button: the legacy clients
+          // draw every onboarding Continue that way, stroke and label in the primary colour.
+          variant="outlineAccent"
           testID={ELEMENT.onboarding.continueButton}
           loading={busy}
           // Nothing to submit, or the name was refused and nothing has changed since. A refusal

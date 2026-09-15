@@ -5,9 +5,8 @@ import type { RevealProps } from './Reveal.types'
 
 export type { RevealProps }
 
-/** The client's own timing: the fade runs 680ms, and the movement keeps it company. */
+/** The client's own timing. Movement belongs to the layout, not to the arriving item. */
 const DURATION_MS = 680
-const RISE_FROM = 12
 
 /**
  * Arrives by fading and rising. The web half, which does it as a CSS transition.
@@ -31,10 +30,7 @@ export function Reveal({ children }: RevealProps) {
   return (
     <YStack
       opacity={shown ? 1 : 0}
-      y={shown ? 0 : RISE_FROM}
-      style={{
-        transition: `opacity ${String(DURATION_MS)}ms ease-in, transform ${String(DURATION_MS)}ms ease-out`,
-      }}
+      style={{ transition: `opacity ${String(DURATION_MS)}ms ease-in` }}
     >
       {children}
     </YStack>
