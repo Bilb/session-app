@@ -128,7 +128,7 @@ export function SettingsScreen() {
         actions={
           <>
             <Button
-              variant="simple"
+              variant="ghost"
               fill
               destructive
               loading={clearing}
@@ -144,7 +144,7 @@ export function SettingsScreen() {
               {tr('clear')}
             </Button>
             <Button
-              variant="simple"
+              variant="ghost"
               fill
               testID={ELEMENT.settings.cancelClearData}
               onPress={() => {

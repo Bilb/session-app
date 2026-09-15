@@ -52,7 +52,10 @@ export function OpenUrlModal({ url, onClose }: OpenUrlModalProps) {
       actions={
         <>
           <Button
-            variant="simple"
+            // Ghost rather than simple: a dialog's action highlights its whole cell when held,
+            // the way the clients' do, where `simple` dims the label and leaves the cell alone.
+            variant="ghost"
+            fill
             destructive
             testID={ELEMENT.onboarding.openUrlConfirm}
             onPress={() => {
@@ -63,7 +66,8 @@ export function OpenUrlModal({ url, onClose }: OpenUrlModalProps) {
             {tr('open')}
           </Button>
           <Button
-            variant="simple"
+            variant="ghost"
+            fill
             testID={ELEMENT.onboarding.copyUrl}
             onPress={() => {
               if (url !== null) void requirePorts().clipboard.setString(url)
