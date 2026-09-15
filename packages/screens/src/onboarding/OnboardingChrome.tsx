@@ -102,7 +102,7 @@ const CONTENT_MIN_HEIGHT = 276
  * 35 is the space scale's `$4`; 64 is not on the scale and is written as itself, since inventing a
  * rung for one value would make the scale less useful rather than more.
  */
-const CONTENT_INSET = 35
+export const CONTENT_INSET = 35
 
 /** The legacy client's navigation-bar mark: `SessionGreen32`, pinned to a 32pt square. */
 const BAR_LOGO_SIZE = 32
@@ -138,6 +138,7 @@ export function OnboardingChrome({
   onBack,
   barTitle,
   banner,
+  padContent = true,
 }: {
   children: ReactNode
   testID: string
@@ -167,6 +168,14 @@ export function OnboardingChrome({
    * The wide designs ignore it: the desktop client has no second way into that screen to offer.
    */
   banner?: ReactNode
+  /**
+   * Whether the chrome insets what it is given.
+   *
+   * True for every step, and false for a screen whose panes disagree about it -- the restore
+   * screen's recovery field sits in the reading column while its camera fills the width, which is
+   * how the client has it. The panes then pad themselves.
+   */
+  padContent?: boolean
 }) {
   const wide = useMedia().gtSm
   const window = useWindowSize()
@@ -230,7 +239,12 @@ export function OnboardingChrome({
         {/* The bar and the title were almost touching. The client leaves a navigation bar's worth
             of air under the logo before the content begins. */}
         {banner}
-        <YStack flex={1} paddingHorizontal={CONTENT_INSET} paddingTop="$3" paddingBottom="$2">
+        <YStack
+          flex={1}
+          {...(padContent
+            ? { paddingHorizontal: CONTENT_INSET, paddingTop: '$3', paddingBottom: '$2' }
+            : {})}
+        >
           {children}
         </YStack>
       </Screen>

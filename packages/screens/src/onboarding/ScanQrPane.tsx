@@ -1,7 +1,7 @@
 import { requirePorts, useCamera } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Text, YStack } from '@session/ui'
+import { Button, ScannerFrame, Text, YStack } from '@session/ui'
 import type { ReactNode } from 'react'
 
 interface ScanQrPaneProps {
@@ -33,12 +33,15 @@ export function ScanQrPane({ onScan, error = null }: ScanQrPaneProps) {
   if (camera.access === 'granted') {
     return (
       <YStack flex={1} testID={ELEMENT.onboarding.scanQrPane}>
-        <YStack flex={1} overflow="hidden" borderRadius="$3">
+        <YStack flex={1} overflow="hidden">
           <camera.Preview onScan={onScan} testID={ELEMENT.onboarding.scanQrPreview} />
+          {/* Over the picture rather than around it: the dimming is what says where to point the
+              camera, so it has to be on the same surface as what the camera sees. */}
+          <ScannerFrame />
         </YStack>
         {/* Under the frame rather than over it: a message printed on the picture is unreadable
             against whatever the camera happens to be pointed at. */}
-        <YStack minHeight="$5" paddingTop="$2" alignItems="center">
+        <YStack minHeight="$5" paddingTop="$2" paddingHorizontal="$4" alignItems="center">
           {error === null ? null : (
             <Text tone="danger" size="$label" weight="bold" textAlign="center">
               {error}
