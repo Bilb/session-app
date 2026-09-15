@@ -24,10 +24,16 @@ const DURATION_MS = 680
  * up by exactly that much, in the same frame, because it is one animation rather than two being
  * asked to agree. Nothing overlaps because the space is never occupied before it exists.
  *
- * The content is taken out of the flow to make that possible -- absolutely positioned against the
- * bottom of the growing box, which is both what keeps it measurable at its natural size and what
- * makes it rise into view rather than being squashed. Its height is measured rather than guessed,
- * because a bubble whose height was assumed would be wrong for every string that wraps differently.
+ * The content is taken out of the flow to make that possible -- absolutely positioned inside the
+ * growing box, which is what keeps it measurable at its natural size rather than squashed to
+ * whatever height the animation has reached. Its height is measured rather than guessed, because a
+ * bubble whose height was assumed would be wrong for every string that wraps differently.
+ *
+ * **Pinned to the top of that box, not the bottom.** The box's own bottom edge is fixed -- the
+ * stack is bottom-aligned -- so a bubble pinned to the top rises as the box grows and is clipped
+ * along that fixed edge: it slides up into view from a hard line, which is how a message arrives.
+ * Pinned to the bottom it did the opposite, holding still while the clip travelled up it, and the
+ * bubble looked like it was being unrolled rather than arriving.
  */
 export function Reveal({ children, instant = false }: RevealProps) {
   const [naturalHeight, setNaturalHeight] = useState<number | null>(null)
@@ -70,7 +76,7 @@ export function Reveal({ children, instant = false }: RevealProps) {
       }}
     >
       <View
-        style={{ position: 'absolute', left: 0, right: 0, bottom: 0 }}
+        style={{ position: 'absolute', left: 0, right: 0, top: 0 }}
         onLayout={naturalHeight === null ? onLayout : undefined}
       >
         {children}
