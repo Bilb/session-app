@@ -56,11 +56,31 @@ if [ ! -x "$llvm_ar" ]; then
     echo "no llvm-ar in the NDK at $llvm_ar" >&2
     exit 1
 fi
+# **Only the MRI form is handed over.** A symlink here put llvm-ar in front of every `ar` in the
+# build, including the ones libtool runs inside the autoconf dependencies -- and those died with
+# `ar: error: /: File exists` while linking libsodium, libtasn1 and libidn2, which names neither
+# ar nor the shim. So the shim forwards the one call it exists for and leaves the rest to the
+# host's own ar.
 shim="$(mktemp -d)"
 trap 'rm -rf "$shim"' EXIT
-ln -s "$llvm_ar" "$shim/ar"
+cat > "$shim/ar" <<SHIM
+#!/bin/sh
+for arg in "\$@"; do
+    [ "\$arg" = "-M" ] && exec "$llvm_ar" "\$@"
+done
+exec /usr/bin/ar "\$@"
+SHIM
+chmod +x "$shim/ar"
 export PATH="$shim:$PATH"
 
+# **A fallback for every dependency download, not a replacement.** `LOCAL_MIRROR` is a list of base
+# URLs that `expand_urls` appends each source filename to, tried in order after the upstream one --
+# which is what stands between this build and an upstream that serves a partial file. gmplib.org
+# did exactly that here: 81,698 bytes of a 2,094,196-byte tarball, cached, and then reported as a
+# hash mismatch on every subsequent run.
+#
+# libsession's own CI passes this on most pipelines but not on the Android one, so this is not the
+# configuration Android is known-good in -- it is a safety net, and it is cheap.
 cd "$libsession"
 for abi in "${abis[@]}"; do
     echo "Building libsession for $abi"
@@ -69,5 +89,6 @@ for abi in "${abis[@]}"; do
         -DANDROID_ABI="$abi" \
         -DANDROID_ARM_MODE=arm \
         -DANDROID_PLATFORM="$platform" \
-        -DANDROID_STL=c++_static
+        -DANDROID_STL=c++_static \
+        -DLOCAL_MIRROR="${SESSION_DEP_MIRROR:-https://oxen.rocks/deps}"
 done
