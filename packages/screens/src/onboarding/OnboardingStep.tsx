@@ -43,6 +43,10 @@ interface OnboardingStepProps {
   error?: ReactNode
   footer?: ReactNode
   testID: string
+  /** Passed straight through to the chrome, which draws it in place of the Session mark. */
+  barTitle?: string
+  /** Passed straight through to the chrome, which draws it full width under the bar. */
+  banner?: ReactNode
 }
 
 /**
@@ -66,11 +70,18 @@ export function OnboardingStep({
   error,
   footer,
   testID,
+  barTitle,
+  banner,
 }: OnboardingStepProps) {
   const wide = useMedia().gtSm
 
   return (
-    <OnboardingChrome testID={testID} {...(wide ? {} : { onBack })}>
+    <OnboardingChrome
+      testID={testID}
+      {...(wide ? {} : { onBack })}
+      {...(barTitle === undefined ? {} : { barTitle })}
+      {...(banner === undefined ? {} : { banner })}
+    >
       {/**
        * **Centred, and pulled upward — not top-aligned.** The legacy client splits the free space
        * with a spacer above and below, then pulls the block up again with a bottom padding of a

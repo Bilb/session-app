@@ -1,7 +1,9 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Icon, Input, RecoveryPasswordMark, Text } from '@session/ui'
+import { Button, Icon, Input, RecoveryPasswordMark, Text, TopTabs, YStack } from '@session/ui'
 import { useEffect, useState } from 'react'
+
+import { OnboardingChrome } from './OnboardingChrome'
 
 import { OnboardingStep } from './OnboardingStep'
 import { phraseIsTooShort, phraseWords } from './recoveryPhrase'
@@ -29,8 +31,11 @@ interface LoadAccountScreenProps {
  * Same error rules as the name screen: border, text and the toggle icon all turn red on a refusal,
  * typing clears the message and the red text, the border stays until it is submitted again.
  *
- * **The QR tab the legacy clients offer beside this is not here yet.** Scanning needs a camera and
- * this app has no camera port; a tab that opened onto nothing would be worse than its absence.
+ * **The QR tab beside it is structure without a scanner.** Both clients offer two ways into a
+ * restore and the screen is shaped around that -- a title of its own in the bar, and the tabs
+ * across the whole width above the column -- so the shape is here. What is not here is the camera:
+ * this app has no camera port, so the tab shows the state the clients show before access is
+ * granted, and the control that asks for it arrives with the port.
  */
 export function LoadAccountScreen({
   onBack,
@@ -38,6 +43,7 @@ export function LoadAccountScreen({
   rejected = false,
   busy = false,
 }: LoadAccountScreenProps) {
+  const [tab, setTab] = useState<'phrase' | 'qr'>('phrase')
   const [phrase, setPhrase] = useState('')
   const [revealed, setRevealed] = useState(false)
   /** The last submit was refused, here or by the bridge. Keeps the border red through a correction. */
@@ -76,8 +82,50 @@ export function LoadAccountScreen({
     setShowing(true)
   }
 
+  const tabs = (
+    <TopTabs
+      active={tab}
+      onChange={(next) => {
+        setTab(next === 'qr' ? 'qr' : 'phrase')
+      }}
+      tabs={[
+        {
+          key: 'phrase',
+          label: tr('sessionRecoveryPassword'),
+          testID: ELEMENT.onboarding.recoveryPhraseTab,
+        },
+        { key: 'qr', label: tr('qrScan'), testID: ELEMENT.onboarding.scanQrTab },
+      ]}
+    />
+  )
+
+  if (tab === 'qr') {
+    return (
+      // The chrome rather than a step: this pane has no heading, no description and no action of
+      // its own, which is all a step adds.
+      <OnboardingChrome
+        testID={ELEMENT.onboarding.loadAccountScreen}
+        onBack={onBack}
+        barTitle={tr('loadAccount')}
+        banner={tabs}
+      >
+        <YStack
+          flex={1}
+          alignItems="center"
+          justifyContent="center"
+          gap="$2"
+          testID={ELEMENT.onboarding.scanQrPane}
+        >
+          <Text textAlign="center">{tr('cameraGrantAccessQr')}</Text>
+        </YStack>
+      </OnboardingChrome>
+    )
+  }
+
   return (
     <OnboardingStep
+      barTitle={tr('loadAccount')}
+      banner={tabs}
       title={tr('sessionRecoveryPassword')}
       titleMark={<RecoveryPasswordMark size={22} color="$textPrimary" />}
       description={tr('recoveryPasswordRestoreDescription')}

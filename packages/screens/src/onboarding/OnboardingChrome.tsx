@@ -11,6 +11,7 @@ import {
   Screen,
   SessionBrand,
   SessionWordmark,
+  Text,
   useMedia,
   useWindowSize,
   XStack,
@@ -135,6 +136,8 @@ export function OnboardingChrome({
   children,
   testID,
   onBack,
+  barTitle,
+  banner,
 }: {
   children: ReactNode
   testID: string
@@ -148,6 +151,22 @@ export function OnboardingChrome({
    * which is what this row is.
    */
   onBack?: () => void
+  /**
+   * A word for the screen in the bar, in place of the Session mark.
+   *
+   * The clients swap the two rather than showing both: the mark is the navigation bar's title
+   * view, so a screen that wants a title of its own takes the same slot -- `setNavBarTitle` on the
+   * restore screen, against `setUpNavBarSessionIcon` everywhere else.
+   */
+  barTitle?: string
+  /**
+   * Drawn full width between the bar and the content, on a phone.
+   *
+   * For the restore screen's tabs, which the client puts directly under the navigation bar and
+   * across the whole width -- outside the reading column, unlike everything else on the screen.
+   * The wide designs ignore it: the desktop client has no second way into that screen to offer.
+   */
+  banner?: ReactNode
 }) {
   const wide = useMedia().gtSm
   const window = useWindowSize()
@@ -193,7 +212,13 @@ export function OnboardingChrome({
                 the conversation list: onboarding is where somebody is most likely to wonder which
                 network an account is about to be made on. */}
             <NetworkOverlay>
-              <SessionBrand size={BAR_LOGO_SIZE} color="$primaryColor" />
+              {barTitle === undefined ? (
+                <SessionBrand size={BAR_LOGO_SIZE} color="$primaryColor" />
+              ) : (
+                <Text size="$bodyLarge" weight="bold">
+                  {barTitle}
+                </Text>
+              )}
             </NetworkOverlay>
           </YStack>
           {flag('onboardingLanguageSelect') ? <LanguageButton /> : null}
@@ -204,6 +229,7 @@ export function OnboardingChrome({
             underneath. The step is what fills the phone screen, so the box holding it has to. */}
         {/* The bar and the title were almost touching. The client leaves a navigation bar's worth
             of air under the logo before the content begins. */}
+        {banner}
         <YStack flex={1} paddingHorizontal={CONTENT_INSET} paddingTop="$3" paddingBottom="$2">
           {children}
         </YStack>
