@@ -16,3 +16,8 @@ runs the device slice too, so a simulator-only build cannot be run there at all.
 The shim is an xcframework rather than a directory of archives because `vendored_libraries` has
 no per-SDK form: a directory of `.a` files is a directory for exactly one slice, and the two have
 to coexist.
+
+`BUILT.json` beside them records which slices are present and which libsession commit they came
+from. Neither xcframework carries that, and a rebuild of one slice against a submodule that has
+since moved looks exactly like a complete build -- so this is the file to read when something
+links and then behaves like an older libsession.

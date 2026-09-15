@@ -7,9 +7,14 @@ set -euo pipefail
 # built by libsession's build, which is the only one that gets the cross toolchain as far as the
 # CMake-based ones.
 #
-# Defaults to the simulator on this machine's architecture, which is the debug loop. `all` builds
-# what a release needs: device arm64 plus both simulator slices -- and it is also what a
-# "Designed for iPad" run on an Apple silicon Mac needs, because that runs the *device* slice.
+# **Defaults to every slice**, which is what the legacy client gets: it consumes a prebuilt
+# xcframework carrying device and simulator and therefore never chooses, and never ends up with an
+# artefact that is missing the slice the build in front of it needs. Choosing was what left ours
+# simulator-only, which is a confusing failure a long way from its cause -- CocoaPods refusing a
+# vendored xcframework, or a "Designed for iPad" run finding no device slice to run.
+#
+# `simulator` is the debug loop's fast path, and `device` its opposite; both leave an artefact with
+# one slice in it, so what they are for is a rebuild, not a first build.
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$here/../../.."
@@ -20,7 +25,7 @@ if [ "$(uname -s)" != "Darwin" ]; then
     exit 1
 fi
 
-case "${1:-simulator}" in
+case "${1:-all}" in
     all)       platform=""              ; archs="arm64 x86_64" ;;
     device)    platform="iphoneos"      ; archs="arm64" ;;
     simulator) platform="iphonesimulator"; archs="$(uname -m)" ;;
@@ -152,5 +157,19 @@ xcodebuild -create-xcframework $create_args -output "$here/../ios/SessionBridgeC
 # What builds before this one left behind. The podspec no longer globs it, and an archive of a
 # slice this build did not produce is exactly the kind of thing that links and then fails to run.
 rm -rf "$here/../ios/lib"
+
+# What is in the artefacts, recorded beside them.
+#
+# Neither xcframework says which libsession it was built from, and the slice list is only
+# discoverable by listing the directories -- so a build that is quietly a rebuild of one slice
+# against a submodule that has since moved looks exactly like a complete one. This is what to read
+# when something links and then behaves like an older libsession.
+cat > "$here/../ios/BUILT.json" <<MANIFEST
+{
+  "slices": [$(for slice in $slices; do printf '"%s",' "$slice"; done | sed 's/,$//')],
+  "libsession": "$(git -C "$libsession" rev-parse HEAD)",
+  "built": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+}
+MANIFEST
 
 echo "shim in place: packages/bridge-rn/ios/SessionBridgeCore.xcframework ($slices )"
