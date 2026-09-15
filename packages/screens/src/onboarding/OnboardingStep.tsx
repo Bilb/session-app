@@ -82,6 +82,40 @@ export function OnboardingStep({
       {...(barTitle === undefined ? {} : { barTitle })}
       {...(banner === undefined ? {} : { banner })}
     >
+      <OnboardingStepBody
+        title={title}
+        {...(description === undefined ? {} : { description })}
+        {...(titleMark === undefined ? {} : { titleMark })}
+        {...(onBack === undefined ? {} : { onBack })}
+        {...(error === undefined ? {} : { error })}
+        {...(footer === undefined ? {} : { footer })}
+      >
+        {children}
+      </OnboardingStepBody>
+    </OnboardingChrome>
+  )
+}
+
+/**
+ * Everything a step puts *inside* the chrome, without the chrome.
+ *
+ * Separate so a screen can put two of them side by side in one frame -- which is what the restore
+ * screen's tabs need: the bar, the title and the tabs stay put while only the pane below them
+ * slides. A step that owned its own chrome could only ever be swapped whole.
+ */
+export function OnboardingStepBody({
+  title,
+  description,
+  titleMark,
+  onBack,
+  children,
+  error,
+  footer,
+}: Omit<OnboardingStepProps, 'testID' | 'barTitle' | 'banner'>) {
+  const wide = useMedia().gtSm
+
+  return (
+    <>
       {/**
        * **Centred, and pulled upward — not top-aligned.** The legacy client splits the free space
        * with a spacer above and below, then pulls the block up again with a bottom padding of a
@@ -113,7 +147,7 @@ export function OnboardingStep({
         <YStack flex={1}>
           <XStack alignItems="center" gap="$1.5" minHeight={34}>
             {/* 26/700, from the designs -- and the desktop client agrees: its `OnboardHeading` is
-                an h3 at `--font-size-h4`, which is 26px. */}
+              an h3 at `--font-size-h4`, which is 26px. */}
             <Text size="$headingLarge" weight="bold" userSelect="none">
               {title}
             </Text>
@@ -131,14 +165,14 @@ export function OnboardingStep({
           <YStack paddingTop="$2.5">{children}</YStack>
 
           {/* Held open, so the button does not move when a message arrives. The padding below is
-              the error's own rather than the button's: a message that runs to two lines otherwise
-              ends up almost touching the control. */}
+            the error's own rather than the button's: a message that runs to two lines otherwise
+            ends up almost touching the control. */}
           <YStack minHeight={ERROR_MIN_HEIGHT} paddingTop="$1.5" paddingBottom="$1.5">
             {error}
           </YStack>
 
           {/* On the wide design the action stays with the content, in a column that is already a
-              fixed width. The phone's lives at the bottom of the screen -- see below. */}
+            fixed width. The phone's lives at the bottom of the screen -- see below. */}
           {wide ? footer : null}
         </YStack>
       </XStack>
@@ -157,6 +191,6 @@ export function OnboardingStep({
           {footer}
         </YStack>
       )}
-    </OnboardingChrome>
+    </>
   )
 }

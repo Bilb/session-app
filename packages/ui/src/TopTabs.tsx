@@ -2,71 +2,64 @@ import { XStack, YStack } from 'tamagui'
 
 import { PressArea } from './PressArea'
 import { Text } from './Text'
+import type { TopTabsProps } from './TopTabs.types'
+import { BAR_HEIGHT, INDICATOR_HEIGHT, INDICATOR_INSET, SLIDE_MS } from './topTabsMetrics'
+
+export type { TopTabsProps }
 
 /**
  * The bar of tabs across the top of a screen that has more than one way in.
  *
- * **The legacy client's own metrics.** 48 tall with a hairline under the whole bar, the label bold
- * and centred, and the chosen tab marked by a thick bar along its bottom edge rather than by a
- * change of colour -- 5 points of the accent, inset a little at each end so it reads as belonging
- * to the tab rather than as a continuation of the hairline.
- *
- * Generic in the tabs it is given rather than knowing about any screen: the clients draw it the
- * same way wherever they use it.
+ * The indicator is one bar that moves rather than one per tab appearing and disappearing, which is
+ * what the clients draw and what makes the movement read as the selection travelling. Here it is
+ * placed as a percentage and moved by a CSS transition; the native flavour measures and animates.
  */
-const BAR_HEIGHT = 48
-const INDICATOR_HEIGHT = 5
-/** `verySmallSpacing`. What keeps one tab's indicator from meeting its neighbour's. */
-const INDICATOR_INSET = 4
+export function TopTabs({ tabs, active, onChange, instant = false }: TopTabsProps) {
+  const at = Math.max(
+    0,
+    tabs.findIndex((tab) => tab.key === active),
+  )
+  const share = tabs.length === 0 ? 100 : 100 / tabs.length
 
-export interface TopTab {
-  /** Identifies the tab to whoever is holding the state. Never shown. */
-  key: string
-  label: string
-  testID?: string
-}
-
-export interface TopTabsProps {
-  tabs: TopTab[]
-  active: string
-  onChange: (key: string) => void
-}
-
-export function TopTabs({ tabs, active, onChange }: TopTabsProps) {
   return (
-    <XStack
-      height={BAR_HEIGHT}
-      borderBottomWidth={1}
-      borderBottomColor="$bordersColor"
-      alignItems="stretch"
-    >
-      {tabs.map((tab) => (
-        <PressArea
-          key={tab.key}
-          fill
-          {...(tab.testID === undefined ? {} : { testID: tab.testID })}
-          accessibilityLabel={tab.label}
-          onPress={() => {
-            onChange(tab.key)
-          }}
-        >
-          {() => (
-            <YStack flex={1} alignItems="center" justifyContent="flex-end" gap="$1">
-              {/* 17 on iOS, bold. The label keeps the text colour in both states: the bar
-                  underneath is the whole signal, which is how the client draws it. */}
-              <Text size="$bodyLarge" weight="bold">
-                {tab.label}
-              </Text>
-              <YStack
-                height={INDICATOR_HEIGHT}
-                alignSelf="stretch"
-                marginHorizontal={INDICATOR_INSET}
-                backgroundColor={tab.key === active ? '$primaryColor' : 'transparent'}
-              />
-            </YStack>
-          )}
-        </PressArea>
-      ))}
-    </XStack>
+    <YStack height={BAR_HEIGHT} borderBottomWidth={1} borderBottomColor="$bordersColor">
+      <XStack flex={1} alignItems="stretch">
+        {tabs.map((tab) => (
+          <PressArea
+            key={tab.key}
+            fill
+            {...(tab.testID === undefined ? {} : { testID: tab.testID })}
+            accessibilityLabel={tab.label}
+            onPress={() => {
+              onChange(tab.key)
+            }}
+          >
+            {() => (
+              <YStack flex={1} alignItems="center" justifyContent="center">
+                <Text size="$bodyLarge" weight="bold">
+                  {tab.label}
+                </Text>
+              </YStack>
+            )}
+          </PressArea>
+        ))}
+      </XStack>
+      {/* Two boxes: the outer one is the tab's share of the width and is what moves, the inner
+          one is the bar inset within it. A margin on the moving box would be added to its width
+          rather than taken out of it, and the indicator would overhang its tab. */}
+      <YStack
+        position="absolute"
+        bottom={0}
+        left={`${String(at * share)}%`}
+        width={`${String(share)}%`}
+        {...(instant ? {} : { style: { transition: `left ${String(SLIDE_MS)}ms ease-out` } })}
+      >
+        <YStack
+          height={INDICATOR_HEIGHT}
+          marginHorizontal={INDICATOR_INSET}
+          backgroundColor="$primaryColor"
+        />
+      </YStack>
+    </YStack>
   )
 }
