@@ -60,13 +60,17 @@ const BOTTOM_INSET = 4
 const CONTENT_GAP = 8
 
 /**
- * How far the close sits from the dialog's own corner, rather than from the content's.
+ * How far the close's **touch target** sits from the dialog's own corner.
  *
  * It belongs to the dialog and not to the column of text, so it is pulled back out of the content
  * inset: at 35 from the side it floated a third of the way across the title, which is where the
  * client has nothing at all.
+ *
+ * Small because the target is much bigger than the glyph -- see the `md` below. What the eye
+ * measures is the cross, and that ends up about ten points in from each edge, which is where the
+ * client draws it.
  */
-const CLOSE_INSET = 4
+const CLOSE_INSET = 2
 const ACTION_HEIGHT = 51
 
 export function Modal({
@@ -117,7 +121,10 @@ export function Modal({
               >
                 <Button
                   variant="ghost"
-                  size="xs"
+                  // The size of the touch target rather than of the glyph, which is the same
+                  // reason the onboarding back control is `md`: an `xs` button is a 24pt square to
+                  // hit, and a cross in the corner of a dialog is exactly where that is felt.
+                  size="md"
                   circular
                   accessibilityLabel={closeLabel}
                   testID={closeTestID}
