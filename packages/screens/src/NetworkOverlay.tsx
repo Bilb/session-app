@@ -3,7 +3,7 @@ import { ELEMENT } from '@session/test-ids'
 import { Text, XStack } from '@session/ui'
 import type { ReactNode } from 'react'
 
-import { shouldStampNetwork } from './networkStamp'
+import { networkStampLabel } from './networkStamp'
 
 /**
  * Lays a rotated label over whatever it wraps on any build that is not mainnet. The rotation
@@ -15,8 +15,9 @@ import { shouldStampNetwork } from './networkStamp'
  * (docs/STATUS.md) - so treat it as untested against a real network.
  */
 export function NetworkOverlay({ children }: { children: ReactNode }) {
-  const network = requirePorts().network.name
-  if (!shouldStampNetwork(network)) return <>{children}</>
+  const { name, usingFake } = requirePorts().network
+  const label = networkStampLabel(name, usingFake)
+  if (label === null) return <>{children}</>
 
   return (
     <XStack alignItems="center" justifyContent="center">
@@ -40,7 +41,7 @@ export function NetworkOverlay({ children }: { children: ReactNode }) {
         testID={ELEMENT.networkOverlay.badge}
       >
         <Text size="$caption" weight="bold" color="$textPrimary">
-          {network}
+          {label}
         </Text>
       </XStack>
     </XStack>

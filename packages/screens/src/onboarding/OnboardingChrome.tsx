@@ -19,6 +19,7 @@ import {
 import { useEffect, useState, type ReactNode } from 'react'
 
 import { LanguageButton } from '../LanguageButton'
+import { NetworkOverlay } from '../NetworkOverlay'
 import { COLUMN_WIDTH, heroWidth } from './heroPanel'
 import { useConfirmUrl } from './ConfirmUrl'
 
@@ -184,7 +185,13 @@ export function OnboardingChrome({
               to the chrome. Absolutely positioned so it is centred on the *bar* rather than on
               whatever space the two controls leave, which is what a title view does. */}
           <YStack position="absolute" left={0} right={0} alignItems="center" pointerEvents="none">
-            <SessionBrand size={BAR_LOGO_SIZE} color="$primaryColor" />
+            {/* Stamped across the mark on anything that is not a real mainnet build, which is
+                where legacy iOS puts it during onboarding too. Worth having here and not only on
+                the conversation list: onboarding is where somebody is most likely to wonder which
+                network an account is about to be made on. */}
+            <NetworkOverlay>
+              <SessionBrand size={BAR_LOGO_SIZE} color="$primaryColor" />
+            </NetworkOverlay>
           </YStack>
           {flag('onboardingLanguageSelect') ? <LanguageButton /> : null}
         </XStack>
@@ -259,7 +266,9 @@ function OnboardingHeader() {
 
   return (
     <XStack alignItems="center" gap="$1" height={30}>
-      <SessionBrand size={26} color="$primaryColor" />
+      <NetworkOverlay>
+        <SessionBrand size={26} color="$primaryColor" />
+      </NetworkOverlay>
       <SessionWordmark size={15} color="$textPrimary" />
       <YStack flex={1} />
       {/* One group of three. The designs give 8px between them; the space ladder has 5 and 10 and

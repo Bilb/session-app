@@ -127,6 +127,14 @@ export default defineConfig({
             ([key, value]) => key.startsWith('SESSION_FLAG_') && value !== undefined,
           ),
         ),
+      // Every SESSION_FLAG_* variable present at build time, as one object. Collected by prefix
+      // rather than listed, so adding a flag needs no change here.
+      'import.meta.env.SESSION_FLAGS': JSON.stringify(
+        Object.fromEntries(
+          Object.entries(process.env).filter(
+            ([key, value]) => key.startsWith('SESSION_FLAG_') && value !== undefined,
+          ),
+        ),
       ),
       // react-native-web reads these; without them the bundle throws on first render.
       global: 'globalThis',

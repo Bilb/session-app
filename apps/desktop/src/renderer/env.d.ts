@@ -14,6 +14,13 @@ interface ImportMetaEnv {
    * config collects by prefix: a flag added there must not also need a line here.
    */
   readonly SESSION_FLAGS?: Record<string, string>
+  /**
+   * Every `SESSION_FLAG_*` variable present when the renderer was built, keyed by name.
+   *
+   * An object rather than one entry per flag, because the flag table is shared code and the
+   * config collects by prefix: a flag added there must not also need a line here.
+   */
+  readonly SESSION_FLAGS?: Record<string, string>
 }
 
 interface ImportMeta {

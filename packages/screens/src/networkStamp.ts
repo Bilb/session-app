@@ -13,3 +13,15 @@ import type { NetworkName } from '@session/basic-types'
 export function shouldStampNetwork(name: NetworkName): boolean {
   return name !== 'mainnet'
 }
+
+/**
+ * What the badge should say, or null when there is nothing worth saying.
+ *
+ * The fake wins over the network, and deliberately: a fake build on testnet is not on testnet at
+ * all, and naming the network there would be the more misleading of the two. A fake build on
+ * mainnet still says so, which is the case the plain network rule would have stayed silent about.
+ */
+export function networkStampLabel(name: NetworkName, usingFake: boolean): string | null {
+  if (usingFake) return 'Fake'
+  return shouldStampNetwork(name) ? name : null
+}

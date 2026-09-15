@@ -20,6 +20,13 @@ setPorts(
     flags: {
       override: (name) => import.meta.env.SESSION_FLAGS?.[name] ?? null,
     },
+    // Substituted at build time alongside the netid, because the renderer cannot read the
+    // environment. That makes a desktop override a rebuild rather than a relaunch -- worth fixing
+    // once the preload has an IPC surface to carry it, since a flag you cannot flip on someone
+    // else's machine does half of what a flag is for.
+    flags: {
+      override: (name) => import.meta.env.SESSION_FLAGS?.[name] ?? null,
+    },
     window: {
       // One window, so closing it is quitting. `window.close()` rather than an IPC call because
       // there is no IPC surface in the preload yet and this needs none.
