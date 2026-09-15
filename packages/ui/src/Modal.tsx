@@ -121,7 +121,17 @@ export function Modal({
             /* Equal widths running the full width of the dialog, with no gap and no side margins
                -- the client's `fillEqually`. Each action is as tall as a control rather than as
                tall as its label. */
-            <XStack alignItems="stretch" marginHorizontal={-SIDE_INSET} height={ACTION_HEIGHT}>
+            /* Clipped to the dialog's own corners too, so a cell that fills its width when held
+               stops at the rounded bottom edge rather than squaring it off. */
+            <XStack
+              alignItems="stretch"
+              marginHorizontal={-SIDE_INSET}
+              marginBottom={-BOTTOM_INSET}
+              height={ACTION_HEIGHT}
+              borderBottomLeftRadius={RADIUS}
+              borderBottomRightRadius={RADIUS}
+              overflow="hidden"
+            >
               {/* Each action takes an equal share of the full width -- the client's `fillEqually`
                   -- with no gap, so the two share an edge the way its alert's buttons do. The
                   actions ask for that themselves with `fill`, because a fragment of them arrives

@@ -130,6 +130,7 @@ export function SettingsScreen() {
             <Button
               variant="ghost"
               fill
+              borderRadius={0}
               destructive
               loading={clearing}
               testID={ELEMENT.settings.confirmClearDataButton}
@@ -146,6 +147,7 @@ export function SettingsScreen() {
             <Button
               variant="ghost"
               fill
+              borderRadius={0}
               testID={ELEMENT.settings.cancelClearData}
               onPress={() => {
                 setConfirmingClear(false)

@@ -56,6 +56,9 @@ export function OpenUrlModal({ url, onClose }: OpenUrlModalProps) {
             // the way the clients' do, where `simple` dims the label and leaves the cell alone.
             variant="ghost"
             fill
+            // A cell, not a pill: the actions run the full width of the dialog and share an edge,
+            // so a rounded highlight would sit inside its cell with a gap all round it.
+            borderRadius={0}
             destructive
             testID={ELEMENT.onboarding.openUrlConfirm}
             onPress={() => {
@@ -68,6 +71,9 @@ export function OpenUrlModal({ url, onClose }: OpenUrlModalProps) {
           <Button
             variant="ghost"
             fill
+            // A cell, not a pill: the actions run the full width of the dialog and share an edge,
+            // so a rounded highlight would sit inside its cell with a gap all round it.
+            borderRadius={0}
             testID={ELEMENT.onboarding.copyUrl}
             onPress={() => {
               if (url !== null) void requirePorts().clipboard.setString(url)

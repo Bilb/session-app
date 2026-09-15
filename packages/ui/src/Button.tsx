@@ -253,6 +253,14 @@ export interface ButtonProps {
    */
   paddingHorizontal?: number
   /**
+   * Overrides the size variant's corner radius.
+   *
+   * For a control that is a **cell** rather than a control -- a dialog's actions run the full
+   * width of the dialog and share an edge, so a pill-shaped pressed highlight sits inside a
+   * rectangular cell with a gap all round it, which reads as the highlight having missed.
+   */
+  borderRadius?: number
+  /**
    * Colour the label danger without filling the button.
    *
    * Every destructive action in a modal is drawn this way in the desktop client -- red text beside
@@ -287,6 +295,7 @@ export function Button({
   destructive = false,
   fill = false,
   paddingHorizontal,
+  borderRadius,
   icon,
   accessibilityLabel,
   testID,
@@ -323,6 +332,7 @@ export function Button({
           circular={circular}
           destructive={destructive}
           {...(paddingHorizontal === undefined ? {} : { paddingHorizontal })}
+          {...(borderRadius === undefined ? {} : { borderRadius })}
           disabled={inert}
           {...PRESS_PASSTHROUGH}
           {...(pressed && !inert ? PRESSED[variant] : {})}
