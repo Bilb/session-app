@@ -30,8 +30,11 @@ export function Input({
 }: InputProps) {
   const field = (
     <TamaguiInput
-      {...(grow && end === undefined ? { flex: 1 } : {})}
-      {...(end === undefined ? {} : { flex: 1 })}
+      // Fills the wrapper, which is the thing the parent lays out -- so `grow` belongs there and
+      // this is unconditional. Stretched as well as flexed, because the wrapper is a row: `flex`
+      // gives it the width and `alignSelf` the height.
+      flex={1}
+      alignSelf="stretch"
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder ?? ''}
@@ -73,23 +76,31 @@ export function Input({
     />
   )
 
-  if (end === undefined) return field
-
+  /**
+   * **The wrapper is always here, even with nothing to put in it.**
+   *
+   * Returning the bare field in one case and a wrapped one in the other changes the element type
+   * at this position, so React unmounts the `TextInput` and mounts a new one -- which drops the
+   * keyboard and the caret. That is invisible until something makes the slot appear *while* the
+   * field is being typed in, which the display name's character counter does.
+   */
   return (
     <XStack position="relative" {...(grow ? { flex: 1 } : {})}>
       {field}
       {/* Centred against the field rather than pinned to a corner: the field is one row tall and
           anything in it should sit on the same line as the text. */}
-      <XStack
-        position="absolute"
-        right="$2"
-        top={0}
-        bottom={0}
-        alignItems="center"
-        pointerEvents="box-none"
-      >
-        {end}
-      </XStack>
+      {end === undefined ? null : (
+        <XStack
+          position="absolute"
+          right="$2"
+          top={0}
+          bottom={0}
+          alignItems="center"
+          pointerEvents="box-none"
+        >
+          {end}
+        </XStack>
+      )}
     </XStack>
   )
 }
