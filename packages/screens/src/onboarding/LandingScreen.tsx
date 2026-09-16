@@ -4,6 +4,7 @@ import { ELEMENT } from '@session/test-ids'
 import { Button, Reveal, Text, useMedia, YStack } from '@session/ui'
 import { useEffect, useState } from 'react'
 
+import { BUBBLE_MIN_WIDTH, bubbleMaxWidth } from './landingBubble'
 import { EXTRA_ACTION_INSET, OnboardingChrome } from './OnboardingChrome'
 import { TermsAndPrivacy } from './TermsAndPrivacy'
 
@@ -28,24 +29,6 @@ const BUBBLES = [
  */
 const FIRST_BUBBLE_MS = 500
 const BUBBLE_INTERVAL_MS = 1500
-
-/**
- * How wide a bubble is allowed to get: **a share of the box, not a number of points.**
- *
- * This was iOS's flat 230, from its bespoke `FakeChat`, because an earlier *uncapped* share let a
- * bubble run almost edge to edge on a large phone -- which stops reading as a conversation and
- * starts reading as paragraphs with rounded corners. Android has the better answer, and it is a
- * share with both ends closed: `min(500, max(200, available x 0.8))`.
- *
- * Worked against our own insets, neither end of Android's ever fires -- the floor wants a screen
- * under 320pt and the cap a column over 625 -- so what is left of the formula is the 80%. It lands
- * at 62-67% of the screen on every phone from an SE to a 16 Pro Max, against the flat number's 52%
- * to 72%, and at 278 of the 348-point column on the wide designs.
- *
- * A percentage rather than a measured width for the reason the hero panel is one: a number
- * computed in JS from the window lags the box it is meant to describe while that box is animating.
- */
-const BUBBLE_MAX_WIDTH = '80%'
 
 /**
  * The height the conversation is played out in, and why the earlier lines move.
@@ -122,6 +105,8 @@ export function LandingScreen({ onCreate, onRestore }: LandingScreenProps) {
  */
 function PhoneOpening() {
   const [shown, setShown] = useState(0)
+  /** The conversation's own width, which is what a bubble's share is a share of. */
+  const [chatWidth, setChatWidth] = useState(0)
 
   useEffect(() => {
     if (shown >= BUBBLES.length) return
@@ -147,11 +132,20 @@ function PhoneOpening() {
         {tr('onboardingBubblePrivacyInYourPocket')}
       </Text>
 
-      <YStack height={CONVERSATION_HEIGHT} justifyContent="flex-end" gap={BUBBLE_GAP}>
+      <YStack
+        height={CONVERSATION_HEIGHT}
+        justifyContent="flex-end"
+        gap={BUBBLE_GAP}
+        onLayout={(event) => {
+          setChatWidth(event.nativeEvent.layout.width)
+        }}
+      >
         {BUBBLES.slice(0, shown).map((bubble) => (
           <Reveal key={bubble.text} instant={flag('disableAnimations')}>
             <YStack
-              maxWidth={BUBBLE_MAX_WIDTH}
+              // The floor until the container has been measured, which is one frame and is over
+              // long before the first bubble is due.
+              maxWidth={chatWidth === 0 ? BUBBLE_MIN_WIDTH : bubbleMaxWidth(chatWidth)}
               alignSelf={bubble.outgoing ? 'flex-end' : 'flex-start'}
               padding={BUBBLE_PADDING}
               borderRadius={BUBBLE_RADIUS}
