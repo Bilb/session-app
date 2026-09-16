@@ -18,6 +18,12 @@ interface LanguageChoiceListProps {
 }
 
 /**
+ * Fixed, so the selected row can be scrolled to by arithmetic rather than by measuring every row
+ * above it. Tall enough for a comfortable target and for the scripts with tall ascenders.
+ */
+const ROW_HEIGHT = 40
+
+/**
  * The searchable list of languages.
  *
  * Split out from the picker rather than written inline because the picker shows it only on the
@@ -25,12 +31,6 @@ interface LanguageChoiceListProps {
  * a panel, a backdrop and the decision about which branch to take. This is the part that just
  * lists languages.
  */
-/**
- * Fixed, so the selected row can be scrolled to by arithmetic rather than by measuring every row
- * above it. Tall enough for a comfortable target and for the scripts with tall ascenders.
- */
-const ROW_HEIGHT = 40
-
 export function LanguageChoiceList({
   value,
   options,

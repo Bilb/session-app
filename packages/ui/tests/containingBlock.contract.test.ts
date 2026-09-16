@@ -12,10 +12,10 @@ import { describe, expect, it } from 'vitest'
  * same component is correct on three devices and wrong in the desktop app, which is the worst
  * shape a bug can have because every device pass agrees it is fine.
  *
- * It cost us the tab indicator, which drew a green bar across the foot of the window instead of
- * under the active tab; the bar's centred Session mark and the fake-network badge escaped the same
- * way and only looked right because, with no `top` of their own, they fell back to their static
- * position.
+ * The tab indicator is the worked example: unless its bar says `relative`, its `bottom: 0` draws
+ * a green line across the foot of the window rather than under the active tab. A child with no
+ * `top` of its own escapes just as far and still looks right, falling back to its static position,
+ * which is why this is worth asserting rather than eyeballing.
  *
  * **This is a coarse check and worth knowing why.** Whether a parent is a containing block is a
  * fact about the rendered tree, and no amount of reading source settles it -- the parent may be in

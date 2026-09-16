@@ -155,11 +155,6 @@ const Frame = styled(XStack, {
       true: { aspectRatio: 1, paddingHorizontal: 0 },
     },
     /**
-     * Named roles rather than an opacity, which is what the table says and what a theme can act on.
-     * A blanket `opacity: .5` dims a disabled control toward whatever is behind it, so on a
-     * recessed surface it fades further than on the page -- and it takes the border with it.
-     */
-    /**
      * A danger-coloured label without a fill, declared on the frame so the web label inherits it.
      *
      * Every destructive action in a modal is drawn this way in the desktop client -- red text
@@ -171,13 +166,17 @@ const Frame = styled(XStack, {
         color: '$dangerColor',
         // **Colour only, in every state.** What a press does to the surface is the variant's
         // business -- `ghost` lights a background, `simple` dims itself -- and this only has to
-        // stop that variant's own colour winning. An opacity here dimmed the label too, so the
-        // red `Open` in the link dialog faded as it was held where only the fill should have
-        // moved. A product call.
+        // stop that variant's own colour winning. An opacity here is inherited by the subtree, so
+        // it fades the label along with the fill.
         hoverStyle: { color: '$dangerColor' },
         pressStyle: { color: '$dangerColor' },
       },
     },
+    /**
+     * Named roles rather than an opacity, which is what the table says and what a theme can act on.
+     * A blanket `opacity: .5` dims a disabled control toward whatever is behind it, so on a
+     * recessed surface it fades further than on the page -- and it takes the border with it.
+     */
     disabled: {
       true: {
         pointerEvents: 'none',
@@ -191,13 +190,6 @@ const Frame = styled(XStack, {
   defaultVariants: { variant: 'solid', size: 'md' },
 })
 
-/**
- * Label colour follows the variant.
- *
- * A filled button's label sits on the fill, not on the page, so it takes the fill's own on-colour
- * rather than the body text. The body text is white in the dark themes, and white on the accent
- * green measures about 1.6:1.
- */
 /**
  * What a variant looks like while it is held down, as plain values.
  *
@@ -240,6 +232,13 @@ const PRESSED_LABEL = {
  */
 const INVERTS_ON_PRESS = new Set(['solid', 'outline', 'outlineAccent'])
 
+/**
+ * Label colour follows the variant.
+ *
+ * A filled button's label sits on the fill, not on the page, so it takes the fill's own on-colour
+ * rather than the body text. The body text is white in the dark themes, and white on the accent
+ * green measures about 1.6:1.
+ */
 const LABEL_TONE = {
   solid: '$onAccent',
   outline: '$textPrimary',

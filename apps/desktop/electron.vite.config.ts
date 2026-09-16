@@ -1,4 +1,14 @@
-import { existsSync } from 'node:fs'
+      'import.meta.env.EXPO_PUBLIC_SESSION_NETID': JSON.stringify(
+        process.env['EXPO_PUBLIC_SESSION_NETID'] ?? 'mainnet',
+      ),
+      // Every SESSION_FLAG_* variable present at build time, as one object. Collected by prefix
+      // rather than listed, so adding a flag needs no change here.
+      'import.meta.env.SESSION_FLAGS': JSON.stringify(
+        Object.fromEntries(
+          Object.entries(process.env).filter(
+            ([key, value]) => key.startsWith('SESSION_FLAG_') && value !== undefined,
+          ),
+        ),
 import { fileURLToPath } from 'node:url'
 
 import react from '@vitejs/plugin-react'
@@ -62,14 +72,6 @@ const WEB_FIRST_EXTENSIONS = [
   '.json',
 ]
 
-/**
- * The renderer draws react-native components through react-native-web, so the aliases
- * below are what let @session/ui and @session/screens - written once, in
- * react-native's vocabulary - render in a browser window.
- *
- * @tamagui/vite-plugin is deliberately absent: it peers on vite 8 and electron-vite is on
- * 7. It is an optimising compiler rather than a requirement, so the app runs without it.
- */
 /**
  * The workspace packages ship raw TypeScript - that is what makes editing a screen show up
  * in both apps without a build step - so every build here has to bundle them rather than

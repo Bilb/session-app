@@ -165,11 +165,11 @@ function previousStep(state: OnboardingState): OnboardingStep | null {
     case 'messageNotifications':
       return state.branch === 'create' ? 'pickDisplayName' : 'loadAccount'
     case 'loading':
-      // **The wait can be left.** This used to be null, on the reasoning that an account existed
-      // by then and nothing could undo it -- which stopped being true when the bridge learned to
-      // discard one. Without it somebody who mistyped a phrase, or who simply changed their mind,
-      // sat through fifteen seconds with no way out; the legacy Android client offers back here
-      // for the same reason. It leads where it came from, so a second press reaches the phrase.
+      // **The wait can be left.** An account exists by this point, but the bridge can discard
+      // one, so there is a way out to offer -- and without it somebody who mistyped a phrase, or
+      // simply changed their mind, sits through fifteen seconds with none. The legacy Android
+      // client offers back here for the same reason. It leads where it came from, so a second
+      // press reaches the phrase.
       return asksAboutNotifications(state.design) ? 'messageNotifications' : 'loadAccount'
     default:
       return null
@@ -179,13 +179,12 @@ function previousStep(state: OnboardingState): OnboardingStep | null {
 /**
  * Whether going back from here has to throw an account away first.
  *
- * **True wherever one has been minted**, which after the move to minting early is every step of the
- * restore branch past the phrase, plus the name picker a failed restore lands in. Creating still
- * holds the name and mints at the end, so backing out of it has nothing to undo.
+ * **True wherever one has been minted.** Restore mints at the phrase, so every step past it
+ * qualifies, plus the name picker a failed restore lands in. Creating holds the name and mints at
+ * the end, so backing out of it has nothing to undo.
  *
- * There is no longer a step that has to *ask*. The warning existed because an account had been
- * taken over and nothing could untake it; `discardAccount` can, so back goes back everywhere and
- * the dialog is gone.
+ * No step has to *ask*, because `discardAccount` can untake an account -- a warning dialog would
+ * only be standing in for a discard the bridge is able to perform.
  */
 export function backDiscardsAccount(state: OnboardingState): boolean {
   if (state.branch !== 'restore') return false

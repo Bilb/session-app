@@ -110,10 +110,10 @@ export const STEP_PADDING = {
  *
  * `LoadAccountScreen` turns `padContent` off because its two panes disagree about the inset -- the
  * field belongs in the reading column and the camera fills the width -- and pads the one that
- * wants it. That left the figure written down in two places and only the narrow half of it was
- * copied: on the wide branch the column is already `COLUMN_WIDTH` and the chrome adds no
- * horizontal inset at all, so the recovery-password step alone drew 70 narrower and 25 lower than
- * every other step on Desktop.
+ * wants it. It asks for the figure rather than writing it down, because the two layouts do not
+ * agree on it: the wide one adds no horizontal inset at all, its column being `COLUMN_WIDTH`
+ * already, so a pane carrying the phone's figure draws 70 narrower and 25 lower than every other
+ * step there.
  */
 export function useStepPadding(): Partial<typeof STEP_PADDING> {
   return useMedia().gtSm ? {} : STEP_PADDING

@@ -3,11 +3,11 @@ import { useTheme } from 'tamagui'
 /**
  * A theme token resolved to a colour an SVG can actually use.
  *
- * **`var(--textPrimary)` is a web-only trick and it was being passed to react-native-svg.** On the
- * web a CSS custom property resolves against the stylesheet tamagui writes; on native there is no
- * stylesheet and no `var()`, so the value is not a colour at all and the shape is drawn with
- * nothing. It fails silently and it fails only on one platform, which is the combination that gets
- * a thing shipped: the desktop build looked right the whole time.
+ * **`var(--textPrimary)` is a web-only trick, and react-native-svg must never be handed one.** On
+ * the web a CSS custom property resolves against the stylesheet tamagui writes; on native there is
+ * no stylesheet and no `var()`, so the value is not a colour at all and the shape is drawn with
+ * nothing. It fails silently and on one platform only, which is the combination that gets a thing
+ * shipped -- the desktop build looks right throughout.
  *
  * The lucide icons never had this problem because they arrive wrapped in tamagui's `themed()`,
  * which resolves tokens itself. This is that, for the handful of SVGs written by hand.

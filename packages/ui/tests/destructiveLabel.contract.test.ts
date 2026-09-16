@@ -12,9 +12,8 @@ import { describe, expect, it } from 'vitest'
  * top of that.
  *
  * An `opacity` here is the way that goes wrong, because opacity is inherited by the whole
- * subtree: the red `Open` in the link dialog faded as it was held, where only the fill behind it
- * should have moved. Reported twice. The second time: *"the URL modal is still changing the 'Open'
- * danger text colour in the pressed state when only the 'background' should be affected"*.
+ * subtree: it fades the label along with the fill, so the red `Open` in the link dialog dims as it
+ * is held when only the surface behind it should move.
  */
 describe('the destructive variant', () => {
   const source = readFileSync(join(import.meta.dirname, '../src/Button.tsx'), 'utf8')

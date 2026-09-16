@@ -15,14 +15,11 @@ import { TermsAndPrivacy } from './TermsAndPrivacy'
  * and `👇` on the last line -- with a TODO about moving them into the strings one day. Pulling the
  * tokens alone yields the text without them, which reads as a missing translation rather than as a
  * deliberate omission, so they are supplied here for the same reason Android supplies them there.
- */
-/**
- * A function, and **not a constant**, because `tr()` reads the locale at the moment it is called.
  *
- * As an array at module scope these four were translated once, when the module was first imported,
- * and stayed in that language for the life of the process -- so changing the language in the
- * picker left the heading and the buttons translated and the conversation in the old language.
- * Anything built from `tr()` has to be built during a render.
+ * **A function, not a constant**, because `tr()` reads the locale at the moment it is called. Built
+ * once at module scope these four hold whichever language was current when the module was first
+ * imported, for the life of the process -- so the heading and the buttons follow the picker and the
+ * conversation does not. Anything built from `tr()` has to be built during a render.
  */
 function bubbles() {
   return [

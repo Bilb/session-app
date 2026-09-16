@@ -1,10 +1,9 @@
 /**
  * How wide the artwork panel and the column beside it are.
  *
- * Three numbers rather than a function: `OnboardingChrome` hands them to Yoga as a flex basis, a
- * maximum and the sibling's minimum, which is the same rule expressed where the frame is actually
- * known. It used to be `min(width x 0.4, width - COLUMN_RESERVE, HERO_MAX_WIDTH)` over a window
- * snapshot, and a snapshot lags the frame it describes while that frame is being animated.
+ * Numbers handed to Yoga rather than a width computed in JS: grow factors and a maximum, which is
+ * the same rule expressed where the frame is actually known. A width worked out in JS comes from a
+ * window snapshot, and a snapshot lags the frame it describes while that frame is being animated.
  */
 
 /** The desktop client's registration column. Everything inside onboarding is this wide. */
@@ -31,18 +30,13 @@ export const COLUMN_GROW = 3
 /**
  * The same split as a fraction, for the arithmetic.
  *
- * **Two grow factors against a zero basis rather than a `40%` basis, and the difference is not
- * cosmetic.** A percentage basis is resolved against the parent's main size and then cached, and
- * on native a parent that merely changed width does not dirty it -- so through a whole drag-resize
- * the panel kept the width it had when the drag began, while the column beside it, growing into
- * whatever was left, absorbed every point of the difference. The row still filled the window, so
- * nothing looked broken until the step changed and the subtree was laid out afresh, at which point
- * the panel snapped to its real share and the content beside it moved. That is the jump.
- *
- * Measured on an iPad: dragging 1101 -> 1145 held the panel at 377, which is 40% of 941, the width
- * the drag started from; dragging 907 -> 865 held it at 461, which is 40% of 1151. 130 of 140
- * samples were stale in this way. Free space distributed by grow factors is recomputed from the
- * container's current size on every pass and has nowhere to go stale.
+ * **Two grow factors against a zero basis, and not a `40%` basis.** A percentage basis is resolved
+ * against the parent's main size and then cached, and on native a parent that merely changes width
+ * does not dirty it -- so through a drag-resize the panel holds the width it had when the drag
+ * began, while the column beside it absorbs the difference and the row still fills the window.
+ * Nothing looks wrong until the step changes and the subtree is laid out afresh. Free space shared
+ * by grow factors is recomputed from the container's current size on every pass, so it has nowhere
+ * to go stale.
  */
 export const HERO_FRACTION = HERO_GROW / (HERO_GROW + COLUMN_GROW)
 

@@ -17,6 +17,12 @@ import { LocalizedText } from './LocalizedText'
 import { useLocale } from './useLocale'
 
 /**
+ * The value of the row that follows the device, which is not a locale and must not collide with
+ * one. Crowdin's codes are BCP-47, where a leading `@` cannot appear.
+ */
+const SYSTEM = '@system'
+
+/**
  * The language control, wired to the app's catalogue.
  *
  * `@session/ui` cannot import `@session/localization` -- a component that knows the string
@@ -26,12 +32,6 @@ import { useLocale } from './useLocale'
  * Its own component rather than part of a screen because it belongs on more than one: onboarding
  * needs it before an account exists, and appearance settings needs the same control afterwards.
  */
-/**
- * The value of the row that follows the device, which is not a locale and must not collide with
- * one. Crowdin's codes are BCP-47, where a leading `@` cannot appear.
- */
-const SYSTEM = '@system'
-
 export function LanguageButton() {
   const locale = useLocale()
   /**

@@ -48,11 +48,11 @@ export function WideChrome({
         <OnboardingHeader />
         <YStack
           // **A height, not a minimum.** The reserve exists so the lockup and the chevron stay put
-          // between steps, and a minimum only delivers that while every step fits inside it. The
-          // notification step does not -- measured at 1100x760 its content is 382 against a 276
-          // reserve -- so its block grew to 424, the centring lifted the whole thing, and the
-          // header sat 58 points above where the step before it had drawn the same header. Fixed,
-          // a taller step spills out of the bottom of the box instead and nothing above it moves.
+          // between steps, and a minimum delivers that only while every step fits inside it -- the
+          // notification step does not, its content measuring 382 against this 276 at 1100x760. As
+          // a minimum its block grows to 424 and the centring lifts the header clear of where the
+          // step before it drew the same header. Fixed, a taller step spills out of the bottom and
+          // nothing above it moves.
           height={CONTENT_MIN_HEIGHT}
           opacity={fading}
           // No animation driver is configured, so the transition is declared directly. On
@@ -74,10 +74,8 @@ export function WideChrome({
     <Screen testID={testID} edges={[]} avoidsKeyboard={false}>
       <XStack flex={1}>
         {/**
-         * **The split is declared, not computed.** These three properties are the same rule the
-         * panel used to get from a function of the window -- two fifths of the frame, never more
-         * than `HERO_MAX_WIDTH`, and never so much that the column drops below what it reserves,
-         * which is what the sibling's `minWidth` enforces by making this one give way.
+         * **The split is declared, not computed.** These properties state the rule where the
+         * frame is known: two fifths of it, and never more than `HERO_MAX_WIDTH`.
          *
          * Asking Yoga rather than asking the window is the point. A width computed in JS comes
          * from a `useWindowDimensions` snapshot, and during a rotation the frame is already

@@ -13,9 +13,9 @@ export type { PressAreaProps }
  * **A column, because the native half is one.** This split is about the press gesture and nothing
  * else, so the two halves have to lay their child out identically -- and the native half wraps it
  * in a `Pressable`, which is a view, which stacks down the page and stretches its children across.
- * A row stretches the other axis instead, leaving the frame inside sized to its own content: the
- * button drew to the width of its label rather than the width it was given, and a label too long
- * for that width overflowed instead of wrapping.
+ * A row stretches the other axis instead and leaves the frame inside sized to its own content, so
+ * a button draws to the width of its label rather than the width it was given, and a label too
+ * long for that width overflows instead of wrapping.
  */
 export function PressArea({
   onPress,

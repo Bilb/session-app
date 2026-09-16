@@ -1,6 +1,12 @@
 import { BANNER, cppType, fieldType, forEachDeclaration, member, NAMESPACE } from '#src/cpp'
 import type { Field, Model, Struct } from '#src/model'
 
+/** `createFromAscii` reads bytes as code points, so a tag with anything else would come out wrong. */
+function assertAscii(text: string, where: string): void {
+  // eslint-disable-next-line no-control-regex
+  if (!/^[\x00-\x7f]*$/.test(text)) throw new Error(`${where}: "${text}" is not ASCII`)
+}
+
 /**
  * `margelo::nitro::JSIConverter` specialisations, so Nitro can carry the protocol types through a
  * HybridObject method or callback without nitrogen generating a struct of its own. Shaped after
@@ -8,12 +14,6 @@ import type { Field, Model, Struct } from '#src/model'
  * rather than written as `undefined`, which is what exactOptionalPropertyTypes on the other side
  * means.
  */
-/** `createFromAscii` reads bytes as code points, so a tag with anything else would come out wrong. */
-function assertAscii(text: string, where: string): void {
-  // eslint-disable-next-line no-control-regex
-  if (!/^[\x00-\x7f]*$/.test(text)) throw new Error(`${where}: "${text}" is not ASCII`)
-}
-
 export function emitJsi(model: Model, source: string): string {
   const prop = (name: string) => `PropNameIDCache::get(runtime, "${name}")`
   const conv = (type: string) => `JSIConverter<${type}>`

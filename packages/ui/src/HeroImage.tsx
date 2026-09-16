@@ -73,11 +73,11 @@ export function HeroImage() {
        * in the ordinary case. When it does grow the aspect ratio gives way and the image crops
        * vertically instead of horizontally, which is the same bargain in the other direction.
        *
-       * This was `minWidth: '100%'`, which states the same rule and **goes stale**: a percentage
-       * is resolved against the parent and cached, so through a drag-resize the artwork held the
-       * width it was clamped to when the drag began while the panel around it grew. Being aligned
-       * to the end, it slid right and opened a gap down the left -- measured on an iPad at 417
-       * inside a panel of 484, a 67-point hole. Free space is recomputed every pass.
+       * **Flex rather than `minWidth: '100%'`**, which states the same rule and goes stale: a
+       * percentage is resolved against the parent and cached, so through a drag-resize the artwork
+       * holds the width it was clamped to when the drag began while the panel around it grows.
+       * Aligned to the end, it then slides right and opens a gap down the left. Free space is
+       * recomputed every pass.
        */}
       <YStack alignSelf="stretch" flexGrow={1} flexShrink={0} aspectRatio={ASPECT}>
         {/* Percentages, so the image takes the box rather than describing one. A `minWidth`

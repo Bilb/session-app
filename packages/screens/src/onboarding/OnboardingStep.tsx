@@ -5,13 +5,6 @@ import { WideBackButton } from './OnboardingBackButton'
 import { EXTRA_ACTION_INSET, OnboardingChrome } from './OnboardingChrome'
 
 /**
- * How far the back button sits outside the content column. The desktop client's own offset.
- *
- * **Only where there is a margin to hang into.** On a phone the content is the screen, so this put
- * the control off the left edge of the display; the phone design draws its own in the row above
- * instead. See `OnboardingChrome`.
- */
-/**
  * Room for two lines of error before anything below it moves.
  *
  * One line is the common case and two is reachable -- the recovery-phrase messages are long. Past

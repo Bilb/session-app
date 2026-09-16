@@ -14,17 +14,6 @@ interface MessageNotificationsScreenProps {
 }
 
 /**
- * Which way notifications arrive.
- *
- * The last screen of the create sequence, and **the point at which the account is actually made** --
- * everything before it was collected and held. It comes before the restore wait rather than after,
- * so that a restore is not fifteen seconds of nothing followed by a question.
- *
- * Fast mode is push and slow mode is polling. Where the build has no push service the fast option
- * is shown and marked unavailable rather than hidden: it is the recommended choice everywhere it
- * exists, and quietly dropping it makes polling look like the only design rather than the fallback.
- */
-/**
  * The row's metrics. 16 across and 12 down inside the border (Android's; iOS pads 16 all round),
  * 8 between the lines, and **24 between the border and the radio** -- a gutter both clients leave,
  * because the radio sits outside the box rather than inside it.
@@ -47,6 +36,17 @@ function fastModeDescription(service: NotificationsPort['pushService']): string 
   return tr('notificationsFastModeDescription')
 }
 
+/**
+ * Which way notifications arrive.
+ *
+ * The last screen of the create sequence, and **the point at which the account is actually made** --
+ * everything before it was collected and held. It comes before the restore wait rather than after,
+ * so that a restore is not fifteen seconds of nothing followed by a question.
+ *
+ * Fast mode is push and slow mode is polling. Where the build has no push service the fast option
+ * is shown and marked unavailable rather than hidden: it is the recommended choice everywhere it
+ * exists, and quietly dropping it makes polling look like the only design rather than the fallback.
+ */
 export function MessageNotificationsScreen({
   onBack,
   onContinue,

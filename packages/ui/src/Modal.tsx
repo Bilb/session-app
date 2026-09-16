@@ -42,28 +42,12 @@ interface ModalProps {
 }
 
 /**
- * Something asked over the top of the page.
- *
- * Drawn in react-native's `Modal` rather than an absolutely-positioned panel, for the same reason
- * the language picker is: a child that overflows its parent is clipped on Android, and anything
- * that floats over a screen has to escape whatever it was declared inside.
- *
- * **Dimmed behind, unlike the picker.** A dropdown is part of the control that opened it and should
- * leave the page alone; this is a question that stops the page until it is answered, and the
- * dimming is what says so. Pressing outside answers it the same way the cross does.
- *
- * The shape is the desktop client's `SessionWrapperModal`: a header carrying the title and the exit
- * cross, the body, then a row of **text** buttons. Text rather than filled, because a filled button
- * in a dialog reads as the safe default purely by looking like a primary action -- and in these
- * dialogs the emphasised option is usually the one to think twice about.
- */
-/**
  * The dialog's own metrics, from the legacy client rather than from our scales.
  *
  * `Modal.swift` builds this with numbers that are not on either type or space ladder -- an 11pt
  * radius, a 51pt button, 24 above the title and 4 below the buttons -- so they are written here as
- * themselves. Rounding them onto the nearest rung is what made ours read as a different dialog:
- * the padding was heavier, the corners rounder and the buttons shorter.
+ * themselves. Rounded onto the nearest rung instead, the dialog reads as a different one: heavier
+ * padding, rounder corners and shorter buttons.
  */
 const RADIUS = 11
 const SIDE_INSET = 35
@@ -103,6 +87,22 @@ const ACTION_HEIGHT = 51
  */
 const SCRIM_OPACITY = 0.6
 
+/**
+ * Something asked over the top of the page.
+ *
+ * Drawn in react-native's `Modal` rather than an absolutely-positioned panel, for the same reason
+ * the language picker is: a child that overflows its parent is clipped on Android, and anything
+ * that floats over a screen has to escape whatever it was declared inside.
+ *
+ * **Dimmed behind, unlike the picker.** A dropdown is part of the control that opened it and should
+ * leave the page alone; this is a question that stops the page until it is answered, and the
+ * dimming is what says so. Pressing outside answers it the same way the cross does.
+ *
+ * The shape is the desktop client's `SessionWrapperModal`: a header carrying the title and the exit
+ * cross, the body, then a row of **text** buttons. Text rather than filled, because a filled button
+ * in a dialog reads as the safe default purely by looking like a primary action -- and in these
+ * dialogs the emphasised option is usually the one to think twice about.
+ */
 export function Modal({
   open,
   onClose,

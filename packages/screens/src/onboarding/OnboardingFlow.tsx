@@ -19,18 +19,6 @@ import {
 } from './flow'
 
 /**
- * Onboarding, from the first screen to an account.
- *
- * One route and an internal step, rather than a route per screen. Both apps already choose
- * onboarding from state rather than by navigating -- there is no history behind it, because until
- * an identity exists this is the only thing the app can show -- and the legacy clients treat back
- * the same way: at the first step of either branch it offers to quit rather than popping a stack.
- *
- * The bridge calls live here and nowhere else. `flow.ts` decides which screen is next and holds
- * what has been collected; this is the only thing that turns that into an account, which is what
- * keeps "when is the account actually made" answerable by reading one file.
- */
-/**
  * How often the restore wait asks whether the profile has landed.
  *
  * A second is far below anything anybody perceives against a fifteen-second wait, and well above
@@ -53,6 +41,18 @@ interface OnboardingFlowProps {
   onRunningChange?: (running: boolean) => void
 }
 
+/**
+ * Onboarding, from the first screen to an account.
+ *
+ * One route and an internal step, rather than a route per screen. Both apps already choose
+ * onboarding from state rather than by navigating -- there is no history behind it, because until
+ * an identity exists this is the only thing the app can show -- and the legacy clients treat back
+ * the same way: at the first step of either branch it offers to quit rather than popping a stack.
+ *
+ * The bridge calls live here and nowhere else. `flow.ts` decides which screen is next and holds
+ * what has been collected; this is the only thing that turns that into an account, which is what
+ * keeps "when is the account actually made" answerable by reading one file.
+ */
 export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
   const actions = useSessionActions()
   const design = useOnboardingDesign()
@@ -227,8 +227,8 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
               // puts somebody back on this screen with what they typed still on it, and nothing
               // has happened. Taken over immediately after, so that fetching the profile runs
               // while the next screen is being read -- on a phone that is the notification
-              // question, and the wait after it is often over before it is drawn, which is what
-              // both mobile clients do and what this used to lose by minting late.
+              // question, and the wait after it is often over before it is drawn. Minting late
+              // spends that overlap, which is the one both mobile clients take.
               //
               // Going back from here on is a discard rather than a navigation. See `goBack`.
               setBusy(true)

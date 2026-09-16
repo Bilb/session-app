@@ -23,8 +23,8 @@ export function TopTabs({ tabs, active, onChange, instant = false }: TopTabsProp
 
   // `relative` so the indicator below is placed against this bar. Every react-native view is a
   // containing block and none of this is needed there; on the web a stack is `static` unless it
-  // says otherwise, so the indicator's `bottom: 0` resolved against the page and drew a green bar
-  // across the foot of the window.
+  // says otherwise, and the indicator's `bottom: 0` then resolves against the page, drawing a
+  // green bar across the foot of the window.
   return (
     <YStack
       position="relative"

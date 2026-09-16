@@ -22,20 +22,15 @@ const TICK_MS = 40
 const BAR_HEIGHT = 17
 
 /**
- * The phone ring.
+ * How much of the width the phone's gauge leaves either side.
  *
- * Both mobile clients draw something much larger than an ordinary spinner -- iOS pads it by its
- * `massiveSpacing` on each side, so it spans most of the width -- because on a phone this is the
- * whole screen rather than one element on it.
- */
-/**
- * How much of the width the gauge leaves either side.
+ * Both mobile clients draw something much larger than an ordinary spinner, because on a phone this
+ * is the whole screen rather than one element on it.
  *
  * **Two insets, not one, because the client nests them**: the column takes
  * `.padding(.horizontal, Values.veryLargeSpacing)` (35) and the gauge inside it takes another
- * `.padding(.horizontal, Values.massiveSpacing)` (64). Reading only the inner one made the ring
- * two thirds of a phone's width rather than half of it -- large enough to look wrong in the other
- * direction, which is what a fixed 160 had been.
+ * `.padding(.horizontal, Values.massiveSpacing)` (64). Only the inner one leaves the ring two
+ * thirds of a phone's width where the client gives it half.
  *
  * The size follows from these rather than being a number of its own, which is what the client
  * does, and why it reads as filling the screen without touching the edges.
