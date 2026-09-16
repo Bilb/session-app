@@ -101,6 +101,10 @@ export function PickDisplayNameScreen({
             tone="danger"
             size="$label"
             weight="bold"
+            // Centred under the field, as both clients set it. The field is the full width of the
+            // column and the message is usually much shorter, so left-aligned it reads as a label
+            // for the field rather than as a complaint about what is in it.
+            textAlign="center"
             testID={ELEMENT.onboarding.displayNameError}
           >
             {/* Too long wins over a refusal from the bridge, because it is the live one: the
