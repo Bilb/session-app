@@ -25,6 +25,7 @@ export const FONT_SIZE = {
   heading: 23,
   headingLarge: 26,
   display: 29,
+  displayMedium: 32,
   displayLarge: 36,
 } as const
 

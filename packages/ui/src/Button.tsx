@@ -27,6 +27,30 @@ const Frame = styled(XStack, {
         // headroom to brighten into, so the pressed state has to come off the surface ladder.
         pressStyle: { backgroundColor: '$backgroundTertiary' },
       },
+      /**
+       * The outline, in the accent rather than in the text colour.
+       *
+       * What the legacy client draws beside its filled primary button on the landing screen --
+       * stroke *and* label in the primary colour, so the pair reads as one accented group with one
+       * of them filled. Outlined in the text colour instead, the quieter half reads as a secondary
+       * action of a different family rather than as the other half of a pair.
+       */
+      outlineAccent: {
+        backgroundColor: 'transparent',
+        borderColor: '$primaryColor',
+        color: '$primaryColor',
+        hoverStyle: {
+          backgroundColor: '$primaryColor',
+          borderColor: '$primaryColor',
+          color: '$onAccent',
+        },
+        pressStyle: {
+          backgroundColor: '$primaryColor',
+          borderColor: '$primaryColor',
+          color: '$onAccent',
+          opacity: 0.82,
+        },
+      },
       ghost: {
         backgroundColor: 'transparent',
         borderColor: 'transparent',
@@ -61,6 +85,7 @@ const Frame = styled(XStack, {
 const LABEL_TONE = {
   solid: '$onAccent',
   outline: '$textPrimary',
+  outlineAccent: '$primaryColor',
   ghost: '$textPrimary',
   danger: '$onDanger',
 } as const

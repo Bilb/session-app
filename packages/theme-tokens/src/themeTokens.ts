@@ -196,15 +196,18 @@ const TARGETS = {
 const KNOBS: Record<ThemeState, ThemeKnobs> = {
   'classic-dark': {
     polarity: 'dark',
-    background: '#1B1B1B',
+    // **Pure black, which is the legacy client's `classicDark0`.** The page is the black one and
+    // `#1B1B1B` is the colour of the things that sit on it -- cards, and the alert background.
+    // Inverted, the whole app reads a shade too light beside the client.
+    background: '#000000',
     tint: { hue: 0, surface: 0, emphasis: 0 },
     elevation: '#000000',
     pathConnected: '#31F196',
     defaultAccent: '#31F196',
     semantic: { danger: '#FF3A3A' },
-    // Classic Dark commits to dark: its recessed surface is pure black where every other theme
-    // lifts. Ocean is the nuanced one. This is the only place the ladder is overruled.
-    overrides: { backgroundSecondary: '#000000' },
+    // The client's `classicDark1`, named rather than derived: the ladder lifts from black by its
+    // own step, and this is the specific grey every surface in the client uses.
+    overrides: { backgroundSecondary: '#1B1B1B' },
   },
   'classic-light': {
     polarity: 'light',
