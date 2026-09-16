@@ -1,4 +1,3 @@
-import { requirePorts } from '@session/app'
 import {
   deviceLocale,
   followingSystemLocale,
@@ -10,10 +9,9 @@ import {
   tr,
 } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, LanguagePicker, Modal, type LanguageChoice } from '@session/ui'
-import { useMemo, useState } from 'react'
+import { LanguagePicker, type LanguageChoice } from '@session/ui'
+import { useMemo } from 'react'
 
-import { LocalizedText } from './LocalizedText'
 import { useLocale } from './useLocale'
 
 /**
@@ -34,16 +32,6 @@ const SYSTEM = '@system'
  */
 export function LanguageButton() {
   const locale = useLocale()
-  /**
-   * Asked before leaving, because leaving is the whole of what this does.
-   *
-   * The in-app picker changes the language in front of you and can be changed back. Handing over
-   * to the OS puts somebody in another app, in a list of every language their device has, and on
-   * iOS the change relaunches this one -- so the tap that starts it is worth confirming, in the
-   * same shape the FAQ and website links here already use for leaving.
-   */
-  const [confirming, setConfirming] = useState(false)
-
   /**
    * The row that hands the choice back to the device, above the languages themselves.
    *
@@ -74,87 +62,24 @@ export function LanguageButton() {
     [system, locale],
   )
 
-  const openLanguageSettings = requirePorts().linking.openLanguageSettings
-
   return (
-    <>
-      <LanguagePicker
-        value={followingSystemLocale() ? SYSTEM : locale}
-        options={options}
-        // The picker speaks in strings because that is all a generic control can take; the cast back
-        // is checked rather than asserted, so a row that somehow named an unknown locale is ignored
-        // instead of setting the app to a language with no catalogue behind it.
-        onChange={(next) => {
-          if (next === SYSTEM) followSystemLocale()
-          else if (isCrowdinLocale(next)) setLocale(next)
-        }}
-        // Null where the OS has no per-app language screen -- see the port. Passing it through
-        // rather than deciding here keeps the "which OS, which version" question at the app edge,
-        // where the answer is known.
-        //
-        // Opening is confirmed rather than immediate, so what the picker gets here raises the
-        // question and the answer is what leaves. Given this, the picker's trigger hands straight
-        // over and no dropdown opens -- there is nothing in one worth a tap.
-        {...(openLanguageSettings === null
-          ? {}
-          : {
-              onOpenSystemSettings: () => {
-                setConfirming(true)
-              },
-            })}
-        accessibilityLabel={tr('appearanceLanguage')}
-        title={tr('appearanceLanguage')}
-        searchPlaceholder={tr('search')}
-        emptyLabel={tr('searchMatchesNone')}
-        closeLabel={tr('close')}
-        compact
-        testIDs={ELEMENT.languagePicker}
-      />
-
-      <Modal
-        open={confirming}
-        onClose={() => {
-          setConfirming(false)
-        }}
-        title={tr('appearanceLanguage')}
-        closeLabel={tr('cancel')}
-        testID={ELEMENT.languagePicker.confirmSettings}
-        closeTestID={ELEMENT.languagePicker.confirmSettingsCancel}
-        // A question, so it gets two words rather than a word and a glyph. See the prop.
-        showClose={false}
-        actions={
-          /* Confirm first, which is the order the legacy client's alert uses -- its row is
-             `[confirm, cancel]` with equal widths, so the affirmative sits on the left. */
-          <>
-            <Button
-              variant="simple"
-              fill
-              testID={ELEMENT.languagePicker.confirmSettingsOpen}
-              onPress={() => {
-                setConfirming(false)
-                if (openLanguageSettings !== null) void openLanguageSettings()
-              }}
-            >
-              {tr('openSettings')}
-            </Button>
-            <Button
-              variant="simple"
-              fill
-              testID={ELEMENT.languagePicker.confirmSettingsCancel}
-              onPress={() => {
-                setConfirming(false)
-              }}
-            >
-              {tr('cancel')}
-            </Button>
-          </>
-        }
-      >
-        {/* The catalogue's own description of the setting. It is written for the in-app picker and
-            it is still true of the OS one -- what it explains is that the language applies to
-            Session and that changing it restarts the app, both of which hold either way. */}
-        <LocalizedText text={tr('appearanceLanguageDescription')} />
-      </Modal>
-    </>
+    <LanguagePicker
+      value={followingSystemLocale() ? SYSTEM : locale}
+      options={options}
+      // The picker speaks in strings because that is all a generic control can take; the cast back
+      // is checked rather than asserted, so a row that somehow named an unknown locale is ignored
+      // instead of setting the app to a language with no catalogue behind it.
+      onChange={(next) => {
+        if (next === SYSTEM) followSystemLocale()
+        else if (isCrowdinLocale(next)) setLocale(next)
+      }}
+      accessibilityLabel={tr('appearanceLanguage')}
+      title={tr('appearanceLanguage')}
+      searchPlaceholder={tr('search')}
+      emptyLabel={tr('searchMatchesNone')}
+      closeLabel={tr('close')}
+      compact
+      testIDs={ELEMENT.languagePicker}
+    />
   )
 }

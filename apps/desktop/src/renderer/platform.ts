@@ -55,7 +55,6 @@ setPorts(
         return Promise.resolve()
       },
       // No per-app language screen to hand over to on desktop. See the port.
-      openLanguageSettings: null,
       // No OS settings page for a desktop app to send anybody to; the app's own settings are in
       // the app. Null rather than a no-op, for the reason the row above gives.
       openAppSettings: null,

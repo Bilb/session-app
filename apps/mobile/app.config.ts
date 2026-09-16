@@ -193,9 +193,9 @@ export default ({ config }: ConfigContext): ExpoConfig =>
          * above reachable: a bundle is localized for the languages it declares here.
          *
          * Settings shows a Preferred Language row only for a bundle that declares more than one
-         * localization. Without this list the app's settings page has no language on it, so the
-         * hand-off the language button offers would land somebody somewhere with nothing to change
-         * -- which is why `openLanguageSettings` was null until now.
+         * localization. The app does not send anybody there -- the picker owns the language on
+         * every platform -- but iOS reports whatever is chosen there as the app's effective
+         * locale, which is what the picker's *Default* row follows.
          *
          * The catalogue's own identifiers, which are Crowdin's. iOS matches these against the
          * device's preferred languages by the usual BCP-47 rules rather than exactly, so one it

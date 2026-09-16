@@ -35,17 +35,6 @@ export interface LanguagePickerTestIDs {
 }
 
 /**
- * Whether the OS has a per-app language screen to hand over to.
- *
- * When it does, the trigger calls this and no panel opens: the picker has nothing to offer that
- * the OS does not own, and a dropdown whose only row says "go somewhere else" is a step for its
- * own sake. It carried a label for that row until the row existed; the caller now owns the whole
- * of what happens next, confirmation included.
- */
-type SystemSettingsHandover =
-  { onOpenSystemSettings: () => void } | { onOpenSystemSettings?: never }
-
-/**
  * The props the LanguagePicker accepts.
  *
  * Every piece of text is passed in. This package cannot import `@session/localization` -- the
@@ -77,11 +66,4 @@ interface LanguagePickerBaseProps {
   testIDs: LanguagePickerTestIDs
 }
 
-/**
- * `onOpenSystemSettings` being present *is* the capability check, decided by the app rather than
- * guessed at here: iOS lists Preferred Language only for a bundle declaring more than one
- * localization, and Android shows App Language only on 13 or newer for an app shipping a
- * `localeConfig`. Absent means the picker does the work itself, which is also what desktop always
- * does.
- */
-export type LanguagePickerProps = LanguagePickerBaseProps & SystemSettingsHandover
+export type LanguagePickerProps = LanguagePickerBaseProps

@@ -91,9 +91,6 @@ export const ELEMENT = {
     panel: 'language-picker-panel',
     search: 'language-picker-search',
     close: 'language-picker-close',
-    confirmSettings: 'language-picker-confirm-settings',
-    confirmSettingsOpen: 'language-picker-confirm-settings-open',
-    confirmSettingsCancel: 'language-picker-confirm-settings-cancel',
     option: (locale: string) => `language-picker-option-${locale}` as const,
   },
 

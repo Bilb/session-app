@@ -64,7 +64,6 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
       openUrl: () => Promise.resolve(),
       // Null, not a no-op: the language picker reads this as "does the OS have a language screen",
       // and a function that did nothing would answer yes and then do nothing.
-      openLanguageSettings: null,
       // Same reasoning: desktop has no page to send anybody to, and a function that did nothing
       // would claim it had.
       openAppSettings: null,
