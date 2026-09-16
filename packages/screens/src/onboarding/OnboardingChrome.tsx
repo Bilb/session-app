@@ -139,6 +139,7 @@ export function OnboardingChrome({
   barTitle,
   banner,
   padContent = true,
+  avoidsKeyboard = true,
 }: {
   children: ReactNode
   testID: string
@@ -176,6 +177,16 @@ export function OnboardingChrome({
    * how the client has it. The panes then pad themselves.
    */
   padContent?: boolean
+  /**
+   * Whether the screen moves out of the keyboard's way.
+   *
+   * True for every step that has a field. **False for the landing screen**, which has none: the
+   * only keyboard it can raise is the language picker's search, and that lives in a modal of its
+   * own. On Android the whole activity resizes for it regardless, so without this the Create
+   * account and I have an account buttons climb the screen while somebody types in a panel that
+   * is over the top of them. A product call.
+   */
+  avoidsKeyboard?: boolean
 }) {
   const wide = useMedia().gtSm
   const window = useWindowSize()
@@ -189,7 +200,7 @@ export function OnboardingChrome({
     return (
       // Not `padded`: onboarding has its own inset, which is more than twice the screen default
       // and is the clients' own. See the constants.
-      <Screen testID={testID}>
+      <Screen testID={testID} avoidsKeyboard={avoidsKeyboard}>
         {/* The bar the phone design puts above the step. Its controls sit in from the edge by the
             space the platform's own navigation bar uses, not by the hairline the content inset
             would leave them. */}

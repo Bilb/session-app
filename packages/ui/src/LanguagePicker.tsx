@@ -1,5 +1,6 @@
-import { useRef, useState } from 'react'
-import { Modal, useWindowDimensions } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { Keyboard, Modal, useWindowDimensions } from 'react-native'
+import type { KeyboardEvent } from 'react-native'
 import { XStack, YStack, type TamaguiElement } from 'tamagui'
 
 import { measureAnchor, panelLeft, panelPlacement, type AnchorRect } from './anchorRect'
@@ -19,6 +20,39 @@ const GAP = 6
 const PANEL_CHROME = 110
 /** Below this the panel is not worth opening downwards, and it flips above the trigger instead. */
 const MIN_PANEL_HEIGHT = 260
+
+/**
+ * How much of the window the keyboard is currently covering.
+ *
+ * react-native's own `Keyboard` rather than the keyboard-controller this package uses elsewhere,
+ * because this file is one of the few here with no `.native` pair -- the controller is a native
+ * module and would not resolve in the desktop bundle. `Keyboard` is a no-op on the web, which is
+ * the right answer there: a desktop window has no keyboard drawn over it.
+ *
+ * Both event pairs are listened for because neither platform sends both: iOS has the `Will`
+ * events, which arrive with the animation, and Android only has the `Did` ones.
+ */
+function useKeyboardHeight(): number {
+  const [height, setHeight] = useState(0)
+  useEffect(() => {
+    const shown = (event: KeyboardEvent) => {
+      setHeight(event.endCoordinates.height)
+    }
+    const hidden = () => {
+      setHeight(0)
+    }
+    const subscriptions = [
+      Keyboard.addListener('keyboardWillShow', shown),
+      Keyboard.addListener('keyboardDidShow', shown),
+      Keyboard.addListener('keyboardWillHide', hidden),
+      Keyboard.addListener('keyboardDidHide', hidden),
+    ]
+    return () => {
+      for (const subscription of subscriptions) subscription.remove()
+    }
+  }, [])
+  return height
+}
 
 /**
  * The control that changes the app's language: a flag, a chevron, and a panel under it.
@@ -57,11 +91,18 @@ export function LanguagePicker({
   const [anchor, setAnchor] = useState<AnchorRect | null>(null)
   const trigger = useRef<TamaguiElement>(null)
   const window = useWindowDimensions()
+  const keyboard = useKeyboardHeight()
 
   const selected = options.find((option) => option.value === value)
 
+  // **The keyboard comes out of the window, not out of nothing.** `useWindowDimensions` reports
+  // the whole window whether or not a keyboard is over it, so a panel sized from it keeps the
+  // height it had when it opened and the bottom of the list ends up underneath the keys -- with
+  // no way to scroll to it, because as far as the list is concerned it is already fully visible.
   const placement =
-    anchor === null ? null : panelPlacement(anchor, window.height, GAP, MARGIN, MIN_PANEL_HEIGHT)
+    anchor === null
+      ? null
+      : panelPlacement(anchor, window.height - keyboard, GAP, MARGIN, MIN_PANEL_HEIGHT)
 
   return (
     <>

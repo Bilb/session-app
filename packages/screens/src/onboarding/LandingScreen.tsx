@@ -79,7 +79,8 @@ export function LandingScreen({ onCreate, onRestore }: LandingScreenProps) {
   const wide = useMedia().gtSm
 
   return (
-    <OnboardingChrome testID={ELEMENT.onboarding.screen}>
+    // No field on this screen, so nothing here should move for a keyboard -- see the prop.
+    <OnboardingChrome testID={ELEMENT.onboarding.screen} avoidsKeyboard={false}>
       {wide ? null : <PhoneOpening />}
       {/* The buttons and the terms sit further in than the text above them on a phone, which is
           what both clients do -- see the insets. The wide design's column is already fixed. */}
