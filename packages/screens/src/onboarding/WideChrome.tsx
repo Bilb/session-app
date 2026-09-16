@@ -47,7 +47,13 @@ export function WideChrome({
       <YStack width={COLUMN_WIDTH} gap="$3">
         <OnboardingHeader />
         <YStack
-          minHeight={CONTENT_MIN_HEIGHT}
+          // **A height, not a minimum.** The reserve exists so the lockup and the chevron stay put
+          // between steps, and a minimum only delivers that while every step fits inside it. The
+          // notification step does not -- measured at 1100x760 its content is 382 against a 276
+          // reserve -- so its block grew to 424, the centring lifted the whole thing, and the
+          // header sat 58 points above where the step before it had drawn the same header. Fixed,
+          // a taller step spills out of the bottom of the box instead and nothing above it moves.
+          height={CONTENT_MIN_HEIGHT}
           opacity={fading}
           // No animation driver is configured, so the transition is declared directly. On
           // native this property is ignored and the step simply appears, which is the same
