@@ -12,13 +12,11 @@ import { parseNetworkName } from '@session/basic-types'
 setPorts(
   memoryPorts({
     // The same variable and the same parser the main process uses, inlined at build time.
-    network: { name: parseNetworkName(import.meta.env.EXPO_PUBLIC_SESSION_NETID) },
-    // Substituted at build time alongside the netid, because the renderer cannot read the
-    // environment. That makes a desktop override a rebuild rather than a relaunch -- worth fixing
-    // once the preload has an IPC surface to carry it, since a flag you cannot flip on someone
-    // else's machine does half of what a flag is for.
-    flags: {
-      override: (name) => import.meta.env.SESSION_FLAGS?.[name] ?? null,
+    network: {
+      name: parseNetworkName(import.meta.env.EXPO_PUBLIC_SESSION_NETID),
+      // Substituted at build time for the same reason as the netid: the renderer cannot read the
+      // environment.
+      usingFake: import.meta.env.SESSION_FAKE === '1',
     },
     // Substituted at build time alongside the netid, because the renderer cannot read the
     // environment. That makes a desktop override a rebuild rather than a relaunch -- worth fixing

@@ -7,6 +7,8 @@
 interface ImportMetaEnv {
   /** The Session network this build talks to. See parseNetworkName. */
   readonly EXPO_PUBLIC_SESSION_NETID?: string
+  /** '1' when the build was started against the fake bridge. See the define block. */
+  readonly SESSION_FAKE?: string
   /**
    * Every `SESSION_FLAG_*` variable present when the renderer was built, keyed by name.
    *

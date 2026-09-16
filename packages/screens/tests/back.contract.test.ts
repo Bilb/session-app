@@ -17,11 +17,21 @@ import { describe, expect, it } from 'vitest'
 const ROOTS = new Set([
   // The home screen: there is nothing behind it.
   'ConversationListScreen.tsx',
-  // Nothing exists yet to go back to, and leaving is not a thing to offer.
-  'OnboardingScreen.tsx',
   // Shown while the store wakes up; it navigates away by itself.
   'StartingScreen.tsx',
+  // The store could not be opened, so there is no app behind this to go back into. It offers Quit,
+  // which is the only thing that can honestly be offered.
+  'StartupFailedScreen.tsx',
 ])
+
+/**
+ * Onboarding is not in this list because it is not one of these files.
+ *
+ * It is a flow of steps under `onboarding/` behind a single route, and its own back control is
+ * wired step to step rather than to the navigator -- `OnboardingChrome` draws it on the phone
+ * layout and `OnboardingStep` hangs it off the wide column. `flow.ts` decides where each step's
+ * back leads, and `flow.test.ts` is what holds that to account.
+ */
 
 const dir = join(import.meta.dirname, '../src')
 const screens = readdirSync(dir).filter((name) => name.endsWith('Screen.tsx'))

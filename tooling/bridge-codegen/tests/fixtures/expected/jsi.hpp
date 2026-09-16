@@ -352,7 +352,7 @@ struct JSIConverter<::session_bridge::Attachment> final {
         jsi::Object obj = arg.asObject(runtime);
         return ::session_bridge::Attachment(
                 JSIConverter<std::vector<std::byte>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "data"))),
-                JSIConverter<std::optional<::session_bridge::SecretBytes>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "key"))));
+                ::session_bridge::optional_from_jsi<::session_bridge::SecretBytes>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "key"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::Attachment& arg) {
         jsi::Object obj(runtime);
