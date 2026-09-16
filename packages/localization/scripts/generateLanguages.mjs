@@ -73,6 +73,7 @@ function regionFor(locale) {
 const names = {}
 const english = {}
 const regions = {}
+const rightToLeft = []
 const unresolved = []
 for (const locale of locales) {
   let name
@@ -94,6 +95,16 @@ for (const locale of locales) {
   }
   if (inEnglish && inEnglish !== locale && inEnglish !== name) english[locale] = inEnglish
   regions[locale] = regionFor(locale)
+  // Asked of ICU rather than listed by hand: the answer is a property of the script, and a list
+  // maintained here would be one more thing to forget when a locale is added. Baluchi is the one
+  // that makes the point -- it is written right-to-left and is not a language most lists remember.
+  try {
+    if (new Intl.Locale(locale).maximize().getTextInfo().direction === 'rtl')
+      rightToLeft.push(locale)
+  } catch {
+    // Older ICU has no getTextInfo. Left out rather than guessed at: a wrong direction is worse
+    // than a missing one, and the check below makes the omission loud.
+  }
 }
 
 if (unresolved.length > 0) {
@@ -115,6 +126,13 @@ const englishEntries = Object.entries(english)
   .sort(byCode)
   .map(([code, name]) => `  '${code}': ${JSON.stringify(name)},`)
   .join('\n')
+
+if (rightToLeft.length === 0) {
+  // Every catalogue we ship has Arabic and Hebrew in it, so an empty answer means this node's ICU
+  // could not be asked rather than that there are none -- which would silently ship a
+  // left-to-right layout to every reader of a right-to-left script.
+  throw new Error('no right-to-left locales found; this node cannot answer getTextInfo')
+}
 
 const regionEntries = Object.entries(regions)
   .sort(byCode)
@@ -154,6 +172,20 @@ ${englishEntries}
 export const LANGUAGE_REGIONS: Record<CrowdinLocale, string | null> = {
 ${regionEntries}
 }
+
+/**
+ * The locales written right to left, as ICU reports them.
+ *
+ * A set rather than a flag per row, because it is the question that gets asked: "is this one
+ * mirrored" has one answer for the whole layout and none of the other per-locale data is needed
+ * to give it.
+ */
+export const RTL_LOCALES: ReadonlySet<CrowdinLocale> = new Set([
+${rightToLeft
+  .sort()
+  .map((code) => `  '${code}',`)
+  .join('\n')}
+])
 `
 
 mkdirSync(join(pkg, 'src/generated'), { recursive: true })

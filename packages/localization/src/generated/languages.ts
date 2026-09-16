@@ -263,3 +263,19 @@ export const LANGUAGE_REGIONS: Record<CrowdinLocale, string | null> = {
   'zh-CN': 'CN',
   'zh-TW': 'TW',
 }
+
+/**
+ * The locales written right to left, as ICU reports them.
+ *
+ * A set rather than a flag per row, because it is the question that gets asked: "is this one
+ * mirrored" has one answer for the whole layout and none of the other per-locale data is needed
+ * to give it.
+ */
+export const RTL_LOCALES: ReadonlySet<CrowdinLocale> = new Set([
+  'ar',
+  'bal',
+  'fa',
+  'he',
+  'ps',
+  'ur',
+])

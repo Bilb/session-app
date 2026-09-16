@@ -1,6 +1,7 @@
 import { Check } from '@tamagui/lucide-icons-2/icons/Check'
 import { ChevronDown } from '@tamagui/lucide-icons-2/icons/ChevronDown'
 import { ChevronLeft } from '@tamagui/lucide-icons-2/icons/ChevronLeft'
+import { ChevronRight } from '@tamagui/lucide-icons-2/icons/ChevronRight'
 import { CircleHelp } from '@tamagui/lucide-icons-2/icons/CircleHelp'
 import { ExternalLink } from '@tamagui/lucide-icons-2/icons/ExternalLink'
 import { Eye } from '@tamagui/lucide-icons-2/icons/Eye'
@@ -28,6 +29,7 @@ const GLYPHS = {
   check: Check,
   chevronDown: ChevronDown,
   chevronLeft: ChevronLeft,
+  chevronRight: ChevronRight,
   circleHelp: CircleHelp,
   externalLink: ExternalLink,
   eye: Eye,

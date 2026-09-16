@@ -9,6 +9,7 @@ import {
   RequestsScreen,
   SettingsScreen,
   useLocale,
+  useTextDirection,
 } from '@session/screens'
 import { SessionStoreProvider, useAccount, useHydrated, useStartupError } from '@session/state'
 import { Text, UIProvider, YStack } from '@session/ui'
@@ -30,6 +31,8 @@ export function App() {
   // here rather than in a provider, because a provider's `children` arrive as an element created
   // by its own parent, and React skips a subtree whose element has not changed.
   useLocale()
+  // And mirrors the layout with it, where the language is written right to left.
+  useTextDirection()
 
   useEffect(() => {
     // `start`, not `hydrate`: a rejection here has no screen to land on, so the store turns it

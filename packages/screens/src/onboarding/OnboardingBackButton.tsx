@@ -1,6 +1,6 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Icon, YStack } from '@session/ui'
+import { backChevron, Button, Icon, YStack } from '@session/ui'
 
 /**
  * The way back out of an onboarding step.
@@ -27,7 +27,7 @@ export function OnboardingBackButton({ onPress }: { onPress: () => void }) {
       accessibilityLabel={tr('back')}
       testID={ELEMENT.onboarding.back}
       onPress={onPress}
-      icon={<Icon name="chevronLeft" size="$5" color="$textPrimary" />}
+      icon={<Icon name={backChevron()} size="$5" color="$textPrimary" />}
     />
   )
 }

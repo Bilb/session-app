@@ -51,11 +51,17 @@ export function measureAnchor(node: unknown, onMeasured: (rect: AnchorRect | nul
 }
 
 /**
- * Where to put a panel of `panelWidth` hanging off `anchor`, right edges aligned.
+ * Where to put a panel of `panelWidth` hanging off `anchor`, trailing edges aligned.
  *
- * Right-aligned because the trigger is a small control with a chevron and the panel is wider than
- * it: hanging the panel's left edge off the trigger's would push it off the right of the window
- * wherever the trigger sits near that edge, which is where this one usually does.
+ * **Aligned to the trigger's trailing edge**, because the trigger is a small control with a
+ * chevron and the panel is wider than it: hanging the panel's leading edge off the trigger's would
+ * push it off the far side of the window wherever the trigger sits near that edge, which is where
+ * this one usually does. Which edge that is mirrors -- the trigger sits in the top trailing corner
+ * either way, so the panel has to grow back toward the middle either way.
+ *
+ * **The answer is a physical offset and that is deliberate.** It is a window coordinate handed to
+ * `left`, because the panel is placed against a measured rectangle rather than laid out in flow,
+ * and a measurement is physical. Only the choice of which edge to align is direction-dependent.
  *
  * Clamped to the window on both sides, so the panel is always whole. The margin is the smallest
  * gap worth keeping between it and the window edge.
@@ -65,9 +71,10 @@ export function panelLeft(
   panelWidth: number,
   windowWidth: number,
   margin: number,
+  rtl = false,
 ): number {
-  const rightAligned = anchor.x + anchor.width - panelWidth
-  return Math.max(margin, Math.min(rightAligned, windowWidth - panelWidth - margin))
+  const aligned = rtl ? anchor.x : anchor.x + anchor.width - panelWidth
+  return Math.max(margin, Math.min(aligned, windowWidth - panelWidth - margin))
 }
 
 export interface PanelPlacement {

@@ -91,4 +91,19 @@ describe('measuring the trigger', () => {
     })
     expect(measured).toBeNull()
   })
+
+  it('aligns to the other edge of the trigger when the layout is mirrored', () => {
+    // The trigger sits in the top trailing corner either way, so the panel grows back toward the
+    // middle either way -- which is the opposite edge of the anchor in each direction.
+    const anchor = { x: 700, y: 10, width: 60, height: 40 }
+    expect(panelLeft(anchor, 300, 1000, 8)).toBe(460)
+    expect(panelLeft(anchor, 300, 1000, 8, true)).toBe(692)
+  })
+
+  it('keeps the panel whole against either window edge when mirrored', () => {
+    const nearTrailing = { x: 940, y: 10, width: 50, height: 40 }
+    expect(panelLeft(nearTrailing, 300, 1000, 8, true)).toBe(692)
+    const nearLeading = { x: 4, y: 10, width: 50, height: 40 }
+    expect(panelLeft(nearLeading, 300, 1000, 8, true)).toBe(8)
+  })
 })

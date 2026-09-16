@@ -65,3 +65,6 @@ export type { KeyboardType } from './nativeProps'
 // Layout primitives and hooks, re-exported so app and screen code never imports tamagui.
 export { ScrollView, Separator, Spinner, XStack, YStack, styled, useMedia, useTheme } from 'tamagui'
 export type { GetProps } from 'tamagui'
+export { applyDirection } from './textDirection'
+export { backChevron } from './backChevron'
+export { isLayoutRtl } from './layoutDirection'

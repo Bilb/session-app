@@ -9,6 +9,9 @@ import { domInputType, keyboardTypeToInputMode } from './nativeProps'
  * Tamagui's Input already renders an <input> here, so the only real work is turning the
  * native prop names the shared screens use into the DOM ones.
  */
+/** What `$2` resolves to. The inset props take a dimension rather than a space token. */
+const SLOT_INSET = 15
+
 export function Input({
   value,
   onChangeText,
@@ -89,7 +92,10 @@ export function Input({
       {end === undefined ? null : (
         <XStack
           position="absolute"
-          right="$2"
+          // The trailing edge, which is the right one only until the layout mirrors.
+          // A number rather than `$2`: the inset props take a dimension and not a space
+          // token, so this is `SPACE_SCALE[2]` written out.
+          end={SLOT_INSET}
           top={0}
           bottom={0}
           alignItems="center"

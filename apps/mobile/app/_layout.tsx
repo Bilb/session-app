@@ -1,4 +1,4 @@
-import { useLocale } from '@session/screens'
+import { useLocale, useTextDirection } from '@session/screens'
 import { SessionStoreProvider, type SessionStore } from '@session/state'
 import { Text, UIProvider, YStack } from '@session/ui'
 import { Slot } from 'expo-router'
@@ -21,6 +21,8 @@ export default function RootLayout() {
   // Subscribes the whole tree to the app's language -- see the note on the desktop root. It has to
   // be the component that creates the subtree, not a provider wrapped around one.
   useLocale()
+  // And mirrors the layout with it, where the language is written right to left.
+  useTextDirection()
 
   const [store, setStore] = useState<SessionStore | null>(null)
 

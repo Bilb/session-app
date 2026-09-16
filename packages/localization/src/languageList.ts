@@ -3,7 +3,12 @@ import {
   isCrowdinLocale,
   type CrowdinLocale,
 } from './localization-src/generated/constants'
-import { LANGUAGE_NAMES, LANGUAGE_NAMES_EN, LANGUAGE_REGIONS } from './generated/languages'
+import {
+  LANGUAGE_NAMES,
+  LANGUAGE_NAMES_EN,
+  LANGUAGE_REGIONS,
+  RTL_LOCALES,
+} from './generated/languages'
 
 /**
  * The language picker's list, and the two pieces of per-language presentation it needs.
@@ -91,6 +96,18 @@ export function languageName(locale: CrowdinLocale): string {
  */
 function languageNameInEnglish(locale: CrowdinLocale): string | null {
   return NAME_OVERRIDES[locale]?.english ?? LANGUAGE_NAMES_EN[locale] ?? null
+}
+
+/**
+ * Whether a locale is written right to left, and therefore whether the layout mirrors.
+ *
+ * **The whole layout, not the text.** Text direction is the renderer's business and it handles it
+ * per run; this is the separate question of which side a back chevron points, which edge an
+ * input's trailing slot sits on, and which way a panel opens -- and that has one answer per
+ * locale, applied once.
+ */
+export function isRtlLocale(locale: CrowdinLocale): boolean {
+  return RTL_LOCALES.has(locale)
 }
 
 export interface LanguageOption {

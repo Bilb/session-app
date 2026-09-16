@@ -4,6 +4,7 @@ import type { KeyboardEvent } from 'react-native'
 import { XStack, YStack, type TamaguiElement } from 'tamagui'
 
 import { measureAnchor, panelLeft, panelPlacement, type AnchorRect } from './anchorRect'
+import { isLayoutRtl } from './layoutDirection'
 import { Button } from './Button'
 import { Icon } from './Icon'
 import { LanguageChoiceList } from './LanguageChoiceList'
@@ -171,7 +172,7 @@ export function LanguagePicker({
               {...(placement.side === 'below'
                 ? { top: placement.offset }
                 : { bottom: placement.offset })}
-              left={panelLeft(anchor, PANEL_WIDTH, window.width, MARGIN)}
+              left={panelLeft(anchor, PANEL_WIDTH, window.width, MARGIN, isLayoutRtl())}
               width={PANEL_WIDTH}
               // **The panel is what is capped, and the list takes what is left of it.** The cap
               // used to be on the list, with the chrome above it subtracted as a constant -- and

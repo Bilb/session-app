@@ -17,6 +17,7 @@ export type IconName =
   | 'check'
   | 'chevronDown'
   | 'chevronLeft'
+  | 'chevronRight'
   | 'circleHelp'
   | 'externalLink'
   | 'eye'
