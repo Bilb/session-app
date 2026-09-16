@@ -36,18 +36,32 @@ describe.skipIf(seedUrl === undefined)('a local devnet', () => {
     const dir = mkdtempSync(join(tmpdir(), 'session-devnet-'))
     mkdirSync(join(dir, 'cache'), { recursive: true })
 
-    const client = createSessionClient(
-      createNodeBridgeTransport({
-        dbPath: join(dir, 'session.db'),
-        cacheDir: join(dir, 'cache'),
-        rawKey: new Uint8Array(32).fill(7),
-        deferAccount: true,
-        netid: 'devnet',
-        seedNodes,
-        deviceType: 'desktop',
-        logLevel: 'info',
-      }),
-    )
+    const transport = createNodeBridgeTransport({
+      dbPath: join(dir, 'session.db'),
+      cacheDir: join(dir, 'cache'),
+      rawKey: new Uint8Array(32).fill(7),
+      deferAccount: true,
+      netid: 'devnet',
+      seedNodes,
+      deviceType: 'desktop',
+      // `network` alone, because a flat debug is a thousand lines of quic per run.
+      logLevel: 'warn',
+      logCategories: [{ category: 'network', level: 'debug' }],
+    })
+
+    // `networkAttached` is a boolean: it says a network attached, not which one, and mainnet
+    // would set it just the same. libsession names what it configured in its own log, so that
+    // is what gets asserted.
+    const lines: string[] = []
+    const client = createSessionClient({
+      ...transport,
+      setSink(handler) {
+        transport.setSink((frame) => {
+          if (frame.type === 'event' && frame.event.type === 'log') lines.push(frame.event.message)
+          handler(frame)
+        })
+      },
+    })
 
     try {
       await client.createAccount()
@@ -57,10 +71,15 @@ describe.skipIf(seedUrl === undefined)('a local devnet', () => {
       )
       expect(info.haveAccount).toBe(true)
       expect(info.networkAttached).toBe(true)
+
+      const joined = lines.join('\n')
+      expect(joined).toMatch(/Network config set to devnet with \d+ seed node\(s\)/)
+      // Session Router refuses a devnet, so this is the only transport it can be on.
+      expect(joined).toContain('route requests using Onion Requests')
     } finally {
       client.close()
     }
-  }, 120_000)
+  }, 60_000)
 
   it('carries a message between two accounts on it', async () => {
     if (seedUrl === undefined) throw new Error('unreachable: the suite is skipped without it')
@@ -95,27 +114,46 @@ describe.skipIf(seedUrl === undefined)('a local devnet', () => {
       const aliceId = (await alice.getAccountInfo()).sessionId ?? ''
       console.log(`alice ${aliceId}\nbob   ${bobId}`)
 
-      const body = `devnet round trip ${String(Date.now())}`
       const conversation = await alice.openDm(bobId)
-      await alice.sendMessage(conversation, { body })
 
-      // A real swarm and libsession's own poll ticker, so this waits rather than settling a
-      // clock. Asking before waiting, and waiting only when the answer was no: a sleep at the
-      // top of the loop is a floor on whatever this reports, so at 3s it could only ever say
-      // "3 seconds" for a devnet that delivers in half of one. The deadline stays generous
-      // because a first attempt can fall inside the window where the router is bootstrapping.
-      const started = Date.now()
-      const deadline = started + 90_000
-      let arrived = false
-      while (Date.now() < deadline) {
-        const messages = await bob.getMessages(aliceId)
-        arrived = messages.some((message) => message.body === body)
-        if (arrived) break
-        await new Promise((resolve) => setTimeout(resolve, 50))
+      /**
+       * Sends one message and says how long it took to land.
+       *
+       * Asking before waiting, and waiting only when the answer was no: a sleep at the top of the
+       * loop is a floor on whatever this reports, so at 3s it could only ever say "3 seconds" for
+       * a devnet that delivers in half of one.
+       */
+      const roundTrip = async (body: string, within: number): Promise<number> => {
+        const started = Date.now()
+        await alice.sendMessage(conversation, { body })
+        const deadline = started + within
+        while (Date.now() < deadline) {
+          const messages = await bob.getMessages(aliceId)
+          if (messages.some((message) => message.body === body)) return Date.now() - started
+          await new Promise((resolve) => setTimeout(resolve, 50))
+        }
+        return -1
       }
 
-      console.log(`arrived at bob: ${String(arrived)} after ${String(Date.now() - started)}ms`)
-      expect(arrived).toBe(true)
+      // The first one pays for the routers: each side builds its paths after attaching, and a
+      // handshake started inside that window times out rather than waiting. Nothing about it is
+      // worth timing, only that it eventually lands - observed between 0.5s and 34s on the same
+      // devnet minutes apart, which is why it gets the whole budget and no bound.
+      const first = await roundTrip(`devnet warm up ${String(Date.now())}`, 90_000)
+      console.log(`first message: ${first === -1 ? 'never arrived' : `${String(first)}ms`}`)
+      expect(first).toBeGreaterThan(-1)
+
+      // With the paths up, this is the poll interval and one machine's worth of network: observed
+      // at 455-960ms, against the 500ms a devnet polls at.
+      //
+      // The bound is 5s rather than 1s on purpose. What is worth catching is the poll interval
+      // going back to libsession's 20-second default, and 5s separates those two regimes with
+      // room to spare. A 1s bound would instead measure this machine's jitter - 960ms of the
+      // observed spread was that - and fail for reasons that say nothing about the code.
+      const second = await roundTrip(`devnet round trip ${String(Date.now())}`, 10_000)
+      console.log(`second message: ${second === -1 ? 'never arrived' : `${String(second)}ms`}`)
+      expect(second).toBeGreaterThan(-1)
+      expect(second).toBeLessThan(5_000)
     } finally {
       alice.close()
       bob.close()

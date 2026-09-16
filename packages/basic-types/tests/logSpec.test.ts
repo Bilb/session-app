@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { KNOWN_LOG_CATEGORIES, parseLogSpec } from '#src/logSpec'
+import { parseLogSpec } from '#src/logSpec'
 
 describe('parseLogSpec', () => {
   it('is unset when there is nothing to say', () => {
@@ -10,7 +10,7 @@ describe('parseLogSpec', () => {
   })
 
   it('reads a bare level as the default', () => {
-    expect(parseLogSpec('debug')).toEqual({ level: 'debug', categories: [], unknown: [] })
+    expect(parseLogSpec('debug')).toEqual({ level: 'debug', categories: [] })
   })
 
   it('reads a default with overrides on top', () => {
@@ -20,7 +20,6 @@ describe('parseLogSpec', () => {
         { category: 'network', level: 'debug' },
         { category: 'client', level: 'trace' },
       ],
-      unknown: [],
     })
   })
 
@@ -32,27 +31,20 @@ describe('parseLogSpec', () => {
     expect(parseLogSpec(' warn , network = debug ')).toEqual({
       level: 'warn',
       categories: [{ category: 'network', level: 'debug' }],
-      unknown: [],
     })
   })
 
-  it('reports a category nothing declares, and still applies it', () => {
-    // `Cat(name)` creates a logger on demand, so a typo matches nothing and fails silently. The
-    // caller is given the name so it can say so rather than the setting quietly doing nothing.
-    const spec = parseLogSpec('netwrok=debug')
-    expect(spec?.unknown).toEqual(['netwrok'])
-    expect(spec?.categories).toEqual([{ category: 'netwrok', level: 'debug' }])
+  it('passes a category it has never heard of straight through', () => {
+    // No list here could be authoritative - they are declared across three repositories - and
+    // libsession makes a logger for whatever it is given, which matches no line and costs nothing.
+    expect(parseLogSpec('anything-at-all=debug')?.categories).toEqual([
+      { category: 'anything-at-all', level: 'debug' },
+    ])
   })
 
-  it('reports an unreadable part rather than refusing to start', () => {
+  it('drops an unreadable part rather than refusing to start', () => {
     const spec = parseLogSpec('warn,network=verbose,=debug,nonsense')
     expect(spec?.level).toBe('warn')
     expect(spec?.categories).toEqual([])
-    expect(spec?.unknown).toEqual(['network=verbose', '=debug', 'nonsense'])
-  })
-
-  it('knows the categories libsession actually declares', () => {
-    for (const name of ['network', 'client', 'quic', 'session-router', 'snode_pool'])
-      expect(KNOWN_LOG_CATEGORIES).toContain(name)
   })
 })

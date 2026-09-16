@@ -57,10 +57,6 @@ async function openTransport(): Promise<BridgeTransport> {
   const netid = netidForTransport(name, devnet)
   const router = parseRouterKind(process.env['EXPO_PUBLIC_SESSION_ROUTER'])
   const logs = parseLogSpec(process.env['EXPO_PUBLIC_SESSION_LOG'])
-  if (logs !== undefined && logs.unknown.length > 0)
-    console.warn(
-      `EXPO_PUBLIC_SESSION_LOG: ignoring ${logs.unknown.join(', ')} - not a level or a known category.`,
-    )
 
   const { createNativeBridgeTransport, discoverSeedNodes } = await import('@session/client')
   const paths = await sessionPaths(name)

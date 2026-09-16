@@ -118,11 +118,13 @@ export async function discoverSeedNodes(
       `${endpoint} answered, but not like an oxend RPC: no result.service_node_states. Check ${variable} names the RPC port.`,
     )
 
-  const seeds = seedNodesFrom(payload)
-  if (seeds.length === 0)
+  // Service nodes, not seeds: `get_n_service_nodes` returns the network's nodes, and what makes
+  // a few of them seeds is only that libsession is handed them to bootstrap from.
+  const nodes = seedNodesFrom(payload)
+  if (nodes.length === 0)
     throw new Error(
       `The devnet at ${endpoint} reported no usable service node: each needs to be reachable and to report a pubkey, an IPv4 address and both storage ports. One still starting up reports exactly this.`,
     )
 
-  return seeds
+  return nodes
 }

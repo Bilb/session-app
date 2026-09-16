@@ -81,9 +81,8 @@ struct InitOptions {
 
     /// Which network to reach and how to find it, or nothing to never reach one.
     ///
-    /// One struct rather than three fields because `attachNetwork` replaces all of it at once: a
-    /// netid that took effect while the seed nodes it needs did not would be a network nobody
-    /// asked for.
+    /// One struct because `attachNetwork` replaces the whole of it in a single call, and the
+    /// parts only make sense together: a netid without the seed nodes it needs reaches nothing.
     NetworkOptions network;
 
     /// What this client tells the account's other devices it is: "ios", "android" or "desktop".

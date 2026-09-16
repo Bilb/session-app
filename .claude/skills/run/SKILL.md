@@ -115,9 +115,9 @@ Against the fake:
 pnpm dev:fake               # both; or dev:desktop:fake / dev:mobile:fake
 ```
 
-Mobile reads `EXPO_PUBLIC_SESSION_FAKE`, not `EXPO_PUBLIC_SESSION_FAKE`: Metro inlines a variable into the
-bundle only when its name carries that prefix, and it caches the transform - so a Metro that was
-started without it keeps serving a bundle that ignores it until `expo start --clear`.
+Every variable carries `EXPO_PUBLIC_`, desktop's included: Metro inlines one into the bundle only
+when its name does, and it caches the transform - so a Metro started without it keeps serving a
+bundle that ignores it until `expo start --clear`.
 
 ## Against a local devnet
 

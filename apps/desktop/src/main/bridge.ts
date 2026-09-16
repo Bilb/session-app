@@ -124,11 +124,6 @@ export async function createBridge(): Promise<BridgeTransport> {
   const netid = netidForTransport(name, devnet)
   const router = parseRouterKind(process.env['EXPO_PUBLIC_SESSION_ROUTER'])
   const logs = parseLogSpec(process.env['EXPO_PUBLIC_SESSION_LOG'])
-  // A category nothing declares makes a logger that matches nothing, so it fails silently.
-  if (logs !== undefined && logs.unknown.length > 0)
-    console.warn(
-      `EXPO_PUBLIC_SESSION_LOG: ignoring ${logs.unknown.join(', ')} - not a level or a known category.`,
-    )
 
   // Per network, so a devnet identity and a mainnet one can both exist and switching back loses
   // neither. libsession derives its own snode cache from the database's directory, which puts
