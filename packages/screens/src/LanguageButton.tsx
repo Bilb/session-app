@@ -1,5 +1,14 @@
 import { requirePorts } from '@session/app'
-import { isCrowdinLocale, LANGUAGES, setLocale, tr } from '@session/localization'
+import {
+  deviceLocale,
+  followingSystemLocale,
+  followSystemLocale,
+  isCrowdinLocale,
+  languageFlag,
+  LANGUAGES,
+  setLocale,
+  tr,
+} from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Button, LanguagePicker, Modal, type LanguageChoice } from '@session/ui'
 import { useMemo, useState } from 'react'
@@ -17,6 +26,12 @@ import { useLocale } from './useLocale'
  * Its own component rather than part of a screen because it belongs on more than one: onboarding
  * needs it before an account exists, and appearance settings needs the same control afterwards.
  */
+/**
+ * The value of the row that follows the device, which is not a locale and must not collide with
+ * one. Crowdin's codes are BCP-47, where a leading `@` cannot appear.
+ */
+const SYSTEM = '@system'
+
 export function LanguageButton() {
   const locale = useLocale()
   /**
@@ -29,11 +44,29 @@ export function LanguageButton() {
    */
   const [confirming, setConfirming] = useState(false)
 
-  // Mapped once: the list is fixed for the life of the process, and the picker re-renders on every
-  // keystroke of its own search box.
+  /**
+   * The row that hands the choice back to the device, above the languages themselves.
+   *
+   * **It carries the flag of whatever the device resolves to**, which is the whole reason it can
+   * say so little: the word says that the language is not ours to decide and the flag says which
+   * one that currently means. "Default" is iOS's own vocabulary for it -- its per-app Language
+   * screen labels the system choice exactly that.
+   *
+   * Without this row there is no way back. Picking the system's own language by hand looks
+   * identical today and behaves differently tomorrow, when the device changes and a chosen
+   * language does not follow it.
+   */
+  const system = deviceLocale()
+
+  // The languages are fixed for the life of the process; the row above them is not, because the
+  // device's answer can change. The picker re-renders on every keystroke of its own search box, so
+  // neither is rebuilt for that.
   const options = useMemo<LanguageChoice[]>(
-    () => LANGUAGES.map(({ locale: value, name, flag }) => ({ value, label: name, flag })),
-    [],
+    () => [
+      { value: SYSTEM, label: tr('theDefault'), flag: languageFlag(system) },
+      ...LANGUAGES.map(({ locale: value, name, flag }) => ({ value, label: name, flag })),
+    ],
+    [system, locale],
   )
 
   const openLanguageSettings = requirePorts().linking.openLanguageSettings
@@ -41,13 +74,14 @@ export function LanguageButton() {
   return (
     <>
       <LanguagePicker
-        value={locale}
+        value={followingSystemLocale() ? SYSTEM : locale}
         options={options}
         // The picker speaks in strings because that is all a generic control can take; the cast back
         // is checked rather than asserted, so a row that somehow named an unknown locale is ignored
         // instead of setting the app to a language with no catalogue behind it.
         onChange={(next) => {
-          if (isCrowdinLocale(next)) setLocale(next)
+          if (next === SYSTEM) followSystemLocale()
+          else if (isCrowdinLocale(next)) setLocale(next)
         }}
         // Null where the OS has no per-app language screen -- see the port. Passing it through
         // rather than deciding here keeps the "which OS, which version" question at the app edge,

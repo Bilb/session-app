@@ -35,6 +35,20 @@ export function deviceLocale(): CrowdinLocale {
   }
 }
 
+/**
+ * Whether a language has been chosen here, as distinct from which one is in use.
+ *
+ * **Two states that look the same and are not.** Somebody following the system and somebody who
+ * picked the system's language by hand are in the same language today and want different things
+ * tomorrow: the first follows the device when it changes, the second does not. Without this the
+ * picker cannot offer a way back, because there is nothing to go back *to*.
+ *
+ * It matters more on iOS than it looks, because the device's answer is not only the device's: iOS
+ * hands an app its *effective* locale, so a per-app language set in Settings arrives here as the
+ * device's. Following the system therefore means following whichever of those two is in force,
+ * which is what somebody who set one would expect.
+ */
+let chosen: CrowdinLocale | null = null
 let current: CrowdinLocale = deviceLocale()
 const listeners = new Set<() => void>()
 
@@ -44,11 +58,41 @@ export function getLocale(): CrowdinLocale {
   return current
 }
 
-export function setLocale(locale: CrowdinLocale): void {
-  if (locale === current) return
-  current = locale
-  setLocaleInUse(locale)
+/** Whether the language is the device's rather than one picked here. */
+export function followingSystemLocale(): boolean {
+  return chosen === null
+}
+
+/**
+ * Listeners are told every time, even when the language did not move.
+ *
+ * Switching between "the device's English" and "English, chosen" changes nothing about the
+ * strings and everything about which row is ticked, and the picker reads both through the same
+ * subscription.
+ */
+function apply(locale: CrowdinLocale): void {
+  if (locale !== current) {
+    current = locale
+    setLocaleInUse(locale)
+  }
   for (const listener of listeners) listener()
+}
+
+export function setLocale(locale: CrowdinLocale): void {
+  chosen = locale
+  apply(locale)
+}
+
+/**
+ * Hands the choice back to the device.
+ *
+ * Re-read rather than remembered: the device's language can have changed since this module was
+ * loaded -- on Android it can change under a running app -- and the point of following it is to
+ * follow it now.
+ */
+export function followSystemLocale(): void {
+  chosen = null
+  apply(deviceLocale())
 }
 
 export function subscribeLocale(listener: () => void): () => void {
@@ -58,7 +102,7 @@ export function subscribeLocale(listener: () => void): () => void {
   }
 }
 
-/** Test seam: puts the store back to whatever the device says, listeners and all. */
+/** Test seam: puts the store back to its opening state, listeners and all. */
 export function resetLocale(): void {
-  setLocale(deviceLocale())
+  followSystemLocale()
 }

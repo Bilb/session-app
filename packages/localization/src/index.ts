@@ -3,4 +3,12 @@ export * from './segments/index'
 export { LANGUAGE_NAMES, LANGUAGE_REGIONS } from './generated/languages'
 export { LANGUAGES, languageFlag, languageName, matchLocale, NO_FLAG } from './languageList'
 export type { LanguageOption } from './languageList'
-export { deviceLocale, getLocale, resetLocale, setLocale, subscribeLocale } from './localeStore'
+export {
+  deviceLocale,
+  followingSystemLocale,
+  followSystemLocale,
+  getLocale,
+  resetLocale,
+  setLocale,
+  subscribeLocale,
+} from './localeStore'
