@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 /**
  * Only the chrome decides how much room a step gets.
  *
- * `OnboardingChrome` has two branches and they inset differently: the phone pads the step by
+ * The two onboarding layouts inset differently: the phone pads the step by
  * `CONTENT_INSET`, and the wide design does not pad it at all because the column is already
  * `COLUMN_WIDTH` and centred in what is left. A screen that writes the phone's figure directly
  * therefore looks right on a phone and wrong on Desktop, where it alone is 70 narrower and 25
@@ -14,14 +14,15 @@ import { describe, expect, it } from 'vitest'
  * `padContent` off so it could pad one of its two panes and not the other.
  *
  * A pane that has to apply the padding itself asks for `useStepPadding()`, which is the same
- * figures behind the same media query. Nothing else in onboarding should need the constant.
+ * figures behind the same media query. Nothing else in onboarding should need the constant, and
+ * it lives in `chromeMetrics` with every other figure that has a different answer per layout.
  */
 describe('the step inset', () => {
   const dir = join(import.meta.dirname, '../../src/onboarding')
 
-  it('is written down only in the chrome', () => {
+  it('is written down only in the metrics module', () => {
     const offenders = readdirSync(dir)
-      .filter((name) => /\.tsx?$/.test(name) && name !== 'OnboardingChrome.tsx')
+      .filter((name) => /\.tsx?$/.test(name) && name !== 'chromeMetrics.ts')
       .filter((name) => /\bCONTENT_INSET\b/.test(readFileSync(join(dir, name), 'utf8')))
 
     expect(offenders).toEqual([])
