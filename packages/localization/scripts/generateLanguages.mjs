@@ -45,6 +45,9 @@ if (typeof Intl.DisplayNames !== 'function' || typeof Intl.Locale !== 'function'
 }
 
 const regionNames = new Intl.DisplayNames(['en'], { type: 'region' })
+// The second name each row carries: what the language is called in English, so somebody whose
+// interface is in a language they cannot read can still find their own by typing it.
+const englishNames = new Intl.DisplayNames(['en'], { type: 'language' })
 
 /**
  * The region CLDR associates with a locale, or null when there is no country to name.
@@ -68,6 +71,7 @@ function regionFor(locale) {
 }
 
 const names = {}
+const english = {}
 const regions = {}
 const unresolved = []
 for (const locale of locales) {
@@ -80,6 +84,15 @@ for (const locale of locales) {
   // ICU echoes the code back when it has no name for it, which is not an answer.
   if (!name || name === locale) unresolved.push(locale)
   else names[locale] = name
+  // No `unresolved` check here: an English name that echoes the code is a row you can still find
+  // by its code or its own name, which is not the blank row the endonym would leave.
+  let inEnglish
+  try {
+    inEnglish = englishNames.of(locale)
+  } catch {
+    inEnglish = undefined
+  }
+  if (inEnglish && inEnglish !== locale && inEnglish !== name) english[locale] = inEnglish
   regions[locale] = regionFor(locale)
 }
 
@@ -94,6 +107,11 @@ if (unresolved.length > 0) {
 const byCode = (a, b) => a[0].localeCompare(b[0])
 
 const nameEntries = Object.entries(names)
+  .sort(byCode)
+  .map(([code, name]) => `  '${code}': ${JSON.stringify(name)},`)
+  .join('\n')
+
+const englishEntries = Object.entries(english)
   .sort(byCode)
   .map(([code, name]) => `  '${code}': ${JSON.stringify(name)},`)
   .join('\n')
@@ -114,6 +132,16 @@ import type { CrowdinLocale } from '../localization-src/generated/constants'
 /** Each locale's name in its own language, so a picker renders "Français" rather than "fr". */
 export const LANGUAGE_NAMES: Record<CrowdinLocale, string> = {
 ${nameEntries}
+}
+
+/**
+ * Each locale's name in English, where that differs from its own.
+ *
+ * Partial by design: a row whose English name is the same word carries nothing here. Nothing
+ * renders this -- it is there so a search for "japanese" finds 日本語.
+ */
+export const LANGUAGE_NAMES_EN: Partial<Record<CrowdinLocale, string>> = {
+${englishEntries}
 }
 
 /**

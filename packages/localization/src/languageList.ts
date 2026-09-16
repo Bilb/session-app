@@ -3,7 +3,7 @@ import {
   isCrowdinLocale,
   type CrowdinLocale,
 } from './localization-src/generated/constants'
-import { LANGUAGE_NAMES, LANGUAGE_REGIONS } from './generated/languages'
+import { LANGUAGE_NAMES, LANGUAGE_NAMES_EN, LANGUAGE_REGIONS } from './generated/languages'
 
 /**
  * The language picker's list, and the two pieces of per-language presentation it needs.
@@ -53,15 +53,52 @@ export function languageFlag(locale: CrowdinLocale): string {
   return region === null || region === undefined ? NO_FLAG : flagFor(region)
 }
 
+/**
+ * Where CLDR's name for a locale would leave two rows reading the same word.
+ *
+ * `tl` and `fil` are the case, and CLDR is not wrong so much as out of date about it: it treats
+ * Tagalog as the old code for Filipino and gives both the same name, in every language. The two
+ * catalogues are **not** the same translation -- about 70% of the strings differ, `tl` reading
+ * more formal and `fil` admitting more English loanwords -- so a picker that draws them both as
+ * "Filipino" with the same flag is offering a choice nobody can make. Tagalog is what `tl` is.
+ *
+ * An override table rather than a fix in the generator, for the same reason `FLAG_OVERRIDES` is
+ * one: this is editorial judgement about how to present the list, and it should be changeable
+ * without regenerating anything. The other way out is the one legacy iOS took -- drop `tl` at
+ * generation time -- which is cleaner but discards a real translation.
+ */
+const NAME_OVERRIDES: Partial<Record<CrowdinLocale, { name: string; english: string }>> = {
+  tl: { name: 'Tagalog', english: 'Tagalog' },
+  // The same collision, found by the test that was written for the one above. CLDR resolves `ku`
+  // to Kurmanji and then gives `kmr`, which *is* Kurmanji, the identical parenthesised name. Here
+  // the two really are the same language, `kmr` being the more specific code, so the rows are
+  // named by what each code means rather than being told apart by invention.
+  ku: { name: 'Kurdî', english: 'Kurdish' },
+  kmr: { name: 'Kurdî (Kurmancî)', english: 'Northern Kurdish' },
+}
+
 /** The locale's own name for itself, falling back to the code so a row is never blank. */
 export function languageName(locale: CrowdinLocale): string {
-  return LANGUAGE_NAMES[locale] ?? locale
+  return NAME_OVERRIDES[locale]?.name ?? LANGUAGE_NAMES[locale] ?? locale
+}
+
+/**
+ * The locale's name in English, when that is a different word from its own.
+ *
+ * Null rather than a repeat: nothing renders this, so a row whose English name is the same word
+ * has nothing to add. It exists so somebody looking at an interface in a script they cannot read
+ * can find their language by typing the name they know.
+ */
+function languageNameInEnglish(locale: CrowdinLocale): string | null {
+  return NAME_OVERRIDES[locale]?.english ?? LANGUAGE_NAMES_EN[locale] ?? null
 }
 
 export interface LanguageOption {
   locale: CrowdinLocale
   /** The language's name in that language, which is what the row reads. */
   name: string
+  /** Its name in English, where that is a different word. Searched, never drawn. */
+  english: string | null
   flag: string
 }
 
@@ -77,7 +114,12 @@ export interface LanguageOption {
  * per render would sort on every keystroke of the filter.
  */
 export const LANGUAGES: readonly LanguageOption[] = [...crowdinLocales]
-  .map((locale) => ({ locale, name: languageName(locale), flag: languageFlag(locale) }))
+  .map((locale) => ({
+    locale,
+    name: languageName(locale),
+    english: languageNameInEnglish(locale),
+    flag: languageFlag(locale),
+  }))
   .sort((a, b) => a.name.localeCompare(b.name))
 
 /**

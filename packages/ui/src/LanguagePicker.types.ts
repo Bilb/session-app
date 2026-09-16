@@ -8,6 +8,14 @@ export interface LanguageChoice {
   value: string
   /** The language's name, written in that language. */
   label: string
+  /**
+   * Its name in English, where that is a different word. **Searched, never drawn.**
+   *
+   * A row reads in its own language, which is right for somebody scanning for their own and
+   * useless for somebody who cannot read the script it is written in. They know the English name,
+   * so the filter takes it too.
+   */
+  english?: string | null
   flag: string
 }
 

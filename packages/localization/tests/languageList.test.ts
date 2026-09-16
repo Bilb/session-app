@@ -120,4 +120,21 @@ describe('matching a device language tag', () => {
     expect(matchLocale('pt')).toBeNull()
     expect(matchLocale('zh')).toBeNull()
   })
+
+  it('does not draw two rows with the same name', () => {
+    // CLDR gives `tl` and `fil` the same name in every language, treating Tagalog as the old code
+    // for Filipino. The two catalogues are not the same translation -- about 70% of their strings
+    // differ -- so two rows reading "Filipino" with the same flag offered a choice nobody could
+    // make. Every name in the list is its own.
+    const names = LANGUAGES.map((option) => option.name)
+    expect(new Set(names).size).toBe(names.length)
+  })
+
+  it('carries an English name wherever that is a different word', () => {
+    const japanese = LANGUAGES.find((option) => option.locale === 'ja')
+    expect(japanese?.english).toBe('Japanese')
+    // The same word in both: null rather than a repeat, since nothing renders it.
+    const esperanto = LANGUAGES.find((option) => option.locale === 'eo')
+    expect(esperanto?.english).toBeNull()
+  })
 })

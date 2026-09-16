@@ -48,4 +48,32 @@ describe('filtering the language list', () => {
     // full list would silently ignore the search instead.
     expect(filterLanguages(OPTIONS, 'zzz')).toEqual([])
   })
+
+  it('finds a language by its English name, whatever script it is written in', () => {
+    // The case that was hit: typing `jap` found nothing, because the row carries only 日本語 and
+    // there was nothing else to match. Somebody whose device is in English and who is looking for
+    // Japanese cannot be asked to type it in Japanese.
+    const rows = [
+      {
+        value: 'ja',
+        label: '\u65e5\u672c\u8a9e',
+        english: 'Japanese',
+        flag: '\ud83c\uddef\ud83c\uddf5',
+      },
+      { value: 'de', label: 'Deutsch', english: 'German', flag: '\ud83c\udde9\ud83c\uddea' },
+    ]
+    expect(filterLanguages(rows, 'jap').map((r) => r.value)).toEqual(['ja'])
+    expect(filterLanguages(rows, 'German').map((r) => r.value)).toEqual(['de'])
+    // The other two matchers still work, and the code is why `ja` already did.
+    expect(filterLanguages(rows, 'ja').map((r) => r.value)).toEqual(['ja'])
+    expect(filterLanguages(rows, 'Deutsch').map((r) => r.value)).toEqual(['de'])
+  })
+
+  it('tolerates a row with no English name', () => {
+    // Most of the list has one; the eight whose English name is the same word carry null rather
+    // than a repeat, and `theDefault` row carries none at all.
+    const rows = [{ value: 'eo', label: 'Esperanto', english: null, flag: '\ud83c\udf10' }]
+    expect(filterLanguages(rows, 'esper').map((r) => r.value)).toEqual(['eo'])
+    expect(filterLanguages(rows, 'zzz')).toEqual([])
+  })
 })

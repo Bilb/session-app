@@ -64,7 +64,12 @@ export function LanguageButton() {
   const options = useMemo<LanguageChoice[]>(
     () => [
       { value: SYSTEM, label: tr('theDefault'), flag: languageFlag(system) },
-      ...LANGUAGES.map(({ locale: value, name, flag }) => ({ value, label: name, flag })),
+      ...LANGUAGES.map(({ locale: value, name, english, flag }) => ({
+        value,
+        label: name,
+        english,
+        flag,
+      })),
     ],
     [system, locale],
   )
