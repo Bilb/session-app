@@ -30,14 +30,22 @@ const FIRST_BUBBLE_MS = 500
 const BUBBLE_INTERVAL_MS = 1500
 
 /**
- * How wide a bubble is allowed to get.
+ * How wide a bubble is allowed to get: **a share of the box, not a number of points.**
  *
- * iOS's number, from its bespoke `FakeChat`. A share of the width instead let a bubble run almost
- * edge to edge on a large phone, which stops reading as a conversation and starts reading as
- * paragraphs with rounded corners. Android draws these with the real message components and gets
- * the same effect from their own constraints.
+ * This was iOS's flat 230, from its bespoke `FakeChat`, because an earlier *uncapped* share let a
+ * bubble run almost edge to edge on a large phone -- which stops reading as a conversation and
+ * starts reading as paragraphs with rounded corners. Android has the better answer, and it is a
+ * share with both ends closed: `min(500, max(200, available x 0.8))`.
+ *
+ * Worked against our own insets, neither end of Android's ever fires -- the floor wants a screen
+ * under 320pt and the cap a column over 625 -- so what is left of the formula is the 80%. It lands
+ * at 62-67% of the screen on every phone from an SE to a 16 Pro Max, against the flat number's 52%
+ * to 72%, and at 278 of the 348-point column on the wide designs.
+ *
+ * A percentage rather than a measured width for the reason the hero panel is one: a number
+ * computed in JS from the window lags the box it is meant to describe while that box is animating.
  */
-const BUBBLE_MAX_WIDTH = 230
+const BUBBLE_MAX_WIDTH = '80%'
 
 /**
  * The height the conversation is played out in, and why the earlier lines move.
