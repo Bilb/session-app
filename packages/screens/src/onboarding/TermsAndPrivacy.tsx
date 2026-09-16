@@ -64,6 +64,10 @@ export function TermsAndPrivacy() {
         closeLabel={tr('close')}
         testID={ELEMENT.onboarding.openUrlDialog}
         closeTestID={ELEMENT.onboarding.openUrlCancel}
+        // This dialog's own, not the alert's: 20 across rather than 35, and 20 under the box
+        // rather than the 4 an actions row wants. See the props.
+        sideInset={20}
+        bottomInset={20}
       >
         <Text size="$body" textAlign="center">
           {tr('urlOpenDescriptionAlternative')}
@@ -79,13 +83,13 @@ export function TermsAndPrivacy() {
          * the inset belongs to the box and not to the row, which is the opposite of what this had
          * -- rows padded 1.5 inside an unpadded box, which drew them hard against its edges.
          *
-         * The two margins are the same story: the shared `Modal` gaps its children by 8 and leaves
-         * 4 under the last one, which is right for a dialog whose final child is a full-width row
-         * of buttons. This one ends in a box, and the client gives it 16 above and 24 below.
+         * Only the top margin is set here. The 16 the client leaves above the box is this 8 plus
+         * the dialog's own 8 between children; the room below it belongs to the dialog, which is
+         * told to leave 20 rather than the 4 an actions row wants -- a margin here and a padding
+         * there would add to the same gap from two places.
          */}
         <YStack
           marginTop={8}
-          marginBottom={20}
           borderRadius={11}
           backgroundColor="$backgroundTertiary"
           paddingVertical={16}

@@ -28,6 +28,17 @@ interface ModalProps {
   actions?: ReactNode
   testID: string
   closeTestID: string
+  /**
+   * How far the content sits from the dialog's sides and its bottom edge.
+   *
+   * **The client has more than one dialog and they do not share these.** `Modal.swift` is the
+   * alert -- 35 across, and 4 under a final child that is a full-width row of buttons reaching the
+   * rounded corners. `MutipleLinksModal` is its own screen with its own rhythm: narrower sides, and
+   * room under a box that is not trying to touch anything. Defaulting to the alert's keeps every
+   * caller that wants one honest, and the other says so.
+   */
+  sideInset?: number
+  bottomInset?: number
 }
 
 /**
@@ -102,6 +113,8 @@ export function Modal({
   showClose = true,
   testID,
   closeTestID,
+  sideInset = SIDE_INSET,
+  bottomInset = BOTTOM_INSET,
 }: ModalProps) {
   /**
    * **iOS blurs what is behind a dialog; Android and the desktop client only darken it.** Null on
@@ -127,8 +140,8 @@ export function Modal({
           maxWidth={360}
           gap={CONTENT_GAP}
           paddingTop={TOP_INSET}
-          paddingHorizontal={SIDE_INSET}
-          paddingBottom={BOTTOM_INSET}
+          paddingHorizontal={sideInset}
+          paddingBottom={bottomInset}
           borderRadius={RADIUS}
           // The surface above the page, which is what an alert sits on in the client.
           backgroundColor="$backgroundSecondary"
@@ -149,7 +162,7 @@ export function Modal({
               <YStack
                 position="absolute"
                 top={-(TOP_INSET - CLOSE_INSET)}
-                right={-(SIDE_INSET - CLOSE_INSET)}
+                right={-(sideInset - CLOSE_INSET)}
               >
                 <Button
                   variant="ghost"
@@ -178,8 +191,8 @@ export function Modal({
             <XStack
               alignItems="stretch"
               marginTop={ACTIONS_GAP}
-              marginHorizontal={-SIDE_INSET}
-              marginBottom={-BOTTOM_INSET}
+              marginHorizontal={-sideInset}
+              marginBottom={-bottomInset}
               height={ACTION_HEIGHT}
               borderBottomLeftRadius={RADIUS}
               borderBottomRightRadius={RADIUS}
