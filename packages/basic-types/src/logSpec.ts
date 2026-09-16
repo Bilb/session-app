@@ -5,8 +5,7 @@
  * second at debug, which buries the handful that answer a question and, once there is a log buffer
  * to export, fills it with seconds of the wrong history.
  */
-export type { LibsessionLogLevel, LogCategoryLevel } from '@session/bridge-types'
-
+// Named by `@session/bridge-types`; see the note in network.ts for why they live there.
 import type { LibsessionLogLevel, LogCategoryLevel } from '@session/bridge-types'
 
 export interface LogSpec {

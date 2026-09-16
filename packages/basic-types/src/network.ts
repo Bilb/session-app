@@ -20,17 +20,10 @@ export function parseNetworkName(value: string | undefined): NetworkName {
   return value === 'testnet' || value === 'devnet' ? value : 'mainnet'
 }
 
-/**
- * Declared by `@session/bridge-types` and re-exported here.
- *
- * They cannot live the other way round: nitrogen parses `SessionBridge.nitro.ts` and resolves
- * `SessionBridgeOptions` by following its types, and it cannot follow one across a package
- * boundary - a re-exported type comes out as `any` and it refuses to generate. So every type
- * reachable from those options has to be declared in bridge-types, and this package takes them
- * from there rather than keeping a second copy that nothing checks against the first.
- */
-export type { FileServerConfig, RouterKind, SeedNode } from '@session/bridge-types'
-
+// Named by `@session/bridge-types` and used here, not re-exported: whoever needs one of these by
+// name takes it from there. Declaring them here as well is what this replaced, and they cannot
+// move the other way - nitrogen resolves `SessionBridgeOptions` by following its types and will
+// not follow one across a package boundary, so bridge-types has to own them.
 import type { FileServerConfig, RouterKind } from '@session/bridge-types'
 
 /**
