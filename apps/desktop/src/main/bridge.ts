@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { randomBytes } from 'node:crypto'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -65,33 +65,6 @@ function loadDotEnv(): void {
 }
 
 /**
- * Moves a pre-per-network database into `mainnet/`.
- *
- * Everything used to sit directly in userData, which is now where the per-network directories
- * go, so without this an existing account becomes unreachable and the app offers onboarding for
- * a new one. The `-wal` matters as much as the database: leaving it behind loses whatever was in
- * it.
- */
-function migrateLegacyLayout(root: string): void {
-  const legacy = join(root, 'session.db')
-  const target = join(root, 'mainnet')
-  if (!existsSync(legacy) || existsSync(join(target, 'session.db'))) return
-
-  mkdirSync(target, { recursive: true })
-  for (const name of [
-    'session.db',
-    'session.db-wal',
-    'session.db-shm',
-    'db-key.bin',
-    'attachments',
-    'netcache',
-  ]) {
-    const from = join(root, name)
-    if (existsSync(from)) renameSync(from, join(target, name))
-  }
-}
-
-/**
  * Opens the bridge the renderer talks to.
  *
  * The fake is reached through a dynamic import from a dev-only module, so a production build
@@ -129,7 +102,6 @@ export async function createBridge(): Promise<BridgeTransport> {
   // neither. libsession derives its own snode cache from the database's directory, which puts
   // that on the right side of the split too.
   const dir = join(app.getPath('userData'), name)
-  migrateLegacyLayout(app.getPath('userData'))
   mkdirSync(dir, { recursive: true })
 
   const seedNodes =

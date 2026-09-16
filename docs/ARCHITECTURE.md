@@ -412,7 +412,7 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   `documentDirectory/session/<netid>/` on mobile, so a devnet identity and a mainnet one coexist
   and switching back loses neither. libsession derives its snode cache from the database's
   directory, which puts a cache of nodes that do not exist on the other network on the right side
-  of the split. A pre-split database is moved into `mainnet/` on first run, `-wal` and all.
+  of the split.
 
   A devnet with nothing configured attaches **nothing**, never mainnet: real traffic on a build
   whose owner believes it is a sandbox is the failure worth preventing, and an overlay stamping
