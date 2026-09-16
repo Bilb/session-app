@@ -1,7 +1,7 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Button, Icon, Modal, Text, XStack, YStack } from '@session/ui'
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 
 import { LocalizedText } from '../LocalizedText'
 import { useConfirmUrl } from './ConfirmUrl'
@@ -72,30 +72,49 @@ export function TermsAndPrivacy() {
         {/* The addresses themselves, each opening its own confirmation. Showing the URL rather than
             the document's name is the point: this is the last moment before leaving, and where you
             are going is the thing worth reading. */}
-        <YStack borderRadius="$2" backgroundColor="$backgroundTertiary" overflow="hidden">
+        {/**
+         * **The client's own numbers, and they are not the base dialog's.** `MutipleLinksModal` is
+         * a separate modal there with a separate rhythm: the box is padded 16 down and 12 across,
+         * the rows are bare inside it, and 16 separates each row from the divider between them. So
+         * the inset belongs to the box and not to the row, which is the opposite of what this had
+         * -- rows padded 1.5 inside an unpadded box, which drew them hard against its edges.
+         *
+         * The two margins are the same story: the shared `Modal` gaps its children by 8 and leaves
+         * 4 under the last one, which is right for a dialog whose final child is a full-width row
+         * of buttons. This one ends in a box, and the client gives it 16 above and 24 below.
+         */}
+        <YStack
+          marginTop={8}
+          marginBottom={20}
+          borderRadius={11}
+          backgroundColor="$backgroundTertiary"
+          paddingVertical={16}
+          paddingHorizontal={12}
+          gap={16}
+        >
           {LINKS.map((link, index) => (
-            <XStack
-              key={link.url}
-              role="button"
-              alignItems="center"
-              gap="$1"
-              padding="$1.5"
-              cursor="pointer"
-              hoverStyle={{ backgroundColor: '$backgroundNested' }}
-              pressStyle={{ backgroundColor: '$backgroundNested' }}
-              borderTopWidth={index === 0 ? 0 : 1}
-              borderColor="$separatorColor"
-              testID={link.testID}
-              onPress={() => {
-                setOpen(false)
-                confirm(link.url)
-              }}
-            >
-              <Text flex={1} size="$label" weight="bold" userSelect="none">
-                {link.url}
-              </Text>
-              <Icon name="externalLink" size="$4" color="$textPrimary" />
-            </XStack>
+            <Fragment key={link.url}>
+              {index === 0 ? null : <YStack height={1} backgroundColor="$separatorColor" />}
+              <XStack
+                role="button"
+                alignItems="center"
+                cursor="pointer"
+                testID={link.testID}
+                onPress={() => {
+                  setOpen(false)
+                  confirm(link.url)
+                }}
+              >
+                {/* 16 bold, and it wraps rather than truncating -- the end of a URL is where a
+                    deceptive one hides what it really is, so it is the view that gives way. The
+                    text takes the width and pushes the icon to the trailing edge, which is why
+                    there is no gap between them to set. */}
+                <Text flex={1} size="$bodyLarge" weight="bold" userSelect="none">
+                  {link.url}
+                </Text>
+                <Icon name="externalLink" size={20} color="$textPrimary" />
+              </XStack>
+            </Fragment>
           ))}
         </YStack>
       </Modal>
