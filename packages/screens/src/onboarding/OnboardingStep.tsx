@@ -1,8 +1,7 @@
-import { tr } from '@session/localization'
-import { ELEMENT } from '@session/test-ids'
-import { Button, Icon, Text, useMedia, XStack, YStack } from '@session/ui'
+import { Text, useMedia, XStack, YStack } from '@session/ui'
 import type { ReactNode } from 'react'
 
+import { WideBackButton } from './OnboardingBackButton'
 import { EXTRA_ACTION_INSET, OnboardingChrome } from './OnboardingChrome'
 
 /**
@@ -12,8 +11,6 @@ import { EXTRA_ACTION_INSET, OnboardingChrome } from './OnboardingChrome'
  * the control off the left edge of the display; the phone design draws its own in the row above
  * instead. See `OnboardingChrome`.
  */
-const BACK_OFFSET = -36
-
 /**
  * Room for two lines of error before anything below it moves.
  *
@@ -127,22 +124,7 @@ export function OnboardingStepBody({
        */}
       {wide ? null : <YStack flex={1} />}
       <XStack {...(wide ? {} : { paddingBottom: UPWARD_BIAS })}>
-        {!wide || onBack === undefined ? null : (
-          // Centred on the title's line rather than the column: `alignSelf` against the heading
-          // row keeps it level however many lines the title wraps to.
-          <YStack marginLeft={BACK_OFFSET} height={34} justifyContent="center">
-            <Button
-              variant="ghost"
-              // The size of the touch target rather than of the glyph. See the phone bar's.
-              size="md"
-              circular
-              accessibilityLabel={tr('back')}
-              testID={ELEMENT.onboarding.back}
-              onPress={onBack}
-              icon={<Icon name="chevronLeft" size="$5" color="$textPrimary" />}
-            />
-          </YStack>
-        )}
+        {!wide || onBack === undefined ? null : <WideBackButton onPress={onBack} />}
 
         <YStack flex={1}>
           <XStack alignItems="center" gap="$1.5" minHeight={34}>

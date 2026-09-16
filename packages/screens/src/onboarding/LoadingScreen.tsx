@@ -1,18 +1,9 @@
 import { getLocale, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import {
-  Button,
-  Icon,
-  ProgressRing,
-  Screen,
-  Text,
-  useMedia,
-  useWindowSize,
-  XStack,
-  YStack,
-} from '@session/ui'
+import { ProgressRing, Screen, Text, useMedia, useWindowSize, XStack, YStack } from '@session/ui'
 import { useEffect, useRef, useState } from 'react'
 
+import { OnboardingBackButton, WideBackButton } from './OnboardingBackButton'
 import { OnboardingChrome } from './OnboardingChrome'
 
 /**
@@ -130,15 +121,7 @@ export function LoadingScreen({ onGaveUp, onBack }: LoadingScreenProps) {
     return (
       <Screen testID={ELEMENT.onboarding.loadingScreen}>
         <XStack alignItems="center" minHeight="$7" paddingHorizontal="$2" paddingTop="$1">
-          <Button
-            variant="ghost"
-            size="md"
-            circular
-            accessibilityLabel={tr('back')}
-            testID={ELEMENT.onboarding.back}
-            onPress={onBack}
-            icon={<Icon name="chevronLeft" size="$5" color="$textPrimary" />}
-          />
+          <OnboardingBackButton onPress={onBack} />
         </XStack>
         <YStack flex={1} alignItems="center" justifyContent="center" gap="$2" padding="$3">
           {/* The number sits **inside** the ring on both clients -- iOS overlays it, Android
@@ -171,33 +154,41 @@ export function LoadingScreen({ onGaveUp, onBack }: LoadingScreenProps) {
 
   return (
     <OnboardingChrome testID={ELEMENT.onboarding.loadingScreen}>
-      <YStack>
-        <Text size="$headingLarge" weight="bold" userSelect="none">
-          {tr('waitOneMoment')}
-        </Text>
-        {/* Subtitle and percentage on one line, the client's arrangement: the number belongs
-              with the thing it is counting rather than floating beside the bar. */}
-        <XStack justifyContent="space-between" alignItems="center" gap="$1" paddingTop="$1.5">
-          <Text size="$body">{tr('loadAccountProgressMessage')}</Text>
-          <Text size="$body" fontVariant={['tabular-nums']} userSelect="none">
-            {percent}
+      {/* **The way back, which the wide layout did not have.** Both mobile clients put a chevron
+          on this screen and neither asks anything when it is pressed -- it returns to the step
+          before, and that is what the phone layout above already does. This one had none at all,
+          because it is the one step that does not go through `OnboardingStep` and so nothing was
+          in a position to draw it. The hanger is the same one every other wide step uses. */}
+      <XStack>
+        <WideBackButton onPress={onBack} />
+        <YStack flex={1}>
+          <Text size="$headingLarge" weight="bold" userSelect="none">
+            {tr('waitOneMoment')}
           </Text>
-        </XStack>
-        <YStack
-          marginTop="$2.5"
-          height={BAR_HEIGHT}
-          borderRadius="$2"
-          backgroundColor="$bordersColor"
-          overflow="hidden"
-        >
+          {/* Subtitle and percentage on one line, the client's arrangement: the number belongs
+              with the thing it is counting rather than floating beside the bar. */}
+          <XStack justifyContent="space-between" alignItems="center" gap="$1" paddingTop="$1.5">
+            <Text size="$body">{tr('loadAccountProgressMessage')}</Text>
+            <Text size="$body" fontVariant={['tabular-nums']} userSelect="none">
+              {percent}
+            </Text>
+          </XStack>
           <YStack
-            width={`${String(Math.round(fraction * 100))}%`}
-            height="100%"
+            marginTop="$2.5"
+            height={BAR_HEIGHT}
             borderRadius="$2"
-            backgroundColor="$primaryColor"
-          />
+            backgroundColor="$bordersColor"
+            overflow="hidden"
+          >
+            <YStack
+              width={`${String(Math.round(fraction * 100))}%`}
+              height="100%"
+              borderRadius="$2"
+              backgroundColor="$primaryColor"
+            />
+          </YStack>
         </YStack>
-      </YStack>
+      </XStack>
     </OnboardingChrome>
   )
 }

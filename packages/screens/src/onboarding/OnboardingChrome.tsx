@@ -19,6 +19,7 @@ import {
 import { useEffect, useState, type ReactNode } from 'react'
 
 import { LanguageButton } from '../LanguageButton'
+import { OnboardingBackButton } from './OnboardingBackButton'
 import { NetworkOverlay } from '../NetworkOverlay'
 import { COLUMN_GROW, COLUMN_WIDTH, HERO_GROW, HERO_MAX_WIDTH } from './heroPanel'
 import { useConfirmUrl } from './ConfirmUrl'
@@ -232,21 +233,7 @@ export function OnboardingChrome({
           paddingHorizontal="$2"
           paddingTop="$1"
         >
-          {onBack === undefined ? null : (
-            <Button
-              variant="ghost"
-              // `md` rather than `xs`: the glyph is the same, and the control is the size of the
-              // touch target rather than of the icon, so the pressed highlight covers what a
-              // finger covers. An `xs` button grown only by `hitSlop` presses in a 24pt square
-              // inside a 40pt target, which reads as a mis-hit even when it worked.
-              size="md"
-              circular
-              accessibilityLabel={tr('back')}
-              testID={ELEMENT.onboarding.back}
-              onPress={onBack}
-              icon={<Icon name="chevronLeft" size="$5" color="$textPrimary" />}
-            />
-          )}
+          {onBack === undefined ? null : <OnboardingBackButton onPress={onBack} />}
           <YStack flex={1} />
           {/* **The Session mark, centred in the bar.** The legacy client puts it there as the
               navigation bar's `titleView` -- the brand mark alone at 32pt, no wordmark -- which is
