@@ -223,7 +223,15 @@ export function OnboardingChrome({
         {/* The bar the phone design puts above the step. Its controls sit in from the edge by the
             space the platform's own navigation bar uses, not by the hairline the content inset
             would leave them. */}
-        <XStack alignItems="center" minHeight="$7" paddingHorizontal="$2" paddingTop="$1">
+        {/* `relative`: the centred mark below is placed against this bar, and on the web a
+            stack is `static` unless it says so. See TopTabs. */}
+        <XStack
+          position="relative"
+          alignItems="center"
+          minHeight="$7"
+          paddingHorizontal="$2"
+          paddingTop="$1"
+        >
           {onBack === undefined ? null : (
             <Button
               variant="ghost"

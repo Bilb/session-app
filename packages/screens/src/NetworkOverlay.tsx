@@ -20,7 +20,8 @@ export function NetworkOverlay({ children }: { children: ReactNode }) {
   if (label === null) return <>{children}</>
 
   return (
-    <XStack alignItems="center" justifyContent="center">
+    // `relative`: the badge below is placed against this box, not the page. See TopTabs.
+    <XStack position="relative" alignItems="center" justifyContent="center">
       {children}
       {/* Out of the flow, so the title underneath keeps the position and size it would have had.
           A badge that shifted the header would change the layout a test is asserting on. */}

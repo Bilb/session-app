@@ -21,8 +21,17 @@ export function TopTabs({ tabs, active, onChange, instant = false }: TopTabsProp
   )
   const share = tabs.length === 0 ? 100 : 100 / tabs.length
 
+  // `relative` so the indicator below is placed against this bar. Every react-native view is a
+  // containing block and none of this is needed there; on the web a stack is `static` unless it
+  // says otherwise, so the indicator's `bottom: 0` resolved against the page and drew a green bar
+  // across the foot of the window.
   return (
-    <YStack height={BAR_HEIGHT} borderBottomWidth={1} borderBottomColor="$bordersColor">
+    <YStack
+      position="relative"
+      height={BAR_HEIGHT}
+      borderBottomWidth={1}
+      borderBottomColor="$bordersColor"
+    >
       <XStack flex={1} alignItems="stretch">
         {tabs.map((tab) => (
           <PressArea
