@@ -69,6 +69,21 @@ async function createWindow({ show = true } = {}): Promise<Electron.BrowserWindo
     width: 1100,
     height: 760,
     minWidth: 380,
+    /**
+     * Small enough to be useful, tall enough that onboarding still fits.
+     *
+     * The wide onboarding column is a fixed block -- a 30 header, a 12 gap, the 276 every step
+     * reserves so none of them jumps, and 12 either side of the lot. **Measured against the
+     * running renderer, it stops fitting below a 340 viewport**: at 340 it fills the height
+     * exactly, and at 320 the Session wordmark is 10 points off the top of the screen.
+     *
+     * `useContentSize` is not set, so this is the whole window and the frame comes out of it --
+     * about 28 on macOS. 380 leaves the content a dozen points of slack on top of the 340 and
+     * squares with `minWidth`. A product call: a floor on the window rather than
+     * letting the column scroll, since a registration form that scrolls is worse than one that
+     * cannot be made silly-small.
+     */
+    minHeight: 380,
     // Linux and Windows take the window icon from here; macOS ignores it and uses the bundle's,
     // which is the packager's job rather than this file's.
     icon: join(here, '../../resources/icon.png'),
