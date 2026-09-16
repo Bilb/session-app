@@ -162,7 +162,8 @@ export function Modal({
               <YStack
                 position="absolute"
                 top={-(TOP_INSET - CLOSE_INSET)}
-                right={-(sideInset - CLOSE_INSET)}
+                // The trailing corner, which is the right one only until the layout is mirrored.
+                end={-(sideInset - CLOSE_INSET)}
               >
                 <Button
                   variant="ghost"

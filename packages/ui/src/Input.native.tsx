@@ -72,7 +72,7 @@ export function Input({
       height="$10"
       paddingHorizontal="$2.5"
       // Room for whatever sits against the trailing edge, so the text does not run under it.
-      paddingRight={endWidth === 0 ? '$2' : endWidth}
+      paddingEnd={endWidth === 0 ? '$2' : endWidth}
     />
   )
 

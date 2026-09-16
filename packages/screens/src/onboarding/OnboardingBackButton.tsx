@@ -49,7 +49,7 @@ const BACK_OFFSET = -36
  */
 export function WideBackButton({ onPress }: { onPress: () => void }) {
   return (
-    <YStack marginLeft={BACK_OFFSET} height={34} justifyContent="center">
+    <YStack marginStart={BACK_OFFSET} height={34} justifyContent="center">
       <OnboardingBackButton onPress={onPress} />
     </YStack>
   )
