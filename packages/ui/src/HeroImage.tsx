@@ -62,7 +62,18 @@ export function HeroImage() {
        * A plain view has no such measurement, so the ratio resolves. Measured on an iPad, asking
        * three ways at once: view 913x1210, image 1629x1210, image with insets 1629x2160.
        */}
-      <YStack height="100%" aspectRatio={ASPECT}>
+      {/**
+       * **Never narrower than the panel.** The width comes from the height and the artwork's own
+       * proportions, which is right whenever that comes out wider than the panel -- the excess is
+       * the crop. On a window that is wide and short it comes out *narrower*: at 1600x700 the
+       * panel is its 640 cap and the artwork 528, which left 112 points of nothing beside it.
+       *
+       * The floor closes that without touching the ordinary case, because a minimum only binds
+       * when the derived width is under it. When it does bind the aspect ratio gives way and the
+       * image crops vertically instead of horizontally, which is the same bargain in the other
+       * direction -- and the only alternative is a panel with a hole in it.
+       */}
+      <YStack height="100%" minWidth="100%" aspectRatio={ASPECT}>
         {/* Percentages, so the image takes the box rather than describing one. A `minWidth`
             anywhere here would fit the artwork to the panel instead -- which shrinks it to show
             the whole picture, and showing the whole picture is the opposite of a crop. */}
