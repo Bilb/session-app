@@ -101,7 +101,7 @@ const CONTENT_MIN_HEIGHT = 276
  * 35 is the space scale's `$4`; 64 is not on the scale and is written as itself, since inventing a
  * rung for one value would make the scale less useful rather than more.
  */
-export const CONTENT_INSET = 35
+const CONTENT_INSET = 35
 
 /** The legacy client's navigation-bar mark: `SessionGreen32`, pinned to a 32pt square. */
 const BAR_LOGO_SIZE = 32
@@ -109,6 +109,27 @@ const ACTION_INSET = 64
 
 /** What an action needs on top of the content inset it already sits inside. */
 export const EXTRA_ACTION_INSET = ACTION_INSET - CONTENT_INSET
+
+/** The room the narrow chrome leaves around a step. The wide one leaves none -- see below. */
+const STEP_PADDING = {
+  paddingHorizontal: CONTENT_INSET,
+  paddingTop: '$3',
+  paddingBottom: '$2',
+} as const
+
+/**
+ * The same padding, for a pane that has to apply it itself.
+ *
+ * `LoadAccountScreen` turns `padContent` off because its two panes disagree about the inset -- the
+ * field belongs in the reading column and the camera fills the width -- and pads the one that
+ * wants it. That left the figure written down in two places and only the narrow half of it was
+ * copied: on the wide branch the column is already `COLUMN_WIDTH` and the chrome adds no
+ * horizontal inset at all, so the recovery-password step alone drew 70 narrower and 25 lower than
+ * every other step on Desktop.
+ */
+export function useStepPadding(): Partial<typeof STEP_PADDING> {
+  return useMedia().gtSm ? {} : STEP_PADDING
+}
 
 /**
  * Where the two documentation links go.
@@ -248,12 +269,7 @@ export function OnboardingChrome({
         {/* The bar and the title were almost touching. The client leaves a navigation bar's worth
             of air under the logo before the content begins. */}
         {banner}
-        <YStack
-          flex={1}
-          {...(padContent
-            ? { paddingHorizontal: CONTENT_INSET, paddingTop: '$3', paddingBottom: '$2' }
-            : {})}
-        >
+        <YStack flex={1} {...(padContent ? STEP_PADDING : {})}>
           {children}
         </YStack>
       </Screen>

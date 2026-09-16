@@ -13,7 +13,7 @@ import {
 } from '@session/ui'
 import { useEffect, useState } from 'react'
 
-import { CONTENT_INSET, OnboardingChrome } from './OnboardingChrome'
+import { OnboardingChrome, useStepPadding } from './OnboardingChrome'
 import { OnboardingStepBody } from './OnboardingStep'
 import { ScanQrPane } from './ScanQrPane'
 import { phraseIsTooShort, phraseWords } from './recoveryPhrase'
@@ -93,6 +93,8 @@ export function LoadAccountScreen({
   }
 
   const cut = flag('disableAnimations')
+  // The chrome is not padding this step, so the pane does -- with the chrome's own figures.
+  const stepPadding = useStepPadding()
 
   return (
     <OnboardingChrome
@@ -124,7 +126,7 @@ export function LoadAccountScreen({
       <SlidePager index={tab === 'qr' ? 1 : 0} instant={cut}>
         {/* The panes disagree about the inset, which is why the chrome is not applying one: the
             field belongs in the reading column and the camera fills the width. */}
-        <YStack flex={1} paddingHorizontal={CONTENT_INSET} paddingTop="$3" paddingBottom="$2">
+        <YStack flex={1} {...stepPadding}>
           <OnboardingStepBody
             title={tr('sessionRecoveryPassword')}
             titleMark={<RecoveryPasswordMark size={22} color="$textPrimary" />}
