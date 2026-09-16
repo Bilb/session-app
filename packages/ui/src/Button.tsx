@@ -169,8 +169,13 @@ const Frame = styled(XStack, {
     destructive: {
       true: {
         color: '$dangerColor',
-        hoverStyle: { color: '$dangerColor', opacity: 0.7 },
-        pressStyle: { color: '$dangerColor', opacity: 0.55 },
+        // **Colour only, in every state.** What a press does to the surface is the variant's
+        // business -- `ghost` lights a background, `simple` dims itself -- and this only has to
+        // stop that variant's own colour winning. An opacity here dimmed the label too, so the
+        // red `Open` in the link dialog faded as it was held where only the fill should have
+        // moved. A product call.
+        hoverStyle: { color: '$dangerColor' },
+        pressStyle: { color: '$dangerColor' },
       },
     },
     disabled: {
