@@ -6,6 +6,7 @@ import type {
   Message,
   MessageCursor,
 } from './domain'
+import type { FileServerConfig, RouterKind, SeedNode } from './sessionBridgeOptions'
 
 /**
  * The bridge protocol: what goes in, what comes out, on one ordered stream.
@@ -37,8 +38,34 @@ export type Command =
   | { type: 'restoreAccountFromSeed'; hexSeed: string }
   | { type: 'getSeedMnemonic'; language?: string }
   | { type: 'setDisplayName'; name: string }
-  /** "mainnet" | "testnet" | "devnet". Declining to attach is how an app stays offline. */
-  | { type: 'attachNetwork'; netid: string; devnetSeedUrl?: string }
+  /**
+   * Attach a network, or replace the one attached. Declining to attach is how an app stays
+   * offline, and that is an init option rather than a command.
+   *
+   * Carries everything the network needs rather than leaving half of it remembered from init, so
+   * that a refusal leaves the client on whatever it had. "mainnet", "testnet" or "devnet".
+   */
+  | {
+      type: 'attachNetwork'
+      netid: string
+      seedNodes?: SeedNode[]
+      fileServer?: FileServerConfig
+      /** Defaults to session-router on mainnet and testnet, onion requests on devnet. */
+      router?: RouterKind
+    }
+  /**
+   * How often libsession polls the swarm, in milliseconds. Its default is 20 seconds, which is a
+   * long time to wait for a test and about right for a person.
+   *
+   * Takes effect by replacing the running ticker, so the next poll is a full interval away rather
+   * than when the old one would have fired; setting it before a network is attached therefore
+   * costs no initial delay. Nothing serialises polls against each other, so an interval short
+   * enough that one is still outstanding when the next fires gets overlapping requests - wasteful
+   * rather than wrong, since a handler already has to tolerate seeing a message twice.
+   *
+   * The floor is 1ms: zero or negative is refused rather than read as "never" or "always".
+   */
+  | { type: 'setPollInterval'; intervalMs: number }
   /**
    * Run one poll cycle to completion: the primitive every OS background budget wants. Android's
    * WorkManager job, iOS's BGAppRefreshTask and a push-triggered fetch all reduce to it.

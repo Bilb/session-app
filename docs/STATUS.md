@@ -16,12 +16,17 @@ a time, via the `port-feature` skill.
 - **Attachments**, in any form - nothing about them is in the protocol. See the decision log.
 - **Anything a message can be beyond text**: no reactions, replies, edits, deletes or read
   receipts.
+- **A devnet cannot have its own Pro backend.** The key libsession verifies proofs against is a
+  `constexpr` read at one call site in `core.cpp`, so pointing a build at another deployment needs
+  a libsession change. Nothing here configures one, and nothing here has Pro code to configure.
+- **Android has not been run against a devnet.** iOS has - it discovered 15 seed nodes, built its
+  paths and polled its swarm - and the two share everything above the Nitro module, so what is
+  untried is the Android side of that module rather than any of the logic. A dev client built
+  since the shim last changed is what it needs.
 - **Onboarding is one button.** `restoreAccount` is a bridge command already, with no screen.
 - **No contact list and no QR scanner.** Starting a conversation means pasting an account ID.
 - **iOS device builds and a release-shaped xcframework.** The simulator works; nothing has been
   signed with a real identity.
-- **Nothing shortens the poll interval.** libsession's default is 20 seconds, so a message can
-  take that long to appear. `SetPollInterval` is not in the schema.
 - **devnet refuses rather than half-working.** It needs seed nodes - a public key, an address and
   two ports each - which is not something a `devnet_seed_url` can be turned into. How the app
   learns those is a devnet question rather than a bridge one.
@@ -48,6 +53,11 @@ a time, via the `port-feature` skill.
 - **The desktop app's name is a placeholder.** `app.setName('session-app')` deliberately avoids
   `Session`: the shipped client owns that directory, and a dev build opening the real client's data
   would be a bad afternoon. Somebody has to decide on branding before a release.
+- **libsession verifies a Pro proof and discards the answer.** `decode_dm_envelope` returns a
+  `DecodedPro` whose own comment says the caller must check its status; `Core` never reads it and
+  copies only the raw signature off the wire, so `pro_signature` on a received message means "a
+  signature was present" rather than "a valid proof". Worth raising upstream on its own account -
+  it is not about which backend signs.
 - **Mnemonic handling.** libsession owns the word list, so no TypeScript library is needed, but
   once words cross into JavaScript they cannot be wiped. Keep them out of logs and out of the
   store.

@@ -1,3 +1,5 @@
+import { isHex64, isIpv4, isPort } from '@session/basic-types'
+
 import { BridgeClosedError, SessionClientError } from '../errors'
 import type {
   AccountInfo,
@@ -8,8 +10,43 @@ import type {
   SessionEvent,
 } from '@session/bridge-types'
 
-import type { OutgoingMessage, SessionClient } from '../types'
+import type { NetworkAttachment, OutgoingMessage, SessionClient } from '../types'
 import type { FakeAccount, FakeWorld } from './world'
+
+/** Why this network will not attach, or undefined when it will. */
+function networkRefusal(config: NetworkAttachment): string | undefined {
+  if (!['mainnet', 'testnet', 'devnet'].includes(config.netid))
+    return `netid must be mainnet, testnet or devnet, not ${JSON.stringify(config.netid)}`
+
+  // Session Router has no devnet, so the real bridge refuses the pair and so does this.
+  if (config.netid === 'devnet' && config.router === 'session-router')
+    return 'router must be onion-requests on a devnet: Session Router has no devnet'
+
+  if (config.netid === 'devnet') {
+    const seeds = config.seedNodes ?? []
+    if (seeds.length === 0)
+      return 'devnet needs at least one seed node: libsession has built-in seeds for mainnet and testnet only'
+
+    for (const [index, seed] of seeds.entries()) {
+      const at = `seedNodes[${index}].`
+      if (!isHex64(seed.ed25519PubkeyHex)) return `${at}ed25519PubkeyHex must be 64 hex characters`
+      // libsession dials the address itself and resolves no host names, so a name is a
+      // configuration error rather than a lookup that happens later.
+      if (!isIpv4(seed.ip)) return `${at}ip must be an IPv4 address, not ${JSON.stringify(seed.ip)}`
+      if (!isPort(seed.httpsPort)) return `${at}httpsPort must be a port`
+      if (!isPort(seed.omqPort)) return `${at}omqPort must be a port`
+    }
+  }
+
+  if (config.fileServer) {
+    if (config.fileServer.host.length === 0) return 'fileServer.host must not be empty'
+    if (!isHex64(config.fileServer.x25519PubkeyHex))
+      return 'fileServer.x25519PubkeyHex must be 64 hex characters'
+    if (!isPort(config.fileServer.port)) return 'fileServer.port must be a port'
+  }
+
+  return undefined
+}
 
 /**
  * The fake behind the same interface the real bridge implements.
@@ -76,8 +113,16 @@ export class FakeSessionClient implements SessionClient {
     return Promise.resolve()
   }
 
-  attachNetwork(): Promise<void> {
+  /**
+   * Refuses what the shim refuses, and for the same reasons: these are the edges a caller trips
+   * over, and a fake that accepts a network libsession would not predicts nothing.
+   */
+  attachNetwork(config: NetworkAttachment): Promise<void> {
     this.assertOpen()
+
+    const refusal = networkRefusal(config)
+    if (refusal !== undefined) return Promise.reject(new SessionClientError(refusal))
+
     this.account.networkAttached = true
     return Promise.resolve()
   }
@@ -130,6 +175,18 @@ export class FakeSessionClient implements SessionClient {
   markRead(id: ConversationId): Promise<void> {
     this.assertOpen()
     this.account.markRead(id)
+    return Promise.resolve()
+  }
+
+  setPollInterval(intervalMs: number): Promise<void> {
+    this.assertOpen()
+    // The fake has no ticker to retune; refusing the same values the real one refuses is the
+    // whole of what it owes a caller here.
+    if (!Number.isFinite(intervalMs) || intervalMs <= 0) {
+      return Promise.reject(
+        new SessionClientError('setPollInterval.intervalMs must be greater than zero'),
+      )
+    }
     return Promise.resolve()
   }
 

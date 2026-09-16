@@ -88,7 +88,11 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     return empty
   },
   attachNetwork: async (client, cmd) => {
-    await client.attachNetwork(cmd.netid, cmd.devnetSeedUrl)
+    await client.attachNetwork({
+      netid: cmd.netid,
+      ...(cmd.seedNodes === undefined ? {} : { seedNodes: cmd.seedNodes }),
+      ...(cmd.fileServer === undefined ? {} : { fileServer: cmd.fileServer }),
+    })
     return empty
   },
   pollOnce: async (client) => {
@@ -116,6 +120,10 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
   },
   markRead: async (client, cmd) => {
     await client.markRead(cmd.conversationId, cmd.upTo)
+    return empty
+  },
+  setPollInterval: async (client, cmd) => {
+    await client.setPollInterval(cmd.intervalMs)
     return empty
   },
   setBlocked: async (client, cmd) => {

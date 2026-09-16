@@ -37,7 +37,7 @@ describe.skipIf(target === undefined)('sending a test message', () => {
       cacheDir: join(dir, 'cache'),
       rawKey: new Uint8Array(32).fill(9),
       deferAccount: true,
-      netid: process.env['SESSION_NETID'] === 'testnet' ? 'testnet' : 'mainnet',
+      netid: process.env['EXPO_PUBLIC_SESSION_NETID'] === 'testnet' ? 'testnet' : 'mainnet',
       deviceType: 'desktop',
     })
 

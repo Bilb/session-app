@@ -13,9 +13,9 @@
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "env -u ELECTRON_RUN_AS_NODE electron-vite dev",
-    "dev:fake": "SESSION_FAKE=1 env -u ELECTRON_RUN_AS_NODE electron-vite dev",
+    "dev:fake": "EXPO_PUBLIC_SESSION_FAKE=1 env -u ELECTRON_RUN_AS_NODE electron-vite dev",
     "start": "env -u ELECTRON_RUN_AS_NODE electron-vite preview",
-    "start:fake": "SESSION_FAKE=1 env -u ELECTRON_RUN_AS_NODE electron-vite preview",
+    "start:fake": "EXPO_PUBLIC_SESSION_FAKE=1 env -u ELECTRON_RUN_AS_NODE electron-vite preview",
     "build": "electron-vite build",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.preload.json && tsc --noEmit -p tsconfig.web.json",

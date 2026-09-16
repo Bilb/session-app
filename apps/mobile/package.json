@@ -5,10 +5,10 @@
   "description": "The Session mobile app: one Expo app for Android and iOS, phone and tablet",
   "main": "index.ts",
   "scripts": {
-    "dev": "expo start --dev-client --clear",
+    "dev": "node --env-file-if-exists=../../.env ../../node_modules/expo/bin/cli start --dev-client --clear",
     "dev:fake": "EXPO_PUBLIC_SESSION_FAKE=1 expo start --dev-client --clear",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
+    "android": "GRADLE_OPTS=-Dorg.gradle.configuration-cache=false node --env-file-if-exists=../../.env ../../node_modules/expo/bin/cli run:android",
+    "ios": "node --env-file-if-exists=../../.env ../../node_modules/expo/bin/cli run:ios",
     "prebuild": "expo prebuild",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

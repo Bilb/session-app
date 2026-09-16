@@ -277,10 +277,24 @@ export function runSessionClientContract(
       }
     })
 
+    it('refuses a poll interval that is not one, and accepts a short one', async () => {
+      const { alice } = await harness.friends()
+
+      // Core reads a non-positive interval as "as fast as the loop will go", which is a busy loop
+      // against the swarm rather than a slow poll.
+      for (const intervalMs of [0, -1]) {
+        const error = await failure(() => alice.setPollInterval(intervalMs))
+        expect(error instanceof Error).toBe(true)
+      }
+
+      // The reason this exists: a test should not wait out the 20-second default.
+      await alice.setPollInterval(50)
+    })
+
     it('refuses a page size that is not a page', async () => {
       const { alice, bobId } = await harness.friends()
 
-      // SQLite reads a negative LIMIT as no limit at all, and zero as the end of the history.
+      // A limit is a page size, not a sentinel: there is no value meaning "all of it".
       for (const limit of [0, -1]) {
         const error = await failure(() => alice.getMessages(bobId, { limit }))
         expect(error instanceof Error).toBe(true)
@@ -296,6 +310,53 @@ export function runSessionClientContract(
       // libsession refuses this from inside a callback, where a throw is only logged.
       const error = await failure(() => alice.setNickname(noteToSelf, 'me'))
       expect(error instanceof Error).toBe(true)
+    })
+
+    it('refuses a network it cannot build, and stays where it was', async () => {
+      const { alice } = await harness.friends()
+      const before = (await alice.getAccountInfo()).networkAttached
+
+      // devnet is the only netid libsession has no seeds of its own for, and a seed node is
+      // dialled directly: a name where an address belongs never becomes one.
+      const refused = [
+        { netid: 'nonsense' },
+        { netid: 'devnet' },
+        {
+          netid: 'devnet',
+          seedNodes: [
+            {
+              ed25519PubkeyHex: 'a'.repeat(64),
+              ip: 'seed.devnet.test',
+              httpsPort: 1300,
+              omqPort: 1305,
+            },
+          ],
+        },
+        {
+          netid: 'devnet',
+          seedNodes: [
+            { ed25519PubkeyHex: 'nothex', ip: '10.0.0.1', httpsPort: 1300, omqPort: 1305 },
+          ],
+        },
+        // Session Router has no devnet, so this pair is refused however well-formed it is.
+        {
+          netid: 'devnet',
+          router: 'session-router' as const,
+          seedNodes: [
+            { ed25519PubkeyHex: 'a'.repeat(64), ip: '10.0.0.1', httpsPort: 1300, omqPort: 1305 },
+          ],
+        },
+      ]
+
+      const accepted: string[] = []
+      for (const config of refused)
+        if ((await failure(() => alice.attachNetwork(config))) === undefined)
+          accepted.push(JSON.stringify(config))
+      expect(accepted).toEqual([])
+
+      // Refused whole: a network half applied is one nobody asked for, and the next call that
+      // brings an account into being would be the one to throw on it.
+      expect((await alice.getAccountInfo()).networkAttached).toBe(before)
     })
 
     it('rejects everything still waiting when it closes', async () => {

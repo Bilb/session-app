@@ -458,15 +458,127 @@ struct SetDisplayNameCommand {
             name{std::move(name_)} {}
 };
 
-/// "mainnet" | "testnet" | "devnet". Declining to attach is how an app stays offline.
+/// One node to bootstrap a devnet from.
+///
+/// Declared here rather than taken from
+struct SeedNode {
+    /// Ed25519, 64 hex characters. Not the X25519 key a session id is built from.
+    std::string ed25519_pubkey_hex;
+    /// A dotted quad: libsession dials it itself and resolves no host names anywhere.
+    std::string ip;
+    double https_port;
+    double omq_port;
+
+    SeedNode(std::string ed25519_pubkey_hex_, std::string ip_, double https_port_, double omq_port_) :
+            ed25519_pubkey_hex{std::move(ed25519_pubkey_hex_)}, ip{std::move(ip_)}, https_port{std::move(https_port_)}, omq_port{std::move(omq_port_)} {}
+};
+
+enum class UrlScheme {
+    http,
+    https,
+};
+
+template <>
+struct EnumTraits<UrlScheme> {
+    static constexpr std::string_view name = "UrlScheme";
+    static constexpr std::array<std::string_view, 2> names{"http", "https"};
+
+    static constexpr std::string_view to_string(UrlScheme value) {
+        return names[static_cast<std::size_t>(value)];
+    }
+
+    static constexpr std::optional<UrlScheme> parse(std::string_view text) {
+        for (std::size_t i = 0; i < names.size(); i++)
+            if (names[i] == text)
+                return static_cast<UrlScheme>(i);
+        return std::nullopt;
+    }
+};
+
+/// A file server that is not the built-in one.
+///
+/// Left out, every network uses the built-in server for its netid - and devnet has none of its own,
+/// so it would use **mainnet's**: production storage, reached over a sandbox, with nothing
+/// afterwards to show it happened.
+struct FileServerConfig {
+    ::session_bridge::UrlScheme scheme;
+    std::string host;
+    double port;
+    /// The server's **X25519** pubkey, which is what onion requests to it are encrypted with, and a
+    /// different key from the Ed25519 one its QUIC endpoint is identified by.
+    std::string x25519_pubkey_hex;
+
+    FileServerConfig(::session_bridge::UrlScheme scheme_, std::string host_, double port_, std::string x25519_pubkey_hex_) :
+            scheme{std::move(scheme_)}, host{std::move(host_)}, port{std::move(port_)}, x25519_pubkey_hex{std::move(x25519_pubkey_hex_)} {}
+};
+
+/// How requests reach the network.
+///
+/// Session Router is what mainnet and testnet ship, and is the default for both. Onion requests are
+/// the other production path and the only one a devnet has - Session Router refuses a devnet
+/// outright, so devnet defaults to onion requests and cannot be moved off them.
+///
+/// Settable so that the transport can be chosen independently of the network: the two paths share
+/// only a ten-method interface, and uploads, downloads, connection status and retry behaviour are
+/// separate implementations on each side. Without this, testing the shipped transport and using a
+/// disposable network are mutually exclusive.
+enum class RouterKind {
+    onion_requests,
+    session_router,
+};
+
+template <>
+struct EnumTraits<RouterKind> {
+    static constexpr std::string_view name = "RouterKind";
+    static constexpr std::array<std::string_view, 2> names{"onion-requests", "session-router"};
+
+    static constexpr std::string_view to_string(RouterKind value) {
+        return names[static_cast<std::size_t>(value)];
+    }
+
+    static constexpr std::optional<RouterKind> parse(std::string_view text) {
+        for (std::size_t i = 0; i < names.size(); i++)
+            if (names[i] == text)
+                return static_cast<RouterKind>(i);
+        return std::nullopt;
+    }
+};
+
+/// Attach a network, or replace the one attached. Declining to attach is how an app stays
+/// offline, and that is an init option rather than a command.
+///
+/// Carries everything the network needs rather than leaving half of it remembered from init, so
+/// that a refusal leaves the client on whatever it had. "mainnet", "testnet" or "devnet".
 struct AttachNetworkCommand {
     static constexpr std::string_view type_tag = "attachNetwork";
 
     std::string netid;
-    std::optional<std::string> devnet_seed_url;
+    std::optional<std::vector<::session_bridge::SeedNode>> seed_nodes;
+    std::optional<::session_bridge::FileServerConfig> file_server;
+    /// Defaults to session-router on mainnet and testnet, onion requests on devnet.
+    std::optional<::session_bridge::RouterKind> router;
 
-    AttachNetworkCommand(std::string netid_, std::optional<std::string> devnet_seed_url_) :
-            netid{std::move(netid_)}, devnet_seed_url{std::move(devnet_seed_url_)} {}
+    AttachNetworkCommand(std::string netid_, std::optional<std::vector<::session_bridge::SeedNode>> seed_nodes_, std::optional<::session_bridge::FileServerConfig> file_server_, std::optional<::session_bridge::RouterKind> router_) :
+            netid{std::move(netid_)}, seed_nodes{std::move(seed_nodes_)}, file_server{std::move(file_server_)}, router{std::move(router_)} {}
+};
+
+/// How often libsession polls the swarm, in milliseconds. Its default is 20 seconds, which is a
+/// long time to wait for a test and about right for a person.
+///
+/// Takes effect by replacing the running ticker, so the next poll is a full interval away rather
+/// than when the old one would have fired; setting it before a network is attached therefore
+/// costs no initial delay. Nothing serialises polls against each other, so an interval short
+/// enough that one is still outstanding when the next fires gets overlapping requests - wasteful
+/// rather than wrong, since a handler already has to tolerate seeing a message twice.
+///
+/// The floor is 1ms: zero or negative is refused rather than read as "never" or "always".
+struct SetPollIntervalCommand {
+    static constexpr std::string_view type_tag = "setPollInterval";
+
+    double interval_ms;
+
+    explicit SetPollIntervalCommand(double interval_ms_) :
+            interval_ms{std::move(interval_ms_)} {}
 };
 
 /// Run one poll cycle to completion: the primitive every OS background budget wants. Android's
@@ -705,6 +817,7 @@ using Command = std::variant<
         GetSeedMnemonicCommand,
         SetDisplayNameCommand,
         AttachNetworkCommand,
+        SetPollIntervalCommand,
         PollOnceCommand,
         SetPushTokenCommand,
         HandlePushPayloadCommand,

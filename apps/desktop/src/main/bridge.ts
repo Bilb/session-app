@@ -1,10 +1,17 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { randomBytes } from 'node:crypto'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import electron from 'electron'
 
-import { netidForTransport, parseNetworkName } from '@session/basic-types'
+import {
+  netidForTransport,
+  parseDevnetConfig,
+  parseNetworkName,
+  parseLogSpec,
+  parseRouterKind,
+} from '@session/basic-types'
 import type { BridgeTransport } from '@session/client'
 
 const { app, safeStorage } = electron
@@ -44,25 +51,71 @@ function resolveDatabaseKey(dir: string): Uint8Array {
 }
 
 /**
+ * The repo-root `.env`, for a build run out of the checkout.
+ *
+ * Here rather than in a dev script because the same values have to reach `electron-vite dev`,
+ * `preview`, the e2e harness and a bare `electron out/main/index.js`, and this is the only code
+ * all four run. An explicit environment variable wins, which is what lets the harness pin
+ * EXPO_PUBLIC_SESSION_FAKE whatever a developer keeps in their file.
+ */
+function loadDotEnv(): void {
+  if (app.isPackaged) return
+  const file = fileURLToPath(new URL('../../../../.env', import.meta.url))
+  if (existsSync(file)) process.loadEnvFile(file)
+}
+
+/**
  * Opens the bridge the renderer talks to.
  *
  * The fake is reached through a dynamic import from a dev-only module, so a production build
  * has no path to it at all. Everything above this file sees frames either way.
  */
 export async function createBridge(): Promise<BridgeTransport> {
-  if (process.env['SESSION_FAKE'] === '1') {
+  loadDotEnv()
+
+  if (process.env['EXPO_PUBLIC_SESSION_FAKE'] === '1') {
     const { createFakeBridge } = await import('./dev/fakeBridge')
     return createFakeBridge()
   }
 
   const { createNodeBridgeTransport } = await import('@session/bridge-node')
+  const { discoverSeedNodes } = await import('@session/client')
 
-  // Undefined for a devnet build, which then attaches nothing rather than quietly attaching
-  // mainnet. See netidForTransport.
-  const netid = netidForTransport(parseNetworkName(process.env['SESSION_NETID']))
+  const name = parseNetworkName(process.env['EXPO_PUBLIC_SESSION_NETID'])
+  const devnet =
+    name === 'devnet'
+      ? parseDevnetConfig(
+          {
+            seedUrl: process.env['EXPO_PUBLIC_SESSION_DEVNET_SEED_URL'],
+            fileServerUrl: process.env['EXPO_PUBLIC_SESSION_FILE_SERVER_URL'],
+            fileServerX25519Pubkey: process.env['EXPO_PUBLIC_SESSION_FILE_SERVER_X25519_PUBKEY'],
+          },
+          'EXPO_PUBLIC_SESSION_',
+        )
+      : undefined
 
-  const dir = app.getPath('userData')
+  const netid = netidForTransport(name, devnet)
+  const router = parseRouterKind(process.env['EXPO_PUBLIC_SESSION_ROUTER'])
+  const logs = parseLogSpec(process.env['EXPO_PUBLIC_SESSION_LOG'])
+
+  // Per network, so a devnet identity and a mainnet one can both exist and switching back loses
+  // neither. libsession derives its own snode cache from the database's directory, which puts
+  // that on the right side of the split too.
+  const dir = join(app.getPath('userData'), name)
   mkdirSync(dir, { recursive: true })
+
+  const seedNodes =
+    devnet === undefined
+      ? undefined
+      : await discoverSeedNodes(devnet.seedUrl, {
+          fetch: (url, init) => fetch(url, { ...init, signal: AbortSignal.timeout(8_000) }),
+          variable: 'EXPO_PUBLIC_SESSION_DEVNET_SEED_URL',
+        })
+
+  if (devnet?.fileServer === undefined && name === 'devnet')
+    console.warn(
+      'EXPO_PUBLIC_SESSION_FILE_SERVER_URL is unset on a devnet build: attachments would upload to the mainnet file server.',
+    )
 
   return createNodeBridgeTransport({
     dbPath: join(dir, 'session.db'),
@@ -73,14 +126,22 @@ export async function createBridge(): Promise<BridgeTransport> {
     // chose.
     deferAccount: true,
     // The bridge attaches this once an account exists - on open if there already is one, and
-    // after onboarding otherwise. SESSION_NETID picks it; unset means mainnet, and there is
-    // deliberately no way to spell "offline" here: that is what SESSION_FAKE is for.
+    // after onboarding otherwise. EXPO_PUBLIC_SESSION_NETID picks it; unset means mainnet, and there is
+    // deliberately no way to spell "offline" here: that is what EXPO_PUBLIC_SESSION_FAKE is for.
     ...(netid === undefined ? {} : { netid }),
+    ...(seedNodes === undefined ? {} : { seedNodes }),
+    ...(devnet?.fileServer === undefined ? {} : { fileServer: devnet.fileServer }),
+    // Unset takes the netid's default: Session Router on the public networks, onion requests on a
+    // devnet. EXPO_PUBLIC_SESSION_ROUTER moves a public network onto the other one, which is the
+    // only way to exercise a transport we ship on a network that has it.
+    ...(router === undefined ? {} : { router }),
     deviceType: 'desktop',
-    // Off unless asked for: it is chatty at anything below warn, and the reason to turn it up
-    // is always a specific failure. SESSION_LOG=debug is what a diagnosis looks like.
-    ...(process.env['SESSION_LOG'] === undefined
+    // Off unless asked for: it is chatty at anything below warn, and the reason to turn it up is
+    // always a specific failure. `warn,network=debug` is what a diagnosis looks like - a flat
+    // `debug` buries it under quic and the router.
+    ...(logs?.level === undefined ? {} : { logLevel: logs.level }),
+    ...(logs === undefined || logs.categories.length === 0
       ? {}
-      : { logLevel: process.env['SESSION_LOG'] as 'debug' }),
+      : { logCategories: logs.categories }),
   })
 }

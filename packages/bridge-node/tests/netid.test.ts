@@ -26,8 +26,25 @@ describeAddon('attachNetwork with no account yet', () => {
     )
 
     try {
-      await expect(client.attachNetwork('devnet')).rejects.toThrow(/devnet/)
-      await expect(client.attachNetwork('nonsense')).rejects.toThrow(/mainnet or testnet/)
+      await expect(client.attachNetwork({ netid: 'devnet' })).rejects.toThrow(/seed node/)
+      await expect(client.attachNetwork({ netid: 'nonsense' })).rejects.toThrow(
+        /mainnet, testnet or devnet/,
+      )
+      // libsession dials a seed node itself and resolves no host names, so this never becomes an
+      // address: refused where the field is still named rather than deep inside libquic.
+      await expect(
+        client.attachNetwork({
+          netid: 'devnet',
+          seedNodes: [
+            {
+              ed25519PubkeyHex: 'a'.repeat(64),
+              ip: 'seed.devnet.test',
+              httpsPort: 1300,
+              omqPort: 1305,
+            },
+          ],
+        }),
+      ).rejects.toThrow(/IPv4/)
 
       // The refusal has to leave nothing behind. A netid kept here is one the next call that
       // brings an account into being throws on - onboarding failing at the step after the one

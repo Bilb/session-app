@@ -14,14 +14,27 @@ import type {
   Conversation,
   ConversationId,
   Deletion,
+  FileServerConfig,
   Frame,
   Message,
   MessageCursor,
   Request,
+  RouterKind,
+  SeedNode,
   SessionEvent,
 } from '@session/bridge-types'
 
 export type Unsubscribe = () => void
+
+/** Everything a network needs, so that attaching one is a single decision. */
+export interface NetworkAttachment {
+  netid: string
+  /** Required for devnet, which libsession has no seeds of its own for. */
+  seedNodes?: SeedNode[]
+  fileServer?: FileServerConfig
+  /** Defaults to session-router on mainnet and testnet, onion requests on devnet. */
+  router?: RouterKind
+}
 
 export interface OutgoingMessage {
   body: string
@@ -38,9 +51,19 @@ export interface SessionClient {
   /** libsession owns the word list, so onboarding needs no mnemonic library of its own. */
   getSeedMnemonic(language?: string): Promise<string[]>
   setDisplayName(name: string): Promise<void>
-  attachNetwork(netid: string, devnetSeedUrl?: string): Promise<void>
+  /**
+   * Attach a network, or replace the one attached. Refused whole: a network that will not build
+   * leaves the client on whatever it had.
+   */
+  attachNetwork(config: NetworkAttachment): Promise<void>
   /** One poll cycle, run to completion - what every OS background budget wants. */
   pollOnce(): Promise<void>
+  /**
+   * How often libsession polls the swarm. Its default of 20 seconds is about right for a
+   * person and far too long for a test; a positive number of milliseconds is the only valid
+   * argument.
+   */
+  setPollInterval(intervalMs: number): Promise<void>
 
   getConversations(): Promise<Conversation[]>
   getMessageRequests(): Promise<Conversation[]>

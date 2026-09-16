@@ -837,21 +837,117 @@ struct Codec<::session_bridge::SetDisplayNameCommand> {
 };
 
 template <>
+struct Codec<::session_bridge::SeedNode> {
+    static constexpr std::string_view name = "SeedNode";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::SeedNode& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("ed25519PubkeyHex", Codec<std::string>::to(env, value.ed25519_pubkey_hex));
+        obj.Set("ip", Codec<std::string>::to(env, value.ip));
+        obj.Set("httpsPort", Codec<double>::to(env, value.https_port));
+        obj.Set("omqPort", Codec<double>::to(env, value.omq_port));
+        return obj;
+    }
+    static ::session_bridge::SeedNode from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::SeedNode(
+                Codec<std::string>::from(obj.Get("ed25519PubkeyHex"), "SeedNode.ed25519PubkeyHex"),
+                Codec<std::string>::from(obj.Get("ip"), "SeedNode.ip"),
+                Codec<double>::from(obj.Get("httpsPort"), "SeedNode.httpsPort"),
+                Codec<double>::from(obj.Get("omqPort"), "SeedNode.omqPort"));
+    }
+};
+
+template <>
+struct Codec<::session_bridge::UrlScheme> {
+    static constexpr std::string_view name = "UrlScheme";
+    static Napi::Value to(Napi::Env env, ::session_bridge::UrlScheme value) {
+        auto text = ::session_bridge::EnumTraits<::session_bridge::UrlScheme>::to_string(value);
+        return Napi::String::New(env, text.data(), text.size());
+    }
+    static ::session_bridge::UrlScheme from(const Napi::Value& value, std::string_view where) {
+        std::string text = Codec<std::string>::from(value, where);
+        auto parsed = ::session_bridge::EnumTraits<::session_bridge::UrlScheme>::parse(text);
+        if (!parsed)
+            throw std::invalid_argument(std::string{where} + ": \"" + text + "\" is not a UrlScheme");
+        return *parsed;
+    }
+};
+
+template <>
+struct Codec<::session_bridge::FileServerConfig> {
+    static constexpr std::string_view name = "FileServerConfig";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::FileServerConfig& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("scheme", Codec<::session_bridge::UrlScheme>::to(env, value.scheme));
+        obj.Set("host", Codec<std::string>::to(env, value.host));
+        obj.Set("port", Codec<double>::to(env, value.port));
+        obj.Set("x25519PubkeyHex", Codec<std::string>::to(env, value.x25519_pubkey_hex));
+        return obj;
+    }
+    static ::session_bridge::FileServerConfig from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::FileServerConfig(
+                Codec<::session_bridge::UrlScheme>::from(obj.Get("scheme"), "FileServerConfig.scheme"),
+                Codec<std::string>::from(obj.Get("host"), "FileServerConfig.host"),
+                Codec<double>::from(obj.Get("port"), "FileServerConfig.port"),
+                Codec<std::string>::from(obj.Get("x25519PubkeyHex"), "FileServerConfig.x25519PubkeyHex"));
+    }
+};
+
+template <>
+struct Codec<::session_bridge::RouterKind> {
+    static constexpr std::string_view name = "RouterKind";
+    static Napi::Value to(Napi::Env env, ::session_bridge::RouterKind value) {
+        auto text = ::session_bridge::EnumTraits<::session_bridge::RouterKind>::to_string(value);
+        return Napi::String::New(env, text.data(), text.size());
+    }
+    static ::session_bridge::RouterKind from(const Napi::Value& value, std::string_view where) {
+        std::string text = Codec<std::string>::from(value, where);
+        auto parsed = ::session_bridge::EnumTraits<::session_bridge::RouterKind>::parse(text);
+        if (!parsed)
+            throw std::invalid_argument(std::string{where} + ": \"" + text + "\" is not a RouterKind");
+        return *parsed;
+    }
+};
+
+template <>
 struct Codec<::session_bridge::AttachNetworkCommand> {
     static constexpr std::string_view name = "AttachNetworkCommand";
     static Napi::Value to(Napi::Env env, const ::session_bridge::AttachNetworkCommand& value) {
         Napi::Object obj = Napi::Object::New(env);
         obj.Set("type", Napi::String::New(env, ::session_bridge::AttachNetworkCommand::type_tag.data(), ::session_bridge::AttachNetworkCommand::type_tag.size()));
         obj.Set("netid", Codec<std::string>::to(env, value.netid));
-        if (value.devnet_seed_url)
-            obj.Set("devnetSeedUrl", Codec<std::string>::to(env, *value.devnet_seed_url));
+        if (value.seed_nodes)
+            obj.Set("seedNodes", Codec<std::vector<::session_bridge::SeedNode>>::to(env, *value.seed_nodes));
+        if (value.file_server)
+            obj.Set("fileServer", Codec<::session_bridge::FileServerConfig>::to(env, *value.file_server));
+        if (value.router)
+            obj.Set("router", Codec<::session_bridge::RouterKind>::to(env, *value.router));
         return obj;
     }
     static ::session_bridge::AttachNetworkCommand from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
         return ::session_bridge::AttachNetworkCommand(
                 Codec<std::string>::from(obj.Get("netid"), "AttachNetworkCommand.netid"),
-                optional<std::string>(obj.Get("devnetSeedUrl"), "AttachNetworkCommand.devnetSeedUrl"));
+                optional<std::vector<::session_bridge::SeedNode>>(obj.Get("seedNodes"), "AttachNetworkCommand.seedNodes"),
+                optional<::session_bridge::FileServerConfig>(obj.Get("fileServer"), "AttachNetworkCommand.fileServer"),
+                optional<::session_bridge::RouterKind>(obj.Get("router"), "AttachNetworkCommand.router"));
+    }
+};
+
+template <>
+struct Codec<::session_bridge::SetPollIntervalCommand> {
+    static constexpr std::string_view name = "SetPollIntervalCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::SetPollIntervalCommand& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::SetPollIntervalCommand::type_tag.data(), ::session_bridge::SetPollIntervalCommand::type_tag.size()));
+        obj.Set("intervalMs", Codec<double>::to(env, value.interval_ms));
+        return obj;
+    }
+    static ::session_bridge::SetPollIntervalCommand from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::SetPollIntervalCommand(
+                Codec<double>::from(obj.Get("intervalMs"), "SetPollIntervalCommand.intervalMs"));
     }
 };
 
@@ -1297,6 +1393,8 @@ struct Codec<::session_bridge::Command> {
             return Codec<::session_bridge::SetDisplayNameCommand>::from(value, where);
         if (tag == "attachNetwork")
             return Codec<::session_bridge::AttachNetworkCommand>::from(value, where);
+        if (tag == "setPollInterval")
+            return Codec<::session_bridge::SetPollIntervalCommand>::from(value, where);
         if (tag == "pollOnce")
             return Codec<::session_bridge::PollOnceCommand>::from(value, where);
         if (tag == "setPushToken")

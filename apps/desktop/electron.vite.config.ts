@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import react from '@vitejs/plugin-react'
@@ -6,6 +7,12 @@ import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import { contentSecurityPolicy } from './src/main/security'
 
 const appDir = fileURLToPath(new URL('.', import.meta.url))
+
+// The renderer's network stamp is substituted at build time from this process's environment, so
+// the repo-root .env has to be loaded before the define below reads it. The main process loads it
+// again at runtime for its own use: an explicit variable wins in both, so the two agree.
+const dotEnv = fileURLToPath(new URL('../../.env', import.meta.url))
+if (existsSync(dotEnv)) process.loadEnvFile(dotEnv)
 
 /**
  * The renderer loads from `file:` once packaged, where no response header can carry a CSP, so it
@@ -105,11 +112,13 @@ export default defineConfig({
       esbuildOptions: { resolveExtensions: WEB_FIRST_EXTENSIONS },
     },
     define: {
-      // The main process reads SESSION_NETID from the environment to pick the netid; the
+      // The main process reads EXPO_PUBLIC_SESSION_NETID from the environment to pick the netid; the
       // renderer cannot read the environment at all, so it gets the same value substituted here.
       // Both readers have to resolve to one value, or the overlay names a network libsession
       // never attached to.
-      'import.meta.env.SESSION_NETID': JSON.stringify(process.env['SESSION_NETID'] ?? 'mainnet'),
+      'import.meta.env.EXPO_PUBLIC_SESSION_NETID': JSON.stringify(
+        process.env['EXPO_PUBLIC_SESSION_NETID'] ?? 'mainnet',
+      ),
       // react-native-web reads these; without them the bundle throws on first render.
       global: 'globalThis',
       __DEV__: JSON.stringify(process.env['NODE_ENV'] !== 'production'),

@@ -12,7 +12,7 @@ import { parseNetworkName } from '@session/basic-types'
 setPorts(
   memoryPorts({
     // The same variable and the same parser the main process uses, inlined at build time.
-    network: { name: parseNetworkName(import.meta.env.SESSION_NETID) },
+    network: { name: parseNetworkName(import.meta.env.EXPO_PUBLIC_SESSION_NETID) },
     window: {
       isFocused: () => document.hasFocus(),
       onFocusChange: (handler) => {

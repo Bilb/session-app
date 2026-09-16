@@ -26,8 +26,27 @@ namespace {
         switch (id) {
             case NetId::NET_MAINNET: return "mainnet";
             case NetId::NET_TESTNET: return "testnet";
+            case NetId::NET_DEVNET: return "devnet";
         }
         return "<INVALID>";
+    }
+
+    ::session_bridge::RouterKind router_of(RouterKind kind) {
+        switch (kind) {
+            case RouterKind::ROUTER_KIND_ONION_REQUESTS:
+                return ::session_bridge::RouterKind::onion_requests;
+            case RouterKind::ROUTER_KIND_SESSION_ROUTER:
+                return ::session_bridge::RouterKind::session_router;
+        }
+        return ::session_bridge::RouterKind::session_router;
+    }
+
+    ::session_bridge::UrlScheme scheme_of(UrlScheme scheme) {
+        switch (scheme) {
+            case UrlScheme::URL_SCHEME_HTTP: return ::session_bridge::UrlScheme::http;
+            case UrlScheme::URL_SCHEME_HTTPS: return ::session_bridge::UrlScheme::https;
+        }
+        return ::session_bridge::UrlScheme::http;
     }
 
     std::string device_type_name(DeviceType type) {
@@ -119,11 +138,26 @@ void HybridSessionBridge::init(const SessionBridgeOptions& options) {
     init.cache_dir = options.cacheDir;
     init.defer_account = options.deferAccount;
     if (options.netid)
-        init.netid = netid_name(*options.netid);
+        init.network.netid = netid_name(*options.netid);
+    if (options.seedNodes)
+        for (const auto& seed : *options.seedNodes)
+            init.network.seed_nodes.push_back(
+                    {seed.ed25519PubkeyHex, seed.ip, seed.httpsPort, seed.omqPort});
+    if (options.fileServer)
+        init.network.file_server = ::session_bridge::FileServerConfig{
+                scheme_of(options.fileServer->scheme),
+                options.fileServer->host,
+                options.fileServer->port,
+                options.fileServer->x25519PubkeyHex};
+    if (options.router)
+        init.network.router = router_of(*options.router);
     if (options.deviceType)
         init.device_type = device_type_name(*options.deviceType);
     if (options.logLevel)
         init.log_level = log_level_name(*options.logLevel);
+    if (options.logCategories)
+        for (const auto& each : *options.logCategories)
+            init.log_categories.push_back({each.category, log_level_name(each.level)});
     if (options.rawKeyHex)
         init.raw_key = key_from_hex(*options.rawKeyHex);
     else if (options.password)

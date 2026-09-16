@@ -1,8 +1,13 @@
 export type {
   DeviceType,
+  FileServerConfig,
   LibsessionLogLevel,
+  LogCategoryLevel,
   NetId,
+  RouterKind,
+  SeedNode,
   SessionBridgeOptions,
+  UrlScheme,
 } from './sessionBridgeOptions'
 export type {
   AccountInfo,

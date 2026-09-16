@@ -7,10 +7,51 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "session_bridge/gen/types.hpp"
 
 namespace session_bridge {
+
+/// One log category turned up or down.
+///
+/// Declared here rather than generated: `SessionBridgeOptions` is read by each adapter directly
+/// rather than crossing as a protocol frame, so the generator never sees this type. It mirrors
+/// `@session/bridge-types`' `LogCategoryLevel`, and the level is a plain string for the same
+/// reason `log_level` is - libsession takes the name, not an enum this side.
+struct LogCategoryLevel {
+    std::string category;
+    std::string level;
+};
+
+/// Which network to reach and how to find it.
+///
+/// Also what `attachNetwork` carries, so the two ways in cannot describe a network differently.
+struct NetworkOptions {
+    /// "mainnet", "testnet", "devnet", or empty to never reach one.
+    ///
+    /// Empty is the whole of the offline guarantee: attaching is the only thing that gives Core a
+    /// way off the machine, so declining to do it is more dependable than a flag each send has to
+    /// remember to consult. The contract suite runs this way, and so does anything that must not
+    /// touch a real swarm.
+    ///
+    /// Attached at construction when an account already exists, and again after `createAccount`
+    /// or `restoreAccount`, because attaching to an identity-less Core throws and there would be
+    /// nothing to poll for anyway.
+    std::string netid;
+
+    /// Where a devnet starts, and the one thing it has no default for: libsession ships mainnet's
+    /// and testnet's seed lists behind a private constructor and lets neither be replaced, so a
+    /// devnet that names none has nowhere to begin. Ignored on the other two.
+    std::vector<SeedNode> seed_nodes;
+
+    /// Empty leaves the built-in file server for the netid, which for devnet is **mainnet's**.
+    std::optional<FileServerConfig> file_server;
+
+    /// Unset takes the netid's default: Session Router on mainnet and testnet, onion requests on
+    /// devnet, which is the only thing a devnet can use.
+    std::optional<RouterKind> router;
+};
 
 /// Everything the bridge needs to open a Client, and nothing it can work out for itself.
 ///
@@ -38,17 +79,11 @@ struct InitOptions {
     /// session id, sending, attaching a network - fails until that call.
     bool defer_account = false;
 
-    /// Which network to reach, or empty to never reach one.
+    /// Which network to reach and how to find it, or nothing to never reach one.
     ///
-    /// "mainnet" or "testnet". Empty is the whole of the offline guarantee: attaching
-    /// is the only thing that gives Core a way off the machine, so declining to do it is more
-    /// dependable than a flag each send has to remember to consult. The contract suite runs this
-    /// way, and so does anything that must not touch a real swarm.
-    ///
-    /// Attached at construction when an account already exists, and again after `createAccount`
-    /// or `restoreAccount`, because attaching to an identity-less Core throws and there would be
-    /// nothing to poll for anyway.
-    std::string netid;
+    /// One struct because `attachNetwork` replaces the whole of it in a single call, and the
+    /// parts only make sense together: a netid without the seed nodes it needs reaches nothing.
+    NetworkOptions network;
 
     /// What this client tells the account's other devices it is: "ios", "android" or "desktop".
     ///
@@ -64,10 +99,17 @@ struct InitOptions {
     /// because the state machine reports *what* happened and not *why*: a send that ends in
     /// `failed` carries no reason, and the reason is in these lines.
     ///
-    /// Registered process-wide - libsession's add_logger has no deregistration - so a second
-    /// bridge in one process would double them up. There is one. A line logged after its bridge
-    /// closed is dropped: the logger holds the bridge weakly.
+    /// Registered process-wide, so a second bridge in one process would double them up. There is
+    /// one, and `close()` takes its logger back off again.
     std::string log_level;
+
+    /// Per-category overrides, applied after `log_level` has been given to every category.
+    ///
+    /// A single level is unusable: `quic` and `session-router` produce thousands of lines a second
+    /// at debug and bury whatever was being looked for. A category no dependency declares is
+    /// created rather than refused - libsession's `Cat()` makes one on demand - so it matches
+    /// nothing and costs nothing, which is why the names are checked before they get here.
+    std::vector<LogCategoryLevel> log_categories;
 };
 
 /// Receives one `Frame` per call, in the order libsession produced them.

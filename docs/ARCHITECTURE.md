@@ -387,3 +387,33 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   row rather than 66 bytes per row. Removing it means changing the protocol, the generated
   converters and the shim together, and every caller would then have to thread the id it asked for
   through the response.
+
+- **2026-09-11 - A devnet is discovered from its seed node rather than written down.** The only
+  devnet value configured is the seed node's oxend RPC. Every record libsession needs - an Ed25519
+  pubkey, an IPv4 address and both storage ports, per node - is read from it at startup with
+  `get_n_service_nodes`. A devnet regenerates those keys whenever it is rebuilt, so anything
+  written by hand goes stale without saying so; that bug used to break iOS alone, because iOS was
+  the only old client that needed the pubkey rather than a URL.
+
+  Three things a devnet needs that the two public networks do not, all decided in the shim rather
+  than configured, because none of them is a choice. Session Router refuses devnet outright, so a
+  devnet routes over onion requests and does not exercise the routing path mainnet uses. Subnet
+  diversity is off: a devnet is usually one machine, and path building will not put two nodes from
+  a `/24` in one path, so left enforced it builds no paths and every request times out. And the
+  file server has to be named, because only testnet has one of its own - an unconfigured devnet
+  uploads to _mainnet's_, which is production storage reached over a sandbox, and the upload
+  succeeds with nothing afterwards to show for it.
+
+  `EXPO_PUBLIC_SESSION_FILE_SERVER_X25519_PUBKEY` is the server's X25519 key, which is what onion requests to
+  it are encrypted with, not the Ed25519 one its QUIC endpoint is named by. Both are 64 hex
+  characters, and the wrong one fails as a decryption error part-way through an upload.
+
+- **2026-09-11 - Each network gets its own database directory.** `userData/<netid>/` on desktop,
+  `documentDirectory/session/<netid>/` on mobile, so a devnet identity and a mainnet one coexist
+  and switching back loses neither. libsession derives its snode cache from the database's
+  directory, which puts a cache of nodes that do not exist on the other network on the right side
+  of the split.
+
+  A devnet with nothing configured attaches **nothing**, never mainnet: real traffic on a build
+  whose owner believes it is a sandbox is the failure worth preventing, and an overlay stamping
+  `devnet` over it would confirm the belief rather than contradict it.

@@ -134,10 +134,14 @@ describeAddon('the database, with something in it', () => {
     // going from ten thousand messages to a hundred thousand costs 0.82 ms to 1.85 ms. Sublinear,
     // and small in absolute terms, but real - an earlier version of this measured only forty
     // thousand messages and concluded there was no effect at all.
-    const flat = rows.filter((r) => r[0]?.startsWith('500 x'))
-    const withMessages = flat.map((r) => Number(r[5]))
-    const worst = Math.max(...withMessages)
-    const best = Math.min(...withMessages.filter((n) => n > 0))
+    // Rows with messages in them: `500 x 0` is excluded deliberately, because its snippet
+    // subquery finds nothing and returns immediately, which makes it the fastest row every time.
+    // Measuring against it asks "what do messages cost at all", not "what does adding more of
+    // them cost" - and the answer to the first is large enough to cross any bound worth setting.
+    const flat = rows.filter((r) => r[0]?.startsWith('500 x') && Number(r[1]) > 0)
+    const listMs = flat.map((r) => Number(r[5]))
+    const worst = Math.max(...listMs)
+    const best = Math.min(...listMs)
     expect(
       worst / best,
       'listing 200 conversations must not get materially more expensive as messages pile up',

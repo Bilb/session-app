@@ -118,11 +118,13 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       await call({ type: 'setDisplayName', name })
     },
 
-    async attachNetwork(netid, devnetSeedUrl): Promise<void> {
+    async attachNetwork(config): Promise<void> {
       await call({
         type: 'attachNetwork',
-        netid,
-        ...(devnetSeedUrl === undefined ? {} : { devnetSeedUrl }),
+        netid: config.netid,
+        ...(config.seedNodes === undefined ? {} : { seedNodes: config.seedNodes }),
+        ...(config.fileServer === undefined ? {} : { fileServer: config.fileServer }),
+        ...(config.router === undefined ? {} : { router: config.router }),
       })
     },
 
@@ -158,6 +160,9 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       })
     },
 
+    async setPollInterval(intervalMs): Promise<void> {
+      await call({ type: 'setPollInterval', intervalMs })
+    },
     async setBlocked(id, blocked): Promise<void> {
       await call({ type: 'setBlocked', conversationId: id, blocked })
     },
