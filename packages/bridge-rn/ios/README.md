@@ -9,9 +9,13 @@ pin.
 - `SessionBridgeCore.xcframework` — the shim, plus the ten archives `STATIC_BUNDLE` leaves out of
   libsession's own bundle, merged into one library per slice.
 
-**Both carry a device slice as well as a simulator one**, which is what `all` builds. The device
+**Both carry a device slice as well as a simulator one**, which is the default. The device
 slice is not only for a phone: an iOS app running on an Apple silicon Mac — "Designed for iPad" —
 runs the device slice too, so a simulator-only build cannot be run there at all.
+
+The simulator slice is this machine's architecture and no other. `all` adds the x86_64 one, for an
+Intel Mac running the simulator; it is another 1.6GB of build tree and nothing on an Apple silicon
+machine will ever load it, so it is a release's business rather than the default.
 
 The shim is an xcframework rather than a directory of archives because `vendored_libraries` has
 no per-SDK form: a directory of `.a` files is a directory for exactly one slice, and the two have

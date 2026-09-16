@@ -7,11 +7,15 @@ set -euo pipefail
 # built by libsession's build, which is the only one that gets the cross toolchain as far as the
 # CMake-based ones.
 #
-# **Defaults to every slice**, which is what the legacy client gets: it consumes a prebuilt
+# **Defaults to both kinds of slice**, which is what the legacy client gets: it consumes a prebuilt
 # xcframework carrying device and simulator and therefore never chooses, and never ends up with an
 # artefact that is missing the slice the build in front of it needs. Choosing was what left ours
 # simulator-only, which is a confusing failure a long way from its cause -- CocoaPods refusing a
 # vendored xcframework, or a "Designed for iPad" run finding no device slice to run.
+#
+# The default takes this machine's simulator architecture and no other. `all` adds the x86_64 one,
+# which is a release's business: it is for an Intel Mac running the simulator, it is another 1.6GB
+# of build tree, and nothing on an Apple silicon machine will ever load it.
 #
 # `simulator` is the debug loop's fast path, and `device` its opposite; both leave an artefact with
 # one slice in it, so what they are for is a rebuild, not a first build.
@@ -25,11 +29,12 @@ if [ "$(uname -s)" != "Darwin" ]; then
     exit 1
 fi
 
-case "${1:-all}" in
+case "${1:-both}" in
+    both)      platform=""              ; archs="$(uname -m)" ;;
     all)       platform=""              ; archs="arm64 x86_64" ;;
     device)    platform="iphoneos"      ; archs="arm64" ;;
     simulator) platform="iphonesimulator"; archs="$(uname -m)" ;;
-    *) echo "usage: $0 [simulator|device|all]" >&2; exit 1 ;;
+    *) echo "usage: $0 [both|simulator|device|all]" >&2; exit 1 ;;
 esac
 
 cd "$libsession"
