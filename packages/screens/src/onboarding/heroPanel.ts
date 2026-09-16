@@ -23,10 +23,28 @@ export const COLUMN_WIDTH = 348
  * It is drawn at the full height of its panel and its width follows from that, so the panel's
  * width alone decides how much of the picture is visible and nothing is ever lost above or below.
  */
-export const HERO_BASIS = '40%'
+export const HERO_GROW = 2
 
-/** The same number, for the arithmetic that cannot be done with a percentage. */
-export const HERO_FRACTION = Number.parseFloat(HERO_BASIS) / 100
+/** The column's share of the same five parts. */
+export const COLUMN_GROW = 3
+
+/**
+ * The same split as a fraction, for the arithmetic.
+ *
+ * **Two grow factors against a zero basis rather than a `40%` basis, and the difference is not
+ * cosmetic.** A percentage basis is resolved against the parent's main size and then cached, and
+ * on native a parent that merely changed width does not dirty it -- so through a whole drag-resize
+ * the panel kept the width it had when the drag began, while the column beside it, growing into
+ * whatever was left, absorbed every point of the difference. The row still filled the window, so
+ * nothing looked broken until the step changed and the subtree was laid out afresh, at which point
+ * the panel snapped to its real share and the content beside it moved. That is the jump.
+ *
+ * Measured on an iPad: dragging 1101 -> 1145 held the panel at 377, which is 40% of 941, the width
+ * the drag started from; dragging 907 -> 865 held it at 461, which is 40% of 1151. 130 of 140
+ * samples were stale in this way. Free space distributed by grow factors is recomputed from the
+ * container's current size on every pass and has nowhere to go stale.
+ */
+export const HERO_FRACTION = HERO_GROW / (HERO_GROW + COLUMN_GROW)
 
 /**
  * The widest the artwork is allowed to get. A maximum, not a fixed split: on a very wide window

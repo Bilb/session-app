@@ -7,23 +7,30 @@ import {
   HERO_MAX_WIDTH,
 } from '#src/onboarding/heroPanel'
 
+/** The narrowest window this branch is ever asked to lay out: tamagui's `gtSm` starts here. */
+const WIDE_FROM = 701
+
 /**
  * What Yoga resolves the hero panel to, for a frame of this width.
  *
- * The split used to be a function in the source and is now three style properties -- a flex basis
- * and a maximum on the hero, a minimum on the column beside it -- so the rule they encode is
- * modelled here instead. Only the one case the chrome actually builds: two children, the first
- * `flexBasis: 40%, flexGrow: 0, flexShrink: 1, maxWidth: 640`, the second `flex: 1` with a
- * `minWidth`. The first is the only one that can give way, so overflow comes out of it.
+ * The split used to be a function in the source and is now style properties, so the rule they
+ * encode is modelled here instead. Only the one case the chrome actually builds: two children
+ * with a zero flex basis, growing 2 and 3, the first capped at `HERO_MAX_WIDTH`. Free space is
+ * the whole frame and it is shared in that ratio, which is why this is one line.
+ *
+ * **There is deliberately no minimum on the column any more**, and the modelling of one is what
+ * this function used to spend three lines on. Yoga clamps a flex base size up to the minimum
+ * before it works out the free space, so a floor that never binds still comes off the top of
+ * every layout -- on an iPad it made the hero a flat 159 short at every width, which is 0.4 x 398.
+ * The rule it stated is true by construction now, and `keeps the column above what it reserves`
+ * below is what holds us to it.
  *
  * Kept as a test rather than dropped with the function because these numbers are the design's:
- * they were argued over on a real tablet, and a change to any of the three constants should have
- * to say so here.
+ * they were argued over on a real tablet, and a change to any of the constants should have to say
+ * so here.
  */
 function heroWidth(frameWidth: number): number {
-  const wanted = Math.min(frameWidth * HERO_FRACTION, HERO_MAX_WIDTH)
-  const overflow = Math.max(0, wanted + COLUMN_RESERVE - frameWidth)
-  return wanted - overflow
+  return Math.min(frameWidth * HERO_FRACTION, HERO_MAX_WIDTH)
 }
 
 /** The artwork is this much wider than it is tall, so a panel's width says how much of it shows. */
@@ -48,10 +55,17 @@ describe('how wide the artwork panel is', () => {
     expect(visible({ width: 1210, height: 834 })).toBeCloseTo(0.77, 1)
   })
 
-  it('never takes the width the column needs', () => {
-    // The column is fixed, so a hero that grew past this squeezes the heading and the buttons
-    // rather than the picture. It binds on a narrow window rather than on a tablet.
-    for (const width of [834, 760, 720, 660]) {
+  it('keeps the column above what it reserves, at every width this branch sees', () => {
+    // What the column's `minWidth` used to say, asserted instead of enforced -- because enforcing
+    // it cost more than it was worth. Three fifths of the narrowest wide window is already clear
+    // of the reserve, and the hero's cap only widens the gap from there.
+    for (let width = WIDE_FROM; width <= 3000; width += 1) {
+      expect(width - heroWidth(width)).toBeGreaterThanOrEqual(COLUMN_RESERVE)
+    }
+  })
+
+  it('leaves room for the column itself, not merely for its reserve', () => {
+    for (const width of [WIDE_FROM, 834, 1100, 1210, 3000]) {
       expect(width - heroWidth(width)).toBeGreaterThanOrEqual(COLUMN_WIDTH)
     }
   })

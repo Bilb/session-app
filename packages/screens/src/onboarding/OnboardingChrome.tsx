@@ -20,7 +20,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 
 import { LanguageButton } from '../LanguageButton'
 import { NetworkOverlay } from '../NetworkOverlay'
-import { COLUMN_RESERVE, COLUMN_WIDTH, HERO_BASIS, HERO_MAX_WIDTH } from './heroPanel'
+import { COLUMN_GROW, COLUMN_WIDTH, HERO_GROW, HERO_MAX_WIDTH } from './heroPanel'
 import { useConfirmUrl } from './ConfirmUrl'
 
 /**
@@ -323,8 +323,8 @@ export function OnboardingChrome({
          * whatever the frame currently is, on every frame of the animation.
          */}
         <YStack
-          flexBasis={HERO_BASIS}
-          flexGrow={0}
+          flexBasis={0}
+          flexGrow={HERO_GROW}
           flexShrink={1}
           maxWidth={HERO_MAX_WIDTH}
           testID={ELEMENT.onboarding.hero}
@@ -334,9 +334,17 @@ export function OnboardingChrome({
         {/* **Only the column moves for the keyboard.** The frame opts out, because lifting the
             frame lifts the artwork with it -- a picture visibly shrinking while somebody types
             their name into a field it is nowhere near. */}
-        {/* The column's reserve, and the other half of the rule above: the hero is the one that
-            shrinks, because this will not go below what the heading and the buttons need. */}
-        <YStack flex={1} minWidth={COLUMN_RESERVE}>
+        {/* **No `minWidth` here, and the reason matters.** The rule it used to state -- that the
+            column never drops below what the heading and the buttons need -- is now true by
+            construction: the column keeps three of the five parts, which is 421 at the narrowest
+            window this branch ever sees and more at every other. Asserted in the tests.
+
+            As a `minWidth` it was worse than redundant. Yoga clamps a flex *base size* up to the
+            minimum before it works out the free space, so with a zero basis the reserve came off
+            the top of every layout and the hero got two fifths of what was left rather than two
+            fifths of the frame -- measured on an iPad as a flat 159 short at every width, which
+            is 0.4 x 398. A floor that never binds still changed the answer. */}
+        <YStack flexBasis={0} flexGrow={COLUMN_GROW}>
           <SafeArea>
             <KeyboardAvoiding>{column}</KeyboardAvoiding>
           </SafeArea>

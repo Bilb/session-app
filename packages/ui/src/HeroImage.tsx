@@ -5,7 +5,7 @@
    these sources -- screens and both apps -- fails on the .png and .ttf imports below. */
 /// <reference path="./assets.d.ts" />
 import { Image } from 'react-native'
-import { YStack } from 'tamagui'
+import { XStack, YStack } from 'tamagui'
 
 import heroSource from '../assets/onboarding-hero.png'
 
@@ -47,7 +47,7 @@ export function HeroImage() {
      * layout pass, and a child wider than its container overflows away from the edge it is
      * aligned to.
      */
-    <YStack flex={1} overflow="hidden" alignItems="flex-end">
+    <XStack flex={1} overflow="hidden" justifyContent="flex-end">
       {/**
        * The aspect ratio goes on this box, not on the image inside it.
        *
@@ -63,17 +63,23 @@ export function HeroImage() {
        * three ways at once: view 913x1210, image 1629x1210, image with insets 1629x2160.
        */}
       {/**
-       * **Never narrower than the panel.** The width comes from the height and the artwork's own
-       * proportions, which is right whenever that comes out wider than the panel -- the excess is
-       * the crop. On a window that is wide and short it comes out *narrower*: at 1600x700 the
-       * panel is its 640 cap and the artwork 528, which left 112 points of nothing beside it.
+       * **Never narrower than the panel, and said with flex rather than with a percentage.**
        *
-       * The floor closes that without touching the ordinary case, because a minimum only binds
-       * when the derived width is under it. When it does bind the aspect ratio gives way and the
-       * image crops vertically instead of horizontally, which is the same bargain in the other
-       * direction -- and the only alternative is a panel with a hole in it.
+       * The width comes from the height and the artwork's own proportions, which is right whenever
+       * that is wider than the panel -- the excess is the crop, and `flexShrink: 0` lets it
+       * overflow into it. On a window that is wide and short it comes out *narrower*: at 1600x700
+       * the panel is its 640 cap and the artwork 528, which left 112 points of nothing beside it.
+       * `flexGrow` closes that, because free space is whatever the panel has spare and is nothing
+       * in the ordinary case. When it does grow the aspect ratio gives way and the image crops
+       * vertically instead of horizontally, which is the same bargain in the other direction.
+       *
+       * This was `minWidth: '100%'`, which states the same rule and **goes stale**: a percentage
+       * is resolved against the parent and cached, so through a drag-resize the artwork held the
+       * width it was clamped to when the drag began while the panel around it grew. Being aligned
+       * to the end, it slid right and opened a gap down the left -- measured on an iPad at 417
+       * inside a panel of 484, a 67-point hole. Free space is recomputed every pass.
        */}
-      <YStack height="100%" minWidth="100%" aspectRatio={ASPECT}>
+      <YStack alignSelf="stretch" flexGrow={1} flexShrink={0} aspectRatio={ASPECT}>
         {/* Percentages, so the image takes the box rather than describing one. A `minWidth`
             anywhere here would fit the artwork to the panel instead -- which shrinks it to show
             the whole picture, and showing the whole picture is the opposite of a crop. */}
@@ -86,6 +92,6 @@ export function HeroImage() {
           importantForAccessibility="no-hide-descendants"
         />
       </YStack>
-    </YStack>
+    </XStack>
   )
 }
