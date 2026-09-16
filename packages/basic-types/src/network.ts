@@ -21,40 +21,17 @@ export function parseNetworkName(value: string | undefined): NetworkName {
 }
 
 /**
- * One node to bootstrap a devnet from.
+ * Declared by `@session/bridge-types` and re-exported here.
  *
- * `ip` is a dotted quad because libsession dials it itself and resolves no host names anywhere, so
- * a name here never becomes anything.
+ * They cannot live the other way round: nitrogen parses `SessionBridge.nitro.ts` and resolves
+ * `SessionBridgeOptions` by following its types, and it cannot follow one across a package
+ * boundary - a re-exported type comes out as `any` and it refuses to generate. So every type
+ * reachable from those options has to be declared in bridge-types, and this package takes them
+ * from there rather than keeping a second copy that nothing checks against the first.
  */
-export interface SeedNode {
-  /** Ed25519, 64 hex characters. Not the X25519 key a session id is built from. */
-  ed25519PubkeyHex: string
-  ip: string
-  httpsPort: number
-  omqPort: number
-}
+export type { FileServerConfig, RouterKind, SeedNode } from '@session/bridge-types'
 
-/**
- * How requests reach the network.
- *
- * Structurally identical to `@session/bridge-types`' `RouterKind`, and declared here for the same
- * reason `SeedNode` is: this package may not import that one, and the apps assign across.
- */
-export type RouterKind = 'onion-requests' | 'session-router'
-
-/** A file server that is not the built-in one. */
-export interface FileServerConfig {
-  scheme: 'http' | 'https'
-  host: string
-  port: number
-  /**
-   * The server's **X25519** pubkey, hex, which is what libsession encrypts onion requests to it
-   * with. The devnet container advertises its Ed25519 key first and the X25519 one beside it; the
-   * two are indistinguishable once pasted, and the wrong one fails as a decryption error mid
-   * upload rather than as anything this can catch.
-   */
-  x25519PubkeyHex: string
-}
+import type { FileServerConfig, RouterKind } from '@session/bridge-types'
 
 /**
  * Which transport a build uses, from the environment.

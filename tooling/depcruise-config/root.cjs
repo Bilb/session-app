@@ -32,7 +32,9 @@ const platformOnlyModules = [
 module.exports = {
   forbidden: [
     // ---- Package graph -----------------------------------------------------
-    mayOnlyDependOn('basic-types', []),
+    // The one sibling it may have: five types are shared with the protocol, and nitrogen cannot
+    // resolve them across a package boundary, so bridge-types declares them and this re-exports.
+    mayOnlyDependOn('basic-types', ['bridge-types']),
     mayOnlyDependOn('bridge-types', []),
     mayOnlyDependOn('test-ids', []),
     mayOnlyDependOn('theme-tokens', ['basic-types']),

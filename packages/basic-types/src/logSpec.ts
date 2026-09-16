@@ -5,14 +5,9 @@
  * second at debug, which buries the handful that answer a question and, once there is a log buffer
  * to export, fills it with seconds of the wrong history.
  */
-/** Structurally identical to `@session/bridge-types`' own, which this package may not import. */
-export type LibsessionLogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'critical'
+export type { LibsessionLogLevel, LogCategoryLevel } from '@session/bridge-types'
 
-/** One category turned up or down, on top of the default. */
-export interface LogCategoryLevel {
-  category: string
-  level: LibsessionLogLevel
-}
+import type { LibsessionLogLevel, LogCategoryLevel } from '@session/bridge-types'
 
 export interface LogSpec {
   /** Applied to every category first, so the pairs below are overrides rather than the whole set. */
