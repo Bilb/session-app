@@ -88,6 +88,20 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
       })
   }
 
+  /** Whether there is a profile on its way at all. Nothing is fetched in the create branch. */
+  const restoring = state.branch === 'restore'
+
+  /**
+   * Whether the restored profile has landed -- an account with a name on it.
+   *
+   * The name is the whole test: the account exists from the moment the phrase is accepted, so
+   * `haveAccount` says nothing about whether the swarm has answered yet.
+   */
+  const profileArrived =
+    account?.haveAccount === true &&
+    account.displayName !== undefined &&
+    account.displayName.length > 0
+
   /**
    * The profile arriving is what ends the wait early.
    *
@@ -100,7 +114,10 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
    * fifteen of them, only while this step is on screen.
    */
   useEffect(() => {
-    if (state.step !== 'loading') return
+    // The question before the wait counts too: the fetch is already running behind it, and asking
+    // only during the wait means the answer is always stale by exactly the time somebody spent
+    // reading the question -- which is the time that decides whether the wait is needed at all.
+    if (state.step !== 'loading' && !(state.step === 'messageNotifications' && restoring)) return
     const timer = setInterval(() => {
       void actions.refreshAccount().catch(() => {
         // The wait's own timeout covers this: a refresh that fails is one the next tick repeats,
@@ -110,14 +127,13 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
     return () => {
       clearInterval(timer)
     }
-  }, [state.step, actions])
+  }, [state.step, restoring, actions])
 
   useEffect(() => {
     if (state.step !== 'loading') return
-    if (account?.haveAccount !== true) return
-    if (account.displayName === undefined || account.displayName.length === 0) return
+    if (!profileArrived) return
     dispatch({ type: 'restoreArrived' })
-  }, [state.step, account])
+  }, [state.step, profileArrived])
 
   useEffect(() => {
     // A rotation or a resize mid-flow changes what comes next, so the reducer is told rather than
@@ -238,7 +254,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
             busy={busy}
             onBack={goBack}
             onContinue={(mode) => {
-              dispatch({ type: 'notificationsChosen', mode })
+              dispatch({ type: 'notificationsChosen', mode, profileArrived })
             }}
           />
         )

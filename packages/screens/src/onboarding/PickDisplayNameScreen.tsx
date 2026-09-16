@@ -42,6 +42,12 @@ interface PickDisplayNameScreenProps {
  * The message itself disappears on the first keystroke rather than persisting, which is a
  * deliberate departure from the written rules — a product call, on the grounds that a stale error
  * under a field somebody is actively correcting is confusing.
+ *
+ * **Too long is the exception: it is checked as it is typed, not on submit.** The legacy client
+ * validates this field live, and the reason to keep that is the counter -- it appears ten from the
+ * limit and goes negative past it, which says how far over but not what being over costs. The
+ * message is what gives the number its meaning, so it arrives at the same moment and leaves again
+ * as soon as the name is short enough. A product call.
  */
 export function PickDisplayNameScreen({
   afterFailedRestore,
@@ -90,20 +96,21 @@ export function PickDisplayNameScreen({
       onBack={onBack}
       testID={ELEMENT.onboarding.displayNameScreen}
       error={
-        showing ? (
+        showing || tooLong ? (
           <Text
             tone="danger"
             size="$label"
             weight="bold"
             testID={ELEMENT.onboarding.displayNameError}
           >
-            {/* A refusal from the bridge is not a complaint about the name, so it must not be
-                dressed as one: the name that was typed may be perfectly good and the account
-                simply could not be made. */}
-            {failedToCommit
-              ? tr('errorGeneric')
-              : tooLong
-                ? tr('displayNameErrorDescriptionShorter')
+            {/* Too long wins over a refusal from the bridge, because it is the live one: the
+                refusal describes an attempt that is over, and this describes what is on screen.
+                And a refusal is not a complaint about the name either way -- the name may be
+                perfectly good and the account simply could not be made. */}
+            {tooLong
+              ? tr('displayNameErrorDescriptionShorter')
+              : failedToCommit
+                ? tr('errorGeneric')
                 : tr('displayNameErrorDescription')}
           </Text>
         ) : undefined
@@ -115,10 +122,11 @@ export function PickDisplayNameScreen({
           variant="outlineAccent"
           testID={ELEMENT.onboarding.continueButton}
           loading={busy}
-          // Nothing to submit, or the name was refused and nothing has changed since. A refusal
-          // from the bridge is the exception: the name may be fine and the account simply could
-          // not be made, so pressing again is the right thing to be able to do.
-          disabled={name.trim().length === 0 || (showing && !failedToCommit)}
+          // Nothing to submit, too long to submit, or the name was refused and nothing has
+          // changed since. A refusal from the bridge is the exception: the name may be fine and
+          // the account simply could not be made, so pressing again is the right thing to be able
+          // to do.
+          disabled={name.trim().length === 0 || tooLong || (showing && !failedToCommit)}
           onPress={submit}
         >
           {tr('theContinue')}
@@ -137,8 +145,10 @@ export function PickDisplayNameScreen({
         autoCapitalize="words"
         autoFocus
         onSubmit={submit}
-        error={rejected}
-        errorText={showing}
+        // Red live while it is over the limit, as the client's own live check leaves it: the
+        // border and the text are the field agreeing with the counter beside them.
+        error={rejected || tooLong}
+        errorText={showing || tooLong}
         testID={ELEMENT.onboarding.displayNameInput}
         endWidth={remaining <= COUNTER_THRESHOLD ? COUNTER_WIDTH : 0}
         /* Inside the field, which is where the desktop client puts the message composer's count.

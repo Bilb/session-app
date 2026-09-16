@@ -121,7 +121,18 @@ export type OnboardingEvent =
   | { type: 'chooseRestore' }
   | { type: 'nameEntered'; name: string }
   | { type: 'phraseEntered'; from: RecoveryInput }
-  | { type: 'notificationsChosen'; mode: NotificationMode }
+  | {
+      type: 'notificationsChosen'
+      mode: NotificationMode
+      /**
+       * Whether the restored profile is already here, which decides if there is anything to wait
+       * for.
+       *
+       * Passed in rather than read, because this reducer knows nothing about the bridge. Ignored
+       * in the create branch, where nothing was ever being fetched.
+       */
+      profileArrived?: boolean
+    }
   /** The restore wait ran out. See `afterFailedRestore`. */
   | { type: 'restoreGaveUp' }
   /** The restored profile came back from the swarm, so there is nothing left to ask. */
@@ -243,12 +254,17 @@ function advance(state: OnboardingState, event: OnboardingEvent): OnboardingStat
       }
 
     case 'notificationsChosen':
-      // Create is finished here -- this is where the account gets made. Restore still has to wait
-      // for the swarm, which is what `loading` is.
+      // Create is finished here -- this is where the account gets made. Restore usually still has
+      // to wait for the swarm, which is what `loading` is.
+      //
+      // **Unless the swarm already answered.** The fetch starts when the phrase is accepted and
+      // runs while this question is being read, so on a good connection the profile is often here
+      // before it is answered -- and a wait with nothing to wait for is a screen that appears and
+      // vanishes. The legacy iOS client skips it for the same reason. A product call.
       return {
         ...state,
         notifications: event.mode,
-        step: state.branch === 'create' ? 'done' : 'loading',
+        step: state.branch === 'create' || event.profileArrived === true ? 'done' : 'loading',
       }
 
     case 'restoreGaveUp':

@@ -299,3 +299,37 @@ describe('which way a move goes', () => {
     expect(run([RESTORE, { type: 'back' }]).lastMove).toBe('back')
   })
 })
+
+describe('the wait is skipped when the profile is already here', () => {
+  /**
+   * The fetch starts at the phrase and runs behind the notification question, so on a good
+   * connection the answer is often back before the question is answered. The legacy iOS client
+   * skips the wait in that case, and a wait with nothing to wait for is a screen that appears and
+   * vanishes.
+   */
+  it('goes straight to done when the profile arrived during the question', () => {
+    const state = run([
+      RESTORE,
+      PHRASE,
+      { type: 'notificationsChosen', mode: 'fast', profileArrived: true },
+    ])
+
+    expect(state.step).toBe('done')
+    expect(state.notifications).toBe('fast')
+  })
+
+  it('still waits when it has not', () => {
+    expect(run([RESTORE, PHRASE, FAST]).step).toBe('loading')
+    expect(
+      run([RESTORE, PHRASE, { type: 'notificationsChosen', mode: 'slow', profileArrived: false }])
+        .step,
+    ).toBe('loading')
+  })
+
+  /** Nothing is being fetched in the create branch, so an arrival there would be meaningless. */
+  it('ignores it when creating', () => {
+    expect(
+      run([CREATE, NAME, { type: 'notificationsChosen', mode: 'fast', profileArrived: true }]).step,
+    ).toBe('done')
+  })
+})
