@@ -1,4 +1,11 @@
-/** How wide the artwork panel and the column beside it are, for a window of a given shape. */
+/**
+ * How wide the artwork panel and the column beside it are.
+ *
+ * Three numbers rather than a function: `OnboardingChrome` hands them to Yoga as a flex basis, a
+ * maximum and the sibling's minimum, which is the same rule expressed where the frame is actually
+ * known. It used to be `min(width x 0.4, width - COLUMN_RESERVE, HERO_MAX_WIDTH)` over a window
+ * snapshot, and a snapshot lags the frame it describes while that frame is being animated.
+ */
 
 /** The desktop client's registration column. Everything inside onboarding is this wide. */
 export const COLUMN_WIDTH = 348
@@ -16,24 +23,23 @@ export const COLUMN_WIDTH = 348
  * It is drawn at the full height of its panel and its width follows from that, so the panel's
  * width alone decides how much of the picture is visible and nothing is ever lost above or below.
  */
-const HERO_FRACTION = 0.4
+export const HERO_BASIS = '40%'
+
+/** The same number, for the arithmetic that cannot be done with a percentage. */
+export const HERO_FRACTION = Number.parseFloat(HERO_BASIS) / 100
 
 /**
  * The widest the artwork is allowed to get. A maximum, not a fixed split: on a very wide window
  * 40% of it is more picture than anyone needs.
  */
-const HERO_MAX_WIDTH = 640
+export const HERO_MAX_WIDTH = 640
 
 /**
  * What the column needs, and what the hero may therefore not take.
  *
  * The column is a fixed width by design, so it cannot absorb a hero that grew: past this the
  * heading and the buttons start being squeezed, which is a worse trade than a tighter crop. It
- * binds on a narrow window rather than on a tablet, and it is why the split is a function at all.
+ * binds on a narrow window rather than on a tablet, which is why it is a floor on the column
+ * rather than a cap on the hero: the hero is the one with somewhere to give.
  */
-const COLUMN_RESERVE = COLUMN_WIDTH + 50
-
-/** How wide the artwork's panel should be in a window this size. */
-export function heroWidth(window: { width: number; height: number }): number {
-  return Math.min(window.width * HERO_FRACTION, window.width - COLUMN_RESERVE, HERO_MAX_WIDTH)
-}
+export const COLUMN_RESERVE = COLUMN_WIDTH + 50

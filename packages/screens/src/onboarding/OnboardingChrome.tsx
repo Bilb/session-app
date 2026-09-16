@@ -13,7 +13,6 @@ import {
   SessionWordmark,
   Text,
   useMedia,
-  useWindowSize,
   XStack,
   YStack,
 } from '@session/ui'
@@ -21,7 +20,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 
 import { LanguageButton } from '../LanguageButton'
 import { NetworkOverlay } from '../NetworkOverlay'
-import { COLUMN_WIDTH, heroWidth } from './heroPanel'
+import { COLUMN_RESERVE, COLUMN_WIDTH, HERO_BASIS, HERO_MAX_WIDTH } from './heroPanel'
 import { useConfirmUrl } from './ConfirmUrl'
 
 /**
@@ -189,7 +188,6 @@ export function OnboardingChrome({
   avoidsKeyboard?: boolean
 }) {
   const wide = useMedia().gtSm
-  const window = useWindowSize()
   // Fades the content in when the step changes. `testID` is the step's identity, so a new step
   // remounts this and the animation runs; the artwork and the lockup sit outside it and do not.
   // Desktop only: the mobile clients cut between steps, and an opacity with nothing interpolating
@@ -288,15 +286,37 @@ export function OnboardingChrome({
     // under a notch is text nobody can read. So the two are asked separately.
     <Screen testID={testID} edges={[]} avoidsKeyboard={false}>
       <XStack flex={1}>
-        <YStack width={heroWidth(window)} testID={ELEMENT.onboarding.hero}>
+        {/**
+         * **The split is declared, not computed.** These three properties are the same rule the
+         * panel used to get from a function of the window -- two fifths of the frame, never more
+         * than `HERO_MAX_WIDTH`, and never so much that the column drops below what it reserves,
+         * which is what the sibling's `minWidth` enforces by making this one give way.
+         *
+         * Asking Yoga rather than asking the window is the point. A width computed in JS comes
+         * from a `useWindowDimensions` snapshot, and during a rotation the frame is already
+         * moving while that snapshot is still the previous orientation's -- so for those frames
+         * the panel is the old width inside a box that is the new one. Derived here, it is
+         * whatever the frame currently is, on every frame of the animation.
+         */}
+        <YStack
+          flexBasis={HERO_BASIS}
+          flexGrow={0}
+          flexShrink={1}
+          maxWidth={HERO_MAX_WIDTH}
+          testID={ELEMENT.onboarding.hero}
+        >
           <HeroImage />
         </YStack>
         {/* **Only the column moves for the keyboard.** The frame opts out, because lifting the
             frame lifts the artwork with it -- a picture visibly shrinking while somebody types
             their name into a field it is nowhere near. */}
-        <SafeArea>
-          <KeyboardAvoiding>{column}</KeyboardAvoiding>
-        </SafeArea>
+        {/* The column's reserve, and the other half of the rule above: the hero is the one that
+            shrinks, because this will not go below what the heading and the buttons need. */}
+        <YStack flex={1} minWidth={COLUMN_RESERVE}>
+          <SafeArea>
+            <KeyboardAvoiding>{column}</KeyboardAvoiding>
+          </SafeArea>
+        </YStack>
       </XStack>
     </Screen>
   )
