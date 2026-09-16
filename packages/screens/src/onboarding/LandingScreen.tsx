@@ -16,12 +16,25 @@ import { TermsAndPrivacy } from './TermsAndPrivacy'
  * tokens alone yields the text without them, which reads as a missing translation rather than as a
  * deliberate omission, so they are supplied here for the same reason Android supplies them there.
  */
-const BUBBLES = [
-  { text: tr('onboardingBubbleWelcomeToSession', { emoji: '👋' }), outgoing: false },
-  { text: tr('onboardingBubbleSessionIsEngineered'), outgoing: true },
-  { text: tr('onboardingBubbleNoPhoneNumber'), outgoing: false },
-  { text: tr('onboardingBubbleCreatingAnAccountIsEasy', { emoji: '👇' }), outgoing: true },
-] as const
+/**
+ * A function, and **not a constant**, because `tr()` reads the locale at the moment it is called.
+ *
+ * As an array at module scope these four were translated once, when the module was first imported,
+ * and stayed in that language for the life of the process -- so changing the language in the
+ * picker left the heading and the buttons translated and the conversation in the old language.
+ * Anything built from `tr()` has to be built during a render.
+ */
+function bubbles() {
+  return [
+    { text: tr('onboardingBubbleWelcomeToSession', { emoji: '👋' }), outgoing: false },
+    { text: tr('onboardingBubbleSessionIsEngineered'), outgoing: true },
+    { text: tr('onboardingBubbleNoPhoneNumber'), outgoing: false },
+    { text: tr('onboardingBubbleCreatingAnAccountIsEasy', { emoji: '👇' }), outgoing: true },
+  ] as const
+}
+
+/** How many lines the conversation has. Fixed, and needed before the strings are built. */
+const BUBBLE_COUNT = 4
 
 /**
  * The cadence both mobile clients use: a beat before the first line, then one every second and a
@@ -109,7 +122,7 @@ function PhoneOpening() {
   const [chatWidth, setChatWidth] = useState(0)
 
   useEffect(() => {
-    if (shown >= BUBBLES.length) return
+    if (shown >= BUBBLE_COUNT) return
     const timer = setTimeout(
       () => {
         // No layout animation here: the arriving bubble grows into its own space, which moves the
@@ -140,29 +153,31 @@ function PhoneOpening() {
           setChatWidth(event.nativeEvent.layout.width)
         }}
       >
-        {BUBBLES.slice(0, shown).map((bubble) => (
-          <Reveal key={bubble.text} instant={flag('disableAnimations')}>
-            <YStack
-              // The floor until the container has been measured, which is one frame and is over
-              // long before the first bubble is due.
-              maxWidth={chatWidth === 0 ? BUBBLE_MIN_WIDTH : bubbleMaxWidth(chatWidth)}
-              alignSelf={bubble.outgoing ? 'flex-end' : 'flex-start'}
-              padding={BUBBLE_PADDING}
-              borderRadius={BUBBLE_RADIUS}
-              backgroundColor={bubble.outgoing ? '$primaryColor' : '$messageBubbleIncomingBg'}
-            >
-              {/* 16, which is the one size both clients agree on for this: iOS hardcodes
+        {bubbles()
+          .slice(0, shown)
+          .map((bubble) => (
+            <Reveal key={bubble.text} instant={flag('disableAnimations')}>
+              <YStack
+                // The floor until the container has been measured, which is one frame and is over
+                // long before the first bubble is due.
+                maxWidth={chatWidth === 0 ? BUBBLE_MIN_WIDTH : bubbleMaxWidth(chatWidth)}
+                alignSelf={bubble.outgoing ? 'flex-end' : 'flex-start'}
+                padding={BUBBLE_PADDING}
+                borderRadius={BUBBLE_RADIUS}
+                backgroundColor={bubble.outgoing ? '$primaryColor' : '$messageBubbleIncomingBg'}
+              >
+                {/* 16, which is the one size both clients agree on for this: iOS hardcodes
                   `.system(size: 16)` in its bespoke bubble and Android's landing reuses the real
                   conversation bubble, whose body is 16. Ours was 14. */}
-              <Text
-                size="$bodyLarge"
-                color={bubble.outgoing ? '$onAccent' : '$messageBubbleIncomingText'}
-              >
-                {bubble.text}
-              </Text>
-            </YStack>
-          </Reveal>
-        ))}
+                <Text
+                  size="$bodyLarge"
+                  color={bubble.outgoing ? '$onAccent' : '$messageBubbleIncomingText'}
+                >
+                  {bubble.text}
+                </Text>
+              </YStack>
+            </Reveal>
+          ))}
       </YStack>
     </YStack>
   )
