@@ -27,6 +27,8 @@ prebuilds/
 packages/*/build/
 libsession-util/build-ios/
 packages/bridge-rn/ios/*.xcframework/
+# What the last xcframework build produced, so the script can tell whether to rebuild.
+packages/bridge-rn/ios/BUILT.json
 packages/bridge-rn/ios/lib/
 packages/bridge-core/build-ios/
 .cxx/

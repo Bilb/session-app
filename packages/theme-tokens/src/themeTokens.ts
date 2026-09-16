@@ -91,7 +91,7 @@ export type ThemeKnobs = {
    * overriding `dangerColor` after the fact would leave `onDanger` picked against a red the theme
    * no longer uses.
    *
-   * All four presets author their `danger`, and none of them authors a `warning` any more.
+   * All four presets author their `danger`; none authors a `warning`.
    *
    * The reds are worth pinning: they are recognisable, they predate any rule, and the derivation
    * puts them somewhere visibly different. The ambers are not. Once the pair stopped having to
@@ -120,10 +120,10 @@ const DANGER_BASE = '#E12D19'
  * it. Elsewhere -- a custom base, a mid-tone, a saturated one -- the same value is adapted rather
  * than replaced.
  *
- * An earlier version put the dark one at hue 87, a more golden yellow, to buy hue separation from
- * the danger red. That requirement was later dropped, and the shift should have been reverted with
- * it: what was left justifying it was 0.016 of chroma, which is not worth 19 degrees away from the
- * amber people recognise.
+ * The dark value sits at the amber people recognise rather than being pushed toward gold. Hue
+ * separation from the danger red is not a requirement the rules make, and buying it here costs 19
+ * degrees for 0.016 of chroma -- a warning that has to be identified as a warning cannot afford to
+ * be a colour nobody names amber.
  */
 const WARNING_BASE = { light: '#A64B00', dark: '#FCB159' } as const
 
@@ -167,13 +167,12 @@ const CHROMA_DECAY = 0.66
  *
  * `border` is the row that was misread longest. Ocean Light's 2.59 looked like an outlier against
  * the other three at ~1.33 until a capture of the real app showed why: its row dividers measure
- * `#cddce3` at 1.31 from the card, while `#5CAACC` at 2.59 is its *control* edge. Two roles had
- * been fitted as one, and the 1.33 in this table is the divider's value -- so the number is right
- * and the name was wrong. `separatorColor` now carries the divider.
+ * `#cddce3` at 1.31 from the card, while `#5CAACC` at 2.59 is its *control* edge. The 1.33 here is
+ * the divider's value, which is why `separatorColor` is the role that reads it.
  *
- * That resolved the contradiction but not the departure: Ocean Light still authors `#5CAACC`,
- * because its control edge is genuinely louder than the rule produces (2.59 against a derived
- * 1.32). The override remains, it just no longer has to stand in for a broken target.
+ * Ocean Light authors `#5CAACC` rather than deriving it, because its control edge is genuinely
+ * louder than the rule produces -- 2.59 against a derived 1.32. That override is a property of the
+ * theme, not a patch over this target.
  */
 const TARGETS = {
   light: {
@@ -343,12 +342,10 @@ export type ThemeTokens = {
    * A hairline dividing rows *inside* a surface. The same distance as a border, but measured from
    * the surface it divides and at surface chroma rather than emphasis.
    *
-   * These were one role until a capture of the real Ocean Light settled it: its row dividers
-   * measure `#cddce3`, a pale grey-blue at 1.31 from the card, while its authored border is
-   * `#5CAACC`, a saturated blue at 2.59 from the page. Conflating them made every divider a vivid
-   * rule. It also dissolves what had looked like an outlier: Ocean Light's border was never a badly
-   * behaved separator, it was a different role, and the 1.33 target fitted to "borders" was the
-   * separator's value all along.
+   * Two roles, and a capture of the real Ocean Light is what measures them apart: its row
+   * dividers are `#cddce3`, a pale grey-blue at 1.31 from the card, while its border is `#5CAACC`,
+   * a saturated blue at 2.59 from the page. One role serving both draws every divider as a vivid
+   * rule, and makes the quieter of the two look like a badly behaved version of the louder.
    */
   separatorColor: string
   messageBubbleIncomingBg: string

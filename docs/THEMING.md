@@ -121,7 +121,7 @@ keep the brand green even on white.
 
 **A semantic colour must be distinct from text, not from its sibling.** Danger and warning are
 allowed to resemble each other — both light presets already ship a pair that a red-green
-colour-blind viewer cannot separate, and the derivation now does the same deliberately. What
+colour-blind viewer cannot separate, and the derivation does the same deliberately. What
 neither may be is a colour dull enough to read as a paragraph, and since text is achromatic that is
 a question about chroma: `MIN_SEMANTIC_CHROMA`.
 

@@ -4,11 +4,12 @@
  * One type ramp, named by role in four groups: label, body, header, display.
  *
  * Names rather than positions because a layout has to be readable -- `size="$8"` says nothing about
- * what it is for, and neither does the diff when it changes. The names are the *only* thing that
- * changed from the numbered version, though: it is still one ramp with one entry per size, which
- * is what the previous naming got wrong. Three ramps had been spliced together and the overlap
- * suffixed `New`, so the consumed scale ran 9, 11, 13, 15, 17, 19, 18, 20, 20, 24, 30 -- backwards
- * at one position and repeated at two more. A named ramp is fine; a named ramp per source is not.
+ * what it is for, and neither does the diff when it changes.
+ *
+ * **One ramp, one entry per size, ascending.** Names invite a second ramp to be added beside the
+ * first and the overlap suffixed, which produces a scale that goes backwards somewhere in the
+ * middle and repeats elsewhere -- and nothing catches it, because every name still resolves. A
+ * named ramp is fine; a named ramp per source is not.
  *
  * The values are the ramp both legacy clients already share (iOS `Fonts.swift`, Android's
  * typography), which is the one the designs were drawn against.

@@ -61,18 +61,12 @@ function sourceFiles(dir: string): string[] {
 }
 
 /**
- * `foo="$bar"` and `foo: '$bar'`, which is every way a token reaches tamagui.
- *
- * Deliberately not every `$` in the file: a template literal or a regex may hold one, and a
- * test that flags those teaches people to ignore it.
- */
-/**
  * Any `'$name'` or `"$name"` string literal, wherever it appears.
  *
- * Deliberately not anchored to `prop=` or `prop:`, which is what it used to require: a token named
- * inside an expression -- `color={outgoing ? '$a' : '$b'}` -- matched nothing, so a token deleted
- * from the palette went unnoticed in exactly the place a conditional style puts it. That is the
- * case this test exists for, since the symptom is a component rendering at zero.
+ * Deliberately not anchored to `prop=` or `prop:`. A token named inside an expression --
+ * `color={outgoing ? '$a' : '$b'}` -- is still a token, and a conditional style is exactly where a
+ * name deleted from the palette goes unnoticed. The symptom is a component rendering at zero, so
+ * the match has to be the literal rather than the position it sits in.
  */
 const TOKEN_USE = /['"]\$([\w.-]+)['"]/g
 

@@ -54,9 +54,9 @@ const Frame = styled(XStack, {
 /**
  * Label colour follows the variant.
  *
- * A filled button's label sits on the fill, not on the page, so it takes the fill's own on-colour.
- * Both filled variants previously took the body text, which is white in the dark themes -- white
- * on the accent green measures about 1.6:1.
+ * A filled button's label sits on the fill, not on the page, so it takes the fill's own on-colour
+ * rather than the body text. The body text is white in the dark themes, and white on the accent
+ * green measures about 1.6:1.
  */
 const LABEL_TONE = {
   solid: '$onAccent',

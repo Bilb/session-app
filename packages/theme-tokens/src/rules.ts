@@ -65,23 +65,6 @@ export function contrastPick(candidates: readonly string[], against: string): st
 }
 
 /**
- * `colour`, moved just far enough in lightness to reach `min` contrast against `against`.
- *
- * Keeps hue and chroma, so a brand red stays that red rather than becoming a computed colour
- * nobody chose -- which is what makes this usable for `danger` and for an accent used as text.
- * Moves *away* from the anchor, so it always has headroom, and gives up at the end of the range
- * rather than looping: a caller that cannot reach the ratio gets the closest it could manage, and
- * `contrastRatio` will say so.
- */
-/**
- * The first candidate that clears `min`, falling back to the highest-contrast one.
- *
- * Different from `contrastPick`, which always takes the most contrast: a brand accent is not ours
- * to recolour, so accent-as-text is a *choice between* the accent and the body text rather than an
- * adjustment of the accent. Preference order carries that -- take the accent where it is legible,
- * take the text where it is not, and never invent a third green.
- */
-/**
  * The requested colour, with chroma reduced until the hue survives the trip through sRGB.
  *
  * Asking for a chroma the gamut cannot hold at that lightness does not fail, it *clamps* -- and
@@ -126,6 +109,14 @@ export function contrastPickAll(candidates: readonly string[], against: readonly
   return candidates.reduce((best, c) => (worst(c) > worst(best) ? c : best), candidates[0]!)
 }
 
+/**
+ * The first candidate that clears `min`, falling back to the highest-contrast one.
+ *
+ * Different from `contrastPick`, which always takes the most contrast: a brand accent is not ours
+ * to recolour, so accent-as-text is a *choice between* the accent and the body text rather than an
+ * adjustment of the accent. Preference order carries that -- take the accent where it is legible,
+ * take the text where it is not, and never invent a third green.
+ */
 export function contrastPrefer(
   candidates: readonly string[],
   against: string,
@@ -135,6 +126,15 @@ export function contrastPrefer(
   return contrastPick(candidates, against)
 }
 
+/**
+ * `colour`, moved just far enough in lightness to reach `min` contrast against `against`.
+ *
+ * Keeps hue and chroma, so a brand red stays that red rather than becoming a computed colour
+ * nobody chose -- which is what makes this usable for `danger` and for an accent used as text.
+ * Moves *away* from the anchor, so it always has headroom, and gives up at the end of the range
+ * rather than looping: a caller that cannot reach the ratio gets the closest it could manage, and
+ * `contrastRatio` will say so.
+ */
 export function contrastAdjust(colour: string, against: string, min: number): string {
   if (contrastRatio(colour, against) >= min) return colour
 
@@ -151,13 +151,6 @@ export function contrastAdjust(colour: string, against: string, min: number): st
   return best
 }
 
-/**
- * `colour`, moved `n` steps away from `awayFrom`.
- *
- * The direction is the anchor's, not the caller's: lighter on a dark anchor, darker on a light one.
- * That is what makes one definition work in both light and dark themes, and what stops a hover
- * state disappearing at either end of the range.
- */
 /**
  * How much of a semantic colour's chroma has to survive any lightness search.
  *
@@ -281,6 +274,13 @@ export function baseFits(background: string, polarity: 'light' | 'dark'): boolea
  */
 const MAX_BASE_CHROMA = 0.12
 
+/**
+ * `colour`, moved `n` steps away from `awayFrom`.
+ *
+ * The direction is the anchor's, not the caller's: lighter on a dark anchor, darker on a light one.
+ * That is what makes one definition work in both light and dark themes, and what stops a hover
+ * state disappearing at either end of the range.
+ */
 export function step(colour: string, n: number, awayFrom: string): string {
   const { l, c, h } = hexToOklch(colour)
   const direction = hexToOklch(awayFrom).l < 0.5 ? 1 : -1
