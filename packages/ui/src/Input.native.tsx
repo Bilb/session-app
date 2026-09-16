@@ -2,6 +2,7 @@ import { Input as TamaguiInput, XStack } from 'tamagui'
 
 import type { InputProps } from './Input.types'
 import { keyboardTypeToNative } from './nativeProps'
+import { trailingInset } from './trailingInset'
 
 /**
  * The native flavour.
@@ -98,7 +99,7 @@ export function Input({
           // The trailing edge, which is the right one only until the layout mirrors.
           // A number rather than `$2`: the inset props take a dimension and not a space
           // token, so this is `SPACE_SCALE[2]` written out.
-          end={SLOT_INSET}
+          {...trailingInset(SLOT_INSET)}
           top={0}
           bottom={0}
           alignItems="center"

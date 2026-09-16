@@ -6,6 +6,7 @@ import { useBackdropBlur } from './backdropBlur'
 import { Button } from './Button'
 import { Icon } from './Icon'
 import { Text } from './Text'
+import { trailingInset } from './trailingInset'
 
 interface ModalProps {
   open: boolean
@@ -163,7 +164,7 @@ export function Modal({
                 position="absolute"
                 top={-(TOP_INSET - CLOSE_INSET)}
                 // The trailing corner, which is the right one only until the layout is mirrored.
-                end={-(sideInset - CLOSE_INSET)}
+                {...trailingInset(-(sideInset - CLOSE_INSET))}
               >
                 <Button
                   variant="ghost"
