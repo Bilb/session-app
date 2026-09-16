@@ -14,8 +14,6 @@ interface LanguageChoiceListProps {
   onChange: (value: string) => void
   searchPlaceholder: string
   emptyLabel: string
-  /** How tall the scrolling area may grow. A dropdown and a sheet want different answers. */
-  maxHeight: number
   testIDs: Pick<LanguagePickerTestIDs, 'search' | 'option'>
 }
 
@@ -39,7 +37,6 @@ export function LanguageChoiceList({
   onChange,
   searchPlaceholder,
   emptyLabel,
-  maxHeight,
   testIDs,
 }: LanguageChoiceListProps) {
   const [query, setQuery] = useState('')
@@ -67,7 +64,10 @@ export function LanguageChoiceList({
   }, [])
 
   return (
-    <YStack gap="$1">
+    // **Shrinks into whatever the panel has left.** The height is the panel's to decide -- see the
+    // cap there -- and `minHeight: 0` is what lets this go below its content's natural height,
+    // which a flex child will not do without it.
+    <YStack gap="$1" flexShrink={1} minHeight={0}>
       <XStack alignItems="center" gap="$1">
         <Icon name="search" size="$4" color="$textSecondary" />
         <Input
@@ -87,7 +87,7 @@ export function LanguageChoiceList({
           </Text>
         </YStack>
       ) : (
-        <ScrollView ref={scroller} maxHeight={maxHeight} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={scroller} flexShrink={1} keyboardShouldPersistTaps="handled">
           <YStack>
             {matches.map((option) => {
               const selected = option.value === value

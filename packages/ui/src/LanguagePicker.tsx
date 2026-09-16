@@ -8,6 +8,7 @@ import { Button } from './Button'
 import { Icon } from './Icon'
 import { LanguageChoiceList } from './LanguageChoiceList'
 import { Text } from './Text'
+import { useScreenInsets } from './screenInsets'
 import type { LanguagePickerProps } from './LanguagePicker.types'
 
 /** Wide enough for the longest language name, narrow enough for a phone. */
@@ -16,8 +17,6 @@ const PANEL_WIDTH = 320
 const MARGIN = 12
 /** Clear of the trigger, close enough to read as hanging from it. */
 const GAP = 6
-/** The panel's own chrome above the list: the heading row, the search box and the padding. */
-const PANEL_CHROME = 110
 /** Below this the panel is not worth opening downwards, and it flips above the trigger instead. */
 const MIN_PANEL_HEIGHT = 260
 
@@ -92,17 +91,27 @@ export function LanguagePicker({
   const trigger = useRef<TamaguiElement>(null)
   const window = useWindowDimensions()
   const keyboard = useKeyboardHeight()
+  const insets = useScreenInsets()
 
   const selected = options.find((option) => option.value === value)
 
-  // **The keyboard comes out of the window, not out of nothing.** `useWindowDimensions` reports
-  // the whole window whether or not a keyboard is over it, so a panel sized from it keeps the
-  // height it had when it opened and the bottom of the list ends up underneath the keys -- with
-  // no way to scroll to it, because as far as the list is concerned it is already fully visible.
+  /**
+   * What is left of the window once the hardware and the keyboard have taken their share.
+   *
+   * **The keyboard comes out of the window, not out of nothing.** `useWindowDimensions` reports
+   * the whole window whether or not a keyboard is over it, so a panel sized from it keeps the
+   * height it had when it opened and the bottom of the list ends up underneath the keys -- with
+   * no way to scroll to it, because as far as the list is concerned it is already fully visible.
+   *
+   * The larger of the two, never the sum: with a keyboard up, the home indicator is over the
+   * keyboard rather than under the panel, so subtracting both takes a bar's worth of list away
+   * for nothing.
+   */
+  const taken = Math.max(keyboard, insets.bottom)
   const placement =
     anchor === null
       ? null
-      : panelPlacement(anchor, window.height - keyboard, GAP, MARGIN, MIN_PANEL_HEIGHT)
+      : panelPlacement(anchor, window.height - taken, GAP, MARGIN, MIN_PANEL_HEIGHT)
 
   return (
     <>
@@ -176,6 +185,13 @@ export function LanguagePicker({
                 : { bottom: placement.offset })}
               left={panelLeft(anchor, PANEL_WIDTH, window.width, MARGIN)}
               width={PANEL_WIDTH}
+              // **The panel is what is capped, and the list takes what is left of it.** The cap
+              // used to be on the list, with the chrome above it subtracted as a constant -- and
+              // a constant that guesses the height of a heading, a search box, two gaps and the
+              // padding is a constant that is wrong, which is why the last row sat under the
+              // keyboard and the panel ran past the bottom of the screen. Nothing is estimated
+              // now: the chrome takes what it needs and the list shrinks into the remainder.
+              maxHeight={placement.available}
               gap="$1.5"
               padding="$2"
               borderRadius="$2"
@@ -218,9 +234,6 @@ export function LanguagePicker({
                   options={options}
                   searchPlaceholder={searchPlaceholder}
                   emptyLabel={emptyLabel}
-                  // Whatever room is left below the trigger, less the panel's own chrome, so the
-                  // list scrolls internally instead of running off the bottom of a short window.
-                  maxHeight={Math.max(120, placement.available - PANEL_CHROME)}
                   testIDs={testIDs}
                   onChange={(next) => {
                     onChange(next)
