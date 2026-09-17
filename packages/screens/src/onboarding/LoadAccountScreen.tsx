@@ -3,17 +3,15 @@ import { ELEMENT } from '@session/test-ids'
 import { flag } from '@session/app'
 import {
   Button,
-  FieldError,
   Icon,
-  Input,
+  InputField,
+  type InputFieldHandle,
   RecoveryPasswordMark,
   SlidePager,
   TopTabs,
   YStack,
 } from '@session/ui'
-import { useEffect, useState } from 'react'
-
-import { useRejection } from './useRejection'
+import { useRef, useState } from 'react'
 
 import { OnboardingChrome, useStepPadding } from './OnboardingChrome'
 import { OnboardingStepBody } from './OnboardingStep'
@@ -39,7 +37,7 @@ interface LoadAccountScreenProps {
  * whole account in thirteen words and this screen is often reached with other people in the room,
  * but it is also the one field where a typo is invisible and fatal.
  *
- * Same error behaviour as the name field, which is `useRejection`'s rather than either screen's.
+ * Same error behaviour as the name field, which is `InputField`'s rather than either screen's.
  *
  * **The QR tab beside it is structure without a scanner.** Both clients offer two ways into a
  * restore, so the shape is here -- its own title in the bar, tabs across the width above the
@@ -55,25 +53,7 @@ export function LoadAccountScreen({
   const [tab, setTab] = useState<'phrase' | 'qr'>('phrase')
   const [phrase, setPhrase] = useState('')
   const [revealed, setRevealed] = useState(false)
-  const rejection = useRejection(rejected)
-  /** Refused by the local length check rather than by the bridge, which is a different message. */
-  const [tooShort, setTooShort] = useState(false)
-
-  useEffect(() => {
-    if (rejected) setTooShort(false)
-  }, [rejected])
-
-  const submit = () => {
-    const short = phraseIsTooShort(phrase)
-    if (!short) {
-      // No error state on the way out: painting the field red before handing the phrase over
-      // flashes a refusal on one that was accepted. The bridge's own arrives as `rejected`.
-      onContinue({ words: phraseWords(phrase) })
-      return
-    }
-    setTooShort(true)
-    rejection.reject()
-  }
+  const field = useRef<InputFieldHandle>(null)
 
   const cut = flag('disableAnimations')
   // The chrome is not padding this step, so the pane does -- with the chrome's own figures.
@@ -115,19 +95,6 @@ export function LoadAccountScreen({
             titleMark={<RecoveryPasswordMark size={22} color="$textPrimary" />}
             description={tr('recoveryPasswordRestoreDescription')}
             onBack={onBack}
-            error={
-              <FieldError
-                showing={rejection.showing}
-                // Generic rather than "incorrect", because the bridge flattens libsession's
-                // several refusals into one message and this cannot tell which it was.
-                message={
-                  tooShort
-                    ? tr('recoveryPasswordErrorMessageShort')
-                    : tr('recoveryPasswordErrorMessageGeneric')
-                }
-                testID={ELEMENT.onboarding.recoveryPhraseError}
-              />
-            }
             footer={
               <Button
                 // Outlined in the accent, like the landing screen's second button: the legacy
@@ -136,31 +103,42 @@ export function LoadAccountScreen({
                 variant="outlineAccent"
                 testID={ELEMENT.onboarding.continueButton}
                 loading={busy}
-                disabled={phrase.trim().length === 0 || rejection.showing}
-                onPress={submit}
+                disabled={phrase.trim().length === 0}
+                // Through the field, so the button refuses what the keyboard would refuse.
+                onPress={() => field.current?.submit()}
               >
                 {tr('theContinue')}
               </Button>
             }
           >
-            <Input
+            <InputField
+              ref={field}
               value={phrase}
-              onChangeText={(next) => {
-                setPhrase(next)
-                rejection.typed()
-                setTooShort(false)
+              onChangeText={setPhrase}
+              // Checked on submit rather than as it is typed: a phrase is too short for as long as
+              // it is half-entered, and saying so on every word is noise.
+              validate={(next) =>
+                phraseIsTooShort(next) ? tr('recoveryPasswordErrorMessageShort') : null
+              }
+              // Generic rather than "incorrect": the bridge flattens libsession's several refusals
+              // into one message, so this cannot tell which it was.
+              error={rejected ? tr('recoveryPasswordErrorMessageGeneric') : null}
+              onSubmit={() => {
+                onContinue({ words: phraseWords(phrase) })
               }}
+              reserveErrorSpace
+              errorTestID={ELEMENT.onboarding.recoveryPhraseError}
               placeholder={tr('recoveryPasswordEnter')}
               autoCapitalize="none"
               autoFocus
               // Concealed until asked for. The toggle is the only way to read it back, which is the
               // point -- a phrase typed blind cannot be checked over.
               secureTextEntry={!revealed}
-              error={rejection.sticky}
-              errorText={rejection.showing}
               testID={ELEMENT.onboarding.recoveryPhraseInput}
               endWidth={TOGGLE_WIDTH}
-              end={
+              // A function, because the toggle turns red with the text around it and whether a
+              // message is showing is the field's to know.
+              end={(showing) => (
                 <Button
                   variant="ghost"
                   size="xs"
@@ -174,11 +152,11 @@ export function LoadAccountScreen({
                     <Icon
                       name={revealed ? 'eyeOff' : 'eye'}
                       size="lg"
-                      color={rejection.showing ? '$dangerColor' : '$textSecondary'}
+                      color={showing ? '$dangerColor' : '$textSecondary'}
                     />
                   }
                 />
-              }
+              )}
             />
           </OnboardingStepBody>
         </YStack>

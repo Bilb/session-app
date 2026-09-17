@@ -1,14 +1,12 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, FieldError, Input, Text } from '@session/ui'
-import { useEffect, useState } from 'react'
-
-import { useRejection } from './useRejection'
+import { Button, InputField, type InputFieldHandle, Text } from '@session/ui'
+import { useRef, useState } from 'react'
 
 import { displayNameProblem, displayNameRemaining } from './displayName'
 import { OnboardingStep } from './OnboardingStep'
 
-/** How close to the limit before the count is worth rejection.showing. */
+/** How close to the limit before the count is worth showing. */
 const COUNTER_THRESHOLD = 10
 
 /** Room reserved inside the field for the count, so the text never runs under it. */
@@ -35,7 +33,7 @@ interface PickDisplayNameScreenProps {
 /**
  * Naming the account.
  *
- * The error behaviour is `useRejection`'s, shared with the phrase field.
+ * The error behaviour is `InputField`'s, shared with every other field that can be refused.
  *
  * **Too long is the exception: checked as it is typed, not on submit.** The legacy client validates
  * live, and the counter is why it is worth keeping -- it goes negative past the limit, which says
@@ -51,27 +49,10 @@ export function PickDisplayNameScreen({
   busy = false,
 }: PickDisplayNameScreenProps) {
   const [name, setName] = useState(initialName)
-  const rejection = useRejection(refused)
-  /** The refusal came from the bridge rather than from the name, which is a different message. */
-  const [failedToCommit, setFailedToCommit] = useState(refused)
-
-  useEffect(() => {
-    if (refused) setFailedToCommit(true)
-  }, [refused])
+  const field = useRef<InputFieldHandle>(null)
 
   const remaining = displayNameRemaining(name)
   const tooLong = remaining < 0
-
-  const submit = () => {
-    const problem = displayNameProblem(name)
-    if (problem === null) {
-      // What was typed, unchanged. See displayName.ts for why this is not normalised.
-      onContinue(name)
-      return
-    }
-    rejection.reject()
-    setFailedToCommit(false)
-  }
 
   return (
     <OnboardingStep
@@ -79,21 +60,6 @@ export function PickDisplayNameScreen({
       description={afterFailedRestore ? tr('displayNameErrorNew') : tr('displayNameDescription')}
       onBack={onBack}
       testID={ELEMENT.onboarding.displayNameScreen}
-      error={
-        <FieldError
-          showing={rejection.showing || tooLong}
-          // Too long wins over a refusal from the bridge, because it is the live one: the refusal
-          // describes an attempt that is over, and this describes what is on screen.
-          message={
-            tooLong
-              ? tr('displayNameErrorDescriptionShorter')
-              : failedToCommit
-                ? tr('errorGeneric')
-                : tr('displayNameErrorDescription')
-          }
-          testID={ELEMENT.onboarding.displayNameError}
-        />
-      }
       footer={
         <Button
           // Outlined in the accent, like the landing screen's second button: the legacy clients
@@ -105,27 +71,36 @@ export function PickDisplayNameScreen({
           // changed since. A refusal from the bridge is the exception: the name may be fine and
           // the account simply could not be made, so pressing again is the right thing to be able
           // to do.
-          disabled={name.trim().length === 0 || tooLong || (rejection.showing && !failedToCommit)}
-          onPress={submit}
+          disabled={name.trim().length === 0 || tooLong}
+          // Through the field, so the button refuses what the keyboard would refuse.
+          onPress={() => field.current?.submit()}
         >
           {tr('theContinue')}
         </Button>
       }
     >
-      <Input
+      <InputField
+        ref={field}
         value={name}
-        onChangeText={(next) => {
-          setName(next)
-          rejection.typed()
-        }}
+        onChangeText={setName}
+        // Checked live, as the client's own check leaves it: the message is what gives the counter
+        // beside it its meaning, so the two arrive together.
+        validate={(next) =>
+          displayNameProblem(next) === 'tooLong' ? tr('displayNameErrorDescriptionShorter') : null
+        }
+        validateOn="change"
+        // The bridge declining is not a complaint about the name: it may be perfectly good and the
+        // account simply could not be made.
+        error={refused ? tr('errorGeneric') : null}
+        reserveErrorSpace
+        errorTestID={ELEMENT.onboarding.displayNameError}
         placeholder={tr('displayNameEnter')}
         autoCapitalize="words"
         autoFocus
-        onSubmit={submit}
-        // Red live while it is over the limit, as the client's own live check leaves it: the
-        // border and the text are the field agreeing with the counter beside them.
-        error={rejection.sticky || tooLong}
-        errorText={rejection.showing || tooLong}
+        onSubmit={() => {
+          // What was typed, unchanged. See displayName.ts for why this is not normalised.
+          onContinue(name)
+        }}
         testID={ELEMENT.onboarding.displayNameInput}
         endWidth={remaining <= COUNTER_THRESHOLD ? COUNTER_WIDTH : 0}
         /* Inside the field, which is where the desktop client puts the message composer's count.
