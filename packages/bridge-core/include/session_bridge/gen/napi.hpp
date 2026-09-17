@@ -806,7 +806,7 @@ struct Codec<::session_bridge::RestoreAccountFromWordsCommand> {
     static Napi::Value to(Napi::Env env, const ::session_bridge::RestoreAccountFromWordsCommand& value) {
         Napi::Object obj = Napi::Object::New(env);
         obj.Set("type", Napi::String::New(env, ::session_bridge::RestoreAccountFromWordsCommand::type_tag.data(), ::session_bridge::RestoreAccountFromWordsCommand::type_tag.size()));
-        obj.Set("words", Codec<std::vector<std::string>>::to(env, value.words));
+        obj.Set("phrase", Codec<::session_bridge::SecretBytes>::to(env, value.phrase));
         if (value.language)
             obj.Set("language", Codec<std::string>::to(env, *value.language));
         return obj;
@@ -814,7 +814,7 @@ struct Codec<::session_bridge::RestoreAccountFromWordsCommand> {
     static ::session_bridge::RestoreAccountFromWordsCommand from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
         return ::session_bridge::RestoreAccountFromWordsCommand(
-                Codec<std::vector<std::string>>::from(obj.Get("words"), "RestoreAccountFromWordsCommand.words"),
+                Codec<::session_bridge::SecretBytes>::from(obj.Get("phrase"), "RestoreAccountFromWordsCommand.phrase"),
                 optional<std::string>(obj.Get("language"), "RestoreAccountFromWordsCommand.language"));
     }
 };
@@ -825,7 +825,7 @@ struct Codec<::session_bridge::CheckRecoveryPhraseCommand> {
     static Napi::Value to(Napi::Env env, const ::session_bridge::CheckRecoveryPhraseCommand& value) {
         Napi::Object obj = Napi::Object::New(env);
         obj.Set("type", Napi::String::New(env, ::session_bridge::CheckRecoveryPhraseCommand::type_tag.data(), ::session_bridge::CheckRecoveryPhraseCommand::type_tag.size()));
-        obj.Set("words", Codec<std::vector<std::string>>::to(env, value.words));
+        obj.Set("phrase", Codec<::session_bridge::SecretBytes>::to(env, value.phrase));
         if (value.language)
             obj.Set("language", Codec<std::string>::to(env, *value.language));
         return obj;
@@ -833,7 +833,7 @@ struct Codec<::session_bridge::CheckRecoveryPhraseCommand> {
     static ::session_bridge::CheckRecoveryPhraseCommand from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
         return ::session_bridge::CheckRecoveryPhraseCommand(
-                Codec<std::vector<std::string>>::from(obj.Get("words"), "CheckRecoveryPhraseCommand.words"),
+                Codec<::session_bridge::SecretBytes>::from(obj.Get("phrase"), "CheckRecoveryPhraseCommand.phrase"),
                 optional<std::string>(obj.Get("language"), "CheckRecoveryPhraseCommand.language"));
     }
 };

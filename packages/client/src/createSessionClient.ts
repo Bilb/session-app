@@ -1,3 +1,4 @@
+import { utf8Encode } from '@session/basic-types'
 import type {
   AccountInfo,
   Command,
@@ -30,6 +31,19 @@ type Pending = {
 }
 
 type ResultOf<K extends Result['type']> = Extract<Result, { type: K }>
+
+/**
+ * A phrase as the bytes the bridge takes, joined by the single space the shim splits on.
+ *
+ * **The last place it is a string.** Everything above this has one already -- the field's value,
+ * the state holding it, the array split out of it -- and none of those can be wiped. What this
+ * buys is the copy that would otherwise cross into the other process, where the sender could
+ * never reach it: the buffer is transferred rather than cloned, so it exists once and the shim
+ * zeroes it.
+ */
+function phraseBytes(words: readonly string[]): Uint8Array {
+  return utf8Encode(words.join(' '))
+}
 
 /**
  * Turns a transport into the client everything else is written against.
@@ -110,7 +124,7 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       }
       await call({
         type: 'restoreAccountFromWords',
-        words: from.words,
+        phrase: phraseBytes(from.words),
         ...(from.language === undefined ? {} : { language: from.language }),
       })
     },
@@ -118,7 +132,7 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
     async checkRecoveryPhrase(words, language): Promise<void> {
       await call({
         type: 'checkRecoveryPhrase',
-        words,
+        phrase: phraseBytes(words),
         ...(language === undefined ? {} : { language }),
       })
     },

@@ -90,6 +90,32 @@ namespace {
 
     /// The bytes a hex field names, or an error naming the field.
     ///
+    /// The words of a phrase, as views into the buffer that carries it.
+    ///
+    /// **No copies.** A `string_view` per word points into the `SecretBytes` the frame arrived in,
+    /// so the phrase exists once in this process and is zeroed when that buffer goes. Building a
+    /// `std::string` per word would put it back to one unwiped heap allocation each, which is most
+    /// of what moving it off a JavaScript string was for.
+    ///
+    /// Split on a single ASCII space, because that is what the sender joined them with. Anything
+    /// else it did is libsession's to reject rather than this function's to normalise.
+    std::vector<std::string_view> phrase_words(const SecretBytes& phrase) {
+        const auto bytes = phrase.bytes();
+        const std::string_view all{reinterpret_cast<const char*>(bytes.data()), bytes.size()};
+        std::vector<std::string_view> words;
+        for (std::size_t at = 0; at < all.size();) {
+            const auto end = all.find(' ', at);
+            if (end == std::string_view::npos) {
+                words.push_back(all.substr(at));
+                break;
+            }
+            if (end > at)
+                words.push_back(all.substr(at, end - at));
+            at = end + 1;
+        }
+        return words;
+    }
+
     /// oxenc::from_hex is undefined behaviour on anything but an even-length run of hex digits:
     /// its own assert is gone from a release build, and its decoder then reads pairs straight
     /// past the end of the input. Every hex field here arrives from JavaScript, so the length
@@ -529,10 +555,7 @@ struct ClientBridge::Impl {
     }
 
     void handle(double id, const RestoreAccountFromWordsCommand& cmd) {
-        std::vector<std::string_view> words;
-        words.reserve(cmd.words.size());
-        for (const auto& word : cmd.words)
-            words.emplace_back(word);
+        const auto words = phrase_words(cmd.phrase);
         mark_provisional();
         client->core.globals.restore_account(
                 cmd.language ? core::predefined_seed{words, *cmd.language}
@@ -543,10 +566,7 @@ struct ClientBridge::Impl {
     }
 
     void handle(double id, const CheckRecoveryPhraseCommand& cmd) {
-        std::vector<std::string_view> words;
-        words.reserve(cmd.words.size());
-        for (const auto& word : cmd.words)
-            words.emplace_back(word);
+        const auto words = phrase_words(cmd.phrase);
         // Built and thrown away. Deliberately the same constructor RestoreAccountFromWords uses
         // rather than a decode of its own: a phrase this accepts is then a phrase that restores,
         // and the word-count rule and the checksum cannot drift apart between the two answers.

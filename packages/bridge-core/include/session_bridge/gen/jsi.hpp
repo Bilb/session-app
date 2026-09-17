@@ -912,13 +912,13 @@ struct JSIConverter<::session_bridge::RestoreAccountFromWordsCommand> final {
     static inline ::session_bridge::RestoreAccountFromWordsCommand fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
         jsi::Object obj = arg.asObject(runtime);
         return ::session_bridge::RestoreAccountFromWordsCommand(
-                JSIConverter<std::vector<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "words"))),
+                JSIConverter<::session_bridge::SecretBytes>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "phrase"))),
                 ::session_bridge::optional_from_jsi<std::string>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "language"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::RestoreAccountFromWordsCommand& arg) {
         jsi::Object obj(runtime);
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::RestoreAccountFromWordsCommand::type_tag));
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "words"), JSIConverter<std::vector<std::string>>::toJSI(runtime, arg.words));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "phrase"), JSIConverter<::session_bridge::SecretBytes>::toJSI(runtime, arg.phrase));
         if (arg.language)
             obj.setProperty(runtime, PropNameIDCache::get(runtime, "language"), JSIConverter<std::string>::toJSI(runtime, *arg.language));
         return obj;
@@ -936,13 +936,13 @@ struct JSIConverter<::session_bridge::CheckRecoveryPhraseCommand> final {
     static inline ::session_bridge::CheckRecoveryPhraseCommand fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
         jsi::Object obj = arg.asObject(runtime);
         return ::session_bridge::CheckRecoveryPhraseCommand(
-                JSIConverter<std::vector<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "words"))),
+                JSIConverter<::session_bridge::SecretBytes>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "phrase"))),
                 ::session_bridge::optional_from_jsi<std::string>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "language"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::CheckRecoveryPhraseCommand& arg) {
         jsi::Object obj(runtime);
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::CheckRecoveryPhraseCommand::type_tag));
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "words"), JSIConverter<std::vector<std::string>>::toJSI(runtime, arg.words));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "phrase"), JSIConverter<::session_bridge::SecretBytes>::toJSI(runtime, arg.phrase));
         if (arg.language)
             obj.setProperty(runtime, PropNameIDCache::get(runtime, "language"), JSIConverter<std::string>::toJSI(runtime, *arg.language));
         return obj;

@@ -503,11 +503,11 @@ struct CreateAccountCommand {
 struct RestoreAccountFromWordsCommand {
     static constexpr std::string_view type_tag = "restoreAccountFromWords";
 
-    std::vector<std::string> words;
+    ::session_bridge::SecretBytes phrase;
     std::optional<std::string> language;
 
-    RestoreAccountFromWordsCommand(std::vector<std::string> words_, std::optional<std::string> language_) :
-            words{std::move(words_)}, language{std::move(language_)} {}
+    RestoreAccountFromWordsCommand(::session_bridge::SecretBytes phrase_, std::optional<std::string> language_) :
+            phrase{std::move(phrase_)}, language{std::move(language_)} {}
 };
 
 /// Ask whether a recovery phrase would restore, without restoring it.
@@ -522,11 +522,11 @@ struct RestoreAccountFromWordsCommand {
 struct CheckRecoveryPhraseCommand {
     static constexpr std::string_view type_tag = "checkRecoveryPhrase";
 
-    std::vector<std::string> words;
+    ::session_bridge::SecretBytes phrase;
     std::optional<std::string> language;
 
-    CheckRecoveryPhraseCommand(std::vector<std::string> words_, std::optional<std::string> language_) :
-            words{std::move(words_)}, language{std::move(language_)} {}
+    CheckRecoveryPhraseCommand(::session_bridge::SecretBytes phrase_, std::optional<std::string> language_) :
+            phrase{std::move(phrase_)}, language{std::move(language_)} {}
 };
 
 struct RestoreAccountFromSeedCommand {

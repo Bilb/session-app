@@ -9,6 +9,22 @@ import type {
 import type { FileServerConfig, RouterKind, SeedNode } from './sessionBridgeOptions'
 
 /**
+ * Bytes carrying a secret, transferred rather than copied and wiped once they land.
+ *
+ * **A distinct spelling rather than a plain `Uint8Array`**, because the generator matches on it:
+ * ordinary bytes become a `std::vector` and one of these becomes a buffer whose destructor zeroes
+ * it. Naming the secret in the protocol is what makes it handled as a secret everywhere it lands,
+ * rather than everywhere somebody remembered.
+ *
+ * The sender's buffer is detached by `postMessage(request, [buffer])`, so the bytes exist in one
+ * process instead of two. That is the copy the sender can never reach to clear afterwards.
+ *
+ * Not exported: the generator reads the annotation on the field rather than an import of this, and
+ * TypeScript has nothing to gain from a second name for `Uint8Array`.
+ */
+type SecretBytes = Uint8Array
+
+/**
  * Everything the app asks libsession to do. One Request goes in, exactly one Response comes
  * back carrying the same id. Commands are named for what the app wants, not for the C++ method
  * that serves them, so that a refactor upstream is a shim change rather than a protocol change.
@@ -59,7 +75,7 @@ export type Command =
    *
    * So doing the first does not finish the story, and is worth doing anyway.
    */
-  | { type: 'restoreAccountFromWords'; words: string[]; language?: string }
+  | { type: 'restoreAccountFromWords'; phrase: SecretBytes; language?: string }
   /**
    * Ask whether a recovery phrase would restore, without restoring it.
    *
@@ -71,7 +87,7 @@ export type Command =
    * Succeeds or fails; the seed deliberately does not come back, since the words are already in
    * the app's memory and a second copy of the same secret buys nothing.
    */
-  | { type: 'checkRecoveryPhrase'; words: string[]; language?: string }
+  | { type: 'checkRecoveryPhrase'; phrase: SecretBytes; language?: string }
   | { type: 'restoreAccountFromSeed'; hexSeed: string }
   /**
    * Throws away the account and everything stored under it, and starts again from nothing.

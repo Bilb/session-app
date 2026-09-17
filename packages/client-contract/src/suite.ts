@@ -117,6 +117,21 @@ export function runSessionClientContract(
       expect((await client.getAccountInfo()).haveAccount).toBe(false)
     })
 
+    it('restores the account the phrase belongs to, through the bytes it travels as', async () => {
+      // **The round trip the phrase now takes.** It leaves as a string, crosses as bytes that the
+      // sender gives up, and is split back into words by the shim -- so a phrase that restores the
+      // right account proves the encode, the transfer and the split all agree. Restoring the wrong
+      // account, or none, is what a mismatch anywhere along that would look like.
+      const { client, phrase } = await harness.newcomer()
+      await client.checkRecoveryPhrase(phrase)
+
+      await client.restoreAccount({ words: phrase })
+
+      const info = await client.getAccountInfo()
+      expect(info.haveAccount).toBe(true)
+      expect(info.sessionId).toBeDefined()
+    })
+
     it('refuses a phrase of the wrong length, and still makes nothing', async () => {
       const { client, phrase } = await harness.newcomer()
 
