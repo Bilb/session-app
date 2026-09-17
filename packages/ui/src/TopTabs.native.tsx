@@ -4,6 +4,7 @@ import { XStack, YStack } from 'tamagui'
 
 import { PressArea } from './PressArea'
 import { Text } from './Text'
+import { isLayoutRtl } from './layoutDirection'
 import type { TopTabsProps } from './TopTabs.types'
 import { BAR_HEIGHT, INDICATOR_HEIGHT, INDICATOR_INSET, SLIDE_MS } from './topTabsMetrics'
 
@@ -86,14 +87,19 @@ export function TopTabs({ tabs, active, onChange, instant = false }: TopTabsProp
           style={{
             position: 'absolute',
             bottom: 0,
-            left: INDICATOR_INSET,
+            // The leading edge, which react-native mirrors for us.
+            start: INDICATOR_INSET,
             width: share - INDICATOR_INSET * 2,
             height: INDICATOR_HEIGHT,
             transform: [
               {
+                // **A transform is not mirrored, and this is the one thing here that is not.**
+                // `start` follows the reading direction on its own; `translateX` is pixels along
+                // the screen either way, so the bar has to be told to travel the other way when
+                // the tabs are ordered the other way.
                 translateX: slide.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [0, share],
+                  outputRange: [0, isLayoutRtl() ? -share : share],
                 }),
               },
             ],

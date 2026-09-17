@@ -59,9 +59,14 @@ export function TopTabs({ tabs, active, onChange, instant = false }: TopTabsProp
       <YStack
         position="absolute"
         bottom={0}
-        left={`${String(at * share)}%`}
         width={`${String(share)}%`}
-        {...(instant ? {} : { style: { transition: `left ${String(SLIDE_MS)}ms ease-out` } })}
+        // Placed from the leading edge and animated on the same property, so the bar travels the
+        // way the tabs are ordered rather than always rightwards. Both have to move together: a
+        // transition naming `left` animates nothing when the offset is `inset-inline-start`.
+        style={{
+          insetInlineStart: `${String(at * share)}%`,
+          ...(instant ? {} : { transition: `inset-inline-start ${String(SLIDE_MS)}ms ease-out` }),
+        }}
       >
         <YStack
           height={INDICATOR_HEIGHT}

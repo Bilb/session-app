@@ -29,16 +29,13 @@ describe('a directional edge', () => {
    * so `SafeArea` and `Screen` must not follow the text. A `left`/`right` pair used together is a
    * symmetric stretch rather than a side. `LanguagePicker` places its panel against a *measured*
    * rectangle in window coordinates, and a measurement is physical -- what mirrors there is which
-   * edge of the trigger it aligns to, which `panelLeft` takes as an argument. And `TopTabs`
-   * positions its indicator by `left` *and* animates it with a transition naming `left`, so the
-   * two have to move together — flagged in the RTL review rather than half-changed here.
+   * edge of the trigger it aligns to, which `panelLeft` takes as an argument.
    */
   const PHYSICAL_ON_PURPOSE = [
     'SafeArea.native.tsx',
     'Screen.native.tsx',
     'PhoneChrome.tsx',
     'LanguagePicker.tsx',
-    'TopTabs.tsx',
   ]
 
   function sources(dir: string): string[] {

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Animated, Easing, useWindowDimensions, View } from 'react-native'
 
+import { isLayoutRtl } from './layoutDirection'
 import type { SlidePagerProps } from './SlidePager.types'
 
 export type { SlidePagerProps }
@@ -27,6 +28,7 @@ const DURATION_MS = 250
  */
 export function SlidePager({ index, instant = false, children }: SlidePagerProps) {
   const { width } = useWindowDimensions()
+  const rtl = isLayoutRtl()
   const at = useRef(new Animated.Value(index)).current
 
   useEffect(() => {
@@ -63,9 +65,12 @@ export function SlidePager({ index, instant = false, children }: SlidePagerProps
             left: 0,
             transform: [
               {
+                // Mirrored, because a transform is not. The next page arrives from the trailing
+                // edge -- the right in English, the left in Arabic -- and `translateX` is pixels
+                // along the screen whichever way the reading goes.
                 translateX: at.interpolate({
                   inputRange: [at_ - 1, at_, at_ + 1],
-                  outputRange: [width, 0, -width],
+                  outputRange: rtl ? [-width, 0, width] : [width, 0, -width],
                 }),
               },
             ],

@@ -1,4 +1,4 @@
-import type { LogicalEdges } from './logicalEdges.types'
+import type { LogicalEdges, LogicalLength } from './logicalEdges.types'
 
 export type { LogicalEdges }
 
@@ -15,8 +15,8 @@ export type { LogicalEdges }
  * The properties themselves are the CSS logical ones, which browsers have supported for years and
  * which mirror off the document's `dir`. That is what `applyDirection` sets.
  */
-export function logical(edges: LogicalEdges): { style: Record<string, number> } {
-  const style: Record<string, number> = {}
+export function logical(edges: LogicalEdges): { style: Record<string, LogicalLength> } {
+  const style: Record<string, LogicalLength> = {}
   if (edges.marginStart !== undefined) style['marginInlineStart'] = edges.marginStart
   if (edges.marginEnd !== undefined) style['marginInlineEnd'] = edges.marginEnd
   if (edges.paddingStart !== undefined) style['paddingInlineStart'] = edges.paddingStart
