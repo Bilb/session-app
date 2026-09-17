@@ -341,13 +341,24 @@ struct ClientBridge::Impl {
                 logger_set_level(each.category, log_level_of(each.level));
 
             auto* impl = this;
-            add_logger([impl](std::string_view message, std::string_view category, LogLevel lvl) {
-                // Called from whichever thread logged, including Core's loop and the network's own
-                // threads, and after close() has dropped the sink - emit() checks for that, which
-                // is the only reason this is safe to leave registered.
-                impl->event(LogSessionEvent{
-                        std::string{message}, std::string{category}, std::string{lvl.to_string()}});
-            });
+            // **The handle is kept, because dropping it is what leaves this registered for ever.**
+            // `remove_logger` needs it to find the callback again; given a default-constructed one
+            // it removes nothing, and the lambda below stays reachable with a dangling `impl`
+            // after the Impl is gone. The next thing to log then calls into freed memory -- and
+            // something always logs, because constructing a Core logs from its own event loop.
+            //
+            // Checking `sink` inside `emit` does not save it: by then `impl->` has already been
+            // dereferenced, which is the fault rather than what follows it.
+            logger = add_logger(
+                    [impl](std::string_view message, std::string_view category, LogLevel lvl) {
+                        // Called from whichever thread logged, including Core's loop and the
+                        // network's own threads. Safe only because `close` removes it before the
+                        // Impl goes, which is what the handle above is for.
+                        impl->event(LogSessionEvent{
+                                std::string{message},
+                                std::string{category},
+                                std::string{lvl.to_string()}});
+                    });
         }
     }
 
