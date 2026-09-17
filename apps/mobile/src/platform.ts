@@ -69,21 +69,12 @@ const ports = memoryPorts({
     // merging into it. See memoryPorts.
     openUrl: (url) => Linking.openURL(url),
     /**
-     * **iOS only, and only because iOS is the only one of the two that can show the row.**
+     * Where a permission the OS will not ask about again is turned back on.
      *
-     * `openSettings()` rather than a hard-coded `app-settings:`, so the constant is read for
-     * whichever iOS this is running on rather than hoping a literal stays correct across
-     * versions. react-native's implementation is the legacy client's line exactly.
-     *
-     * It opens Settings -> Apps -> Session, which lists Preferred Language once the bundle
-     * declares more than one localization -- what `CFBundleLocalizations` in `app.config.ts` is
-     * for.
-     *
-     * Null on Android rather than a stub: App Language needs a `localeConfig` and there is no
-     * Android build to put one in yet. Null is what the picker reads as "do it yourself".
+     * `openSettings()` rather than a hard-coded `app-settings:` URL, so the constant is read for
+     * whichever OS version this is running on rather than hoping a literal stays correct across
+     * them. Both platforms: every installed app has a settings page.
      */
-    // Both platforms, unlike the language row above: every installed app has a settings page,
-    // and it is where a camera permission the OS will not ask about again is turned back on.
     openAppSettings: () => Linking.openSettings(),
   },
   secureStore: {

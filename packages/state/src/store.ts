@@ -23,6 +23,16 @@ export interface SessionActions {
    */
   clearDeviceData: () => Promise<void>
   /**
+   * Reads and writes a preference libsession stores against the account.
+   *
+   * **There is nowhere to put a preference until an account exists**, which is what makes this a
+   * store action rather than a module of its own: the caller has to be somewhere that knows
+   * whether hydrate has happened. Reading before then answers undefined rather than throwing, so a
+   * caller can ask on every start without first asking whether it is too early.
+   */
+  getPreference: (key: string) => Promise<string | undefined>
+  setPreference: (key: string, value: string) => Promise<void>
+  /**
    * Subscribes first, then asks - never the other way round.
    *
    * Anything that arrives between the two is applied on top of the answer, which is safe
@@ -249,6 +259,18 @@ export function createSessionStore(
       await client.discardAccount()
       store.setState({ ...emptyState })
       await actions.start()
+    },
+
+    async getPreference(key): Promise<string | undefined> {
+      // Undefined rather than a throw when there is no account yet: every caller would otherwise
+      // have to ask whether hydrate has happened before it could ask anything else.
+      if (store.getState().account?.haveAccount !== true) return undefined
+      return client.getPref(key)
+    },
+
+    async setPreference(key, value): Promise<void> {
+      if (store.getState().account?.haveAccount !== true) return
+      await client.setPref(key, value)
     },
 
     async hydrate(): Promise<void> {

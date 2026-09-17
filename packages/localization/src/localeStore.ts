@@ -10,10 +10,12 @@ import { matchLocale } from './languageList'
  * subscription -- and stops there. No React: this package has none, and the hook that adapts it
  * belongs where the screens are.
  *
- * **Not persisted yet.** The only preference store is libsession's globals table, which needs an
- * identity -- exactly what does not exist while onboarding is running. So a language chosen during
- * onboarding survives until the account does. Choosing it again after a mid-onboarding relaunch is
- * the cost, and it is smaller than a second preference store to keep in step.
+ * **Nothing is persisted from here.** The only preference store is libsession's globals table,
+ * which needs an identity -- exactly what does not exist while onboarding is running. So this
+ * holds the choice in memory, and `usePersistedLocale` in `@session/screens` writes it out once
+ * there is an account to write it against. A language chosen mid-onboarding and abandoned before
+ * the account exists is lost, which is the same thing that happens to everything else chosen
+ * there.
  */
 
 const FALLBACK: CrowdinLocale = 'en'

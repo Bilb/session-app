@@ -1,16 +1,6 @@
 import { useTokenColor } from './useTokenColor'
 import Svg, { Path } from 'react-native-svg'
 
-/**
- * The two halves of the Session lockup, drawn as paths rather than shipped as images.
- *
- * They are one-colour marks, so a path costs a few hundred bytes and takes a theme token the way
- * everything else does. A PNG would need one file per colour and per density, and would still be
- * the wrong colour in a theme nobody has drawn yet.
- *
- * Paths taken from the desktop client's icon set so the mark is identical rather than similar.
- */
-
 interface MarkProps {
   /** Height in pixels. The width follows the mark's own proportions. */
   size: number
@@ -18,7 +8,15 @@ interface MarkProps {
   color: string
 }
 
-/** The looping glyph. Drawn in the accent colour, which is what makes it the brand mark. */
+/**
+ * The looping glyph. Drawn in the accent colour, which is what makes it the brand mark.
+ *
+ * A path rather than an image, here and for the wordmark below: they are one-colour marks, so a
+ * path costs a few hundred bytes and takes a theme token the way everything else does. A PNG
+ * would need one file per colour and per density, and would still be the wrong colour in a theme
+ * nobody has drawn yet. Taken from the desktop client's icon set, so the mark is identical rather
+ * than similar.
+ */
 export function SessionBrand({ size, color }: MarkProps) {
   const fill = useTokenColor(color)
   return (

@@ -24,14 +24,9 @@ const ROOTS = new Set([
   'StartupFailedScreen.tsx',
 ])
 
-/**
- * Onboarding is not in this list because it is not one of these files.
- *
- * It is a flow of steps under `onboarding/` behind a single route, and its own back control is
- * wired step to step rather than to the navigator -- `OnboardingChrome` draws it on the phone
- * layout and `OnboardingStep` hangs it off the wide column. `flow.ts` decides where each step's
- * back leads, and `flow.test.ts` is what holds that to account.
- */
+// Onboarding is absent because it is not one of these files: it is a flow of steps under
+// `onboarding/` behind a single route, and its back is wired step to step rather than to the
+// navigator. `flow.ts` decides where each step's back leads, and `flow.test.ts` holds it to that.
 
 const dir = join(import.meta.dirname, '../src')
 const screens = readdirSync(dir).filter((name) => name.endsWith('Screen.tsx'))

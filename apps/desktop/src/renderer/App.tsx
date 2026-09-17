@@ -9,6 +9,7 @@ import {
   RequestsScreen,
   SettingsScreen,
   useLocale,
+  usePersistedLocale,
   useTextDirection,
 } from '@session/screens'
 import { SessionStoreProvider, useAccount, useHydrated, useStartupError } from '@session/state'
@@ -61,6 +62,8 @@ function Shell() {
   const account = useAccount()
   const location = useLocation()
   const [onboarding, setOnboarding] = useState(false)
+  // Here rather than at the root, which creates the store provider and so cannot read from it.
+  usePersistedLocale()
 
   // Asked before `hydrated`, because both are false when a start has failed and only one of them
   // says so. The other order leaves the launch screen up over a failure that is already known.

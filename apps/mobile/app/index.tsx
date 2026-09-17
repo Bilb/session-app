@@ -3,6 +3,7 @@ import {
   OnboardingFlow,
   StartingScreen,
   StartupFailedScreen,
+  usePersistedLocale,
 } from '@session/screens'
 import { useAccount, useHydrated, useStartupError } from '@session/state'
 import { useState } from 'react'
@@ -26,6 +27,8 @@ export default function IndexRoute() {
   const startupError = useStartupError()
   const account = useAccount()
   const [onboarding, setOnboarding] = useState(false)
+  // Here rather than in the layout, which creates the store provider and so cannot read from it.
+  usePersistedLocale()
 
   // Asked before `hydrated`, because both are false when a start has failed and only one of them
   // says so. The other order leaves the launch screen up over a failure that is already known.
