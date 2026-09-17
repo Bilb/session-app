@@ -47,13 +47,10 @@ const here = fileURLToPath(new URL('.', import.meta.url))
 /**
  * The bridge, which outlives any particular window.
  *
- * It used to be built inside `createWindow` and closed when that window closed, which held
- * together only because there was exactly one window. It is not the same thing as the window:
- * `app.on('activate')` below opens another when the last one has gone, which on macOS is the
- * ordinary way an app comes back from the dock -- and that reopened libsession's database rather
- * than carrying on with the one already open.
- *
- * So it is built once, every window is wired to it, and it is closed when the app quits.
+ * `app.on('activate')` opens a window when the last one has gone, which on macOS is the ordinary
+ * way an app comes back from the dock. A bridge owned by a window would reopen libsession's
+ * database there instead of carrying on with the one already open, so it is built once, every
+ * window is wired to it, and it is closed when the app quits.
  */
 let bridge: Awaited<ReturnType<typeof createBridge>> | null = null
 
@@ -62,36 +59,25 @@ async function requireBridge(): Promise<NonNullable<typeof bridge>> {
   return bridge
 }
 
-async function createWindow({ show = true } = {}): Promise<Electron.BrowserWindow> {
+async function createWindow(): Promise<Electron.BrowserWindow> {
   const open = await requireBridge()
 
   const window = new BrowserWindow({
     width: 1100,
     height: 760,
     minWidth: 380,
-    /**
-     * Small enough to be useful, tall enough that onboarding still fits.
-     *
-     * The wide onboarding column is a fixed block -- a 30 header, a 12 gap, the 276 every step
-     * reserves so none of them jumps, and 12 either side of the lot. **Measured against the
-     * running renderer, it stops fitting below a 340 viewport**: at 340 it fills the height
-     * exactly, and at 320 the Session wordmark is 10 points off the top of the screen.
-     *
-     * `useContentSize` is not set, so this is the whole window and the frame comes out of it --
-     * about 28 on macOS. 380 leaves the content a dozen points of slack on top of the 340 and
-     * squares with `minWidth`. A product call: a floor on the window rather than
-     * letting the column scroll, since a registration form that scrolls is worse than one that
-     * cannot be made silly-small.
-     */
+    // Onboarding's wide column is a fixed 340-tall block, and the frame comes out of this rather
+    // than sitting outside it -- about 28 on macOS -- so 380 is the smallest window it still fits
+    // in. A floor rather than a scrolling column: a registration form that scrolls is worse than
+    // one that cannot be made silly-small.
     minHeight: 380,
     // Linux and Windows take the window icon from here; macOS ignores it and uses the bundle's,
     // which is the packager's job rather than this file's.
     icon: join(here, '../../resources/icon.png'),
     // Shown straight away rather than on ready-to-show: that event is not dependable on a
-    // headless display, and a window that never shows has no layout, which makes every
-    // element in it invisible to a test. A replacement window is the exception -- it is loaded
-    // hidden and shown only once it has painted, which is what makes the swap not a flash.
-    show,
+    // headless display, and a window that never shows has no layout, which makes every element
+    // in it invisible to a test.
+    show: true,
     webPreferences: {
       ...hardenedWebPreferences({ packaged: app.isPackaged }),
       // CommonJS, because a sandboxed preload cannot be an ES module; it is built that way in
@@ -168,32 +154,6 @@ async function createWindow({ show = true } = {}): Promise<Electron.BrowserWindo
   return window
 }
 
-/**
- * Replaces the window with a fresh one, and with it the renderer process.
- *
- * **The point is the process, not the page.** A reload tears down the document and the JavaScript
- * context but keeps the same renderer process -- measured: the pid is unchanged either side -- so
- * nothing typed into it is actually freed on our schedule. A new window is a new process, and when
- * the old one goes its heap goes with it, including the strings a recovery phrase leaves behind
- * that JavaScript gives no way to wipe.
- *
- * Staged so it is not a flash: the replacement is created hidden, loaded, and shown in the same
- * beat that the old one closes, with the same bounds. What the person should see is the content
- * changing, which it was about to do anyway.
- */
-async function recycleWindow(): Promise<void> {
-  const previous = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0]
-  if (!previous) return
-
-  const bounds = previous.getBounds()
-  const next = await createWindow({ show: false })
-  next.setBounds(bounds)
-  next.show()
-  // Destroy rather than close: `close` is cancellable and fires the same lifecycle a person
-  // quitting would, and this is neither a person nor a quit.
-  previous.destroy()
-}
-
 // Covers any WebContents the app did not make. Deliberately not guardNavigation: this fires from
 // inside `new BrowserWindow`, before the window has a URL, so a navigation guard installed here
 // could only refuse every navigation - including the app's own reload. createWindow installs that
@@ -205,11 +165,6 @@ app.on('web-contents-created', (_event, contents) => {
 void app.whenReady().then(async () => {
   denyAllPermissions(session.defaultSession)
   ipcMain.handle('session-ping', () => 'pong')
-  // No arguments and no return: the renderer can ask to be replaced and can say nothing else
-  // through it, which is the whole surface.
-  ipcMain.handle('session-recycle-window', async () => {
-    await recycleWindow()
-  })
   await createWindow()
 
   app.on('activate', () => {
