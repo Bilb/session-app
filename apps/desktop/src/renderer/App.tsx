@@ -31,7 +31,8 @@ export function App() {
   // here rather than in a provider, because a provider's `children` arrive as an element created
   // by its own parent, and React skips a subtree whose element has not changed.
   useLocale()
-  // And mirrors the layout with it, where the language is written right to left.
+  // And mirrors the document with it, where the language is written right to left. The direction
+  // it returns is for roots that have to pass it down; this one writes `dir` on the document.
   useTextDirection()
 
   useEffect(() => {

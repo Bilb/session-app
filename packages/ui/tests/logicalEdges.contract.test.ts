@@ -27,16 +27,9 @@ describe('a directional edge', () => {
    *
    * A device inset is physical: the notch is on the side it is on whatever the reading direction,
    * so `SafeArea` and `Screen` must not follow the text. A `left`/`right` pair used together is a
-   * symmetric stretch rather than a side. `LanguagePicker` places its panel against a *measured*
-   * rectangle in window coordinates, and a measurement is physical -- what mirrors there is which
-   * edge of the trigger it aligns to, which `panelLeft` takes as an argument.
+   * symmetric stretch rather than a side.
    */
-  const PHYSICAL_ON_PURPOSE = [
-    'SafeArea.native.tsx',
-    'Screen.native.tsx',
-    'PhoneChrome.tsx',
-    'LanguagePicker.tsx',
-  ]
+  const PHYSICAL_ON_PURPOSE = ['SafeArea.native.tsx', 'Screen.native.tsx', 'PhoneChrome.tsx']
 
   function sources(dir: string): string[] {
     return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

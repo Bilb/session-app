@@ -51,7 +51,7 @@ export function measureAnchor(node: unknown, onMeasured: (rect: AnchorRect | nul
 }
 
 /**
- * Where to put a panel of `panelWidth` hanging off `anchor`, trailing edges aligned.
+ * How far in from the leading edge to put a panel of `panelWidth` hanging off `anchor`.
  *
  * **Aligned to the trigger's trailing edge**, because the trigger is a small control with a
  * chevron and the panel is wider than it: hanging the panel's leading edge off the trigger's would
@@ -59,22 +59,28 @@ export function measureAnchor(node: unknown, onMeasured: (rect: AnchorRect | nul
  * this one usually does. Which edge that is mirrors -- the trigger sits in the top trailing corner
  * either way, so the panel has to grow back toward the middle either way.
  *
- * **The answer is a physical offset and that is deliberate.** It is a window coordinate handed to
- * `left`, because the panel is placed against a measured rectangle rather than laid out in flow,
- * and a measurement is physical. Only the choice of which edge to align is direction-dependent.
+ * **The rectangle that comes in is physical and the offset that goes out is not**, which is the
+ * whole job of the arithmetic in the middle. A measurement is physical: `measureInWindow` and
+ * `getBoundingClientRect` both answer in window coordinates, whichever way the page reads. An
+ * inset is not: the caller applies this through `logical`, and both platforms resolve a leading
+ * inset from the right when the layout is mirrored. Handing a physical offset to a logical edge is
+ * the bug this exists to stop -- Yoga positions an absolute child by leading and trailing rather
+ * than by left and right, so a `left` written straight from a measurement lands at
+ * `windowWidth - panelWidth - left` in an Arabic layout and the panel opens off the wrong corner.
  *
  * Clamped to the window on both sides, so the panel is always whole. The margin is the smallest
  * gap worth keeping between it and the window edge.
  */
-export function panelLeft(
+export function panelInset(
   anchor: AnchorRect,
   panelWidth: number,
   windowWidth: number,
   margin: number,
   rtl = false,
 ): number {
-  const aligned = rtl ? anchor.x : anchor.x + anchor.width - panelWidth
-  return Math.max(margin, Math.min(aligned, windowWidth - panelWidth - margin))
+  const left = rtl ? anchor.x : anchor.x + anchor.width - panelWidth
+  const clamped = Math.max(margin, Math.min(left, windowWidth - panelWidth - margin))
+  return rtl ? windowWidth - panelWidth - clamped : clamped
 }
 
 export interface PanelPlacement {

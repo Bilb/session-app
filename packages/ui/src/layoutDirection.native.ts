@@ -1,15 +1,26 @@
 import { I18nManager } from 'react-native'
 
 /**
+ * The direction the tree is laid out in, and the one place that remembers it.
+ *
+ * Seeded from `I18nManager` because that is what the *first* frame is laid out against: a device
+ * set to Arabic starts the process mirrored before anybody has chosen a language. After that it is
+ * whatever `applyDirection` last set, which is the language the picker is showing.
+ */
+let rtl = I18nManager.isRTL
+
+/** Records the direction the tree is now laid out in. See `textDirection.native`. */
+export function setLayoutRtl(next: boolean): void {
+  rtl = next
+}
+
+/**
  * Which way the layout is currently laid out, as rendered.
  *
- * The native half, and **the reason this asks the layout rather than the language**: react-native
- * reads its direction once when the bridge starts and lays out against it for the life of the
- * process, so choosing a right-to-left language mirrors nothing until the next launch. Anything
- * that has to agree with the layout -- which way a back chevron points, which corner something
- * sits in -- has to ask the same question the layout answered, or it disagrees with what is on
- * screen for a whole run.
+ * Anything that has to agree with the layout asks here rather than asking the language. Yoga
+ * mirrors the edges it owns, but it does not mirror a `translateX` or a measured rectangle, so
+ * which way a page slides in from and which way a chevron points have to be told.
  */
 export function isLayoutRtl(): boolean {
-  return I18nManager.isRTL
+  return rtl
 }

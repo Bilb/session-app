@@ -1,24 +1,26 @@
-import { getLocale, isRtlLocale, subscribeLocale } from '@session/localization'
+import { isRtlLocale } from '@session/localization'
 import { applyDirection } from '@session/ui'
-import { useEffect } from 'react'
+
+import { useLocale } from './useLocale'
 
 /**
- * Keeps the layout's direction following the chosen language.
+ * Which way the app reads, following the chosen language.
  *
- * Called once at each app's root. It is a subscription rather than a render-time call because the
- * language can change while the app is running and the direction has to change with it -- and
- * because the two platforms apply it differently: the web mirrors immediately, native pins it for
- * the next launch. See `textDirection.ts` and its native half.
+ * Called at each app's root, and the answer handed to `DirectionRoot` -- which is what mirrors
+ * the tree on a device. The web root can ignore the return: `applyDirection` mirrors the document
+ * there on its own.
  *
  * Here rather than in `@session/ui` because the direction is a fact about the *locale*, and that
  * package has no catalogue; and not in `@session/localization`, which has no React and should not
  * grow one.
  */
-export function useTextDirection(): void {
-  useEffect(() => {
-    applyDirection(isRtlLocale(getLocale()))
-    return subscribeLocale(() => {
-      applyDirection(isRtlLocale(getLocale()))
-    })
-  }, [])
+export function useTextDirection(): boolean {
+  const rtl = isRtlLocale(useLocale())
+  // Applied while rendering rather than in an effect, because the things that ask `isLayoutRtl()`
+  // -- the pager, the tab indicator, the back chevron -- render below this one in the same pass.
+  // An effect runs after they have already rendered, so each language change would draw them once
+  // against the previous direction. The write is idempotent and derived from nothing but the
+  // locale, so a render React discards writes exactly what the committed one would have.
+  applyDirection(rtl)
+  return rtl
 }

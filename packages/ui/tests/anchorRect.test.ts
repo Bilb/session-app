@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { measureAnchor, panelLeft, panelPlacement } from '#src/anchorRect'
+import { measureAnchor, panelInset, panelPlacement } from '#src/anchorRect'
 
 /**
  * The placement arithmetic, which is the part of a dropdown that is wrong in ways nobody notices
@@ -16,17 +16,17 @@ const trigger = (x: number, y: number) => ({ x, y, width: 60, height: 32 })
 describe('placing the panel horizontally', () => {
   it('aligns the panel’s right edge with the trigger’s', () => {
     // 600 + 60 - 320. The trigger is narrower than the panel, so the panel hangs to its left.
-    expect(panelLeft(trigger(600, 100), 320, 1000, MARGIN)).toBe(340)
+    expect(panelInset(trigger(600, 100), 320, 1000, MARGIN)).toBe(340)
   })
 
   it('never runs off the right edge', () => {
     // A trigger in the top-right corner is the common case on a phone.
-    expect(panelLeft(trigger(320, 20), 320, 390, MARGIN)).toBe(390 - 320 - MARGIN)
+    expect(panelInset(trigger(320, 20), 320, 390, MARGIN)).toBe(390 - 320 - MARGIN)
   })
 
   it('never runs off the left edge', () => {
     // A panel wider than the window: the margin wins, and it is clipped rather than shifted out.
-    expect(panelLeft(trigger(0, 20), 320, 300, MARGIN)).toBe(MARGIN)
+    expect(panelInset(trigger(0, 20), 320, 300, MARGIN)).toBe(MARGIN)
   })
 })
 
@@ -95,15 +95,17 @@ describe('measuring the trigger', () => {
   it('aligns to the other edge of the trigger when the layout is mirrored', () => {
     // The trigger sits in the top trailing corner either way, so the panel grows back toward the
     // middle either way -- which is the opposite edge of the anchor in each direction.
+    // Both answers are insets from the leading edge, so the mirrored one counts in from the right:
+    // 8 there puts the panel's left edge at 692, which is where the unmirrored trigger would sit.
     const anchor = { x: 700, y: 10, width: 60, height: 40 }
-    expect(panelLeft(anchor, 300, 1000, 8)).toBe(460)
-    expect(panelLeft(anchor, 300, 1000, 8, true)).toBe(692)
+    expect(panelInset(anchor, 300, 1000, 8)).toBe(460)
+    expect(panelInset(anchor, 300, 1000, 8, true)).toBe(8)
   })
 
   it('keeps the panel whole against either window edge when mirrored', () => {
     const nearTrailing = { x: 940, y: 10, width: 50, height: 40 }
-    expect(panelLeft(nearTrailing, 300, 1000, 8, true)).toBe(692)
+    expect(panelInset(nearTrailing, 300, 1000, 8, true)).toBe(8)
     const nearLeading = { x: 4, y: 10, width: 50, height: 40 }
-    expect(panelLeft(nearLeading, 300, 1000, 8, true)).toBe(8)
+    expect(panelInset(nearLeading, 300, 1000, 8, true)).toBe(692)
   })
 })

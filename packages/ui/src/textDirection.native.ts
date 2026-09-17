@@ -1,19 +1,18 @@
-import { I18nManager } from 'react-native'
+import { setLayoutRtl } from './layoutDirection'
 
 /**
  * Mirrors the layout, or puts it back.
  *
- * The native half, and it behaves differently enough to be worth knowing. `allowRTL` is asked for
- * once because a build that has never allowed it ignores `forceRTL` entirely. `forceRTL` then
- * pins the direction to the app's own language rather than letting the OS decide from the device's
- * -- which is what we want, since the picker owns the language here.
+ * The native half, and it does not go through `I18nManager`. That decides the direction once when
+ * the bridge starts and holds it for the life of the process, so `forceRTL` cannot mirror the app
+ * somebody is looking at -- only the next launch of it, which is no use when the language is
+ * chosen in the app. The mirror is Yoga's own `direction` instead, set on the root by
+ * `DirectionRoot`: every `start`/`end` edge below resolves against it, and it takes effect on
+ * the next layout pass rather than the next launch.
  *
- * **It takes effect on the next launch, not on this one.** react-native reads the direction when
- * the bridge starts and lays out against that for the life of the process, so a change made now is
- * a change the next launch shows. Calling it anyway is what makes the *next* launch right, and a
- * language change already asks somebody to restart.
+ * So all this does is record the answer, for the few things that have to agree with the layout
+ * without being laid out by it.
  */
 export function applyDirection(rtl: boolean): void {
-  I18nManager.allowRTL(true)
-  if (I18nManager.isRTL !== rtl) I18nManager.forceRTL(rtl)
+  setLayoutRtl(rtl)
 }

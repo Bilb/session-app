@@ -1,6 +1,6 @@
 import { useLocale, useTextDirection } from '@session/screens'
 import { SessionStoreProvider, type SessionStore } from '@session/state'
-import { Text, UIProvider, YStack } from '@session/ui'
+import { DirectionRoot, Text, UIProvider, YStack } from '@session/ui'
 import { Slot } from 'expo-router'
 import { KeyboardProvider } from 'react-native-keyboard-controller'
 import { useEffect, useState } from 'react'
@@ -20,9 +20,9 @@ import { storePromise } from '../src/store'
 export default function RootLayout() {
   // Subscribes the whole tree to the app's language -- see the note on the desktop root. It has to
   // be the component that creates the subtree, not a provider wrapped around one.
-  useLocale()
-  // And mirrors the layout with it, where the language is written right to left.
-  useTextDirection()
+  const locale = useLocale()
+  // And which way that language reads, which `DirectionRoot` below mirrors the tree to.
+  const rtl = useTextDirection()
 
   const [store, setStore] = useState<SessionStore | null>(null)
 
@@ -60,7 +60,15 @@ export default function RootLayout() {
             <SessionStoreProvider store={store}>
               <MobileNavProvider>
                 <MobileCameraProvider>
-                  <Slot />
+                  <DirectionRoot rtl={rtl}>
+                    {/* **Keyed on the language, because `tr()` is a module-scope read.** Nothing
+                        below re-renders when it changes unless something above does -- and the
+                        router holds the routed screen's element itself, so a re-render here does
+                        not reach it the way it does on the desktop tree, where the root renders
+                        the screens. The key makes the change of language a change of element,
+                        which is what it has to be for the strings to follow. */}
+                    <Slot key={locale} />
+                  </DirectionRoot>
                 </MobileCameraProvider>
               </MobileNavProvider>
             </SessionStoreProvider>
