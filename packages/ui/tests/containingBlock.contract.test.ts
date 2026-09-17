@@ -12,18 +12,16 @@ import { describe, expect, it } from 'vitest'
  * same component is correct on three devices and wrong in the desktop app, which is the worst
  * shape a bug can have because every device pass agrees it is fine.
  *
- * The tab indicator is the worked example: unless its bar says `relative`, its `bottom: 0` draws
- * a green line across the foot of the window rather than under the active tab. A child with no
- * `top` of its own escapes just as far and still looks right, falling back to its static position,
- * which is why this is worth asserting rather than eyeballing.
+ * The tab indicator is the worked example: unless its bar says `relative`, its `bottom: 0` draws a
+ * green line across the foot of the window. A child with no `top` of its own escapes just as far
+ * and still looks right, falling back to its static position, which is why this is asserted rather
+ * than eyeballed.
  *
- * **This is a coarse check and worth knowing why.** Whether a parent is a containing block is a
- * fact about the rendered tree, and no amount of reading source settles it -- the parent may be in
- * another file, and a file may legitimately position a child against a grandparent. What a grep
- * can say is that a file using `position="absolute"` had better mention `relative` somewhere, and
- * that is enough to have caught all three of these, none of which mentioned it at all. The real
- * measurement is the sweep over a running app: every absolutely positioned element whose
- * `offsetParent` is `document.body` has escaped.
+ * **Coarse on purpose.** Whether a parent is a containing block is a fact about the rendered tree
+ * that no amount of reading source settles. What a grep can say is that a file using
+ * `position="absolute"` had better mention `relative` somewhere. The real measurement is the sweep
+ * over a running app: any absolutely positioned element whose `offsetParent` is `document.body`
+ * has escaped.
  */
 describe('an absolutely positioned child', () => {
   const roots = [

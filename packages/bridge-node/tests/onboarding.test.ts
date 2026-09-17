@@ -247,16 +247,12 @@ describeAddon('onboarding, against libsession', () => {
 /**
  * What must be true of a database somebody backed out of.
  *
- * A product ask, and the reason for it is the sharp end of onboarding: a person who starts to restore
- * one account, changes their mind and restores a different one must not carry anything of the first
- * into the second. The flow is built so that nothing is minted until the last step, and these are
- * the assertions that say so against real libsession rather than against the fake, which would agree
- * whatever libsession did.
+ * The sharp end of onboarding: somebody who starts restoring one account, changes their mind and
+ * restores another must carry nothing of the first into the second. Asserted against real
+ * libsession rather than the fake, which would agree whatever libsession did.
  *
- * **This is the half that can be tested today.** The design is changing -- the account will be minted
- * early and discarded on the way back, rather than minted late -- and when it does, the invariant
- * below is exactly the one that has to keep holding. So the test is written against the guarantee
- * rather than against the mechanism, and should survive that change unedited.
+ * Written against the guarantee rather than the mechanism, so it survives the coming change from
+ * minting late to minting early and discarding on the way back.
  */
 describeAddon('backing out of onboarding', () => {
   it('leaves a database nothing can be recovered from', async () => {

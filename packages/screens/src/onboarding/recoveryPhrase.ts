@@ -9,16 +9,14 @@ export const SHORTEST_PHRASE_WORDS = 13
 /**
  * The words in a phrase as it was typed.
  *
- * Split on any run of whitespace and with punctuation dropped, because a phrase arrives pasted out
- * of a password manager or a text file as often as it arrives typed: newlines, double spaces and a
- * trailing full stop are all things the legacy clients tolerate, and refusing them would reject a
- * phrase that is perfectly correct.
+ * Split on any run of whitespace with punctuation dropped, because a phrase is pasted out of a
+ * password manager as often as it is typed. The legacy clients tolerate newlines, double spaces
+ * and a trailing full stop, and refusing them would reject a correct phrase.
  */
 export function phraseWords(input: string): string[] {
-  // Every call makes more strings that cannot be wiped -- the lowercased copy, the split parts.
-  // Accepted rather than overlooked: see the note on `restoreAccountFromWords` in the protocol for
-  // why the phrase is a string at all and what would replace it. Called once per submit rather
-  // than on every keystroke, which is the one thing this file can do about it.
+  // Every call makes more strings that cannot be wiped. Accepted rather than overlooked -- see
+  // `restoreAccountFromWords` in the protocol for why the phrase is a string at all -- and called
+  // once per submit rather than per keystroke, which is what this file can do about it.
   return input
     .toLowerCase()
     .split(/[^\p{Letter}\p{Mark}]+/u)
@@ -29,14 +27,12 @@ export function phraseWords(input: string): string[] {
  * The one check worth making before the bridge sees it: too few words to be a phrase at all.
  *
  * Deliberately the *only* local check. libsession owns the word lists, the prefix matching and the
- * checksum, and a second copy of any of that up here is a second answer to disagree with -- but
- * counting words needs none of it, and being told "that is not long enough" beats being told "that
- * is incorrect" when half a phrase has been pasted.
+ * checksum, and a second copy up here is a second answer to disagree with -- but counting words
+ * needs none of that, and "not long enough" beats "incorrect" when half a phrase has been pasted.
  *
- * Everything else -- an unknown word, a failed checksum, a language mismatch -- comes back from
- * libsession, which raises a different exception type for each. The bridge currently flattens all
- * of them into one message, so the screen can only say something generic; carrying a code across
- * would let the other two legacy messages be used again.
+ * Everything else comes back from libsession, which raises a different exception type per cause.
+ * The bridge flattens them into one message, so the screen can only say something generic;
+ * carrying a code across would let the other two legacy messages be used again.
  */
 export function phraseIsTooShort(input: string): boolean {
   return phraseWords(input).length < SHORTEST_PHRASE_WORDS

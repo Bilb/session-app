@@ -67,13 +67,9 @@ const ACTIONS_GAP = 16
 /**
  * How far the close's **touch target** sits from the dialog's own corner.
  *
- * It belongs to the dialog and not to the column of text, so it is pulled back out of the content
- * inset: at 35 from the side it floated a third of the way across the title, which is where the
- * client has nothing at all.
- *
- * Small because the target is much bigger than the glyph -- see the `md` below. What the eye
- * measures is the cross, and that ends up about ten points in from each edge, which is where the
- * client draws it.
+ * It belongs to the dialog rather than to the column of text, so it is pulled back out of the
+ * content inset. Small because the target is much bigger than the glyph -- what the eye measures
+ * is the cross, which ends up about ten points in from each edge, where the client draws it.
  */
 const CLOSE_INSET = 2
 const ACTION_HEIGHT = 51
@@ -92,17 +88,15 @@ const SCRIM_OPACITY = 0.6
  * Something asked over the top of the page.
  *
  * Drawn in react-native's `Modal` rather than an absolutely-positioned panel, for the same reason
- * the language picker is: a child that overflows its parent is clipped on Android, and anything
- * that floats over a screen has to escape whatever it was declared inside.
+ * the language picker is: a child that overflows its parent is clipped on Android.
  *
- * **Dimmed behind, unlike the picker.** A dropdown is part of the control that opened it and should
- * leave the page alone; this is a question that stops the page until it is answered, and the
- * dimming is what says so. Pressing outside answers it the same way the cross does.
+ * **Dimmed behind, unlike the picker.** A dropdown belongs to the control that opened it; this
+ * stops the page until it is answered, and the dimming says so.
  *
- * The shape is the desktop client's `SessionWrapperModal`: a header carrying the title and the exit
+ * The shape is the desktop client's `SessionWrapperModal`: a header with the title and the exit
  * cross, the body, then a row of **text** buttons. Text rather than filled, because a filled button
- * in a dialog reads as the safe default purely by looking like a primary action -- and in these
- * dialogs the emphasised option is usually the one to think twice about.
+ * reads as the safe default by looking like a primary action -- and here the emphasised option is
+ * usually the one to think twice about.
  */
 export function Modal({
   open,
@@ -155,7 +149,7 @@ export function Modal({
           <XStack alignItems="flex-start" gap="$1">
             {/* Centred across the full width, with the cross overlaid rather than taking a column,
                 so the title is centred on the dialog and not on what is left of it. */}
-            {/* 17 on iOS, 16 on Android; ours was 20. */}
+            {/* 17 on iOS, 16 on Android. */}
             <Text flex={1} size="$bodyLarge" weight="bold" textAlign="center" userSelect="none">
               {title}
             </Text>

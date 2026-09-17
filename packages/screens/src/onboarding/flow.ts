@@ -9,24 +9,20 @@
  *     DESKTOP  RESTORE  landing -> loadAccount     -> loading -> done
  *
  * **The two designs run different sequences, not the same one laid out differently.** Desktop has
- * no notification-mode step: fast mode is a push service, and desktop has none to offer, so the
- * question has no answer worth asking for. Treating the difference as layout produced a desktop
- * app asking a phone's question, which is what this shape exists to prevent.
+ * no notification-mode step: fast mode is a push service and desktop has none to offer.
  *
- * A pure reducer rather than `useState` calls spread across five screens, because three things
- * about this flow are easy to get subtly wrong and impossible to see afterwards:
+ * A pure reducer rather than `useState` across five screens, because three things here are easy to
+ * get subtly wrong and invisible afterwards:
  *
- * - **The account is minted at the end of create, not at the name step.** The name is collected
- *   first and held, and nothing exists until notifications have been answered. Getting this
- *   backwards leaves a half-made account behind whenever somebody backs out.
+ * - **The account is minted at the end of create, not at the name step**, or backing out leaves a
+ *   half-made account behind.
  * - **Notification mode is answered before the restore waits, not after.** Restoring can take
- *   fifteen seconds, and asking a question afterwards means fifteen seconds of nothing.
- * - **A failed restore does not go back to phrase entry.** It lands in the *create* branch's name
- *   picker with different copy, because the phrase was right -- the profile simply never arrived,
- *   and there is nothing to retype.
+ *   fifteen seconds, and a question afterwards means fifteen seconds of nothing.
+ * - **A failed restore does not go back to phrase entry.** The phrase was right and the profile
+ *   never arrived, so there is nothing to retype.
  *
- * The reducer knows nothing about the bridge. It says which screen is next and what has been
- * collected; `OnboardingFlow` is what turns `done` into the calls that make an account.
+ * The reducer knows nothing about the bridge. `OnboardingFlow` turns `done` into the calls that
+ * make an account.
  */
 
 type OnboardingStep =
@@ -38,10 +34,8 @@ type OnboardingBranch = 'create' | 'restore'
 /**
  * Which client's onboarding this is: a layout and a sequence, which are not the same question.
  *
- * A tablet is **the desktop layout with the phone's notification step** -- artwork and a centred
- * column, and still asked how it should hear about a message, because the OS suspends it the way a
- * phone's does. Reading the sequence off the layout is what put a phone's question on a desktop
- * screen the first time, so the two inputs stay separate: the width says which layout, and the
+ * A tablet is **the desktop layout with the phone's notification step**, because the OS suspends
+ * it the way a phone's does. So the two inputs stay separate: the width says which layout, and the
  * notifications port says whether there is a mode to choose.
  */
 export type OnboardingDesign = 'phone' | 'desktop' | 'tablet'
@@ -74,8 +68,8 @@ export interface OnboardingState {
   /**
    * True only when the name picker was reached by a restore that gave up.
    *
-   * It changes the copy -- `displayNameNew` rather than `displayNamePick` -- and it changes what
-   * happens next: there is already an account by then, so naming it is the last thing to do.
+   * Changes the copy, and what happens next: there is already an account by then, so naming it is
+   * the last thing to do.
    */
   afterFailedRestore: boolean
   /** Held rather than applied, because in the create branch there is nothing to apply it to yet. */
@@ -85,19 +79,16 @@ export interface OnboardingState {
   /**
    * The bridge refused the last step, the one that actually makes the account.
    *
-   * There has to be somewhere for that failure to go. `done` renders nothing -- it is a call or
-   * two behind whatever was last on screen -- so a rejection there left an empty window with no
-   * way forward and nothing said. This sends it back to the name picker, which is the last screen
-   * that can be asked again.
+   * `done` renders nothing, so a rejection there has nowhere to show itself. This sends it back to
+   * the name picker, the last screen that can be asked again.
    */
   commitFailed: boolean
   /**
    * Which way the last move went.
    *
-   * For the transition between steps, which has to travel the way a stack would move it: forward
-   * slides the new step in from the trailing edge, back sends it the other way. A flow with no
-   * stack behind it has nothing else to ask -- and `back` is not the only event that goes
-   * backwards, so it is recorded rather than inferred from the step.
+   * The transition has to travel the way a stack would move it, and a flow with no stack behind it
+   * has nothing else to ask. Recorded rather than inferred, because `back` is not the only event
+   * that goes backwards.
    */
   lastMove: 'forward' | 'back'
 }
@@ -128,8 +119,7 @@ export type OnboardingEvent =
        * Whether the restored profile is already here, which decides if there is anything to wait
        * for.
        *
-       * Passed in rather than read, because this reducer knows nothing about the bridge. Ignored
-       * in the create branch, where nothing was ever being fetched.
+       * Passed in rather than read, because this reducer knows nothing about the bridge.
        */
       profileArrived?: boolean
     }
@@ -148,28 +138,25 @@ export type OnboardingEvent =
 /**
  * Where `back` goes from each step, or null where there is nowhere to go.
  *
- * Null is not the same as "exit". At the landing screen there is no onboarding left to back out
- * of, and on the two steps that follow an account being made there is no longer anything to undo --
- * backing out of naming a restored account would leave it nameless rather than cancel anything.
+ * Null is not the same as "exit": backing out of naming a restored account would leave it nameless
+ * rather than cancel anything.
  */
 function previousStep(state: OnboardingState): OnboardingStep | null {
   switch (state.step) {
     case 'pickDisplayName':
-      // **After a failed restore, back goes to the phrase rather than to the start.** Somebody
-      // whose restore timed out and who then presses back is far more likely to want to try the
-      // phrase again -- perhaps on a better connection -- than to begin from nothing. Creating
-      // still leads back to the start, because there is nothing behind it.
+      // **After a failed restore, back goes to the phrase rather than to the start**, which is
+      // far more likely to be what somebody whose restore timed out wants. Creating still leads
+      // back to the start, because there is nothing behind it.
       return state.afterFailedRestore ? 'loadAccount' : 'landing'
     case 'loadAccount':
       return 'landing'
     case 'messageNotifications':
       return state.branch === 'create' ? 'pickDisplayName' : 'loadAccount'
     case 'loading':
-      // **The wait can be left.** An account exists by this point, but the bridge can discard
-      // one, so there is a way out to offer -- and without it somebody who mistyped a phrase, or
-      // simply changed their mind, sits through fifteen seconds with none. The legacy Android
-      // client offers back here for the same reason. It leads where it came from, so a second
-      // press reaches the phrase.
+      // **The wait can be left.** An account exists by now, but the bridge can discard one, so
+      // there is a way out to offer rather than fifteen seconds with none. The legacy Android
+      // client offers back here too. It leads where it came from, so a second press reaches the
+      // phrase.
       return asksAboutNotifications(state.design) ? 'messageNotifications' : 'loadAccount'
     default:
       return null
@@ -180,11 +167,10 @@ function previousStep(state: OnboardingState): OnboardingStep | null {
  * Whether going back from here has to throw an account away first.
  *
  * **True wherever one has been minted.** Restore mints at the phrase, so every step past it
- * qualifies, plus the name picker a failed restore lands in. Creating holds the name and mints at
- * the end, so backing out of it has nothing to undo.
+ * qualifies; creating mints at the end, so backing out of it has nothing to undo.
  *
- * No step has to *ask*, because `discardAccount` can untake an account -- a warning dialog would
- * only be standing in for a discard the bridge is able to perform.
+ * No step has to *ask* first: `discardAccount` can untake an account, so a warning dialog would
+ * only stand in for something the bridge can perform.
  */
 export function backDiscardsAccount(state: OnboardingState): boolean {
   if (state.branch !== 'restore') return false
@@ -256,10 +242,10 @@ function advance(state: OnboardingState, event: OnboardingEvent): OnboardingStat
       // Create is finished here -- this is where the account gets made. Restore usually still has
       // to wait for the swarm, which is what `loading` is.
       //
-      // **Unless the swarm already answered.** The fetch starts when the phrase is accepted and
-      // runs while this question is being read, so on a good connection the profile is often here
-      // before it is answered -- and a wait with nothing to wait for is a screen that appears and
-      // vanishes. The legacy iOS client skips it for the same reason. A product call.
+      // **Unless the swarm already answered.** The fetch starts when the phrase is accepted, so
+      // on a good connection the profile arrives while the question is being read, and a wait with
+      // nothing to wait for is a screen that appears and vanishes. The legacy iOS client skips it
+      // for the same reason.
       return {
         ...state,
         notifications: event.mode,
@@ -270,9 +256,9 @@ function advance(state: OnboardingState, event: OnboardingEvent): OnboardingStat
       // Not back to the phrase: it decoded, so there is nothing to retype. The account exists and
       // wants a name, which is the create branch's screen wearing different words.
       //
-      // The words go here. They have done their work -- the account is taken over -- and holding
-      // them for the rest of the flow is a copy of the whole account sitting in memory for no
-      // reason. They cannot be wiped, so the most that can be done is to stop referencing them.
+      // The words go here: the account is taken over, so holding them any longer keeps a copy of
+      // the whole account in memory. They cannot be wiped, so dropping the reference is the most
+      // that can be done.
       return { ...state, step: 'pickDisplayName', afterFailedRestore: true, recovery: null }
 
     case 'restoreArrived':
@@ -296,11 +282,10 @@ function advance(state: OnboardingState, event: OnboardingEvent): OnboardingStat
     case 'back': {
       const previous = previousStep(state)
       if (previous === null) return state
-      // **Reaching the landing screen is starting over, not merely a step backwards.** Anything
-      // collected on the way belongs to an attempt that has been abandoned -- and after a discard
-      // it belongs to an account that no longer exists on this device. Carrying a display name or
-      // a recovery phrase into the next attempt is the leak this flow exists to prevent, one level
-      // above the database.
+      // **Reaching the landing screen is starting over, not a step backwards.** Anything collected
+      // belongs to an abandoned attempt, and after a discard to an account that no longer exists
+      // here. Carrying a name or a phrase into the next attempt is the leak this flow exists to
+      // prevent, one level above the database.
       if (previous === 'landing') return { ...initialOnboarding(state.design), step: 'landing' }
       return { ...state, step: previous }
     }

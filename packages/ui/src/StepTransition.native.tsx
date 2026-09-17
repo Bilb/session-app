@@ -30,19 +30,17 @@ interface Showing {
 /**
  * The push and pop between onboarding steps.
  *
- * Onboarding is one route with a step inside it rather than a navigation stack, which is what both
- * apps already do and what keeps "there is no history behind onboarding" true. The cost is that
- * nothing animates: steps simply cut, and a cut is the one thing that makes a flow feel unfinished.
+ * Onboarding is one route with a step inside it rather than a navigation stack, which keeps "there
+ * is no history behind onboarding" true. The cost is that nothing animates, so this is a stack's
+ * transition without a stack.
  *
- * So this is a stack's transition without a stack. **Two panes, and the step swaps between them**
- * -- rather than one pane whose contents change -- because a subtree moved to a different position
- * in the tree is unmounted and mounted again: the screen being left behind would restart its
- * timers and drop its keyboard in the middle of sliding away. Each pane keeps its own instance and
- * only its position moves.
+ * **Two panes, and the step swaps between them**, rather than one pane whose contents change: a
+ * subtree moved to a different position in the tree is unmounted and mounted again, so the screen
+ * being left would restart its timers and drop its keyboard mid-slide. Each pane keeps its own
+ * instance and only its position moves.
  *
- * The pane holding the current step always renders `children`, never a remembered copy of them, so
- * a step that re-renders while nothing is moving -- a button going busy, an error appearing --
- * shows what it should.
+ * The pane holding the current step always renders `children` rather than a remembered copy, so a
+ * step that re-renders while nothing is moving shows what it should.
  */
 export function StepTransition({
   stepKey,

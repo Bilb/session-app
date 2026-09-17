@@ -72,21 +72,16 @@ setPorts(
       /**
        * **iOS only, and only because iOS is the only one of the two that can show the row.**
        *
-       * `openSettings()` rather than a hard-coded `app-settings:`, which is what this was for a
-       * while. react-native's implementation is the legacy client's line exactly --
-       * `[NSURL URLWithString:UIApplicationOpenSettingsURLString]` then `openURL:` -- so it reads
-       * the constant for whichever iOS this is running on. The literal string happened to be the
-       * same value today and would be the kind of thing that works on one OS version and not the
-       * next.
+       * `openSettings()` rather than a hard-coded `app-settings:`, so the constant is read for
+       * whichever iOS this is running on rather than hoping a literal stays correct across
+       * versions. react-native's implementation is the legacy client's line exactly.
        *
-       * The page it opens is Settings -> Apps -> Session, which exists for any installed app. It
-       * lists Preferred Language once the bundle declares more than one localization, which is
-       * what the `CFBundleLocalizations` list in `app.config.ts` is for.
+       * It opens Settings -> Apps -> Session, which lists Preferred Language once the bundle
+       * declares more than one localization -- what `CFBundleLocalizations` in `app.config.ts` is
+       * for.
        *
-       * Null on Android, which is not a stub: App Language exists there from 13 onwards and only
-       * for an app shipping a `localeConfig`, and this app has no Android build to put one in yet.
-       * Null is what the picker reads to mean "do it yourself", which is the right answer until
-       * then -- see the port.
+       * Null on Android rather than a stub: App Language needs a `localeConfig` and there is no
+       * Android build to put one in yet. Null is what the picker reads as "do it yourself".
        */
       // Both platforms, unlike the language row above: every installed app has a settings page,
       // and it is where a camera permission the OS will not ask about again is turned back on.

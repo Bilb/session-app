@@ -11,29 +11,20 @@ const DURATION_MS = 680
 /**
  * Arrives by growing into the space it needs, pushing whatever is above it out of the way.
  *
- * **This is the fourth attempt**, and the three that failed are worth recording because each looked
- * plausible. Fading the bubble in animated the bubble and said nothing about the ones already on
- * screen, which jumped. Adding a layout animation moved them, but the newcomer was already at full
- * height while they slid, so it overlapped them on the way past. Growing a wrapper's height with
- * the content as an ordinary child inside it showed nothing at all: a flex child is measured
- * against the space its parent has, and a parent animating up from zero has none, so the content
- * measured zero and the animation ran from zero to zero.
+ * What makes it a push rather than a fade is that the arriving bubble occupies **no height at all**
+ * to begin with and grows to its own. The stack is bottom-aligned, so every point it gains moves
+ * the bubbles above it up by exactly that much in the same frame -- one animation rather than two
+ * asked to agree -- and nothing overlaps, because the space is never occupied before it exists.
  *
- * What makes it a push is that the arriving bubble occupies **no height at all** to begin with and
- * grows to its own: the stack is bottom-aligned, so every point it gains moves the bubbles above it
- * up by exactly that much, in the same frame, because it is one animation rather than two being
- * asked to agree. Nothing overlaps because the space is never occupied before it exists.
+ * **The content is absolutely positioned inside the growing box.** A flex child is measured against
+ * the space its parent has, and a parent animating up from zero has none, so an ordinary child
+ * measures zero and the animation runs from zero to zero. Its height is measured rather than
+ * assumed, which a bubble that wraps differently per string requires.
  *
- * The content is taken out of the flow to make that possible -- absolutely positioned inside the
- * growing box, which is what keeps it measurable at its natural size rather than squashed to
- * whatever height the animation has reached. Its height is measured rather than guessed, because a
- * bubble whose height was assumed would be wrong for every string that wraps differently.
- *
- * **Pinned to the top of that box, not the bottom.** The box's own bottom edge is fixed -- the
- * stack is bottom-aligned -- so a bubble pinned to the top rises as the box grows and is clipped
- * along that fixed edge: it slides up into view from a hard line, which is how a message arrives.
- * Pinned to the bottom it did the opposite, holding still while the clip travelled up it, and the
- * bubble looked like it was being unrolled rather than arriving.
+ * **Pinned to the top of that box, not the bottom.** The box's bottom edge is fixed, so a bubble
+ * pinned to the top rises as the box grows and is clipped along that edge: it slides into view from
+ * a hard line, which is how a message arrives. Pinned to the bottom it holds still while the clip
+ * travels up it, and reads as being unrolled.
  */
 export function Reveal({ children, instant = false }: RevealProps) {
   const [naturalHeight, setNaturalHeight] = useState<number | null>(null)

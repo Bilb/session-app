@@ -13,21 +13,19 @@ const WIDE_FROM = 701
 /**
  * What Yoga resolves the hero panel to, for a frame of this width.
  *
- * The split used to be a function in the source and is now style properties, so the rule they
- * encode is modelled here instead. Only the one case the chrome actually builds: two children
- * with a zero flex basis, growing 2 and 3, the first capped at `HERO_MAX_WIDTH`. Free space is
- * the whole frame and it is shared in that ratio, which is why this is one line.
+ * The split is style properties rather than a function, so the rule they encode is modelled here.
+ * Only the case the chrome actually builds: two children with a zero flex basis, growing 2 and 3,
+ * the first capped at `HERO_MAX_WIDTH`. Free space is the whole frame shared in that ratio, which
+ * is why this is one line.
  *
- * **There is deliberately no minimum on the column any more**, and the modelling of one is what
- * this function used to spend three lines on. Yoga clamps a flex base size up to the minimum
- * before it works out the free space, so a floor that never binds still comes off the top of
- * every layout -- on an iPad it made the hero a flat 159 short at every width, which is 0.4 x 398.
- * The rule it stated is true by construction now, and `keeps the column above what it reserves`
- * below is what holds us to it.
+ * **There is deliberately no minimum on the column.** Yoga clamps a flex base size up to the
+ * minimum before working out the free space, so a floor that never binds still comes off the top
+ * of every layout -- on an iPad, a hero a flat 159 short at every width. What such a floor would
+ * state is true by construction, and `keeps the column above what it reserves` below holds us to
+ * it.
  *
- * Kept as a test rather than dropped with the function because these numbers are the design's:
- * they were argued over on a real tablet, and a change to any of the constants should have to say
- * so here.
+ * These numbers are the design's, argued over on a real tablet, so a change to any of the
+ * constants should have to say so here.
  */
 function heroWidth(frameWidth: number): number {
   return Math.min(frameWidth * HERO_FRACTION, HERO_MAX_WIDTH)
@@ -56,9 +54,9 @@ describe('how wide the artwork panel is', () => {
   })
 
   it('keeps the column above what it reserves, at every width this branch sees', () => {
-    // What the column's `minWidth` used to say, asserted instead of enforced -- because enforcing
-    // it cost more than it was worth. Three fifths of the narrowest wide window is already clear
-    // of the reserve, and the hero's cap only widens the gap from there.
+    // Asserted rather than enforced with a `minWidth`, which costs more than it is worth: three
+    // fifths of the narrowest wide window is already clear of the reserve, and the hero's cap only
+    // widens the gap from there.
     for (let width = WIDE_FROM; width <= 3000; width += 1) {
       expect(width - heroWidth(width)).toBeGreaterThanOrEqual(COLUMN_RESERVE)
     }

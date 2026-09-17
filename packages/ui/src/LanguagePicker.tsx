@@ -25,13 +25,12 @@ const MIN_PANEL_HEIGHT = 260
 /**
  * How much of the window the keyboard is currently covering.
  *
- * react-native's own `Keyboard` rather than the keyboard-controller this package uses elsewhere,
- * because this file is one of the few here with no `.native` pair -- the controller is a native
- * module and would not resolve in the desktop bundle. `Keyboard` is a no-op on the web, which is
- * the right answer there: a desktop window has no keyboard drawn over it.
+ * react-native's own `Keyboard` rather than the keyboard-controller used elsewhere, because this
+ * file has no `.native` pair and the controller would not resolve in the desktop bundle. It is a
+ * no-op on the web, which is right there.
  *
  * Both event pairs are listened for because neither platform sends both: iOS has the `Will`
- * events, which arrive with the animation, and Android only has the `Did` ones.
+ * events and Android only the `Did` ones.
  */
 function useKeyboardHeight(): number {
   const [height, setHeight] = useState(0)
@@ -58,17 +57,13 @@ function useKeyboardHeight(): number {
 /**
  * The control that changes the app's language: a flag, a chevron, and a panel under it.
  *
- * **One file rather than a web/native pair**, which is the exception to how this package usually
- * splits. The app owns the language on every platform -- the OS's own per-app screen is not used,
- * because it reaches nothing the picker cannot and does not reach the system prompts at all -- so
- * there is no platform difference here to split on.
+ * **One file rather than a web/native pair**, the exception to how this package usually splits:
+ * the app owns the language on every platform, so there is no platform difference to split on.
  *
- * Drawn in a `Modal` rather than an absolutely-positioned sibling, because a dropdown has to
- * escape its parent's bounds and a child that overflows its parent is clipped on Android. The cost
- * is that the panel is then laid out in window coordinates and has to be told where the trigger
- * is -- which is what the measurement is for. The button sits beside the other buttons on a
- * desktop window and in the top corner on a phone, and a panel pinned to either of those is in the
- * wrong place on the other.
+ * Drawn in a `Modal` rather than an absolutely-positioned sibling, because a child that overflows
+ * its parent is clipped on Android. The cost is that the panel is laid out in window coordinates
+ * and has to be told where the trigger is, which is what the measurement is for -- the button sits
+ * mid-window on a desktop and in the top corner on a phone.
  */
 export function LanguagePicker({
   value,
@@ -95,14 +90,12 @@ export function LanguagePicker({
   /**
    * What is left of the window once the hardware and the keyboard have taken their share.
    *
-   * **The keyboard comes out of the window, not out of nothing.** `useWindowDimensions` reports
-   * the whole window whether or not a keyboard is over it, so a panel sized from it keeps the
-   * height it had when it opened and the bottom of the list ends up underneath the keys -- with
-   * no way to scroll to it, because as far as the list is concerned it is already fully visible.
+   * **The keyboard comes out of the window, not out of nothing.** `useWindowDimensions` reports the
+   * whole window whether or not a keyboard is over it, so a panel sized from it puts the bottom of
+   * the list under the keys, unscrollable -- the list believes it is already fully visible.
    *
-   * The larger of the two, never the sum: with a keyboard up, the home indicator is over the
-   * keyboard rather than under the panel, so subtracting both takes a bar's worth of list away
-   * for nothing.
+   * The larger of the two, never the sum: with a keyboard up the home indicator is over the
+   * keyboard rather than under the panel.
    */
   const taken = Math.max(keyboard, insets.bottom)
   const placement =
@@ -177,12 +170,11 @@ export function LanguagePicker({
                 insetStart: panelInset(anchor, PANEL_WIDTH, window.width, MARGIN, isLayoutRtl()),
               })}
               width={PANEL_WIDTH}
-              // **The panel is what is capped, and the list takes what is left of it.** The cap
-              // used to be on the list, with the chrome above it subtracted as a constant -- and
-              // a constant that guesses the height of a heading, a search box, two gaps and the
-              // padding is a constant that is wrong, which is why the last row sat under the
-              // keyboard and the panel ran past the bottom of the screen. Nothing is estimated
-              // now: the chrome takes what it needs and the list shrinks into the remainder.
+              // **The panel is what is capped, and the list takes what is left of it.** Capping
+              // the list instead means subtracting the chrome as a constant, and a constant that
+              // guesses the height of a heading, a search box, two gaps and the padding is wrong:
+              // the last row ends up under the keyboard. Nothing is estimated here -- the chrome
+              // takes what it needs and the list shrinks into the remainder.
               maxHeight={placement.available}
               gap="$1.5"
               padding="$2"

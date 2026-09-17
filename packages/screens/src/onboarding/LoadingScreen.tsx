@@ -27,24 +27,18 @@ const BAR_HEIGHT = 17
  * Both mobile clients draw something much larger than an ordinary spinner, because on a phone this
  * is the whole screen rather than one element on it.
  *
- * **Two insets, not one, because the client nests them**: the column takes
- * `.padding(.horizontal, Values.veryLargeSpacing)` (35) and the gauge inside it takes another
- * `.padding(.horizontal, Values.massiveSpacing)` (64). Only the inner one leaves the ring two
- * thirds of a phone's width where the client gives it half.
- *
- * The size follows from these rather than being a number of its own, which is what the client
- * does, and why it reads as filling the screen without touching the edges.
+ * **Two insets, not one, because the client nests them**: the column takes 35 and the gauge inside
+ * it another 64. Only the inner one leaves the ring two thirds of a phone's width where the client
+ * gives it half. The size follows from these rather than being a number of its own.
  */
 const COLUMN_INSET = 35
 const GAUGE_INSET = 64
 const RING_INSET = COLUMN_INSET + GAUGE_INSET
 
 /**
- * The ring's stroke. **The legacy client's own number**, and ours was under half of it.
- *
- * iOS draws this gauge with `StrokeStyle(lineWidth: 20, lineCap: .round)`. At 8 it read as a thin
- * progress ring rather than as the heavy gauge the client shows, which is the difference that
- * was reported. The round cap we already had; only the weight was wrong.
+ * The ring's stroke. **The legacy client's own number**: iOS draws this gauge with
+ * `StrokeStyle(lineWidth: 20, lineCap: .round)`, and anything much thinner reads as a progress
+ * ring rather than the heavy gauge the client shows.
  */
 const RING_THICKNESS = 20
 
@@ -54,7 +48,7 @@ interface LoadingScreenProps {
    * Leaving the wait, which throws the restored account away.
    *
    * The legacy Android client offers this, and without it a mistyped phrase means fifteen seconds
-   * of sitting there. Safe to offer because backing out of a restore already discards -- see
+   * of sitting there. Safe because backing out of a restore already discards -- see
    * `backDiscardsAccount`.
    */
   onBack: () => void
@@ -63,17 +57,15 @@ interface LoadingScreenProps {
 /**
  * The wait while a restored account's profile comes back from the swarm.
  *
- * **It is a step, not a takeover** -- inside the same chrome as every other one, so the artwork and
- * the Session lockup stay put and only the content changes. Replacing the whole screen was wrong:
- * the desktop client renders this stage inside the same registration column as the rest.
+ * **It is a step, not a takeover** -- inside the same chrome as every other one, the way the
+ * desktop client renders this stage inside the same registration column as the rest.
  *
- * **The indicator differs by design.** Desktop draws a thick horizontal bar with the percentage
- * beside the subtitle; both mobile clients draw a ring with no number. Same two strings on all
- * three.
+ * **The indicator differs by design**: desktop draws a thick bar with the percentage beside the
+ * subtitle, both mobile clients a ring with no number. Same two strings on all three.
  *
  * **It is a clock, not a measurement.** All three ramp to full over a fixed fifteen seconds with
- * nothing reporting real progress, and 2.0 keeps that knowingly rather than by imitation: what it
- * is really showing is how much longer this can go on before the app gives up.
+ * nothing reporting real progress, kept knowingly: what it shows is how much longer this can go on
+ * before the app gives up.
  */
 export function LoadingScreen({ onGaveUp, onBack }: LoadingScreenProps) {
   const wide = useMedia().gtSm

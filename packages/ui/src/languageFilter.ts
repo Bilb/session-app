@@ -6,15 +6,14 @@ import type { LanguageChoice } from './LanguagePicker.types'
  * Its own module, and pure, so it can be tested: the rest of the picker is tamagui and a `Modal`,
  * which this package has no renderer for, and the filter is the part that can actually be wrong.
  *
- * **Three matchers: the name as written, the name in English, and the code.** They are for three
- * different people -- one scanning for their own language, one looking at an interface in a script
- * they cannot read who types `japanese`, and one who knows the list and types `pt-BR`. All three
- * are cheap over eighty rows and none of them covers the others.
+ * **Three matchers: the name as written, the name in English, and the code.** For three different
+ * people -- one scanning for their own language, one looking at a script they cannot read who
+ * types `japanese`, one who knows the list and types `pt-BR`. None covers the others, and all are
+ * cheap over eighty rows.
  *
- * Deliberately not every exonym. Matching Japanese in French, German and Arabic as well needs
- * CLDR's full name tables, which is a large dependency for a case that barely arises: somebody
- * searching in a language they have not selected. Own name, English name and code is what Chrome,
- * Firefox and Android's own picker settle on.
+ * Deliberately not every exonym: matching Japanese in French and Arabic too needs CLDR's full name
+ * tables, a large dependency for somebody searching in a language they have not selected. Chrome,
+ * Firefox and Android's picker settle on the same three.
  *
  * `toLocaleLowerCase` rather than `toLowerCase`, because the list is mostly not English: Turkish
  * dotted and dotless I are the case that breaks, and Turkish is in the list.

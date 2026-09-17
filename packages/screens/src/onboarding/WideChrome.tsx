@@ -95,15 +95,15 @@ export function WideChrome({
         {/* **Only the column moves for the keyboard.** The frame opts out, because lifting the
             frame lifts the artwork with it -- a picture visibly shrinking while somebody types
             their name into a field it is nowhere near. */}
-        {/* **No `minWidth` here, and the reason matters.** The rule it used to state -- that the
-            column never drops below what the heading and the buttons need -- is now true by
-            construction: the column keeps three of the five parts, which is 421 at the narrowest
-            window this branch ever sees and more at every other. Asserted in the tests.
+        {/* **No `minWidth` here, and the reason matters.** That the column never drops below what
+            the heading and the buttons need is true by construction: it keeps three of the five
+            parts, which is 421 at the narrowest window this branch ever sees. Asserted in the
+            tests.
 
-            As a `minWidth` it was worse than redundant. Yoga clamps a flex *base size* up to the
-            minimum before it works out the free space, so with a zero basis the reserve came off
-            the top of every layout and the hero got two fifths of what was left rather than two
-            fifths of the frame -- measured on an iPad as a flat 159 short at every width, which
+            A `minWidth` would be worse than redundant. Yoga clamps a flex *base size* up to the
+            minimum before working out the free space, so with a zero basis the reserve comes off
+            the top of every layout and the hero gets two fifths of what is left rather than two
+            fifths of the frame -- on an iPad a flat 159 short at every width, which
             is 0.4 x 398. A floor that never binds still changed the answer. */}
         <YStack flexBasis={0} flexGrow={COLUMN_GROW}>
           <SafeArea>

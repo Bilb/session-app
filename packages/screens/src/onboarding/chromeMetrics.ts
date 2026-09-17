@@ -4,37 +4,32 @@ import { useEffect, useState } from 'react'
 /**
  * The figures the two onboarding layouts are drawn to, and the two hooks that read them.
  *
- * Here rather than in either layout because several of them have a **different right answer per
- * layout** and that is exactly where this port keeps going wrong: the step inset was written out
- * twice and only the phone's half was copied, which left the recovery-password step 70 narrower
- * and 25 lower than every other step on Desktop. A figure that differs by layout is a decision,
- * so it is made once, here, and asked for -- never restated where it is used.
+ * Here rather than in either layout because several have a **different right answer per layout**,
+ * which is where this port keeps going wrong. A figure that differs by layout is a decision: made
+ * once, here, and asked for rather than restated where it is used.
  */
 
 /**
  * The pixel size both header rings are drawn at.
  *
- * One number for both, because `circleHelp` brings its own ring and `IconRing` draws the other:
- * they share a viewBox, so equal boxes make equal circles and unequal boxes make the difference
- * that kept being reported.
+ * One number for both, because `circleHelp` brings its own ring and `IconRing` draws the other.
+ * They share a viewBox, so equal boxes make equal circles.
  */
 export const RING_SIZE = 22
 
 /**
  * How long the content takes to fade in when a step changes.
  *
- * The desktop client's `--duration-fadein`. Long enough to read as a transition rather than a
- * flicker, which is what makes moving between steps feel like one screen changing its mind rather
- * than four screens replacing each other.
+ * The desktop client's `--duration-fadein`: long enough to read as a transition rather than a
+ * flicker, so the steps feel like one screen changing rather than four replacing each other.
  */
 export const FADE_MS = 400
 
 /**
  * Fades from nothing to full whenever `key` changes.
  *
- * Two frames, not an easing curve: the opacity is handed to a tamagui stack, which animates it for
- * us. Written by hand rather than with an animation library because this is the only thing in the
- * app that needs it and a driver is a dependency.
+ * Two frames, not an easing curve: the opacity goes to a tamagui stack, which animates it. By
+ * hand rather than with a library, because this is the only thing in the app that needs one.
  */
 export function useFadeIn(key: string, instant: boolean): number {
   const [shown, setShown] = useState(instant)
@@ -62,32 +57,24 @@ export function useFadeIn(key: string, instant: boolean): number {
  * for: *"Min height should match the onboarding step with the largest height -- this prevents the
  * loading spinner from jumping around while still keeping things centered."*
  *
- * **It sits on the column rather than on the step, which is where the client puts it.** In the
- * client the reserve is on the back-button wrapper, so only a step with a back button gets it and
- * the landing screen stands at its own height -- the block is then centred at two different heights
- * and the lockup, the heading and the buttons all move as you go from the landing screen to the
- * next one. Here every screen reserves the same box, so the block is one size and the content
- * starts at the same place throughout: nothing jumps, at the cost of the short screens sitting
- * above the middle rather than on it. A product call, and the reason for the difference.
- *
- * That upward bias is the reserve's own doing rather than a separate nudge: short content
- * top-aligns in the box and the empty part of it hangs below. The landing screen, the shortest,
- * reads about 70px high; the steps read about 20px high.
+ * **It sits on the column rather than on the step**, which differs from the client: there the
+ * reserve is on the back-button wrapper, so the landing screen stands at its own height and the
+ * lockup, heading and buttons all move on the way to the next step. Here every screen reserves the
+ * same box, so nothing jumps -- at the cost of short screens sitting above the middle rather than
+ * on it. That bias is the reserve's own doing: short content top-aligns and the empty part hangs
+ * below.
  */
 export const CONTENT_MIN_HEIGHT = 276
 
 /**
  * The phone design's two horizontal insets.
  *
- * **Both clients use two, not one**, and they agree with each other: the reading column is inset
- * 35 on iOS (`Values.veryLargeSpacing`) and 36 on Android (`mediumSpacing`), and the primary
- * button is inset 64 on both (`massiveSpacing` / `xlargeSpacing`). The relationship is the part
- * worth porting rather than either number: **the button is deliberately narrower than the text it
- * sits under.** Ours was a single 15 everywhere, under half the body inset and under a quarter of
- * the button's.
+ * **Both clients use two, not one**, and agree: the reading column is inset 35 on iOS and 36 on
+ * Android, and the primary button 64 on both. The relationship is what is worth porting rather
+ * than either number -- **the button is deliberately narrower than the text above it.**
  *
- * 35 is the space scale's `$4`; 64 is not on the scale and is written as itself, since inventing a
- * rung for one value would make the scale less useful rather than more.
+ * 35 is the space scale's `$4`; 64 is written as itself, since inventing a rung for one value
+ * would make the scale less useful rather than more.
  */
 const CONTENT_INSET = 35
 
@@ -108,12 +95,10 @@ export const STEP_PADDING = {
 /**
  * The same padding, for a pane that has to apply it itself.
  *
- * `LoadAccountScreen` turns `padContent` off because its two panes disagree about the inset -- the
- * field belongs in the reading column and the camera fills the width -- and pads the one that
- * wants it. It asks for the figure rather than writing it down, because the two layouts do not
- * agree on it: the wide one adds no horizontal inset at all, its column being `COLUMN_WIDTH`
- * already, so a pane carrying the phone's figure draws 70 narrower and 25 lower than every other
- * step there.
+ * `LoadAccountScreen` turns `padContent` off, because its two panes disagree -- the field belongs
+ * in the reading column and the camera fills the width -- and pads the one that wants it. It asks
+ * for the figure rather than writing it down: the wide layout adds no horizontal inset at all, its
+ * column being `COLUMN_WIDTH` already.
  */
 export function useStepPadding(): Partial<typeof STEP_PADDING> {
   return useMedia().gtSm ? {} : STEP_PADDING

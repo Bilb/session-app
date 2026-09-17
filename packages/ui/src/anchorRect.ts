@@ -53,23 +53,18 @@ export function measureAnchor(node: unknown, onMeasured: (rect: AnchorRect | nul
 /**
  * How far in from the leading edge to put a panel of `panelWidth` hanging off `anchor`.
  *
- * **Aligned to the trigger's trailing edge**, because the trigger is a small control with a
- * chevron and the panel is wider than it: hanging the panel's leading edge off the trigger's would
- * push it off the far side of the window wherever the trigger sits near that edge, which is where
- * this one usually does. Which edge that is mirrors -- the trigger sits in the top trailing corner
- * either way, so the panel has to grow back toward the middle either way.
+ * **Aligned to the trigger's trailing edge**, because the panel is wider than the trigger and the
+ * trigger sits near the trailing edge: hanging their leading edges together would push the panel
+ * off the window. Which edge that is mirrors, so the panel grows back toward the middle either way.
  *
- * **The rectangle that comes in is physical and the offset that goes out is not**, which is the
- * whole job of the arithmetic in the middle. A measurement is physical: `measureInWindow` and
- * `getBoundingClientRect` both answer in window coordinates, whichever way the page reads. An
- * inset is not: the caller applies this through `logical`, and both platforms resolve a leading
- * inset from the right when the layout is mirrored. Handing a physical offset to a logical edge is
- * the bug this exists to stop -- Yoga positions an absolute child by leading and trailing rather
- * than by left and right, so a `left` written straight from a measurement lands at
- * `windowWidth - panelWidth - left` in an Arabic layout and the panel opens off the wrong corner.
+ * **The rectangle coming in is physical and the offset going out is not**, which is the whole job
+ * of the arithmetic between. `measureInWindow` and `getBoundingClientRect` both answer in window
+ * coordinates whichever way the page reads; the caller applies the result through `logical`, and
+ * both platforms resolve a leading inset from the right once mirrored. Yoga positions an absolute
+ * child by leading and trailing rather than left and right, so a `left` written straight from a
+ * measurement opens the panel off the wrong corner in Arabic.
  *
- * Clamped to the window on both sides, so the panel is always whole. The margin is the smallest
- * gap worth keeping between it and the window edge.
+ * Clamped to the window on both sides, so the panel is always whole.
  */
 export function panelInset(
   anchor: AnchorRect,

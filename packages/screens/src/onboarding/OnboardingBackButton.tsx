@@ -5,15 +5,14 @@ import { logical, backChevron, Button, Icon, YStack } from '@session/ui'
 /**
  * The way back out of an onboarding step.
  *
- * One control drawn in four places -- the phone's bar, the wide column's hanger, and the loading
- * screen in each of its two layouts -- which had grown three separate copies of the same six
- * props. The fourth was the one that gave it away: the loading screen has a chevron on a phone and
- * had none on the wide design, because nothing there was in a position to draw one.
+ * One control drawn in four places: the phone's bar, the wide column's hanger, and the loading
+ * screen in each of its two layouts. Separate copies drift, and the loading screen is where that
+ * shows -- it is the one that can end up with a chevron on a phone and none on the wide design.
  *
- * `md` rather than `xs`: the glyph is the same either way, and the control is the size of the
- * touch target rather than of the icon, so the pressed highlight covers what a finger covers. An
- * `xs` button grown only by `hitSlop` presses in a 24pt square inside a 40pt target, which reads
- * as a mis-hit even when it worked.
+ * `md` rather than `xs`: the glyph is the same either way, and the control is the size of the touch
+ * target rather than of the icon, so the pressed highlight covers what a finger covers. An `xs`
+ * button grown only by `hitSlop` presses in a 24pt square inside a 40pt target, which reads as a
+ * mis-hit even when it worked.
  *
  * `BackButton` in `screens` is the app's own, which goes back through the navigator. Onboarding's
  * steps are not routes, so this one is told what back means.

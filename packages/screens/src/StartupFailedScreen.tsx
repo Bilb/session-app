@@ -15,27 +15,19 @@ interface StartupFailedScreenProps {
 /**
  * The app could not start.
  *
- * **The second outcome of a launch, and until now there was only one.** Everything between the app
- * opening and libsession answering either finished or left the launch screen up for ever -- a
- * rejection with nobody holding it looked exactly like a database still migrating, and neither
- * ever ended. This is what a failure resolves to instead.
+ * **The second outcome of a launch.** Without it, a rejection between the app opening and
+ * libsession answering is indistinguishable from a database still migrating: the launch screen
+ * stays up and neither ever ends.
  *
- * The legacy iOS client puts a plain `UIAlertController` over its own launch screen rather than a
- * styled one, and says why: it *"may not have access to the database when displaying this so can't
- * extract theme information for styling purposes"*. The same is true here -- a theme preference
- * lives in libsession's globals, and libsession is what has not answered -- but it costs us
- * nothing, because the default theme is already what the launch screen was drawn in. So this is a
- * screen rather than a system alert, and it is styled, and neither of those contradicts the
- * client's reasoning.
+ * A styled screen rather than the legacy client's plain `UIAlertController`. Its reason for the
+ * plain one holds here too -- it *"may not have access to the database when displaying this so
+ * can't extract theme information"* -- but costs nothing, because the default theme is already
+ * what the launch screen was drawn in.
  *
- * **Clearing is the only way forward offered**, and it is both of the client's two: there, "clear"
- * and "clear and restore" differ only in what happens next, and what happens next here is
- * onboarding, which is where a recovery phrase is entered. A retry is deliberately absent -- iOS
- * has none either, and the one thing that would have made the failure go away is the thing that
- * already failed.
- *
- * Exporting the logs, which the client offers first, is not here: there is no logging port yet, so
- * the button would be a promise to produce a file nothing writes.
+ * **Clearing is the only way forward offered**, and it covers both of the client's two: they differ
+ * only in what happens next, which here is onboarding, where a phrase is entered. No retry -- iOS
+ * has none either, and the thing that would make the failure go away is what already failed.
+ * Exporting the logs is absent because there is no logging port to write them.
  */
 export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
   const actions = useSessionActions()

@@ -33,19 +33,17 @@ interface LoadAccountScreenProps {
 /**
  * Entering a recovery phrase.
  *
- * **Concealed by default, with a reveal toggle**, as the desktop client has it. A recovery phrase
- * is the whole account in thirteen words and this screen is often reached in a room with other
- * people in it -- but it is also the one field where a typo is invisible and fatal, so it has to be
- * readable on demand rather than only on trust.
+ * **Concealed by default, with a reveal toggle**, as the desktop client has it: a phrase is the
+ * whole account in thirteen words and this screen is often reached with other people in the room,
+ * but it is also the one field where a typo is invisible and fatal.
  *
- * Same error rules as the name screen: border, text and the toggle icon all turn red on a refusal,
+ * Same error rules as the name screen: border, text and the toggle icon turn red on a refusal,
  * typing clears the message and the red text, the border stays until it is submitted again.
  *
  * **The QR tab beside it is structure without a scanner.** Both clients offer two ways into a
- * restore and the screen is shaped around that -- a title of its own in the bar, and the tabs
- * across the whole width above the column -- so the shape is here. What is not here is the camera:
- * this app has no camera port, so the tab shows the state the clients show before access is
- * granted, and the control that asks for it arrives with the port.
+ * restore, so the shape is here -- its own title in the bar, tabs across the width above the
+ * column. The camera is not: the tab shows what the clients show before access is granted, and the
+ * control that asks for it arrives with the port.
  */
 export function LoadAccountScreen({
   onBack,

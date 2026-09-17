@@ -21,19 +21,13 @@ import {
 /**
  * The flag shown beside a language.
  *
- * A flag belongs to a country and a language does not, so this mapping is approximate by nature
- * and unhelpful in places by design. Two measured facts about the current list:
+ * A flag belongs to a country and a language does not, so the mapping is approximate by nature.
+ * Three locales maximize to no country at all and get the globe; twenty-three share a flag with
+ * another row, several of those contentiously.
  *
- * - **Three locales have no country at all.** Esperanto maximizes to `001` (World), `es-419` to
- *   `419` (Latin America), and `sr-SP` to `SP`, which is not an assigned ISO code. They get the
- *   globe.
- * - **Twenty-three rows share a flag with another row.** Five languages resolve to India, four to
- *   Spain, three each to Türkiye and Norway. A flag that appears five times identifies nothing,
- *   and several of those groupings are contentious rather than merely unhelpful.
- *
- * Hence this map. The second point is an unsettled question about the product rather than a data
- * problem to solve here, and an override table is what lets it be answered later by editing one
- * object instead of the picker. An entry wins over the generated region; `null` means the globe.
+ * That second point is an unsettled product question rather than a data problem, so it lives in an
+ * override table that can answer it later without regenerating anything. An entry wins over the
+ * generated region; `null` means the globe.
  */
 const FLAG_OVERRIDES: Partial<Record<CrowdinLocale, string | null>> = {}
 
@@ -61,16 +55,13 @@ export function languageFlag(locale: CrowdinLocale): string {
 /**
  * Where CLDR's name for a locale would leave two rows reading the same word.
  *
- * `tl` and `fil` are the case, and CLDR is not wrong so much as out of date about it: it treats
- * Tagalog as the old code for Filipino and gives both the same name, in every language. The two
- * catalogues are **not** the same translation -- about 70% of the strings differ, `tl` reading
- * more formal and `fil` admitting more English loanwords -- so a picker that draws them both as
- * "Filipino" with the same flag is offering a choice nobody can make. Tagalog is what `tl` is.
+ * `tl` and `fil` are the case: CLDR treats Tagalog as the old code for Filipino and names both
+ * the same, in every language. The catalogues are **not** the same translation -- about 70% of the
+ * strings differ -- so two identical rows offer a choice nobody can make. Tagalog is what `tl` is.
  *
- * An override table rather than a fix in the generator, for the same reason `FLAG_OVERRIDES` is
- * one: this is editorial judgement about how to present the list, and it should be changeable
- * without regenerating anything. The other way out is the one legacy iOS took -- drop `tl` at
- * generation time -- which is cleaner but discards a real translation.
+ * An override table rather than a generator fix, for the same reason `FLAG_OVERRIDES` is one: this
+ * is editorial judgement about the list. Legacy iOS instead drops `tl` at generation time, which
+ * is cleaner but discards a real translation.
  */
 const NAME_OVERRIDES: Partial<Record<CrowdinLocale, { name: string; english: string }>> = {
   tl: { name: 'Tagalog', english: 'Tagalog' },
@@ -156,17 +147,15 @@ const SCRIPT_TO_LOCALE: Record<string, CrowdinLocale> = {
  * The best match for a language tag the device reported, or null when nothing matches.
  *
  * **Truncated one subtag at a time, which is how BCP-47 says to do it.** `pt-BR` finds Brazilian
- * Portuguese rather than falling straight to European, and `zh-Hans-AU` -- what iOS reports when
- * the app's language is Simplified Chinese on an Australian device -- reaches `zh-Hans` and then
- * the table above. Trying only the whole tag and then its bare base missed both of those: the
- * catalogue has no bare `zh`, so Chinese matched nothing at all and the app stayed in English.
+ * Portuguese rather than falling to European, and `zh-Hans-AU` -- what iOS reports for Simplified
+ * Chinese on an Australian device -- reaches `zh-Hans` and then the table above. The catalogue has
+ * no bare `zh`, so anything less than this leaves Chinese matching nothing.
  *
  * Last, a language with exactly one shipped variant matches it, so bare `hy` finds `hy-AM`. Only
- * when there is exactly one: bare `pt` could be either Portuguese and picking one would be
- * inventing an answer the tag did not give.
+ * when there is exactly one: bare `pt` could be either Portuguese.
  *
- * Null rather than English: the caller decides what an unsupported system language should do, and
- * silently showing a flag nobody chose states something untrue about the current setting.
+ * Null rather than English, because the caller decides what an unsupported system language does --
+ * and a flag nobody chose says something untrue about the current setting.
  */
 export function matchLocale(tag: string): CrowdinLocale | null {
   const subtags = tag.split('-')

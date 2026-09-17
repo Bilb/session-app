@@ -123,10 +123,9 @@ describe('going back', () => {
     expect(onboardingReducer(named, { type: 'back' }).step).toBe('landing')
   })
 
-  it('leaves the wait, which used to be a fifteen-second trap', () => {
-    // This was null on the reasoning that an account existed by then and nothing could undo it --
-    // which stopped being true when the bridge learned to discard one. The legacy Android client
-    // offers back here for the same reason.
+  it('leaves the wait rather than sitting out the full fifteen seconds', () => {
+    // Offered because the bridge can discard an account, so there is a way out even though one
+    // exists by this point. The legacy Android client offers back here for the same reason.
     expect(onboardingReducer(run([RESTORE, PHRASE], 'desktop'), { type: 'back' }).step).toBe(
       'loadAccount',
     )
@@ -222,8 +221,8 @@ describe('a bridge that refuses the last step', () => {
 
 describe('the wait for a restored profile', () => {
   it('ends as soon as the name arrives, rather than always running out', () => {
-    // The timeout used to be the only way out, so a swarm that answered in two seconds still cost
-    // fifteen and then asked somebody to rename themselves.
+    // Without this the timeout is the only way out, so a swarm that answers in two seconds still
+    // costs fifteen and then asks somebody to rename themselves.
     expect(run([RESTORE, PHRASE, FAST, { type: 'restoreArrived' }]).step).toBe('done')
   })
 

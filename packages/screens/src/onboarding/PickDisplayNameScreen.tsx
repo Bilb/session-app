@@ -39,15 +39,13 @@ interface PickDisplayNameScreenProps {
  * submitted again. So the state is two flags, not one: whether the last submit failed, and whether
  * the value has been touched since.
  *
- * The message itself disappears on the first keystroke rather than persisting, which is a
- * deliberate departure from the written rules — a product call, on the grounds that a stale error
- * under a field somebody is actively correcting is confusing.
+ * The message disappears on the first keystroke rather than persisting -- a deliberate departure
+ * from the written rules, since a stale error under a field somebody is correcting is confusing.
  *
- * **Too long is the exception: it is checked as it is typed, not on submit.** The legacy client
- * validates this field live, and the reason to keep that is the counter -- it appears ten from the
- * limit and goes negative past it, which says how far over but not what being over costs. The
- * message is what gives the number its meaning, so it arrives at the same moment and leaves again
- * as soon as the name is short enough. A product call.
+ * **Too long is the exception: checked as it is typed, not on submit.** The legacy client validates
+ * live, and the counter is why it is worth keeping -- it goes negative past the limit, which says
+ * how far over but not what being over costs. The message is what gives the number meaning, so the
+ * two arrive and leave together.
  */
 export function PickDisplayNameScreen({
   afterFailedRestore,

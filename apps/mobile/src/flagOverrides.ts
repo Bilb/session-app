@@ -4,13 +4,12 @@ import { envVarFor, FLAGS, type FlagName } from '@session/app'
  * The flag overrides this build was started with.
  *
  * **Every variable is named literally, and it has to be.** Expo's transform replaces
- * `process.env.EXPO_PUBLIC_X` only where the source spells the name out; a computed lookup --
- * which is what a shared `envVarFor(name)` produces -- is left alone, and `process.env` on a device
- * is very nearly empty. Reading it that way was not a flag that sometimes failed, it was a flag
- * that could never be set on a phone at all, which is most of what a flag is for.
+ * `process.env.EXPO_PUBLIC_X` only where the source spells the name out; a computed lookup -- what
+ * a shared `envVarFor(name)` produces -- is left alone, and `process.env` on a device is very
+ * nearly empty, so such a flag can never be set on a phone at all.
  *
- * So the names are repeated here once each. A flag added to the shared table and forgotten here
- * fails `tests/flagOverrides.test.ts` rather than silently ignoring its variable.
+ * So the names are repeated here once each. One added to the shared table and forgotten here fails
+ * `tests/flagOverrides.test.ts` rather than silently ignoring its variable.
  *
  * `EXPO_PUBLIC_` is the prefix because that is the only one Expo carries into a bundle. Desktop
  * reads the same variable without it.

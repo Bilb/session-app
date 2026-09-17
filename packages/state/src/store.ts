@@ -204,15 +204,12 @@ export function createSessionStore(
   /**
    * Runs an onboarding step and says so when it fails.
    *
-   * These are the calls whose refusal the screens flatten into one sentence -- "something went
-   * wrong", because there is nothing useful to tell somebody halfway through making an account.
-   * That is right for the screen and leaves nobody able to say *what* went wrong: a create that
-   * failed and a rename that failed looked identical from outside, and neither reached a log.
-   * The rejection still propagates; this only makes sure it was heard on the way past.
+   * The screens flatten every refusal here into one sentence, because there is nothing useful to
+   * tell somebody halfway through making an account. Right for the screen, and it leaves nobody
+   * able to say *what* failed. The rejection still propagates; this only makes sure it was heard.
    *
-   * It wraps the **whole** action, re-hydrate included. Wrapping only the bridge call left the
-   * first real failure silent anyway: the account was minted, and it was the read-back afterwards
-   * that threw.
+   * It wraps the **whole** action, re-hydrate included, because the call that throws is as often
+   * the read-back afterwards as the bridge call itself.
    */
   async function onboardingStep<T>(name: string, run: () => Promise<T>): Promise<T> {
     try {

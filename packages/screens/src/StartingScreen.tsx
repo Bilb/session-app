@@ -22,16 +22,13 @@ const ADMIT_ITS_LONG_AFTER_MS = 15_000
 /**
  * And this much longer before saying so over the top of the screen.
  *
- * A failure that *throws* lands on the failure screen, which is the path that matters and the one
- * the legacy client relies on entirely -- it has no timeout on its migrations either, and would sit
- * here just as long as we would if one hung rather than threw. This covers what a catch site
- * cannot: a start that never comes back at all, from a deadlock or a wait on something that never
- * arrives, where there is no error to catch and the screen is otherwise indistinguishable from a
- * database that is simply large.
+ * A failure that *throws* lands on the failure screen, which is the path that matters. This covers
+ * only what a catch site cannot: a start that never comes back at all, where there is no error to
+ * catch and the screen is indistinguishable from a database that is simply large.
  *
- * Twice the previous threshold rather than another five seconds: a real migration is allowed to
- * take a while, and a dialog thrown over a launch that was going to finish is worse than silence.
- * It needs no dismissing when the wait ends -- this screen is gone by then, and the dialog with it.
+ * Twice the previous threshold rather than another five seconds, because a dialog thrown over a
+ * launch that was going to finish is worse than silence. Nothing dismisses it: this screen is gone
+ * by then, and the dialog with it.
  */
 const SAY_SO_IN_A_DIALOG_AFTER_MS = 30_000
 

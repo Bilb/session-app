@@ -3,40 +3,36 @@ import { requirePorts } from './ports'
 /**
  * Feature flags, and the environment variables that override them.
  *
- * Two halves on purpose. The **defaults** live here, shared, so every platform agrees what a flag
- * means and a test can read the table. The **override** is a port, because the three platforms
- * expose the environment differently and nothing else in shared code should know that.
+ * Two halves on purpose: the **defaults** live here so every platform agrees what a flag means,
+ * and the **override** is a port, because the three platforms expose the environment differently.
  *
- * Every flag is overridable on all three platforms. A flag that can only be flipped by editing
- * source cannot be used to bisect a bug on somebody else's device, which is most of what a flag is
- * for. If a flag ever genuinely cannot be overridden, its comment here has to say why.
+ * Every flag is overridable on all three. A flag that can only be flipped by editing source cannot
+ * be used to bisect a bug on somebody else's device, which is most of what a flag is for. One that
+ * genuinely cannot be has to say why here.
  */
 
 export const FLAGS = {
   /**
    * Offer a choice of recovery-phrase length rather than only the legacy one.
    *
-   * Off by default because a longer phrase is not restorable by older clients: a person who picks
-   * one and later restores on a legacy build has an account they cannot reach. The flag exists so
-   * the screens can be built and exercised before that story is settled.
+   * Off by default because a longer phrase is not restorable by older clients, so somebody who
+   * picks one and later restores on a legacy build has an account they cannot reach.
    */
   recoveryPhraseLength: false,
 
   /**
    * Offer a choice of language for the recovery phrase, independent of the app's language.
    *
-   * Separate from `recoveryPhraseLength` because the two have different blast radii: a phrase in
-   * another language is still the same entropy and restores anywhere that has the wordlist, where
-   * a longer phrase is a compatibility break. Gated separately so one can ship without the other.
+   * Separate from `recoveryPhraseLength` because a phrase in another language is the same entropy
+   * and restores anywhere with the wordlist, where a longer one is a compatibility break.
    */
   recoveryPhraseLanguage: false,
 
   /**
    * Offer the language control during onboarding, before an account exists.
    *
-   * On by default since 2026-09-14. It was off while the control had nowhere to send a phone: the
-   * mobile branch hands over to the OS's own per-app language screen, and until the builds declared
-   * their localizations there was no such screen to hand over to. Both halves exist now.
+   * On by default. The mobile branch hands over to the OS's own per-app language screen, which
+   * exists only once a build declares its localizations -- which they now do.
    */
   onboardingLanguageSelect: true,
 
@@ -44,26 +40,21 @@ export const FLAGS = {
    * **Force** the tablet's onboarding on any wide window, rather than only where the OS suspends
    * the app.
    *
-   * Named for the forcing rather than for the design, because the unprefixed name read as though it
-   * were the switch that decides which design is used. It is not: the design is decided by the
-   * window's width and the notifications port, and this only overrides the second of those.
+   * Named for the forcing, because this is not the switch that decides the design: that is the
+   * window's width and the notifications port, and this overrides only the second.
    *
-   * A tablet is the desktop layout plus the notification-mode step, and which of those two a build
-   * gets is decided by the notifications port -- an OS fact, not a window size. That is correct and
-   * it makes the tablet flow unreachable on a desktop, so the one design nobody can open is the one
-   * hardest to check. This flag makes a desktop window answer the way a tablet does.
-   *
-   * Off by default. It changes which screens appear, so it is a thing to look at deliberately
-   * rather than something to leave on.
+   * A tablet is the desktop layout plus the notification-mode step, and which a build gets is an
+   * OS fact rather than a window size. Correct, and it makes the tablet flow unreachable on a
+   * desktop -- so the one design nobody can open is the hardest to check. Off by default, since it
+   * changes which screens appear.
    */
   forceOnboardingTabletDesign: false,
 
   /**
    * **Force** fast notifications to look available, whatever the build can actually do.
    *
-   * Availability is a fact about the build -- a direct-download Android has no Play Services and
-   * no iOS build has any push yet -- so the "Recommended" state of the notification screen is
-   * unreachable on the machines it is developed on. This makes it reachable. It changes only what
+   * Availability is a fact about the build -- a direct-download Android has no Play Services -- so
+   * the "Recommended" state is unreachable on the machines it is developed on. Changes only what
    * the screen says about the option, never what a notification does.
    */
   forceFastModeAvailable: false,
@@ -71,10 +62,8 @@ export const FLAGS = {
   /**
    * Turn off every animation and transition.
    *
-   * For automated tests, which otherwise race whatever is still moving: a screenshot taken while a
-   * bubble is growing or a screen is sliding is a different picture each run, and a tap aimed at a
-   * control that has not settled misses. Off by default, because the animations are most of what
-   * makes the app feel finished.
+   * For automated tests, which otherwise race whatever is still moving: a screenshot mid-transition
+   * differs each run, and a tap aimed at a control that has not settled misses.
    */
   disableAnimations: false,
 } as const
@@ -84,9 +73,8 @@ export type FlagName = keyof typeof FLAGS
 /**
  * The environment variable a flag reads, derived rather than listed.
  *
- * `recoveryPhraseLength` becomes `SESSION_FLAG_RECOVERY_PHRASE_LENGTH`. Deriving it means a new
- * flag cannot arrive with its variable name misspelled, or absent, or accidentally shared with
- * another flag.
+ * `recoveryPhraseLength` becomes `SESSION_FLAG_RECOVERY_PHRASE_LENGTH`, so a new flag cannot
+ * arrive with its variable misspelled, absent, or shared with another flag.
  */
 export function envVarFor(flag: FlagName): string {
   const screamed = flag.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toUpperCase()
@@ -96,9 +84,8 @@ export function envVarFor(flag: FlagName): string {
 /**
  * Anything that is unambiguously a person typing "on".
  *
- * Deliberately narrow: an unset variable, an empty one, or a typo all fall through to the default
- * rather than silently enabling something. The asymmetry is the point -- a flag set by accident
- * should stay off.
+ * Deliberately narrow: an unset variable, an empty one or a typo all fall through to the default
+ * rather than silently enabling something.
  */
 function truthy(value: string): boolean {
   return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase())
@@ -111,10 +98,8 @@ function falsy(value: string): boolean {
 /**
  * Whether a flag is on, after any environment override.
  *
- * Reads the port every call rather than caching. On mobile the value is live, so a cached answer
- * would outlive the reason for it; on desktop it is substituted at build time today, which is a
- * limitation of the renderer rather than of this. The lookup is a map read and a string compare,
- * so there is nothing to save either way.
+ * Reads the port every call rather than caching, because on mobile the value is live. The lookup
+ * is a map read and a string compare, so there is nothing to save by holding it.
  */
 export function flag(name: FlagName): boolean {
   const override = requirePorts().flags.override(envVarFor(name))

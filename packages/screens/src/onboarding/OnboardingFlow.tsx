@@ -32,9 +32,8 @@ interface OnboardingFlowProps {
    *
    * The apps choose onboarding by asking whether there is an account, which stops being the right
    * question the moment a restore succeeds: the account exists from the instant the phrase is
-   * accepted, but the flow is not finished -- it still has to wait for the profile, and on a phone
-   * it has not asked about notifications yet. Without this the app swapped the conversation list in
-   * underneath a restore that was still running, and the wait screen was never seen at all.
+   * accepted, but the flow still has a profile to wait for and, on a phone, a question to ask.
+   * Without this the conversation list swaps in underneath a restore that is still running.
    *
    * True from the first step past the landing screen until everything has been committed.
    */
@@ -44,14 +43,12 @@ interface OnboardingFlowProps {
 /**
  * Onboarding, from the first screen to an account.
  *
- * One route and an internal step, rather than a route per screen. Both apps already choose
- * onboarding from state rather than by navigating -- there is no history behind it, because until
- * an identity exists this is the only thing the app can show -- and the legacy clients treat back
- * the same way: at the first step of either branch it offers to quit rather than popping a stack.
+ * One route and an internal step, rather than a route per screen. Both apps choose onboarding from
+ * state rather than by navigating -- until an identity exists this is all the app can show -- and
+ * the legacy clients treat back the same way, offering to quit rather than popping a stack.
  *
- * The bridge calls live here and nowhere else. `flow.ts` decides which screen is next and holds
- * what has been collected; this is the only thing that turns that into an account, which is what
- * keeps "when is the account actually made" answerable by reading one file.
+ * The bridge calls live here and nowhere else, so "when is the account actually made" stays
+ * answerable by reading one file. `flow.ts` only decides which screen is next.
  */
 export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
   const actions = useSessionActions()
@@ -105,13 +102,11 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
   /**
    * The profile arriving is what ends the wait early.
    *
-   * Without this the wait always ran its full fifteen seconds and then asked for a name, even when
-   * the swarm had already answered -- which is the timeout doing the work the arrival was supposed
-   * to do, and it renames anybody patient enough to sit through it.
+   * Without it the wait runs its full fifteen seconds and then asks for a name the swarm has
+   * already supplied, renaming anybody patient enough to sit through it.
    *
-   * Asked for rather than waited on: libsession pushes conversations and messages but has no event
-   * for the account, so nothing tells the app the name has landed. Once a second for at most
-   * fifteen of them, only while this step is on screen.
+   * Polled rather than waited on: libsession pushes conversations and messages but has no event for
+   * the account. Once a second, at most fifteen times, only while this step is on screen.
    */
   useEffect(() => {
     // The question before the wait counts too: the fetch is already running behind it, and asking

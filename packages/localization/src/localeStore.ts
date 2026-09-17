@@ -5,17 +5,15 @@ import { matchLocale } from './languageList'
 /**
  * The locale in use, and a way to hear about it changing.
  *
- * `setLocaleInUse` already exists and is what `tr()` reads, but it is a module-scope assignment:
- * nothing re-renders when it changes, so a screen that called it would keep showing the previous
- * language until something else happened to re-render it. This wraps it in the smallest thing that
- * fixes that -- a value, a setter and a subscription -- and deliberately stops there. No React:
- * this package has none, and the hook that adapts it belongs where the screens are.
+ * `setLocaleInUse` is what `tr()` reads, but it is a module-scope assignment: nothing re-renders
+ * when it changes. This wraps it in the smallest thing that fixes that -- a value, a setter and a
+ * subscription -- and stops there. No React: this package has none, and the hook that adapts it
+ * belongs where the screens are.
  *
- * **Not persisted yet.** The only preference store the app has is libsession's globals table,
- * reached through `getPref`/`setPref`, and that needs an identity -- which is exactly what does
- * not exist while onboarding is running. So a language chosen during onboarding survives until the
- * account does, and then has somewhere to live. Choosing it again after a mid-onboarding relaunch
- * is the cost, and it is smaller than a second preference store to keep in step.
+ * **Not persisted yet.** The only preference store is libsession's globals table, which needs an
+ * identity -- exactly what does not exist while onboarding is running. So a language chosen during
+ * onboarding survives until the account does. Choosing it again after a mid-onboarding relaunch is
+ * the cost, and it is smaller than a second preference store to keep in step.
  */
 
 const FALLBACK: CrowdinLocale = 'en'
