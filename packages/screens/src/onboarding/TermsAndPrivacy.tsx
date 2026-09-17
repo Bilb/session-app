@@ -111,7 +111,7 @@ export function TermsAndPrivacy() {
                 <Text flex={1} size="$bodyLarge" weight="bold" userSelect="none">
                   {link.url}
                 </Text>
-                <Icon name="externalLink" size={20} color="$textPrimary" />
+                <Icon name="externalLink" size="md" color="$textPrimary" />
               </XStack>
             </Fragment>
           ))}

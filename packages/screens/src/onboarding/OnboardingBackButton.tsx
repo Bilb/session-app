@@ -26,7 +26,7 @@ export function OnboardingBackButton({ onPress }: { onPress: () => void }) {
       accessibilityLabel={tr('back')}
       testID={ELEMENT.onboarding.back}
       onPress={onPress}
-      icon={<Icon name={backChevron()} size="$5" color="$textPrimary" />}
+      icon={<Icon name={backChevron()} size="lg" color="$textPrimary" />}
     />
   )
 }

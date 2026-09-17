@@ -58,7 +58,7 @@ export const config = createTamagui({
     gtLg: { minWidth: 1100 },
   },
   settings: {
-    // Without this, `fontSize="$4"` resolves against the *space* scale instead of the font
+    // Without this, a `fontSize` token resolves against the *space* scale instead of the font
     // scale, and every piece of text comes out at a spacing value.
     defaultFont: 'body',
     onlyAllowShorthands: false,

@@ -107,7 +107,7 @@ export function LoadingScreen({ onGaveUp, onBack }: LoadingScreenProps) {
   if (!wide) {
     return (
       <Screen testID={ELEMENT.onboarding.loadingScreen}>
-        <XStack alignItems="center" minHeight="$7" paddingHorizontal="$md" paddingTop="$xs">
+        <XStack alignItems="center" minHeight="$2xl" paddingHorizontal="$md" paddingTop="$xs">
           <OnboardingBackButton onPress={onBack} />
         </XStack>
         <YStack flex={1} alignItems="center" justifyContent="center" gap="$md" padding="$xl">
@@ -163,14 +163,14 @@ export function LoadingScreen({ onGaveUp, onBack }: LoadingScreenProps) {
           <YStack
             marginTop="$lg"
             height={BAR_HEIGHT}
-            borderRadius="$2"
+            borderRadius="$md"
             backgroundColor="$bordersColor"
             overflow="hidden"
           >
             <YStack
               width={`${String(Math.round(fraction * 100))}%`}
               height="100%"
-              borderRadius="$2"
+              borderRadius="$md"
               backgroundColor="$primaryColor"
             />
           </YStack>

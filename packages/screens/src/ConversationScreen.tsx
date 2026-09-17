@@ -147,7 +147,7 @@ function MessageRow({ message, index }: { message: Message; index: number }) {
       alignSelf={message.outgoing ? 'flex-end' : 'flex-start'}
       maxWidth="80%"
       backgroundColor={message.outgoing ? '$primaryColor' : '$messageBubbleIncomingBg'}
-      borderRadius="$3"
+      borderRadius="$lg"
       paddingHorizontal="$md"
       paddingVertical="$sm"
       gap="$xxs"

@@ -69,7 +69,7 @@ export function LanguageChoiceList({
     // which a flex child will not do without it.
     <YStack gap="$xs" flexShrink={1} minHeight={0}>
       <XStack alignItems="center" gap="$xs">
-        <Icon name="search" size="$4" color="$textSecondary" />
+        <Icon name="search" size="md" color="$textSecondary" />
         <Input
           grow
           value={query}
@@ -99,7 +99,7 @@ export function LanguageChoiceList({
                   gap="$sm"
                   height={ROW_HEIGHT}
                   paddingHorizontal="$sm"
-                  borderRadius="$1"
+                  borderRadius="$sm"
                   cursor="pointer"
                   backgroundColor={selected ? '$backgroundTertiary' : 'transparent'}
                   pressStyle={{ backgroundColor: '$backgroundTertiary' }}
@@ -117,7 +117,7 @@ export function LanguageChoiceList({
                   <Text flex={1} size="$body" weight={selected ? 'semibold' : 'regular'}>
                     {option.label}
                   </Text>
-                  {selected ? <Icon name="check" size="$4" color="$primaryColor" /> : null}
+                  {selected ? <Icon name="check" size="md" color="$primaryColor" /> : null}
                 </XStack>
               )
             })}

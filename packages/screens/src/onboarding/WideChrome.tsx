@@ -163,7 +163,7 @@ function OnboardingHeader() {
             <IconRing size={RING_SIZE} color="$textPrimary">
               {/* A rung down from the ? glyph's own mark: inside a ring this size, 16 crowds the
                   stroke and 12 sits in it. */}
-              <Icon name="link" size="$2" color="$textPrimary" />
+              <Icon name="link" size="xs" color="$textPrimary" />
             </IconRing>
           }
         />

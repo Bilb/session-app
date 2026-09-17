@@ -196,7 +196,7 @@ export function LoadAccountScreen({
                   icon={
                     <Icon
                       name={revealed ? 'eyeOff' : 'eye'}
-                      size="$5"
+                      size="lg"
                       color={showing ? '$dangerColor' : '$textSecondary'}
                     />
                   }

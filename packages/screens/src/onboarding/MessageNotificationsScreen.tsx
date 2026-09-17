@@ -88,7 +88,7 @@ export function MessageNotificationsScreen({
           gap={TEXT_GAP}
           paddingHorizontal={BOX_PADDING_X}
           paddingVertical={BOX_PADDING_Y}
-          borderRadius="$2"
+          borderRadius="$md"
           borderWidth={1}
           borderColor="$bordersColor"
         >

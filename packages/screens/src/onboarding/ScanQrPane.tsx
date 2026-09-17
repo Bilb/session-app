@@ -56,14 +56,14 @@ export function ScanQrPane({ onScan, error = null }: ScanQrPaneProps) {
         {error === null ? null : (
           <YStack
             position="absolute"
-            left="$3"
-            right="$3"
+            left="$xl"
+            right="$xl"
             bottom={insets.bottom + MESSAGE_LIFT}
             pointerEvents="none"
             alignItems="center"
             paddingHorizontal="$xl"
             paddingVertical="$md"
-            borderRadius="$3"
+            borderRadius="$lg"
             backgroundColor="$backgroundSecondary"
           >
             <Text tone="danger" size="$label" weight="bold" textAlign="center">

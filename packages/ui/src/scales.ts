@@ -26,27 +26,33 @@ export const SPACE_SCALE = {
 }
 
 export const SIZE_SCALE = {
-  // Component heights, so `size="$6"` is a control that is 32 tall.
-  0: 0,
-  1: 8,
-  2: 12,
-  3: 16,
-  4: 20,
-  5: 24,
-  6: 32,
-  7: 40,
-  8: 48,
-  9: 56,
-  10: 64,
+  // A ladder of dimensions, shared by control heights and icons, and named for the same reason the
+  // other scales are: `$7` says nothing, and a reader should not have to count rungs to find out
+  // that it is 40. Note that a control's own `size="md"` is a different vocabulary -- that names a
+  // button, this names a measurement, and the two deliberately do not have to agree.
+  none: 0,
+  xxs: 8,
+  xs: 12,
+  sm: 16,
+  md: 20,
+  lg: 24,
+  xl: 32,
+  '2xl': 40,
+  '3xl': 48,
+  '4xl': 56,
+  '5xl': 64,
   true: 40,
 }
 
 export const RADIUS_SCALE = {
-  0: 0,
-  1: RADII.sm,
-  2: 10,
-  3: RADII.message,
-  4: 24,
+  // Named for the same reason the space scale is: a corner is a look rather than a position, and
+  // `$3` says nothing about which one. Two of these have no name in theme-tokens, so they are
+  // named here rather than by changing a file the whole app's theming rests on.
+  none: 0,
+  sm: RADII.sm,
+  md: 10,
+  lg: RADII.message,
+  xl: 24,
   full: 9999,
   true: RADII.sm,
 }

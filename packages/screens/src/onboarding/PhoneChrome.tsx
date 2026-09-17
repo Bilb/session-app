@@ -35,7 +35,7 @@ export function PhoneChrome({
       <XStack
         position="relative"
         alignItems="center"
-        minHeight="$7"
+        minHeight="$2xl"
         paddingHorizontal="$md"
         paddingTop="$xs"
       >

@@ -134,7 +134,7 @@ export function LanguagePicker({
             <Text size="$title" aria-hidden>
               {selected?.flag ?? ''}
             </Text>
-            <Icon name="chevronDown" size="$4" color="$textPrimary" />
+            <Icon name="chevronDown" size="md" color="$textPrimary" />
           </XStack>
         </Button>
       </XStack>
@@ -178,7 +178,7 @@ export function LanguagePicker({
               maxHeight={placement.available}
               gap="$sm"
               padding="$md"
-              borderRadius="$2"
+              borderRadius="$md"
               borderWidth={1}
               borderColor="$bordersColor"
               // The overlay surface rather than the raised one, because this floats above the
@@ -208,7 +208,7 @@ export function LanguagePicker({
                   onPress={() => {
                     setAnchor(null)
                   }}
-                  icon={<Icon name="x" size="$4" color="$textPrimary" />}
+                  icon={<Icon name="x" size="md" color="$textPrimary" />}
                 />
               </XStack>
 

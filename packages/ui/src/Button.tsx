@@ -138,10 +138,10 @@ const Frame = styled(XStack, {
     size: {
       // `xs` is for an icon on its own, where the ladder's next rung up is bigger than any glyph
       // needs. It is not a smaller text button: there is no padding on it worth speaking of.
-      xs: { height: '$5', paddingHorizontal: '$xs' },
-      sm: { height: '$6', paddingHorizontal: '$md' },
-      md: { height: '$7', paddingHorizontal: '$lg' },
-      lg: { height: '$8', paddingHorizontal: '$xl' },
+      xs: { height: '$lg', paddingHorizontal: '$xs' },
+      sm: { height: '$xl', paddingHorizontal: '$md' },
+      md: { height: '$2xl', paddingHorizontal: '$lg' },
+      lg: { height: '$3xl', paddingHorizontal: '$xl' },
     },
     /**
      * Square, so the full radius draws a circle rather than a pill.

@@ -29,13 +29,29 @@ export type IconName =
   | 'x'
 
 /**
- * Whatever a themed lucide icon accepts, plus which one to draw.
+ * How big an icon is drawn, named rather than numbered.
  *
- * Taken from a glyph rather than written out, so `size`, `color` and the style props stay whatever
- * the icon set actually takes across a version bump. They are tamagui's: `size` reads the size
- * scale (`$5` is 24) and `color` reads the theme (`$textSecondary`), so an icon restyles with a
- * theme like everything else.
+ * The underlying scale is a ladder of dimensions shared with control heights, where a caller can
+ * only say which rung -- and a rung number tells a reader nothing about what they will get. These
+ * are the sizes the app actually uses, so a screen names one instead of counting.
+ *
+ * Omitted, an icon takes its size from the sized context it is in: a button sizes the icon inside
+ * it, which is why most icons here say nothing.
+ *
+ * A raw number is still accepted, for the one case a name cannot serve: an icon that has to match
+ * something drawn at a measured pixel size, where agreeing with that number is the whole point.
  */
-export type IconProps = ComponentProps<typeof Plus> & {
+export type IconSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+
+/**
+ * Whatever a themed lucide icon accepts, plus which one to draw and how big.
+ *
+ * Taken from a glyph rather than written out, so `color` and the style props stay whatever the icon
+ * set actually takes across a version bump. `color` is tamagui's and reads the theme
+ * (`$textSecondary`), so an icon restyles with a theme like everything else. `size` is narrowed to
+ * the named vocabulary above.
+ */
+export type IconProps = Omit<ComponentProps<typeof Plus>, 'size'> & {
   name: IconName
+  size?: IconSize | number
 }

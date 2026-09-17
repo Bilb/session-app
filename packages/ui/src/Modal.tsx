@@ -178,7 +178,7 @@ export function Modal({
                   accessibilityLabel={closeLabel}
                   testID={closeTestID}
                   onPress={onClose}
-                  icon={<Icon name="x" size="$5" color="$textPrimary" />}
+                  icon={<Icon name="x" size="lg" color="$textPrimary" />}
                 />
               </YStack>
             )}

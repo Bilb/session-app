@@ -76,7 +76,7 @@ export function ConversationListScreen() {
             testID={ELEMENT.conversationList.newConversation}
             onPress={() => nav.push(routes.newConversation())}
           >
-            <Icon name="plus" size="$5" color="$textSecondary" />
+            <Icon name="plus" size="lg" color="$textSecondary" />
           </XStack>
 
           {/* Settings had a route and no way to reach it, which made the account ID - the one
@@ -97,7 +97,7 @@ export function ConversationListScreen() {
             testID={ELEMENT.conversationList.settings}
             onPress={() => nav.push(routes.settings())}
           >
-            <Icon name="settings" size="$5" color="$textSecondary" />
+            <Icon name="settings" size="lg" color="$textSecondary" />
           </XStack>
         </XStack>
       </XStack>
