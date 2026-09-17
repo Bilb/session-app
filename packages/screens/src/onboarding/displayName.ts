@@ -53,8 +53,8 @@ export function utf8Length(value: string): number {
 /**
  * The number of code points in a string.
  *
- * `Array.from` rather than `.length`, which counts UTF-16 code units and therefore counts every
- * emoji outside the basic plane twice.
+ * `Array.from` iterates code points. `.length` would count UTF-16 units instead, so an emoji
+ * outside the basic plane counts as two there and as one here.
  */
 export function codePointLength(value: string): number {
   return Array.from(value).length
