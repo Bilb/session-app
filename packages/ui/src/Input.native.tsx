@@ -2,7 +2,7 @@ import { Input as TamaguiInput, XStack } from 'tamagui'
 
 import type { InputProps } from './Input.types'
 import { keyboardTypeToNative } from './nativeProps'
-import { trailingInset } from './trailingInset'
+import { logical } from './logicalEdges'
 
 /**
  * The native flavour.
@@ -76,7 +76,7 @@ export function Input({
       height="$10"
       paddingHorizontal="$2.5"
       // Room for whatever sits against the trailing edge, so the text does not run under it.
-      paddingEnd={endWidth === 0 ? '$2' : endWidth}
+      {...logical({ paddingEnd: endWidth === 0 ? SLOT_INSET : endWidth })}
     />
   )
 
@@ -99,7 +99,7 @@ export function Input({
           // The trailing edge, which is the right one only until the layout mirrors.
           // A number rather than `$2`: the inset props take a dimension and not a space
           // token, so this is `SPACE_SCALE[2]` written out.
-          {...trailingInset(SLOT_INSET)}
+          {...logical({ insetEnd: SLOT_INSET })}
           top={0}
           bottom={0}
           alignItems="center"

@@ -1,6 +1,6 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { backChevron, Button, Icon, YStack } from '@session/ui'
+import { logical, backChevron, Button, Icon, YStack } from '@session/ui'
 
 /**
  * The way back out of an onboarding step.
@@ -49,7 +49,7 @@ const BACK_OFFSET = -36
  */
 export function WideBackButton({ onPress }: { onPress: () => void }) {
   return (
-    <YStack marginStart={BACK_OFFSET} height={34} justifyContent="center">
+    <YStack {...logical({ marginStart: BACK_OFFSET })} height={34} justifyContent="center">
       <OnboardingBackButton onPress={onPress} />
     </YStack>
   )
