@@ -39,15 +39,25 @@ export type Command =
    * times over -- the field's value, the state holding it, the array split out of it, the copy
    * cloned across the process boundary -- none of which can be cleared, only abandoned.
    *
-   * **Deliberate for now, because the alternatives are worse**: collecting a phrase without a
-   * string means giving up paste, and a phrase arrives pasted from a password manager at least as
-   * often as it is typed. Every current client has the same flaw for the same reason.
+   * **Two separate improvements are available here, and only one of them costs anything.**
    *
-   * **What should replace it** is bytes *transferred* rather than copied: `postMessage(request,
-   * [buffer])` detaches the sender's `ArrayBuffer`, so the bytes live in one process instead of
-   * two and can be zeroed with `fill(0)` once the shim has them. The generator has the type for it
-   * now -- `bytes`, and a secret variant whose C++ zeroes in its destructor -- so what is left is
-   * changing this field and the collection path above it.
+   * The cheap one is this field: bytes *transferred* rather than a string array copied.
+   * `postMessage(request, [buffer])` detaches the sender's `ArrayBuffer`, so the bytes exist in
+   * one process instead of two and the shim can zero them with `fill(0)` when it is done. That
+   * removes the copy in the *other* process, which is the one the renderer could never reach to
+   * clear afterwards. It costs nothing anybody would notice: the phrase is still typed and still
+   * pasted, and is encoded on its way out. The generator has had the type since the typed-frame
+   * work -- `bytes`, and a secret variant whose C++ zeroes in its destructor -- so this is a
+   * change to this field, to the shim that reads it, and to whatever encodes the words before
+   * sending.
+   *
+   * The expensive one is the other three copies -- the field's value, the state holding it, the
+   * array split out of it -- and those are unavoidable while a phrase is collected as text.
+   * Removing them means collecting it without a text field, which **gives up paste**, and a phrase
+   * arrives pasted from a password manager at least as often as it is typed. That is the trade
+   * being declined, and every current client declines it the same way.
+   *
+   * So doing the first does not finish the story, and is worth doing anyway.
    */
   | { type: 'restoreAccountFromWords'; words: string[]; language?: string }
   /**
