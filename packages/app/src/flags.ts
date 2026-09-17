@@ -13,12 +13,25 @@ import { requirePorts } from './ports'
 
 export const FLAGS = {
   /**
-   * Offer a choice of recovery-phrase length rather than only the legacy one.
+   * Whether a thirteen-word recovery phrase may be created.
    *
-   * Off by default because a longer phrase is not restorable by older clients, so somebody who
-   * picks one and later restores on a legacy build has an account they cannot reach.
+   * On, because it is what every shipped client makes and the only length they can all restore.
    */
-  recoveryPhraseLength: false,
+  recoveryPhraseShort: true,
+
+  /**
+   * Whether a twenty-five-word recovery phrase may be created.
+   *
+   * Off, because a longer phrase is not restorable by older clients: somebody who picks one and
+   * later restores on a legacy build has an account they cannot reach.
+   *
+   * **A length per flag rather than one flag offering a choice**, so the screen can be told which
+   * lengths exist rather than whether to show a control. With one length enabled there is nothing
+   * to choose and no control to draw; with both, the choice appears. That also makes the
+   * compatibility question answerable per length -- turning the long one on somewhere it can be
+   * restored does not mean turning the short one off.
+   */
+  recoveryPhraseLong: false,
 
   /**
    * Offer a choice of language for the recovery phrase, independent of the app's language.

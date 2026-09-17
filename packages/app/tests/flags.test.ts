@@ -15,22 +15,20 @@ afterEach(() => {
 
 describe('feature flags', () => {
   it('derives an environment variable name per flag, with no collisions', () => {
-    expect(envVarFor('recoveryPhraseLength')).toBe(
-      'EXPO_PUBLIC_SESSION_FLAG_RECOVERY_PHRASE_LENGTH',
-    )
+    expect(envVarFor('recoveryPhraseLong')).toBe('EXPO_PUBLIC_SESSION_FLAG_RECOVERY_PHRASE_LONG')
     const names = (Object.keys(FLAGS) as FlagName[]).map(envVarFor)
     expect(new Set(names).size).toBe(names.length)
   })
 
   it('falls back to the default when nothing is set', () => {
     withEnv({})
-    expect(flag('recoveryPhraseLength')).toBe(FLAGS.recoveryPhraseLength)
+    expect(flag('recoveryPhraseLong')).toBe(FLAGS.recoveryPhraseLong)
   })
 
   it('turns on for anything that is unambiguously a person typing yes', () => {
     for (const value of ['1', 'true', 'TRUE', 'yes', ' on ']) {
-      withEnv({ EXPO_PUBLIC_SESSION_FLAG_RECOVERY_PHRASE_LENGTH: value })
-      expect(flag('recoveryPhraseLength'), value).toBe(true)
+      withEnv({ EXPO_PUBLIC_SESSION_FLAG_RECOVERY_PHRASE_LONG: value })
+      expect(flag('recoveryPhraseLong'), value).toBe(true)
     }
   })
 
@@ -43,16 +41,16 @@ describe('feature flags', () => {
     // The asymmetry is deliberate: a variable set by accident, or misspelled, must not enable
     // something. Falling through to the default is the safe direction.
     for (const value of ['', '  ', 'maybe', 'ON!', '2']) {
-      withEnv({ EXPO_PUBLIC_SESSION_FLAG_RECOVERY_PHRASE_LENGTH: value })
-      expect(flag('recoveryPhraseLength'), JSON.stringify(value)).toBe(false)
+      withEnv({ EXPO_PUBLIC_SESSION_FLAG_RECOVERY_PHRASE_LONG: value })
+      expect(flag('recoveryPhraseLong'), JSON.stringify(value)).toBe(false)
     }
   })
 
   it('reports every flag at once, for a bug report to quote', () => {
-    withEnv({ EXPO_PUBLIC_SESSION_FLAG_RECOVERY_PHRASE_LENGTH: '1' })
+    withEnv({ EXPO_PUBLIC_SESSION_FLAG_RECOVERY_PHRASE_LONG: '1' })
     const snapshot = flagSnapshot()
     expect(Object.keys(snapshot).sort()).toEqual(Object.keys(FLAGS).sort())
-    expect(snapshot.recoveryPhraseLength).toBe(true)
+    expect(snapshot.recoveryPhraseLong).toBe(true)
     expect(snapshot.recoveryPhraseLanguage).toBe(FLAGS.recoveryPhraseLanguage)
   })
 })

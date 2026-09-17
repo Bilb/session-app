@@ -8,7 +8,18 @@ import { createContext, useContext, type ReactNode } from 'react'
  * `expo-blur`, which may only be imported from `apps/mobile`. `ui` cannot import `app` either, so
  * the seam has to be here.
  */
-export type BackdropBlur = () => ReactNode
+export interface BackdropBlurProps {
+  /**
+   * Whether the app is showing a dark theme.
+   *
+   * Passed in rather than read, because a platform material resolves against the *system's*
+   * appearance and the app's theme is its own: a phone in light mode showing a dark theme would
+   * otherwise get a pale frost over a black screen.
+   */
+  dark: boolean
+}
+
+export type BackdropBlur = (props: BackdropBlurProps) => ReactNode
 
 const BackdropBlurContext = createContext<BackdropBlur | null>(null)
 

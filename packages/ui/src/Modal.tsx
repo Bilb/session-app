@@ -3,6 +3,7 @@ import { Modal as NativeModal } from 'react-native'
 import { XStack, YStack } from 'tamagui'
 
 import { useBackdropBlur } from './backdropBlur'
+import { useThemeIsDark } from './UIProvider'
 import { Button } from './Button'
 import { Icon } from './Icon'
 import { Text } from './Text'
@@ -116,12 +117,13 @@ export function Modal({
    * both of those, and the scrim below is then the whole backdrop.
    */
   const Blur = useBackdropBlur()
+  const dark = useThemeIsDark()
 
   return (
     <NativeModal visible={open} transparent animationType="fade" onRequestClose={onClose}>
       {Blur === null ? null : (
         <YStack fullscreen>
-          <Blur />
+          <Blur dark={dark} />
         </YStack>
       )}
       {/* The scrim is its own layer so its opacity does not reach the dialog: an opacity on a

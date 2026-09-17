@@ -60,11 +60,32 @@ function shippedLocales(): string[] {
  * needs nothing equivalent: there the system supplies the wording and the only copy we own is the
  * screen we draw around the prompt, which goes through `tr()` like everything else.
  *
- * The camera is the only one so far. Onboarding's other prompt is notifications, which takes no
- * explanation on iOS -- the rest of the legacy client's map is for features 2.0 does not have yet.
+ * **Declared before the features that need them, deliberately.** iOS kills an app the moment it
+ * touches a protected resource with no purpose string, and the crash names neither the resource
+ * nor the missing key -- so the cost of declaring one early is a line here, and the cost of
+ * forgetting one is a launch-time crash somebody has to bisect.
+ *
+ * These are the legacy client's seven, which is its complete set: it declares no location, no
+ * tracking, and nothing for contacts, calendar, motion or Bluetooth.
+ *
+ * **Sourced from the catalogue rather than copied from the client's plist**, which matters more
+ * than it looks: the client's literals are overridden at build time from the same catalogue, and
+ * five of the seven have since gone stale against what it actually ships. Copying the plist would
+ * ship strings the client itself stopped showing.
+ *
+ * `NSLocalNetworkUsageDescription` is declared but inert until calls arrive: iOS only prompts for
+ * local networking when something browses for a Bonjour service, so the client pairs this with an
+ * `NSBonjourServices` array and a browse it performs purely to trigger the prompt. Both belong
+ * with the calling code rather than here.
  */
 const PERMISSION_STRINGS: Record<string, string> = {
   NSCameraUsageDescription: 'cameraGrantAccessDescription',
+  NSPhotoLibraryUsageDescription: 'permissionsStorageSend',
+  NSPhotoLibraryAddUsageDescription: 'permissionsStorageSave',
+  NSMicrophoneUsageDescription: 'permissionsMicrophoneAccessRequiredIos',
+  NSAppleMusicUsageDescription: 'permissionsAppleMusic',
+  NSFaceIDUsageDescription: 'permissionsFaceId',
+  NSLocalNetworkUsageDescription: 'permissionsLocalNetworkAccessRequiredIos',
 }
 
 /** The English of one of them, which is what the plist itself carries. */
@@ -182,6 +203,14 @@ export default ({ config }: ConfigContext): ExpoConfig =>
       },
       infoPlist: {
         ...config.ios?.infoPlist,
+        // Every purpose string but the camera's, which the plugin above writes so that the Android
+        // permission comes with it. English only here; `permissionLocales` puts each of the other
+        // languages into its own `.lproj`, keyed off this same map.
+        ...Object.fromEntries(
+          Object.keys(PERMISSION_STRINGS)
+            .filter((plistKey) => plistKey !== 'NSCameraUsageDescription')
+            .map((plistKey) => [plistKey, englishPermission(plistKey)]),
+        ),
         /**
          * **What makes iOS offer a per-app language at all**, and what makes the `.lproj` strings
          * above reachable: a bundle is localized for the languages it declares here.
