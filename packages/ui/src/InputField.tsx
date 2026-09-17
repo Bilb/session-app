@@ -1,4 +1,5 @@
 import { useEffect, useImperativeHandle, useState, type ReactNode, type Ref } from 'react'
+import { FONT_SIZE, LINE_HEIGHT_RATIO, SPACING } from '@session/theme-tokens'
 import { YStack } from 'tamagui'
 
 import { FieldError } from './FieldError'
@@ -8,11 +9,16 @@ import type { InputProps } from './Input.types'
 /**
  * Room for two lines of message before anything below the field moves.
  *
- * One line is the common case and two is reachable -- a recovery phrase's refusals are long. Past
- * two it grows and pushes what follows down, which is the designs' rule: a control sliding is
- * acceptable for an unusually long message and not for the ordinary one.
+ * Two rather than one because the ordinary case already wraps: the recovery phrase's refusal is
+ * two lines in English before any translation makes it longer. Past two it grows and pushes what
+ * follows down, which is the designs' rule -- a control sliding is acceptable for an unusually
+ * long message and not for the ordinary one.
+ *
+ * Derived rather than written down, because a figure that has to agree with the type ramp and the
+ * padding below drifts the moment either moves. A hard-coded 34 was a line and a half, so the
+ * control it was holding still moved anyway.
  */
-const RESERVED_HEIGHT = 34
+const RESERVED_HEIGHT = Math.round(FONT_SIZE.label * LINE_HEIGHT_RATIO) * 2 + SPACING.sm * 2
 
 export interface InputFieldHandle {
   /**

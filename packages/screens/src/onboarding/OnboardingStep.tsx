@@ -139,12 +139,14 @@ export function OnboardingStepBody({
 
           <YStack paddingTop="$lg">{children}</YStack>
 
-          {/* Held open, so the button does not move when a message arrives. The padding below is
-            the error's own rather than the button's: a message that runs to two lines otherwise
-            ends up almost touching the control. */}
-          <YStack minHeight={ERROR_MIN_HEIGHT} paddingTop="$sm" paddingBottom="$sm">
-            {error}
-          </YStack>
+          {/* Only where the step is given a message to hold room for. A field that takes its own
+              input reserves the space itself -- see `InputField` -- and reserving it here as well
+              would hold it open twice. */}
+          {error === undefined ? null : (
+            <YStack minHeight={ERROR_MIN_HEIGHT} paddingTop="$sm" paddingBottom="$sm">
+              {error}
+            </YStack>
+          )}
 
           {/* On the wide design the action stays with the content, in a column that is already a
             fixed width. The phone's lives at the bottom of the screen -- see below. */}
