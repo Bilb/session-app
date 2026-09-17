@@ -37,10 +37,19 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
 
   const clear = () => {
     setClearing(true)
-    void actions.clearDeviceData().finally(() => {
-      setClearing(false)
-      setConfirming(false)
-    })
+    void actions
+      .clearDeviceData()
+      .then(() => {
+        // The process is now holding a database that no longer exists, so it ends rather than
+        // carries on -- which is what makes the next launch the clean one, and what the legacy
+        // clients do. Where the platform cannot end it, the screen stays put and the person
+        // relaunches; see `WindowPort`.
+        close?.()
+      })
+      .finally(() => {
+        setClearing(false)
+        setConfirming(false)
+      })
   }
 
   return (

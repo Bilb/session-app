@@ -107,12 +107,17 @@ export interface LinkingPort {
 
 export interface WindowPort {
   /**
-   * Shuts the app down, or null where the platform has no such thing.
+   * Shuts the app down, or null where the platform cannot.
    *
-   * Desktop closes its window, which with one window is quitting. **Null on mobile**: iOS forbids
-   * an app terminating itself and Android merely discourages it, and a button that did nothing
-   * would answer "yes, you can quit" and then not. A screen offering this reads the null and omits
-   * it.
+   * **This exists for the case that needs it rather than as a quit button.** After the device's
+   * data is cleared the process is holding a database that no longer exists, and the legacy
+   * clients do not try to carry on either -- iOS calls `exit(0)` straight after clearing. Ending
+   * the process is what makes the next launch the clean one.
+   *
+   * Desktop closes its window, which with one window is quitting. Android ends its task. **Null on
+   * iOS**, which offers no way to do this from JavaScript: it needs a native call the bridge does
+   * not expose yet, so the screen reads the null and omits the control rather than offering one
+   * that does nothing.
    */
   close: (() => void) | null
   isFocused(): boolean

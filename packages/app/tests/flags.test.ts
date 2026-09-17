@@ -15,7 +15,9 @@ afterEach(() => {
 
 describe('feature flags', () => {
   it('derives an environment variable name per flag, with no collisions', () => {
-    expect(envVarFor('recoveryPhraseLength')).toBe('SESSION_FLAG_RECOVERY_PHRASE_LENGTH')
+    expect(envVarFor('recoveryPhraseLength')).toBe(
+      'EXPO_PUBLIC_SESSION_FLAG_RECOVERY_PHRASE_LENGTH',
+    )
     const names = (Object.keys(FLAGS) as FlagName[]).map(envVarFor)
     expect(new Set(names).size).toBe(names.length)
   })
@@ -27,13 +29,13 @@ describe('feature flags', () => {
 
   it('turns on for anything that is unambiguously a person typing yes', () => {
     for (const value of ['1', 'true', 'TRUE', 'yes', ' on ']) {
-      withEnv({ SESSION_FLAG_RECOVERY_PHRASE_LENGTH: value })
+      withEnv({ EXPO_PUBLIC_SESSION_FLAG_RECOVERY_PHRASE_LENGTH: value })
       expect(flag('recoveryPhraseLength'), value).toBe(true)
     }
   })
 
   it('turns off explicitly, so a flag defaulting on can be disabled', () => {
-    withEnv({ SESSION_FLAG_ONBOARDING_LANGUAGE_SELECT: 'false' })
+    withEnv({ EXPO_PUBLIC_SESSION_FLAG_ONBOARDING_LANGUAGE_SELECT: 'false' })
     expect(flag('onboardingLanguageSelect')).toBe(false)
   })
 
@@ -41,13 +43,13 @@ describe('feature flags', () => {
     // The asymmetry is deliberate: a variable set by accident, or misspelled, must not enable
     // something. Falling through to the default is the safe direction.
     for (const value of ['', '  ', 'maybe', 'ON!', '2']) {
-      withEnv({ SESSION_FLAG_RECOVERY_PHRASE_LENGTH: value })
+      withEnv({ EXPO_PUBLIC_SESSION_FLAG_RECOVERY_PHRASE_LENGTH: value })
       expect(flag('recoveryPhraseLength'), JSON.stringify(value)).toBe(false)
     }
   })
 
   it('reports every flag at once, for a bug report to quote', () => {
-    withEnv({ SESSION_FLAG_RECOVERY_PHRASE_LENGTH: '1' })
+    withEnv({ EXPO_PUBLIC_SESSION_FLAG_RECOVERY_PHRASE_LENGTH: '1' })
     const snapshot = flagSnapshot()
     expect(Object.keys(snapshot).sort()).toEqual(Object.keys(FLAGS).sort())
     expect(snapshot.recoveryPhraseLength).toBe(true)

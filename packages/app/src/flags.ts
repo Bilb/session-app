@@ -73,12 +73,18 @@ export type FlagName = keyof typeof FLAGS
 /**
  * The environment variable a flag reads, derived rather than listed.
  *
- * `recoveryPhraseLength` becomes `SESSION_FLAG_RECOVERY_PHRASE_LENGTH`, so a new flag cannot
- * arrive with its variable misspelled, absent, or shared with another flag.
+ * `recoveryPhraseLength` becomes `EXPO_PUBLIC_SESSION_FLAG_RECOVERY_PHRASE_LENGTH`, so a new flag
+ * cannot arrive with its variable misspelled, absent, or shared with another flag.
+ *
+ * **`EXPO_PUBLIC_` on every platform, not only the one that needs it.** Expo inlines a variable
+ * into a mobile bundle only under that prefix, and the rest of the app's runtime configuration --
+ * the network id, the fake, the router, the file server -- already carries it. One prefix means
+ * the desktop config can collect the whole set by it without listing any of them, and there is no
+ * translation between what the table derives and what a platform reads.
  */
 export function envVarFor(flag: FlagName): string {
   const screamed = flag.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toUpperCase()
-  return `SESSION_FLAG_${screamed}`
+  return `EXPO_PUBLIC_SESSION_FLAG_${screamed}`
 }
 
 /**

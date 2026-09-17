@@ -2,7 +2,7 @@ import { memoryPorts, setPorts } from '@session/app'
 import { parseNetworkName } from '@session/basic-types'
 import * as Clipboard from 'expo-clipboard'
 import * as SecureStore from 'expo-secure-store'
-import { Linking, Platform } from 'react-native'
+import { BackHandler, Linking, Platform } from 'react-native'
 
 import { flagOverride } from './flagOverrides'
 
@@ -31,71 +31,85 @@ function hexToBytes(hex: string): Uint8Array {
  * throws, and the screen looks like it worked. So a port stays memory only while nothing on any
  * screen depends on it reaching the OS.
  */
-setPorts(
-  memoryPorts({
-    // The same variable and the same parser store.ts gives the transport, so the overlay cannot
-    // name a network libsession never attached to. EXPO_PUBLIC_ for the reason store.ts gives.
-    network: {
-      name: parseNetworkName(process.env['EXPO_PUBLIC_SESSION_NETID']),
-      // The same variable `store.ts` reads to decide which bridge to open, so the badge cannot
-      // disagree with what is actually running.
-      usingFake: process.env['EXPO_PUBLIC_SESSION_FAKE'] === '1',
+const ports = memoryPorts({
+  // The same variable and the same parser store.ts gives the transport, so the overlay cannot
+  // name a network libsession never attached to. EXPO_PUBLIC_ for the reason store.ts gives.
+  network: {
+    name: parseNetworkName(process.env['EXPO_PUBLIC_SESSION_NETID']),
+    // The same variable `store.ts` reads to decide which bridge to open, so the badge cannot
+    // disagree with what is actually running.
+    usingFake: process.env['EXPO_PUBLIC_SESSION_FAKE'] === '1',
+  },
+  // One literal per flag, in `flagOverrides.ts`, because a computed variable name is not a
+  // variable Expo carries into the bundle at all.
+  flags: { override: flagOverride },
+  notifications: {
+    // Both mobile operating systems stop the app when it leaves the screen, which is what makes
+    // notification delivery something to choose rather than something that just happens. True on
+    // a tablet as well as a phone: it is the OS that decides this, not the screen size.
+    notificationModesApply: true,
+    // Unchanged, and repeated because a port override replaces the whole object rather than
+    // merging into it. See memoryPorts.
+    fastModeAvailable: false,
+    // **Whose servers fast mode would use, which is what the screen has to name.** Apple's on
+    // iOS; on Android it depends on how the build was assembled rather than on the platform, and
+    // Google's is the only one wired up so far -- a Huawei build sets this to 'huawei'.
+    pushService: Platform.OS === 'ios' ? 'apple' : 'google',
+    requestPermission: () => Promise.resolve(true),
+    show: () => Promise.resolve(),
+    onTap: () => () => undefined,
+    setBadgeCount: () => Promise.resolve(),
+  },
+  clipboard: {
+    setString: (value) => Clipboard.setStringAsync(value).then(() => undefined),
+    getString: () => Clipboard.getStringAsync(),
+  },
+  linking: {
+    // Unchanged, and repeated because a port override replaces the whole object rather than
+    // merging into it. See memoryPorts.
+    openUrl: (url) => Linking.openURL(url),
+    /**
+     * **iOS only, and only because iOS is the only one of the two that can show the row.**
+     *
+     * `openSettings()` rather than a hard-coded `app-settings:`, so the constant is read for
+     * whichever iOS this is running on rather than hoping a literal stays correct across
+     * versions. react-native's implementation is the legacy client's line exactly.
+     *
+     * It opens Settings -> Apps -> Session, which lists Preferred Language once the bundle
+     * declares more than one localization -- what `CFBundleLocalizations` in `app.config.ts` is
+     * for.
+     *
+     * Null on Android rather than a stub: App Language needs a `localeConfig` and there is no
+     * Android build to put one in yet. Null is what the picker reads as "do it yourself".
+     */
+    // Both platforms, unlike the language row above: every installed app has a settings page,
+    // and it is where a camera permission the OS will not ask about again is turned back on.
+    openAppSettings: () => Linking.openSettings(),
+  },
+  secureStore: {
+    async getDatabaseKey() {
+      const stored = await SecureStore.getItemAsync(DATABASE_KEY)
+      if (stored === null) return null
+      return hexToBytes(stored)
     },
-    // One literal per flag, in `flagOverrides.ts`, because a computed variable name is not a
-    // variable Expo carries into the bundle at all.
-    flags: { override: flagOverride },
-    notifications: {
-      // Both mobile operating systems stop the app when it leaves the screen, which is what makes
-      // notification delivery something to choose rather than something that just happens. True on
-      // a tablet as well as a phone: it is the OS that decides this, not the screen size.
-      notificationModesApply: true,
-      // Unchanged, and repeated because a port override replaces the whole object rather than
-      // merging into it. See memoryPorts.
-      fastModeAvailable: false,
-      // **Whose servers fast mode would use, which is what the screen has to name.** Apple's on
-      // iOS; on Android it depends on how the build was assembled rather than on the platform, and
-      // Google's is the only one wired up so far -- a Huawei build sets this to 'huawei'.
-      pushService: Platform.OS === 'ios' ? 'apple' : 'google',
-      requestPermission: () => Promise.resolve(true),
-      show: () => Promise.resolve(),
-      onTap: () => () => undefined,
-      setBadgeCount: () => Promise.resolve(),
+    async setDatabaseKey(key) {
+      await SecureStore.setItemAsync(DATABASE_KEY, bytesToHex(key))
     },
-    clipboard: {
-      setString: (value) => Clipboard.setStringAsync(value).then(() => undefined),
-      getString: () => Clipboard.getStringAsync(),
-    },
-    linking: {
-      // Unchanged, and repeated because a port override replaces the whole object rather than
-      // merging into it. See memoryPorts.
-      openUrl: (url) => Linking.openURL(url),
-      /**
-       * **iOS only, and only because iOS is the only one of the two that can show the row.**
-       *
-       * `openSettings()` rather than a hard-coded `app-settings:`, so the constant is read for
-       * whichever iOS this is running on rather than hoping a literal stays correct across
-       * versions. react-native's implementation is the legacy client's line exactly.
-       *
-       * It opens Settings -> Apps -> Session, which lists Preferred Language once the bundle
-       * declares more than one localization -- what `CFBundleLocalizations` in `app.config.ts` is
-       * for.
-       *
-       * Null on Android rather than a stub: App Language needs a `localeConfig` and there is no
-       * Android build to put one in yet. Null is what the picker reads as "do it yourself".
-       */
-      // Both platforms, unlike the language row above: every installed app has a settings page,
-      // and it is where a camera permission the OS will not ask about again is turned back on.
-      openAppSettings: () => Linking.openSettings(),
-    },
-    secureStore: {
-      async getDatabaseKey() {
-        const stored = await SecureStore.getItemAsync(DATABASE_KEY)
-        if (stored === null) return null
-        return hexToBytes(stored)
-      },
-      async setDatabaseKey(key) {
-        await SecureStore.setItemAsync(DATABASE_KEY, bytesToHex(key))
-      },
-    },
-  }),
-)
+  },
+})
+
+setPorts({
+  ...ports,
+  window: {
+    ...ports.window,
+    // Android ends the task; iOS offers no way to do this from JavaScript and would need a native
+    // call the bridge does not expose yet. Null rather than a no-op, so a screen omits the control
+    // instead of offering one that does nothing -- see `WindowPort`.
+    close:
+      Platform.OS === 'android'
+        ? () => {
+            BackHandler.exitApp()
+          }
+        : null,
+  },
+})
