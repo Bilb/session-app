@@ -74,10 +74,6 @@ export function LandingScreen({ onCreate, onRestore }: LandingScreenProps) {
       {/* The buttons and the terms sit further in than the text above them on a phone, which is
           what both clients do -- see the insets. The wide design's column is already fixed. */}
       <YStack gap="$sm" {...(wide ? {} : { paddingHorizontal: EXTRA_ACTION_INSET })}>
-        {/* **The two designs weight these differently.** Both mobile clients fill the create
-            button and outline the other, so the new account is the obvious one; the desktop client
-            outlines both and leaves them level. Ported rather than unified -- a phone is somebody's
-            first ten seconds with the app and a desktop install rarely is. */}
         <Button
           variant={wide ? 'outline' : 'solid'}
           testID={ELEMENT.onboarding.createAccount}
@@ -85,8 +81,6 @@ export function LandingScreen({ onCreate, onRestore }: LandingScreenProps) {
         >
           {tr('onboardingAccountCreate')}
         </Button>
-        {/* The phone pair reads as one accented group; desktop outlines both in the text
-            colour and leaves them level. Both are the clients' own. */}
         <Button
           variant={wide ? 'outline' : 'outlineAccent'}
           testID={ELEMENT.onboarding.restoreAccount}
@@ -130,8 +124,6 @@ function PhoneOpening() {
 
   return (
     <YStack flex={1} gap="$xl">
-      {/* 26 bold: iOS's `veryLargeFontSize` and Android's `h4`, which both use for every
-          onboarding heading. */}
       <Text size="$headingLarge" weight="bold" textAlign="center">
         {tr('onboardingBubblePrivacyInYourPocket')}
       </Text>
@@ -157,8 +149,6 @@ function PhoneOpening() {
                 borderRadius={BUBBLE_RADIUS}
                 backgroundColor={bubble.outgoing ? '$primaryColor' : '$messageBubbleIncomingBg'}
               >
-                {/* 16: iOS hardcodes it in its bespoke bubble and Android reuses the real
-                  conversation bubble, whose body is the same. */}
                 <Text
                   size="$bodyLarge"
                   color={bubble.outgoing ? '$onAccent' : '$messageBubbleIncomingText'}

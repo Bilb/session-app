@@ -13,7 +13,7 @@ interface MessageNotificationsScreenProps {
   busy?: boolean
 }
 
-/** Android's figures. The 24 is the gutter both clients leave, the radio sitting outside the box. */
+/** The 24 is the gutter between the box and the radio, which sits outside it. */
 const BOX_PADDING_X = 16
 const BOX_PADDING_Y = 12
 const TEXT_GAP = 8
@@ -92,10 +92,8 @@ export function MessageNotificationsScreen({
           borderWidth={1}
           borderColor="$bordersColor"
         >
-          {/* 17 on iOS and 16 on Android -- `h8`, and bold rather than semibold. */}
-          {/* Dimmed by taking the disabled colour rather than by fading the row: Android swaps
-              the token and leaves the border alone, so an unavailable option still reads as a
-              box rather than as a smudge. */}
+          {/* Dimmed by colour rather than by fading the row, so an unavailable option still reads
+              as a box rather than a smudge. */}
           <Text
             size="$bodyLarge"
             weight="bold"
@@ -103,8 +101,6 @@ export function MessageNotificationsScreen({
           >
             {title}
           </Text>
-          {/* 12 regular, in the **primary** text colour on both clients. Ours was muted, which is
-              what made the row read as disabled. */}
           <Text size="$label" {...(disabled ? { tone: 'disabled' as const } : {})}>
             {description}
           </Text>
@@ -127,8 +123,6 @@ export function MessageNotificationsScreen({
       testID={ELEMENT.onboarding.notificationsScreen}
       footer={
         <Button
-          // Outlined in the accent, like every other onboarding Continue. This screen had the
-          // filled one, which made it look like the end of the flow rather than one step of it.
           variant="outlineAccent"
           testID={ELEMENT.onboarding.continueButton}
           loading={busy}

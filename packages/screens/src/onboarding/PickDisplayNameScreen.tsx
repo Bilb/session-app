@@ -3,10 +3,12 @@ import { ELEMENT } from '@session/test-ids'
 import { Button, Input, Text } from '@session/ui'
 import { useEffect, useState } from 'react'
 
+import { useRejection } from './useRejection'
+
 import { displayNameProblem, displayNameRemaining } from './displayName'
 import { OnboardingStep } from './OnboardingStep'
 
-/** How close to the limit before the count is worth showing. */
+/** How close to the limit before the count is worth rejection.showing. */
 const COUNTER_THRESHOLD = 10
 
 /** Room reserved inside the field for the count, so the text never runs under it. */
@@ -33,14 +35,7 @@ interface PickDisplayNameScreenProps {
 /**
  * Naming the account.
  *
- * **The error rules are the designs', and the fourth one is the interesting one.** On a failed
- * submit the border, the text and the placeholder all turn red. Typing then returns the *text* to
- * its normal colour and clears the message — but **the border stays red** until the field is
- * submitted again. So the state is two flags, not one: whether the last submit failed, and whether
- * the value has been touched since.
- *
- * The message disappears on the first keystroke rather than persisting -- a deliberate departure
- * from the written rules, since a stale error under a field somebody is correcting is confusing.
+ * The error behaviour is `useRejection`'s, shared with the phrase field.
  *
  * **Too long is the exception: checked as it is typed, not on submit.** The legacy client validates
  * live, and the counter is why it is worth keeping -- it goes negative past the limit, which says
@@ -56,20 +51,12 @@ export function PickDisplayNameScreen({
   busy = false,
 }: PickDisplayNameScreenProps) {
   const [name, setName] = useState(initialName)
-  /** The last submit failed. Sticky: it is what keeps the border red while a correction is typed. */
-  const [rejected, setRejected] = useState(false)
-  /** Nothing has been typed since that failure, so the message and the red text still stand. */
-  const [showing, setShowing] = useState(false)
+  const rejection = useRejection(refused)
   /** The refusal came from the bridge rather than from the name, which is a different message. */
-  const [failedToCommit, setFailedToCommit] = useState(false)
+  const [failedToCommit, setFailedToCommit] = useState(refused)
 
-  // Latched rather than read from the prop: the prop describes an attempt that is over, and the
-  // message has to clear on the next keystroke like every other error on this screen does.
   useEffect(() => {
-    if (!refused) return
-    setRejected(true)
-    setShowing(true)
-    setFailedToCommit(true)
+    if (refused) setFailedToCommit(true)
   }, [refused])
 
   const remaining = displayNameRemaining(name)
@@ -82,8 +69,7 @@ export function PickDisplayNameScreen({
       onContinue(name)
       return
     }
-    setRejected(true)
-    setShowing(true)
+    rejection.reject()
     setFailedToCommit(false)
   }
 
@@ -94,7 +80,7 @@ export function PickDisplayNameScreen({
       onBack={onBack}
       testID={ELEMENT.onboarding.displayNameScreen}
       error={
-        showing || tooLong ? (
+        rejection.showing || tooLong ? (
           <Text
             tone="danger"
             size="$label"
@@ -128,7 +114,7 @@ export function PickDisplayNameScreen({
           // changed since. A refusal from the bridge is the exception: the name may be fine and
           // the account simply could not be made, so pressing again is the right thing to be able
           // to do.
-          disabled={name.trim().length === 0 || tooLong || (showing && !failedToCommit)}
+          disabled={name.trim().length === 0 || tooLong || (rejection.showing && !failedToCommit)}
           onPress={submit}
         >
           {tr('theContinue')}
@@ -139,9 +125,7 @@ export function PickDisplayNameScreen({
         value={name}
         onChangeText={(next) => {
           setName(next)
-          // The message and the red text go; the border stays, because the field has not been
-          // accepted yet and pretending otherwise invites the same refusal twice.
-          setShowing(false)
+          rejection.typed()
         }}
         placeholder={tr('displayNameEnter')}
         autoCapitalize="words"
@@ -149,8 +133,8 @@ export function PickDisplayNameScreen({
         onSubmit={submit}
         // Red live while it is over the limit, as the client's own live check leaves it: the
         // border and the text are the field agreeing with the counter beside them.
-        error={rejected || tooLong}
-        errorText={showing || tooLong}
+        error={rejection.sticky || tooLong}
+        errorText={rejection.showing || tooLong}
         testID={ELEMENT.onboarding.displayNameInput}
         endWidth={remaining <= COUNTER_THRESHOLD ? COUNTER_WIDTH : 0}
         /* Inside the field, which is where the desktop client puts the message composer's count.

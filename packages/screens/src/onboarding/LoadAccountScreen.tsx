@@ -13,6 +13,8 @@ import {
 } from '@session/ui'
 import { useEffect, useState } from 'react'
 
+import { useRejection } from './useRejection'
+
 import { OnboardingChrome, useStepPadding } from './OnboardingChrome'
 import { OnboardingStepBody } from './OnboardingStep'
 import { ScanQrPane } from './ScanQrPane'
@@ -37,9 +39,7 @@ interface LoadAccountScreenProps {
  * whole account in thirteen words and this screen is often reached with other people in the room,
  * but it is also the one field where a typo is invisible and fatal.
  *
- * **Same error rules as the name screen**, written out twice: border, text and icon turn red on a
- * refusal, typing clears the message and the red text, the border stays until it is submitted
- * again. Two fields sharing a three-state rule is a component waiting to be extracted.
+ * Same error behaviour as the name field, which is `useRejection`'s rather than either screen's.
  *
  * **The QR tab beside it is structure without a scanner.** Both clients offer two ways into a
  * restore, so the shape is here -- its own title in the bar, tabs across the width above the
@@ -55,40 +55,24 @@ export function LoadAccountScreen({
   const [tab, setTab] = useState<'phrase' | 'qr'>('phrase')
   const [phrase, setPhrase] = useState('')
   const [revealed, setRevealed] = useState(false)
-  /** The last submit was refused, here or by the bridge. Keeps the border red through a correction. */
-  const [refused, setRefused] = useState(false)
-  /** Nothing typed since that refusal. */
-  const [showing, setShowing] = useState(false)
+  const rejection = useRejection(rejected)
+  /** Refused by the local length check rather than by the bridge, which is a different message. */
   const [tooShort, setTooShort] = useState(false)
 
-  /**
-   * A refusal from the bridge is latched into the same two flags the local check sets, rather
-   * than read straight from the prop.
-   *
-   * Read directly it was a dead end: the prop only goes false when the *next* submit starts, so
-   * the error stayed up and the continue button stayed disabled no matter what was typed -- and
-   * the field cannot be submitted again to clear it. Against the fake this was invisible, because
-   * the fake accepts every phrase; it takes a wrong phrase and real libsession to reach at all.
-   */
   useEffect(() => {
-    if (!rejected) return
-    setRefused(true)
-    setShowing(true)
-    setTooShort(false)
+    if (rejected) setTooShort(false)
   }, [rejected])
 
   const submit = () => {
     const short = phraseIsTooShort(phrase)
     if (!short) {
-      // No error state on the way out. Setting the flags before handing the phrase over painted
-      // the field red for the frames between the press and the step changing, so a phrase that was
-      // accepted flashed as refused first. The bridge's own refusal arrives as `rejected`.
+      // No error state on the way out: painting the field red before handing the phrase over
+      // flashes a refusal on one that was accepted. The bridge's own arrives as `rejected`.
       onContinue({ words: phraseWords(phrase) })
       return
     }
     setTooShort(true)
-    setRefused(true)
-    setShowing(true)
+    rejection.reject()
   }
 
   const cut = flag('disableAnimations')
@@ -132,7 +116,7 @@ export function LoadAccountScreen({
             description={tr('recoveryPasswordRestoreDescription')}
             onBack={onBack}
             error={
-              showing ? (
+              rejection.showing ? (
                 <Text
                   tone="danger"
                   size="$label"
@@ -159,7 +143,7 @@ export function LoadAccountScreen({
                 variant="outlineAccent"
                 testID={ELEMENT.onboarding.continueButton}
                 loading={busy}
-                disabled={phrase.trim().length === 0 || showing}
+                disabled={phrase.trim().length === 0 || rejection.showing}
                 onPress={submit}
               >
                 {tr('theContinue')}
@@ -170,7 +154,7 @@ export function LoadAccountScreen({
               value={phrase}
               onChangeText={(next) => {
                 setPhrase(next)
-                setShowing(false)
+                rejection.typed()
                 setTooShort(false)
               }}
               placeholder={tr('recoveryPasswordEnter')}
@@ -179,8 +163,8 @@ export function LoadAccountScreen({
               // Concealed until asked for. The toggle is the only way to read it back, which is the
               // point -- a phrase typed blind cannot be checked over.
               secureTextEntry={!revealed}
-              error={refused}
-              errorText={showing}
+              error={rejection.sticky}
+              errorText={rejection.showing}
               testID={ELEMENT.onboarding.recoveryPhraseInput}
               endWidth={TOGGLE_WIDTH}
               end={
@@ -197,7 +181,7 @@ export function LoadAccountScreen({
                     <Icon
                       name={revealed ? 'eyeOff' : 'eye'}
                       size="lg"
-                      color={showing ? '$dangerColor' : '$textSecondary'}
+                      color={rejection.showing ? '$dangerColor' : '$textSecondary'}
                     />
                   }
                 />

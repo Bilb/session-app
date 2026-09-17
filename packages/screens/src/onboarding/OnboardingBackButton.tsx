@@ -3,19 +3,10 @@ import { ELEMENT } from '@session/test-ids'
 import { logical, backChevron, Button, Icon, YStack } from '@session/ui'
 
 /**
- * The way back out of an onboarding step.
+ * The way back out of an onboarding step, drawn in four places.
  *
- * One control drawn in four places: the phone's bar, the wide column's hanger, and the loading
- * screen in each of its two layouts. Separate copies drift, and the loading screen is where that
- * shows -- it is the one that can end up with a chevron on a phone and none on the wide design.
- *
- * `md` rather than `xs`: the glyph is the same either way, and the control is the size of the touch
- * target rather than of the icon, so the pressed highlight covers what a finger covers. An `xs`
- * button grown only by `hitSlop` presses in a 24pt square inside a 40pt target, which reads as a
- * mis-hit even when it worked.
- *
- * Told what back means rather than reaching for the navigator, because onboarding's steps are not
- * routes -- `BackButton` is the app's own, for screens that are.
+ * `md` so the pressed highlight covers the touch target rather than just the glyph. Told what back
+ * means because onboarding's steps are not routes.
  */
 export function OnboardingBackButton({ onPress }: { onPress: () => void }) {
   return (
@@ -31,20 +22,14 @@ export function OnboardingBackButton({ onPress }: { onPress: () => void }) {
   )
 }
 
-/**
- * How far outside the column the wide design hangs the chevron.
- *
- * The desktop client's own offset. The column is a fixed width and the control belongs beside it
- * rather than in it, so this is negative: a phone has no such margin to hang into, which is why
- * that layout puts the control in a bar instead.
- */
+/** Negative, because the control hangs outside the fixed-width column rather than sitting in it. */
 const BACK_OFFSET = -36
 
 /**
  * The same control, hung off the side of the wide column.
  *
- * The height pins it to the heading's line rather than to the column, so it stays level however
- * many lines the title wraps to.
+ * The fixed height pins it to the heading's first line, so it stays level however many lines the
+ * title wraps to.
  */
 export function WideBackButton({ onPress }: { onPress: () => void }) {
   return (
