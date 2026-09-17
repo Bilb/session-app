@@ -11,15 +11,11 @@ import { TermsAndPrivacy } from './TermsAndPrivacy'
 /**
  * The four lines the mobile clients play out as a conversation, in order.
  *
- * **The emoji are not in the catalogue.** Android injects them from Kotlin -- `👋` on the welcome
- * and `👇` on the last line -- with a TODO about moving them into the strings one day. Pulling the
- * tokens alone yields the text without them, which reads as a missing translation rather than as a
- * deliberate omission, so they are supplied here for the same reason Android supplies them there.
+ * The emoji are supplied here because the catalogue does not carry them, as on Android.
  *
- * **A function, not a constant**, because `tr()` reads the locale at the moment it is called. Built
- * once at module scope these four hold whichever language was current when the module was first
- * imported, for the life of the process -- so the heading and the buttons follow the picker and the
- * conversation does not. Anything built from `tr()` has to be built during a render.
+ * **A function, not a constant**, because `tr()` reads the locale when it is called. Built once at
+ * module scope these would hold whichever language was current when the module was first imported,
+ * so the heading would follow the picker and the conversation would not.
  */
 function bubbles() {
   return [
@@ -89,10 +85,8 @@ export function LandingScreen({ onCreate, onRestore }: LandingScreenProps) {
         >
           {tr('onboardingAccountCreate')}
         </Button>
-        {/* Outlined in the accent on a phone, which is what the legacy client does: stroke and
-            label both in the primary colour, so the two buttons read as one accented pair with the
-            new account filled. The desktop client outlines both in the text colour and leaves them
-            level, which is the `wide` branch. */}
+        {/* The phone pair reads as one accented group; desktop outlines both in the text
+            colour and leaves them level. Both are the clients' own. */}
         <Button
           variant={wide ? 'outline' : 'outlineAccent'}
           testID={ELEMENT.onboarding.restoreAccount}
@@ -136,8 +130,8 @@ function PhoneOpening() {
 
   return (
     <YStack flex={1} gap="$xl">
-      {/* 26 bold, which both clients use for every onboarding heading -- iOS's `veryLargeFontSize`
-          and Android's `h4`. Ours was 36, which wrapped a line the clients fit on one. */}
+      {/* 26 bold: iOS's `veryLargeFontSize` and Android's `h4`, which both use for every
+          onboarding heading. */}
       <Text size="$headingLarge" weight="bold" textAlign="center">
         {tr('onboardingBubblePrivacyInYourPocket')}
       </Text>
@@ -163,9 +157,8 @@ function PhoneOpening() {
                 borderRadius={BUBBLE_RADIUS}
                 backgroundColor={bubble.outgoing ? '$primaryColor' : '$messageBubbleIncomingBg'}
               >
-                {/* 16, which is the one size both clients agree on for this: iOS hardcodes
-                  `.system(size: 16)` in its bespoke bubble and Android's landing reuses the real
-                  conversation bubble, whose body is 16. Ours was 14. */}
+                {/* 16: iOS hardcodes it in its bespoke bubble and Android reuses the real
+                  conversation bubble, whose body is the same. */}
                 <Text
                   size="$bodyLarge"
                   color={bubble.outgoing ? '$onAccent' : '$messageBubbleIncomingText'}

@@ -13,11 +13,7 @@ interface MessageNotificationsScreenProps {
   busy?: boolean
 }
 
-/**
- * The row's metrics. 16 across and 12 down inside the border (Android's; iOS pads 16 all round),
- * 8 between the lines, and **24 between the border and the radio** -- a gutter both clients leave,
- * because the radio sits outside the box rather than inside it.
- */
+/** Android's figures. The 24 is the gutter both clients leave, the radio sitting outside the box. */
 const BOX_PADDING_X = 16
 const BOX_PADDING_Y = 12
 const TEXT_GAP = 8
@@ -112,9 +108,6 @@ export function MessageNotificationsScreen({
           <Text size="$label" {...(disabled ? { tone: 'disabled' as const } : {})}>
             {description}
           </Text>
-          {/* Below the description rather than beside the title, which is where both clients put
-              it -- Android as another line in the same column, iOS as a third label in its stack.
-              14 bold in the accent. */}
           {badge === null ? null : (
             <Text size="$body" weight="bold" tone={disabled ? 'secondary' : 'accent'}>
               {badge}

@@ -9,13 +9,11 @@ import { LocalizedText } from '../LocalizedText'
 /**
  * How much of the question and the address is shown before it scrolls.
  *
- * **Five lines, counted rather than measured.** The desktop client caps the same container at
- * 150px, which at its type is about five lines -- taken literally here it was seven, and it cut
- * the seventh in half, which reads as a rendering fault rather than as something to scroll.
+ * **Lines rather than a pixel height**, so the last one is never cut in half -- which reads as a
+ * rendering fault rather than as something to scroll.
  *
- * The address is always shown in full rather than truncated: the part a long URL loses to an
- * ellipsis is the end, and the end is where a deceptive one hides what it really is. So it is the
- * view that is bounded, never the text.
+ * The address is bounded by the view and never truncated: what a long URL loses to an ellipsis is
+ * its end, and the end is where a deceptive one hides what it really is.
  */
 const MAX_LINES = 5
 const MAX_URL_HEIGHT = textHeight('body', MAX_LINES)

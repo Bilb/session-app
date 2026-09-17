@@ -37,8 +37,9 @@ interface LoadAccountScreenProps {
  * whole account in thirteen words and this screen is often reached with other people in the room,
  * but it is also the one field where a typo is invisible and fatal.
  *
- * Same error rules as the name screen: border, text and the toggle icon turn red on a refusal,
- * typing clears the message and the red text, the border stays until it is submitted again.
+ * **Same error rules as the name screen**, written out twice: border, text and icon turn red on a
+ * refusal, typing clears the message and the red text, the border stays until it is submitted
+ * again. Two fields sharing a three-state rule is a component waiting to be extracted.
  *
  * **The QR tab beside it is structure without a scanner.** Both clients offer two ways into a
  * restore, so the shape is here -- its own title in the bar, tabs across the width above the

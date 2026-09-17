@@ -12,10 +12,9 @@ import heroSource from '../assets/onboarding-hero.png'
 /**
  * The two bundlers hand back different things for the same import, and `Image` takes both.
  *
- * Vite emits the file and returns its URL as a string, which has to be wrapped as `{ uri }`. Metro
- * registers it and returns an opaque asset id, which `Image` takes as-is. Checking the type is the
- * only way to tell them apart, and it is checked rather than assumed because getting it wrong
- * renders an `<img>` with no `src` -- an element of exactly the right size showing nothing.
+ * Vite returns a URL string, which has to be wrapped as `{ uri }`; Metro returns an opaque asset
+ * id, which `Image` takes as-is. Getting it wrong renders an element of exactly the right size
+ * showing nothing, so the type is checked rather than assumed.
  */
 const source = typeof heroSource === 'string' ? { uri: heroSource } : heroSource
 
@@ -36,53 +35,27 @@ const ASPECT = 1629 / 2160
  */
 export function HeroImage() {
   return (
-    /**
-     * **The panel aligns the artwork; the artwork does not position itself.**
-     *
-     * It was an absolutely-positioned child pinned to `right: 0`, which is the same picture at
-     * rest and a different one during a rotation: the panel's width is animated, an absolute
-     * child is laid out against the bounds rather than with them, and the artwork's right edge
-     * lagged the panel's -- so the clip appeared on the right, over the subject, instead of on the
-     * left where the crop already is. Aligning a normal child to the end puts both in the same
-     * layout pass, and a child wider than its container overflows away from the edge it is
-     * aligned to.
-     */
+    // Aligned rather than absolutely positioned: an absolute child is laid out against the panel's
+    // bounds rather than with them, so its edge lags during a resize and the clip appears on the
+    // subject's side. A normal child aligned to the end overflows away from that edge.
     <XStack flex={1} overflow="hidden" justifyContent="flex-end">
       {/**
-       * The aspect ratio goes on this box, not on the image inside it.
+       * **The aspect ratio goes on this box, never on the `Image` inside it.** An `Image`
+       * measures itself from its source and that measurement wins, so a ratio set on it is
+       * silently ignored on native and the artwork comes out at the file's pixel size. A plain
+       * view has no such measurement.
        *
-       * An `Image` measures itself from its source and that measurement wins, so `aspectRatio` on
-       * the image is silently ignored on native -- asked for a full-height box at the artwork's
-       * proportions it returned one 1629 wide, the file's pixel width, since an asset with no
-       * `@2x` suffix is a 1x asset. With all four insets instead it returned 1629x2160 and
-       * overflowed the panel in both directions: enlarged past its own resolution, cropped on
-       * three sides, showing a quarter of its width. The same styles were correct on the web
-       * throughout, which is why this only showed up on a device.
-       *
-       * A plain view has no such measurement, so the ratio resolves. Measured on an iPad, asking
-       * three ways at once: view 913x1210, image 1629x1210, image with insets 1629x2160.
-       */}
-      {/**
-       * **Never narrower than the panel, and said with flex rather than with a percentage.**
-       *
-       * The width comes from the height and the artwork's own proportions, which is right whenever
-       * that is wider than the panel -- the excess is the crop, and `flexShrink: 0` lets it
-       * overflow into it. On a window that is wide and short it comes out *narrower*: at 1600x700
-       * the panel is its 640 cap and the artwork 528, which left 112 points of nothing beside it.
-       * `flexGrow` closes that, because free space is whatever the panel has spare and is nothing
-       * in the ordinary case. When it does grow the aspect ratio gives way and the image crops
-       * vertically instead of horizontally, which is the same bargain in the other direction.
-       *
-       * **Flex rather than `minWidth: '100%'`**, which states the same rule and goes stale: a
-       * percentage is resolved against the parent and cached, so through a drag-resize the artwork
-       * holds the width it was clamped to when the drag began while the panel around it grows.
-       * Aligned to the end, it then slides right and opens a gap down the left. Free space is
-       * recomputed every pass.
+       * **`flexGrow`/`flexShrink` rather than a percentage width.** The width follows from the
+       * height and the artwork's proportions, which is wider than the panel in the ordinary case
+       * -- the excess being the crop, which `flexShrink: 0` allows. On a wide, short window it
+       * comes out narrower instead, and `flexGrow` closes the gap that would leave. A percentage
+       * states the same rule but is resolved against the parent and cached, so it goes stale for
+       * the length of a drag-resize; free space is recomputed every pass.
        */}
       <YStack alignSelf="stretch" flexGrow={1} flexShrink={0} aspectRatio={ASPECT}>
-        {/* Percentages, so the image takes the box rather than describing one. A `minWidth`
-            anywhere here would fit the artwork to the panel instead -- which shrinks it to show
-            the whole picture, and showing the whole picture is the opposite of a crop. */}
+        {/* Percentages, so the image fills the box rather than describing one. A `minWidth` here
+            would fit the artwork to the panel, which shows the whole picture -- the opposite of a
+            crop. */}
         <Image
           source={source}
           style={{ width: '100%', height: '100%' }}

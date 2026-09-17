@@ -73,10 +73,11 @@ function shippedLocales(): string[] {
  * five of the seven have since gone stale against what it actually ships. Copying the plist would
  * ship strings the client itself stopped showing.
  *
- * `NSLocalNetworkUsageDescription` is declared but inert until calls arrive: iOS only prompts for
- * local networking when something browses for a Bonjour service, so the client pairs this with an
- * `NSBonjourServices` array and a browse it performs purely to trigger the prompt. Both belong
- * with the calling code rather than here.
+ * `NSLocalNetworkUsageDescription` is declared with the `NSBonjourServices` array it needs, and
+ * both are inert until calls arrive: iOS prompts for local networking only when something
+ * actually browses for one of those services. The client's service name is a probe rather than a
+ * real service -- it browses for it purely to make the prompt appear -- so what is still missing
+ * is that browse, and it belongs with the calling code.
  */
 const PERMISSION_STRINGS: Record<string, string> = {
   NSCameraUsageDescription: 'cameraGrantAccessDescription',
@@ -211,6 +212,10 @@ export default ({ config }: ConfigContext): ExpoConfig =>
             .filter((plistKey) => plistKey !== 'NSCameraUsageDescription')
             .map((plistKey) => [plistKey, englishPermission(plistKey)]),
         ),
+        // The service the local-network prompt is triggered by. The client's own name, and not a
+        // service anything offers: browsing for it is what makes iOS ask, which is the whole
+        // reason it is declared. Without this array the usage description above never appears.
+        NSBonjourServices: ['_session_local_network_access_check._tcp'],
         /**
          * **What makes iOS offer a per-app language at all**, and what makes the `.lproj` strings
          * above reachable: a bundle is localized for the languages it declares here.

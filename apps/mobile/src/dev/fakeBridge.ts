@@ -7,9 +7,7 @@ import { createFakeTransport, friends, newcomer } from '@session/client/fake'
  */
 export function createFakeBridge(): BridgeTransport {
   // No identity yet, which is the only way to reach onboarding: everywhere else the app sees an
-  // account and goes straight past it. The desktop fake has had this; mobile needs it for the same
-  // reason, and mobile is where most of the onboarding screens are. `EXPO_PUBLIC_` because Metro
-  // inlines a variable into the bundle only when its name carries that prefix -- see store.ts.
+  // account and goes straight past it -- and mobile is where most of the onboarding screens are.
   const fresh = process.env['EXPO_PUBLIC_SESSION_NO_ACCOUNT'] === '1'
   const { world, clients } = fresh ? newcomer() : friends(['Alice', 'Bob'], { history: 4 })
   const alice = clients['Alice']

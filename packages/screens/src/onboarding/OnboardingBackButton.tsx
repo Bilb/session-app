@@ -14,8 +14,8 @@ import { logical, backChevron, Button, Icon, YStack } from '@session/ui'
  * button grown only by `hitSlop` presses in a 24pt square inside a 40pt target, which reads as a
  * mis-hit even when it worked.
  *
- * `BackButton` in `screens` is the app's own, which goes back through the navigator. Onboarding's
- * steps are not routes, so this one is told what back means.
+ * Told what back means rather than reaching for the navigator, because onboarding's steps are not
+ * routes -- `BackButton` is the app's own, for screens that are.
  */
 export function OnboardingBackButton({ onPress }: { onPress: () => void }) {
   return (
