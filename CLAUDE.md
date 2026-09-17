@@ -107,6 +107,19 @@ finds tests wherever they sit, so an unchecked one still runs and nothing compla
 - `libsession-util/` submodule bumped → the `build-native` skill's procedure: rebuild all three
   targets and run the contract suite against the real addon before committing
 
+**`turbo build:native` only rebuilds the node addon.** iOS reads `bridge-core`'s headers from a
+vendored binary, `packages/bridge-rn/ios/SessionBridgeCore.xcframework`, whose `Headers/` sit ahead
+of the source on the search path — so editing `bridge-core` and rebuilding the addon leaves iOS
+compiling against whatever that artefact was built from, however old. `pod install` does not
+refresh it either. Rebuild it with `packages/bridge-rn/scripts/build-libsession-ios.sh`, and use
+`all` or `both` rather than `simulator`: the one-slice modes also rename the simulator slice, which
+breaks the next build with an `rsync … ios-arm64_x86_64-simulator: No such file or directory` a
+long way from its cause.
+
+**Regenerating also needs `pod install` before iOS will build.** The nitrogen output is _copied_
+into `Pods/Headers/Public/SessionBridgeRN`, so a regeneration that adds a header — a new type in
+the spec — leaves that copy missing it.
+
 ## Commands
 
 ```
