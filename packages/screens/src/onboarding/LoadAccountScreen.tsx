@@ -3,11 +3,11 @@ import { ELEMENT } from '@session/test-ids'
 import { flag } from '@session/app'
 import {
   Button,
+  FieldError,
   Icon,
   Input,
   RecoveryPasswordMark,
   SlidePager,
-  Text,
   TopTabs,
   YStack,
 } from '@session/ui'
@@ -116,24 +116,17 @@ export function LoadAccountScreen({
             description={tr('recoveryPasswordRestoreDescription')}
             onBack={onBack}
             error={
-              rejection.showing ? (
-                <Text
-                  tone="danger"
-                  size="$label"
-                  weight="bold"
-                  // Centred under the field, as both clients set it. The field is the full width of the
-                  // column and the message is usually much shorter, so left-aligned it reads as a label
-                  // for the field rather than as a complaint about what is in it.
-                  textAlign="center"
-                  testID={ELEMENT.onboarding.recoveryPhraseError}
-                >
-                  {tooShort
+              <FieldError
+                showing={rejection.showing}
+                // Generic rather than "incorrect", because the bridge flattens libsession's
+                // several refusals into one message and this cannot tell which it was.
+                message={
+                  tooShort
                     ? tr('recoveryPasswordErrorMessageShort')
-                    : // Generic rather than "incorrect", because the bridge flattens libsession's
-                      // several refusals into one message and this cannot tell which it was.
-                      tr('recoveryPasswordErrorMessageGeneric')}
-                </Text>
-              ) : undefined
+                    : tr('recoveryPasswordErrorMessageGeneric')
+                }
+                testID={ELEMENT.onboarding.recoveryPhraseError}
+              />
             }
             footer={
               <Button

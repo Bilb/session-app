@@ -1,6 +1,6 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Input, Text } from '@session/ui'
+import { Button, FieldError, Input, Text } from '@session/ui'
 import { useEffect, useState } from 'react'
 
 import { useRejection } from './useRejection'
@@ -80,28 +80,19 @@ export function PickDisplayNameScreen({
       onBack={onBack}
       testID={ELEMENT.onboarding.displayNameScreen}
       error={
-        rejection.showing || tooLong ? (
-          <Text
-            tone="danger"
-            size="$label"
-            weight="bold"
-            // Centred under the field, as both clients set it. The field is the full width of the
-            // column and the message is usually much shorter, so left-aligned it reads as a label
-            // for the field rather than as a complaint about what is in it.
-            textAlign="center"
-            testID={ELEMENT.onboarding.displayNameError}
-          >
-            {/* Too long wins over a refusal from the bridge, because it is the live one: the
-                refusal describes an attempt that is over, and this describes what is on screen.
-                And a refusal is not a complaint about the name either way -- the name may be
-                perfectly good and the account simply could not be made. */}
-            {tooLong
+        <FieldError
+          showing={rejection.showing || tooLong}
+          // Too long wins over a refusal from the bridge, because it is the live one: the refusal
+          // describes an attempt that is over, and this describes what is on screen.
+          message={
+            tooLong
               ? tr('displayNameErrorDescriptionShorter')
               : failedToCommit
                 ? tr('errorGeneric')
-                : tr('displayNameErrorDescription')}
-          </Text>
-        ) : undefined
+                : tr('displayNameErrorDescription')
+          }
+          testID={ELEMENT.onboarding.displayNameError}
+        />
       }
       footer={
         <Button
