@@ -192,8 +192,8 @@ reach for an xpath.
 
 ### The token trap, and what guards it
 
-A tamagui token that does not exist resolves to **0, in silence**. `padding="$1.5"` on a scale
-without a 1.5 loses the padding; `color="$textPrimry"` paints nothing. TypeScript does not help -
+A tamagui token that does not exist resolves to **0, in silence**. `padding="$smal"` on a scale
+that names its steps `sm` loses the padding; `color="$textPrimry"` paints nothing. TypeScript does not help -
 every one of those props is typed as a plain string, so a typo compiles.
 
 `packages/ui/tests/tokens.contract.test.ts` guards both halves: every `$name` written in `ui`,

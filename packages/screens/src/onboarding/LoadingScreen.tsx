@@ -107,10 +107,10 @@ export function LoadingScreen({ onGaveUp, onBack }: LoadingScreenProps) {
   if (!wide) {
     return (
       <Screen testID={ELEMENT.onboarding.loadingScreen}>
-        <XStack alignItems="center" minHeight="$7" paddingHorizontal="$2" paddingTop="$1">
+        <XStack alignItems="center" minHeight="$7" paddingHorizontal="$md" paddingTop="$xs">
           <OnboardingBackButton onPress={onBack} />
         </XStack>
-        <YStack flex={1} alignItems="center" justifyContent="center" gap="$2" padding="$3">
+        <YStack flex={1} alignItems="center" justifyContent="center" gap="$md" padding="$xl">
           {/* The number sits **inside** the ring on both clients -- iOS overlays it, Android
               centres it in the arc -- rather than beside it as the desktop bar does. */}
           <YStack
@@ -154,14 +154,14 @@ export function LoadingScreen({ onGaveUp, onBack }: LoadingScreenProps) {
           </Text>
           {/* Subtitle and percentage on one line, the client's arrangement: the number belongs
               with the thing it is counting rather than floating beside the bar. */}
-          <XStack justifyContent="space-between" alignItems="center" gap="$1" paddingTop="$1.5">
+          <XStack justifyContent="space-between" alignItems="center" gap="$xs" paddingTop="$sm">
             <Text size="$body">{tr('loadAccountProgressMessage')}</Text>
             <Text size="$body" fontVariant={['tabular-nums']} userSelect="none">
               {percent}
             </Text>
           </XStack>
           <YStack
-            marginTop="$2.5"
+            marginTop="$lg"
             height={BAR_HEIGHT}
             borderRadius="$2"
             backgroundColor="$bordersColor"

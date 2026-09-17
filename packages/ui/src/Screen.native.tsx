@@ -71,12 +71,12 @@ export function Screen({
       <TouchableWithoutFeedback accessible={false} onPress={() => Keyboard.dismiss()}>
         {avoidsKeyboard ? (
           <KeyboardAvoidingView style={FILL} behavior="padding">
-            <YStack flex={1} {...(padded ? { padding: '$2' } : {})}>
+            <YStack flex={1} {...(padded ? { padding: '$md' } : {})}>
               {children}
             </YStack>
           </KeyboardAvoidingView>
         ) : (
-          <YStack flex={1} {...(padded ? { padding: '$2' } : {})}>
+          <YStack flex={1} {...(padded ? { padding: '$md' } : {})}>
             {children}
           </YStack>
         )}

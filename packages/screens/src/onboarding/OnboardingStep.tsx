@@ -120,7 +120,7 @@ export function OnboardingStepBody({
         {!wide || onBack === undefined ? null : <WideBackButton onPress={onBack} />}
 
         <YStack flex={1}>
-          <XStack alignItems="center" gap="$1.5" minHeight={34}>
+          <XStack alignItems="center" gap="$sm" minHeight={34}>
             {/* 26/700, from the designs -- and the desktop client agrees: its `OnboardHeading` is
               an h3 at `--font-size-h4`, which is 26px. */}
             <Text size="$headingLarge" weight="bold" userSelect="none">
@@ -132,17 +132,17 @@ export function OnboardingStepBody({
           {description === undefined ? null : (
             // 14/400, and not muted: the desktop client draws this in the primary text colour, and
             // it is the only explanation of what the field below is for -- content, not a caption.
-            <Text size="$body" paddingTop="$1">
+            <Text size="$body" paddingTop="$xs">
               {description}
             </Text>
           )}
 
-          <YStack paddingTop="$2.5">{children}</YStack>
+          <YStack paddingTop="$lg">{children}</YStack>
 
           {/* Held open, so the button does not move when a message arrives. The padding below is
             the error's own rather than the button's: a message that runs to two lines otherwise
             ends up almost touching the control. */}
-          <YStack minHeight={ERROR_MIN_HEIGHT} paddingTop="$1.5" paddingBottom="$1.5">
+          <YStack minHeight={ERROR_MIN_HEIGHT} paddingTop="$sm" paddingBottom="$sm">
             {error}
           </YStack>
 
@@ -162,7 +162,7 @@ export function OnboardingStepBody({
          * Which is exactly what iOS does: the button comes up to meet the keyboard and the field
          * follows by less, rather than the whole screen sliding as one.
          */
-        <YStack paddingHorizontal={EXTRA_ACTION_INSET} paddingBottom="$2">
+        <YStack paddingHorizontal={EXTRA_ACTION_INSET} paddingBottom="$md">
           {footer}
         </YStack>
       )}

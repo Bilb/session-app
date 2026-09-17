@@ -128,7 +128,7 @@ export function LanguagePicker({
             measureAnchor(trigger.current, setAnchor)
           }}
         >
-          <XStack alignItems="center" gap="$0.5">
+          <XStack alignItems="center" gap="$xxs">
             {/* The flag is not the label: it repeats across languages and three have none, so it
                 stays out of the accessibility tree and `accessibilityLabel` names the control. */}
             <Text size="$title" aria-hidden>
@@ -176,8 +176,8 @@ export function LanguagePicker({
               // the last row ends up under the keyboard. Nothing is estimated here -- the chrome
               // takes what it needs and the list shrinks into the remainder.
               maxHeight={placement.available}
-              gap="$1.5"
-              padding="$2"
+              gap="$sm"
+              padding="$md"
               borderRadius="$2"
               borderWidth={1}
               borderColor="$bordersColor"
@@ -192,7 +192,7 @@ export function LanguagePicker({
               }}
               testID={testIDs.panel}
             >
-              <XStack alignItems="center" justifyContent="space-between" gap="$1">
+              <XStack alignItems="center" justifyContent="space-between" gap="$xs">
                 <Text size="$title" weight="bold">
                   {title}
                 </Text>

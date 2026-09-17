@@ -37,18 +37,18 @@ export function SettingsScreen() {
 
   return (
     <Screen padded testID={ELEMENT.settings.screen}>
-      <XStack alignItems="center" gap="$1.5">
+      <XStack alignItems="center" gap="$sm">
         <BackButton testID={ELEMENT.settings.back} />
         <Text size="$title" weight="bold">
           {tr('sessionSettings')}
         </Text>
       </XStack>
 
-      <YStack paddingVertical="$2" gap="$0.5">
+      <YStack paddingVertical="$md" gap="$xxs">
         <Text tone="secondary" size="$caption">
           {tr('accountId')}
         </Text>
-        <XStack alignItems="center" gap="$1">
+        <XStack alignItems="center" gap="$xs">
           <Text
             testID={ELEMENT.settings.accountId}
             // Wraps rather than truncates: a session ID that is cut off is not one you can
@@ -84,7 +84,7 @@ export function SettingsScreen() {
 
       <Separator borderColor="$bordersColor" />
 
-      <YStack paddingVertical="$2" gap="$0.5">
+      <YStack paddingVertical="$md" gap="$xxs">
         <Text tone="secondary" size="$caption">
           {tr('networkName')}
         </Text>
@@ -101,7 +101,7 @@ export function SettingsScreen() {
           on this device and starts again from nothing, which is what onboarding's own back already
           does -- so it is the same call, not a second way to delete an account. The full version is
           its own piece of work. */}
-      <YStack paddingVertical="$2" gap="$1" alignItems="flex-start">
+      <YStack paddingVertical="$md" gap="$xs" alignItems="flex-start">
         <Button
           variant="outline"
           size="sm"

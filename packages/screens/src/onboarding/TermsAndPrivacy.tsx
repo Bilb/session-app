@@ -1,3 +1,4 @@
+import { URLS } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Button, Icon, Modal, Text, XStack, YStack } from '@session/ui'
@@ -6,16 +7,10 @@ import { Fragment, useState } from 'react'
 import { LocalizedText } from '../LocalizedText'
 import { useConfirmUrl } from './ConfirmUrl'
 
-/**
- * The two documents, and the two hardcoded addresses they live at.
- *
- * Not in the catalogue, and not configurable: the legacy clients carry the same two literals. A URL
- * that a translation could change is a phishing surface, and this is the one screen reached before
- * anybody has decided to trust the app.
- */
+/** The two documents this footer links to, paired with the ids a test addresses them by. */
 const LINKS = [
-  { url: 'https://getsession.org/terms-of-service', testID: ELEMENT.onboarding.openTerms },
-  { url: 'https://getsession.org/privacy-policy', testID: ELEMENT.onboarding.openPrivacy },
+  { url: URLS.termsOfService, testID: ELEMENT.onboarding.openTerms },
+  { url: URLS.privacyPolicy, testID: ELEMENT.onboarding.openPrivacy },
 ] as const
 
 /**

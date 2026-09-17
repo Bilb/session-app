@@ -37,8 +37,9 @@ after touching one.
 
 ## Tamagui edges worth knowing
 
-- **A missing token resolves to 0, silently.** `padding="$1.5"` on a scale without a 1.5 is
-  not an error, it is no padding. The space scale here has half steps for this reason.
+- **A missing token resolves to 0, silently.** `padding="$smal"` on a scale with no `smal` is
+  not an error, it is no padding. Space tokens are named (`$xxs` to `$3xl`, from `SPACING`), not
+  numbered, so a step reads as the step it is rather than as a position to count.
 - **`fontSize` alone does not set line height.** Build on `SizableText` and use `size`, which
   drives both. `Text` already does.
 - **`settings.defaultFont` must be set** or `$4` resolves against the space scale.

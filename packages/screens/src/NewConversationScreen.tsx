@@ -43,11 +43,11 @@ export function NewConversationScreen() {
 
   return (
     <Screen padded testID={ELEMENT.newConversation.screen}>
-      <YStack gap="$1.5">
+      <YStack gap="$sm">
         {/* The way out. Pushed rather than replaced onto the list, so back is where it came from;
             on a two-pane window that is the placeholder, which is still the right answer - the
             list never left. */}
-        <XStack alignItems="center" gap="$1.5">
+        <XStack alignItems="center" gap="$sm">
           <BackButton testID={ELEMENT.newConversation.back} />
           <Text size="$title" weight="bold">
             {tr('conversationsNew')}

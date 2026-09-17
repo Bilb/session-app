@@ -77,7 +77,7 @@ export function LandingScreen({ onCreate, onRestore }: LandingScreenProps) {
       {wide ? null : <PhoneOpening />}
       {/* The buttons and the terms sit further in than the text above them on a phone, which is
           what both clients do -- see the insets. The wide design's column is already fixed. */}
-      <YStack gap="$1.5" {...(wide ? {} : { paddingHorizontal: EXTRA_ACTION_INSET })}>
+      <YStack gap="$sm" {...(wide ? {} : { paddingHorizontal: EXTRA_ACTION_INSET })}>
         {/* **The two designs weight these differently.** Both mobile clients fill the create
             button and outline the other, so the new account is the obvious one; the desktop client
             outlines both and leaves them level. Ported rather than unified -- a phone is somebody's
@@ -135,7 +135,7 @@ function PhoneOpening() {
   }, [shown])
 
   return (
-    <YStack flex={1} gap="$3">
+    <YStack flex={1} gap="$xl">
       {/* 26 bold, which both clients use for every onboarding heading -- iOS's `veryLargeFontSize`
           and Android's `h4`. Ours was 36, which wrapped a line the clients fit on one. */}
       <Text size="$headingLarge" weight="bold" textAlign="center">

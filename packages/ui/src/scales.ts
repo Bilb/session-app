@@ -16,18 +16,12 @@ export const COLOR_SCALE = {
 }
 
 export const SPACE_SCALE = {
-  // Half steps are real tokens, not decoration. A token the scale does not define resolves
-  // to 0 rather than failing, so `padding="$1.5"` on a scale without a 1.5 is a silent loss
-  // of padding rather than an error.
-  0: 0,
-  0.5: SPACING.xxs,
-  1: SPACING.xs,
-  1.5: SPACING.sm,
-  2: SPACING.md,
-  2.5: SPACING.lg,
-  3: SPACING.xl,
-  3.5: SPACING['2xl'],
-  4: SPACING['3xl'],
+  // Named rather than numbered, the way the font scale already is: `$2` and `$3` say nothing
+  // about which gap they are, and a reviewer cannot tell a deliberate step from a typo. A token
+  // the scale does not define resolves to 0 rather than failing, so a name that does not exist
+  // is a silent loss of padding -- which is the other reason not to have people counting.
+  ...SPACING,
+  none: 0,
   true: SPACING.md,
 }
 

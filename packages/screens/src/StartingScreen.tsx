@@ -69,11 +69,11 @@ export function StartingScreen() {
 
   return (
     <Screen testID={ELEMENT.starting.screen}>
-      <YStack flex={1} alignItems="center" justifyContent="center" gap="$3">
+      <YStack flex={1} alignItems="center" justifyContent="center" gap="$xl">
         <SessionBrand size={64} color="$primaryColor" />
 
         {waited < SAY_SOMETHING_AFTER_MS ? null : (
-          <YStack alignItems="center" gap="$1" maxWidth={280}>
+          <YStack alignItems="center" gap="$xs" maxWidth={280}>
             {/* What libsession is doing while this screen is up: opening and migrating its
                 database. The same string the iOS screen uses for the same wait. */}
             <Text textAlign="center" testID={ELEMENT.starting.slowMessage}>

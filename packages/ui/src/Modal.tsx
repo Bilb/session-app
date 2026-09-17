@@ -129,7 +129,13 @@ export function Modal({
       {Blur !== null ? null : (
         <YStack fullscreen backgroundColor="$surfaceInk" opacity={SCRIM_OPACITY} />
       )}
-      <YStack fullscreen alignItems="center" justifyContent="center" padding="$3" onPress={onClose}>
+      <YStack
+        fullscreen
+        alignItems="center"
+        justifyContent="center"
+        padding="$xl"
+        onPress={onClose}
+      >
         <YStack
           width="100%"
           maxWidth={360}
@@ -146,7 +152,7 @@ export function Modal({
           }}
           testID={testID}
         >
-          <XStack alignItems="flex-start" gap="$1">
+          <XStack alignItems="flex-start" gap="$xs">
             {/* Centred across the full width, with the cross overlaid rather than taking a column,
                 so the title is centred on the dialog and not on what is left of it. */}
             {/* 17 on iOS, 16 on Android. */}

@@ -54,8 +54,8 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
 
   return (
     <Screen padded testID={ELEMENT.startupFailed.screen}>
-      <YStack flex={1} alignItems="center" justifyContent="center" gap="$3">
-        <YStack maxWidth={420} gap="$2" alignItems="center">
+      <YStack flex={1} alignItems="center" justifyContent="center" gap="$xl">
+        <YStack maxWidth={420} gap="$md" alignItems="center">
           <Text size="$titleLarge" weight="bold" textAlign="center">
             {tr('theError')}
           </Text>
@@ -74,7 +74,7 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
           </Text>
         </YStack>
 
-        <YStack gap="$1.5" width="100%" maxWidth={348}>
+        <YStack gap="$sm" width="100%" maxWidth={348}>
           <Button
             variant="outline"
             destructive

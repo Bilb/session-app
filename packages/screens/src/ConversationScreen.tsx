@@ -38,9 +38,9 @@ export function ConversationScreen({ conversationId }: { conversationId: string 
   return (
     <Screen testID={ELEMENT.conversation.screen}>
       <XStack
-        paddingHorizontal="$2"
-        paddingVertical="$1.5"
-        gap="$1.5"
+        paddingHorizontal="$md"
+        paddingVertical="$sm"
+        gap="$sm"
         alignItems="center"
         testID={ELEMENT.conversation.header}
       >
@@ -63,20 +63,20 @@ export function ConversationScreen({ conversationId }: { conversationId: string 
           data={messages}
           keyExtractor={(message) => String(message.id)}
           renderItem={(message, index) => (
-            <YStack paddingHorizontal="$2" paddingBottom="$1.5">
+            <YStack paddingHorizontal="$md" paddingBottom="$sm">
               <MessageRow message={message} index={index} />
             </YStack>
           )}
         />
       ) : (
-        <YStack flex={1} padding="$2">
+        <YStack flex={1} padding="$md">
           <Text tone="secondary">{tr('loading')}</Text>
         </YStack>
       )}
 
       <XStack
-        padding="$2"
-        gap="$1.5"
+        padding="$md"
+        gap="$sm"
         alignItems="center"
         borderTopWidth={1}
         borderTopColor="$bordersColor"
@@ -148,9 +148,9 @@ function MessageRow({ message, index }: { message: Message; index: number }) {
       maxWidth="80%"
       backgroundColor={message.outgoing ? '$primaryColor' : '$messageBubbleIncomingBg'}
       borderRadius="$3"
-      paddingHorizontal="$2"
-      paddingVertical="$1.5"
-      gap="$0.5"
+      paddingHorizontal="$md"
+      paddingVertical="$sm"
+      gap="$xxs"
       testID={ELEMENT.conversation.messageRow(index)}
     >
       <Text
@@ -161,7 +161,7 @@ function MessageRow({ message, index }: { message: Message; index: number }) {
         {message.body}
       </Text>
       {label === undefined ? null : (
-        <XStack alignItems="center" gap="$1">
+        <XStack alignItems="center" gap="$xs">
           {/* Coloured like the bubble rather than by tone: a label only ever appears on an
               outgoing message, and both the secondary and the accent tone are picked to read
               against the screen - on the bubble they come out as green on green. */}

@@ -147,7 +147,7 @@ export function MessageNotificationsScreen({
         </Button>
       }
     >
-      <YStack gap="$1.5">
+      <YStack gap="$sm">
         {option(
           'fast',
           tr('notificationsFastMode'),

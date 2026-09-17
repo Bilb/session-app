@@ -36,8 +36,8 @@ export function PhoneChrome({
         position="relative"
         alignItems="center"
         minHeight="$7"
-        paddingHorizontal="$2"
-        paddingTop="$1"
+        paddingHorizontal="$md"
+        paddingTop="$xs"
       >
         {onBack === undefined ? null : <OnboardingBackButton onPress={onBack} />}
         <YStack flex={1} />

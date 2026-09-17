@@ -67,8 +67,8 @@ export function LanguageChoiceList({
     // **Shrinks into whatever the panel has left.** The height is the panel's to decide -- see the
     // cap there -- and `minHeight: 0` is what lets this go below its content's natural height,
     // which a flex child will not do without it.
-    <YStack gap="$1" flexShrink={1} minHeight={0}>
-      <XStack alignItems="center" gap="$1">
+    <YStack gap="$xs" flexShrink={1} minHeight={0}>
+      <XStack alignItems="center" gap="$xs">
         <Icon name="search" size="$4" color="$textSecondary" />
         <Input
           grow
@@ -81,7 +81,7 @@ export function LanguageChoiceList({
       </XStack>
 
       {matches.length === 0 ? (
-        <YStack paddingVertical="$2" alignItems="center">
+        <YStack paddingVertical="$md" alignItems="center">
           <Text tone="secondary" size="$body">
             {emptyLabel}
           </Text>
@@ -96,9 +96,9 @@ export function LanguageChoiceList({
                   key={option.value}
                   role="button"
                   alignItems="center"
-                  gap="$1.5"
+                  gap="$sm"
                   height={ROW_HEIGHT}
-                  paddingHorizontal="$1.5"
+                  paddingHorizontal="$sm"
                   borderRadius="$1"
                   cursor="pointer"
                   backgroundColor={selected ? '$backgroundTertiary' : 'transparent'}

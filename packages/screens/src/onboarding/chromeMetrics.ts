@@ -84,8 +84,8 @@ export const EXTRA_ACTION_INSET = HORIZONTAL_ACTION_INSET - HORIZONTAL_CONTENT_I
 /** The room the phone layout leaves around a step. The wide one leaves none -- see below. */
 export const STEP_PADDING = {
   paddingHorizontal: HORIZONTAL_CONTENT_INSET,
-  paddingTop: '$3',
-  paddingBottom: '$2',
+  paddingTop: '$xl',
+  paddingBottom: '$md',
 } as const
 
 /**

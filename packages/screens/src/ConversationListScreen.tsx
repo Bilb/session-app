@@ -33,8 +33,8 @@ export function ConversationListScreen() {
   return (
     <Screen testID={ELEMENT.conversationList.screen}>
       <XStack
-        paddingHorizontal="$2"
-        paddingVertical="$1.5"
+        paddingHorizontal="$md"
+        paddingVertical="$sm"
         alignItems="center"
         justifyContent="space-between"
       >
@@ -43,12 +43,12 @@ export function ConversationListScreen() {
             {tr('messages')}
           </Text>
         </NetworkOverlay>
-        <XStack alignItems="center" gap="$1.5">
+        <XStack alignItems="center" gap="$sm">
           {unreadRequests > 0 ? (
             <XStack
               backgroundColor="$primaryColor"
               borderRadius="$full"
-              paddingHorizontal="$1"
+              paddingHorizontal="$xs"
               minWidth={20}
               height={20}
               alignItems="center"
@@ -116,7 +116,7 @@ export function ConversationListScreen() {
           />
         )}
         empty={
-          <YStack flex={1} alignItems="center" justifyContent="center" padding="$3">
+          <YStack flex={1} alignItems="center" justifyContent="center" padding="$xl">
             <Text tone="secondary" testID={ELEMENT.conversationList.empty}>
               {tr('onboardingHitThePlusButton')}
             </Text>
@@ -141,8 +141,8 @@ function ConversationRow({
   return (
     <XStack
       height={ROW_HEIGHT}
-      paddingHorizontal="$2"
-      gap="$2"
+      paddingHorizontal="$md"
+      gap="$md"
       alignItems="center"
       hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
       pressStyle={{ backgroundColor: '$backgroundTertiary' }}
@@ -152,7 +152,7 @@ function ConversationRow({
     >
       <Avatar id={conversation.id} name={title} />
 
-      <YStack flex={1} gap="$0.5">
+      <YStack flex={1} gap="$xxs">
         <Text
           size="$body"
           weight={conversation.unreadCount > 0 ? 'bold' : 'regular'}
@@ -177,7 +177,7 @@ function ConversationRow({
         <XStack
           backgroundColor="$primaryColor"
           borderRadius="$full"
-          paddingHorizontal="$1"
+          paddingHorizontal="$xs"
           minWidth={20}
           height={20}
           alignItems="center"

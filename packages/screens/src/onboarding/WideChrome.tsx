@@ -1,3 +1,4 @@
+import { URLS } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import {
@@ -20,15 +21,6 @@ import { COLUMN_GROW, COLUMN_WIDTH, HERO_GROW, HERO_MAX_WIDTH } from './heroPane
 import { useConfirmUrl } from './ConfirmUrl'
 
 /**
- * Where the two documentation links go.
- *
- * Hardcoded for the same reason the terms are: this is reachable before anybody has decided to
- * trust the app, and a URL a translation could change is a phishing surface.
- */
-const FAQ_URL = 'https://getsession.org/faq'
-const WEBSITE_URL = 'https://getsession.org'
-
-/**
  * Onboarding as the desktop client draws it, and as a tablet gets: artwork down one side and a
  * fixed-width column beside it carrying the lockup, the links and the step.
  *
@@ -43,8 +35,8 @@ export function WideChrome({
 }: Pick<ChromeProps, 'children' | 'testID'> & { fading: number }) {
   const column = (
     // Centred both ways in whatever is left, which is the rule the designs state.
-    <YStack flex={1} alignItems="center" justifyContent="center" padding="$3">
-      <YStack width={COLUMN_WIDTH} gap="$3">
+    <YStack flex={1} alignItems="center" justifyContent="center" padding="$xl">
+      <YStack width={COLUMN_WIDTH} gap="$xl">
         <OnboardingHeader />
         <YStack
           // **A height, not a minimum.** The reserve exists so the lockup and the chevron stay put
@@ -132,13 +124,13 @@ function OnboardingHeader() {
   const open = useConfirmUrl()
 
   return (
-    <XStack alignItems="center" gap="$1" height={30}>
+    <XStack alignItems="center" gap="$xs" height={30}>
       <OnboardingMark size={26} />
       <SessionWordmark size={15} color="$textPrimary" />
       <YStack flex={1} />
       {/* One group of three. The designs give 8px between them; the space ladder has 5 and 10 and
           no 8, so this takes the rung above rather than stepping off the ladder for one row. */}
-      <XStack alignItems="center" gap="$1.5">
+      <XStack alignItems="center" gap="$sm">
         <OnboardingLanguageButton />
         {/* Ghost, because `circleHelp` brings its own circle: a border here would draw a second
             ring around the first. The glyph is therefore the full control size, where the bordered
@@ -150,7 +142,7 @@ function OnboardingHeader() {
           accessibilityLabel={tr('helpFAQ')}
           testID={ELEMENT.onboarding.faqLink}
           onPress={() => {
-            open(FAQ_URL)
+            open(URLS.faq)
           }}
           // An explicit number rather than a token, because the ring beside it has to be drawn at
           // the same pixel size for the two circles to match -- and `IconRing` takes a number.
@@ -165,7 +157,7 @@ function OnboardingHeader() {
           accessibilityLabel={tr('openPlatformWebsite', { platform: tr('appName') })}
           testID={ELEMENT.onboarding.websiteLink}
           onPress={() => {
-            open(WEBSITE_URL)
+            open(URLS.website)
           }}
           icon={
             <IconRing size={RING_SIZE} color="$textPrimary">

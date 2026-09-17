@@ -21,7 +21,7 @@ import {
  * Every `$token` in the repository names something that exists.
  *
  * This is the guard for the sharpest edge in the whole UI layer: tamagui resolves a token it
- * does not know to 0 and says nothing. `padding="$1.5"` on a scale without a 1.5 silently
+ * does not know to 0 and says nothing. `padding="$sm"` on a scale without a 1.5 silently
  * loses the padding; `color="$textPrimry"` silently paints nothing. TypeScript does not help -
  * every one of those props is typed as a string, so a name with a typo in it compiles.
  *

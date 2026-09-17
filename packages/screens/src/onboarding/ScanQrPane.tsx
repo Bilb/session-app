@@ -61,8 +61,8 @@ export function ScanQrPane({ onScan, error = null }: ScanQrPaneProps) {
             bottom={insets.bottom + MESSAGE_LIFT}
             pointerEvents="none"
             alignItems="center"
-            paddingHorizontal="$3"
-            paddingVertical="$2"
+            paddingHorizontal="$xl"
+            paddingVertical="$md"
             borderRadius="$3"
             backgroundColor="$backgroundSecondary"
           >
@@ -113,8 +113,8 @@ function Message({ text, action, testID }: { text: string; action?: ReactNode; t
       flex={1}
       alignItems="center"
       justifyContent="center"
-      gap="$2"
-      paddingHorizontal="$4"
+      gap="$md"
+      paddingHorizontal="$3xl"
       testID={testID}
     >
       <Text textAlign="center">{text}</Text>
