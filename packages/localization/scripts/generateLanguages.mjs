@@ -73,6 +73,18 @@ function regionFor(locale) {
 const names = {}
 const english = {}
 const regions = {}
+/**
+ * A locale's text info, under whichever name this node's ICU gives it.
+ *
+ * `getTextInfo()` from Node 24, `textInfo` before it. Both spellings are asked for because the
+ * repo does not pin one Node: this machine is on 24 and CI is on 22, and a build that quietly
+ * skipped the check on one of them would ship a left-to-right layout to every reader of Arabic.
+ */
+function textInfoOf(locale) {
+  const resolved = new Intl.Locale(locale).maximize()
+  return typeof resolved.getTextInfo === 'function' ? resolved.getTextInfo() : resolved.textInfo
+}
+
 const rightToLeft = []
 const unresolved = []
 for (const locale of locales) {
@@ -99,10 +111,9 @@ for (const locale of locales) {
   // maintained here would be one more thing to forget when a locale is added. Baluchi is the one
   // that makes the point -- it is written right-to-left and is not a language most lists remember.
   try {
-    if (new Intl.Locale(locale).maximize().getTextInfo().direction === 'rtl')
-      rightToLeft.push(locale)
+    if (textInfoOf(locale)?.direction === 'rtl') rightToLeft.push(locale)
   } catch {
-    // Older ICU has no getTextInfo. Left out rather than guessed at: a wrong direction is worse
+    // An ICU with neither spelling. Left out rather than guessed at: a wrong direction is worse
     // than a missing one, and the check below makes the omission loud.
   }
 }
@@ -131,7 +142,7 @@ if (rightToLeft.length === 0) {
   // Every catalogue we ship has Arabic and Hebrew in it, so an empty answer means this node's ICU
   // could not be asked rather than that there are none -- which would silently ship a
   // left-to-right layout to every reader of a right-to-left script.
-  throw new Error('no right-to-left locales found; this node cannot answer getTextInfo')
+  throw new Error('no right-to-left locales found; this node cannot answer for text direction')
 }
 
 const regionEntries = Object.entries(regions)
