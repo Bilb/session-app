@@ -32,7 +32,7 @@ export default function RootLayout() {
       if (!live) return
       setStore(created)
       // `start`, not `hydrate`: a rejection here has no screen to land on, so the store turns it
-      // into state instead. See the action.
+      // into state instead. See `start` in `packages/state/src/store.ts`.
       void created.actions.start()
     })
     return () => {

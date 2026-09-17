@@ -8,6 +8,9 @@
  *     DESKTOP  CREATE   landing -> pickDisplayName -> done
  *     DESKTOP  RESTORE  landing -> loadAccount     -> loading -> done
  *
+ * A restore that gives up waiting inserts `pickDisplayName` before `done`, on every design: the
+ * account exists and has no name yet, so it is asked for. See `afterFailedRestore`.
+ *
  * **The two designs run different sequences, not the same one laid out differently.** Desktop has
  * no notification-mode step: fast mode is a push service and desktop has none to offer.
  *

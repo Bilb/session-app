@@ -11,15 +11,11 @@ import {
 } from './generated/languages'
 
 /**
- * The language picker's list, and the two pieces of per-language presentation it needs.
- *
- * Hand-written against a generated table: the data cannot be computed on mobile, because Hermes
- * ships neither `Intl.DisplayNames` nor `Intl.Locale`, but the judgement about how to present it
- * has to stay editable without regenerating anything.
- */
-
-/**
  * The flag shown beside a language.
+ *
+ * This and the name overrides below are hand-written against a generated table: the data cannot be
+ * computed on mobile, because Hermes ships neither `Intl.DisplayNames` nor `Intl.Locale`, but the
+ * judgement about how to present it has to stay editable without regenerating anything.
  *
  * A flag belongs to a country and a language does not, so the mapping is approximate by nature.
  * Three locales maximize to no country at all and get the globe; twenty-three share a flag with

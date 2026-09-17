@@ -19,16 +19,6 @@ import {
 } from './security'
 
 /**
- * The main process owns the bridge.
- *
- * libsession lives here rather than in the renderer because this is where the database key,
- * the user-data directory and the shutdown ordering already are - and because a renderer
- * cannot load a native addon anyway. The renderer only ever sees an ordered stream of
- * frames over a MessagePort, so moving the bridge into a utility process later would not
- * change a line of it.
- */
-
-/**
  * What the app calls itself, which decides where its data lives.
  *
  * Without this it is "Electron": `app.getName()` falls back to that, so the database lands in
@@ -46,6 +36,12 @@ const here = fileURLToPath(new URL('.', import.meta.url))
 
 /**
  * The bridge, which outlives any particular window.
+ *
+ * **The main process owns it.** libsession lives here rather than in the renderer because this is
+ * where the database key, the user-data directory and the shutdown ordering already are, and
+ * because a renderer cannot load a native addon anyway. The renderer only ever sees an ordered
+ * stream of frames over a MessagePort, so moving the bridge into a utility process later would
+ * not change a line of it.
  *
  * `app.on('activate')` opens a window when the last one has gone, which on macOS is the ordinary
  * way an app comes back from the dock. A bridge owned by a window would reopen libsession's

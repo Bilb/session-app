@@ -1,20 +1,17 @@
 /**
- * What a name may be, and in which unit.
+ * How long a display name may be, in **UTF-8 bytes rather than characters**.
  *
- * The same limits apply to group names and nicknames, so an editor for either should import these
+ * **This is a copy of libSession's `contact_info::MAX_NAME_LENGTH`**, which is not exposed across
+ * the bridge, so the two have to be changed together. It is the hard limit either way: the bridge
+ * throws rather than truncating.
+ *
+ * The same limit applies to group names and nicknames, so an editor for either should import this
  * rather than write its own check.
  *
  * ⚠️ **`String.length` and `String.slice` are neither bytes nor code points.** They count UTF-16
  * units, which coincide with both only for ASCII -- so a `.length` check against a byte limit
  * admits three times the limit in Chinese, and `.slice` can cut a surrogate pair in half and leave
  * half a character. Use `utf8Length` for the wire and `codePointLength` for the felt limit.
- */
-
-/**
- * How long a display name may be, in **UTF-8 bytes rather than characters**.
- *
- * libSession's `contact_info::MAX_NAME_LENGTH`, and therefore the hard one: the bridge throws
- * rather than truncating.
  */
 export const DISPLAY_NAME_MAX_BYTES = 100
 
@@ -30,19 +27,14 @@ export const DISPLAY_NAME_MAX_BYTES = 100
  * `NumberFormat`. Mobile would need a segmentation library to agree with desktop, and a limit the
  * platforms disagree about is worse than one that is slightly generous to emoji. The byte cap
  * bounds that generosity anyway.
+ *
+ * **Deliberately not normalised**, here or for the byte limit: both count the string as typed.
+ * Normalising to NFC would make the count fairer, since decomposed text spends more code points --
+ * but it changes the value as well, replacing characters outright (`U+2126 OHM SIGN` becomes a
+ * capital omega). Nobody reads that as canonical equivalence; they read it as their name coming
+ * back wrong. Decomposed input simply has less room.
  */
 export const DISPLAY_NAME_MAX_CODE_POINTS = 35
-
-/**
- * **Deliberately not normalised.** The name that is stored is the name that was typed.
- *
- * Normalising to NFC would make the limit fairer, since decomposed text spends more code points
- * than the same name composed. But it changes the value as well as the count -- canonical
- * singletons replace characters outright, so `U+2126 OHM SIGN` becomes a capital omega -- and
- * nobody reads that as canonical equivalence. They read it as their name coming back wrong.
- *
- * So both limits count the string as typed, and decomposed input simply has less room.
- */
 
 /** What is wrong with a name, or null when nothing is. */
 export type DisplayNameProblem = 'empty' | 'tooLong'

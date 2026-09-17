@@ -54,9 +54,10 @@ setPorts(
         window.open(url, '_blank', 'noopener,noreferrer')
         return Promise.resolve()
       },
-      // No per-app language screen to hand over to on desktop. See the port.
       // No OS settings page for a desktop app to send anybody to; the app's own settings are in
-      // the app. Null rather than a no-op, for the reason the row above gives.
+      // the app. Null rather than a no-op, for the reason the row above gives -- see
+      // `PlatformPort` in `packages/app/src/ports.ts`, which a screen reads to decide whether to
+      // offer the row at all.
       openAppSettings: null,
     },
     clipboard: {

@@ -70,7 +70,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
     },
     window: {
       // Null, not a no-op: nothing in a test or on a phone can close the app, and a screen asks
-      // this port whether to offer the door at all. See the port.
+      // this port whether to offer the door at all -- see `WindowPort` in `./ports`.
       close: null,
       isFocused: () => true,
       onFocusChange: (handler) => {

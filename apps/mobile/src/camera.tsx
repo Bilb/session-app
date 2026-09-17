@@ -16,7 +16,8 @@ export function MobileCameraProvider({ children }: { children: ReactNode }) {
   const camera = useMemo<CameraPort>(
     () => ({
       access: read(permission),
-      // See the port. Apple's review is the reason the two platforms differ.
+      // Apple's review is the reason the two platforms differ; `CameraPort` in
+      // `packages/app/src/ports.ts` says what each value promises.
       ask: Platform.OS === 'ios' ? 'continue' : 'grant',
       request: async () => read(await request()),
       Preview: ({ onScan, testID }) => (

@@ -1,12 +1,10 @@
 /**
- * How wide the artwork panel and the column beside it are.
+ * The desktop client's registration column. Everything inside onboarding is this wide.
  *
- * Numbers handed to Yoga rather than a width computed in JS: grow factors and a maximum, which is
- * the same rule expressed where the frame is actually known. A width worked out in JS comes from a
- * window snapshot, and a snapshot lags the frame it describes while that frame is being animated.
+ * This and the factors below are handed to Yoga rather than used to compute a width in JS, because
+ * a width worked out in JS comes from a window snapshot, and a snapshot lags the frame it describes
+ * while that frame is being animated.
  */
-
-/** The desktop client's registration column. Everything inside onboarding is this wide. */
 export const COLUMN_WIDTH = 348
 
 /**

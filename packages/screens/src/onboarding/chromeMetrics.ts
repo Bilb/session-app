@@ -2,15 +2,11 @@ import { useMedia } from '@session/ui'
 import { useEffect, useState } from 'react'
 
 /**
- * The figures the two onboarding layouts are drawn to, and the two hooks that read them.
- *
- * Here rather than in either layout because several have a **different right answer per layout**,
- * which is where this port keeps going wrong. A figure that differs by layout is a decision: made
- * once, here, and asked for rather than restated where it is used.
- */
-
-/**
  * The pixel size both header rings are drawn at.
+ *
+ * This and the figures below live here rather than in either layout because several have a
+ * **different right answer per layout**. A figure that differs by layout is a decision: made once,
+ * here, and asked for rather than restated where it is used.
  *
  * One number for both, because `circleHelp` brings its own ring and `IconRing` draws the other.
  * They share a viewBox, so equal boxes make equal circles.
@@ -76,18 +72,18 @@ export const CONTENT_MIN_HEIGHT = 276
  * 35 is the space scale's `$4`; 64 is written as itself, since inventing a rung for one value
  * would make the scale less useful rather than more.
  */
-const CONTENT_INSET = 35
+const HORIZONTAL_CONTENT_INSET = 35
 
 /** The legacy client's navigation-bar mark: `SessionGreen32`, pinned to a 32pt square. */
 export const BAR_LOGO_SIZE = 32
-const ACTION_INSET = 64
+const HORIZONTAL_ACTION_INSET = 64
 
 /** What an action needs on top of the content inset it already sits inside. */
-export const EXTRA_ACTION_INSET = ACTION_INSET - CONTENT_INSET
+export const EXTRA_ACTION_INSET = HORIZONTAL_ACTION_INSET - HORIZONTAL_CONTENT_INSET
 
 /** The room the phone layout leaves around a step. The wide one leaves none -- see below. */
 export const STEP_PADDING = {
-  paddingHorizontal: CONTENT_INSET,
+  paddingHorizontal: HORIZONTAL_CONTENT_INSET,
   paddingTop: '$3',
   paddingBottom: '$2',
 } as const

@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
  * Only the chrome decides how much room a step gets.
  *
  * The two onboarding layouts inset differently: the phone pads the step by
- * `CONTENT_INSET`, and the wide design does not pad it at all because the column is already
+ * `HORIZONTAL_CONTENT_INSET`, and the wide design does not pad it at all because the column is already
  * `COLUMN_WIDTH` and centred in what is left. A screen that writes the phone's figure directly
  * therefore looks right on a phone and wrong on Desktop, where it alone draws 70 narrower and 25
  * lower than every other step. `LoadAccountScreen` is the one exposed to this, since it turns

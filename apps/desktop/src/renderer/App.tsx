@@ -37,7 +37,7 @@ export function App() {
 
   useEffect(() => {
     // `start`, not `hydrate`: a rejection here has no screen to land on, so the store turns it
-    // into state instead. See the action.
+    // into state instead. See `start` in `packages/state/src/store.ts`.
     void store.actions.start()
     return () => store.actions.dispose()
   }, [])

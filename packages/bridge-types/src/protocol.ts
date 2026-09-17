@@ -9,7 +9,11 @@ import type {
 import type { FileServerConfig, RouterKind, SeedNode } from './sessionBridgeOptions'
 
 /**
- * The bridge protocol: what goes in, what comes out, on one ordered stream.
+ * Everything the app asks libsession to do. One Request goes in, exactly one Response comes
+ * back carrying the same id. Commands are named for what the app wants, not for the C++ method
+ * that serves them, so that a refactor upstream is a shim change rather than a protocol change.
+ *
+ * **The protocol is one ordered stream**: what goes in, what comes out.
  *
  * Responses ride the same stream as change events rather than resolving on a separate channel,
  * because their relative order is load-bearing. libsession's contract is that a display can be
@@ -23,12 +27,6 @@ import type { FileServerConfig, RouterKind, SeedNode } from './sessionBridgeOpti
  * Every union here is discriminated on a literal `type`, and every field is a string, number,
  * boolean, string-union enum, another interface, or an array of one: that is the subset the C++
  * generator understands, and it refuses anything else.
- */
-
-/**
- * Everything the app asks libsession to do. One Request goes in, exactly one Response comes
- * back carrying the same id. Commands are named for what the app wants, not for the C++ method
- * that serves them, so that a refactor upstream is a shim change rather than a protocol change.
  */
 export type Command =
   // Lifecycle and account
@@ -47,9 +45,9 @@ export type Command =
    *
    * **What should replace it** is bytes *transferred* rather than copied: `postMessage(request,
    * [buffer])` detaches the sender's `ArrayBuffer`, so the bytes live in one process instead of
-   * two and can be zeroed with `fill(0)` once the shim has them. That needs a binary type in this
-   * protocol, which the generator does not have yet -- the same one returning a rendered phrase as
-   * an image would need, so it is worth adding once rather than twice.
+   * two and can be zeroed with `fill(0)` once the shim has them. The generator has the type for it
+   * now -- `bytes`, and a secret variant whose C++ zeroes in its destructor -- so what is left is
+   * changing this field and the collection path above it.
    */
   | { type: 'restoreAccountFromWords'; words: string[]; language?: string }
   /**

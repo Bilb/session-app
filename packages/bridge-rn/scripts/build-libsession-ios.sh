@@ -19,6 +19,11 @@ set -euo pipefail
 #
 # `simulator` is the debug loop's fast path, and `device` its opposite; both leave an artefact with
 # one slice in it, so what they are for is a rebuild, not a first build.
+#
+# **If you are here writing the release or archive scripts:** there are none yet, and an archive
+# wants `device` rather than the default -- a simulator slice in a shipped binary is dead weight
+# Apple will reject. `all` is for a release that still has to run on an Intel Mac's simulator.
+# The modes exist; nothing selects them for a release because nothing does releases yet.
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$here/../../.."
