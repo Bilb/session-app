@@ -84,6 +84,15 @@ const workspacePackages = [
   '@session/state',
 ]
 
+/**
+ * What a flag's environment variable is called, as one string rather than two.
+ *
+ * The shared table derives the same prefix in `envVarFor`. They were written out separately once
+ * and drifted the moment the prefix changed: nothing failed, no flag was collected, and every
+ * override on desktop silently read as its default.
+ */
+const FLAG_PREFIX = 'EXPO_PUBLIC_SESSION_FLAG_'
+
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin({ exclude: workspacePackages })],
@@ -121,13 +130,18 @@ export default defineConfig({
       ),
       // Which bridge the main process will open, substituted for the same reason: the badge that
       // says "this is the fake" must not be able to disagree with what is actually running.
-      'import.meta.env.SESSION_FAKE': JSON.stringify(process.env['SESSION_FAKE'] ?? ''),
-      // Every SESSION_FLAG_* variable present at build time, as one object. Collected by prefix
-      // rather than listed, so adding a flag needs no change here.
-      'import.meta.env.SESSION_FLAGS': JSON.stringify(
+      'import.meta.env.EXPO_PUBLIC_SESSION_FAKE': JSON.stringify(
+        process.env['EXPO_PUBLIC_SESSION_FAKE'] ?? '',
+      ),
+      // Every flag variable present at build time, as one object. Collected by prefix rather than
+      // listed, so adding a flag needs no change here -- which is the reason the flag table derives
+      // `EXPO_PUBLIC_` on every platform rather than only on the one that needs it. A flag whose
+      // name does not start with this is not collected, and a flag that is not collected reads as
+      // its default with nothing said.
+      'import.meta.env.EXPO_PUBLIC_SESSION_FLAGS': JSON.stringify(
         Object.fromEntries(
           Object.entries(process.env).filter(
-            ([key, value]) => key.startsWith('SESSION_FLAG_') && value !== undefined,
+            ([key, value]) => key.startsWith(FLAG_PREFIX) && value !== undefined,
           ),
         ),
       ),
