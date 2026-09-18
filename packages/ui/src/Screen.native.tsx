@@ -49,7 +49,7 @@ export function Screen({ children, padded = false, edges = ALL_EDGES, testID }: 
         bottom edge is already short by the home indicator.
       */}
       <KeyboardAvoidingView style={FILL} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <YStack flex={1} {...(padded ? { padding: '$2' } : {})}>
+        <YStack flex={1} {...(padded ? { padding: '$md' } : {})}>
           {children}
         </YStack>
       </KeyboardAvoidingView>

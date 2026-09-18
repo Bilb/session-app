@@ -9,7 +9,7 @@ const Frame = styled(XStack, {
   role: 'button',
   alignItems: 'center',
   justifyContent: 'center',
-  gap: '$1',
+  gap: '$xs',
   borderRadius: '$full',
   borderWidth: 1,
   cursor: 'pointer',
@@ -83,9 +83,9 @@ const Frame = styled(XStack, {
       },
     },
     size: {
-      sm: { height: '$6', paddingHorizontal: '$2' },
-      md: { height: '$7', paddingHorizontal: '$2.5' },
-      lg: { height: '$8', paddingHorizontal: '$3' },
+      sm: { height: '$xl', paddingHorizontal: '$md' },
+      md: { height: '$2xl', paddingHorizontal: '$lg' },
+      lg: { height: '$3xl', paddingHorizontal: '$xl' },
     },
     disabled: {
       true: { opacity: 0.5, pointerEvents: 'none' },

@@ -18,7 +18,7 @@ export function OnboardingScreen() {
 
   return (
     <Screen padded testID={ELEMENT.onboarding.screen}>
-      <YStack flex={1} alignItems="center" justifyContent="center" gap="$2">
+      <YStack flex={1} alignItems="center" justifyContent="center" gap="$md">
         <Text size="$headingLarge" weight="bold">
           {tr('appName')}
         </Text>

@@ -44,9 +44,9 @@ export function Input({
       borderColor="$bordersColor"
       color="$textPrimary"
       placeholderTextColor="$textSecondary"
-      borderRadius="$2"
-      height="$7"
-      paddingHorizontal="$2"
+      borderRadius="$md"
+      height="$2xl"
+      paddingHorizontal="$md"
     />
   )
 }

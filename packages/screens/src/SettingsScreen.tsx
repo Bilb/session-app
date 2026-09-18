@@ -33,18 +33,18 @@ export function SettingsScreen() {
 
   return (
     <Screen padded testID={ELEMENT.settings.screen}>
-      <XStack alignItems="center" gap="$1.5">
+      <XStack alignItems="center" gap="$sm">
         <BackButton testID={ELEMENT.settings.back} />
         <Text size="$title" weight="bold">
           {tr('sessionSettings')}
         </Text>
       </XStack>
 
-      <YStack paddingVertical="$2" gap="$0.5">
+      <YStack paddingVertical="$md" gap="$2xs">
         <Text tone="secondary" size="$caption">
           {tr('accountId')}
         </Text>
-        <XStack alignItems="center" gap="$1">
+        <XStack alignItems="center" gap="$xs">
           <Text
             testID={ELEMENT.settings.accountId}
             // Wraps rather than truncates: a session ID that is cut off is not one you can
@@ -80,7 +80,7 @@ export function SettingsScreen() {
 
       <Separator borderColor="$bordersColor" />
 
-      <YStack paddingVertical="$2" gap="$0.5">
+      <YStack paddingVertical="$md" gap="$2xs">
         <Text tone="secondary" size="$caption">
           {tr('networkName')}
         </Text>

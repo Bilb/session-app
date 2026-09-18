@@ -25,7 +25,7 @@ export function BackButton({ testID }: { testID: ElementId }) {
       onPress={() => nav.back()}
       testID={testID}
       accessibilityLabel={tr('back')}
-      icon={<Icon name="chevronLeft" size="$4" color="$textPrimary" />}
+      icon={<Icon name="chevronLeft" size="$md" color="$textPrimary" />}
     />
   )
 }

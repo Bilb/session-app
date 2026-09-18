@@ -33,8 +33,8 @@ export function NetworkOverlay({ children }: { children: ReactNode }) {
         backgroundColor="$backgroundPrimary"
         borderColor="$textPrimary"
         borderWidth={1}
-        borderRadius="$1"
-        paddingHorizontal="$1"
+        borderRadius="$sm"
+        paddingHorizontal="$xs"
         opacity={0.92}
         pointerEvents="none"
         testID={ELEMENT.networkOverlay.badge}

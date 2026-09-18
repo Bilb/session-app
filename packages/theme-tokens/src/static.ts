@@ -3,8 +3,8 @@
 /**
  * One type ramp, named by role in four groups: label, body, header, display.
  *
- * Names rather than positions because a layout has to be readable -- `size="$8"` says nothing about
- * what it is for, and neither does the diff when it changes.
+ * Names rather than positions because a layout has to be readable -- a numbered `size` says nothing
+ * about what it is for, and neither does the diff when it changes.
  *
  * **One ramp, one entry per size, ascending.** Names invite a second ramp to be added beside the
  * first and the overlap suffixed, which produces a scale that goes backwards somewhere in the

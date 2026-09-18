@@ -20,7 +20,7 @@ export function Screen({ children, padded = false, testID }: ScreenProps) {
     <YStack
       flex={1}
       backgroundColor="$backgroundPrimary"
-      {...(padded ? { padding: '$2' } : {})}
+      {...(padded ? { padding: '$md' } : {})}
       testID={testID}
     >
       {children}
