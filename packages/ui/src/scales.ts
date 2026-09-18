@@ -45,15 +45,9 @@ export const SIZE_SCALE = {
 }
 
 export const RADIUS_SCALE = {
-  // Named for the same reason the space scale is: a corner is a look rather than a position, and
-  // `$3` says nothing about which one. Two of these have no name in theme-tokens, so they are
-  // named here rather than by changing a file the whole app's theming rests on.
-  none: 0,
-  sm: RADII.sm,
-  md: 10,
-  lg: RADII.message,
-  xl: 24,
-  full: 9999,
+  // The ladder is `RADII`'s, spread here the way the space scale spreads `SPACING`, so there is one
+  // place a corner's value lives. `true` names a rung rather than carrying a value of its own.
+  ...RADII,
   true: RADII.sm,
 }
 

@@ -63,9 +63,25 @@ export const SPACING = {
   '3xs': 2,
 } as const
 
+/**
+ * Corner radii, on the same 4 grid as the spacing.
+ *
+ * `md` is a container -- a dialog, a card, an input. `lg` is the message bubble. `xl` is a bottom
+ * sheet, on its top two corners only. THEMING.md carries where the ladder comes from, which values
+ * are deliberately not rungs, and the nesting rule for a rounded box inside a rounded box.
+ */
 export const RADII = {
-  sm: 5,
-  message: 16,
+  none: 0,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  '2xl': 28,
+  /**
+   * The pill. A length rather than `50%`, which resolves per axis and turns a wide control into an
+   * ellipse; an oversized length is reduced to half the shorter side, giving a capsule at any width.
+   */
+  full: 9999,
 } as const
 
 // All durations in milliseconds.

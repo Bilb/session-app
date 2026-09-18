@@ -310,6 +310,44 @@ curvature is available on two of the three — `borderCurve: 'continuous'` and C
 and Compose has no equivalent at all, so opting in would _create_ a platform difference rather than
 resolve one. All three legacy clients are circular too.
 
+**A sheet rounds its top two corners only**, at `$xl`. Both clients that have bottom sheets round
+only the top, which is the part they agree on — the radius itself they disagree about. So this is
+`borderTopLeftRadius` and `borderTopRightRadius`, never `borderRadius`.
+
+**An opacity on an on-colour spends the ratio that token guarantees.** `$onAccent` and `$onDanger`
+are derived to clear 4.5:1 against their fill; dimming one is the screen giving some of that back,
+and the theme cannot know how much is left. The cheapest check is which theme has least to spend —
+Ocean Light's `onAccent` is a navy, starting at 8.49:1 where the others are near 14 — and 0.85 is
+about the floor at caption size.
+
+## Where the two ladders come from
+
+Both are on a 4 grid, and neither is an average of the three clients.
+
+**Spacing is Android's `Dimensions.kt`, rung for rung** — 2 · 4 · 8 · 12 · 16 · 20 · 24 · 36 · 64 —
+and all but two are values iOS declares as well. Weighted by use it covers 99% of the two mobile
+clients' spacing. Three of their values are deliberately not rungs, so that reaching for one is a
+decision rather than a lookup: **32** is iOS's iPad-only `iPadButtonSpacing`, whose own iPhone
+branch is a literal 20; **48** appears nowhere as spacing; **50** is one Android component's
+icon-to-label gap.
+
+**Radius is read off Android too, because it is the only client with a shape scale to read.** iOS
+declares no radius tokens at all — it has two conventions split by code layer, the newer SwiftUI
+screens at 7 for a button and 11 for a container, the older app code at 6 and 30 — and Desktop has
+two variables and a spread of literals. `$sm` · `$md` · `$lg` are Android's `shapeExtraSmall` ·
+`shapeSmall` · `shapeMedium`, 90% of its shape references between them; `$2xl` is Material's
+extra-large, which Android ships without declaring, since `sessionShapes()` overrides only the first
+three and `extraLarge` falls through. Not rungs: **6**, whose only radius uses are message-bubble
+inner geometry; **24**, which no client draws; **30**, which is `$full` on a 60pt control.
+
+**Where a current design exists, it sets the value** and the clients are corroboration. An input is
+11 in the designs, so it takes `$md`; a sheet's top corners are 20, so `$xl`.
+
+**A container is `$md`.** The clients disagree and cluster inside 2px of it — iOS 11 across its
+modal family, Android 12 in both its dialog generations, Desktop 13 in the one wrapper every dialog
+composes — each internally consistent. 12 is the median and the only one of the three that is a
+declared token.
+
 ## Porting a spacing value from a legacy client
 
 **Unlike the type ramp, the clients do not share a spacing ladder.** On type all three converge, the
