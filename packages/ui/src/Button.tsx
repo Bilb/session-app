@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Spinner, styled, XStack } from 'tamagui'
 
+import { INHERITED_LABEL } from './labelColor'
 import { Text } from './Text'
 
 const Frame = styled(XStack, {
@@ -18,14 +19,29 @@ const Frame = styled(XStack, {
       solid: {
         backgroundColor: '$primaryColor',
         borderColor: '$primaryColor',
+        color: '$onAccent',
         pressStyle: { opacity: 0.8 },
       },
+      /**
+       * Inverts on hover and press -- the outline fills, the label takes the page -- because a
+       * surface step is not reliably visible: an outline on white has no headroom to brighten into,
+       * and a parent already on `$backgroundTertiary` leaves the step going nowhere.
+       */
       outline: {
         backgroundColor: 'transparent',
         borderColor: '$textPrimary',
-        // A surface rather than a brightness step: a ghost or outline control on white has no
-        // headroom to brighten into, so the pressed state has to come off the surface ladder.
-        pressStyle: { backgroundColor: '$backgroundTertiary' },
+        color: '$textPrimary',
+        hoverStyle: {
+          backgroundColor: '$textPrimary',
+          borderColor: '$textPrimary',
+          color: '$backgroundPrimary',
+        },
+        pressStyle: {
+          backgroundColor: '$textPrimary',
+          borderColor: '$textPrimary',
+          color: '$backgroundPrimary',
+          opacity: 0.82,
+        },
       },
       /**
        * The outline, in the accent rather than in the text colour.
@@ -51,14 +67,18 @@ const Frame = styled(XStack, {
           opacity: 0.82,
         },
       },
+      /** Two steps, because one is invisible inside a list row that hovers to the same surface. */
       ghost: {
         backgroundColor: 'transparent',
         borderColor: 'transparent',
-        pressStyle: { backgroundColor: '$backgroundTertiary' },
+        color: '$textPrimary',
+        hoverStyle: { backgroundColor: '$backgroundTertiary' },
+        pressStyle: { backgroundColor: '$backgroundNested' },
       },
       danger: {
         backgroundColor: '$dangerColor',
         borderColor: '$dangerColor',
+        color: '$onDanger',
         pressStyle: { opacity: 0.8 },
       },
     },
@@ -89,6 +109,18 @@ const LABEL_TONE = {
   ghost: '$textPrimary',
   danger: '$onDanger',
 } as const
+
+/**
+ * The label colour while held, for the variants that replace the ground under it.
+ *
+ * Native only: a `Text` inherits nothing from a `View`, so `color` inside `pressStyle` reaches the
+ * frame alone. The web label inherits instead -- see labelColor.ts. A variant that only moves the
+ * surface behind the label needs no entry, since the resting colour reads against both.
+ */
+const PRESSED_LABEL: Partial<Record<keyof typeof LABEL_TONE, string>> = {
+  outline: '$backgroundPrimary',
+  outlineAccent: '$onAccent',
+}
 
 export interface ButtonProps {
   children?: ReactNode
@@ -122,22 +154,31 @@ export function Button({
   accessibilityLabel,
   testID,
 }: ButtonProps) {
+  // Only ever true on native: the web label is `'inherit'` and never consults this. Press is the
+  // whole of the state there -- a touch screen has no hover -- and the platform delivers both ends
+  // of it, which is what makes tracking it here sound where tracking hover would not be.
+  const [pressed, setPressed] = useState(false)
+  const tone =
+    INHERITED_LABEL ?? (pressed ? PRESSED_LABEL[variant] : undefined) ?? LABEL_TONE[variant]
+
   return (
     <Frame
       variant={variant}
       size={size}
       disabled={disabled || loading}
       onPress={onPress}
+      onPressIn={() => {
+        setPressed(true)
+      }}
+      onPressOut={() => {
+        setPressed(false)
+      }}
       aria-label={accessibilityLabel}
       testID={testID}
     >
       {loading ? <Spinner size="small" color={LABEL_TONE[variant]} /> : icon}
       {typeof children === 'string' ? (
-        <Text
-          size={size === 'sm' ? '$label' : '$body'}
-          weight="semibold"
-          color={LABEL_TONE[variant]}
-        >
+        <Text size={size === 'sm' ? '$label' : '$body'} weight="semibold" color={tone}>
           {children}
         </Text>
       ) : (
