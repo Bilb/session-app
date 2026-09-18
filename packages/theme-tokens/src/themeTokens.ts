@@ -374,6 +374,60 @@ export function getThemeTokens(theme: ThemeState, primaryColor: PrimaryColorStat
 }
 
 /**
+ * A surface at `ratio` from the one behind it, carrying the tint its kind calls for.
+ *
+ * Relative to a parent rather than to the page, because a nested card is the case three named
+ * levels cannot express: a card inside a card inside a modal runs out of names, and the depth a
+ * screen reaches is a property of the screen, not of the theme.
+ *
+ * An args object rather than four positional parameters, three of which would be numbers.
+ */
+function above({
+  parent,
+  ratio,
+  chroma,
+  hue,
+}: {
+  parent: string
+  ratio: number
+  chroma: number
+  hue: number
+}): string {
+  return tintFloor(contrastAdjust(parent, parent, ratio), chroma, hue)
+}
+
+/**
+ * Text dimmed toward the surface, losing chroma as it goes.
+ *
+ * Chroma decays rather than holding: Ocean Light's navy text is C 0.080 and its real muted text
+ * C 0.053, two thirds of it. Preserving the full chroma while dropping only lightness gave a muted
+ * text noticeably bluer than the shipped one. When the text is achromatic the emphasis chroma acts
+ * as a floor instead, which is what keeps a white-on-tinted-dark theme's captions from reading as
+ * dead grey.
+ */
+function dim({
+  text,
+  background,
+  ratio,
+  hue,
+  emphasis,
+}: {
+  text: string
+  background: string
+  ratio: number
+  hue: number
+  emphasis: number
+}): string {
+  const own = hexToOklch(text)
+  const dimmed = contrastTo(text, background, ratio)
+  // The text's own hue where it has one, the theme's only where the text is achromatic. Setting the
+  // surface hue outright is what turned a navy muted text teal -- twice now, so it is worth stating
+  // plainly: a colour that carries hue keeps its hue.
+  const ownHue = own.c > 0.005 ? own.h : hue
+  return tint(dimmed, Math.max(emphasis, own.c * CHROMA_DECAY), ownHue)
+}
+
+/**
  * The whole theme from its knobs and an accent.
  *
  * Public, and not only for the four presets: an accent the *user* picks has to go through exactly
@@ -383,37 +437,6 @@ export function getThemeTokens(theme: ThemeState, primaryColor: PrimaryColorStat
 export function deriveTokens(knobs: ThemeKnobs, accent: string): ThemeTokens {
   const { polarity, background, tint: t, textTint, semantic, overrides } = knobs
   const target = TARGETS[polarity]
-
-  /**
-   * Text dimmed toward the surface, losing chroma as it goes.
-   *
-   * Chroma decays rather than holding: Ocean Light's navy text is C 0.080 and its real muted text
-   * C 0.053, two thirds of it. Preserving the full chroma while dropping only lightness gave a
-   * muted text noticeably bluer than the shipped one. When the text is achromatic the emphasis
-   * chroma acts as a floor instead, which is what keeps a white-on-tinted-dark theme's captions
-   * from reading as dead grey.
-   */
-  const dim = (ratio: number) => {
-    const own = hexToOklch(text)
-    const dimmed = contrastTo(text, background, ratio)
-    // The text's own hue where it has one, the theme's only where the text is achromatic. Setting
-    // the surface hue outright is what turned a navy muted text teal -- twice now, so it is worth
-    // stating plainly: a colour that carries hue keeps its hue.
-    const hue = own.c > 0.005 ? own.h : t.hue
-    return tint(dimmed, Math.max(t.emphasis, own.c * CHROMA_DECAY), hue)
-  }
-
-  /**
-   * A surface at `ratio` from the one behind it, carrying the tint its kind calls for.
-   *
-   * Relative to a parent rather than to the page, because a nested card is the case three named
-   * levels cannot express: a card inside a card inside a modal runs out of names, and the depth a
-   * screen reaches is a property of the screen, not of the theme.
-   */
-  const above = (parent: string, ratio: number, chroma: number) =>
-    tintFloor(contrastAdjust(parent, parent, ratio), chroma, t.hue)
-
-  const at = (ratio: number, chroma: number) => above(background, ratio, chroma)
 
   /**
    * Surface overrides are resolved *here*, not on the way out.
@@ -426,10 +449,20 @@ export function deriveTokens(knobs: ThemeKnobs, accent: string): ThemeTokens {
    * Same shape as the `semantic` knob, and for the same reason: a value other values depend on has
    * to be settled before they are computed, which makes it an input rather than a patch.
    */
-  const backgroundSecondary = overrides?.backgroundSecondary ?? at(target.surfaceRaised, t.surface)
-  const backgroundTertiary = overrides?.backgroundTertiary ?? at(target.surfaceOverlay, t.surface)
+  const backgroundSecondary =
+    overrides?.backgroundSecondary ??
+    above({ parent: background, ratio: target.surfaceRaised, chroma: t.surface, hue: t.hue })
+  const backgroundTertiary =
+    overrides?.backgroundTertiary ??
+    above({ parent: background, ratio: target.surfaceOverlay, chroma: t.surface, hue: t.hue })
   const backgroundNested =
-    overrides?.backgroundNested ?? above(backgroundSecondary, target.surfaceRaised, t.surface)
+    overrides?.backgroundNested ??
+    above({
+      parent: backgroundSecondary,
+      ratio: target.surfaceRaised,
+      chroma: t.surface,
+      hue: t.hue,
+    })
 
   /** Every surface a role might be drawn on, since a role is not owned by the page. */
   const surfaces = [background, backgroundSecondary, backgroundTertiary, backgroundNested]
@@ -462,7 +495,12 @@ export function deriveTokens(knobs: ThemeKnobs, accent: string): ThemeTokens {
   // on, and the whole system's invariant is that a value is relative to what it sits on. Deriving
   // it from the page instead cost it a third of its separation, which is what made it read as a
   // background. If the thread ever moves onto the page, this parent moves with it.
-  const incomingBg = above(backgroundSecondary, target.bubble, t.emphasis)
+  const incomingBg = above({
+    parent: backgroundSecondary,
+    ratio: target.bubble,
+    chroma: t.emphasis,
+    hue: t.hue,
+  })
 
   // Text on the accent is one of the theme's own two anchors rather than flat black or white: on a
   // bright accent every theme reaches for its darkest anchor, which is the text in a light theme
@@ -502,14 +540,32 @@ export function deriveTokens(knobs: ThemeKnobs, accent: string): ThemeTokens {
     // targeting the base alone put it at 3.9:1 there while measuring 4.6 where nothing was drawn.
     // This is also what explains the shipped light value of 5.17 that had looked merely dark: 5.14
     // against white is exactly what 4.5 against the nested surface costs.
-    textSecondary: contrastAdjustAll(dim(target.mutedText), surfaces, CONTRAST.normal),
+    textSecondary: contrastAdjustAll(
+      dim({ text, background, ratio: target.mutedText, hue: t.hue, emphasis: t.emphasis }),
+      surfaces,
+      CONTRAST.normal,
+    ),
     // Deliberately below the AA floor -- a disabled control has to read as unavailable -- but still
     // present on every surface, which is a lower bar rather than no bar.
-    textDisabled: contrastAdjustAll(dim(target.disabledText), surfaces, DISABLED_FLOOR),
+    textDisabled: contrastAdjustAll(
+      dim({ text, background, ratio: target.disabledText, hue: t.hue, emphasis: t.emphasis }),
+      surfaces,
+      DISABLED_FLOOR,
+    ),
     // A border is a line, not a surface: read as an edge, and in a tinted theme deliberately part
     // of the identity, so it takes the emphasis chroma.
-    bordersColor: at(target.border, t.emphasis),
-    separatorColor: above(backgroundSecondary, target.border, t.surface),
+    bordersColor: above({
+      parent: background,
+      ratio: target.border,
+      chroma: t.emphasis,
+      hue: t.hue,
+    }),
+    separatorColor: above({
+      parent: backgroundSecondary,
+      ratio: target.border,
+      chroma: t.surface,
+      hue: t.hue,
+    }),
     messageBubbleIncomingBg: incomingBg,
     messageBubbleIncomingText: contrastPrefer(
       [text, '#000000', '#FFFFFF'],
