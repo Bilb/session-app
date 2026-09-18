@@ -21,7 +21,13 @@ import { buildThemes, DEFAULT_THEME, themeName } from './themes'
  */
 
 const bodyFont = createFont({
-  family: 'System',
+  /**
+   * A stack ending in a generic family, because `System` is react-native's name and not a CSS one:
+   * on the web it names nothing and the engine falls back, which in Electron is a serif. Roboto
+   * leads it as the desktop client's face, and only takes effect where it is installed -- shipping
+   * the faces is a separate question.
+   */
+  family: 'Roboto, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
   size: FONT_SIZE_SCALE,
   lineHeight: LINE_HEIGHT_SCALE,
   weight: FONT_WEIGHT_SCALE,
