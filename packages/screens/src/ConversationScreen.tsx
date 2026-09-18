@@ -162,13 +162,13 @@ function MessageRow({ message, index }: { message: Message; index: number }) {
       </Text>
       {label === undefined ? null : (
         <XStack alignItems="center" gap="$1">
-          {/* Coloured like the bubble rather than by tone: a label only ever appears on an
-              outgoing message, and both the secondary and the accent tone are picked to read
-              against the screen - on the bubble they come out as green on green. */}
+          {/* On the fill, not on the page: a label only ever appears on an outgoing message, so a
+              text tone would be green on green. 0.85 is the floor -- see THEMING.md on dimming an
+              on-colour. */}
           <Text
             size="$caption"
             color="$onAccent"
-            opacity={0.7}
+            opacity={0.85}
             testID={ELEMENT.conversation.messageState}
           >
             {label}
