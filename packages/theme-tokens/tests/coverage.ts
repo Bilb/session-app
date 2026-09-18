@@ -1,8 +1,8 @@
-import { PRIMARY_COLOR_HEX } from './colors'
-import { hexToOklch, oklchToHex } from './oklch'
-import { CONTRAST, MIN_SEMANTIC_CHROMA, baseFits, contrastRatio } from './rules'
-import { deriveTokens } from './themeTokens'
-import type { ThemeKnobs, ThemeTokens } from './themeTokens'
+import { PRIMARY_COLOR_HEX } from '#src/colors'
+import { hexToOklch, oklchToHex } from '#src/oklch'
+import { CONTRAST, MIN_SEMANTIC_CHROMA, baseFits, contrastRatio } from '#src/rules'
+import { deriveTokens } from '#src/themeTokens'
+import type { ThemeKnobs, ThemeTokens } from '#src/themeTokens'
 
 /**
  * How much of the knob space the rules actually hold up across.

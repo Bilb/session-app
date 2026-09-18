@@ -304,7 +304,9 @@ export function step(colour: string, n: number, awayFrom: string): string {
  * hue 202 in light, so a derivation that drops it produces a theme that is no longer Ocean.
  */
 export function tint(colour: string, chroma: number, hue: number): string {
-  return oklchToHex({ ...hexToOklch(colour), c: chroma, h: hue })
+  // Through `inGamut`, never straight to hex: a chroma sRGB cannot hold at this lightness clamps,
+  // and the clamp drags the hue with it, so a theme asking for an olive-tinted text gets a brown.
+  return inGamut(hexToOklch(colour).l, chroma, hue)
 }
 
 /**
@@ -367,7 +369,7 @@ export function contrastTo(colour: string, against: string, target: number): str
   for (let i = 0; i <= 500; i++) {
     const candidate = i / 500
     if (lighter ? candidate < anchorL : candidate > anchorL) continue
-    const hex = oklchToHex({ l: candidate, c, h })
+    const hex = inGamut(candidate, c, h)
     const error = Math.abs(contrastRatio(hex, against) - target)
     if (error < bestError) {
       best = hex

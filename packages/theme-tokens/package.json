@@ -4,6 +4,12 @@
   "private": true,
   "description": "Colour palette and semantic theme tokens shared by every client",
   "type": "module",
+  "imports": {
+    "#src/*": [
+      "./src/*.ts",
+      "./src/*.tsx"
+    ]
+  },
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {

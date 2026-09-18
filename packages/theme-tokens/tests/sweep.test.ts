@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { PRIMARY_COLOR_HEX } from './colors'
-import type { PrimaryColorState, ThemeState } from './colors'
-import { hexToOklch } from './oklch'
-import { MIN_SEMANTIC_CHROMA, baseFits, contrastRatio } from './rules'
-import { deriveTokens, getThemeKnobs, knobsFor } from './themeTokens'
-import type { ThemeTokens } from './themeTokens'
+import { PRIMARY_COLOR_HEX } from '#src/colors'
+import type { PrimaryColorState, ThemeState } from '#src/colors'
+import { hexToOklch } from '#src/oklch'
+import { MIN_SEMANTIC_CHROMA, baseFits, contrastRatio } from '#src/rules'
+import { deriveTokens, getThemeKnobs, knobsFor } from '#src/themeTokens'
+import type { ThemeTokens } from '#src/themeTokens'
 
 /**
  * The derivation swept across every theme, accent and a spread of plausible custom bases.

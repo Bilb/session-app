@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { hexToOklch } from './oklch'
+import { hexToOklch } from '#src/oklch'
 import { coverage, maxChroma, sample } from './coverage'
 
 /**

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { hexToOklch, oklchToHex, relativeLuminance } from './oklch'
-import { baseFits, contrastAdjust, contrastPick, contrastRatio, step } from './rules'
-import { deriveTokens, getThemeKnobs, getThemeTokens } from './themeTokens'
+import { hexToOklch, oklchToHex, relativeLuminance } from '#src/oklch'
+import { baseFits, contrastAdjust, contrastPick, contrastRatio, step, tint } from '#src/rules'
+import { deriveTokens, getThemeKnobs, getThemeTokens } from '#src/themeTokens'
 
 describe('oklch', () => {
   it('round-trips the extremes and a mid grey', () => {
@@ -108,6 +108,35 @@ function alpha(colour: string, a: number): string {
     .toString(16)
     .padStart(2, '0')}`
 }
+
+/**
+ * That a tint keeps the hue it was asked for.
+ *
+ * Nothing else in the suite looks at hue -- the sweep and the coverage sampler both ask only about
+ * contrast and chroma -- so a colour arriving at the wrong hue passes every other assertion. The
+ * yellow-green band at low lightness is where sRGB is tightest and the drift is largest, which
+ * makes it the case worth pinning.
+ */
+describe('tint', () => {
+  it('reduces chroma rather than letting the clamp move the hue', () => {
+    const asked = 110
+    const tinted = tint('#2a2a2a', 0.18, asked)
+    const got = hexToOklch(tinted)
+
+    // Four degrees is the tolerance `holdsHue` enforces. Beyond it the result is a different
+    // colour family rather than a shade of the one asked for: a clamp here reaches 96.7.
+    expect(Math.abs(got.h - asked)).toBeLessThan(4)
+    expect(got.c).toBeLessThan(0.18)
+  })
+
+  it('leaves a chroma the gamut can hold alone', () => {
+    // Ocean Light's navy text is this shape, which is why no shipped theme moved.
+    const tinted = tint('#2a2a2a', 0.09, 278)
+    const got = hexToOklch(tinted)
+    expect(got.c).toBeCloseTo(0.09, 2)
+    expect(got.h).toBeCloseTo(278, 0)
+  })
+})
 
 describe('alpha', () => {
   it('appends the byte and clamps', () => {
