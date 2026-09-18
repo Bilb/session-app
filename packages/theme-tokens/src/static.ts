@@ -11,11 +11,15 @@
  * middle and repeats elsewhere -- and nothing catches it, because every name still resolves. A
  * named ramp is fine; a named ramp per source is not.
  *
- * The values are the ramp both legacy clients already share (iOS `Fonts.swift`, Android's
- * typography), which is the one the designs were drawn against.
+ * The values are iOS's `Fonts.swift` ramp and Android's typography, which agree with each other and
+ * with the newest designs. **iOS has two live ramps**, and this is the newer one: `Values.swift`
+ * carries a different scale entirely, so a size read out of iOS means nothing until the file it
+ * came from is known.
+ *
+ * **11 is the floor.** Both mobile clients declare a 9 below it and neither draws anything at it;
+ * Desktop's theme records that below 14 is unreadable on that platform.
  */
 export const FONT_SIZE = {
-  micro: 9,
   caption: 11,
   label: 12,
   body: 14,
