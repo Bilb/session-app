@@ -467,7 +467,11 @@ export function deriveTokens(knobs: ThemeKnobs, accent: string): ThemeTokens {
   // Text on the accent is one of the theme's own two anchors rather than flat black or white: on a
   // bright accent every theme reaches for its darkest anchor, which is the text in a light theme
   // and the page itself in a dark one.
-  const onAccent = contrastPrefer([text, background], accent, CONTRAST.ui)
+  // **Which of the two reads best, not which is preferred.** An on-fill colour has no brand to
+  // protect -- both candidates are theme anchors already -- so there is no preference to express
+  // and nothing to gain from stopping at the first that clears a floor. `contrastPrefer` is for
+  // `accentText`, where the point is to leave a chosen accent alone if it can carry the text.
+  const onAccent = contrastPickAll([text, background], [accent])
 
   return {
     primaryColor: accent,
@@ -477,11 +481,11 @@ export function deriveTokens(knobs: ThemeKnobs, accent: string): ThemeTokens {
     accentText: contrastPreferAll([accent, text], surfaces, CONTRAST.normal),
     accentHover: step(accent, 1, background),
     accentPressed: step(accent, 2, background),
-    // Both are nearly always labels, so they are held to text contrast rather than the 3:1 a
-    // graphic gets -- and, when derived, warning is the one that yields in the pair, because a
-    // warning is the less urgent of the two and they only have to be *told apart*.
+    // Both are nearly always labels, which is normal-size text and owes 4.5:1 -- not the 3:1 a
+    // graphic boundary gets. Picking against the fill rather than preferring one anchor is what
+    // keeps that true in every theme: white clears 3:1 on a mid red and loses to black on 4.5.
     dangerColor: danger,
-    onDanger: contrastPrefer([text, background], danger, CONTRAST.ui),
+    onDanger: contrastPickAll([text, background], [danger]),
     warningColor: warning,
     backgroundPrimary: background,
     backgroundSecondary,

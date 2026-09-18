@@ -51,8 +51,9 @@ const CHECKS: [keyof ThemeTokens, (t: ThemeTokens) => string[], number][] = [
   ['dangerColor', surfaces, 4.5],
   ['warningColor', surfaces, 4.5],
   ['textDisabled', surfaces, 2],
-  ['onAccent', (t) => [t.primaryColor], 3],
-  ['onDanger', (t) => [t.dangerColor], 3],
+  // Text contrast, because both are only ever button labels.
+  ['onAccent', (t) => [t.primaryColor], 4.5],
+  ['onDanger', (t) => [t.dangerColor], 4.5],
   ['messageBubbleIncomingText', (t) => [t.messageBubbleIncomingBg], 4.5],
 ]
 
@@ -113,6 +114,26 @@ describe('derivation sweep', () => {
     }
 
     expect(found).toEqual([])
+  })
+
+  it('records what the border roles measure, which is below the 3:1 a control boundary owes', () => {
+    // **The one pair with a WCAG obligation is the one no floor covers.** 1.4.11 asks 3:1 of the
+    // visual boundary of a control where that boundary is what identifies it, and none of these
+    // clears it. They are the shipped values, so this records them rather than asserting a floor
+    // they would fail -- which is what makes the next change to them a deliberate one. Raising
+    // them is a design decision; see the borders note in THEMING.md.
+    const measured = THEMES.map((theme) => {
+      const t = deriveTokens(getThemeKnobs(theme), PRIMARY_COLOR_HEX.green)
+      const against = (hex: string) => contrastRatio(hex, t.backgroundPrimary).toFixed(2)
+      return `${theme} borders ${against(t.bordersColor)} separator ${against(t.separatorColor)}`
+    })
+
+    expect(measured).toEqual([
+      'classic-dark borders 1.79 separator 2.19',
+      'classic-light borders 1.35 separator 1.44',
+      'ocean-dark borders 1.84 separator 2.16',
+      'ocean-light borders 2.59 separator 1.44',
+    ])
   })
 
   it('keeps semantic colours recognisable even on a base that cannot carry them', () => {

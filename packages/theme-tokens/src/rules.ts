@@ -376,16 +376,3 @@ export function contrastTo(colour: string, against: string, target: number): str
   }
   return best
 }
-
-/**
- * `colour` at `a` opacity, as `#rrggbbaa`.
- *
- * Eight-digit hex rather than `rgba()` so every token stays one string in one format, which is what
- * lets the contract test check them all the same way.
- */
-export function alpha(colour: string, a: number): string {
-  const hex = colour.length === 4 ? colour.replace(/[^#]/g, (ch) => ch + ch) : colour
-  return `${hex.slice(0, 7)}${Math.round(Math.min(1, Math.max(0, a)) * 255)
-    .toString(16)
-    .padStart(2, '0')}`
-}

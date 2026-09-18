@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { hexToOklch, oklchToHex, relativeLuminance } from './oklch'
-import { alpha, baseFits, contrastAdjust, contrastPick, contrastRatio, step } from './rules'
+import { baseFits, contrastAdjust, contrastPick, contrastRatio, step } from './rules'
 import { deriveTokens, getThemeKnobs, getThemeTokens } from './themeTokens'
 
 describe('oklch', () => {
@@ -91,6 +91,24 @@ describe('step', () => {
   })
 })
 
+/**
+ * `colour` at `a` opacity, as `#rrggbbaa`.
+ *
+ * Here rather than in `rules.ts` because no token carries alpha yet. The format is the part worth
+ * keeping: eight-digit hex means every token is one string in one shape, which is what lets the
+ * contract test check them all the same way -- so a scrim or overlay token that arrives later
+ * should move this back rather than reach for `rgba()`.
+ *
+ * Eight-digit hex rather than `rgba()` so every token stays one string in one format, which is what
+ * lets the contract test check them all the same way.
+ */
+function alpha(colour: string, a: number): string {
+  const hex = colour.length === 4 ? colour.replace(/[^#]/g, (ch) => ch + ch) : colour
+  return `${hex.slice(0, 7)}${Math.round(Math.min(1, Math.max(0, a)) * 255)
+    .toString(16)
+    .padStart(2, '0')}`
+}
+
 describe('alpha', () => {
   it('appends the byte and clamps', () => {
     expect(alpha('#31f196', 1)).toBe('#31f196ff')
@@ -101,8 +119,6 @@ describe('alpha', () => {
 })
 
 describe('semantic colours', () => {
-  const SURFACES = ['#1B1B1B', '#000000', '#2e2e2e', '#363636'] as const
-
   it('keeps danger and warning saturated enough to read as warnings', () => {
     // They are permitted to resemble each other. What neither may be is a colour so dull it reads
     // as body text -- which the derived warning was, at chroma 0.074, before the pair-separation
@@ -159,6 +175,5 @@ describe('semantic colours', () => {
     expect(baseFits('#A45A41', 'dark')).toBe(false)
     expect(baseFits('#A45A41', 'light')).toBe(false)
     expect(baseFits('#9AA1CB', 'dark')).toBe(false)
-    void SURFACES
   })
 })
