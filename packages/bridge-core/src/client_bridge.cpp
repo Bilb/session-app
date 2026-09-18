@@ -349,6 +349,11 @@ struct ClientBridge::Impl {
             //
             // Checking `sink` inside `emit` does not save it: by then `impl->` has already been
             // dereferenced, which is the fault rather than what follows it.
+            //
+            // Removed before it is added because this runs again on every discard: `open_client`
+            // is how an account is thrown away and a fresh database opened, so without this each
+            // discard would leave its predecessor registered with no handle left to reach it by.
+            remove_logger(logger);
             logger = add_logger(
                     [impl](std::string_view message, std::string_view category, LogLevel lvl) {
                         // Called from whichever thread logged, including Core's loop and the
