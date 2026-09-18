@@ -16,11 +16,15 @@ export const COLOR_SCALE = {
 }
 
 export const SPACE_SCALE = {
-  // Half steps are real tokens, not decoration. A token the scale does not define resolves
+  // Fractional steps are real tokens, not decoration. A token the scale does not define resolves
   // to 0 rather than failing, so `padding="$1.5"` on a scale without a 1.5 is a silent loss
   // of padding rather than an error.
+  //
+  // Positions, not values: the numbers here name rungs on the ladder and carry no size of their
+  // own, so `$2` is "the fourth rung" and what that measures is `SPACING`'s to say.
   0: 0,
-  0.5: SPACING.xxs,
+  0.25: SPACING['3xs'],
+  0.5: SPACING['2xs'],
   1: SPACING.xs,
   1.5: SPACING.sm,
   2: SPACING.md,

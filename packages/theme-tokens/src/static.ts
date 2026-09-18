@@ -42,16 +42,25 @@ export const FONT_SIZE = {
  */
 export const LINE_HEIGHT_RATIO = 1.2
 
-// Spacing values in logical pixels (no units).
+/**
+ * Spacing in logical pixels, on a 4 grid.
+ *
+ * `3xl` 64 is an inset that narrows centred content -- an empty-state label, onboarding's primary
+ * button -- rather than a gap between things, which is why there is nothing between it and 36.
+ *
+ * 32, 48 and 50 are absent on purpose: see THEMING.md for which client each belongs to and why
+ * reaching for one should be a decision rather than a lookup.
+ */
 export const SPACING = {
-  '3xl': 35,
-  '2xl': 30,
-  xl: 25,
+  '3xl': 64,
+  '2xl': 36,
+  xl: 24,
   lg: 20,
-  md: 15,
-  sm: 10,
-  xs: 5,
-  xxs: 2.5,
+  md: 16,
+  sm: 12,
+  xs: 8,
+  '2xs': 4,
+  '3xs': 2,
 } as const
 
 export const RADII = {
