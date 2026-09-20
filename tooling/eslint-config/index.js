@@ -32,6 +32,9 @@ export { desktopMainZone, desktopRendererZone, mobileAppZone, sharedZone, uiZone
  * that the rule would be noise, and a size token is a different question from a space one.
  */
 const SCALED_PROPS = [
+  // Every component that takes `size` resolves it against a named scale, so a number here is
+  // never the measurement a `width` can legitimately be.
+  'size',
   'padding',
   'paddingHorizontal',
   'paddingVertical',
