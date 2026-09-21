@@ -80,6 +80,7 @@ export const ELEMENT = {
     screen: 'startup-failed',
     reason: 'startup-failed-reason',
     clear: 'startup-failed-clear',
+    clearFailed: 'startup-failed-clear-failed',
     quit: 'startup-failed-quit',
     confirmClear: 'startup-failed-confirm-clear',
     confirmClearButton: 'startup-failed-confirm-clear-button',
@@ -133,58 +134,21 @@ export const ELEMENT = {
   },
 } as const
 
-/** Every id the registry can produce, including the parameterised ones. */
-export type ElementId =
-  | 'conversation-list'
-  | 'conversation-list-settings'
-  | 'conversation-list-new'
-  | `conversation-row-${number}`
-  | 'conversation-row-name'
-  | 'conversation-row-snippet'
-  | 'conversation-row-unread'
-  | 'conversation-list-empty'
-  | 'conversation'
-  | 'conversation-header'
-  | 'conversation-header-name'
-  | 'conversation-back'
-  | `message-row-${number}`
-  | 'message-body'
-  | 'message-state'
-  | 'message-retry'
-  | 'message-composer'
-  | 'send-button'
-  | 'requests'
-  | 'requests-back'
-  | `request-row-${number}`
-  | `request-accept-${number}`
-  | 'requests-badge'
-  | 'settings'
-  | 'settings-back'
-  | 'settings-theme-picker'
-  | `settings-theme-${string}`
-  | `settings-accent-${string}`
-  | 'settings-display-name'
-  | 'settings-account-id'
-  | 'settings-copy-account-id'
-  | 'settings-network-status'
-  | 'network-overlay-badge'
-  | 'new-conversation'
-  | 'new-conversation-back'
-  | 'new-conversation-account-id'
-  | 'new-conversation-start'
-  | 'new-conversation-error'
-  | 'starting'
-  | 'starting-slow-dialog'
-  | 'starting-slow-dialog-close'
-  | 'startup-failed'
-  | 'startup-failed-reason'
-  | 'startup-failed-clear'
-  | 'startup-failed-quit'
-  | 'startup-failed-confirm-clear'
-  | 'startup-failed-confirm-clear-button'
-  | 'startup-failed-cancel-clear'
-  | 'onboarding'
-  | 'onboarding-create-account'
-  | 'onboarding-restore-account'
-  | 'onboarding-recovery-phrase'
-  | 'onboarding-continue'
+/**
+ * Every id the registry can produce, including the parameterised ones.
+ *
+ * **Read off `ELEMENT` rather than listed beside it.** A hand-written union is a second copy of
+ * the registry, and the two drift in one direction only: an id added above and forgotten here is
+ * an element the e2e harness cannot name, because every locator it takes is typed as this. That
+ * had happened to 36 of them. Derived, the two cannot disagree.
+ */
+export type ElementId = IdsIn<typeof ELEMENT>
+
+/** A string leaf, the return type of a parameterised one, or the union of a group's members. */
+type IdsIn<T> = T extends string
+  ? T
+  : T extends (...args: never[]) => infer R
+    ? R
+    : T extends object
+      ? { [K in keyof T]: IdsIn<T[K]> }[keyof T]
+      : never
