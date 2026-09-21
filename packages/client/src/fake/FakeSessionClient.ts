@@ -179,6 +179,18 @@ export class FakeSessionClient implements SessionClient {
     return Promise.resolve()
   }
 
+  /**
+   * Refuses on the one condition a caller can trip over, and reports success otherwise.
+   *
+   * There is no pool to fill here, so what the fake mirrors is the contract rather than the work:
+   * an account means the client's own network is the one doing this, and warming beside it is the
+   * cost it exists to avoid.
+   */
+  warmNetworkCache(): Promise<boolean> {
+    this.assertOpen()
+    return Promise.resolve(!this.account.haveAccount)
+  }
+
   getConversations(): Promise<Conversation[]> {
     this.assertOpen()
     return Promise.resolve(this.account.list())

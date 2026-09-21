@@ -81,6 +81,15 @@ export interface SessionClient {
   /** One poll cycle, run to completion - what every OS background budget wants. */
   pollOnce(): Promise<void>
   /**
+   * Fill the service-node cache before there is an account, so the first attach is not also the
+   * first refresh. Warms the network given at init, since a cache warmed for another is one the
+   * attach cannot use.
+   *
+   * True when the pool has nodes. False where there is nothing to warm or nothing to gain: no
+   * network configured, an account already there to use one, or a warm already running.
+   */
+  warmNetworkCache(): Promise<boolean>
+  /**
    * How often libsession polls the swarm. Its default of 20 seconds is about right for a
    * person and far too long for a test; a positive number of milliseconds is the only valid
    * argument.

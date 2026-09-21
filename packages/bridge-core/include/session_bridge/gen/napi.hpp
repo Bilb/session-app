@@ -1017,6 +1017,21 @@ struct Codec<::session_bridge::AttachNetworkCommand> {
 };
 
 template <>
+struct Codec<::session_bridge::WarmNetworkCacheCommand> {
+    static constexpr std::string_view name = "WarmNetworkCacheCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::WarmNetworkCacheCommand& value) {
+        (void)value;
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::WarmNetworkCacheCommand::type_tag.data(), ::session_bridge::WarmNetworkCacheCommand::type_tag.size()));
+        return obj;
+    }
+    static ::session_bridge::WarmNetworkCacheCommand from(const Napi::Value& value, std::string_view where) {
+        object(value, where);
+        return ::session_bridge::WarmNetworkCacheCommand{};
+    }
+};
+
+template <>
 struct Codec<::session_bridge::SetPollIntervalCommand> {
     static constexpr std::string_view name = "SetPollIntervalCommand";
     static Napi::Value to(Napi::Env env, const ::session_bridge::SetPollIntervalCommand& value) {
@@ -1480,6 +1495,8 @@ struct Codec<::session_bridge::Command> {
             return Codec<::session_bridge::SetDisplayNameCommand>::from(value, where);
         if (tag == "attachNetwork")
             return Codec<::session_bridge::AttachNetworkCommand>::from(value, where);
+        if (tag == "warmNetworkCache")
+            return Codec<::session_bridge::WarmNetworkCacheCommand>::from(value, where);
         if (tag == "setPollInterval")
             return Codec<::session_bridge::SetPollIntervalCommand>::from(value, where);
         if (tag == "pollOnce")

@@ -250,6 +250,12 @@ struct ClientBridge::Impl {
     std::unique_ptr<client::Client> client;
     InitOptions options;
     session::LoggerHandle logger;
+    /// The network held only to fill the node cache, before there is an account to attach one.
+    ///
+    /// **Outlives the call that made it and is never dropped by its own callback.** `~Network`
+    /// joins the loop the callback is running on, so dropping it from there deadlocks. Whatever
+    /// drops it runs on another thread -- an attach, a discard, or `close`.
+    std::unique_ptr<session::network::Network> warm;
 
     explicit Impl(Sink s, InitOptions o) : sink{std::move(s)}, options{std::move(o)} {}
 
@@ -399,6 +405,11 @@ struct ClientBridge::Impl {
         auto planned = plan_network(options.network, options.db_path);
         if (!planned || !client->core.globals.have_account())
             return;
+
+        // Before the client's own, never beside it: both would refresh the same cache, and the
+        // point of the warm one was to have finished by now. Blocks until its loop is joined,
+        // which is also what guarantees its callback is not still holding this Impl.
+        warm.reset();
 
         client->core.make_network(network::config::Config{*planned});
 
@@ -698,6 +709,42 @@ struct ClientBridge::Impl {
             throw;
         }
         ok(id);
+    }
+
+    /// How many nodes are asked for, which is what decides whether the pool gets refreshed.
+    ///
+    /// `get_random_nodes` refreshes only when it cannot satisfy the count from unused nodes, so
+    /// this is a floor on the pool rather than a number anybody consumes: the nodes themselves
+    /// are dropped, and the cache they were fetched into is the whole product.
+    static constexpr std::uint16_t WARM_NODE_COUNT = 12;
+
+    void handle(double id, const WarmNetworkCacheCommand&) {
+        // Nothing to gain once there is an account: the client's own network is attached, or is
+        // about to be by `on_account`, and a second one refreshing the same cache is the cost this
+        // avoids rather than the saving it makes.
+        if (client->core.globals.have_account())
+            return respond(id, BoolResult{false});
+
+        // One at a time. Replacing a running one would block this thread on its loop, and the
+        // second caller wants the cache warm rather than warmed twice.
+        if (warm)
+            return respond(id, BoolResult{false});
+
+        auto planned = plan_network(options.network, options.db_path);
+        if (!planned)
+            return respond(id, BoolResult{false});
+
+        warm = std::make_unique<session::network::Network>(
+                session::network::config::Config{*planned});
+
+        // Answered from the network's own loop, as every libsession callback here is. It does not
+        // drop `warm`: that would join the loop it is running on. An empty list is how
+        // `get_random_nodes` reports failure, so it is also the answer.
+        warm->get_random_nodes(
+                WARM_NODE_COUNT,
+                [this, id](std::vector<session::network::service_node> nodes) {
+                    respond(id, BoolResult{!nodes.empty()});
+                });
     }
 
     void handle(double id, const SetPollIntervalCommand& cmd) {
@@ -1007,6 +1054,10 @@ void ClientBridge::close() {
     // is neither running nor reachable; destroying the Client then joins Core's loop, so nothing
     // is mid-emit by the time the Impl the two of them write to goes.
     remove_logger(_impl->logger);
+    // Before the Impl, for the same reason as the logger: its callback holds `this` and answers on
+    // the sink, and destroying a Network joins the loop that callback runs on -- so once this
+    // returns, no warm answer can still be in flight.
+    _impl->warm.reset();
     _impl->client.reset();
     _impl.reset();
 }

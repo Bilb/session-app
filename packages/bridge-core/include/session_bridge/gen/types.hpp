@@ -692,6 +692,23 @@ struct AttachNetworkCommand {
             netid{std::move(netid_)}, seed_nodes{std::move(seed_nodes_)}, file_server{std::move(file_server_)}, router{std::move(router_)} {}
 };
 
+/// Fill the service-node cache before there is an account to use it, so the first attach is not
+/// also the first refresh.
+///
+/// **Takes no arguments on purpose.** It warms the network the client would attach -- the one
+/// given at init -- because a cache warmed for any other is a cache the attach cannot use, and a
+/// netid passed separately could disagree with it.
+///
+/// Answers true when the pool has nodes in it. Refused, with false, where there is nothing to
+/// warm or nothing to gain: no network configured, a network already attached (two live Networks
+/// would both refresh), or a warm already in flight.
+///
+/// The instance is dropped before the client attaches rather than left beside it, which is what
+/// makes this a warm rather than a second network.
+struct WarmNetworkCacheCommand {
+    static constexpr std::string_view type_tag = "warmNetworkCache";
+};
+
 /// How often libsession polls the swarm, in milliseconds. Its default is 20 seconds, which is a
 /// long time to wait for a test and about right for a person.
 ///
@@ -965,6 +982,7 @@ using Command = std::variant<
         GetSeedMnemonicCommand,
         SetDisplayNameCommand,
         AttachNetworkCommand,
+        WarmNetworkCacheCommand,
         SetPollIntervalCommand,
         PollOnceCommand,
         SetPushTokenCommand,

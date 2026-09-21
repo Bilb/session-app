@@ -122,6 +122,10 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     await client.pollOnce()
     return empty
   },
+  warmNetworkCache: async (client) => ({
+    type: 'bool',
+    value: await client.warmNetworkCache(),
+  }),
   setPushToken: () => unsupported('setPushToken'),
   handlePushPayload: () => unsupported('handlePushPayload'),
 

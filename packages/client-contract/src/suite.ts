@@ -436,6 +436,26 @@ export function runSessionClientContract(
       expect(error instanceof Error).toBe(true)
     })
 
+    /**
+     * The refusal, which is the half of this that holds without a network.
+     *
+     * Warming exists for the window before an account, so the condition worth pinning is that it
+     * declines once there is one: the client's own network is then the thing doing this, and a
+     * second one refreshing the same cache is the cost the command avoids rather than the saving
+     * it makes.
+     *
+     * **The success case cannot be asserted here.** Filling a pool means reaching service nodes,
+     * and this suite runs offline; a build with no network configured answers false for that
+     * reason rather than this one, so a scenario asserting true would pass on the fake and fail on
+     * the addon for a reason that has nothing to do with the contract.
+     */
+    it('declines to warm the node cache once an account is there to use it', async () => {
+      const { alice } = await harness.friends()
+      expect((await alice.getAccountInfo()).haveAccount).toBe(true)
+
+      expect(await alice.warmNetworkCache()).toBe(false)
+    })
+
     it('refuses a network it cannot build, and stays where it was', async () => {
       const { alice } = await harness.friends()
       const before = (await alice.getAccountInfo()).networkAttached

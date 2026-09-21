@@ -171,6 +171,11 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       await call({ type: 'pollOnce' })
     },
 
+    async warmNetworkCache(): Promise<boolean> {
+      const response = await call({ type: 'warmNetworkCache' })
+      return expect(response, 'bool').value
+    },
+
     async getConversations(): Promise<Conversation[]> {
       const response = await call({ type: 'getConversations' })
       return expect(response, 'conversationList').conversations
