@@ -398,3 +398,41 @@ describe('the step that stays on screen at done', () => {
     }
   })
 })
+
+/**
+ * The two questions the design answers, which are not the same question.
+ *
+ * Width decides the frame; the notifications port decides whether there is a delivery mode to
+ * choose. Reading one off the other is how a desktop window narrowed past the breakpoint came to
+ * be offered the phone's notification step -- a mode it has no push service to deliver.
+ */
+describe('the four designs', () => {
+  it('asks about notifications at either width, and not at either without a service', () => {
+    expect(asksAboutNotifications('phone')).toBe(true)
+    expect(asksAboutNotifications('tablet')).toBe(true)
+    expect(asksAboutNotifications('desktop')).toBe(false)
+    expect(asksAboutNotifications('desktopNarrow')).toBe(false)
+  })
+
+  it('takes the narrow frame at either answer, and the wide one at either', () => {
+    expect(isWideDesign('phone')).toBe(false)
+    expect(isWideDesign('desktopNarrow')).toBe(false)
+    expect(isWideDesign('tablet')).toBe(true)
+    expect(isWideDesign('desktop')).toBe(true)
+  })
+
+  it('runs the desktop sequence in a narrowed window', () => {
+    // The regression this exists for: the same events, and no notification step in sight.
+    const narrow = run([CREATE, NAME], 'desktopNarrow')
+    expect(narrow.step).toBe('done')
+    expect(run([RESTORE, PHRASE], 'desktopNarrow').step).toBe('loading')
+  })
+
+  it('separates the frame from the sequence, so each design is its own pair', () => {
+    const designs: OnboardingDesign[] = ['phone', 'tablet', 'desktop', 'desktopNarrow']
+    const pairs = designs.map(
+      (d) => `${String(isWideDesign(d))}/${String(asksAboutNotifications(d))}`,
+    )
+    expect(new Set(pairs).size).toBe(designs.length)
+  })
+})

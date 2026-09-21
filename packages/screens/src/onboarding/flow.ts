@@ -40,17 +40,23 @@ type OnboardingBranch = 'create' | 'restore'
  * A tablet is **the desktop layout with the phone's notification step**, because the OS suspends
  * it the way a phone's does. So the two inputs stay separate: the width says which layout, and the
  * notifications port says whether there is a mode to choose.
+ *
+ * **Both combinations of both answers exist, which is why there are four names and not three.**
+ * A desktop window narrowed past the breakpoint is the fourth: `minWidth` on the window is 380
+ * and the breakpoint is 701, so it is a window somebody can make. It takes the narrow frame,
+ * because that is what fits, and it must not take the phone's notification question -- desktop
+ * has no push service to offer, and whether it has one is not a fact about width.
  */
-export type OnboardingDesign = 'phone' | 'desktop' | 'tablet'
+export type OnboardingDesign = 'phone' | 'desktop' | 'tablet' | 'desktopNarrow'
 
 /** Whether this design draws the desktop client's two-column frame rather than filling a phone. */
 export function isWideDesign(design: OnboardingDesign): boolean {
-  return design !== 'phone'
+  return design === 'tablet' || design === 'desktop'
 }
 
 /** Whether this design asks which way notifications should arrive. */
 export function asksAboutNotifications(design: OnboardingDesign): boolean {
-  return design !== 'desktop'
+  return design === 'phone' || design === 'tablet'
 }
 
 /** What the recovery screen collected, in the shape the bridge takes it. */

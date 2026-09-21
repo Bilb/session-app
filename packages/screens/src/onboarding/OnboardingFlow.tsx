@@ -12,6 +12,7 @@ import { PickDisplayNameScreen } from './PickDisplayNameScreen'
 import {
   backDiscardsAccount,
   committingStep,
+  isWideDesign,
   initialOnboarding,
   onboardingReducer,
   type OnboardingDesign,
@@ -191,7 +192,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
       {/* **Phone only.** The wide designs cross-fade inside the chrome, which is what the desktop
           client does; a horizontal push is a mobile idiom. Nothing renders at `done`, so there is
           nothing to slide in either -- wrapping it would animate a blank pane over the last step. */}
-      {design === 'phone' && body !== null ? (
+      {!isWideDesign(design) && body !== null ? (
         <StepTransition
           stepKey={state.step}
           direction={state.lastMove}
@@ -322,8 +323,10 @@ function useOnboardingDesign(): OnboardingDesign {
   // flag table for why the tablet design is otherwise unreachable on the machines it is built on.
   const asks =
     requirePorts().notifications.notificationModesApply || flag('forceOnboardingTabletDesign')
-  if (!wide) return 'phone'
-  return asks ? 'tablet' : 'desktop'
+  // Both questions, independently. Consulting `asks` only on the wide branch is what put the
+  // phone's notification step on a narrowed desktop window, offering a mode it cannot deliver.
+  if (wide) return asks ? 'tablet' : 'desktop'
+  return asks ? 'phone' : 'desktopNarrow'
 }
 
 /**
