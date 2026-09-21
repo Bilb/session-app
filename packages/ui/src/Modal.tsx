@@ -25,6 +25,16 @@ interface ModalProps {
    * not infer it from a glyph. Such a dialog puts its own cancel in `actions`.
    */
   showClose?: boolean
+  /**
+   * Whether a press outside, Escape, or the Android back button closes it.
+   *
+   * Defaults to whatever `showClose` is, because the two say the same thing: a dialog offering
+   * a cross is one you may simply leave. **A dialog asking a question is not**, and leaving these
+   * on while the cross was hidden put back the third, unlabelled answer the cross was removed to
+   * avoid -- reachable by a stray tap on the scrim, and reachable while the destructive action
+   * it was confirming was already running.
+   */
+  dismissible?: boolean
   children: ReactNode
   /** The row of actions along the bottom. Text buttons, in the client's shape. */
   actions?: ReactNode
@@ -107,6 +117,7 @@ export function Modal({
   children,
   actions,
   showClose = true,
+  dismissible = showClose,
   testID,
   closeTestID,
   sideInset = SIDE_INSET,
@@ -119,8 +130,12 @@ export function Modal({
   const Blur = useBackdropBlur()
   const dark = useThemeIsDark()
 
+  // Named once: the same answer has to reach the scrim, Escape and the hardware back button, or
+  // the dialog is dismissible by whichever of them was forgotten.
+  const dismiss = dismissible ? onClose : undefined
+
   return (
-    <NativeModal visible={open} transparent animationType="fade" onRequestClose={onClose}>
+    <NativeModal visible={open} transparent animationType="fade" onRequestClose={dismiss}>
       {Blur === null ? null : (
         <YStack fullscreen>
           <Blur dark={dark} />
@@ -136,7 +151,7 @@ export function Modal({
         alignItems="center"
         justifyContent="center"
         padding="$xl"
-        onPress={onClose}
+        onPress={dismiss}
       >
         <YStack
           width="100%"
