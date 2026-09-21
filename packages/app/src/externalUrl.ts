@@ -3,29 +3,62 @@ import { requirePorts } from './ports'
 /**
  * The schemes a link may use to leave the app.
  *
- * Plain http as well as https, which is what every current client does -- two of them go further
- * and upgrade a scheme-less address to https rather than refusing it, so refusing http here would
- * be stricter than anything shipped. Case-insensitive: a scheme is not case-sensitive, and
- * `HTTP://` doing nothing at all is a worse failure than opening it.
+ * Plain http as well as https, which is what every current client opens. Case-insensitive: a
+ * scheme is not case-sensitive, and `HTTP://` doing nothing at all is a worse failure than
+ * opening it.
  */
 const OPENABLE = /^https?:\/\//i
 
 /**
- * Whether this is a URL the app may hand to the OS.
+ * Anything that begins with something a URL parser would read as a scheme.
+ *
+ * RFC 3986 allows a dot in a scheme, which makes `example.com:8080` ambiguous -- syntactically a
+ * scheme of `example.com`, and in practice a host and a port. A dot decides it: real schemes do
+ * not have one, and a bare host usually does.
+ */
+const HAS_SCHEME = /^[A-Za-z][A-Za-z0-9+-]*:/
+
+/** A bare host, at minimum: a dot inside it, no spaces, and something before the first slash. */
+const LOOKS_LIKE_HOST = /^[^\s/?#]+\.[^\s/?#]+/
+
+/**
+ * The URL to open for this text, or null if there is none.
+ *
+ * **A missing scheme becomes https rather than a refusal**, which is what both mobile clients
+ * do -- and they pick https rather than the http a parser would default to, because that is the
+ * only scheme they will load a preview for. Somebody who typed `getsession.org` meant a website,
+ * and refusing it is a link that does nothing.
+ *
+ * Only where the text already looks like a host. The upgrade is not a way to make any string
+ * openable: a caller passes something it has already decided is a URL, and this decides what to
+ * do with the scheme it did or did not carry.
+ *
+ * A scheme that is not http(s) is refused rather than upgraded. `file:`, `javascript:` and
+ * `data:` are not addresses that were missing their protocol; they say what they are.
+ */
+export function urlToOpen(text: string): string | null {
+  const trimmed = text.trim()
+  if (trimmed === '') return null
+  if (HAS_SCHEME.test(trimmed)) return OPENABLE.test(trimmed) ? trimmed : null
+  return LOOKS_LIKE_HOST.test(trimmed) ? `https://${trimmed}` : null
+}
+
+/**
+ * Whether the app may hand this to the OS.
  *
  * **One check, at the boundary, rather than one per platform.** Handing a URL out is the moment
  * an app stops being in control of what happens next: `openExternal` and `Linking.openURL` both
  * give any scheme to the OS, and a `file:` or a custom scheme reaching either is how a link
  * becomes a launched program. The three platforms have three ways of opening a URL and there is
- * no reason for them to have three opinions about which ones may be opened.
+ * no reason for them to hold three opinions about which ones may be opened.
  *
  * A scheme check is the floor rather than the whole job. It says nothing about a host that reads
  * as one domain and resolves to another -- userinfo before the authority, or a mixed-script
  * domain -- and those want their own check wherever a URL arrives from a message rather than
  * from this app's own constants.
  */
-export function isOpenableUrl(url: string): boolean {
-  return OPENABLE.test(url)
+export function isOpenableUrl(text: string): boolean {
+  return urlToOpen(text) !== null
 }
 
 /**
@@ -37,12 +70,15 @@ export function isOpenableUrl(url: string): boolean {
  * checks again in its main process, which is a different boundary: that one does not trust the
  * renderer, this one is the app deciding what it is willing to open.
  *
+ * What is opened is what `urlToOpen` returns, so the scheme the OS is handed is the one that was
+ * checked -- not the text that came in.
+ *
  * Returns whether it went. A refusal is a bug in the caller rather than something to tell the
- * person about -- every URL the app opens today is one of its own constants -- so it is reported
- * rather than thrown, and the screen carries on closing either way.
+ * person about, so it is reported rather than thrown and the screen carries on closing.
  */
-export async function openExternalUrl(url: string): Promise<boolean> {
-  if (!isOpenableUrl(url)) return false
+export async function openExternalUrl(text: string): Promise<boolean> {
+  const url = urlToOpen(text)
+  if (url === null) return false
   await requirePorts().linking.openUrl(url)
   return true
 }

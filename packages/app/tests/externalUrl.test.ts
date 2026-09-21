@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isOpenableUrl } from '#src/externalUrl'
+import { isOpenableUrl, urlToOpen } from '#src/externalUrl'
 
 /**
  * Which URLs the app is willing to hand to the OS.
@@ -40,10 +40,51 @@ describe('a URL the app may open', () => {
     expect(isOpenableUrl('http:example.com')).toBe(false)
   })
 
-  it('refuses anything that does not begin with a scheme at all', () => {
-    // Including one that merely contains a real scheme further along.
-    expect(isOpenableUrl('getsession.org')).toBe(false)
-    expect(isOpenableUrl(' https://getsession.org')).toBe(false)
+  it('refuses a real scheme hidden further along the string', () => {
     expect(isOpenableUrl('javascript:void("https://ok")')).toBe(false)
+  })
+})
+
+/**
+ * What happens to an address with no scheme on it.
+ *
+ * Both mobile clients upgrade one rather than refusing it, and both pick https rather than the
+ * http a parser would default to -- iOS says why in as many words: it is the only scheme it will
+ * load a preview for. Somebody who typed `getsession.org` meant a website.
+ */
+describe('an address with no scheme', () => {
+  it('becomes https', () => {
+    expect(urlToOpen('getsession.org')).toBe('https://getsession.org')
+    expect(urlToOpen('example.com/faq?a=1#b')).toBe('https://example.com/faq?a=1#b')
+  })
+
+  it('is read as a host and a port rather than as a scheme, where it could be either', () => {
+    // RFC 3986 lets a scheme contain a dot, so `example.com:8080` parses as a scheme of
+    // `example.com`. A dot is what tells the two apart.
+    expect(urlToOpen('example.com:8080/x')).toBe('https://example.com:8080/x')
+  })
+
+  it('is left alone when it already has one', () => {
+    expect(urlToOpen('http://example.com')).toBe('http://example.com')
+    expect(urlToOpen('HTTPS://getsession.org')).toBe('HTTPS://getsession.org')
+  })
+
+  it('is not a way to make any string openable', () => {
+    // The upgrade applies to something that already looks like a host, not to whatever arrives.
+    for (const text of ['', '   ', 'not a url', 'hello', '/faq', '#anchor', 'a b.com']) {
+      expect(urlToOpen(text), JSON.stringify(text)).toBeNull()
+    }
+  })
+
+  it('does not rescue a scheme that says what it is', () => {
+    // `javascript:` is not an address that was missing its protocol.
+    for (const text of ['javascript:alert(1)', 'file:///etc/passwd', 'mailto:a@b.com']) {
+      expect(urlToOpen(text), text).toBeNull()
+    }
+  })
+
+  it('opens what was checked rather than what came in', () => {
+    // Surrounding whitespace is taken off before the check, so the two cannot disagree.
+    expect(urlToOpen('  https://getsession.org  ')).toBe('https://getsession.org')
   })
 })
