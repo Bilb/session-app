@@ -41,7 +41,6 @@ const ROUTES: RouteContract[] = [
   { path: routes.newConversation(), desktop: 'new', mobile: 'new.tsx' },
   { path: routes.requests(), desktop: 'requests', mobile: 'requests.tsx' },
   { path: routes.settings(), desktop: 'settings', mobile: 'settings.tsx' },
-  { path: routes.onboarding(), desktop: 'onboarding', mobile: 'onboarding.tsx' },
 ]
 
 function declaredDesktopPaths(): string[] {
