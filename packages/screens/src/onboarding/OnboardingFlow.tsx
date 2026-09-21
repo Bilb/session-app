@@ -178,7 +178,9 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
     committing.current = true
     // `done` is reached from two places and means something different at each: the end of create,
     // where there is no account yet, and the end of a restore that had to ask for a name.
-    void commit(state, actions, setBusy).then(
+    void commit(state, actions, setBusy, () => {
+      dispatch({ type: 'accountMinted' })
+    }).then(
       () => {
         onRunningChange?.(false)
       },
@@ -208,7 +210,9 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
           nothing to slide in either -- wrapping it would animate a blank pane over the last step. */}
       {!isWideDesign(design) && body !== null ? (
         <StepTransition
-          stepKey={state.step}
+          // The step the commit is drawn over, not `done` -- `body` is that step's screen, and
+          // a key change here swaps panes, which remounts it and restarts the wait it is showing.
+          stepKey={committingNow ? committingStep(state) : state.step}
           direction={state.lastMove}
           instant={flag('disableAnimations')}
         >
@@ -241,6 +245,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
             initialName={state.displayName ?? ''}
             rejected={state.commitFailed}
             busy={working}
+            backDisabled={working}
             onBack={goBack}
             onContinue={(name) => {
               dispatch({ type: 'nameEntered', name })
@@ -301,6 +306,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
         return (
           <MessageNotificationsScreen
             busy={working}
+            backDisabled={working}
             onBack={goBack}
             onContinue={(mode) => {
               dispatch({ type: 'notificationsChosen', mode, profileArrived })
@@ -379,10 +385,17 @@ async function commit(
   state: OnboardingState,
   actions: ReturnType<typeof useSessionActions>,
   setBusy: (busy: boolean) => void,
+  onMinted: () => void,
 ): Promise<void> {
   setBusy(true)
   try {
-    if (state.branch === 'create') await actions.createAccount()
+    // **Only if there is not one already.** A commit that failed after this line comes back here
+    // when the name is entered again, and minting a second time would leave two identities with
+    // the first one orphaned.
+    if (state.branch === 'create' && !state.minted) {
+      await actions.createAccount()
+      onMinted()
+    }
     if (state.displayName !== null) await actions.setDisplayName(state.displayName)
     // Last, and only once the rest has worked. Until this lands the account is provisional and a
     // restart throws it away -- which is exactly what should happen if onboarding died before

@@ -93,6 +93,16 @@ export interface OnboardingState {
    */
   commitFailed: boolean
   /**
+   * Whether an account exists on this device that onboarding made and nobody has confirmed.
+   *
+   * **Recorded rather than inferred from the branch.** Restore mints at the phrase, which the
+   * step alone used to say; create mints at the end, which it cannot -- a commit that failed
+   * after `createAccount` comes back to the name picker with an account already on disk, and a
+   * branch check reads that as nothing to undo. Going back then walks away from a live account
+   * and the next start sweeps it.
+   */
+  minted: boolean
+  /**
    * Which way the last move went.
    *
    * The transition has to travel the way a stack would move it, and a flow with no stack behind it
@@ -112,6 +122,7 @@ export function initialOnboarding(design: OnboardingDesign): OnboardingState {
     recovery: null,
     notifications: null,
     commitFailed: false,
+    minted: false,
     lastMove: 'forward',
   }
 }
@@ -138,6 +149,8 @@ export type OnboardingEvent =
   | { type: 'restoreArrived' }
   /** libsession would not take the phrase over, after having said it was a phrase. */
   | { type: 'restoreFailed' }
+  /** An account now exists that nobody has confirmed. See `minted`. */
+  | { type: 'accountMinted' }
   /** The bridge refused to make or name the account. See `commitFailed`. */
   | { type: 'commitFailed' }
   /** The window crossed the width that decides which design is in use -- a rotation, or a resize. */
@@ -193,20 +206,16 @@ export function committingStep(state: OnboardingState): OnboardingStep {
 /**
  * Whether going back from here has to throw an account away first.
  *
- * **True wherever one has been minted.** Restore mints at the phrase, so every step past it
- * qualifies; creating mints at the end, so backing out of it has nothing to undo.
+ * **Wherever one has been minted**, which `minted` says and the step cannot: restore mints at the
+ * phrase, create mints at the end, and a create whose commit failed is back at the name picker
+ * with an account on disk. Asking the branch instead left that last one to walk away from a live,
+ * unconfirmed account -- which the app then used until the next start swept it.
  *
  * No step has to *ask* first: `discardAccount` can untake an account, so a warning dialog would
  * only stand in for something the bridge can perform.
  */
 export function backDiscardsAccount(state: OnboardingState): boolean {
-  if (state.branch !== 'restore') return false
-  return (
-    state.step === 'messageNotifications' ||
-    state.step === 'pickDisplayName' ||
-    // The wait is past the phrase, so an account exists behind it too.
-    state.step === 'loading'
-  )
+  return state.minted
 }
 
 export function onboardingReducer(state: OnboardingState, event: OnboardingEvent): OnboardingState {
@@ -229,7 +238,9 @@ function moveOf(event: OnboardingEvent): 'forward' | 'back' | null {
     case 'restoreFailed':
     case 'commitFailed':
       return 'back'
+    // Neither is a move: one reports what the window did, the other what the bridge did.
     case 'designChanged':
+    case 'accountMinted':
       return null
     default:
       return 'forward'
@@ -262,6 +273,8 @@ function advance(state: OnboardingState, event: OnboardingEvent): OnboardingStat
       return {
         ...state,
         recovery: event.from,
+        // The phrase was taken over before this was dispatched, so the account is already here.
+        minted: true,
         step: asksAboutNotifications(state.design) ? 'messageNotifications' : 'loading',
       }
 
@@ -297,6 +310,9 @@ function advance(state: OnboardingState, event: OnboardingEvent): OnboardingStat
       // Back to the phrase. It decoded a moment ago, so this is not a typo -- but this is the step
       // that owns the field, and it is the only one that can be tried again.
       return { ...state, step: 'loadAccount' }
+
+    case 'accountMinted':
+      return { ...state, minted: true }
 
     case 'commitFailed':
       // Back to the name picker whichever way `done` was reached: it is the only step left that

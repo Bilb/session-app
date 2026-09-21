@@ -139,6 +139,33 @@ describe('going back', () => {
     expect(backDiscardsAccount(run([RESTORE, PHRASE, FAST]))).toBe(true)
   })
 
+  it('throws away an account a failed commit left behind', () => {
+    // The create branch mints at the very end, so nothing before `done` has an account -- until a
+    // commit fails after minting one and sends the flow back to the name picker. Reading the
+    // branch instead of the account let back walk away from a live one, and the app then drew the
+    // conversation list over an account the next start would sweep.
+    const beforeAnyMint = run([CREATE])
+    expect(backDiscardsAccount(beforeAnyMint)).toBe(false)
+
+    const afterPartialCommit = run([
+      CREATE,
+      NAME,
+      FAST,
+      { type: 'accountMinted' },
+      { type: 'commitFailed' },
+    ])
+    expect(afterPartialCommit.step).toBe('pickDisplayName')
+    expect(afterPartialCommit.branch).toBe('create')
+    expect(backDiscardsAccount(afterPartialCommit)).toBe(true)
+  })
+
+  it('keeps the account it minted out of the next attempt', () => {
+    // Reaching the landing screen is starting over, and the discard has already run by then.
+    const restarted = run([RESTORE, PHRASE, { type: 'back' }, { type: 'back' }])
+    expect(restarted.step).toBe('landing')
+    expect(backDiscardsAccount(restarted)).toBe(false)
+  })
+
   it('forgets everything collected when it reaches the landing screen', () => {
     // The leak one level above the database: a display name or a phrase carried into the next
     // attempt would belong to the account just abandoned.
