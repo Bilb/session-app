@@ -190,6 +190,25 @@ export function committingStep(state: OnboardingState): OnboardingStep {
   return asksAboutNotifications(state.design) ? 'messageNotifications' : 'pickDisplayName'
 }
 
+/**
+ * Whether going back from here has to throw an account away first.
+ *
+ * **True wherever one has been minted.** Restore mints at the phrase, so every step past it
+ * qualifies; creating mints at the end, so backing out of it has nothing to undo.
+ *
+ * No step has to *ask* first: `discardAccount` can untake an account, so a warning dialog would
+ * only stand in for something the bridge can perform.
+ */
+export function backDiscardsAccount(state: OnboardingState): boolean {
+  if (state.branch !== 'restore') return false
+  return (
+    state.step === 'messageNotifications' ||
+    state.step === 'pickDisplayName' ||
+    // The wait is past the phrase, so an account exists behind it too.
+    state.step === 'loading'
+  )
+}
+
 export function onboardingReducer(state: OnboardingState, event: OnboardingEvent): OnboardingState {
   const next = advance(state, event)
   const move = moveOf(event)

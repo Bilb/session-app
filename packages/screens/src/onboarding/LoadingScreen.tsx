@@ -55,7 +55,8 @@ interface LoadingScreenProps {
    * Leaving the wait, which throws the restored account away.
    *
    * The legacy Android client offers this, and without it a mistyped phrase means fifteen seconds
-   * of sitting there. Safe because `goBack` discards whenever there is an account to discard.
+   * of sitting there. Safe because backing out of a restore already discards -- see
+   * `backDiscardsAccount`.
    */
   onBack: () => void
   /**

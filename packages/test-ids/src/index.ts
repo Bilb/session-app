@@ -80,7 +80,6 @@ export const ELEMENT = {
     screen: 'startup-failed',
     reason: 'startup-failed-reason',
     clear: 'startup-failed-clear',
-    clearFailed: 'startup-failed-clear-failed',
     quit: 'startup-failed-quit',
     confirmClear: 'startup-failed-confirm-clear',
     confirmClearButton: 'startup-failed-confirm-clear-button',

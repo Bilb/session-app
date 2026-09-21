@@ -35,7 +35,6 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
   const close = requirePorts().window.close
   const [confirming, setConfirming] = useState(false)
   const [clearing, setClearing] = useState(false)
-  const [failedToClear, setFailedToClear] = useState(false)
 
   const clear = () => {
     setClearing(true)
@@ -47,13 +46,6 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
         // clients do. Where the platform cannot end it, the screen stays put and the person
         // relaunches; see `WindowPort`.
         close?.()
-      })
-      .catch(() => {
-        // The clear is the only way forward this screen offers, so a failure that closed the
-        // dialog and said nothing was indistinguishable from having worked. The reason is the
-        // one already on screen: the database could not be opened, and it could not be removed
-        // either. Logged by the store.
-        setFailedToClear(true)
       })
       .finally(() => {
         setClearing(false)
@@ -84,25 +76,12 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
         </YStack>
 
         <YStack gap="$sm" width="100%" maxWidth={348}>
-          {/* The clear is the only way forward offered, so its failure has to be visible: the
-              dialog closes on both outcomes and the screen behind it is unchanged either way. */}
-          {!failedToClear ? null : (
-            <Text
-              tone="danger"
-              size="$caption"
-              textAlign="center"
-              testID={ELEMENT.startupFailed.clearFailed}
-            >
-              {tr('errorGeneric')}
-            </Text>
-          )}
           <TextButton
             label={['clearDevice']}
             variant="outline"
             destructive
             testID={ELEMENT.startupFailed.clear}
             onPress={() => {
-              setFailedToClear(false)
               setConfirming(true)
             }}
           />

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { ELEMENT } from '@session/test-ids'
 import { Button, Modal, Screen, Separator, Text, XStack, YStack } from '@session/ui'
 
-import { requirePorts, useNav } from '@session/app'
+import { requirePorts } from '@session/app'
 
 import { BackButton } from './BackButton'
 import { LocalizedText } from './LocalizedText'
@@ -19,7 +19,6 @@ import { LocalizedText } from './LocalizedText'
 export function SettingsScreen() {
   const account = useAccount()
   const actions = useSessionActions()
-  const nav = useNav()
   const [copied, setCopied] = useState(false)
   const [confirmingClear, setConfirmingClear] = useState(false)
   const [clearing, setClearing] = useState(false)
@@ -137,11 +136,6 @@ export function SettingsScreen() {
               testID={ELEMENT.settings.confirmClearDataButton}
               onPress={() => {
                 setClearing(true)
-                // **Off this route before the account goes, not after.** `clearDeviceData` empties
-                // the store, and this screen refuses to draw without an account -- so leaving it
-                // mounted threw on the very next render. Desktop happened to survive it behind the
-                // hydration gate; on mobile nothing stood between the two.
-                nav.back()
                 void actions.clearDeviceData().finally(() => {
                   setClearing(false)
                   setConfirmingClear(false)

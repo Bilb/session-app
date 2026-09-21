@@ -27,13 +27,6 @@ interface PickDisplayNameScreenProps {
   initialName?: string
   /** The bridge refused to make or name the account. Nothing about the name itself is wrong. */
   rejected?: boolean
-  /**
-   * Refuses back while going back is a discard that has already started.
-   *
-   * Leaving the control drawn says the step can be left, which it can -- just not twice. A second
-   * press fires a second `discardAccount` and a second `back`, which lands two steps away.
-   */
-  backDisabled?: boolean
   busy?: boolean
 }
 
@@ -53,7 +46,6 @@ export function PickDisplayNameScreen({
   onContinue,
   initialName = '',
   rejected: refused = false,
-  backDisabled = false,
   busy = false,
 }: PickDisplayNameScreenProps) {
   const [name, setName] = useState(initialName)
@@ -67,7 +59,6 @@ export function PickDisplayNameScreen({
       title={afterFailedRestore ? tr('displayNameNew') : tr('displayNamePick')}
       description={afterFailedRestore ? tr('displayNameErrorNew') : tr('displayNameDescription')}
       onBack={onBack}
-      backDisabled={backDisabled}
       testID={ELEMENT.onboarding.displayNameScreen}
       footer={
         <Button

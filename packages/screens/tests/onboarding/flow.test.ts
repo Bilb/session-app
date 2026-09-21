@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   asksAboutNotifications,
   committingStep,
+  backDiscardsAccount,
   isWideDesign,
   initialOnboarding,
   onboardingReducer,
@@ -134,6 +135,10 @@ describe('going back', () => {
     )
   })
 
+  it('throws the account away when leaving the wait', () => {
+    expect(backDiscardsAccount(run([RESTORE, PHRASE, FAST]))).toBe(true)
+  })
+
   it('forgets everything collected when it reaches the landing screen', () => {
     // The leak one level above the database: a display name or a phrase carried into the next
     // attempt would belong to the account just abandoned.
@@ -155,6 +160,20 @@ describe('going back', () => {
 
     const gone = run([RESTORE, PHRASE, FAST, { type: 'restoreArrived' }])
     expect(gone.recovery).toBeNull()
+  })
+
+  it('throws the account away wherever one has been minted', () => {
+    // Restoring mints as it leaves the phrase screen, so every step after it is backing out of a
+    // real account -- which is a discard rather than a navigation.
+    expect(backDiscardsAccount(run([RESTORE, PHRASE]))).toBe(true)
+    expect(backDiscardsAccount(run([RESTORE, PHRASE, FAST, { type: 'restoreGaveUp' }]))).toBe(true)
+
+    // Creating holds the name and mints at the very end, so backing out of it has nothing to undo.
+    expect(backDiscardsAccount(run([CREATE]))).toBe(false)
+    expect(backDiscardsAccount(run([CREATE, NAME]))).toBe(false)
+    // And the phrase screen itself: checked but not yet taken over.
+    expect(backDiscardsAccount(run([RESTORE]))).toBe(false)
+    expect(backDiscardsAccount(initialOnboarding('phone'))).toBe(false)
   })
 })
 
