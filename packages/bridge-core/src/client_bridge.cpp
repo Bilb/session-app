@@ -372,15 +372,21 @@ struct ClientBridge::Impl {
         attach_network();
     }
 
-    /// Marks the account provisional, and brings it online.
+    /// Marks the account about to be minted as one nobody has confirmed yet.
     ///
-    /// **Only the paths where an application is deciding.** `on_account` also runs for an account
-    /// that was simply there when the database opened, and for one libSession minted itself
-    /// because the Core was not opened deferred -- neither of those is a decision anybody is
-    /// partway through, and marking them would sweep away a working account on the next start.
-    void on_account_requested() {
+    /// **Called before the mint rather than after it.** `create_account` commits and then does
+    /// more work outside that transaction -- establishing the device group opens transactions of
+    /// its own -- so a process that dies in between leaves an account no marker describes, and
+    /// the next start keeps it. That is the single thing this marker exists to prevent, and the
+    /// window is not a hairline. Written first, the worst case is the harmless one: a marker with
+    /// no account, which the sweep passes over because it asks whether an account exists first.
+    ///
+    /// **Only the paths where an application is deciding.** An account that was simply there when
+    /// the database opened, or one libSession minted itself because the Core was not opened
+    /// deferred, is not a decision anybody is partway through -- marking those would sweep away a
+    /// working account on the next start.
+    void mark_provisional() {
         client->core.globals.set(provisional_account_key, std::string_view{"1"});
-        on_account();
     }
 
     /// Asks the whole swarm for the restored account's profile at once.
@@ -496,8 +502,9 @@ struct ClientBridge::Impl {
     }
 
     void handle(double id, const CreateAccountCommand&) {
+        mark_provisional();
         client->core.globals.create_account();
-        on_account_requested();
+        on_account();
         ok(id);
     }
 
@@ -509,8 +516,9 @@ struct ClientBridge::Impl {
         auto raw = hex_bytes(cmd.hex_seed, 32, "hexSeed");
         b32 seed;
         std::memcpy(seed.data(), raw.data(), seed.size());
+        mark_provisional();
         client->core.globals.restore_account(core::predefined_seed{std::span{seed}});
-        on_account_requested();
+        on_account();
         fetch_restored_profile();
         ok(id);
     }
@@ -520,10 +528,11 @@ struct ClientBridge::Impl {
         words.reserve(cmd.words.size());
         for (const auto& word : cmd.words)
             words.emplace_back(word);
+        mark_provisional();
         client->core.globals.restore_account(
                 cmd.language ? core::predefined_seed{words, *cmd.language}
                              : core::predefined_seed{words});
-        on_account_requested();
+        on_account();
         fetch_restored_profile();
         ok(id);
     }
