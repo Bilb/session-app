@@ -24,6 +24,8 @@ const TOGGLE_WIDTH = 48
 
 interface LoadAccountScreenProps {
   onBack: () => void
+  /** Refuses back while the phrase is being checked, which cannot be called off. */
+  backDisabled?: boolean
   onContinue: (from: RecoveryInput) => void
   /** Whether the bridge refused the last phrase. */
   rejected?: boolean
@@ -46,6 +48,7 @@ interface LoadAccountScreenProps {
  */
 export function LoadAccountScreen({
   onBack,
+  backDisabled = false,
   onContinue,
   rejected = false,
   busy = false,
@@ -61,6 +64,7 @@ export function LoadAccountScreen({
 
   return (
     <OnboardingChrome
+      backDisabled={backDisabled}
       testID={ELEMENT.onboarding.loadAccountScreen}
       onBack={onBack}
       barTitle={tr('loadAccount')}
@@ -95,6 +99,7 @@ export function LoadAccountScreen({
             titleMark={<RecoveryPasswordMark size={22} color="$textPrimary" />}
             description={tr('recoveryPasswordRestoreDescription')}
             onBack={onBack}
+            backDisabled={backDisabled}
             footer={
               <Button
                 // Outlined in the accent, like the landing screen's second button: the legacy

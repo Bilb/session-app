@@ -11,6 +11,14 @@ export interface ChromeProps {
   children: ReactNode
   testID: string
   onBack?: () => void
+  /**
+   * Refuses back without taking the control away.
+   *
+   * For a step with work in flight that cannot be called off. Omitting `onBack` would hide the
+   * chevron instead, which reads as a step you never could leave rather than one you cannot
+   * leave yet.
+   */
+  backDisabled?: boolean
   barTitle?: string
   banner?: ReactNode
   padContent?: boolean

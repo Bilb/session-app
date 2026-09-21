@@ -28,6 +28,8 @@ interface OnboardingStepProps {
   /** Drawn beside the title. The recovery screen has one; nothing else does. */
   titleMark?: ReactNode
   onBack?: () => void
+  /** Refuses back without taking the chevron away. See `ChromeProps`. */
+  backDisabled?: boolean
   children: ReactNode
   /** Sits between the field and the control, in space that is held whether or not it is filled. */
   error?: ReactNode
@@ -52,6 +54,7 @@ interface OnboardingStepProps {
  * button is a separate thing further down.
  */
 export function OnboardingStep({
+  backDisabled = false,
   title,
   description,
   titleMark,
@@ -68,6 +71,7 @@ export function OnboardingStep({
   return (
     <OnboardingChrome
       testID={testID}
+      backDisabled={backDisabled}
       {...(wide ? {} : { onBack })}
       {...(barTitle === undefined ? {} : { barTitle })}
       {...(banner === undefined ? {} : { banner })}
@@ -77,6 +81,7 @@ export function OnboardingStep({
         {...(description === undefined ? {} : { description })}
         {...(titleMark === undefined ? {} : { titleMark })}
         {...(onBack === undefined ? {} : { onBack })}
+        backDisabled={backDisabled}
         {...(error === undefined ? {} : { error })}
         {...(footer === undefined ? {} : { footer })}
       >
@@ -98,6 +103,7 @@ export function OnboardingStepBody({
   description,
   titleMark,
   onBack,
+  backDisabled = false,
   children,
   error,
   footer,
@@ -117,7 +123,9 @@ export function OnboardingStepBody({
        */}
       {wide ? null : <YStack flex={1} />}
       <XStack {...(wide ? {} : { paddingBottom: UPWARD_BIAS })}>
-        {!wide || onBack === undefined ? null : <WideBackButton onPress={onBack} />}
+        {!wide || onBack === undefined ? null : (
+          <WideBackButton onPress={onBack} disabled={backDisabled} />
+        )}
 
         <YStack flex={1}>
           <XStack alignItems="center" gap="$sm" minHeight={34}>

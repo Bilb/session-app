@@ -59,6 +59,13 @@ interface LoadingScreenProps {
    * `backDiscardsAccount`.
    */
   onBack: () => void
+  /**
+   * Refuses back while the account is being made.
+   *
+   * This screen stays up for that -- see `committingStep` -- and there is nothing behind `done`
+   * to go back to, so the control would be live and do nothing.
+   */
+  backDisabled?: boolean
 }
 
 /**
@@ -74,7 +81,7 @@ interface LoadingScreenProps {
  * nothing reporting real progress, kept knowingly: what it shows is how much longer this can go on
  * before the app gives up.
  */
-export function LoadingScreen({ onGaveUp, onBack }: LoadingScreenProps) {
+export function LoadingScreen({ onGaveUp, onBack, backDisabled = false }: LoadingScreenProps) {
   const wide = useMedia().gtSm
   const window = useWindowSize()
   const ringSize = Math.max(160, window.width - RING_INSET * 2)
@@ -117,7 +124,7 @@ export function LoadingScreen({ onGaveUp, onBack }: LoadingScreenProps) {
     return (
       <Screen testID={ELEMENT.onboarding.loadingScreen}>
         <XStack alignItems="center" minHeight="$2xl" paddingHorizontal="$md" paddingTop="$xs">
-          <OnboardingBackButton onPress={onBack} />
+          <OnboardingBackButton onPress={onBack} disabled={backDisabled} />
         </XStack>
         <YStack flex={1} alignItems="center" justifyContent="center" gap="$md" padding="$xl">
           {/* The number sits **inside** the ring on both clients -- iOS overlays it, Android
@@ -156,7 +163,7 @@ export function LoadingScreen({ onGaveUp, onBack }: LoadingScreenProps) {
           because it is the one step that does not go through `OnboardingStep` and so nothing was
           in a position to draw it. The hanger is the same one every other wide step uses. */}
       <XStack>
-        <WideBackButton onPress={onBack} />
+        <WideBackButton onPress={onBack} disabled={backDisabled} />
         <YStack flex={1}>
           <Text size="$headingLarge" weight="bold" userSelect="none">
             {tr('waitOneMoment')}

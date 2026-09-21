@@ -19,6 +19,7 @@ export function PhoneChrome({
   children,
   testID,
   onBack,
+  backDisabled = false,
   barTitle,
   banner,
   padContent = true,
@@ -40,7 +41,9 @@ export function PhoneChrome({
         paddingHorizontal="$md"
         paddingTop="$xs"
       >
-        {onBack === undefined ? null : <OnboardingBackButton onPress={onBack} />}
+        {onBack === undefined ? null : (
+          <OnboardingBackButton onPress={onBack} disabled={backDisabled} />
+        )}
         <YStack flex={1} />
         {/* **The Session mark, centred in the bar.** The legacy client puts it there as the
               navigation bar's `titleView` -- the brand mark alone at 32pt, no wordmark -- which is

@@ -155,6 +155,20 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
    */
   const committing = useRef(false)
 
+  /**
+   * Which attempt at the phrase screen the flow is on.
+   *
+   * **A restore outlives the screen that started it.** `check` and `restoreAccount` are two round
+   * trips and back is a single press, so the flow can be at the landing screen -- reset, and back
+   * on the create branch -- when `phraseEntered` arrives from the attempt that was abandoned.
+   * That pulls somebody off the landing screen into a create branch on a device where a restore
+   * has already succeeded, and the account it restored is never confirmed.
+   *
+   * The back control refuses while the work is in flight, which is what stops this being reached
+   * at all. This is the half that does not depend on a control being disabled.
+   */
+  const attempt = useRef(0)
+
   useEffect(() => {
     if (state.step !== 'done') {
       committing.current = false
@@ -239,11 +253,16 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
           <LoadAccountScreen
             busy={working}
             rejected={rejected}
+            backDisabled={working}
             onBack={() => {
               // The refusal described the attempt that was just abandoned. Left standing, coming
               // back to this screen shows an error over an empty field, and switching to the QR
               // tab shows one over a camera that has scanned nothing.
               setRejected(false)
+              // Whoever abandons the attempt clears its flag: the resolution will not, because
+              // by then it belongs to an attempt nobody is waiting for.
+              attempt.current += 1
+              setBusy(false)
               dispatch({ type: 'back' })
             }}
             onContinue={(from) => {
@@ -257,17 +276,21 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
               // spends that overlap, which is the one both mobile clients take.
               //
               // Going back from here on is a discard rather than a navigation. See `goBack`.
+              const mine = ++attempt.current
               setBusy(true)
               setRejected(false)
               void check(from, actions)
                 .then(() => actions.restoreAccount(from))
                 .then(() => {
+                  if (attempt.current !== mine) return
                   dispatch({ type: 'phraseEntered', from })
                 })
                 .catch(() => {
+                  if (attempt.current !== mine) return
                   setRejected(true)
                 })
                 .finally(() => {
+                  if (attempt.current !== mine) return
                   setBusy(false)
                 })
             }}
@@ -289,6 +312,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
         return (
           <LoadingScreen
             onBack={goBack}
+            backDisabled={committingNow}
             onGaveUp={
               // Null once the account is being made: the wait is over, and a deadline still
               // running would announce a timeout on top of a restore that already arrived.

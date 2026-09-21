@@ -8,7 +8,13 @@ import { logical, backChevron, Button, Icon, YStack } from '@session/ui'
  * `md` so the pressed highlight covers the touch target rather than just the glyph. Told what back
  * means because onboarding's steps are not routes.
  */
-export function OnboardingBackButton({ onPress }: { onPress: () => void }) {
+export function OnboardingBackButton({
+  onPress,
+  disabled = false,
+}: {
+  onPress: () => void
+  disabled?: boolean
+}) {
   return (
     <Button
       variant="ghost"
@@ -17,6 +23,7 @@ export function OnboardingBackButton({ onPress }: { onPress: () => void }) {
       accessibilityLabel={tr('back')}
       testID={ELEMENT.onboarding.back}
       onPress={onPress}
+      disabled={disabled}
       icon={<Icon name={backChevron()} size="lg" color="$textPrimary" />}
     />
   )
@@ -31,10 +38,16 @@ const BACK_OFFSET = -36
  * The fixed height pins it to the heading's first line, so it stays level however many lines the
  * title wraps to.
  */
-export function WideBackButton({ onPress }: { onPress: () => void }) {
+export function WideBackButton({
+  onPress,
+  disabled = false,
+}: {
+  onPress: () => void
+  disabled?: boolean
+}) {
   return (
     <YStack {...logical({ marginStart: BACK_OFFSET })} height={34} justifyContent="center">
-      <OnboardingBackButton onPress={onPress} />
+      <OnboardingBackButton onPress={onPress} disabled={disabled} />
     </YStack>
   )
 }
