@@ -15,8 +15,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # Only the localization submodule is built here. libsession-util drags in protobuf and
-      # session-deps, and nothing in these checks compiles C++.
+      # Only the localization submodule is checked out here. libsession-util is pinned at a commit
+      # the remote does not have, so cloning it fails outright; and it drags in protobuf and
+      # session-deps, which nothing in these checks compiles. `urls.generated.ts` is therefore
+      # verified against the library only where the submodule is present -- see generateUrls.ts.
       - run: git submodule update --init --recursive packages/localization/src/localization-src
 
       - uses: pnpm/action-setup@v4

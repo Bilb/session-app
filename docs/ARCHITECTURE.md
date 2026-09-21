@@ -190,6 +190,34 @@ are.
 **Plain http is allowed.** All three clients open it, and refusing it here would be stricter
 than anything shipped.
 
+### Where the addresses come from
+
+The addresses themselves are libsession's. `session_protocol_strings` in the submodule holds
+twenty-odd of them, and `packages/app/scripts/generateUrls.ts` reads that table into the `URLS`
+in `urls.generated.ts` at codegen time. `codegen:check` fails while the two disagree, and a
+contract test fails if an address libsession already carries is written out again beside it.
+
+**There is no curated second list.** A hand-kept subset of the table would be a rename layer over
+it, and one that also decides which addresses a screen is allowed to reach -- so an address the
+library has and the list has not is unavailable for no reason anybody stated. `urls.ts` holds the
+single address the table has no entry for, and goes when it gains one.
+
+**Build-time rather than over the bridge.** The table is a static const - no client, no network,
+no account - and the consumers read `URLS` at module scope. Carrying a constant over the frame
+stream would make it state, and the stream exists to carry libsession's ordering of state
+changes, which a constant has none of.
+
+**A synchronous native read is not available here**, which is what the iOS client does. The addon
+lives in the desktop main process and the renderer reaches it only over the preload bridge, so the
+process that draws the screen cannot read the library at all. Generating covers both platforms
+with one mechanism; a native read would cover one.
+
+**CI cannot verify the table today**, and the generator says so rather than passing quietly: the
+submodule is pinned at a commit the remote does not have, so no job there can clone it. The check
+enforces wherever the submodule is present -- a developer tree, and CI itself once that pointer is
+one the remote can serve. What holds meanwhile is that the generated file is committed and so
+reviewable, and that the contract test reads it rather than the library.
+
 ### Addresses that are not what they read as
 
 A scheme check says a link may be opened. `isPlausibleAddress` says it is what it looks like,
@@ -293,6 +321,13 @@ Every shared file is checked two or three ways per run, with no synthetic profil
 ## Decision log
 
 Append one paragraph per decision. Undocumented decisions are what rot.
+
+- **2026-09-22 - The outward addresses are generated from libsession, not written here.** One
+  table upstream, read at codegen time and committed, so a checkout without the submodule still
+  typechecks and `codegen:check` is what stops it drifting. Not delivered over the bridge: a
+  static const is not state, and the stream's value is its ordering. Not read natively either -
+  the desktop renderer has no addon, so that shape covers mobile only. See _Where the addresses
+  come from_.
 
 - **2026-09-21 - A packaged desktop build ignores every developer setting, not just the fake.**
   Switching a shipped build to a devnet is a smaller thing than running it on the fake, and

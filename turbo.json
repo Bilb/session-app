@@ -19,6 +19,17 @@
       "dependsOn": ["codegen"],
       "cache": false
     },
+    "@session/app#codegen": {
+      // The submodule's two source files are inputs because they are what the generator reads: a
+      // bump that does not move the cache key has turbo restore the stale table over the
+      // regenerated one, reverting a committed regeneration with nothing said.
+      "inputs": [
+        "scripts/**",
+        "../../libsession-util/include/session/session_protocol.h",
+        "../../libsession-util/src/session_protocol.cpp"
+      ],
+      "outputs": ["src/urls.generated.ts"]
+    },
     "@session/bridge-codegen#codegen": {
       "inputs": ["src/**", "../../packages/bridge-types/src/**"],
       "cache": false

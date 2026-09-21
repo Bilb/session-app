@@ -1,19 +1,12 @@
 /**
- * Every address the app sends somebody to, in one place.
+ * The one address libsession does not carry.
  *
- * **Hard-coded, and deliberately not translatable.** Most of these are reachable before anybody
- * has decided to trust the app -- the terms and the privacy policy are on the landing screen
- * itself -- and a URL a translation could change is a phishing surface. The Crowdin catalogue
- * supplies the words around a link and never the link.
+ * Its table has every path under the domain and no entry for the domain itself, so this is the
+ * only outward address the app still holds a copy of.
  *
- * Here rather than beside the screen that uses one, because they are reused: the same terms open
- * from onboarding and from settings, and a domain that moves should move once.
+ * TODO: delete this file and read the address off `URLS.website`, once the `libsession-util`
+ * submodule is bumped past `libsession-util#171` -- which adds `url_website` -- and the table is
+ * regenerated. Nothing has to remember: two cases in `urls.contract.test.ts` fail on that bump,
+ * and both name this constant.
  */
-export const URLS = {
-  website: 'https://getsession.org',
-  faq: 'https://getsession.org/faq',
-  termsOfService: 'https://getsession.org/terms-of-service',
-  privacyPolicy: 'https://getsession.org/privacy-policy',
-} as const
-
-export type UrlName = keyof typeof URLS
+export const WEBSITE_URL = 'https://getsession.org'
