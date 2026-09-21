@@ -1,62 +1,95 @@
 import { requirePorts } from './ports'
 
-/**
- * The schemes a link may use to leave the app.
- *
- * Plain http as well as https, which is what every current client opens. Case-insensitive: a
- * scheme is not case-sensitive, and `HTTP://` doing nothing at all is a worse failure than
- * opening it.
- */
+/** Plain http as well as https, and case-insensitively: a scheme is not case-sensitive. */
 const OPENABLE = /^https?:\/\//i
 
 /**
- * Anything that begins with something a URL parser would read as a scheme.
+ * Something a URL parser would read as a scheme.
  *
- * RFC 3986 allows a dot in a scheme, which makes `example.com:8080` ambiguous -- syntactically a
- * scheme of `example.com`, and in practice a host and a port. A dot decides it: real schemes do
- * not have one, and a bare host usually does.
+ * RFC 3986 allows a dot in one, so `example.com:8080` is syntactically a scheme of
+ * `example.com`. A dot is what tells a scheme from a host and a port.
  */
 const HAS_SCHEME = /^[A-Za-z][A-Za-z0-9+-]*:/
 
 /** A bare host, at minimum: a dot inside it, no spaces, and something before the first slash. */
 const LOOKS_LIKE_HOST = /^[^\s/?#]+\.[^\s/?#]+/
 
+/** The legacy desktop client's caps. Neither is a meaningful address at that length. */
+const MAX_URL_LENGTH = 4096
+const MAX_HOST_LENGTH = 2048
+
+/** Everything RFC 3986 allows after the authority: unreserved, pct-encoded, sub-delims, `:@/?#`. */
+const RFC3986_TAIL = /^[A-Za-z0-9\-._~%!$&'()*+,;=:@/?#[\]]*$/
+
+/**
+ * Whether any one label mixes scripts.
+ *
+ * **Per label, not per host.** The homograph substitutes a character inside a word -- Cyrillic
+ * `а` for Latin `a` in `аpple` -- so the mixture that matters is within a label. A host may
+ * legitimately span scripts across the dots: `session.\u0440\u0444` is a Latin name on a Cyrillic
+ * TLD, and refusing it would refuse a real address to catch nothing.
+ *
+ * Judged on the host as written -- a punycode label is pure ASCII and passes unexamined. See
+ * *Links leaving the app* in `docs/ARCHITECTURE.md`.
+ */
+function mixesScripts(host: string): boolean {
+  return host.split('.').some((label) => {
+    // By code point rather than by a character range, which would need a control character in
+    // the pattern to say "not ASCII".
+    const nonAscii = [...label].some((character) => (character.codePointAt(0) ?? 0) > 0x7f)
+    return nonAscii && /[A-Za-z]/.test(label)
+  })
+}
+
+/**
+ * Whether the address is what it reads as.
+ *
+ * Each rule refuses a way of writing an address that renders as one destination and resolves to
+ * another; `docs/ARCHITECTURE.md` says which and why. Written against the string rather than a
+ * parsed `URL`, because react-native ships an incomplete one.
+ */
+export function isPlausibleAddress(url: string): boolean {
+  if (url.length > MAX_URL_LENGTH) return false
+
+  const afterScheme = url.replace(OPENABLE, '')
+  const authority = afterScheme.split(/[/?#]/, 1)[0] ?? ''
+  const tail = afterScheme.slice(authority.length)
+
+  if (authority.includes('@')) return false
+
+  const host = authority.replace(/:\d*$/, '')
+  if (host.length === 0 || host.length > MAX_HOST_LENGTH) return false
+  if (host.includes('%')) return false
+  if (mixesScripts(host)) return false
+
+  const labels = host.split('.')
+  if (labels.length < 2 || labels.some((label) => label.length === 0)) return false
+
+  return RFC3986_TAIL.test(tail)
+}
+
 /**
  * The URL to open for this text, or null if there is none.
  *
- * **A missing scheme becomes https rather than a refusal**, which is what both mobile clients
- * do -- and they pick https rather than the http a parser would default to, because that is the
- * only scheme they will load a preview for. Somebody who typed `getsession.org` meant a website,
- * and refusing it is a link that does nothing.
- *
- * Only where the text already looks like a host. The upgrade is not a way to make any string
- * openable: a caller passes something it has already decided is a URL, and this decides what to
- * do with the scheme it did or did not carry.
- *
- * A scheme that is not http(s) is refused rather than upgraded. `file:`, `javascript:` and
- * `data:` are not addresses that were missing their protocol; they say what they are.
+ * A missing scheme becomes https, and only where the text already looks like a host: this is
+ * not a way to make any string openable. A scheme that is present and is not http(s) is refused
+ * rather than upgraded.
  */
 export function urlToOpen(text: string): string | null {
   const trimmed = text.trim()
   if (trimmed === '') return null
-  if (HAS_SCHEME.test(trimmed)) return OPENABLE.test(trimmed) ? trimmed : null
-  return LOOKS_LIKE_HOST.test(trimmed) ? `https://${trimmed}` : null
+  const withScheme = HAS_SCHEME.test(trimmed)
+    ? OPENABLE.test(trimmed)
+      ? trimmed
+      : null
+    : LOOKS_LIKE_HOST.test(trimmed)
+      ? `https://${trimmed}`
+      : null
+  if (withScheme === null) return null
+  return isPlausibleAddress(withScheme) ? withScheme : null
 }
 
-/**
- * Whether the app may hand this to the OS.
- *
- * **One check, at the boundary, rather than one per platform.** Handing a URL out is the moment
- * an app stops being in control of what happens next: `openExternal` and `Linking.openURL` both
- * give any scheme to the OS, and a `file:` or a custom scheme reaching either is how a link
- * becomes a launched program. The three platforms have three ways of opening a URL and there is
- * no reason for them to hold three opinions about which ones may be opened.
- *
- * A scheme check is the floor rather than the whole job. It says nothing about a host that reads
- * as one domain and resolves to another -- userinfo before the authority, or a mixed-script
- * domain -- and those want their own check wherever a URL arrives from a message rather than
- * from this app's own constants.
- */
+/** Whether the app would open this. */
 export function isOpenableUrl(text: string): boolean {
   return urlToOpen(text) !== null
 }
@@ -64,17 +97,12 @@ export function isOpenableUrl(text: string): boolean {
 /**
  * Hands a URL to the OS, or refuses it.
  *
- * **The one way out, so that the check cannot be gone round.** A port implementation is a thin
- * wrapper over the platform's own call and each would otherwise have to remember this; a screen
- * calling `linking.openUrl` directly would skip whichever one it did not go through. Desktop
- * checks again in its main process, which is a different boundary: that one does not trust the
- * renderer, this one is the app deciding what it is willing to open.
+ * **The one way out, so the check cannot be gone round** -- see *Links leaving the app* in
+ * `docs/ARCHITECTURE.md`. What is opened is what `urlToOpen` returned, so the scheme the OS is
+ * handed is the one that was checked.
  *
- * What is opened is what `urlToOpen` returns, so the scheme the OS is handed is the one that was
- * checked -- not the text that came in.
- *
- * Returns whether it went. A refusal is a bug in the caller rather than something to tell the
- * person about, so it is reported rather than thrown and the screen carries on closing.
+ * Returns whether it went, rather than throwing: a refusal is a bug in the caller, and the
+ * screen carries on closing either way.
  */
 export async function openExternalUrl(text: string): Promise<boolean> {
   const url = urlToOpen(text)
