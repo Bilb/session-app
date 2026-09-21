@@ -300,16 +300,16 @@ struct ClientBridge::Impl {
             client->set_cache_dir(options.cache_dir);
 
         // Set up after the Client exists, so nothing arrives before there is a sink to take it.
-        if (!options.log_level.empty()) {
-            auto level = options.log_level == "trace"      ? LogLevel::trace
-                         : options.log_level == "debug"    ? LogLevel::debug
-                         : options.log_level == "info"     ? LogLevel::info
-                         : options.log_level == "error"    ? LogLevel::error
-                         : options.log_level == "critical" ? LogLevel::critical
-                                                           : LogLevel::warn;
-            logger_reset_level(level);
+        if (!options.log_level.empty() || !options.log_categories.empty()) {
+            if (!options.log_level.empty())
+                logger_reset_level(log_level_of(options.log_level));
 
-                auto* impl = this;
+            // After the default, because reset_level sets every existing category: the other order
+            // would hand each override straight back to the level it was overriding.
+            for (const auto& each : options.log_categories)
+                logger_set_level(each.category, log_level_of(each.level));
+
+            auto* impl = this;
             add_logger([impl](std::string_view message, std::string_view category, LogLevel lvl) {
                 // Called from whichever thread logged, including Core's loop and the network's own
                 // threads, and after close() has dropped the sink - emit() checks for that, which
@@ -318,7 +318,6 @@ struct ClientBridge::Impl {
                         std::string{message}, std::string{category}, std::string{lvl.to_string()}});
             });
         }
-
     }
 
     /// What this client tells the account's other devices it is.

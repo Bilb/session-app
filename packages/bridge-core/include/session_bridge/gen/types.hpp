@@ -477,24 +477,29 @@ struct CreateAccountCommand {
 
 /// **The words are strings, and that is the known weak point of the whole seed story.**
 ///
-/// A JavaScript string cannot be wiped: it is immutable, the engine may copy or intern it, and
-/// nothing can zero it on demand. By the time a phrase reaches here it exists several times over
-/// -- the text field's own value, the state holding it, the array split out of it, the copy
-/// structured-cloned across the process boundary -- and none of those can be cleared, only
-/// abandoned to a collector that runs when it likes.
+/// A JavaScript string cannot be wiped, and by the time a phrase reaches here it exists several
+/// times over -- the field's value, the state holding it, the array split out of it, the copy
+/// cloned across the process boundary -- none of which can be cleared, only abandoned.
 ///
-/// **It stays this way deliberately, for now, because the alternatives are worse.** Collecting
-/// the phrase without a string means giving up paste, and a phrase arrives pasted out of a
-/// password manager at least as often as it is typed; every current client has the same flaw for
-/// the same reason.
+/// **Two separate improvements are available here, and only one of them costs anything.**
 ///
-/// **What should replace it** is bytes rather than words, *transferred* rather than copied:
-/// `postMessage(request, [buffer])` detaches the sender's `ArrayBuffer`, so the bytes end up in
-/// exactly one process instead of two, and an `ArrayBuffer` -- unlike a string -- can be zeroed
-/// with `fill(0)` once the shim has taken it. That needs a binary type in this protocol, which
-/// the generator does not have yet (`tooling/bridge-codegen/src/model.ts` knows string, number
-/// and boolean). The same binary type is what returning a rendered phrase as an image would
-/// need, so it is worth adding once rather than twice.
+/// The cheap one is this field: bytes *transferred* rather than a string array copied.
+/// `postMessage(request, [buffer])` detaches the sender's `ArrayBuffer`, so the bytes exist in
+/// one process instead of two and the shim can zero them with `fill(0)` when it is done. That
+/// removes the copy in the *other* process, which is the one the renderer could never reach to
+/// clear afterwards. It costs nothing anybody would notice: the phrase is still typed and still
+/// pasted, and is encoded on its way out. The generator has had the type since the typed-frame
+/// work -- `bytes`, and a secret variant whose C++ zeroes in its destructor -- so this is a
+/// change to this field, to the shim that reads it, and to whatever encodes the words before
+/// sending.
+///
+/// The expensive one is the other three copies -- the field's value, the state holding it, the
+/// array split out of it -- and those are unavoidable while a phrase is collected as text.
+/// Removing them means collecting it without a text field, which **gives up paste**, and a phrase
+/// arrives pasted from a password manager at least as often as it is typed. That is the trade
+/// being declined, and every current client declines it the same way.
+///
+/// So doing the first does not finish the story, and is worth doing anyway.
 struct RestoreAccountFromWordsCommand {
     static constexpr std::string_view type_tag = "restoreAccountFromWords";
 
@@ -507,15 +512,13 @@ struct RestoreAccountFromWordsCommand {
 
 /// Ask whether a recovery phrase would restore, without restoring it.
 ///
-/// Onboarding needs to tell somebody their phrase is wrong while they can still fix it, and
-/// `restoreAccountFromWords` answers that question by doing it: the account exists from the
-/// moment the phrase is accepted, so every step after that has an identity behind it that going
-/// back cannot take away. This decodes the phrase and throws the result away, which leaves the
-/// decision of when to mint where it belongs -- at the end of the flow, as it already is for a
-/// new account.
+/// Onboarding has to say a phrase is wrong while it can still be fixed, and
+/// `restoreAccountFromWords` answers that by doing it -- leaving an identity behind that going
+/// back cannot take away. This decodes and throws the result away, so when to mint stays at the
+/// end of the flow, as it already is for a new account.
 ///
-/// Succeeds or fails; there is nothing to return. The seed deliberately does not come back: the
-/// words are already in the app's memory and a second copy of the same secret buys nothing.
+/// Succeeds or fails; the seed deliberately does not come back, since the words are already in
+/// the app's memory and a second copy of the same secret buys nothing.
 struct CheckRecoveryPhraseCommand {
     static constexpr std::string_view type_tag = "checkRecoveryPhrase";
 
@@ -537,37 +540,32 @@ struct RestoreAccountFromSeedCommand {
 
 /// Throws away the account and everything stored under it, and starts again from nothing.
 ///
-/// **Onboarding's undo.** Somebody who starts restoring one account and changes their mind must
-/// not carry any of it into the next: the identity, the configs fetched under it and the message
-/// history all have to go, not merely stop being displayed. Doing that properly means the
-/// database, so this closes libSession, deletes it and opens a fresh one on the same path.
+/// **Onboarding's undo.** The identity, the configs fetched under it and the message history all
+/// have to go rather than stop being displayed, which means the database: this closes libSession,
+/// deletes it and opens a fresh one on the same path.
 ///
 /// Deliberately **not** a way to "log out" -- there is nothing to log back in to. It is the same
-/// act as never having onboarded, and the app that calls it is expected to be showing the first
-/// screen afterwards.
+/// act as never having onboarded.
 ///
-/// The network cache is left alone. It holds the public list of service nodes and nothing about
-/// any account, and it is what makes the next attempt fast rather than slow.
+/// The network cache is left alone: it holds the public service-node list and nothing about any
+/// account, and it is what makes the next attempt fast.
 struct DiscardAccountCommand {
     static constexpr std::string_view type_tag = "discardAccount";
 };
 
 /// Says the account is here to stay, and stops it being swept away on the next start.
 ///
-/// **An account is provisional until this is called.** Minting one is not the same as deciding to
-/// keep it: between `createAccount` and the end of onboarding there is a window where the app has
-/// an identity nobody has finished setting up, and a crash in that window leaves it behind. The
-/// next start finds it, sees that nothing ever confirmed it, and throws it away -- so the person
-/// begins again rather than inheriting a half-made account.
+/// **An account is provisional until this is called.** Between `createAccount` and the end of
+/// onboarding there is a window where an identity exists that nobody finished setting up, and a
+/// crash in it leaves that behind. The next start sees nothing ever confirmed it and throws it
+/// away, so the person begins again rather than inheriting a half-made account.
 ///
-/// **Which matters most for a restore**: an account recovered but never confirmed has the right
-/// identity and no display name yet, and putting somebody in front of "pick a display name" would
-/// let them overwrite the name their account already has on the network. Starting over and
-/// restoring again is the recoverable version of that mistake.
+/// **Which matters most for a restore**: one recovered but never confirmed has the right identity
+/// and no display name, and asking for a name would overwrite the one the account already has on
+/// the network.
 ///
-/// Deliberately not called "finish onboarding": the bridge has no notion of onboarding, and a
-/// client that never onboards -- a bot, a test -- calls this once after `createAccount` and is
-/// done.
+/// Not called "finish onboarding": the bridge has no notion of it, and a client that never
+/// onboards calls this once after `createAccount` and is done.
 struct KeepAccountCommand {
     static constexpr std::string_view type_tag = "keepAccount";
 };
@@ -941,6 +939,21 @@ struct EchoTestFrameCommand {
 /// Everything the app asks libsession to do. One Request goes in, exactly one Response comes
 /// back carrying the same id. Commands are named for what the app wants, not for the C++ method
 /// that serves them, so that a refactor upstream is a shim change rather than a protocol change.
+///
+/// **The protocol is one ordered stream**: what goes in, what comes out.
+///
+/// Responses ride the same stream as change events rather than resolving on a separate channel,
+/// because their relative order is load-bearing. libsession's contract is that a display can be
+/// built by asking once and then applying events; that only holds if a list_replaced produced
+/// before the answer to getConversations is also applied before it. Two channels - a promise and
+/// a callback - give no such guarantee across an IPC or JSI boundary, and the failure would be a
+/// stale row that reappears on a race nobody can reproduce. One FIFO stream carries libsession's
+/// own ordering through to TypeScript; the facade still hands callers promises, resolved from
+/// `Response` frames.
+///
+/// Every union here is discriminated on a literal `type`, and every field is a string, number,
+/// boolean, string-union enum, another interface, or an array of one: that is the subset the C++
+/// generator understands, and it refuses anything else.
 using Command = std::variant<
         GetAccountInfoCommand,
         CreateAccountCommand,

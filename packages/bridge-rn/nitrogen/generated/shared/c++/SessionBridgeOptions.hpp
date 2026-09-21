@@ -28,16 +28,29 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
+// Forward declaration of `RouterKind` to properly resolve imports.
+namespace margelo::nitro::session::bridge::rn { enum class RouterKind; }
+// Forward declaration of `LogCategoryLevel` to properly resolve imports.
+namespace margelo::nitro::session::bridge::rn { struct LogCategoryLevel; }
 // Forward declaration of `NetId` to properly resolve imports.
 namespace margelo::nitro::session::bridge::rn { enum class NetId; }
+// Forward declaration of `SeedNode` to properly resolve imports.
+namespace margelo::nitro::session::bridge::rn { struct SeedNode; }
+// Forward declaration of `FileServerConfig` to properly resolve imports.
+namespace margelo::nitro::session::bridge::rn { struct FileServerConfig; }
 // Forward declaration of `DeviceType` to properly resolve imports.
 namespace margelo::nitro::session::bridge::rn { enum class DeviceType; }
 // Forward declaration of `LibsessionLogLevel` to properly resolve imports.
 namespace margelo::nitro::session::bridge::rn { enum class LibsessionLogLevel; }
 
 #include <string>
+#include "RouterKind.hpp"
 #include <optional>
+#include "LogCategoryLevel.hpp"
+#include <vector>
 #include "NetId.hpp"
+#include "SeedNode.hpp"
+#include "FileServerConfig.hpp"
 #include "DeviceType.hpp"
 #include "LibsessionLogLevel.hpp"
 
@@ -50,16 +63,20 @@ namespace margelo::nitro::session::bridge::rn {
   public:
     std::string dbPath     SWIFT_PRIVATE;
     std::string cacheDir     SWIFT_PRIVATE;
+    std::optional<RouterKind> router     SWIFT_PRIVATE;
+    std::optional<std::vector<LogCategoryLevel>> logCategories     SWIFT_PRIVATE;
     std::optional<std::string> rawKeyHex     SWIFT_PRIVATE;
     std::optional<std::string> password     SWIFT_PRIVATE;
     bool deferAccount     SWIFT_PRIVATE;
     std::optional<NetId> netid     SWIFT_PRIVATE;
+    std::optional<std::vector<SeedNode>> seedNodes     SWIFT_PRIVATE;
+    std::optional<FileServerConfig> fileServer     SWIFT_PRIVATE;
     std::optional<DeviceType> deviceType     SWIFT_PRIVATE;
     std::optional<LibsessionLogLevel> logLevel     SWIFT_PRIVATE;
 
   public:
     SessionBridgeOptions() = default;
-    explicit SessionBridgeOptions(std::string dbPath, std::string cacheDir, std::optional<std::string> rawKeyHex, std::optional<std::string> password, bool deferAccount, std::optional<NetId> netid, std::optional<DeviceType> deviceType, std::optional<LibsessionLogLevel> logLevel): dbPath(dbPath), cacheDir(cacheDir), rawKeyHex(rawKeyHex), password(password), deferAccount(deferAccount), netid(netid), deviceType(deviceType), logLevel(logLevel) {}
+    explicit SessionBridgeOptions(std::string dbPath, std::string cacheDir, std::optional<RouterKind> router, std::optional<std::vector<LogCategoryLevel>> logCategories, std::optional<std::string> rawKeyHex, std::optional<std::string> password, bool deferAccount, std::optional<NetId> netid, std::optional<std::vector<SeedNode>> seedNodes, std::optional<FileServerConfig> fileServer, std::optional<DeviceType> deviceType, std::optional<LibsessionLogLevel> logLevel): dbPath(dbPath), cacheDir(cacheDir), router(router), logCategories(logCategories), rawKeyHex(rawKeyHex), password(password), deferAccount(deferAccount), netid(netid), seedNodes(seedNodes), fileServer(fileServer), deviceType(deviceType), logLevel(logLevel) {}
 
   public:
     friend bool operator==(const SessionBridgeOptions& lhs, const SessionBridgeOptions& rhs) = default;
@@ -77,10 +94,14 @@ namespace margelo::nitro {
       return margelo::nitro::session::bridge::rn::SessionBridgeOptions(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "dbPath"))),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "cacheDir"))),
+        JSIConverter<std::optional<margelo::nitro::session::bridge::rn::RouterKind>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "router"))),
+        JSIConverter<std::optional<std::vector<margelo::nitro::session::bridge::rn::LogCategoryLevel>>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "logCategories"))),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "rawKeyHex"))),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "password"))),
         JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "deferAccount"))),
         JSIConverter<std::optional<margelo::nitro::session::bridge::rn::NetId>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "netid"))),
+        JSIConverter<std::optional<std::vector<margelo::nitro::session::bridge::rn::SeedNode>>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "seedNodes"))),
+        JSIConverter<std::optional<margelo::nitro::session::bridge::rn::FileServerConfig>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fileServer"))),
         JSIConverter<std::optional<margelo::nitro::session::bridge::rn::DeviceType>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "deviceType"))),
         JSIConverter<std::optional<margelo::nitro::session::bridge::rn::LibsessionLogLevel>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "logLevel")))
       );
@@ -89,10 +110,14 @@ namespace margelo::nitro {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "dbPath"), JSIConverter<std::string>::toJSI(runtime, arg.dbPath));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "cacheDir"), JSIConverter<std::string>::toJSI(runtime, arg.cacheDir));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "router"), JSIConverter<std::optional<margelo::nitro::session::bridge::rn::RouterKind>>::toJSI(runtime, arg.router));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "logCategories"), JSIConverter<std::optional<std::vector<margelo::nitro::session::bridge::rn::LogCategoryLevel>>>::toJSI(runtime, arg.logCategories));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "rawKeyHex"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.rawKeyHex));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "password"), JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.password));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "deferAccount"), JSIConverter<bool>::toJSI(runtime, arg.deferAccount));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "netid"), JSIConverter<std::optional<margelo::nitro::session::bridge::rn::NetId>>::toJSI(runtime, arg.netid));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "seedNodes"), JSIConverter<std::optional<std::vector<margelo::nitro::session::bridge::rn::SeedNode>>>::toJSI(runtime, arg.seedNodes));
+      obj.setProperty(runtime, PropNameIDCache::get(runtime, "fileServer"), JSIConverter<std::optional<margelo::nitro::session::bridge::rn::FileServerConfig>>::toJSI(runtime, arg.fileServer));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "deviceType"), JSIConverter<std::optional<margelo::nitro::session::bridge::rn::DeviceType>>::toJSI(runtime, arg.deviceType));
       obj.setProperty(runtime, PropNameIDCache::get(runtime, "logLevel"), JSIConverter<std::optional<margelo::nitro::session::bridge::rn::LibsessionLogLevel>>::toJSI(runtime, arg.logLevel));
       return obj;
@@ -107,10 +132,14 @@ namespace margelo::nitro {
       }
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "dbPath")))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "cacheDir")))) return false;
+      if (!JSIConverter<std::optional<margelo::nitro::session::bridge::rn::RouterKind>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "router")))) return false;
+      if (!JSIConverter<std::optional<std::vector<margelo::nitro::session::bridge::rn::LogCategoryLevel>>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "logCategories")))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "rawKeyHex")))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "password")))) return false;
       if (!JSIConverter<bool>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "deferAccount")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::session::bridge::rn::NetId>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "netid")))) return false;
+      if (!JSIConverter<std::optional<std::vector<margelo::nitro::session::bridge::rn::SeedNode>>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "seedNodes")))) return false;
+      if (!JSIConverter<std::optional<margelo::nitro::session::bridge::rn::FileServerConfig>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fileServer")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::session::bridge::rn::DeviceType>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "deviceType")))) return false;
       if (!JSIConverter<std::optional<margelo::nitro::session::bridge::rn::LibsessionLogLevel>>::canConvert(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "logLevel")))) return false;
       return true;
