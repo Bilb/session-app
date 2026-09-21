@@ -115,9 +115,13 @@ export interface WindowPort {
    * the process is what makes the next launch the clean one.
    *
    * Desktop closes its window, which with one window is quitting. Android ends its task. **Null on
-   * iOS**, which offers no way to do this from JavaScript: it needs a native call the bridge does
-   * not expose yet, so the screen reads the null and omits the control rather than offering one
-   * that does nothing.
+   * iOS**, which offers no way to do this from JavaScript, so the screen reads the null and omits
+   * the control rather than offering one that does nothing.
+   *
+   * TODO: give iOS one. The legacy client calls `exit(0)` straight after clearing, so the gap is
+   * a native call the bridge does not expose rather than something the platform refuses -- and
+   * until it exists, an iOS device whose data was just cleared is left holding a database that no
+   * longer exists until somebody relaunches by hand.
    */
   close: (() => void) | null
   isFocused(): boolean
