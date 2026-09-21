@@ -93,6 +93,47 @@ const workspacePackages = [
  */
 const FLAG_PREFIX = 'EXPO_PUBLIC_SESSION_FLAG_'
 
+/**
+ * Refuses to build a release with a developer's settings baked into it.
+ *
+ * The renderer cannot read an environment, so these are substituted here, and the badge that
+ * says which network is running is substituted from the same values. A packaged build ignores
+ * them at runtime -- so a release carrying one would draw a badge that disagrees with what it
+ * is doing: Fake over a real network.
+ *
+ * Loudly rather than by substituting the default, because somebody who exported one meant
+ * something by it.
+ */
+function refuseDeveloperSettingsInRelease(): void {
+  if (process.env['NODE_ENV'] !== 'production') return
+  const set = Object.keys(process.env).filter(
+    (key) =>
+      (key.startsWith(FLAG_PREFIX) || DEVELOPER_SETTINGS.includes(key)) &&
+      process.env[key] !== undefined &&
+      process.env[key] !== '',
+  )
+  if (set.length > 0) {
+    throw new Error(
+      `Refusing to build a release with developer settings in the environment: ${set.join(', ')}. ` +
+        'A packaged build ignores these at runtime, so a build that carries them would draw a ' +
+        'badge that disagrees with what is running. Unset them and build again.',
+    )
+  }
+}
+
+const DEVELOPER_SETTINGS = [
+  'EXPO_PUBLIC_SESSION_FAKE',
+  'EXPO_PUBLIC_SESSION_NETID',
+  'EXPO_PUBLIC_SESSION_ROUTER',
+  'EXPO_PUBLIC_SESSION_LOG',
+  'EXPO_PUBLIC_SESSION_DEVNET_SEED_URL',
+  'EXPO_PUBLIC_SESSION_FILE_SERVER_URL',
+  'EXPO_PUBLIC_SESSION_FILE_SERVER_X25519_PUBKEY',
+]
+
+// Before anything below is substituted, so a release cannot carry one of them.
+refuseDeveloperSettingsInRelease()
+
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin({ exclude: workspacePackages })],

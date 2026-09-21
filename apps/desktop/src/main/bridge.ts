@@ -65,15 +65,26 @@ function loadDotEnv(): void {
 }
 
 /**
+ * A setting that only a development build may have an opinion about.
+ *
+ * **Every one of these is unset in a packaged build, whatever the environment says.** They
+ * choose which network the app attaches to and whether it talks to libsession at all. The
+ * dev-only module the fake lives in is bundled either way, so a dynamic import is not the
+ * barrier it looks like -- this is.
+ */
+function developerSetting(name: string): string | undefined {
+  return app.isPackaged ? undefined : process.env[name]
+}
+
+/**
  * Opens the bridge the renderer talks to.
  *
- * The fake is reached through a dynamic import from a dev-only module, so a production build
- * has no path to it at all. Everything above this file sees frames either way.
+ * Everything above this file sees frames either way.
  */
 export async function createBridge(): Promise<BridgeTransport> {
   loadDotEnv()
 
-  if (process.env['EXPO_PUBLIC_SESSION_FAKE'] === '1') {
+  if (developerSetting('EXPO_PUBLIC_SESSION_FAKE') === '1') {
     const { createFakeBridge } = await import('./dev/fakeBridge')
     return createFakeBridge()
   }
@@ -81,22 +92,24 @@ export async function createBridge(): Promise<BridgeTransport> {
   const { createNodeBridgeTransport } = await import('@session/bridge-node')
   const { discoverSeedNodes } = await import('@session/client')
 
-  const name = parseNetworkName(process.env['EXPO_PUBLIC_SESSION_NETID'])
+  const name = parseNetworkName(developerSetting('EXPO_PUBLIC_SESSION_NETID'))
   const devnet =
     name === 'devnet'
       ? parseDevnetConfig(
           {
-            seedUrl: process.env['EXPO_PUBLIC_SESSION_DEVNET_SEED_URL'],
-            fileServerUrl: process.env['EXPO_PUBLIC_SESSION_FILE_SERVER_URL'],
-            fileServerX25519Pubkey: process.env['EXPO_PUBLIC_SESSION_FILE_SERVER_X25519_PUBKEY'],
+            seedUrl: developerSetting('EXPO_PUBLIC_SESSION_DEVNET_SEED_URL'),
+            fileServerUrl: developerSetting('EXPO_PUBLIC_SESSION_FILE_SERVER_URL'),
+            fileServerX25519Pubkey: developerSetting(
+              'EXPO_PUBLIC_SESSION_FILE_SERVER_X25519_PUBKEY',
+            ),
           },
           'EXPO_PUBLIC_SESSION_',
         )
       : undefined
 
   const netid = netidForTransport(name, devnet)
-  const router = parseRouterKind(process.env['EXPO_PUBLIC_SESSION_ROUTER'])
-  const logs = parseLogSpec(process.env['EXPO_PUBLIC_SESSION_LOG'])
+  const router = parseRouterKind(developerSetting('EXPO_PUBLIC_SESSION_ROUTER'))
+  const logs = parseLogSpec(developerSetting('EXPO_PUBLIC_SESSION_LOG'))
 
   // Per network, so a devnet identity and a mainnet one can both exist and switching back loses
   // neither. libsession derives its own snode cache from the database's directory, which puts
