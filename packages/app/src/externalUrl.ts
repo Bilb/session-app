@@ -22,6 +22,24 @@ const MAX_HOST_LENGTH = 2048
 const RFC3986_TAIL = /^[A-Za-z0-9\-._~%!$&'()*+,;=:@/?#[\]]*$/
 
 /**
+ * Whether any C0 or C1 control character appears anywhere in the URL.
+ *
+ * One renders as nothing, so the address a person reads is not the one that is opened: a NUL
+ * inside the host makes `evil.com<NUL>.getsession.org` read as a getsession.org subdomain, and
+ * then truncates it back to `evil.com` at whatever hands the string to the OS. `trim` does not
+ * remove them, and `RFC3986_TAIL` below only ever sees the tail.
+ *
+ * By code point rather than by a pattern, for the reason `mixesScripts` gives below: saying this
+ * as a range puts a control character in the regex itself.
+ */
+function hasControlCharacter(url: string): boolean {
+  return [...url].some((character) => {
+    const code = character.codePointAt(0) ?? 0
+    return code <= 0x1f || (code >= 0x7f && code <= 0x9f)
+  })
+}
+
+/**
  * Whether any one label mixes scripts.
  *
  * **Per label, not per host.** The homograph substitutes a character inside a word -- Cyrillic
@@ -50,6 +68,7 @@ function mixesScripts(host: string): boolean {
  */
 export function isPlausibleAddress(url: string): boolean {
   if (url.length > MAX_URL_LENGTH) return false
+  if (hasControlCharacter(url)) return false
 
   const afterScheme = url.replace(OPENABLE, '')
   const authority = afterScheme.split(/[/?#]/, 1)[0] ?? ''

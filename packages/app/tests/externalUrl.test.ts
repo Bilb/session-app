@@ -144,6 +144,21 @@ describe('an address that is not what it reads as', () => {
     expect(isPlausibleAddress('https://example.com/\u0000')).toBe(false)
   })
 
+  it('refuses a control character in the authority, not only in the tail', () => {
+    // Each of these renders as an address it does not resolve to: the control character is drawn
+    // as nothing, and a NUL truncates the string again at whatever hands it to the OS.
+    for (const url of [
+      'https://evil.com\u0000.getsession.org',
+      'https://exam\u0000ple.com',
+      'https://good.com\n\nhttps://evil.com',
+      'https://good\t.evil.com',
+      'https://example.com\u007f',
+    ]) {
+      expect(isPlausibleAddress(url), url).toBe(false)
+      expect(urlToOpen(url), url).toBeNull()
+    }
+  })
+
   it('bounds the length of both the link and its host', () => {
     expect(isPlausibleAddress(`https://example.com/${'a'.repeat(4096)}`)).toBe(false)
     expect(isPlausibleAddress(`https://${'a'.repeat(2049)}.com`)).toBe(false)
