@@ -10,6 +10,13 @@ import type { NotificationMode } from './flow'
 interface MessageNotificationsScreenProps {
   onBack: () => void
   onContinue: (mode: NotificationMode) => void
+  /**
+   * Refuses back while going back is a discard that has already started.
+   *
+   * Leaving the control drawn says the step can be left, which it can -- just not twice. A second
+   * press fires a second `discardAccount` and a second `back`, which lands two steps away.
+   */
+  backDisabled?: boolean
   busy?: boolean
 }
 
@@ -46,6 +53,7 @@ function fastModeDescription(service: NotificationsPort['pushService']): string 
 export function MessageNotificationsScreen({
   onBack,
   onContinue,
+  backDisabled = false,
   busy = false,
 }: MessageNotificationsScreenProps) {
   // The flag is a way to look at the screen, not a second source of truth: see its entry in the
@@ -120,6 +128,7 @@ export function MessageNotificationsScreen({
       title={tr('notificationsMessage')}
       description={tr('onboardingMessageNotificationExplanation')}
       onBack={onBack}
+      backDisabled={backDisabled}
       testID={ELEMENT.onboarding.notificationsScreen}
       footer={
         <Button
