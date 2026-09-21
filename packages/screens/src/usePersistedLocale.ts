@@ -64,7 +64,15 @@ export function usePersistedLocale(): void {
   const loaded = useRef(false)
 
   useEffect(() => {
-    if (!haveAccount || loaded.current) return
+    if (!haveAccount) {
+      // **Cleared with the account, not once for the life of the hook.** This stays mounted
+      // across a discard -- backing out of onboarding, or clearing the device -- and the account
+      // that follows has its own stored language. Left latched, that one came up in the language
+      // of the attempt before it, and the first change afterwards overwrote what it had stored.
+      loaded.current = false
+      return
+    }
+    if (loaded.current) return
     let live = true
     void actions.getPreference(LOCALE_PREF).then((stored) => {
       if (!live) return
