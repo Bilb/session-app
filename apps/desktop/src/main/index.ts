@@ -12,6 +12,7 @@ import type { Request } from '@session/client'
 import { createBridge } from './bridge'
 import {
   applyContentProtection,
+  applyContentSecurityPolicy,
   denyAllPermissions,
   guardNavigation,
   hardenedWebPreferences,
@@ -93,20 +94,18 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
   applyContentProtection(window, process.platform)
 
   /**
-   * Links leave for the person's own browser rather than opening a window here.
+   * Nothing opens a window here, whatever asks.
    *
-   * Without this, `window.open` gets an Electron `BrowserWindow` -- a chromeless frame with no
-   * address bar, no extensions and none of the browser's own protections, showing a page the app
-   * told you it was handing to your browser. Denying and shelling out is the only honest reading
-   * of "this will open in your browser", and it is the standard Electron shape for the same reason.
+   * An Electron `BrowserWindow` is a chromeless frame with no address bar, no extensions and
+   * none of the browser's own protections, so a page opened in one is worse than the same page
+   * in a real browser however it got there.
    *
-   * Restricted to http(s): `openExternal` will hand any scheme to the OS, and a `file:` or a
-   * custom scheme reaching it is how a link turns into a launched program.
+   * **Refusing is all this does.** Shelling the URL out from here would make the handler the way
+   * links are opened, and it fires for every `window.open` the page performs -- including a
+   * `target="_blank"` inside content the app did not write. What leaves for the browser goes
+   * through `open-external` below, which only the app's own code calls.
    */
-  window.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:\/\//.test(url)) void shell.openExternal(url)
-    return { action: 'deny' }
-  })
+  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
 
   // One MessagePort, which is FIFO: libsession's ordering survives the process boundary,
   // which is the whole reason responses and events share a single stream.
@@ -160,7 +159,19 @@ app.on('web-contents-created', (_event, contents) => {
 
 void app.whenReady().then(async () => {
   denyAllPermissions(session.defaultSession)
+  applyContentSecurityPolicy(session.defaultSession, { packaged: app.isPackaged })
   ipcMain.handle('session-ping', () => 'pong')
+
+  /**
+   * A link the app decided to hand to the person's browser.
+   *
+   * Restricted to http(s) here rather than at the caller: `openExternal` gives any scheme to the
+   * OS, and a `file:` or a custom scheme reaching it is how a link becomes a launched program.
+   * The renderer is not trusted to have checked.
+   */
+  ipcMain.on('open-external', (_event, url: unknown) => {
+    if (typeof url === 'string' && /^https?:\/\//.test(url)) void shell.openExternal(url)
+  })
   await createWindow()
 
   app.on('activate', () => {

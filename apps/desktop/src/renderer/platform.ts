@@ -45,13 +45,15 @@ setPorts(
     },
     linking: {
       /**
-       * Handed to the main process, which shells it out to the real browser -- see the window-open
-       * handler there. `window.open` rather than an IPC call of our own because the handler is
-       * already the seam Electron gives for this, and adding a second one would mean two places
-       * that decide which URLs may leave.
+       * Handed to the main process, which shells it out to the real browser.
+       *
+       * Its own channel rather than `window.open`: that fires for anything on the page that opens
+       * a window, including a `target="_blank"` in content the app did not write, so using it as
+       * the way out would make every such link an external open. This one is called by the app
+       * and nothing else. The main process still checks the scheme.
        */
       openUrl: (url) => {
-        window.open(url, '_blank', 'noopener,noreferrer')
+        window.sessionDesktop.openExternal(url)
         return Promise.resolve()
       },
       // No OS settings page for a desktop app to send anybody to; the app's own settings are in
