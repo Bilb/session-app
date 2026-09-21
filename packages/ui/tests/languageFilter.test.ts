@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 
 import { filterLanguages } from '#src/languageFilter'
@@ -75,5 +78,30 @@ describe('filtering the language list', () => {
     const rows = [{ value: 'eo', label: 'Esperanto', english: null, flag: '\ud83c\udf10' }]
     expect(filterLanguages(rows, 'esper').map((r) => r.value)).toEqual(['eo'])
     expect(filterLanguages(rows, 'zzz')).toEqual([])
+  })
+
+  it('matches a row typed in a different case', () => {
+    const rows = [
+      { value: 'it', label: 'Italiano', english: 'Italian', flag: '\ud83c\uddee\ud83c\uddf9' },
+    ]
+    expect(filterLanguages(rows, 'italiano').map((r) => r.value)).toEqual(['it'])
+    expect(filterLanguages(rows, 'ITALIANO').map((r) => r.value)).toEqual(['it'])
+  })
+})
+
+/**
+ * That the fold does not read the device's locale.
+ *
+ * Asserted against the source rather than against a result, because the defect is invisible from
+ * the outside on every machine this suite runs on: `toLocaleLowerCase` with no argument agrees
+ * with `toLowerCase` everywhere except a Turkish or Azeri device, where it maps `I` to a dotless
+ * letter and no language beginning with an I can be found by typing its name. Both are in the
+ * catalogue, so those are devices somebody has.
+ */
+describe('the case fold', () => {
+  it('is the locale-independent one', () => {
+    const source = readFileSync(join(import.meta.dirname, '../src/languageFilter.ts'), 'utf8')
+    const code = source.slice(source.lastIndexOf('*/') + 2)
+    expect(code).not.toMatch(/toLocaleLowerCase|toLocaleUpperCase/)
   })
 })
