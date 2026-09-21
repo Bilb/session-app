@@ -131,7 +131,7 @@ export function LanguagePicker({
             measureAnchor(trigger.current, setAnchor)
           }}
         >
-          <XStack alignItems="center" gap="$xxs">
+          <XStack alignItems="center" gap="$2xs">
             {/* The flag is not the label: it repeats across languages and three have none, so it
                 stays out of the accessibility tree and `accessibilityLabel` names the control. */}
             <Text size="$title" aria-hidden>
