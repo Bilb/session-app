@@ -432,6 +432,30 @@ describeAddon('discarding an account', () => {
     }
   })
 
+  it('leaves the network cache where it is', async () => {
+    // **The other half of the same decision, and the one nothing was holding.** Every artefact
+    // beside the database is either taken or kept on purpose; taking this one is not a leak but
+    // it throws away the public service-node list, so the next attempt pays for discovery again
+    // on a connection somebody has already decided is slow enough to back out of.
+    //
+    // Written by hand rather than waited for: populating it needs a network, and what is being
+    // pinned is which paths a discard reaches.
+    const { client, dir, dispose } = await newcomer(46)
+
+    try {
+      await client.createAccount()
+      const netcache = join(dir, 'netcache')
+      await mkdir(netcache, { recursive: true })
+      await writeFile(join(netcache, 'snode_pool'), 'pretend this is the node list')
+
+      await client.discardAccount()
+
+      expect(existsSync(join(netcache, 'snode_pool'))).toBe(true)
+    } finally {
+      await dispose()
+    }
+  })
+
   it('takes the attachment cache with it', async () => {
     // **The part the bridge cannot report on.** Everything else here is asked of the client, and
     // the client would answer exactly the same way with somebody's downloaded profile pictures

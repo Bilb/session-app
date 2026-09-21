@@ -74,6 +74,11 @@ namespace {
     /// below a round trip gets concurrent requests rather than faster ones.
     constexpr auto DEVNET_POLL_INTERVAL = std::chrono::milliseconds{500};
 
+    /// Where the network's own cache lives, named once so the discard and the open agree.
+    std::filesystem::path netcache_path(const std::filesystem::path& db_path) {
+        return db_path.parent_path() / "netcache";
+    }
+
     LogLevel log_level_of(std::string_view name) {
         return name == "trace"      ? LogLevel::trace
              : name == "debug"      ? LogLevel::debug
@@ -202,7 +207,7 @@ namespace {
 
         // Beside the database rather than in it: freeing space works by unlinking what the
         // directory holds that nothing accounts for, so this cannot share with anything else.
-        opts.emplace_back(network::opt::cache_directory{db_path.parent_path() / "netcache"});
+        opts.emplace_back(network::opt::cache_directory{netcache_path(db_path)});
 
         return opts;
     }
@@ -553,6 +558,35 @@ struct ClientBridge::Impl {
         ok(id);
     }
 
+    /// Everything this client writes to disk, and what a discard does to each.
+    ///
+    /// **A table rather than a run of removals.** Something new the client starts writing is then
+    /// a row with a decision in it, rather than a file that quietly outlives every discard
+    /// because nobody thought to come back here. `keep` is the answer that needs a reason.
+    std::vector<std::pair<std::filesystem::path, bool>> on_disk() const {
+        auto wal = options.db_path;
+        wal += "-wal";
+        auto shm = options.db_path;
+        shm += "-shm";
+        return {
+                {options.db_path, true},
+                // The write-ahead log and its shared-memory index. A clean close checkpoints and
+                // removes both, so ordinarily there is nothing here -- but a close is not
+                // guaranteed to be clean, and a stale -wal beside a new database is a database
+                // that will not open.
+                {std::move(wal), true},
+                {std::move(shm), true},
+                // Encrypted under a key that lived in the database just deleted, so already
+                // unreadable -- tidiness rather than safety, and skipping it would leave an
+                // account's pictures on disk for ever.
+                {options.cache_dir, true},
+                // **Kept.** The public service-node list, no account data whatsoever, and what
+                // makes the next attempt fast. A discard that cleaned everything beside the
+                // database would throw away the one thing worth keeping.
+                {netcache_path(options.db_path), false},
+        };
+    }
+
     /// Throws the account away and opens a new database in its place.
     ///
     /// Shared by the command and by the sweep at startup, which want exactly the same thing for
@@ -565,26 +599,13 @@ struct ClientBridge::Impl {
         client.reset();
 
         std::error_code ec;
-        std::filesystem::remove(options.db_path, ec);
-        // The write-ahead log and its shared-memory index. A clean close checkpoints and removes
-        // both, so ordinarily there is nothing here -- but a close is not guaranteed to be clean,
-        // and a stale -wal beside a new database is a database that will not open.
-        for (const auto* suffix : {"-wal", "-shm"}) {
-            auto path = options.db_path;
-            path += suffix;
-            std::filesystem::remove(path, ec);
+        for (const auto& [path, removed] : on_disk()) {
+            if (!removed || path.empty())
+                continue;
+            // `remove_all` rather than `remove`: the same call takes a single file and a
+            // directory, so a row does not have to say which it is.
+            std::filesystem::remove_all(path, ec);
         }
-
-        // The attachment cache goes too. Its contents are encrypted under a key that lived in the
-        // database just deleted, so they are already unreadable -- this is tidiness rather than
-        // safety, and skipping it would leave an account's pictures on disk for ever.
-        if (!options.cache_dir.empty())
-            std::filesystem::remove_all(options.cache_dir, ec);
-
-        // `netcache` is deliberately NOT removed. It sits beside the database and holds the public
-        // service-node list -- no account data whatsoever -- and it is what makes the next attempt
-        // fast. A discard that cleaned everything beside the database would throw away the one
-        // thing worth keeping.
 
         open_client();
     }
