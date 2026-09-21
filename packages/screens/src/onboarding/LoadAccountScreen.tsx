@@ -115,6 +115,10 @@ export function LoadAccountScreen({
               ref={field}
               value={phrase}
               onChangeText={setPhrase}
+              // The button is inert while the check runs; the keyboard's own submit is a second
+              // way in, and pressing it twice sends the same phrase twice -- the first `finally`
+              // then clears `busy` while the second is still running.
+              disabled={busy}
               // Checked on submit rather than as it is typed: a phrase is too short for as long as
               // it is half-entered, and saying so on every word is noise.
               validate={(next) =>

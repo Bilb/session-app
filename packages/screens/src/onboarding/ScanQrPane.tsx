@@ -2,7 +2,7 @@ import { requirePorts, useCamera } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Button, ScannerFrame, Text, useScreenInsets, YStack } from '@session/ui'
-import type { ReactNode } from 'react'
+import { useCallback, useRef, type ReactNode } from 'react'
 
 /** How far the message floats above the home indicator. */
 const MESSAGE_LIFT = 16
@@ -27,6 +27,23 @@ interface ScanQrPaneProps {
 export function ScanQrPane({ onScan, error = null }: ScanQrPaneProps) {
   const camera = useCamera()
   const insets = useScreenInsets()
+  /**
+   * The code this pane has already handed over.
+   *
+   * **A scanner reports every frame a code decodes in, not the first.** Holding the camera over
+   * one is thirty reads a second, and each one starts a restore of the same seed -- so the first
+   * wins and every loser reports a failure over a camera that scanned correctly. Latched on the
+   * value rather than on a flag, so a different code is still read if the camera is moved.
+   */
+  const handed = useRef<string | null>(null)
+  const handleScan = useCallback(
+    (value: string) => {
+      if (handed.current === value) return
+      handed.current = value
+      onScan(value)
+    },
+    [onScan],
+  )
 
   if (camera === null) {
     // Desktop. Nothing to offer and nothing to ask for, so the pane says what is true rather than
@@ -47,7 +64,7 @@ export function ScanQrPane({ onScan, error = null }: ScanQrPaneProps) {
         marginBottom={-insets.bottom}
         testID={ELEMENT.onboarding.scanQrPane}
       >
-        <camera.Preview onScan={onScan} testID={ELEMENT.onboarding.scanQrPreview} />
+        <camera.Preview onScan={handleScan} testID={ELEMENT.onboarding.scanQrPreview} />
         <ScannerFrame />
         {/* Over the picture rather than under it, which is where the client puts it -- a row
             beneath would take a strip of the preview away permanently for a message that is
