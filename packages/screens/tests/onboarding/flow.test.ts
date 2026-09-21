@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   asksAboutNotifications,
+  committingStep,
   backDiscardsAccount,
   isWideDesign,
   initialOnboarding,
@@ -330,5 +331,58 @@ describe('the wait is skipped when the profile is already here', () => {
     expect(
       run([CREATE, NAME, { type: 'notificationsChosen', mode: 'fast', profileArrived: true }]).step,
     ).toBe('done')
+  })
+})
+
+/**
+ * Which screen stays up while the account is made.
+ *
+ * `done` draws nothing of its own, so it shows the step it was reached from. Every path into it
+ * has exactly one step behind it, and getting this wrong is a blank window rather than a wrong
+ * one -- which looks like a launch that never finished.
+ */
+describe('the step that stays on screen at done', () => {
+  it('is the notification question where the flow asks one', () => {
+    const state = run([CREATE, NAME, FAST], 'phone')
+    expect(state.step).toBe('done')
+    expect(committingStep(state)).toBe('messageNotifications')
+    expect(committingStep(run([CREATE, NAME, FAST], 'tablet'))).toBe('messageNotifications')
+  })
+
+  it('is the name where it does not', () => {
+    const state = run([CREATE, NAME], 'desktop')
+    expect(state.step).toBe('done')
+    expect(committingStep(state)).toBe('pickDisplayName')
+  })
+
+  it('is the wait, for a restore that arrived', () => {
+    const state = run([RESTORE, PHRASE, FAST, { type: 'restoreArrived' }], 'phone')
+    expect(state.step).toBe('done')
+    expect(committingStep(state)).toBe('loading')
+  })
+
+  it('is the name, for a restore that gave up and was asked for one', () => {
+    const state = run([RESTORE, PHRASE, FAST, { type: 'restoreGaveUp' }, NAME], 'phone')
+    expect(state.step).toBe('done')
+    expect(committingStep(state)).toBe('pickDisplayName')
+  })
+
+  it('names a step for every way into done, so none of them draws a blank', () => {
+    // The guard on the whole idea: any path reaching `done` has to name something to keep up.
+    const paths: OnboardingEvent[][] = [
+      [CREATE, NAME, FAST],
+      [RESTORE, PHRASE, FAST, { type: 'restoreArrived' }],
+      [RESTORE, PHRASE, FAST, { type: 'restoreGaveUp' }, NAME],
+    ]
+    for (const design of ['phone', 'tablet', 'desktop'] as const) {
+      for (const path of paths) {
+        const state = run(path, design)
+        if (state.step !== 'done') continue
+        expect(
+          committingStep(state),
+          `${design}: ${path.map((e) => e.type).join(' -> ')}`,
+        ).not.toBe('done')
+      }
+    }
   })
 })

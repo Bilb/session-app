@@ -1,7 +1,7 @@
 import { flag, requirePorts } from '@session/app'
 import { useAccount, useSessionActions } from '@session/state'
 import { StepTransition, useMedia } from '@session/ui'
-import { useEffect, useReducer, useState } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 
 import { ConfirmUrlProvider } from './ConfirmUrl'
 import { LandingScreen } from './LandingScreen'
@@ -11,10 +11,12 @@ import { MessageNotificationsScreen } from './MessageNotificationsScreen'
 import { PickDisplayNameScreen } from './PickDisplayNameScreen'
 import {
   backDiscardsAccount,
+  committingStep,
   initialOnboarding,
   onboardingReducer,
   type OnboardingDesign,
   type OnboardingState,
+  type OnboardingStep,
   type RecoveryInput,
 } from './flow'
 
@@ -142,8 +144,23 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
     onRunningChange?.(state.step !== 'landing')
   }, [state.step, onRunningChange])
 
+  /**
+   * That the account is made once, however many times this effect is asked to run.
+   *
+   * The effect has to read the whole state -- the branch, the name and the phrase are all in it --
+   * and `designChanged` hands back a new object with the step still `done`, so a window crossing
+   * the breakpoint or a tablet turning over runs the body again. A second `createAccount` beside
+   * the first is two identities, and `setDisplayName` and `keepAccount` twice over.
+   */
+  const committing = useRef(false)
+
   useEffect(() => {
-    if (state.step !== 'done') return
+    if (state.step !== 'done') {
+      committing.current = false
+      return
+    }
+    if (committing.current) return
+    committing.current = true
     // `done` is reached from two places and means something different at each: the end of create,
     // where there is no account yet, and the end of a restore that had to ask for a name.
     void commit(state, actions, setBusy).then(
@@ -151,14 +168,23 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
         onRunningChange?.(false)
       },
       () => {
-        // Nothing renders at `done`, so a rejection here would otherwise be an empty window with
-        // nothing said and nowhere to go.
         dispatch({ type: 'commitFailed' })
       },
     )
   }, [state, actions, onRunningChange])
 
-  const body = screen()
+  // At `done` the last step stays on screen while the account is made -- see `committingStep`.
+  const committingNow = state.step === 'done'
+  /**
+   * Whether the step on screen should refuse input.
+   *
+   * `committingNow` as well as `busy`, because the two do not start together: `busy` is set
+   * inside the effect that commits, which runs after the frame that put this screen up. In that
+   * frame the control that got us here is live again, so a second press lands on it -- and the
+   * screens that stay up at `done` are exactly the ones whose button was just pressed.
+   */
+  const working = busy || committingNow
+  const body = screen(committingNow ? committingStep(state) : state.step)
 
   return (
     <ConfirmUrlProvider>
@@ -179,8 +205,8 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
     </ConfirmUrlProvider>
   )
 
-  function screen() {
-    switch (state.step) {
+  function screen(step: OnboardingStep) {
+    switch (step) {
       case 'landing':
         return (
           <LandingScreen
@@ -199,7 +225,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
             afterFailedRestore={state.afterFailedRestore}
             initialName={state.displayName ?? ''}
             rejected={state.commitFailed}
-            busy={busy}
+            busy={working}
             onBack={goBack}
             onContinue={(name) => {
               dispatch({ type: 'nameEntered', name })
@@ -210,9 +236,13 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
       case 'loadAccount':
         return (
           <LoadAccountScreen
-            busy={busy}
+            busy={working}
             rejected={rejected}
             onBack={() => {
+              // The refusal described the attempt that was just abandoned. Left standing, coming
+              // back to this screen shows an error over an empty field, and switching to the QR
+              // tab shows one over a camera that has scanned nothing.
+              setRejected(false)
               dispatch({ type: 'back' })
             }}
             onContinue={(from) => {
@@ -246,7 +276,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
       case 'messageNotifications':
         return (
           <MessageNotificationsScreen
-            busy={busy}
+            busy={working}
             onBack={goBack}
             onContinue={(mode) => {
               dispatch({ type: 'notificationsChosen', mode, profileArrived })
@@ -258,15 +288,21 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
         return (
           <LoadingScreen
             onBack={goBack}
-            onGaveUp={() => {
-              dispatch({ type: 'restoreGaveUp' })
-            }}
+            onGaveUp={
+              // Null once the account is being made: the wait is over, and a deadline still
+              // running would announce a timeout on top of a restore that already arrived.
+              committingNow
+                ? null
+                : () => {
+                    dispatch({ type: 'restoreGaveUp' })
+                  }
+            }
           />
         )
 
       case 'done':
-        // Whatever was on screen stays there while the account is made. There is no screen of its
-        // own for this: it is a call or two, and a flash of something else would read as a step.
+        // Unreachable: `done` renders the step it was reached from. Here because the switch is
+        // exhaustive over the step type, which is what makes a new step a compile error.
         return null
     }
   }

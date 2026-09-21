@@ -28,7 +28,7 @@
  * make an account.
  */
 
-type OnboardingStep =
+export type OnboardingStep =
   'landing' | 'pickDisplayName' | 'loadAccount' | 'messageNotifications' | 'loading' | 'done'
 
 /** Which of the two sequences is running. Decided at the landing screen and never again. */
@@ -164,6 +164,24 @@ function previousStep(state: OnboardingState): OnboardingStep | null {
     default:
       return null
   }
+}
+
+/**
+ * The step whose screen stays on screen while the account is made.
+ *
+ * `done` draws nothing of its own -- it is a call or two, and a screen of its own would read as a
+ * step somebody has to get through. So the last step stays put, with its own control showing that
+ * it is working. Without this the window is blank for the duration, which is a launch screen that
+ * never ends if anything goes slowly.
+ *
+ * Every path into `done` has exactly one step behind it, which is what makes this answerable:
+ * create ends at the notification question where one is asked and at the name where it is not,
+ * and a restore ends at the wait -- except one that gave up waiting, which is asked for a name.
+ */
+export function committingStep(state: OnboardingState): OnboardingStep {
+  if (state.afterFailedRestore) return 'pickDisplayName'
+  if (state.branch === 'restore') return 'loading'
+  return asksAboutNotifications(state.design) ? 'messageNotifications' : 'pickDisplayName'
 }
 
 /**

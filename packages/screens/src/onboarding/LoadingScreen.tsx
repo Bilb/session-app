@@ -43,7 +43,14 @@ const RING_INSET = COLUMN_INSET + GAUGE_INSET
 const RING_THICKNESS = 20
 
 interface LoadingScreenProps {
-  onGaveUp: () => void
+  /**
+   * Giving up on the wait, or null once there is nothing left to wait for.
+   *
+   * Null while the account is being committed: this screen stays on display for that, and a
+   * countdown still running underneath it would eventually announce that the restore had timed
+   * out -- on top of a restore that has already arrived.
+   */
+  onGaveUp: (() => void) | null
   /**
    * Leaving the wait, which throws the restored account away.
    *
@@ -78,6 +85,7 @@ export function LoadingScreen({ onGaveUp, onBack }: LoadingScreenProps) {
   gaveUp.current = onGaveUp
 
   useEffect(() => {
+    if (onGaveUp === null) return
     const started = Date.now()
     const timer = setInterval(() => {
       // Measured against the clock rather than counted in ticks, because a backgrounded app stops
@@ -86,13 +94,14 @@ export function LoadingScreen({ onGaveUp, onBack }: LoadingScreenProps) {
       setElapsed(since)
       if (since >= RESTORE_TIMEOUT_MS) {
         clearInterval(timer)
-        gaveUp.current()
+        gaveUp.current?.()
       }
     }, TICK_MS)
     return () => {
       clearInterval(timer)
     }
-  }, [])
+    // Only whether there is a deadline at all: the handler itself is read through the ref.
+  }, [onGaveUp === null])
 
   const fraction = Math.min(1, elapsed / RESTORE_TIMEOUT_MS)
   const percent = new Intl.NumberFormat(getLocale(), {
