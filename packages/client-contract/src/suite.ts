@@ -152,6 +152,33 @@ export function runSessionClientContract(
       expect(after.sessionId).toBe(kept)
     })
 
+    it('keeps a restored account that was confirmed, and sweeps one that was not', async () => {
+      // **Restore has the same two halves as create and had neither of them covered.** The sweep
+      // at startup does not care how an account arrived, so a restore that never confirmed is
+      // swept exactly as a create would be -- and somebody who restored from their phrase and
+      // was swept has lost nothing recoverable, but has been told the restore worked and then
+      // shown an empty device on the next launch.
+      const hexSeed = 'c3'.repeat(32)
+
+      const provisional = await harness.newcomer()
+      await provisional.client.restoreAccount({ hexSeed })
+      expect((await provisional.client.getAccountInfo()).haveAccount).toBe(true)
+      const sweptAway = await harness.restart(provisional.client)
+      expect((await sweptAway.getAccountInfo()).haveAccount).toBe(false)
+
+      const confirmed = await harness.newcomer()
+      await confirmed.client.restoreAccount({ hexSeed })
+      await confirmed.client.keepAccount()
+      const kept = (await confirmed.client.getAccountInfo()).sessionId
+
+      const restarted = await harness.restart(confirmed.client)
+      const after = await restarted.getAccountInfo()
+      expect(after.haveAccount).toBe(true)
+      // The same identity, not merely an identity: a restore that kept the wrong seed would also
+      // pass a bare `haveAccount` check.
+      expect(after.sessionId).toBe(kept)
+    })
+
     it('leaves nothing of an account behind when it is discarded', async () => {
       // Onboarding's undo, and the reason the whole thing exists: somebody who starts restoring
       // one account and changes their mind must not carry any of it into the next.
