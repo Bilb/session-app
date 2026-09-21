@@ -1,11 +1,12 @@
 import { requirePorts } from '@session/app'
 import { tr } from '@session/localization'
 import { useSessionActions } from '@session/state'
-import { Button, Modal, Screen, Text, YStack } from '@session/ui'
+import { Modal, Screen, Text, YStack } from '@session/ui'
 import { ELEMENT } from '@session/test-ids'
 import { useState } from 'react'
 
 import { LocalizedText } from './LocalizedText'
+import { TextButton } from './TextButton'
 
 interface StartupFailedScreenProps {
   /** libsession's own words. Shown, because they are the only thing that says which failure it was. */
@@ -75,26 +76,24 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
         </YStack>
 
         <YStack gap="$sm" width="100%" maxWidth={348}>
-          <Button
+          <TextButton
+            label={['clearDevice']}
             variant="outline"
             destructive
             testID={ELEMENT.startupFailed.clear}
             onPress={() => {
               setConfirming(true)
             }}
-          >
-            {tr('clearDevice')}
-          </Button>
+          />
           {close === null ? null : (
-            <Button
+            <TextButton
+              label={['quit']}
               variant="outline"
               testID={ELEMENT.startupFailed.quit}
               onPress={() => {
                 close()
               }}
-            >
-              {tr('quit')}
-            </Button>
+            />
           )}
         </YStack>
       </YStack>
@@ -109,15 +108,14 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
         testID={ELEMENT.startupFailed.confirmClear}
         closeTestID={ELEMENT.startupFailed.cancelClear}
         actions={
-          <Button
+          <TextButton
+            label={['clearDevice']}
             variant="ghost"
             destructive
             loading={clearing}
             testID={ELEMENT.startupFailed.confirmClearButton}
             onPress={clear}
-          >
-            {tr('clearDevice')}
-          </Button>
+          />
         }
       >
         <LocalizedText text={tr('clearDeviceDescription')} />
