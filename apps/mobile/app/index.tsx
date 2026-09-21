@@ -3,6 +3,7 @@ import {
   OnboardingFlow,
   StartingScreen,
   StartupFailedScreen,
+  useLocale,
   usePersistedLocale,
 } from '@session/screens'
 import { useAccount, useHydrated, useStartupError } from '@session/state'
@@ -23,6 +24,7 @@ import { useState } from 'react'
  * AdaptiveShell keeps it beside the detail. Neither is decided here.
  */
 export default function IndexRoute() {
+  useLocale()
   const hydrated = useHydrated()
   const startupError = useStartupError()
   const account = useAccount()

@@ -1,4 +1,4 @@
-import { useLocale, useTextDirection } from '@session/screens'
+import { useTextDirection } from '@session/screens'
 import { SessionStoreProvider, type SessionStore } from '@session/state'
 import { DirectionRoot, Text, UIProvider, YStack } from '@session/ui'
 import { Slot } from 'expo-router'
@@ -20,7 +20,6 @@ import { storePromise } from '../src/store'
 export default function RootLayout() {
   // Subscribes the whole tree to the app's language -- see the note on the desktop root. It has to
   // be the component that creates the subtree, not a provider wrapped around one.
-  const locale = useLocale()
   // And which way that language reads, which `DirectionRoot` below mirrors the tree to.
   const rtl = useTextDirection()
 
@@ -61,13 +60,10 @@ export default function RootLayout() {
               <MobileNavProvider>
                 <MobileCameraProvider>
                   <DirectionRoot rtl={rtl}>
-                    {/* **Keyed on the language, because `tr()` is a module-scope read.** Nothing
-                        below re-renders when it changes unless something above does -- and the
-                        router holds the routed screen's element itself, so a re-render here does
-                        not reach it the way it does on the desktop tree, where the root renders
-                        the screens. The key makes the change of language a change of element,
-                        which is what it has to be for the strings to follow. */}
-                    <Slot key={locale} />
+                    {/* Never keyed on the language: that mirrors the strings by remounting the
+                        routed subtree, discarding whatever the screen holds. Each route
+                        subscribes with `useLocale` instead. */}
+                    <Slot />
                   </DirectionRoot>
                 </MobileCameraProvider>
               </MobileNavProvider>

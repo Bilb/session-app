@@ -1,5 +1,7 @@
-import { getLocale, followingSystemLocale, resetLocale, setLocale } from '@session/localization'
+import { followingSystemLocale, getLocale, resetLocale, setLocale } from '@session/localization'
 import { beforeEach, describe, expect, it } from 'vitest'
+
+import { localeToStoreFirst } from '#src/usePersistedLocale'
 
 /**
  * What the stored value has to mean, which is the part a round trip can get wrong.
@@ -34,5 +36,37 @@ describe('what a chosen language is stored as', () => {
     setLocale(getLocale())
     expect(followingSystemLocale()).toBe(false)
     expect(toStore()).not.toBe(SYSTEM)
+  })
+})
+
+/**
+ * The write that happens when the account first appears.
+ *
+ * Onboarding is the one stretch of the app where somebody picks a language and there is nowhere
+ * to put it. The other write only fires on a *change*, and no change comes after onboarding ends
+ * -- so without this one a language chosen there is shown for the rest of the session and gone on
+ * the next launch.
+ */
+describe('the first write, once there is an account', () => {
+  beforeEach(() => {
+    resetLocale()
+  })
+
+  it('stores a language chosen before the account existed', () => {
+    setLocale('ar')
+    expect(localeToStoreFirst(undefined, followingSystemLocale(), getLocale())).toBe('ar')
+  })
+
+  it('stores nothing for somebody who never chose', () => {
+    // Following the device is the default, so there is nothing to record and nothing that would
+    // read differently on the next launch.
+    expect(followingSystemLocale()).toBe(true)
+    expect(localeToStoreFirst(undefined, followingSystemLocale(), getLocale())).toBeNull()
+  })
+
+  it('leaves a stored value alone', () => {
+    setLocale('ar')
+    expect(localeToStoreFirst('fr', followingSystemLocale(), getLocale())).toBeNull()
+    expect(localeToStoreFirst(SYSTEM, followingSystemLocale(), getLocale())).toBeNull()
   })
 })

@@ -5,6 +5,7 @@ import {
   isCrowdinLocale,
   setLocale,
   subscribeLocale,
+  type CrowdinLocale,
 } from '@session/localization'
 import { useAccount, useSessionActions } from '@session/state'
 import { useEffect, useRef } from 'react'
@@ -18,6 +19,28 @@ const LOCALE_PREF = 'app.locale'
 
 /** What is written for somebody who follows the device rather than a language of their own. */
 const SYSTEM = 'system'
+
+/**
+ * What to store when the account first appears and nothing has been stored yet.
+ *
+ * **This is the write that onboarding depends on.** A language picked before an account exists
+ * has nowhere to go, so it lives in memory until one does -- and the only other write happens on
+ * a *change*, which never comes: onboarding is over by then and nobody touches the picker again.
+ * Without this the app comes back in the device's language on the next launch, having shown the
+ * chosen one throughout.
+ *
+ * Null where following the device, which is the default: somebody who chose "Default" and
+ * somebody who chose nothing are the same state and want the same behaviour, so there is nothing
+ * worth recording.
+ */
+export function localeToStoreFirst(
+  stored: string | undefined,
+  following: boolean,
+  current: CrowdinLocale,
+): string | null {
+  if (stored !== undefined) return null
+  return following ? null : current
+}
 
 /**
  * Keeps the chosen language across launches, once there is an account to keep it against.
@@ -46,7 +69,11 @@ export function usePersistedLocale(): void {
     void actions.getPreference(LOCALE_PREF).then((stored) => {
       if (!live) return
       loaded.current = true
-      if (stored === undefined) return
+      if (stored === undefined) {
+        const first = localeToStoreFirst(stored, followingSystemLocale(), getLocale())
+        if (first !== null) void actions.setPreference(LOCALE_PREF, first)
+        return
+      }
       if (stored === SYSTEM) followSystemLocale()
       else if (isCrowdinLocale(stored)) setLocale(stored)
       // An unknown value is left alone rather than reset: it is likelier to be a newer build's
