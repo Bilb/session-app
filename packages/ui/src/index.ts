@@ -40,11 +40,12 @@ export type {
   LanguagePickerTestIDs,
 } from './LanguagePicker.types'
 export { List } from './List'
+export { MessageBubble, type MessageBubbleProps } from './MessageBubble'
 export { Modal } from './Modal'
 export type { ListProps } from './List'
 export type { InputProps } from './Input.types'
 export { Screen } from './Screen'
-export { Text } from './Text'
+export { Text, type TextProps, type TextSize } from './Text'
 export { UIProvider } from './UIProvider'
 export type { UIProviderProps } from './UIProvider'
 export type { BackdropBlur, BackdropBlurProps } from './backdropBlur'

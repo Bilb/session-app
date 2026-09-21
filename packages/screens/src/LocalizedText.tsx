@@ -1,6 +1,5 @@
 import { parseMarkupSegments, type LocalizedSegment } from '@session/localization'
-import { Text } from '@session/ui'
-import type { ComponentProps } from 'react'
+import { Text, type TextProps, type TextSize } from '@session/ui'
 
 /**
  * A translated string, with the emphasis the translators put in it.
@@ -14,7 +13,7 @@ import type { ComponentProps } from 'react'
 export function LocalizedText({
   text,
   ...textProps
-}: { text: string } & Omit<ComponentProps<typeof Text>, 'children'>) {
+}: { text: string } & Omit<TextProps, 'children'>) {
   const segments = parseMarkupSegments(text)
 
   return (
@@ -27,8 +26,6 @@ export function LocalizedText({
     </Text>
   )
 }
-
-type TextSize = ComponentProps<typeof Text>['size']
 
 function renderSegment(segment: LocalizedSegment, index: number, size: TextSize) {
   const key = `${segment.type}-${String(index)}`

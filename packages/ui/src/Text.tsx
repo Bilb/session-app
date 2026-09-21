@@ -1,3 +1,5 @@
+import type { ComponentProps } from 'react'
+
 import { SizableText, styled } from 'tamagui'
 
 /**
@@ -48,3 +50,9 @@ export const Text = styled(SizableText, {
     tone: 'primary',
   },
 })
+
+/** What a `Text` takes, so callers can name one prop without restating the component. */
+export type TextProps = ComponentProps<typeof Text>
+
+/** The named steps of the type ramp. Exported because callers pass one through. */
+export type TextSize = TextProps['size']

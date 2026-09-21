@@ -1,7 +1,7 @@
 import { flag } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Reveal, Text, useMedia, YStack } from '@session/ui'
+import { Button, MessageBubble, Reveal, Text, useMedia, YStack } from '@session/ui'
 import { useEffect, useState } from 'react'
 
 import { BUBBLE_MIN_WIDTH, bubbleMaxWidth } from './landingBubble'
@@ -19,10 +19,20 @@ import { TermsAndPrivacy } from './TermsAndPrivacy'
  */
 function bubbles() {
   return [
-    { text: tr('onboardingBubbleWelcomeToSession', { emoji: '👋' }), outgoing: false },
-    { text: tr('onboardingBubbleSessionIsEngineered'), outgoing: true },
-    { text: tr('onboardingBubbleNoPhoneNumber'), outgoing: false },
-    { text: tr('onboardingBubbleCreatingAnAccountIsEasy', { emoji: '👇' }), outgoing: true },
+    {
+      // Keyed by which line it is, not by what it says: the text is translated, so keying on it
+      // remounts every bubble when the language changes and replays the conversation from the top.
+      key: 'welcome',
+      text: tr('onboardingBubbleWelcomeToSession', { emoji: '👋' }),
+      outgoing: false,
+    },
+    { key: 'engineered', text: tr('onboardingBubbleSessionIsEngineered'), outgoing: true },
+    { key: 'noPhoneNumber', text: tr('onboardingBubbleNoPhoneNumber'), outgoing: false },
+    {
+      key: 'easy',
+      text: tr('onboardingBubbleCreatingAnAccountIsEasy', { emoji: '👇' }),
+      outgoing: true,
+    },
   ] as const
 }
 
@@ -46,10 +56,8 @@ const BUBBLE_INTERVAL_MS = 1500
  */
 const CONVERSATION_HEIGHT = 320
 
-/** The gap between bubbles, and the bubble's own metrics. The client's numbers. */
+/** The gap between bubbles. The client's number; the bubble's own metrics are its component's. */
 const BUBBLE_GAP = 18
-const BUBBLE_PADDING = 12
-const BUBBLE_RADIUS = 13
 
 interface LandingScreenProps {
   onCreate: () => void
@@ -139,23 +147,15 @@ function PhoneOpening() {
         {bubbles()
           .slice(0, shown)
           .map((bubble) => (
-            <Reveal key={bubble.text} instant={flag('disableAnimations')}>
-              <YStack
+            <Reveal key={bubble.key} instant={flag('disableAnimations')}>
+              <MessageBubble
+                outgoing={bubble.outgoing}
                 // The floor until the container has been measured, which is one frame and is over
                 // long before the first bubble is due.
                 maxWidth={chatWidth === 0 ? BUBBLE_MIN_WIDTH : bubbleMaxWidth(chatWidth)}
-                alignSelf={bubble.outgoing ? 'flex-end' : 'flex-start'}
-                padding={BUBBLE_PADDING}
-                borderRadius={BUBBLE_RADIUS}
-                backgroundColor={bubble.outgoing ? '$primaryColor' : '$messageBubbleIncomingBg'}
               >
-                <Text
-                  size="$bodyLarge"
-                  color={bubble.outgoing ? '$onAccent' : '$messageBubbleIncomingText'}
-                >
-                  {bubble.text}
-                </Text>
-              </YStack>
+                {bubble.text}
+              </MessageBubble>
             </Reveal>
           ))}
       </YStack>
