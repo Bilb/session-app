@@ -12,7 +12,6 @@ import type { Request } from '@session/client'
 import { createBridge } from './bridge'
 import {
   applyContentProtection,
-  applyContentSecurityPolicy,
   denyAllPermissions,
   guardNavigation,
   hardenedWebPreferences,
@@ -159,7 +158,6 @@ app.on('web-contents-created', (_event, contents) => {
 
 void app.whenReady().then(async () => {
   denyAllPermissions(session.defaultSession)
-  applyContentSecurityPolicy(session.defaultSession, { packaged: app.isPackaged })
   ipcMain.handle('session-ping', () => 'pong')
 
   /**

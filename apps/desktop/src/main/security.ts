@@ -50,11 +50,15 @@ export function contentSecurityPolicy({ dev }: { dev: boolean }): string {
     `script-src 'self'${dev ? " 'unsafe-inline'" : ''}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
+    // Attachments are played from a blob the renderer built, and `default-src 'none'` would
+    // otherwise refuse them: media has no fallback of its own.
+    "media-src 'self' blob:",
     "font-src 'self' data:",
     `connect-src 'self'${dev ? ' ws:' : ''}`,
     "base-uri 'none'",
     "form-action 'none'",
     "frame-ancestors 'none'",
+    "frame-src 'none'",
     "object-src 'none'",
   ].join('; ')
 }
@@ -102,9 +106,8 @@ export function guardNavigation(contents: WebContents, appUrl: string): void {
     if (!isAppNavigation(target, appUrl)) event.preventDefault()
   })
 
-  // will-navigate is the main frame only. A packaged build's CSP refuses frames outright; this is
-  // what stops one that is somehow already there from navigating, and it is the whole of the
-  // defence in a build with no CSP -- see `applyContentSecurityPolicy`.
+  // will-navigate is the main frame only. Frames are refused by the CSP as well; this is what
+  // stops one that is somehow already there from navigating.
   contents.on('will-frame-navigate', (event) => {
     if (!isAppNavigation(event.url, appUrl)) event.preventDefault()
   })
@@ -121,41 +124,4 @@ export function denyAllPermissions(session: Session): void {
     callback(false)
   })
   session.setPermissionCheckHandler(() => false)
-}
-
-/**
- * What the page may load and execute, which is the only thing that stops foreign script running
- * with the page's own privileges -- the preload's channels included.
- *
- * `default-src 'none'`, then back what the app needs: its own bundle, inline styles because the
- * UI framework writes them at runtime, images and media from the bundle or built in memory, and
- * no network at all, since the bridge is a MessagePort rather than a socket.
- *
- * **Packaged builds only.** The dev server hot-reloads over a websocket with inline script, so
- * this policy stops a development build starting.
- */
-export function applyContentSecurityPolicy(target: Session, { packaged }: { packaged: boolean }) {
-  if (!packaged) return
-  const policy = [
-    "default-src 'none'",
-    "script-src 'self'",
-    "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
-    "font-src 'self' data:",
-    "media-src 'self' blob:",
-    "connect-src 'self'",
-    "frame-src 'none'",
-    "object-src 'none'",
-    "base-uri 'none'",
-    "form-action 'none'",
-  ].join('; ')
-
-  target.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [policy],
-      },
-    })
-  })
 }
