@@ -188,7 +188,16 @@ export default ({ config }: ConfigContext): ExpoConfig =>
     // rather than by writing the plist key directly, so the Android permission comes with it.
     plugins: [
       ...(config.plugins ?? []),
-      ['expo-camera', { cameraPermission: englishPermission('NSCameraUsageDescription') }],
+      [
+        'expo-camera',
+        {
+          cameraPermission: englishPermission('NSCameraUsageDescription'),
+          // The plugin adds RECORD_AUDIO to the Android manifest unless told not to, and a
+          // dangerous permission on the store listing wants a reason. The only camera here reads
+          // QR codes.
+          recordAudioAndroid: false,
+        },
+      ],
     ],
     ios: {
       ...config.ios,
