@@ -50,6 +50,28 @@ async function newcomer(
   }
 }
 
+/**
+ * The same phrase with a real word in the wrong place: every word genuine, the checksum not.
+ *
+ * The thirteenth word is a repeat of one of the first twelve, at the position a checksum over
+ * their three-letter prefixes names. So putting a different one of those twelve last cannot match,
+ * whatever the seed: only the word at that position is the one that belongs there.
+ *
+ * **Exchanging two words instead would be wrong roughly one phrase in twelve.** A swap permutes
+ * the prefixes, so the checksum names a different position, and that position can hold a word
+ * equal to the thirteenth -- leaving a phrase that restores.
+ */
+function miscopiedPhrase(words: string[]): string[] {
+  const prefix = (word: string) => word.slice(0, 3)
+  const tail = words[12]
+  if (tail === undefined) throw new Error('a phrase this short has no checksum word')
+  const stand = words.slice(0, 12).find((word) => prefix(word) !== prefix(tail))
+  if (stand === undefined) throw new Error('a phrase of twelve identical prefixes cannot happen')
+  const broken = [...words]
+  broken[12] = stand
+  return broken
+}
+
 describeAddon('onboarding, against libsession', () => {
   it('creates an account and names it, in the order the flow does', async () => {
     const { client, dispose } = await newcomer(11)
@@ -132,30 +154,12 @@ describeAddon('onboarding, against libsession', () => {
         .restoreAccount({ words: misspelt })
         .catch((e: unknown) => e)
 
-      // The same words, two of them swapped: every word is real and the checksum is not.
-      //
-      // **Which two is not free.** The checksum reads the first three letters of each word, so
-      // swapping a pair that shares a prefix leaves it valid and the phrase restores -- which is a
-      // real phrase, a real account, and this test failing roughly one run in six on the accident
-      // of which words a random seed produced. The first pair that actually differs is chosen.
-      const swapped = [...words]
-      const prefix = (word: string) => word.slice(0, 3)
-      const head = words[0]
-      if (head === undefined) throw new Error('a phrase this short cannot happen')
-      // Among the twelve the checksum is computed over, never the thirteenth: that one is a repeat
-      // of one of them, and moving it is a different kind of wrong.
-      const other = words
-        .slice(0, 12)
-        .findIndex((word, at) => at > 0 && prefix(word) !== prefix(head))
-      if (other < 1) throw new Error('a phrase of twelve identical prefixes cannot happen')
-      const partner = swapped[other]
-      if (partner === undefined) throw new Error('a phrase this short cannot happen')
-      swapped[0] = partner
-      swapped[other] = head
-      const swappedError = await client.restoreAccount({ words: swapped }).catch((e: unknown) => e)
+      const checksumError = await client
+        .restoreAccount({ words: miscopiedPhrase(words) })
+        .catch((e: unknown) => e)
 
       expect(String(misspeltError)).toContain('zzzzz')
-      expect(String(swappedError)).toMatch(/checksum/i)
+      expect(String(checksumError)).toMatch(/checksum/i)
 
       // Two refusals in a row on the same client, and still nothing minted: what lets the screen
       // put somebody back on the field they typed into as many times as they need.
@@ -206,12 +210,9 @@ describeAddon('onboarding, against libsession', () => {
         .catch((e: unknown) => e)
       expect(String(unknownWord)).toContain('zzzzz')
 
-      const swapped = [...words]
-      const [a, b] = [swapped[0], swapped[1]]
-      if (a === undefined || b === undefined) throw new Error('a phrase this short cannot happen')
-      swapped[0] = b
-      swapped[1] = a
-      const badChecksum = await checker.client.checkRecoveryPhrase(swapped).catch((e: unknown) => e)
+      const badChecksum = await checker.client
+        .checkRecoveryPhrase(miscopiedPhrase(words))
+        .catch((e: unknown) => e)
       expect(String(badChecksum)).toMatch(/checksum/i)
 
       // Half a phrase. libsession takes 12, 13, 24 or 25 words and refuses every other length
