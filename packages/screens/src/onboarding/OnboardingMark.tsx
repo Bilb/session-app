@@ -1,7 +1,5 @@
-import { flag } from '@session/app'
 import { SessionBrand, Text } from '@session/ui'
 
-import { LanguageButton } from '../LanguageButton'
 import { NetworkOverlay } from '../NetworkOverlay'
 
 /**
@@ -28,14 +26,4 @@ export function OnboardingMark({ size, title }: { size: number; title?: string }
       )}
     </NetworkOverlay>
   )
-}
-
-/**
- * The language control, where the flag says it should be drawn at all.
- *
- * Both layouts offer it and both had to remember to ask. One of them forgetting is a silent
- * difference between two builds of the same screen, which is the kind this port keeps producing.
- */
-export function OnboardingLanguageButton() {
-  return flag('onboardingLanguageSelect') ? <LanguageButton /> : null
 }

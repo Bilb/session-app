@@ -9,6 +9,10 @@ import { requirePorts } from './ports'
  * Every flag is overridable on all three. A flag that can only be flipped by editing source cannot
  * be used to bisect a bug on somebody else's device, which is most of what a flag is for. One that
  * genuinely cannot be has to say why here.
+ *
+ * **Desktop meets that at build time rather than at launch**: the renderer cannot read an
+ * environment, so its overrides are substituted into the bundle and changing one is a rebuild. It
+ * is an override on all three; it is a relaunch on only two. See `flags` in the renderer's ports.
  */
 
 export const FLAGS = {
@@ -26,28 +30,22 @@ export const FLAGS = {
    * later restores on a legacy build has an account they cannot reach.
    *
    * **A length per flag rather than one flag offering a choice**, so the screen can be told which
-   * lengths exist rather than whether to show a control. With one length enabled there is nothing
-   * to choose and no control to draw; with both, the choice appears. That also makes the
-   * compatibility question answerable per length -- turning the long one on somewhere it can be
-   * restored does not mean turning the short one off.
+   * lengths exist rather than whether to show a control. That makes the compatibility question
+   * answerable per length: turning the long one on somewhere it can be restored does not mean
+   * turning the short one off.
+   *
+   * Nothing reads either length yet. The phrase is not shown until somebody opens it from the
+   * banner inside the app, and that screen is not built -- these are here for it.
    */
   recoveryPhraseLong: false,
 
   /**
    * Offer a choice of language for the recovery phrase, independent of the app's language.
    *
-   * Separate from `recoveryPhraseLength` because a phrase in another language is the same entropy
-   * and restores anywhere with the wordlist, where a longer one is a compatibility break.
+   * Separate from the length flags because a phrase in another language is the same entropy and
+   * restores anywhere with the wordlist, where a longer one is a compatibility break.
    */
   recoveryPhraseLanguage: false,
-
-  /**
-   * Offer the language control during onboarding, before an account exists.
-   *
-   * On by default. The mobile branch hands over to the OS's own per-app language screen, which
-   * exists only once a build declares its localizations -- which they now do.
-   */
-  onboardingLanguageSelect: true,
 
   /**
    * **Force** the tablet's onboarding on any wide window, rather than only where the OS suspends
@@ -86,7 +84,7 @@ export type FlagName = keyof typeof FLAGS
 /**
  * The environment variable a flag reads, derived rather than listed.
  *
- * `recoveryPhraseLength` becomes `EXPO_PUBLIC_SESSION_FLAG_RECOVERY_PHRASE_LENGTH`, so a new flag
+ * `recoveryPhraseLong` becomes `EXPO_PUBLIC_SESSION_FLAG_RECOVERY_PHRASE_LONG`, so a new flag
  * cannot arrive with its variable misspelled, absent, or shared with another flag.
  *
  * **`EXPO_PUBLIC_` on every platform, not only the one that needs it.** Expo inlines a variable

@@ -1,7 +1,8 @@
 import { Screen, XStack, YStack } from '@session/ui'
 
 import { OnboardingBackButton } from './OnboardingBackButton'
-import { OnboardingLanguageButton, OnboardingMark } from './OnboardingMark'
+import { LanguageButton } from '../LanguageButton'
+import { OnboardingMark } from './OnboardingMark'
 import { BAR_LOGO_SIZE, STEP_PADDING } from './chromeMetrics'
 import type { ChromeProps } from './chromeProps'
 
@@ -52,7 +53,7 @@ export function PhoneChrome({
             {...(barTitle === undefined ? {} : { title: barTitle })}
           />
         </YStack>
-        <OnboardingLanguageButton />
+        <LanguageButton />
       </XStack>
       {/* `flex` is load-bearing. Without it this box takes its content's height, and a child
             asking for `flex: 1` inside it resolves against nothing and collapses to zero -- which

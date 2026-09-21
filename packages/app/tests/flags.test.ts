@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { FLAGS, envVarFor, flag, flagSnapshot } from '../src/flags'
-import { memoryPorts, resetPorts, setPorts } from '../src'
-import type { FlagName } from '../src/flags'
+import { memoryPorts, resetPorts, setPorts } from '#src/index'
+import { FLAGS, envVarFor, flag, flagSnapshot } from '#src/flags'
+import type { FlagName } from '#src/flags'
 
 /** Installs ports whose only override is the one under test. */
 function withEnv(env: Record<string, string>): void {
@@ -32,9 +32,13 @@ describe('feature flags', () => {
     }
   })
 
-  it('turns off explicitly, so a flag defaulting on can be disabled', () => {
-    withEnv({ EXPO_PUBLIC_SESSION_FLAG_ONBOARDING_LANGUAGE_SELECT: 'false' })
-    expect(flag('onboardingLanguageSelect')).toBe(false)
+  it('turns off for anything that is unambiguously a person typing no', () => {
+    // The mirror of the test above, and it needs a flag that defaults on to mean anything: a
+    // default-off flag reads false whether the value was understood or ignored.
+    for (const value of ['0', 'false', 'FALSE', 'no', ' off ']) {
+      withEnv({ EXPO_PUBLIC_SESSION_FLAG_RECOVERY_PHRASE_SHORT: value })
+      expect(flag('recoveryPhraseShort'), value).toBe(false)
+    }
   })
 
   it('ignores a value it does not understand rather than guessing', () => {
