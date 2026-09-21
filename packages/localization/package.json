@@ -22,9 +22,7 @@
     "build": "tsup src/index.ts --format esm --dts --tsconfig tsconfig.build.json --clean",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "codegen": "node scripts/generateLanguages.mjs",
-    "codegen:check": "node scripts/generateLanguages.mjs && git diff --exit-code -- src/generated"
+    "test": "vitest run"
   },
   "dependencies": {
     "@session/basic-types": "workspace:*"

@@ -1,15 +1,5 @@
 export * from './localization-src/index'
 export * from './segments/index'
-export { LANGUAGE_NAMES, LANGUAGE_REGIONS } from './generated/languages'
-export {
-  isRtlLocale,
-  LANGUAGES,
-  languageFlag,
-  languageName,
-  matchLocale,
-  NO_FLAG,
-} from './languageList'
-export type { LanguageOption } from './languageList'
 export {
   deviceLocale,
   followingSystemLocale,
