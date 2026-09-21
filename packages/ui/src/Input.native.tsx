@@ -4,6 +4,9 @@ import type { InputProps } from './Input.types'
 import { keyboardTypeToNative } from './nativeProps'
 import { logical } from './logicalEdges'
 
+/** What `$md` resolves to. The inset props take a dimension rather than a space token. */
+const SLOT_INSET = 15
+
 /**
  * The native flavour.
  *
@@ -11,9 +14,6 @@ import { logical } from './logicalEdges'
  * but the keyboard is chosen with keyboardType, and returnKeyType is worth setting because
  * a soft keyboard has no enter key otherwise.
  */
-/** What `$2` resolves to. The inset props take a dimension rather than a space token. */
-const SLOT_INSET = 15
-
 export function Input({
   value,
   onChangeText,

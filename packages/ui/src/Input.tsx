@@ -4,15 +4,15 @@ import type { InputProps } from './Input.types'
 import { domInputType, keyboardTypeToInputMode } from './nativeProps'
 import { logical } from './logicalEdges'
 
+/** What `$md` resolves to. The inset props take a dimension rather than a space token. */
+const SLOT_INSET = 15
+
 /**
  * The web flavour, drawn by react-native-web in the Electron renderer.
  *
  * Tamagui's Input already renders an <input> here, so the only real work is turning the
  * native prop names the shared screens use into the DOM ones.
  */
-/** What `$2` resolves to. The inset props take a dimension rather than a space token. */
-const SLOT_INSET = 15
-
 export function Input({
   value,
   onChangeText,
