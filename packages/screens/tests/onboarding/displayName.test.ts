@@ -4,6 +4,7 @@ import {
   codePointLength,
   DISPLAY_NAME_MAX_BYTES,
   DISPLAY_NAME_MAX_CODE_POINTS,
+  displayNameAsStored,
   displayNameProblem,
   displayNameRemaining,
   utf8Length,
@@ -196,5 +197,24 @@ describe('the unit that is nobody`s unit', () => {
     // the slice corrupts the name and still fails at the one job it had.
     expect(utf8Length(cut)).toBe(102)
     expect(utf8Length(cut)).toBeGreaterThan(DISPLAY_NAME_MAX_BYTES)
+  })
+})
+
+describe('whitespace at the edges', () => {
+  it('does not count against either limit', () => {
+    // A name of the advertised length refused for a space nobody can see is the failure this
+    // prevents. `  Ada  ` is three characters of padding around three of name.
+    expect(displayNameRemaining(`  ${'a'.repeat(35)}  `)).toBe(0)
+    expect(displayNameProblem(` ${'a'.repeat(35)} `)).toBeNull()
+  })
+
+  it('is not part of the name that gets stored', () => {
+    // What a deleted word leaves behind on iOS, and it would otherwise reach every linked device.
+    expect(displayNameAsStored(' Ada ')).toBe('Ada')
+    expect(displayNameAsStored('\n Ada Lovelace \t')).toBe('Ada Lovelace')
+  })
+
+  it('is left alone inside the name', () => {
+    expect(displayNameAsStored('Ada  Lovelace')).toBe('Ada  Lovelace')
   })
 })

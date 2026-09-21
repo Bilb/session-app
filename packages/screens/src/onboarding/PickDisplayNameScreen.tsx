@@ -3,7 +3,7 @@ import { ELEMENT } from '@session/test-ids'
 import { Button, InputField, type InputFieldHandle, Text } from '@session/ui'
 import { useRef, useState } from 'react'
 
-import { displayNameProblem, displayNameRemaining } from './displayName'
+import { displayNameAsStored, displayNameProblem, displayNameRemaining } from './displayName'
 import { OnboardingStep } from './OnboardingStep'
 
 /** How close to the limit before the count is worth showing. */
@@ -98,8 +98,9 @@ export function PickDisplayNameScreen({
         autoCapitalize="words"
         autoFocus
         onSubmit={() => {
-          // What was typed, unchanged. See displayName.ts for why this is not normalised.
-          onContinue(name)
+          // Edges taken off and nothing else: see `displayNameAsStored`, and `displayName.ts` for
+          // why the characters between them are left exactly as typed.
+          onContinue(displayNameAsStored(name))
         }}
         testID={ELEMENT.onboarding.displayNameInput}
         endWidth={remaining <= COUNTER_THRESHOLD ? COUNTER_WIDTH : 0}

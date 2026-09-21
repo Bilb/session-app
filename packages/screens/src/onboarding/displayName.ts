@@ -61,6 +61,21 @@ export function codePointLength(value: string): number {
 }
 
 /**
+ * The name as it will be stored, with the edges taken off.
+ *
+ * **One boundary for the whole screen**, because the limit, the emptiness check and what is sent
+ * have to agree about which characters count. A leading space is what an autocorrect leaves behind
+ * after a deleted word, and it would otherwise be stored, synced to every linked device and shown
+ * in conversation lists -- and spent against both limits, so a name of the advertised length is
+ * refused for a space nobody can see.
+ *
+ * Only the edges. Whitespace inside a name is the name.
+ */
+export function displayNameAsStored(name: string): string {
+  return name.trim()
+}
+
+/**
  * How much room is left, in whichever unit runs out first.
  *
  * **Which limit bites depends on the script**: Latin hits the 35 characters, CJK hits the bytes at
@@ -68,9 +83,10 @@ export function codePointLength(value: string): number {
  * name at 33 has to stop accepting input rather than explain itself afterwards.
  */
 export function displayNameRemaining(name: string): number {
+  const stored = displayNameAsStored(name)
   return Math.min(
-    DISPLAY_NAME_MAX_CODE_POINTS - codePointLength(name),
-    DISPLAY_NAME_MAX_BYTES - utf8Length(name),
+    DISPLAY_NAME_MAX_CODE_POINTS - codePointLength(stored),
+    DISPLAY_NAME_MAX_BYTES - utf8Length(stored),
   )
 }
 
@@ -81,7 +97,7 @@ export function displayNameRemaining(name: string): number {
  * impose none, and a name that works on a phone today has to keep working here.
  */
 export function displayNameProblem(name: string): DisplayNameProblem | null {
-  if (name.trim().length === 0) return 'empty'
+  if (displayNameAsStored(name).length === 0) return 'empty'
   if (displayNameRemaining(name) < 0) return 'tooLong'
   return null
 }
