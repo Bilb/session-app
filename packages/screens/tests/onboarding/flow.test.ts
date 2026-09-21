@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import {
   asksAboutNotifications,
   committingStep,
-  backDiscardsAccount,
   isWideDesign,
   initialOnboarding,
   onboardingReducer,
@@ -135,37 +134,6 @@ describe('going back', () => {
     )
   })
 
-  it('throws the account away when leaving the wait', () => {
-    expect(backDiscardsAccount(run([RESTORE, PHRASE, FAST]))).toBe(true)
-  })
-
-  it('throws away an account a failed commit left behind', () => {
-    // The create branch mints at the very end, so nothing before `done` has an account -- until a
-    // commit fails after minting one and sends the flow back to the name picker. Reading the
-    // branch instead of the account let back walk away from a live one, and the app then drew the
-    // conversation list over an account the next start would sweep.
-    const beforeAnyMint = run([CREATE])
-    expect(backDiscardsAccount(beforeAnyMint)).toBe(false)
-
-    const afterPartialCommit = run([
-      CREATE,
-      NAME,
-      FAST,
-      { type: 'accountMinted' },
-      { type: 'commitFailed' },
-    ])
-    expect(afterPartialCommit.step).toBe('pickDisplayName')
-    expect(afterPartialCommit.branch).toBe('create')
-    expect(backDiscardsAccount(afterPartialCommit)).toBe(true)
-  })
-
-  it('keeps the account it minted out of the next attempt', () => {
-    // Reaching the landing screen is starting over, and the discard has already run by then.
-    const restarted = run([RESTORE, PHRASE, { type: 'back' }, { type: 'back' }])
-    expect(restarted.step).toBe('landing')
-    expect(backDiscardsAccount(restarted)).toBe(false)
-  })
-
   it('forgets everything collected when it reaches the landing screen', () => {
     // The leak one level above the database: a display name or a phrase carried into the next
     // attempt would belong to the account just abandoned.
@@ -187,20 +155,6 @@ describe('going back', () => {
 
     const gone = run([RESTORE, PHRASE, FAST, { type: 'restoreArrived' }])
     expect(gone.recovery).toBeNull()
-  })
-
-  it('throws the account away wherever one has been minted', () => {
-    // Restoring mints as it leaves the phrase screen, so every step after it is backing out of a
-    // real account -- which is a discard rather than a navigation.
-    expect(backDiscardsAccount(run([RESTORE, PHRASE]))).toBe(true)
-    expect(backDiscardsAccount(run([RESTORE, PHRASE, FAST, { type: 'restoreGaveUp' }]))).toBe(true)
-
-    // Creating holds the name and mints at the very end, so backing out of it has nothing to undo.
-    expect(backDiscardsAccount(run([CREATE]))).toBe(false)
-    expect(backDiscardsAccount(run([CREATE, NAME]))).toBe(false)
-    // And the phrase screen itself: checked but not yet taken over.
-    expect(backDiscardsAccount(run([RESTORE]))).toBe(false)
-    expect(backDiscardsAccount(initialOnboarding('phone'))).toBe(false)
   })
 })
 

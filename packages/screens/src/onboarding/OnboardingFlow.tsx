@@ -10,7 +10,6 @@ import { LoadingScreen } from './LoadingScreen'
 import { MessageNotificationsScreen } from './MessageNotificationsScreen'
 import { PickDisplayNameScreen } from './PickDisplayNameScreen'
 import {
-  backDiscardsAccount,
   committingStep,
   isWideDesign,
   initialOnboarding,
@@ -70,7 +69,12 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
    * to quit.
    */
   const goBack = () => {
-    if (!backDiscardsAccount(state)) {
+    // **Whether there is an account, not which branch we are on.** Restore mints at the phrase
+    // and create at the very end, so the branch used to stand in for this -- and it was wrong for
+    // a create whose commit failed after minting, which comes back to the name picker with an
+    // account on disk. Back then left it there, and the app drew the conversation list over an
+    // account the next start swept. The store is the one that knows.
+    if (account?.haveAccount !== true) {
       dispatch({ type: 'back' })
       return
     }
@@ -178,9 +182,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
     committing.current = true
     // `done` is reached from two places and means something different at each: the end of create,
     // where there is no account yet, and the end of a restore that had to ask for a name.
-    void commit(state, actions, setBusy, () => {
-      dispatch({ type: 'accountMinted' })
-    }).then(
+    void commit(state, actions, setBusy, account?.haveAccount === true).then(
       () => {
         onRunningChange?.(false)
       },
@@ -188,7 +190,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
         dispatch({ type: 'commitFailed' })
       },
     )
-  }, [state, actions, onRunningChange])
+  }, [state, actions, account, onRunningChange])
 
   // At `done` the last step stays on screen while the account is made -- see `committingStep`.
   const committingNow = state.step === 'done'
@@ -385,17 +387,14 @@ async function commit(
   state: OnboardingState,
   actions: ReturnType<typeof useSessionActions>,
   setBusy: (busy: boolean) => void,
-  onMinted: () => void,
+  haveAccount: boolean,
 ): Promise<void> {
   setBusy(true)
   try {
     // **Only if there is not one already.** A commit that failed after this line comes back here
     // when the name is entered again, and minting a second time would leave two identities with
     // the first one orphaned.
-    if (state.branch === 'create' && !state.minted) {
-      await actions.createAccount()
-      onMinted()
-    }
+    if (state.branch === 'create' && !haveAccount) await actions.createAccount()
     if (state.displayName !== null) await actions.setDisplayName(state.displayName)
     // Last, and only once the rest has worked. Until this lands the account is provisional and a
     // restart throws it away -- which is exactly what should happen if onboarding died before
