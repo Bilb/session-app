@@ -1,6 +1,6 @@
 import type { CrowdinLocale } from './localization-src/generated/constants'
 import { setLocaleInUse } from './localization-src/localeTools'
-import { matchLocale } from './languageList'
+import { matchLocale } from './localization-src/languageList'
 
 /**
  * The locale in use, and a way to hear about it changing.
