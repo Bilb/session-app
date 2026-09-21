@@ -168,9 +168,14 @@ void app.whenReady().then(async () => {
    * Restricted to http(s) here rather than at the caller: `openExternal` gives any scheme to the
    * OS, and a `file:` or a custom scheme reaching it is how a link becomes a launched program.
    * The renderer is not trusted to have checked.
+   *
+   * Plain http is allowed, which is what all three legacy clients do -- two of them go further
+   * and upgrade a scheme-less address to https rather than refusing it. Case-insensitive for the
+   * same reason the desktop client's is: a scheme is not case-sensitive, and `HTTP://` silently
+   * doing nothing is worse than opening it.
    */
   ipcMain.on('open-external', (_event, url: unknown) => {
-    if (typeof url === 'string' && /^https?:\/\//.test(url)) void shell.openExternal(url)
+    if (typeof url === 'string' && /^https?:\/\//i.test(url)) void shell.openExternal(url)
   })
   await createWindow()
 
