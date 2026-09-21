@@ -126,16 +126,18 @@ export interface WindowPort {
 }
 
 export interface NetworkPort {
-  name: NetworkName
   /**
-   * Whether this build is talking to the fake bridge rather than to libsession.
+   * Which network this build is talking to, `fake` included.
    *
-   * Worth saying on screen for the same reason the network is: a fake build looks exactly like a
-   * real one, and the difference decides whether anything you are seeing means anything. It is a
-   * fact about how the app was started, which is why it arrives as a port rather than being read
-   * from an environment variable somewhere in the middle of a screen.
+   * **The fake is one of the answers rather than a flag beside them.** A fake build looks exactly
+   * like a real one and the difference decides whether anything on screen means anything, so it
+   * is the same question as "which network" and has the same one answer. It is a fact about how
+   * the app was started, which is why it arrives as a port rather than being read from an
+   * environment variable in the middle of a screen.
+   *
+   * Not what libsession is handed: nothing is attached for the fake. See `NetId`.
    */
-  usingFake: boolean
+  name: NetworkName
 }
 
 export interface FlagsPort {

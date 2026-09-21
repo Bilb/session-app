@@ -15,7 +15,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
   return {
     // Mainnet unless an app says otherwise, so the network overlay stays out of tests and out of
     // the fake. See shouldStampNetwork.
-    network: { name: 'mainnet', usingFake: false },
+    network: { name: 'mainnet' },
     // No overrides, so every flag reads its default. A test that wants one on passes its own
     // `flags` port rather than reaching for a global.
     flags: { override: () => null },

@@ -15,8 +15,7 @@ import { networkStampLabel } from './networkStamp'
  * (docs/STATUS.md) - so treat it as untested against a real network.
  */
 export function NetworkOverlay({ children }: { children: ReactNode }) {
-  const { name, usingFake } = requirePorts().network
-  const label = networkStampLabel(name, usingFake)
+  const label = networkStampLabel(requirePorts().network.name)
   if (label === null) return <>{children}</>
 
   return (

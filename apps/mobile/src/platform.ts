@@ -54,10 +54,12 @@ const ports = memoryPorts({
   // The same variable and the same parser store.ts gives the transport, so the overlay cannot
   // name a network libsession never attached to. EXPO_PUBLIC_ for the reason store.ts gives.
   network: {
-    name: parseNetworkName(process.env['EXPO_PUBLIC_SESSION_NETID']),
     // The same variable `store.ts` reads to decide which bridge to open, so the badge cannot
     // disagree with what is actually running.
-    usingFake: process.env['EXPO_PUBLIC_SESSION_FAKE'] === '1',
+    name:
+      process.env['EXPO_PUBLIC_SESSION_FAKE'] === '1'
+        ? 'fake'
+        : parseNetworkName(process.env['EXPO_PUBLIC_SESSION_NETID']),
   },
   // One literal per flag, in `flagOverrides.ts`, because a computed variable name is not a
   // variable Expo carries into the bundle at all.
