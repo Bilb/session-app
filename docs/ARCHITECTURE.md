@@ -167,6 +167,54 @@ the store and the boot sequence both read them from outside React. `requirePorts
 rather than returning null: a missing port is a mistake in the app's entry file, and failing
 there names it.
 
+## Links leaving the app
+
+Handing a URL to the operating system is where the app stops deciding what happens next, so
+there is one place that does it: `openExternalUrl` in `@session/app`. The ports are not that
+place. Each is a thin wrapper over the platform's own call - `shell.openExternal`,
+`Linking.openURL` - and both give any scheme straight to the OS, so a policy written into one
+of them is a policy the other two have to remember. A screen reaching for `linking.openUrl`
+directly would skip whichever one it did not go through.
+
+Desktop checks a second time in its main process. That is a different boundary rather than a
+duplicate: the main process does not trust the renderer, while the shared check is the app
+deciding what it is willing to open at all.
+
+**A missing scheme becomes `https` rather than a refusal**, and only where the text already
+looks like a host. Both mobile clients do this, and both pick https rather than the http a
+parser would default to, because https is the only scheme they will load a preview for.
+Somebody who typed `getsession.org` meant a website. A scheme that is present and is not
+http(s) is refused rather than upgraded: `file:`, `javascript:` and `mailto:` say what they
+are.
+
+**Plain http is allowed.** All three clients open it, and refusing it here would be stricter
+than anything shipped.
+
+### Addresses that are not what they read as
+
+A scheme check says a link may be opened. `isPlausibleAddress` says it is what it looks like,
+and every entry in it is a way of writing an address that renders as one destination and
+resolves to another:
+
+| refused                                       | because                                                              |
+| --------------------------------------------- | -------------------------------------------------------------------- |
+| userinfo before the host                      | `https://getsession.org@evil.example` goes to `evil.example`         |
+| one label in two scripts                      | Cyrillic `а` for Latin `a`, inside a word -- so `session.рф` is fine |
+| a percent-encoded host                        | `%67` is `g`, so a host can be spelled to defeat a reader            |
+| fewer than two labels, or any empty one       | not a host                                                           |
+| over 4096 characters, or a host over 2048     | not a readable address either way                                    |
+| anything outside RFC 3986 after the authority | how a control character reaches what is displayed                    |
+
+The list is the legacy desktop client's, which applies the same one to opening and to previews
+and is the only one of the three clients that has it.
+
+**Two limits worth knowing.** It is written against the string rather than a parsed `URL`,
+because react-native ships an incomplete one - `username` in particular - and a check built on
+it would quietly pass on the platform with the least protection elsewhere. And the
+mixed-script test reads the host as written: one already encoded as punycode is pure ASCII and
+passes unexamined, which would need a decoder neither Hermes nor a browser exposes. Text
+arriving from a message body is the unencoded form, which is the case that matters.
+
 ## Testing
 
 | tier     | what                                                  | when                         |
@@ -245,6 +293,20 @@ Every shared file is checked two or three ways per run, with no synthetic profil
 ## Decision log
 
 Append one paragraph per decision. Undocumented decisions are what rot.
+
+- **2026-09-21 - A packaged desktop build ignores every developer setting, not just the fake.**
+  Switching a shipped build to a devnet is a smaller thing than running it on the fake, and
+  neither has a use that has come up. The ones that turn out to be worth reaching belong in
+  settings the app offers on purpose, where they can be shown and explained, rather than in an
+  environment variable nobody can see. A release build carrying one fails rather than baking it
+  in, because the renderer's copies are substituted at build time and would otherwise disagree
+  with a main process that ignores them.
+
+- **2026-09-21 - One shared check decides what may be opened, not the ports.** Handing a URL out
+  is the moment the app stops deciding what happens next, and a port is a thin wrapper over the
+  platform's call: a policy in one is a policy the other two must remember. Desktop keeps its
+  main-process check, which is a different boundary rather than a duplicate. See _Links leaving
+  the app_.
 
 - **2026-09-04 - Responses share the event stream.** Ordering across the boundary is what
   makes hydration race-free; two channels cannot promise it.
