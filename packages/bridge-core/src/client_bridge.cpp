@@ -436,6 +436,29 @@ struct ClientBridge::Impl {
         client->core.globals.set(provisional_account_key, std::string_view{"1"});
     }
 
+    /// Marks, mints, and takes the marker back off if the mint throws.
+    ///
+    /// The marker has to be written first, for the reason above, but a mint that throws then
+    /// leaves it describing an account it did not make. `create_account` and `restore_account`
+    /// both throw on a database that already has an identity, so without this a refused mint
+    /// condemns the account that refused it: the next start finds the marker and discards.
+    ///
+    /// **Put back rather than erased.** A marker that was already there belongs to an onboarding
+    /// somebody is partway through, and erasing that one is the opposite mistake -- it would keep
+    /// an account nobody confirmed.
+    template <typename Mint>
+    void minting(Mint&& mint) {
+        const bool marked = client->core.globals.get_text(provisional_account_key).has_value();
+        mark_provisional();
+        try {
+            std::forward<Mint>(mint)();
+        } catch (...) {
+            if (!marked)
+                client->core.globals.erase(provisional_account_key);
+            throw;
+        }
+    }
+
     /// Asks the whole swarm for the restored account's profile at once.
     ///
     /// **Only on the restore paths**, because only there is there something on the swarm that this
@@ -549,8 +572,7 @@ struct ClientBridge::Impl {
     }
 
     void handle(double id, const CreateAccountCommand&) {
-        mark_provisional();
-        client->core.globals.create_account();
+        minting([this] { client->core.globals.create_account(); });
         on_account();
         ok(id);
     }
@@ -563,8 +585,9 @@ struct ClientBridge::Impl {
         auto raw = hex_bytes(cmd.hex_seed, 32, "hexSeed");
         b32 seed;
         std::memcpy(seed.data(), raw.data(), seed.size());
-        mark_provisional();
-        client->core.globals.restore_account(core::predefined_seed{std::span{seed}});
+        minting([this, &seed] {
+            client->core.globals.restore_account(core::predefined_seed{std::span{seed}});
+        });
         on_account();
         fetch_restored_profile();
         ok(id);
@@ -572,10 +595,11 @@ struct ClientBridge::Impl {
 
     void handle(double id, const RestoreAccountFromWordsCommand& cmd) {
         const auto words = phrase_words(cmd.phrase);
-        mark_provisional();
-        client->core.globals.restore_account(
-                cmd.language ? core::predefined_seed{words, *cmd.language}
-                             : core::predefined_seed{words});
+        minting([this, &cmd, &words] {
+            client->core.globals.restore_account(
+                    cmd.language ? core::predefined_seed{words, *cmd.language}
+                                 : core::predefined_seed{words});
+        });
         on_account();
         fetch_restored_profile();
         ok(id);
@@ -1001,8 +1025,19 @@ void ClientBridge::close() {
 }
 
 void ClientBridge::call(Request request) {
-    if (!_impl || !_impl->client)
+    // Nothing can be answered once the Impl is gone: there is no sink left to answer on. The
+    // caller's pending requests were rejected by `close` before it got here.
+    if (!_impl)
         return;
+
+    // **Refused, not dropped.** A discard that could not reopen the database leaves the Impl with
+    // no client, and every request after it used to return from here without a response at all.
+    // Nothing above has a timeout, so the promise each was made for never settled and the app
+    // simply stopped, with nothing said anywhere.
+    if (!_impl->client) {
+        _impl->fail(request.id, "the bridge has no database open");
+        return;
+    }
 
     try {
         _impl->dispatch(request);
