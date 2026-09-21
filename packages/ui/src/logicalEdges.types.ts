@@ -19,4 +19,7 @@ export interface LogicalEdges {
   insetStart?: LogicalLength
   /** Absolute positioning: distance from the trailing edge of the containing block. */
   insetEnd?: LogicalLength
+  /** A rule down the trailing edge: the divider between two panes, which mirrors with them. */
+  borderEndWidth?: LogicalLength
+  borderEndColor?: string
 }

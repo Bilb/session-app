@@ -29,7 +29,15 @@ describe('a directional edge', () => {
    * so `SafeArea` and `Screen` must not follow the text. A `left`/`right` pair used together is a
    * symmetric stretch rather than a side.
    */
-  const PHYSICAL_ON_PURPOSE = ['SafeArea.native.tsx', 'Screen.native.tsx', 'PhoneChrome.tsx']
+  const PHYSICAL_ON_PURPOSE = [
+    'SafeArea.native.tsx',
+    'Screen.native.tsx',
+    'PhoneChrome.tsx',
+    // Icon names, not edges: a chevron that points left is a glyph, and which glyph a control
+    // should use is the caller's decision rather than this file's.
+    'Icon.types.ts',
+    'Icon.tsx',
+  ]
 
   function sources(dir: string): string[] {
     return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -39,19 +47,59 @@ describe('a directional edge', () => {
     })
   }
 
+  /**
+   * Comments are stripped first, so prose about left and right is not read as code.
+   *
+   * The scan is by shape rather than by a list of prop names -- anything with `Left` or `Right`
+   * in it, used as a prop or a style key. Naming the props known at the time is how an unmirrored
+   * `borderRightWidth` came to sit between the two desktop panes while this test passed.
+   */
+  function code(source: string): string {
+    return source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1 ')
+  }
+
+  /**
+   * A side named without its mirror.
+   *
+   * **A matched pair is not an offence**, which is the distinction a plain search cannot make: a
+   * dialog rounding both bottom corners and a box inset equally from both sides are symmetric
+   * geometry, the same in every language. One without the other is a side, and a side is what
+   * mirrors wrong. Counted rather than paired up element by element, which is as far as reading
+   * the source rather than the tree can get.
+   */
+  function unpairedSides(source: string): string[] {
+    const used = new Map<string, number>()
+    // The bare pair only in its JSX form: `const left = …` is a variable, and a `left` read off
+    // `getBoundingClientRect` is the browser's own physical rect.
+    for (const [match] of source.matchAll(
+      /\b[A-Za-z]*(?:Left|Right)[A-Za-z]*\s*[=:]|\b(?:left|right)=\{/g,
+    )) {
+      const name = match.replace(/\s*(?:[=:]|=\{)$/, '').trim()
+      used.set(name, (used.get(name) ?? 0) + 1)
+    }
+    return [...used]
+      .filter(([name, count]) => {
+        const mirror = /Left/.test(name)
+          ? name.replace('Left', 'Right')
+          : /Right/.test(name)
+            ? name.replace('Right', 'Left')
+            : name === 'left'
+              ? 'right'
+              : 'left'
+        return (used.get(mirror) ?? 0) !== count
+      })
+      .map(([name]) => name)
+  }
+
   it('is named for the direction rather than the side', () => {
     const offenders = roots
       .flatMap(sources)
       .map((path) => ({
         name: path.slice(path.lastIndexOf('/') + 1),
-        source: readFileSync(path, 'utf8'),
+        source: code(readFileSync(path, 'utf8')),
       }))
       .filter(({ name }) => !PHYSICAL_ON_PURPOSE.includes(name))
-      .flatMap(({ name, source }) =>
-        [...source.matchAll(/\b(margin|padding)(Left|Right)\b|\b(left|right)=\{/g)].map(
-          (match) => `${name}: ${match[0]}`,
-        ),
-      )
+      .flatMap(({ name, source }) => unpairedSides(source).map((prop) => `${name}: ${prop}`))
 
     expect(offenders).toEqual([])
   })

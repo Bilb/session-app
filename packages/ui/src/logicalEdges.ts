@@ -23,5 +23,9 @@ export function logical(edges: LogicalEdges): { style: Record<string, LogicalLen
   if (edges.paddingEnd !== undefined) style['paddingInlineEnd'] = edges.paddingEnd
   if (edges.insetStart !== undefined) style['insetInlineStart'] = edges.insetStart
   if (edges.insetEnd !== undefined) style['insetInlineEnd'] = edges.insetEnd
+  if (edges.borderEndWidth !== undefined) style['borderInlineEndWidth'] = edges.borderEndWidth
+  if (edges.borderEndColor !== undefined) style['borderInlineEndColor'] = edges.borderEndColor
+  // A border is not drawn without a style, and the shorthand does not reach here either.
+  if (edges.borderEndWidth !== undefined) style['borderInlineEndStyle'] = 'solid'
   return { style }
 }

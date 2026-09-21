@@ -1,4 +1,4 @@
-import { useMedia, XStack, YStack } from '@session/ui'
+import { logical, useMedia, XStack, YStack } from '@session/ui'
 import type { ReactNode } from 'react'
 
 /**
@@ -28,8 +28,10 @@ export function AdaptiveShell({
       <XStack flex={1} backgroundColor="$backgroundPrimary">
         <YStack
           width={media.gtLg ? 380 : 320}
-          borderRightWidth={1}
-          borderRightColor="$bordersColor"
+          // The rule between the two panes sits on the edge the list ends at, which in Arabic is
+          // its left: a physical right keeps the divider on the detail pane's outer edge and
+          // leaves the two panes touching.
+          {...logical({ borderEndWidth: 1, borderEndColor: '$bordersColor' })}
         >
           {list}
         </YStack>

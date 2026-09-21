@@ -21,5 +21,7 @@ export function logical(edges: LogicalEdges): { style: Record<string, LogicalLen
   if (edges.paddingEnd !== undefined) style['paddingEnd'] = edges.paddingEnd
   if (edges.insetStart !== undefined) style['start'] = edges.insetStart
   if (edges.insetEnd !== undefined) style['end'] = edges.insetEnd
+  if (edges.borderEndWidth !== undefined) style['borderEndWidth'] = edges.borderEndWidth
+  if (edges.borderEndColor !== undefined) style['borderEndColor'] = edges.borderEndColor
   return { style }
 }
