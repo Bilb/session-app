@@ -25,24 +25,39 @@ const DURATION_MS = 680
  * pinned to the top rises as the box grows and is clipped along that edge: it slides into view from
  * a hard line, which is how a message arrives. Pinned to the bottom it holds still while the clip
  * travels up it, and reads as being unrolled.
+ *
+ * **All of that ends when the arrival does.** Once it has finished the content lays out normally
+ * and the box takes whatever height it asks for, so a bubble that re-wraps -- a rotation, a
+ * window resized, a longer string in another language -- is not clipped to the height it happened
+ * to have on the frame it arrived.
  */
 export function Reveal({ children, instant = false }: RevealProps) {
   const [naturalHeight, setNaturalHeight] = useState<number | null>(null)
+  const [arrived, setArrived] = useState(false)
   const progress = useRef(new Animated.Value(0)).current
 
   useEffect(() => {
     if (naturalHeight === null) return
     if (instant) {
       progress.setValue(1)
+      setArrived(true)
       return
     }
-    Animated.timing(progress, {
+    const run = Animated.timing(progress, {
       toValue: 1,
       duration: DURATION_MS,
       easing: Easing.out(Easing.cubic),
       // Height cannot be driven natively, and the whole point is that the height is what moves.
       useNativeDriver: false,
-    }).start()
+    })
+    run.start(({ finished }) => {
+      if (finished) setArrived(true)
+    })
+    // Stopped rather than left running: it drives a height on a view that is going away, which is
+    // a set on an unmounted component and a callback that lands after it.
+    return () => {
+      run.stop()
+    }
   }, [naturalHeight, progress, instant])
 
   const onLayout = (event: LayoutChangeEvent) => {
@@ -52,6 +67,10 @@ export function Reveal({ children, instant = false }: RevealProps) {
     if (measured <= 0) return
     setNaturalHeight((known) => known ?? measured)
   }
+
+  // Out of the way once it is here: no clip, no measured height, and the content laid out the
+  // ordinary way, so it is free to re-wrap.
+  if (arrived) return <View>{children}</View>
 
   return (
     <Animated.View

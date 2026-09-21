@@ -145,9 +145,21 @@ describe('going back', () => {
     // Two steps in with a name typed, then all the way out.
     const backedOut = run([CREATE, NAME, { type: 'back' }, { type: 'back' }])
     expect(backedOut.step).toBe('landing')
-    expect(backedOut.recovery).toBeNull()
     expect(backedOut.displayName).toBeNull()
     expect(backedOut.afterFailedRestore).toBe(false)
+  })
+
+  it('forgets a phrase that was actually entered', () => {
+    // The create branch never sets `recovery`, so asserting it is null after backing out of that
+    // branch says nothing -- it was null the whole way. This takes the branch that holds one.
+    const entered = run([RESTORE, PHRASE])
+    expect(entered.recovery).not.toBeNull()
+
+    const backedOut = run([RESTORE, PHRASE, FAST, { type: 'restoreGaveUp' }])
+    expect(backedOut.recovery).toBeNull()
+
+    const gone = run([RESTORE, PHRASE, FAST, { type: 'restoreArrived' }])
+    expect(gone.recovery).toBeNull()
   })
 
   it('throws the account away wherever one has been minted', () => {
