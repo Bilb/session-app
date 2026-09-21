@@ -21,6 +21,7 @@ export function Input({
   keyboardType,
   autoCapitalize,
   secureTextEntry,
+  private: isPrivate,
   multiline,
   autoFocus,
   disabled,
@@ -45,6 +46,18 @@ export function Input({
       keyboardType={keyboardTypeToNative(keyboardType) as never}
       autoCapitalize={autoCapitalize ?? 'sentences'}
       secureTextEntry={secureTextEntry ?? false}
+      // Independent of `secureTextEntry`, which the reveal toggle turns off: the phrase is no
+      // less a secret for being on screen, and these are what keep it out of the keyboard's
+      // dictionary and prediction cache. `oneTimeCode` is the content type that tells iOS not to
+      // offer a saved value and not to learn this one.
+      {...(isPrivate === true
+        ? {
+            autoCorrect: false,
+            spellCheck: false,
+            autoComplete: 'off' as const,
+            textContentType: 'oneTimeCode' as const,
+          }
+        : {})}
       multiline={multiline ?? false}
       autoFocus={autoFocus ?? false}
       disabled={disabled ?? false}

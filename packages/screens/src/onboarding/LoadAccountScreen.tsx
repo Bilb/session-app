@@ -134,6 +134,9 @@ export function LoadAccountScreen({
               errorTestID={ELEMENT.onboarding.recoveryPhraseError}
               placeholder={tr('recoveryPasswordEnter')}
               autoCapitalize="none"
+              // The phrase is words from a list, so a keyboard treats it as prose and learns it.
+              // See `private`.
+              private
               autoFocus
               // Concealed until asked for. The toggle is the only way to read it back, which is the
               // point -- a phrase typed blind cannot be checked over.

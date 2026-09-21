@@ -20,6 +20,7 @@ export function Input({
   keyboardType,
   autoCapitalize,
   secureTextEntry,
+  private: isPrivate,
   multiline,
   autoFocus,
   disabled,
@@ -43,6 +44,13 @@ export function Input({
       placeholder={placeholder ?? ''}
       inputMode={keyboardTypeToInputMode(keyboardType) as never}
       autoCapitalize={autoCapitalize ?? 'sentences'}
+      // Independent of `secureTextEntry`, which the reveal toggle turns off: the phrase is no
+      // less a secret for being on screen, and these are what keep it out of the browser's
+      // spell-checker and its offer to save the value. Spread rather than passed as undefined,
+      // which `exactOptionalPropertyTypes` will not take for a prop that is not optional.
+      {...(isPrivate === true
+        ? { autoCorrect: 'off' as const, spellCheck: false, autoComplete: 'off' as const }
+        : {})}
       // `secureTextEntry` is a react-native prop and tamagui's web Input does not translate it,
       // so the field stayed readable however the toggle was set. `domInputType` exists for exactly
       // this and was written before anything needed it.

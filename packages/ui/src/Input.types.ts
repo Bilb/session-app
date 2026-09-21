@@ -15,6 +15,19 @@ export interface InputProps {
   keyboardType?: 'default' | 'email' | 'numeric' | 'phone'
   autoCapitalize?: 'none' | 'sentences' | 'words'
   secureTextEntry?: boolean
+  /**
+   * Whether the platform may correct, suggest, remember or offer to save what is typed here.
+   *
+   * **Off is for a field whose contents must not leave it.** A recovery phrase is words from a
+   * list, so a keyboard treats it as prose: it learns the words into the personal dictionary and
+   * the prediction cache, offers them back in other apps, and on the web a browser spell-checks
+   * the value and offers to save it. `secureTextEntry` suppresses most of that and the field
+   * turns it off to be read back, which is the moment the phrase is ordinary text.
+   *
+   * One prop for all of it rather than four, because no caller wants them separately: the
+   * question is whether this is a secret, and every platform answers it in its own vocabulary.
+   */
+  private?: boolean
   multiline?: boolean
   autoFocus?: boolean
   disabled?: boolean
