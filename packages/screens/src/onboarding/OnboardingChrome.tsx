@@ -31,7 +31,7 @@ export function OnboardingChrome(props: ChromeProps) {
   const fading = useFadeIn(props.testID, flag('disableAnimations'))
 
   return wide ? (
-    <WideChrome testID={props.testID} fading={fading}>
+    <WideChrome testID={props.testID} banner={props.banner} fading={fading}>
       {props.children}
     </WideChrome>
   ) : (

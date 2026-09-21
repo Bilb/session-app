@@ -33,19 +33,25 @@ import { useConfirmUrl } from './ConfirmUrl'
  * fixed-width column beside it carrying the lockup, the links and the step.
  *
  * The lockup sits above *every* step rather than only the first, which is how the desktop client
- * arranges it -- it belongs to onboarding rather than to the landing screen. `banner` is ignored
- * here: the desktop client has no second way into the screen that uses one.
+ * arranges it -- it belongs to onboarding rather than to the landing screen.
+ *
+ * `banner` is drawn above the step rather than dropped. The desktop client has no second way
+ * into the screen that uses one, which is why it used to be ignored -- but this layout is what a
+ * tablet past the breakpoint gets too, and a tablet has the camera the tabs switch to. Ignored,
+ * the scan tab was unreachable there and rotating to portrait was the only way back to it.
  */
 export function WideChrome({
   children,
   testID,
+  banner,
   fading,
-}: Pick<ChromeProps, 'children' | 'testID'> & { fading: number }) {
+}: Pick<ChromeProps, 'children' | 'testID' | 'banner'> & { fading: number }) {
   const column = (
     // Centred both ways in whatever is left, which is the rule the designs state.
     <YStack flex={1} alignItems="center" justifyContent="center" padding="$xl">
       <YStack width={COLUMN_WIDTH} gap="$xl">
         <OnboardingHeader />
+        {banner}
         <YStack
           // **A height, not a minimum.** The reserve exists so the lockup and the chevron stay put
           // between steps, and a minimum delivers that only while every step fits inside it -- the
