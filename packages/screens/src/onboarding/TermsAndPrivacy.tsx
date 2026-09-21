@@ -14,6 +14,19 @@ const LINKS = [
 ] as const
 
 /**
+ * The links box, in the legacy client's own measurements rather than on the ladder.
+ *
+ * `MutipleLinksModal` there is a separate modal with a rhythm of its own, and this box is drawn
+ * to match it. Named because they are measured values: a rung would be the wrong answer here even
+ * when it happens to be the same number.
+ */
+const LINKS_BOX_MARGIN_TOP = 8
+const LINKS_BOX_RADIUS = 11
+const LINKS_BOX_PADDING_VERTICAL = 16
+const LINKS_BOX_PADDING_HORIZONTAL = 12
+const LINKS_ROW_GAP = 16
+
+/**
  * The footer of the landing screen: what using this commits you to.
  *
  * **The whole sentence is one control and it opens a dialog offering both documents.** That is the
@@ -70,26 +83,18 @@ export function TermsAndPrivacy() {
 
         {/* The addresses themselves, each opening its own confirmation. Showing the URL rather than
             the document's name is the point: this is the last moment before leaving, and where you
-            are going is the thing worth reading. */}
-        {/**
-         * **The client's own numbers, and they are not the base dialog's.** `MutipleLinksModal` is
-         * a separate modal there with a separate rhythm: the box is padded 16 down and 12 across,
-         * the rows are bare inside it, and 16 separates each row from the divider between them. So
-         * the inset belongs to the box and not to the row, which is the opposite of what this had
-         * -- rows padded 1.5 inside an unpadded box, which drew them hard against its edges.
-         *
-         * Only the top margin is set here. The 16 the client leaves above the box is this 8 plus
-         * the dialog's own 8 between children; the room below it belongs to the dialog, which is
-         * told to leave 20 rather than the 4 an actions row wants -- a margin here and a padding
-         * there would add to the same gap from two places.
-         */}
+            are going is the thing worth reading.
+
+            The inset belongs to the box and not to the rows, which is the legacy client's own
+            rhythm for this dialog. Only the top margin is set here: the room below the box belongs
+            to the dialog, and setting both would add to the same gap from two places. */}
         <YStack
-          marginTop={8}
-          borderRadius={11}
+          marginTop={LINKS_BOX_MARGIN_TOP}
+          borderRadius={LINKS_BOX_RADIUS}
           backgroundColor="$backgroundTertiary"
-          paddingVertical={16}
-          paddingHorizontal={12}
-          gap={16}
+          paddingVertical={LINKS_BOX_PADDING_VERTICAL}
+          paddingHorizontal={LINKS_BOX_PADDING_HORIZONTAL}
+          gap={LINKS_ROW_GAP}
         >
           {LINKS.map((link, index) => (
             <Fragment key={link.url}>
