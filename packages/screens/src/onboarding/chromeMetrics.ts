@@ -99,3 +99,13 @@ export const STEP_PADDING = {
 export function useStepPadding(): Partial<typeof STEP_PADDING> {
   return useMedia().gtSm ? {} : STEP_PADDING
 }
+
+/**
+ * The lockup along the top of the wide frame, in the desktop client's own measurements.
+ *
+ * Off the ladder deliberately: the mark and the wordmark are artwork sized to line up with each
+ * other, not controls whose height is a rung.
+ */
+export const HEADER_HEIGHT = 30
+export const HEADER_MARK_SIZE = 26
+export const HEADER_WORDMARK_SIZE = 15

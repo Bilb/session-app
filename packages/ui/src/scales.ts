@@ -16,10 +16,10 @@ export const COLOR_SCALE = {
 }
 
 export const SPACE_SCALE = {
-  // Named rather than numbered, the way the font scale already is: `$2` and `$3` say nothing
-  // about which gap they are, and a reviewer cannot tell a deliberate step from a typo. A token
-  // the scale does not define resolves to 0 rather than failing, so a name that does not exist
-  // is a silent loss of padding -- which is the other reason not to have people counting.
+  // Named, the way the font scale already is: `$2` and `$3` say nothing about which gap they are,
+  // and a reviewer cannot tell a deliberate step from a typo. A token the scale does not define
+  // resolves to 0 rather than failing, so a name that does not exist is a silent loss of padding --
+  // which is the other reason not to have people counting rungs.
   ...SPACING,
   none: 0,
   true: SPACING.md,
@@ -28,8 +28,8 @@ export const SPACE_SCALE = {
 export const SIZE_SCALE = {
   // A ladder of dimensions, shared by control heights and icons, and named for the same reason the
   // other scales are: `$7` says nothing, and a reader should not have to count rungs to find out
-  // that it is 40. Note that a control's own `size="md"` is a different vocabulary -- that names a
-  // button, this names a measurement, and the two deliberately do not have to agree.
+  // that it is 40. A control's own `size="md"` is a different vocabulary -- that names a button,
+  // this names a measurement, and the two deliberately do not have to agree.
   none: 0,
   xxs: 8,
   xs: 12,
@@ -45,15 +45,9 @@ export const SIZE_SCALE = {
 }
 
 export const RADIUS_SCALE = {
-  // Named for the same reason the space scale is: a corner is a look rather than a position, and
-  // `$3` says nothing about which one. Two of these have no name in theme-tokens, so they are
-  // named here rather than by changing a file the whole app's theming rests on.
-  none: 0,
-  sm: RADII.sm,
-  md: 10,
-  lg: RADII.message,
-  xl: 24,
-  full: 9999,
+  // The ladder is `RADII`'s, spread here the way the space scale spreads `SPACING`, so there is one
+  // place a corner's value lives. `true` names a rung rather than carrying a value of its own.
+  ...RADII,
   true: RADII.sm,
 }
 

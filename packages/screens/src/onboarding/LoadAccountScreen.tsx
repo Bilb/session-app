@@ -46,6 +46,9 @@ interface LoadAccountScreenProps {
  * column. The camera is not: the tab shows what the clients show before access is granted, and the
  * control that asks for it arrives with the port.
  */
+/** The shield beside the title, at the client's own size rather than a rung. */
+const TITLE_MARK_SIZE = 22
+
 export function LoadAccountScreen({
   onBack,
   backDisabled = false,
@@ -96,7 +99,7 @@ export function LoadAccountScreen({
         <YStack flex={1} {...stepPadding}>
           <OnboardingStepBody
             title={tr('sessionRecoveryPassword')}
-            titleMark={<RecoveryPasswordMark size={22} color="$textPrimary" />}
+            titleMark={<RecoveryPasswordMark size={TITLE_MARK_SIZE} color="$textPrimary" />}
             description={tr('recoveryPasswordRestoreDescription')}
             onBack={onBack}
             backDisabled={backDisabled}

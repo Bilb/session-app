@@ -1,3 +1,4 @@
+import { SPACING } from '@session/theme-tokens'
 import { useEffect, useRef, useState } from 'react'
 import { Keyboard, Modal, useWindowDimensions } from 'react-native'
 import type { KeyboardEvent } from 'react-native'
@@ -118,8 +119,10 @@ export function LanguagePicker({
           // so the flag and chevron sit tight inside it rather than spread by a text button's.
           size="md"
           // `compact` trims the text button's padding rather than removing it: at zero the
-          // highlight sat hard against the flag on one side and the chevron on the other.
-          {...(compact ? { paddingHorizontal: 8 } : {})}
+          // highlight sits hard against the flag on one side and the chevron on the other.
+          // Read off the scale rather than written out: `paddingHorizontal` here is a number,
+          // because it overrides the size variant's own.
+          {...(compact ? { paddingHorizontal: SPACING.xs } : {})}
           accessibilityLabel={accessibilityLabel}
           testID={testIDs.trigger}
           onPress={() => {

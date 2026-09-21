@@ -15,11 +15,13 @@ import { describe, expect, it } from 'vitest'
  * still numbered. So `left="$3"` passes there -- `3` is a real name, just not one the *space*
  * scale has. Only the prop says which scale is being read, which is why this checks by prop.
  *
- * Found the hard way: the sweep that renamed these missed `left` and `right`, and nothing failed.
+ * `size` and `fontSize` are the easiest two to leave out, because neither reads the space scale:
+ * `size` takes the size scale on a control and the font scale on text. Both are named, so a
+ * numbered token on either is a control that renders at nothing.
  */
 describe('a token on a sized prop', () => {
   const NUMBERED =
-    /\b(padding|margin|gap|columnGap|rowGap|space|height|width|top|bottom|left|right|start|end|inset|borderRadius|borderTopLeftRadius|borderTopRightRadius|borderBottomLeftRadius|borderBottomRightRadius|flexBasis)([A-Za-z]*)(?:="\$([0-9]+(?:\.[0-9])?)"|: '\$([0-9]+(?:\.[0-9])?)')/g
+    /\b(size|fontSize|padding|margin|gap|columnGap|rowGap|space|height|width|top|bottom|left|right|start|end|inset|borderRadius|borderTopLeftRadius|borderTopRightRadius|borderBottomLeftRadius|borderBottomRightRadius|flexBasis)([A-Za-z]*)(?:="\$([0-9]+(?:\.[0-9])?)"|: '\$([0-9]+(?:\.[0-9])?)')/g
 
   const roots = [
     join(import.meta.dirname, '../src'),

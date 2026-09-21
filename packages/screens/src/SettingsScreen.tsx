@@ -44,7 +44,7 @@ export function SettingsScreen() {
         </Text>
       </XStack>
 
-      <YStack paddingVertical="$md" gap="$xxs">
+      <YStack paddingVertical="$md" gap="$2xs">
         <Text tone="secondary" size="$caption">
           {tr('accountId')}
         </Text>
@@ -84,7 +84,7 @@ export function SettingsScreen() {
 
       <Separator borderColor="$bordersColor" />
 
-      <YStack paddingVertical="$md" gap="$xxs">
+      <YStack paddingVertical="$md" gap="$2xs">
         <Text tone="secondary" size="$caption">
           {tr('networkName')}
         </Text>
@@ -130,7 +130,7 @@ export function SettingsScreen() {
             <Button
               variant="ghost"
               fill
-              borderRadius={0}
+              borderRadius="$none"
               destructive
               loading={clearing}
               testID={ELEMENT.settings.confirmClearDataButton}
@@ -147,7 +147,7 @@ export function SettingsScreen() {
             <Button
               variant="ghost"
               fill
-              borderRadius={0}
+              borderRadius="$none"
               testID={ELEMENT.settings.cancelClearData}
               onPress={() => {
                 setConfirmingClear(false)

@@ -87,7 +87,7 @@ function RequestRow({
     >
       <Avatar id={request.id} name={title} />
 
-      <YStack flex={1} gap="$xxs">
+      <YStack flex={1} gap="$2xs">
         <Text size="$body" weight="bold" numberOfLines={1}>
           {title}
         </Text>

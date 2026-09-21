@@ -16,9 +16,19 @@ export type Oklch = { l: number; c: number; h: number }
 
 const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n)
 
+/**
+ * Throws rather than improvising, and here rather than at a caller.
+ *
+ * Five digits look like six to anything that slices by position, so the colour that comes out is
+ * valid, different and indistinguishable from the one meant. Every colour passes through this,
+ * where `knobsFor` and `deriveTokens` are public and oblige nobody to check first.
+ */
 function parseHex(hex: string): [number, number, number] {
-  const s = hex.replace('#', '')
-  const full = s.length === 3 ? [...s].map((ch) => ch + ch).join('') : s
+  const body = hex.startsWith('#') ? hex.slice(1) : hex
+  const full = body.length === 3 ? [...body].map((ch) => ch + ch).join('') : body
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) {
+    throw new Error(`Not a colour: ${JSON.stringify(hex)}. Expected #rgb or #rrggbb.`)
+  }
   return [
     Number.parseInt(full.slice(0, 2), 16) / 255,
     Number.parseInt(full.slice(2, 4), 16) / 255,

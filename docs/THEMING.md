@@ -29,9 +29,11 @@ accent ───┘
 Every one of these is settable in the playground's Advanced mode, including turning `textTint` off —
 which is what makes Ocean Light constructible rather than special.
 
-There is **no authored text colour.** Text is `contrastPick(['#000000', '#FFFFFF'], base)`. This is
-not a simplification, it is a correctness property: an authored text anchor cannot be trusted, and a
-mid-tone base with an authored white text measured 2.5:1 on every text role at once.
+There is **no authored text colour.** Text is `contrastPickAll(['#000000', '#FFFFFF'], surfaces)`.
+This is not a simplification, it is a correctness property: an authored text anchor cannot be
+trusted, and a mid-tone base with an authored white text measured 2.5:1 on every text role at once.
+Against every surface rather than against the base, for the reason listed below as the fifth bug
+this fixed -- a pick against the base alone put black body text above light muted text on one card.
 
 `knobsFor(base, accent)` builds the whole thing from the two picks a person actually makes. Polarity
 is read from the base's lightness; the tint hue comes from whichever pick carries hue, base first.
@@ -49,7 +51,8 @@ Ask what the thing _is_, not what colour you want.
 | body text                                                     | `textPrimary`                      |
 | a caption, a timestamp, a section label, a snippet            | `textSecondary`                    |
 | a disabled label                                              | `textDisabled`                     |
-| an outline control's edge, an input, an illustration frame    | `bordersColor`                     |
+| an input's edge, an illustration frame, a divider rail        | `bordersColor`                     |
+| an outline button's edge                                      | `textPrimary`                      |
 | a divider inside a card, a pane edge                          | `separatorColor`                   |
 | a filled accent button, a badge, an avatar, a bubble you sent | `primaryColor`                     |
 | text or a glyph sitting **on** that fill                      | `onAccent`                         |
@@ -167,7 +170,7 @@ is continuous, and a knob has to be continuous.
 searches were given targets that white and black satisfy perfectly, and both duly returned one:
 raising the danger/warning separation produced a `#ffffff` warning on one base and `#000000` on
 another, and squeezing the last contrast out of an amber on a saturated base gave `#fdfdfd` — 4.56:1
-and invisible. `contrastAdjustAll` and `distinguish` share a `CHROMA_KEEP` floor. On a base too
+and invisible. `contrastAdjustAll` applies a `CHROMA_KEEP` floor. On a base too
 hostile to carry a full palette the guarantee downgrades to _recognisable_, not to _high contrast_,
 because a warning that no longer looks like a warning is worse than one with less contrast.
 
@@ -203,10 +206,10 @@ what keeps OS text scaling reachable, and it is asserted by a contract test.
 
 | group   | tokens                                                          |
 | ------- | --------------------------------------------------------------- |
-| label   | `micro` 9 · `caption` 11 · `label` 12                           |
+| label   | `caption` 11 · `label` 12                                       |
 | body    | `body` 14 · `bodyLarge` 16                                      |
 | header  | `title` 18 · `titleLarge` 20 · `heading` 23 · `headingLarge` 26 |
-| display | `display` 29 · `displayLarge` 36                                |
+| display | `display` 29 · `displayMedium` 32 · `displayLarge` 36           |
 
 Line height is derived at `LINE_HEIGHT_RATIO` (1.2), not declared, so a size added to the ramp
 cannot arrive without one.
@@ -234,7 +237,7 @@ Conventions read off the newest designs, which contradict the older ones:
   header and composer take the base too, because they are chrome rather than content. Mobile and
   desktop genuinely disagree here — on desktop both panes are visible at once. Treat it as a
   breakpoint question.
-- **A destructive button is danger-coloured text on a transparent ground**, not a red fill.
+- **A destructive button is danger-coloured text on a transparent background**, not a red fill.
 - **Inline links have two conventions in the newest designs and it is unresolved**: the Pro card
   sets one as bold body text with an external glyph and no colour; the Network screen uses the
   accent. Pick deliberately and say which.
@@ -254,8 +257,10 @@ so where a screen came from predicts its layout risk, and Android is the safer p
   target.
 - `pnpm --filter @session/theme-tokens test` — the rules, the invariants above, and a sweep of
   **112 combinations**: four themes and twelve plausible custom bases against all seven accents,
-  every role with a floor, on every surface it can be drawn on. Zero shortfalls is the assertion,
-  and the confusability whitelist is a whitelist rather than a count, so a new collision fails.
+  every role with a floor, on every surface it can be drawn on. Zero shortfalls is the assertion.
+  The confusable red-green pair is pinned by a **lower bound on a count**, so it records that the
+  collision exists rather than which bases have it -- a new collision makes that assertion pass
+  more easily, not fail. Tightening it to name the bases is worth doing when the authored reds are.
 - `pnpm --filter @session/ui test` — every `'$token'` literal in `ui` and `screens` must name a
   token that exists. It matches any such literal, not just `prop="$x"`, because a token named inside
   a conditional was exactly where a missing one hid.
@@ -276,15 +281,79 @@ Marked so nobody implements one by accident:
    on the raised and nested surfaces of all four themes. Holding danger to text contrast moves it
    visibly. Accessibility or brand exactness — the presets currently author the shipped reds.
 2. **The dark warning amber is also a selectable accent.** `#FCB159` is `primaryOrange`, so a dark
-   theme with the Orange accent renders warning and accent as the same colour. `distinguish()`
-   currently holds warning apart from danger only. The accent is user-chosen and the warning is not.
+   theme with the Orange accent renders warning and accent as the same colour. Nothing holds the
+   two apart, since separating a semantic pair is deliberately not a rule here (see above), and the
+   accent is user-chosen where the warning is not -- so this cannot be answered by yielding the
+   warning.
 3. **Both light presets ship a confusable red and amber.** Authored `#E12D19` and `#A64B00` are 18°
-   of hue apart at a similar lightness — the derived pair is held apart by `distinguish()`, but
-   authored values bypass it by design. A red-green colour-blind viewer would struggle to separate
-   them. Pinned by a test rather than changed, because they are the shipped colours.
+   of hue apart at a similar lightness, and the derived pair is not held apart either. A red-green
+   colour-blind viewer would struggle to separate them. Pinned by a test rather than changed,
+   because they are the shipped colours — see the note on that test's shape above.
 4. **Whether desktop should honour system text scaling** as well as zoom, and what that costs.
 
+## Nesting a rounded box inside a rounded box
+
+**Inner radius = outer radius − the gap between them.** Two rounded rectangles read as belonging to
+one another only when their corner arcs share a centre; given the same radius, the inner corners
+bulge and the gap looks thicker at the corners than along the edges.
+
+Two boundary cases, because both occur here:
+
+- **gap ≥ outer radius** — no concentric inner radius exists, the inner corners sit clear of the
+  outer arc, and the radius is a free choice. The Open URL dialog is this: radius 11, inset 20.
+- **gap = 0** — the inner radius equals the outer, or the inner element squares its corners and
+  lets the parent clip. A dialog's action buttons are this, which is why they set `$none`.
+
+**Corners are circular, deliberately.** React Native's `borderCurve` defaults to `circular` and
+nothing here sets it, so iOS, Android and desktop draw the same quarter-circle. Apple's continuous
+curvature is available on two of the three — `borderCurve: 'continuous'` and CSS `corner-shape` —
+and Compose has no equivalent at all, so opting in would _create_ a platform difference rather than
+resolve one. All three legacy clients are circular too.
+
+**A sheet rounds its top two corners only**, at `$xl`. Both clients that have bottom sheets round
+only the top, which is the part they agree on — the radius itself they disagree about. So this is
+`borderTopLeftRadius` and `borderTopRightRadius`, never `borderRadius`.
+
+**An opacity on an on-colour spends the ratio that token guarantees.** `$onAccent` and `$onDanger`
+are derived to clear 4.5:1 against their fill; dimming one is the screen giving some of that back,
+and the theme cannot know how much is left. The cheapest check is which theme has least to spend —
+Ocean Light's `onAccent` is a navy, starting at 8.49:1 where the others are near 14 — and 0.85 is
+about the floor at caption size.
+
+## Where the two ladders come from
+
+Both are on a 4 grid, and neither is an average of the three clients.
+
+**Spacing is Android's `Dimensions.kt`, rung for rung** — 2 · 4 · 8 · 12 · 16 · 20 · 24 · 36 · 64 —
+and all but two are values iOS declares as well. Weighted by use it covers 99% of the two mobile
+clients' spacing. Three of their values are deliberately not rungs, so that reaching for one is a
+decision rather than a lookup: **32** is iOS's iPad-only `iPadButtonSpacing`, whose own iPhone
+branch is a literal 20; **48** appears nowhere as spacing; **50** is one Android component's
+icon-to-label gap.
+
+**Radius is read off Android too, because it is the only client with a shape scale to read.** iOS
+declares no radius tokens at all — it has two conventions split by code layer, the newer SwiftUI
+screens at 7 for a button and 11 for a container, the older app code at 6 and 30 — and Desktop has
+two variables and a spread of literals. `$sm` · `$md` · `$lg` are Android's `shapeExtraSmall` ·
+`shapeSmall` · `shapeMedium`, 90% of its shape references between them; `$2xl` is Material's
+extra-large, which Android ships without declaring, since `sessionShapes()` overrides only the first
+three and `extraLarge` falls through. Not rungs: **6**, whose only radius uses are message-bubble
+inner geometry; **24**, which no client draws; **30**, which is `$full` on a 60pt control.
+
+**Where a current design exists, it sets the value** and the clients are corroboration. An input is
+11 in the designs, so it takes `$md`; a sheet's top corners are 20, so `$xl`.
+
+**A container is `$md`.** The clients disagree and cluster inside 2px of it — iOS 11 across its
+modal family, Android 12 in both its dialog generations, Desktop 13 in the one wrapper every dialog
+composes — each internally consistent. 12 is the median and the only one of the three that is a
+declared token.
+
 ## Porting a spacing value from a legacy client
+
+**Unlike the type ramp, the clients do not share a spacing ladder.** On type all three converge, the
+same values under the same names. On spacing there are two ladders on two different bases and the
+three-way intersection is empty: iOS and Android are 4-based and agree on 4 · 8 · 12 · 16 · 24 · 64,
+while Desktop is 5-based. Do not infer one from the other because they sit in the same document.
 
 **The two mobile clients' spacing tokens have inverted names, and the values are nearly equal.**
 

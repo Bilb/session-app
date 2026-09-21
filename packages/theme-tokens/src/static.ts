@@ -3,19 +3,23 @@
 /**
  * One type ramp, named by role in four groups: label, body, header, display.
  *
- * Names rather than positions because a layout has to be readable -- `size="$3xl"` says nothing about
- * what it is for, and neither does the diff when it changes.
+ * Names rather than positions because a layout has to be readable -- a numbered `size` says nothing
+ * about what it is for, and neither does the diff when it changes.
  *
  * **One ramp, one entry per size, ascending.** Names invite a second ramp to be added beside the
  * first and the overlap suffixed, which produces a scale that goes backwards somewhere in the
  * middle and repeats elsewhere -- and nothing catches it, because every name still resolves. A
  * named ramp is fine; a named ramp per source is not.
  *
- * The values are the ramp both legacy clients already share (iOS `Fonts.swift`, Android's
- * typography), which is the one the designs were drawn against.
+ * The values are iOS's `Fonts.swift` ramp and Android's typography, which agree with each other and
+ * with the newest designs. **iOS has two live ramps**, and this is the newer one: `Values.swift`
+ * carries a different scale entirely, so a size read out of iOS means nothing until the file it
+ * came from is known.
+ *
+ * **11 is the floor.** Both mobile clients declare a 9 below it and neither draws anything at it;
+ * Desktop's theme records that below 14 is unreadable on that platform.
  */
 export const FONT_SIZE = {
-  micro: 9,
   caption: 11,
   label: 12,
   body: 14,
@@ -38,21 +42,46 @@ export const FONT_SIZE = {
  */
 export const LINE_HEIGHT_RATIO = 1.2
 
-// Spacing values in logical pixels (no units).
+/**
+ * Spacing in logical pixels, on a 4 grid.
+ *
+ * `3xl` 64 is an inset that narrows centred content -- an empty-state label, onboarding's primary
+ * button -- rather than a gap between things, which is why there is nothing between it and 36.
+ *
+ * 32, 48 and 50 are absent on purpose: see THEMING.md for which client each belongs to and why
+ * reaching for one should be a decision rather than a lookup.
+ */
 export const SPACING = {
-  '3xl': 35,
-  '2xl': 30,
-  xl: 25,
+  '3xl': 64,
+  '2xl': 36,
+  xl: 24,
   lg: 20,
-  md: 15,
-  sm: 10,
-  xs: 5,
-  xxs: 2.5,
+  md: 16,
+  sm: 12,
+  xs: 8,
+  '2xs': 4,
+  '3xs': 2,
 } as const
 
+/**
+ * Corner radii, on the same 4 grid as the spacing.
+ *
+ * `md` is a container -- a dialog, a card, an input. `lg` is the message bubble. `xl` is a bottom
+ * sheet, on its top two corners only. THEMING.md carries where the ladder comes from, which values
+ * are deliberately not rungs, and the nesting rule for a rounded box inside a rounded box.
+ */
 export const RADII = {
-  sm: 5,
-  message: 16,
+  none: 0,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  '2xl': 28,
+  /**
+   * The pill. A length rather than `50%`, which resolves per axis and turns a wide control into an
+   * ellipse; an oversized length is reduced to half the shorter side, giving a capsule at any width.
+   */
+  full: 9999,
 } as const
 
 // All durations in milliseconds.

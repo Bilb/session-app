@@ -1,8 +1,8 @@
-import { PRIMARY_COLOR_HEX } from './colors'
-import { hexToOklch, oklchToHex } from './oklch'
-import { MIN_SEMANTIC_CHROMA, baseFits, contrastRatio } from './rules'
-import { deriveTokens } from './themeTokens'
-import type { ThemeKnobs, ThemeTokens } from './themeTokens'
+import { PRIMARY_COLOR_HEX } from '#src/colors'
+import { hexToOklch, oklchToHex } from '#src/oklch'
+import { CONTRAST, MIN_SEMANTIC_CHROMA, baseFits, contrastRatio } from '#src/rules'
+import { deriveTokens } from '#src/themeTokens'
+import type { ThemeKnobs, ThemeTokens } from '#src/themeTokens'
 
 /**
  * How much of the knob space the rules actually hold up across.
@@ -57,14 +57,18 @@ function failures(t: ThemeTokens): Check[] {
   ]
   const worst = (hex: string) => Math.min(...surfaces.map((s) => contrastRatio(hex, s)))
 
-  if (worst(t.textPrimary) < 4.5) out.push('body text')
-  if (worst(t.textSecondary) < 4.5) out.push('muted text')
-  if (worst(t.accentText) < 4.5) out.push('accent as text')
-  if (worst(t.dangerColor) < 4.5) out.push('danger legible')
-  if (worst(t.warningColor) < 4.5) out.push('warning legible')
-  if (contrastRatio(t.onAccent, t.primaryColor) < 3) out.push('on accent')
-  if (contrastRatio(t.onDanger, t.dangerColor) < 3) out.push('on danger')
-  if (contrastRatio(t.messageBubbleIncomingText, t.messageBubbleIncomingBg) < 4.5) {
+  // The floors are `CONTRAST`'s. A second copy would let this sampler and the sweep disagree about
+  // what passing means, and the disagreement would be invisible -- both still report a percentage.
+  if (worst(t.textPrimary) < CONTRAST.normal) out.push('body text')
+  if (worst(t.textSecondary) < CONTRAST.normal) out.push('muted text')
+  if (worst(t.accentText) < CONTRAST.normal) out.push('accent as text')
+  if (worst(t.dangerColor) < CONTRAST.normal) out.push('danger legible')
+  if (worst(t.warningColor) < CONTRAST.normal) out.push('warning legible')
+  // On-fill colours are only ever labels, so they owe text contrast rather than the 3:1 a graphic
+  // gets -- see `onAccent` in themeTokens.ts.
+  if (contrastRatio(t.onAccent, t.primaryColor) < CONTRAST.normal) out.push('on accent')
+  if (contrastRatio(t.onDanger, t.dangerColor) < CONTRAST.normal) out.push('on danger')
+  if (contrastRatio(t.messageBubbleIncomingText, t.messageBubbleIncomingBg) < CONTRAST.normal) {
     out.push('bubble text')
   }
   // Deliberately not a check on danger-versus-warning. They may resemble each other; the words

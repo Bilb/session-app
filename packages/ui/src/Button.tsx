@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { Spinner, styled, XStack } from 'tamagui'
 
 import { INHERITED_LABEL } from './labelColor'
@@ -33,8 +33,16 @@ const Frame = styled(XStack, {
         backgroundColor: '$primaryColor',
         borderColor: '$primaryColor',
         color: '$onAccent',
-        hoverStyle: { backgroundColor: '$accentHover', borderColor: '$accentHover' },
-        pressStyle: { backgroundColor: '$accentPressed', borderColor: '$accentPressed' },
+        hoverStyle: {
+          backgroundColor: '$accentHover',
+          borderColor: '$accentHover',
+          color: '$onAccent',
+        },
+        pressStyle: {
+          backgroundColor: '$accentPressed',
+          borderColor: '$accentPressed',
+          color: '$onAccent',
+        },
       },
       /**
        * Hover **inverts** rather than tinting: the outline fills with the text colour and the label
@@ -83,6 +91,7 @@ const Frame = styled(XStack, {
           opacity: 0.82,
         },
       },
+      /** Two steps, because one is invisible inside a list row that hovers to the same surface. */
       ghost: {
         backgroundColor: 'transparent',
         borderColor: 'transparent',
@@ -152,7 +161,7 @@ const Frame = styled(XStack, {
     circular: {
       // The width follows the height rather than naming a token of its own, so a circular button
       // stays circular at whichever size it is given.
-      true: { aspectRatio: 1, paddingHorizontal: 0 },
+      true: { aspectRatio: 1, paddingHorizontal: '$none' },
     },
     /**
      * A danger-coloured label without a fill, declared on the frame so the web label inherits it.
@@ -212,17 +221,6 @@ const PRESSED = {
   danger: { opacity: 0.7 },
 } as const
 
-/** The label colour while held, where the fill it sits on has changed underneath it. */
-const PRESSED_LABEL = {
-  solid: '$onAccent',
-  outline: '$backgroundPrimary',
-  outlineAccent: '$onAccent',
-  ghost: '$textPrimary',
-  ghostAccent: '$primaryColor',
-  simple: '$textPrimary',
-  danger: '$dangerColor',
-} as const
-
 /**
  * The variants that replace the ground under the label when held, rather than tinting it.
  *
@@ -249,6 +247,20 @@ const LABEL_TONE = {
   danger: '$dangerColor',
 } as const
 
+/**
+ * The label colour while held, for the variants that replace the ground under it.
+ *
+ * Native only: a `Text` inherits nothing from a `View`, so `color` inside `pressStyle` reaches the
+ * frame alone. The web label inherits instead -- see labelColor.ts. A variant that only moves the
+ * surface behind the label needs no entry, since the resting colour reads against both.
+ */
+const PRESSED_LABEL: Partial<Record<keyof typeof LABEL_TONE, string>> = {
+  solid: '$onAccent',
+  outline: '$backgroundPrimary',
+  outlineAccent: '$onAccent',
+  danger: '$onDanger',
+}
+
 export interface ButtonProps {
   children?: ReactNode
   onPress?: () => void
@@ -271,8 +283,11 @@ export interface ButtonProps {
    * For a control that is a **cell** rather than a control -- a dialog's actions run the full
    * width of the dialog and share an edge, so a pill-shaped pressed highlight sits inside a
    * rectangular cell with a gap all round it, which reads as the highlight having missed.
+   *
+   * A token rather than a number, so a caller outside this package can name a rung without
+   * importing the scale -- which `screens` is not allowed to do.
    */
-  borderRadius?: number
+  borderRadius?: ComponentProps<typeof Frame>['borderRadius']
   /**
    * Colour the label danger without filling the button.
    *

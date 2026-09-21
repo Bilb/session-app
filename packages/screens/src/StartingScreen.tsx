@@ -49,6 +49,9 @@ const SAY_SO_IN_A_DIALOG_AFTER_MS = 30_000
  * same colour by a different route -- `DEFAULT_THEME` -- which is worth knowing before someone
  * wonders why this screen ignores a theme setting.
  */
+/** The launch mark's own size, which is artwork rather than a control. */
+const BRAND_SIZE = 64
+
 export function StartingScreen() {
   const [waited, setWaited] = useState(0)
   /** Dismissed rather than answered: the copy's own first suggestion is to keep waiting. */
@@ -70,7 +73,7 @@ export function StartingScreen() {
   return (
     <Screen testID={ELEMENT.starting.screen}>
       <YStack flex={1} alignItems="center" justifyContent="center" gap="$xl">
-        <SessionBrand size={64} color="$primaryColor" />
+        <SessionBrand size={BRAND_SIZE} color="$primaryColor" />
 
         {waited < SAY_SOMETHING_AFTER_MS ? null : (
           <YStack alignItems="center" gap="$xs" maxWidth={280}>

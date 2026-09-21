@@ -61,7 +61,7 @@ export function OpenUrlModal({ url, onClose }: OpenUrlModalProps) {
             fill
             // A cell, not a pill: the actions run the full width of the dialog and share an edge,
             // so a rounded highlight would sit inside its cell with a gap all round it.
-            borderRadius={0}
+            borderRadius="$none"
             destructive
             testID={ELEMENT.onboarding.openUrlConfirm}
             onPress={() => {
@@ -76,7 +76,7 @@ export function OpenUrlModal({ url, onClose }: OpenUrlModalProps) {
             fill
             // A cell, not a pill: the actions run the full width of the dialog and share an edge,
             // so a rounded highlight would sit inside its cell with a gap all round it.
-            borderRadius={0}
+            borderRadius="$none"
             testID={ELEMENT.onboarding.copyUrl}
             onPress={() => {
               if (url !== null) void requirePorts().clipboard.setString(url)

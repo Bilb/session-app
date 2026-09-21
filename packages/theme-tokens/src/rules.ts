@@ -304,7 +304,9 @@ export function step(colour: string, n: number, awayFrom: string): string {
  * hue 202 in light, so a derivation that drops it produces a theme that is no longer Ocean.
  */
 export function tint(colour: string, chroma: number, hue: number): string {
-  return oklchToHex({ ...hexToOklch(colour), c: chroma, h: hue })
+  // Through `inGamut`, never straight to hex: a chroma sRGB cannot hold at this lightness clamps,
+  // and the clamp drags the hue with it, so a theme asking for an olive-tinted text gets a brown.
+  return inGamut(hexToOklch(colour).l, chroma, hue)
 }
 
 /**
@@ -367,7 +369,7 @@ export function contrastTo(colour: string, against: string, target: number): str
   for (let i = 0; i <= 500; i++) {
     const candidate = i / 500
     if (lighter ? candidate < anchorL : candidate > anchorL) continue
-    const hex = oklchToHex({ l: candidate, c, h })
+    const hex = inGamut(candidate, c, h)
     const error = Math.abs(contrastRatio(hex, against) - target)
     if (error < bestError) {
       best = hex
@@ -375,17 +377,4 @@ export function contrastTo(colour: string, against: string, target: number): str
     }
   }
   return best
-}
-
-/**
- * `colour` at `a` opacity, as `#rrggbbaa`.
- *
- * Eight-digit hex rather than `rgba()` so every token stays one string in one format, which is what
- * lets the contract test check them all the same way.
- */
-export function alpha(colour: string, a: number): string {
-  const hex = colour.length === 4 ? colour.replace(/[^#]/g, (ch) => ch + ch) : colour
-  return `${hex.slice(0, 7)}${Math.round(Math.min(1, Math.max(0, a)) * 255)
-    .toString(16)
-    .padStart(2, '0')}`
 }

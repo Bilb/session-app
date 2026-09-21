@@ -152,7 +152,7 @@ function ConversationRow({
     >
       <Avatar id={conversation.id} name={title} />
 
-      <YStack flex={1} gap="$xxs">
+      <YStack flex={1} gap="$2xs">
         <Text
           size="$body"
           weight={conversation.unreadCount > 0 ? 'bold' : 'regular'}

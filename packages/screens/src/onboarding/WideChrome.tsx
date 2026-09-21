@@ -16,7 +16,14 @@ import {
 
 import { LanguageButton } from '../LanguageButton'
 import { OnboardingMark } from './OnboardingMark'
-import { CONTENT_MIN_HEIGHT, FADE_MS, RING_SIZE } from './chromeMetrics'
+import {
+  CONTENT_MIN_HEIGHT,
+  FADE_MS,
+  HEADER_HEIGHT,
+  HEADER_MARK_SIZE,
+  HEADER_WORDMARK_SIZE,
+  RING_SIZE,
+} from './chromeMetrics'
 import type { ChromeProps } from './chromeProps'
 import { COLUMN_GROW, COLUMN_WIDTH, HERO_GROW, HERO_MAX_WIDTH } from './heroPanel'
 import { useConfirmUrl } from './ConfirmUrl'
@@ -125,13 +132,12 @@ function OnboardingHeader() {
   const open = useConfirmUrl()
 
   return (
-    <XStack alignItems="center" gap="$xs" height={30}>
-      <OnboardingMark size={26} />
-      <SessionWordmark size={15} color="$textPrimary" />
+    <XStack alignItems="center" gap="$xs" height={HEADER_HEIGHT}>
+      <OnboardingMark size={HEADER_MARK_SIZE} />
+      <SessionWordmark size={HEADER_WORDMARK_SIZE} color="$textPrimary" />
       <YStack flex={1} />
-      {/* One group of three. The designs give 8px between them; the space ladder has 5 and 10 and
-          no 8, so this takes the rung above rather than stepping off the ladder for one row. */}
-      <XStack alignItems="center" gap="$sm">
+      {/* One group of three, at the 8 the designs give them. */}
+      <XStack alignItems="center" gap="$xs">
         <LanguageButton />
         {/* Ghost, because `circleHelp` brings its own circle: a border here would draw a second
             ring around the first. The glyph is therefore the full control size, where the bordered

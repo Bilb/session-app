@@ -21,10 +21,15 @@ import { buildThemes, DEFAULT_THEME, themeName } from './themes'
  */
 
 const bodyFont = createFont({
-  // Roboto, which is what the desktop client uses. Shipped with the app rather than assumed -- see
-  // tamaguiCSS.ts, which declares the faces on the web. The fallbacks matter: Android has Roboto
-  // system-wide, iOS does not, and a stack that ends in `sans-serif` is what stops an unlinked
-  // font resolving to a serif.
+  /**
+   * Roboto, which is the desktop client's face, shipped rather than assumed -- `tamaguiCSS.ts`
+   * declares the faces on the web.
+   *
+   * A stack ending in a generic family, because `System` is react-native's name and not a CSS
+   * one: on the web it names nothing and the engine falls back, which in Electron is a serif.
+   * Android has Roboto system-wide and iOS does not, so `sans-serif` at the end is what stops an
+   * unlinked font resolving to a serif there too.
+   */
   family: 'Roboto, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
   size: FONT_SIZE_SCALE,
   lineHeight: LINE_HEIGHT_SCALE,
@@ -58,8 +63,8 @@ export const config = createTamagui({
     gtLg: { minWidth: 1100 },
   },
   settings: {
-    // Without this, a `fontSize` token resolves against the *space* scale instead of the font
-    // scale, and every piece of text comes out at a spacing value.
+    // Without this, a bare `fontSize="$md"` resolves against the *space* scale instead of the
+    // font scale -- both have an `md` -- and the text comes out at a spacing value.
     defaultFont: 'body',
     onlyAllowShorthands: false,
   },
