@@ -44,8 +44,14 @@ export interface CameraPort {
    * part of the preview rather than a separate call because the decoder runs on the frames, and
    * pulling frames across this seam to decode them elsewhere would be a video pipeline for no
    * reason.
+   *
+   * **`active` is not the same as being mounted, and a scanner needs both.** The native pager
+   * mounts every page so that a half-typed phrase survives a look at the other tab, which leaves
+   * a granted camera running behind the phrase field -- green dot on iOS, privacy indicator on
+   * Android -- for as long as somebody is typing their recovery phrase. Nothing leaves the
+   * device, and for this app that is not the point.
    */
-  Preview(props: { onScan: (value: string) => void; testID?: string }): ReactNode
+  Preview(props: { onScan: (value: string) => void; active?: boolean; testID?: string }): ReactNode
 }
 
 const CameraContext = createContext<CameraPort | null>(null)

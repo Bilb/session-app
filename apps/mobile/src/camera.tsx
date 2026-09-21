@@ -20,9 +20,11 @@ export function MobileCameraProvider({ children }: { children: ReactNode }) {
       // `packages/app/src/ports.ts` says what each value promises.
       ask: Platform.OS === 'ios' ? 'continue' : 'grant',
       request: async () => read(await request()),
-      Preview: ({ onScan, testID }) => (
+      Preview: ({ onScan, active = true, testID }) => (
         <CameraView
           style={{ flex: 1 }}
+          // Stopped rather than unmounted, because the pager keeps every page mounted on purpose.
+          active={active}
           facing="back"
           // QR only. A scanner that also read barcodes would happily accept a supermarket label as
           // a recovery phrase and then fail somewhere further in.

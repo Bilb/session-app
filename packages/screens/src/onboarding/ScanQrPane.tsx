@@ -10,6 +10,14 @@ const MESSAGE_LIFT = 16
 interface ScanQrPaneProps {
   /** A scanned code, as read. Whether it is a recovery seed is not this pane's to decide. */
   onScan: (value: string) => void
+  /**
+   * Whether this pane is the one being looked at.
+   *
+   * The pager keeps both mounted so a half-typed phrase survives a look at the other tab, so
+   * being mounted is not being shown -- and a camera left running behind the phrase field lights
+   * the platform's recording indicator while somebody types their recovery phrase.
+   */
+  showing?: boolean
   /** Shown under the frame. The bridge's refusal of whatever was scanned. */
   error?: string | null
 }
@@ -24,7 +32,7 @@ interface ScanQrPaneProps {
  * What the button says differs by platform, and the reason is worth knowing: see `ask` on the
  * camera port.
  */
-export function ScanQrPane({ onScan, error = null }: ScanQrPaneProps) {
+export function ScanQrPane({ onScan, showing = true, error = null }: ScanQrPaneProps) {
   const camera = useCamera()
   const insets = useScreenInsets()
   /**
@@ -64,7 +72,11 @@ export function ScanQrPane({ onScan, error = null }: ScanQrPaneProps) {
         marginBottom={-insets.bottom}
         testID={ELEMENT.onboarding.scanQrPane}
       >
-        <camera.Preview onScan={handleScan} testID={ELEMENT.onboarding.scanQrPreview} />
+        <camera.Preview
+          onScan={handleScan}
+          active={showing}
+          testID={ELEMENT.onboarding.scanQrPreview}
+        />
         <ScannerFrame />
         {/* Over the picture rather than under it, which is where the client puts it -- a row
             beneath would take a strip of the preview away permanently for a message that is
