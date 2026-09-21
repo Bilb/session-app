@@ -1,4 +1,4 @@
-import { requirePorts } from '@session/app'
+import { openExternalUrl, requirePorts } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Button, Modal, ScrollView, textHeight } from '@session/ui'
@@ -65,7 +65,7 @@ export function OpenUrlModal({ url, onClose }: OpenUrlModalProps) {
             destructive
             testID={ELEMENT.onboarding.openUrlConfirm}
             onPress={() => {
-              if (url !== null) void requirePorts().linking.openUrl(url)
+              if (url !== null) void openExternalUrl(url)
               onClose()
             }}
           >
