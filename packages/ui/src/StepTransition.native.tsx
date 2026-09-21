@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Animated, Easing, StyleSheet, useWindowDimensions } from 'react-native'
 
 import type { StepTransitionProps } from './StepTransition.types'
+import { isLayoutRtl } from './layoutDirection'
 import { stepTravel } from './stepTravel'
 
 export type { StepTransitionProps }
@@ -94,7 +95,7 @@ export function StepTransition({
 
   const moving = showing.leaving
   const way = moving?.direction ?? direction
-  const travel = stepTravel(width, way)
+  const travel = stepTravel(width, way, isLayoutRtl())
   const entering = progress.interpolate({ inputRange: [0, 1], outputRange: [travel.enters, 0] })
   const leaving = progress.interpolate({ inputRange: [0, 1], outputRange: [0, travel.leaves] })
 

@@ -34,4 +34,27 @@ describe('how far the two screens of a push travel', () => {
     expect(stepTravel(0, 'forward')).toEqual({ enters: 0, leaves: -0 })
     expect(stepTravel(0, 'back')).toEqual({ enters: -0, leaves: 0 })
   })
+
+  it('mirrors both screens when the layout runs right to left', () => {
+    // A transform is pixels along the screen whichever way the text runs, so this is the one
+    // thing the layout does not mirror for us -- and onboarding's chevron and tab indicator both
+    // do mirror, so an unmirrored push travels against them.
+    const ltr = stepTravel(400, 'forward')
+    const rtl = stepTravel(400, 'forward', true)
+    expect(rtl.enters).toBe(-ltr.enters)
+    expect(rtl.leaves).toBe(-ltr.leaves)
+  })
+
+  it('keeps the full-width travel on the same side in either direction', () => {
+    // The screen that crosses the whole width is the arriving one going forward and the departing
+    // one coming back, and both cross the *same* edge: that is what makes a pop look like the
+    // push undone rather than a second push. Mirroring must move that edge, not swap the roles.
+    for (const rtl of [false, true]) {
+      const forward = stepTravel(400, 'forward', rtl)
+      const back = stepTravel(400, 'back', rtl)
+      expect(forward.enters).toBe(back.leaves)
+      expect(Math.abs(forward.enters)).toBe(400)
+      expect(Math.sign(forward.enters)).toBe(rtl ? -1 : 1)
+    }
+  })
 })
