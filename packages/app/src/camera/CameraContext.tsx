@@ -14,8 +14,13 @@ export type CameraAccess = 'unknown' | 'granted' | 'denied' | 'blocked'
  *
  * A render-scoped port rather than a module one, like NavPort and for the same reason: the preview
  * is a *component*, and a component cannot be handed over by `setPorts` -- the platform that owns
- * it has to put it in the tree. expo-camera may only be imported from `apps/mobile`, and the
- * desktop app has no camera at all, so this is the seam between them.
+ * it has to put it in the tree. expo-camera may only be imported from `apps/mobile`, so this is
+ * the seam between them.
+ *
+ * **`useCamera` is null where an app installs no provider, which is the desktop app.** That is a
+ * fact about this port and not about the platform: Electron reaches a webcam through
+ * `getUserMedia`, and the desktop client ships that for calls today. So a screen reads the null as
+ * "nothing here can see", never as "nothing here could".
  */
 export interface CameraPort {
   /** What the OS says right now. `unknown` until it has been asked once. */
