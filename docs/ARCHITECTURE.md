@@ -195,7 +195,8 @@ than anything shipped.
 The addresses themselves are libsession's. `session_protocol_strings` in the submodule holds
 twenty-odd of them, and `packages/app/scripts/generateUrls.ts` reads that table into the `URLS`
 in `urls.generated.ts` at codegen time. `codegen:check` fails while the two disagree, and a
-contract test fails if an address libsession already carries is written out again beside it.
+contract test fails if **any** address is written out in the app's own code. A new outward address
+goes into libsession first, so there is one list and everything reads it.
 
 **There is no curated second list.** A hand-kept subset of the table would be a rename layer over
 it, and one that also decides which addresses a screen is allowed to reach -- so an address the
@@ -341,6 +342,12 @@ Every shared file is checked two or three ways per run, with no synthetic profil
 ## Decision log
 
 Append one paragraph per decision. Undocumented decisions are what rot.
+
+- **2026-09-23 - Every outward address lives in libsession.** One source of truth, rather than
+  libsession's table plus whatever the app adds beside it. The contract test enforces it by refusing
+  any address literal in app code, not only copies of ones the table already holds, which makes
+  adding an address upstream the only way to add one. The bare website address is the single
+  exemption, and only until the submodule carries `url_website`.
 
 - **2026-09-22 - The outward addresses are generated from libsession, not written here.** One
   table upstream, read at codegen time and committed, so a checkout without the submodule still

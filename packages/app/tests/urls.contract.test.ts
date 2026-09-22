@@ -38,18 +38,29 @@ function sourceFiles(): string[] {
 }
 
 /**
- * Every quoted `https://` literal in the app's own code, with the file it is in.
+ * Every address written into the app's own code, with the file it is in.
  *
- * Read rather than compared by value, because the defect is a *second copy* of an address and two
- * copies of the same string are equal. Only the source says where one was written.
+ * An address is a quoted `https://` followed by a host. A template that puts a scheme in front of
+ * something the user typed -- `https://${trimmed}` -- builds an address rather than naming one, so
+ * it does not count.
  */
 function writtenAddresses(): { file: string; address: string }[] {
   return sourceFiles().flatMap((file) =>
     [
-      ...readFileSync(join(repoRoot, file), 'utf8').matchAll(/['"`](https:\/\/[^'"`\s]+)['"`]/g),
+      ...readFileSync(join(repoRoot, file), 'utf8').matchAll(
+        /['"`](https:\/\/[a-z0-9][^'"`\s]*)['"`]/gi,
+      ),
     ].map((match) => ({ file, address: match[1] as string })),
   )
 }
+
+/**
+ * The one address allowed to be written out, and where.
+ *
+ * `urls.ts` holds the bare domain because libsession's table has no entry for it yet. It is not a
+ * precedent: the moment the table gains one, this goes with the file.
+ */
+const EXEMPT = [{ file: join('packages', 'app', 'src', 'urls.ts'), address: WEBSITE_URL }]
 
 /** The entries screens link today. Not the whole table: upstream adding one is not a failure. */
 const LINKED = ['faq', 'termsOfService', 'privacyPolicy'] as const
@@ -60,22 +71,18 @@ describe('the addresses the app links', () => {
   })
 
   /**
-   * No address libsession already holds is written out anywhere in the app's own code.
+   * No address is written out in the app's own code. A new one goes into libsession first.
    *
-   * This is what makes the arrangement enforceable rather than aspirational: `codegen:check` keeps
-   * the generated table honest about the library, and this keeps a literal from reappearing beside
-   * it -- in a screen, a port, an app entry, anywhere a link could be typed in by hand. The two
-   * together are the guarantee.
-   *
-   * It is also the reminder for the one address still written out: the moment libsession carries
-   * the bare domain, `WEBSITE_URL` is a duplicate and this fails, which is the signal to delete it
-   * and read it off the table like the rest.
+   * Not only copies of ones the table already holds: an address typed into a screen that the table
+   * does not have is a second list starting, and one source of truth is the point. `codegen:check`
+   * keeps the generated table honest about the library, and this keeps the app from growing a list
+   * beside it -- in a screen, a port, an app entry, anywhere a link could be typed in by hand.
    */
-  it('are never written out where libsession already carries them - delete WEBSITE_URL if this fails', () => {
-    const held = new Set<string>(Object.values(URLS))
-    const duplicates = writtenAddresses().filter(({ address }) => held.has(address))
+  it('are never written out in app code - add a new one to libsession instead', () => {
+    const exempt = (found: { file: string; address: string }) =>
+      EXEMPT.some(({ file, address }) => file === found.file && address === found.address)
 
-    expect(duplicates).toEqual([])
+    expect(writtenAddresses().filter((found) => !exempt(found))).toEqual([])
   })
 
   /**
