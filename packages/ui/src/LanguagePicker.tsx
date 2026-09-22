@@ -1,10 +1,10 @@
 import { SPACING } from '@session/theme-tokens'
-import { useEffect, useRef, useState } from 'react'
-import { Keyboard, Modal, useWindowDimensions } from 'react-native'
-import type { KeyboardEvent } from 'react-native'
+import { useRef, useState } from 'react'
+import { Modal, useWindowDimensions } from 'react-native'
 import { XStack, YStack, type TamaguiElement } from 'tamagui'
 
 import { measureAnchor, panelInset, panelPlacement, type AnchorRect } from './anchorRect'
+import { useKeyboardHeight } from './keyboardHeight'
 import { logical } from './logicalEdges'
 import { isLayoutRtl } from './layoutDirection'
 import { Button } from './Button'
@@ -22,38 +22,6 @@ const MARGIN = 12
 const GAP = 6
 /** Below this the panel is not worth opening downwards, and it flips above the trigger instead. */
 const MIN_PANEL_HEIGHT = 260
-
-/**
- * How much of the window the keyboard is currently covering.
- *
- * react-native's own `Keyboard` rather than the keyboard-controller used elsewhere, because this
- * file has no `.native` pair and the controller would not resolve in the desktop bundle. It is a
- * no-op on the web, which is right there.
- *
- * Both event pairs are listened for because neither platform sends both: iOS has the `Will`
- * events and Android only the `Did` ones.
- */
-function useKeyboardHeight(): number {
-  const [height, setHeight] = useState(0)
-  useEffect(() => {
-    const shown = (event: KeyboardEvent) => {
-      setHeight(event.endCoordinates.height)
-    }
-    const hidden = () => {
-      setHeight(0)
-    }
-    const subscriptions = [
-      Keyboard.addListener('keyboardWillShow', shown),
-      Keyboard.addListener('keyboardDidShow', shown),
-      Keyboard.addListener('keyboardWillHide', hidden),
-      Keyboard.addListener('keyboardDidHide', hidden),
-    ]
-    return () => {
-      for (const subscription of subscriptions) subscription.remove()
-    }
-  }, [])
-  return height
-}
 
 /**
  * The control that changes the app's language: a flag, a chevron, and a panel under it.
