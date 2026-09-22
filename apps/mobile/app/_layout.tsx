@@ -1,6 +1,13 @@
-import { useTextDirection } from '@session/screens'
+import { ModalHost, useTextDirection } from '@session/screens'
 import { SessionStoreProvider, type SessionStore } from '@session/state'
-import { DirectionRoot, FONT_ASSETS, Text, UIProvider, YStack } from '@session/ui'
+import {
+  DirectionRoot,
+  FONT_ASSETS,
+  ModalStackProvider,
+  Text,
+  UIProvider,
+  YStack,
+} from '@session/ui'
 import { useFonts } from 'expo-font'
 import { Slot } from 'expo-router'
 import { KeyboardProvider } from 'react-native-keyboard-controller'
@@ -65,10 +72,16 @@ export default function RootLayout() {
               <MobileNavProvider>
                 <MobileCameraProvider>
                   <DirectionRoot rtl={rtl}>
-                    {/* Never keyed on the language: that mirrors the strings by remounting the
-                        routed subtree, discarding whatever the screen holds. Each route
-                        subscribes with `useLocale` instead. */}
-                    <Slot />
+                    {/* Inside the store and the navigator, because what it draws are screens
+                        that read both. Beside the routed content rather than within it, so a
+                        modal opened from a list row outlives that row. */}
+                    <ModalStackProvider>
+                      {/* Never keyed on the language: that mirrors the strings by remounting the
+                          routed subtree, discarding whatever the screen holds. Each route
+                          subscribes with `useLocale` instead. */}
+                      <Slot />
+                      <ModalHost />
+                    </ModalStackProvider>
                   </DirectionRoot>
                 </MobileCameraProvider>
               </MobileNavProvider>

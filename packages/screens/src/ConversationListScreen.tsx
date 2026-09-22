@@ -7,6 +7,7 @@ import { Avatar, Icon, List, Screen, Separator, Text, XStack, YStack } from '@se
 
 import { NetworkOverlay } from './NetworkOverlay'
 import { conversationTitle } from './conversationTitle'
+import { useOpenSettings } from './settings/SettingsRootPage'
 
 /**
  * The height of one row, which the list needs in order to place a scrollbar without measuring.
@@ -29,6 +30,7 @@ export function ConversationListScreen() {
   const conversations = useConversations()
   const unreadRequests = useUnreadRequestCount()
   const nav = useNav()
+  const openSettings = useOpenSettings()
 
   return (
     <Screen testID={ELEMENT.conversationList.screen}>
@@ -95,7 +97,10 @@ export function ConversationListScreen() {
             pressStyle={{ backgroundColor: '$backgroundTertiary' }}
             borderRadius="$full"
             testID={ELEMENT.conversationList.settings}
-            onPress={() => nav.push(routes.settings())}
+            // Over the list rather than beside it: settings is a tree of its own and every
+            // client draws it over whatever you were doing, so closing it puts you back there
+            // instead of navigating you somewhere.
+            onPress={openSettings}
           >
             <Icon name="settings" size="lg" color="$textSecondary" />
           </XStack>

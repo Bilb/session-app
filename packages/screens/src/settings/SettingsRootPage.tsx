@@ -1,0 +1,279 @@
+import { requirePorts, URLS, useNav, routes } from '@session/app'
+import { tr } from '@session/localization'
+import { useAccount, useSessionActions } from '@session/state'
+import { ELEMENT } from '@session/test-ids'
+import {
+  Avatar,
+  Button,
+  SettingsGroup,
+  SettingsRow,
+  Text,
+  useModals,
+  YStack,
+  type IconName,
+  type Modals,
+} from '@session/ui'
+import { useState } from 'react'
+
+import { accountIdLines } from './accountIdLines'
+import { confirmLink } from './confirmLink'
+import { HelpPage } from './HelpPage'
+import { LocalizedText } from '../LocalizedText'
+
+/** How long the copy control says it worked before going back to offering to do it again. */
+const COPIED_FOR_MS = 2000
+
+/** The avatar at the top, which is larger than the one a conversation row draws. */
+const PROFILE_AVATAR = 64
+
+/** Asks before deleting everything on the device, on top of the settings modal. */
+function confirmClearData(modals: Modals, clear: () => Promise<void>): void {
+  const id = modals.present({
+    width: 'narrow',
+    // There are two answers in the footer and the cross would be an unlabelled third: somebody
+    // deciding whether to erase their account wants to read the word Cancel, not infer it.
+    dismissible: false,
+    initial: {
+      title: tr('clearDataAll'),
+      render: () => <LocalizedText text={tr('clearDeviceDescription')} />,
+      footer: () => (
+        <>
+          <Button
+            variant="ghost"
+            fill
+            borderRadius="$none"
+            destructive
+            testID={ELEMENT.settings.confirmClearDataButton}
+            onPress={() => {
+              void clear().finally(() => {
+                modals.dismissAll()
+              })
+            }}
+          >
+            {tr('clear')}
+          </Button>
+          <Button
+            variant="ghost"
+            fill
+            borderRadius="$none"
+            testID={ELEMENT.settings.cancelClearData}
+            onPress={() => {
+              modals.dismiss(id)
+            }}
+          >
+            {tr('cancel')}
+          </Button>
+        </>
+      ),
+    },
+  })
+}
+
+/**
+ * The account, above the rows.
+ *
+ * The account ID is the one piece of state a person has to be able to read off the screen -- it is
+ * what somebody else needs in order to write to this device -- so it wraps rather than truncates
+ * and has a control of its own rather than being tappable text.
+ */
+function AccountHeader({ sessionId, name }: { sessionId: string; name: string }) {
+  const [copied, setCopied] = useState(false)
+
+  return (
+    <YStack alignItems="center" gap="$sm" paddingVertical="$lg">
+      <Avatar id={sessionId} name={name} size={PROFILE_AVATAR} />
+      {name === '' ? null : (
+        <Text size="$title" weight="bold" testID={ELEMENT.settings.displayName}>
+          {name}
+        </Text>
+      )}
+      <Text size="$caption" tone="secondary">
+        {tr('accountId')}
+      </Text>
+      {/* One element per line, so the break is where it was put rather than wherever the text
+          engine found room. See `accountIdLines`. */}
+      <YStack alignItems="center" testID={ELEMENT.settings.accountId}>
+        {accountIdLines(sessionId).map((line) => (
+          <Text key={line} size="$body">
+            {line}
+          </Text>
+        ))}
+      </YStack>
+      <Button
+        variant="outline"
+        size="sm"
+        testID={ELEMENT.settings.copyAccountId}
+        onPress={() => {
+          void requirePorts()
+            .clipboard.setString(sessionId)
+            .then(() => {
+              setCopied(true)
+              setTimeout(() => {
+                setCopied(false)
+              }, COPIED_FOR_MS)
+            })
+        }}
+      >
+        {copied ? tr('copied') : tr('copy')}
+      </Button>
+    </YStack>
+  )
+}
+
+/**
+ * The landing screen of the settings modal: the account, then four groups of rows.
+ *
+ * **A row with no handler is one whose screen is not built yet**, and most of them are: the
+ * settings tree arrives one screen per change. They are drawn anyway, because the order of the
+ * list is the design -- a list that grows a row in the middle later is a different list from the
+ * one that was reviewed.
+ *
+ * **The grouping carries the whole structure**, because the client's root page has no headings at
+ * all -- only the gaps between blocks say which rows belong together.
+ *
+ * Every row that leads to a child screen pushes it onto this modal rather than opening one of its
+ * own, so the back control returns here. The two that are not screens behave as the client's do: a
+ * link leaves through a confirmation, and clearing data asks on top of this.
+ */
+export function SettingsRootPage() {
+  const account = useAccount()
+  const actions = useSessionActions()
+  const modals = useModals()
+  const nav = useNav()
+
+  // Not a fallback string, because there is no honest one. This screen exists to hand somebody
+  // their account ID; with no account there is nothing to show and no reason to be here, and
+  // whatever opened it has gone wrong upstream.
+  if (account?.sessionId === undefined)
+    throw new Error('SettingsRootPage: no account. Onboarding has to run before this opens.')
+
+  const sessionId = account.sessionId
+  const name = account.displayName ?? ''
+
+  /** Each row's glyph, with the client's choice kept wherever our set has the same one. */
+  const icon = {
+    donate: 'heart',
+    network: 'info',
+    privacy: 'lockKeyhole',
+    notifications: 'volume',
+    conversations: 'messageSquare',
+    appearance: 'paintbrush',
+    requests: 'messageSquareWarning',
+    preferences: 'settings',
+    recovery: 'keyRound',
+    help: 'circleHelp',
+    clear: 'trash',
+  } satisfies Record<string, IconName>
+
+  return (
+    <YStack paddingHorizontal="$md" paddingBottom="$md" gap="$lg">
+      <AccountHeader sessionId={sessionId} name={name} />
+
+      <SettingsGroup>
+        <SettingsRow
+          label={tr('donate')}
+          icon={icon.donate}
+          testID={ELEMENT.settings.row('donate')}
+          onPress={() => {
+            confirmLink(modals, URLS.donationsApp)
+          }}
+        />
+        {/* The client draws a live onion-path indicator as this row's icon and opens the path in a
+            modal of its own. Both wait on the path screen. */}
+        <SettingsRow
+          label={tr('onionRoutingPath')}
+          icon={icon.network}
+          navigates
+          testID={ELEMENT.settings.row('onion-path')}
+        />
+        <SettingsRow
+          label={tr('networkName')}
+          icon={icon.network}
+          navigates
+          testID={ELEMENT.settings.row('network')}
+        />
+      </SettingsGroup>
+
+      <SettingsGroup>
+        <SettingsRow
+          label={tr('sessionPrivacy')}
+          icon={icon.privacy}
+          navigates
+          testID={ELEMENT.settings.row('privacy')}
+        />
+        <SettingsRow
+          label={tr('sessionNotifications')}
+          icon={icon.notifications}
+          navigates
+          testID={ELEMENT.settings.row('notifications')}
+        />
+        <SettingsRow
+          label={tr('sessionConversations')}
+          icon={icon.conversations}
+          navigates
+          testID={ELEMENT.settings.row('conversations')}
+        />
+        <SettingsRow
+          label={tr('sessionAppearance')}
+          icon={icon.appearance}
+          navigates
+          testID={ELEMENT.settings.row('appearance')}
+        />
+        {/* Not a child screen in the client either: it closes the modal and shows the requests
+            list, which here is a route of its own. So this one leaves rather than descends. */}
+        <SettingsRow
+          label={tr('sessionMessageRequests')}
+          icon={icon.requests}
+          testID={ELEMENT.settings.row('message-requests')}
+          onPress={() => {
+            modals.dismissAll()
+            nav.push(routes.requests())
+          }}
+        />
+        <SettingsRow
+          label={tr('preferences')}
+          icon={icon.preferences}
+          navigates
+          testID={ELEMENT.settings.row('preferences')}
+        />
+      </SettingsGroup>
+
+      <SettingsGroup>
+        <SettingsRow
+          label={tr('sessionRecoveryPassword')}
+          icon={icon.recovery}
+          navigates
+          testID={ELEMENT.settings.row('recovery-password')}
+        />
+        <SettingsRow
+          label={tr('sessionHelp')}
+          icon={icon.help}
+          navigates
+          testID={ELEMENT.settings.row('help')}
+          onPress={() => {
+            modals.push({ title: tr('sessionHelp'), render: () => <HelpPage /> })
+          }}
+        />
+        <SettingsRow
+          label={tr('sessionClearData')}
+          icon={icon.clear}
+          destructive
+          testID={ELEMENT.settings.clearData}
+          onPress={() => {
+            confirmClearData(modals, () => actions.clearDeviceData())
+          }}
+        />
+      </SettingsGroup>
+    </YStack>
+  )
+}
+
+/** Opens settings over whatever is on screen. */
+export function useOpenSettings(): () => void {
+  const modals = useModals()
+  return () => {
+    modals.present({
+      initial: { title: tr('sessionSettings'), render: () => <SettingsRootPage /> },
+    })
+  }
+}
