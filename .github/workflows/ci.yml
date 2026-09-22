@@ -46,3 +46,15 @@ jobs:
       - run: pnpm knip
       - run: pnpm dedupe --check
       - run: pnpm codegen:check
+
+      # A cache hit must never rewrite a committed file. When one does, the checks above have run
+      # against something other than the commit being tested -- turbo restored a stale output over
+      # a file the PR changed -- and CI passed or failed for a reason that is not in the PR. Last, so
+      # it sees what every step before it left behind. See "The build graph" in ARCHITECTURE.md.
+      - name: The run left every committed file as it was
+        run: |
+          if ! git diff --exit-code --stat; then
+            git diff
+            echo "::error::The run changed committed files, most likely because a cached task restored an output that is stale for this commit -- its turbo hash does not cover something the output depends on. Fix that task's inputs in turbo.json; clearing the Actions cache only hides it until the next time."
+            exit 1
+          fi

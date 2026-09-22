@@ -315,6 +315,11 @@ syntax. So the reasons behind its less obvious entries live here instead.
   down and the committed file _is_ the table, and a task's hash is what reaches the tasks depending
   on it. Without it the generator's hash never moved, so a package whose `test` depends only on
   `^codegen` could replay a pass from before a bump.
+
+**CI fails if a run changes any committed file.** A cache hit must never rewrite one, so the last
+step of the checks job compares the tree against the commit. It catches a stale restore by its
+effect, whatever the cause -- including in generated files nobody has written yet.
+
 - **`@session/localization` is built before anything is lint-checked with types.** It is consumed
   as built output, so its declarations have to exist first. Without them the typed rules do not
   fail -- they go blind: `tr()` resolves to the error type and every rule touching it reports
