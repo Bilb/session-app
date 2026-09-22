@@ -19,7 +19,8 @@
       "inputs": [
         "scripts/**",
         "../../libsession-util/include/session/session_protocol.h",
-        "../../libsession-util/src/session_protocol.cpp"
+        "../../libsession-util/src/session_protocol.cpp",
+        "src/urls.generated.ts"
       ],
       "outputs": ["src/urls.generated.ts"],
       "cache": false
