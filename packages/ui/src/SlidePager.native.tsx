@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { Animated, Easing, useWindowDimensions, View } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { Animated, Easing, View } from 'react-native'
 
 import { isLayoutRtl } from './layoutDirection'
 import type { SlidePagerProps } from './SlidePager.types'
@@ -26,8 +26,15 @@ const DURATION_MS = 250
  * there after a look at the other tab, and it is why the pages are positioned rather than swapped:
  * a page taken out of the tree loses everything it was holding.
  */
-export function SlidePager({ index, instant = false, children }: SlidePagerProps) {
-  const { width } = useWindowDimensions()
+export function SlidePager({ index, instant = false, clip = false, children }: SlidePagerProps) {
+  /**
+   * The pager's own width, which is how far a page travels.
+   *
+   * **Measured rather than read off the window.** The two are the same on a phone, where the pager
+   * is the screen, and are not on a tablet, where it is a column inside one -- and a page that
+   * travels a window's width crosses its own column and keeps going, over whatever sits beside it.
+   */
+  const [width, setWidth] = useState(0)
   const rtl = isLayoutRtl()
   const at = useRef(new Animated.Value(index)).current
 
@@ -49,10 +56,14 @@ export function SlidePager({ index, instant = false, children }: SlidePagerProps
   }, [index, instant, at])
 
   return (
-    // Not clipped. A page at rest off screen is a full width away, so it is outside the window
-    // already and there is nothing for a clip to catch -- and clipping here would stop a page
-    // reaching under the home indicator, which a camera preview is supposed to do.
-    <View style={{ flex: 1 }}>
+    // Anything a page means to draw outside this box -- the wide back control hangs off the
+    // column's leading edge -- belongs to whatever lays the pager out, not inside a page.
+    <View
+      style={{ flex: 1, ...(clip ? { overflow: 'hidden' as const } : {}) }}
+      onLayout={(event) => {
+        setWidth(event.nativeEvent.layout.width)
+      }}
+    >
       {children.map((page, at_) => (
         <Animated.View
           // The pages are a fixed list in source order, so their position is what identifies them.

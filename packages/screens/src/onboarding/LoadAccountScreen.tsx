@@ -9,10 +9,13 @@ import {
   RecoveryPasswordMark,
   SlidePager,
   TopTabs,
+  useMedia,
+  XStack,
   YStack,
 } from '@session/ui'
 import { useRef, useState } from 'react'
 
+import { WideBackButton } from './OnboardingBackButton'
 import { OnboardingChrome, useStepPadding } from './OnboardingChrome'
 import { OnboardingStepBody } from './OnboardingStep'
 import { ScanQrPane } from './ScanQrPane'
@@ -32,6 +35,9 @@ interface LoadAccountScreenProps {
   busy?: boolean
 }
 
+/** The shield beside the title, at the client's own size rather than a rung. */
+const TITLE_MARK_SIZE = 22
+
 /**
  * Entering a recovery phrase.
  *
@@ -50,9 +56,6 @@ interface LoadAccountScreenProps {
  * The other half of this exchange is a client *showing* a recovery QR for another device to read,
  * which is what the desktop client does. A desktop that scans is the wrong end of it.
  */
-/** The shield beside the title, at the client's own size rather than a rung. */
-const TITLE_MARK_SIZE = 22
-
 export function LoadAccountScreen({
   onBack,
   backDisabled = false,
@@ -62,6 +65,7 @@ export function LoadAccountScreen({
 }: LoadAccountScreenProps) {
   // Null where no platform put a camera in the tree, which is the desktop app today.
   const scanning = useCamera() !== null
+  const wide = useMedia().gtSm
   const [tab, setTab] = useState<'phrase' | 'qr'>('phrase')
   const [phrase, setPhrase] = useState('')
   const [revealed, setRevealed] = useState(false)
@@ -190,21 +194,34 @@ export function LoadAccountScreen({
       }
     >
       {scanning ? (
-        /* One chrome and two panes rather than two screens: the bar, the title and the tabs
-           stay put and only what is under them slides, which is what makes the indicator and
-           the pane read as one movement. */
-        <SlidePager index={tab === 'qr' ? 1 : 0} instant={cut}>
-          {phrasePane}
-          <ScanQrPane
-            showing={tab === 'qr'}
-            onScan={(value) => {
-              // Handed over as it was read. Whether it decodes to a seed is libsession's to say, and
-              // its refusal comes back the same way a typed phrase's does.
-              onContinue({ hexSeed: value })
-            }}
-            error={rejected ? tr('qrNotRecoveryPassword') : null}
-          />
-        </SlidePager>
+        /* **The back control sits beside the pager, not inside a pane.** The pager has to clip --
+           a page at rest is one column-width to the side, which on a tablet is still on screen --
+           and this control hangs off the column's leading edge, so inside it would be clipped
+           away. Beside it, it is also the same control on both tabs, which is what switching a
+           tab means -- a tab is not a screen, so each one owning its own back would be wrong.
+
+           On a phone the chrome's bar draws it, so this is the wide design's only. */
+        /* Stretching, deliberately: the pager's pages are absolutely positioned, so they give it
+           no height of its own and `alignItems="flex-start"` collapses it to nothing. The back
+           control keeps its own height and so does not stretch with it. */
+        <XStack flex={1}>
+          {wide ? <WideBackButton onPress={onBack} disabled={backDisabled} /> : null}
+          {/* One chrome and two panes rather than two screens: the bar, the title and the tabs
+              stay put and only what is under them slides, which is what makes the indicator and
+              the pane read as one movement. */}
+          <SlidePager index={tab === 'qr' ? 1 : 0} instant={cut} clip={wide}>
+            {phrasePane}
+            <ScanQrPane
+              showing={tab === 'qr'}
+              onScan={(value) => {
+                // Handed over as it was read. Whether it decodes to a seed is libsession's to say, and
+                // its refusal comes back the same way a typed phrase's does.
+                onContinue({ hexSeed: value })
+              }}
+              error={rejected ? tr('qrNotRecoveryPassword') : null}
+            />
+          </SlidePager>
+        </XStack>
       ) : (
         phrasePane
       )}

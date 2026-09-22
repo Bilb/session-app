@@ -1,7 +1,7 @@
 import { requirePorts, useCamera } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, ScannerFrame, Text, useScreenInsets, YStack } from '@session/ui'
+import { Button, ScannerFrame, Text, useMedia, useScreenInsets, YStack } from '@session/ui'
 import { useCallback, useRef, type ReactNode } from 'react'
 
 /** How far the message floats above the home indicator. */
@@ -35,6 +35,7 @@ interface ScanQrPaneProps {
 export function ScanQrPane({ onScan, showing = true, error = null }: ScanQrPaneProps) {
   const camera = useCamera()
   const insets = useScreenInsets()
+  const wide = useMedia().gtSm
   /**
    * The code this pane has already handed over.
    *
@@ -62,14 +63,21 @@ export function ScanQrPane({ onScan, showing = true, error = null }: ScanQrPaneP
   if (camera.access === 'granted') {
     return (
       /**
-       * **To the bottom of the window, under the home indicator.** A camera that stops at the
-       * content box leaves a black bar along the bottom, which reads as the preview having failed
-       * rather than as the device's own furniture.
+       * **To the bottom of the window on a phone, and a rounded panel on the wide designs.**
+       *
+       * A phone camera that stops at the content box leaves a black bar along the bottom, which
+       * reads as the preview having failed rather than as the device's own furniture -- so it
+       * bleeds past its own edge into the home indicator's room.
+       *
+       * The wide designs centre a column, so there is no edge to reach and nothing to bleed into:
+       * the bleed there would only push the frame off centre inside what is actually visible. A
+       * preview floating in the middle of a column wants a corner radius instead, which is what
+       * says deliberate rather than clipped.
        */
       <YStack
         flex={1}
         overflow="hidden"
-        marginBottom={-insets.bottom}
+        {...(wide ? { borderRadius: '$lg' as const } : { marginBottom: -insets.bottom })}
         testID={ELEMENT.onboarding.scanQrPane}
       >
         <camera.Preview

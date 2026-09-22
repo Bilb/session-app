@@ -21,6 +21,8 @@ export { SlidePager } from './SlidePager'
 export type { SlidePagerProps } from './SlidePager.types'
 export { StepTransition } from './StepTransition'
 export { TopTabs } from './TopTabs'
+/** The tab bar's height, so a layout reserving room for one asks rather than restates it. */
+export { BAR_HEIGHT as TOP_TABS_HEIGHT } from './topTabsMetrics'
 export type { TopTab, TopTabsProps } from './TopTabs.types'
 export { SafeArea, type SafeAreaProps } from './SafeArea'
 export { useTokenColor } from './useTokenColor'

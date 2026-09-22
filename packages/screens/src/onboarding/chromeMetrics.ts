@@ -1,4 +1,4 @@
-import { useMedia } from '@session/ui'
+import { TOP_TABS_HEIGHT, useMedia } from '@session/ui'
 import { useEffect, useState } from 'react'
 
 /**
@@ -61,6 +61,26 @@ export function useFadeIn(key: string, instant: boolean): number {
  * below.
  */
 export const CONTENT_MIN_HEIGHT = 276
+
+/**
+ * The gap above a wide step's tab bar, tighter than the column's own.
+ *
+ * The tabs belong to the content under them rather than to the lockup above, and at the column's
+ * full gap they read as floating between the two.
+ */
+export const BANNER_GAP = 12
+
+/**
+ * The height a banner adds to a wide step, which is what has to be paid back somewhere.
+ *
+ * **The column is centred, so its height decides where the lockup sits.** A banner is a sibling of
+ * the reserved block, so a step carrying one is this much taller than a step without -- and half
+ * of that is how far the centring moves the lockup. `WideChrome` adds the same figure above the
+ * column, which puts the top edge back exactly.
+ *
+ * Asked for rather than written down twice: it is the bar's own height plus the gap above it.
+ */
+export const BANNER_RESERVE = TOP_TABS_HEIGHT + BANNER_GAP
 
 /**
  * The phone design's two horizontal insets.

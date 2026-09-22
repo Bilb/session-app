@@ -17,6 +17,8 @@ import {
 import { LanguageButton } from '../LanguageButton'
 import { OnboardingMark } from './OnboardingMark'
 import {
+  BANNER_GAP,
+  BANNER_RESERVE,
   CONTENT_MIN_HEIGHT,
   FADE_MS,
   HEADER_HEIGHT,
@@ -49,9 +51,17 @@ export function WideChrome({
   const column = (
     // Centred both ways in whatever is left, which is the rule the designs state.
     <YStack flex={1} alignItems="center" justifyContent="center" padding="$xl">
-      <YStack width={COLUMN_WIDTH} gap="$xl">
+      <YStack
+        width={COLUMN_WIDTH}
+        gap="$xl"
+        // Room above, so the lockup sits where a step without a banner puts it. The step keeps its
+        // whole reserve: the pager clips to it, so a block short of it loses the control at the
+        // bottom. See `BANNER_RESERVE`.
+        {...(banner === undefined ? {} : { marginTop: BANNER_RESERVE })}
+      >
         <OnboardingHeader />
-        {banner}
+        {/* Closer to the content below than to the lockup above -- see `BANNER_GAP`. */}
+        {banner === undefined ? null : <YStack marginTop={-BANNER_GAP}>{banner}</YStack>}
         <YStack
           // **A height, not a minimum.** The reserve exists so the lockup and the chevron stay put
           // between steps, and a minimum delivers that only while every step fits inside it -- the
