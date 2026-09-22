@@ -1,9 +1,7 @@
-/**
- * When a keyboard-avoiding view should hold its last height rather than follow the keyboard.
- *
- * Pure, and in its own module so it can be tested: the hook around it reaches for `react-native`,
- * and a test that imports that gets Flow syntax vitest cannot parse.
- */
+// When a keyboard-avoiding view should hold its last height rather than follow the keyboard.
+//
+// Pure, and in its own module so it can be tested: the hook around it reaches for `react-native`,
+// and a test that imports that gets Flow syntax vitest cannot parse.
 
 /**
  * Whether the window changed size, as opposed to being measured for the first time.
