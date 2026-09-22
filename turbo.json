@@ -3,10 +3,6 @@
   "ui": "tui",
   "tasks": {
     "codegen": {
-      // bridge-types is an input even though no task here reads it directly: a nitro spec imports
-      // its types from there, so the generated C++ follows that package's shape. Left out, the
-      // cache key does not move when it changes -- and turbo then *restores* the stale generated
-      // files over the correct ones, which reverts a committed regeneration with nothing said.
       "inputs": [
         "proto/**",
         "src/**/*.nitro.ts",
@@ -20,9 +16,6 @@
       "cache": false
     },
     "@session/app#codegen": {
-      // Never cached: CI has no submodule checkout, so the key could not move on a bump and a cache
-      // hit would restore the previous table over the committed one. The inputs only say what the
-      // generator reads.
       "inputs": [
         "scripts/**",
         "../../libsession-util/include/session/session_protocol.h",
@@ -57,10 +50,6 @@
       "dependsOn": ["^codegen", "^build"]
     },
     "lint": {
-      // @session/localization is consumed as built output, so its declarations have to exist
-      // before anything importing it can be type-aware-linted. Without this the typed rules do
-      // not fail, they go blind: tr() resolves to the error type and every rule that touches it
-      // reports "could not be resolved" instead of checking anything.
       "dependsOn": ["^build", "^codegen"]
     },
     "test": {

@@ -296,6 +296,26 @@ that duplicated to read it. The cost is that it fails on push rather than while 
 - **TypeScript is held at 5.x** because typescript-eslint declares `<6.1.0`, and the typed
   rules are the most valuable ones in a repo whose bridge is entirely async.
 
+## The build graph
+
+`turbo.json` carries no comments. Turbo accepts them, but the file is read by more than turbo --
+editors, GitHub, any tool that loads it as the JSON it claims to be -- and JSON has no comment
+syntax. So the reasons behind its less obvious entries live here instead.
+
+- **`packages/bridge-types` is an input to the bridge codegen even though no codegen task reads it
+  directly.** A nitro spec imports its types from there, so the generated C++ follows that package's
+  shape. Left out, the cache key does not move when it changes, and turbo _restores_ the stale
+  generated files over the correct ones -- reverting a committed regeneration with nothing said.
+- **`@session/app#codegen` is never cached.** CI does not check out libsession-util, so the two
+  submodule files it reads are absent there and its key could not move on a bump: a cache hit
+  restored the previous URL table over the committed one, and every check then ran against a table
+  that was not the one being merged. It runs in milliseconds, so caching bought nothing. Its inputs
+  stay listed only as a record of what it reads.
+- **`@session/localization` is built before anything is lint-checked with types.** It is consumed
+  as built output, so its declarations have to exist first. Without them the typed rules do not
+  fail -- they go blind: `tr()` resolves to the error type and every rule touching it reports
+  "could not be resolved" instead of checking anything.
+
 ## Building the native side
 
 Two things cost real time on a first clone, and neither is discoverable from a failure message:
