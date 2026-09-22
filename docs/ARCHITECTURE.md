@@ -320,6 +320,13 @@ syntax. So the reasons behind its less obvious entries live here instead.
 step of the checks job compares the tree against the commit. It catches a stale restore by its
 effect, whatever the cause -- including in generated files nobody has written yet.
 
+**`tooling/turbo-guard` checks the cause before anything runs**, as part of `lint:manifests`. It
+takes the tasks CI's checks job starts, asks turbo for their run graph, and refuses a cached task
+with an input under a submodule CI does not check out, or a generator with such an input whose
+committed output is not also one of its inputs. It models CI's checkout rather than the local one,
+so it gives the same answer in a tree with every submodule present. The second rule is the only
+guard for its case: a dependant replaying a stale result leaves the tree untouched.
+
 - **`@session/localization` is built before anything is lint-checked with types.** It is consumed
   as built output, so its declarations have to exist first. Without them the typed rules do not
   fail -- they go blind: `tr()` resolves to the error type and every rule touching it reports
