@@ -13,7 +13,7 @@ import {
   XStack,
   YStack,
 } from '@session/ui'
-import { useRef, useState } from 'react'
+import { useRef, useState, type RefObject } from 'react'
 
 import { WideBackButton } from './OnboardingBackButton'
 import { OnboardingChrome, useStepPadding } from './OnboardingChrome'
@@ -75,95 +75,24 @@ export function LoadAccountScreen({
   // The chrome is not padding this step, so the pane does -- with the chrome's own figures.
   const stepPadding = useStepPadding()
 
-  /**
-   * The field, which is the whole screen where nothing can scan.
-   *
-   * Named rather than written twice: with a camera it is the first page of a pager, without
-   * one it is the content, and two copies would drift.
-   *
-   * It insets itself, which is why the chrome is told not to: beside a camera the two panes
-   * disagree, since the field belongs in the reading column and the camera fills the width.
-   */
+  // Named rather than written twice: with a camera it is the first page of a pager, without one it
+  // is the content, and two copies would drift.
   const phrasePane = (
-    <YStack flex={1} {...stepPadding}>
-      <OnboardingStepBody
-        title={tr('sessionRecoveryPassword')}
-        titleMark={<RecoveryPasswordMark size={TITLE_MARK_SIZE} color="$textPrimary" />}
-        description={tr('recoveryPasswordRestoreDescription')}
-        onBack={onBack}
-        backDisabled={backDisabled}
-        footer={
-          <Button
-            // Outlined in the accent, like the landing screen's second button: the legacy
-            // clients draw every onboarding Continue that way, stroke and label in the primary
-            // colour.
-            variant="outlineAccent"
-            testID={ELEMENT.onboarding.continueButton}
-            loading={busy}
-            disabled={phrase.trim().length === 0}
-            // Through the field, so the button refuses what the keyboard would refuse.
-            onPress={() => field.current?.submit()}
-          >
-            {tr('theContinue')}
-          </Button>
-        }
-      >
-        <InputField
-          ref={field}
-          value={phrase}
-          onChangeText={setPhrase}
-          // The button is inert while the check runs; the keyboard's own submit is a second
-          // way in, and pressing it twice sends the same phrase twice -- the first `finally`
-          // then clears `busy` while the second is still running.
-          disabled={busy}
-          // Checked on submit rather than as it is typed: a phrase is too short for as long as
-          // it is half-entered, and saying so on every word is noise.
-          validate={(next) =>
-            phraseIsTooShort(next) ? tr('recoveryPasswordErrorMessageShort') : null
-          }
-          // Generic rather than "incorrect": the bridge flattens libsession's several refusals
-          // into one message, so this cannot tell which it was.
-          error={rejected ? tr('recoveryPasswordErrorMessageGeneric') : null}
-          onSubmit={() => {
-            onContinue({ words: phraseWords(phrase) })
-          }}
-          reserveErrorSpace
-          errorTestID={ELEMENT.onboarding.recoveryPhraseError}
-          placeholder={tr('recoveryPasswordEnter')}
-          autoCapitalize="none"
-          // The phrase is words from a list, so a keyboard treats it as prose and learns it.
-          // See `private`.
-          private
-          autoFocus
-          // Concealed until asked for. The toggle is the only way to read it back, which is the
-          // point -- a phrase typed blind cannot be checked over.
-          secureTextEntry={!revealed}
-          testID={ELEMENT.onboarding.recoveryPhraseInput}
-          endWidth={TOGGLE_WIDTH}
-          // A function, because the toggle turns red with the text around it and whether a
-          // message is showing is the field's to know.
-          end={(showing) => (
-            <Button
-              variant="ghost"
-              size="xs"
-              circular
-              accessibilityLabel={revealed ? tr('hide') : tr('show')}
-              testID={ELEMENT.onboarding.recoveryPhraseReveal}
-              onPress={() => {
-                setRevealed((shown) => !shown)
-              }}
-              icon={
-                <Icon
-                  name={revealed ? 'eyeOff' : 'eye'}
-                  size="lg"
-                  color={showing ? '$dangerColor' : '$textSecondary'}
-                />
-              }
-            />
-          )}
-        />
-      </OnboardingStepBody>
-    </YStack>
+    <PhrasePane
+      padding={stepPadding}
+      onBack={onBack}
+      backDisabled={backDisabled}
+      busy={busy}
+      rejected={rejected}
+      phrase={phrase}
+      onPhraseChange={setPhrase}
+      revealed={revealed}
+      onToggleReveal={() => {
+        setRevealed((shown) => !shown)
+      }}
+      field={field}
+      onContinue={onContinue}
+    />
   )
 
   return (
@@ -226,5 +155,123 @@ export function LoadAccountScreen({
         phrasePane
       )}
     </OnboardingChrome>
+  )
+}
+
+interface PhrasePaneProps {
+  /** The chrome's own step padding, which this pane applies because the chrome is told not to. */
+  padding: ReturnType<typeof useStepPadding>
+  onBack: () => void
+  backDisabled: boolean
+  busy: boolean
+  rejected: boolean
+  phrase: string
+  onPhraseChange: (next: string) => void
+  revealed: boolean
+  onToggleReveal: () => void
+  field: RefObject<InputFieldHandle | null>
+  onContinue: (from: RecoveryInput) => void
+}
+
+/**
+ * The field, which is the whole screen where nothing can scan.
+ *
+ * It insets itself, which is why the chrome is told not to: beside a camera the two panes
+ * disagree, since the field belongs in the reading column and the camera fills the width.
+ *
+ * **Its state is the screen's, not its own.** A pager may unmount the page it is not showing, and a
+ * phrase half-typed before a look at the QR tab has to still be there on the way back.
+ */
+function PhrasePane({
+  padding,
+  onBack,
+  backDisabled,
+  busy,
+  rejected,
+  phrase,
+  onPhraseChange,
+  revealed,
+  onToggleReveal,
+  field,
+  onContinue,
+}: PhrasePaneProps) {
+  return (
+    <YStack flex={1} {...padding}>
+      <OnboardingStepBody
+        title={tr('sessionRecoveryPassword')}
+        titleMark={<RecoveryPasswordMark size={TITLE_MARK_SIZE} color="$textPrimary" />}
+        description={tr('recoveryPasswordRestoreDescription')}
+        onBack={onBack}
+        backDisabled={backDisabled}
+        footer={
+          <Button
+            // Outlined in the accent, like the landing screen's second button: the legacy
+            // clients draw every onboarding Continue that way, stroke and label in the primary
+            // colour.
+            variant="outlineAccent"
+            testID={ELEMENT.onboarding.continueButton}
+            loading={busy}
+            disabled={phrase.trim().length === 0}
+            // Through the field, so the button refuses what the keyboard would refuse.
+            onPress={() => field.current?.submit()}
+          >
+            {tr('theContinue')}
+          </Button>
+        }
+      >
+        <InputField
+          ref={field}
+          value={phrase}
+          onChangeText={onPhraseChange}
+          // The button is inert while the check runs; the keyboard's own submit is a second
+          // way in, and pressing it twice sends the same phrase twice -- the first `finally`
+          // then clears `busy` while the second is still running.
+          disabled={busy}
+          // Checked on submit rather than as it is typed: a phrase is too short for as long as
+          // it is half-entered, and saying so on every word is noise.
+          validate={(next) =>
+            phraseIsTooShort(next) ? tr('recoveryPasswordErrorMessageShort') : null
+          }
+          // Generic rather than "incorrect": the bridge flattens libsession's several refusals
+          // into one message, so this cannot tell which it was.
+          error={rejected ? tr('recoveryPasswordErrorMessageGeneric') : null}
+          onSubmit={() => {
+            onContinue({ words: phraseWords(phrase) })
+          }}
+          reserveErrorSpace
+          errorTestID={ELEMENT.onboarding.recoveryPhraseError}
+          placeholder={tr('recoveryPasswordEnter')}
+          autoCapitalize="none"
+          // The phrase is words from a list, so a keyboard treats it as prose and learns it.
+          // See `private`.
+          private
+          autoFocus
+          // Concealed until asked for. The toggle is the only way to read it back, which is the
+          // point -- a phrase typed blind cannot be checked over.
+          secureTextEntry={!revealed}
+          testID={ELEMENT.onboarding.recoveryPhraseInput}
+          endWidth={TOGGLE_WIDTH}
+          // A function, because the toggle turns red with the text around it and whether a
+          // message is showing is the field's to know.
+          end={(showing) => (
+            <Button
+              variant="ghost"
+              size="xs"
+              circular
+              accessibilityLabel={revealed ? tr('hide') : tr('show')}
+              testID={ELEMENT.onboarding.recoveryPhraseReveal}
+              onPress={onToggleReveal}
+              icon={
+                <Icon
+                  name={revealed ? 'eyeOff' : 'eye'}
+                  size="lg"
+                  color={showing ? '$dangerColor' : '$textSecondary'}
+                />
+              }
+            />
+          )}
+        />
+      </OnboardingStepBody>
+    </YStack>
   )
 }
