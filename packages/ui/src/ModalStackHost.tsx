@@ -10,13 +10,16 @@ import { AlertBox } from './Modal'
 import {
   ACTION_HEIGHT,
   HEADER_HEIGHT,
-  PANEL_MAX_HEIGHT_RATIO,
+  PANEL_INSET_RATIO,
   PANEL_RADIUS,
+  PANEL_SHADOW_BLUR,
   PANEL_WIDTH,
 } from './modalPanelMetrics'
 import { useModalEntries, useModals } from './ModalsProvider'
 import { Text } from './Text'
 import { useThemeIsDark } from './UIProvider'
+import { useTokenColor } from './useTokenColor'
+import { useWindowSize } from './useWindowSize'
 
 interface ModalStackHostProps {
   /** Names the close control for a screen reader, since it is drawn as a cross. */
@@ -52,6 +55,14 @@ export function ModalStackHost({
   const Blur = useBackdropBlur()
   const dark = useThemeIsDark()
   const wide = useMedia().gtSm
+  const shadowColor = useTokenColor('$shadow')
+
+  // The desktop client's anchoring: a fixed margin from the top of the window and the same at the
+  // bottom, in window height rather than a percentage -- a percentage of padding is measured
+  // against the width.
+  const { height: windowHeight } = useWindowSize()
+  const inset = Math.round(windowHeight * PANEL_INSET_RATIO)
+  const panelHeight = windowHeight - 2 * inset
 
   const top = entries.at(-1)
 
@@ -129,8 +140,7 @@ export function ModalStackHost({
             <YStack
               fullscreen
               alignItems="center"
-              justifyContent="center"
-              {...(wide ? { padding: '$xl' } : {})}
+              {...(wide ? { paddingHorizontal: '$lg', paddingTop: inset } : {})}
               // Only the frontmost layer answers a press: the ones below it are visible context,
               // not controls. Without this a tap meant for the scrim of the top modal lands on a
               // row of the one underneath.
@@ -142,19 +152,24 @@ export function ModalStackHost({
                 {...(wide
                   ? {
                       maxWidth: PANEL_WIDTH[entry.width],
-                      maxHeight: `${String(PANEL_MAX_HEIGHT_RATIO * 100)}%`,
+                      // **One height for every screen, anchored to the top.** A panel sized to
+                      // each screen moves its bottom edge on every push and, centred, its top edge
+                      // too -- which reads as the panel jumping rather than the screen changing.
+                      // Fixed, a push is only the content changing, and a transition between two
+                      // screens has two boxes of the same size to move between.
+                      height: panelHeight,
                       borderRadius: PANEL_RADIUS,
+                      borderWidth: 1,
+                      borderColor: '$bordersColor',
+                      boxShadow: `0px 0px ${String(PANEL_SHADOW_BLUR[dark ? 'dark' : 'light'])}px 0px ${shadowColor}`,
                     }
                   : // **A height, not `flex`.** A narrow window gets the whole thing rather than a
                     // panel in the middle of one, and asking to fill the space says so directly --
                     // where a share of it depends on what the layer is doing with the rest.
                     { height: '100%' })}
-                // **A nested modal sits on the nested surface, not on the same one again.** A modal
-                // over a modal both drawn in `$backgroundSecondary` is invisible -- the panel is
-                // there and reads as floating text over its parent's rows. `backgroundNested` is
-                // the theme's own answer to a surface on a surface, and it stays themed, where
-                // darkening one by hand would not.
-                backgroundColor={index === 0 ? '$backgroundSecondary' : '$backgroundNested'}
+                // The page's own surface, lifted by the border and the shadow rather than by a
+                // lighter colour: the desktop client's panel is near-black on a near-black page.
+                backgroundColor="$backgroundPrimary"
                 // Clipped so a row pressed at the top or bottom of the list stops at the corner
                 // rather than squaring it off.
                 overflow="hidden"
@@ -165,8 +180,8 @@ export function ModalStackHost({
               >
                 <XStack height={HEADER_HEIGHT} alignItems="center" paddingHorizontal="$xs">
                   {/* The two controls hold their columns whether or not they are drawn, so the
-                    title stays put as a screen is pushed. A title that shifts sideways when a
-                    back chevron appears reads as the whole panel having moved. */}
+                      title stays put as a screen is pushed. A title that shifts sideways when a
+                      back chevron appears reads as the whole panel having moved. */}
                   <YStack width={HEADER_HEIGHT}>
                     {entry.stack.length <= 1 ? null : (
                       <Button
@@ -181,10 +196,12 @@ export function ModalStackHost({
                     )}
                   </YStack>
 
+                  {/* One size on every screen of a panel. A push changes what is under the
+                      header, not the header's weight. */}
                   <Text
                     flex={1}
-                    size="$bodyLarge"
-                    weight="bold"
+                    size="$title"
+                    weight="semibold"
                     textAlign="center"
                     userSelect="none"
                   >
@@ -208,54 +225,53 @@ export function ModalStackHost({
                   </YStack>
                 </XStack>
 
-                {/* The body scrolls rather than the panel growing. A settings tree has one screen
-                  longer than any window, and a panel sized to its tallest child would be that tall
-                  on every other screen too.
-
-                  Always, unlike the client, where scrolling is opt-in per modal and off by
-                  default -- a screen that outgrows its panel is then clipped, and whether it does
-                  depends on the window. */}
-                <ScrollView
-                  // **Shrink, do not grow, on a window with room.** The panel is content-sized up
-                  // to its ceiling, and a body that grows into an auto-height parent has no free
-                  // space to take a share of -- so it resolves to nothing and the panel is just its
-                  // own header. Filling is only right where the panel fills the window.
-                  flexGrow={wide ? 0 : 1}
-                  flexShrink={1}
-                  // **Not a control, so it should not carry a focus ring.** Opening the platform's
-                  // modal moves focus to the first focusable node inside it, which on the web is
-                  // this scroller -- and the browser then draws its own ring, in its own colour,
-                  // around the whole body. It stays focusable and still scrolls from the keyboard;
-                  // what a keyboard reader follows is the ring on the row it tabs to.
-                  //
-                  // The style, not the width: `outline-style: auto` is the browser's own ring and
-                  // it draws at the platform's thickness whatever width is asked for, so a zero
-                  // width leaves it exactly as it was.
-                  focusStyle={{ outlineStyle: 'none' }}
-                >
-                  {screen?.render() ?? null}
-                </ScrollView>
+                {/* **Every screen stays mounted; only the frontmost is shown.** Going back is
+                    then a return to the screen as it was left -- scrolled where it was, holding
+                    whatever it held -- rather than a fresh copy starting from the top. The others
+                    are hidden from sight, from presses and from a screen reader. */}
+                {/* `relative` so the screens below are placed against this body: on the web a
+                    stack is `static` unless it says so, and an absolute child then resolves
+                    against the page -- see `containingBlock.contract.test.ts`. */}
+                <YStack flex={1} position="relative">
+                  {entry.stack.map((held, at) => {
+                    const showing = at === entry.stack.length - 1
+                    return (
+                      <YStack
+                        key={held.key}
+                        fullscreen
+                        opacity={showing ? 1 : 0}
+                        pointerEvents={showing ? 'auto' : 'none'}
+                        aria-hidden={!showing}
+                      >
+                        {/* Each screen scrolls within the panel rather than growing it. */}
+                        <ScrollView
+                          flex={1}
+                          // **Not a control, so it should not carry a focus ring.** Opening the
+                          // platform's modal moves focus to the first focusable node inside it,
+                          // which on the web is a scroller -- and the browser then draws its own
+                          // ring, in its own colour, around the whole body. It stays focusable and
+                          // still scrolls from the keyboard; what a keyboard reader follows is the
+                          // ring on the row it tabs to.
+                          //
+                          // The style, not the width: `outline-style: auto` is the browser's own
+                          // ring and it draws at the platform's thickness whatever width is asked
+                          // for, so a zero width leaves it exactly as it was.
+                          focusStyle={{ outlineStyle: 'none' }}
+                        >
+                          {held.render()}
+                        </ScrollView>
+                      </YStack>
+                    )
+                  })}
+                </YStack>
 
                 {screen?.footer === undefined ? null : (
                   /* Equal widths across the panel with no gap and no margins -- the client's
-                   `fillEqually`, and the same shape `Modal` draws an alert's actions in. The row
-                   is needed rather than optional: the actions ask for an equal share with `fill`,
-                   and a share of a column's height is nothing, so laid out down the panel they
-                   collapse to none.
-
-                   Clipped to the panel's own corners, so a cell that fills its width when held
-                   stops at the rounded bottom edge rather than squaring it off. */
-                  <XStack
-                    alignItems="stretch"
-                    height={ACTION_HEIGHT}
-                    {...(wide
-                      ? {
-                          borderBottomLeftRadius: PANEL_RADIUS,
-                          borderBottomRightRadius: PANEL_RADIUS,
-                        }
-                      : {})}
-                    overflow="hidden"
-                  >
+                     `fillEqually`, and the same shape `Modal` draws an alert's actions in. The row
+                     is needed rather than optional: the actions ask for an equal share with
+                     `fill`, and a share of a column's height is nothing, so laid out down the
+                     panel they collapse to none. */
+                  <XStack alignItems="stretch" height={ACTION_HEIGHT}>
                     {screen.footer()}
                   </XStack>
                 )}

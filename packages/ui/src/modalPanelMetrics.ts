@@ -24,13 +24,20 @@ export const PANEL_WIDTH = {
 export type PanelWidth = keyof typeof PANEL_WIDTH
 
 /**
- * How tall, as a share of the window: the client's `calc(100vh - 10vh)`.
+ * How far the panel stands off the top and bottom of the window, as a share of its height: the
+ * client's `5vh` either side.
  *
  * Short of the full height on purpose -- a panel reaching both edges of the window has stopped
  * reading as something over the page and started reading as the page. What is left is what says
  * the page is still behind it.
  */
-export const PANEL_MAX_HEIGHT_RATIO = 0.9
+export const PANEL_INSET_RATIO = 0.05
+
+/**
+ * The shadow's blur, from the client: tighter where the shadow is opaque black on a dark theme than
+ * where it is a quarter-strength one on a light theme. Its colour is the theme's `shadow` role.
+ */
+export const PANEL_SHADOW_BLUR = { dark: 34, light: 40 } as const
 
 /** The client's own corner, which is not on our radius ladder and is written as itself. */
 export const PANEL_RADIUS = 13

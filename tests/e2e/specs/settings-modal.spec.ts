@@ -8,6 +8,20 @@ import { ELEMENT } from '@session/test-ids'
 const repoRoot = join(import.meta.dirname, '../../..')
 
 /**
+ * The little of the page's DOM the scroll check touches, declared here rather than by adding `dom`
+ * to this package's lib: harness code runs in Node, and only these bodies run in the renderer. The
+ * same arrangement as `DesktopApp.ts`'s page globals.
+ */
+interface PageNode {
+  scrollTop: number
+  parentElement: PageNode | null
+  scrollIntoView: (options: { block: 'end' }) => void
+}
+interface PageGlobals {
+  document: { querySelector: (selector: string) => PageNode | null }
+}
+
+/**
  * Settings opens over the list, walks into a child screen, comes back, and asks on top of itself.
  *
  * **The whole point of the spec is the two stacks interacting**, and nothing smaller can see it.
@@ -50,15 +64,41 @@ test('settings opens over the list, pushes Help, and asks on top of itself', asy
   // Nothing to go back to yet. A back control on a first screen is the classic off-by-one here.
   await expect(page.getByTestId(ELEMENT.settings.modalBack)).toHaveCount(0)
 
+  // Scrolled far enough to bring Help into view, so there is a position for going back to keep.
+  const scrolledTo = await page.evaluate((helpId) => {
+    const { document } = globalThis as unknown as PageGlobals
+    const help = document.querySelector(`[data-testid="${helpId}"]`)
+    if (help === null) return -1
+    help.scrollIntoView({ block: 'end' })
+    let at: PageNode | null = help
+    while (at !== null && at.scrollTop === 0) at = at.parentElement
+    return at?.scrollTop ?? 0
+  }, ELEMENT.settings.row('help'))
+  expect(scrolledTo).toBeGreaterThan(0)
+
   await page.getByTestId(ELEMENT.settings.row('help')).first().click()
   await expect(page.getByTestId(ELEMENT.help.link('faq')).first()).toBeVisible()
-  // One modal, one screen deeper: the control appears, and the root is gone rather than behind it.
+  // One modal, one screen deeper: the back control appears, and the root is kept but hidden --
+  // still mounted, so going back returns to it as it was, but out of reach of a press or a screen
+  // reader. Playwright counts `opacity: 0` as visible, so the hiding is read off the tree.
   await expect(page.getByTestId(ELEMENT.settings.modalBack).first()).toBeVisible()
-  await expect(page.getByTestId(ELEMENT.settings.accountId)).toHaveCount(0)
+  const hiddenRoot = page.locator(
+    `[aria-hidden="true"] [data-testid="${ELEMENT.settings.accountId}"]`,
+  )
+  await expect(hiddenRoot).toHaveCount(1)
 
   await page.getByTestId(ELEMENT.settings.modalBack).first().click()
-  await expect(page.getByTestId(ELEMENT.settings.accountId).first()).toBeVisible()
+  await expect(hiddenRoot).toHaveCount(0)
   await expect(page.getByTestId(ELEMENT.settings.modalBack)).toHaveCount(0)
+  // **Back to the same place, not the top.** The root never went, so its scroll position did not
+  // either.
+  const scrolledBack = await page.evaluate((helpId) => {
+    const { document } = globalThis as unknown as PageGlobals
+    let at = document.querySelector(`[data-testid="${helpId}"]`)
+    while (at !== null && at.scrollTop === 0) at = at.parentElement
+    return at?.scrollTop ?? 0
+  }, ELEMENT.settings.row('help'))
+  expect(scrolledBack).toBe(scrolledTo)
 
   // A second modal over the first, which is the case the platform's own nesting gets wrong.
   await page.getByTestId(ELEMENT.settings.clearData).first().click()

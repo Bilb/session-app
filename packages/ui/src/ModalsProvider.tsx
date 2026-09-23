@@ -51,13 +51,24 @@ export interface ModalPresentation {
   initial: ModalScreen
 }
 
+/**
+ * A screen as the stack holds it.
+ *
+ * With an identity of its own, because every screen of a panel stays mounted: a screen popped and
+ * another pushed in its place has to be a new component, not the old one's -- scroll position and
+ * all -- showing different contents.
+ */
+interface HeldScreen extends ModalScreen {
+  key: string
+}
+
 /** A presented modal, with the screens it has been walked through. */
 export interface OpenModal extends StackedModal {
   kind: 'panel' | 'alert'
   width: PanelWidth
   testID?: string
   closeTestID?: string
-  stack: ModalScreen[]
+  stack: HeldScreen[]
 }
 
 export interface Modals {
@@ -134,7 +145,7 @@ export function ModalStackProvider({ children }: { children: ReactNode }) {
             ...(testID === undefined ? {} : { testID }),
             ...(closeTestID === undefined ? {} : { closeTestID }),
             screens: 1,
-            stack: [initial],
+            stack: [{ ...initial, key: `screen-${String(nextId.current++)}` }],
           },
         ])
         return id
@@ -153,7 +164,12 @@ export function ModalStackProvider({ children }: { children: ReactNode }) {
        * came from, which is the only answer that needs no table and cannot be wrong.
        */
       push: (screen) => {
-        mapTop((top) => ({ ...top, screens: top.screens + 1, stack: [...top.stack, screen] }))
+        const key = `screen-${String(nextId.current++)}`
+        mapTop((top) => ({
+          ...top,
+          screens: top.screens + 1,
+          stack: [...top.stack, { ...screen, key }],
+        }))
       },
 
       pop: () => {
