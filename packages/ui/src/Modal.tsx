@@ -8,6 +8,7 @@ import { Button } from './Button'
 import { Icon } from './Icon'
 import { Text } from './Text'
 import { logical } from './logicalEdges'
+import { ALERT_EDGE } from './alertEdge'
 
 interface ModalProps {
   open: boolean
@@ -204,6 +205,9 @@ export function AlertBox({
       borderRadius={RADIUS}
       // The surface above the page, which is what an alert sits on in the client.
       backgroundColor="$backgroundSecondary"
+      // Its edge against a dimmed page is the same surface over another, so each platform draws
+      // the separation its client does.
+      {...ALERT_EDGE}
       // Swallows the press, so a tap inside the dialog does not reach the backdrop.
       onPress={(event) => {
         event.stopPropagation()
