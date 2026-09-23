@@ -14,6 +14,7 @@ import type { IconName } from './Icon.types'
 import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
 import { PRESS_PASSTHROUGH } from './pressPassthrough'
+import { SPACE_SCALE } from './scales'
 import { Text } from './Text'
 import { offScaleText } from './textHeight'
 
@@ -174,7 +175,11 @@ export function SettingsRow({
             {trailing === undefined ? null : (
               // More room than between the icon and the label: the label is the icon's, and the
               // trailing control is something else -- text that wraps into it reads as run on.
-              <YStack {...logical({ paddingStart: '$xs', paddingEnd: '$2xs' })}>{trailing}</YStack>
+              <YStack
+                {...logical({ paddingStart: SPACE_SCALE.xs, paddingEnd: SPACE_SCALE['2xs'] })}
+              >
+                {trailing}
+              </YStack>
             )}
           </XStack>
         </YStack>
@@ -226,7 +231,7 @@ export function SettingsGroup({ children }: { children: ReactNode }) {
  */
 export function SettingsSection({ label, description }: { label: string; description?: string }) {
   return (
-    <YStack gap="$3xs" paddingBottom="$xs" {...logical({ paddingStart: '$xs' })}>
+    <YStack gap="$3xs" paddingBottom="$xs" {...logical({ paddingStart: SPACE_SCALE.xs })}>
       <Text size="$body" tone="secondary">
         {label}
       </Text>

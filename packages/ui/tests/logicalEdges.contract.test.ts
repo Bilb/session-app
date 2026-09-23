@@ -104,3 +104,33 @@ describe('a directional edge', () => {
     expect(offenders).toEqual([])
   })
 })
+
+/**
+ * No `$` name reaches `logical()`.
+ *
+ * Its values are raw style, where tamagui resolves nothing, so a token is dropped in silence: a
+ * padding of `'$xs'` was no padding, and the rule between the desktop panes, given
+ * `'$bordersColor'`, drew in the text colour instead. The lengths are typed against it; a colour
+ * is a string either way, so this reads for it.
+ */
+describe('logical()', () => {
+  const roots = [
+    join(import.meta.dirname, '../src'),
+    join(import.meta.dirname, '../../screens/src'),
+  ]
+
+  function sources(dir: string): string[] {
+    return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const path = join(dir, entry.name)
+      if (entry.isDirectory()) return sources(path)
+      return /\.tsx?$/.test(entry.name) ? [path] : []
+    })
+  }
+
+  it('is never given a token', () => {
+    const offenders = roots
+      .flatMap(sources)
+      .filter((path) => /logical\(\{[^}]*['"]\$/.test(readFileSync(path, 'utf8')))
+    expect(offenders).toEqual([])
+  })
+})

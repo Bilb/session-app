@@ -1,4 +1,4 @@
-import type { LogicalEdges, LogicalLength } from './logicalEdges.types'
+import type { LogicalEdges } from './logicalEdges.types'
 
 export type { LogicalEdges }
 
@@ -13,8 +13,8 @@ export type { LogicalEdges }
  * are written, which is what keeps `exactOptionalPropertyTypes` satisfied, and a style spreads
  * onto any component without the prop types having to know these names.
  */
-export function logical(edges: LogicalEdges): { style: Record<string, LogicalLength> } {
-  const style: Record<string, LogicalLength> = {}
+export function logical(edges: LogicalEdges): { style: Record<string, number | string> } {
+  const style: Record<string, number | string> = {}
   if (edges.marginStart !== undefined) style['marginStart'] = edges.marginStart
   if (edges.marginEnd !== undefined) style['marginEnd'] = edges.marginEnd
   if (edges.paddingStart !== undefined) style['paddingStart'] = edges.paddingStart
