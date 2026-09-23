@@ -1,17 +1,32 @@
+import type { ReactNode } from 'react'
 import { StyleSheet } from 'react-native'
 import { ScreenStack, ScreenStackHeaderLeftView, ScreenStackItem } from 'react-native-screens'
 import { ScrollView, XStack } from 'tamagui'
 
-import { Button } from './Button'
 import { Icon } from './Icon'
 import { ACTION_HEIGHT } from './modalPanelMetrics'
-import type { PhoneModalStackProps } from './PhoneModalStack.types'
+import { PressArea } from './PressArea'
 import { useTokenColor } from './useTokenColor'
 
-export type { PhoneModalStackProps } from './PhoneModalStack.types'
+/** One screen of the modal, as the phone's stack draws it. */
+interface PhoneModalScreen {
+  key: string
+  title: string
+  render: () => ReactNode
+  footer?: (() => ReactNode) | undefined
+}
 
-/** See the web half. */
-export const HAS_PHONE_MODAL_STACK = true
+export interface PhoneModalStackProps {
+  /** Oldest first: the first is the modal's own screen, the rest were pushed onto it. */
+  screens: readonly PhoneModalScreen[]
+  /** Names the close control on the first screen. */
+  closeLabel: string
+  /** Closes the modal from its first screen, or undefined where it cannot be left that way. */
+  onClose?: (() => void) | undefined
+  /** The platform took screens off -- a back swipe, the back button -- and the stack must follow. */
+  onPop: (count: number) => void
+  closeTestID?: string | undefined
+}
 
 /**
  * A modal's screens on a phone, on the platform's own navigation stack.
@@ -57,15 +72,15 @@ export function PhoneModalStack({
             children:
               at === 0 && onClose !== undefined ? (
                 <ScreenStackHeaderLeftView>
-                  <Button
-                    variant="ghost"
-                    size="md"
-                    circular
+                  {/* A bare glyph, as the system's own back button is: the bar draws the button
+                      around it, and a pressed state of ours on top of that reads as two buttons. */}
+                  <PressArea
                     accessibilityLabel={closeLabel}
-                    {...(closeTestID === undefined ? {} : { testID: closeTestID })}
                     onPress={onClose}
-                    icon={<Icon name="x" size="lg" color="$textPrimary" />}
-                  />
+                    {...(closeTestID === undefined ? {} : { testID: closeTestID })}
+                  >
+                    {() => <Icon name="x" size="lg" color="$textPrimary" />}
+                  </PressArea>
                 </ScreenStackHeaderLeftView>
               ) : undefined,
           }}

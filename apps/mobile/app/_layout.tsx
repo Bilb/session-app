@@ -79,8 +79,9 @@ export default function RootLayout() {
                       {/* Never keyed on the language: that mirrors the strings by remounting the
                           routed subtree, discarding whatever the screen holds. Each route
                           subscribes with `useLocale` instead. */}
-                      <Slot />
-                      <ModalHost />
+                      <ModalHost>
+                        <Slot />
+                      </ModalHost>
                     </ModalStackProvider>
                   </DirectionRoot>
                 </MobileCameraProvider>

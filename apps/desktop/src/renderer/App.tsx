@@ -53,8 +53,9 @@ export function App() {
                 both. Beside the shell rather than within it, so a modal opened from a list row
                 outlives that row and is drawn over the whole window. */}
             <ModalStackProvider>
-              <Shell />
-              <ModalHost />
+              <ModalHost>
+                <Shell />
+              </ModalHost>
             </ModalStackProvider>
           </DesktopNavProvider>
         </MemoryRouter>
