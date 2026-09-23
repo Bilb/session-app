@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  permits,
   contentSecurityPolicy,
   hardenedWebPreferences,
   isAppNavigation,
@@ -93,5 +94,23 @@ describe('the content security policy', () => {
     expect(shipped).not.toContain('ws:')
 
     expect(contentSecurityPolicy({ dev: true })).toContain("script-src 'self' 'unsafe-inline'")
+  })
+})
+
+describe('permissions', () => {
+  /** Every copy in the app failed with a refused write until this was granted. */
+  it('lets the page write the clipboard', () => {
+    expect(permits('clipboard-sanitized-write')).toBe(true)
+  })
+
+  it('refuses reading it, and everything else', () => {
+    for (const permission of [
+      'clipboard-read',
+      'notifications',
+      'media',
+      'geolocation',
+      'openExternal',
+    ])
+      expect(permits(permission)).toBe(false)
   })
 })

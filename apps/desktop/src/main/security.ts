@@ -114,14 +114,27 @@ export function guardNavigation(contents: WebContents, appUrl: string): void {
 }
 
 /**
- * Denies every permission, which is every permission the app does not yet ask for.
+ * The permissions the renderer is granted, and nothing else.
  *
- * Notifications are the first one it will want; granting it means deciding that here rather than
+ * `clipboard-sanitized-write` is what `navigator.clipboard.writeText` needs, and without it every
+ * copy in the app -- the account ID, an address from the open-link confirm -- failed with a refused
+ * write. Write only, and sanitised: a page can put text on the clipboard but not read what is
+ * there, which is the half that would matter if content in this window were ever not the app's.
+ *
+ * Notifications are the next one it will want; granting it means deciding that here rather than
  * letting Chromium's prompt decide it in a window showing remote content.
  */
+const PERMITTED: ReadonlySet<string> = new Set(['clipboard-sanitized-write'])
+
+/** Whether the renderer may have a permission. Every one not named above is refused. */
+export function permits(permission: string): boolean {
+  return PERMITTED.has(permission)
+}
+
+/** Refuses every permission the app does not ask for. See `PERMITTED`. */
 export function denyAllPermissions(session: Session): void {
-  session.setPermissionRequestHandler((_contents, _permission, callback) => {
-    callback(false)
+  session.setPermissionRequestHandler((_contents, permission, callback) => {
+    callback(permits(permission))
   })
-  session.setPermissionCheckHandler(() => false)
+  session.setPermissionCheckHandler((_contents, permission) => permits(permission))
 }
