@@ -6,24 +6,17 @@ import { accountIdLines } from '#src/settings/accountIdLines'
 const ID = `05${'ab'.repeat(32)}`
 
 describe('accountIdLines', () => {
-  it('breaks a real account ID into three equal lines', () => {
-    const lines = accountIdLines(ID)
-    expect(lines).toHaveLength(3)
-    expect(lines.map((line) => line.length)).toEqual([22, 22, 22])
+  /** The desktop client's `3lines`: two long lines over a short one. */
+  it('breaks a real account ID where the desktop client does', () => {
+    expect(accountIdLines(ID).map((line) => line.length)).toEqual([27, 27, 12])
   })
 
   it('loses nothing', () => {
     expect(accountIdLines(ID).join('')).toBe(ID)
   })
 
-  it('puts a remainder on the last line rather than anywhere else', () => {
-    // Nothing should produce this, but a short line in the middle would break the block, so the
-    // rule is worth holding rather than leaving to whichever way the division rounded.
-    expect(accountIdLines('abcdefg')).toEqual(['abc', 'def', 'g'])
-  })
-
-  it('survives an id shorter than the line count', () => {
-    expect(accountIdLines('ab')).toEqual(['a', 'b'])
+  it('draws no empty line for a short id', () => {
+    expect(accountIdLines('abc')).toEqual(['abc'])
   })
 
   it('returns nothing for nothing', () => {
