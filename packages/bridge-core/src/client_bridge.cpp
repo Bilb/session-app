@@ -388,12 +388,12 @@ struct ClientBridge::Impl {
         if (type == Type::Unknown)
             return;
 
-        auto info = client->core.devices.device_info().first;
+        auto info = client->core.devices.device_info(await).first;
         info.type = type;
         // Ignored for a known type, but it is what we would have been stored as before that type
         // existed, and leaving it set keeps a stale string in the record.
         info.other_device.clear();
-        client->core.devices.update_info(info);
+        client->core.devices.update_info(info, await);
     }
 
     /// Gives Core a way off the machine. Idempotent enough to call whenever an account appears:
@@ -572,7 +572,7 @@ struct ClientBridge::Impl {
 
     void handle(double id, const CreateAccountCommand&) {
         mark_provisional();
-        client->core.globals.create_account();
+        client->core.globals.create_account(await);
         on_account();
         ok(id);
     }
@@ -586,7 +586,7 @@ struct ClientBridge::Impl {
         b32 seed;
         std::memcpy(seed.data(), raw.data(), seed.size());
         mark_provisional();
-        client->core.globals.restore_account(core::predefined_seed{std::span{seed}});
+        client->core.globals.restore_account(core::predefined_seed{std::span{seed}}, await);
         on_account();
         fetch_restored_profile();
         ok(id);
@@ -597,7 +597,8 @@ struct ClientBridge::Impl {
         mark_provisional();
         client->core.globals.restore_account(
                 cmd.language ? core::predefined_seed{words, *cmd.language}
-                             : core::predefined_seed{words});
+                             : core::predefined_seed{words},
+                await);
         on_account();
         fetch_restored_profile();
         ok(id);

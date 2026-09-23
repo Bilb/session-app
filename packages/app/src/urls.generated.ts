@@ -29,4 +29,5 @@ export const URLS = {
   termsOfService: 'https://getsession.org/terms-of-service',
   token: 'https://token.getsession.org',
   translate: 'https://getsession.org/translate',
+  website: 'https://getsession.org',
 } as const

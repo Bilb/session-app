@@ -3,7 +3,6 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { WEBSITE_URL } from '#src/urls'
 import { URLS } from '#src/urls.generated'
 
 const repoRoot = join(import.meta.dirname, '../../..')
@@ -54,16 +53,8 @@ function writtenAddresses(): { file: string; address: string }[] {
   )
 }
 
-/**
- * The one address allowed to be written out, and where.
- *
- * `urls.ts` holds the bare domain because libsession's table has no entry for it yet. It is not a
- * precedent: the moment the table gains one, this goes with the file.
- */
-const EXEMPT = [{ file: join('packages', 'app', 'src', 'urls.ts'), address: WEBSITE_URL }]
-
 /** The entries screens link today. Not the whole table: upstream adding one is not a failure. */
-const LINKED = ['faq', 'termsOfService', 'privacyPolicy'] as const
+const LINKED = ['faq', 'termsOfService', 'privacyPolicy', 'website'] as const
 
 describe('the addresses the app links', () => {
   it('are in the generated table, so a field renamed upstream fails here rather than going quiet', () => {
@@ -79,10 +70,7 @@ describe('the addresses the app links', () => {
    * beside it -- in a screen, a port, an app entry, anywhere a link could be typed in by hand.
    */
   it('are never written out in app code - add a new one to libsession instead', () => {
-    const exempt = (found: { file: string; address: string }) =>
-      EXEMPT.some(({ file, address }) => file === found.file && address === found.address)
-
-    expect(writtenAddresses().filter((found) => !exempt(found))).toEqual([])
+    expect(writtenAddresses()).toEqual([])
   })
 
   /**
@@ -93,16 +81,5 @@ describe('the addresses the app links', () => {
     expect(sourceFiles().some((file) => file.startsWith(join('packages', 'screens', 'src')))).toBe(
       true,
     )
-  })
-
-  /**
-   * The bump this is waiting for, stated as a test so nothing has to remember it.
-   *
-   * `libsession-util#171` adds `url_website`. The next submodule bump past it regenerates the
-   * table with the bare domain in it, and this fails -- which is the whole trigger for deleting
-   * `urls.ts` and reading `URLS.website` at the one call site that wants it.
-   */
-  it('hold the bare domain here only until libsession does - delete WEBSITE_URL when this fails', () => {
-    expect(Object.values(URLS)).not.toContain(WEBSITE_URL)
   })
 })

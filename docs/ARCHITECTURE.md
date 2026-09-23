@@ -200,8 +200,7 @@ goes into libsession first, so there is one list and everything reads it.
 
 **There is no curated second list.** A hand-kept subset of the table would be a rename layer over
 it, and one that also decides which addresses a screen is allowed to reach -- so an address the
-library has and the list has not is unavailable for no reason anybody stated. `urls.ts` holds the
-single address the table has no entry for, and goes when it gains one.
+library has and the list has not is unavailable for no reason anybody stated.
 
 **Build-time rather than over the bridge.** The table is a static const - no client, no network,
 no account - and the consumers read `URLS` at module scope. Carrying a constant over the frame
@@ -213,10 +212,10 @@ lives in the desktop main process and the renderer reaches it only over the prel
 process that draws the screen cannot read the library at all. Generating covers both platforms
 with one mechanism; a native read would cover one.
 
-**CI cannot verify the table today**, and the generator says so rather than passing quietly: the
-submodule is pinned at a commit the remote does not have, so no job there can clone it. The check
-enforces wherever the submodule is present -- a developer tree, and CI itself once that pointer is
-one the remote can serve. What holds meanwhile is that the generated file is committed and so
+**CI does not verify the table against the library**, and the generator says so rather than
+passing quietly: the checks job leaves libsession-util out, since it drags in protobuf and
+session-deps and nothing there compiles C++. The check enforces wherever the submodule is present,
+which is every developer tree. What holds in CI is that the generated file is committed and so
 reviewable, and that the contract test reads it rather than the library.
 
 ### Addresses that are not what they read as

@@ -1,4 +1,4 @@
-import { URLS, WEBSITE_URL } from '@session/app'
+import { URLS } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import {
@@ -180,7 +180,7 @@ function OnboardingHeader() {
           accessibilityLabel={tr('openPlatformWebsite', { platform: tr('appName') })}
           testID={ELEMENT.onboarding.websiteLink}
           onPress={() => {
-            open(WEBSITE_URL)
+            open(URLS.website)
           }}
           icon={
             <IconRing size={RING_SIZE} color="$textPrimary">
