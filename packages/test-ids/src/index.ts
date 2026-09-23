@@ -77,6 +77,7 @@ export const ELEMENT = {
     accountId: 'settings-account-id',
     copyAccountId: 'settings-copy-account-id',
     shareAccountId: 'settings-share-account-id',
+    tokenLogo: 'settings-token-logo',
     networkStatus: 'settings-network-status',
     clearData: 'settings-clear-data',
     confirmClearData: 'settings-confirm-clear-data',

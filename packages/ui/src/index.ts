@@ -12,6 +12,7 @@ export {
   RecoveryPasswordMark,
   RecoveryPasswordShield,
   SessionBrand,
+  SessionTokenLogo,
   SessionTokenMark,
   SessionWordmark,
   type MarkProps,

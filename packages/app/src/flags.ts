@@ -77,6 +77,17 @@ export const FLAGS = {
    * differs each run, and a tap aimed at a control that has not settled misses.
    */
   disableAnimations: false,
+
+  /**
+   * Debug mode, as the desktop client means it: what reveals its debug menu.
+   *
+   * The environment sets where it starts, as `SESSION_DEV` does there; ten presses on the commit
+   * in settings turn it over for the rest of the run, and a relaunch puts it back -- the client
+   * does not keep it either. Off, because a release build is not a debugging one.
+   *
+   * Nothing reads it yet: the menu it reveals is not built.
+   */
+  debugMode: false,
 } as const
 
 export type FlagName = keyof typeof FLAGS

@@ -23,6 +23,7 @@ import { AccountIdControls } from './AccountIdControls'
 import { confirmLink } from './confirmLink'
 import { ConversationsPage } from './ConversationsPage'
 import { HelpPage } from './HelpPage'
+import { SessionInfo } from './SessionInfo'
 import { LocalizedText } from '../LocalizedText'
 
 /**
@@ -269,6 +270,8 @@ export function SettingsRootPage() {
           ))}
         </SettingsGroup>
       ))}
+
+      <SessionInfo />
     </YStack>
   )
 }
