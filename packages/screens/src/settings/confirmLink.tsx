@@ -29,7 +29,9 @@ const MAX_URL_HEIGHT = textHeight('body', MAX_LINES)
  */
 export function confirmLink(modals: Modals, url: string): void {
   const id = modals.present({
-    width: 'narrow',
+    kind: 'alert',
+    testID: ELEMENT.onboarding.openUrlDialog,
+    closeTestID: ELEMENT.onboarding.openUrlCancel,
     initial: {
       title: tr('urlOpen'),
       render: () => (

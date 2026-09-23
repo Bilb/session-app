@@ -27,8 +27,19 @@ export interface ModalScreen {
 }
 
 export interface ModalPresentation {
-  /** Which of the client's three widths to draw at. Defaults to `normal`. */
+  /**
+   * A panel of screens, or a single alert. Defaults to `panel`.
+   *
+   * An alert is `Modal`'s dialog shown over the stack -- a confirm asked from inside settings --
+   * so there is one alert in the app however it was opened. It has one screen: its title, its body
+   * and its footer as the actions.
+   */
+  kind?: 'panel' | 'alert'
+  /** Which of the client's three widths a panel draws at. Defaults to `normal`. */
   width?: PanelWidth
+  /** The alert's own ids, since an alert is not the settings panel and a test addresses it. */
+  testID?: string
+  closeTestID?: string
   /**
    * Whether the scrim, Escape and the hardware back button may close it. Defaults to true.
    *
@@ -42,7 +53,10 @@ export interface ModalPresentation {
 
 /** A presented modal, with the screens it has been walked through. */
 export interface OpenModal extends StackedModal {
+  kind: 'panel' | 'alert'
   width: PanelWidth
+  testID?: string
+  closeTestID?: string
   stack: ModalScreen[]
 }
 
@@ -101,11 +115,27 @@ export function ModalStackProvider({ children }: { children: ReactNode }) {
     }
 
     return {
-      present: ({ initial, dismissible = true, width = 'normal' }) => {
+      present: ({
+        initial,
+        dismissible = true,
+        width = 'normal',
+        kind = 'panel',
+        testID,
+        closeTestID,
+      }) => {
         const id = `modal-${String(nextId.current++)}`
         setEntries((current) => [
           ...current,
-          { id, dismissible, width, screens: 1, stack: [initial] },
+          {
+            id,
+            dismissible,
+            width,
+            kind,
+            ...(testID === undefined ? {} : { testID }),
+            ...(closeTestID === undefined ? {} : { closeTestID }),
+            screens: 1,
+            stack: [initial],
+          },
         ])
         return id
       },

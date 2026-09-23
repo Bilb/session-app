@@ -29,13 +29,16 @@ const PROFILE_AVATAR = 64
 /** Asks before deleting everything on the device, on top of the settings modal. */
 function confirmClearData(modals: Modals, clear: () => Promise<void>): void {
   const id = modals.present({
-    width: 'narrow',
+    kind: 'alert',
+    testID: ELEMENT.settings.confirmClearData,
     // There are two answers in the footer and the cross would be an unlabelled third: somebody
     // deciding whether to erase their account wants to read the word Cancel, not infer it.
     dismissible: false,
     initial: {
       title: tr('clearDataAll'),
-      render: () => <LocalizedText text={tr('clearDeviceDescription')} />,
+      render: () => (
+        <LocalizedText text={tr('clearDeviceDescription')} size="$body" textAlign="center" />
+      ),
       footer: () => (
         <>
           <Button

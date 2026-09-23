@@ -143,79 +143,128 @@ export function Modal({
         padding="$xl"
         onPress={dismiss}
       >
-        <YStack
-          width="100%"
-          maxWidth={360}
-          gap={CONTENT_GAP}
-          paddingTop={TOP_INSET}
-          paddingHorizontal={sideInset}
-          paddingBottom={bottomInset}
-          borderRadius={RADIUS}
-          // The surface above the page, which is what an alert sits on in the client.
-          backgroundColor="$backgroundSecondary"
-          // Swallows the press, so a tap inside the dialog does not reach the backdrop.
-          onPress={(event) => {
-            event.stopPropagation()
-          }}
+        <AlertBox
+          title={title}
+          closeLabel={closeLabel}
+          showClose={showClose}
+          onClose={onClose}
+          actions={actions}
           testID={testID}
+          closeTestID={closeTestID}
+          sideInset={sideInset}
+          bottomInset={bottomInset}
         >
-          <XStack alignItems="flex-start" gap="$xs">
-            {/* Centred across the full width, with the cross overlaid rather than taking a column,
-                so the title is centred on the dialog and not on what is left of it. */}
-            {/* 17 on iOS, 16 on Android. */}
-            <Text flex={1} size="$bodyLarge" weight="bold" textAlign="center" userSelect="none">
-              {title}
-            </Text>
-            {!showClose ? null : (
-              <YStack
-                position="absolute"
-                top={-(TOP_INSET - CLOSE_INSET)}
-                // The trailing corner, which is the right one only until the layout is mirrored.
-                {...logical({ insetEnd: -(sideInset - CLOSE_INSET) })}
-              >
-                <Button
-                  variant="ghost"
-                  // The size of the touch target rather than of the glyph, which is the same
-                  // reason the onboarding back control is `md`: an `xs` button is a 24pt square to
-                  // hit, and a cross in the corner of a dialog is exactly where that is felt.
-                  size="md"
-                  circular
-                  accessibilityLabel={closeLabel}
-                  testID={closeTestID}
-                  onPress={onClose}
-                  icon={<Icon name="x" size="lg" color="$textPrimary" />}
-                />
-              </YStack>
-            )}
-          </XStack>
-
           {children}
-
-          {actions === undefined ? null : (
-            /* Equal widths running the full width of the dialog, with no gap and no side margins
-               -- the client's `fillEqually`. Each action is as tall as a control rather than as
-               tall as its label. */
-            /* Clipped to the dialog's own corners too, so a cell that fills its width when held
-               stops at the rounded bottom edge rather than squaring it off. */
-            <XStack
-              alignItems="stretch"
-              marginTop={ACTIONS_GAP}
-              marginHorizontal={-sideInset}
-              marginBottom={-bottomInset}
-              height={ACTION_HEIGHT}
-              borderBottomLeftRadius={RADIUS}
-              borderBottomRightRadius={RADIUS}
-              overflow="hidden"
-            >
-              {/* Each action takes an equal share of the full width -- the client's `fillEqually`
-                  -- with no gap, so the two share an edge the way its alert's buttons do. The
-                  actions ask for that themselves with `fill`, because a fragment of them arrives
-                  here as one child and cannot be divided from the outside. */}
-              {actions}
-            </XStack>
-          )}
-        </YStack>
+        </AlertBox>
       </YStack>
     </NativeModal>
+  )
+}
+
+interface AlertBoxProps {
+  title: string
+  closeLabel: string
+  showClose: boolean
+  onClose: () => void
+  children: ReactNode
+  actions?: ReactNode
+  testID: string
+  closeTestID: string
+  sideInset?: number
+  bottomInset?: number
+}
+
+/**
+ * The dialog itself, without the window it is shown in.
+ *
+ * Apart from `Modal` so there is one alert in the app however it is presented: `Modal` puts it in a
+ * platform modal of its own, and the modal stack draws it over a settings panel -- where a confirm
+ * drawn as a small panel instead had neither the alert's metrics nor its shape.
+ */
+export function AlertBox({
+  title,
+  closeLabel,
+  showClose,
+  onClose,
+  children,
+  actions,
+  testID,
+  closeTestID,
+  sideInset = SIDE_INSET,
+  bottomInset = BOTTOM_INSET,
+}: AlertBoxProps) {
+  return (
+    <YStack
+      width="100%"
+      maxWidth={360}
+      gap={CONTENT_GAP}
+      paddingTop={TOP_INSET}
+      paddingHorizontal={sideInset}
+      paddingBottom={bottomInset}
+      borderRadius={RADIUS}
+      // The surface above the page, which is what an alert sits on in the client.
+      backgroundColor="$backgroundSecondary"
+      // Swallows the press, so a tap inside the dialog does not reach the backdrop.
+      onPress={(event) => {
+        event.stopPropagation()
+      }}
+      testID={testID}
+    >
+      <XStack alignItems="flex-start" gap="$xs">
+        {/* Centred across the full width, with the cross overlaid rather than taking a column,
+            so the title is centred on the dialog and not on what is left of it. */}
+        {/* 17 on iOS, 16 on Android. */}
+        <Text flex={1} size="$bodyLarge" weight="bold" textAlign="center" userSelect="none">
+          {title}
+        </Text>
+        {!showClose ? null : (
+          <YStack
+            position="absolute"
+            top={-(TOP_INSET - CLOSE_INSET)}
+            // The trailing corner, which is the right one only until the layout is mirrored.
+            {...logical({ insetEnd: -(sideInset - CLOSE_INSET) })}
+          >
+            <Button
+              variant="ghost"
+              // The size of the touch target rather than of the glyph, which is the same
+              // reason the onboarding back control is `md`: an `xs` button is a 24pt square to
+              // hit, and a cross in the corner of a dialog is exactly where that is felt.
+              size="md"
+              circular
+              accessibilityLabel={closeLabel}
+              testID={closeTestID}
+              onPress={onClose}
+              icon={<Icon name="x" size="lg" color="$textPrimary" />}
+            />
+          </YStack>
+        )}
+      </XStack>
+
+      {children}
+
+      {actions === undefined ? null : (
+        /* Equal widths running the full width of the dialog, with no gap and no side margins
+           -- the client's `fillEqually`. Each action is as tall as a control rather than as
+           tall as its label. */
+        /* Clipped to the dialog's own corners too, so a cell that fills its width when held
+           stops at the rounded bottom edge rather than squaring it off. */
+        <XStack
+          alignItems="stretch"
+          marginTop={ACTIONS_GAP}
+          marginHorizontal={-sideInset}
+          marginBottom={-bottomInset}
+          height={ACTION_HEIGHT}
+          borderBottomLeftRadius={RADIUS}
+          borderBottomRightRadius={RADIUS}
+          overflow="hidden"
+        >
+          {/* Each action takes an equal share of the full width -- the client's `fillEqually`
+              -- with no gap, so the two share an edge the way its alert's buttons do. The
+              actions ask for that themselves with `fill`, because a fragment of them arrives
+              here as one child and cannot be divided from the outside. */}
+          {actions}
+        </XStack>
+      )}
+    </YStack>
   )
 }
