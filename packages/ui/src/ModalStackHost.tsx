@@ -18,6 +18,7 @@ import {
 import { useModalEntries, useModals } from './ModalsProvider'
 import { Text } from './Text'
 import { useThemeIsDark } from './UIProvider'
+import { useScreenInsets } from './screenInsets'
 import { useTokenColor } from './useTokenColor'
 import { useWindowSize } from './useWindowSize'
 
@@ -65,12 +66,19 @@ export function ModalStackHost({
   const panelHeight = windowHeight - 2 * inset
 
   const top = entries.at(-1)
+  // The phone's panel is the whole screen, so it keeps its header out from under the status bar
+  // and its content off the home indicator.
+  const screenInsets = useScreenInsets()
+  // **A phone's settings slide up**, as a modal does there; a panel over a wide window fades in,
+  // as the desktop client's does. Decided by what opens the stack: an alert with nothing under it
+  // fades on both.
+  const slides = !wide && entries[0]?.kind === 'panel'
 
   return (
     <NativeModal
       visible={entries.length > 0}
       transparent
-      animationType="fade"
+      animationType={slides ? 'slide' : 'fade'}
       // Escape on the web, the hardware button on Android. Both mean one level, which is not
       // always the modal: see `backAction`.
       onRequestClose={modals.back}
@@ -180,7 +188,11 @@ export function ModalStackHost({
                   : // **A height, not `flex`.** A narrow window gets the whole thing rather than a
                     // panel in the middle of one, and asking to fill the space says so directly --
                     // where a share of it depends on what the layer is doing with the rest.
-                    { height: '100%' })}
+                    {
+                      height: '100%',
+                      paddingTop: screenInsets.top,
+                      paddingBottom: screenInsets.bottom,
+                    })}
                 // The page's own surface, lifted by the border and the shadow rather than by a
                 // lighter colour: the desktop client's panel is near-black on a near-black page.
                 backgroundColor="$backgroundPrimary"
@@ -194,7 +206,24 @@ export function ModalStackHost({
                       title stays put as a screen is pushed. A title that shifts sideways when a
                       back chevron appears reads as the whole panel having moved. */}
                   <YStack width={HEADER_HEIGHT}>
-                    {entry.stack.length <= 1 ? null : (
+                    {entry.stack.length <= 1 ? (
+                      // **On a phone the close is where a modal's always is**: the leading corner,
+                      // on the first screen only -- a pushed screen has back there instead. The wide
+                      // panel keeps the desktop client's close in the trailing corner.
+                      wide || !entry.dismissible ? null : (
+                        <Button
+                          variant="ghost"
+                          size="md"
+                          circular
+                          accessibilityLabel={closeLabel}
+                          {...(closeTestID === undefined ? {} : { testID: closeTestID })}
+                          onPress={() => {
+                            modals.dismiss(entry.id)
+                          }}
+                          icon={<Icon name="x" size="lg" color="$textPrimary" />}
+                        />
+                      )
+                    ) : (
                       <Button
                         variant="ghost"
                         size="md"
@@ -220,7 +249,7 @@ export function ModalStackHost({
                   </Text>
 
                   <YStack width={HEADER_HEIGHT} alignItems="flex-end">
-                    {!entry.dismissible ? null : (
+                    {!wide || !entry.dismissible ? null : (
                       <Button
                         variant="ghost"
                         size="md"
