@@ -1,6 +1,7 @@
 import { memoryPorts, setPorts, type NotificationsPort } from '@session/app'
 import { parseNetworkName } from '@session/basic-types'
 import * as Clipboard from 'expo-clipboard'
+import Constants from 'expo-constants'
 import * as SecureStore from 'expo-secure-store'
 import { BackHandler, Linking, Platform, Share } from 'react-native'
 
@@ -84,6 +85,12 @@ const ports = memoryPorts({
     show: () => Promise.resolve(),
     onTap: () => () => undefined,
     setBadgeCount: () => Promise.resolve(),
+  },
+  build: {
+    // The version app.json gives the build, which is what the stores and the OS know it as.
+    version: Constants.expoConfig?.version ?? '0.0.0',
+    // Inlined by Metro from what its config read out of git. See metro.config.js.
+    commit: process.env['EXPO_PUBLIC_SESSION_BUILD_COMMIT'] || null,
   },
   share: {
     // The platform's sheet, with the text alone: no title or subject, which iOS would drop and

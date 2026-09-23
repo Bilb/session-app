@@ -9,6 +9,7 @@ export { FLAGS, envVarFor, flag, flagSnapshot } from './flags'
 export { URLS } from './urls.generated'
 export type { FlagName } from './flags'
 export type {
+  BuildPort,
   ClipboardPort,
   FilesPort,
   FlagsPort,

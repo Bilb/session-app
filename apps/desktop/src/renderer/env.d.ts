@@ -24,6 +24,10 @@ interface ImportMetaEnv {
    * carries the prefix" stays a rule with no exceptions to remember.
    */
   readonly EXPO_PUBLIC_SESSION_FLAGS?: Record<string, string>
+  /** This app's version, from its manifest. */
+  readonly EXPO_PUBLIC_SESSION_BUILD_VERSION: string
+  /** The commit stamp, or null outside a git checkout. See `commitStamp` in the config. */
+  readonly EXPO_PUBLIC_SESSION_BUILD_COMMIT: string | null
 }
 
 interface ImportMeta {

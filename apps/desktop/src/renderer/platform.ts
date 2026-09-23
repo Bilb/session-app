@@ -47,6 +47,10 @@ setPorts(
     flags: {
       override: (name) => import.meta.env.EXPO_PUBLIC_SESSION_FLAGS?.[name] ?? null,
     },
+    build: {
+      version: import.meta.env.EXPO_PUBLIC_SESSION_BUILD_VERSION,
+      commit: import.meta.env.EXPO_PUBLIC_SESSION_BUILD_COMMIT,
+    },
     window: {
       // One window, so closing it is quitting, and `window.close()` needs no IPC call to do it.
       close: () => {

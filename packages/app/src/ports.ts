@@ -131,6 +131,24 @@ export interface LinkingPort {
   openAppSettings: (() => Promise<void>) | null
 }
 
+/**
+ * Which build this is: the version it was released as and the commit it was made from.
+ *
+ * Answered where the build is assembled, as the rest of these are: the version is each app's own,
+ * and the commit is read from git by the bundler as it builds, which a committed file could not do
+ * -- it would have to contain the hash of the commit it is in. Wanted by the settings stamp, and by
+ * any log that has to say which binary produced it.
+ */
+export interface BuildPort {
+  readonly version: string
+  /**
+   * Eight characters, as the desktop client shows it, with `-dirty` when the tree had changes on
+   * top. Null where the build was not made from a git checkout, rather than a hash it cannot vouch
+   * for.
+   */
+  readonly commit: string | null
+}
+
 export interface SharePort {
   /**
    * Hands text to the platform's share sheet, or null where there is none (the desktop).
@@ -202,6 +220,7 @@ export interface Ports {
   clipboard: ClipboardPort
   linking: LinkingPort
   share: SharePort
+  build: BuildPort
   window: WindowPort
 }
 
