@@ -91,6 +91,13 @@ const ports = memoryPorts({
     version: Constants.expoConfig?.version ?? '0.0.0',
     // Inlined by Metro from what its config read out of git. See metro.config.js.
     commit: process.env['EXPO_PUBLIC_SESSION_BUILD_COMMIT'] || null,
+    // What app.json gives the native build. It sets neither today, so this is null until it does.
+    buildNumber:
+      Platform.OS === 'ios'
+        ? (Constants.expoConfig?.ios?.buildNumber ?? null)
+        : Constants.expoConfig?.android?.versionCode === undefined
+          ? null
+          : String(Constants.expoConfig.android.versionCode),
   },
   share: {
     // The platform's sheet, with the text alone: no title or subject, which iOS would drop and

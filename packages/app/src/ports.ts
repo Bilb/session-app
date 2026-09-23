@@ -147,6 +147,12 @@ export interface BuildPort {
    * for.
    */
   readonly commit: string | null
+  /**
+   * The store build number the phones show after the version -- iOS's `CFBundleVersion`, Android's
+   * `versionCode`. Null where there is none, which is the desktop, and a phone whose configuration
+   * does not set one.
+   */
+  readonly buildNumber: string | null
 }
 
 export interface SharePort {
