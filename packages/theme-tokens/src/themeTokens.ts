@@ -127,6 +127,17 @@ const DANGER_BASE = '#E12D19'
  */
 const WARNING_BASE = { light: '#A64B00', dark: '#FCB159' } as const
 
+/**
+ * What dims the page behind something drawn over it, and the shadow under something raised.
+ *
+ * **Black, with only the alpha keyed on polarity -- never the theme's own colours.** Both are
+ * darkenings rather than surfaces, and a darkening taken from a theme's palette lightens a dark
+ * theme: every dark surface role is lighter than the page. The values are the desktop client's,
+ * which keys them the same way.
+ */
+const SCRIM = { light: 'rgba(0, 0, 0, 0.2)', dark: 'rgba(0, 0, 0, 0.5)' } as const
+const SHADOW = { light: 'rgba(0, 0, 0, 0.25)', dark: 'rgba(0, 0, 0, 1)' } as const
+
 /** What a disabled label still has to manage, on every surface. Below AA on purpose. */
 const DISABLED_FLOOR = 2
 
@@ -355,6 +366,15 @@ export type ThemeTokens = {
   separatorColor: string
   messageBubbleIncomingBg: string
   messageBubbleIncomingText: string
+  /**
+   * The page dimmed behind a dialog or a panel over it.
+   *
+   * Translucent, and measured against nothing: it is a darkening rather than a colour anything is
+   * read on, so no contrast rule applies to it. See `SCRIM`.
+   */
+  scrim: string
+  /** A raised element's shadow. Polarity only, for the same reason as `scrim`. */
+  shadow: string
 }
 
 /**
@@ -574,6 +594,8 @@ export function deriveTokens(knobs: ThemeKnobs, accent: string): ThemeTokens {
       incomingBg,
       CONTRAST.normal,
     ),
+    scrim: SCRIM[polarity],
+    shadow: SHADOW[polarity],
     ...overrides,
   }
 }

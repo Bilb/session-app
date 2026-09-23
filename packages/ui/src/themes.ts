@@ -95,7 +95,8 @@ const TAMAGUI_NAMES = [
 /** The list above is what must exist; this is what each one means in Session's terms. */
 function tamaguiAliases(tokens: ThemeTokens): Record<(typeof TAMAGUI_NAMES)[number], string> {
   const clear = 'rgba(0, 0, 0, 0)'
-  const shadow = 'rgba(0, 0, 0, 0.25)'
+  // The theme's own, so a dark theme casts the shadow a dark theme should rather than a light one's.
+  const shadow = tokens.shadow
 
   return {
     background: tokens.backgroundPrimary,

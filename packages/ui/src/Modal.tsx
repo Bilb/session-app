@@ -8,7 +8,6 @@ import { Button } from './Button'
 import { Icon } from './Icon'
 import { Text } from './Text'
 import { logical } from './logicalEdges'
-import { SCRIM_OPACITY } from './scrim'
 
 interface ModalProps {
   open: boolean
@@ -132,12 +131,11 @@ export function Modal({
           <Blur dark={dark} />
         </YStack>
       )}
-      {/* The scrim is its own layer so its opacity does not reach the dialog: an opacity on a
-          parent applies to every descendant, which would make the dialog translucent too. None
-          over a blur, as in the legacy client: a dim on top hides what the blur shows. */}
-      {Blur !== null ? null : (
-        <YStack fullscreen backgroundColor="$surfaceInk" opacity={SCRIM_OPACITY} />
-      )}
+      {/* **A scrim only where there is no blur.** Where there is one there is no scrim at all,
+          which is the legacy client's arrangement: `Modal.dimmingView` is a bare
+          `UIVisualEffectView` pinned to the window, with no tint and no alpha over it. A dim on top
+          of a blur hides the thing the blur exists to show. */}
+      {Blur !== null ? null : <YStack fullscreen backgroundColor="$scrim" />}
       <YStack
         fullscreen
         alignItems="center"

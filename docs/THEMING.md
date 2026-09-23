@@ -64,6 +64,8 @@ Ask what the thing _is_, not what colour you want.
 | a switch thumb, a QR panel                                    | `surfaceInverted`                  |
 | the modules printed on that panel                             | `surfaceInk`                       |
 | an incoming bubble, and its text                              | `messageBubbleIncomingBg` / `Text` |
+| the page dimmed behind a dialog or panel                      | `scrim`                            |
+| a raised element's shadow                                     | `shadow`                           |
 
 No hex outside `@session/theme-tokens`. `pnpm --filter @session/ui test` fails on a token name that
 does not exist, because tamagui resolves a missing token to `0` silently.
@@ -118,6 +120,13 @@ wrong on both dark ones, which is what an earlier version of this did.
 
 The switch thumb takes `surfaceInverted` for the same reason: light in every theme, because a dark
 thumb reads as switched off.
+
+**A darkening is black, not a role borrowed from the palette.** `scrim` and `shadow` are the two
+roles not derived from a theme's colours: translucent black, with only the alpha keyed on polarity,
+the way the desktop client keys them. Anything that dims or shades takes one of them. A dimming
+built from a theme's own surfaces lightens a dark theme instead — every dark surface is lighter than
+its page — and both dialogs did exactly that, drawing their backdrop in `surfaceInk`. Neither role
+carries a contrast obligation: nothing is read on them.
 
 **Illustrations are exempt. Text and controls are not.** The Session mark and the network diagram
 keep the brand green even on white.

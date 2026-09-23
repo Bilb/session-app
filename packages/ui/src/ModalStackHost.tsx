@@ -16,9 +16,6 @@ import { useModalEntries, useModals } from './ModalsProvider'
 import { Text } from './Text'
 import { useThemeIsDark } from './UIProvider'
 
-/** Matches `Modal`'s, so a stacked modal and an alert sit on the same backdrop. */
-const SCRIM_OPACITY = 0.6
-
 interface ModalStackHostProps {
   /** Names the close control for a screen reader, since it is drawn as a cross. */
   closeLabel: string
@@ -66,9 +63,8 @@ export function ModalStackHost({
       onRequestClose={modals.back}
     >
       {Blur === null ? (
-        /* Its own layer so the opacity does not reach the panels: an opacity on a parent applies
-           to every descendant, which would make the content translucent too. */
-        <YStack fullscreen backgroundColor="$surfaceInk" opacity={SCRIM_OPACITY} />
+        // The same backdrop as an alert's, so a panel and a dialog over it dim the page alike.
+        <YStack fullscreen backgroundColor="$scrim" />
       ) : (
         <YStack fullscreen>
           <Blur dark={dark} />
