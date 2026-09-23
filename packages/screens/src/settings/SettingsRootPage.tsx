@@ -5,6 +5,8 @@ import { ELEMENT } from '@session/test-ids'
 import {
   Avatar,
   Button,
+  Icon,
+  PressArea,
   ProBadge,
   RecoveryPasswordShield,
   SessionTokenMark,
@@ -12,6 +14,7 @@ import {
   SettingsRow,
   Text,
   useModals,
+  useToast,
   XStack,
   YStack,
   type SettingsRowProps,
@@ -151,46 +154,78 @@ function AccountHeader({ sessionId, name }: { sessionId: string; name: string })
         </Text>
       )}
       <AccountIdPill />
-      {/* One element per line, so the text engine cannot move the breaks. */}
-      <YStack alignItems="center" testID={ELEMENT.settings.accountId}>
-        {accountIdLines(sessionId).map((line, at) => (
-          // Keyed by position: lines can repeat (the fake's IDs are runs of zeroes), and duplicate
-          // keys crash on iOS.
-          <Text key={at} size="$bodyLarge" fontFamily="$mono">
-            {line}
-          </Text>
-        ))}
-      </YStack>
       {shareText === null ? (
-        <DesktopCopy sessionId={sessionId} />
+        <DesktopAccountId sessionId={sessionId} />
       ) : (
-        <PhoneAccountActions sessionId={sessionId} shareText={shareText} />
+        <>
+          <AccountIdLines sessionId={sessionId} />
+          <PhoneAccountActions sessionId={sessionId} shareText={shareText} />
+        </>
       )}
     </YStack>
   )
 }
 
-/** Where there is no share sheet: copy alone. */
-function DesktopCopy({ sessionId }: { sessionId: string }) {
-  const [copied, setCopied] = useState(false)
+/** The ID, one element per line. */
+function AccountIdLines({ sessionId }: { sessionId: string }) {
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      testID={ELEMENT.settings.copyAccountId}
-      onPress={() => {
-        void requirePorts()
-          .clipboard.setString(sessionId)
-          .then(() => {
-            setCopied(true)
-            setTimeout(() => {
-              setCopied(false)
-            }, COPIED_FOR_MS)
-          })
-      }}
-    >
-      {copied ? tr('copied') : tr('copy')}
-    </Button>
+    // One element per line, so the text engine cannot move the breaks.
+    <YStack alignItems="center" testID={ELEMENT.settings.accountId}>
+      {accountIdLines(sessionId).map((line, at) => (
+        // Keyed by position: lines can repeat (the fake's IDs are runs of zeroes), and duplicate
+        // keys crash on iOS.
+        <Text key={at} size="$bodyLarge" fontFamily="$mono">
+          {line}
+        </Text>
+      ))}
+    </YStack>
+  )
+}
+
+/**
+ * The desktop client's gap between the ID and its copy glyph, which is not on the scale: 10, where
+ * the rungs either side are 8 and 12.
+ */
+const COPY_GAP = 10
+
+/** The copy glyph: its 15, a size the icon ladder does not have. */
+const COPY_GLYPH = 15
+
+/**
+ * The ID with the desktop client's copy glyph beside it, where there is no share sheet.
+ *
+ * The glyph sits at the ID's trailing side, centred on its three lines, and the ID itself copies
+ * when pressed -- the client does both. Either says so with the same toast every copy raises.
+ */
+function DesktopAccountId({ sessionId }: { sessionId: string }) {
+  const toasts = useToast()
+  const copy = () => {
+    void requirePorts()
+      .clipboard.setString(sessionId)
+      .then(() => {
+        // One id for every copy, so copying twice shows the toast again rather than two of them.
+        toasts.show(tr('copied'), { id: 'copied-to-clipboard' })
+      })
+  }
+  return (
+    <XStack alignItems="center" gap={COPY_GAP}>
+      <PressArea accessibilityLabel={tr('copy')} onPress={copy}>
+        {() => (
+          <YStack cursor="pointer">
+            <AccountIdLines sessionId={sessionId} />
+          </YStack>
+        )}
+      </PressArea>
+      <Button
+        variant="ghost"
+        size="xs"
+        circular
+        accessibilityLabel={tr('copy')}
+        testID={ELEMENT.settings.copyAccountId}
+        onPress={copy}
+        icon={<Icon name="copy" size={COPY_GLYPH} color="$accentText" />}
+      />
+    </XStack>
   )
 }
 
