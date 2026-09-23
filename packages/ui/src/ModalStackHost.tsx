@@ -16,6 +16,7 @@ import {
   PANEL_WIDTH,
 } from './modalPanelMetrics'
 import { useModalEntries, useModals } from './ModalsProvider'
+import { HAS_PHONE_MODAL_STACK, PhoneModalStack } from './PhoneModalStack'
 import { Text } from './Text'
 import { useThemeIsDark } from './UIProvider'
 import { useScreenInsets } from './screenInsets'
@@ -155,6 +156,9 @@ export function ModalStackHost({
             </Fragment>
           )
 
+        // A phone draws the panel's screens on its own navigation stack: see `PhoneModalStack`.
+        const phoneStack = !wide && HAS_PHONE_MODAL_STACK
+
         return (
           <Fragment key={entry.id}>
             {layerScrim}
@@ -190,7 +194,9 @@ export function ModalStackHost({
                     // where a share of it depends on what the layer is doing with the rest.
                     {
                       height: '100%',
-                      paddingTop: screenInsets.top,
+                      // The platform's own bar keeps itself out from under the status bar, where
+                      // there is one; this header does not.
+                      paddingTop: phoneStack ? 0 : screenInsets.top,
                       paddingBottom: screenInsets.bottom,
                     })}
                 // The page's own surface, lifted by the border and the shadow rather than by a
@@ -201,119 +207,139 @@ export function ModalStackHost({
                 overflow="hidden"
                 testID={testID}
               >
-                <XStack height={HEADER_HEIGHT} alignItems="center" paddingHorizontal="$xs">
-                  {/* The two controls hold their columns whether or not they are drawn, so the
+                {phoneStack ? (
+                  <PhoneModalStack
+                    screens={entry.stack}
+                    closeLabel={closeLabel}
+                    onClose={
+                      entry.dismissible
+                        ? () => {
+                            modals.dismiss(entry.id)
+                          }
+                        : undefined
+                    }
+                    onPop={(count) => {
+                      for (let popped = 0; popped < count; popped += 1) modals.pop()
+                    }}
+                    closeTestID={closeTestID}
+                  />
+                ) : (
+                  <>
+                    <XStack height={HEADER_HEIGHT} alignItems="center" paddingHorizontal="$xs">
+                      {/* The two controls hold their columns whether or not they are drawn, so the
                       title stays put as a screen is pushed. A title that shifts sideways when a
                       back chevron appears reads as the whole panel having moved. */}
-                  <YStack width={HEADER_HEIGHT}>
-                    {entry.stack.length <= 1 ? (
-                      // **On a phone the close is where a modal's always is**: the leading corner,
-                      // on the first screen only -- a pushed screen has back there instead. The wide
-                      // panel keeps the desktop client's close in the trailing corner.
-                      wide || !entry.dismissible ? null : (
-                        <Button
-                          variant="ghost"
-                          size="md"
-                          circular
-                          accessibilityLabel={closeLabel}
-                          {...(closeTestID === undefined ? {} : { testID: closeTestID })}
-                          onPress={() => {
-                            modals.dismiss(entry.id)
-                          }}
-                          icon={<Icon name="x" size="lg" color="$textPrimary" />}
-                        />
-                      )
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="md"
-                        circular
-                        accessibilityLabel={backLabel}
-                        {...(backTestID === undefined ? {} : { testID: backTestID })}
-                        onPress={modals.back}
-                        icon={<Icon name={backChevron()} size="lg" color="$textPrimary" />}
-                      />
-                    )}
-                  </YStack>
+                      <YStack width={HEADER_HEIGHT}>
+                        {entry.stack.length <= 1 ? (
+                          // **On a phone the close is where a modal's always is**: the leading corner,
+                          // on the first screen only -- a pushed screen has back there instead. The wide
+                          // panel keeps the desktop client's close in the trailing corner.
+                          wide || !entry.dismissible ? null : (
+                            <Button
+                              variant="ghost"
+                              size="md"
+                              circular
+                              accessibilityLabel={closeLabel}
+                              {...(closeTestID === undefined ? {} : { testID: closeTestID })}
+                              onPress={() => {
+                                modals.dismiss(entry.id)
+                              }}
+                              icon={<Icon name="x" size="lg" color="$textPrimary" />}
+                            />
+                          )
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="md"
+                            circular
+                            accessibilityLabel={backLabel}
+                            {...(backTestID === undefined ? {} : { testID: backTestID })}
+                            onPress={modals.back}
+                            icon={<Icon name={backChevron()} size="lg" color="$textPrimary" />}
+                          />
+                        )}
+                      </YStack>
 
-                  {/* One size on every screen of a panel. A push changes what is under the
+                      {/* One size on every screen of a panel. A push changes what is under the
                       header, not the header's weight. */}
-                  <Text
-                    flex={1}
-                    size="$title"
-                    weight="semibold"
-                    textAlign="center"
-                    userSelect="none"
-                  >
-                    {screen?.title ?? ''}
-                  </Text>
+                      <Text
+                        flex={1}
+                        size="$title"
+                        weight="semibold"
+                        textAlign="center"
+                        userSelect="none"
+                      >
+                        {screen?.title ?? ''}
+                      </Text>
 
-                  <YStack width={HEADER_HEIGHT} alignItems="flex-end">
-                    {!wide || !entry.dismissible ? null : (
-                      <Button
-                        variant="ghost"
-                        size="md"
-                        circular
-                        accessibilityLabel={closeLabel}
-                        {...(closeTestID === undefined ? {} : { testID: closeTestID })}
-                        onPress={() => {
-                          modals.dismiss(entry.id)
-                        }}
-                        icon={<Icon name="x" size="lg" color="$textPrimary" />}
-                      />
-                    )}
-                  </YStack>
-                </XStack>
+                      <YStack width={HEADER_HEIGHT} alignItems="flex-end">
+                        {!wide || !entry.dismissible ? null : (
+                          <Button
+                            variant="ghost"
+                            size="md"
+                            circular
+                            accessibilityLabel={closeLabel}
+                            {...(closeTestID === undefined ? {} : { testID: closeTestID })}
+                            onPress={() => {
+                              modals.dismiss(entry.id)
+                            }}
+                            icon={<Icon name="x" size="lg" color="$textPrimary" />}
+                          />
+                        )}
+                      </YStack>
+                    </XStack>
 
-                {/* **Every screen stays mounted; only the frontmost is shown.** Going back is
+                    {/* **Every screen stays mounted; only the frontmost is shown.** Going back is
                     then a return to the screen as it was left -- scrolled where it was, holding
                     whatever it held -- rather than a fresh copy starting from the top. The others
                     are hidden from sight, from presses and from a screen reader. */}
-                {/* `relative` so the screens below are placed against this body: on the web a
+                    {/* `relative` so the screens below are placed against this body: on the web a
                     stack is `static` unless it says so, and an absolute child then resolves
                     against the page -- see `containingBlock.contract.test.ts`. */}
-                <YStack flex={1} position="relative">
-                  {entry.stack.map((held, at) => {
-                    const showing = at === entry.stack.length - 1
-                    return (
-                      <YStack
-                        key={held.key}
-                        fullscreen
-                        opacity={showing ? 1 : 0}
-                        pointerEvents={showing ? 'auto' : 'none'}
-                        aria-hidden={!showing}
-                      >
-                        {/* Each screen scrolls within the panel rather than growing it. */}
-                        <ScrollView
-                          flex={1}
-                          // **Not a control, so it should not carry a focus ring.** Opening the
-                          // platform's modal moves focus to the first focusable node inside it,
-                          // which on the web is a scroller -- and the browser then draws its own
-                          // ring, in its own colour, around the whole body. It stays focusable and
-                          // still scrolls from the keyboard; what a keyboard reader follows is the
-                          // ring on the row it tabs to.
-                          //
-                          // The style, not the width: `outline-style: auto` is the browser's own
-                          // ring and it draws at the platform's thickness whatever width is asked
-                          // for, so a zero width leaves it exactly as it was.
-                          focusStyle={{ outlineStyle: 'none' }}
-                        >
-                          {held.render()}
-                        </ScrollView>
-                      </YStack>
-                    )
-                  })}
-                </YStack>
+                    <YStack flex={1} position="relative">
+                      {entry.stack.map((held, at) => {
+                        const showing = at === entry.stack.length - 1
+                        return (
+                          <YStack
+                            key={held.key}
+                            fullscreen
+                            opacity={showing ? 1 : 0}
+                            pointerEvents={showing ? 'auto' : 'none'}
+                            aria-hidden={!showing}
+                          >
+                            {/* Each screen scrolls within the panel rather than growing it. */}
+                            <ScrollView
+                              flex={1}
+                              // **Not a control, so it should not carry a focus ring.** Opening the
+                              // platform's modal moves focus to the first focusable node inside it,
+                              // which on the web is a scroller -- and the browser then draws its own
+                              // ring, in its own colour, around the whole body. It stays focusable and
+                              // still scrolls from the keyboard; what a keyboard reader follows is the
+                              // ring on the row it tabs to.
+                              //
+                              // The style, not the width: `outline-style: auto` is the browser's own
+                              // ring and it draws at the platform's thickness whatever width is asked
+                              // for, so a zero width leaves it exactly as it was.
+                              focusStyle={{ outlineStyle: 'none' }}
+                            >
+                              {held.render()}
+                            </ScrollView>
+                          </YStack>
+                        )
+                      })}
+                    </YStack>
 
-                {screen?.footer === undefined ? null : (
-                  /* Equal widths across the panel with no gap and no margins -- the client's
+                    {screen?.footer === undefined ? null : (
+                      /* Equal widths across the panel with no gap and no margins -- the client's
                      `fillEqually`, and the same shape `Modal` draws an alert's actions in. The row
                      is needed rather than optional: the actions ask for an equal share with
                      `fill`, and a share of a column's height is nothing, so laid out down the
                      panel they collapse to none. */
-                  <XStack alignItems="stretch" height={ACTION_HEIGHT}>
-                    {screen.footer()}
-                  </XStack>
+                      <XStack alignItems="stretch" height={ACTION_HEIGHT}>
+                        {screen.footer()}
+                      </XStack>
+                    )}
+                  </>
                 )}
               </YStack>
             </YStack>

@@ -1,0 +1,85 @@
+import { StyleSheet } from 'react-native'
+import { ScreenStack, ScreenStackHeaderLeftView, ScreenStackItem } from 'react-native-screens'
+import { ScrollView, XStack } from 'tamagui'
+
+import { Button } from './Button'
+import { Icon } from './Icon'
+import { ACTION_HEIGHT } from './modalPanelMetrics'
+import type { PhoneModalStackProps } from './PhoneModalStack.types'
+import { useTokenColor } from './useTokenColor'
+
+export type { PhoneModalStackProps } from './PhoneModalStack.types'
+
+/** See the web half. */
+export const HAS_PHONE_MODAL_STACK = true
+
+/**
+ * A modal's screens on a phone, on the platform's own navigation stack.
+ *
+ * What the iOS client does with settings: a full-screen modal holding a navigation controller, so a
+ * pushed screen arrives with the system's push, its title and back button in the system's bar, and
+ * the back swipe. Android gets its own native stack and bar the same way. The close is the bar's
+ * leading item on the first screen; a pushed screen has back there instead.
+ *
+ * The stack still decides what is on it. A swipe or the back button that takes screens off is
+ * reported through `onPop`, and the stack follows, as it follows any other move.
+ */
+export function PhoneModalStack({
+  screens,
+  closeLabel,
+  onClose,
+  onPop,
+  closeTestID,
+}: PhoneModalStackProps) {
+  const background = useTokenColor('$backgroundPrimary')
+  const text = useTokenColor('$textPrimary')
+
+  return (
+    <ScreenStack style={styles.fill}>
+      {screens.map((screen, at) => (
+        <ScreenStackItem
+          key={screen.key}
+          screenId={screen.key}
+          gestureEnabled={at > 0}
+          onDismissed={(event) => {
+            onPop(event.nativeEvent.dismissCount)
+          }}
+          contentStyle={[styles.fill, { backgroundColor: background }]}
+          headerConfig={{
+            title: screen.title,
+            backgroundColor: background,
+            color: text,
+            titleColor: text,
+            hideShadow: true,
+            backTitleVisible: false,
+            // One step at a time: the long-press menu would take several screens off at once.
+            disableBackButtonMenu: true,
+            children:
+              at === 0 && onClose !== undefined ? (
+                <ScreenStackHeaderLeftView>
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    circular
+                    accessibilityLabel={closeLabel}
+                    {...(closeTestID === undefined ? {} : { testID: closeTestID })}
+                    onPress={onClose}
+                    icon={<Icon name="x" size="lg" color="$textPrimary" />}
+                  />
+                </ScreenStackHeaderLeftView>
+              ) : undefined,
+          }}
+        >
+          <ScrollView flex={1}>{screen.render()}</ScrollView>
+          {screen.footer === undefined ? null : (
+            <XStack alignItems="stretch" height={ACTION_HEIGHT}>
+              {screen.footer()}
+            </XStack>
+          )}
+        </ScreenStackItem>
+      ))}
+    </ScreenStack>
+  )
+}
+
+const styles = StyleSheet.create({ fill: { flex: 1 } })
