@@ -123,17 +123,18 @@ export function LoadAccountScreen({
       }
     >
       {scanning ? (
-        /* **The back control sits beside the pager, not inside a pane.** The pager has to clip --
-           a page at rest is one column-width to the side, which on a tablet is still on screen --
-           and this control hangs off the column's leading edge, so inside it would be clipped
-           away. Beside it, it is also the same control on both tabs, which is what switching a
-           tab means -- a tab is not a screen, so each one owning its own back would be wrong.
-
-           On a phone the chrome's bar draws it, so this is the wide design's only. */
         /* Stretching, deliberately: the pager's pages are absolutely positioned, so they give it
            no height of its own and `alignItems="flex-start"` collapses it to nothing. The back
            control keeps its own height and so does not stretch with it. */
         <XStack flex={1}>
+          {/* **The back control sits beside the pager, not inside a pane.** The pager has to clip
+              -- a page at rest is one column-width to the side, which on a tablet is still on
+              screen -- and this control hangs off the column's leading edge, so inside it would
+              be clipped away. Beside it, it is also the same control on both tabs, which is what
+              switching a tab means: a tab is not a screen, so each one owning its own back would
+              be wrong.
+
+              On a phone the chrome's bar draws it, so this is the wide design's only. */}
           {wide ? <WideBackButton onPress={onBack} disabled={backDisabled} /> : null}
           {/* One chrome and two panes rather than two screens: the bar, the title and the tabs
               stay put and only what is under them slides, which is what makes the indicator and
