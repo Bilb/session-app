@@ -134,7 +134,7 @@ function AccountHeader({ sessionId, name }: { sessionId: string; name: string })
         {accountIdLines(sessionId).map((line, at) => (
           // By position, not by content: an ID's lines can repeat -- a fake account's are runs of
           // zeroes -- and two siblings with one key is a warning on the web and a crash on iOS.
-          <Text key={at} size="$bodyLarge">
+          <Text key={at} size="$bodyLarge" fontFamily="$mono">
             {line}
           </Text>
         ))}
