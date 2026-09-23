@@ -48,35 +48,46 @@ export function HelpPage() {
   return (
     <YStack padding="$md" gap="$lg">
       <YStack>
-        <SettingsSection
-          label={tr('helpReportABug')}
-          description={tr('helpReportABugExportLogsSaveToDesktopDescription')}
-        />
-        {/* A call to action under its explanation, not a row: there is nowhere to navigate to
-            and nothing to show on the other side, which is what a row is for.
+        <SettingsSection label={tr('logs')} />
+        <SettingsGroup>
+          {/* One row with its action on the trailing side, as the client draws it: the row says
+              what the export is for, and the button is the only thing on it to press.
 
-            Disabled because the app keeps no log file to export -- libsession's own lines reach a
-            console and nothing retains them. Drawn anyway, because an export that silently
-            produced an empty file would be worse than one that does nothing. */}
-        <Button variant="outline" disabled testID={ELEMENT.help.exportLogs}>
-          {tr('helpReportABugExportLogs')}
-        </Button>
+              The button is disabled because the app keeps no log file to export -- libsession's
+              own lines reach a console and nothing retains them. Drawn anyway, because an export
+              that silently produced an empty file would be worse than one that does nothing. */}
+          <SettingsRow
+            label={tr('helpReportABug')}
+            subtitle={tr('helpReportABugExportLogsSaveToDesktopDescription')}
+            trailing={
+              <Button variant="outline" size="sm" disabled testID={ELEMENT.help.exportLogs}>
+                {tr('helpReportABugExportLogs')}
+              </Button>
+            }
+            testID={ELEMENT.help.reportABug}
+          />
+        </SettingsGroup>
       </YStack>
 
-      <SettingsGroup>
-        {LINKS.map((link) => (
-          <SettingsRow
-            key={link.name}
-            label={tr(link.label)}
-            subtitle={tr(link.description)}
-            trailing={<Icon name="externalLink" size="md" color="$textSecondary" />}
-            testID={ELEMENT.help.link(link.name)}
-            onPress={() => {
-              confirmLink(modals, link.url)
-            }}
-          />
-        ))}
-      </SettingsGroup>
+      <YStack>
+        <SettingsSection label={tr('links')} />
+        <SettingsGroup>
+          {LINKS.map((link) => (
+            <SettingsRow
+              key={link.name}
+              label={tr(link.label)}
+              subtitle={tr(link.description)}
+              // `accentText`, which is the accent on a dark ground and the body text on a light
+              // one -- the client's own pairing for this glyph.
+              trailing={<Icon name="externalLink" size="md" color="$accentText" />}
+              testID={ELEMENT.help.link(link.name)}
+              onPress={() => {
+                confirmLink(modals, link.url)
+              }}
+            />
+          ))}
+        </SettingsGroup>
+      </YStack>
     </YStack>
   )
 }

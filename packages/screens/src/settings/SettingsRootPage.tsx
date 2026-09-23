@@ -129,7 +129,7 @@ function AccountHeader({ sessionId, name }: { sessionId: string; name: string })
 /**
  * The landing screen of the settings modal: the account, then four groups of rows.
  *
- * **A row with no handler is one whose screen is not built yet**, and most of them are: the
+ * **A disabled row is one whose screen is not built yet**, and most of them are: the
  * settings tree arrives one screen per change. They are drawn anyway, because the order of the
  * list is the design -- a list that grows a row in the middle later is a different list from the
  * one that was reviewed.
@@ -194,11 +194,13 @@ export function SettingsRootPage() {
         <SettingsRow
           label={tr('onionRoutingPath')}
           icon={icon.path}
+          disabled
           testID={ELEMENT.settings.row('onion-path')}
         />
         <SettingsRow
           label={tr('networkName')}
           icon={icon.network}
+          disabled
           testID={ELEMENT.settings.row('network')}
         />
       </SettingsGroup>
@@ -207,21 +209,25 @@ export function SettingsRootPage() {
         <SettingsRow
           label={tr('sessionPrivacy')}
           icon={icon.privacy}
+          disabled
           testID={ELEMENT.settings.row('privacy')}
         />
         <SettingsRow
           label={tr('sessionNotifications')}
           icon={icon.notifications}
+          disabled
           testID={ELEMENT.settings.row('notifications')}
         />
         <SettingsRow
           label={tr('sessionConversations')}
           icon={icon.conversations}
+          disabled
           testID={ELEMENT.settings.row('conversations')}
         />
         <SettingsRow
           label={tr('sessionAppearance')}
           icon={icon.appearance}
+          disabled
           testID={ELEMENT.settings.row('appearance')}
         />
         {/* Not a child screen in the client either: it closes the modal and shows the requests
@@ -238,6 +244,7 @@ export function SettingsRootPage() {
         <SettingsRow
           label={tr('preferences')}
           icon={icon.preferences}
+          disabled
           testID={ELEMENT.settings.row('preferences')}
         />
       </SettingsGroup>
@@ -246,6 +253,7 @@ export function SettingsRootPage() {
         <SettingsRow
           label={tr('sessionRecoveryPassword')}
           icon={icon.recovery}
+          disabled
           testID={ELEMENT.settings.row('recovery-password')}
         />
         <SettingsRow

@@ -95,6 +95,7 @@ export const ELEMENT = {
     commit: 'settings-commit',
   },
   help: {
+    reportABug: 'help-report-a-bug',
     exportLogs: 'help-export-logs',
     link: (name: string) => `help-link-${name}` as const,
   },

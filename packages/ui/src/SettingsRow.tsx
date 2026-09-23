@@ -51,7 +51,12 @@ export interface SettingsRowProps {
   trailing?: ReactNode
   /** Tints the label and its icon, for a row that destroys something. */
   destructive?: boolean
+  /**
+   * Without one the row is static: drawn as it is, with nothing to press but its trailing control.
+   */
   onPress?: () => void
+  /** For a row whose screen is not built yet. See the component. */
+  disabled?: boolean
   testID: string
 }
 
@@ -63,11 +68,12 @@ export interface SettingsRowProps {
  * deletes an account are the same component with different trailing content, which is what keeps a
  * list of twelve of them reading as one list.
  *
- * A row with no `onPress` still draws. The settings tree arrives one screen per change, so a row
- * whose destination is not built yet belongs on screen and inert rather than hidden -- hiding it
- * would make the list shorter now and change its order later, and the order is the design. **It
- * draws as disabled, not merely as unresponsive**: a row that looks live and does nothing reads as
- * broken rather than as not there yet.
+ * A row whose screen is not built yet still draws, `disabled`. The settings tree arrives one screen
+ * per change, so such a row belongs on screen rather than hidden -- hiding it would make the list
+ * shorter now and change its order later, and the order is the design. **It draws as disabled, not
+ * merely as unresponsive**: a row that looks live and does nothing reads as broken rather than as
+ * not there yet. Said rather than inferred from a missing `onPress`, because a row with nothing to
+ * press but its trailing control is not unavailable.
  */
 export function SettingsRow({
   label,
@@ -77,16 +83,21 @@ export function SettingsRow({
   accentIcon = false,
   destructive = false,
   onPress,
+  disabled = false,
   testID,
 }: SettingsRowProps) {
-  const inert = onPress === undefined
-  const tone = inert ? '$textDisabled' : destructive ? '$dangerColor' : '$textPrimary'
+  const inert = disabled || onPress === undefined
+  const tone = disabled ? '$textDisabled' : destructive ? '$dangerColor' : '$textPrimary'
   // `accentText` rather than the accent itself: it falls back to the body text on a light ground,
   // where the accent as a glyph is too faint -- which is what the client does with this icon.
-  const iconTone = accentIcon && !inert ? '$accentText' : tone
+  const iconTone = accentIcon && !disabled ? '$accentText' : tone
 
   return (
-    <PressArea {...(inert ? {} : { onPress })} disabled={inert} testID={testID}>
+    <PressArea
+      {...(onPress === undefined || disabled ? {} : { onPress })}
+      disabled={inert}
+      testID={testID}
+    >
       {(pressed) => (
         // The row's surface on a frame of its own, so the states can be laid over it: an overlay
         // steps from whatever it covers, where a surface role would step from the page.
@@ -105,8 +116,8 @@ export function SettingsRow({
                   pressStyle: { backgroundColor: '$pressedOverlay' },
                   // Native: the press belongs to `PressArea`, which reports it here. A frame that
                   // declares a `pressStyle` claims the touch for tamagui otherwise, and the row
-                  // never fires. Only here, because it takes the subtree with it: on an inert row
-                  // the trailing control is what is pressed.
+                  // never fires. Only here, because it takes the subtree with it: on a row with no
+                  // press of its own the trailing control is what is pressed.
                   ...PRESS_PASSTHROUGH,
                   ...(pressed ? { backgroundColor: '$pressedOverlay' } : {}),
                 })}
@@ -130,7 +141,7 @@ export function SettingsRow({
               {subtitle === undefined ? null : (
                 // The label's colour, not the muted one: the desktop client draws a row's
                 // explanation in the body text, and it is read rather than glanced at.
-                <Text size="$body" color={inert ? '$textDisabled' : '$textPrimary'}>
+                <Text size="$body" color={disabled ? '$textDisabled' : '$textPrimary'}>
                   {subtitle}
                 </Text>
               )}
