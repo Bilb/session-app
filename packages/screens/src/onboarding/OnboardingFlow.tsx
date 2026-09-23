@@ -188,6 +188,19 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
     )
   }, [state, actions, onRunningChange])
 
+  /** Back from the phrase screen, which abandons whatever attempt is in flight. */
+  const abandonRestore = () => {
+    // The refusal described the attempt that was just abandoned. Left standing, coming back to this
+    // screen shows an error over an empty field, and switching to the QR tab shows one over a camera
+    // that has scanned nothing.
+    setRejected(false)
+    // Whoever abandons the attempt clears its flag: the resolution will not, because by then it
+    // belongs to an attempt nobody is waiting for.
+    attempt.current += 1
+    setBusy(false)
+    dispatch({ type: 'back' })
+  }
+
   // At `done` the last step stays on screen while the account is made -- see `committingStep`.
   const committingNow = state.step === 'done'
   /**
@@ -199,7 +212,8 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
    * screens that stay up at `done` are exactly the ones whose button was just pressed.
    */
   const working = busy || committingNow
-  const body = screen(committingNow ? committingStep(state) : state.step)
+  const shownStep = committingNow ? committingStep(state) : state.step
+  const body = screen(shownStep)
 
   return (
     <ConfirmUrlProvider>
@@ -210,9 +224,10 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
         <StepTransition
           // The step the commit is drawn over, not `done` -- `body` is that step's screen, and
           // a key change here swaps panes, which remounts it and restarts the wait it is showing.
-          stepKey={committingNow ? committingStep(state) : state.step}
+          stepKey={shownStep}
           direction={state.lastMove}
           instant={flag('disableAnimations')}
+          onBack={backFrom(shownStep) ?? undefined}
         >
           {body}
         </StepTransition>
@@ -221,6 +236,28 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
       )}
     </ConfirmUrlProvider>
   )
+
+  /**
+   * What back does from each step, or null where it does nothing.
+   *
+   * The same answer each screen's own back control is given, so the stack's swipe can never leave
+   * a step that control would refuse: nothing before the landing screen, and nothing while the
+   * work a step started is still running.
+   */
+  function backFrom(step: OnboardingStep): (() => void) | null {
+    switch (step) {
+      case 'landing':
+      case 'done':
+        return null
+      case 'pickDisplayName':
+      case 'messageNotifications':
+        return goBack
+      case 'loadAccount':
+        return working ? null : abandonRestore
+      case 'loading':
+        return committingNow ? null : goBack
+    }
+  }
 
   function screen(step: OnboardingStep) {
     switch (step) {
@@ -256,17 +293,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
             busy={working}
             rejected={rejected}
             backDisabled={working}
-            onBack={() => {
-              // The refusal described the attempt that was just abandoned. Left standing, coming
-              // back to this screen shows an error over an empty field, and switching to the QR
-              // tab shows one over a camera that has scanned nothing.
-              setRejected(false)
-              // Whoever abandons the attempt clears its flag: the resolution will not, because
-              // by then it belongs to an attempt nobody is waiting for.
-              attempt.current += 1
-              setBusy(false)
-              dispatch({ type: 'back' })
-            }}
+            onBack={abandonRestore}
             onContinue={(from) => {
               // **Checked, then taken over, both before leaving this screen.**
               //
