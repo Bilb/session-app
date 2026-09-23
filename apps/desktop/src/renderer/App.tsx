@@ -3,14 +3,18 @@ import {
   ConversationListScreen,
   ConversationScreen,
   NewConversationScreen,
-  OnboardingScreen,
+  OnboardingFlow,
   StartingScreen,
+  StartupFailedScreen,
   RequestsScreen,
   SettingsScreen,
+  useLocale,
+  usePersistedLocale,
+  useTextDirection,
 } from '@session/screens'
-import { SessionStoreProvider, useAccount, useHydrated } from '@session/state'
+import { SessionStoreProvider, useAccount, useHydrated, useStartupError } from '@session/state'
 import { Text, UIProvider, YStack } from '@session/ui'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { MemoryRouter, Route, Routes, useLocation, useParams } from 'react-router'
 
 import { DesktopNavProvider } from './nav'
@@ -23,8 +27,19 @@ import { store } from './store'
  * together - it scrapes the path of every Route element below, so those strings are load-bearing.
  */
 export function App() {
+  // Subscribes the whole tree to the app's language. `tr()` reads a module-scope variable, so
+  // nothing below re-renders when that changes unless something above it does -- and it has to be
+  // here rather than in a provider, because a provider's `children` arrive as an element created
+  // by its own parent, and React skips a subtree whose element has not changed.
+  useLocale()
+  // And mirrors the document with it, where the language is written right to left. The direction
+  // it returns is for roots that have to pass it down; this one writes `dir` on the document.
+  useTextDirection()
+
   useEffect(() => {
-    void store.actions.hydrate()
+    // `start`, not `hydrate`: a rejection here has no screen to land on, so the store turns it
+    // into state instead. See `start` in `packages/state/src/store.ts`.
+    void store.actions.start()
     return () => store.actions.dispose()
   }, [])
 
@@ -43,14 +58,24 @@ export function App() {
 
 function Shell() {
   const hydrated = useHydrated()
+  const startupError = useStartupError()
   const account = useAccount()
   const location = useLocation()
+  const [onboarding, setOnboarding] = useState(false)
+  // Here rather than at the root, which creates the store provider and so cannot read from it.
+  usePersistedLocale()
 
+  // Asked before `hydrated`, because both are false when a start has failed and only one of them
+  // says so. The other order leaves the launch screen up over a failure that is already known.
+  if (startupError !== null) return <StartupFailedScreen error={startupError} />
   if (!hydrated) return <StartingScreen />
 
   // Onboarding takes the whole window rather than a pane: there is no list to sit beside it,
   // and there will not be one until it has minted an identity.
-  if (account?.haveAccount !== true) return <OnboardingScreen />
+  // `|| onboarding` because an account appearing is not the same as onboarding being over: a
+  // restore mints one the moment the phrase is accepted and still has a wait to sit through.
+  if (account?.haveAccount !== true || onboarding)
+    return <OnboardingFlow onRunningChange={setOnboarding} />
 
   return (
     <AdaptiveShell
@@ -62,7 +87,6 @@ function Shell() {
           <Route path="new" element={<NewConversationScreen />} />
           <Route path="requests" element={<RequestsScreen />} />
           <Route path="settings" element={<SettingsScreen />} />
-          <Route path="onboarding" element={<OnboardingScreen />} />
         </Routes>
       }
       // Any route but the list has something to show in the detail pane, not just a

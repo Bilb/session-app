@@ -39,6 +39,17 @@ export function useHydrated(): boolean {
   return useStore(store, (state) => state.hydrated)
 }
 
+/**
+ * Why the app could not start, or null while it still might.
+ *
+ * Distinct from `useHydrated` being false, which is the same thing as "still starting" and is why
+ * a failed start used to be invisible.
+ */
+export function useStartupError(): string | null {
+  const store = useSessionStore()
+  return useStore(store, (state) => state.startupError)
+}
+
 /** The whole of what libsession says about the account, or null before the first answer. */
 export function useAccount(): AccountInfo | null {
   const store = useSessionStore()

@@ -181,3 +181,101 @@ answer back. `Documents/session` holding only `attachments` means the transport 
 xcrun simctl uninstall "$UDID" org.getsession.session2
 xcrun simctl erase "$UDID"                               # the whole device
 ```
+
+## Driving a simulator without hanging
+
+**Reach for these in this order.** Appium is last, not first -- its session-create is what hangs,
+and a hang costs twenty minutes rather than failing.
+
+1. **Screenshots**: `xcrun simctl io <udid> screenshot out.png`. Seconds, no driver, never hangs.
+2. **Taps, typing, the accessibility tree**: the desktop app's iOS Simulator tool
+   (`mcp__Claude_Code_iOS_Simulator__control`) -- `tap`, `text`, `inspect`, `screenshot`. Instant,
+   no server. The first use of a device asks the user once; a refusal errors immediately rather
+   than blocking.
+3. **Appium** only for what neither can do, and then **in the background with a timeout of 180s or
+   less**. Never in the foreground, and never with a multi-minute timeout -- a stuck
+   `createSession` looks exactly like a slow one.
+
+The rule behind it: a foreground command that can block gets a short `timeout` so it fails fast and
+says so. Long waits belong in the background, where they can be checked on.
+
+### Typing drops characters, silently
+
+`text` injection loses letters - reproducibly `g`, and most shifted keys. Typing
+`Flag Check` into a field lands `flck`, and a thirteen-word recovery phrase arrives with a word
+missing a letter. Nothing reports it: the app sees exactly the characters it was given and refuses
+the phrase, which reads as a bug in the field.
+
+**So do not type anything whose exact contents matter.** Put it on the device's pasteboard and
+paste it instead:
+
+```sh
+printf '%s' "$PHRASE" | xcrun simctl pbcopy "$UDID"
+```
+
+then long-press the field (`tap` with `duration: 1.2`) and press **Paste**. Where typing is
+unavoidable, reveal the field and read back what actually landed before drawing any conclusion
+from what the app did with it.
+
+### CocoaPods dies while printing its own error
+
+`pod install` — and so `expo prebuild` and `expo run:ios` — can fail with a Ruby backtrace ending
+in `UnicodeNormalize.normalize: Unicode Normalization not appropriate for ASCII-8BIT`. That is
+CocoaPods crashing inside its _error reporter_, so whatever actually went wrong is never printed,
+and the trace points at `error_report.rb` rather than at the problem.
+
+It is the locale. Run it with a UTF-8 one and it both reports properly and, in the case seen here,
+simply succeeds:
+
+```sh
+LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 npx expo prebuild -p ios
+```
+
+Worth setting on any `pod`, `expo prebuild` or `expo run:ios` invocation rather than reaching for
+it after a failure.
+
+### A new native module needs a prebuild, not just an install
+
+Adding an `expo-*` package with a config plugin (a camera, say) changes the generated `Info.plist`
+and the Podfile. `pnpm install` does neither, and `pod install` alone applies no plugins — the
+permission string simply never reaches the bundle, and the failure arrives much later as the OS
+killing the app when it touches the API. `npx expo prebuild -p ios` is the step that applies them;
+`apps/mobile/ios` is generated and gitignored, so there is nothing to review afterwards.
+
+### `plutil -extract` overwrites the file it reads
+
+Reading one key out of a built `Info.plist` with
+
+```sh
+plutil -extract CFBundleLocalizations json Session.app/Info.plist
+```
+
+prints the value **and replaces the plist with it**. The next read then fails with
+`Unexpected character [ at line 1`, and the app no longer installs: `Missing bundle ID`. The
+damage is to the build product rather than to any source, so the fix is to delete the `.app` and
+build again — but the bundle looks fine in Finder, and the install error names nothing that
+suggests a clobbered plist.
+
+Always send the output somewhere explicitly:
+
+```sh
+plutil -extract CFBundleLocalizations json -o - Session.app/Info.plist
+```
+
+### Whose language the permission prompts are in
+
+The camera and notification prompts are drawn by the system, not by the app, and the system
+chooses the `.lproj` by the **device's** preferred languages. Launching the app with
+`-AppleLanguages "(ja)"` localizes everything the app draws and leaves the prompt in English,
+which reads as the localized strings not being in the bundle at all.
+
+To see the real thing, set the language on the simulator and reboot it:
+
+```sh
+xcrun simctl spawn "$UDID" defaults write -g AppleLanguages -array ja
+xcrun simctl spawn "$UDID" defaults write -g AppleLocale -string ja_JP
+xcrun simctl shutdown "$UDID" && xcrun simctl boot "$UDID"
+```
+
+`xcrun simctl privacy "$UDID" reset camera <bundle id>` puts the prompt back so it can be asked
+for again.

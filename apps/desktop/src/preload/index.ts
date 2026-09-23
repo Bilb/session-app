@@ -1,6 +1,6 @@
 import electron from 'electron'
 
-const { ipcRenderer } = electron
+const { contextBridge, ipcRenderer } = electron
 
 /**
  * Hands the bridge's MessagePort to the page and steps aside.
@@ -14,4 +14,18 @@ const { ipcRenderer } = electron
  */
 ipcRenderer.on('session-bridge-port', (event) => {
   window.postMessage('session-bridge-port', '*', event.ports)
+})
+
+/**
+ * Opening a link in the person's own browser.
+ *
+ * The whole of what the page may ask for, and deliberately one function with one argument: the
+ * main process decides what a URL is allowed to be, and nothing here can widen that. It exists
+ * because the window-open handler refuses everything, so the app needs a way to say "this one,
+ * and I meant it" that a `target="_blank"` in content we did not write cannot reach.
+ */
+contextBridge.exposeInMainWorld('sessionDesktop', {
+  openExternal: (url: string) => {
+    ipcRenderer.send('open-external', url)
+  },
 })

@@ -1,6 +1,10 @@
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import { Spinner, styled, XStack } from 'tamagui'
 
+import { INHERITED_LABEL } from './labelColor'
+import { hitSlopFor } from './buttonHitTarget'
+import { PRESS_PASSTHROUGH } from './pressPassthrough'
+import { PressArea } from './PressArea'
 import { Text } from './Text'
 
 const Frame = styled(XStack, {
@@ -8,60 +12,290 @@ const Frame = styled(XStack, {
   role: 'button',
   alignItems: 'center',
   justifyContent: 'center',
-  gap: '$1',
+  gap: '$xs',
   borderRadius: '$full',
   borderWidth: 1,
   cursor: 'pointer',
+  // A label is not text you select; dragging across a control should do nothing. The desktop
+  // client sets the same thing on its button for the same reason.
+  userSelect: 'none',
 
   variants: {
+    /**
+     * Every state here is the table in `docs/THEMING.md` and the derivation page, which is the
+     * spec this is meant to implement: four variants against default, hover, pressed and disabled.
+     * It had drifted -- outline hovered onto a surface where the table inverts it, and disabled was
+     * a flat opacity where the table names roles -- which is the kind of drift nobody sees until
+     * the two are put side by side.
+     */
     variant: {
       solid: {
         backgroundColor: '$primaryColor',
         borderColor: '$primaryColor',
-        pressStyle: { opacity: 0.8 },
+        color: '$onAccent',
+        hoverStyle: {
+          backgroundColor: '$accentHover',
+          borderColor: '$accentHover',
+          color: '$onAccent',
+        },
+        pressStyle: {
+          backgroundColor: '$accentPressed',
+          borderColor: '$accentPressed',
+          color: '$onAccent',
+        },
       },
+      /**
+       * Hover **inverts** rather than tinting: the outline fills with the text colour and the label
+       * takes the page. An outline control on white has no headroom to brighten into, so a surface
+       * step is nearly invisible there -- inverting works in both polarities.
+       */
       outline: {
-        backgroundColor: '$buttonOutlineBg',
-        borderColor: '$buttonOutlineBorder',
-        pressStyle: { backgroundColor: '$buttonOutlineBgHover' },
+        backgroundColor: 'transparent',
+        borderColor: '$textPrimary',
+        color: '$textPrimary',
+        // The label colour moves with the fill, declared here rather than tracked in JS so the two
+        // can never disagree. See labelColor.ts.
+        hoverStyle: {
+          backgroundColor: '$textPrimary',
+          borderColor: '$textPrimary',
+          color: '$backgroundPrimary',
+        },
+        pressStyle: {
+          backgroundColor: '$textPrimary',
+          borderColor: '$textPrimary',
+          color: '$backgroundPrimary',
+          opacity: 0.82,
+        },
       },
+      /**
+       * The outline, in the accent rather than in the text colour.
+       *
+       * What the legacy client draws beside its filled primary button on the landing screen --
+       * stroke *and* label in the primary colour, so the pair reads as one accented group with one
+       * of them filled. Outlined in the text colour instead, the quieter half reads as a secondary
+       * action of a different family rather than as the other half of a pair.
+       */
+      outlineAccent: {
+        backgroundColor: 'transparent',
+        borderColor: '$primaryColor',
+        color: '$primaryColor',
+        hoverStyle: {
+          backgroundColor: '$primaryColor',
+          borderColor: '$primaryColor',
+          color: '$onAccent',
+        },
+        pressStyle: {
+          backgroundColor: '$primaryColor',
+          borderColor: '$primaryColor',
+          color: '$onAccent',
+          opacity: 0.82,
+        },
+      },
+      /** Two steps, because one is invisible inside a list row that hovers to the same surface. */
       ghost: {
         backgroundColor: 'transparent',
         borderColor: 'transparent',
-        pressStyle: { opacity: 0.6 },
+        color: '$textPrimary',
+        hoverStyle: { backgroundColor: '$backgroundTertiary' },
+        pressStyle: { backgroundColor: '$backgroundNested' },
       },
+      /**
+       * `ghost`, in the accent.
+       *
+       * For a bare label that is the only thing to do on the screen it is on -- the clients' camera
+       * permission prompt is the one this was added for, and they draw it as text in the primary
+       * colour with nothing around it. An outlined control would read as a form's action, which is
+       * not what a single offer in the middle of an empty pane is.
+       */
+      ghostAccent: {
+        backgroundColor: 'transparent',
+        borderColor: 'transparent',
+        color: '$primaryColor',
+        hoverStyle: { backgroundColor: '$backgroundTertiary' },
+        pressStyle: { backgroundColor: '$backgroundNested' },
+      },
+      /**
+       * Text on its own, no frame -- what the desktop client calls Simple and uses for every modal
+       * action. Its hover dims the label rather than lighting a surface, because there is no
+       * surface to light.
+       */
+      simple: {
+        backgroundColor: 'transparent',
+        borderColor: 'transparent',
+        color: '$textPrimary',
+        hoverStyle: { opacity: 0.7 },
+        pressStyle: { opacity: 0.55 },
+      },
+      /** Danger text on a transparent ground, filling on hover. The table's destructive row. */
       danger: {
-        backgroundColor: '$dangerColor',
+        backgroundColor: 'transparent',
         borderColor: '$dangerColor',
-        pressStyle: { opacity: 0.8 },
+        color: '$dangerColor',
+        hoverStyle: {
+          backgroundColor: '$dangerColor',
+          borderColor: '$dangerColor',
+          color: '$onDanger',
+        },
+        pressStyle: {
+          backgroundColor: '$dangerColor',
+          borderColor: '$dangerColor',
+          color: '$onDanger',
+          opacity: 0.82,
+        },
       },
     },
     size: {
-      sm: { height: '$6', paddingHorizontal: '$2' },
-      md: { height: '$7', paddingHorizontal: '$2.5' },
-      lg: { height: '$8', paddingHorizontal: '$3' },
+      // `xs` is for an icon on its own, where the ladder's next rung up is bigger than any glyph
+      // needs. It is not a smaller text button: there is no padding on it worth speaking of.
+      xs: { height: '$lg', paddingHorizontal: '$xs' },
+      sm: { height: '$xl', paddingHorizontal: '$md' },
+      md: { height: '$2xl', paddingHorizontal: '$lg' },
+      lg: { height: '$3xl', paddingHorizontal: '$xl' },
     },
+    /**
+     * Square, so the full radius draws a circle rather than a pill.
+     *
+     * Applied after `size` so the padding it clears is that variant's -- tamagui merges variants in
+     * declaration order, and a circle with a pill's padding is neither.
+     */
+    circular: {
+      // The width follows the height rather than naming a token of its own, so a circular button
+      // stays circular at whichever size it is given.
+      true: { aspectRatio: 1, paddingHorizontal: '$none' },
+    },
+    /**
+     * A danger-coloured label without a fill, declared on the frame so the web label inherits it.
+     *
+     * Every destructive action in a modal is drawn this way in the desktop client -- red text
+     * beside plain text, no fill on either. Applied after `variant` so it overrides that variant's
+     * colour, which is the whole point of it.
+     */
+    destructive: {
+      true: {
+        color: '$dangerColor',
+        // **Colour only, in every state.** What a press does to the surface is the variant's
+        // business -- `ghost` lights a background, `simple` dims itself -- and this only has to
+        // stop that variant's own colour winning. An opacity here is inherited by the subtree, so
+        // it fades the label along with the fill.
+        hoverStyle: { color: '$dangerColor' },
+        pressStyle: { color: '$dangerColor' },
+      },
+    },
+    /**
+     * Named roles rather than an opacity, which is what the table says and what a theme can act on.
+     * A blanket `opacity: .5` dims a disabled control toward whatever is behind it, so on a
+     * recessed surface it fades further than on the page -- and it takes the border with it.
+     */
     disabled: {
-      true: { opacity: 0.5, pointerEvents: 'none' },
+      true: {
+        pointerEvents: 'none',
+        backgroundColor: 'transparent',
+        borderColor: '$bordersColor',
+        color: '$textDisabled',
+      },
     },
   } as const,
 
   defaultVariants: { variant: 'solid', size: 'md' },
 })
 
-/** Label colour follows the variant; a solid button's text sits on the accent. */
-const LABEL_TONE = {
-  solid: '$buttonSolidTextHover',
-  outline: '$buttonOutlineText',
-  ghost: '$textPrimary',
-  danger: '$textPrimary',
+/**
+ * What a variant looks like while it is held down, as plain values.
+ *
+ * The same styles the `pressStyle` above declares, restated here because **native cannot use
+ * those**: the frame no longer owns the press -- `PressArea` does, so that a finger sliding off
+ * the control clears the highlight the way the platform does -- and tamagui only applies
+ * `pressStyle` for presses it handled itself. On the web nothing reads this; the pseudo-class
+ * still does the work.
+ *
+ * Kept next to the variants rather than derived from them, so the pair is visible in one screen
+ * and a change to one is an obvious prompt to change the other.
+ */
+const PRESSED = {
+  solid: { backgroundColor: '$accentPressed', borderColor: '$accentPressed' },
+  outline: { backgroundColor: '$textPrimary', borderColor: '$textPrimary', opacity: 0.82 },
+  outlineAccent: { backgroundColor: '$primaryColor', borderColor: '$primaryColor', opacity: 0.82 },
+  ghost: { backgroundColor: '$backgroundNested' },
+  ghostAccent: { backgroundColor: '$backgroundNested' },
+  simple: { opacity: 0.7 },
+  danger: { opacity: 0.7 },
 } as const
+
+/**
+ * The variants that replace the ground under the label when held, rather than tinting it.
+ *
+ * They are the ones whose pressed label colour exists for contrast against a new fill, so it has
+ * to win over anything else. Everything else only shades the surface behind the label, and the
+ * label's own meaning survives -- see `destructive` below.
+ */
+const INVERTS_ON_PRESS = new Set(['solid', 'outline', 'outlineAccent'])
+
+/**
+ * Label colour follows the variant.
+ *
+ * A filled button's label sits on the fill, not on the page, so it takes the fill's own on-colour
+ * rather than the body text. The body text is white in the dark themes, and white on the accent
+ * green measures about 1.6:1.
+ */
+const LABEL_TONE = {
+  solid: '$onAccent',
+  outline: '$textPrimary',
+  outlineAccent: '$primaryColor',
+  ghost: '$textPrimary',
+  ghostAccent: '$primaryColor',
+  simple: '$textPrimary',
+  danger: '$dangerColor',
+} as const
+
+/**
+ * The label colour while held, for the variants that replace the ground under it.
+ *
+ * Native only: a `Text` inherits nothing from a `View`, so `color` inside `pressStyle` reaches the
+ * frame alone. The web label inherits instead -- see labelColor.ts. A variant that only moves the
+ * surface behind the label needs no entry, since the resting colour reads against both.
+ */
+const PRESSED_LABEL: Partial<Record<keyof typeof LABEL_TONE, string>> = {
+  solid: '$onAccent',
+  outline: '$backgroundPrimary',
+  outlineAccent: '$onAccent',
+  danger: '$onDanger',
+}
 
 export interface ButtonProps {
   children?: ReactNode
   onPress?: () => void
   variant?: keyof typeof LABEL_TONE
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
+  /** For an icon on its own: equal width and height, so the full radius is a circle. */
+  circular?: boolean
+  /** Takes an equal share of the row it is in. What a dialog's actions do. */
+  fill?: boolean
+  /**
+   * Overrides the size variant's horizontal padding.
+   *
+   * For a control whose content is already the right width -- a flag and a chevron, say -- where
+   * the variant's padding is what makes it look further from its neighbours than it is.
+   */
+  paddingHorizontal?: number
+  /**
+   * Overrides the size variant's corner radius.
+   *
+   * For a control that is a **cell** rather than a control -- a dialog's actions run the full
+   * width of the dialog and share an edge, so a pill-shaped pressed highlight sits inside a
+   * rectangular cell with a gap all round it, which reads as the highlight having missed.
+   *
+   * A token rather than a number, so a caller outside this package can name a rung without
+   * importing the scale -- which `screens` is not allowed to do.
+   */
+  borderRadius?: ComponentProps<typeof Frame>['borderRadius']
+  /**
+   * Colour the label danger without filling the button.
+   *
+   * Every destructive action in a modal is drawn this way in the desktop client -- red text beside
+   * plain text, no fill on either. A filled red button in a dialog reads as the safe default
+   * because it is the one that looks like a primary action.
+   */
+  destructive?: boolean
   disabled?: boolean
   loading?: boolean
   icon?: ReactNode
@@ -85,27 +319,83 @@ export function Button({
   size = 'md',
   disabled = false,
   loading = false,
+  circular = false,
+  destructive = false,
+  fill = false,
+  paddingHorizontal,
+  borderRadius,
   icon,
   accessibilityLabel,
   testID,
 }: ButtonProps) {
+  /**
+   * The label's colour where it cannot be inherited.
+   *
+   * On the web this is unused -- `INHERITED_LABEL` is `'inherit'` and the frame's variant supplies
+   * every state. On native the frame's `color` reaches nothing, so the label is told; there is no
+   * hover on a touch screen, so a resting colour is the whole story.
+   */
+  const nativeLabel =
+    disabled || loading ? '$textDisabled' : destructive ? '$dangerColor' : LABEL_TONE[variant]
+
+  /**
+   * The label while held.
+   *
+   * **`destructive` survives the press** on any variant that merely tints the surface behind the
+   * label: a red action that turns white the moment somebody commits to it says it has stopped
+   * being the dangerous one. Only the variants that put a new fill under the label override it,
+   * because their pressed colour exists for contrast against that fill.
+   *
+   * The web half already behaves: `destructive` is applied to the frame after `variant`, and its
+   * own `pressStyle` keeps the colour. This is the native label, which is told rather than
+   * inheriting.
+   */
+  const pressedLabel =
+    destructive && !INVERTS_ON_PRESS.has(variant) ? '$dangerColor' : PRESSED_LABEL[variant]
+
+  const hitSlop = hitSlopFor(size)
+  const inert = disabled || loading
+
   return (
-    <Frame
-      variant={variant}
-      size={size}
-      disabled={disabled || loading}
-      onPress={onPress}
-      aria-label={accessibilityLabel}
-      testID={testID}
+    <PressArea
+      fill={fill}
+      {...(inert || onPress === undefined ? {} : { onPress })}
+      disabled={inert}
+      // Grown outwards rather than drawn larger: the control keeps the size the designs give it and
+      // the target reaches the floor. Ignored on the web, where a pointer does not need it.
+      hitSlop={hitSlop}
+      {...(accessibilityLabel === undefined ? {} : { accessibilityLabel })}
+      {...(testID === undefined ? {} : { testID })}
     >
-      {loading ? <Spinner size="small" color={LABEL_TONE[variant]} /> : icon}
-      {typeof children === 'string' ? (
-        <Text size={size === 'sm' ? '$3' : '$4'} weight="semibold" color={LABEL_TONE[variant]}>
-          {children}
-        </Text>
-      ) : (
-        children
+      {(pressed) => (
+        <Frame
+          {...(fill ? { flex: 1 } : {})}
+          variant={variant}
+          size={size}
+          circular={circular}
+          destructive={destructive}
+          {...(paddingHorizontal === undefined ? {} : { paddingHorizontal })}
+          {...(borderRadius === undefined ? {} : { borderRadius })}
+          disabled={inert}
+          {...PRESS_PASSTHROUGH}
+          {...(pressed && !inert ? PRESSED[variant] : {})}
+        >
+          {loading ? <Spinner size="small" color={nativeLabel} /> : icon}
+          {typeof children === 'string' ? (
+            <Text
+              size={size === 'xs' || size === 'sm' ? '$label' : '$body'}
+              // Bold, which is what the desktop client's button is: `font-weight: 700` unless a caller
+              // says otherwise, and none of the onboarding callers do.
+              weight="bold"
+              color={INHERITED_LABEL ?? (pressed && !inert ? pressedLabel : nativeLabel)}
+            >
+              {children}
+            </Text>
+          ) : (
+            children
+          )}
+        </Frame>
       )}
-    </Frame>
+    </PressArea>
   )
 }

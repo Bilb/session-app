@@ -1,10 +1,12 @@
 {
   "extends": "@session/typescript-config/bundler.json",
   "compilerOptions": {
-    // The route-contract test reads the two apps' route declarations off disk, which is the
-    // only reason node types are here.
+    // For `tests` and `scripts` only, which run under vitest and node: the route-contract test
+    // reads the two apps' route declarations off disk, and the URL generator reads libsession's
+    // table. `src` ships to three platforms and two of them have no node, which `pnpm boundaries`
+    // is what enforces.
     "types": ["react", "node"]
   },
-  "include": ["src", "tests"],
+  "include": ["src", "tests", "scripts"],
   "exclude": ["node_modules", "dist"]
 }

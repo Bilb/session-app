@@ -44,8 +44,12 @@ async function transportFor(router: string): Promise<string> {
   page.on('console', (m) => seen.push(m.text()))
   await page.waitForLoadState('domcontentloaded')
 
-  // Attaching is what logs the choice, and only an account makes the bridge attach.
+  // Attaching is what logs the choice, and only an account makes the bridge attach -- which
+  // is the end of onboarding, not its first button. The account is minted once the name is
+  // accepted; the desktop design has no notification step between the two.
   await page.getByTestId('onboarding-create-account').click({ timeout: 20_000 })
+  await page.getByTestId('onboarding-display-name').fill('Router probe')
+  await page.getByTestId('onboarding-continue').click()
 
   try {
     for (let i = 0; i < 60; i++) {

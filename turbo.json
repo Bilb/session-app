@@ -3,11 +3,26 @@
   "ui": "tui",
   "tasks": {
     "codegen": {
-      "inputs": ["proto/**", "src/**/*.nitro.ts", "buf.gen.yaml"],
+      "inputs": [
+        "proto/**",
+        "src/**/*.nitro.ts",
+        "buf.gen.yaml",
+        "../../packages/bridge-types/src/**"
+      ],
       "outputs": ["src/gen/**", "nitrogen/generated/**"]
     },
     "codegen:check": {
       "dependsOn": ["codegen"],
+      "cache": false
+    },
+    "@session/app#codegen": {
+      "inputs": [
+        "scripts/**",
+        "../../libsession-util/include/session/session_protocol.h",
+        "../../libsession-util/src/session_protocol.cpp",
+        "src/urls.generated.ts"
+      ],
+      "outputs": ["src/urls.generated.ts"],
       "cache": false
     },
     "@session/bridge-codegen#codegen": {
@@ -36,10 +51,6 @@
       "dependsOn": ["^codegen", "^build"]
     },
     "lint": {
-      // @session/localization is consumed as built output, so its declarations have to exist
-      // before anything importing it can be type-aware-linted. Without this the typed rules do
-      // not fail, they go blind: tr() resolves to the error type and every rule that touches it
-      // reports "could not be resolved" instead of checking anything.
       "dependsOn": ["^build", "^codegen"]
     },
     "test": {

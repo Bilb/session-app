@@ -40,6 +40,18 @@ export function themeName(theme: ThemeState, accent?: PrimaryColorState): string
   return accent === undefined ? base : `${base}_${accent}`
 }
 
+/**
+ * Whether a theme is a dark one, which some platform materials have to be told.
+ *
+ * Read off the name rather than from a flag on the palette, because the name is what every theme
+ * already carries and a second source would be one more thing to keep in step. Every theme is
+ * `<family>-<light|dark>`; a family added without that suffix would be a new convention rather
+ * than a new theme.
+ */
+export function isDarkTheme(theme: ThemeState): boolean {
+  return theme.endsWith('-dark')
+}
+
 export const DEFAULT_THEME: ThemeState = 'classic-dark'
 export const DEFAULT_ACCENT: PrimaryColorState = 'green'
 

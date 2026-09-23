@@ -80,16 +80,34 @@ module.exports = {
         path: '^packages/(basic-types|bridge-types|test-ids|theme-tokens|localization|client|client-contract|state|app|screens)/',
         pathNot: '\\.(native|web|ios|android)\\.tsx?$',
       },
-      to: { dependencyTypes: ['npm', 'npm-dev'], path: `^(${platformOnlyModules.join('|')})($|/)` },
+      to: {
+        dependencyTypes: ['npm', 'npm-dev'],
+        path: `^node_modules/(${platformOnlyModules.join('|')})($|/)`,
+      },
     },
     {
       name: 'shared-has-no-node-builtins',
+      comment:
+        'Shared packages run on three platforms, and two of them have no node. Tests are exempt ' +
+        "because they only ever run under vitest, and so is a package's scripts/ directory, " +
+        'which is build-time codegen invoked by `pnpm codegen` and never bundled into anything.',
       severity: 'error',
       from: {
         path: '^packages/(basic-types|bridge-types|test-ids|theme-tokens|localization|client|client-contract|state|app|screens|ui)/',
-        pathNot: '\\.(test|spec)\\.tsx?$',
+        pathNot: '\\.(test|spec)\\.tsx?$|^packages/[^/]+/scripts/',
       },
       to: { dependencyTypes: ['core'] },
+    },
+    {
+      name: 'expo-belongs-to-the-mobile-app',
+      comment:
+        'Expo modules are native code built into apps/mobile. @session/ui is exempt from the ' +
+        'platform-neutral rule because both apps bundle react-native, but an expo-* import there ' +
+        'reaches the desktop bundle too, where there is no Expo and no native module to load. ' +
+        'A platform view belongs behind a port the app fills - see backdropBlur.ts.',
+      severity: 'error',
+      from: { pathNot: '^apps/mobile/' },
+      to: { path: '^node_modules/expo($|[-/])', dependencyTypes: ['npm', 'npm-dev'] },
     },
     {
       name: 'ui-owns-tamagui',
@@ -97,7 +115,7 @@ module.exports = {
         'Only packages/ui may import tamagui. Everyone else imports the wrapper from @session/ui.',
       severity: 'error',
       from: { path: '^(packages/(?!ui)[^/]+|apps)/' },
-      to: { path: '^(tamagui|@tamagui/)', dependencyTypes: ['npm', 'npm-dev'] },
+      to: { path: '^node_modules/(tamagui|@tamagui/)', dependencyTypes: ['npm', 'npm-dev'] },
     },
 
     // ---- Bindings ----------------------------------------------------------
@@ -157,7 +175,7 @@ module.exports = {
   options: {
     doNotFollow: { path: 'node_modules' },
     exclude: {
-      path: '(node_modules|/gen/|/generated/|dist/|build/|/out/)',
+      path: '(/gen/|/generated/|dist/|build/|/out/)',
     },
     tsPreCompilationDeps: true,
     tsConfig: { fileName: 'tsconfig.json' },

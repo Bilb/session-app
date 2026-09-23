@@ -25,6 +25,9 @@ libsession-util (C++, submodule)
 apps/mobile · apps/desktop ── route files, OS ports, boot order. Adapters, nothing more.
 ```
 
+Colour and type live in `@session/theme-tokens` and are derived from a few authored knobs rather
+than listed per theme; `docs/THEMING.md` is the map for that.
+
 Who may import whom is in `tooling/depcruise-config/root.cjs` and enforced by
 `pnpm boundaries`. The short version: `ui` imports no sibling but tokens and ids; `screens`
 imports ui, state, app, client and localization; nothing imports an app.
@@ -164,6 +167,82 @@ the store and the boot sequence both read them from outside React. `requirePorts
 rather than returning null: a missing port is a mistake in the app's entry file, and failing
 there names it.
 
+## Links leaving the app
+
+Handing a URL to the operating system is where the app stops deciding what happens next, so
+there is one place that does it: `openExternalUrl` in `@session/app`. The ports are not that
+place. Each is a thin wrapper over the platform's own call - `shell.openExternal`,
+`Linking.openURL` - and both give any scheme straight to the OS, so a policy written into one
+of them is a policy the other two have to remember. A screen reaching for `linking.openUrl`
+directly would skip whichever one it did not go through.
+
+Desktop checks a second time in its main process. That is a different boundary rather than a
+duplicate: the main process does not trust the renderer, while the shared check is the app
+deciding what it is willing to open at all.
+
+**A missing scheme becomes `https` rather than a refusal**, and only where the text already
+looks like a host. Both mobile clients do this, and both pick https rather than the http a
+parser would default to, because https is the only scheme they will load a preview for.
+Somebody who typed `getsession.org` meant a website. A scheme that is present and is not
+http(s) is refused rather than upgraded: `file:`, `javascript:` and `mailto:` say what they
+are.
+
+**Plain http is allowed.** All three clients open it, and refusing it here would be stricter
+than anything shipped.
+
+### Where the addresses come from
+
+The addresses themselves are libsession's. `session_protocol_strings` in the submodule holds
+twenty-odd of them, and `packages/app/scripts/generateUrls.ts` reads that table into the `URLS`
+in `urls.generated.ts` at codegen time. `codegen:check` fails while the two disagree, and a
+contract test fails if **any** address is written out in the app's own code. A new outward address
+goes into libsession first, so there is one list and everything reads it.
+
+**There is no curated second list.** A hand-kept subset of the table would be a rename layer over
+it, and one that also decides which addresses a screen is allowed to reach -- so an address the
+library has and the list has not is unavailable for no reason anybody stated.
+
+**Build-time rather than over the bridge.** The table is a static const - no client, no network,
+no account - and the consumers read `URLS` at module scope. Carrying a constant over the frame
+stream would make it state, and the stream exists to carry libsession's ordering of state
+changes, which a constant has none of.
+
+**A synchronous native read is not available here**, which is what the iOS client does. The addon
+lives in the desktop main process and the renderer reaches it only over the preload bridge, so the
+process that draws the screen cannot read the library at all. Generating covers both platforms
+with one mechanism; a native read would cover one.
+
+**CI does not verify the table against the library**, and the generator says so rather than
+passing quietly: the checks job leaves libsession-util out, since it drags in protobuf and
+session-deps and nothing there compiles C++. The check enforces wherever the submodule is present,
+which is every developer tree. What holds in CI is that the generated file is committed and so
+reviewable, and that the contract test reads it rather than the library.
+
+### Addresses that are not what they read as
+
+A scheme check says a link may be opened. `isPlausibleAddress` says it is what it looks like,
+and every entry in it is a way of writing an address that renders as one destination and
+resolves to another:
+
+| refused                                       | because                                                              |
+| --------------------------------------------- | -------------------------------------------------------------------- |
+| userinfo before the host                      | `https://getsession.org@evil.example` goes to `evil.example`         |
+| one label in two scripts                      | Cyrillic `а` for Latin `a`, inside a word -- so `session.рф` is fine |
+| a percent-encoded host                        | `%67` is `g`, so a host can be spelled to defeat a reader            |
+| fewer than two labels, or any empty one       | not a host                                                           |
+| over 4096 characters, or a host over 2048     | not a readable address either way                                    |
+| anything outside RFC 3986 after the authority | how a control character reaches what is displayed                    |
+
+The list is the legacy desktop client's, which applies the same one to opening and to previews
+and is the only one of the three clients that has it.
+
+**Two limits worth knowing.** It is written against the string rather than a parsed `URL`,
+because react-native ships an incomplete one - `username` in particular - and a check built on
+it would quietly pass on the platform with the least protection elsewhere. And the
+mixed-script test reads the host as written: one already encoded as punycode is pure ASCII and
+passes unexamined, which would need a decoder neither Hermes nor a browser exposes. Text
+arriving from a message body is the unencoded form, which is the case that matters.
+
 ## Testing
 
 | tier     | what                                                  | when                         |
@@ -189,8 +268,8 @@ reach for an xpath.
 
 ### The token trap, and what guards it
 
-A tamagui token that does not exist resolves to **0, in silence**. `padding="$1.5"` on a scale
-without a 1.5 loses the padding; `color="$textPrimry"` paints nothing. TypeScript does not help -
+A tamagui token that does not exist resolves to **0, in silence**. `padding="$smal"` on a scale
+that names its steps `sm` loses the padding; `color="$textPrimry"` paints nothing. TypeScript does not help -
 every one of those props is typed as a plain string, so a typo compiles.
 
 `packages/ui/tests/tokens.contract.test.ts` guards both halves: every `$name` written in `ui`,
@@ -217,6 +296,41 @@ that duplicated to read it. The cost is that it fails on push rather than while 
 - **TypeScript is held at 5.x** because typescript-eslint declares `<6.1.0`, and the typed
   rules are the most valuable ones in a repo whose bridge is entirely async.
 
+## The build graph
+
+`turbo.json` carries no comments. Turbo accepts them, but the file is read by more than turbo --
+editors, GitHub, any tool that loads it as the JSON it claims to be -- and JSON has no comment
+syntax. So the reasons behind its less obvious entries live here instead.
+
+- **`packages/bridge-types` is an input to the bridge codegen even though no codegen task reads it
+  directly.** A nitro spec imports its types from there, so the generated C++ follows that package's
+  shape. Left out, the cache key does not move when it changes, and turbo _restores_ the stale
+  generated files over the correct ones -- reverting a committed regeneration with nothing said.
+- **`@session/app#codegen` is never cached.** CI does not check out libsession-util, so the two
+  submodule files it reads are absent there and its key could not move on a bump: a cache hit
+  restored the previous URL table over the committed one, and every check then ran against a table
+  that was not the one being merged. It runs in milliseconds, so caching bought nothing.
+- **The committed URL table is an input of the task that writes it.** In CI the generator stands
+  down and the committed file _is_ the table, and a task's hash is what reaches the tasks depending
+  on it. Without it the generator's hash never moved, so a package whose `test` depends only on
+  `^codegen` could replay a pass from before a bump.
+
+**CI fails if a run changes any committed file.** A cache hit must never rewrite one, so the last
+step of the checks job compares the tree against the commit. It catches a stale restore by its
+effect, whatever the cause -- including in generated files nobody has written yet.
+
+**`tooling/turbo-guard` checks the cause before anything runs**, as part of `lint:manifests`. It
+takes the tasks CI's checks job starts, asks turbo for their run graph, and refuses a cached task
+with an input under a submodule CI does not check out, or a generator with such an input whose
+committed output is not also one of its inputs. It models CI's checkout rather than the local one,
+so it gives the same answer in a tree with every submodule present. The second rule is the only
+guard for its case: a dependant replaying a stale result leaves the tree untouched.
+
+- **`@session/localization` is built before anything is lint-checked with types.** It is consumed
+  as built output, so its declarations have to exist first. Without them the typed rules do not
+  fail -- they go blind: `tr()` resolves to the error type and every rule touching it reports
+  "could not be resolved" instead of checking anything.
+
 ## Building the native side
 
 Two things cost real time on a first clone, and neither is discoverable from a failure message:
@@ -242,6 +356,33 @@ Every shared file is checked two or three ways per run, with no synthetic profil
 ## Decision log
 
 Append one paragraph per decision. Undocumented decisions are what rot.
+
+- **2026-09-23 - Every outward address lives in libsession.** One source of truth, rather than
+  libsession's table plus whatever the app adds beside it. The contract test enforces it by refusing
+  any address literal in app code, not only copies of ones the table already holds, which makes
+  adding an address upstream the only way to add one. The bare website address is the single
+  exemption, and only until the submodule carries `url_website`.
+
+- **2026-09-22 - The outward addresses are generated from libsession, not written here.** One
+  table upstream, read at codegen time and committed, so a checkout without the submodule still
+  typechecks and `codegen:check` is what stops it drifting. Not delivered over the bridge: a
+  static const is not state, and the stream's value is its ordering. Not read natively either -
+  the desktop renderer has no addon, so that shape covers mobile only. See _Where the addresses
+  come from_.
+
+- **2026-09-21 - A packaged desktop build ignores every developer setting, not just the fake.**
+  Switching a shipped build to a devnet is a smaller thing than running it on the fake, and
+  neither has a use that has come up. The ones that turn out to be worth reaching belong in
+  settings the app offers on purpose, where they can be shown and explained, rather than in an
+  environment variable nobody can see. A release build carrying one fails rather than baking it
+  in, because the renderer's copies are substituted at build time and would otherwise disagree
+  with a main process that ignores them.
+
+- **2026-09-21 - One shared check decides what may be opened, not the ports.** Handing a URL out
+  is the moment the app stops deciding what happens next, and a port is a thin wrapper over the
+  platform's call: a policy in one is a policy the other two must remember. Desktop keeps its
+  main-process check, which is a different boundary rather than a duplicate. See _Links leaving
+  the app_.
 
 - **2026-09-04 - Responses share the event stream.** Ordering across the boundary is what
   makes hydration race-free; two channels cannot promise it.

@@ -71,8 +71,18 @@ describe('the content security policy', () => {
       expect(policy).toContain("default-src 'none'")
       expect(policy).toContain("object-src 'none'")
       expect(policy).toContain("frame-ancestors 'none'")
+      expect(policy).toContain("frame-src 'none'")
       expect(policy).toContain("base-uri 'none'")
       expect(policy).toContain("form-action 'none'")
+    }
+  })
+
+  it('names the sources that have no fallback under default-src', () => {
+    // These are the whole of the policy for their kind: `default-src 'none'` refuses media and
+    // frames outright, so leaving either unnamed is a decision made by omission. Media is the one
+    // that bites - an attachment is played from a blob the renderer built.
+    for (const dev of [true, false]) {
+      expect(contentSecurityPolicy({ dev })).toContain("media-src 'self' blob:")
     }
   })
 

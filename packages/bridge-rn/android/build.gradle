@@ -36,7 +36,14 @@ android {
         // Release regardless of the app's build type: this compiles libsession and its
         // dependencies, which are neither quicker to produce unoptimised nor useful to step
         // through from here.
-        arguments "-DANDROID_STL=c++_shared", "-DCMAKE_BUILD_TYPE=Release"
+        // **16 KB pages, which Play now requires of a new submission.** Every other native
+        // library in the app -- react-native's, Expo's, hermes -- already links with 16 KB
+        // segment alignment; ours was the only one at 4 KB, so an Android release would have
+        // been refused for one file. NDK r28 defaults to this; r27 does not, so it is asked
+        // for rather than inherited.
+        arguments "-DANDROID_STL=c++_shared",
+                "-DCMAKE_BUILD_TYPE=Release",
+                "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384"
         abiFilters(*reactNativeArchitectures())
         // Ours and nothing else. The Android Gradle plugin builds every target a CMake project
         // declares, and libsession's tree declares test binaries whose dependencies we have no

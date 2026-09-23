@@ -12,12 +12,14 @@
 
 #include <jsi/jsi.h>
 
+#include <cstring>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <variant>
+#include <vector>
 
 #include "types.hpp"
 
@@ -42,6 +44,54 @@ inline std::optional<T> optional_from_jsi(
 }  // namespace session_bridge
 
 namespace margelo::nitro {
+
+/// Binary as an ArrayBuffer, which is what a Uint8Array's `.buffer` is on the way through.
+///
+/// Copied on the way in rather than held: Nitro's ArrayBuffer may be a view onto memory JavaScript
+/// still owns, and the shim's work happens on another thread where that is not safe to assume.
+template <>
+struct JSIConverter<std::vector<std::byte>> final {
+    static inline std::vector<std::byte> fromJSI(
+            facebook::jsi::Runtime& runtime, const facebook::jsi::Value& value) {
+        auto buffer = JSIConverter<std::shared_ptr<ArrayBuffer>>::fromJSI(runtime, value);
+        const auto* first = reinterpret_cast<const std::byte*>(buffer->data());
+        return {first, first + buffer->size()};
+    }
+
+    static inline facebook::jsi::Value toJSI(
+            facebook::jsi::Runtime& runtime, const std::vector<std::byte>& value) {
+        auto buffer = ArrayBuffer::allocate(value.size());
+        std::memcpy(buffer->data(), value.data(), value.size());
+        return JSIConverter<std::shared_ptr<ArrayBuffer>>::toJSI(runtime, buffer);
+    }
+
+    static inline bool canConvert(
+            facebook::jsi::Runtime& runtime, const facebook::jsi::Value& value) {
+        return JSIConverter<std::shared_ptr<ArrayBuffer>>::canConvert(runtime, value);
+    }
+};
+
+/// The same wire shape as plain bytes; the difference is what holds them on this side.
+template <>
+struct JSIConverter<::session_bridge::SecretBytes> final {
+    static inline ::session_bridge::SecretBytes fromJSI(
+            facebook::jsi::Runtime& runtime, const facebook::jsi::Value& value) {
+        return ::session_bridge::SecretBytes{
+                JSIConverter<std::vector<std::byte>>::fromJSI(runtime, value)};
+    }
+
+    static inline facebook::jsi::Value toJSI(
+            facebook::jsi::Runtime& runtime, const ::session_bridge::SecretBytes& value) {
+        auto bytes = value.bytes();
+        return JSIConverter<std::vector<std::byte>>::toJSI(
+                runtime, std::vector<std::byte>{bytes.begin(), bytes.end()});
+    }
+
+    static inline bool canConvert(
+            facebook::jsi::Runtime& runtime, const facebook::jsi::Value& value) {
+        return JSIConverter<std::vector<std::byte>>::canConvert(runtime, value);
+    }
+};
 
 template <>
 struct JSIConverter<::session_bridge::Point> final {
@@ -297,6 +347,47 @@ struct JSIConverter<::session_bridge::DrawCommand> final {
 };
 
 template <>
+struct JSIConverter<::session_bridge::Attachment> final {
+    static inline ::session_bridge::Attachment fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+        jsi::Object obj = arg.asObject(runtime);
+        return ::session_bridge::Attachment(
+                JSIConverter<std::vector<std::byte>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "data"))),
+                ::session_bridge::optional_from_jsi<::session_bridge::SecretBytes>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "key"))));
+    }
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::Attachment& arg) {
+        jsi::Object obj(runtime);
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "data"), JSIConverter<std::vector<std::byte>>::toJSI(runtime, arg.data));
+        if (arg.key)
+            obj.setProperty(runtime, PropNameIDCache::get(runtime, "key"), JSIConverter<::session_bridge::SecretBytes>::toJSI(runtime, *arg.key));
+        return obj;
+    }
+    static inline bool canConvert(jsi::Runtime&, const jsi::Value& value) {
+        return value.isObject();
+    }
+};
+
+template <>
+struct JSIConverter<::session_bridge::AttachCommand> final {
+    static inline ::session_bridge::AttachCommand fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+        jsi::Object obj = arg.asObject(runtime);
+        return ::session_bridge::AttachCommand(
+                JSIConverter<::session_bridge::Attachment>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "attachment"))));
+    }
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::AttachCommand& arg) {
+        jsi::Object obj(runtime);
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::AttachCommand::type_tag));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "attachment"), JSIConverter<::session_bridge::Attachment>::toJSI(runtime, arg.attachment));
+        return obj;
+    }
+    static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
+        if (!value.isObject())
+            return false;
+        jsi::Value type = value.getObject(runtime).getProperty(runtime, PropNameIDCache::get(runtime, "type"));
+        return type.isString() && type.getString(runtime).utf8(runtime) == ::session_bridge::AttachCommand::type_tag;
+    }
+};
+
+template <>
 struct JSIConverter<::session_bridge::ClearCommand> final {
     static inline ::session_bridge::ClearCommand fromJSI(jsi::Runtime&, const jsi::Value&) {
         return ::session_bridge::ClearCommand{};
@@ -322,6 +413,8 @@ struct JSIConverter<::session_bridge::Command> final {
         std::string tag = JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "type")));
         if (tag == "draw")
             return JSIConverter<::session_bridge::DrawCommand>::fromJSI(runtime, arg);
+        if (tag == "attach")
+            return JSIConverter<::session_bridge::AttachCommand>::fromJSI(runtime, arg);
         if (tag == "clear")
             return JSIConverter<::session_bridge::ClearCommand>::fromJSI(runtime, arg);
         throw std::invalid_argument("Command: unknown type \"" + tag + "\"");
@@ -340,7 +433,7 @@ struct JSIConverter<::session_bridge::Command> final {
         if (!type.isString())
             return false;
         std::string tag = type.getString(runtime).utf8(runtime);
-        return tag == "draw" || tag == "clear";
+        return tag == "draw" || tag == "attach" || tag == "clear";
     }
 };
 

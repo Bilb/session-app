@@ -48,6 +48,28 @@ export interface SessionClient {
   getAccountInfo(): Promise<AccountInfo>
   createAccount(): Promise<void>
   restoreAccount(from: { words: string[]; language?: string } | { hexSeed: string }): Promise<void>
+  /**
+   * Whether a phrase would restore, without restoring it.
+   *
+   * Rejects the way `restoreAccount` would - same decode, same errors - so onboarding can say a
+   * phrase is wrong at the screen that asked for it, and still mint nothing until the end.
+   */
+  checkRecoveryPhrase(words: string[], language?: string): Promise<void>
+  /**
+   * Throws the account away and starts from nothing: onboarding's undo.
+   *
+   * The database goes, so the identity, the configs fetched under it and the history go with it.
+   * Not a logout -- there is nothing to log back in to, and the caller is expected to be showing
+   * the first screen afterwards.
+   */
+  discardAccount(): Promise<void>
+  /**
+   * Says the account is here to stay.
+   *
+   * Until this is called the account is provisional, and a start that finds an unconfirmed one
+   * throws it away — so this is what turns "an account was made" into "an account was kept".
+   */
+  keepAccount(): Promise<void>
   /** libsession owns the word list, so onboarding needs no mnemonic library of its own. */
   getSeedMnemonic(language?: string): Promise<string[]>
   setDisplayName(name: string): Promise<void>
@@ -58,6 +80,15 @@ export interface SessionClient {
   attachNetwork(config: NetworkAttachment): Promise<void>
   /** One poll cycle, run to completion - what every OS background budget wants. */
   pollOnce(): Promise<void>
+  /**
+   * Fill the service-node cache before there is an account, so the first attach is not also the
+   * first refresh. Warms the network given at init, since a cache warmed for another is one the
+   * attach cannot use.
+   *
+   * True when the pool has nodes. False where there is nothing to warm or nothing to gain: no
+   * network configured, an account already there to use one, or a warm already running.
+   */
+  warmNetworkCache(): Promise<boolean>
   /**
    * How often libsession polls the swarm. Its default of 20 seconds is about right for a
    * person and far too long for a test; a positive number of milliseconds is the only valid

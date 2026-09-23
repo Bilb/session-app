@@ -1,5 +1,5 @@
 import type { BridgeTransport } from '@session/client'
-import { createFakeTransport, crowd, friends } from '@session/client/fake'
+import { createFakeTransport, crowd, friends, newcomer } from '@session/client/fake'
 
 /**
  * The bridge, backed by the fake.
@@ -12,8 +12,12 @@ export function createFakeBridge(): BridgeTransport {
   // A conversation list big enough to measure, when something asks for one. The default stays the
   // two-account fixture, so nothing about the ordinary dev loop changes.
   const peers = Number(process.env['SESSION_FAKE_CONVERSATIONS'] ?? '0')
-  const { world, clients } =
-    peers > 0
+  // No identity yet, which is the only way to reach onboarding: everywhere else the app sees an
+  // account and goes straight past it.
+  const fresh = process.env['SESSION_FAKE_NO_ACCOUNT'] === '1'
+  const { world, clients } = fresh
+    ? newcomer()
+    : peers > 0
       ? crowd({ peers, history: Number(process.env['SESSION_FAKE_HISTORY'] ?? '1') })
       : friends(['Alice', 'Bob'], { history: 4 })
   const alice = clients['Alice']
@@ -25,6 +29,15 @@ export function createFakeBridge(): BridgeTransport {
     world.settle()
   }, 50)
   ticking.unref?.()
+
+  // A start that refuses, which is otherwise only reachable with a database somebody has already
+  // broken. The failure screen is the one screen nobody sees by accident, so there has to be a way
+  // to open it on purpose -- the message is libsession's own words for the failure that produced
+  // it, so the screen looks the way it does in the wild rather than the way a placeholder does.
+  if (process.env['SESSION_FAKE_FAILED_START'] === '1') {
+    alice.getAccountInfo = () =>
+      Promise.reject(new Error('getConversations: Invalid conversation id: not a hex session ID'))
+  }
 
   return createFakeTransport(alice)
 }

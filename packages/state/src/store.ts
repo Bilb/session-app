@@ -6,6 +6,33 @@ import { emptyState, type MessageWindow, type SessionState } from './types'
 
 export interface SessionActions {
   /**
+   * Starts the app, and is the only call that is allowed to fail without throwing.
+   *
+   * `hydrate` still throws, because every other caller is a screen that has somewhere to put a
+   * refusal. This one has not: it runs before there is a screen, from an app's root, and a
+   * rejection there is an unhandled promise and a launch screen that stays up for ever. So the
+   * failure becomes `startupError` instead -- one catch site, which is what the legacy iOS client
+   * has and what it has instead of a timeout.
+   */
+  start: () => Promise<void>
+  /**
+   * Deletes everything on this device and starts again from nothing.
+   *
+   * The way out of a database that cannot be opened. Destructive and unrecoverable without a
+   * recovery phrase, so nothing calls it without asking twice.
+   */
+  clearDeviceData: () => Promise<void>
+  /**
+   * Reads and writes a preference libsession stores against the account.
+   *
+   * **There is nowhere to put a preference until an account exists**, which is what makes this a
+   * store action rather than a module of its own: the caller has to be somewhere that knows
+   * whether hydrate has happened. Reading before then answers undefined rather than throwing, so a
+   * caller can ask on every start without first asking whether it is too early.
+   */
+  getPreference: (key: string) => Promise<string | undefined>
+  setPreference: (key: string, value: string) => Promise<void>
+  /**
    * Subscribes first, then asks - never the other way round.
    *
    * Anything that arrives between the two is applied on top of the answer, which is safe
@@ -25,6 +52,60 @@ export interface SessionActions {
    * identity-less Core throws - so this is also the moment the app goes online.
    */
   createAccount: () => Promise<void>
+  /**
+   * Takes over an identity that already exists, from its recovery phrase or its raw seed.
+   *
+   * Re-hydrates for the same reason `createAccount` does, and goes online at the same point: as
+   * far as everything above here is concerned the two are the same event, and only the screens
+   * that led to them differ.
+   *
+   * The words are handed down as they were typed. libsession owns the word list and the codec, so
+   * it is the only thing that can say whether a phrase is a phrase -- a second copy of that
+   * judgement up here would be a second answer to disagree with.
+   */
+  restoreAccount: (
+    from: { words: string[]; language?: string } | { hexSeed: string },
+  ) => Promise<void>
+  /**
+   * Asks whether a phrase would restore, and changes nothing either way.
+   *
+   * Does not re-hydrate, because by design nothing has happened: this is what lets onboarding
+   * refuse a phrase at the screen that asked for it while still leaving the person free to go
+   * back to a device with no account on it.
+   */
+  checkRecoveryPhrase: (words: string[], language?: string) => Promise<void>
+  /**
+   * Throws the account away and starts from nothing, then re-hydrates onto the empty result.
+   *
+   * Onboarding's undo. Re-hydrating is not optional: the bridge has deleted the database and
+   * opened a new one, so every conversation and message window the store is holding belongs to an
+   * account that no longer exists on this device.
+   */
+  discardAccount: () => Promise<void>
+  /**
+   * Says the account is here to stay, so a start that finds it does not sweep it away.
+   *
+   * The last thing onboarding does. Does not re-hydrate: nothing observable changes, which is the
+   * point -- it is the difference between an account that survives a restart and one that does not.
+   */
+  keepAccount: () => Promise<void>
+  /**
+   * Re-reads the account and nothing else.
+   *
+   * libsession pushes conversations and messages but has no event for the account itself, so a
+   * display name that arrives from the swarm after a restore is invisible until something asks
+   * again. Onboarding's wait is the one place that has to notice, and it has fifteen seconds to
+   * do it in - so it asks. `hydrate` would do the job and would refetch every conversation each
+   * time, which during a restore is the whole history.
+   */
+  refreshAccount: () => Promise<void>
+  /**
+   * Names the account, during onboarding and afterwards.
+   *
+   * Re-hydrates rather than waiting for an event, because the name is read back on the very next
+   * screen and a whole-state push that has not arrived yet would show the previous one.
+   */
+  setDisplayName: (name: string) => Promise<void>
   /**
    * Opens the conversation with an account, creating it if this is the first contact.
    *
@@ -130,7 +211,68 @@ export function createSessionStore(
     }
   }
 
+  /**
+   * Runs an onboarding step and says so when it fails.
+   *
+   * The screens flatten every refusal here into one sentence, because there is nothing useful to
+   * tell somebody halfway through making an account. Right for the screen, and it leaves nobody
+   * able to say *what* failed. The rejection still propagates; this only makes sure it was heard.
+   *
+   * It wraps the **whole** action, re-hydrate included, because the call that throws is as often
+   * the read-back afterwards as the bridge call itself.
+   */
+  async function onboardingStep<T>(name: string, run: () => Promise<T>): Promise<T> {
+    try {
+      return await run()
+    } catch (error) {
+      log(
+        'error',
+        `[session] ${name} failed: ${error instanceof Error ? error.message : String(error)}`,
+      )
+      throw error
+    }
+  }
+
   const actions: SessionActions = {
+    async start(): Promise<void> {
+      store.setState({ startupError: null })
+      try {
+        await actions.hydrate()
+      } catch (error) {
+        // **The one place a failed start is allowed to end up.** Everything that can go wrong
+        // between the app opening and libsession answering throws, and every one of those throws
+        // arrives here -- which is what makes "it did not start" a state the screens can render
+        // rather than a promise nobody was holding. Left uncaught it was an unhandled rejection
+        // and a launch screen that never went away, identical from the outside to a slow start.
+        const message = error instanceof Error ? error.message : String(error)
+        log('error', `[session] could not start: ${message}`)
+        store.setState({ startupError: message })
+      }
+    },
+
+    async clearDeviceData(): Promise<void> {
+      // The same call onboarding's back uses: the database, its journals and the attachment cache
+      // are removed and a fresh one is opened. What follows is a device with no account on it,
+      // which is where somebody restores from their recovery phrase -- so this is both of the
+      // legacy client's options, clear and clear-then-restore, which differ there only in what
+      // they do next.
+      await client.discardAccount()
+      store.setState({ ...emptyState })
+      await actions.start()
+    },
+
+    async getPreference(key): Promise<string | undefined> {
+      // Undefined rather than a throw when there is no account yet: every caller would otherwise
+      // have to ask whether hydrate has happened before it could ask anything else.
+      if (store.getState().account?.haveAccount !== true) return undefined
+      return client.getPref(key)
+    },
+
+    async setPreference(key, value): Promise<void> {
+      if (store.getState().account?.haveAccount !== true) return
+      await client.setPref(key, value)
+    },
+
     async hydrate(): Promise<void> {
       const account = await client.getAccountInfo()
       store.setState({ account })
@@ -149,7 +291,11 @@ export function createSessionStore(
       )
 
       if (!account.haveAccount) {
-        store.setState({ hydrated: true })
+        // **Everything derived goes, not just the account.** `setState` merges, so setting only
+        // the account left the previous one's conversations, requests and message windows sitting
+        // in the store -- which is fine on a first launch, where there were none, and is a leak
+        // between accounts the moment onboarding can be backed out of and started again.
+        store.setState({ ...emptyState, account, hydrated: true })
         return
       }
 
@@ -205,8 +351,43 @@ export function createSessionStore(
     },
 
     async createAccount(): Promise<void> {
-      await client.createAccount()
-      await actions.hydrate()
+      await onboardingStep('createAccount', async () => {
+        await client.createAccount()
+        await actions.hydrate()
+      })
+    },
+
+    async restoreAccount(from): Promise<void> {
+      await onboardingStep('restoreAccount', async () => {
+        await client.restoreAccount(from)
+        await actions.hydrate()
+      })
+    },
+
+    async checkRecoveryPhrase(words, language): Promise<void> {
+      await client.checkRecoveryPhrase(words, language)
+    },
+
+    async discardAccount(): Promise<void> {
+      await onboardingStep('discardAccount', async () => {
+        await client.discardAccount()
+        await actions.hydrate()
+      })
+    },
+
+    async keepAccount(): Promise<void> {
+      await onboardingStep('keepAccount', () => client.keepAccount())
+    },
+
+    async refreshAccount(): Promise<void> {
+      store.setState({ account: await client.getAccountInfo() })
+    },
+
+    async setDisplayName(name): Promise<void> {
+      await onboardingStep('setDisplayName', async () => {
+        await client.setDisplayName(name)
+        await actions.hydrate()
+      })
     },
 
     dispose(): void {

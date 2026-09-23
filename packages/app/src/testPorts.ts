@@ -16,6 +16,9 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
     // Mainnet unless an app says otherwise, so the network overlay stays out of tests and out of
     // the fake. See shouldStampNetwork.
     network: { name: 'mainnet' },
+    // No overrides, so every flag reads its default. A test that wants one on passes its own
+    // `flags` port rather than reaching for a global.
+    flags: { override: () => null },
     secureStore: {
       getDatabaseKey: () => Promise.resolve(databaseKey),
       setDatabaseKey: (key) => {
@@ -34,6 +37,14 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
       imageSize: () => Promise.resolve(null),
     },
     notifications: {
+      // No push service on any build yet, so onboarding marks fast mode unavailable rather than
+      // recommending something that would never arrive.
+      fastModeAvailable: false,
+      // None to name, which is the honest answer for a build with no push service in it.
+      pushService: null,
+      // Nothing suspends a memory implementation. The mobile app overrides this; desktop is
+      // genuinely this case.
+      notificationModesApply: false,
       requestPermission: () => Promise.resolve(true),
       show: () => Promise.resolve(),
       onTap: (handler) => {
@@ -51,8 +62,16 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
     },
     linking: {
       openUrl: () => Promise.resolve(),
+      // Null, not a no-op: the language picker reads this as "does the OS have a language screen",
+      // and a function that did nothing would answer yes and then do nothing.
+      // Same reasoning: desktop has no page to send anybody to, and a function that did nothing
+      // would claim it had.
+      openAppSettings: null,
     },
     window: {
+      // Null, not a no-op: nothing in a test or on a phone can close the app, and a screen asks
+      // this port whether to offer the door at all -- see `WindowPort` in `./ports`.
+      close: null,
       isFocused: () => true,
       onFocusChange: (handler) => {
         focusHandlers.add(handler)

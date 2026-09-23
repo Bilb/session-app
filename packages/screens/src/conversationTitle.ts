@@ -13,8 +13,8 @@ type Named = Pick<Conversation, 'id'> & Partial<Pick<Conversation, 'nickname' | 
  *
  * Nickname, then display name, then the account ID, and a name that is only whitespace counts
  * as no name at all. libsession reports an empty string for a display name until the other
- * side's profile arrives, and a nickname set to blanks is a name nobody can read - both used to
- * render as an avatar, a snippet and no indication of who had written.
+ * side's profile arrives, and a nickname set to blanks is a name nobody can read - left to stand,
+ * either draws a row with an avatar, a snippet, and nothing saying who wrote it.
  *
  * The trimmed value is what comes back, since the untrimmed one is only ever leading space in a
  * row that has already been laid out.

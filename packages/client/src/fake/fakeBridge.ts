@@ -1,3 +1,4 @@
+import { utf8Decode } from '@session/basic-types'
 import type { Command, Frame, Request, Result } from '@session/bridge-types'
 
 import type { BridgeTransport, SessionClient } from '../types'
@@ -60,6 +61,16 @@ type Handler<K extends Command['type']> = (
   command: Extract<Command, { type: K }>,
 ) => Promise<Result>
 
+/**
+ * The words back out of the bytes, splitting the way the real shim does.
+ *
+ * The fake mirrors the bridge, so it has to take the phrase in the same shape -- otherwise a
+ * contract scenario proves the fake's decoding rather than the shim's.
+ */
+function phraseWords(phrase: Uint8Array): string[] {
+  return utf8Decode(phrase).split(' ').filter(Boolean)
+}
+
 // One entry per command, keyed by its tag, so a command added to the protocol without a fake arm
 // is a compile error rather than a request that fails only once a screen sends it.
 const handlers: { [K in Command['type']]: Handler<K> } = {
@@ -70,13 +81,25 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
   },
   restoreAccountFromWords: async (client, cmd) => {
     await client.restoreAccount({
-      words: cmd.words,
+      words: phraseWords(cmd.phrase),
       ...(cmd.language === undefined ? {} : { language: cmd.language }),
     })
     return empty
   },
+  checkRecoveryPhrase: async (client, cmd) => {
+    await client.checkRecoveryPhrase(phraseWords(cmd.phrase), cmd.language)
+    return empty
+  },
   restoreAccountFromSeed: async (client, cmd) => {
     await client.restoreAccount({ hexSeed: cmd.hexSeed })
+    return empty
+  },
+  discardAccount: async (client) => {
+    await client.discardAccount()
+    return empty
+  },
+  keepAccount: async (client) => {
+    await client.keepAccount()
     return empty
   },
   getSeedMnemonic: async (client, cmd) => ({
@@ -99,6 +122,10 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     await client.pollOnce()
     return empty
   },
+  warmNetworkCache: async (client) => ({
+    type: 'bool',
+    value: await client.warmNetworkCache(),
+  }),
   setPushToken: () => unsupported('setPushToken'),
   handlePushPayload: () => unsupported('handlePushPayload'),
 

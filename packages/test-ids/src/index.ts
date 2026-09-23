@@ -53,6 +53,10 @@ export const ELEMENT = {
     accountId: 'settings-account-id',
     copyAccountId: 'settings-copy-account-id',
     networkStatus: 'settings-network-status',
+    clearData: 'settings-clear-data',
+    confirmClearData: 'settings-confirm-clear-data',
+    confirmClearDataButton: 'settings-confirm-clear-data-button',
+    cancelClearData: 'settings-cancel-clear-data',
   },
   networkOverlay: {
     badge: 'network-overlay-badge',
@@ -67,60 +71,83 @@ export const ELEMENT = {
 
   starting: {
     screen: 'starting',
+    slowMessage: 'starting-slow-message',
+    slowDialog: 'starting-slow-dialog',
+    slowDialogClose: 'starting-slow-dialog-close',
+  },
+
+  startupFailed: {
+    screen: 'startup-failed',
+    reason: 'startup-failed-reason',
+    clear: 'startup-failed-clear',
+    quit: 'startup-failed-quit',
+    confirmClear: 'startup-failed-confirm-clear',
+    confirmClearButton: 'startup-failed-confirm-clear-button',
+    cancelClear: 'startup-failed-cancel-clear',
+  },
+
+  languagePicker: {
+    trigger: 'language-picker',
+    panel: 'language-picker-panel',
+    search: 'language-picker-search',
+    close: 'language-picker-close',
+    option: (locale: string) => `language-picker-option-${locale}` as const,
   },
 
   onboarding: {
     screen: 'onboarding',
+    back: 'onboarding-back',
     createAccount: 'onboarding-create-account',
     restoreAccount: 'onboarding-restore-account',
-    recoveryPhraseInput: 'onboarding-recovery-phrase',
+    hero: 'onboarding-hero',
+    faqLink: 'onboarding-faq-link',
+    websiteLink: 'onboarding-website-link',
+    termsOfService: 'onboarding-tos',
+    openUrlDialog: 'onboarding-open-url',
+    openUrlConfirm: 'onboarding-open-url-confirm',
+    copyUrl: 'onboarding-copy-url',
+    openTerms: 'onboarding-open-terms',
+    openPrivacy: 'onboarding-open-privacy',
+    openUrlCancel: 'onboarding-open-url-cancel',
     continueButton: 'onboarding-continue',
+
+    displayNameScreen: 'onboarding-display-name-screen',
+    displayNameInput: 'onboarding-display-name',
+    displayNameError: 'onboarding-display-name-error',
+    displayNameCounter: 'onboarding-display-name-counter',
+
+    loadAccountScreen: 'onboarding-load-account-screen',
+    recoveryPhraseInput: 'onboarding-recovery-phrase',
+    recoveryPhraseReveal: 'onboarding-recovery-phrase-reveal',
+    recoveryPhraseError: 'onboarding-recovery-phrase-error',
+    recoveryPhraseTab: 'onboarding-recovery-phrase-tab',
+    scanQrTab: 'onboarding-scan-qr-tab',
+    scanQrPane: 'onboarding-scan-qr-pane',
+    scanQrPreview: 'onboarding-scan-qr-preview',
+    cameraAccess: 'onboarding-camera-access',
+
+    notificationsScreen: 'onboarding-notifications-screen',
+    notificationsOption: (mode: string) => `onboarding-notifications-${mode}` as const,
+
+    loadingScreen: 'onboarding-loading-screen',
   },
 } as const
 
-/** Every id the registry can produce, including the parameterised ones. */
-export type ElementId =
-  | 'conversation-list'
-  | 'conversation-list-settings'
-  | 'conversation-list-new'
-  | `conversation-row-${number}`
-  | 'conversation-row-name'
-  | 'conversation-row-snippet'
-  | 'conversation-row-unread'
-  | 'conversation-list-empty'
-  | 'conversation'
-  | 'conversation-header'
-  | 'conversation-header-name'
-  | 'conversation-back'
-  | `message-row-${number}`
-  | 'message-body'
-  | 'message-state'
-  | 'message-retry'
-  | 'message-composer'
-  | 'send-button'
-  | 'requests'
-  | 'requests-back'
-  | `request-row-${number}`
-  | `request-accept-${number}`
-  | 'requests-badge'
-  | 'settings'
-  | 'settings-back'
-  | 'settings-theme-picker'
-  | `settings-theme-${string}`
-  | `settings-accent-${string}`
-  | 'settings-display-name'
-  | 'settings-account-id'
-  | 'settings-copy-account-id'
-  | 'settings-network-status'
-  | 'network-overlay-badge'
-  | 'new-conversation'
-  | 'new-conversation-back'
-  | 'new-conversation-account-id'
-  | 'new-conversation-start'
-  | 'new-conversation-error'
-  | 'starting'
-  | 'onboarding'
-  | 'onboarding-create-account'
-  | 'onboarding-restore-account'
-  | 'onboarding-recovery-phrase'
-  | 'onboarding-continue'
+/**
+ * Every id the registry can produce, including the parameterised ones.
+ *
+ * **Read off `ELEMENT` rather than listed beside it.** A hand-written union is a second copy of
+ * the registry, and the two drift in one direction only: an id added above and forgotten here is
+ * an element the e2e harness cannot name, because every locator it takes is typed as this. That
+ * had happened to 36 of them. Derived, the two cannot disagree.
+ */
+export type ElementId = IdsIn<typeof ELEMENT>
+
+/** A string leaf, the return type of a parameterised one, or the union of a group's members. */
+type IdsIn<T> = T extends string
+  ? T
+  : T extends (...args: never[]) => infer R
+    ? R
+    : T extends object
+      ? { [K in keyof T]: IdsIn<T[K]> }[keyof T]
+      : never

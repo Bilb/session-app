@@ -38,15 +38,15 @@ export function ConversationScreen({ conversationId }: { conversationId: string 
   return (
     <Screen testID={ELEMENT.conversation.screen}>
       <XStack
-        paddingHorizontal="$2"
-        paddingVertical="$1.5"
-        gap="$1.5"
+        paddingHorizontal="$md"
+        paddingVertical="$sm"
+        gap="$sm"
         alignItems="center"
         testID={ELEMENT.conversation.header}
       >
         <BackButton testID={ELEMENT.conversation.back} />
         <Text
-          size="$5"
+          size="$bodyLarge"
           weight="semibold"
           numberOfLines={1}
           testID={ELEMENT.conversation.headerName}
@@ -63,20 +63,20 @@ export function ConversationScreen({ conversationId }: { conversationId: string 
           data={messages}
           keyExtractor={(message) => String(message.id)}
           renderItem={(message, index) => (
-            <YStack paddingHorizontal="$2" paddingBottom="$1.5">
+            <YStack paddingHorizontal="$md" paddingBottom="$sm">
               <MessageRow message={message} index={index} />
             </YStack>
           )}
         />
       ) : (
-        <YStack flex={1} padding="$2">
+        <YStack flex={1} padding="$md">
           <Text tone="secondary">{tr('loading')}</Text>
         </YStack>
       )}
 
       <XStack
-        padding="$2"
-        gap="$1.5"
+        padding="$md"
+        gap="$sm"
         alignItems="center"
         borderTopWidth={1}
         borderTopColor="$bordersColor"
@@ -146,37 +146,37 @@ function MessageRow({ message, index }: { message: Message; index: number }) {
     <YStack
       alignSelf={message.outgoing ? 'flex-end' : 'flex-start'}
       maxWidth="80%"
-      backgroundColor={message.outgoing ? '$messageBubbleOutgoingBg' : '$messageBubbleIncomingBg'}
-      borderRadius="$3"
-      paddingHorizontal="$2"
-      paddingVertical="$1.5"
-      gap="$0.5"
+      backgroundColor={message.outgoing ? '$primaryColor' : '$messageBubbleIncomingBg'}
+      borderRadius="$lg"
+      paddingHorizontal="$md"
+      paddingVertical="$sm"
+      gap="$2xs"
       testID={ELEMENT.conversation.messageRow(index)}
     >
       <Text
-        size="$4"
-        color={message.outgoing ? '$messageBubbleOutgoingText' : '$messageBubbleIncomingText'}
+        size="$body"
+        color={message.outgoing ? '$onAccent' : '$messageBubbleIncomingText'}
         testID={ELEMENT.conversation.messageBody}
       >
         {message.body}
       </Text>
       {label === undefined ? null : (
-        <XStack alignItems="center" gap="$1">
-          {/* Coloured like the bubble rather than by tone: a label only ever appears on an
-              outgoing message, and both the secondary and the accent tone are picked to read
-              against the screen - on the bubble they come out as green on green. */}
+        <XStack alignItems="center" gap="$xs">
+          {/* On the fill, not on the page: a label only ever appears on an outgoing message, so a
+              text tone would be green on green. 0.85 is the floor -- see THEMING.md on dimming an
+              on-colour. */}
           <Text
-            size="$2"
-            color="$messageBubbleOutgoingText"
-            opacity={0.7}
+            size="$caption"
+            color="$onAccent"
+            opacity={0.85}
             testID={ELEMENT.conversation.messageState}
           >
             {label}
           </Text>
           {retryable ? (
             <Text
-              size="$2"
-              color="$messageBubbleOutgoingText"
+              size="$caption"
+              color="$onAccent"
               weight="semibold"
               textDecorationLine="underline"
               testID={ELEMENT.conversation.messageRetry}

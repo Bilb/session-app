@@ -30,6 +30,14 @@ export interface ContractHarness {
   }>
   /** Stops and restarts a client against the same data. */
   restart(client: SessionClient): Promise<SessionClient>
+  /**
+   * One client with no account at all: where onboarding starts.
+   *
+   * `phrase` is a recovery phrase this implementation accepts. Supplied by the harness rather
+   * than written into the suite, because only the implementation knows what it considers a real
+   * one - the fake has a canonical phrase and libsession has a word list.
+   */
+  newcomer(): Promise<{ client: SessionClient; phrase: string[] }>
 }
 
 type Runner = (name: string, body: () => Promise<void> | void) => void
@@ -90,6 +98,122 @@ export function runSessionClientContract(
   }
 
   describe('SessionClient contract', () => {
+    it('has no account until it is asked for one', async () => {
+      // What makes onboarding reachable. A client that mints an identity as its database opens
+      // has already answered the question the first screen exists to ask.
+      const { client } = await harness.newcomer()
+      const info = await client.getAccountInfo()
+      expect(info.haveAccount).toBe(false)
+      expect(info.sessionId).toBeUndefined()
+    })
+
+    it('checks a recovery phrase without making an account out of it', async () => {
+      // The whole point of the call: onboarding can tell somebody their phrase is wrong while
+      // they can still fix it, and still leave the flow with nothing to undo if they go back.
+      const { client, phrase } = await harness.newcomer()
+
+      await client.checkRecoveryPhrase(phrase)
+
+      expect((await client.getAccountInfo()).haveAccount).toBe(false)
+    })
+
+    it('restores the account the phrase belongs to, through the bytes it travels as', async () => {
+      // **The round trip the phrase now takes.** It leaves as a string, crosses as bytes that the
+      // sender gives up, and is split back into words by the shim -- so a phrase that restores the
+      // right account proves the encode, the transfer and the split all agree. Restoring the wrong
+      // account, or none, is what a mismatch anywhere along that would look like.
+      const { client, phrase } = await harness.newcomer()
+      await client.checkRecoveryPhrase(phrase)
+
+      await client.restoreAccount({ words: phrase })
+
+      const info = await client.getAccountInfo()
+      expect(info.haveAccount).toBe(true)
+      expect(info.sessionId).toBeDefined()
+    })
+
+    it('refuses a phrase of the wrong length, and still makes nothing', async () => {
+      const { client, phrase } = await harness.newcomer()
+
+      expect(await failure(() => client.checkRecoveryPhrase(phrase.slice(0, 5)))).toBeDefined()
+
+      expect((await client.getAccountInfo()).haveAccount).toBe(false)
+    })
+
+    it('does not keep an account nobody confirmed across a restart', async () => {
+      // The crash case. Minting an account is not the same as deciding to keep it, and a restart
+      // that found an unconfirmed one would carry somebody into a setup they never finished --
+      // which for a restore means offering to name an account that already has a name.
+      const { client } = await harness.newcomer()
+      await client.createAccount()
+      expect((await client.getAccountInfo()).haveAccount).toBe(true)
+
+      const restarted = await harness.restart(client)
+
+      expect((await restarted.getAccountInfo()).haveAccount).toBe(false)
+    })
+
+    it('keeps one that was confirmed', async () => {
+      // The other half, and the one that would make the sweep a disaster if it were wrong.
+      const { client } = await harness.newcomer()
+      await client.createAccount()
+      await client.keepAccount()
+      const kept = (await client.getAccountInfo()).sessionId
+
+      const restarted = await harness.restart(client)
+
+      const after = await restarted.getAccountInfo()
+      expect(after.haveAccount).toBe(true)
+      expect(after.sessionId).toBe(kept)
+    })
+
+    it('keeps a restored account that was confirmed, and sweeps one that was not', async () => {
+      // **Restore has the same two halves as create and had neither of them covered.** The sweep
+      // at startup does not care how an account arrived, so a restore that never confirmed is
+      // swept exactly as a create would be -- and somebody who restored from their phrase and
+      // was swept has lost nothing recoverable, but has been told the restore worked and then
+      // shown an empty device on the next launch.
+      const hexSeed = 'c3'.repeat(32)
+
+      const provisional = await harness.newcomer()
+      await provisional.client.restoreAccount({ hexSeed })
+      expect((await provisional.client.getAccountInfo()).haveAccount).toBe(true)
+      const sweptAway = await harness.restart(provisional.client)
+      expect((await sweptAway.getAccountInfo()).haveAccount).toBe(false)
+
+      const confirmed = await harness.newcomer()
+      await confirmed.client.restoreAccount({ hexSeed })
+      await confirmed.client.keepAccount()
+      const kept = (await confirmed.client.getAccountInfo()).sessionId
+
+      const restarted = await harness.restart(confirmed.client)
+      const after = await restarted.getAccountInfo()
+      expect(after.haveAccount).toBe(true)
+      // The same identity, not merely an identity: a restore that kept the wrong seed would also
+      // pass a bare `haveAccount` check.
+      expect(after.sessionId).toBe(kept)
+    })
+
+    it('leaves nothing of an account behind when it is discarded', async () => {
+      // Onboarding's undo, and the reason the whole thing exists: somebody who starts restoring
+      // one account and changes their mind must not carry any of it into the next.
+      //
+      // Asserted on what was stored rather than on `haveAccount`, because whether there is an
+      // account afterwards is not a property of the discard -- it is a property of how the client
+      // was opened. A deferred client comes back with none; one opened eagerly comes back with a
+      // *new* one, because that is what opening eagerly means. Either way what the old account put
+      // here is gone, and that is the promise.
+      const { alice, bobId, settle } = await harness.friends()
+      await alice.sendMessage(bobId, { body: 'before' })
+      await settle()
+      expect((await alice.getConversations()).length).toBeGreaterThan(0)
+
+      await alice.discardAccount()
+
+      expect(await alice.getConversations()).toEqual([])
+      expect(await alice.getMessageRequests()).toEqual([])
+    })
+
     it('stores an outgoing message before it is sent', async () => {
       const { alice, bobId } = await harness.friends()
       const seen = collect(alice)
@@ -310,6 +434,26 @@ export function runSessionClientContract(
       // libsession refuses this from inside a callback, where a throw is only logged.
       const error = await failure(() => alice.setNickname(noteToSelf, 'me'))
       expect(error instanceof Error).toBe(true)
+    })
+
+    /**
+     * The refusal, which is the half of this that holds without a network.
+     *
+     * Warming exists for the window before an account, so the condition worth pinning is that it
+     * declines once there is one: the client's own network is then the thing doing this, and a
+     * second one refreshing the same cache is the cost the command avoids rather than the saving
+     * it makes.
+     *
+     * **The success case cannot be asserted here.** Filling a pool means reaching service nodes,
+     * and this suite runs offline; a build with no network configured answers false for that
+     * reason rather than this one, so a scenario asserting true would pass on the fake and fail on
+     * the addon for a reason that has nothing to do with the contract.
+     */
+    it('declines to warm the node cache once an account is there to use it', async () => {
+      const { alice } = await harness.friends()
+      expect((await alice.getAccountInfo()).haveAccount).toBe(true)
+
+      expect(await alice.warmNetworkCache()).toBe(false)
     })
 
     it('refuses a network it cannot build, and stays where it was', async () => {

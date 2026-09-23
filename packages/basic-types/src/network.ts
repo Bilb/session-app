@@ -4,7 +4,17 @@
  * Here rather than beside the ports it is read through, because one of its three readers is
  * Electron's main process, which cannot import a package that pulls in React.
  */
-export type NetworkName = 'mainnet' | 'testnet' | 'devnet'
+export type NetworkName = 'mainnet' | 'testnet' | 'devnet' | 'fake'
+
+/**
+ * The three libsession knows, which is not the same list.
+ *
+ * `fake` is a Session network the way the others are -- it is what the app is talking to, and it
+ * is the answer the overlay has to give -- but nothing is attached for it, so it is never a
+ * `netid`. Keeping the two types apart is what stops a value that means "no libsession at all"
+ * reaching the option that names a network for it.
+ */
+export type NetId = Exclude<NetworkName, 'fake'>
 
 /**
  * Reads `EXPO_PUBLIC_SESSION_NETID` into a network name, for whoever is doing the reading.
@@ -16,7 +26,7 @@ export type NetworkName = 'mainnet' | 'testnet' | 'devnet'
  * An unrecognised value is mainnet, because unset has to be and there is nothing better to do with
  * a typo.
  */
-export function parseNetworkName(value: string | undefined): NetworkName {
+export function parseNetworkName(value: string | undefined): NetId {
   return value === 'testnet' || value === 'devnet' ? value : 'mainnet'
 }
 
@@ -194,8 +204,8 @@ export function parseDevnetConfig(env: DevnetEnv, prefix: string): DevnetConfig 
  * over that would confirm the belief rather than contradict it.
  */
 export function netidForTransport(
-  name: NetworkName,
+  name: NetId,
   devnet: DevnetConfig | undefined,
-): NetworkName | undefined {
+): NetId | undefined {
   return name === 'devnet' && devnet === undefined ? undefined : name
 }

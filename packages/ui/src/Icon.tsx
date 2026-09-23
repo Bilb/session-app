@@ -1,8 +1,18 @@
+import { Check } from '@tamagui/lucide-icons-2/icons/Check'
+import { ChevronDown } from '@tamagui/lucide-icons-2/icons/ChevronDown'
 import { ChevronLeft } from '@tamagui/lucide-icons-2/icons/ChevronLeft'
+import { ChevronRight } from '@tamagui/lucide-icons-2/icons/ChevronRight'
+import { CircleHelp } from '@tamagui/lucide-icons-2/icons/CircleHelp'
+import { ExternalLink } from '@tamagui/lucide-icons-2/icons/ExternalLink'
+import { Eye } from '@tamagui/lucide-icons-2/icons/Eye'
+import { EyeOff } from '@tamagui/lucide-icons-2/icons/EyeOff'
+import { Link } from '@tamagui/lucide-icons-2/icons/Link'
 import { Plus } from '@tamagui/lucide-icons-2/icons/Plus'
+import { Search } from '@tamagui/lucide-icons-2/icons/Search'
 import { Settings } from '@tamagui/lucide-icons-2/icons/Settings'
+import { X } from '@tamagui/lucide-icons-2/icons/X'
 
-import type { IconName, IconProps } from './Icon.types'
+import type { IconName, IconProps, IconSize } from './Icon.types'
 
 /**
  * The glyph behind each name.
@@ -16,20 +26,46 @@ import type { IconName, IconProps } from './Icon.types'
  * the values are: every name has a glyph, and a glyph nobody named does not compile.
  */
 const GLYPHS = {
+  check: Check,
+  chevronDown: ChevronDown,
   chevronLeft: ChevronLeft,
+  chevronRight: ChevronRight,
+  circleHelp: CircleHelp,
+  externalLink: ExternalLink,
+  eye: Eye,
+  eyeOff: EyeOff,
+  link: Link,
   plus: Plus,
+  search: Search,
   settings: Settings,
+  x: X,
 } satisfies Record<IconName, typeof Plus>
 
 /**
  * One icon, drawn from the set the app has agreed on.
  *
- * The glyphs arrive already wrapped in tamagui's `themed()`, so `size` and `color` take tokens and
- * an icon follows the theme without anything here doing the work. No default size: left alone, an
- * icon takes its size from the sized context it is in - a button sizes the icon inside it - and
- * falls back to lucide's own 24 when there is none.
+ * The glyphs arrive already wrapped in tamagui's `themed()`, so `color` takes a token and an icon
+ * follows the theme without anything here doing the work. No default size: left alone, an icon
+ * takes its size from the sized context it is in - a button sizes the icon inside it - and falls
+ * back to lucide's own 24 when there is none.
  */
-export function Icon({ name, ...rest }: IconProps) {
+export function Icon({ name, size, ...rest }: IconProps) {
   const Glyph = GLYPHS[name]
-  return <Glyph {...rest} />
+  const resolved = typeof size === 'string' ? ICON_SIZES[size] : size
+  return <Glyph {...rest} {...(resolved === undefined ? {} : { size: resolved })} />
+}
+
+/**
+ * Which rung of the dimension ladder each named size is.
+ *
+ * One to one with the scale's own names, which is not a coincidence -- an icon's vocabulary was
+ * chosen to match it. Written out rather than derived, because what this restricts is *which*
+ * rungs an icon may use: the ladder runs to 64 and nothing here should draw a glyph that big.
+ */
+const ICON_SIZES: Record<IconSize, string> = {
+  xs: '$xs',
+  sm: '$sm',
+  md: '$md',
+  lg: '$lg',
+  xl: '$xl',
 }

@@ -59,6 +59,38 @@ struct Codec<std::string> {
 };
 
 template <>
+struct Codec<std::vector<std::byte>> {
+    static constexpr std::string_view name = "Uint8Array";
+    static Napi::Value to(Napi::Env env, const std::vector<std::byte>& value) {
+        return Napi::Buffer<std::byte>::Copy(env, value.data(), value.size());
+    }
+    static std::vector<std::byte> from(const Napi::Value& value, std::string_view where) {
+        if (!value.IsTypedArray())
+            throw std::invalid_argument(std::string{where} + ": expected a Uint8Array, got " + describe(value));
+        auto array = value.As<Napi::Uint8Array>();
+        const auto* first = reinterpret_cast<const std::byte*>(array.Data());
+        return {first, first + array.ByteLength()};
+    }
+};
+
+/// The same wire shape as plain bytes; the difference is what holds them on this side.
+///
+/// Nothing can be done about the JavaScript half -- a Uint8Array reaching here was allocated by
+/// V8 and is V8's to collect -- but from the moment it lands it is a SecretBytes, and the copy
+/// this makes is the last one that is not wiped on the way out.
+template <>
+struct Codec<SecretBytes> {
+    static constexpr std::string_view name = "Uint8Array";
+    static Napi::Value to(Napi::Env env, const SecretBytes& value) {
+        auto bytes = value.bytes();
+        return Napi::Buffer<std::byte>::Copy(env, bytes.data(), bytes.size());
+    }
+    static SecretBytes from(const Napi::Value& value, std::string_view where) {
+        return SecretBytes{Codec<std::vector<std::byte>>::from(value, where)};
+    }
+};
+
+template <>
 struct Codec<double> {
     static constexpr std::string_view name = "number";
     static Napi::Value to(Napi::Env env, double value) {
@@ -774,7 +806,7 @@ struct Codec<::session_bridge::RestoreAccountFromWordsCommand> {
     static Napi::Value to(Napi::Env env, const ::session_bridge::RestoreAccountFromWordsCommand& value) {
         Napi::Object obj = Napi::Object::New(env);
         obj.Set("type", Napi::String::New(env, ::session_bridge::RestoreAccountFromWordsCommand::type_tag.data(), ::session_bridge::RestoreAccountFromWordsCommand::type_tag.size()));
-        obj.Set("words", Codec<std::vector<std::string>>::to(env, value.words));
+        obj.Set("phrase", Codec<::session_bridge::SecretBytes>::to(env, value.phrase));
         if (value.language)
             obj.Set("language", Codec<std::string>::to(env, *value.language));
         return obj;
@@ -782,8 +814,27 @@ struct Codec<::session_bridge::RestoreAccountFromWordsCommand> {
     static ::session_bridge::RestoreAccountFromWordsCommand from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
         return ::session_bridge::RestoreAccountFromWordsCommand(
-                Codec<std::vector<std::string>>::from(obj.Get("words"), "RestoreAccountFromWordsCommand.words"),
+                Codec<::session_bridge::SecretBytes>::from(obj.Get("phrase"), "RestoreAccountFromWordsCommand.phrase"),
                 optional<std::string>(obj.Get("language"), "RestoreAccountFromWordsCommand.language"));
+    }
+};
+
+template <>
+struct Codec<::session_bridge::CheckRecoveryPhraseCommand> {
+    static constexpr std::string_view name = "CheckRecoveryPhraseCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::CheckRecoveryPhraseCommand& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::CheckRecoveryPhraseCommand::type_tag.data(), ::session_bridge::CheckRecoveryPhraseCommand::type_tag.size()));
+        obj.Set("phrase", Codec<::session_bridge::SecretBytes>::to(env, value.phrase));
+        if (value.language)
+            obj.Set("language", Codec<std::string>::to(env, *value.language));
+        return obj;
+    }
+    static ::session_bridge::CheckRecoveryPhraseCommand from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::CheckRecoveryPhraseCommand(
+                Codec<::session_bridge::SecretBytes>::from(obj.Get("phrase"), "CheckRecoveryPhraseCommand.phrase"),
+                optional<std::string>(obj.Get("language"), "CheckRecoveryPhraseCommand.language"));
     }
 };
 
@@ -800,6 +851,36 @@ struct Codec<::session_bridge::RestoreAccountFromSeedCommand> {
         Napi::Object obj = object(value, where);
         return ::session_bridge::RestoreAccountFromSeedCommand(
                 Codec<std::string>::from(obj.Get("hexSeed"), "RestoreAccountFromSeedCommand.hexSeed"));
+    }
+};
+
+template <>
+struct Codec<::session_bridge::DiscardAccountCommand> {
+    static constexpr std::string_view name = "DiscardAccountCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::DiscardAccountCommand& value) {
+        (void)value;
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::DiscardAccountCommand::type_tag.data(), ::session_bridge::DiscardAccountCommand::type_tag.size()));
+        return obj;
+    }
+    static ::session_bridge::DiscardAccountCommand from(const Napi::Value& value, std::string_view where) {
+        object(value, where);
+        return ::session_bridge::DiscardAccountCommand{};
+    }
+};
+
+template <>
+struct Codec<::session_bridge::KeepAccountCommand> {
+    static constexpr std::string_view name = "KeepAccountCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::KeepAccountCommand& value) {
+        (void)value;
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::KeepAccountCommand::type_tag.data(), ::session_bridge::KeepAccountCommand::type_tag.size()));
+        return obj;
+    }
+    static ::session_bridge::KeepAccountCommand from(const Napi::Value& value, std::string_view where) {
+        object(value, where);
+        return ::session_bridge::KeepAccountCommand{};
     }
 };
 
@@ -932,6 +1013,21 @@ struct Codec<::session_bridge::AttachNetworkCommand> {
                 optional<std::vector<::session_bridge::SeedNode>>(obj.Get("seedNodes"), "AttachNetworkCommand.seedNodes"),
                 optional<::session_bridge::FileServerConfig>(obj.Get("fileServer"), "AttachNetworkCommand.fileServer"),
                 optional<::session_bridge::RouterKind>(obj.Get("router"), "AttachNetworkCommand.router"));
+    }
+};
+
+template <>
+struct Codec<::session_bridge::WarmNetworkCacheCommand> {
+    static constexpr std::string_view name = "WarmNetworkCacheCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::WarmNetworkCacheCommand& value) {
+        (void)value;
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::WarmNetworkCacheCommand::type_tag.data(), ::session_bridge::WarmNetworkCacheCommand::type_tag.size()));
+        return obj;
+    }
+    static ::session_bridge::WarmNetworkCacheCommand from(const Napi::Value& value, std::string_view where) {
+        object(value, where);
+        return ::session_bridge::WarmNetworkCacheCommand{};
     }
 };
 
@@ -1385,14 +1481,22 @@ struct Codec<::session_bridge::Command> {
             return Codec<::session_bridge::CreateAccountCommand>::from(value, where);
         if (tag == "restoreAccountFromWords")
             return Codec<::session_bridge::RestoreAccountFromWordsCommand>::from(value, where);
+        if (tag == "checkRecoveryPhrase")
+            return Codec<::session_bridge::CheckRecoveryPhraseCommand>::from(value, where);
         if (tag == "restoreAccountFromSeed")
             return Codec<::session_bridge::RestoreAccountFromSeedCommand>::from(value, where);
+        if (tag == "discardAccount")
+            return Codec<::session_bridge::DiscardAccountCommand>::from(value, where);
+        if (tag == "keepAccount")
+            return Codec<::session_bridge::KeepAccountCommand>::from(value, where);
         if (tag == "getSeedMnemonic")
             return Codec<::session_bridge::GetSeedMnemonicCommand>::from(value, where);
         if (tag == "setDisplayName")
             return Codec<::session_bridge::SetDisplayNameCommand>::from(value, where);
         if (tag == "attachNetwork")
             return Codec<::session_bridge::AttachNetworkCommand>::from(value, where);
+        if (tag == "warmNetworkCache")
+            return Codec<::session_bridge::WarmNetworkCacheCommand>::from(value, where);
         if (tag == "setPollInterval")
             return Codec<::session_bridge::SetPollIntervalCommand>::from(value, where);
         if (tag == "pollOnce")

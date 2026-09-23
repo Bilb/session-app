@@ -1,4 +1,5 @@
-import { KeyboardAvoidingView, Platform } from 'react-native'
+import { Keyboard, TouchableWithoutFeedback } from 'react-native'
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { YStack } from 'tamagui'
 
@@ -24,7 +25,13 @@ const FILL = { flex: 1 } as const
  * Read through the hook rather than taken as a prop so a screen never has to know which device
  * it is on. It needs a SafeAreaProvider above it, which the app's root layout installs.
  */
-export function Screen({ children, padded = false, edges = ALL_EDGES, testID }: ScreenProps) {
+export function Screen({
+  children,
+  padded = false,
+  edges = ALL_EDGES,
+  avoidsKeyboard = true,
+  testID,
+}: ScreenProps) {
   const insets = useSafeAreaInsets()
   const wanted = new Set(edges)
 
@@ -40,19 +47,40 @@ export function Screen({ children, padded = false, edges = ALL_EDGES, testID }: 
     >
       {/*
         iOS puts the keyboard over the window without telling the layout, so a composer at the
-        bottom of a screen ends up behind it - which is a messenger you cannot type into. Android
-        resizes the window itself, and adding the padding there as well would lift the composer
-        by a whole keyboard above the keyboard, hence the platform check.
+        bottom of a screen ends up behind it - which is a messenger you cannot type into.
+
+        **react-native-keyboard-controller's, not react-native's.** The platform's own view
+        reacts to a JavaScript event after the keyboard has already begun moving and then runs an
+        animation of its own, with its own curve and its own duration - so it cannot match, and
+        what it looks like is lag. This one is driven by the keyboard's own animation progress,
+        `UIKeyboardWillChangeFrame` on iOS and `WindowInsetsAnimation` on Android, as a worklet off
+        the JavaScript thread. It also takes `behavior="padding"` on both platforms rather than
+        needing the Android exception react-native's did.
 
         Inside the safe-area padding rather than around it, which is what makes the arithmetic
         come out: the view measures its own bottom edge against the top of the keyboard, and its
         bottom edge is already short by the home indicator.
       */}
-      <KeyboardAvoidingView style={FILL} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <YStack flex={1} {...(padded ? { padding: '$2' } : {})}>
-          {children}
-        </YStack>
-      </KeyboardAvoidingView>
+      {/*
+        Tapping anywhere that is not a control puts the keyboard away, which is the convention on
+        both platforms and costs nothing here. `TouchableWithoutFeedback` rather than a Pressable
+        because there is deliberately no feedback: this is the background, not a button, and
+        `accessible={false}` stops the whole screen announcing itself to a screen reader as one
+        control.
+      */}
+      <TouchableWithoutFeedback accessible={false} onPress={() => Keyboard.dismiss()}>
+        {avoidsKeyboard ? (
+          <KeyboardAvoidingView style={FILL} behavior="padding">
+            <YStack flex={1} {...(padded ? { padding: '$md' } : {})}>
+              {children}
+            </YStack>
+          </KeyboardAvoidingView>
+        ) : (
+          <YStack flex={1} {...(padded ? { padding: '$md' } : {})}>
+            {children}
+          </YStack>
+        )}
+      </TouchableWithoutFeedback>
     </YStack>
   )
 }

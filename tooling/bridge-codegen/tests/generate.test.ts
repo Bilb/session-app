@@ -43,6 +43,27 @@ describe('bridge codegen', () => {
     expect(files['types.hpp']).not.toMatch(/Shape\(\)/)
   })
 
+  it('gives the two binary kinds different C++ types', () => {
+    // The whole reason `secret` is a kind rather than a flag: ordinary bytes are a vector, and a
+    // secret is a type whose destructor wipes it, so a seed is handled as a seed wherever it
+    // lands rather than wherever somebody remembered.
+    expect(files['types.hpp']).toContain('std::vector<std::byte> data;')
+    expect(files['types.hpp']).toContain('std::optional<::session_bridge::SecretBytes> key;')
+  })
+
+  it('gives SecretBytes a destructor that wipes and no copy constructor', () => {
+    // A copy would be a second place the secret lives, which defeats knowing where it is.
+    expect(files['types.hpp']).toContain('~SecretBytes() { wipe(); }')
+    expect(files['types.hpp']).toContain('SecretBytes(const SecretBytes&) = delete;')
+  })
+
+  it('carries both kinds over both bridges', () => {
+    expect(files['napi.hpp']).toContain('struct Codec<std::vector<std::byte>>')
+    expect(files['napi.hpp']).toContain('struct Codec<SecretBytes>')
+    expect(files['jsi.hpp']).toContain('struct JSIConverter<std::vector<std::byte>>')
+    expect(files['jsi.hpp']).toContain('struct JSIConverter<::session_bridge::SecretBytes>')
+  })
+
   it('omits an unset optional instead of writing undefined', () => {
     expect(files['jsi.hpp']).toContain('if (arg.label)')
     expect(files['napi.hpp']).toContain('if (value.label)')

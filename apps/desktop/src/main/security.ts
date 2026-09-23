@@ -50,11 +50,15 @@ export function contentSecurityPolicy({ dev }: { dev: boolean }): string {
     `script-src 'self'${dev ? " 'unsafe-inline'" : ''}`,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
+    // Attachments are played from a blob the renderer built, and `default-src 'none'` would
+    // otherwise refuse them: media has no fallback of its own.
+    "media-src 'self' blob:",
     "font-src 'self' data:",
     `connect-src 'self'${dev ? ' ws:' : ''}`,
     "base-uri 'none'",
     "form-action 'none'",
     "frame-ancestors 'none'",
+    "frame-src 'none'",
     "object-src 'none'",
   ].join('; ')
 }

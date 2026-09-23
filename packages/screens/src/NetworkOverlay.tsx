@@ -3,7 +3,7 @@ import { ELEMENT } from '@session/test-ids'
 import { Text, XStack } from '@session/ui'
 import type { ReactNode } from 'react'
 
-import { shouldStampNetwork } from './networkStamp'
+import { networkStampLabel } from './networkStamp'
 
 /**
  * Lays a rotated label over whatever it wraps on any build that is not mainnet. The rotation
@@ -15,11 +15,12 @@ import { shouldStampNetwork } from './networkStamp'
  * (docs/STATUS.md) - so treat it as untested against a real network.
  */
 export function NetworkOverlay({ children }: { children: ReactNode }) {
-  const network = requirePorts().network.name
-  if (!shouldStampNetwork(network)) return <>{children}</>
+  const label = networkStampLabel(requirePorts().network.name)
+  if (label === null) return <>{children}</>
 
   return (
-    <XStack alignItems="center" justifyContent="center">
+    // `relative`: the badge below is placed against this box, not the page. See TopTabs.
+    <XStack position="relative" alignItems="center" justifyContent="center">
       {children}
       {/* Out of the flow, so the title underneath keeps the position and size it would have had.
           A badge that shifted the header would change the layout a test is asserting on. */}
@@ -33,14 +34,14 @@ export function NetworkOverlay({ children }: { children: ReactNode }) {
         backgroundColor="$backgroundPrimary"
         borderColor="$textPrimary"
         borderWidth={1}
-        borderRadius="$1"
-        paddingHorizontal="$1"
+        borderRadius="$sm"
+        paddingHorizontal="$xs"
         opacity={0.92}
         pointerEvents="none"
         testID={ELEMENT.networkOverlay.badge}
       >
-        <Text size="$2" weight="bold" color="$textPrimary">
-          {network}
+        <Text size="$caption" weight="bold" color="$textPrimary">
+          {label}
         </Text>
       </XStack>
     </XStack>

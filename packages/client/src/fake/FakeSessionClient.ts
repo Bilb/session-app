@@ -49,6 +49,14 @@ function networkRefusal(config: NetworkAttachment): string | undefined {
 }
 
 /**
+ * How long a restored profile takes to turn up in the fake.
+ *
+ * Short enough not to be a wait anybody sits through, long enough that the screen covering it is
+ * actually drawn. The real one is a swarm round trip and the app gives it fifteen seconds.
+ */
+const FAKE_PROFILE_DELAY_MS = 2500
+
+/**
  * The fake behind the same interface the real bridge implements.
  *
  * Everything here is synchronous underneath; the promises exist because the interface has
@@ -82,6 +90,8 @@ export class FakeSessionClient implements SessionClient {
   createAccount(): Promise<void> {
     this.assertOpen()
     this.account.haveAccount = true
+    // Provisional until `keepAccount` says otherwise. See FakeAccount.provisional.
+    this.account.provisional = true
     return Promise.resolve()
   }
 
@@ -93,7 +103,43 @@ export class FakeSessionClient implements SessionClient {
     // the same refusal here as it will against libsession.
     if ('hexSeed' in from && !/^[0-9a-fA-F]{64}$/.test(from.hexSeed))
       return Promise.reject(new Error('hexSeed must be 32 bytes of hex'))
+    // A phrase, though, is taken on trust: libsession refuses an unknown word by name and a
+    // checksum that does not add up, and neither check can be made without its word list, which
+    // is a megabyte of data this has no business carrying. So the refusal half of the recovery
+    // screen is only reachable against the real bridge - noted rather than faked, because a
+    // made-up rule here would predict nothing about the one that matters.
     this.account.haveAccount = true
+    this.account.provisional = true
+    // The account comes back before its profile does: libsession has the identity the moment the
+    // seed decodes, and the display name only once the swarm answers. The fake said both at once,
+    // which made the wait that exists to cover that gap finish before it was drawn.
+    this.account.profileArrivesAt = Date.now() + FAKE_PROFILE_DELAY_MS
+    return Promise.resolve()
+  }
+
+  checkRecoveryPhrase(words: string[]): Promise<void> {
+    this.assertOpen()
+    // The word count is the one rule the fake can apply honestly: libsession takes 12, 13, 24 or
+    // 25 words and refuses anything else by length alone, before it looks a single word up. The
+    // rest of what it checks needs the word lists, so a phrase of the right length is accepted
+    // here whatever it says - see restoreAccount.
+    if (![12, 13, 24, 25].includes(words.length))
+      return Promise.reject(new Error(`a recovery phrase is 13 words, not ${words.length}`))
+    return Promise.resolve()
+  }
+
+  discardAccount(): Promise<void> {
+    this.assertOpen()
+    // The real bridge deletes the database and opens a new one, so what survives is nothing the
+    // account put there. Modelled as the account being emptied rather than the client being
+    // replaced, because a caller keeps the same client across a discard either way.
+    this.account.discard()
+    return Promise.resolve()
+  }
+
+  keepAccount(): Promise<void> {
+    this.assertOpen()
+    this.account.provisional = false
     return Promise.resolve()
   }
 
@@ -131,6 +177,18 @@ export class FakeSessionClient implements SessionClient {
     this.assertOpen()
     this.world.settle()
     return Promise.resolve()
+  }
+
+  /**
+   * Refuses on the one condition a caller can trip over, and reports success otherwise.
+   *
+   * There is no pool to fill here, so what the fake mirrors is the contract rather than the work:
+   * an account means the client's own network is the one doing this, and warming beside it is the
+   * cost it exists to avoid.
+   */
+  warmNetworkCache(): Promise<boolean> {
+    this.assertOpen()
+    return Promise.resolve(!this.account.haveAccount)
   }
 
   getConversations(): Promise<Conversation[]> {

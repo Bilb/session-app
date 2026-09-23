@@ -1,3 +1,11 @@
+/**
+ * The renderer draws react-native components through react-native-web, so the aliases
+ * below are what let @session/ui and @session/screens - written once, in
+ * react-native's vocabulary - render in a browser window.
+ *
+ * @tamagui/vite-plugin is deliberately absent: it peers on vite 8 and electron-vite is on
+ * 7. It is an optimising compiler rather than a requirement, so the app runs without it.
+ */
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
@@ -63,14 +71,6 @@ const WEB_FIRST_EXTENSIONS = [
 ]
 
 /**
- * The renderer draws react-native components through react-native-web, so the aliases
- * below are what let @session/ui and @session/screens - written once, in
- * react-native's vocabulary - render in a browser window.
- *
- * @tamagui/vite-plugin is deliberately absent: it peers on vite 8 and electron-vite is on
- * 7. It is an optimising compiler rather than a requirement, so the app runs without it.
- */
-/**
  * The workspace packages ship raw TypeScript - that is what makes editing a screen show up
  * in both apps without a build step - so every build here has to bundle them rather than
  * leave them as imports Node would choke on at runtime.
@@ -83,6 +83,56 @@ const workspacePackages = [
   '@session/localization',
   '@session/state',
 ]
+
+/**
+ * What a flag's environment variable is called, as one string rather than two.
+ *
+ * The shared table derives the same prefix in `envVarFor`. They were written out separately once
+ * and drifted the moment the prefix changed: nothing failed, no flag was collected, and every
+ * override on desktop silently read as its default.
+ */
+const FLAG_PREFIX = 'EXPO_PUBLIC_SESSION_FLAG_'
+
+/**
+ * Refuses to build a release with a developer's settings baked into it.
+ *
+ * The renderer cannot read an environment, so these are substituted here, and the badge that
+ * says which network is running is substituted from the same values. A packaged build ignores
+ * them at runtime -- so a release carrying one would draw a badge that disagrees with what it
+ * is doing: Fake over a real network.
+ *
+ * Loudly rather than by substituting the default, because somebody who exported one meant
+ * something by it.
+ */
+function refuseDeveloperSettingsInRelease(): void {
+  if (process.env['NODE_ENV'] !== 'production') return
+  const set = Object.keys(process.env).filter(
+    (key) =>
+      (key.startsWith(FLAG_PREFIX) || DEVELOPER_SETTINGS.includes(key)) &&
+      process.env[key] !== undefined &&
+      process.env[key] !== '',
+  )
+  if (set.length > 0) {
+    throw new Error(
+      `Refusing to build a release with developer settings in the environment: ${set.join(', ')}. ` +
+        'A packaged build ignores these at runtime, so a build that carries them would draw a ' +
+        'badge that disagrees with what is running. Unset them and build again.',
+    )
+  }
+}
+
+const DEVELOPER_SETTINGS = [
+  'EXPO_PUBLIC_SESSION_FAKE',
+  'EXPO_PUBLIC_SESSION_NETID',
+  'EXPO_PUBLIC_SESSION_ROUTER',
+  'EXPO_PUBLIC_SESSION_LOG',
+  'EXPO_PUBLIC_SESSION_DEVNET_SEED_URL',
+  'EXPO_PUBLIC_SESSION_FILE_SERVER_URL',
+  'EXPO_PUBLIC_SESSION_FILE_SERVER_X25519_PUBKEY',
+]
+
+// Before anything below is substituted, so a release cannot carry one of them.
+refuseDeveloperSettingsInRelease()
 
 export default defineConfig({
   main: {
@@ -118,6 +168,23 @@ export default defineConfig({
       // never attached to.
       'import.meta.env.EXPO_PUBLIC_SESSION_NETID': JSON.stringify(
         process.env['EXPO_PUBLIC_SESSION_NETID'] ?? 'mainnet',
+      ),
+      // Which bridge the main process will open, substituted for the same reason: the badge that
+      // says "this is the fake" must not be able to disagree with what is actually running.
+      'import.meta.env.EXPO_PUBLIC_SESSION_FAKE': JSON.stringify(
+        process.env['EXPO_PUBLIC_SESSION_FAKE'] ?? '',
+      ),
+      // Every flag variable present at build time, as one object. Collected by prefix rather than
+      // listed, so adding a flag needs no change here -- which is the reason the flag table derives
+      // `EXPO_PUBLIC_` on every platform rather than only on the one that needs it. A flag whose
+      // name does not start with this is not collected, and a flag that is not collected reads as
+      // its default with nothing said.
+      'import.meta.env.EXPO_PUBLIC_SESSION_FLAGS': JSON.stringify(
+        Object.fromEntries(
+          Object.entries(process.env).filter(
+            ([key, value]) => key.startsWith(FLAG_PREFIX) && value !== undefined,
+          ),
+        ),
       ),
       // react-native-web reads these; without them the bundle throws on first render.
       global: 'globalThis',

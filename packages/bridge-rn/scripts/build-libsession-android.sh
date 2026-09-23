@@ -42,6 +42,45 @@ fi
 # app may raise its floor without the static libraries having to be rebuilt below it.
 platform="${ANDROID_PLATFORM:-android-23}"
 
+# **macOS's `ar` cannot do the last step of this build.** libsession merges its static libraries
+# with an MRI script -- `ar -M < session-util.mri`, cmake/combine_archives.cmake -- which is a
+# GNU binutils feature. Apple's cctools `ar` has no `-M` and answers with its usage text, so the
+# build dies at 100% on `Generating libsession-util.a` with nothing that names the cause.
+#
+# The NDK ships `llvm-ar`, which does understand MRI scripts. The command in that cmake file is a
+# bare `ar`, resolved from PATH, so a shim ahead of PATH is enough and nothing in libsession has
+# to change. Scoped to this script, and to the one name.
+host="$(uname -s | tr '[:upper:]' '[:lower:]')-x86_64"
+llvm_ar="$ndk/toolchains/llvm/prebuilt/$host/bin/llvm-ar"
+if [ ! -x "$llvm_ar" ]; then
+    echo "no llvm-ar in the NDK at $llvm_ar" >&2
+    exit 1
+fi
+# **Only the MRI form is handed over.** A symlink here put llvm-ar in front of every `ar` in the
+# build, including the ones libtool runs inside the autoconf dependencies -- and those died with
+# `ar: error: /: File exists` while linking libsodium, libtasn1 and libidn2, which names neither
+# ar nor the shim. So the shim forwards the one call it exists for and leaves the rest to the
+# host's own ar.
+shim="$(mktemp -d)"
+trap 'rm -rf "$shim"' EXIT
+cat > "$shim/ar" <<SHIM
+#!/bin/sh
+for arg in "\$@"; do
+    [ "\$arg" = "-M" ] && exec "$llvm_ar" "\$@"
+done
+exec /usr/bin/ar "\$@"
+SHIM
+chmod +x "$shim/ar"
+export PATH="$shim:$PATH"
+
+# **A fallback for every dependency download, not a replacement.** `LOCAL_MIRROR` is a list of base
+# URLs that `expand_urls` appends each source filename to, tried in order after the upstream one --
+# which is what stands between this build and an upstream that serves a partial file. gmplib.org
+# did exactly that here: 81,698 bytes of a 2,094,196-byte tarball, cached, and then reported as a
+# hash mismatch on every subsequent run.
+#
+# libsession's own CI passes this on most pipelines but not on the Android one, so this is not the
+# configuration Android is known-good in -- it is a safety net, and it is cheap.
 cd "$libsession"
 for abi in "${abis[@]}"; do
     echo "Building libsession for $abi"
@@ -50,5 +89,6 @@ for abi in "${abis[@]}"; do
         -DANDROID_ABI="$abi" \
         -DANDROID_ARM_MODE=arm \
         -DANDROID_PLATFORM="$platform" \
-        -DANDROID_STL=c++_static
+        -DANDROID_STL=c++_static \
+        -DLOCAL_MIRROR="${SESSION_DEP_MIRROR:-https://oxen.rocks/deps}"
 done

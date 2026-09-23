@@ -12,12 +12,14 @@
 
 #include <jsi/jsi.h>
 
+#include <cstring>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <variant>
+#include <vector>
 
 #include "types.hpp"
 
@@ -42,6 +44,54 @@ inline std::optional<T> optional_from_jsi(
 }  // namespace session_bridge
 
 namespace margelo::nitro {
+
+/// Binary as an ArrayBuffer, which is what a Uint8Array's `.buffer` is on the way through.
+///
+/// Copied on the way in rather than held: Nitro's ArrayBuffer may be a view onto memory JavaScript
+/// still owns, and the shim's work happens on another thread where that is not safe to assume.
+template <>
+struct JSIConverter<std::vector<std::byte>> final {
+    static inline std::vector<std::byte> fromJSI(
+            facebook::jsi::Runtime& runtime, const facebook::jsi::Value& value) {
+        auto buffer = JSIConverter<std::shared_ptr<ArrayBuffer>>::fromJSI(runtime, value);
+        const auto* first = reinterpret_cast<const std::byte*>(buffer->data());
+        return {first, first + buffer->size()};
+    }
+
+    static inline facebook::jsi::Value toJSI(
+            facebook::jsi::Runtime& runtime, const std::vector<std::byte>& value) {
+        auto buffer = ArrayBuffer::allocate(value.size());
+        std::memcpy(buffer->data(), value.data(), value.size());
+        return JSIConverter<std::shared_ptr<ArrayBuffer>>::toJSI(runtime, buffer);
+    }
+
+    static inline bool canConvert(
+            facebook::jsi::Runtime& runtime, const facebook::jsi::Value& value) {
+        return JSIConverter<std::shared_ptr<ArrayBuffer>>::canConvert(runtime, value);
+    }
+};
+
+/// The same wire shape as plain bytes; the difference is what holds them on this side.
+template <>
+struct JSIConverter<::session_bridge::SecretBytes> final {
+    static inline ::session_bridge::SecretBytes fromJSI(
+            facebook::jsi::Runtime& runtime, const facebook::jsi::Value& value) {
+        return ::session_bridge::SecretBytes{
+                JSIConverter<std::vector<std::byte>>::fromJSI(runtime, value)};
+    }
+
+    static inline facebook::jsi::Value toJSI(
+            facebook::jsi::Runtime& runtime, const ::session_bridge::SecretBytes& value) {
+        auto bytes = value.bytes();
+        return JSIConverter<std::vector<std::byte>>::toJSI(
+                runtime, std::vector<std::byte>{bytes.begin(), bytes.end()});
+    }
+
+    static inline bool canConvert(
+            facebook::jsi::Runtime& runtime, const facebook::jsi::Value& value) {
+        return JSIConverter<std::vector<std::byte>>::canConvert(runtime, value);
+    }
+};
 
 template <>
 struct JSIConverter<::session_bridge::EmptyResult> final {
@@ -862,13 +912,13 @@ struct JSIConverter<::session_bridge::RestoreAccountFromWordsCommand> final {
     static inline ::session_bridge::RestoreAccountFromWordsCommand fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
         jsi::Object obj = arg.asObject(runtime);
         return ::session_bridge::RestoreAccountFromWordsCommand(
-                JSIConverter<std::vector<std::string>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "words"))),
+                JSIConverter<::session_bridge::SecretBytes>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "phrase"))),
                 ::session_bridge::optional_from_jsi<std::string>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "language"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::RestoreAccountFromWordsCommand& arg) {
         jsi::Object obj(runtime);
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::RestoreAccountFromWordsCommand::type_tag));
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "words"), JSIConverter<std::vector<std::string>>::toJSI(runtime, arg.words));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "phrase"), JSIConverter<::session_bridge::SecretBytes>::toJSI(runtime, arg.phrase));
         if (arg.language)
             obj.setProperty(runtime, PropNameIDCache::get(runtime, "language"), JSIConverter<std::string>::toJSI(runtime, *arg.language));
         return obj;
@@ -878,6 +928,30 @@ struct JSIConverter<::session_bridge::RestoreAccountFromWordsCommand> final {
             return false;
         jsi::Value type = value.getObject(runtime).getProperty(runtime, PropNameIDCache::get(runtime, "type"));
         return type.isString() && type.getString(runtime).utf8(runtime) == ::session_bridge::RestoreAccountFromWordsCommand::type_tag;
+    }
+};
+
+template <>
+struct JSIConverter<::session_bridge::CheckRecoveryPhraseCommand> final {
+    static inline ::session_bridge::CheckRecoveryPhraseCommand fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+        jsi::Object obj = arg.asObject(runtime);
+        return ::session_bridge::CheckRecoveryPhraseCommand(
+                JSIConverter<::session_bridge::SecretBytes>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "phrase"))),
+                ::session_bridge::optional_from_jsi<std::string>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "language"))));
+    }
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::CheckRecoveryPhraseCommand& arg) {
+        jsi::Object obj(runtime);
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::CheckRecoveryPhraseCommand::type_tag));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "phrase"), JSIConverter<::session_bridge::SecretBytes>::toJSI(runtime, arg.phrase));
+        if (arg.language)
+            obj.setProperty(runtime, PropNameIDCache::get(runtime, "language"), JSIConverter<std::string>::toJSI(runtime, *arg.language));
+        return obj;
+    }
+    static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
+        if (!value.isObject())
+            return false;
+        jsi::Value type = value.getObject(runtime).getProperty(runtime, PropNameIDCache::get(runtime, "type"));
+        return type.isString() && type.getString(runtime).utf8(runtime) == ::session_bridge::CheckRecoveryPhraseCommand::type_tag;
     }
 };
 
@@ -899,6 +973,44 @@ struct JSIConverter<::session_bridge::RestoreAccountFromSeedCommand> final {
             return false;
         jsi::Value type = value.getObject(runtime).getProperty(runtime, PropNameIDCache::get(runtime, "type"));
         return type.isString() && type.getString(runtime).utf8(runtime) == ::session_bridge::RestoreAccountFromSeedCommand::type_tag;
+    }
+};
+
+template <>
+struct JSIConverter<::session_bridge::DiscardAccountCommand> final {
+    static inline ::session_bridge::DiscardAccountCommand fromJSI(jsi::Runtime&, const jsi::Value&) {
+        return ::session_bridge::DiscardAccountCommand{};
+    }
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::DiscardAccountCommand& arg) {
+        (void)arg;
+        jsi::Object obj(runtime);
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::DiscardAccountCommand::type_tag));
+        return obj;
+    }
+    static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
+        if (!value.isObject())
+            return false;
+        jsi::Value type = value.getObject(runtime).getProperty(runtime, PropNameIDCache::get(runtime, "type"));
+        return type.isString() && type.getString(runtime).utf8(runtime) == ::session_bridge::DiscardAccountCommand::type_tag;
+    }
+};
+
+template <>
+struct JSIConverter<::session_bridge::KeepAccountCommand> final {
+    static inline ::session_bridge::KeepAccountCommand fromJSI(jsi::Runtime&, const jsi::Value&) {
+        return ::session_bridge::KeepAccountCommand{};
+    }
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::KeepAccountCommand& arg) {
+        (void)arg;
+        jsi::Object obj(runtime);
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::KeepAccountCommand::type_tag));
+        return obj;
+    }
+    static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
+        if (!value.isObject())
+            return false;
+        jsi::Value type = value.getObject(runtime).getProperty(runtime, PropNameIDCache::get(runtime, "type"));
+        return type.isString() && type.getString(runtime).utf8(runtime) == ::session_bridge::KeepAccountCommand::type_tag;
     }
 };
 
@@ -1054,6 +1166,25 @@ struct JSIConverter<::session_bridge::AttachNetworkCommand> final {
             return false;
         jsi::Value type = value.getObject(runtime).getProperty(runtime, PropNameIDCache::get(runtime, "type"));
         return type.isString() && type.getString(runtime).utf8(runtime) == ::session_bridge::AttachNetworkCommand::type_tag;
+    }
+};
+
+template <>
+struct JSIConverter<::session_bridge::WarmNetworkCacheCommand> final {
+    static inline ::session_bridge::WarmNetworkCacheCommand fromJSI(jsi::Runtime&, const jsi::Value&) {
+        return ::session_bridge::WarmNetworkCacheCommand{};
+    }
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::WarmNetworkCacheCommand& arg) {
+        (void)arg;
+        jsi::Object obj(runtime);
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::WarmNetworkCacheCommand::type_tag));
+        return obj;
+    }
+    static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
+        if (!value.isObject())
+            return false;
+        jsi::Value type = value.getObject(runtime).getProperty(runtime, PropNameIDCache::get(runtime, "type"));
+        return type.isString() && type.getString(runtime).utf8(runtime) == ::session_bridge::WarmNetworkCacheCommand::type_tag;
     }
 };
 
@@ -1617,14 +1748,22 @@ struct JSIConverter<::session_bridge::Command> final {
             return JSIConverter<::session_bridge::CreateAccountCommand>::fromJSI(runtime, arg);
         if (tag == "restoreAccountFromWords")
             return JSIConverter<::session_bridge::RestoreAccountFromWordsCommand>::fromJSI(runtime, arg);
+        if (tag == "checkRecoveryPhrase")
+            return JSIConverter<::session_bridge::CheckRecoveryPhraseCommand>::fromJSI(runtime, arg);
         if (tag == "restoreAccountFromSeed")
             return JSIConverter<::session_bridge::RestoreAccountFromSeedCommand>::fromJSI(runtime, arg);
+        if (tag == "discardAccount")
+            return JSIConverter<::session_bridge::DiscardAccountCommand>::fromJSI(runtime, arg);
+        if (tag == "keepAccount")
+            return JSIConverter<::session_bridge::KeepAccountCommand>::fromJSI(runtime, arg);
         if (tag == "getSeedMnemonic")
             return JSIConverter<::session_bridge::GetSeedMnemonicCommand>::fromJSI(runtime, arg);
         if (tag == "setDisplayName")
             return JSIConverter<::session_bridge::SetDisplayNameCommand>::fromJSI(runtime, arg);
         if (tag == "attachNetwork")
             return JSIConverter<::session_bridge::AttachNetworkCommand>::fromJSI(runtime, arg);
+        if (tag == "warmNetworkCache")
+            return JSIConverter<::session_bridge::WarmNetworkCacheCommand>::fromJSI(runtime, arg);
         if (tag == "setPollInterval")
             return JSIConverter<::session_bridge::SetPollIntervalCommand>::fromJSI(runtime, arg);
         if (tag == "pollOnce")
@@ -1689,7 +1828,7 @@ struct JSIConverter<::session_bridge::Command> final {
         if (!type.isString())
             return false;
         std::string tag = type.getString(runtime).utf8(runtime);
-        return tag == "getAccountInfo" || tag == "createAccount" || tag == "restoreAccountFromWords" || tag == "restoreAccountFromSeed" || tag == "getSeedMnemonic" || tag == "setDisplayName" || tag == "attachNetwork" || tag == "setPollInterval" || tag == "pollOnce" || tag == "setPushToken" || tag == "handlePushPayload" || tag == "getConversations" || tag == "getMessageRequests" || tag == "getConversation" || tag == "openDm" || tag == "markRead" || tag == "setBlocked" || tag == "setNickname" || tag == "setPriority" || tag == "approveConversation" || tag == "deleteConversation" || tag == "getMessages" || tag == "sendMessage" || tag == "retrySend" || tag == "deleteMessage" || tag == "getPref" || tag == "setPref" || tag == "deliverTestMessage" || tag == "getTestAccountSeed" || tag == "approveTestContact" || tag == "echoTestFrame";
+        return tag == "getAccountInfo" || tag == "createAccount" || tag == "restoreAccountFromWords" || tag == "checkRecoveryPhrase" || tag == "restoreAccountFromSeed" || tag == "discardAccount" || tag == "keepAccount" || tag == "getSeedMnemonic" || tag == "setDisplayName" || tag == "attachNetwork" || tag == "warmNetworkCache" || tag == "setPollInterval" || tag == "pollOnce" || tag == "setPushToken" || tag == "handlePushPayload" || tag == "getConversations" || tag == "getMessageRequests" || tag == "getConversation" || tag == "openDm" || tag == "markRead" || tag == "setBlocked" || tag == "setNickname" || tag == "setPriority" || tag == "approveConversation" || tag == "deleteConversation" || tag == "getMessages" || tag == "sendMessage" || tag == "retrySend" || tag == "deleteMessage" || tag == "getPref" || tag == "setPref" || tag == "deliverTestMessage" || tag == "getTestAccountSeed" || tag == "approveTestContact" || tag == "echoTestFrame";
     }
 };
 

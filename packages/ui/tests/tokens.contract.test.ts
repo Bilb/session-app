@@ -21,8 +21,8 @@ import {
  * Every `$token` in the repository names something that exists.
  *
  * This is the guard for the sharpest edge in the whole UI layer: tamagui resolves a token it
- * does not know to 0 and says nothing. `padding="$1.5"` on a scale without a 1.5 silently
- * loses the padding; `color="$textPrimry"` silently paints nothing. TypeScript does not help -
+ * does not know to 0 and says nothing. `padding="$smal"` silently loses the padding;
+ * `color="$textPrimry"` silently paints nothing. TypeScript does not help -
  * every one of those props is typed as a string, so a name with a typo in it compiles.
  *
  * A test rather than a lint rule because the list of valid names is computed, not written
@@ -61,12 +61,14 @@ function sourceFiles(dir: string): string[] {
 }
 
 /**
- * `foo="$bar"` and `foo: '$bar'`, which is every way a token reaches tamagui.
+ * Any `'$name'` or `"$name"` string literal, wherever it appears.
  *
- * Deliberately not every `$` in the file: a template literal or a regex may hold one, and a
- * test that flags those teaches people to ignore it.
+ * Deliberately not anchored to `prop=` or `prop:`. A token named inside an expression --
+ * `color={outgoing ? '$a' : '$b'}` -- is still a token, and a conditional style is exactly where a
+ * name deleted from the palette goes unnoticed. The symptom is a component rendering at zero, so
+ * the match has to be the literal rather than the position it sits in.
  */
-const TOKEN_USE = /(?:[a-zA-Z]+=|[a-zA-Z]+:\s*)['"]\$([\w.-]+)['"]/g
+const TOKEN_USE = /['"]\$([\w.-]+)['"]/g
 
 function known(): Set<string> {
   const names = new Set<string>()

@@ -1,5 +1,7 @@
 import type { BridgeTransport, Frame, Request } from '@session/client'
 
+import { secretBuffers } from './secretBuffers'
+
 /**
  * The renderer's whole view of libsession: frames in, requests out, in order, over the one
  * MessagePort the preload hands into this world.
@@ -31,7 +33,7 @@ export function createPortTransport(): BridgeTransport {
     port.start()
 
     for (const request of queuedRequests.splice(0, queuedRequests.length)) {
-      port.postMessage(request)
+      port.postMessage(request, secretBuffers(request))
     }
   }
 
@@ -39,7 +41,7 @@ export function createPortTransport(): BridgeTransport {
 
   return {
     send(request: Request): void {
-      if (port) port.postMessage(request)
+      if (port) port.postMessage(request, secretBuffers(request))
       else queuedRequests.push(request)
     },
 

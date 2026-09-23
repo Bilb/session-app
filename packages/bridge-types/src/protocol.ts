@@ -9,7 +9,27 @@ import type {
 import type { FileServerConfig, RouterKind, SeedNode } from './sessionBridgeOptions'
 
 /**
- * The bridge protocol: what goes in, what comes out, on one ordered stream.
+ * Bytes carrying a secret, transferred rather than copied and wiped once they land.
+ *
+ * **A distinct spelling rather than a plain `Uint8Array`**, because the generator matches on it:
+ * ordinary bytes become a `std::vector` and one of these becomes a buffer whose destructor zeroes
+ * it. Naming the secret in the protocol is what makes it handled as a secret everywhere it lands,
+ * rather than everywhere somebody remembered.
+ *
+ * The sender's buffer is detached by `postMessage(request, [buffer])`, so the bytes exist in one
+ * process instead of two. That is the copy the sender can never reach to clear afterwards.
+ *
+ * Not exported: the generator reads the annotation on the field rather than an import of this, and
+ * TypeScript has nothing to gain from a second name for `Uint8Array`.
+ */
+type SecretBytes = Uint8Array
+
+/**
+ * Everything the app asks libsession to do. One Request goes in, exactly one Response comes
+ * back carrying the same id. Commands are named for what the app wants, not for the C++ method
+ * that serves them, so that a refactor upstream is a shim change rather than a protocol change.
+ *
+ * **The protocol is one ordered stream**: what goes in, what comes out.
  *
  * Responses ride the same stream as change events rather than resolving on a separate channel,
  * because their relative order is load-bearing. libsession's contract is that a display can be
@@ -24,18 +44,81 @@ import type { FileServerConfig, RouterKind, SeedNode } from './sessionBridgeOpti
  * boolean, string-union enum, another interface, or an array of one: that is the subset the C++
  * generator understands, and it refuses anything else.
  */
-
-/**
- * Everything the app asks libsession to do. One Request goes in, exactly one Response comes
- * back carrying the same id. Commands are named for what the app wants, not for the C++ method
- * that serves them, so that a refactor upstream is a shim change rather than a protocol change.
- */
 export type Command =
   // Lifecycle and account
   | { type: 'getAccountInfo' }
   | { type: 'createAccount' }
-  | { type: 'restoreAccountFromWords'; words: string[]; language?: string }
+  /**
+   * **The words are strings, and that is the known weak point of the whole seed story.**
+   *
+   * A JavaScript string cannot be wiped, and by the time a phrase reaches here it exists several
+   * times over -- the field's value, the state holding it, the array split out of it, the copy
+   * cloned across the process boundary -- none of which can be cleared, only abandoned.
+   *
+   * **Two separate improvements are available here, and only one of them costs anything.**
+   *
+   * The cheap one is this field: bytes *transferred* rather than a string array copied.
+   * `postMessage(request, [buffer])` detaches the sender's `ArrayBuffer`, so the bytes exist in
+   * one process instead of two and the shim can zero them with `fill(0)` when it is done. That
+   * removes the copy in the *other* process, which is the one the renderer could never reach to
+   * clear afterwards. It costs nothing anybody would notice: the phrase is still typed and still
+   * pasted, and is encoded on its way out. The generator has had the type since the typed-frame
+   * work -- `bytes`, and a secret variant whose C++ zeroes in its destructor -- so this is a
+   * change to this field, to the shim that reads it, and to whatever encodes the words before
+   * sending.
+   *
+   * The expensive one is the other three copies -- the field's value, the state holding it, the
+   * array split out of it -- and those are unavoidable while a phrase is collected as text.
+   * Removing them means collecting it without a text field, which **gives up paste**, and a phrase
+   * arrives pasted from a password manager at least as often as it is typed. That is the trade
+   * being declined, and every current client declines it the same way.
+   *
+   * So doing the first does not finish the story, and is worth doing anyway.
+   */
+  | { type: 'restoreAccountFromWords'; phrase: SecretBytes; language?: string }
+  /**
+   * Ask whether a recovery phrase would restore, without restoring it.
+   *
+   * Onboarding has to say a phrase is wrong while it can still be fixed, and
+   * `restoreAccountFromWords` answers that by doing it -- leaving an identity behind that going
+   * back cannot take away. This decodes and throws the result away, so when to mint stays at the
+   * end of the flow, as it already is for a new account.
+   *
+   * Succeeds or fails; the seed deliberately does not come back, since the words are already in
+   * the app's memory and a second copy of the same secret buys nothing.
+   */
+  | { type: 'checkRecoveryPhrase'; phrase: SecretBytes; language?: string }
   | { type: 'restoreAccountFromSeed'; hexSeed: string }
+  /**
+   * Throws away the account and everything stored under it, and starts again from nothing.
+   *
+   * **Onboarding's undo.** The identity, the configs fetched under it and the message history all
+   * have to go rather than stop being displayed, which means the database: this closes libSession,
+   * deletes it and opens a fresh one on the same path.
+   *
+   * Deliberately **not** a way to "log out" -- there is nothing to log back in to. It is the same
+   * act as never having onboarded.
+   *
+   * The network cache is left alone: it holds the public service-node list and nothing about any
+   * account, and it is what makes the next attempt fast.
+   */
+  | { type: 'discardAccount' }
+  /**
+   * Says the account is here to stay, and stops it being swept away on the next start.
+   *
+   * **An account is provisional until this is called.** Between `createAccount` and the end of
+   * onboarding there is a window where an identity exists that nobody finished setting up, and a
+   * crash in it leaves that behind. The next start sees nothing ever confirmed it and throws it
+   * away, so the person begins again rather than inheriting a half-made account.
+   *
+   * **Which matters most for a restore**: one recovered but never confirmed has the right identity
+   * and no display name, and asking for a name would overwrite the one the account already has on
+   * the network.
+   *
+   * Not called "finish onboarding": the bridge has no notion of it, and a client that never
+   * onboards calls this once after `createAccount` and is done.
+   */
+  | { type: 'keepAccount' }
   | { type: 'getSeedMnemonic'; language?: string }
   | { type: 'setDisplayName'; name: string }
   /**
@@ -53,6 +136,22 @@ export type Command =
       /** Defaults to session-router on mainnet and testnet, onion requests on devnet. */
       router?: RouterKind
     }
+  /**
+   * Fill the service-node cache before there is an account to use it, so the first attach is not
+   * also the first refresh.
+   *
+   * **Takes no arguments on purpose.** It warms the network the client would attach -- the one
+   * given at init -- because a cache warmed for any other is a cache the attach cannot use, and a
+   * netid passed separately could disagree with it.
+   *
+   * Answers true when the pool has nodes in it. Refused, with false, where there is nothing to
+   * warm or nothing to gain: no network configured, a network already attached (two live Networks
+   * would both refresh), or a warm already in flight.
+   *
+   * The instance is dropped before the client attaches rather than left beside it, which is what
+   * makes this a warm rather than a second network.
+   */
+  | { type: 'warmNetworkCache' }
   /**
    * How often libsession polls the swarm, in milliseconds. Its default is 20 seconds, which is a
    * long time to wait for a test and about right for a person.

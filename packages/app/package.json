@@ -17,6 +17,8 @@
   },
   "scripts": {
     "lint": "eslint .",
+    "codegen": "node --disable-warning=ExperimentalWarning scripts/generateUrls.ts",
+    "codegen:check": "node --disable-warning=ExperimentalWarning scripts/generateUrls.ts --check",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

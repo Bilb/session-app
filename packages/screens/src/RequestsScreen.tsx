@@ -31,9 +31,9 @@ export function RequestsScreen() {
 
   return (
     <Screen testID={ELEMENT.requests.screen}>
-      <XStack paddingHorizontal="$2" paddingVertical="$1.5" alignItems="center" gap="$1.5">
+      <XStack paddingHorizontal="$md" paddingVertical="$sm" alignItems="center" gap="$sm">
         <BackButton testID={ELEMENT.requests.back} />
-        <Text size="$6" weight="bold">
+        <Text size="$title" weight="bold">
           {tr('sessionMessageRequests')}
         </Text>
       </XStack>
@@ -52,7 +52,7 @@ export function RequestsScreen() {
           />
         )}
         empty={
-          <YStack flex={1} alignItems="center" justifyContent="center" padding="$3">
+          <YStack flex={1} alignItems="center" justifyContent="center" padding="$xl">
             <Text tone="secondary">{tr('messageRequestsNonePending')}</Text>
           </YStack>
         }
@@ -76,8 +76,8 @@ function RequestRow({
   return (
     <XStack
       height={ROW_HEIGHT}
-      paddingHorizontal="$2"
-      gap="$2"
+      paddingHorizontal="$md"
+      gap="$md"
       alignItems="center"
       hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
       pressStyle={{ backgroundColor: '$backgroundTertiary' }}
@@ -87,12 +87,12 @@ function RequestRow({
     >
       <Avatar id={request.id} name={title} />
 
-      <YStack flex={1} gap="$0.5">
-        <Text size="$4" weight="bold" numberOfLines={1}>
+      <YStack flex={1} gap="$2xs">
+        <Text size="$body" weight="bold" numberOfLines={1}>
           {title}
         </Text>
         {request.snippet === undefined ? null : (
-          <Text size="$3" tone="secondary" numberOfLines={1}>
+          <Text size="$label" tone="secondary" numberOfLines={1}>
             {request.snippet}
           </Text>
         )}

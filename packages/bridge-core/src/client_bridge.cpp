@@ -24,6 +24,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstring>
+#include <filesystem>
 #include <limits>
 #include <ranges>
 #include <stdexcept>
@@ -73,6 +74,11 @@ namespace {
     /// below a round trip gets concurrent requests rather than faster ones.
     constexpr auto DEVNET_POLL_INTERVAL = std::chrono::milliseconds{500};
 
+    /// Where the network's own cache lives, named once so the discard and the open agree.
+    std::filesystem::path netcache_path(const std::filesystem::path& db_path) {
+        return db_path.parent_path() / "netcache";
+    }
+
     LogLevel log_level_of(std::string_view name) {
         return name == "trace"      ? LogLevel::trace
              : name == "debug"      ? LogLevel::debug
@@ -84,6 +90,32 @@ namespace {
 
     /// The bytes a hex field names, or an error naming the field.
     ///
+    /// The words of a phrase, as views into the buffer that carries it.
+    ///
+    /// **No copies.** A `string_view` per word points into the `SecretBytes` the frame arrived in,
+    /// so the phrase exists once in this process and is zeroed when that buffer goes. Building a
+    /// `std::string` per word would put it back to one unwiped heap allocation each, which is most
+    /// of what moving it off a JavaScript string was for.
+    ///
+    /// Split on a single ASCII space, because that is what the sender joined them with. Anything
+    /// else it did is libsession's to reject rather than this function's to normalise.
+    std::vector<std::string_view> phrase_words(const SecretBytes& phrase) {
+        const auto bytes = phrase.bytes();
+        const std::string_view all{reinterpret_cast<const char*>(bytes.data()), bytes.size()};
+        std::vector<std::string_view> words;
+        for (std::size_t at = 0; at < all.size();) {
+            const auto end = all.find(' ', at);
+            if (end == std::string_view::npos) {
+                words.push_back(all.substr(at));
+                break;
+            }
+            if (end > at)
+                words.push_back(all.substr(at, end - at));
+            at = end + 1;
+        }
+        return words;
+    }
+
     /// oxenc::from_hex is undefined behaviour on anything but an even-length run of hex digits:
     /// its own assert is gone from a release build, and its decoder then reads pairs straight
     /// past the end of the input. Every hex field here arrives from JavaScript, so the length
@@ -201,10 +233,15 @@ namespace {
 
         // Beside the database rather than in it: freeing space works by unlinking what the
         // directory holds that nothing accounts for, so this cannot share with anything else.
-        opts.emplace_back(network::opt::cache_directory{db_path.parent_path() / "netcache"});
+        opts.emplace_back(network::opt::cache_directory{netcache_path(db_path)});
 
         return opts;
     }
+    /// Set while an account exists that nobody has confirmed they want to keep.
+    ///
+    /// Written when one is minted and erased by `keepAccount`, so its presence at startup means
+    /// the last attempt did not finish -- a crash, or a kill, somewhere in the middle of it.
+    constexpr std::string_view provisional_account_key = "account.provisional";
 
 }  // namespace
 
@@ -213,8 +250,128 @@ struct ClientBridge::Impl {
     std::unique_ptr<client::Client> client;
     InitOptions options;
     session::LoggerHandle logger;
+    /// The network held only to fill the node cache, before there is an account to attach one.
+    ///
+    /// **Outlives the call that made it and is never dropped by its own callback.** `~Network`
+    /// joins the loop the callback is running on, so dropping it from there deadlocks. Whatever
+    /// drops it runs on another thread -- an attach, a discard, or `close`.
+    std::unique_ptr<session::network::Network> warm;
 
     explicit Impl(Sink s, InitOptions o) : sink{std::move(s)}, options{std::move(o)} {}
+
+    /// Builds the Client, and can do it again.
+    ///
+    /// Lifted out of the constructor because discarding an account destroys the Client and makes
+    /// another: the callbacks below capture `this`, which outlives any particular Client, so they
+    /// can be rebuilt as often as needed. They are moved into the Client, which is why they are
+    /// constructed here on each call rather than held.
+    void open_client() {
+        auto* impl = this;
+
+        // Every handler does the same two things and nothing else: fill a frame, and hand it to the
+        // sink. That is what makes running them inline on Core's loop correct rather than merely
+        // convenient.
+        client::callbacks cbs{
+                .conversation_added =
+                        [impl](client::AnyConversation c) {
+                            impl->event(ConversationAddedSessionEvent{to_bridge(std::move(c))});
+                        },
+                .conversation_updated =
+                        [impl](client::AnyConversation c) {
+                            impl->event(ConversationUpdatedSessionEvent{to_bridge(std::move(c))});
+                        },
+                .conversation_removed =
+                        [impl](const client::ConversationId& id) {
+                            impl->event(ConversationRemovedSessionEvent{id.to_string()});
+                        },
+                .conversation_list_replaced =
+                        [impl](std::vector<client::AnyConversation> convos) {
+                            impl->event(ConversationListReplacedSessionEvent{
+                                    Impl::conversations(std::move(convos))});
+                        },
+                .request_list_replaced =
+                        [impl](std::vector<client::AnyConversation> convos) {
+                            impl->event(RequestListReplacedSessionEvent{
+                                    Impl::conversations(std::move(convos))});
+                        },
+                .message_added =
+                        [impl](const client::ConversationId& id, client::Message m) {
+                            impl->event(
+                                    MessageAddedSessionEvent{id.to_string(), to_bridge(std::move(m))});
+                        },
+                .message_updated =
+                        [impl](const client::ConversationId& id, client::Message m) {
+                            impl->event(
+                                    MessageUpdatedSessionEvent{id.to_string(), to_bridge(std::move(m))});
+                        },
+                .history_replaced =
+                        [impl](const client::ConversationId& id) {
+                            impl->event(HistoryReplacedSessionEvent{id.to_string()});
+                        },
+                // attachment_progress and display_picture_progress are deliberately left unset:
+                // no transfer is part of the protocol, so there is no frame to report one on.
+        };
+
+        // The key options are types rather than values, so which one is used has to be a branch
+        // rather than an argument. Only one of these ever runs, which is what makes moving the
+        // callbacks in each of them safe.
+        auto open = [&](auto&&... key) {
+            if (options.defer_account)
+                return std::make_unique<client::Client>(
+                        options.db_path,
+                        std::move(cbs),
+                        core::defer_account{},
+                        std::forward<decltype(key)>(key)...);
+            return std::make_unique<client::Client>(
+                    options.db_path, std::move(cbs), std::forward<decltype(key)>(key)...);
+        };
+
+        if (options.raw_key)
+            client = open(sqlite::raw_key{*options.raw_key});
+        else if (options.password)
+            client = open(sqlite::argon2id_password{*options.password});
+        else
+            client = open();
+
+        if (!options.cache_dir.empty())
+            client->set_cache_dir(options.cache_dir);
+
+        // Set up after the Client exists, so nothing arrives before there is a sink to take it.
+        if (!options.log_level.empty() || !options.log_categories.empty()) {
+            if (!options.log_level.empty())
+                logger_reset_level(log_level_of(options.log_level));
+
+            // After the default, because reset_level sets every existing category: the other order
+            // would hand each override straight back to the level it was overriding.
+            for (const auto& each : options.log_categories)
+                logger_set_level(each.category, log_level_of(each.level));
+
+            auto* impl = this;
+            // **The handle is kept, because dropping it is what leaves this registered for ever.**
+            // `remove_logger` needs it to find the callback again; given a default-constructed one
+            // it removes nothing, and the lambda below stays reachable with a dangling `impl`
+            // after the Impl is gone. The next thing to log then calls into freed memory -- and
+            // something always logs, because constructing a Core logs from its own event loop.
+            //
+            // Checking `sink` inside `emit` does not save it: by then `impl->` has already been
+            // dereferenced, which is the fault rather than what follows it.
+            //
+            // Removed before it is added because this runs again on every discard: `open_client`
+            // is how an account is thrown away and a fresh database opened, so without this each
+            // discard would leave its predecessor registered with no handle left to reach it by.
+            remove_logger(logger);
+            logger = add_logger(
+                    [impl](std::string_view message, std::string_view category, LogLevel lvl) {
+                        // Called from whichever thread logged, including Core's loop and the
+                        // network's own threads. Safe only because `close` removes it before the
+                        // Impl goes, which is what the handle above is for.
+                        impl->event(LogSessionEvent{
+                                std::string{message},
+                                std::string{category},
+                                std::string{lvl.to_string()}});
+                    });
+        }
+    }
 
     /// What this client tells the account's other devices it is.
     ///
@@ -231,12 +388,12 @@ struct ClientBridge::Impl {
         if (type == Type::Unknown)
             return;
 
-        auto info = client->core.devices.device_info().first;
+        auto info = client->core.devices.device_info(await).first;
         info.type = type;
         // Ignored for a known type, but it is what we would have been stored as before that type
         // existed, and leaving it set keeps a stale string in the record.
         info.other_device.clear();
-        client->core.devices.update_info(info);
+        client->core.devices.update_info(info, await);
     }
 
     /// Gives Core a way off the machine. Idempotent enough to call whenever an account appears:
@@ -248,6 +405,11 @@ struct ClientBridge::Impl {
         auto planned = plan_network(options.network, options.db_path);
         if (!planned || !client->core.globals.have_account())
             return;
+
+        // Before the client's own, never beside it: both would refresh the same cache, and the
+        // point of the warm one was to have finished by now. Blocks until its loop is joined,
+        // which is also what guarantees its callback is not still holding this Impl.
+        warm.reset();
 
         client->core.make_network(network::config::Config{*planned});
 
@@ -266,6 +428,56 @@ struct ClientBridge::Impl {
     void on_account() {
         publish_device_info();
         attach_network();
+    }
+
+    /// Marks the account about to be minted as one nobody has confirmed yet.
+    ///
+    /// **Called before the mint rather than after it.** `create_account` commits and then does
+    /// more work outside that transaction -- establishing the device group opens transactions of
+    /// its own -- so a process that dies in between leaves an account no marker describes, and
+    /// the next start keeps it. That is the single thing this marker exists to prevent, and the
+    /// window is not a hairline. Written first, the worst case is the harmless one: a marker with
+    /// no account, which the sweep passes over because it asks whether an account exists first.
+    ///
+    /// **Only the paths where an application is deciding.** An account that was simply there when
+    /// the database opened, or one libSession minted itself because the Core was not opened
+    /// deferred, is not a decision anybody is partway through -- marking those would sweep away a
+    /// working account on the next start.
+    void mark_provisional() {
+        // **Only where this call is the one minting.** An account already in the database belongs
+        // to a decision somebody else finished, and marking it condemns it at the next start --
+        // `create_account` and `restore_account` both throw on one, and the marker used to be
+        // written before they got the chance to.
+        //
+        // Refusing here rather than unwinding afterwards, because a throw cannot say which kind it
+        // was: `create_account` commits and then establishes the device group outside that
+        // transaction, so a throw from there has an account *and* needs its marker kept. That is
+        // the case the marker exists for.
+        if (client->core.globals.have_account())
+            return;
+        client->core.globals.set(provisional_account_key, std::string_view{"1"});
+    }
+
+    /// Asks the whole swarm for the restored account's profile at once.
+    ///
+    /// **Only on the restore paths**, because only there is there something on the swarm that this
+    /// device has never seen: a created account has nothing to fetch, and an account that was
+    /// simply already here has its config in the database.
+    ///
+    /// Not waited on, and the restore does not report it. The name arrives the way any config
+    /// does -- merged, then pushed to the app as state -- and the wait screen is watching the
+    /// account rather than this call. Waiting would only delay the screen that exists to cover it.
+    void fetch_restored_profile() {
+        client->core.fetch_user_profile([](bool) {
+            // Nothing to do either way. Failure leaves the ordinary poll to find it, which is
+            // where this started.
+        });
+    }
+
+    /// Whether an account exists that was never confirmed.
+    bool account_is_provisional() {
+        return client->core.globals.have_account() &&
+               client->core.globals.get_text(provisional_account_key).has_value();
     }
 
     /// The only path frames take out of here. Moved, never copied: the adapter's queue takes
@@ -359,7 +571,8 @@ struct ClientBridge::Impl {
     }
 
     void handle(double id, const CreateAccountCommand&) {
-        client->core.globals.create_account();
+        mark_provisional();
+        client->core.globals.create_account(await);
         on_account();
         ok(id);
     }
@@ -372,20 +585,99 @@ struct ClientBridge::Impl {
         auto raw = hex_bytes(cmd.hex_seed, 32, "hexSeed");
         b32 seed;
         std::memcpy(seed.data(), raw.data(), seed.size());
-        client->core.globals.restore_account(core::predefined_seed{std::span{seed}});
+        mark_provisional();
+        client->core.globals.restore_account(core::predefined_seed{std::span{seed}}, await);
         on_account();
+        fetch_restored_profile();
         ok(id);
     }
 
     void handle(double id, const RestoreAccountFromWordsCommand& cmd) {
-        std::vector<std::string_view> words;
-        words.reserve(cmd.words.size());
-        for (const auto& word : cmd.words)
-            words.emplace_back(word);
+        const auto words = phrase_words(cmd.phrase);
+        mark_provisional();
         client->core.globals.restore_account(
                 cmd.language ? core::predefined_seed{words, *cmd.language}
-                             : core::predefined_seed{words});
+                             : core::predefined_seed{words},
+                await);
         on_account();
+        fetch_restored_profile();
+        ok(id);
+    }
+
+    void handle(double id, const CheckRecoveryPhraseCommand& cmd) {
+        const auto words = phrase_words(cmd.phrase);
+        // Built and thrown away. Deliberately the same constructor RestoreAccountFromWords uses
+        // rather than a decode of its own: a phrase this accepts is then a phrase that restores,
+        // and the word-count rule and the checksum cannot drift apart between the two answers.
+        // Whatever it throws is carried back as the error, which is where libsession names the
+        // unknown word.
+        auto discarded = core::predefined_seed{
+                words, cmd.language ? std::string_view{*cmd.language} : std::string_view{"English"}};
+        static_cast<void>(discarded);
+        ok(id);
+    }
+
+    /// Everything this client writes to disk, and what a discard does to each.
+    ///
+    /// **A table rather than a run of removals.** Something new the client starts writing is then
+    /// a row with a decision in it, rather than a file that quietly outlives every discard
+    /// because nobody thought to come back here. `keep` is the answer that needs a reason.
+    std::vector<std::pair<std::filesystem::path, bool>> on_disk() const {
+        auto wal = options.db_path;
+        wal += "-wal";
+        auto shm = options.db_path;
+        shm += "-shm";
+        return {
+                {options.db_path, true},
+                // The write-ahead log and its shared-memory index. A clean close checkpoints and
+                // removes both, so ordinarily there is nothing here -- but a close is not
+                // guaranteed to be clean, and a stale -wal beside a new database is a database
+                // that will not open.
+                {std::move(wal), true},
+                {std::move(shm), true},
+                // Encrypted under a key that lived in the database just deleted, so already
+                // unreadable -- tidiness rather than safety, and skipping it would leave an
+                // account's pictures on disk for ever.
+                {options.cache_dir, true},
+                // **Kept.** The public service-node list, no account data whatsoever, and what
+                // makes the next attempt fast. A discard that cleaned everything beside the
+                // database would throw away the one thing worth keeping.
+                {netcache_path(options.db_path), false},
+        };
+    }
+
+    /// Throws the account away and opens a new database in its place.
+    ///
+    /// Shared by the command and by the sweep at startup, which want exactly the same thing for
+    /// different reasons: one because somebody went back, the other because nobody ever confirmed
+    /// the account was wanted.
+    void discard_account() {
+        // Closed before anything is removed. Deleting a database out from under an open handle
+        // leaves its pages alive until the last descriptor closes, which looks exactly like having
+        // worked and is not.
+        client.reset();
+
+        std::error_code ec;
+        for (const auto& [path, removed] : on_disk()) {
+            if (!removed || path.empty())
+                continue;
+            // `remove_all` rather than `remove`: the same call takes a single file and a
+            // directory, so a row does not have to say which it is.
+            std::filesystem::remove_all(path, ec);
+        }
+
+        open_client();
+    }
+
+    void handle(double id, const DiscardAccountCommand&) {
+        discard_account();
+        ok(id);
+    }
+
+    void handle(double id, const KeepAccountCommand&) {
+        // Erasing the marker is the whole of it: what it was protecting against is a start that
+        // finds an account nobody confirmed.
+        client->core.globals.erase(provisional_account_key);
         ok(id);
     }
 
@@ -418,6 +710,42 @@ struct ClientBridge::Impl {
             throw;
         }
         ok(id);
+    }
+
+    /// How many nodes are asked for, which is what decides whether the pool gets refreshed.
+    ///
+    /// `get_random_nodes` refreshes only when it cannot satisfy the count from unused nodes, so
+    /// this is a floor on the pool rather than a number anybody consumes: the nodes themselves
+    /// are dropped, and the cache they were fetched into is the whole product.
+    static constexpr std::uint16_t WARM_NODE_COUNT = 12;
+
+    void handle(double id, const WarmNetworkCacheCommand&) {
+        // Nothing to gain once there is an account: the client's own network is attached, or is
+        // about to be by `on_account`, and a second one refreshing the same cache is the cost this
+        // avoids rather than the saving it makes.
+        if (client->core.globals.have_account())
+            return respond(id, BoolResult{false});
+
+        // One at a time. Replacing a running one would block this thread on its loop, and the
+        // second caller wants the cache warm rather than warmed twice.
+        if (warm)
+            return respond(id, BoolResult{false});
+
+        auto planned = plan_network(options.network, options.db_path);
+        if (!planned)
+            return respond(id, BoolResult{false});
+
+        warm = std::make_unique<session::network::Network>(
+                session::network::config::Config{*planned});
+
+        // Answered from the network's own loop, as every libsession callback here is. It does not
+        // drop `warm`: that would join the loop it is running on. An empty list is how
+        // `get_random_nodes` reports failure, so it is also the answer.
+        warm->get_random_nodes(
+                WARM_NODE_COUNT,
+                [this, id](std::vector<session::network::service_node> nodes) {
+                    respond(id, BoolResult{!nodes.empty()});
+                });
     }
 
     void handle(double id, const SetPollIntervalCommand& cmd) {
@@ -698,98 +1026,18 @@ struct ClientBridge::Impl {
 ClientBridge::ClientBridge(InitOptions options, Sink sink) :
         _impl{std::make_unique<Impl>(std::move(sink), options)} {
 
-    auto* impl = _impl.get();
+    _impl->open_client();
 
-    // Every handler does the same two things and nothing else: fill a frame, and hand it to the
-    // sink. That is what makes running them inline on Core's loop correct rather than merely
-    // convenient.
-    client::callbacks cbs{
-            .conversation_added =
-                    [impl](client::AnyConversation c) {
-                        impl->event(ConversationAddedSessionEvent{to_bridge(std::move(c))});
-                    },
-            .conversation_updated =
-                    [impl](client::AnyConversation c) {
-                        impl->event(ConversationUpdatedSessionEvent{to_bridge(std::move(c))});
-                    },
-            .conversation_removed =
-                    [impl](const client::ConversationId& id) {
-                        impl->event(ConversationRemovedSessionEvent{id.to_string()});
-                    },
-            .conversation_list_replaced =
-                    [impl](std::vector<client::AnyConversation> convos) {
-                        impl->event(ConversationListReplacedSessionEvent{
-                                Impl::conversations(std::move(convos))});
-                    },
-            .request_list_replaced =
-                    [impl](std::vector<client::AnyConversation> convos) {
-                        impl->event(RequestListReplacedSessionEvent{
-                                Impl::conversations(std::move(convos))});
-                    },
-            .message_added =
-                    [impl](const client::ConversationId& id, client::Message m) {
-                        impl->event(
-                                MessageAddedSessionEvent{id.to_string(), to_bridge(std::move(m))});
-                    },
-            .message_updated =
-                    [impl](const client::ConversationId& id, client::Message m) {
-                        impl->event(
-                                MessageUpdatedSessionEvent{id.to_string(), to_bridge(std::move(m))});
-                    },
-            .history_replaced =
-                    [impl](const client::ConversationId& id) {
-                        impl->event(HistoryReplacedSessionEvent{id.to_string()});
-                    },
-            // attachment_progress and display_picture_progress are deliberately left unset:
-            // no transfer is part of the protocol, so there is no frame to report one on.
-    };
-
-    // The key options are types rather than values, so which one is used has to be a branch
-    // rather than an argument. Only one of these ever runs, which is what makes moving the
-    // callbacks in each of them safe.
-    auto open = [&](auto&&... key) {
-        if (options.defer_account)
-            return std::make_unique<client::Client>(
-                    options.db_path,
-                    std::move(cbs),
-                    core::defer_account{},
-                    std::forward<decltype(key)>(key)...);
-        return std::make_unique<client::Client>(
-                options.db_path, std::move(cbs), std::forward<decltype(key)>(key)...);
-    };
-
-    if (options.raw_key)
-        _impl->client = open(sqlite::raw_key{*options.raw_key});
-    else if (options.password)
-        _impl->client = open(sqlite::argon2id_password{*options.password});
-    else
-        _impl->client = open();
-
-    if (!options.cache_dir.empty())
-        _impl->client->set_cache_dir(options.cache_dir);
-
-    // Set up after the Client exists, so nothing arrives before there is a sink to take it.
-    if (!options.log_level.empty() || !options.log_categories.empty()) {
-        if (!options.log_level.empty())
-            logger_reset_level(log_level_of(options.log_level));
-
-        // After the default, because reset_level sets every existing category: the other order
-        // would hand each override straight back to the level it was overriding.
-        for (const auto& each : options.log_categories)
-            logger_set_level(each.category, log_level_of(each.level));
-
-        // Kept so close() can take it back off: this fires from threads close() cannot join,
-        // and what it writes to does not outlive the bridge.
-        impl->logger =
-                add_logger([impl](std::string_view message,
-                                  std::string_view category,
-                                  LogLevel lvl) {
-                    impl->event(LogSessionEvent{
-                            std::string{message},
-                            std::string{category},
-                            std::string{lvl.to_string()}});
-                });
-    }
+    // **An account nobody confirmed does not survive a restart.** Between minting one and the end
+    // of whatever was setting it up there is a window, and a crash in it leaves an identity behind
+    // that was never finished with. Finding it here and throwing it away puts the application back
+    // at its first screen rather than partway through a setup it has no memory of.
+    //
+    // For a restore that matters more than it sounds: such an account has the right identity and
+    // no display name yet, so an application that carried on would be asking somebody to name an
+    // account that already has a name on the network -- and taking the answer.
+    if (_impl->account_is_provisional())
+        _impl->discard_account();
 
     // An account that is already there needs no onboarding, so this is where its network comes
     // from. A deferred one gets it from createAccount or restoreAccount instead.
@@ -807,13 +1055,28 @@ void ClientBridge::close() {
     // is neither running nor reachable; destroying the Client then joins Core's loop, so nothing
     // is mid-emit by the time the Impl the two of them write to goes.
     remove_logger(_impl->logger);
+    // Before the Impl, for the same reason as the logger: its callback holds `this` and answers on
+    // the sink, and destroying a Network joins the loop that callback runs on -- so once this
+    // returns, no warm answer can still be in flight.
+    _impl->warm.reset();
     _impl->client.reset();
     _impl.reset();
 }
 
 void ClientBridge::call(Request request) {
-    if (!_impl || !_impl->client)
+    // Nothing can be answered once the Impl is gone: there is no sink left to answer on. The
+    // caller's pending requests were rejected by `close` before it got here.
+    if (!_impl)
         return;
+
+    // **Refused, not dropped.** A discard that could not reopen the database leaves the Impl with
+    // no client, and every request after it used to return from here without a response at all.
+    // Nothing above has a timeout, so the promise each was made for never settled and the app
+    // simply stopped, with nothing said anywhere.
+    if (!_impl->client) {
+        _impl->fail(request.id, "the bridge has no database open");
+        return;
+    }
 
     try {
         _impl->dispatch(request);

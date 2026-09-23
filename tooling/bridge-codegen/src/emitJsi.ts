@@ -1,6 +1,12 @@
 import { BANNER, cppType, fieldType, forEachDeclaration, member, NAMESPACE } from '#src/cpp'
 import type { Field, Model, Struct } from '#src/model'
 
+/** `createFromAscii` reads bytes as code points, so a tag with anything else would come out wrong. */
+function assertAscii(text: string, where: string): void {
+  // eslint-disable-next-line no-control-regex
+  if (!/^[\x00-\x7f]*$/.test(text)) throw new Error(`${where}: "${text}" is not ASCII`)
+}
+
 /**
  * `margelo::nitro::JSIConverter` specialisations, so Nitro can carry the protocol types through a
  * HybridObject method or callback without nitrogen generating a struct of its own. Shaped after
@@ -8,12 +14,6 @@ import type { Field, Model, Struct } from '#src/model'
  * rather than written as `undefined`, which is what exactOptionalPropertyTypes on the other side
  * means.
  */
-/** `createFromAscii` reads bytes as code points, so a tag with anything else would come out wrong. */
-function assertAscii(text: string, where: string): void {
-  // eslint-disable-next-line no-control-regex
-  if (!/^[\x00-\x7f]*$/.test(text)) throw new Error(`${where}: "${text}" is not ASCII`)
-}
-
 export function emitJsi(model: Model, source: string): string {
   const prop = (name: string) => `PropNameIDCache::get(runtime, "${name}")`
   const conv = (type: string) => `JSIConverter<${type}>`
@@ -159,12 +159,14 @@ ${canConvert}
 
 #include <jsi/jsi.h>
 
+#include <cstring>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <variant>
+#include <vector>
 
 #include "types.hpp"
 
@@ -189,6 +191,54 @@ inline std::optional<T> optional_from_jsi(
 }  // namespace session_bridge
 
 namespace margelo::nitro {
+
+/// Binary as an ArrayBuffer, which is what a Uint8Array's \`.buffer\` is on the way through.
+///
+/// Copied on the way in rather than held: Nitro's ArrayBuffer may be a view onto memory JavaScript
+/// still owns, and the shim's work happens on another thread where that is not safe to assume.
+template <>
+struct JSIConverter<std::vector<std::byte>> final {
+    static inline std::vector<std::byte> fromJSI(
+            facebook::jsi::Runtime& runtime, const facebook::jsi::Value& value) {
+        auto buffer = JSIConverter<std::shared_ptr<ArrayBuffer>>::fromJSI(runtime, value);
+        const auto* first = reinterpret_cast<const std::byte*>(buffer->data());
+        return {first, first + buffer->size()};
+    }
+
+    static inline facebook::jsi::Value toJSI(
+            facebook::jsi::Runtime& runtime, const std::vector<std::byte>& value) {
+        auto buffer = ArrayBuffer::allocate(value.size());
+        std::memcpy(buffer->data(), value.data(), value.size());
+        return JSIConverter<std::shared_ptr<ArrayBuffer>>::toJSI(runtime, buffer);
+    }
+
+    static inline bool canConvert(
+            facebook::jsi::Runtime& runtime, const facebook::jsi::Value& value) {
+        return JSIConverter<std::shared_ptr<ArrayBuffer>>::canConvert(runtime, value);
+    }
+};
+
+/// The same wire shape as plain bytes; the difference is what holds them on this side.
+template <>
+struct JSIConverter<::session_bridge::SecretBytes> final {
+    static inline ::session_bridge::SecretBytes fromJSI(
+            facebook::jsi::Runtime& runtime, const facebook::jsi::Value& value) {
+        return ::session_bridge::SecretBytes{
+                JSIConverter<std::vector<std::byte>>::fromJSI(runtime, value)};
+    }
+
+    static inline facebook::jsi::Value toJSI(
+            facebook::jsi::Runtime& runtime, const ::session_bridge::SecretBytes& value) {
+        auto bytes = value.bytes();
+        return JSIConverter<std::vector<std::byte>>::toJSI(
+                runtime, std::vector<std::byte>{bytes.begin(), bytes.end()});
+    }
+
+    static inline bool canConvert(
+            facebook::jsi::Runtime& runtime, const facebook::jsi::Value& value) {
+        return JSIConverter<std::vector<std::byte>>::canConvert(runtime, value);
+    }
+};
 
 ${body}
 }  // namespace margelo::nitro

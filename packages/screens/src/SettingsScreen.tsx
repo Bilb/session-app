@@ -1,12 +1,13 @@
 import { tr } from '@session/localization'
-import { useAccount } from '@session/state'
+import { useAccount, useSessionActions } from '@session/state'
 import { useState } from 'react'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Screen, Separator, Text, XStack, YStack } from '@session/ui'
+import { Button, Modal, Screen, Separator, Text, XStack, YStack } from '@session/ui'
 
 import { requirePorts } from '@session/app'
 
 import { BackButton } from './BackButton'
+import { LocalizedText } from './LocalizedText'
 
 /**
  * Settings, which for now is the account.
@@ -17,7 +18,10 @@ import { BackButton } from './BackButton'
  */
 export function SettingsScreen() {
   const account = useAccount()
+  const actions = useSessionActions()
   const [copied, setCopied] = useState(false)
+  const [confirmingClear, setConfirmingClear] = useState(false)
+  const [clearing, setClearing] = useState(false)
 
   // Not a fallback string, because there is no honest one. This screen exists to hand somebody
   // their account ID; with no account there is nothing to show and no reason to be here, and a
@@ -33,18 +37,18 @@ export function SettingsScreen() {
 
   return (
     <Screen padded testID={ELEMENT.settings.screen}>
-      <XStack alignItems="center" gap="$1.5">
+      <XStack alignItems="center" gap="$sm">
         <BackButton testID={ELEMENT.settings.back} />
-        <Text size="$6" weight="bold">
+        <Text size="$title" weight="bold">
           {tr('sessionSettings')}
         </Text>
       </XStack>
 
-      <YStack paddingVertical="$2" gap="$0.5">
-        <Text tone="secondary" size="$2">
+      <YStack paddingVertical="$md" gap="$2xs">
+        <Text tone="secondary" size="$caption">
           {tr('accountId')}
         </Text>
-        <XStack alignItems="center" gap="$1">
+        <XStack alignItems="center" gap="$xs">
           <Text
             testID={ELEMENT.settings.accountId}
             // Wraps rather than truncates: a session ID that is cut off is not one you can
@@ -80,8 +84,8 @@ export function SettingsScreen() {
 
       <Separator borderColor="$bordersColor" />
 
-      <YStack paddingVertical="$2" gap="$0.5">
-        <Text tone="secondary" size="$2">
+      <YStack paddingVertical="$md" gap="$2xs">
+        <Text tone="secondary" size="$caption">
           {tr('networkName')}
         </Text>
         {/* The network this build talks to, which it knows from its own configuration whether or
@@ -89,6 +93,73 @@ export function SettingsScreen() {
             the catalogue has no words for, and both read as a fault on a build that is working. */}
         <Text testID={ELEMENT.settings.networkStatus}>{requirePorts().network.name}</Text>
       </YStack>
+
+      <Separator borderColor="$bordersColor" />
+
+      {/* **The short version, on purpose.** The legacy client's clear offers a choice between this
+          device and the network as well, and reports each step as it goes. This deletes everything
+          on this device and starts again from nothing, which is what onboarding's own back already
+          does -- so it is the same call, not a second way to delete an account. The full version is
+          its own piece of work. */}
+      <YStack paddingVertical="$md" gap="$xs" alignItems="flex-start">
+        <Button
+          variant="outline"
+          size="sm"
+          destructive
+          testID={ELEMENT.settings.clearData}
+          onPress={() => {
+            setConfirmingClear(true)
+          }}
+        >
+          {tr('clearDataAll')}
+        </Button>
+      </YStack>
+
+      <Modal
+        open={confirmingClear}
+        onClose={() => {
+          setConfirmingClear(false)
+        }}
+        title={tr('clearDataAll')}
+        closeLabel={tr('cancel')}
+        showClose={false}
+        testID={ELEMENT.settings.confirmClearData}
+        closeTestID={ELEMENT.settings.cancelClearData}
+        actions={
+          <>
+            <Button
+              variant="ghost"
+              fill
+              borderRadius="$none"
+              destructive
+              loading={clearing}
+              testID={ELEMENT.settings.confirmClearDataButton}
+              onPress={() => {
+                setClearing(true)
+                void actions.clearDeviceData().finally(() => {
+                  setClearing(false)
+                  setConfirmingClear(false)
+                })
+              }}
+            >
+              {tr('clear')}
+            </Button>
+            <Button
+              variant="ghost"
+              fill
+              borderRadius="$none"
+              testID={ELEMENT.settings.cancelClearData}
+              onPress={() => {
+                setConfirmingClear(false)
+              }}
+            >
+              {tr('cancel')}
+            </Button>
+          </>
+        }
+      >
+        <LocalizedText text={tr('clearDeviceDescription')} />
+      </Modal>
     </Screen>
   )
 }

@@ -14,8 +14,8 @@ This package is the only one allowed to import tamagui. Everything else imports 
 
 - Colours come from theme tokens (`$textPrimary`, `$backgroundSecondary`). **No hex outside
   `@session/theme-tokens`.** A colour written here is one no theme can restyle.
-- Sizes come from the token scales: `$1`-`$4` space, `$6`-`$8` size (component heights),
-  `$1`-`$4` radius.
+- Sizes come from the token scales, which are named rather than numbered: `$xs`-`$3xl` space,
+  `$xs`-`$5xl` size (component heights), `$sm`-`$xl` radius.
 - Take a `testID` prop and pass it through if the component is interactive.
 - Export it from `src/index.ts`.
 
@@ -37,8 +37,9 @@ after touching one.
 
 ## Tamagui edges worth knowing
 
-- **A missing token resolves to 0, silently.** `padding="$1.5"` on a scale without a 1.5 is
-  not an error, it is no padding. The space scale here has half steps for this reason.
+- **A missing token resolves to 0, silently.** `padding="$smal"` on a scale with no `smal` is
+  not an error, it is no padding. Space tokens are named (`$xxs` to `$3xl`, from `SPACING`), not
+  numbered, so a step reads as the step it is rather than as a position to count.
 - **`fontSize` alone does not set line height.** Build on `SizableText` and use `size`, which
   drives both. `Text` already does.
 - **`settings.defaultFont` must be set** or `$4` resolves against the space scale.

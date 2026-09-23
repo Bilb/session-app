@@ -11,7 +11,6 @@ export const routes = {
   newConversation: () => '/new',
   requests: () => '/requests',
   settings: () => '/settings',
-  onboarding: () => '/onboarding',
 } as const
 
 /**

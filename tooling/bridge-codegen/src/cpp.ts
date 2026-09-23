@@ -22,6 +22,10 @@ export function cppType(type: TypeRef): string {
       return 'double'
     case 'boolean':
       return 'bool'
+    case 'bytes':
+      return 'std::vector<std::byte>'
+    case 'secret':
+      return `${NAMESPACE}::SecretBytes`
     case 'enum':
     case 'struct':
     case 'union':

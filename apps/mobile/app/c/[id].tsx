@@ -1,4 +1,4 @@
-import { ConversationScreen } from '@session/screens'
+import { ConversationScreen, useLocale } from '@session/screens'
 import { useLocalSearchParams } from 'expo-router'
 
 /**
@@ -6,6 +6,7 @@ import { useLocalSearchParams } from 'expo-router'
  * screen itself never has to know which router it is running under.
  */
 export default function ConversationRoute() {
+  useLocale()
   const { id } = useLocalSearchParams<{ id: string }>()
   if (id === undefined) return null
   return <ConversationScreen conversationId={decodeURIComponent(id)} />

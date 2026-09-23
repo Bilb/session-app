@@ -1,5 +1,13 @@
-import { ConversationListScreen, OnboardingScreen, StartingScreen } from '@session/screens'
-import { useAccount, useHydrated } from '@session/state'
+import {
+  ConversationListScreen,
+  OnboardingFlow,
+  StartingScreen,
+  StartupFailedScreen,
+  useLocale,
+  usePersistedLocale,
+} from '@session/screens'
+import { useAccount, useHydrated, useStartupError } from '@session/state'
+import { useState } from 'react'
 
 /**
  * The list, or onboarding when there is no account to list anything for.
@@ -16,10 +24,21 @@ import { useAccount, useHydrated } from '@session/state'
  * AdaptiveShell keeps it beside the detail. Neither is decided here.
  */
 export default function IndexRoute() {
+  useLocale()
   const hydrated = useHydrated()
+  const startupError = useStartupError()
   const account = useAccount()
+  const [onboarding, setOnboarding] = useState(false)
+  // Here rather than in the layout, which creates the store provider and so cannot read from it.
+  usePersistedLocale()
 
+  // Asked before `hydrated`, because both are false when a start has failed and only one of them
+  // says so. The other order leaves the launch screen up over a failure that is already known.
+  if (startupError !== null) return <StartupFailedScreen error={startupError} />
   if (!hydrated) return <StartingScreen />
-  if (account?.haveAccount !== true) return <OnboardingScreen />
+  // `|| onboarding` because an account appearing is not the same as onboarding being over: a
+  // restore mints one the moment the phrase is accepted and still has a wait to sit through.
+  if (account?.haveAccount !== true || onboarding)
+    return <OnboardingFlow onRunningChange={setOnboarding} />
   return <ConversationListScreen />
 }

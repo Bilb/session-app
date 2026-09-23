@@ -22,6 +22,49 @@ export { desktopMainZone, desktopRendererZone, mobileAppZone, sharedZone, uiZone
  *
  * @param {{ tsconfigRootDir: string, zone?: import('eslint').Linter.RulesRecord }} options
  */
+/**
+ * Props whose value resolves against a token scale rather than being a measurement.
+ *
+ * One list, because the two selectors that use it have to agree: a prop covered in JSX and missed
+ * in a style object leaves the hole exactly where the style object is the harder spelling to spot.
+ *
+ * Deliberately not `width`, `height` or `flexBasis` -- those carry real measurements often enough
+ * that the rule would be noise, and a size token is a different question from a space one.
+ */
+const SCALED_PROPS = [
+  // Every component that takes `size` resolves it against a named scale, so a number here is
+  // never the measurement a `width` can legitimately be.
+  'size',
+  'padding',
+  'paddingHorizontal',
+  'paddingVertical',
+  'paddingTop',
+  'paddingBottom',
+  'paddingStart',
+  'paddingEnd',
+  'paddingLeft',
+  'paddingRight',
+  'margin',
+  'marginHorizontal',
+  'marginVertical',
+  'marginTop',
+  'marginBottom',
+  'marginStart',
+  'marginEnd',
+  'marginLeft',
+  'marginRight',
+  'gap',
+  'columnGap',
+  'rowGap',
+  'space',
+  'borderRadius',
+  'borderTopLeftRadius',
+  'borderTopRightRadius',
+  'borderBottomLeftRadius',
+  'borderBottomRightRadius',
+  'fontSize',
+].join('|')
+
 export function baseConfig({ tsconfigRootDir, zone }) {
   return tseslint.config(
     { ignores: ['dist/**', 'out/**', 'build/**', 'coverage/**', '**/gen/**', '**/generated/**'] },
@@ -69,6 +112,27 @@ export function baseConfig({ tsconfigRootDir, zone }) {
             message:
               "Add a top-level `import type { T } from '...'` instead of an inline import() type.",
           },
+          // A bare number on a prop that reads a token scale. Both spellings are covered, because
+          // a literal is invisible to anything that checks tokens: it is not a token resolving to
+          // the wrong value, it is a value that never asked the scale. `$none` is the zero.
+          {
+            selector:
+              'JSXAttribute[name.name=/^' +
+              SCALED_PROPS +
+              '$/] > JSXExpressionContainer > Literal[raw=/^[0-9]+(\\.[0-9]+)?$/]',
+            message:
+              'Name a token here ("$md", "$none") rather than a number, so the scale stays the ' +
+              'single place a value changes. If the number is deliberately off-scale -- a measured ' +
+              'client value -- give it a named constant and disable this rule with the reason.',
+          },
+          {
+            selector:
+              'Property[key.name=/^' + SCALED_PROPS + '$/] > Literal[raw=/^[0-9]+(\\.[0-9]+)?$/]',
+            message:
+              'Name a token here rather than a number, so the scale stays the single place a ' +
+              'value changes. If it is deliberately off-scale, give it a named constant and ' +
+              'disable this rule with the reason.',
+          },
         ],
       },
     },
@@ -79,12 +143,38 @@ export function baseConfig({ tsconfigRootDir, zone }) {
       extends: [tseslint.configs.disableTypeChecked],
     },
     {
-      // Config files sit outside every tsconfig's `include`, so the project service has no
-      // types for them. They are plain ESM and there is nothing type-aware worth asserting.
-      files: ['**/*.config.{js,mjs,cjs,ts}', '**/*.cjs'],
+      // Config files and codegen scripts sit outside every tsconfig's `include`, so the project
+      // service has no types for them. Both are plain ESM run by node at build time, and there is
+      // nothing type-aware worth asserting about either; without this a script is a parse error
+      // rather than a lint result.
+      files: ['**/*.config.{js,mjs,cjs,ts}', '**/*.cjs', '**/scripts/**/*.{js,mjs,cjs}'],
       extends: [tseslint.configs.disableTypeChecked],
+      languageOptions: { globals: { console: 'readonly', process: 'readonly' } },
     },
     ...(zone ? [{ rules: zone }] : []),
+    {
+      // A whole-Program selector, because the offence is where the file is rather than anything
+      // in it: a package's `src` is its published source tree, and a test there ships with it.
+      // Scoped to a package's or app's own source tree. The repo's top-level `tests/` is where
+      // cross-cutting test code already lives -- the bench harness keeps its specs beside the
+      // fixtures they measure, and moving those would mean `tests/bench/tests/`.
+      files: [
+        'packages/*/src/**/*.{test,spec}.{ts,tsx}',
+        'apps/*/src/**/*.{test,spec}.{ts,tsx}',
+        'tooling/*/src/**/*.{test,spec}.{ts,tsx}',
+      ],
+      rules: {
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: 'Program',
+            message:
+              "Tests live in the package's `tests/` directory, never in `src/`, mirroring the " +
+              'src path they cover. Reach back into the package with `#src/*`.',
+          },
+        ],
+      },
+    },
     {
       files: ['**/*.test.ts', '**/*.test.tsx', '**/*.spec.ts', '**/*.spec.tsx'],
       rules: {

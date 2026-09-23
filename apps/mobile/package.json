@@ -4,12 +4,18 @@
   "private": true,
   "description": "The Session mobile app: one Expo app for Android and iOS, phone and tablet",
   "main": "index.ts",
+  "imports": {
+    "#src/*": [
+      "./src/*.ts",
+      "./src/*.tsx"
+    ]
+  },
   "scripts": {
     "dev": "node --env-file-if-exists=../../.env ../../node_modules/expo/bin/cli start --dev-client --clear",
     "dev:fake": "EXPO_PUBLIC_SESSION_FAKE=1 expo start --dev-client --clear",
     "android": "GRADLE_OPTS=-Dorg.gradle.configuration-cache=false node --env-file-if-exists=../../.env ../../node_modules/expo/bin/cli run:android",
-    "ios": "node --env-file-if-exists=../../.env ../../node_modules/expo/bin/cli run:ios",
-    "prebuild": "expo prebuild",
+    "ios": "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --env-file-if-exists=../../.env ../../node_modules/expo/bin/cli run:ios",
+    "prebuild": "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 expo prebuild",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"
@@ -23,6 +29,8 @@
     "@session/state": "workspace:*",
     "@session/ui": "workspace:*",
     "expo": "catalog:",
+    "expo-blur": "catalog:",
+    "expo-camera": "catalog:",
     "expo-clipboard": "catalog:",
     "expo-constants": "catalog:",
     "expo-crypto": "catalog:",
@@ -33,13 +41,17 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-native": "catalog:",
+    "react-native-keyboard-controller": "catalog:",
     "react-native-nitro-modules": "catalog:",
+    "react-native-reanimated": "catalog:",
     "react-native-safe-area-context": "catalog:",
     "react-native-screens": "catalog:",
     "react-native-svg": "catalog:",
-    "react-native-web": "catalog:"
+    "react-native-web": "catalog:",
+    "react-native-worklets": "catalog:"
   },
   "devDependencies": {
+    "@expo/config-plugins": "catalog:",
     "@session/eslint-config": "workspace:*",
     "@session/typescript-config": "workspace:*",
     "@tamagui/babel-plugin": "catalog:",

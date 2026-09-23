@@ -12,6 +12,21 @@ export type TypeRef =
   | { kind: 'string' }
   | { kind: 'number' }
   | { kind: 'boolean' }
+  /** Binary, written as `Uint8Array`. */
+  | { kind: 'bytes' }
+  /**
+   * Binary that is wiped when it goes, written as `SecretBytes`.
+   *
+   * The protocol declares `export type SecretBytes = Uint8Array` alongside the first field that
+   * needs one -- there is nothing to declare until then, and an unused alias is just a thing to
+   * wonder about. The generator matches the spelling rather than a declaration of ours.
+   *
+   * A separate kind rather than a flag on `bytes`, because the two want different C++: ordinary
+   * bytes are a `std::vector`, and a secret is a buffer that zeroes in its destructor. Telling
+   * them apart in the protocol is what lets a seed be handled as a seed everywhere it lands,
+   * rather than everywhere somebody remembered.
+   */
+  | { kind: 'secret' }
   | { kind: 'enum'; name: string }
   | { kind: 'struct'; name: string }
   | { kind: 'union'; name: string }
@@ -295,6 +310,12 @@ class Extractor {
     if (ts.isTypeReferenceNode(node)) {
       if (node.typeArguments?.length)
         throw fail(node, `${context}: generic types are not supported`)
+      // Matched by name, before the symbol is resolved: these two are not declarations of ours to
+      // generate, they are the spellings the protocol uses for binary. `SecretBytes` is an alias
+      // for `Uint8Array` on the TypeScript side, so a caller sees one type and the C++ sees two.
+      const named = node.typeName.getText()
+      if (named === 'Uint8Array') return { kind: 'bytes' }
+      if (named === 'SecretBytes') return { kind: 'secret' }
       const symbol = this.checker.getSymbolAtLocation(node.typeName)
       if (!symbol) throw fail(node, `${context}: cannot resolve ${node.typeName.getText()}`)
       return this.resolveSymbol(symbol, context)
@@ -302,7 +323,7 @@ class Extractor {
     if (ts.isParenthesizedTypeNode(node)) return this.resolveTypeNode(node.type, context)
     throw fail(
       node,
-      `${context}: unsupported type '${node.getText()}' (allowed: string, number, boolean, a string-union alias, an interface, a tagged union alias, or an array of one)`,
+      `${context}: unsupported type '${node.getText()}' (allowed: string, number, boolean, Uint8Array, SecretBytes, a string-union alias, an interface, a tagged union alias, or an array of one)`,
     )
   }
 

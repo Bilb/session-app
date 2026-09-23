@@ -1,7 +1,7 @@
 import { useNav } from '@session/app'
 import { tr } from '@session/localization'
 import type { ElementId } from '@session/test-ids'
-import { Button, Icon } from '@session/ui'
+import { backChevron, Button, Icon } from '@session/ui'
 
 /**
  * The way back, drawn the same way everywhere.
@@ -25,7 +25,7 @@ export function BackButton({ testID }: { testID: ElementId }) {
       onPress={() => nav.back()}
       testID={testID}
       accessibilityLabel={tr('back')}
-      icon={<Icon name="chevronLeft" size="$4" color="$textPrimary" />}
+      icon={<Icon name={backChevron()} size="md" color="$textPrimary" />}
     />
   )
 }

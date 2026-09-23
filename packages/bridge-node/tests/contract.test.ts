@@ -84,21 +84,28 @@ interface Peer {
   sessionId: string
   seed: string
   dir: string
+  /** How this peer was opened, so a restart opens it the same way. */
+  deferred: boolean
 }
 
-async function openPeer(dir: string): Promise<Peer> {
+async function openPeer(dir: string, { deferred = false } = {}): Promise<Peer> {
   await mkdir(join(dir, 'cache'), { recursive: true })
   const transport = createNodeBridgeTransport({
     dbPath: join(dir, 'session.db'),
     cacheDir: join(dir, 'cache'),
     rawKey: new Uint8Array(32).fill(11),
-    // Eagerly, because a peer is only useful once it has an identity to send from.
-    deferAccount: false,
+    // Eagerly, because a peer is only useful once it has an identity to send from -- except a
+    // newcomer, which exists precisely to have none.
+    deferAccount: deferred,
   })
   const { forFacade, ask } = tap(transport)
   const client = createSessionClient(forFacade)
 
   const info = await client.getAccountInfo()
+  if (deferred)
+    // No account, so no seed to ask for: the test-only command answers off one.
+    return { client, ask, sessionId: '', seed: '', dir, deferred }
+
   const seed = await ask({ type: 'getTestAccountSeed' })
   if (seed.result?.type !== 'hex') throw new Error(seed.error ?? 'no seed: build with testing on')
 
@@ -108,6 +115,7 @@ async function openPeer(dir: string): Promise<Peer> {
     sessionId: info.sessionId ?? '',
     seed: seed.result.hex,
     dir,
+    deferred,
   }
 }
 
@@ -209,13 +217,34 @@ describeAddon('addon', () => {
       return { alice: alice.client, bob: bob.client, bobId: bob.sessionId, settle }
     },
 
+    async newcomer() {
+      sequence += 1
+      // Its own database, opened deferred: this is the only harness entry that has to reach a
+      // client with no identity, because it is the only scenario about not having one yet.
+      const peer = await openPeer(join(root, `newcomer-${String(sequence)}`), { deferred: true })
+      open.push(peer)
+      // Registered so `restart` can find it: the sweep scenarios restart a newcomer, and a
+      // restart has to reopen deferred or libsession mints a fresh account on the way back up and
+      // the question the test is asking disappears.
+      peers.set(peer.client, peer)
+      const client = peer.client
+
+      // A phrase libsession really issued, from an account made and thrown away for the purpose.
+      // Nothing else can produce one: the word list is libsession's.
+      const source = await openPeer(join(root, `phrase-${String(sequence)}`))
+      open.push(source)
+      const phrase = await source.client.getSeedMnemonic()
+
+      return { client, phrase }
+    },
+
     async restart(client: SessionClient) {
       const peer = peers.get(client)
       if (!peer) throw new Error('restart was given a client this harness did not open')
       // The real thing: the process goes, the database stays. Anything libsession had in
       // flight is gone with it, which is what puts a send into `interrupted`.
       client.close()
-      const reopened = await openPeer(peer.dir)
+      const reopened = await openPeer(peer.dir, { deferred: peer.deferred })
       open.push(reopened)
       peers.set(reopened.client, reopened)
       return reopened.client

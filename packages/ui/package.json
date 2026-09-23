@@ -25,6 +25,7 @@
   "dependencies": {
     "@session/theme-tokens": "workspace:*",
     "@tamagui/lucide-icons-2": "catalog:",
+    "react-native-keyboard-controller": "catalog:",
     "react-native-safe-area-context": "catalog:",
     "tamagui": "catalog:"
   },

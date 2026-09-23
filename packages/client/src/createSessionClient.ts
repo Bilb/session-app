@@ -1,3 +1,4 @@
+import { utf8Encode } from '@session/basic-types'
 import type {
   AccountInfo,
   Command,
@@ -18,9 +19,31 @@ import type { BridgeTransport, OutgoingMessage, SessionClient, Unsubscribe } fro
 type Pending = {
   resolve: (response: Response) => void
   reject: (error: Error) => void
+  /**
+   * Which command is waiting, kept only so a refusal can name it.
+   *
+   * libsession's messages describe the argument it would not take -- "Invalid conversation id" --
+   * and say nothing about what was being asked. One of those surfaced as an unhandled rejection
+   * during startup and the only way to find out which of the eight commands that take a
+   * conversation id had sent it was to add this, so it stays.
+   */
+  command: Command['type']
 }
 
 type ResultOf<K extends Result['type']> = Extract<Result, { type: K }>
+
+/**
+ * A phrase as the bytes the bridge takes, joined by the single space the shim splits on.
+ *
+ * **The last place it is a string.** Everything above this has one already -- the field's value,
+ * the state holding it, the array split out of it -- and none of those can be wiped. What this
+ * buys is the copy that would otherwise cross into the other process, where the sender could
+ * never reach it: the buffer is transferred rather than cloned, so it exists once and the shim
+ * zeroes it.
+ */
+function phraseBytes(words: readonly string[]): Uint8Array {
+  return utf8Encode(words.join(' '))
+}
 
 /**
  * Turns a transport into the client everything else is written against.
@@ -42,7 +65,7 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       if (!waiting) return
       pending.delete(response.id)
       if (response.error !== undefined) {
-        waiting.reject(new SessionClientError(response.error))
+        waiting.reject(new SessionClientError(`${waiting.command}: ${response.error}`))
       } else {
         waiting.resolve(response)
       }
@@ -61,7 +84,7 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
     const request: Request = { id, command }
 
     return new Promise<Response>((resolve, reject) => {
-      pending.set(id, { resolve, reject })
+      pending.set(id, { resolve, reject, command: command.type })
       transport.send(request)
     })
   }
@@ -101,9 +124,25 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       }
       await call({
         type: 'restoreAccountFromWords',
-        words: from.words,
+        phrase: phraseBytes(from.words),
         ...(from.language === undefined ? {} : { language: from.language }),
       })
+    },
+
+    async checkRecoveryPhrase(words, language): Promise<void> {
+      await call({
+        type: 'checkRecoveryPhrase',
+        phrase: phraseBytes(words),
+        ...(language === undefined ? {} : { language }),
+      })
+    },
+
+    async discardAccount(): Promise<void> {
+      await call({ type: 'discardAccount' })
+    },
+
+    async keepAccount(): Promise<void> {
+      await call({ type: 'keepAccount' })
     },
 
     async getSeedMnemonic(language): Promise<string[]> {
@@ -130,6 +169,11 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
 
     async pollOnce(): Promise<void> {
       await call({ type: 'pollOnce' })
+    },
+
+    async warmNetworkCache(): Promise<boolean> {
+      const response = await call({ type: 'warmNetworkCache' })
+      return expect(response, 'bool').value
     },
 
     async getConversations(): Promise<Conversation[]> {

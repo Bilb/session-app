@@ -26,6 +26,15 @@ import type {
 export interface FakeAccountOptions {
   displayName: string
   sessionId?: string
+  /**
+   * Whether an identity has been minted yet. True unless a fixture says otherwise, because almost
+   * every scenario is about an app that is already past onboarding.
+   *
+   * False is the first-launch state, and it is the only way to reach the onboarding screens at
+   * all: the app decides which to render from `haveAccount`, so a fake that is always true makes
+   * that whole branch unreachable to anything driving the app.
+   */
+  haveAccount?: boolean
 }
 
 let seq = 0
@@ -53,8 +62,24 @@ interface FakeConversationState {
 export class FakeAccount {
   readonly sessionId: string
   displayName: string
-  haveAccount = true
+  haveAccount: boolean
   networkAttached = false
+  /**
+   * When a restored profile becomes visible, or 0 where there is nothing outstanding.
+   *
+   * Only a restore sets it. A new account names itself the moment it is named, and an account
+   * that was already here has had its name all along.
+   */
+  profileArrivesAt = 0
+  /**
+   * Whether this account was minted and never confirmed.
+   *
+   * Set the moment one comes into being and cleared by `keepAccount`. A restart with it still set
+   * is a crash partway through setting the account up, and the account does not survive it — the
+   * real bridge sweeps the database, this empties the account, and both leave a device that starts
+   * over rather than one holding an identity nobody finished with.
+   */
+  provisional = false
 
   private readonly conversations = new Map<ConversationId, FakeConversationState>()
   private readonly listeners = new Set<(event: SessionEvent) => void>()
@@ -64,6 +89,7 @@ export class FakeAccount {
   constructor(options: FakeAccountOptions) {
     this.displayName = options.displayName
     this.sessionId = options.sessionId ?? `05${options.displayName.toLowerCase().padEnd(64, '0')}`
+    this.haveAccount = options.haveAccount ?? true
   }
 
   attachTo(world: FakeWorld): void {
@@ -80,12 +106,37 @@ export class FakeAccount {
   }
 
   accountInfo(): AccountInfo {
+    // An ID and a name only once there is an account to have them. The fake knows this account's
+    // ID from the moment the world is built, because the world wires conversations up by it -
+    // but libsession has nothing to report before the seed exists, and a screen that reads an ID
+    // off an account that has not been made yet works here and throws there.
+    if (!this.haveAccount) return { haveAccount: false, networkAttached: this.networkAttached }
+    // A restore has the identity before it has the profile. Reported the way libsession reports
+    // it -- the field is simply absent -- rather than as an empty string, which a screen would
+    // have to know to treat as missing.
+    const named = this.profileArrivesAt === 0 || Date.now() >= this.profileArrivesAt
     return {
-      haveAccount: this.haveAccount,
+      haveAccount: true,
       sessionId: this.sessionId,
-      displayName: this.displayName,
+      ...(named ? { displayName: this.displayName } : {}),
       networkAttached: this.networkAttached,
     }
+  }
+
+  /**
+   * Back to a device with nothing on it, the way discarding an account leaves one.
+   *
+   * Everything the account accumulated goes: the identity, the conversations, the history, the
+   * preferences. The session ID is kept because it is derived from the fixture's name and the
+   * world wires peers up by it -- what matters for the behaviour under test is that
+   * `haveAccount` is false, which is what `accountInfo` reports off.
+   */
+  discard(): void {
+    this.haveAccount = false
+    this.provisional = false
+    this.profileArrivesAt = 0
+    this.conversations.clear()
+    this.prefs.clear()
   }
 
   /** Approved conversations, ordered the way the app shows them. */
@@ -260,6 +311,14 @@ export class FakeAccount {
    * show a spinner for ever after a crash.
    */
   restart(): void {
+    // An account nobody confirmed does not survive a restart, the way it does not survive one
+    // against the real bridge. Checked before anything else, because there is no point settling
+    // the send states of messages that are about to be thrown away with the account.
+    if (this.provisional && this.haveAccount) {
+      this.discard()
+      return
+    }
+
     const inFlight: SendState[] = ['pending', 'sending']
     for (const [id, state] of this.conversations) {
       for (const message of state.messages) {

@@ -1,4 +1,13 @@
+/* eslint-disable @typescript-eslint/triple-slash-reference --
+   A path reference rather than an import, deliberately. These are ambient declarations for the
+   bundlers' asset imports, and an `import` of a `.d.ts` is not a thing. Without the reference the
+   declarations reach this package's own program and no other, so every consumer that typechecks
+   these sources -- screens and both apps -- fails on the .png and .ttf imports below. */
+/// <reference path="./assets.d.ts" />
 import { config } from './config'
+import robotoBold from '../assets/fonts/Roboto-Bold.ttf'
+import robotoMedium from '../assets/fonts/Roboto-Medium.ttf'
+import robotoRegular from '../assets/fonts/Roboto-Regular.ttf'
 
 /**
  * Puts the configuration's stylesheet in the document, which is what makes a theme a theme here.
@@ -19,10 +28,50 @@ import { config } from './config'
  */
 const ID = 'tamagui-css'
 
+/**
+ * Roboto, shipped rather than assumed.
+ *
+ * It is the face the desktop client uses, and it is not installed on macOS or on most Windows
+ * machines -- so naming it in the font stack without shipping it silently falls through to whatever
+ * the platform's default is, which is how this app was drawing a serif. Three weights, because the
+ * type scale asks for regular, semibold and bold and nothing else.
+ */
+const FONT_FACES = [
+  { weight: 400, src: robotoRegular },
+  { weight: 500, src: robotoMedium },
+  { weight: 700, src: robotoBold },
+]
+  .map(
+    ({ weight, src }) => `@font-face {
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: ${String(weight)};
+  /* Nothing is drawn in a fallback face and then reflowed: the text is the layout on these
+     screens, and a swap moves every button under the cursor. */
+  font-display: block;
+  src: url('${src}') format('truetype');
+}`,
+  )
+  .join('\n')
+
+/**
+ * What selected text looks like.
+ *
+ * The browser's default selection is a blue wash that a dark theme renders as near-invisible: on
+ * the language picker's search field, selecting all of it looked exactly like selecting none of it.
+ * There is no token for this because nothing else in the app needed one -- the accent at low opacity
+ * is the same treatment every other selected surface gets, and it keeps the text readable rather
+ * than inverting it.
+ */
+const SELECTION = `::selection {
+  background: color-mix(in srgb, var(--primaryColor) 35%, transparent);
+  color: var(--textPrimary);
+}`
+
 if (!document.getElementById(ID)) {
   const style = document.createElement('style')
   style.id = ID
-  style.textContent = config.getCSS()
+  style.textContent = `${FONT_FACES}\n${SELECTION}\n${config.getCSS()}`
   // Prepended, not appended: index.html's own rules come after and must keep winning, and so must
   // anything a component inserts at runtime.
   document.head.prepend(style)
