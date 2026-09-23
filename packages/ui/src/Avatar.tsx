@@ -1,6 +1,7 @@
-import { PRIMARY_COLOR_HEX } from '@session/theme-tokens'
+import { COLORS, PRIMARY_COLOR_HEX } from '@session/theme-tokens'
 import { XStack } from 'tamagui'
 
+import { avatarInitials } from './avatarInitials'
 import { Text } from './Text'
 import { offScaleText } from './textHeight'
 
@@ -18,14 +19,6 @@ function colorFor(id: string): string {
   return ACCENTS[hash % ACCENTS.length] ?? ACCENTS[0] ?? '#31F196'
 }
 
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '?'
-  const first = parts[0]?.[0] ?? ''
-  const second = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : ''
-  return (first + second).toUpperCase()
-}
-
 /**
  * How large the initials are against the circle: the desktop client's `AvatarPlaceHolder`, which
  * sizes them from the diameter rather than from the type ramp, so an avatar reads the same at any
@@ -41,7 +34,7 @@ export interface AvatarProps {
 }
 
 export function Avatar({ id, name, size = 40, testID }: AvatarProps) {
-  const letters = initials(name)
+  const letters = avatarInitials(name, id)
   const fontSize = Math.floor(size * INITIALS_RATIO[letters.length > 1 ? 'more' : 'one'])
   return (
     <XStack
@@ -53,7 +46,9 @@ export function Avatar({ id, name, size = 40, testID }: AvatarProps) {
       justifyContent="center"
       testID={testID}
     >
-      <Text {...offScaleText(fontSize)} weight="bold" color="#000000">
+      {/* White on every colour and in every theme, as all three clients draw it: the circle's
+          colour is the account's, not the theme's, so the letters cannot take a theme role. */}
+      <Text {...offScaleText(fontSize)} weight="bold" color={COLORS.WHITE}>
         {letters}
       </Text>
     </XStack>

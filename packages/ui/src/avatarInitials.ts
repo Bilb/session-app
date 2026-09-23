@@ -1,0 +1,42 @@
+/** The prefixes an account ID starts with, which say what kind of ID it is rather than whose. */
+const ID_PREFIX = /^(05|15|25|00|03)[0-9a-f]{2,}$/i
+
+/**
+ * Characters as a reader counts them. An emoji built from several code points is one, and so is a
+ * letter with its accent; slicing code units cut the desktop client's emoji initials in half.
+ * Code points where the runtime has no segmenter, which splits only the composed emoji.
+ */
+function graphemes(text: string): string[] {
+  if (typeof Intl.Segmenter === 'function')
+    return [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text)].map(
+      (part) => part.segment,
+    )
+  return Array.from(text)
+}
+
+/**
+ * The letters an avatar shows until it has a picture: one rule for every platform, where the three
+ * clients each have their own.
+ *
+ * - **A name of one word gives its first two characters**, as all three do.
+ * - **Several words give the first character of each of the first two**, split at spaces and
+ *   hyphens as the desktop client splits them.
+ * - **No name falls back to the account ID, and shows its third character** -- the first after the
+ *   prefix -- as the desktop and Android clients do. Two would be two hex digits, which read as
+ *   nothing.
+ * - Letters of any script and emoji are kept whole, as the phones keep them; the desktop client
+ *   drops emoji and was left with half of one.
+ * - Upper-cased for the locale before counting, so a German ß becomes the SS it is in capitals.
+ */
+export function avatarInitials(name: string, id: string): string {
+  const trimmed = name.trim()
+  const source = trimmed === '' ? id.trim() : trimmed
+  if (ID_PREFIX.test(source)) return (graphemes(source)[2] ?? '').toLocaleUpperCase()
+
+  const words = source.split(/[\s-]+/).filter((word) => word !== '')
+  const letters =
+    words.length > 1
+      ? words.slice(0, 2).map((word) => graphemes(word)[0] ?? '')
+      : graphemes(words[0] ?? '').slice(0, 2)
+  return graphemes(letters.join('').toLocaleUpperCase()).slice(0, 2).join('')
+}
