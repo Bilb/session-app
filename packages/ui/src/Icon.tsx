@@ -3,8 +3,9 @@ import { ChevronDown } from '@tamagui/lucide-icons-2/icons/ChevronDown'
 import { ChevronLeft } from '@tamagui/lucide-icons-2/icons/ChevronLeft'
 import { ChevronRight } from '@tamagui/lucide-icons-2/icons/ChevronRight'
 import { CircleHelp } from '@tamagui/lucide-icons-2/icons/CircleHelp'
-import { CloudDownload } from '@tamagui/lucide-icons-2/icons/CloudDownload'
 import { Clock } from '@tamagui/lucide-icons-2/icons/Clock'
+import { CloudDownload } from '@tamagui/lucide-icons-2/icons/CloudDownload'
+import { Copy } from '@tamagui/lucide-icons-2/icons/Copy'
 import { Download } from '@tamagui/lucide-icons-2/icons/Download'
 import { Ellipsis } from '@tamagui/lucide-icons-2/icons/Ellipsis'
 import { ExternalLink } from '@tamagui/lucide-icons-2/icons/ExternalLink'
@@ -39,6 +40,7 @@ import { Settings } from '@tamagui/lucide-icons-2/icons/Settings'
 import { Share2 } from '@tamagui/lucide-icons-2/icons/Share2'
 import { Trash2 } from '@tamagui/lucide-icons-2/icons/Trash2'
 import { TriangleAlert } from '@tamagui/lucide-icons-2/icons/TriangleAlert'
+import { UserRoundPlus } from '@tamagui/lucide-icons-2/icons/UserRoundPlus'
 import { Video } from '@tamagui/lucide-icons-2/icons/Video'
 import { Volume2 } from '@tamagui/lucide-icons-2/icons/Volume2'
 import { X } from '@tamagui/lucide-icons-2/icons/X'
@@ -65,6 +67,7 @@ const GLYPHS = {
   circleHelp: CircleHelp,
   clock: Clock,
   cloudDownload: CloudDownload,
+  copy: Copy,
   download: Download,
   ellipsis: Ellipsis,
   externalLink: ExternalLink,
@@ -99,6 +102,7 @@ const GLYPHS = {
   share2: Share2,
   trash: Trash2,
   triangleAlert: TriangleAlert,
+  userRoundPlus: UserRoundPlus,
   video: Video,
   volume: Volume2,
   x: X,

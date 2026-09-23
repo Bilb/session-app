@@ -76,6 +76,7 @@ export const ELEMENT = {
     displayName: 'settings-display-name',
     accountId: 'settings-account-id',
     copyAccountId: 'settings-copy-account-id',
+    shareAccountId: 'settings-share-account-id',
     networkStatus: 'settings-network-status',
     clearData: 'settings-clear-data',
     confirmClearData: 'settings-confirm-clear-data',

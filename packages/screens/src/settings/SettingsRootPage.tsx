@@ -1,5 +1,5 @@
 import { requirePorts, URLS, useNav, routes } from '@session/app'
-import { tr } from '@session/localization'
+import { tr, tStripped } from '@session/localization'
 import { useAccount, useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import {
@@ -25,8 +25,11 @@ import { ConversationsPage } from './ConversationsPage'
 import { HelpPage } from './HelpPage'
 import { LocalizedText } from '../LocalizedText'
 
-/** How long the copy control shows that it worked. */
-const COPIED_FOR_MS = 2000
+/**
+ * How long Copy says it worked: iOS's four seconds, with the button held so a second press does
+ * not look like a failure.
+ */
+const COPIED_FOR_MS = 4000
 
 /**
  * Off the size scale on purpose: a brand badge sized to sit level with the row's icons. At 16 its
@@ -135,7 +138,9 @@ function AccountIdPill() {
  * rather than truncates and gets a copy control rather than being tappable text.
  */
 function AccountHeader({ sessionId, name }: { sessionId: string; name: string }) {
-  const [copied, setCopied] = useState(false)
+  // Which controls, by whether there is a share sheet rather than by the window: a tablet has the
+  // wide layout and the phones' controls. See `SharePort`.
+  const shareText = requirePorts().share.shareText
 
   return (
     <YStack alignItems="center" gap="$sm" paddingVertical="$lg">
@@ -156,9 +161,60 @@ function AccountHeader({ sessionId, name }: { sessionId: string; name: string })
           </Text>
         ))}
       </YStack>
+      {shareText === null ? (
+        <DesktopCopy sessionId={sessionId} />
+      ) : (
+        <PhoneAccountActions sessionId={sessionId} shareText={shareText} />
+      )}
+    </YStack>
+  )
+}
+
+/** Where there is no share sheet: copy alone. */
+function DesktopCopy({ sessionId }: { sessionId: string }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      testID={ELEMENT.settings.copyAccountId}
+      onPress={() => {
+        void requirePorts()
+          .clipboard.setString(sessionId)
+          .then(() => {
+            setCopied(true)
+            setTimeout(() => {
+              setCopied(false)
+            }, COPIED_FOR_MS)
+          })
+      }}
+    >
+      {copied ? tr('copied') : tr('copy')}
+    </Button>
+  )
+}
+
+/**
+ * Copy and Share under the ID, as both phone clients draw them.
+ *
+ * Share hands over the bare ID, as iOS does. Android's Share sends the invitation instead, which
+ * is what Invite a Friend is for, so the two controls would otherwise do the same thing.
+ */
+function PhoneAccountActions({
+  sessionId,
+  shareText,
+}: {
+  sessionId: string
+  shareText: (text: string) => Promise<void>
+}) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <XStack gap="$sm">
       <Button
         variant="outline"
         size="sm"
+        // Held while it says Copied, so the confirmation is not undone by a second press.
+        disabled={copied}
         testID={ELEMENT.settings.copyAccountId}
         onPress={() => {
           void requirePorts()
@@ -173,7 +229,17 @@ function AccountHeader({ sessionId, name }: { sessionId: string; name: string })
       >
         {copied ? tr('copied') : tr('copy')}
       </Button>
-    </YStack>
+      <Button
+        variant="outline"
+        size="sm"
+        testID={ELEMENT.settings.shareAccountId}
+        onPress={() => {
+          void shareText(sessionId)
+        }}
+      >
+        {tr('share')}
+      </Button>
+    </XStack>
   )
 }
 
@@ -195,6 +261,7 @@ export function SettingsRootPage() {
 
   const sessionId = account.sessionId
   const name = account.displayName ?? ''
+  const shareText = requirePorts().share.shareText
 
   const row = ELEMENT.settings.row
   // Rows without `onPress` draw disabled: their screens are not built yet.
@@ -205,6 +272,19 @@ export function SettingsRootPage() {
         icon: <ProBadge size={PRO_BADGE} color="$textDisabled" />,
         testID: row('pro'),
       },
+      // Phones only: without a share sheet there is nothing to send the invitation through.
+      ...(shareText === null
+        ? []
+        : [
+            {
+              label: tr('sessionInviteAFriend'),
+              icon: 'userRoundPlus',
+              testID: row('invite'),
+              onPress: () => {
+                void shareText(tStripped('accountIdShare', { account_id: sessionId }))
+              },
+            } satisfies RowSpec,
+          ]),
     ],
     [
       {
