@@ -29,6 +29,10 @@ export function PressArea({
     <YStack
       {...(fill ? { flex: 1 } : {})}
       role="button"
+      // A label is not text you select: dragging across a control should do nothing, and a
+      // double-click on a row should not highlight its name. Here rather than on each control, so a
+      // new one cannot forget it.
+      userSelect="none"
       disabled={disabled}
       onPress={disabled ? undefined : onPress}
       aria-label={accessibilityLabel}

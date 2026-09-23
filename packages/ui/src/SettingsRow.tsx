@@ -6,6 +6,7 @@ import { Icon } from './Icon'
 import type { IconName } from './Icon.types'
 import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
+import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import { Text } from './Text'
 
 /**
@@ -59,7 +60,9 @@ export interface SettingsRowProps {
  *
  * A row with no `onPress` still draws. The settings tree arrives one screen per change, so a row
  * whose destination is not built yet belongs on screen and inert rather than hidden -- hiding it
- * would make the list shorter now and change its order later, and the order is the design.
+ * would make the list shorter now and change its order later, and the order is the design. **It
+ * draws as disabled, not merely as unresponsive**: a row that looks live and does nothing reads as
+ * broken rather than as not there yet.
  */
 export function SettingsRow({
   label,
@@ -71,56 +74,68 @@ export function SettingsRow({
   onPress,
   testID,
 }: SettingsRowProps) {
-  const tone = destructive ? '$dangerColor' : '$textPrimary'
+  const inert = onPress === undefined
+  const tone = inert ? '$textDisabled' : destructive ? '$dangerColor' : '$textPrimary'
 
   return (
-    <PressArea
-      {...(onPress === undefined ? {} : { onPress })}
-      disabled={onPress === undefined}
-      testID={testID}
-    >
-      {() => (
-        <XStack
-          minHeight={ROW_MIN_HEIGHT}
-          alignItems="center"
-          gap="$sm"
-          paddingHorizontal="$md"
-          paddingVertical="$xs"
-          backgroundColor="$backgroundSecondary"
-          {...(onPress === undefined
-            ? {}
-            : { pressStyle: { backgroundColor: '$backgroundTertiary' } })}
-        >
-          {icon === undefined ? null : (
-            <YStack width={ICON_COLUMN} alignItems="center">
-              <Icon name={icon} size="lg" color={tone} />
-            </YStack>
-          )}
-
-          <YStack flex={1} gap="$3xs">
-            <Text size="$body" color={tone}>
-              {label}
-            </Text>
-            {subtitle === undefined ? null : (
-              <Text size="$caption" tone="secondary">
-                {subtitle}
-              </Text>
+    <PressArea {...(inert ? {} : { onPress })} disabled={inert} testID={testID}>
+      {(pressed) => (
+        // The row's surface on a frame of its own, so the states can be laid over it: an overlay
+        // steps from whatever it covers, where a surface role would step from the page.
+        <YStack backgroundColor="$backgroundSecondary">
+          <XStack
+            minHeight={ROW_MIN_HEIGHT}
+            alignItems="center"
+            gap="$sm"
+            paddingHorizontal="$md"
+            paddingVertical="$xs"
+            {...(inert
+              ? {}
+              : {
+                  cursor: 'pointer',
+                  hoverStyle: { backgroundColor: '$hoverOverlay' },
+                  pressStyle: { backgroundColor: '$pressedOverlay' },
+                  // Native: the press belongs to `PressArea`, which reports it here. A frame that
+                  // declares a `pressStyle` claims the touch for tamagui otherwise, and the row
+                  // never fires. Only here, because it takes the subtree with it: on an inert row
+                  // the trailing control is what is pressed.
+                  ...PRESS_PASSTHROUGH,
+                  ...(pressed ? { backgroundColor: '$pressedOverlay' } : {}),
+                })}
+          >
+            {icon === undefined ? null : (
+              <YStack width={ICON_COLUMN} alignItems="center">
+                <Icon name={icon} size="lg" color={tone} />
+              </YStack>
             )}
-          </YStack>
 
-          {trailing ?? null}
+            <YStack flex={1} gap="$3xs">
+              <Text size="$body" color={tone}>
+                {label}
+              </Text>
+              {subtitle === undefined ? null : (
+                // The label's colour, not the muted one: the desktop client draws a row's
+                // explanation in the body text, and it is read rather than glanced at.
+                <Text size="$caption" color={inert ? '$textDisabled' : '$textPrimary'}>
+                  {subtitle}
+                </Text>
+              )}
+            </YStack>
 
-          {/* Only when there is nothing else on that side, and only when it leads somewhere.
-              Mirrored with the layout: it points the way the reading direction runs, which is the
-              opposite of what a back control does. */}
-          {trailing !== undefined || !navigates ? null : (
-            <Icon
-              name={backChevron() === 'chevronLeft' ? 'chevronRight' : 'chevronLeft'}
-              size="md"
-              color="$textSecondary"
-            />
-          )}
-        </XStack>
+            {trailing ?? null}
+
+            {/* Only when there is nothing else on that side, and only when it leads somewhere.
+                Mirrored with the layout: it points the way the reading direction runs, which is the
+                opposite of what a back control does. */}
+            {trailing !== undefined || !navigates ? null : (
+              <Icon
+                name={backChevron() === 'chevronLeft' ? 'chevronRight' : 'chevronLeft'}
+                size="md"
+                color="$textSecondary"
+              />
+            )}
+          </XStack>
+        </YStack>
       )}
     </PressArea>
   )

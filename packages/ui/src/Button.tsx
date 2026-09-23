@@ -91,13 +91,16 @@ const Frame = styled(XStack, {
           opacity: 0.82,
         },
       },
-      /** Two steps, because one is invisible inside a list row that hovers to the same surface. */
+      /**
+       * Laid over whatever is behind it rather than swapped for a surface, so the step shows on a
+       * dialog, on a card, and on a row that is hovered itself.
+       */
       ghost: {
         backgroundColor: 'transparent',
         borderColor: 'transparent',
         color: '$textPrimary',
-        hoverStyle: { backgroundColor: '$backgroundTertiary' },
-        pressStyle: { backgroundColor: '$backgroundNested' },
+        hoverStyle: { backgroundColor: '$hoverOverlay' },
+        pressStyle: { backgroundColor: '$pressedOverlay' },
       },
       /**
        * `ghost`, in the accent.
@@ -111,8 +114,8 @@ const Frame = styled(XStack, {
         backgroundColor: 'transparent',
         borderColor: 'transparent',
         color: '$primaryColor',
-        hoverStyle: { backgroundColor: '$backgroundTertiary' },
-        pressStyle: { backgroundColor: '$backgroundNested' },
+        hoverStyle: { backgroundColor: '$hoverOverlay' },
+        pressStyle: { backgroundColor: '$pressedOverlay' },
       },
       /**
        * Text on its own, no frame -- what the desktop client calls Simple and uses for every modal
@@ -215,8 +218,8 @@ const PRESSED = {
   solid: { backgroundColor: '$accentPressed', borderColor: '$accentPressed' },
   outline: { backgroundColor: '$textPrimary', borderColor: '$textPrimary', opacity: 0.82 },
   outlineAccent: { backgroundColor: '$primaryColor', borderColor: '$primaryColor', opacity: 0.82 },
-  ghost: { backgroundColor: '$backgroundNested' },
-  ghostAccent: { backgroundColor: '$backgroundNested' },
+  ghost: { backgroundColor: '$pressedOverlay' },
+  ghostAccent: { backgroundColor: '$pressedOverlay' },
   simple: { opacity: 0.7 },
   danger: { opacity: 0.7 },
 } as const

@@ -138,6 +138,21 @@ const WARNING_BASE = { light: '#A64B00', dark: '#FCB159' } as const
 const SCRIM = { light: 'rgba(0, 0, 0, 0.2)', dark: 'rgba(0, 0, 0, 0.5)' } as const
 const SHADOW = { light: 'rgba(0, 0, 0, 0.25)', dark: 'rgba(0, 0, 0, 1)' } as const
 
+/**
+ * What a control lays over itself while hovered and while held.
+ *
+ * **An overlay rather than a surface**, so it reads as a step from whatever the control is drawn
+ * on. A surface role is a fixed distance from the page, and a control is not always on the page: a
+ * ghost button in a dialog on the recessed surface hovered to a colour one shade from that surface,
+ * and held to one that in the light themes was lighter than its own hover.
+ *
+ * Toward the text pole -- white on a dark theme, black on a light one -- because a hover brightens
+ * what is dark and shades what is light. The hover is the desktop client's row hover, a five per cent
+ * wash of white; the press is twice that, so the two stay apart on every surface.
+ */
+const HOVER_OVERLAY = { light: 'rgba(0, 0, 0, 0.04)', dark: 'rgba(255, 255, 255, 0.05)' } as const
+const PRESSED_OVERLAY = { light: 'rgba(0, 0, 0, 0.08)', dark: 'rgba(255, 255, 255, 0.1)' } as const
+
 /** What a disabled label still has to manage, on every surface. Below AA on purpose. */
 const DISABLED_FLOOR = 2
 
@@ -375,6 +390,13 @@ export type ThemeTokens = {
   scrim: string
   /** A raised element's shadow. Polarity only, for the same reason as `scrim`. */
   shadow: string
+  /**
+   * Laid over a control while the pointer is on it, and while it is held.
+   *
+   * Translucent, so the step is from whatever surface the control is on. See `HOVER_OVERLAY`.
+   */
+  hoverOverlay: string
+  pressedOverlay: string
 }
 
 /**
@@ -596,6 +618,8 @@ export function deriveTokens(knobs: ThemeKnobs, accent: string): ThemeTokens {
     ),
     scrim: SCRIM[polarity],
     shadow: SHADOW[polarity],
+    hoverOverlay: HOVER_OVERLAY[polarity],
+    pressedOverlay: PRESSED_OVERLAY[polarity],
     ...overrides,
   }
 }

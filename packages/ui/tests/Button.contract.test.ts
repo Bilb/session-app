@@ -28,10 +28,16 @@ const SURFACES = [
   '$backgroundNested',
 ]
 
+/**
+ * The states laid over a surface rather than replacing it, which body text is held to clear on
+ * every rung as well -- `overlays.test.ts` in theme-tokens is where that is asserted.
+ */
+const OVERLAYS = ['$hoverOverlay', '$pressedOverlay']
+
 /** Whether a state's declared background leaves the surface ladder. */
 function leavesTheLadder(declared: string): boolean {
   const fill = /backgroundColor: '(\$\w+)'/.exec(declared)?.[1]
-  return fill !== undefined && !SURFACES.includes(fill)
+  return fill !== undefined && !SURFACES.includes(fill) && !OVERLAYS.includes(fill)
 }
 
 /** The body of each `variant:` entry, keyed by name. */
