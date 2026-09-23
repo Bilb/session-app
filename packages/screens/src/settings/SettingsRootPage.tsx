@@ -11,6 +11,7 @@ import {
   SettingsRow,
   Text,
   useModals,
+  XStack,
   YStack,
   type IconName,
   type MarkProps,
@@ -76,6 +77,39 @@ function confirmClearData(modals: Modals, clear: () => Promise<void>): void {
 }
 
 /**
+ * The client's own measurements for the pill, which sit on neither scale: a line of caption text
+ * in 6 above, 5 below and 15 either side. Rounded onto rungs the pill reads as a button.
+ */
+const PILL_PADDING = { top: 6, bottom: 5, side: 15 } as const
+
+/**
+ * "Your Account ID", in a pill with a rule running out from each side of it.
+ *
+ * The desktop client's `AccountIdPill`: it heads the ID as a label, and the rules are what separate
+ * the account block from the name above it without a divider of its own.
+ */
+function AccountIdPill() {
+  return (
+    <XStack alignSelf="stretch" alignItems="center">
+      <YStack flex={1} height={1} backgroundColor="$bordersColor" />
+      <YStack
+        paddingTop={PILL_PADDING.top}
+        paddingBottom={PILL_PADDING.bottom}
+        paddingHorizontal={PILL_PADDING.side}
+        borderRadius="$full"
+        borderWidth={1}
+        borderColor="$bordersColor"
+      >
+        <Text size="$body" tone="secondary" userSelect="none">
+          {tr('accountIdYours')}
+        </Text>
+      </YStack>
+      <YStack flex={1} height={1} backgroundColor="$bordersColor" />
+    </XStack>
+  )
+}
+
+/**
  * The account, above the rows.
  *
  * The account ID is the one piece of state a person has to be able to read off the screen -- it is
@@ -93,14 +127,14 @@ function AccountHeader({ sessionId, name }: { sessionId: string; name: string })
           {name}
         </Text>
       )}
-      <Text size="$caption" tone="secondary">
-        {tr('accountId')}
-      </Text>
+      <AccountIdPill />
       {/* One element per line, so the break is where it was put rather than wherever the text
           engine found room. See `accountIdLines`. */}
       <YStack alignItems="center" testID={ELEMENT.settings.accountId}>
-        {accountIdLines(sessionId).map((line) => (
-          <Text key={line} size="$body">
+        {accountIdLines(sessionId).map((line, at) => (
+          // By position, not by content: an ID's lines can repeat -- a fake account's are runs of
+          // zeroes -- and two siblings with one key is a warning on the web and a crash on iOS.
+          <Text key={at} size="$bodyLarge">
             {line}
           </Text>
         ))}
