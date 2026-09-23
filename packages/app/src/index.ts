@@ -20,6 +20,7 @@ export type {
   NetworkPort,
   Ports,
   SecureStore,
+  SharePort,
   WindowPort,
 } from './ports'
 export { memoryPorts } from './testPorts'

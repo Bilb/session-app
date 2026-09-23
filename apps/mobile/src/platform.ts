@@ -2,7 +2,7 @@ import { memoryPorts, setPorts, type NotificationsPort } from '@session/app'
 import { parseNetworkName } from '@session/basic-types'
 import * as Clipboard from 'expo-clipboard'
 import * as SecureStore from 'expo-secure-store'
-import { BackHandler, Linking, Platform } from 'react-native'
+import { BackHandler, Linking, Platform, Share } from 'react-native'
 
 import { flagOverride } from './flagOverrides'
 
@@ -84,6 +84,11 @@ const ports = memoryPorts({
     show: () => Promise.resolve(),
     onTap: () => () => undefined,
     setBadgeCount: () => Promise.resolve(),
+  },
+  share: {
+    // The platform's sheet, with the text alone: no title or subject, which iOS would drop and
+    // Android would show as a heading above what was shared.
+    shareText: (text) => Share.share({ message: text }).then(() => undefined),
   },
   clipboard: {
     setString: (value) => Clipboard.setStringAsync(value).then(() => undefined),
