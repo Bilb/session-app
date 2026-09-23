@@ -98,6 +98,9 @@ export const ELEMENT = {
     exportLogs: 'help-export-logs',
     link: (name: string) => `help-link-${name}` as const,
   },
+  toast: {
+    item: 'toast',
+  },
   networkOverlay: {
     badge: 'network-overlay-badge',
   },

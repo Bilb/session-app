@@ -1,10 +1,11 @@
-import { ModalHost, useTextDirection } from '@session/screens'
+import { ModalHost, ToastLayer, useTextDirection } from '@session/screens'
 import { SessionStoreProvider, type SessionStore } from '@session/state'
 import {
   DirectionRoot,
   FONT_ASSETS,
   ModalStackProvider,
   Text,
+  ToastProvider,
   UIProvider,
   YStack,
 } from '@session/ui'
@@ -77,9 +78,12 @@ export default function RootLayout() {
                       {/* Never keyed on the language: that mirrors the strings by remounting the
                           routed subtree, discarding whatever the screen holds. Each route
                           subscribes with `useLocale` instead. */}
-                      <ModalHost>
-                        <Slot />
-                      </ModalHost>
+                      <ToastProvider>
+                        <ModalHost>
+                          <Slot />
+                        </ModalHost>
+                        <ToastLayer />
+                      </ToastProvider>
                     </ModalStackProvider>
                   </DirectionRoot>
                 </MobileCameraProvider>

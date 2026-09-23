@@ -10,6 +10,8 @@ interface LogicalStyle {
   paddingEnd?: LogicalLength
   start?: LogicalLength
   end?: LogicalLength
+  borderStartWidth?: number
+  borderStartColor?: string
   borderEndWidth?: number
   borderEndColor?: string
 }
@@ -33,6 +35,8 @@ export function logical(edges: LogicalEdges): { style: LogicalStyle } {
   if (edges.paddingEnd !== undefined) style.paddingEnd = edges.paddingEnd
   if (edges.insetStart !== undefined) style.start = edges.insetStart
   if (edges.insetEnd !== undefined) style.end = edges.insetEnd
+  if (edges.borderStartWidth !== undefined) style.borderStartWidth = edges.borderStartWidth
+  if (edges.borderStartColor !== undefined) style.borderStartColor = edges.borderStartColor
   if (edges.borderEndWidth !== undefined) style.borderEndWidth = edges.borderEndWidth
   if (edges.borderEndColor !== undefined) style.borderEndColor = edges.borderEndColor
   return { style }

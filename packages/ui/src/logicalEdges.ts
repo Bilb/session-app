@@ -10,6 +10,9 @@ interface LogicalStyle {
   paddingInlineEnd?: LogicalLength
   insetInlineStart?: LogicalLength
   insetInlineEnd?: LogicalLength
+  borderInlineStartWidth?: number
+  borderInlineStartColor?: string
+  borderInlineStartStyle?: 'solid'
   borderInlineEndWidth?: number
   borderInlineEndColor?: string
   borderInlineEndStyle?: 'solid'
@@ -36,6 +39,9 @@ export function logical(edges: LogicalEdges): { style: LogicalStyle } {
   if (edges.paddingEnd !== undefined) style.paddingInlineEnd = edges.paddingEnd
   if (edges.insetStart !== undefined) style.insetInlineStart = edges.insetStart
   if (edges.insetEnd !== undefined) style.insetInlineEnd = edges.insetEnd
+  if (edges.borderStartWidth !== undefined) style.borderInlineStartWidth = edges.borderStartWidth
+  if (edges.borderStartColor !== undefined) style.borderInlineStartColor = edges.borderStartColor
+  if (edges.borderStartWidth !== undefined) style.borderInlineStartStyle = 'solid'
   if (edges.borderEndWidth !== undefined) style.borderInlineEndWidth = edges.borderEndWidth
   if (edges.borderEndColor !== undefined) style.borderInlineEndColor = edges.borderEndColor
   // A border is not drawn without a style, and the shorthand does not reach here either.

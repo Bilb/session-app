@@ -8,12 +8,13 @@ import {
   StartingScreen,
   StartupFailedScreen,
   RequestsScreen,
+  ToastLayer,
   useLocale,
   usePersistedLocale,
   useTextDirection,
 } from '@session/screens'
 import { SessionStoreProvider, useAccount, useHydrated, useStartupError } from '@session/state'
-import { ModalStackProvider, Text, UIProvider, YStack } from '@session/ui'
+import { ModalStackProvider, Text, ToastProvider, UIProvider, YStack } from '@session/ui'
 import { useEffect, useState } from 'react'
 import { MemoryRouter, Route, Routes, useLocation, useParams } from 'react-router'
 
@@ -49,9 +50,12 @@ export function App() {
         <MemoryRouter>
           <DesktopNavProvider>
             <ModalStackProvider>
-              <ModalHost>
-                <Shell />
-              </ModalHost>
+              <ToastProvider>
+                <ModalHost>
+                  <Shell />
+                </ModalHost>
+                <ToastLayer />
+              </ToastProvider>
             </ModalStackProvider>
           </DesktopNavProvider>
         </MemoryRouter>

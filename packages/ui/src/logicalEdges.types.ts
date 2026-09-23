@@ -18,6 +18,10 @@ export interface LogicalEdges {
   insetStart?: LogicalLength
   /** Absolute positioning: distance from the trailing edge of the containing block. */
   insetEnd?: LogicalLength
+  /** A rule down the leading edge: a toast's accent strip, which mirrors with the text. */
+  borderStartWidth?: number
+  /** A colour the platform can draw, from `useTokenColor` -- never a `$` name. */
+  borderStartColor?: string
   /**
    * A rule down the trailing edge: the divider between two panes, which mirrors with them. Pixels
    * only: neither CSS nor react-native has a percentage border width.
