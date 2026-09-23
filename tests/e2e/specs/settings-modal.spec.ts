@@ -100,6 +100,13 @@ test('settings opens over the list, pushes Help, and asks on top of itself', asy
   }, ELEMENT.settings.row('help'))
   expect(scrolledBack).toBe(scrolledTo)
 
+  // **A press on the panel's own empty space is not a press outside it.** The backdrop is a layer
+  // behind the panel, so nothing inside has to stop a press reaching it.
+  const panel = await page.getByTestId(ELEMENT.settings.modal).first().boundingBox()
+  if (panel === null) throw new Error('no settings panel')
+  await page.mouse.click(panel.x + 12, panel.y + panel.height / 2)
+  await expect(page.getByTestId(ELEMENT.settings.accountId).first()).toBeVisible()
+
   // A second modal over the first, which is the case the platform's own nesting gets wrong.
   await page.getByTestId(ELEMENT.settings.clearData).first().click()
   await expect(page.getByTestId(ELEMENT.settings.confirmClearDataButton).first()).toBeVisible()

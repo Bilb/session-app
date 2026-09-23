@@ -137,12 +137,15 @@ export function Modal({
           `UIVisualEffectView` pinned to the window, with no tint and no alpha over it. A dim on top
           of a blur hides the thing the blur exists to show. */}
       {Blur !== null ? null : <YStack fullscreen backgroundColor="$scrim" />}
+      {/* A press outside the dialog lands here, behind it, rather than on its container: see the
+          backdrop in `ModalStackHost`, where a container taking presses stopped its body scrolling. */}
+      <YStack fullscreen {...(dismiss === undefined ? {} : { onPress: dismiss })} />
       <YStack
         fullscreen
         alignItems="center"
         justifyContent="center"
         padding="$xl"
-        onPress={dismiss}
+        pointerEvents="box-none"
       >
         <AlertBox
           title={title}
@@ -208,10 +211,6 @@ export function AlertBox({
       // Its edge against a dimmed page is the same surface over another, so each platform draws
       // the separation its client does.
       {...ALERT_EDGE}
-      // Swallows the press, so a tap inside the dialog does not reach the backdrop.
-      onPress={(event) => {
-        event.stopPropagation()
-      }}
       testID={testID}
     >
       <XStack alignItems="flex-start" gap="$xs">

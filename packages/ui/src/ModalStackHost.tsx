@@ -103,17 +103,30 @@ export function ModalStackHost({
         const layerScrim =
           index === 0 ? null : <YStack fullscreen backgroundColor="$scrim" pointerEvents="none" />
 
+        // **A press outside the modal lands on a layer of its own**, behind it, rather than on the
+        // modal's container with the modal stopping it. A container that takes presses is a touch
+        // target on native wherever its children are not, so a drag starting in a gap between
+        // groups or on a disabled row went to it instead of the scroller, and did not scroll. The
+        // layer above lets every touch outside the modal through to this one.
+        const backdrop = (
+          <YStack
+            fullscreen
+            pointerEvents={frontmost && dismiss !== undefined ? 'auto' : 'none'}
+            {...(dismiss === undefined ? {} : { onPress: dismiss })}
+          />
+        )
+
         if (entry.kind === 'alert')
           return (
             <Fragment key={entry.id}>
               {layerScrim}
+              {backdrop}
               <YStack
                 fullscreen
                 alignItems="center"
                 justifyContent="center"
                 padding="$xl"
-                pointerEvents={frontmost ? 'auto' : 'none'}
-                onPress={dismiss}
+                pointerEvents={frontmost ? 'box-none' : 'none'}
               >
                 <AlertBox
                   title={screen?.title ?? ''}
@@ -137,15 +150,16 @@ export function ModalStackHost({
         return (
           <Fragment key={entry.id}>
             {layerScrim}
+            {backdrop}
             <YStack
               fullscreen
               alignItems="center"
               {...(wide ? { paddingHorizontal: '$lg', paddingTop: inset } : {})}
               // Only the frontmost layer answers a press: the ones below it are visible context,
               // not controls. Without this a tap meant for the scrim of the top modal lands on a
-              // row of the one underneath.
-              pointerEvents={frontmost ? 'auto' : 'none'}
-              onPress={dismiss}
+              // row of the one underneath. `box-none` passes a touch outside the panel down to the
+              // backdrop.
+              pointerEvents={frontmost ? 'box-none' : 'none'}
             >
               <YStack
                 width="100%"
@@ -174,9 +188,6 @@ export function ModalStackHost({
                 // rather than squaring it off.
                 overflow="hidden"
                 testID={testID}
-                onPress={(event) => {
-                  event.stopPropagation()
-                }}
               >
                 <XStack height={HEADER_HEIGHT} alignItems="center" paddingHorizontal="$xs">
                   {/* The two controls hold their columns whether or not they are drawn, so the
