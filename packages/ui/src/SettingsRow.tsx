@@ -1,4 +1,3 @@
-import { LINE_HEIGHT_RATIO } from '@session/theme-tokens'
 import type { ComponentType, ReactNode } from 'react'
 import { XStack, YStack } from 'tamagui'
 
@@ -9,6 +8,7 @@ import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
 import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import { Text } from './Text'
+import { offScaleText } from './textHeight'
 
 /**
  * How tall a row is before its content makes it taller.
@@ -151,8 +151,7 @@ export function SettingsRow({
                 // The label's colour, not the muted one: the desktop client draws a row's
                 // explanation in the body text, and it is read rather than glanced at.
                 <Text
-                  fontSize={SUBTITLE_SIZE}
-                  lineHeight={Math.round(SUBTITLE_SIZE * LINE_HEIGHT_RATIO)}
+                  {...offScaleText(SUBTITLE_SIZE)}
                   color={disabled ? '$textDisabled' : '$textPrimary'}
                 >
                   {subtitle}

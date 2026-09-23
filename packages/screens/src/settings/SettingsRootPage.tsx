@@ -5,6 +5,7 @@ import { ELEMENT } from '@session/test-ids'
 import {
   Avatar,
   Button,
+  offScaleText,
   RecoveryPasswordShield,
   SessionTokenMark,
   SettingsGroup,
@@ -27,8 +28,8 @@ import { LocalizedText } from '../LocalizedText'
 /** How long the copy control says it worked before going back to offering to do it again. */
 const COPIED_FOR_MS = 2000
 
-/** The avatar at the top, which is larger than the one a conversation row draws. */
-const PROFILE_AVATAR = 64
+/** The avatar at the top: the desktop client's `AvatarSize.XL`. */
+const PROFILE_AVATAR = 90
 
 /** Asks before deleting everything on the device, on top of the settings modal. */
 function confirmClearData(modals: Modals, clear: () => Promise<void>): void {
@@ -82,6 +83,9 @@ function confirmClearData(modals: Modals, clear: () => Promise<void>): void {
  */
 const PILL_PADDING = { top: 6, bottom: 5, side: 15 } as const
 
+/** The pill's text, which the client leaves at its modal body's 15 -- between the ramp's 14 and 16. */
+const PILL_TEXT = 15
+
 /**
  * "Your Account ID", in a pill with a rule running out from each side of it.
  *
@@ -100,7 +104,7 @@ function AccountIdPill() {
         borderWidth={1}
         borderColor="$bordersColor"
       >
-        <Text size="$body" tone="secondary" userSelect="none">
+        <Text {...offScaleText(PILL_TEXT)} tone="secondary" userSelect="none">
           {tr('accountIdYours')}
         </Text>
       </YStack>
@@ -123,7 +127,7 @@ function AccountHeader({ sessionId, name }: { sessionId: string; name: string })
     <YStack alignItems="center" gap="$sm" paddingVertical="$lg">
       <Avatar id={sessionId} name={name} size={PROFILE_AVATAR} />
       {name === '' ? null : (
-        <Text size="$title" weight="bold" testID={ELEMENT.settings.displayName}>
+        <Text size="$headingLarge" weight="bold" testID={ELEMENT.settings.displayName}>
           {name}
         </Text>
       )}
