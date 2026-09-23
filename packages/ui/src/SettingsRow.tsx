@@ -1,3 +1,4 @@
+import { LINE_HEIGHT_RATIO } from '@session/theme-tokens'
 import type { ComponentType, ReactNode } from 'react'
 import { XStack, YStack } from 'tamagui'
 
@@ -16,6 +17,14 @@ import { Text } from './Text'
  * difference between a comfortable list and a fiddly one is entirely this number.
  */
 const ROW_MIN_HEIGHT = 56
+
+/**
+ * A subtitle's size: the desktop client's 13, which falls between the ramp's 12 and 14.
+ *
+ * Off the ramp on purpose. At 14 a subtitle is the size of body text under a 16 label, and the two
+ * lines stop reading as a name and its explanation.
+ */
+const SUBTITLE_SIZE = 13
 
 /** How wide the leading icon's column is, so labels line up whether or not a row has one. */
 const ICON_COLUMN = 24
@@ -141,7 +150,11 @@ export function SettingsRow({
               {subtitle === undefined ? null : (
                 // The label's colour, not the muted one: the desktop client draws a row's
                 // explanation in the body text, and it is read rather than glanced at.
-                <Text size="$body" color={disabled ? '$textDisabled' : '$textPrimary'}>
+                <Text
+                  fontSize={SUBTITLE_SIZE}
+                  lineHeight={Math.round(SUBTITLE_SIZE * LINE_HEIGHT_RATIO)}
+                  color={disabled ? '$textDisabled' : '$textPrimary'}
+                >
                   {subtitle}
                 </Text>
               )}
