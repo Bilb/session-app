@@ -1,4 +1,11 @@
-import { Children, Fragment, type ComponentType, type ReactNode } from 'react'
+import {
+  Children,
+  Fragment,
+  isValidElement,
+  type ComponentType,
+  type ReactElement,
+  type ReactNode,
+} from 'react'
 import { XStack, YStack } from 'tamagui'
 
 import type { MarkProps } from './Brand'
@@ -44,9 +51,10 @@ export interface SettingsRowProps {
    * The leading glyph. Rows in one group either all have one or none do.
    *
    * A name from the icon set, or one of Session's own marks for the rows the client draws with its
-   * own artwork -- the recovery shield, the network token.
+   * own artwork -- the recovery shield, the network token. Or an element drawn as it is given, for
+   * a glyph that is not one colour on a square -- the Pro badge -- which the caller sizes and tones.
    */
-  icon?: IconName | ComponentType<MarkProps>
+  icon?: IconName | ComponentType<MarkProps> | ReactElement
   /** Draws the icon in the accent, for the row the client singles out that way: Donate. */
   accentIcon?: boolean
   /** A second line under the label, for a row whose meaning is not obvious from its name. */
@@ -137,6 +145,8 @@ export function SettingsRow({
               <YStack width={ICON_COLUMN} alignItems="center">
                 {typeof icon === 'string' ? (
                   <Icon name={icon} size="lg" color={iconTone} />
+                ) : isValidElement(icon) ? (
+                  icon
                 ) : (
                   // A mark fills its box where a lucide glyph sits inside a margin, so it is drawn
                   // a rung smaller to read at the same weight as its neighbours.
@@ -184,7 +194,7 @@ function Mark({ mark: Drawn, color }: { mark: ComponentType<MarkProps>; color: s
  * A run of rows drawn as one block.
  *
  * The client's `PanelButtonGroup`. The grouping is the only thing saying which rows belong
- * together -- the root settings page has four groups and no headings at all, so the gaps between
+ * together -- the root settings page has five groups and no headings at all, so the gaps between
  * blocks carry the whole structure.
  *
  * The separators are drawn here, between rows, so a row never has to know whether it is last. Inset

@@ -6,6 +6,7 @@ import {
   Avatar,
   Button,
   offScaleText,
+  ProBadge,
   RecoveryPasswordShield,
   SessionTokenMark,
   SettingsGroup,
@@ -27,6 +28,12 @@ import { LocalizedText } from '../LocalizedText'
 
 /** How long the copy control says it worked before going back to offering to do it again. */
 const COPIED_FOR_MS = 2000
+
+/**
+ * The Pro badge's height in the row: iOS's `.small`, 32 by 14.5. Wider than the icon column, which
+ * it overhangs a little either side, as the clients' badges do beside their square glyphs.
+ */
+const PRO_BADGE = 14.5
 
 /** The avatar at the top: the desktop client's `AvatarSize.XL`. */
 const PROFILE_AVATAR = 90
@@ -189,7 +196,7 @@ function AccountHeader({ sessionId, name }: { sessionId: string; name: string })
 }
 
 /**
- * The landing screen of the settings modal: the account, then four groups of rows.
+ * The landing screen of the settings modal: the account, then five groups of rows.
  *
  * **A disabled row is one whose screen is not built yet**, and most of them are: the
  * settings tree arrives one screen per change. They are drawn anyway, because the order of the
@@ -240,6 +247,16 @@ export function SettingsRootPage() {
   return (
     <YStack paddingHorizontal="$md" paddingBottom="$md" gap="$lg">
       <AccountHeader sessionId={sessionId} name={name} />
+
+      {/* First on every client, and shown to every account: one with no Pro is offered it. */}
+      <SettingsGroup>
+        <SettingsRow
+          label={tr('upgradeSession')}
+          icon={<ProBadge size={PRO_BADGE} color="$textDisabled" />}
+          disabled
+          testID={ELEMENT.settings.row('pro')}
+        />
+      </SettingsGroup>
 
       <SettingsGroup>
         <SettingsRow

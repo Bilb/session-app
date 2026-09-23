@@ -8,6 +8,7 @@
 
 export { Avatar } from './Avatar'
 export {
+  ProBadge,
   RecoveryPasswordMark,
   RecoveryPasswordShield,
   SessionBrand,
