@@ -111,6 +111,14 @@ test('settings opens over the list, pushes Help, and asks on top of itself', asy
   await expect(page.getByTestId(ELEMENT.settings.confirmClearDataButton)).toHaveCount(0)
   await expect(page.getByTestId(ELEMENT.settings.accountId).first()).toBeVisible()
 
+  // **The scrim leaves the confirm too**, as the desktop client's does -- it has no cross, so this
+  // and Cancel are the ways out -- and only the confirm: settings stays open under it.
+  await page.getByTestId(ELEMENT.settings.clearData).first().click()
+  await expect(page.getByTestId(ELEMENT.settings.confirmClearDataButton).first()).toBeVisible()
+  await page.mouse.click(5, 5)
+  await expect(page.getByTestId(ELEMENT.settings.confirmClearDataButton)).toHaveCount(0)
+  await expect(page.getByTestId(ELEMENT.settings.accountId).first()).toBeVisible()
+
   // And closing leaves the list, not a blank pane -- settings was never a route.
   await page.getByTestId(ELEMENT.settings.modalClose).first().click()
   await expect(page.getByTestId(ELEMENT.settings.accountId)).toHaveCount(0)

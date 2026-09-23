@@ -118,9 +118,9 @@ export function ModalStackHost({
                 <AlertBox
                   title={screen?.title ?? ''}
                   closeLabel={closeLabel}
-                  // A cross only on an alert that may simply be left: one asking a question puts
-                  // its own cancel in the actions. See `Modal`'s `showClose`.
-                  showClose={entry.dismissible}
+                  // See `ModalPresentation.showClose`: leaving from the scrim and offering a cross
+                  // are separate questions.
+                  showClose={entry.showClose}
                   onClose={() => {
                     modals.dismiss(entry.id)
                   }}

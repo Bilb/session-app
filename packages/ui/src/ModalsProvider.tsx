@@ -47,6 +47,14 @@ export interface ModalPresentation {
    * walked back -- a wizard that must be finished can still have a back control.
    */
   dismissible?: boolean
+  /**
+   * Whether an alert draws the cross in its corner. Defaults to `dismissible`.
+   *
+   * Off for one that asks a question and puts its own Cancel in the actions: a cross beside two
+   * labelled answers is a third, unlabelled one. Such an alert can still be left from the scrim --
+   * the desktop client's Clear All Data has no cross and closes on a click outside.
+   */
+  showClose?: boolean
   /** The screen it opens on. Further screens arrive through `push`. */
   initial: ModalScreen
 }
@@ -66,6 +74,7 @@ interface HeldScreen extends ModalScreen {
 export interface OpenModal extends StackedModal {
   kind: 'panel' | 'alert'
   width: PanelWidth
+  showClose: boolean
   testID?: string
   closeTestID?: string
   stack: HeldScreen[]
@@ -84,6 +93,12 @@ export interface Modals {
   back: () => void
   /** Closes everything, for a navigation that leaves the surface the modals belong to. */
   dismissAll: () => void
+  /**
+   * Stops the named modal being dismissed from the scrim, Escape or the back button, for one whose
+   * action has started: leaving a confirm while what it confirmed is still running says it was
+   * cancelled when it was not. Unknown ids are ignored.
+   */
+  lock: (id: string) => void
 }
 
 const ModalsContext = createContext<Modals | null>(null)
@@ -131,6 +146,7 @@ export function ModalStackProvider({ children }: { children: ReactNode }) {
         dismissible = true,
         width = 'normal',
         kind = 'panel',
+        showClose = dismissible,
         testID,
         closeTestID,
       }) => {
@@ -142,6 +158,7 @@ export function ModalStackProvider({ children }: { children: ReactNode }) {
             dismissible,
             width,
             kind,
+            showClose,
             ...(testID === undefined ? {} : { testID }),
             ...(closeTestID === undefined ? {} : { closeTestID }),
             screens: 1,
@@ -196,6 +213,12 @@ export function ModalStackProvider({ children }: { children: ReactNode }) {
 
       dismissAll: () => {
         setEntries([])
+      },
+
+      lock: (id) => {
+        setEntries((current) =>
+          current.map((entry) => (entry.id === id ? { ...entry, dismissible: false } : entry)),
+        )
       },
     }
   }, [])

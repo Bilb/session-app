@@ -36,45 +36,69 @@ function confirmClearData(modals: Modals, clear: () => Promise<void>): void {
   const id = modals.present({
     kind: 'alert',
     testID: ELEMENT.settings.confirmClearData,
-    // There are two answers in the footer and the cross would be an unlabelled third: somebody
-    // deciding whether to erase their account wants to read the word Cancel, not infer it.
-    dismissible: false,
+    // Left from the scrim or Escape, as the desktop client's is, but with no cross: there are two
+    // answers in the footer, and somebody deciding whether to erase their account wants to read
+    // the word Cancel rather than infer it from a glyph.
+    showClose: false,
     initial: {
       title: tr('clearDataAll'),
       render: () => (
         <LocalizedText text={tr('clearDeviceDescription')} size="$body" textAlign="center" />
       ),
-      footer: () => (
-        <>
-          <Button
-            variant="ghost"
-            fill
-            borderRadius="$none"
-            destructive
-            testID={ELEMENT.settings.confirmClearDataButton}
-            onPress={() => {
-              void clear().finally(() => {
-                modals.dismissAll()
-              })
-            }}
-          >
-            {tr('clear')}
-          </Button>
-          <Button
-            variant="ghost"
-            fill
-            borderRadius="$none"
-            testID={ELEMENT.settings.cancelClearData}
-            onPress={() => {
-              modals.dismiss(id)
-            }}
-          >
-            {tr('cancel')}
-          </Button>
-        </>
-      ),
+      footer: () => <ClearDataActions modals={modals} id={id} clear={clear} />,
     },
   })
+}
+
+/**
+ * The confirm's two answers, which hold still once Clear is pressed.
+ *
+ * Both are disabled and the alert stops being dismissible while the clear runs, so nothing can
+ * look like a cancel of something that is already happening.
+ */
+function ClearDataActions({
+  modals,
+  id,
+  clear,
+}: {
+  modals: Modals
+  id: string
+  clear: () => Promise<void>
+}) {
+  const [running, setRunning] = useState(false)
+  return (
+    <>
+      <Button
+        variant="ghost"
+        fill
+        borderRadius="$none"
+        destructive
+        disabled={running}
+        testID={ELEMENT.settings.confirmClearDataButton}
+        onPress={() => {
+          setRunning(true)
+          modals.lock(id)
+          void clear().finally(() => {
+            modals.dismissAll()
+          })
+        }}
+      >
+        {tr('clear')}
+      </Button>
+      <Button
+        variant="ghost"
+        fill
+        borderRadius="$none"
+        disabled={running}
+        testID={ELEMENT.settings.cancelClearData}
+        onPress={() => {
+          modals.dismiss(id)
+        }}
+      >
+        {tr('cancel')}
+      </Button>
+    </>
+  )
 }
 
 /**
