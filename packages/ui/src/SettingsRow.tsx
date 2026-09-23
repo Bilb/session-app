@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from 'react'
+import { Children, Fragment, type ComponentType, type ReactNode } from 'react'
 import { XStack, YStack } from 'tamagui'
 
 import type { MarkProps } from './Brand'
@@ -30,13 +30,13 @@ const SUBTITLE_SIZE = 13
 const ICON_COLUMN = 24
 
 /**
- * The line between two rows of a group.
+ * The line between two rows of a group: the desktop client's half pixel.
  *
- * A hairline rather than a rung: it is the thinnest thing the display can draw, and the space
- * scale's smallest step is two pixels, which reads as a gap between blocks instead of a division
- * within one.
+ * Half rather than one because a whole pixel lands on one device pixel or two depending on where
+ * the row falls, so the lines of one group drew at different weights; half is one device pixel on
+ * every display that has two, and the thinnest line on one that does not.
  */
-const SEPARATOR = 1
+const SEPARATOR = 0.5
 
 export interface SettingsRowProps {
   label: string
@@ -115,7 +115,9 @@ export function SettingsRow({
             minHeight={ROW_MIN_HEIGHT}
             alignItems="center"
             gap="$sm"
-            paddingHorizontal="$md"
+            // The client's 20 either side, which the separators are inset by too, so a line
+            // starts where a row's content does.
+            paddingHorizontal="$lg"
             paddingVertical="$xs"
             {...(inert
               ? {}
@@ -159,7 +161,11 @@ export function SettingsRow({
               )}
             </YStack>
 
-            {trailing ?? null}
+            {trailing === undefined ? null : (
+              // More room than between the icon and the label: the label is the icon's, and the
+              // trailing control is something else -- text that wraps into it reads as run on.
+              <YStack {...logical({ paddingStart: '$xs', paddingEnd: '$2xs' })}>{trailing}</YStack>
+            )}
           </XStack>
         </YStack>
       )}
@@ -180,18 +186,23 @@ function Mark({ mark: Drawn, color }: { mark: ComponentType<MarkProps>; color: s
  * The client's `PanelButtonGroup`. The grouping is the only thing saying which rows belong
  * together -- the root settings page has four groups and no headings at all, so the gaps between
  * blocks carry the whole structure.
+ *
+ * The separators are drawn here, between rows, so a row never has to know whether it is last. Inset
+ * from both edges and running under the icons, as the client's do: a divider the full width of the
+ * card reads as two cards.
  */
 export function SettingsGroup({ children }: { children: ReactNode }) {
+  const rows = Children.toArray(children)
   return (
-    <YStack
-      borderRadius="$md"
-      overflow="hidden"
-      // The group's own surface shows through between rows, which is what draws the separators
-      // without a row having to know whether it is the last one.
-      backgroundColor="$backgroundPrimary"
-      gap={SEPARATOR}
-    >
-      {children}
+    <YStack borderRadius="$md" overflow="hidden" backgroundColor="$backgroundSecondary">
+      {rows.map((row, at) => (
+        <Fragment key={at}>
+          {at === 0 ? null : (
+            <YStack height={SEPARATOR} marginHorizontal="$lg" backgroundColor="$separatorColor" />
+          )}
+          {row}
+        </Fragment>
+      ))}
     </YStack>
   )
 }
