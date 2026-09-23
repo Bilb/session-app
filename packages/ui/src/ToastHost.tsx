@@ -17,7 +17,7 @@ const TOAST_LAYER = 10_000
  * In a portal of its own, which covers the window and lets presses through everywhere but on a
  * toast. Mounted once at the root, beside the modal stack.
  */
-export function ToastHost({ testID }: { testID: string }) {
+export function ToastHost({ testID, closeLabel }: { testID: string; closeLabel: string }) {
   const { toasts, dismiss } = useToastQueue()
   if (toasts.length === 0) return null
   return (
@@ -29,7 +29,8 @@ export function ToastHost({ testID }: { testID: string }) {
         justifyContent="flex-end"
         alignItems="flex-end"
         padding="$md"
-        gap="$xs"
+        // The library's 16 between stacked toasts.
+        gap="$md"
         pointerEvents="box-none"
         aria-live="polite"
       >
@@ -38,6 +39,7 @@ export function ToastHost({ testID }: { testID: string }) {
             key={toast.serial}
             text={toast.text}
             testID={testID}
+            closeLabel={closeLabel}
             onPress={() => {
               dismiss(toast.serial)
             }}

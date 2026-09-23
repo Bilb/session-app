@@ -11,7 +11,7 @@ import { useToastQueue } from './Toasts'
  * Nothing on the phones raises a toast yet -- their copy confirms on the button, as iOS's does -- so
  * the first caller that needs one over settings has to bring it into that window.
  */
-export function ToastHost({ testID }: { testID: string }) {
+export function ToastHost({ testID, closeLabel }: { testID: string; closeLabel: string }) {
   const { toasts, dismiss } = useToastQueue()
   if (toasts.length === 0) return null
   return (
@@ -21,7 +21,8 @@ export function ToastHost({ testID }: { testID: string }) {
       left={0}
       right={0}
       alignItems="center"
-      gap="$xs"
+      // The library's 16 between stacked toasts.
+      gap="$md"
       pointerEvents="box-none"
     >
       {toasts.map((toast) => (
@@ -29,6 +30,7 @@ export function ToastHost({ testID }: { testID: string }) {
           key={toast.serial}
           text={toast.text}
           testID={testID}
+          closeLabel={closeLabel}
           onPress={() => {
             dismiss(toast.serial)
           }}
