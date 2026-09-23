@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react'
+import type { ComponentType, ReactNode } from 'react'
 import { XStack, YStack } from 'tamagui'
 
-import { backChevron } from './backChevron'
+import type { MarkProps } from './Brand'
 import { Icon } from './Icon'
 import type { IconName } from './Icon.types'
 import { logical } from './logicalEdges'
@@ -31,19 +31,24 @@ const SEPARATOR = 1
 
 export interface SettingsRowProps {
   label: string
-  /** The leading glyph. Rows in one group either all have one or none do. */
-  icon?: IconName
+  /**
+   * The leading glyph. Rows in one group either all have one or none do.
+   *
+   * A name from the icon set, or one of Session's own marks for the rows the client draws with its
+   * own artwork -- the recovery shield, the network token.
+   */
+  icon?: IconName | ComponentType<MarkProps>
+  /** Draws the icon in the accent, for the row the client singles out that way: Donate. */
+  accentIcon?: boolean
   /** A second line under the label, for a row whose meaning is not obvious from its name. */
   subtitle?: string
   /**
    * The trailing side: a current value, a switch, a button.
    *
-   * Takes precedence over the chevron -- a row showing its value is not also promising a screen,
-   * and the two together leave the value squeezed against a glyph.
+   * Nothing by default, and in particular no chevron: the client's rows carry none, whether or not
+   * they lead to a screen.
    */
   trailing?: ReactNode
-  /** Draws the chevron that says pressing this goes somewhere. */
-  navigates?: boolean
   /** Tints the label and its icon, for a row that destroys something. */
   destructive?: boolean
   onPress?: () => void
@@ -69,13 +74,16 @@ export function SettingsRow({
   icon,
   subtitle,
   trailing,
-  navigates = false,
+  accentIcon = false,
   destructive = false,
   onPress,
   testID,
 }: SettingsRowProps) {
   const inert = onPress === undefined
   const tone = inert ? '$textDisabled' : destructive ? '$dangerColor' : '$textPrimary'
+  // `accentText` rather than the accent itself: it falls back to the body text on a light ground,
+  // where the accent as a glyph is too faint -- which is what the client does with this icon.
+  const iconTone = accentIcon && !inert ? '$accentText' : tone
 
   return (
     <PressArea {...(inert ? {} : { onPress })} disabled={inert} testID={testID}>
@@ -105,40 +113,42 @@ export function SettingsRow({
           >
             {icon === undefined ? null : (
               <YStack width={ICON_COLUMN} alignItems="center">
-                <Icon name={icon} size="lg" color={tone} />
+                {typeof icon === 'string' ? (
+                  <Icon name={icon} size="lg" color={iconTone} />
+                ) : (
+                  // A mark fills its box where a lucide glyph sits inside a margin, so it is drawn
+                  // a rung smaller to read at the same weight as its neighbours.
+                  <Mark mark={icon} color={iconTone} />
+                )}
               </YStack>
             )}
 
             <YStack flex={1} gap="$3xs">
-              <Text size="$body" color={tone}>
+              <Text size="$bodyLarge" weight="bold" color={tone}>
                 {label}
               </Text>
               {subtitle === undefined ? null : (
                 // The label's colour, not the muted one: the desktop client draws a row's
                 // explanation in the body text, and it is read rather than glanced at.
-                <Text size="$caption" color={inert ? '$textDisabled' : '$textPrimary'}>
+                <Text size="$body" color={inert ? '$textDisabled' : '$textPrimary'}>
                   {subtitle}
                 </Text>
               )}
             </YStack>
 
             {trailing ?? null}
-
-            {/* Only when there is nothing else on that side, and only when it leads somewhere.
-                Mirrored with the layout: it points the way the reading direction runs, which is the
-                opposite of what a back control does. */}
-            {trailing !== undefined || !navigates ? null : (
-              <Icon
-                name={backChevron() === 'chevronLeft' ? 'chevronRight' : 'chevronLeft'}
-                size="md"
-                color="$textSecondary"
-              />
-            )}
           </XStack>
         </YStack>
       )}
     </PressArea>
   )
+}
+
+/** The pixel height a mark is drawn at: the icon ladder's `md`, a rung under the glyphs' `lg`. */
+const MARK_SIZE = 20
+
+function Mark({ mark: Drawn, color }: { mark: ComponentType<MarkProps>; color: string }) {
+  return <Drawn size={MARK_SIZE} color={color} />
 }
 
 /**
@@ -173,7 +183,7 @@ export function SettingsGroup({ children }: { children: ReactNode }) {
 export function SettingsSection({ label, description }: { label: string; description?: string }) {
   return (
     <YStack gap="$3xs" paddingBottom="$xs" {...logical({ paddingStart: '$xs' })}>
-      <Text size="$caption" weight="bold" tone="secondary">
+      <Text size="$body" tone="secondary">
         {label}
       </Text>
       {description === undefined ? null : (

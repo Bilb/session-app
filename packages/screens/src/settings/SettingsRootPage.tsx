@@ -5,15 +5,18 @@ import { ELEMENT } from '@session/test-ids'
 import {
   Avatar,
   Button,
+  RecoveryPasswordShield,
+  SessionTokenMark,
   SettingsGroup,
   SettingsRow,
   Text,
   useModals,
   YStack,
   type IconName,
+  type MarkProps,
   type Modals,
 } from '@session/ui'
-import { useState } from 'react'
+import { useState, type ComponentType } from 'react'
 
 import { accountIdLines } from './accountIdLines'
 import { confirmLink } from './confirmLink'
@@ -153,20 +156,24 @@ export function SettingsRootPage() {
   const sessionId = account.sessionId
   const name = account.displayName ?? ''
 
-  /** Each row's glyph, with the client's choice kept wherever our set has the same one. */
+  /**
+   * Each row's glyph: the client's own artwork where it draws one, and otherwise the client's choice
+   * wherever our set has the same one.
+   */
   const icon = {
     donate: 'heart',
-    network: 'info',
+    path: 'info',
+    network: SessionTokenMark,
     privacy: 'lockKeyhole',
     notifications: 'volume',
     conversations: 'messageSquare',
     appearance: 'paintbrush',
     requests: 'messageSquareWarning',
     preferences: 'settings',
-    recovery: 'keyRound',
+    recovery: RecoveryPasswordShield,
     help: 'circleHelp',
     clear: 'trash',
-  } satisfies Record<string, IconName>
+  } satisfies Record<string, IconName | ComponentType<MarkProps>>
 
   return (
     <YStack paddingHorizontal="$md" paddingBottom="$md" gap="$lg">
@@ -176,6 +183,7 @@ export function SettingsRootPage() {
         <SettingsRow
           label={tr('donate')}
           icon={icon.donate}
+          accentIcon
           testID={ELEMENT.settings.row('donate')}
           onPress={() => {
             confirmLink(modals, URLS.donationsApp)
@@ -185,14 +193,12 @@ export function SettingsRootPage() {
             modal of its own. Both wait on the path screen. */}
         <SettingsRow
           label={tr('onionRoutingPath')}
-          icon={icon.network}
-          navigates
+          icon={icon.path}
           testID={ELEMENT.settings.row('onion-path')}
         />
         <SettingsRow
           label={tr('networkName')}
           icon={icon.network}
-          navigates
           testID={ELEMENT.settings.row('network')}
         />
       </SettingsGroup>
@@ -201,25 +207,21 @@ export function SettingsRootPage() {
         <SettingsRow
           label={tr('sessionPrivacy')}
           icon={icon.privacy}
-          navigates
           testID={ELEMENT.settings.row('privacy')}
         />
         <SettingsRow
           label={tr('sessionNotifications')}
           icon={icon.notifications}
-          navigates
           testID={ELEMENT.settings.row('notifications')}
         />
         <SettingsRow
           label={tr('sessionConversations')}
           icon={icon.conversations}
-          navigates
           testID={ELEMENT.settings.row('conversations')}
         />
         <SettingsRow
           label={tr('sessionAppearance')}
           icon={icon.appearance}
-          navigates
           testID={ELEMENT.settings.row('appearance')}
         />
         {/* Not a child screen in the client either: it closes the modal and shows the requests
@@ -236,7 +238,6 @@ export function SettingsRootPage() {
         <SettingsRow
           label={tr('preferences')}
           icon={icon.preferences}
-          navigates
           testID={ELEMENT.settings.row('preferences')}
         />
       </SettingsGroup>
@@ -245,13 +246,11 @@ export function SettingsRootPage() {
         <SettingsRow
           label={tr('sessionRecoveryPassword')}
           icon={icon.recovery}
-          navigates
           testID={ELEMENT.settings.row('recovery-password')}
         />
         <SettingsRow
           label={tr('sessionHelp')}
           icon={icon.help}
-          navigates
           testID={ELEMENT.settings.row('help')}
           onPress={() => {
             modals.push({ title: tr('sessionHelp'), render: () => <HelpPage /> })

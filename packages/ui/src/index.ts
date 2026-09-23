@@ -7,7 +7,14 @@
  */
 
 export { Avatar } from './Avatar'
-export { RecoveryPasswordMark, SessionBrand, SessionWordmark } from './Brand'
+export {
+  RecoveryPasswordMark,
+  RecoveryPasswordShield,
+  SessionBrand,
+  SessionTokenMark,
+  SessionWordmark,
+  type MarkProps,
+} from './Brand'
 export { HeroImage } from './HeroImage'
 export { KeyboardAvoiding } from './KeyboardAvoiding'
 export { PressArea } from './PressArea'
