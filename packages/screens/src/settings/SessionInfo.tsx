@@ -1,4 +1,4 @@
-import { requirePorts, toggleDebugMode, URLS } from '@session/app'
+import { CLIENT_URLS, requirePorts, toggleDebugMode, URLS } from '@session/app'
 import { ELEMENT } from '@session/test-ids'
 import {
   offScaleText,
@@ -10,7 +10,7 @@ import {
   XStack,
   YStack,
 } from '@session/ui'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 
 import { confirmLink } from './confirmLink'
 
@@ -31,15 +31,17 @@ const PRESSES_FOR_DEBUG = 10
 /**
  * The foot of the settings page: the network's logo, then which build this is.
  *
- * The logo leaves for the token site through the usual confirmation. The version is text only for
- * now: the client links it to its release, and that address is not in the table every link comes
- * from. Ten presses on the commit turn debug mode over, as the client's do.
+ * The logo leaves for the token site, and the version for its release page, both through the
+ * usual confirmation. Ten presses on the commit turn debug mode over, as the client's do.
  */
 export function SessionInfo() {
   const modals = useModals()
   const toasts = useToast()
   const { version, commit } = requirePorts().build
   const presses = useRef(0)
+  // The client's logo brightens from the muted text to the body text under the pointer. A fill,
+  // so it is told rather than styled: a hover style reaches the frame, not the drawing inside it.
+  const [logoHovered, setLogoHovered] = useState(false)
 
   return (
     <YStack alignItems="center" gap={LOGO_GAP}>
@@ -51,16 +53,41 @@ export function SessionInfo() {
         }}
       >
         {() => (
-          <YStack cursor="pointer">
-            <SessionTokenLogo size={LOGO_HEIGHT} color="$textSecondary" />
+          <YStack
+            cursor="pointer"
+            onMouseEnter={() => {
+              setLogoHovered(true)
+            }}
+            onMouseLeave={() => {
+              setLogoHovered(false)
+            }}
+          >
+            <SessionTokenLogo
+              size={LOGO_HEIGHT}
+              color={logoHovered ? '$textPrimary' : '$textSecondary'}
+            />
           </YStack>
         )}
       </PressArea>
 
       <XStack gap={STAMP_GAP}>
-        <Text {...offScaleText(STAMP_SIZE)} opacity={RESTING} testID={ELEMENT.settings.version}>
-          {`v${version}`}
-        </Text>
+        <PressArea
+          testID={ELEMENT.settings.version}
+          onPress={() => {
+            confirmLink(modals, CLIENT_URLS.release(version))
+          }}
+        >
+          {() => (
+            <Text
+              {...offScaleText(STAMP_SIZE)}
+              opacity={RESTING}
+              hoverStyle={{ opacity: 1 }}
+              cursor="pointer"
+            >
+              {`v${version}`}
+            </Text>
+          )}
+        </PressArea>
         {commit === null ? null : (
           <PressArea
             testID={ELEMENT.settings.commit}

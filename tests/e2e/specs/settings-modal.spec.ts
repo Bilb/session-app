@@ -117,6 +117,12 @@ test('settings opens over the list, pushes Help, and asks on top of itself', asy
     await expect(page.getByTestId(ELEMENT.settings.version).first()).toHaveText(/^v\d+\.\d+\.\d+$/)
     const commit = page.getByTestId(ELEMENT.settings.commit).first()
     await expect(commit).toHaveText(/^[0-9a-f]{8}(-dirty)?$/)
+    // The version leaves for its release page, through the confirmation every link takes.
+    await page.getByTestId(ELEMENT.settings.version).first().click()
+    const confirm = page.getByTestId(ELEMENT.onboarding.openUrlDialog).first()
+    await expect(confirm).toContainText('/releases/tag/v')
+    await page.mouse.click(5, 5)
+    await expect(page.getByTestId(ELEMENT.onboarding.openUrlDialog)).toHaveCount(0)
     for (let press = 0; press < 10; press += 1) await commit.click()
     await expect(page.getByTestId(ELEMENT.toast.item).first()).toHaveText('Debug mode enabled')
 

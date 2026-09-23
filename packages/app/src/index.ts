@@ -8,6 +8,7 @@ export { requirePorts, resetPorts, setPorts } from './ports'
 export { FLAGS, envVarFor, flag, flagSnapshot } from './flags'
 export { toggleDebugMode } from './debugMode'
 export { URLS } from './urls.generated'
+export { CLIENT_URLS } from './clientUrls'
 export type { FlagName } from './flags'
 export type {
   BuildPort,
