@@ -41,7 +41,7 @@ const ICON_COLUMN = 24
  * The line between two rows of a group: the desktop client's half pixel.
  *
  * Half rather than one because a whole pixel lands on one device pixel or two depending on where
- * the row falls, so the lines of one group drew at different weights; half is one device pixel on
+ * the row falls, so the lines of one group draw at different weights; half is one device pixel on
  * every display that has two, and the thinnest line on one that does not.
  */
 const SEPARATOR = 0.5

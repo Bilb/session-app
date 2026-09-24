@@ -198,10 +198,9 @@ function AccountHeader({ sessionId, name }: { sessionId: string; name: string })
 /**
  * The landing screen of the settings modal: the account, then five groups of rows.
  *
- * **A disabled row is one whose screen is not built yet**, and most of them are: the
- * settings tree arrives one screen per change. They are drawn anyway, because the order of the
- * list is the design -- a list that grows a row in the middle later is a different list from the
- * one that was reviewed.
+ * **A disabled row is one whose screen is not built yet.** They are drawn anyway, because the
+ * order of the list is the design -- a list that grows a row in the middle later is a different
+ * list from the designed one.
  *
  * **The grouping carries the whole structure**, because the client's root page has no headings at
  * all -- only the gaps between blocks say which rows belong together.

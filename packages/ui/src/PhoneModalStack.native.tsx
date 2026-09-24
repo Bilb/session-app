@@ -70,7 +70,7 @@ export function PhoneModalStack({
           headerConfig={{
             title: screen.title,
             // 26 bold, as both phone clients draw a settings title -- on the first screen and on a
-            // pushed one alike. The system's own is 17, which read as a different, lesser screen.
+            // pushed one alike. The system's own is 17, which reads as a different, lesser screen.
             titleFontSize: FONT_SIZE.headingLarge,
             titleFontWeight: '700',
             backgroundColor: background,

@@ -137,8 +137,8 @@ export function Modal({
           `UIVisualEffectView` pinned to the window, with no tint and no alpha over it. A dim on top
           of a blur hides the thing the blur exists to show. */}
       {Blur !== null ? null : <YStack fullscreen backgroundColor="$scrim" />}
-      {/* A press outside the dialog lands here, behind it, rather than on its container: see the
-          backdrop in `ModalStackHost`, where a container taking presses stopped its body scrolling. */}
+      {/* A press outside the dialog lands here, behind it, rather than on its container: a
+          container that takes presses stops its body scrolling. See `ModalStackHost`'s backdrop. */}
       <YStack fullscreen {...(dismiss === undefined ? {} : { onPress: dismiss })} />
       <YStack
         fullscreen
@@ -182,8 +182,8 @@ interface AlertBoxProps {
  * The dialog itself, without the window it is shown in.
  *
  * Apart from `Modal` so there is one alert in the app however it is presented: `Modal` puts it in a
- * platform modal of its own, and the modal stack draws it over a settings panel -- where a confirm
- * drawn as a small panel instead had neither the alert's metrics nor its shape.
+ * platform modal of its own, and the modal stack draws it over a settings panel. A confirm drawn as
+ * a panel would have neither the alert's metrics nor its shape.
  */
 export function AlertBox({
   title,

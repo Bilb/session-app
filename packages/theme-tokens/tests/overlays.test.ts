@@ -15,8 +15,8 @@ function blackAlpha(value: string): number | null {
 
 describe('the scrim and the shadow', () => {
   /**
-   * The defect these replace: a backdrop drawn in a theme's own surface colour. Every dark surface
-   * is lighter than its page, so that backdrop lightened the page it was meant to dim.
+   * A backdrop drawn in a theme's own surface colour lightens a dark page rather than dimming it:
+   * every dark surface is lighter than its page.
    */
   it('are black in every theme and accent, whatever the palette', () => {
     const wrong: string[] = []
@@ -57,8 +57,8 @@ function over(overlay: string, surface: string): string {
 }
 
 /**
- * The least a hover may move its surface. The old ghost hover on Classic Dark's recessed surface,
- * `#1B1B1B` to `#1f1f1f`, was 1.02 -- present in the numbers and invisible on screen.
+ * The least a hover may move its surface. A step of 1.02 is present in the numbers and invisible
+ * on screen.
  */
 const MIN_HOVER_STEP = 1.05
 
@@ -71,9 +71,9 @@ const SURFACES = [
 
 describe('the hover and pressed overlays', () => {
   /**
-   * The defect these replace: hover and press drawn as surface roles, which are a fixed distance
-   * from the page. On the recessed surface a dialog sits on, the hover was one shade from it and,
-   * in the light themes, the press was lighter than the hover.
+   * Hover and press drawn as surface roles are a fixed distance from the page: on the recessed
+   * surface a dialog sits on, such a hover is one shade from it and, in the light themes, such a
+   * press is lighter than the hover.
    */
   it('step away from every surface a control can sit on, the press further than the hover', () => {
     const wrong: string[] = []

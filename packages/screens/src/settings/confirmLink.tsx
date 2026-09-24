@@ -20,9 +20,8 @@ const MAX_URL_HEIGHT = textHeight('body', MAX_LINES)
 /**
  * Asks before handing an address to the browser.
  *
- * **Every external link in the desktop client goes through this**, including the ones in Help --
- * `showLinkVisitWarningDialog` is a step, not a convenience, and the app never leaves for a URL
- * without it.
+ * **Every external link goes through this**, including the ones in Help: it is a step, not a
+ * convenience, and the app never leaves for a URL without it.
  *
  * Presented on top of whatever is open rather than rendered by the screen that wants it, so a
  * settings row four screens deep does not have to hold dialog state of its own.

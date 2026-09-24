@@ -16,9 +16,8 @@ export type { ModalStackRootProps }
  * **A phone's settings panel is a native full-screen modal**, holding its own navigation stack:
  * what the iOS client does with settings. It slides up and back down with the system's own
  * animation, and its screens are the platform's pushes. Drawn inside react-native's `Modal`
- * instead, as it first was, the stack's screens never received a tap -- the native stack moves
- * them out of the touch handling a `Modal` gives its content -- while scrolling, being native,
- * still worked.
+ * instead, the stack's screens receive no taps -- the native stack moves them out of the touch
+ * handling a `Modal` gives its content -- while scrolling, being native, still works.
  *
  * So the app sits in the root screen of a native stack, always, and each phone panel is presented
  * above it. **Always**, not only on a phone: a tablet turning, or a window crossing the breakpoint,

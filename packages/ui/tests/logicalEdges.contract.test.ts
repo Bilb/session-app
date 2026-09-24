@@ -109,9 +109,8 @@ describe('a directional edge', () => {
  * No `$` name reaches `logical()`.
  *
  * Its values are raw style, where tamagui resolves nothing, so a token is dropped in silence: a
- * padding of `'$xs'` was no padding, and the rule between the desktop panes, given
- * `'$bordersColor'`, drew in the text colour instead. The lengths are typed against it; a colour
- * is a string either way, so this reads for it.
+ * padding of `'$xs'` is no padding, and a border colour of `'$bordersColor'` draws in the text
+ * colour. The lengths are typed against it; a colour is a string either way, so this reads for it.
  */
 describe('logical()', () => {
   const roots = [

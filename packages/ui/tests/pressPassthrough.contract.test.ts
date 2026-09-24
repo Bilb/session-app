@@ -16,8 +16,7 @@ const wrappers = readdirSync(SRC)
  *
  * tamagui attaches its own press handling on native to any view that declares one, so the frame
  * claims the touch and the `Pressable` around it never fires: the control draws and cannot be
- * pressed on a phone, while on the web -- where the passthrough is empty -- it works. Settings rows
- * shipped exactly that way.
+ * pressed on a phone, while on the web -- where the passthrough is empty -- it works.
  *
  * A grep, as `Button.contract.test.ts` is: this package has no native renderer to press with.
  */

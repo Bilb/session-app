@@ -133,8 +133,7 @@ thumb reads as switched off.
 roles not derived from a theme's colours: translucent black, with only the alpha keyed on polarity,
 the way the desktop client keys them. Anything that dims or shades takes one of them. A dimming
 built from a theme's own surfaces lightens a dark theme instead — every dark surface is lighter than
-its page — and both dialogs did exactly that, drawing their backdrop in `surfaceInk`. Neither role
-carries a contrast obligation: nothing is read on them.
+its page. Neither role carries a contrast obligation: nothing is read on them.
 
 **Illustrations are exempt. Text and controls are not.** The Session mark and the network diagram
 keep the brand green even on white.

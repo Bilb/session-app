@@ -142,9 +142,9 @@ const SHADOW = { light: 'rgba(0, 0, 0, 0.25)', dark: 'rgba(0, 0, 0, 1)' } as con
  * What a control lays over itself while hovered and while held.
  *
  * **An overlay rather than a surface**, so it reads as a step from whatever the control is drawn
- * on. A surface role is a fixed distance from the page, and a control is not always on the page: a
- * ghost button in a dialog on the recessed surface hovered to a colour one shade from that surface,
- * and held to one that in the light themes was lighter than its own hover.
+ * on. A surface role is a fixed distance from the page, and a control is not always on the page:
+ * on the recessed surface a dialog sits on, a surface-role hover lands one shade from its ground,
+ * and in the light themes a surface-role press is lighter than the hover.
  *
  * Toward the text pole -- white on a dark theme, black on a light one -- because a hover brightens
  * what is dark and shades what is light. The hover is the desktop client's row hover, a five per cent

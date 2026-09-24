@@ -7,8 +7,8 @@
  * meanings at any moment and the answer depends on both stacks, which is the whole reason this
  * is a module rather than two `useState` calls.
  *
- * Kept free of react and of react-native so it can be tested directly: the rules below were
- * arrived at by writing the cases down, and they are worth holding still.
+ * Kept free of react and of react-native so it can be tested directly: the rules below are the
+ * part worth holding still.
  */
 
 /** As much of a modal as the rules need to know about. */

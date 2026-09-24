@@ -116,7 +116,7 @@ export function ModalStackHost({
         //
         // A layer of its own drawn before the modal, not a child of it: on the web an absolutely
         // placed child paints over its in-flow siblings whatever the order, so a dim inside the
-        // layer covered the very dialog it was meant to sit behind.
+        // layer would cover the very dialog it is meant to sit behind.
         const layerScrim =
           index === 0 ? null : Blur === null ? (
             <YStack fullscreen backgroundColor="$scrim" pointerEvents="none" />
@@ -129,7 +129,7 @@ export function ModalStackHost({
         // **A press outside the modal lands on a layer of its own**, behind it, rather than on the
         // modal's container with the modal stopping it. A container that takes presses is a touch
         // target on native wherever its children are not, so a drag starting in a gap between
-        // groups or on a disabled row went to it instead of the scroller, and did not scroll. The
+        // groups or on a disabled row goes to it instead of the scroller, and does not scroll. The
         // layer above lets every touch outside the modal through to this one.
         const backdrop = (
           <YStack

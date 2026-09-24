@@ -3,7 +3,7 @@ const ID_PREFIX = /^(05|15|25|00|03)[0-9a-f]{2,}$/i
 
 /**
  * Characters as a reader counts them. An emoji built from several code points is one, and so is a
- * letter with its accent; slicing code units cut the desktop client's emoji initials in half.
+ * letter with its accent; slicing code units would cut an emoji initial in half.
  * Code points where the runtime has no segmenter, which splits only the composed emoji.
  */
 function graphemes(text: string): string[] {
@@ -22,10 +22,9 @@ function graphemes(text: string): string[] {
  * - **Several words give the first character of each of the first two**, split at spaces and
  *   hyphens as the desktop client splits them.
  * - **No name falls back to the account ID, past its prefix**, and takes the two characters after
- *   it, the way a one-word name gives two. The desktop and Android clients show only the third; two
- *   is the product owner's call, so an unnamed avatar is as full as a named one.
- * - Letters of any script and emoji are kept whole, as the phones keep them; the desktop client
- *   drops emoji and was left with half of one.
+ *   it, the way a one-word name gives two -- the product owner's call, so an unnamed avatar is as
+ *   full as a named one.
+ * - Letters of any script and emoji are kept whole, as the phones keep them.
  * - Upper-cased for the locale before counting, so a German ß becomes the SS it is in capitals.
  */
 export function avatarInitials(name: string, id: string): string {

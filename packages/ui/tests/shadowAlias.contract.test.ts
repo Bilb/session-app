@@ -6,9 +6,9 @@ import { buildThemes } from '#src/themes'
 /**
  * Tamagui's own shadow names read the theme's shadow role.
  *
- * They were a hard-coded `rgba(0, 0, 0, 0.25)` in this package -- a colour outside theme-tokens,
- * and a light theme's value everywhere, so a dark theme cast a shadow a quarter as strong as the
- * one it should. Any component using Tamagui's `shadowColor` resolves through these names.
+ * A fixed colour here would sit outside theme-tokens and suit only one kind of theme: a light
+ * theme's shadow on a dark theme is a quarter as strong as it should be. Any component using
+ * Tamagui's `shadowColor` resolves through these names.
  */
 describe("Tamagui's shadow names", () => {
   it('carry the theme role, and so differ between a light theme and a dark one', () => {

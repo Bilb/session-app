@@ -114,8 +114,8 @@ const EntriesContext = createContext<readonly OpenModal[]>([])
  * outlive the row being unmounted, and a modal that opens another has to be able to sit under it.
  * So callers name what they want opened and nothing else; where it is drawn is this module's.
  *
- * The rules for what closes what are in `modalStack.ts`, deliberately apart from react: they were
- * arrived at by writing the cases down, and they are the part worth holding still.
+ * The rules for what closes what are in `modalStack.ts`, deliberately apart from react: they are
+ * the part worth holding still.
  */
 export function ModalStackProvider({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<readonly OpenModal[]>([])
@@ -175,10 +175,9 @@ export function ModalStackProvider({ children }: { children: ReactNode }) {
       /**
        * Pushes a screen, keeping the one below it.
        *
-       * **A history stack, not the client's parent map.** There, each settings page names the page
-       * its back control returns to -- so a page reachable from two places goes to whichever of
-       * them was written down, unless its opener passes an override. Here back returns where you
-       * came from, which is the only answer that needs no table and cannot be wrong.
+       * **A history stack, not a parent map**: back returns where you came from, so a screen
+       * reachable from two places needs no table saying which one it returns to, and cannot return
+       * to the wrong one.
        */
       push: (screen) => {
         const key = `screen-${String(nextId.current++)}`

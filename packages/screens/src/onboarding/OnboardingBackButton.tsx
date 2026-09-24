@@ -37,8 +37,8 @@ const BACK_WIDTH = 40
 const BACK_GAP = 6
 
 /**
- * Where the heading starts, measured from the column's edge -- where it always has. The control and
- * the heading share a row, so moving one alone means the gap has to be taken out of the offset.
+ * Where the heading starts, measured from the column's edge. The control and the heading share a
+ * row, so moving one alone means the gap has to be taken out of the offset.
  */
 const HEADING_INSET = 4
 
