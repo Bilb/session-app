@@ -7,6 +7,7 @@ import { _electron, type ElectronApplication, type Page } from '@playwright/test
 import type { ElementId } from '@session/test-ids'
 
 import type { ISessionApp } from './ISessionApp'
+import type { IFileChooser } from './FileChooser'
 import type { IPerformanceProbe } from './PerformanceProbe'
 
 /**
@@ -20,6 +21,23 @@ import type { IPerformanceProbe } from './PerformanceProbe'
 interface LongTask {
   start: number
   duration: number
+}
+
+/** What `imageLoaded`'s page-side body touches, and nothing more. */
+interface MediaElement {
+  getAttribute: (name: string) => string | null
+  style?: { backgroundImage?: string }
+  querySelector: (selector: string) => { style?: { backgroundImage?: string } } | null
+}
+
+interface MediaGlobals {
+  Image: new () => {
+    naturalWidth: number
+    src: string
+    onload: (() => void) | null
+    onerror: (() => void) | null
+  }
+  setTimeout: (callback: () => void, ms: number) => unknown
 }
 
 interface PageGlobals {
@@ -40,7 +58,7 @@ const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
  * writes is the same string the component was given. There is no per-platform locator table
  * here, and there should not need to be one.
  */
-export class DesktopApp implements ISessionApp, IPerformanceProbe {
+export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser {
   readonly platform = 'desktop' as const
 
   private constructor(
@@ -109,8 +127,80 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe {
     return this.locator(id).allTextContents()
   }
 
+  async count(id: ElementId): Promise<number> {
+    return this.locator(id).count()
+  }
+
+  async imageLoaded(id: ElementId, options?: { timeoutMs?: number }): Promise<boolean> {
+    const element = this.locator(id).first()
+    // No element is an answer, not an error. The id is on the picture rather than on the tile
+    // from here on, so a tile that was never given a url has nothing carrying it - and "is the
+    // picture here" is false in exactly that case.
+    try {
+      await element.waitFor({ state: 'attached', timeout: options?.timeoutMs ?? 10_000 })
+    } catch {
+      return false
+    }
+
+    // react-native-web draws an Image as a div with a background-image rather than an <img>, so
+    // there is no naturalWidth to read. Loading the same URL again answers the question and is
+    // free: whatever the element fetched is in the renderer's cache by then.
+    return element.evaluate(
+      (node: unknown, timeoutMs: number) =>
+        new Promise<boolean>((resolve) => {
+          const el = node as MediaElement
+          const g = globalThis as unknown as MediaGlobals
+          const own = el.style?.backgroundImage ?? ''
+          const nested = el.querySelector('div')?.style?.backgroundImage ?? ''
+          const source =
+            el.getAttribute('src') ?? /url\("?([^")]+)"?\)/.exec(own || nested)?.[1] ?? null
+          if (source === null) {
+            resolve(false)
+            return
+          }
+          const probe = new g.Image()
+          probe.onload = () => resolve(probe.naturalWidth > 0)
+          probe.onerror = () => resolve(false)
+          probe.src = source
+          g.setTimeout(() => resolve(false), timeoutMs)
+        }),
+      options?.timeoutMs ?? 10_000,
+    )
+  }
+
   async screenshot(name: string): Promise<void> {
-    await this.page.screenshot({ path: join(repoRoot, 'test-results', `${name}.png`) })
+    // Animations frozen at their end state, so an artifact taken the moment a surface opens is
+    // the surface rather than a frame of it fading in - which is a picture that reads as a bug.
+    await this.page.screenshot({
+      path: join(repoRoot, 'test-results', `${name}.png`),
+      animations: 'disabled',
+    })
+  }
+
+  // -- IFileChooser -----------------------------------------------------------------------
+
+  async answerSaveDialogWith(path: string): Promise<void> {
+    await this.app.evaluate(({ dialog, shell }, chosen) => {
+      dialog.showSaveDialog = () => Promise.resolve({ canceled: false, filePath: chosen })
+      // Recorded on the main process itself, because that is what outlives the call and what a
+      // later evaluate can read back. Replacing it also stops a file manager window opening on
+      // whoever is running the suite.
+      const global = globalThis as unknown as { sessionRevealed?: string[] }
+      global.sessionRevealed = []
+      shell.showItemInFolder = (revealed: string) => global.sessionRevealed?.push(revealed)
+    }, path)
+  }
+
+  async cancelNextSaveDialog(): Promise<void> {
+    await this.app.evaluate(({ dialog }) => {
+      dialog.showSaveDialog = () => Promise.resolve({ canceled: true, filePath: '' })
+    })
+  }
+
+  async revealedPaths(): Promise<string[]> {
+    return this.app.evaluate(
+      () => (globalThis as unknown as { sessionRevealed?: string[] }).sessionRevealed ?? [],
+    )
   }
 
   // -- IPerformanceProbe ------------------------------------------------------------------
