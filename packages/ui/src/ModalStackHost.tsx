@@ -3,6 +3,7 @@ import { Modal as NativeModal } from 'react-native'
 import { ScrollView, useMedia, XStack, YStack } from 'tamagui'
 
 import { useBackdropBlur } from './backdropBlur'
+import { useGlass } from './glass'
 import { backChevron } from './backChevron'
 import { Button } from './Button'
 import { Icon } from './Icon'
@@ -16,6 +17,8 @@ import {
   PANEL_WIDTH,
 } from './modalPanelMetrics'
 import { useModalEntries, useModals, type OpenModal } from './ModalsProvider'
+import { PressArea } from './PressArea'
+import { SIZE_SCALE } from './scales'
 import { Text } from './Text'
 import { useThemeIsDark } from './UIProvider'
 import { useScreenInsets } from './screenInsets'
@@ -62,6 +65,7 @@ export function ModalStackHost({
   const entries = only ?? all
   const modals = useModals()
   const Blur = useBackdropBlur()
+  const Glass = useGlass()
   const dark = useThemeIsDark()
   const wide = useMedia().gtSm
   const shadowColor = useTokenColor('$shadow')
@@ -257,7 +261,23 @@ export function ModalStackHost({
                   </Text>
 
                   <YStack width={HEADER_HEIGHT} alignItems="flex-end">
-                    {!wide || !entry.dismissible ? null : (
+                    {!wide || !entry.dismissible ? null : Glass !== null ? (
+                      // On glass where the platform has it -- iOS 26 -- as the phone's settings
+                      // close sits in the system bar's glass button, so the two read as one control.
+                      <PressArea
+                        accessibilityLabel={closeLabel}
+                        {...(closeTestID === undefined ? {} : { testID: closeTestID })}
+                        onPress={() => {
+                          modals.dismiss(entry.id)
+                        }}
+                      >
+                        {() => (
+                          <Glass size={SIZE_SCALE['2xl']} dark={dark}>
+                            <Icon name="x" size="lg" color="$textPrimary" />
+                          </Glass>
+                        )}
+                      </PressArea>
+                    ) : (
                       <Button
                         variant="ghost"
                         size="md"

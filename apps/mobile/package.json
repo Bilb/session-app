@@ -36,6 +36,7 @@
     "expo-crypto": "catalog:",
     "expo-file-system": "catalog:",
     "expo-font": "catalog:",
+    "expo-glass-effect": "catalog:",
     "expo-linking": "catalog:",
     "expo-router": "catalog:",
     "expo-secure-store": "catalog:",

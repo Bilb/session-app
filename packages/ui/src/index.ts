@@ -73,6 +73,7 @@ export { Text, type TextProps, type TextSize } from './Text'
 export { UIProvider } from './UIProvider'
 export type { UIProviderProps } from './UIProvider'
 export type { BackdropBlur, BackdropBlurProps } from './backdropBlur'
+export type { Glass, GlassProps } from './glass'
 
 export { config, tokens } from './config'
 export {
