@@ -146,7 +146,14 @@ function AccountHeader({ sessionId, name }: { sessionId: string; name: string })
   const shareText = requirePorts().share.shareText
 
   return (
-    <YStack alignItems="center" gap="$sm" paddingVertical="$lg">
+    <YStack
+      alignItems="center"
+      gap="$sm"
+      paddingTop="$lg"
+      // Nothing under the phones' Share and Copy: the page's own gap is what separates them from
+      // the first group, the same space as sits between the groups.
+      paddingBottom={shareText === null ? '$lg' : '$none'}
+    >
       <Avatar id={sessionId} name={name} size={PROFILE_AVATAR} />
       {name === '' ? null : (
         <Text size="$headingLarge" weight="bold" testID={ELEMENT.settings.displayName}>
