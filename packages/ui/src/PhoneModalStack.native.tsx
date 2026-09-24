@@ -9,6 +9,7 @@ import { Icon } from './Icon'
 import { ACTION_HEIGHT } from './modalPanelMetrics'
 import { PressArea } from './PressArea'
 import { useScreenInsets } from './screenInsets'
+import { Text } from './Text'
 import { useTokenColor } from './useTokenColor'
 
 /** One screen of the modal, as the phone's stack draws it. */
@@ -95,12 +96,21 @@ export function PhoneModalStack({
                   ) : (
                     // Where the bar draws nothing, the desktop's close: a circle that fills while
                     // it is held, so the glyph is not the whole control.
-                    <BarButton
-                      icon="x"
-                      accessibilityLabel={closeLabel}
-                      onPress={onClose}
-                      testID={closeTestID}
-                    />
+                    <XStack alignItems="center" gap={TITLE_AFTER_CLOSE}>
+                      <BarButton
+                        icon="x"
+                        accessibilityLabel={closeLabel}
+                        onPress={onClose}
+                        testID={closeTestID}
+                      />
+                      {/* Android's bar drops its title once there is a leading item, so the title
+                          is drawn here, where a pushed screen's sits after its back arrow. */}
+                      {Platform.OS === 'android' ? (
+                        <Text size="$headingLarge" weight="bold" numberOfLines={1}>
+                          {screen.title}
+                        </Text>
+                      ) : null}
+                    </XStack>
                   )}
                 </ScreenStackHeaderLeftView>
               ) : undefined,
@@ -133,5 +143,11 @@ export function PhoneModalStack({
  */
 const BAR_DRAWS_BUTTON =
   Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26
+
+/**
+ * The room between the close and the title on Android, so the title starts where the bar puts a
+ * pushed screen's after its back arrow -- measured against Help's, rather than a rung of the scale.
+ */
+const TITLE_AFTER_CLOSE = 19
 
 const styles = StyleSheet.create({ fill: { flex: 1 } })
