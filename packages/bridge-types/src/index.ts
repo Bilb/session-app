@@ -9,8 +9,20 @@ export type {
   SessionBridgeOptions,
   UrlScheme,
 } from './sessionBridgeOptions'
+export {
+  ATTACHMENT_DOWNLOAD_FAILED,
+  ATTACHMENT_FILE_MISSING,
+  ATTACHMENT_NOT_FOUND,
+  ATTACHMENT_UNREADABLE,
+} from './domain'
 export type {
   AccountInfo,
+  Attachment,
+  AttachmentAvailability,
+  AttachmentError,
+  AttachmentOutcome,
+  AttachmentTransfer,
+  AutoDownload,
   Conversation,
   ConversationId,
   ConversationKind,

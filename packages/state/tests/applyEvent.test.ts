@@ -30,6 +30,37 @@ function message(overrides: Partial<Message> = {}): Message {
     body: 'hello',
     outgoing: false,
     sendState: 'sent',
+    attachments: [],
+    galleryViewable: false,
+    ...overrides,
+  }
+}
+
+/**
+ * A loaded history holding the message the reports below are about.
+ *
+ * A report names a message and not a conversation, so what decides whether one is kept is
+ * whether some loaded window holds that message.
+ */
+function loaded(messages: Message[] = [message()]): SessionState {
+  return {
+    ...emptyState,
+    histories: {
+      '05alice': { ready: true, messages, exhausted: true, fetching: false },
+    },
+  }
+}
+
+function progress(
+  overrides: Partial<Extract<SessionEvent, { type: 'attachment-progress' }>> = {},
+): SessionEvent {
+  return {
+    type: 'attachment-progress',
+    transfer: 'download',
+    messageId: 1,
+    index: 0,
+    done: 0,
+    total: 0,
     ...overrides,
   }
 }
@@ -84,7 +115,7 @@ describe('applyEvent', () => {
   it('ignores messages for a conversation whose history was never loaded', () => {
     const state = replay([
       { type: 'conversation-added', conversation: conversation() },
-      { type: 'message-added', conversationId: '05alice', message: message() },
+      { type: 'messages-added', messages: [message()] },
     ])
 
     // A window built from one event would look complete and would not be.
@@ -107,9 +138,8 @@ describe('applyEvent', () => {
     // A timestamp that would sort between the two, to show it is not sorted in: the event
     // reports what libsession just recorded, and the transcript reads in libsession's order.
     const state = applyEvent(seeded, {
-      type: 'message-added',
-      conversationId: '05alice',
-      message: message({ id: 2, timestamp: 2000 }),
+      type: 'messages-added',
+      messages: [message({ id: 2, timestamp: 2000 })],
     })
 
     expect(state.histories['05alice']?.messages.map((m) => m.id)).toEqual([1, 3, 2])
@@ -129,9 +159,8 @@ describe('applyEvent', () => {
     }
 
     const state = applyEvent(seeded, {
-      type: 'message-updated',
-      conversationId: '05alice',
-      message: message({ id: 1, sendState: 'sent' }),
+      type: 'messages-updated',
+      messages: [message({ id: 1, sendState: 'sent' })],
     })
 
     const messages = state.histories['05alice']?.messages ?? []
@@ -242,9 +271,8 @@ describe('applyEvent', () => {
     }
 
     const state = applyEvent(seeded, {
-      type: 'message-added',
-      conversationId: '05alice',
-      message: message({ id: 3, timestamp: 3000 }),
+      type: 'messages-added',
+      messages: [message({ id: 3, timestamp: 3000 })],
     })
 
     expect(state.histories['05alice']?.messages.map((m) => m.id)).toEqual([1, 2, 3])
@@ -260,7 +288,7 @@ describe('applyEvent', () => {
     const state = replay(
       [
         { type: 'conversation-added', conversation: convo },
-        { type: 'message-added', conversationId: '05alice', message: msg },
+        { type: 'messages-added', messages: [msg] },
       ],
       seeded,
     )
@@ -291,5 +319,75 @@ describe('mergePages', () => {
     // A page is asked for from before the oldest message loaded, so an overlap is libsession
     // answering something other than what was asked - not something to paper over here.
     expect(mergePages(older, previous).map((m) => m.id)).toEqual([1, 3, 2])
+  })
+})
+
+describe('attachment transfers', () => {
+  it('records a report against the transfer it belongs to', () => {
+    const state = replay([progress(), progress({ done: 512, total: 2048 })], loaded([message()]))
+
+    expect(state.transfers['download:1:0']).toEqual({
+      state: 'running',
+      done: 512,
+      total: 2048,
+    })
+  })
+
+  it('keeps a download and a save of the same attachment apart', () => {
+    // libsession joins downloads with each other and never joins a save, so both can be running
+    // against one file: keyed only by message and index they would overwrite each other and the
+    // bar would jump backwards.
+    const state = replay(
+      [
+        progress({ transfer: 'download', done: 1024, total: 2048 }),
+        progress({ transfer: 'save', done: 64, total: 2048 }),
+      ],
+      loaded(),
+    )
+
+    expect(state.transfers['download:1:0']?.done).toBe(1024)
+    expect(state.transfers['save:1:0']?.done).toBe(64)
+  })
+
+  it('treats an ok outcome as finished and any other as failed', () => {
+    const ok = replay([progress({ done: 2048, total: 2048, outcome: { ok: true } })], loaded())
+    expect(ok.transfers['download:1:0']?.state).toBe('done')
+
+    const bad = replay(
+      [progress({ done: 2048, total: 2048, outcome: { ok: false, error: 'file.unreadable' } })],
+      loaded(),
+    )
+    expect(bad.transfers['download:1:0']?.state).toBe('failed')
+    expect(bad.transfers['download:1:0']?.error).toBe('file.unreadable')
+  })
+
+  it('does not finish a transfer that has moved every byte but reported no outcome', () => {
+    // done === total arrives before the verification does, so reading it as finished shows a
+    // file as ready that may still fail.
+    const state = replay([progress({ done: 2048, total: 2048 })], loaded())
+    expect(state.transfers['download:1:0']?.state).toBe('running')
+  })
+
+  it('drops reports for a conversation whose history is not loaded', () => {
+    // An auto-downloading conversation reports whether or not anyone is looking at it.
+    const state = replay([progress()], emptyState)
+    expect(Object.keys(state.transfers)).toEqual([])
+  })
+
+  it('forgets a conversation transfers when its history is replaced', () => {
+    const state = replay(
+      [
+        progress({ done: 512, total: 2048 }),
+        { type: 'history-replaced', conversationId: '05alice' },
+      ],
+      loaded(),
+    )
+    expect(Object.keys(state.transfers)).toEqual([])
+  })
+
+  it('leaves the transfer map alone when nothing in it changed', () => {
+    const before = replay([progress()], loaded())
+    const after = applyEvent(before, { type: 'history-replaced', conversationId: '05bob' })
+    expect(after.transfers).toBe(before.transfers)
   })
 })

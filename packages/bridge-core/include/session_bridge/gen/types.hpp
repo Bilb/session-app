@@ -130,6 +130,33 @@ struct EnumTraits<ConversationKind> {
     }
 };
 
+/// What a conversation fetches without being asked.
+///
+/// Device-local and never synced: auto-downloading everything on a desktop and nothing on a phone
+/// is the case it exists for.
+enum class AutoDownload {
+    none,
+    image_attachments,
+    all,
+};
+
+template <>
+struct EnumTraits<AutoDownload> {
+    static constexpr std::string_view name = "AutoDownload";
+    static constexpr std::array<std::string_view, 3> names{"none", "image-attachments", "all"};
+
+    static constexpr std::string_view to_string(AutoDownload value) {
+        return names[static_cast<std::size_t>(value)];
+    }
+
+    static constexpr std::optional<AutoDownload> parse(std::string_view text) {
+        for (std::size_t i = 0; i < names.size(); i++)
+            if (names[i] == text)
+                return static_cast<AutoDownload>(i);
+        return std::nullopt;
+    }
+};
+
 /// A flattened AnyConversation: the fields every kind has, plus the DM-only ones.
 struct Conversation {
     std::string id;
@@ -144,13 +171,17 @@ struct Conversation {
     bool marked_unread;
     std::optional<std::string> snippet;
     std::optional<double> mute_until;
+    /// Unset means nobody has been asked yet, which is not the same as having been asked and said no:
+    /// Session asks once per conversation and remembers the answer, and only the former should prompt
+    /// again. Setting it - `none` included - is what records that the question was asked.
+    std::optional<::session_bridge::AutoDownload> auto_download;
     bool request;
     bool awaiting_approval;
     bool note_to_self;
     bool blocked;
 
-    Conversation(std::string id_, ::session_bridge::ConversationKind kind_, std::string display_name_, std::optional<std::string> nickname_, double last_activity_, double priority_, double unread_count_, bool marked_unread_, std::optional<std::string> snippet_, std::optional<double> mute_until_, bool request_, bool awaiting_approval_, bool note_to_self_, bool blocked_) :
-            id{std::move(id_)}, kind{std::move(kind_)}, display_name{std::move(display_name_)}, nickname{std::move(nickname_)}, last_activity{std::move(last_activity_)}, priority{std::move(priority_)}, unread_count{std::move(unread_count_)}, marked_unread{std::move(marked_unread_)}, snippet{std::move(snippet_)}, mute_until{std::move(mute_until_)}, request{std::move(request_)}, awaiting_approval{std::move(awaiting_approval_)}, note_to_self{std::move(note_to_self_)}, blocked{std::move(blocked_)} {}
+    Conversation(std::string id_, ::session_bridge::ConversationKind kind_, std::string display_name_, std::optional<std::string> nickname_, double last_activity_, double priority_, double unread_count_, bool marked_unread_, std::optional<std::string> snippet_, std::optional<double> mute_until_, std::optional<::session_bridge::AutoDownload> auto_download_, bool request_, bool awaiting_approval_, bool note_to_self_, bool blocked_) :
+            id{std::move(id_)}, kind{std::move(kind_)}, display_name{std::move(display_name_)}, nickname{std::move(nickname_)}, last_activity{std::move(last_activity_)}, priority{std::move(priority_)}, unread_count{std::move(unread_count_)}, marked_unread{std::move(marked_unread_)}, snippet{std::move(snippet_)}, mute_until{std::move(mute_until_)}, auto_download{std::move(auto_download_)}, request{std::move(request_)}, awaiting_approval{std::move(awaiting_approval_)}, note_to_self{std::move(note_to_self_)}, blocked{std::move(blocked_)} {}
 };
 
 struct ConversationListResult {
@@ -201,6 +232,92 @@ struct EnumTraits<SendState> {
                 return static_cast<SendState>(i);
         return std::nullopt;
     }
+};
+
+/// Whether an attachment's bytes are here, on their way, or neither.
+///
+/// What it is for is deciding what to *draw*: the file, a progress indicator, or something to
+/// press. It arrives **on the message** rather than being asked for separately, which is what
+/// makes a display that missed the reports correct without a second query.
+///
+/// A hint about what the next call will do rather than a promise about the file: a `cached` that
+/// is evicted before anybody asks only means the fetch reads the network instead of the disk.
+///
+/// Reported for an outgoing attachment as for an incoming one - what we send is kept under the
+/// rule that would have fetched it - so "can this be drawn without a download" has one answer
+/// regardless of direction.
+enum class AttachmentAvailability {
+    cached,
+    fetching,
+    absent,
+    not_found,
+    unreadable,
+};
+
+template <>
+struct EnumTraits<AttachmentAvailability> {
+    static constexpr std::string_view name = "AttachmentAvailability";
+    static constexpr std::array<std::string_view, 5> names{"cached", "fetching", "absent", "notFound", "unreadable"};
+
+    static constexpr std::string_view to_string(AttachmentAvailability value) {
+        return names[static_cast<std::size_t>(value)];
+    }
+
+    static constexpr std::optional<AttachmentAvailability> parse(std::string_view text) {
+        for (std::size_t i = 0; i < names.size(); i++)
+            if (names[i] == text)
+                return static_cast<AttachmentAvailability>(i);
+        return std::nullopt;
+    }
+};
+
+/// An attachment on a stored message, in either direction.
+///
+/// Nothing here says whether the bytes are on this device: that is answered by asking for them, and
+/// `downloadAttachment` answers at once when they are already cached.
+struct Attachment {
+    /// Position in the message's list, and what every attachment call takes.
+    double index;
+    /// The sender's claim on an incoming attachment: a display hint, not a fact about the bytes.
+    std::optional<std::string> content_type;
+    std::optional<std::string> filename;
+    /// The file's size before encryption. Unset on an outgoing attachment that has not uploaded, and
+    /// the sender's claim on an incoming one. Not comparable with a progress report's `total`, which
+    /// counts encrypted bytes.
+    std::optional<double> size;
+    bool voice_message;
+    /// Supplied by whoever attached the file - libsession does not measure images.
+    std::optional<double> width;
+    std::optional<double> height;
+    /// Whether the sender supplied a ThumbHash, which is something to draw in the picture's place
+    /// until its bytes arrive. False for everything sent by a client that does not encode one, which
+    /// today is every 1.x client.
+    ///
+    /// A flag rather than the pixels: a placeholder is an image, and an image is resolved through the
+    /// media port like any other rather than riding the frame stream. What it names is the second
+    /// path on that scheme.
+    bool has_preview;
+    /// On the file server: an outgoing attachment's upload finished, and always true for an incoming
+    /// one. Deliberately not "the bytes are here" - libsession records no local path, because the
+    /// application chose it and a stored copy would go stale the moment the file moved.
+    bool uploaded;
+    /// Whether the bytes are here, coming, or neither. See `AttachmentAvailability`.
+    ::session_bridge::AttachmentAvailability availability;
+    /// How far the transfer has got while `availability` is `fetching`, and 0 otherwise.
+    ///
+    /// The same encrypted-byte figures `attachment-progress` carries, so a bar drawn from these and
+    /// then fed by reports continues rather than jumping. `fetchTotal` is 0 until the server has
+    /// said how big the file is. What they are for is a conversation opened while a download is
+    /// already running: the reports went to whoever started it.
+    double fetch_done;
+    double fetch_total;
+    /// When the recipient last saved it - us on an incoming attachment, the other party on one we
+    /// sent. Unset means *not known to have been saved*, which is not the same as not saved: it
+    /// depends on the other end volunteering a notification.
+    std::optional<double> saved_at;
+
+    Attachment(double index_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<double> size_, bool voice_message_, std::optional<double> width_, std::optional<double> height_, bool has_preview_, bool uploaded_, ::session_bridge::AttachmentAvailability availability_, double fetch_done_, double fetch_total_, std::optional<double> saved_at_) :
+            index{std::move(index_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, size{std::move(size_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)}, has_preview{std::move(has_preview_)}, uploaded{std::move(uploaded_)}, availability{std::move(availability_)}, fetch_done{std::move(fetch_done_)}, fetch_total{std::move(fetch_total_)}, saved_at{std::move(saved_at_)} {}
 };
 
 /// The message a reply points at, resolved one level deep only: a reply to a reply shows its own
@@ -257,16 +374,24 @@ struct Message {
     /// recipient swarm is our own and whose `sendState` already covers the only send there was.
     /// Optional rather than defaulted, because `sent` here would claim a sync that never happened.
     std::optional<::session_bridge::SendState> sync_state;
+    std::vector<::session_bridge::Attachment> attachments;
+    /// Whether this message's attachments could be shown as pictures rather than listed as files.
+    /// libsession's rule, not one to re-derive from content types: today it is "has attachments, and
+    /// every one of them is an image", and it may narrow.
+    bool gallery_viewable;
     std::optional<::session_bridge::Reply> reply_to;
     std::optional<::session_bridge::Deletion> deleted;
 
-    Message(double id_, std::string conversation_id_, std::string author_, double timestamp_, std::string body_, bool outgoing_, ::session_bridge::SendState send_state_, std::optional<::session_bridge::SendState> sync_state_, std::optional<::session_bridge::Reply> reply_to_, std::optional<::session_bridge::Deletion> deleted_) :
-            id{std::move(id_)}, conversation_id{std::move(conversation_id_)}, author{std::move(author_)}, timestamp{std::move(timestamp_)}, body{std::move(body_)}, outgoing{std::move(outgoing_)}, send_state{std::move(send_state_)}, sync_state{std::move(sync_state_)}, reply_to{std::move(reply_to_)}, deleted{std::move(deleted_)} {}
+    Message(double id_, std::string conversation_id_, std::string author_, double timestamp_, std::string body_, bool outgoing_, ::session_bridge::SendState send_state_, std::optional<::session_bridge::SendState> sync_state_, std::vector<::session_bridge::Attachment> attachments_, bool gallery_viewable_, std::optional<::session_bridge::Reply> reply_to_, std::optional<::session_bridge::Deletion> deleted_) :
+            id{std::move(id_)}, conversation_id{std::move(conversation_id_)}, author{std::move(author_)}, timestamp{std::move(timestamp_)}, body{std::move(body_)}, outgoing{std::move(outgoing_)}, send_state{std::move(send_state_)}, sync_state{std::move(sync_state_)}, attachments{std::move(attachments_)}, gallery_viewable{std::move(gallery_viewable_)}, reply_to{std::move(reply_to_)}, deleted{std::move(deleted_)} {}
 };
 
-/// Oldest first, whatever page it is - the direction a transcript is read. libsession answers
-/// newest first because that is the direction paging runs; the shim reverses. Getting this
-/// wrong shows up as a conversation that reads bottom to top.
+/// A page of history.
+///
+/// What each attachment's bytes are doing rides on the attachment itself - `availability`,
+/// `fetchDone`, `fetchTotal` - rather than in a list beside the page. One writer for the first
+/// picture and for every correction after it, which is what stops a window drawing an
+/// attachment as untouched and then taking it back.
 struct MessageListResult {
     static constexpr std::string_view type_tag = "messageList";
 
@@ -312,6 +437,26 @@ struct BoolResult {
             value{std::move(value_)} {}
 };
 
+/// Where a save landed, which is not always where it was asked to go: a collision becomes `name (2)`.
+struct PathResult {
+    static constexpr std::string_view type_tag = "path";
+
+    std::string path;
+
+    explicit PathResult(std::string path_) :
+            path{std::move(path_)} {}
+};
+
+/// Unset means no limit.
+struct ByteCountResult {
+    static constexpr std::string_view type_tag = "byteCount";
+
+    std::optional<double> bytes;
+
+    explicit ByteCountResult(std::optional<double> bytes_) :
+            bytes{std::move(bytes_)} {}
+};
+
 /// What a Response carries when the command succeeded.
 using Result = std::variant<
         EmptyResult,
@@ -323,7 +468,9 @@ using Result = std::variant<
         MessageIdResult,
         HexResult,
         PrefResult,
-        BoolResult>;
+        BoolResult,
+        PathResult,
+        ByteCountResult>;
 
 struct Response {
     double id;
@@ -391,24 +538,31 @@ struct RequestListReplacedSessionEvent {
             conversations{std::move(conversations_)} {}
 };
 
-struct MessageAddedSessionEvent {
-    static constexpr std::string_view type_tag = "message-added";
+/// Messages arrived or changed, oldest first.
+///
+/// A batch, and **it may span conversations**: one cause routinely reaches several, because a
+/// file is one file and fetching or evicting it changes every message showing it, wherever
+/// those are. Each `Message` carries its own `conversationId` for that reason.
+///
+/// Reported for every message in every conversation rather than whichever one is on screen -
+/// there is no notion here of what the app is showing, so deciding what to redraw is the app's.
+/// A message can also arrive here because something it *quotes* changed.
+struct MessagesAddedSessionEvent {
+    static constexpr std::string_view type_tag = "messages-added";
 
-    std::string conversation_id;
-    ::session_bridge::Message message;
+    std::vector<::session_bridge::Message> messages;
 
-    MessageAddedSessionEvent(std::string conversation_id_, ::session_bridge::Message message_) :
-            conversation_id{std::move(conversation_id_)}, message{std::move(message_)} {}
+    explicit MessagesAddedSessionEvent(std::vector<::session_bridge::Message> messages_) :
+            messages{std::move(messages_)} {}
 };
 
-struct MessageUpdatedSessionEvent {
-    static constexpr std::string_view type_tag = "message-updated";
+struct MessagesUpdatedSessionEvent {
+    static constexpr std::string_view type_tag = "messages-updated";
 
-    std::string conversation_id;
-    ::session_bridge::Message message;
+    std::vector<::session_bridge::Message> messages;
 
-    MessageUpdatedSessionEvent(std::string conversation_id_, ::session_bridge::Message message_) :
-            conversation_id{std::move(conversation_id_)}, message{std::move(message_)} {}
+    explicit MessagesUpdatedSessionEvent(std::vector<::session_bridge::Message> messages_) :
+            messages{std::move(messages_)} {}
 };
 
 struct HistoryReplacedSessionEvent {
@@ -418,6 +572,75 @@ struct HistoryReplacedSessionEvent {
 
     explicit HistoryReplacedSessionEvent(std::string conversation_id_) :
             conversation_id{std::move(conversation_id_)} {}
+};
+
+/// Which kind of transfer a progress report belongs to.
+///
+/// libsession joins concurrent downloads of one file with each other but never joins a save, so one
+/// attachment can have two live transfers at once. Keyed without this they interleave, and a bar
+/// jumps backwards.
+enum class AttachmentTransfer {
+    download,
+    save,
+};
+
+template <>
+struct EnumTraits<AttachmentTransfer> {
+    static constexpr std::string_view name = "AttachmentTransfer";
+    static constexpr std::array<std::string_view, 2> names{"download", "save"};
+
+    static constexpr std::string_view to_string(AttachmentTransfer value) {
+        return names[static_cast<std::size_t>(value)];
+    }
+
+    static constexpr std::optional<AttachmentTransfer> parse(std::string_view text) {
+        for (std::size_t i = 0; i < names.size(); i++)
+            if (names[i] == text)
+                return static_cast<AttachmentTransfer>(i);
+        return std::nullopt;
+    }
+};
+
+/// How a transfer ended, on the one report that ends it.
+///
+/// Two fields rather than a code with a success value, because "it worked" and "here is which of
+/// several ways it failed" are different questions and only one of them has an answer to match on.
+struct AttachmentOutcome {
+    /// The bytes arrived and verified.
+    bool ok;
+    /// Why it failed. Unset when `ok`.
+    std::optional<std::string> error;
+
+    AttachmentOutcome(bool ok_, std::optional<std::string> error_) :
+            ok{std::move(ok_)}, error{std::move(error_)} {}
+};
+
+/// One report about one attachment transfer, whether a command asked for it or libsession
+/// started it on its own.
+///
+/// The first report of a transfer is `{done: 0, total: 0}` and means it started - `total` stays 0
+/// until the server says how big the file is. `outcome` absent means still going, and exactly one
+/// report per transfer carries one: `done === total` does not mean finished, because the bytes
+/// still have to verify.
+///
+/// Reports for one (transfer, messageId, index) are ordered; different ones interleave, and each
+/// is rate limited to roughly one per 100ms. A transfer served from the cache reports nothing at
+/// all, so an indicator must be driven by time rather than by these arriving.
+///
+/// `done` and `total` count *encrypted* bytes - what is actually being moved - and so do not
+/// agree with `Attachment.size`, which is the plaintext length.
+struct AttachmentProgressSessionEvent {
+    static constexpr std::string_view type_tag = "attachment-progress";
+
+    ::session_bridge::AttachmentTransfer transfer;
+    double message_id;
+    double index;
+    double done;
+    double total;
+    std::optional<::session_bridge::AttachmentOutcome> outcome;
+
+    AttachmentProgressSessionEvent(::session_bridge::AttachmentTransfer transfer_, double message_id_, double index_, double done_, double total_, std::optional<::session_bridge::AttachmentOutcome> outcome_) :
+            transfer{std::move(transfer_)}, message_id{std::move(message_id_)}, index{std::move(index_)}, done{std::move(done_)}, total{std::move(total_)}, outcome{std::move(outcome_)} {}
 };
 
 /// libsession's own log lines, forwarded when the bridge was opened with a log level. Worth
@@ -442,15 +665,19 @@ struct LogSessionEvent {
 ///
 /// The shim emits these and the app reads them, with nothing in between rewriting an arm - which
 /// is why there is one type rather than a wire one and an app one.
+///
+/// `attachment-progress` is the one arm that is not whole state, because a transfer has none to
+/// carry: libsession stores nothing about one in flight, and the report is the only record there is.
 using SessionEvent = std::variant<
         ConversationAddedSessionEvent,
         ConversationUpdatedSessionEvent,
         ConversationRemovedSessionEvent,
         ConversationListReplacedSessionEvent,
         RequestListReplacedSessionEvent,
-        MessageAddedSessionEvent,
-        MessageUpdatedSessionEvent,
+        MessagesAddedSessionEvent,
+        MessagesUpdatedSessionEvent,
         HistoryReplacedSessionEvent,
+        AttachmentProgressSessionEvent,
         LogSessionEvent>;
 
 struct EventFrame {
@@ -892,6 +1119,72 @@ struct DeleteMessageCommand {
             message_id{std::move(message_id_)}, scope{std::move(scope_)} {}
 };
 
+/// Fetch an attachment into libsession's cache, reporting progress as it goes.
+///
+/// One call covers all three cases: it answers at once when the file is already cached, joins a
+/// fetch already running - reporting from wherever that has got to - and starts one only when
+/// nothing else has. So it is also how a caller asks whether the bytes are here.
+struct DownloadAttachmentCommand {
+    static constexpr std::string_view type_tag = "downloadAttachment";
+
+    double message_id;
+    double index;
+
+    DownloadAttachmentCommand(double message_id_, double index_) :
+            message_id{std::move(message_id_)}, index{std::move(index_)} {}
+};
+
+/// Write an attachment to a path the person chose, fetching it first if the cache does not hold
+/// it. Reads the cache but never fills it, so this is not a way to pre-fetch.
+struct SaveAttachmentCommand {
+    static constexpr std::string_view type_tag = "saveAttachment";
+
+    double message_id;
+    double index;
+    std::string destination;
+    bool notify_sender;
+    bool replace;
+
+    SaveAttachmentCommand(double message_id_, double index_, std::string destination_, bool notify_sender_, bool replace_) :
+            message_id{std::move(message_id_)}, index{std::move(index_)}, destination{std::move(destination_)}, notify_sender{std::move(notify_sender_)}, replace{std::move(replace_)} {}
+};
+
+/// Also records that the question was asked at all, which is why `none` is worth sending.
+struct SetAutoDownloadCommand {
+    static constexpr std::string_view type_tag = "setAutoDownload";
+
+    std::string conversation_id;
+    ::session_bridge::AutoDownload mode;
+
+    SetAutoDownloadCommand(std::string conversation_id_, ::session_bridge::AutoDownload mode_) :
+            conversation_id{std::move(conversation_id_)}, mode{std::move(mode_)} {}
+};
+
+/// The directory libsession was given to cache downloads in.
+///
+/// Asked for rather than read back from the options the app passed, because the app that passed
+/// them is not always the one that draws them: the desktop renderer is sandboxed and the path
+/// was chosen in the main process.
+struct GetCacheDirCommand {
+    static constexpr std::string_view type_tag = "getCacheDir";
+};
+
+struct GetAttachmentCacheLimitCommand {
+    static constexpr std::string_view type_tag = "getAttachmentCacheLimit";
+};
+
+/// How much disk the cached attachments may occupy, evicted least-recently-used. Bytes on disk,
+/// which is what caching actually costs: the files are encrypted and padded, so the total is
+/// larger than the same attachments as plain files. Unset means no limit.
+struct SetAttachmentCacheLimitCommand {
+    static constexpr std::string_view type_tag = "setAttachmentCacheLimit";
+
+    std::optional<double> bytes;
+
+    explicit SetAttachmentCacheLimitCommand(std::optional<double> bytes_) :
+            bytes{std::move(bytes_)} {}
+};
+
 struct GetPrefCommand {
     static constexpr std::string_view type_tag = "getPref";
 
@@ -1001,6 +1294,12 @@ using Command = std::variant<
         SendMessageCommand,
         RetrySendCommand,
         DeleteMessageCommand,
+        DownloadAttachmentCommand,
+        SaveAttachmentCommand,
+        SetAutoDownloadCommand,
+        GetCacheDirCommand,
+        GetAttachmentCacheLimitCommand,
+        SetAttachmentCacheLimitCommand,
         GetPrefCommand,
         SetPrefCommand,
         DeliverTestMessageCommand,
