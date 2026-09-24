@@ -131,7 +131,7 @@ export function InputField({
    *
    * Characters and the return key can reach JS in one batch -- a paste, a fast typist, the
    * simulator's typing -- and the submit then runs before the render that would have carried them
-   * into `value`. Read from props, the name step submitted an empty name that way.
+   * into `value`. Read from props, the submit would see the text from before those characters.
    */
   const latest = useRef(value)
   latest.current = value

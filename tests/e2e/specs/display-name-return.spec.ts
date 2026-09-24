@@ -10,10 +10,10 @@ const repoRoot = join(import.meta.dirname, '../../..')
 /**
  * The return key on the name step does what Continue does, and nothing Continue would refuse.
  *
- * It used to accept an empty field -- the button is disabled there, the keyboard was not -- and an
- * account came out of onboarding with no name. The other half of that bug, a submit that read the
- * name from before the last keystrokes, needs characters and the return key in one batch, which a
- * browser never delivers, so it is not reproduced here.
+ * Continue is disabled on an empty field and the keyboard is not, so the screen refuses the return
+ * key itself; without that, an account leaves onboarding with no name. A submit that reads the name
+ * from before the last keystrokes needs characters and the return key in one batch, which a browser
+ * never delivers, so that case is not covered here.
  */
 test('the name step takes the return key only with a name', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'session-name-return-'))
