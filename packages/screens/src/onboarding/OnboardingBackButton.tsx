@@ -29,10 +29,10 @@ export function OnboardingBackButton({
 
 /**
  * Negative, because the control hangs outside the fixed-width column rather than sitting in it:
- * its 40 and an 8 of air before the heading. Glass on iOS 26 makes the whole circle visible, so it
- * has to clear the text rather than only the glyph.
+ * its 40 and 12 of air before the heading. Glass on iOS 26 makes the whole circle visible, and it
+ * swells while held, so it has to clear the text rather than only the glyph.
  */
-const BACK_OFFSET = -48
+const BACK_OFFSET = -52
 
 /**
  * The same control, hung off the side of the wide column.
