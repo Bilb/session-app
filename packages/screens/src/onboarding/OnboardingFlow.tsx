@@ -223,7 +223,8 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
       {!isWideDesign(design) && body !== null ? (
         <StepTransition
           // The step the commit is drawn over, not `done` -- `body` is that step's screen, and
-          // a key change here swaps panes, which remounts it and restarts the wait it is showing.
+          // a key change here pushes a new screen, which remounts it and restarts the wait it is
+          // showing.
           stepKey={shownStep}
           direction={state.lastMove}
           instant={flag('disableAnimations')}

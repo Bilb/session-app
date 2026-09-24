@@ -10,7 +10,7 @@ export type { StepTransitionProps }
 /**
  * The push and pop between onboarding steps, as the platform's own navigation stack draws them.
  *
- * **The flow's reducer is still what decides the step**; this mirrors it into a native stack, so a
+ * **The flow's reducer is what decides the step**; this mirrors it into a native stack, so a
  * move forward is the platform's push and a move back its pop -- the same curve, the same timing,
  * interruptible, and on iOS with the interactive back swipe. A swipe that completes asks the flow
  * to go back through `onBack`, exactly as the step's own back control does, and the stack then
@@ -46,7 +46,6 @@ export function StepTransition({
             screenId={key}
             headerConfig={{ hidden: true }}
             stackAnimation={instant ? 'none' : 'default'}
-            // Only the top can be swiped away, and only where the flow has somewhere to go.
             gestureEnabled={top && onBack !== undefined}
             onDismissed={() => {
               // The platform has already taken the screen off; the flow catches up, and the
