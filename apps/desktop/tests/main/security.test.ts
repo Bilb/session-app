@@ -98,7 +98,7 @@ describe('the content security policy', () => {
 })
 
 describe('permissions', () => {
-  /** Every copy in the app failed with a refused write until this was granted. */
+  /** Without it every copy in the app fails with a refused write. */
   it('lets the page write the clipboard', () => {
     expect(permits('clipboard-sanitized-write')).toBe(true)
   })

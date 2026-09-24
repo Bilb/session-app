@@ -117,7 +117,7 @@ export function guardNavigation(contents: WebContents, appUrl: string): void {
  * The permissions the renderer is granted, and nothing else.
  *
  * `clipboard-sanitized-write` is what `navigator.clipboard.writeText` needs, and without it every
- * copy in the app -- the account ID, an address from the open-link confirm -- failed with a refused
+ * copy in the app -- an address from the open-link confirm, say -- fails with a refused
  * write. Write only, and sanitised: a page can put text on the clipboard but not read what is
  * there, which is the half that would matter if content in this window were ever not the app's.
  *
