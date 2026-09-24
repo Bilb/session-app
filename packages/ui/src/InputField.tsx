@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, useState, type ReactNode, type Ref } from 'react'
+import { useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react'
 import { FONT_SIZE, LINE_HEIGHT_RATIO, SPACING } from '@session/theme-tokens'
 import { YStack } from 'tamagui'
 
@@ -35,8 +35,16 @@ export interface InputFieldHandle {
  * `error` and `errorText` are `Input`'s booleans and this derives both, so they are not passable:
  * a caller that set them by hand would be overriding the rule this exists to hold.
  */
-export interface InputFieldProps extends Omit<InputProps, 'error' | 'errorText' | 'end'> {
+export interface InputFieldProps extends Omit<
+  InputProps,
+  'error' | 'errorText' | 'end' | 'onSubmit'
+> {
   ref?: Ref<InputFieldHandle>
+  /**
+   * Given the text as it stands when the keyboard or `submit` fires -- which can be newer than
+   * `value`. Read this rather than the caller's own state.
+   */
+  onSubmit?: (value: string) => void
   /**
    * Drawn inside the field against its trailing edge, as `Input` takes it.
    *
@@ -118,6 +126,16 @@ export function InputField({
     setShowing(true)
   }, [error])
 
+  /**
+   * The text as last typed, ahead of `value`.
+   *
+   * Characters and the return key can reach JS in one batch -- a paste, a fast typist, the
+   * simulator's typing -- and the submit then runs before the render that would have carried them
+   * into `value`. Read from props, the name step submitted an empty name that way.
+   */
+  const latest = useRef(value)
+  latest.current = value
+
   const live = validateOn === 'change' ? (validate?.(value) ?? null) : null
   const message = live ?? (showing ? (refused ?? error) : null)
 
@@ -125,14 +143,15 @@ export function InputField({
     // Checked here rather than by the caller, so every field refuses the same way and a second
     // submit of the same wrong value says so again -- which it would not if the caller passed the
     // message down and it happened not to change.
-    const problem = validate?.(value) ?? null
+    const current = latest.current
+    const problem = validate?.(current) ?? null
     setRefused(problem)
     if (problem !== null) {
       setSticky(true)
       setShowing(true)
       return false
     }
-    onSubmit?.()
+    onSubmit?.(current)
     return true
   }
 
@@ -144,6 +163,7 @@ export function InputField({
         {...input}
         value={value}
         onChangeText={(next) => {
+          latest.current = next
           onChangeText(next)
           setShowing(false)
         }}
