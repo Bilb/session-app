@@ -21,9 +21,9 @@ function graphemes(text: string): string[] {
  * - **A name of one word gives its first two characters**, as all three do.
  * - **Several words give the first character of each of the first two**, split at spaces and
  *   hyphens as the desktop client splits them.
- * - **No name falls back to the account ID, and shows its third character** -- the first after the
- *   prefix -- as the desktop and Android clients do. Two would be two hex digits, which read as
- *   nothing.
+ * - **No name falls back to the account ID, past its prefix**, and takes the two characters after
+ *   it, the way a one-word name gives two. The desktop and Android clients show only the third; two
+ *   is the product owner's call, so an unnamed avatar is as full as a named one.
  * - Letters of any script and emoji are kept whole, as the phones keep them; the desktop client
  *   drops emoji and was left with half of one.
  * - Upper-cased for the locale before counting, so a German ß becomes the SS it is in capitals.
@@ -33,7 +33,10 @@ export function avatarInitials(name: string, id: string): string {
   // With no name the ID is taken past its prefix whatever follows it. The pattern only tells a name
   // that is an ID from one that is not.
   if (trimmed === '' || ID_PREFIX.test(trimmed))
-    return (graphemes(trimmed === '' ? id.trim() : trimmed)[2] ?? '').toLocaleUpperCase()
+    return graphemes(trimmed === '' ? id.trim() : trimmed)
+      .slice(2, 4)
+      .join('')
+      .toLocaleUpperCase()
 
   const words = trimmed.split(/[\s-]+/).filter((word) => word !== '')
   const letters =

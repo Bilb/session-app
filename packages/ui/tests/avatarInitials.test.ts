@@ -18,15 +18,15 @@ describe('avatarInitials', () => {
     expect(avatarInitials('  bob  ', ID)).toBe('BO')
   })
 
-  /** The first character after the prefix: two would be two hex digits. */
-  it('shows the account ID’s third character when there is no name, or the name is the ID', () => {
-    expect(avatarInitials('', ID)).toBe('A')
-    expect(avatarInitials(ID, ID)).toBe('A')
+  /** The two characters after the prefix, as a one-word name gives two. */
+  it('shows the two characters after the account ID’s prefix when there is no name, or the name is the ID', () => {
+    expect(avatarInitials('', ID)).toBe('AB')
+    expect(avatarInitials(ID, ID)).toBe('AB')
   })
 
   /** The fake's IDs spell their fixture's name, so they are not hex after the prefix. */
   it('skips the prefix of an ID that is not hex', () => {
-    expect(avatarInitials('', `05alice${'0'.repeat(59)}`)).toBe('A')
+    expect(avatarInitials('', `05alice${'0'.repeat(59)}`)).toBe('AL')
   })
 
   it('keeps other scripts and emoji whole', () => {
