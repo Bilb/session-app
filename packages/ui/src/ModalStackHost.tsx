@@ -113,15 +113,23 @@ export function ModalStackHost({
             }
           : undefined
 
-        // **Each layer above the first dims what it covers**, the way the desktop client gives every
-        // modal a backdrop of its own: a confirm over settings should push settings back, not sit
-        // level with it. Black, so the dims compound into darker rather than lighter.
+        // **Each layer above the first sets back what it covers**, the way the desktop client gives
+        // every modal a backdrop of its own: a confirm over settings should push settings back, not
+        // sit level with it. With the backdrop the platform draws -- a blur on iOS, so an alert over
+        // the panel looks as it does on its own; elsewhere black, so the dims compound into darker
+        // rather than lighter.
         //
         // A layer of its own drawn before the modal, not a child of it: on the web an absolutely
         // placed child paints over its in-flow siblings whatever the order, so a dim inside the
         // layer covered the very dialog it was meant to sit behind.
         const layerScrim =
-          index === 0 ? null : <YStack fullscreen backgroundColor="$scrim" pointerEvents="none" />
+          index === 0 ? null : Blur === null ? (
+            <YStack fullscreen backgroundColor="$scrim" pointerEvents="none" />
+          ) : (
+            <YStack fullscreen pointerEvents="none">
+              <Blur dark={dark} />
+            </YStack>
+          )
 
         // **A press outside the modal lands on a layer of its own**, behind it, rather than on the
         // modal's container with the modal stopping it. A container that takes presses is a touch
