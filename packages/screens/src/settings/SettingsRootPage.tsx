@@ -230,7 +230,7 @@ function DesktopAccountId({ sessionId }: { sessionId: string }) {
 }
 
 /**
- * Copy and Share under the ID, as both phone clients draw them.
+ * Share and Copy under the ID, as both phone clients draw them.
  *
  * Share hands over the bare ID, as iOS does. Android's Share sends the invitation instead, which
  * is what Invite a Friend is for, so the two controls would otherwise do the same thing.
@@ -244,10 +244,22 @@ function PhoneAccountActions({
 }) {
   const [copied, setCopied] = useState(false)
   return (
-    <XStack gap="$sm">
+    // Across the whole width the groups below take, split evenly, as the Android client lays them
+    // out; Share first, as both phone clients order them. The accent's outline pill, on both.
+    <XStack alignSelf="stretch" gap="$md">
       <Button
-        variant="outline"
-        size="sm"
+        variant="outlineAccent"
+        fill
+        testID={ELEMENT.settings.shareAccountId}
+        onPress={() => {
+          void shareText(sessionId)
+        }}
+      >
+        {tr('share')}
+      </Button>
+      <Button
+        variant="outlineAccent"
+        fill
         // Held while it says Copied, so the confirmation is not undone by a second press.
         disabled={copied}
         testID={ELEMENT.settings.copyAccountId}
@@ -263,16 +275,6 @@ function PhoneAccountActions({
         }}
       >
         {copied ? tr('copied') : tr('copy')}
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        testID={ELEMENT.settings.shareAccountId}
-        onPress={() => {
-          void shareText(sessionId)
-        }}
-      >
-        {tr('share')}
       </Button>
     </XStack>
   )
