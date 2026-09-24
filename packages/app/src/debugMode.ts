@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react'
+
 import { flag } from './flags'
 
 /** Where the run has put it, once somebody has changed it. Null until then. */
@@ -7,9 +9,24 @@ function isOn(): boolean {
   return current ?? flag('debugMode')
 }
 
-function set(on: boolean): boolean {
+/** Screens drawing something only in debug mode, told when it turns over. */
+const listeners = new Set<() => void>()
+
+function set(on: boolean | null): void {
   current = on
-  return on
+  for (const listener of listeners) listener()
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
+
+/** Whether debug mode is on, redrawing the caller when it turns over. */
+export function useDebugMode(): boolean {
+  return useSyncExternalStore(subscribe, isOn, isOn)
 }
 
 /**
@@ -19,7 +36,9 @@ function set(on: boolean): boolean {
  * In memory only: a relaunch returns to the flag. See `debugMode` in the flag table.
  */
 export function toggleDebugMode(): boolean {
-  return set(!isOn())
+  const on = !isOn()
+  set(on)
+  return on
 }
 
 /**
@@ -34,5 +53,5 @@ export function enableDebugMode(): boolean {
 
 /** Test seam: forgets the run's changes. */
 export function resetDebugMode(): void {
-  current = null
+  set(null)
 }

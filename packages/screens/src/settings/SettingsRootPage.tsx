@@ -1,4 +1,4 @@
-import { requirePorts, URLS, useNav, routes } from '@session/app'
+import { requirePorts, URLS, useDebugMode, useNav, routes } from '@session/app'
 import { toPlainText, tr } from '@session/localization'
 import { useAccount, useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
@@ -171,6 +171,7 @@ export function SettingsRootPage() {
   const sessionId = account.sessionId
   const name = account.displayName ?? ''
   const shareText = requirePorts().share.shareText
+  const debugMode = useDebugMode()
 
   const row = ELEMENT.settings.row
   // Rows without `onPress` draw disabled: their screens are not built yet.
@@ -248,6 +249,16 @@ export function SettingsRootPage() {
           modals.push({ title: tr('sessionHelp'), render: () => <HelpPage /> })
         },
       },
+      // Shown once debug mode is on, which is how turning it on is seen to have worked.
+      ...(debugMode
+        ? [
+            {
+              label: tr('developerSettings'),
+              icon: 'settings',
+              testID: row('developer-settings'),
+            } satisfies RowSpec,
+          ]
+        : []),
       {
         label: tr('sessionClearData'),
         icon: 'trash',

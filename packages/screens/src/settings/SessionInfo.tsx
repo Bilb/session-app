@@ -158,9 +158,7 @@ function DesktopSessionInfo() {
               presses.current += 1
               if (presses.current < PRESSES_FOR_DEBUG) return
               presses.current = 0
-              // English, because the catalogue has no string for either: the client's are dev
-              // strings that never reached it.
-              toasts.show(toggleDebugMode() ? 'Debug mode enabled' : 'Debug mode disabled', {
+              toasts.show(toggleDebugMode() ? tr('debugModeEnabled') : tr('debugModeDisabled'), {
                 id: 'debug-mode',
               })
             }}

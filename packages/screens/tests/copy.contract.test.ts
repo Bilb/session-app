@@ -11,9 +11,10 @@ import { describe, expect, it } from 'vitest'
  * nothing renders wrong, nothing throws, and the first sign of it is somebody reading English in
  * an app they set to German. Three of these had already got in before anyone looked.
  *
- * Parsed rather than grepped because the two things worth catching look nothing alike in text: a
- * bare JSX child (`<Text>Hello</Text>`) and a string handed to a prop that ends up on screen
- * (`placeholder="Hello"`). The compiler already knows which is which.
+ * Parsed rather than grepped because the things worth catching look nothing alike in text: a bare
+ * JSX child (`<Text>Hello</Text>`), a string handed to a prop that ends up on screen
+ * (`placeholder="Hello"`), and a toast's message (`toasts.show('Hello')`). The compiler already
+ * knows which is which.
  *
  * What counts as fine is anything that is not a literal: `{tr('x')}` obviously, but also
  * `{account.name}` or `{count}`, because a value is not copy. The check is deliberately about
@@ -31,6 +32,14 @@ const COPY_PROPS = new Set([
   'title',
   'label',
 ])
+
+/**
+ * Calls whose first argument is shown to somebody: a toast's message. Matched on the method and
+ * on a receiver whose name says it is the toasts, so `list.show()` elsewhere is not swept in.
+ */
+const COPY_CALLS: readonly { method: string; receiver: RegExp }[] = [
+  { method: 'show', receiver: /toast/i },
+]
 
 /** The screens under test. They are in src; this file is not. */
 const dir = join(import.meta.dirname, '../src')
@@ -63,8 +72,26 @@ function literalsIn(path: string): string[] {
     found.push(`${path.slice(path.indexOf('packages/'))}:${String(line + 1)} ${trimmed}`)
   }
 
+  /** A literal, or each literal a conditional can produce, since `on ? 'A' : 'B'` is two strings. */
+  const reportLiterals = (node: ts.Expression) => {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))
+      report(node, node.text)
+    else if (ts.isConditionalExpression(node)) {
+      reportLiterals(node.whenTrue)
+      reportLiterals(node.whenFalse)
+    } else if (ts.isParenthesizedExpression(node)) reportLiterals(node.expression)
+  }
+
   const walk = (node: ts.Node) => {
     if (ts.isJsxText(node)) report(node, node.text)
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
+      const { name, expression: receiver } = node.expression
+      const [message] = node.arguments
+      const copy = COPY_CALLS.some(
+        (call) => call.method === name.text && call.receiver.test(receiver.getText(source)),
+      )
+      if (copy && message !== undefined) reportLiterals(message)
+    }
     if (ts.isJsxAttribute(node) && COPY_PROPS.has(node.name.getText(source))) {
       const value = node.initializer
       if (value && ts.isStringLiteral(value)) report(value, value.text)
