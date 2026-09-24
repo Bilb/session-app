@@ -117,7 +117,10 @@ export function ScanQrPane({ onScan, showing = true, error = null }: ScanQrPaneP
   return (
     <Message
       testID={ELEMENT.onboarding.scanQrPane}
-      text={blocked ? tr('cameraGrantAccessDenied') : tr('cameraGrantAccessQr')}
+      // One line whether or not access is blocked, as the iOS client says it. The blocked-camera
+      // strings in the catalogue are about taking photos and videos, which is not what this asks
+      // for; the Settings button is what says where the permission is changed.
+      text={tr('cameraGrantAccessQr')}
       action={
         <Button
           variant="ghostAccent"
