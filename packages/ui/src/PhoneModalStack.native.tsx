@@ -2,11 +2,12 @@ import type { ReactNode } from 'react'
 import { FONT_SIZE } from '@session/theme-tokens'
 import { StyleSheet } from 'react-native'
 import { ScreenStack, ScreenStackHeaderLeftView, ScreenStackItem } from 'react-native-screens'
-import { ScrollView, XStack } from 'tamagui'
+import { ScrollView, XStack, YStack } from 'tamagui'
 
 import { Icon } from './Icon'
 import { ACTION_HEIGHT } from './modalPanelMetrics'
 import { PressArea } from './PressArea'
+import { useScreenInsets } from './screenInsets'
 import { useTokenColor } from './useTokenColor'
 
 /** One screen of the modal, as the phone's stack draws it. */
@@ -49,6 +50,9 @@ export function PhoneModalStack({
 }: PhoneModalStackProps) {
   const background = useTokenColor('$backgroundPrimary')
   const text = useTokenColor('$textPrimary')
+  // The modal runs to the bottom of the screen, under the home indicator. Whatever sits last -- the
+  // end of the scroll, or a screen's footer -- is held clear of it.
+  const bottom = useScreenInsets().bottom
 
   return (
     <ScreenStack style={styles.fill}>
@@ -90,11 +94,20 @@ export function PhoneModalStack({
               ) : undefined,
           }}
         >
-          <ScrollView flex={1}>{screen.render()}</ScrollView>
+          <ScrollView
+            flex={1}
+            {...(screen.footer === undefined
+              ? { contentContainerStyle: { paddingBottom: bottom } }
+              : {})}
+          >
+            {screen.render()}
+          </ScrollView>
           {screen.footer === undefined ? null : (
-            <XStack alignItems="stretch" height={ACTION_HEIGHT}>
-              {screen.footer()}
-            </XStack>
+            <YStack paddingBottom={bottom}>
+              <XStack alignItems="stretch" height={ACTION_HEIGHT}>
+                {screen.footer()}
+              </XStack>
+            </YStack>
           )}
         </ScreenStackItem>
       ))}
