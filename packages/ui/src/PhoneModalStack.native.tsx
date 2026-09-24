@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { FONT_SIZE } from '@session/theme-tokens'
-import { StyleSheet } from 'react-native'
+import { Platform, StyleSheet } from 'react-native'
 import { ScreenStack, ScreenStackHeaderLeftView, ScreenStackItem } from 'react-native-screens'
 import { ScrollView, XStack, YStack } from 'tamagui'
 
@@ -81,14 +81,19 @@ export function PhoneModalStack({
             children:
               at === 0 && onClose !== undefined ? (
                 <ScreenStackHeaderLeftView>
-                  {/* A bare glyph, as the system's own back button is: the bar draws the button
-                      around it, and a pressed state of ours on top of that reads as two buttons. */}
+                  {/* A bare glyph, as the system's own back button is. Where the bar draws a
+                      button around it, a pressed state of ours on top reads as two buttons; where
+                      it does not, the glyph dims as a system bar item does. */}
                   <PressArea
                     accessibilityLabel={closeLabel}
                     onPress={onClose}
                     {...(closeTestID === undefined ? {} : { testID: closeTestID })}
                   >
-                    {() => <Icon name="x" size="lg" color="$textPrimary" />}
+                    {(pressed) => (
+                      <YStack opacity={pressed && !BAR_DRAWS_BUTTON ? PRESSED_OPACITY : 1}>
+                        <Icon name="x" size="lg" color="$textPrimary" />
+                      </YStack>
+                    )}
                   </PressArea>
                 </ScreenStackHeaderLeftView>
               ) : undefined,
@@ -114,5 +119,16 @@ export function PhoneModalStack({
     </ScreenStack>
   )
 }
+
+/**
+ * Whether the bar draws its own button around a leading item. iOS 26's bars put a glass button
+ * behind it, which answers a press itself; earlier iOS and Android draw nothing, so the glyph is
+ * the whole control and has to answer on its own.
+ */
+const BAR_DRAWS_BUTTON =
+  Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26
+
+/** A bar glyph held down where nothing else answers: about the dimming the system's own bar items get. */
+const PRESSED_OPACITY = 0.3
 
 const styles = StyleSheet.create({ fill: { flex: 1 } })
