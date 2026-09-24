@@ -81,6 +81,12 @@ function ownerOf(file: string): string | undefined {
 }
 
 const SOURCE = /\.(?:[cm]?[jt]sx?)$/
+
+/**
+ * This tool's own tests, left out of the import check: their fixtures are import statements
+ * written as strings, which a text scan cannot tell from the real thing.
+ */
+const OWN_TESTS = 'tooling/turbo-guard/tests/'
 const packages: WorkspacePackage[] = manifests.map(({ directory, manifest }) => ({
   name: manifest.name ?? directory,
   directory,
@@ -93,7 +99,9 @@ const packages: WorkspacePackage[] = manifests.map(({ directory, manifest }) => 
     ].flatMap((field) => Object.keys(field ?? {})),
   ),
   sources: [...committed]
-    .filter((file) => SOURCE.test(file) && ownerOf(file) === directory)
+    .filter(
+      (file) => SOURCE.test(file) && !file.startsWith(OWN_TESTS) && ownerOf(file) === directory,
+    )
     .map((file) => ({ path: file, text: readFileSync(join(repoRoot, file), 'utf8') })),
 }))
 
