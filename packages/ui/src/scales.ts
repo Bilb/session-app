@@ -93,8 +93,8 @@ const perSize = <T>(value: T): Record<keyof typeof FONT_SIZE, T> =>
  *
  * One value for every size: the ramp is a size ramp, not a size-and-weight ramp, and a heading is
  * bold because it says `weight="bold"` rather than because of how large it is. Roboto's own weights
- * are 100/300/400/500/700/900 -- there is no 600, which is why `semibold` means 500 wherever Roboto
- * is drawn. iOS draws San Francisco; `Text` says what it asks for there.
+ * are 100/300/400/500/700/900 -- there is no 600; `faceWeights.ts` has what each weight asks for in
+ * each face.
  */
 export const FONT_WEIGHT_SCALE = { ...perSize('400'), true: '400' }
 
