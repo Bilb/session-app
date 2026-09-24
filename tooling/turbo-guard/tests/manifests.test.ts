@@ -12,7 +12,7 @@ function pkg(text: string, declared: string[] = []): WorkspacePackage {
 }
 
 describe('undeclaredImports', () => {
-  /** The case that shipped: typecheck and lint passed, and electron-vite failed to resolve it. */
+  /** Typecheck and lint pass on this; a bundler resolving from the package, as electron-vite does, does not. */
   it('finds a sibling imported without being declared', () => {
     expect(undeclaredImports([pkg("import { tr } from '@session/localization'\n")])).toEqual([
       {
