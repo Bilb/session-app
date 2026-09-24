@@ -4,6 +4,7 @@ import { Platform, StyleSheet } from 'react-native'
 import { ScreenStack, ScreenStackHeaderLeftView, ScreenStackItem } from 'react-native-screens'
 import { ScrollView, XStack, YStack } from 'tamagui'
 
+import { Button } from './Button'
 import { Icon } from './Icon'
 import { ACTION_HEIGHT } from './modalPanelMetrics'
 import { PressArea } from './PressArea'
@@ -81,20 +82,29 @@ export function PhoneModalStack({
             children:
               at === 0 && onClose !== undefined ? (
                 <ScreenStackHeaderLeftView>
-                  {/* A bare glyph, as the system's own back button is. Where the bar draws a
-                      button around it, a pressed state of ours on top reads as two buttons; where
-                      it does not, the glyph dims as a system bar item does. */}
-                  <PressArea
-                    accessibilityLabel={closeLabel}
-                    onPress={onClose}
-                    {...(closeTestID === undefined ? {} : { testID: closeTestID })}
-                  >
-                    {(pressed) => (
-                      <YStack opacity={pressed && !BAR_DRAWS_BUTTON ? PRESSED_OPACITY : 1}>
-                        <Icon name="x" size="lg" color="$textPrimary" />
-                      </YStack>
-                    )}
-                  </PressArea>
+                  {BAR_DRAWS_BUTTON ? (
+                    // A bare glyph, as the system's own back button is: the bar draws the glass
+                    // button around it, and a pressed state of ours on top reads as two buttons.
+                    <PressArea
+                      accessibilityLabel={closeLabel}
+                      onPress={onClose}
+                      {...(closeTestID === undefined ? {} : { testID: closeTestID })}
+                    >
+                      {() => <Icon name="x" size="lg" color="$textPrimary" />}
+                    </PressArea>
+                  ) : (
+                    // Where the bar draws nothing, the desktop's close: a circle that fills while
+                    // it is held, so the glyph is not the whole control.
+                    <Button
+                      variant="ghost"
+                      size="md"
+                      circular
+                      accessibilityLabel={closeLabel}
+                      onPress={onClose}
+                      {...(closeTestID === undefined ? {} : { testID: closeTestID })}
+                      icon={<Icon name="x" size="lg" color="$textPrimary" />}
+                    />
+                  )}
                 </ScreenStackHeaderLeftView>
               ) : undefined,
           }}
@@ -122,13 +132,9 @@ export function PhoneModalStack({
 
 /**
  * Whether the bar draws its own button around a leading item. iOS 26's bars put a glass button
- * behind it, which answers a press itself; earlier iOS and Android draw nothing, so the glyph is
- * the whole control and has to answer on its own.
+ * behind it, which answers a press itself; earlier iOS and Android draw nothing.
  */
 const BAR_DRAWS_BUTTON =
   Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26
-
-/** A bar glyph held down where nothing else answers: about the dimming the system's own bar items get. */
-const PRESSED_OPACITY = 0.3
 
 const styles = StyleSheet.create({ fill: { flex: 1 } })
