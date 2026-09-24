@@ -30,10 +30,12 @@ function graphemes(text: string): string[] {
  */
 export function avatarInitials(name: string, id: string): string {
   const trimmed = name.trim()
-  const source = trimmed === '' ? id.trim() : trimmed
-  if (ID_PREFIX.test(source)) return (graphemes(source)[2] ?? '').toLocaleUpperCase()
+  // With no name the ID is taken past its prefix whatever follows it. The pattern only tells a name
+  // that is an ID from one that is not.
+  if (trimmed === '' || ID_PREFIX.test(trimmed))
+    return (graphemes(trimmed === '' ? id.trim() : trimmed)[2] ?? '').toLocaleUpperCase()
 
-  const words = source.split(/[\s-]+/).filter((word) => word !== '')
+  const words = trimmed.split(/[\s-]+/).filter((word) => word !== '')
   const letters =
     words.length > 1
       ? words.slice(0, 2).map((word) => graphemes(word)[0] ?? '')

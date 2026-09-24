@@ -24,6 +24,11 @@ describe('avatarInitials', () => {
     expect(avatarInitials(ID, ID)).toBe('A')
   })
 
+  /** The fake's IDs spell their fixture's name, so they are not hex after the prefix. */
+  it('skips the prefix of an ID that is not hex', () => {
+    expect(avatarInitials('', `05alice${'0'.repeat(59)}`)).toBe('A')
+  })
+
   it('keeps other scripts and emoji whole', () => {
     expect(avatarInitials('Мария', ID)).toBe('МА')
     expect(avatarInitials('😀 party', ID)).toBe('😀P')
