@@ -151,42 +151,43 @@ const SEEDED_MANY: Attachment[] = Array.from({ length: 13 }, (_, at) => ({
 /**
  * The average colour of each photo the dev media folder holds, as a real BlurHash.
  *
- * Measured from the files rather than invented, so the placeholder is the colour the picture
- * actually resolves to and the hand-off from one to the other is the thing being looked at.
+ * Encoded from the files by libsession's own encoder rather than invented, so what the fake draws
+ * before a photograph arrives is what a recipient would actually be sent -- including the format's
+ * limits, which a downscaled thumbnail would flatter.
  *
  * Index N here is `unsplash-NN.jpg` there, and `photoNumber` is what keeps the two in step.
  */
-export const PHOTO_COLOURS: readonly (readonly [number, number, number])[] = [
-  [108, 85, 66], // 01
-  [97, 100, 97], // 02
-  [102, 107, 100], // 03
-  [98, 102, 78], // 04
-  [129, 135, 141], // 05
-  [92, 89, 85], // 06
-  [113, 88, 63], // 07
-  [125, 125, 125], // 08
-  [170, 155, 158], // 09
-  [152, 165, 172], // 10
-  [120, 101, 77], // 11
-  [134, 134, 130], // 12
-  [207, 173, 134], // 13
-  [202, 197, 183], // 14
-  [47, 47, 47], // 15
-  [135, 139, 139], // 16
-  [113, 115, 81], // 17
-  [120, 98, 82], // 18
-  [113, 131, 141], // 19
-  [126, 136, 134], // 20
-  [167, 167, 162], // 21
-  [123, 137, 140], // 22
-  [131, 118, 122], // 23
-  [111, 128, 139], // 24
-  [95, 95, 95], // 25
-  [10, 105, 179], // 26
-  [177, 177, 169], // 27
-  [60, 59, 54], // 28
-  [166, 130, 105], // 29
-  [57, 67, 74], // 30
+export const PHOTO_THUMBHASHES: readonly string[] = [
+  'd5280a3d8a8577777f76778286e7888c8775705807', // 01
+  '18f81105807978776f86887a777788847780c9eaf5', // 02
+  '1af81d0d827677877f77778a77887887556062b5f6', // 03
+  '96f8050d8405a7877e8678869935a977047f32d405', // 04
+  'e2f7151d828877877f87888a877888887b409d07d5', // 05
+  '15080a0d820657b79488897487aa86900688766068', // 06
+  '15290a258477367673888880878a8877b776704a08', // 07
+  '1f081a05808777887f877786877887880000000000', // 08
+  '2718161d868778889f877875787787878c79c07707', // 09
+  'a8e71525848787778f87877678888877887f8888f7', // 10
+  '18290e1d82049a587979965c98868697079bfbd09e', // 11
+  '1ff80905800aac873f9877548897798790b02904a5', // 12
+  'aa390e2d869b88777f88777776a78783686f548405', // 13
+  'af081625847788778f7887748778788977807b07b8', // 14
+  '0c080a05809c7877bf798799779778780000000000', // 15
+  'e2f7050d822396984f54897f56b895566770750557', // 16
+  '1af9091d806988768f88788d87a87776776026bb04', // 17
+  'd9281215848776877f86776a8888888890890c0baa', // 18
+  '5fd7091d821a79787f8b87767c398789b670552d06', // 19
+  'e0e7051584368877687776908a9994727770740757', // 20
+  '28081615827578788f8878877877877769508a05d4', // 21
+  'a1e71505807978878f8777678878887863fc15f64b', // 22
+  '1f18060d82706486818b79897688a884666fe4a107', // 23
+  '60e7090d82d14e606faa579a99e899963d8ecfd4f8', // 24
+  '1808060580975998687aa6782978777f0000000000', // 25
+  '5844111d965887788f7788798897778888808e0868', // 26
+  '6a080a0d827667988f87777087988878d77f6205c7', // 27
+  '0d080a0580069888789876817b776889805b05c103', // 28
+  '61491a15846579787f878889788888777692700709', // 29
+  '90e7050d82488745976a77508a5767994795600309', // 30
 ]
 
 type Kind = 'image' | 'video' | 'pdf' | 'zip' | 'sheet' | 'audio'
@@ -248,7 +249,7 @@ function set(kinds: Kind[], options: { hashed?: boolean; expired?: boolean } = {
   return kinds.map((kind, index) => {
     const picture = kind === 'image' || kind === 'video'
     if (picture) nextPhoto += 1
-    return showpiece(index, kind, ((nextPhoto - 1) % PHOTO_COLOURS.length) + 1, options)
+    return showpiece(index, kind, ((nextPhoto - 1) % PHOTO_THUMBHASHES.length) + 1, options)
   })
 }
 

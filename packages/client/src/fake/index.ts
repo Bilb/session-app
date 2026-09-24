@@ -10,7 +10,7 @@ export { FakeSessionClient } from './FakeSessionClient'
 export { FakeAccount, FakeWorld, resetFakeIds } from './world'
 export {
   FIXTURE_NAMES,
-  PHOTO_COLOURS,
+  PHOTO_THUMBHASHES,
   crowd,
   friends,
   newcomer,
