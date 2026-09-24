@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 import type { Attachment, BridgeTransport, SessionClient } from '@session/client'
 import {
-  PHOTO_COLOURS,
+  PHOTO_THUMBHASHES,
   createFakeTransport,
   crowd,
   friends,
@@ -13,6 +13,7 @@ import {
 
 import type { MediaSource } from '../media'
 import { encodePng } from '../png'
+import { decodeThumbhash } from './thumbhash'
 
 /**
  * A one-pixel PNG, per attachment, in a colour derived from what it belongs to.
@@ -172,13 +173,23 @@ export function createFakeBridge(): BridgeTransport & MediaSource {
     },
 
     async fetchPreview(messageId: number, index: number) {
-      // Flat rather than blurred: the fake has no ThumbHash to decode, and what this exercises is
-      // the route, not the decoder. The colour is the one its photo actually resolves to, so the
-      // hand-off from placeholder to picture looks like the real one.
+      // The real hash of the photograph this stands in for, decoded here because the fake has no
+      // addon to borrow libsession's decoder from. What is drawn is therefore what a recipient
+      // would be sent, limits included, rather than a downscale that flatters the format.
       const attachment = await findAttachment(alice, messageId, index)
       const photo = photoNumber(attachment?.filename)
-      const [r, g, b] = (photo === null ? undefined : PHOTO_COLOURS[Number(photo) - 1]) ??
-        hslToRgb((messageId * 37 + index * 89) % 360)
+      const hash = photo === null ? undefined : PHOTO_THUMBHASHES[Number(photo) - 1]
+      if (hash !== undefined) {
+        // The photographs are 4:3, and a hash says nothing about shape.
+        return decodeThumbhash(
+          Uint8Array.from(hash.match(/../g)?.map((b) => parseInt(b, 16)) ?? []),
+          32,
+          24,
+        )
+      }
+
+      // An attachment with no photograph behind it still has to answer the door.
+      const [r, g, b] = hslToRgb((messageId * 37 + index * 89) % 360)
       const rgba = new Uint8Array(8 * 6 * 4)
       for (let i = 0; i < 8 * 6; i += 1) rgba.set([r, g, b, 255], i * 4)
       return { width: 8, height: 6, rgba }
