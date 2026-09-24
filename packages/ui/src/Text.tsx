@@ -1,5 +1,6 @@
 import type { ComponentProps } from 'react'
 
+import { Platform } from 'react-native'
 import { SizableText, styled } from 'tamagui'
 
 /**
@@ -38,10 +39,15 @@ export const Text = styled(SizableText, {
      * gets a browser-synthesised bold -- the regular face algorithmically thickened -- which is
      * blurrier and wider than a drawn one and does not match anything a design tool renders.
      * `semibold` therefore means Medium, which is the weight that actually exists between the two.
+     *
+     * **iOS draws San Francisco instead**, which has a 600 and a lighter Medium: SF at 500 puts
+     * about 13% less ink on the page than Roboto at 500, and reads a step lighter than the desktop
+     * it is meant to match. SF's Semibold lands within 5% of Roboto's Medium, so that is what the
+     * same word asks for there.
      */
     weight: {
       regular: { fontWeight: '400' },
-      semibold: { fontWeight: '500' },
+      semibold: { fontWeight: Platform.OS === 'ios' ? '600' : '500' },
       bold: { fontWeight: '700' },
     },
   } as const,
