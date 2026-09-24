@@ -27,12 +27,20 @@ export function OnboardingBackButton({
   )
 }
 
+/** The control's width: a `md` circular bar button's. */
+const BACK_WIDTH = 40
+
 /**
- * Negative, because the control hangs outside the fixed-width column rather than sitting in it:
- * its 40 and 12 of air before the heading. Glass on iOS 26 makes the whole circle visible, and it
- * swells while held, so it has to clear the text rather than only the glyph.
+ * Air between the control and the heading. Glass on iOS 26 makes the whole circle visible, so it
+ * has to clear the text rather than only the glyph.
  */
-const BACK_OFFSET = -52
+const BACK_GAP = 6
+
+/**
+ * Where the heading starts, measured from the column's edge -- where it always has. The control and
+ * the heading share a row, so moving one alone means the gap has to be taken out of the offset.
+ */
+const HEADING_INSET = 4
 
 /**
  * The same control, hung off the side of the wide column.
@@ -48,7 +56,13 @@ export function WideBackButton({
   disabled?: boolean
 }) {
   return (
-    <YStack {...logical({ marginStart: BACK_OFFSET })} height={34} justifyContent="center">
+    <YStack
+      // Negative, because the control hangs outside the fixed-width column rather than sitting in
+      // it; the end margin is the gap, so the heading stays put however far out the control hangs.
+      {...logical({ marginStart: HEADING_INSET - BACK_WIDTH - BACK_GAP, marginEnd: BACK_GAP })}
+      height={34}
+      justifyContent="center"
+    >
       <OnboardingBackButton onPress={onPress} disabled={disabled} />
     </YStack>
   )
