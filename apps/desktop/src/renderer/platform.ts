@@ -11,6 +11,15 @@ import { parseNetworkName } from '@session/basic-types'
  */
 setPorts(
   memoryPorts({
+    // The scheme the main process registered and serves from the addon - see main/media.ts.
+    // Built here rather than imported from there: this is the renderer, and main is not on its
+    // side of the sandbox.
+    media: {
+      urlFor: (messageId, index) =>
+        `session-media://attachment/${String(messageId)}/${String(index)}`,
+      previewUrlFor: (messageId, index) =>
+        `session-media://preview/${String(messageId)}/${String(index)}`,
+    },
     // The same variable and the same parser the main process uses, inlined at build time.
     network: {
       // The fake is one of the networks, so the same variable that chooses the transport answers

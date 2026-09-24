@@ -116,6 +116,7 @@ ${construct}
 
 #include <array>
 #include <cstddef>
+#include <cstring>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -171,8 +172,12 @@ struct Codec<std::string> {
 template <>
 struct Codec<std::vector<std::byte>> {
     static constexpr std::string_view name = "Uint8Array";
+    // A Uint8Array rather than a Napi::Buffer: Buffer is a Node-only subclass, and the contract
+    // these are generated from says Uint8Array, which is what JSI hands back on the other platform.
     static Napi::Value to(Napi::Env env, const std::vector<std::byte>& value) {
-        return Napi::Buffer<std::byte>::Copy(env, value.data(), value.size());
+        auto array = Napi::Uint8Array::New(env, value.size());
+        std::memcpy(array.Data(), value.data(), value.size());
+        return array;
     }
     static std::vector<std::byte> from(const Napi::Value& value, std::string_view where) {
         if (!value.IsTypedArray())
@@ -193,7 +198,9 @@ struct Codec<SecretBytes> {
     static constexpr std::string_view name = "Uint8Array";
     static Napi::Value to(Napi::Env env, const SecretBytes& value) {
         auto bytes = value.bytes();
-        return Napi::Buffer<std::byte>::Copy(env, bytes.data(), bytes.size());
+        auto array = Napi::Uint8Array::New(env, bytes.size());
+        std::memcpy(array.Data(), bytes.data(), bytes.size());
+        return array;
     }
     static SecretBytes from(const Napi::Value& value, std::string_view where) {
         return SecretBytes{Codec<std::vector<std::byte>>::from(value, where)};

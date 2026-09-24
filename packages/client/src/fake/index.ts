@@ -8,5 +8,14 @@
 export { createFakeTransport } from './fakeBridge'
 export { FakeSessionClient } from './FakeSessionClient'
 export { FakeAccount, FakeWorld, resetFakeIds } from './world'
-export { FIXTURE_NAMES, crowd, friends, newcomer, solo, strangers } from './fixtures'
+export {
+  FIXTURE_NAMES,
+  PHOTO_COLOURS,
+  crowd,
+  friends,
+  newcomer,
+  showcase,
+  solo,
+  strangers,
+} from './fixtures'
 export type { FakeSetup, FixtureName } from './fixtures'

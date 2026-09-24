@@ -81,6 +81,10 @@ export function makeCorpus(options: {
       body: words(random, 3 + Math.floor(random() * 30)),
       outgoing: i % 2 === 0,
       sendState: 'sent',
+      // Text only: what the benchmark measures is the per-row cost of a transcript, and an
+      // attachment on every row would measure a conversation nobody has.
+      attachments: [],
+      galleryViewable: false,
     })
   }
 
@@ -91,8 +95,10 @@ export function conversationListFrame(conversations: Conversation[]): Frame {
   return { type: 'event', event: { type: 'conversation-list-replaced', conversations } }
 }
 
-export function messageAddedFrame(conversationId: string, message: Message): Frame {
-  return { type: 'event', event: { type: 'message-added', conversationId, message } }
+export function messageAddedFrame(_conversationId: string, message: Message): Frame {
+  // A batch of one: the message carries its own conversation, so the id is kept only to leave
+  // every caller of this fixture reading the same as it did.
+  return { type: 'event', event: { type: 'messages-added', messages: [message] } }
 }
 
 /** A single-conversation update - the event a poll produces when an unread count moves. */

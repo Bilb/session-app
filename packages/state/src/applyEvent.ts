@@ -1,6 +1,7 @@
 import type { Conversation, ConversationId, Message, SessionEvent } from '@session/client'
 
-import type { MessageWindow, SessionState } from './types'
+import type { AttachmentTransferState, MessageWindow, SessionState } from './types'
+import { transferKey } from './types'
 
 /**
  * The whole projection, as one pure function.
@@ -28,13 +29,20 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
     case 'request-list-replaced':
       return { ...state, requests: event.conversations }
 
-    case 'message-added':
-    case 'message-updated':
-      return upsertMessage(state, event.conversationId, event.message)
+    case 'messages-added':
+    case 'messages-updated':
+      // Folded one at a time rather than grouped by conversation first: a batch may span
+      // conversations, and applying them in the order given is what makes the result the same
+      // as a reload.
+      return event.messages.reduce(
+        (next, message) => upsertMessage(next, message.conversationId, message),
+        state,
+      )
 
-    case 'history-replaced':
+    case 'history-replaced': {
       // Only the id comes back, so the window is dropped rather than patched: whatever is
       // left of it is no longer known to be true. The screen refetches.
+      const window = state.histories[event.conversationId]
       return {
         ...state,
         histories: {
@@ -46,7 +54,12 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
             fetching: false,
           },
         },
+        transfers: withoutHistory(state.transfers, window?.messages ?? []),
       }
+    }
+
+    case 'attachment-progress':
+      return recordTransfer(state, event)
 
     case 'log':
       return state
@@ -57,6 +70,68 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
       event satisfies never
       return state
   }
+}
+
+/**
+ * Records one report, dropping those for a message nobody has loaded.
+ *
+ * By message rather than by conversation, because a report no longer names one: it carries a
+ * message and an index, and a command-started transfer never knew a conversation to begin with.
+ * The purpose is the same - an auto-downloading conversation reports whether or not anyone is
+ * looking at it, and keeping what no screen can draw would grow for the life of the session.
+ *
+ * It is a narrower rule than the conversation one it replaces, and deliberately: reports that
+ * arrive in the gap between a message being announced and landing in a window are dropped. The
+ * cost is a bar that starts a beat late, because the reports that follow do land and the one
+ * carrying the result lands too.
+ */
+function recordTransfer(
+  state: SessionState,
+  event: Extract<SessionEvent, { type: 'attachment-progress' }>,
+): SessionState {
+  if (!isLoaded(state, event.messageId)) return state
+
+  const entry: AttachmentTransferState = {
+    // An outcome is what ends a transfer - `done === total` does not, and arrives before it.
+    state: event.outcome === undefined ? 'running' : event.outcome.ok ? 'done' : 'failed',
+    done: event.done,
+    total: event.total,
+    ...(event.outcome?.error === undefined ? {} : { error: event.outcome.error }),
+  }
+
+  return {
+    ...state,
+    transfers: {
+      ...state.transfers,
+      [transferKey(event.transfer, event.messageId, event.index)]: entry,
+    },
+  }
+}
+
+/** Whether any loaded window holds this message, which is what makes a report worth keeping. */
+function isLoaded(state: SessionState, messageId: number): boolean {
+  return Object.values(state.histories).some(
+    (window) => window.ready && window.messages.some((m) => m.id === messageId),
+  )
+}
+
+/**
+ * The transfers without those belonging to a window being dropped.
+ *
+ * By message id, since a transfer key is `transfer:messageId:index` and carries no conversation.
+ * A message in two loaded windows is not a thing that happens, so dropping by the window's own
+ * messages cannot take one another window still needs.
+ */
+export function withoutHistory(
+  transfers: SessionState['transfers'],
+  messages: readonly Message[],
+): SessionState['transfers'] {
+  const dropped = new Set(messages.map((m) => m.id))
+  const kept = Object.entries(transfers).filter(([key]) => {
+    const id = Number(key.split(':')[1])
+    return !dropped.has(id)
+  })
+  return kept.length === Object.keys(transfers).length ? transfers : Object.fromEntries(kept)
 }
 
 type ListKey = 'conversations' | 'requests'
@@ -98,13 +173,14 @@ function upsertConversation(state: SessionState, conversation: Conversation): Se
 }
 
 function removeConversation(state: SessionState, id: ConversationId): SessionState {
-  const { [id]: _history, ...histories } = state.histories
+  const { [id]: history, ...histories } = state.histories
 
   return {
     ...state,
     conversations: without(state.conversations, id),
     requests: without(state.requests, id),
     histories,
+    transfers: withoutHistory(state.transfers, history?.messages ?? []),
   }
 }
 
