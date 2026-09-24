@@ -8,8 +8,8 @@ import { useToastQueue } from './Toasts'
  * Draws the toasts at the bottom of the screen, over the app.
  *
  * **Not over an open modal**: react-native's `Modal` is a window of its own, and this is not in it.
- * Nothing on the phones raises a toast yet -- their copy confirms on the button, as iOS's does -- so
- * the first caller that needs one over settings has to bring it into that window.
+ * The phones' copy confirms on the button, as iOS's does, rather than with a toast; a caller that
+ * needs one over settings has to bring it into that window.
  */
 export function ToastHost({ testID, closeLabel }: { testID: string; closeLabel: string }) {
   const { toasts, dismiss } = useToastQueue()

@@ -32,8 +32,8 @@ const CLOSE_RESTING = 0.7
 /**
  * One toast.
  *
- * The same strip and glyph for every kind of message, as the client draws them: it stopped
- * colouring the strip by type, and its glyph takes the text colour whatever the type. A press
+ * The same strip and glyph for every kind of message, as the client draws them: it does not
+ * colour the strip by type, and its glyph takes the text colour whatever the type. A press
  * anywhere on it dismisses it.
  */
 export function ToastCard({
