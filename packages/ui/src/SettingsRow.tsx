@@ -127,7 +127,12 @@ export function SettingsRow({
             // The client's 20 either side, which the separators are inset by too, so a line
             // starts where a row's content does.
             paddingHorizontal="$lg"
-            paddingVertical="$xs"
+            // 16 above and below on a phone, the product owner's choice: roomier than any legacy
+            // client, which each pad the height by about half the width or not at all. A one-line
+            // row still stops at the height floor; this is what a row with a subtitle gets. The wide
+            // designs keep the tighter rows.
+            paddingVertical="$md"
+            $gtSm={{ paddingVertical: '$xs' }}
             {...(inert
               ? {}
               : {
