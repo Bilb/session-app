@@ -84,8 +84,6 @@ export const FLAGS = {
    * The environment sets where it starts, as `SESSION_DEV` does there; ten presses on the commit
    * in settings turn it over for the rest of the run, and a relaunch puts it back -- the client
    * does not keep it either. Off, because a release build is not a debugging one.
-   *
-   * Nothing reads it yet: the menu it reveals is not built.
    */
   debugMode: false,
 } as const

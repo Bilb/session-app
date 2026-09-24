@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
  *
  * Not a style rule. A literal in a screen ships English to everybody, and it does it silently -
  * nothing renders wrong, nothing throws, and the first sign of it is somebody reading English in
- * an app they set to German. Three of these had already got in before anyone looked.
+ * an app they set to German.
  *
  * Parsed rather than grepped because the things worth catching look nothing alike in text: a bare
  * JSX child (`<Text>Hello</Text>`), a string handed to a prop that ends up on screen

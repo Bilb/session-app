@@ -50,8 +50,8 @@ export function SessionInfo() {
  * the product owner asked for, built on the catalogue's `updateVersion` as the Android client's is.
  *
  * Nine taps turn debug mode on and leave it on, as the iOS client's do, each within half a second of
- * the last or the count starts again. No toast, as there: what says it worked is a Developer
- * Settings row appearing, which waits on a catalogue string.
+ * the last or the count starts again. No toast, as there: what says it worked is the Developer
+ * Settings row appearing.
  */
 function PhoneSessionInfo() {
   const modals = useModals()
