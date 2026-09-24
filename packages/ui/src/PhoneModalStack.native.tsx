@@ -4,7 +4,7 @@ import { Platform, StyleSheet } from 'react-native'
 import { ScreenStack, ScreenStackHeaderLeftView, ScreenStackItem } from 'react-native-screens'
 import { ScrollView, XStack, YStack } from 'tamagui'
 
-import { Button } from './Button'
+import { BarButton } from './BarButton'
 import { Icon } from './Icon'
 import { ACTION_HEIGHT } from './modalPanelMetrics'
 import { PressArea } from './PressArea'
@@ -95,14 +95,11 @@ export function PhoneModalStack({
                   ) : (
                     // Where the bar draws nothing, the desktop's close: a circle that fills while
                     // it is held, so the glyph is not the whole control.
-                    <Button
-                      variant="ghost"
-                      size="md"
-                      circular
+                    <BarButton
+                      icon="x"
                       accessibilityLabel={closeLabel}
                       onPress={onClose}
-                      {...(closeTestID === undefined ? {} : { testID: closeTestID })}
-                      icon={<Icon name="x" size="lg" color="$textPrimary" />}
+                      testID={closeTestID}
                     />
                   )}
                 </ScreenStackHeaderLeftView>

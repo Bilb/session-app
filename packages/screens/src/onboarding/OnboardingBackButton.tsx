@@ -1,12 +1,13 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { logical, backChevron, Button, Icon, YStack } from '@session/ui'
+import { logical, backChevron, BarButton, YStack } from '@session/ui'
 
 /**
  * The way back out of an onboarding step, drawn in four places.
  *
- * `md` so the pressed highlight covers the touch target rather than just the glyph. Told what back
- * means because onboarding's steps are not routes.
+ * A bar button, so on iOS 26 it sits on glass like the back in the system's own bar on the Help
+ * screen, and elsewhere is the desktop's circle. Told what back means because onboarding's steps
+ * are not routes.
  */
 export function OnboardingBackButton({
   onPress,
@@ -16,21 +17,22 @@ export function OnboardingBackButton({
   disabled?: boolean
 }) {
   return (
-    <Button
-      variant="ghost"
-      size="md"
-      circular
+    <BarButton
+      icon={backChevron()}
       accessibilityLabel={tr('back')}
       testID={ELEMENT.onboarding.back}
       onPress={onPress}
       disabled={disabled}
-      icon={<Icon name={backChevron()} size="lg" color="$textPrimary" />}
     />
   )
 }
 
-/** Negative, because the control hangs outside the fixed-width column rather than sitting in it. */
-const BACK_OFFSET = -36
+/**
+ * Negative, because the control hangs outside the fixed-width column rather than sitting in it:
+ * its 40 and an 8 of air before the heading. Glass on iOS 26 makes the whole circle visible, so it
+ * has to clear the text rather than only the glyph.
+ */
+const BACK_OFFSET = -48
 
 /**
  * The same control, hung off the side of the wide column.
