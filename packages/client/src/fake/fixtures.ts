@@ -1,3 +1,4 @@
+import { isViewableContentType, type MediaKind } from '@session/basic-types'
 import type { Attachment } from '@session/bridge-types'
 
 import type { SessionClient } from '../types'
@@ -190,7 +191,7 @@ export const PHOTO_THUMBHASHES: readonly string[] = [
   '90e7050d82488745976a77508a5767994795600309', // 30
 ]
 
-type Kind = 'image' | 'video' | 'pdf' | 'zip' | 'sheet' | 'audio'
+type Kind = MediaKind | 'pdf' | 'zip' | 'sheet' | 'audio'
 
 const TYPES: Record<Kind, { contentType: string; extension: string }> = {
   image: { contentType: 'image/jpeg', extension: 'jpg' },
@@ -215,7 +216,7 @@ function showpiece(
   options: { hashed?: boolean; expired?: boolean } = {},
 ): Attachment {
   const { contentType, extension } = TYPES[kind]
-  const picture = kind === 'image' || kind === 'video'
+  const picture = isViewableContentType(contentType)
   return {
     index,
     contentType,
@@ -247,8 +248,7 @@ let nextPhoto = 0
 
 function set(kinds: Kind[], options: { hashed?: boolean; expired?: boolean } = {}): Attachment[] {
   return kinds.map((kind, index) => {
-    const picture = kind === 'image' || kind === 'video'
-    if (picture) nextPhoto += 1
+    if (isViewableContentType(TYPES[kind].contentType)) nextPhoto += 1
     return showpiece(index, kind, ((nextPhoto - 1) % PHOTO_THUMBHASHES.length) + 1, options)
   })
 }

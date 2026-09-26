@@ -14,6 +14,7 @@
  * the two cannot drift apart quietly.
  */
 
+import { isImageContentType } from '@session/basic-types'
 import type {
   AccountInfo,
   Attachment,
@@ -89,14 +90,12 @@ function transferTicks(bytes: number): number {
 
 /** libsession's rule: has attachments, and every one of them is an image. */
 function galleryViewable(attachments: Attachment[]): boolean {
-  return (
-    attachments.length > 0 && attachments.every((a) => a.contentType?.startsWith('image/') === true)
-  )
+  return attachments.length > 0 && attachments.every((a) => isImageContentType(a.contentType))
 }
 
 function wantedBy(mode: AutoDownload | undefined, attachment: Attachment): boolean {
   if (mode === 'all') return true
-  if (mode === 'image-attachments') return attachment.contentType?.startsWith('image/') === true
+  if (mode === 'image-attachments') return isImageContentType(attachment.contentType)
   return false
 }
 
