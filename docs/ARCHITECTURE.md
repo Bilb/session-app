@@ -571,70 +571,40 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   whose owner believes it is a sandbox is the failure worth preventing, and an overlay stamping
   `devnet` over it would confirm the belief rather than contradict it.
 
-- **2026-09-15 - Every attachment transfer is broadcast, not routed.** The protocol used to tag a
-  report with the request id of the command that asked for it, so the facade could hand it to that
-  command's callback. A download outlives the tap that started it and is drawn by a row that may
-  not have existed when it began, so the report goes on the stream like any other event and lands
-  in the store. `SessionEvent` stays one union and the facade keeps its plain fan-out. It is the
-  one arm that is not whole state, because libsession stores none for a transfer in flight.
+- **2026-09-15 - Attachments over the bridge.** Metadata, transfer progress and the
+  per-conversation auto-download setting cross; bytes do not. This supersedes the 2026-09-08 entry
+  that took attachments out of the protocol.
 
-- **2026-09-15 - `Conversation.autoDownload` is optional, and unset is not `none`.** Unset means
-  nobody has been asked what this conversation should fetch unprompted; `none` means they were
-  asked and declined. Only the first should prompt, and calling the setter - with either answer -
-  is what records that the question was put. The protobuf bridge collapsed the two and was wrong.
+  A transfer's progress is broadcast on the stream, not routed to the command that asked for it. A
+  download outlives the tap that started it and is drawn by a row that may not have existed when it
+  began, so the report lands in the store like any other event, `SessionEvent` stays one union and
+  the facade keeps its plain fan-out. It is the one arm that is not whole state, because libsession
+  stores none for a transfer in flight.
 
-- **2026-09-15 - Nothing records whether an attachment is downloaded, and nothing should.**
-  `Attachment` carries `uploaded` and `saved_at` and no local path, so after a restart there is no
-  flag saying the bytes are cached. Asking for them is the answer, and it is better than a flag:
-  a flag goes stale on an eviction or a pruned cache directory and this cannot. session-cli, on
-  the same branch, draws a whole gallery this way - every tile calls `attachment_data` as it
-  mounts. The cost is that a row offers "download" for a file already here and the tap is instant.
+  `Conversation.autoDownload` is optional, and unset is not `none`. Unset means nobody has been
+  asked what this conversation should fetch unprompted; `none` means they were asked and declined.
+  Only unset prompts, and calling the setter with either answer is what records that the question
+  was put.
 
-- **2026-09-15 - Media bytes leave by a scheme, not by the frame stream.** The argument that put
-  responses on the event stream is about state an event could contradict; a decrypted attachment is
-  not state, nothing can contradict it, and a multi-megabyte payload on a FIFO stalls every state
-  frame behind it. So `ClientBridge::fetch_media` answers its own caller, and what reaches a
-  renderer is a URL its platform resolves: `protocol.handle` on Electron, and an image loader per
-  platform on mobile - an `RCTImageURLLoader` on iOS, a Fresco fetcher on Android - both reaching
-  the bridge through `ClientBridge::current()`, because the operating system calls those and has
-  nothing to hand them. Progress still goes to the sink, so a picture loading draws the same bar a
-  tap does. It also means the codegen subset never has to grow a bytes primitive.
+  Nothing stores whether an attachment is downloaded. Each attachment on a page carries its
+  `availability` and, while it is fetching, how far it has got, so a screen that was not listening -
+  the conversation closed, the renderer reloaded, the process restarted - is right from the page
+  alone, and there is no flag for an eviction or a pruned cache directory to make stale.
 
-  Two things this cost, both found by running it. A standard scheme gets the special-scheme host
-  parser, so `session-media://5/0` canonicalises to the host `0.0.0.5` - hence the fixed
-  `attachment` authority with both ids in the path. And tamagui's `Image` passes `source` through
-  as a DOM attribute, producing an `<img>` with nothing to load; `@session/ui`'s wraps
-  react-native's instead, which react-native-web turns into something that fetches.
+  Bytes leave by `session-media://`, not by the frame stream. A decrypted attachment is not state,
+  so no event can contradict it, and a multi-megabyte payload on a FIFO stalls every state frame
+  behind it. `ClientBridge::fetch_media` answers its own caller, and a renderer gets a URL its
+  platform resolves: `protocol.handle` on Electron, an image loader per platform on mobile. Progress
+  still goes to the sink, so a picture loading draws the same bar a tap does, and the codegen
+  subset never needs a bytes primitive. A standard scheme gets the special-scheme host parser, so
+  `session-media://5/0` would canonicalise to the host `0.0.0.5`, hence the fixed `attachment`
+  authority with both ids in the path. And tamagui's `Image` passes `source` through as a DOM
+  attribute, producing an `<img>` with nothing to load, so `@session/ui`'s wraps react-native's,
+  which react-native-web turns into something that fetches.
 
-  `MediaPort.urlFor` returns null where a platform has no resolver yet, and the attachment row
-  draws its file form instead. Mobile returns null today: saying so beats rendering an image that
-  never loads.
-
-- **2026-09-16 - A history window does not outlive the screen showing it.** It used to: once loaded,
-  `histories[id]` stayed for the session, so every conversation ever opened kept its page and its
-  transfers. `useMessages` now drops it when it stops showing that id - keyed on the id rather than
-  on unmounting, because a wide layout keeps the detail pane mounted and only swaps the prop.
-
-  That makes the store a view of what is on screen, which in turn makes it safe to discard progress
-  reports for conversations nobody is looking at. The cost is that returning to a conversation
-  reloads it: paging depth and scroll position are lost, which wants solving on its own and is in
-  `STATUS.md`.
-
-- **2026-09-16 - A page of messages arrives with what its attachments are doing.**
-  `attachment_transfers` answers _nothing doing / running at N of M / already cached_ without
-  starting anything, and `messageList` carries the answer beside the messages.
-
-  It exists because nothing about a transfer is stored, so a screen that was not listening - the
-  conversation was not open, the renderer reloaded, the process restarted - has no other way back
-  to the truth, and asking for the bytes to find out would be a download rather than a question.
-  It travels with the page rather than being asked for per row so that a row never draws a state it
-  is about to correct, and because the shim only ever uses the handler form: thirty async calls
-  would need a fan-in it has no pattern for, one batch is one handler.
-
-  Deliberately not fields on `Attachment`. That is libsession's account of the message; this is
-  what this device is doing about it, it changes far more often, and it is also what
-  `attachment-progress` reports - so putting it there would give one field two writers that
-  disagree the moment a transfer ticks. One writer for the first picture, one for the updates.
-
-  It also answers "is this downloaded?", which supersedes the earlier decision not to record that:
-  a cached file can offer Save rather than pretending it needs fetching.
+- **2026-09-16 - A history window lives as long as its screen.** `useMessages` drops
+  `histories[id]` when it stops showing that id, and the transfers of the messages it held go with
+  it. Keyed on the id rather than on unmounting, because a wide layout keeps the detail pane
+  mounted and only swaps the prop. The store is then a view of what is on screen, so a progress
+  report for a message no window holds is dropped. The cost is that returning to a conversation
+  reloads it and loses paging depth and scroll position, which is in `STATUS.md`.
