@@ -17,7 +17,7 @@ import { useAttachmentSet } from './useAttachmentSet'
  */
 export function MessageAttachments({ message }: { message: Message }) {
   const ui = useConversationUi()
-  const { set, act } = useAttachmentSet(message)
+  const { set, act, downloadMissing } = useAttachmentSet(message)
   const view = attachmentView(message, ui.viewFor(message.id))
   const overflows = view === 'list' && message.attachments.length > LIST_MAX_ROWS
 
@@ -31,7 +31,10 @@ export function MessageAttachments({ message }: { message: Message }) {
         <MessageAlbum
           message={message}
           autoDownload={ui.autoDownload}
+          // A tile is the whole set's, so tapping one fetches every attachment the album stands
+          // for; a row in the list fetches only its own.
           onOpen={(index) => {
+            downloadMissing()
             ui.openViewer(message.id, index)
           }}
           control={<AttachmentPill set={set} />}

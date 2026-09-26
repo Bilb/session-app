@@ -250,7 +250,8 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
 
         <MessageMediaViewer
           conversationId={conversationId}
-          target={viewer}
+          // Held back while the prompt is up: two modals cannot be presented at once on iOS.
+          target={prompting ? null : viewer}
           onIndex={(index) => {
             setViewer((open) => (open === null ? null : { ...open, index }))
           }}
