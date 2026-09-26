@@ -8,10 +8,10 @@ const { BrowserWindow, dialog, ipcMain, shell } = electron
 /**
  * Folders the person has pointed at in a save dialog this run.
  *
- * What makes `reveal` and `open` safe to expose at all. Both hand a path to the operating
- * system, and the renderer is not trusted to have checked one -- the same standard
- * `open-external` holds itself to. A path is allowed only if it sits in a folder somebody chose
- * here, which is the one way a folder gets into this set.
+ * What makes `reveal` safe to expose at all. It hands a path to the operating system, and the
+ * renderer is not trusted to have checked one -- the same standard `open-external` holds itself
+ * to. A path is allowed only if it sits in a folder somebody chose here, which is the one way a
+ * folder gets into this set.
  *
  * By folder rather than by exact path because the path that comes back is not the path that went
  * out: a save that collides becomes `name (2)`, so an allowlist of the strings this handed over
@@ -54,11 +54,5 @@ export function serveFiles(): void {
 
   ipcMain.handle('files:reveal', (_event, path: unknown) => {
     if (isInChosenFolder(path, chosen)) shell.showItemInFolder(path)
-  })
-
-  ipcMain.handle('files:open', async (_event, path: unknown) => {
-    // `openPath` hands the file to whatever the OS has registered for it, which is the whole
-    // point and also why the folder check above is not optional.
-    if (isInChosenFolder(path, chosen)) await shell.openPath(path)
   })
 }
