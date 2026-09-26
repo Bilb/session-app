@@ -1,25 +1,10 @@
-import { mkdtempSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-
-import { _electron, expect, test } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { ELEMENT } from '@session/test-ids'
 
-const repoRoot = join(import.meta.dirname, '../../..')
+import { DesktopApp } from '../harness/DesktopApp'
 
 /** Arabic, which `isRtlLocale` answers true for and which the catalogue ships. */
 const RTL_LOCALE = 'ar'
-
-/**
- * The one browser global this spec's page-side body touches.
- *
- * Declared rather than pulled in with `dom`, for the reason `DesktopApp` gives: harness code runs
- * in Node and a stray `document` there should stay an error. A body that is serialised into the
- * renderer is the exception, and it gets the types it needs and nothing else does.
- */
-interface PageGlobals {
-  document: { documentElement: { dir: string } }
-}
 
 /**
  * Choosing a right-to-left language mirrors the layout, not just the text.
@@ -32,43 +17,33 @@ interface PageGlobals {
  * It sits here rather than beside a feature because it is the standing check. A component that
  * places something with `left` instead of `insetInlineStart` looks correct in every English
  * screenshot ever taken of it, and this is the run where that shows up.
+ *
+ * Launched directly rather than through `sessionTest`, which has no way to pass the environment
+ * that opens the app on onboarding, where the language picker is.
  */
 test('choosing a right-to-left language mirrors the layout', async () => {
-  const dataDir = mkdtempSync(join(tmpdir(), 'session-rtl-'))
-  const app = await _electron.launch({
-    args: [
-      join(repoRoot, 'apps/desktop/out/main/index.js'),
-      `--user-data-dir=${dataDir}`,
-      '--no-sandbox',
-      '--disable-gpu',
-      '--disable-dev-shm-usage',
-    ],
-    env: {
-      ...process.env,
-      ELECTRON_RUN_AS_NODE: '',
-      EXPO_PUBLIC_SESSION_FAKE: '1',
-      SESSION_FAKE: '1',
-      SESSION_FAKE_NO_ACCOUNT: '1',
-      SESSION_DATA_DIR: dataDir,
-    },
-  })
-  const page = await app.firstWindow()
+  const app = await DesktopApp.launch('alice', { env: { SESSION_FAKE_NO_ACCOUNT: '1' } })
 
-  const direction = () =>
-    page.evaluate(() => (globalThis as unknown as PageGlobals).document.documentElement.dir)
+  try {
+    const trigger = ELEMENT.languagePicker.trigger
+    await app.waitForVisible(trigger, { timeoutMs: 20_000 })
 
-  // Asserted before as well as after: a document that was already `rtl` would pass the second
-  // check without the picker having done anything.
-  await page.getByTestId(ELEMENT.languagePicker.trigger).first().click({ timeout: 20_000 })
-  expect(await direction()).not.toBe('rtl')
+    // Asserted before as well as after: a document that was already `rtl` would pass the second
+    // check without the picker having done anything.
+    expect(await app.documentDirection()).not.toBe('rtl')
+    const before = await app.horizontalHalf(trigger)
 
-  await page.getByTestId(ELEMENT.languagePicker.panel).first().waitFor()
-  await page.getByTestId(ELEMENT.languagePicker.option(RTL_LOCALE)).first().click()
+    await app.tap(trigger)
+    await app.waitForVisible(ELEMENT.languagePicker.panel)
+    await app.tap(ELEMENT.languagePicker.option(RTL_LOCALE))
 
-  await expect.poll(direction).toBe('rtl')
+    await expect.poll(async () => app.documentDirection()).toBe('rtl')
+    // `dir` stays correct for an element placed with a physical edge; the trigger changing sides
+    // is the layout itself mirroring.
+    await expect.poll(async () => app.horizontalHalf(trigger)).not.toBe(before)
 
-  // The screenshot is the half a `dir` assertion cannot make: an element placed with a physical
-  // edge still leaves `dir` correct and lands on the wrong side.
-  await page.screenshot({ path: join(repoRoot, 'test-results', 'right-to-left.png') })
-  await app.close()
+    await app.screenshot('right-to-left')
+  } finally {
+    await app.close()
+  }
 })

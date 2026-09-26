@@ -8,6 +8,7 @@ import type { ElementId } from '@session/test-ids'
 
 import type { ISessionApp } from './ISessionApp'
 import type { IFileChooser } from './FileChooser'
+import type { ILayoutProbe } from './LayoutProbe'
 import type { IPerformanceProbe } from './PerformanceProbe'
 
 /**
@@ -49,6 +50,11 @@ interface PageGlobals {
   performance: { now: () => number }
 }
 
+/** What the layout probe's page-side bodies touch. */
+interface DocumentGlobals {
+  document: { documentElement: { dir: string; clientWidth: number } }
+}
+
 const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
 
 /**
@@ -58,7 +64,7 @@ const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
  * writes is the same string the component was given. There is no per-platform locator table
  * here, and there should not need to be one.
  */
-export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser {
+export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser, ILayoutProbe {
   readonly platform = 'desktop' as const
 
   private constructor(
@@ -68,7 +74,11 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser 
     private readonly dataDir: string,
   ) {}
 
-  static async launch(identity: string): Promise<DesktopApp> {
+  /** `env` is merged over the variables every launch sets, so a spec can override them. */
+  static async launch(
+    identity: string,
+    options: { env?: Record<string, string> | undefined } = {},
+  ): Promise<DesktopApp> {
     // Its own data directory, thrown away afterwards: two clients in one run must never
     // share libsession's database, and a leftover one would make the next run start with
     // yesterday's conversations.
@@ -89,6 +99,7 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser 
         EXPO_PUBLIC_SESSION_FAKE: '1',
         SESSION_IDENTITY: identity,
         SESSION_DATA_DIR: dataDir,
+        ...options.env,
       },
     })
 
@@ -208,6 +219,24 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser 
     // An empty answer from a recorder nobody installed would pass any "nothing was revealed" check.
     if (revealed === null) throw new Error('revealedPaths() read before recordReveals()')
     return revealed
+  }
+
+  // -- ILayoutProbe -----------------------------------------------------------------------
+
+  async documentDirection(): Promise<string> {
+    return this.page.evaluate(
+      () => (globalThis as unknown as DocumentGlobals).document.documentElement.dir,
+    )
+  }
+
+  async horizontalHalf(id: ElementId): Promise<'left' | 'right'> {
+    const box = await this.locator(id).first().boundingBox()
+    if (box === null) throw new Error(`${id} is not laid out`)
+    // Electron windows have no emulated viewport, so page.viewportSize() is null here.
+    const width = await this.page.evaluate(
+      () => (globalThis as unknown as DocumentGlobals).document.documentElement.clientWidth,
+    )
+    return box.x + box.width / 2 > width / 2 ? 'right' : 'left'
   }
 
   // -- IPerformanceProbe ------------------------------------------------------------------
