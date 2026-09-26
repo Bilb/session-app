@@ -55,6 +55,20 @@ describe('hydrating with a cache limit', () => {
 
     expect(await alice.getAttachmentCacheLimit()).toBe(500_000_000)
   })
+
+  it('reads the limit back beside what the cache holds', async () => {
+    const { clients } = friends(['Alice', 'Bob'])
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const store = createSessionStore(alice, { attachmentCacheLimitBytes: 500_000_000 })
+    await store.actions.hydrate()
+
+    expect(await store.actions.getCacheSettings()).toEqual({
+      cacheDir: '',
+      limitBytes: 500_000_000,
+      usageBytes: 0,
+    })
+  })
 })
 
 describe('a start that fails', () => {

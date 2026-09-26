@@ -560,6 +560,21 @@ export class FakeAccount {
     this.cacheLimitBytes = limitBytes
   }
 
+  /** What libsession would count: the encrypted size of every cached file. */
+  attachmentCacheSize(): number {
+    let usageBytes = 0
+    for (const { messages } of this.conversations.values()) {
+      for (const message of messages) {
+        for (const attachment of message.attachments) {
+          if (this.isCached(message.id, attachment.index)) {
+            usageBytes += encryptedSize(attachment.sizeBytes ?? 0)
+          }
+        }
+      }
+    }
+    return usageBytes
+  }
+
   setAutoDownload(id: ConversationId, mode: AutoDownload): void {
     this.touch(id, { autoDownload: mode })
   }

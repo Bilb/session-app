@@ -623,6 +623,22 @@ export function runSessionClientContract(
       expect(cached?.availability).toBe('cached')
     })
 
+    it('measures an attachment cache with nothing in it as empty', async () => {
+      const { alice } = await harness.friends()
+      expect(await alice.getAttachmentCacheSize()).toBe(0)
+    })
+
+    it('counts a downloaded attachment in the cache size', async () => {
+      const { client, messageId, index, settle } = await harness.withAttachment()
+      const before = await client.getAttachmentCacheSize()
+
+      const running = client.downloadAttachment(messageId, index)
+      await settle()
+      await running
+
+      expect(await client.getAttachmentCacheSize()).toBeGreaterThan(before)
+    })
+
     it('remembers being told to download nothing, which is not the same as never asking', async () => {
       const { client, conversationId } = await harness.withAttachment()
 

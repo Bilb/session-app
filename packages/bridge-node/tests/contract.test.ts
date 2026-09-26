@@ -274,6 +274,7 @@ describeAddon('addon', () => {
         'answers a download of what is already here without reporting again': OFFLINE_ATTACHMENTS,
         'reports an export as its own transfer': OFFLINE_ATTACHMENTS,
         'answers a page with what its attachments are doing': OFFLINE_ATTACHMENTS,
+        'counts a downloaded attachment in the cache size': OFFLINE_ATTACHMENTS,
         'remembers being told to download nothing, which is not the same as never asking':
           OFFLINE_ATTACHMENTS,
       },

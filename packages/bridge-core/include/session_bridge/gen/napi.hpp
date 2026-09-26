@@ -1656,6 +1656,21 @@ struct Codec<::session_bridge::SetAttachmentCacheLimitCommand> {
 };
 
 template <>
+struct Codec<::session_bridge::GetAttachmentCacheSizeCommand> {
+    static constexpr std::string_view name = "GetAttachmentCacheSizeCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::GetAttachmentCacheSizeCommand& value) {
+        (void)value;
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::GetAttachmentCacheSizeCommand::type_tag.data(), ::session_bridge::GetAttachmentCacheSizeCommand::type_tag.size()));
+        return obj;
+    }
+    static ::session_bridge::GetAttachmentCacheSizeCommand from(const Napi::Value& value, std::string_view where) {
+        object(value, where);
+        return ::session_bridge::GetAttachmentCacheSizeCommand{};
+    }
+};
+
+template <>
 struct Codec<::session_bridge::GetPrefCommand> {
     static constexpr std::string_view name = "GetPrefCommand";
     static Napi::Value to(Napi::Env env, const ::session_bridge::GetPrefCommand& value) {
@@ -1839,6 +1854,8 @@ struct Codec<::session_bridge::Command> {
             return Codec<::session_bridge::GetAttachmentCacheLimitCommand>::from(value, where);
         if (tag == "setAttachmentCacheLimit")
             return Codec<::session_bridge::SetAttachmentCacheLimitCommand>::from(value, where);
+        if (tag == "getAttachmentCacheSize")
+            return Codec<::session_bridge::GetAttachmentCacheSizeCommand>::from(value, where);
         if (tag == "getPref")
             return Codec<::session_bridge::GetPrefCommand>::from(value, where);
         if (tag == "setPref")

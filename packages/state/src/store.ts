@@ -4,6 +4,14 @@ import { createStore, type StoreApi } from 'zustand/vanilla'
 import { applyEvent, mergePages, withoutHistory } from './applyEvent'
 import { emptyState, type MessageWindow, type SessionState } from './types'
 
+export interface CacheSettings {
+  /** Empty when the bridge was opened without one. */
+  cacheDir: string
+  /** Undefined means no limit. */
+  limitBytes: number | undefined
+  usageBytes: number
+}
+
 export interface SessionActions {
   /**
    * Starts the app, and is the only call that is allowed to fail without throwing.
@@ -145,8 +153,8 @@ export interface SessionActions {
    * transfers, since reports for a loaded window are recorded whether or not anything draws them.
    */
   forgetHistory: (id: ConversationId) => void
-  /** Where libsession caches downloads, and how much of it they may take. */
-  getCacheSettings: () => Promise<{ cacheDir: string; limitBytes: number | undefined }>
+  /** Where libsession caches downloads, how much of it they may take, and how much they do. */
+  getCacheSettings: () => Promise<CacheSettings>
   dispose: () => void
 }
 
@@ -409,12 +417,13 @@ export function createSessionStore(
       await client.setAutoDownload(id, mode)
     },
 
-    async getCacheSettings(): Promise<{ cacheDir: string; limitBytes: number | undefined }> {
-      const [cacheDir, limitBytes] = await Promise.all([
+    async getCacheSettings(): Promise<CacheSettings> {
+      const [cacheDir, limitBytes, usageBytes] = await Promise.all([
         client.getCacheDir(),
         client.getAttachmentCacheLimit(),
+        client.getAttachmentCacheSize(),
       ])
-      return { cacheDir, limitBytes }
+      return { cacheDir, limitBytes, usageBytes }
     },
 
     async createAccount(): Promise<void> {

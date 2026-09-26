@@ -389,8 +389,8 @@ struct Message {
 /// A page of history.
 ///
 /// What each attachment's bytes are doing rides on the attachment itself - `availability`,
-/// `fetchDoneBytes`, `fetchTotalBytes` - rather than in a list beside the page. One writer for the first
-/// picture and for every correction after it, which is what stops a window drawing an
+/// `fetchDoneBytes`, `fetchTotalBytes` - rather than in a list beside the page. One writer for
+/// the first picture and for every correction after it, which is what stops a window drawing an
 /// attachment as untouched and then taking it back.
 struct MessageListResult {
     static constexpr std::string_view type_tag = "messageList";
@@ -447,7 +447,7 @@ struct PathResult {
             path{std::move(path_)} {}
 };
 
-/// Unset means no limit.
+/// Unset only in answer to `getAttachmentCacheLimit`, where it means no limit.
 struct ByteCountResult {
     static constexpr std::string_view type_tag = "byteCount";
 
@@ -1185,6 +1185,12 @@ struct SetAttachmentCacheLimitCommand {
             limit_bytes{std::move(limit_bytes_)} {}
 };
 
+/// How much disk the cached attachments occupy now, in the limit's measure, so the two can be
+/// shown together. 0 when nothing is cached or there is no cache directory.
+struct GetAttachmentCacheSizeCommand {
+    static constexpr std::string_view type_tag = "getAttachmentCacheSize";
+};
+
 struct GetPrefCommand {
     static constexpr std::string_view type_tag = "getPref";
 
@@ -1300,6 +1306,7 @@ using Command = std::variant<
         GetCacheDirCommand,
         GetAttachmentCacheLimitCommand,
         SetAttachmentCacheLimitCommand,
+        GetAttachmentCacheSizeCommand,
         GetPrefCommand,
         SetPrefCommand,
         DeliverTestMessageCommand,

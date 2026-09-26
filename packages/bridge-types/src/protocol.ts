@@ -240,6 +240,11 @@ export type Command =
    * larger than the same attachments as plain files. Unset means no limit.
    */
   | { type: 'setAttachmentCacheLimit'; limitBytes?: number }
+  /**
+   * How much disk the cached attachments occupy now, in the limit's measure, so the two can be
+   * shown together. 0 when nothing is cached or there is no cache directory.
+   */
+  | { type: 'getAttachmentCacheSize' }
   // App preferences, stored in libsession's globals table so they sit beside the account
   // instead of in a second store the app would have to keep in step.
   | { type: 'getPref'; key: string }
@@ -301,7 +306,7 @@ export type Result =
   | { type: 'bool'; value: boolean }
   /** Where an export landed, which is not always where it was asked to go: a collision becomes `name (2)`. */
   | { type: 'path'; path: string }
-  /** Unset means no limit. */
+  /** Unset only in answer to `getAttachmentCacheLimit`, where it means no limit. */
   | { type: 'byteCount'; bytes?: number }
 
 export interface Response {

@@ -1060,6 +1060,12 @@ struct ClientBridge::Impl {
         client->set_attachment_cache_limit(limit_bytes, on(id, [this, id] { ok(id); }));
     }
 
+    void handle(double id, const GetAttachmentCacheSizeCommand&) {
+        client->attachment_cache_size(on(id, [this, id](int64_t bytes) {
+            respond(id, ByteCountResult{static_cast<double>(bytes)});
+        }));
+    }
+
     void handle(double id, const GetPrefCommand& cmd) {
         respond(id, PrefResult{client->core.globals.get_text(cmd.key)});
     }

@@ -371,6 +371,11 @@ export class FakeSessionClient implements SessionClient {
     return Promise.resolve()
   }
 
+  getAttachmentCacheSize(): Promise<number> {
+    this.assertOpen()
+    return Promise.resolve(this.account.attachmentCacheSize())
+  }
+
   sendMessage(id: ConversationId, message: OutgoingMessage): Promise<number> {
     this.assertOpen()
     return Promise.resolve(this.account.send(id, message.body, message.replyTo))
