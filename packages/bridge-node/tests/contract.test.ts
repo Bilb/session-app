@@ -279,6 +279,7 @@ describeAddon('addon', () => {
           OFFLINE_ATTACHMENTS,
         'fails a download of a file the server no longer holds, and says so on the page':
           OFFLINE_ATTACHMENTS,
+        'announces an attachment as fetching while its download runs': OFFLINE_ATTACHMENTS,
       },
     },
   )
