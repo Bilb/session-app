@@ -50,8 +50,7 @@ export function decodeThumbhash(hash: Uint8Array, width: number, height: number)
   const shape = readShape(hash)
   if (shape.hasAlpha && hash.length < 6) throw new Error('thumbhash: truncated before alpha DC')
 
-  const h24 =
-    (hash[0] as number) | ((hash[1] as number) << 8) | ((hash[2] as number) << 16)
+  const h24 = (hash[0] as number) | ((hash[1] as number) << 8) | ((hash[2] as number) << 16)
   const h16 = (hash[3] as number) | ((hash[4] as number) << 8)
   const lDc = (h24 & 63) / 63
   const pDc = ((h24 >> 6) & 63) / 31.5 - 1
@@ -87,11 +86,9 @@ export function decodeThumbhash(hash: Uint8Array, width: number, height: number)
   const fxt = new Float64Array(width * nx)
   const fyt = new Float64Array(height * ny)
   for (let x = 0; x < width; x++)
-    for (let cx = 0; cx < nx; cx++)
-      fxt[x * nx + cx] = Math.cos((Math.PI / width) * (x + 0.5) * cx)
+    for (let cx = 0; cx < nx; cx++) fxt[x * nx + cx] = Math.cos((Math.PI / width) * (x + 0.5) * cx)
   for (let y = 0; y < height; y++)
-    for (let cy = 0; cy < ny; cy++)
-      fyt[y * ny + cy] = Math.cos((Math.PI / height) * (y + 0.5) * cy)
+    for (let cy = 0; cy < ny; cy++) fyt[y * ny + cy] = Math.cos((Math.PI / height) * (y + 0.5) * cy)
 
   const rgba = new Uint8Array(width * height * 4)
   const to8 = (v: number): number => Math.max(0, Math.trunc(255 * Math.min(1, v)))
