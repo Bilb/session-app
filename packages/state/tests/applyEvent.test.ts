@@ -329,7 +329,7 @@ describe('attachment transfers', () => {
       loaded([message()]),
     )
 
-    expect(state.transfers['download:1:0']).toEqual({
+    expect(state.transfers[1]?.['download:0']).toEqual({
       state: 'running',
       doneBytes: 512,
       totalBytes: 2048,
@@ -348,8 +348,8 @@ describe('attachment transfers', () => {
       loaded(),
     )
 
-    expect(state.transfers['download:1:0']?.doneBytes).toBe(1024)
-    expect(state.transfers['export:1:0']?.doneBytes).toBe(64)
+    expect(state.transfers[1]?.['download:0']?.doneBytes).toBe(1024)
+    expect(state.transfers[1]?.['export:0']?.doneBytes).toBe(64)
   })
 
   it('treats an ok outcome as finished and any other as failed', () => {
@@ -357,7 +357,7 @@ describe('attachment transfers', () => {
       [progress({ doneBytes: 2048, totalBytes: 2048, outcome: { ok: true } })],
       loaded(),
     )
-    expect(ok.transfers['download:1:0']?.state).toBe('done')
+    expect(ok.transfers[1]?.['download:0']?.state).toBe('done')
 
     const bad = replay(
       [
@@ -369,15 +369,15 @@ describe('attachment transfers', () => {
       ],
       loaded(),
     )
-    expect(bad.transfers['download:1:0']?.state).toBe('failed')
-    expect(bad.transfers['download:1:0']?.error).toBe('file.unreadable')
+    expect(bad.transfers[1]?.['download:0']?.state).toBe('failed')
+    expect(bad.transfers[1]?.['download:0']?.error).toBe('file.unreadable')
   })
 
   it('does not finish a transfer that has moved every byte but reported no outcome', () => {
     // doneBytes === totalBytes arrives before the verification does, so reading it as finished
     // shows a file as ready that may still fail.
     const state = replay([progress({ doneBytes: 2048, totalBytes: 2048 })], loaded())
-    expect(state.transfers['download:1:0']?.state).toBe('running')
+    expect(state.transfers[1]?.['download:0']?.state).toBe('running')
   })
 
   it('drops reports for a conversation whose history is not loaded', () => {
@@ -395,6 +395,35 @@ describe('attachment transfers', () => {
       loaded(),
     )
     expect(Object.keys(state.transfers)).toEqual([])
+  })
+
+  it('drops only the transfers of the messages in the replaced window', () => {
+    const seeded: SessionState = {
+      ...emptyState,
+      histories: {
+        '05alice': {
+          ready: true,
+          messages: [message({ id: 1 })],
+          exhausted: true,
+          fetching: false,
+        },
+        '05bob': {
+          ready: true,
+          messages: [message({ id: 2, conversationId: '05bob' })],
+          exhausted: true,
+          fetching: false,
+        },
+      },
+    }
+    const state = replay(
+      [
+        progress({ messageId: 1 }),
+        progress({ messageId: 2 }),
+        { type: 'history-replaced', conversationId: '05alice' },
+      ],
+      seeded,
+    )
+    expect(Object.keys(state.transfers)).toEqual(['2'])
   })
 
   it('leaves the transfer map alone when nothing in it changed', () => {
