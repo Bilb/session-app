@@ -41,6 +41,14 @@ export interface MediaViewerProps {
 }
 
 /**
+ * The chrome along the top, as a fixed height.
+ *
+ * A number because the picture below is measured against it, and a header that took its height
+ * from its content would make that measurement a guess. `$xl` control plus the air around it.
+ */
+const HEADER_HEIGHT = SIZE_SCALE.xl + SPACING.sm
+
+/**
  * One picture, full screen, over whatever was on screen.
  *
  * **A layer rather than a route.** It covers the conversation instead of navigating away, so
@@ -58,14 +66,6 @@ export interface MediaViewerProps {
  * media history, and they stop at the ends rather than wrapping - wrapping hides how many there
  * are.
  */
-/**
- * The chrome along the top, as a fixed height.
- *
- * A number because the picture below is measured against it, and a header that took its height
- * from its content would make that measurement a guess. `$xl` control plus the air around it.
- */
-const HEADER_HEIGHT = SIZE_SCALE.xl + SPACING.sm
-
 export function MediaViewer({
   open,
   items,
