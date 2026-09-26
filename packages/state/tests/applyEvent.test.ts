@@ -278,6 +278,41 @@ describe('applyEvent', () => {
     expect(state.histories['05alice']?.messages.map((m) => m.id)).toEqual([1, 2, 3])
   })
 
+  it('applies a batch spanning conversations to each loaded window, in order', () => {
+    const seeded: SessionState = {
+      ...emptyState,
+      histories: {
+        '05alice': {
+          ready: true,
+          messages: [message({ id: 1 })],
+          exhausted: true,
+          fetching: false,
+        },
+        '05bob': {
+          ready: true,
+          messages: [message({ id: 2, conversationId: '05bob' })],
+          exhausted: true,
+          fetching: false,
+        },
+      },
+    }
+
+    const state = applyEvent(seeded, {
+      type: 'messages-updated',
+      messages: [
+        message({ id: 1, body: 'first edit' }),
+        message({ id: 2, conversationId: '05bob', body: 'bob edit' }),
+        message({ id: 3, conversationId: '05carol' }),
+        message({ id: 1, body: 'second edit' }),
+      ],
+    })
+
+    expect(state.histories['05alice']?.messages.map((m) => m.body)).toEqual(['second edit'])
+    expect(state.histories['05bob']?.messages.map((m) => m.body)).toEqual(['bob edit'])
+    // Not loaded, so not started from one message.
+    expect(state.histories['05carol']).toBeUndefined()
+  })
+
   it('stores the conversation and message objects the events carried', () => {
     const convo = conversation()
     const msg = message()
@@ -441,6 +476,26 @@ describe('attachment transfers', () => {
       seeded,
     )
     expect(Object.keys(state.transfers)).toEqual(['2'])
+  })
+
+  it('forgets a removed conversation transfers', () => {
+    const state = replay(
+      [
+        progress({ doneBytes: 512, totalBytes: 2048 }),
+        { type: 'conversation-removed', conversationId: '05alice' },
+      ],
+      loaded(),
+    )
+    expect(state.transfers).toEqual({})
+  })
+
+  it('drops a report for a window history-replaced left unready', () => {
+    const state = replay(
+      [{ type: 'history-replaced', conversationId: '05alice' }, progress({ doneBytes: 512 })],
+      loaded(),
+    )
+    expect(state.histories['05alice']?.ready).toBe(false)
+    expect(state.transfers).toEqual({})
   })
 
   it('leaves the transfer map alone when nothing in it changed', () => {
