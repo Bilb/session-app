@@ -60,9 +60,7 @@ export function MessageMediaViewer({
       closeLabel={tr('close')}
       exportLabel={PENDING_COPY.export}
       moreLabel={tr('openMessageContextMenu')}
-      // `back` rather than a `previous` the catalogue does not have. The pair reads as one
-      // thing anyway: this steps back through the set and `next` steps forward through it.
-      previousLabel={tr('back')}
+      previousLabel={PENDING_COPY.previous}
       nextLabel={tr('next')}
       testID={ELEMENT.conversation.mediaViewer}
       closeTestID={ELEMENT.conversation.mediaViewerClose}

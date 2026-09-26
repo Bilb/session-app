@@ -122,6 +122,7 @@ describe('screen copy', () => {
       'export',
       'exporting',
       'exportFailed',
+      'previous',
     ])
   })
 })
