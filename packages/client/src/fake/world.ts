@@ -169,7 +169,7 @@ export class FakeAccount {
   /** Attachments whose bytes are in the cache, by `keyOf`. */
   private readonly cached = new Set<string>()
   /** Downloads in flight, so a second request for one joins it rather than starting another. */
-  private readonly downloading = new Map<string, Promise<void>>()
+  private readonly downloading = new Map<string, { done: Promise<void>; handlers: number }>()
   /** Where each running transfer has got to, so a page can be told without waiting for a report. */
   private readonly running = new Map<string, TransferProgress>()
   /**
@@ -625,8 +625,9 @@ export class FakeAccount {
    * Fetches an attachment into the cache, reporting as it goes.
    *
    * Cached already means no reports at all and an answer now - the case a progress indicator has
-   * to survive. A fetch already running is joined rather than duplicated, which is why the
-   * promise is remembered.
+   * to survive. A fetch already running is joined rather than duplicated, as libsession joins it:
+   * the joiner is told at once where it has got to, and from then on every report reaches every
+   * handler, so each step (and the end) arrives once per handler.
    */
   downloadAttachment(ref: AttachmentRef): Promise<void> {
     const key = keyOf(ref)
@@ -634,13 +635,24 @@ export class FakeAccount {
     if (this.cached.has(key)) return Promise.resolve()
 
     const joined = this.downloading.get(key)
-    if (joined) return joined
+    if (joined) {
+      joined.handlers += 1
+      this.emit({
+        type: 'attachment-progress',
+        transfer: 'download',
+        messageId: ref.messageId,
+        index: ref.index,
+        ...(this.running.get(key) ?? { doneBytes: 0, totalBytes: 0 }),
+      })
+      return joined.done
+    }
 
     const verdict = this.verdicts.get(key)
     const running = this.transfer(
       'download',
       ref,
       verdict === undefined ? undefined : VERDICT_ERRORS[verdict],
+      () => this.downloading.get(key)?.handlers ?? 1,
     ).then(
       () => {
         this.cached.add(key)
@@ -652,7 +664,7 @@ export class FakeAccount {
         throw error
       },
     )
-    this.downloading.set(key, running)
+    this.downloading.set(key, { done: running, handlers: 1 })
     return running
   }
 
@@ -682,13 +694,15 @@ export class FakeAccount {
    * One transfer, reported on the world's clock.
    *
    * The first report is 0 of 0 - the size is not known until the server answers - and exactly one
-   * report carries a result, which is the only thing that says it finished. A `failure` is what the
-   * server answers at once, so it ends at 0 of 0 without moving a byte, and rejects.
+   * report per handler carries a result, which is the only thing that says it finished. A
+   * `failure` is what the server answers at once, so it ends at 0 of 0 without moving a byte, and
+   * rejects.
    */
   private transfer(
     transfer: AttachmentTransfer,
     ref: AttachmentRef,
     failure?: AttachmentError,
+    handlers: () => number = () => 1,
   ): Promise<void> {
     const found = this.locate(ref)
     const sizeBytes = encryptedSize(found?.attachment.sizeBytes ?? 0)
@@ -705,7 +719,7 @@ export class FakeAccount {
         if (outcome === undefined) this.running.set(key, { doneBytes, totalBytes })
         else this.running.delete(key)
       }
-      this.emit({
+      const event: SessionEvent = {
         type: 'attachment-progress',
         transfer,
         messageId: ref.messageId,
@@ -713,7 +727,8 @@ export class FakeAccount {
         doneBytes,
         totalBytes,
         ...(outcome === undefined ? {} : { outcome }),
-      })
+      }
+      for (let handler = handlers(); handler > 0; handler -= 1) this.emit(event)
     }
     // libsession announces what a download changes on every message showing the file: `fetching`
     // once it has started, and whatever a failure left behind once it has ended.
