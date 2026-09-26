@@ -73,17 +73,10 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
 }
 
 /**
- * Records one report, dropping those for a message nobody has loaded.
+ * Records one report, dropping those for a message no loaded window holds.
  *
- * By message rather than by conversation, because a report no longer names one: it carries a
- * message and an index, and a command-started transfer never knew a conversation to begin with.
- * The purpose is the same - an auto-downloading conversation reports whether or not anyone is
- * looking at it, and keeping what no screen can draw would grow for the life of the session.
- *
- * It is a narrower rule than the conversation one it replaces, and deliberately: reports that
- * arrive in the gap between a message being announced and landing in a window are dropped. The
- * cost is a bar that starts a beat late, because the reports that follow do land and the one
- * carrying the result lands too.
+ * By message, because a report names no conversation. A report that arrives between a message
+ * being announced and it landing in a window is dropped; the bar starts on the next one.
  */
 function recordTransfer(
   state: SessionState,
@@ -103,7 +96,10 @@ function recordTransfer(
     ...state,
     transfers: {
       ...state.transfers,
-      [transferKey(event.transfer, event)]: entry,
+      [event.messageId]: {
+        ...state.transfers[event.messageId],
+        [transferKey(event.transfer, event.index)]: entry,
+      },
     },
   }
 }
@@ -115,23 +111,16 @@ function isLoaded(state: SessionState, messageId: number): boolean {
   )
 }
 
-/**
- * The transfers without those belonging to a window being dropped.
- *
- * By message id, since a transfer key is `transfer:messageId:index` and carries no conversation.
- * A message in two loaded windows is not a thing that happens, so dropping by the window's own
- * messages cannot take one another window still needs.
- */
+/** The transfers without those of the messages a dropped window held. */
 export function withoutHistory(
   transfers: SessionState['transfers'],
   messages: readonly Message[],
 ): SessionState['transfers'] {
-  const dropped = new Set(messages.map((m) => m.id))
-  const kept = Object.entries(transfers).filter(([key]) => {
-    const id = Number(key.split(':')[1])
-    return !dropped.has(id)
-  })
-  return kept.length === Object.keys(transfers).length ? transfers : Object.fromEntries(kept)
+  const dropped = messages.filter((m) => m.id in transfers)
+  if (dropped.length === 0) return transfers
+  const kept = { ...transfers }
+  for (const message of dropped) delete kept[message.id]
+  return kept
 }
 
 type ListKey = 'conversations' | 'requests'

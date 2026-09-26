@@ -17,9 +17,9 @@ import {
 } from 'react'
 import { useStore } from 'zustand'
 
+import { selectAttachmentTransfer, selectMessage, selectMessageTransfers } from './selectors'
 import type { SessionActions, SessionStore } from './store'
-import type { AttachmentTransferState, MessageWindow, SessionState } from './types'
-import { transferKey } from './types'
+import type { AttachmentTransferState, MessageTransfers, MessageWindow } from './types'
 
 const StoreContext = createContext<SessionStore | null>(null)
 
@@ -158,22 +158,30 @@ export function useAttachmentTransfer(
   ref: AttachmentRef,
 ): AttachmentTransferState | undefined {
   const store = useSessionStore()
-  return useStore(store, (state) => state.transfers[transferKey(transfer, ref)])
+  return useStore(store, (state) => selectAttachmentTransfer(state, transfer, ref))
 }
 
 /**
- * Every live transfer, keyed by `transferKey`.
+ * One message's live transfers, keyed by `transferKey`.
  *
- * For a caller folding a whole message's attachments into one answer. It reads the record once
- * rather than calling `useAttachmentTransfer` per attachment, which would be a hook in a loop -
- * fine while a message's attachment list cannot change, and a rule nobody should have to check.
- *
- * The record's identity is stable between updates, so this re-renders when a transfer moves and
- * not otherwise.
+ * For folding a whole message's attachments into one answer without a hook per attachment. The
+ * same object until one of this message's transfers moves, so a report for another message does
+ * not re-render this one.
  */
-export function useAttachmentTransfers(): SessionState['transfers'] {
+export function useMessageTransfers(messageId: number): MessageTransfers {
   const store = useSessionStore()
-  return useStore(store, (state) => state.transfers)
+  return useStore(store, (state) => selectMessageTransfers(state, messageId))
+}
+
+/**
+ * One message of a loaded window, or undefined when no loaded window holds it.
+ *
+ * The object the last event carried, so this re-renders when that message changes and not when
+ * a neighbour does.
+ */
+export function useMessage(conversationId: ConversationId, messageId: number): Message | undefined {
+  const store = useSessionStore()
+  return useStore(store, (state) => selectMessage(state, conversationId, messageId))
 }
 
 /** Unread requests, which is not the same as the number of requests. */
