@@ -1,6 +1,6 @@
 import { mediaKindOf } from '@session/basic-types'
 import { requirePorts } from '@session/app'
-import type { Attachment, AutoDownload, Message } from '@session/client'
+import type { Attachment, Message } from '@session/client'
 import { tr } from '@session/localization'
 import {
   useAttachmentTransfer,
@@ -13,6 +13,7 @@ import { useState } from 'react'
 
 import { fetchOf, type Fetch } from './attachmentFetch'
 import { mayResolve } from './autoDownload'
+import { useConversationUi } from './conversationUi'
 import { formatBytes } from './formatBytes'
 import { PENDING_COPY } from './pendingCopy'
 import { exportOne } from './exportAttachment'
@@ -24,29 +25,16 @@ import { isViewable } from './viewableAttachments'
  * Everything drawn is `FileRow`'s; everything said is this side of the boundary, because the
  * wording is the catalogue's and the transfers are the store's, and `@session/ui` can reach
  * neither. What is left here is the mapping between them.
- *
- * Nothing here knows whether the bytes are on this device, because nothing records it: asking for
- * them is the answer, and an attachment already in the cache is handed over at once with no
- * progress reported at all. So the row starts at "download" even for a file that is here, and the
- * tap that follows is instant.
  */
 export function AttachmentRow({
   message,
   attachment,
-  onFirstDownload,
-  onOpen,
-  autoDownload,
 }: {
   message: Message
   attachment: Attachment
-  /** The conversation has never been asked what to fetch unprompted. Asked once, on first tap. */
-  onFirstDownload?: (() => void) | undefined
-  /** Opens the viewer at this attachment. Absent on a row with no picture behind it. */
-  onOpen?: (() => void) | undefined
-  /** What this conversation fetches unasked. Undefined means nobody has been asked. */
-  autoDownload?: AutoDownload | undefined
 }) {
   const actions = useSessionActions()
+  const ui = useConversationUi()
   // The report is the live half; `attachment.availability` is the resting one. See `fetchOf`.
   const ref = { messageId: message.id, index: attachment.index }
   const report = useAttachmentTransfer('download', ref)
@@ -67,7 +55,9 @@ export function AttachmentRow({
       : {
           // Left off where this is not ours to fetch: a url is the request, so handing one over
           // would spend the data the person was about to be asked about.
-          uri: mayResolve(attachment, autoDownload) ? requirePorts().media.urlFor(ref) : undefined,
+          uri: mayResolve(attachment, ui.autoDownload)
+            ? requirePorts().media.urlFor(ref)
+            : undefined,
           kind: mediaKindOf(attachment.contentType),
           // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
           // screen by the route a picture does. Null where the platform has no resolver.
@@ -76,7 +66,7 @@ export function AttachmentRow({
 
   function start(): void {
     setError(false)
-    onFirstDownload?.()
+    ui.requestAutoDownloadPrompt()
     void actions.downloadAttachment(ref).catch(() => {
       setError(true)
     })
@@ -90,7 +80,13 @@ export function AttachmentRow({
       filename={attachment.filename ?? tr('attachment')}
       contentType={attachment.contentType}
       thumbnail={thumbnail}
-      onOpen={thumbnail === undefined ? undefined : onOpen}
+      onOpen={
+        thumbnail === undefined
+          ? undefined
+          : () => {
+              ui.openViewer(message.id, attachment.index)
+            }
+      }
       caption={caption(attachment, state, fetched, exporting?.state)}
       state={state}
       // Absent while the server has not said how big the file is, which is what the first report

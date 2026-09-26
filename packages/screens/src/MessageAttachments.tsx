@@ -1,18 +1,13 @@
-import type { Attachment, AutoDownload, Message } from '@session/client'
-import { tr } from '@session/localization'
-import { transferKey, useMessageTransfers, useSessionActions } from '@session/state'
-import { ELEMENT } from '@session/test-ids'
-import { Sheet, YStack } from '@session/ui'
-import { useState } from 'react'
+import type { Message } from '@session/client'
+import { YStack } from '@session/ui'
 
 import { AttachmentFooter } from './AttachmentFooter'
 import { AttachmentList, LIST_MAX_ROWS } from './AttachmentList'
 import { AttachmentPill } from './AttachmentPill'
-import { fetchOf, type Fetch } from './attachmentFetch'
-import { summarise, type AttachmentSet } from './attachmentSet'
-import { attachmentView, canChooseView, type AttachmentView } from './attachmentView'
+import { attachmentView, canChooseView } from './attachmentView'
+import { useConversationUi } from './conversationUi'
 import { MessageAlbum } from './MessageAlbum'
-import { exportOne } from './exportAttachment'
+import { useAttachmentSet } from './useAttachmentSet'
 
 /**
  * Everything one message's attachments draw: the album or the list, and the one footer under both.
@@ -20,49 +15,11 @@ import { exportOne } from './exportAttachment'
  * The footer is the set's, not either shape's - its count is every attachment, including the ones
  * behind "+N" that no tile shows.
  */
-export function MessageAttachments({
-  message,
-  onOpen,
-  onFirstDownload,
-  autoDownload,
-  chosenView,
-  onChooseView,
-}: {
-  message: Message
-  /** Takes the attachment's index in the message. */
-  onOpen: (index: number) => void
-  onFirstDownload?: (() => void) | undefined
-  /** What this conversation fetches unasked. Undefined means nobody has been asked. */
-  autoDownload?: AutoDownload | undefined
-  /** What the reader asked for, where they have asked. Held by the screen, not by this row. */
-  chosenView?: AttachmentView | undefined
-  onChooseView?: ((view: AttachmentView) => void) | undefined
-}) {
-  const actions = useSessionActions()
-  const { set, fetchFor } = useAttachmentSet(message)
-  const view = attachmentView(message, chosenView)
-  const [showingAll, setShowingAll] = useState(false)
-  // A fact about the set rather than about what is open, so the sheet stays mounted while it
-  // animates shut. Mounting one under every message in the transcript would be the alternative.
+export function MessageAttachments({ message }: { message: Message }) {
+  const ui = useConversationUi()
+  const { set, act } = useAttachmentSet(message)
+  const view = attachmentView(message, ui.viewFor(message.id))
   const overflows = view === 'list' && message.attachments.length > LIST_MAX_ROWS
-
-  function act(): void {
-    if (set.state === 'ready') {
-      // Exactly one, or the footer would not have offered this - see `verb`.
-      const only = message.attachments[0]
-      if (only !== undefined) void exportOne(message, only.index, actions)
-      return
-    }
-    // Every attachment, whether or not a tile is drawing it. Download and retry are the same call:
-    // one that is already cached is handed over at once. An unavailable one would only fail again.
-    for (const attachment of message.attachments) {
-      if (fetchFor(attachment).state === 'unavailable') continue
-      actions
-        .downloadAttachment({ messageId: message.id, index: attachment.index })
-        // A failed download ends its transfer as `failed`, which the set already folds in.
-        .catch(() => undefined)
-    }
-  }
 
   // Once rather than per shape: a message with nothing attached would otherwise draw an empty
   // album, because "every attachment can be shown" is true of no attachments at all.
@@ -73,20 +30,19 @@ export function MessageAttachments({
       {view === 'gallery' ? (
         <MessageAlbum
           message={message}
-          onOpen={onOpen}
+          autoDownload={ui.autoDownload}
+          onOpen={(index) => {
+            ui.openViewer(message.id, index)
+          }}
           control={<AttachmentPill set={set} />}
-          autoDownload={autoDownload}
         />
       ) : (
         <AttachmentList
           message={message}
-          onOpen={onOpen}
-          onFirstDownload={onFirstDownload}
-          autoDownload={autoDownload}
           onShowAll={
             overflows
               ? () => {
-                  setShowingAll(true)
+                  ui.openSheet(message.id)
                 }
               : undefined
           }
@@ -96,50 +52,10 @@ export function MessageAttachments({
         set={set}
         onAction={act}
         view={canChooseView(message) ? view : undefined}
-        onView={onChooseView}
+        onView={(chosen) => {
+          ui.chooseView(message.id, chosen)
+        }}
       />
-
-      {/* The same rows and the same footer, on a surface that can be as tall as it needs to be.
-          No toggle in here: the sheet is the list, and a control offering to make it a gallery
-          would be offering to empty the thing the reader just opened. */}
-      {!overflows ? null : (
-        <Sheet
-          open={showingAll}
-          onClose={() => {
-            setShowingAll(false)
-          }}
-          title={tr('attachments')}
-          closeLabel={tr('close')}
-          footer={<AttachmentFooter set={set} onAction={act} />}
-          testID={ELEMENT.conversation.attachmentSheet}
-          closeTestID={ELEMENT.conversation.attachmentSheetClose}
-        >
-          <AttachmentList
-            message={message}
-            onOpen={onOpen}
-            onFirstDownload={onFirstDownload}
-            autoDownload={autoDownload}
-          />
-        </Sheet>
-      )}
     </YStack>
   )
-}
-
-/**
- * The set's state, folded from this message's transfers, and each attachment's own.
- *
- * One record rather than a hook per attachment: a hook in a loop is fine while a message's
- * attachment list cannot change, and that is a rule nobody should have to check.
- */
-function useAttachmentSet(message: Message): {
-  set: AttachmentSet
-  fetchFor: (attachment: Attachment) => Fetch
-} {
-  const transfers = useMessageTransfers(message.id)
-  const reportFor = (attachment: Attachment) => transfers[transferKey('download', attachment.index)]
-  return {
-    set: summarise(message, reportFor),
-    fetchFor: (attachment) => fetchOf(attachment, reportFor(attachment)),
-  }
 }

@@ -1,0 +1,56 @@
+import type { Attachment, Message } from '@session/client'
+import { transferKey, useMessageTransfers, useSessionActions } from '@session/state'
+
+import { fetchOf } from './attachmentFetch'
+import { summarise, type AttachmentSet } from './attachmentSet'
+import { useConversationUi } from './conversationUi'
+import { exportOne } from './exportAttachment'
+
+/**
+ * One message's attachments as a set, and what the set's controls do.
+ *
+ * Reads only this message's transfers, so a report for another message does not re-render this
+ * one. One record rather than a hook per attachment: a hook in a loop is fine while a message's
+ * attachment list cannot change, and that is a rule nobody should have to check.
+ */
+export function useAttachmentSet(message: Message): {
+  set: AttachmentSet
+  /** Fetches every attachment that is neither here nor on its way. */
+  downloadMissing: () => void
+  /** The footer's verb: exports the one file of a set that has arrived, else fetches the rest. */
+  act: () => void
+} {
+  const actions = useSessionActions()
+  const { requestAutoDownloadPrompt } = useConversationUi()
+  const transfers = useMessageTransfers(message.id)
+  const reportFor = (attachment: Attachment) => transfers[transferKey('download', attachment.index)]
+  const set = summarise(message, reportFor)
+
+  function downloadMissing(): void {
+    // Unavailable is left out: retrying it would only fail again.
+    const missing = message.attachments.filter((attachment) => {
+      const state = fetchOf(attachment, reportFor(attachment)).state
+      return state === 'idle' || state === 'failed'
+    })
+    if (missing.length === 0) return
+    requestAutoDownloadPrompt()
+    for (const attachment of missing) {
+      actions
+        .downloadAttachment({ messageId: message.id, index: attachment.index })
+        // A failed download ends its transfer as `failed`, which the set already folds in.
+        .catch(() => undefined)
+    }
+  }
+
+  function act(): void {
+    if (set.state === 'ready') {
+      // Exactly one, or the footer would not have offered this - see its `verb`.
+      const only = message.attachments[0]
+      if (only !== undefined) void exportOne(message, only.index, actions)
+      return
+    }
+    downloadMissing()
+  }
+
+  return { set, downloadMissing, act }
+}

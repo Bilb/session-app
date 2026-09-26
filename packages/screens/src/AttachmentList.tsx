@@ -1,10 +1,9 @@
-import type { Attachment, AutoDownload, Message } from '@session/client'
+import type { Attachment, Message } from '@session/client'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { forwardChevron, Icon, PressArea, Text, XStack, YStack } from '@session/ui'
 
 import { AttachmentRow } from './AttachmentRow'
-import { isViewable } from './viewableAttachments'
 
 /**
  * How many rows a message draws before the rest moves into a sheet.
@@ -26,17 +25,9 @@ export const LIST_MAX_ROWS = 5
  */
 export function AttachmentList({
   message,
-  onOpen,
-  onFirstDownload,
-  autoDownload,
   onShowAll,
 }: {
   message: Message
-  /** Takes the attachment's index in the message. */
-  onOpen: (index: number) => void
-  onFirstDownload?: (() => void) | undefined
-  /** What this conversation fetches unasked. Undefined means nobody has been asked. */
-  autoDownload?: AutoDownload | undefined
   /**
    * Opens the rest.
    *
@@ -52,20 +43,7 @@ export function AttachmentList({
   return (
     <YStack>
       {capped.map((attachment: Attachment) => (
-        <AttachmentRow
-          key={attachment.index}
-          message={message}
-          attachment={attachment}
-          onFirstDownload={onFirstDownload}
-          autoDownload={autoDownload}
-          onOpen={
-            isViewable(attachment)
-              ? () => {
-                  onOpen(attachment.index)
-                }
-              : undefined
-          }
-        />
+        <AttachmentRow key={attachment.index} message={message} attachment={attachment} />
       ))}
       {hidden === 0 || onShowAll === undefined ? null : (
         <ShowAll count={message.attachments.length} onPress={onShowAll} />
