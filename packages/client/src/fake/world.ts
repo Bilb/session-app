@@ -177,6 +177,8 @@ export class FakeAccount {
    * `availability`, since the fake has no file server to reach the verdict against.
    */
   private readonly verdicts = new Map<string, Verdict>()
+  /** Paths exported to, so a repeat can collide the way a file on disk would. */
+  private readonly exported = new Set<string>()
   /** Bumped by a restart: a transfer that was running does not survive the process. */
   private generation = 0
   private cacheLimitBytes: number | undefined
@@ -675,7 +677,7 @@ export class FakeAccount {
    * leaves the cache alone, so the two are separate transfers even for the same bytes. Uncached,
    * it has to fetch, so it fails on a verdict as a download would.
    */
-  exportAttachment(ref: AttachmentRef, destination: string): Promise<string> {
+  exportAttachment(ref: AttachmentRef, destination: string, replace = false): Promise<string> {
     const found = this.locate(ref)
     if (!found) return Promise.reject(new Error(`No attachment ${keyOf(ref)}`))
 
@@ -686,8 +688,26 @@ export class FakeAccount {
         a.index === ref.index ? { ...a, savedAtMs: this.world?.now() ?? Date.now() } : a,
       )
       this.updateMessage(found.conversationId, ref.messageId, { attachments: saved })
-      return destination
+      const landed = replace ? destination : this.unusedPath(destination)
+      this.exported.add(landed)
+      return landed
     })
+  }
+
+  /**
+   * libsession's `name (2).ext`, `name (3).ext`... for a path already written. The fake has no
+   * disk, so "already written" means exported to this session.
+   */
+  private unusedPath(destination: string): string {
+    if (!this.exported.has(destination)) return destination
+    const slash = Math.max(destination.lastIndexOf('/'), destination.lastIndexOf('\\'))
+    const dot = destination.lastIndexOf('.')
+    const split = dot > slash + 1 ? dot : destination.length
+    const [stem, extension] = [destination.slice(0, split), destination.slice(split)]
+    for (let n = 2; ; n += 1) {
+      const candidate = `${stem} (${String(n)})${extension}`
+      if (!this.exported.has(candidate)) return candidate
+    }
   }
 
   /**

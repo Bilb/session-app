@@ -665,6 +665,21 @@ export function runSessionClientContract(
       seen.stop()
     })
 
+    it('exports beside a file already written rather than over it, unless told to replace', async () => {
+      const { client, messageId, index, settle } = await harness.withAttachment()
+      const stem = `/tmp/contract-repeat-${String(messageId)}-${String(Date.now())}`
+      const exported = async (replace?: boolean) => {
+        const landing = client.exportAttachment(messageId, index, `${stem}.bin`, { replace })
+        await settle()
+        return landing
+      }
+
+      expect(await exported()).toBe(`${stem}.bin`)
+      expect(await exported(false)).toBe(`${stem} (2).bin`)
+      expect(await exported()).toBe(`${stem} (3).bin`)
+      expect(await exported(true)).toBe(`${stem}.bin`)
+    })
+
     it('answers a page with what its attachments are doing', async () => {
       const { client, conversationId, messageId, index, settle } = await harness.withAttachment()
 

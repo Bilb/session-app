@@ -8,6 +8,7 @@ import type {
   Conversation,
   ConversationId,
   Deletion,
+  ExportAttachmentOptions,
   MessageCursor,
   SessionEvent,
 } from '@session/bridge-types'
@@ -334,12 +335,17 @@ export class FakeSessionClient implements SessionClient {
     return this.account.downloadAttachment({ messageId, index })
   }
 
-  exportAttachment(messageId: number, index: number, destination: string): Promise<string> {
+  exportAttachment(
+    messageId: number,
+    index: number,
+    destination: string,
+    options?: ExportAttachmentOptions,
+  ): Promise<string> {
     this.assertOpen()
     if (!this.account.locate({ messageId, index })) {
       return Promise.reject(new SessionClientError(`No attachment ${messageId}:${index}`))
     }
-    return this.account.exportAttachment({ messageId, index }, destination)
+    return this.account.exportAttachment({ messageId, index }, destination, options?.replace)
   }
 
   /** Fake-only: finds an attachment in memory, where paging every conversation would miss old ones. */
