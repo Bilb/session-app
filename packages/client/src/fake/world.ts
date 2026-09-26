@@ -15,20 +15,26 @@
  */
 
 import { isImageContentType } from '@session/basic-types'
-import type {
-  AccountInfo,
-  Attachment,
-  AttachmentOutcome,
-  AttachmentRef,
-  AttachmentTransfer,
-  AutoDownload,
-  Conversation,
-  ConversationId,
-  Message,
-  SendState,
-  SessionEvent,
-  TransferProgress,
+import {
+  ATTACHMENT_NOT_FOUND,
+  ATTACHMENT_UNREADABLE,
+  type AccountInfo,
+  type Attachment,
+  type AttachmentAvailability,
+  type AttachmentError,
+  type AttachmentOutcome,
+  type AttachmentRef,
+  type AttachmentTransfer,
+  type AutoDownload,
+  type Conversation,
+  type ConversationId,
+  type Message,
+  type SendState,
+  type SessionEvent,
+  type TransferProgress,
 } from '@session/bridge-types'
+
+import { SessionClientError } from '../errors'
 
 export interface FakeAccountOptions {
   displayName: string
@@ -105,6 +111,18 @@ function keyOf({ messageId, index }: AttachmentRef): string {
   return `${messageId}:${index}`
 }
 
+/** What libsession records when a download says retrying is pointless. */
+type Verdict = Extract<AttachmentAvailability, 'notFound' | 'unreadable'>
+
+const VERDICT_ERRORS: Record<Verdict, AttachmentError> = {
+  notFound: ATTACHMENT_NOT_FOUND,
+  unreadable: ATTACHMENT_UNREADABLE,
+}
+
+function isVerdict(availability: AttachmentAvailability): availability is Verdict {
+  return availability in VERDICT_ERRORS
+}
+
 export interface LocatedAttachment {
   conversationId: ConversationId
   message: Message
@@ -154,6 +172,11 @@ export class FakeAccount {
   private readonly downloading = new Map<string, Promise<void>>()
   /** Where each running transfer has got to, so a page can be told without waiting for a report. */
   private readonly running = new Map<string, TransferProgress>()
+  /**
+   * Attachments a download has judged unavailable, by `keyOf`. Seeded from a fixture's
+   * `availability`, since the fake has no file server to reach the verdict against.
+   */
+  private readonly verdicts = new Map<string, Verdict>()
   /** Bumped by a restart: a transfer that was running does not survive the process. */
   private generation = 0
   private cacheLimitBytes: number | undefined
@@ -321,6 +344,13 @@ export class FakeAccount {
     const state = this.conversations.get(id)
     if (!state) throw new Error(`No conversation ${id}`)
     if (!message.outgoing) state.unread.add(message.id)
+    for (const attachment of message.attachments) {
+      if (isVerdict(attachment.availability))
+        this.verdicts.set(
+          keyOf({ messageId: message.id, index: attachment.index }),
+          attachment.availability,
+        )
+    }
     state.messages.push(message)
     state.messages.sort((a, b) => a.timestamp - b.timestamp || a.id - b.id)
 
@@ -547,15 +577,16 @@ export class FakeAccount {
     return messages.map((message) => ({
       ...message,
       attachments: message.attachments.map((attachment) => {
-        const ref = { messageId: message.id, index: attachment.index }
-        const running = this.running.get(keyOf(ref))
+        const key = keyOf({ messageId: message.id, index: attachment.index })
+        const running = this.running.get(key)
+        const availability: AttachmentAvailability = running
+          ? 'fetching'
+          : this.cached.has(key)
+            ? 'cached'
+            : (this.verdicts.get(key) ?? 'absent')
         return {
           ...attachment,
-          availability: running
-            ? ('fetching' as const)
-            : this.isCached(ref)
-              ? ('cached' as const)
-              : ('absent' as const),
+          availability,
           fetchDoneBytes: running?.doneBytes ?? 0,
           fetchTotalBytes: running?.totalBytes ?? 0,
         }
@@ -605,11 +636,22 @@ export class FakeAccount {
     const joined = this.downloading.get(key)
     if (joined) return joined
 
-    const running = this.transfer('download', ref).then(() => {
-      this.cached.add(key)
-      this.downloading.delete(key)
-      this.announceAttachment(ref.messageId)
-    })
+    const verdict = this.verdicts.get(key)
+    const running = this.transfer(
+      'download',
+      ref,
+      verdict === undefined ? undefined : VERDICT_ERRORS[verdict],
+    ).then(
+      () => {
+        this.cached.add(key)
+        this.downloading.delete(key)
+        this.announceAttachment(ref.messageId)
+      },
+      (error: unknown) => {
+        this.downloading.delete(key)
+        throw error
+      },
+    )
     this.downloading.set(key, running)
     return running
   }
@@ -618,13 +660,16 @@ export class FakeAccount {
    * Writes an attachment out to a chosen path, fetching it if the cache does not hold it.
    *
    * Never joined with a download of the same file: an export streams to its destination and
-   * leaves the cache alone, so the two are separate transfers even for the same bytes.
+   * leaves the cache alone, so the two are separate transfers even for the same bytes. Uncached,
+   * it has to fetch, so it fails on a verdict as a download would.
    */
   exportAttachment(ref: AttachmentRef, destination: string): Promise<string> {
     const found = this.locate(ref)
     if (!found) return Promise.reject(new Error(`No attachment ${keyOf(ref)}`))
 
-    return this.transfer('export', ref).then(() => {
+    const verdict = this.cached.has(keyOf(ref)) ? undefined : this.verdicts.get(keyOf(ref))
+    const failure = verdict === undefined ? undefined : VERDICT_ERRORS[verdict]
+    return this.transfer('export', ref, failure).then(() => {
       const saved = found.message.attachments.map((a) =>
         a.index === ref.index ? { ...a, savedAtMs: this.world?.now() ?? Date.now() } : a,
       )
@@ -637,24 +682,27 @@ export class FakeAccount {
    * One transfer, reported on the world's clock.
    *
    * The first report is 0 of 0 - the size is not known until the server answers - and exactly one
-   * report carries a result, which is the only thing that says it finished.
+   * report carries a result, which is the only thing that says it finished. A `failure` is what the
+   * server answers at once, so it ends at 0 of 0 without moving a byte, and rejects.
    */
-  private transfer(transfer: AttachmentTransfer, ref: AttachmentRef): Promise<void> {
+  private transfer(
+    transfer: AttachmentTransfer,
+    ref: AttachmentRef,
+    failure?: AttachmentError,
+  ): Promise<void> {
     const found = this.locate(ref)
-    const totalBytes = encryptedSize(found?.attachment.sizeBytes ?? 0)
+    const sizeBytes = encryptedSize(found?.attachment.sizeBytes ?? 0)
     const world = this.world
     const generation = this.generation
 
     const key = keyOf(ref)
-    const report = (doneBytes: number, outcome?: AttachmentOutcome): void => {
+    const report = (doneBytes: number, totalBytes: number, outcome?: AttachmentOutcome): void => {
       if (generation !== this.generation) return
-      // The size is not known until the server answers, which is what the first report means.
-      const announcedBytes = doneBytes === 0 && outcome === undefined ? 0 : totalBytes
       // Remembered as well as announced, and remembered as exactly what was announced: a page
       // loading midway is told where this is without waiting for the next report, and a caller
       // cannot tell the two routes apart.
       if (transfer === 'download') {
-        if (outcome === undefined) this.running.set(key, { doneBytes, totalBytes: announcedBytes })
+        if (outcome === undefined) this.running.set(key, { doneBytes, totalBytes })
         else this.running.delete(key)
       }
       this.emit({
@@ -663,24 +711,42 @@ export class FakeAccount {
         messageId: ref.messageId,
         index: ref.index,
         doneBytes,
-        totalBytes: announcedBytes,
+        totalBytes,
         ...(outcome === undefined ? {} : { outcome }),
       })
     }
+    report(0, 0)
+    if (failure !== undefined) {
+      const refused = new SessionClientError(`${failure}: attachment ${key} cannot be fetched`)
+      const fail = (): void => report(0, 0, { ok: false, error: failure })
+      if (!world) {
+        fail()
+        return Promise.reject(refused)
+      }
+      return new Promise<void>((_resolve, reject) => {
+        world.schedule(MIN_TRANSFER_TICKS, () => {
+          if (generation !== this.generation) {
+            reject(new Error('the transfer did not survive the restart'))
+            return
+          }
+          fail()
+          reject(refused)
+        })
+      })
+    }
 
-    report(0)
     if (!world) {
-      report(totalBytes, { ok: true })
+      report(sizeBytes, sizeBytes, { ok: true })
       return Promise.resolve()
     }
 
     // Spread over a span that follows the size, with the same number of reports either way: the
     // bar moves in the same increments on any file, and a bigger one takes longer to get there.
-    const span = transferTicks(totalBytes)
+    const span = transferTicks(sizeBytes)
     return new Promise<void>((resolve, reject) => {
       for (let step = 1; step < TRANSFER_STEPS; step += 1) {
         world.schedule((span * step) / TRANSFER_STEPS, () =>
-          report(Math.round((totalBytes * step) / TRANSFER_STEPS)),
+          report(Math.round((sizeBytes * step) / TRANSFER_STEPS), sizeBytes),
         )
       }
       world.schedule(span, () => {
@@ -688,7 +754,7 @@ export class FakeAccount {
           reject(new Error('the transfer did not survive the restart'))
           return
         }
-        report(totalBytes, { ok: true })
+        report(sizeBytes, sizeBytes, { ok: true })
         resolve()
       })
     })

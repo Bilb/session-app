@@ -215,17 +215,35 @@ export function set(
 
 export const image = (n: number): Kind[] => Array.from({ length: n }, () => 'image' as const)
 
+/** A file the server no longer holds, so a download of it fails and it reads `notFound`. */
+const SEEDED_EXPIRED: Attachment[] = [
+  {
+    index: 0,
+    contentType: 'application/pdf',
+    filename: 'boarding-pass.pdf',
+    sizeBytes: 64_000,
+    voiceMessage: false,
+    hasPreview: false,
+    uploaded: true,
+    availability: 'notFound',
+    fetchDoneBytes: 0,
+    fetchTotalBytes: 0,
+  },
+]
+
 const SEEDED_SETS = {
   pictures: ['Here are the photos', SEEDED_PICTURES],
   files: ['And the paperwork', SEEDED_FILES],
   roll: ['The whole roll', SEEDED_MANY],
+  expired: ['This one has expired', SEEDED_EXPIRED],
 } as const satisfies Record<string, readonly [string, Attachment[]]>
 
 type SeededSet = keyof typeof SEEDED_SETS
 
 /**
- * `friends`, then Bob's attachment messages arriving at Alice: an album, a mixed set the list
- * draws, and one longer than the transcript list holds - the fewest that reach each code path.
+ * `friends`, then Bob's attachment messages arriving at Alice. By default an album, a mixed set
+ * the list draws, and one longer than the transcript list holds - the fewest that reach each code
+ * path; `expired` adds a file the server no longer holds.
  *
  * Delivered rather than sent, since the protocol cannot send one, and nothing is fetched: the
  * conversation has not been asked what to download.
