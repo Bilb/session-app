@@ -1,6 +1,8 @@
 import { isViewableContentType, type MediaKind } from '@session/basic-types'
 import type { Attachment } from '@session/bridge-types'
 
+import { friends, type FakeSetup, type FixtureName } from './fixtures'
+
 /**
  * Pictures only, so the message is gallery-viewable and draws as pictures.
  *
@@ -11,7 +13,7 @@ import type { Attachment } from '@session/bridge-types'
  * way to see the placeholder before something learns to encode them. The fake's preview door
  * answers with a flat colour: what it exercises is the route, not the decoder.
  */
-export const SEEDED_PICTURES: Attachment[] = [
+const SEEDED_PICTURES: Attachment[] = [
   {
     index: 0,
     contentType: 'image/jpeg',
@@ -46,7 +48,7 @@ export const SEEDED_PICTURES: Attachment[] = [
  * One picture and one file, which libsession's rule makes *not* gallery-viewable: a message is
  * only shown as pictures when every attachment is one. This is what draws the file form.
  */
-export const SEEDED_FILES: Attachment[] = [
+const SEEDED_FILES: Attachment[] = [
   {
     index: 0,
     contentType: 'image/jpeg',
@@ -82,7 +84,7 @@ export const SEEDED_FILES: Attachment[] = [
  * set, because the rule that sends a message to the list is one plain file - and the case worth
  * having a fixture for is the one no composer can produce.
  */
-export const SEEDED_MANY: Attachment[] = Array.from({ length: 13 }, (_, at) => ({
+const SEEDED_MANY: Attachment[] = Array.from({ length: 13 }, (_, at) => ({
   index: at,
   ...(at === 12
     ? { contentType: 'application/pdf', filename: 'contact-sheet.pdf' }
@@ -212,3 +214,34 @@ export function set(
 }
 
 export const image = (n: number): Kind[] => Array.from({ length: n }, () => 'image' as const)
+
+const SEEDED_SETS = {
+  pictures: ['Here are the photos', SEEDED_PICTURES],
+  files: ['And the paperwork', SEEDED_FILES],
+  roll: ['The whole roll', SEEDED_MANY],
+} as const satisfies Record<string, readonly [string, Attachment[]]>
+
+type SeededSet = keyof typeof SEEDED_SETS
+
+/**
+ * `friends`, then Bob's attachment messages arriving at Alice: an album, a mixed set the list
+ * draws, and one longer than the transcript list holds - the fewest that reach each code path.
+ *
+ * Delivered rather than sent, since the protocol cannot send one, and nothing is fetched: the
+ * conversation has not been asked what to download.
+ */
+export function friendsWithAttachments(
+  names: readonly [FixtureName, FixtureName] = ['Alice', 'Bob'],
+  options: { history?: number; sets?: readonly SeededSet[] } = {},
+): FakeSetup {
+  const setup = friends(names, { history: options.history ?? 0 })
+  const { world } = setup
+  const recipient = world.account(names[0])
+  const sender = world.account(names[1])
+  for (const name of options.sets ?? ['pictures', 'files', 'roll']) {
+    const [body, attachments] = SEEDED_SETS[name]
+    recipient.deliverFrom(sender, body, world.now(), attachments)
+    world.settle()
+  }
+  return setup
+}

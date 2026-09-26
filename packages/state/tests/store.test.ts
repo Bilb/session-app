@@ -1,4 +1,4 @@
-import { friends, type FakeWorld } from '@session/client/fake'
+import { friends, friendsWithAttachments, type FakeWorld } from '@session/client/fake'
 import { SessionClientError, type MessagePage, type SessionClient } from '@session/client'
 import { beforeEach, describe, expect, it } from 'vitest'
 
@@ -11,7 +11,7 @@ import { createSessionStore, type SessionStore } from '#src/store'
  * client - what a window load asks for, and what is thrown away when a screen stops showing one.
  */
 function seeded(): { store: SessionStore; world: FakeWorld; client: SessionClient; bob: string } {
-  const { world, clients } = friends(['Alice', 'Bob'])
+  const { world, clients } = friendsWithAttachments(['Alice', 'Bob'])
   const client = clients['Alice']
   if (!client) throw new Error('fixture did not produce a client')
   return { store: createSessionStore(client), world, client, bob: world.account('Bob').sessionId }

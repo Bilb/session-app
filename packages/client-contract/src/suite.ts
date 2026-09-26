@@ -18,7 +18,7 @@ import type {
 } from '@session/client'
 
 export interface ContractHarness {
-  /** Two clients that already know each other, with no history. */
+  /** Two clients that already know each other, with no history and no attachments. */
   friends(): Promise<{
     alice: SessionClient
     bob: SessionClient
