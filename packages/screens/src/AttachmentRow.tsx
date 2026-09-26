@@ -2,7 +2,11 @@ import { mediaKindOf } from '@session/basic-types'
 import { requirePorts } from '@session/app'
 import type { Attachment, AutoDownload, Message } from '@session/client'
 import { tr } from '@session/localization'
-import { useAttachmentTransfer, useSessionActions } from '@session/state'
+import {
+  useAttachmentTransfer,
+  useSessionActions,
+  type AttachmentTransferState,
+} from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { FileRow, type FileRowState, type FileRowThumbnail } from '@session/ui'
 import { useState } from 'react'
@@ -88,7 +92,7 @@ export function AttachmentRow({
       {...(attachment.contentType === undefined ? {} : { contentType: attachment.contentType })}
       {...(thumbnail === undefined ? {} : { thumbnail })}
       {...(thumbnail === undefined || onOpen === undefined ? {} : { onOpen })}
-      caption={caption(attachment, state, fetched, exporting?.state === 'running')}
+      caption={caption(attachment, state, fetched, exporting?.state)}
       state={state}
       // Absent while the server has not said how big the file is, which is what the first report
       // of every transfer means: an empty ring rather than a full one.
@@ -116,7 +120,7 @@ function caption(
   attachment: Attachment,
   state: FileRowState,
   fetched: Fetch,
-  exporting: boolean,
+  exporting: AttachmentTransferState['state'] | undefined,
 ): string {
   if (state === 'unavailable') return tr('attachmentsExpired')
   if (state === 'failed') return tr('failedToDownload')
@@ -125,7 +129,8 @@ function caption(
     if (fetched.totalBytes === 0) return tr('downloading')
     return `${formatBytes(fetched.doneBytes)} / ${formatBytes(fetched.totalBytes)}`
   }
-  if (exporting) return PENDING_COPY.exporting
+  if (exporting === 'running') return PENDING_COPY.exporting
+  if (exporting === 'failed') return PENDING_COPY.exportFailed
   return attachment.sizeBytes === undefined ? '' : formatBytes(attachment.sizeBytes)
 }
 

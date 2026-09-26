@@ -36,4 +36,5 @@ export const PENDING_COPY = {
    */
   export: 'Export',
   exporting: 'Exporting',
+  exportFailed: 'Export failed',
 } as const
