@@ -19,6 +19,35 @@ import { PENDING_COPY } from './pendingCopy'
 import { exportOne } from './exportAttachment'
 import { isViewable } from './viewableAttachments'
 
+function caption(
+  attachment: Attachment,
+  state: FileRowState,
+  fetched: Fetch,
+  exporting: AttachmentTransferState['state'] | undefined,
+): string {
+  if (state === 'unavailable') return tr('attachmentsExpired')
+  if (state === 'failed') return tr('failedToDownload')
+  if (state === 'fetching') {
+    // Indeterminate until the server says how big it is, which is what a total of 0 means.
+    if (fetched.totalBytes === 0) return tr('downloading')
+    return `${formatBytes(fetched.doneBytes)} / ${formatBytes(fetched.totalBytes)}`
+  }
+  if (exporting === 'running') return PENDING_COPY.exporting
+  if (exporting === 'failed') return PENDING_COPY.exportFailed
+  return attachment.sizeBytes === undefined ? '' : formatBytes(attachment.sizeBytes)
+}
+
+/**
+ * What a screen reader announces the one control as. The glyph is what everyone else reads.
+ *
+ * Two verbs, and the state settles which with no further rule: Download moves bytes from the
+ * network into the cache, Export writes a file we already hold out to a folder somebody chose.
+ */
+function actionLabel(state: FileRowState): string {
+  if (state === 'failed') return tr('retry')
+  return state === 'ready' ? PENDING_COPY.export : tr('download')
+}
+
 /**
  * One attachment on one message, as a row.
  *
@@ -108,33 +137,4 @@ export function AttachmentRow({
       }}
     />
   )
-}
-
-function caption(
-  attachment: Attachment,
-  state: FileRowState,
-  fetched: Fetch,
-  exporting: AttachmentTransferState['state'] | undefined,
-): string {
-  if (state === 'unavailable') return tr('attachmentsExpired')
-  if (state === 'failed') return tr('failedToDownload')
-  if (state === 'fetching') {
-    // Indeterminate until the server says how big it is, which is what a total of 0 means.
-    if (fetched.totalBytes === 0) return tr('downloading')
-    return `${formatBytes(fetched.doneBytes)} / ${formatBytes(fetched.totalBytes)}`
-  }
-  if (exporting === 'running') return PENDING_COPY.exporting
-  if (exporting === 'failed') return PENDING_COPY.exportFailed
-  return attachment.sizeBytes === undefined ? '' : formatBytes(attachment.sizeBytes)
-}
-
-/**
- * What a screen reader announces the one control as. The glyph is what everyone else reads.
- *
- * Two verbs, and the state settles which with no further rule: Download moves bytes from the
- * network into the cache, Export writes a file we already hold out to a folder somebody chose.
- */
-function actionLabel(state: FileRowState): string {
-  if (state === 'failed') return tr('retry')
-  return state === 'ready' ? PENDING_COPY.export : tr('download')
 }
