@@ -2,10 +2,13 @@ import type { ReactNode } from 'react'
 import { Modal as NativeModal } from 'react-native'
 import { ScrollView, XStack, YStack, useMedia } from 'tamagui'
 
+import type { ElementId } from '@session/test-ids'
+
 import { Button } from './Button'
 import { Icon } from './Icon'
 import { useScreenInsets } from './screenInsets'
-import { SHEET_MAX_HEIGHT, SHEET_MAX_WIDTH, SHEET_RADIUS, SHEET_SCRIM_OPACITY } from './sheet'
+import { SCRIM_OPACITY } from './scrim'
+import { SHEET_MAX_HEIGHT, SHEET_MAX_WIDTH, SHEET_RADIUS } from './sheet'
 import { Text } from './Text'
 
 export interface SheetProps {
@@ -17,9 +20,9 @@ export interface SheetProps {
   /** The scrolling part. As tall as it needs to be, up to what the surface allows. */
   children: ReactNode
   /** Held at the bottom edge, outside the scroll, so it is reachable from anywhere in the body. */
-  footer?: ReactNode
-  testID: string
-  closeTestID: string
+  footer?: ReactNode | undefined
+  testID: ElementId
+  closeTestID: ElementId
 }
 
 /**
@@ -56,7 +59,7 @@ export function Sheet({
     >
       {/* Its own layer, so its opacity does not reach the surface: an opacity on a parent applies
           to every descendant, which would make the sheet translucent too. */}
-      <YStack fullscreen backgroundColor="$surfaceInk" opacity={SHEET_SCRIM_OPACITY} />
+      <YStack fullscreen backgroundColor="$surfaceInk" opacity={SCRIM_OPACITY} />
       <YStack
         fullscreen
         alignItems="center"

@@ -23,6 +23,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@session/basic-types": "workspace:*",
+    "@session/test-ids": "workspace:*",
     "@session/theme-tokens": "workspace:*",
     "@tamagui/lucide-icons-2": "catalog:",
     "react-native-keyboard-controller": "catalog:",

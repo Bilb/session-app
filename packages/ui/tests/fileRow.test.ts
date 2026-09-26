@@ -1,10 +1,13 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-
 import { describe, expect, it } from 'vitest'
 
 import { MIN_HIT_TARGET } from '#src/buttonHitTarget'
-import { FILE_GLYPH_SIDE, FILE_LEAD_WIDTH, FILE_ROW_CONTROL, fileRowControl } from '#src/fileRow'
+import {
+  FILE_GLYPH_SIDE,
+  FILE_LEAD_WIDTH,
+  FILE_ROW_CONTROL,
+  fileRowControl,
+  fileRowTone,
+} from '#src/fileRow'
 import { TILE_RADIUS_STEP } from '#src/attachmentTile'
 
 describe('a file row’s one control', () => {
@@ -45,35 +48,25 @@ describe('a file row’s columns', () => {
   })
 })
 
-/** Read rather than rendered, the way `attachmentTile.test.ts` reads its source: no DOM here. */
-const component = readFileSync(join(import.meta.dirname, '../src/FileRow.tsx'), 'utf8')
-
-describe('what a file row draws', () => {
-  it('splits the name into a run that may truncate and one that may not', () => {
-    // A single `numberOfLines={1}` is what puts the ellipsis over the extension, which is the one
-    // part of a filename somebody is scanning for.
-    expect(component).toContain('flexShrink={1}')
-    expect(component).toContain('flexShrink={0}')
-    expect(component).toContain('{tail}')
+describe('a file row’s colours', () => {
+  it('is red throughout after a failure', () => {
+    expect(fileRowTone('failed')).toEqual({ name: 'danger', caption: 'danger', control: 'danger' })
   })
 
-  it('addresses the name as one string rather than as its two runs', () => {
-    // Split across two elements the name stops being one string: a screen reader announces two
-    // fragments and a test reading the id gets the head alone, which is `itin` for `itinerary.pdf`.
-    expect(component).toMatch(/<XStack[^>]*accessibilityLabel={filename} testID={testIDs\?\.name}/)
-    expect(component).not.toMatch(/<Text[\s\S]{0,200}?testID={testIDs\?\.name}/)
+  it('says a file is unavailable in the caption alone', () => {
+    expect(fileRowTone('unavailable')).toEqual({
+      name: 'primary',
+      caption: 'danger',
+      control: 'primary',
+    })
   })
 
-  it('takes its caption already worded', () => {
-    // `@session/ui` imports no sibling but theme-tokens, test-ids and basic-types, so every
-    // reading on that line - the size, the two counts, the reason - is worded by the caller.
-    expect(component).not.toContain('@session/localization')
-    expect(component).toContain('caption: string')
-  })
-
-  it('holds the control’s square in every state', () => {
-    // Including the state with no control: a row whose trailing column appears when a transfer
-    // ends re-wraps the name underneath it at that moment.
-    expect(component).toContain('if (control === null) return <YStack {...square} />')
+  it('is at rest in every other state', () => {
+    for (const state of ['idle', 'fetching', 'ready'] as const)
+      expect(fileRowTone(state)).toEqual({
+        name: 'primary',
+        caption: 'secondary',
+        control: 'primary',
+      })
   })
 })

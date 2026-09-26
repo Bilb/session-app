@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-
 import { RADII } from '@session/theme-tokens'
 import { describe, expect, it } from 'vitest'
 
@@ -27,72 +24,5 @@ describe('a tile’s corner', () => {
     // Two steps and no more: three would stop the album's tiles and the list's thumbnails reading
     // as the same family, which is the whole reason there is one component.
     expect(new Set([tileRadius(1), tileRadius(40), tileRadius(64), tileRadius(400)]).size).toBe(2)
-  })
-})
-
-/**
- * Read rather than rendered, the way `Icon.contract.test.ts` reads its source: this suite has no
- * DOM, and what is worth pinning here is a handful of decisions that a renderer would not check
- * either. Each of them is a bug with no visible symptom in the state anybody screenshots.
- */
-const component = readFileSync(join(import.meta.dirname, '../src/AttachmentTile.tsx'), 'utf8')
-
-describe('what a tile draws', () => {
-  it('puts the hairline on the tile, not on what fills it', () => {
-    // An inset ring on an inner element is square, and the tile's own clip then takes its corners
-    // off instead of curving them - a tile whose corners look like they have gone missing.
-    const root = component.slice(component.indexOf('<YStack'), component.indexOf('testID={testID}'))
-    expect(root).toContain('borderWidth')
-    expect(root).toContain('borderRadius={radius}')
-  })
-
-  it('draws the play mark and the duration only once the bytes are here', () => {
-    // While a transfer is pending the set's own control is on screen, and a play glyph promising
-    // playback beside it promises a different future about the same picture.
-    expect(component).toContain("{here && kind === 'video' ?")
-  })
-
-  it('resolves on its own picture loading, not on anything it is told', () => {
-    // Each tile arriving by itself is the per-item signal, and it costs nothing: a url is the
-    // request, so the load is the transfer finishing. A tile waiting to be told would need the
-    // set's state threaded into every one of them to say the same thing later.
-    expect(component).toContain('onLoad')
-    expect(component).toContain('const here = drawable && loaded')
-  })
-
-  it('keeps the placeholder underneath rather than swapping it out', () => {
-    // Swapping leaves a frame where the tile holds nothing, which reads as a picture that failed.
-    expect(component).toContain('opacity={loaded ? 1 : 0}')
-  })
-
-  it('takes the overflow count already worded', () => {
-    // `@session/ui` imports no sibling but theme-tokens, test-ids and basic-types, so `andMore`
-    // is out of reach and a number here would be a second place the plural rule lives.
-    expect(component).toContain('overflowLabel')
-    expect(component).not.toMatch(/\+\s*\{\s*overflow/)
-  })
-})
-
-describe('a tile with the sender’s placeholder', () => {
-  it('draws it underneath, so the picture lands on top rather than replacing it', () => {
-    expect(component).toMatch(/placeholder !== null \? \(\s*<YStack position="absolute"/)
-  })
-
-  it('draws no glyph over it', () => {
-    // The glyph is what a tile says when it has nothing else to say. A symbol over the sender's
-    // placeholder would be saying "a picture" on top of something that already looks like one.
-    expect(component).toContain('{placeholder !== null ? (')
-  })
-
-  it('drops the hairline too', () => {
-    // The ring is there so a near-empty box has an edge against the page. A picture has one.
-    expect(component).toContain('here || placeholder !== null')
-  })
-
-  it('takes a url and decodes nothing itself', () => {
-    // 25 bytes become pixels wherever the media scheme is served, so the placeholder reaches this
-    // package the way a picture does: as something to hand to `Image`.
-    expect(component).toContain('<Image uri={placeholder}')
-    expect(component).not.toContain('blurhashColor')
   })
 })

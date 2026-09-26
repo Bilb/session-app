@@ -80,9 +80,8 @@ export const ELEMENT = {
     confirmClearDataButton: 'settings-confirm-clear-data-button',
     cancelClearData: 'settings-cancel-clear-data',
     cacheFolder: 'settings-cache-folder',
-    cacheReveal: 'settings-cache-reveal',
+    cacheUsage: 'settings-cache-usage',
     cacheLimit: 'settings-cache-limit',
-    cacheLimitOption: (bytes: number) => `settings-cache-limit-${bytes}` as const,
   },
   networkOverlay: {
     badge: 'network-overlay-badge',
