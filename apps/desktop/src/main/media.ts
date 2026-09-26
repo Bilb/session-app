@@ -133,12 +133,7 @@ export function serveMedia(bridge: MediaSource): void {
         const preview = await bridge.fetchPreview(target.ref)
         return new Response(encodePng(preview.width, preview.height, preview.rgba), {
           status: 200,
-          headers: {
-            ...mediaHeaders('image/png'),
-            // A placeholder is derived from 25 bytes that arrived with the message, so it cannot
-            // change while the message exists.
-            'cache-control': 'private, max-age=3600',
-          },
+          headers: mediaHeaders('image/png'),
         })
       }
 
@@ -147,12 +142,7 @@ export function serveMedia(bridge: MediaSource): void {
       if (contentType === null) return new Response(null, { status: 415 })
       return new Response(media.bytes, {
         status: 200,
-        headers: {
-          ...mediaHeaders(contentType),
-          // Bytes for one message never change, and the cache is libsession's problem rather than
-          // Chromium's - but within one run, re-decrypting on every scroll past is pure waste.
-          'cache-control': 'private, max-age=3600',
-        },
+        headers: mediaHeaders(contentType),
       })
     } catch {
       // What went wrong is already on the frame stream as a failed transfer, which is where the
