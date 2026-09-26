@@ -1,7 +1,9 @@
+import { execFile } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { promisify } from 'node:util'
 
 import type { Attachment, Conversation, Frame, Message, Request } from '@session/bridge-types'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -212,6 +214,57 @@ describeAddon('the N-API addon', () => {
     await expect(answered).resolves.toMatch(/deleteMessage\.messageId must be a whole number/)
     transport.close()
   })
+
+  it('rejects a media fetch for a message that does not exist', async () => {
+    const transport = createNodeBridgeTransport({
+      dbPath: join(dir, 'no-media.db'),
+      cacheDir: join(dir, 'cache'),
+      deferAccount: true,
+    })
+
+    await expect(transport.fetchMedia(424_242, 0)).rejects.toThrow(/does not exist/)
+    await expect(transport.fetchPreview(424_242, 0)).rejects.toThrow(/no such attachment/)
+    transport.close()
+  })
+
+  it('rejects a media fetch still pending when it closes', async () => {
+    const transport = createNodeBridgeTransport({
+      dbPath: join(dir, 'closing-media.db'),
+      cacheDir: join(dir, 'cache'),
+      deferAccount: true,
+    })
+
+    const media = transport.fetchMedia(1, 0)
+    const preview = transport.fetchPreview(1, 0)
+    transport.close()
+
+    await expect(media).rejects.toThrow('the bridge is closed')
+    await expect(preview).rejects.toThrow('the bridge is closed')
+  })
+
+  it('lets the process exit with a media fetch pending at close', async () => {
+    // A thread-safe function still referenced keeps the event loop alive, which in a worker
+    // means a test run that never ends; a child process makes that a timeout here instead.
+    const script = `
+      const { SessionBridge } = require(process.env.ADDON)
+      const bridge = new SessionBridge(
+        { dbPath: process.env.DB_PATH, cacheDir: process.env.CACHE_DIR, deferAccount: true },
+        () => {},
+      )
+      bridge.fetchMedia(1, 0).then(() => console.log('resolved'), (e) => console.log(e.message))
+      bridge.close()
+    `
+    const { stdout } = await promisify(execFile)(process.execPath, ['-e', script], {
+      env: {
+        ...process.env,
+        ADDON: addon,
+        DB_PATH: join(dir, 'exiting.db'),
+        CACHE_DIR: join(dir, 'cache'),
+      },
+      timeout: 20_000,
+    })
+    expect(stdout.trim()).toBe('the bridge is closed')
+  }, 30_000)
 })
 
 /**
