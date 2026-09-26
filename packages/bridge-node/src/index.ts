@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module'
 
-import type { BridgeTransport, Frame, Request } from '@session/client'
+import type { AttachmentRef, BridgeTransport, Frame, PixelSize, Request } from '@session/client'
 import type { SessionBridgeOptions } from '@session/bridge-types'
 
 /**
@@ -40,11 +40,7 @@ export interface Media {
  * Raw pixels rather than an encoded image, because the bridge is not the right place to pick a
  * format. Whatever serves the media scheme encodes them for the platform it is on.
  */
-export interface Preview {
-  width: number
-  height: number
-  rgba: Uint8Array
-}
+export type Preview = PixelSize & { rgba: Uint8Array }
 
 /**
  * The transport, plus the one thing that does not go over it.
@@ -55,8 +51,8 @@ export interface Preview {
  * the same bar a tap does.
  */
 export interface NodeBridgeTransport extends BridgeTransport {
-  fetchMedia(messageId: number, index: number): Promise<Media>
-  fetchPreview(messageId: number, index: number): Promise<Preview>
+  fetchMedia(ref: AttachmentRef): Promise<Media>
+  fetchPreview(ref: AttachmentRef): Promise<Preview>
 }
 
 interface Addon {
@@ -121,12 +117,12 @@ export function createNodeBridgeTransport(options: NodeBridgeOptions): NodeBridg
       }
     },
 
-    fetchMedia(messageId: number, index: number): Promise<Media> {
+    fetchMedia({ messageId, index }: AttachmentRef): Promise<Media> {
       if (closed) return Promise.reject(new Error('the bridge is closed'))
       return bridge.fetchMedia(messageId, index)
     },
 
-    fetchPreview(messageId: number, index: number): Promise<Preview> {
+    fetchPreview({ messageId, index }: AttachmentRef): Promise<Preview> {
       if (closed) return Promise.reject(new Error('the bridge is closed'))
       return bridge.fetchPreview(messageId, index)
     },
