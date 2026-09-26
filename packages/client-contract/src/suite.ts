@@ -11,6 +11,7 @@
 
 import {
   ATTACHMENT_NOT_FOUND,
+  type AttachmentAvailability,
   type Conversation,
   type Message,
   type MessagePage,
@@ -108,6 +109,17 @@ function messagesOf(
   type: 'messages-added' | 'messages-updated',
 ): Message[] {
   return events.flatMap((e) => (e.type === type ? e.messages : []))
+}
+
+/** What a `messages-updated` event says about one attachment, if it mentions it. */
+function announcedAvailability(
+  event: SessionEvent,
+  messageId: number,
+  index: number,
+): AttachmentAvailability | undefined {
+  if (event.type !== 'messages-updated') return undefined
+  return event.messages.find((m) => m.id === messageId)?.attachments.find((a) => a.index === index)
+    ?.availability
 }
 
 export interface ContractOptions {
@@ -657,6 +669,30 @@ export function runSessionClientContract(
 
       // A verdict, so the page keeps offering "ask them to resend" rather than a retry.
       expect((await at())?.availability).toBe('notFound')
+      const after = seen.events.slice(seen.events.indexOf(last))
+      expect(after.some((e) => announcedAvailability(e, messageId, index) === 'notFound')).toBe(
+        true,
+      )
+      seen.stop()
+    })
+
+    it('announces an attachment as fetching while its download runs', async () => {
+      const { client, messageId, index, settle } = await harness.withAttachment()
+      const seen = collect(client)
+
+      const running = client.downloadAttachment(messageId, index)
+      await settle()
+      await running
+
+      // A screen opened mid-transfer draws from the message, so the message has to say it.
+      const availability = (e: SessionEvent) => announcedAvailability(e, messageId, index)
+      const fetching = seen.events.findIndex((e) => availability(e) === 'fetching')
+      const terminal = seen.events.findIndex(
+        (e) => e.type === 'attachment-progress' && e.outcome !== undefined,
+      )
+      expect(fetching).toBeGreaterThan(-1)
+      expect(terminal).toBeGreaterThan(fetching)
+      expect(seen.events.slice(terminal).some((e) => availability(e) === 'cached')).toBe(true)
       seen.stop()
     })
 

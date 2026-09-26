@@ -715,10 +715,20 @@ export class FakeAccount {
         ...(outcome === undefined ? {} : { outcome }),
       })
     }
+    // libsession announces what a download changes on every message showing the file: `fetching`
+    // once it has started, and whatever a failure left behind once it has ended.
+    const announce = (): void => {
+      if (transfer === 'download') this.announceAttachment(ref.messageId)
+    }
+
     report(0, 0)
+    announce()
     if (failure !== undefined) {
       const refused = new SessionClientError(`${failure}: attachment ${key} cannot be fetched`)
-      const fail = (): void => report(0, 0, { ok: false, error: failure })
+      const fail = (): void => {
+        report(0, 0, { ok: false, error: failure })
+        announce()
+      }
       if (!world) {
         fail()
         return Promise.reject(refused)
