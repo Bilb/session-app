@@ -1,3 +1,4 @@
+import { isViewableContentType } from '@session/basic-types'
 import type { Attachment, Message } from '@session/client'
 
 /**
@@ -17,10 +18,12 @@ export function viewableAttachments(message: Message): Attachment[] {
   return message.attachments.filter(isViewable)
 }
 
+/**
+ * A whitelist rather than a prefix: `image/svg+xml`, `image/heic` and `image/tiff` are pictures no
+ * renderer here draws reliably, and desktop refuses to serve anything outside the list.
+ */
 export function isViewable(attachment: Attachment): boolean {
-  const type = attachment.contentType
-  if (type === undefined) return false
-  return type.startsWith('image/') || type.startsWith('video/')
+  return isViewableContentType(attachment.contentType)
 }
 
 /**
