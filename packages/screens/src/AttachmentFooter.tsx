@@ -1,6 +1,6 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { SegmentedToggle, Text, XStack, type Segment } from '@session/ui'
+import { PressArea, SegmentedToggle, Text, XStack, type Segment } from '@session/ui'
 
 import type { AttachmentSet } from './attachmentSet'
 import type { AttachmentView } from './attachmentView'
@@ -50,15 +50,21 @@ export function AttachmentFooter({
         {caption(set)}
       </Text>
       {action === null ? null : (
-        <Text
-          size="$caption"
-          weight="semibold"
-          color={set.state === 'failed' ? '$dangerColor' : '$accentText'}
-          testID={ELEMENT.conversation.attachmentAction}
+        <PressArea
           onPress={onAction}
+          accessibilityLabel={action}
+          testID={ELEMENT.conversation.attachmentAction}
         >
-          {action}
-        </Text>
+          {() => (
+            <Text
+              size="$caption"
+              weight="semibold"
+              color={set.state === 'failed' ? '$dangerColor' : '$accentText'}
+            >
+              {action}
+            </Text>
+          )}
+        </PressArea>
       )}
     </XStack>
   )
