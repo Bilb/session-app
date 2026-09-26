@@ -1,9 +1,9 @@
-import type { ReactNode } from 'react'
+import { memo, type ReactNode } from 'react'
 import { XStack, YStack } from 'tamagui'
 
 import type { WithDurationLabel, WithMediaPreview, WithMediaUri } from '@session/basic-types'
 
-import { ALBUM_SEAM, albumLayout, lastCell, type AlbumCell } from './albumLayout'
+import { ALBUM_SEAM, albumLayout, lastCell } from './albumLayout'
 import { AttachmentTile } from './AttachmentTile'
 import type { WithTestID } from './with'
 
@@ -29,6 +29,46 @@ export type AttachmentAlbumProps = WithTestID & {
 }
 
 /**
+ * The cell arrives as `at` and `side` rather than as itself: `albumLayout` builds new cells on
+ * every render, and `memo` would see each one as a change.
+ */
+const AlbumTile = memo(function AlbumTile({
+  item,
+  at,
+  side,
+  overflowLabel,
+  onOpen,
+}: {
+  /** Absent only where the layout and the items disagree, which draws nothing. */
+  item: AlbumItem | undefined
+  at: number
+  side: number
+  /** Only on the tile that carries the overflow. */
+  overflowLabel?: string | undefined
+  onOpen: (at: number) => void
+}) {
+  if (item === undefined) return null
+  return (
+    <YStack
+      accessibilityRole="button"
+      onPress={() => {
+        onOpen(at)
+      }}
+    >
+      <AttachmentTile
+        side={side}
+        kind={item.kind}
+        uri={item.uri}
+        preview={item.preview}
+        duration={item.kind === 'video' ? item.duration : undefined}
+        overflowLabel={overflowLabel}
+        testID={item.testID}
+      />
+    </YStack>
+  )
+})
+
+/**
  * Every picture on one message, as one object.
  *
  * The geometry is `albumLayout`'s, so this places and never measures. The set's own control is
@@ -47,38 +87,23 @@ export function AttachmentAlbum({
   const layout = albumLayout(items.length, width)
   const last = lastCell(layout)
 
-  function tile(cell: AlbumCell) {
-    const item = items[cell.at]
-    if (item === undefined) return null
-    const carriesOverflow = layout.overflow > 0 && cell.at === last?.at
-    return (
-      <YStack
-        key={cell.at}
-        accessibilityRole="button"
-        onPress={() => {
-          onOpen(cell.at)
-        }}
-      >
-        <AttachmentTile
-          side={cell.side}
-          kind={item.kind}
-          uri={item.uri}
-          preview={item.preview}
-          duration={item.kind === 'video' ? item.duration : undefined}
-          overflowLabel={carriesOverflow ? overflowLabel(layout.overflow) : undefined}
-          testID={item.testID}
-        />
-      </YStack>
-    )
-  }
+  const overflowAt = layout.overflow > 0 ? last?.at : undefined
+  const overflowText = overflowAt === undefined ? undefined : overflowLabel(layout.overflow)
 
   const beside = (
     <YStack gap={ALBUM_SEAM}>
       {layout.rows.map((row, at) => (
-        // The row index is the key because a row is a position in the shape, not an attachment:
-        // the cells inside it carry their own.
-        <XStack key={at} gap={ALBUM_SEAM}>
-          {row.map(tile)}
+        <XStack key={row[0]?.at ?? at} gap={ALBUM_SEAM}>
+          {row.map((cell) => (
+            <AlbumTile
+              key={cell.at}
+              item={items[cell.at]}
+              at={cell.at}
+              side={cell.side}
+              overflowLabel={cell.at === overflowAt ? overflowText : undefined}
+              onOpen={onOpen}
+            />
+          ))}
         </XStack>
       ))}
     </YStack>
@@ -91,7 +116,13 @@ export function AttachmentAlbum({
         beside
       ) : (
         <XStack gap={ALBUM_SEAM}>
-          {tile(layout.lead)}
+          <AlbumTile
+            item={items[layout.lead.at]}
+            at={layout.lead.at}
+            side={layout.lead.side}
+            overflowLabel={layout.lead.at === overflowAt ? overflowText : undefined}
+            onOpen={onOpen}
+          />
           {layout.rows.length === 0 ? null : beside}
         </XStack>
       )}
