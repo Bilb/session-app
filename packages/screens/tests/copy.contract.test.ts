@@ -119,6 +119,7 @@ describe('screen copy', () => {
       'attachmentViewList',
       'export',
       'exporting',
+      'exportFailed',
     ])
   })
 })

@@ -16,8 +16,12 @@ export async function exportOne(
 ): Promise<void> {
   const attachment = message.attachments.find((a) => a.index === index)
   const suggested = attachment?.filename ?? `attachment-${String(index + 1)}`
-  const destination = await requirePorts().files.chooseExportLocation(suggested)
-  if (destination === null) return
-  const saved = await actions.exportAttachment({ messageId: message.id, index }, destination)
-  await requirePorts().files.revealInFolder(saved)
+  try {
+    const destination = await requirePorts().files.chooseExportLocation(suggested)
+    if (destination === null) return
+    const saved = await actions.exportAttachment({ messageId: message.id, index }, destination)
+    await requirePorts().files.revealInFolder(saved)
+  } catch {
+    // A failed export ends its own transfer as `failed`, which the row's caption draws.
+  }
 }
