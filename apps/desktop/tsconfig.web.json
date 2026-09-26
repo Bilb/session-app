@@ -7,5 +7,5 @@
     "lib": ["ES2022", "DOM"],
     "types": ["react", "react-dom"]
   },
-  "include": ["src/renderer"]
+  "include": ["src/renderer", "src/shared"]
 }

@@ -3,6 +3,7 @@ import { protocol } from 'electron'
 import type { Preview } from '@session/bridge-node'
 import type { AttachmentRef } from '@session/client'
 
+import { MEDIA_SCHEME, type MediaUrlKind } from '../shared/mediaUrl'
 import { encodePng } from './png'
 
 /**
@@ -15,18 +16,6 @@ export interface MediaSource {
   fetchMedia(ref: AttachmentRef): Promise<{ contentType: string; bytes: Uint8Array }>
   fetchPreview(ref: AttachmentRef): Promise<Preview>
 }
-
-/**
- * The scheme an attachment's bytes reach the renderer by.
- *
- * `session-media://attachment/<messageId>/<index>`. A registered scheme rather than `file:`
- * because the point is that the renderer gets exactly this one door: it cannot name a path, only
- * a message and a position in it, and what comes back is whatever libsession decrypted for it.
- *
- * The ids are both in the path and the authority is a fixed word, because a standard scheme gets
- * the special-scheme host parser: `session-media://5/0` canonicalises to the host `0.0.0.5`.
- */
-export const MEDIA_SCHEME = 'session-media'
 
 /**
  * Registered before `app.whenReady()`, which is the only time Electron accepts it.
@@ -43,20 +32,8 @@ export function registerMediaScheme(): void {
   ])
 }
 
-/**
- * The authorities a media URL can carry, so that no part of one is parsed as a host name.
- *
- * Two of them rather than a query parameter: the authority is the part the special-scheme host
- * parser already normalises, and it keeps the file and its placeholder at separate URLs, which is
- * what lets the platform cache them separately.
- */
-const MEDIA_HOST = 'attachment'
-const PREVIEW_HOST = 'preview'
-
 /** `session-media://<attachment|preview>/<messageId>/<index>` split back up, or null. */
-export function parseMediaUrl(
-  url: string,
-): { kind: 'attachment' | 'preview'; ref: AttachmentRef } | null {
+export function parseMediaUrl(url: string): { kind: MediaUrlKind; ref: AttachmentRef } | null {
   let parsed: URL
   try {
     parsed = new URL(url)
@@ -64,8 +41,8 @@ export function parseMediaUrl(
     return null
   }
   if (parsed.protocol !== `${MEDIA_SCHEME}:`) return null
-  if (parsed.hostname !== MEDIA_HOST && parsed.hostname !== PREVIEW_HOST) return null
-  const kind = parsed.hostname === PREVIEW_HOST ? 'preview' : 'attachment'
+  const kind = parsed.hostname
+  if (kind !== 'attachment' && kind !== 'preview') return null
 
   const [message, index, ...rest] = parsed.pathname.replace(/^\//, '').split('/')
   if (rest.length > 0) return null

@@ -1,12 +1,25 @@
 import { describe, expect, it } from 'vitest'
 
-import { MEDIA_SCHEME, parseMediaUrl } from '#src/main/media'
+import { parseMediaUrl } from '#src/main/media'
+import { MEDIA_SCHEME, mediaUrl } from '#src/shared/mediaUrl'
 
 /**
  * The renderer names a message and a position and gets bytes back, so this parser is the whole of
  * what it may ask for. Everything it refuses is something the renderer cannot reach.
  */
 describe('a media url', () => {
+  it('parses back exactly what the renderer builds', () => {
+    for (const kind of ['attachment', 'preview'] as const) {
+      for (const ref of [
+        { messageId: 1, index: 0 },
+        { messageId: 42, index: 7 },
+        { messageId: Number.MAX_SAFE_INTEGER, index: 0 },
+      ]) {
+        expect(parseMediaUrl(mediaUrl(kind, ref))).toEqual({ kind, ref })
+      }
+    }
+  })
+
   it('names a message and a position under each authority', () => {
     expect(parseMediaUrl(`${MEDIA_SCHEME}://attachment/42/1`)).toEqual({
       kind: 'attachment',
