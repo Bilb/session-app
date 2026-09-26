@@ -92,16 +92,28 @@ function recordTransfer(
     ...(event.outcome?.error === undefined ? {} : { error: event.outcome.error }),
   }
 
+  const transfers = state.transfers[event.messageId]
+  const key = transferKey(event.transfer, event.index)
+  // A download joined by a second handler reports every step once per handler.
+  if (sameTransfer(transfers?.[key], entry)) return state
+
   return {
     ...state,
-    transfers: {
-      ...state.transfers,
-      [event.messageId]: {
-        ...state.transfers[event.messageId],
-        [transferKey(event.transfer, event.index)]: entry,
-      },
-    },
+    transfers: { ...state.transfers, [event.messageId]: { ...transfers, [key]: entry } },
   }
+}
+
+function sameTransfer(
+  stored: AttachmentTransferState | undefined,
+  entry: AttachmentTransferState,
+): boolean {
+  return (
+    stored !== undefined &&
+    stored.state === entry.state &&
+    stored.doneBytes === entry.doneBytes &&
+    stored.totalBytes === entry.totalBytes &&
+    stored.error === entry.error
+  )
 }
 
 /** Whether any loaded window holds this message, which is what makes a report worth keeping. */
