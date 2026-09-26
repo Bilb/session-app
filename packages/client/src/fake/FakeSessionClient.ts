@@ -3,6 +3,7 @@ import { isHex64, isIpv4, isPort } from '@session/basic-types'
 import { BridgeClosedError, SessionClientError } from '../errors'
 import type {
   AccountInfo,
+  AttachmentRef,
   AutoDownload,
   Conversation,
   ConversationId,
@@ -12,7 +13,7 @@ import type {
 } from '@session/bridge-types'
 
 import type { MessagePage, NetworkAttachment, OutgoingMessage, SessionClient } from '../types'
-import type { FakeAccount, FakeWorld } from './world'
+import type { FakeAccount, FakeWorld, LocatedAttachment } from './world'
 
 /** Why this network will not attach, or undefined when it will. */
 function networkRefusal(config: NetworkAttachment): string | undefined {
@@ -339,6 +340,11 @@ export class FakeSessionClient implements SessionClient {
       return Promise.reject(new SessionClientError(`No attachment ${messageId}:${index}`))
     }
     return this.account.exportAttachment({ messageId, index }, destination)
+  }
+
+  /** Fake-only: finds an attachment in memory, where paging every conversation would miss old ones. */
+  locate(ref: AttachmentRef): LocatedAttachment | undefined {
+    return this.account.locate(ref)
   }
 
   setAutoDownload(id: ConversationId, mode: AutoDownload): Promise<void> {

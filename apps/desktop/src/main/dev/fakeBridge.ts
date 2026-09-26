@@ -1,10 +1,11 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import type { Attachment, BridgeTransport, SessionClient } from '@session/client'
+import type { AttachmentRef, BridgeTransport } from '@session/client'
 import {
   PHOTO_THUMBHASHES,
   createFakeTransport,
+  type FakeSessionClient,
   crowd,
   friends,
   newcomer,
@@ -78,13 +79,11 @@ function photoNumber(filename: string | undefined): string | null {
  * so what a video attachment needs is a frame, and a photograph is a frame.
  */
 async function realPhoto(
-  client: SessionClient,
-  messageId: number,
-  index: number,
+  client: FakeSessionClient,
+  ref: AttachmentRef,
 ): Promise<{ contentType: string; bytes: Buffer } | null> {
   if (MEDIA_DIR === undefined) return null
-  const attachment = await findAttachment(client, messageId, index)
-  const number = photoNumber(attachment?.filename)
+  const number = photoNumber(client.locate(ref)?.attachment.filename)
   if (number === null) return null
   try {
     return {
@@ -98,17 +97,31 @@ async function realPhoto(
   }
 }
 
-async function findAttachment(
-  client: SessionClient,
-  messageId: number,
-  index: number,
-): Promise<Attachment | undefined> {
-  for (const conversation of await client.getConversations()) {
-    const page = await client.getMessages(conversation.id, { limit: 200 })
-    const message = page.messages.find((m) => m.id === messageId)
-    if (message) return message.attachments.find((a) => a.index === index)
+/**
+ * The real hash of the photograph an attachment stands in for, decoded here because the fake has
+ * no addon to borrow libsession's decoder from. What is drawn is therefore what a recipient would
+ * be sent, limits included, rather than a downscale that flatters the format.
+ */
+function fakePreview(
+  client: FakeSessionClient,
+  ref: AttachmentRef,
+): { width: number; height: number; rgba: Uint8Array } {
+  const photo = photoNumber(client.locate(ref)?.attachment.filename)
+  const hash = photo === null ? undefined : PHOTO_THUMBHASHES[Number(photo) - 1]
+  if (hash !== undefined) {
+    // The photographs are 4:3, and a hash says nothing about shape.
+    return decodeThumbhash(
+      Uint8Array.from(hash.match(/../g)?.map((b) => parseInt(b, 16)) ?? []),
+      32,
+      24,
+    )
   }
-  return undefined
+
+  // An attachment with no photograph behind it still has to answer the door.
+  const [r, g, b] = hslToRgb((ref.messageId * 37 + ref.index * 89) % 360)
+  const rgba = new Uint8Array(8 * 6 * 4)
+  for (let i = 0; i < 8 * 6; i += 1) rgba.set([r, g, b, 255], i * 4)
+  return { width: 8, height: 6, rgba }
 }
 
 export function createFakeBridge(): BridgeTransport & MediaSource {
@@ -167,32 +180,13 @@ export function createFakeBridge(): BridgeTransport & MediaSource {
       // bytes back without either would leave every picture it just drew still reported as one
       // nobody has. Cheap to repeat - a cached attachment answers at once.
       await alice.downloadAttachment(messageId, index)
-      const photo = await realPhoto(alice, messageId, index)
+      const photo = await realPhoto(alice, { messageId, index })
       if (photo) return photo
       return { contentType: 'image/png', bytes: swatchPng(messageId, index) }
     },
 
-    async fetchPreview(messageId: number, index: number) {
-      // The real hash of the photograph this stands in for, decoded here because the fake has no
-      // addon to borrow libsession's decoder from. What is drawn is therefore what a recipient
-      // would be sent, limits included, rather than a downscale that flatters the format.
-      const attachment = await findAttachment(alice, messageId, index)
-      const photo = photoNumber(attachment?.filename)
-      const hash = photo === null ? undefined : PHOTO_THUMBHASHES[Number(photo) - 1]
-      if (hash !== undefined) {
-        // The photographs are 4:3, and a hash says nothing about shape.
-        return decodeThumbhash(
-          Uint8Array.from(hash.match(/../g)?.map((b) => parseInt(b, 16)) ?? []),
-          32,
-          24,
-        )
-      }
-
-      // An attachment with no photograph behind it still has to answer the door.
-      const [r, g, b] = hslToRgb((messageId * 37 + index * 89) % 360)
-      const rgba = new Uint8Array(8 * 6 * 4)
-      for (let i = 0; i < 8 * 6; i += 1) rgba.set([r, g, b, 255], i * 4)
-      return { width: 8, height: 6, rgba }
+    fetchPreview(messageId: number, index: number) {
+      return Promise.resolve(fakePreview(alice, { messageId, index }))
     },
   }
 }
