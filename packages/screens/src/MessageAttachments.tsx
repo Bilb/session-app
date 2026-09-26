@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { AttachmentFooter } from './AttachmentFooter'
 import { AttachmentList, LIST_MAX_ROWS } from './AttachmentList'
 import { AttachmentPill } from './AttachmentPill'
+import { fetchOf, type Fetch } from './attachmentFetch'
 import { summarise, type AttachmentSet } from './attachmentSet'
 import { attachmentView, canChooseView, type AttachmentView } from './attachmentView'
 import { MessageAlbum } from './MessageAlbum'
@@ -37,7 +38,7 @@ export function MessageAttachments({
   onChooseView?: ((view: AttachmentView) => void) | undefined
 }) {
   const actions = useSessionActions()
-  const set = useAttachmentSet(message)
+  const { set, fetchFor } = useAttachmentSet(message)
   const view = attachmentView(message, chosenView)
   const [showingAll, setShowingAll] = useState(false)
   // A fact about the set rather than about what is open, so the sheet stays mounted while it
@@ -52,9 +53,13 @@ export function MessageAttachments({
       return
     }
     // Every attachment, whether or not a tile is drawing it. Download and retry are the same call:
-    // one that is already cached is handed over at once.
+    // one that is already cached is handed over at once. An unavailable one would only fail again.
     for (const attachment of message.attachments) {
-      void actions.downloadAttachment({ messageId: message.id, index: attachment.index })
+      if (fetchFor(attachment).state === 'unavailable') continue
+      actions
+        .downloadAttachment({ messageId: message.id, index: attachment.index })
+        // A failed download ends its transfer as `failed`, which the set already folds in.
+        .catch(() => undefined)
     }
   }
 
@@ -117,15 +122,19 @@ export function MessageAttachments({
 }
 
 /**
- * The set's state, folded from this message's transfers.
+ * The set's state, folded from this message's transfers, and each attachment's own.
  *
  * One record rather than a hook per attachment: a hook in a loop is fine while a message's
  * attachment list cannot change, and that is a rule nobody should have to check.
  */
-function useAttachmentSet(message: Message): AttachmentSet {
+function useAttachmentSet(message: Message): {
+  set: AttachmentSet
+  fetchFor: (attachment: Attachment) => Fetch
+} {
   const transfers = useMessageTransfers(message.id)
-  return summarise(
-    message,
-    (attachment: Attachment) => transfers[transferKey('download', attachment.index)],
-  )
+  const reportFor = (attachment: Attachment) => transfers[transferKey('download', attachment.index)]
+  return {
+    set: summarise(message, reportFor),
+    fetchFor: (attachment) => fetchOf(attachment, reportFor(attachment)),
+  }
 }
