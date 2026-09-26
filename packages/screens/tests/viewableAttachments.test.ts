@@ -27,6 +27,18 @@ describe('which attachments a viewer can show', () => {
     expect(isViewable(attachment(0, 'video/mp4'))).toBe(true)
   })
 
+  it('takes the unregistered image/jpg senders send, and a type with parameters', () => {
+    expect(isViewable(attachment(0, 'image/jpg'))).toBe(true)
+    expect(isViewable(attachment(0, 'Image/JPEG; charset=binary'))).toBe(true)
+  })
+
+  it('leaves out pictures no renderer here draws reliably', () => {
+    // SVG is a script-capable document, not a bitmap.
+    expect(isViewable(attachment(0, 'image/svg+xml'))).toBe(false)
+    expect(isViewable(attachment(0, 'image/heic'))).toBe(false)
+    expect(isViewable(attachment(0, 'image/tiff'))).toBe(false)
+  })
+
   it('leaves everything else alone', () => {
     expect(isViewable(attachment(0, 'application/pdf'))).toBe(false)
     expect(isViewable(attachment(0, 'audio/mpeg'))).toBe(false)

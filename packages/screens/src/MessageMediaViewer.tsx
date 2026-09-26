@@ -1,3 +1,4 @@
+import { mediaKindOf } from '@session/basic-types'
 import { requirePorts } from '@session/app'
 import type { Message } from '@session/client'
 import { tr } from '@session/localization'
@@ -35,7 +36,7 @@ export function MessageMediaViewer({
     // Null where the platform has no resolver. The viewer says so rather than drawing a broken
     // picture, which is the one thing it must not do with somebody's photograph.
     uri: requirePorts().media.urlFor({ messageId: message.id, index: attachment.index }),
-    kind: attachment.contentType?.startsWith('video/') === true ? 'video' : 'image',
+    kind: mediaKindOf(attachment.contentType),
   }))
 
   const at = index ?? 0

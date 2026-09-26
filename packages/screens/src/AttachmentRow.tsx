@@ -1,3 +1,4 @@
+import { mediaKindOf } from '@session/basic-types'
 import { requirePorts } from '@session/app'
 import type { Attachment, AutoDownload, Message } from '@session/client'
 import { tr } from '@session/localization'
@@ -65,7 +66,7 @@ export function AttachmentRow({
           ...(mayResolve(attachment, autoDownload)
             ? { uri: requirePorts().media.urlFor(ref) }
             : {}),
-          kind: attachment.contentType?.startsWith('video/') === true ? 'video' : 'image',
+          kind: mediaKindOf(attachment.contentType),
           // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
           // screen by the route a picture does. Null where the platform has no resolver.
           ...(attachment.hasPreview ? { preview: requirePorts().media.previewUrlFor(ref) } : {}),

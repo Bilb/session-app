@@ -1,3 +1,4 @@
+import { mediaKindOf } from '@session/basic-types'
 import { requirePorts } from '@session/app'
 import type { ReactNode } from 'react'
 import type { AutoDownload, Message } from '@session/client'
@@ -45,7 +46,7 @@ export function MessageAlbum({
     ...(mayResolve(attachment, autoDownload)
       ? { uri: requirePorts().media.urlFor({ messageId: message.id, index: attachment.index }) }
       : {}),
-    kind: attachment.contentType?.startsWith('video/') === true ? 'video' : 'image',
+    kind: mediaKindOf(attachment.contentType),
     // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
     // screen by the route a picture does. Null where the platform has no resolver.
     ...(attachment.hasPreview
