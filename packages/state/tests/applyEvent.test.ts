@@ -352,6 +352,23 @@ describe('attachment transfers', () => {
     expect(state.transfers[1]?.['export:0']?.doneBytes).toBe(64)
   })
 
+  it('returns the same state for a report identical to the stored one', () => {
+    const before = replay([progress({ doneBytes: 512, totalBytes: 2048 })], loaded())
+    const after = applyEvent(before, progress({ doneBytes: 512, totalBytes: 2048 }))
+    expect(after).toBe(before)
+
+    const failed = replay(
+      [progress({ doneBytes: 0, totalBytes: 0, outcome: { ok: false, error: 'file.not_found' } })],
+      loaded(),
+    )
+    expect(
+      applyEvent(
+        failed,
+        progress({ doneBytes: 0, totalBytes: 0, outcome: { ok: false, error: 'file.not_found' } }),
+      ),
+    ).toBe(failed)
+  })
+
   it('treats an ok outcome as finished and any other as failed', () => {
     const ok = replay(
       [progress({ doneBytes: 2048, totalBytes: 2048, outcome: { ok: true } })],
