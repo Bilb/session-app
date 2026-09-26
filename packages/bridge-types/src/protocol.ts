@@ -212,11 +212,11 @@ export type Command =
    */
   | { type: 'downloadAttachment'; messageId: number; index: number }
   /**
-   * Write an attachment to a path the person chose, fetching it first if the cache does not hold
-   * it. Reads the cache but never fills it, so this is not a way to pre-fetch.
+   * Write an attachment out to a path the person chose, fetching it first if the cache does not
+   * hold it. Reads the cache but never fills it, so this is not a way to pre-fetch.
    */
   | {
-      type: 'saveAttachment'
+      type: 'exportAttachment'
       messageId: number
       index: number
       destination: string
@@ -239,7 +239,12 @@ export type Command =
    * which is what caching actually costs: the files are encrypted and padded, so the total is
    * larger than the same attachments as plain files. Unset means no limit.
    */
-  | { type: 'setAttachmentCacheLimit'; bytes?: number }
+  | { type: 'setAttachmentCacheLimit'; limitBytes?: number }
+  /**
+   * How much disk the cached attachments occupy now, in the limit's measure, so the two can be
+   * shown together. 0 when nothing is cached or there is no cache directory.
+   */
+  | { type: 'getAttachmentCacheSize' }
   // App preferences, stored in libsession's globals table so they sit beside the account
   // instead of in a second store the app would have to keep in step.
   | { type: 'getPref'; key: string }
@@ -290,8 +295,8 @@ export type Result =
    * A page of history.
    *
    * What each attachment's bytes are doing rides on the attachment itself - `availability`,
-   * `fetchDone`, `fetchTotal` - rather than in a list beside the page. One writer for the first
-   * picture and for every correction after it, which is what stops a window drawing an
+   * `fetchDoneBytes`, `fetchTotalBytes` - rather than in a list beside the page. One writer for
+   * the first picture and for every correction after it, which is what stops a window drawing an
    * attachment as untouched and then taking it back.
    */
   | { type: 'messageList'; messages: Message[] }
@@ -299,9 +304,9 @@ export type Result =
   | { type: 'hex'; hex: string }
   | { type: 'pref'; value?: string }
   | { type: 'bool'; value: boolean }
-  /** Where a save landed, which is not always where it was asked to go: a collision becomes `name (2)`. */
+  /** Where an export landed, which is not always where it was asked to go: a collision becomes `name (2)`. */
   | { type: 'path'; path: string }
-  /** Unset means no limit. */
+  /** Unset only in answer to `getAttachmentCacheLimit`, where it means no limit. */
   | { type: 'byteCount'; bytes?: number }
 
 export interface Response {
@@ -353,25 +358,29 @@ export type SessionEvent =
    * One report about one attachment transfer, whether a command asked for it or libsession
    * started it on its own.
    *
-   * The first report of a transfer is `{done: 0, total: 0}` and means it started - `total` stays 0
-   * until the server says how big the file is. `outcome` absent means still going, and exactly one
-   * report per transfer carries one: `done === total` does not mean finished, because the bytes
-   * still have to verify.
+   * The first report of a transfer is `{doneBytes: 0, totalBytes: 0}` and means it started -
+   * `totalBytes` stays 0 until the server says how big the file is. `outcome` absent means still
+   * going, and exactly one report per handler carries one: `doneBytes === totalBytes` does not
+   * mean finished, because the bytes still have to verify.
+   *
+   * A download joined by a second request, or by an auto-download, has a handler for each: the
+   * joiner first gets one report of where it has got to, and every report after that, the end
+   * included, arrives once per handler - identical frames under one key.
    *
    * Reports for one (transfer, messageId, index) are ordered; different ones interleave, and each
    * is rate limited to roughly one per 100ms. A transfer served from the cache reports nothing at
    * all, so an indicator must be driven by time rather than by these arriving.
    *
-   * `done` and `total` count *encrypted* bytes - what is actually being moved - and so do not
-   * agree with `Attachment.size`, which is the plaintext length.
+   * Both count *encrypted* bytes - what is actually being moved - and so do not agree with
+   * `Attachment.sizeBytes`, which is the plaintext length.
    */
   | {
       type: 'attachment-progress'
       transfer: AttachmentTransfer
       messageId: number
       index: number
-      done: number
-      total: number
+      doneBytes: number
+      totalBytes: number
       outcome?: AttachmentOutcome
     }
   /**

@@ -1,23 +1,18 @@
-import type { ReactNode } from 'react'
+import { memo, type ReactNode } from 'react'
 import { XStack, YStack } from 'tamagui'
 
-import { ALBUM_SEAM, albumLayout, lastCell, type AlbumCell } from './albumLayout'
+import type { WithDurationLabel, WithMediaPreview, WithMediaUri } from '@session/basic-types'
+
+import { ALBUM_SEAM, albumLayout, lastCell } from './albumLayout'
 import { AttachmentTile } from './AttachmentTile'
+import type { WithTestID } from './with'
 
-export interface AlbumItem {
-  /** Where the bytes are, once they are here. Null where this platform has no resolver. */
-  uri?: string | null
-  kind: 'image' | 'video'
-  /**
-   * Where the sender's placeholder is, where they sent one. A url, resolved like `uri`: see
-   * `AttachmentTileProps`.
-   */
-  preview?: string | null
-  duration?: string
-  testID?: string
-}
+type AlbumMedia = WithMediaUri & WithMediaPreview & WithTestID
+export type AlbumImage = AlbumMedia & { kind: 'image' }
+export type AlbumVideo = AlbumMedia & { kind: 'video' } & WithDurationLabel
+export type AlbumItem = AlbumImage | AlbumVideo
 
-export interface AttachmentAlbumProps {
+export type AttachmentAlbumProps = WithTestID & {
   items: readonly AlbumItem[]
   /** The message's own width. Never a constant: an album is as wide as the bubble it sits in. */
   width: number
@@ -30,9 +25,48 @@ export interface AttachmentAlbumProps {
    * The corner rather than the middle of a tile: a badge on a tile reads as that tile's state, and
    * this one is about the whole message, including the attachments behind "+N".
    */
-  control?: ReactNode
-  testID?: string
+  control?: ReactNode | undefined
 }
+
+/**
+ * The cell arrives as `at` and `side` rather than as itself: `albumLayout` builds new cells on
+ * every render, and `memo` would see each one as a change.
+ */
+const AlbumTile = memo(function AlbumTile({
+  item,
+  at,
+  side,
+  overflowLabel,
+  onOpen,
+}: {
+  /** Absent only where the layout and the items disagree, which draws nothing. */
+  item: AlbumItem | undefined
+  at: number
+  side: number
+  /** Only on the tile that carries the overflow. */
+  overflowLabel?: string | undefined
+  onOpen: (at: number) => void
+}) {
+  if (item === undefined) return null
+  return (
+    <YStack
+      role="button"
+      onPress={() => {
+        onOpen(at)
+      }}
+    >
+      <AttachmentTile
+        side={side}
+        kind={item.kind}
+        uri={item.uri}
+        preview={item.preview}
+        duration={item.kind === 'video' ? item.duration : undefined}
+        overflowLabel={overflowLabel}
+        testID={item.testID}
+      />
+    </YStack>
+  )
+})
 
 /**
  * Every picture on one message, as one object.
@@ -53,38 +87,23 @@ export function AttachmentAlbum({
   const layout = albumLayout(items.length, width)
   const last = lastCell(layout)
 
-  function tile(cell: AlbumCell) {
-    const item = items[cell.at]
-    if (item === undefined) return null
-    const carriesOverflow = layout.overflow > 0 && cell.at === last?.at
-    return (
-      <YStack
-        key={cell.at}
-        accessibilityRole="button"
-        onPress={() => {
-          onOpen(cell.at)
-        }}
-      >
-        <AttachmentTile
-          side={cell.side}
-          kind={item.kind}
-          {...(item.uri === undefined ? {} : { uri: item.uri })}
-          {...(item.preview === undefined ? {} : { preview: item.preview })}
-          {...(item.duration === undefined ? {} : { duration: item.duration })}
-          {...(carriesOverflow ? { overflowLabel: overflowLabel(layout.overflow) } : {})}
-          {...(item.testID === undefined ? {} : { testID: item.testID })}
-        />
-      </YStack>
-    )
-  }
+  const overflowAt = layout.overflow > 0 ? last?.at : undefined
+  const overflowText = overflowAt === undefined ? undefined : overflowLabel(layout.overflow)
 
   const beside = (
     <YStack gap={ALBUM_SEAM}>
       {layout.rows.map((row, at) => (
-        // The row index is the key because a row is a position in the shape, not an attachment:
-        // the cells inside it carry their own.
-        <XStack key={at} gap={ALBUM_SEAM}>
-          {row.map(tile)}
+        <XStack key={row[0]?.at ?? at} gap={ALBUM_SEAM}>
+          {row.map((cell) => (
+            <AlbumTile
+              key={cell.at}
+              item={items[cell.at]}
+              at={cell.at}
+              side={cell.side}
+              overflowLabel={cell.at === overflowAt ? overflowText : undefined}
+              onOpen={onOpen}
+            />
+          ))}
         </XStack>
       ))}
     </YStack>
@@ -97,7 +116,13 @@ export function AttachmentAlbum({
         beside
       ) : (
         <XStack gap={ALBUM_SEAM}>
-          {tile(layout.lead)}
+          <AlbumTile
+            item={items[layout.lead.at]}
+            at={layout.lead.at}
+            side={layout.lead.side}
+            overflowLabel={layout.lead.at === overflowAt ? overflowText : undefined}
+            onOpen={onOpen}
+          />
           {layout.rows.length === 0 ? null : beside}
         </XStack>
       )}

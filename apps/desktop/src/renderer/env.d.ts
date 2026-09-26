@@ -34,8 +34,8 @@ interface ImportMeta {
 interface Window {
   readonly sessionDesktop: {
     openExternal(url: string): void
-    chooseSaveLocation(suggestedName: string): Promise<string | null>
-    revealInFolder(path: string): Promise<void>
-    openPath(path: string): Promise<void>
+    chooseExportLocation(suggestedName: string): Promise<string | null>
+    /** False when main refused a path outside the folders chosen this run. */
+    revealInFolder(path: string): Promise<boolean>
   }
 }

@@ -9,10 +9,18 @@
  * Written as a function of a harness so it can be handed either implementation.
  */
 
-import type { Conversation, Message, SessionClient, SessionEvent } from '@session/client'
+import {
+  ATTACHMENT_NOT_FOUND,
+  type AttachmentAvailability,
+  type Conversation,
+  type Message,
+  type MessagePage,
+  type SessionClient,
+  type SessionEvent,
+} from '@session/client'
 
 export interface ContractHarness {
-  /** Two clients that already know each other, with no history. */
+  /** Two clients that already know each other, with no history and no attachments. */
   friends(): Promise<{
     alice: SessionClient
     bob: SessionClient
@@ -34,13 +42,17 @@ export interface ContractHarness {
    * Its own entry rather than a flag on `friends`, because an implementation that cannot produce
    * an incoming attachment cannot produce one for any scenario, and skipping the scenarios is
    * then the honest answer rather than a fixture that quietly has none.
+   *
+   * `expired` asks for one the file server no longer holds.
    */
-  withAttachment(): Promise<{
+  withAttachment(options?: { expired?: boolean }): Promise<{
     client: SessionClient
     conversationId: string
     messageId: number
     index: number
     settle: () => Promise<void>
+    /** Delivers another incoming message holding one image, and answers its id. */
+    receiveImage: () => Promise<number>
   }>
   /** Stops and restarts a client against the same data. */
   restart(client: SessionClient): Promise<SessionClient>
@@ -99,6 +111,17 @@ function messagesOf(
   type: 'messages-added' | 'messages-updated',
 ): Message[] {
   return events.flatMap((e) => (e.type === type ? e.messages : []))
+}
+
+/** What a `messages-updated` event says about one attachment, if it mentions it. */
+function announcedAvailability(
+  event: SessionEvent,
+  messageId: number,
+  index: number,
+): AttachmentAvailability | undefined {
+  if (event.type !== 'messages-updated') return undefined
+  return event.messages.find((m) => m.id === messageId)?.attachments.find((a) => a.index === index)
+    ?.availability
 }
 
 export interface ContractOptions {
@@ -545,15 +568,16 @@ export function runSessionClientContract(
       if (first?.type !== 'attachment-progress') throw new Error('unreachable')
       // Nothing has been asked of a server yet, so there is no size to report and no fraction
       // to draw: the first report only means that something started.
-      expect(first.done).toBe(0)
-      expect(first.total).toBe(0)
+      expect(first.doneBytes).toBe(0)
+      expect(first.totalBytes).toBe(0)
       expect(first.outcome).toBeUndefined()
 
       const terminal = reports.filter(
         (e) => e.type === 'attachment-progress' && e.outcome !== undefined,
       )
-      // Exactly one, and it is the last: a caller that treats every report as possibly-final
-      // would finish the transfer early, and one that waits for done === total would never.
+      // Exactly one for the one handler, and it is the last: a caller that treats every report as
+      // possibly-final would finish the transfer early, and one waiting for doneBytes ===
+      // totalBytes never would.
       expect(terminal.length).toBe(1)
       expect(terminal[0]).toBe(reports[reports.length - 1])
       const last = terminal[0]
@@ -561,6 +585,33 @@ export function runSessionClientContract(
       expect(last.outcome?.ok).toBe(true)
       expect(last.outcome?.error).toBeUndefined()
 
+      seen.stop()
+    })
+
+    it('joins a running download, and ends it once per handler', async () => {
+      const { client, messageId, index, settle } = await harness.withAttachment()
+      const seen = collect(client)
+
+      const first = client.downloadAttachment(messageId, index)
+      const joined = client.downloadAttachment(messageId, index)
+      await settle()
+      await Promise.all([first, joined])
+
+      const reports = seen.events.filter(
+        (e) =>
+          e.type === 'attachment-progress' &&
+          e.transfer === 'download' &&
+          e.messageId === messageId &&
+          e.index === index,
+      )
+      const terminal = reports.filter(
+        (e) => e.type === 'attachment-progress' && e.outcome !== undefined,
+      )
+      // One transfer, two handlers: each is told it finished, so a caller keyed on the transfer
+      // sees the same end twice and has to tolerate it.
+      expect(terminal.length).toBe(2)
+      expect(terminal.every((e) => e.type === 'attachment-progress' && e.outcome?.ok)).toBe(true)
+      expect(reports.slice(-2)).toEqual(terminal)
       seen.stop()
     })
 
@@ -581,28 +632,58 @@ export function runSessionClientContract(
       seen.stop()
     })
 
-    it('reports a save as its own transfer', async () => {
-      const { client, messageId, index, settle } = await harness.withAttachment()
+    it('reports an export as its own transfer', async () => {
+      const { client, conversationId, messageId, index, settle } = await harness.withAttachment()
       const seen = collect(client)
+      const destination = `/tmp/contract-export-${String(messageId)}-${String(Date.now())}.bin`
 
-      const saving = client.saveAttachment(messageId, index, '/tmp/contract-save.bin')
+      const exporting = client.exportAttachment(messageId, index, destination)
       await settle()
-      await saving
+      // Nothing is at a fresh path, so nothing collides and it lands where it was sent.
+      expect(await exporting).toBe(destination)
 
-      const saves = seen.events.filter(
-        (e) => e.type === 'attachment-progress' && e.transfer === 'save',
+      const exports = seen.events.filter(
+        (e) => e.type === 'attachment-progress' && e.transfer === 'export',
       )
-      // libsession joins downloads with each other and never joins a save, so the two are
+      // libsession joins downloads with each other and never joins an export, so the two are
       // distinguishable even for the same file - which is the only thing that keeps a single
       // progress indicator from reading two transfers as one.
-      expect(saves.length).toBeGreaterThan(0)
+      expect(exports.length).toBeGreaterThan(0)
+      const terminal = exports.filter(
+        (e) => e.type === 'attachment-progress' && e.outcome !== undefined,
+      )
+      expect(terminal.length).toBe(1)
+      expect(terminal[0]).toBe(exports[exports.length - 1])
+      const last = terminal[0]
+      if (last?.type !== 'attachment-progress') throw new Error('unreachable')
+      expect(last.outcome?.ok).toBe(true)
+
+      const saved = (await client.getMessages(conversationId)).messages
+        .find((m) => m.id === messageId)
+        ?.attachments.find((a) => a.index === index)
+      expect(typeof saved?.savedAtMs).toBe('number')
       seen.stop()
+    })
+
+    it('exports beside a file already written rather than over it, unless told to replace', async () => {
+      const { client, messageId, index, settle } = await harness.withAttachment()
+      const stem = `/tmp/contract-repeat-${String(messageId)}-${String(Date.now())}`
+      const exported = async (replace?: boolean) => {
+        const landing = client.exportAttachment(messageId, index, `${stem}.bin`, { replace })
+        await settle()
+        return landing
+      }
+
+      expect(await exported()).toBe(`${stem}.bin`)
+      expect(await exported(false)).toBe(`${stem} (2).bin`)
+      expect(await exported()).toBe(`${stem} (3).bin`)
+      expect(await exported(true)).toBe(`${stem}.bin`)
     })
 
     it('answers a page with what its attachments are doing', async () => {
       const { client, conversationId, messageId, index, settle } = await harness.withAttachment()
 
-      const at = (page: { messages: Message[] }) =>
+      const at = (page: MessagePage) =>
         page.messages.find((m) => m.id === messageId)?.attachments.find((a) => a.index === index)
 
       const idle = at(await client.getMessages(conversationId))
@@ -611,7 +692,7 @@ export function runSessionClientContract(
       // fetch. `absent` says the next call would start a download.
       expect(idle).toBeDefined()
       expect(idle?.availability).toBe('absent')
-      expect(idle?.fetchDone).toBe(0)
+      expect(idle?.fetchDoneBytes).toBe(0)
 
       const running = client.downloadAttachment(messageId, index)
       await settle()
@@ -621,6 +702,118 @@ export function runSessionClientContract(
       // truth, and asking for the bytes to find out would be a download rather than a question.
       const cached = at(await client.getMessages(conversationId))
       expect(cached?.availability).toBe('cached')
+    })
+
+    it('fails a download of a file the server no longer holds, and says so on the page', async () => {
+      const { client, conversationId, messageId, index, settle } = await harness.withAttachment({
+        expired: true,
+      })
+      const at = async () =>
+        (await client.getMessages(conversationId)).messages
+          .find((m) => m.id === messageId)
+          ?.attachments.find((a) => a.index === index)
+      expect((await at())?.availability).toBe('notFound')
+
+      const seen = collect(client)
+      const running = failure(() => client.downloadAttachment(messageId, index))
+      await settle()
+      expect((await running) instanceof Error).toBe(true)
+
+      const terminal = seen.events.filter(
+        (e) => e.type === 'attachment-progress' && e.outcome !== undefined,
+      )
+      expect(terminal.length).toBe(1)
+      const last = terminal[0]
+      if (last?.type !== 'attachment-progress') throw new Error('unreachable')
+      expect(last.outcome).toEqual({ ok: false, error: ATTACHMENT_NOT_FOUND })
+
+      // A verdict, so the page keeps offering "ask them to resend" rather than a retry.
+      expect((await at())?.availability).toBe('notFound')
+      const after = seen.events.slice(seen.events.indexOf(last))
+      expect(after.some((e) => announcedAvailability(e, messageId, index) === 'notFound')).toBe(
+        true,
+      )
+      seen.stop()
+    })
+
+    it('announces an attachment as fetching while its download runs', async () => {
+      const { client, messageId, index, settle } = await harness.withAttachment()
+      const seen = collect(client)
+
+      const running = client.downloadAttachment(messageId, index)
+      await settle()
+      await running
+
+      // A screen opened mid-transfer draws from the message, so the message has to say it.
+      const availability = (e: SessionEvent) => announcedAvailability(e, messageId, index)
+      const fetching = seen.events.findIndex((e) => availability(e) === 'fetching')
+      const terminal = seen.events.findIndex(
+        (e) => e.type === 'attachment-progress' && e.outcome !== undefined,
+      )
+      expect(fetching).toBeGreaterThan(-1)
+      expect(terminal).toBeGreaterThan(fetching)
+      expect(seen.events.slice(terminal).some((e) => availability(e) === 'cached')).toBe(true)
+      seen.stop()
+    })
+
+    it('fetches an arriving image unasked once told to fetch images', async () => {
+      const { client, conversationId, receiveImage, settle } = await harness.withAttachment()
+      await client.setAutoDownload(conversationId, 'image-attachments')
+      const seen = collect(client)
+
+      const messageId = await receiveImage()
+      await settle()
+
+      const ended = seen.events.find(
+        (e) =>
+          e.type === 'attachment-progress' &&
+          e.transfer === 'download' &&
+          e.messageId === messageId &&
+          e.outcome !== undefined,
+      )
+      expect(ended?.type === 'attachment-progress' && ended.outcome?.ok).toBe(true)
+      const image = (await client.getMessages(conversationId)).messages.find(
+        (m) => m.id === messageId,
+      )?.attachments[0]
+      expect(image?.availability).toBe('cached')
+      seen.stop()
+    })
+
+    it('has no attachment cache limit until one is set, and reads back the one set', async () => {
+      const { alice } = await harness.friends()
+      expect(typeof (await alice.getCacheDir())).toBe('string')
+      expect(await alice.getAttachmentCacheLimit()).toBeUndefined()
+
+      await alice.setAttachmentCacheLimit(250_000_000)
+      expect(await alice.getAttachmentCacheLimit()).toBe(250_000_000)
+
+      await alice.setAttachmentCacheLimit(undefined)
+      expect(await alice.getAttachmentCacheLimit()).toBeUndefined()
+    })
+
+    it('refuses a negative attachment cache limit and keeps the one it had', async () => {
+      const { alice } = await harness.friends()
+      await alice.setAttachmentCacheLimit(250_000_000)
+
+      const error = await failure(() => alice.setAttachmentCacheLimit(-1))
+      expect(error instanceof Error ? error.message : error).toContain('must not be negative')
+      expect(await alice.getAttachmentCacheLimit()).toBe(250_000_000)
+    })
+
+    it('measures an attachment cache with nothing in it as empty', async () => {
+      const { alice } = await harness.friends()
+      expect(await alice.getAttachmentCacheSize()).toBe(0)
+    })
+
+    it('counts a downloaded attachment in the cache size', async () => {
+      const { client, messageId, index, settle } = await harness.withAttachment()
+      const before = await client.getAttachmentCacheSize()
+
+      const running = client.downloadAttachment(messageId, index)
+      await settle()
+      await running
+
+      expect(await client.getAttachmentCacheSize()).toBeGreaterThan(before)
     })
 
     it('remembers being told to download nothing, which is not the same as never asking', async () => {

@@ -1,7 +1,7 @@
 import type { Attachment, Message } from '@session/client'
 import { describe, expect, it } from 'vitest'
 
-import { isViewable, viewableAttachments, viewerIndices } from '#src/viewableAttachments'
+import { isViewable, viewableAttachments } from '#src/viewableAttachments'
 
 function attachment(index: number, contentType?: string): Attachment {
   return {
@@ -11,8 +11,8 @@ function attachment(index: number, contentType?: string): Attachment {
     hasPreview: false,
     uploaded: true,
     availability: 'absent',
-    fetchDone: 0,
-    fetchTotal: 0,
+    fetchDoneBytes: 0,
+    fetchTotalBytes: 0,
   }
 }
 
@@ -25,6 +25,18 @@ describe('which attachments a viewer can show', () => {
     expect(isViewable(attachment(0, 'image/jpeg'))).toBe(true)
     expect(isViewable(attachment(0, 'image/png'))).toBe(true)
     expect(isViewable(attachment(0, 'video/mp4'))).toBe(true)
+  })
+
+  it('takes the unregistered image/jpg senders send, and a type with parameters', () => {
+    expect(isViewable(attachment(0, 'image/jpg'))).toBe(true)
+    expect(isViewable(attachment(0, 'Image/JPEG; charset=binary'))).toBe(true)
+  })
+
+  it('leaves out pictures no renderer here draws reliably', () => {
+    // SVG is a script-capable document, not a bitmap.
+    expect(isViewable(attachment(0, 'image/svg+xml'))).toBe(false)
+    expect(isViewable(attachment(0, 'image/heic'))).toBe(false)
+    expect(isViewable(attachment(0, 'image/tiff'))).toBe(false)
   })
 
   it('leaves everything else alone', () => {
@@ -52,28 +64,5 @@ describe('which attachments a viewer can show', () => {
     const viewable = viewableAttachments(set)
     expect(viewable.map((a) => a.index)).toEqual([0, 2])
     expect(viewable[1]?.index).toBe(2)
-  })
-})
-
-describe('where an attachment sits in the viewer', () => {
-  it('numbers the viewable ones from zero, skipping what the viewer cannot show', () => {
-    // The row for the picture at message index 2 has to open the viewer at 1, not at 2. Off by
-    // one here opens somebody else's photograph, and by more for every row after the document.
-    const set = message([
-      attachment(0, 'image/jpeg'),
-      attachment(1, 'application/pdf'),
-      attachment(2, 'image/png'),
-      attachment(3, 'video/mp4'),
-    ])
-    expect([...viewerIndices(set)]).toEqual([
-      [0, 0],
-      [2, 1],
-      [3, 2],
-    ])
-  })
-
-  it('has nothing for an attachment the viewer cannot show', () => {
-    const set = message([attachment(0, 'application/pdf')])
-    expect(viewerIndices(set).get(0)).toBeUndefined()
   })
 })

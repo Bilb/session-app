@@ -12,6 +12,7 @@ export type {
   AccountInfo,
   Attachment,
   AttachmentAvailability,
+  AttachmentRef,
   AttachmentTransfer,
   AutoDownload,
   Command,
@@ -19,9 +20,11 @@ export type {
   ConversationId,
   ConversationKind,
   Deletion,
+  ExportAttachmentOptions,
   Frame,
   Message,
   MessageCursor,
+  PixelSize,
   Reply,
   Request,
   Response,
@@ -29,6 +32,14 @@ export type {
   SendState,
   SessionBridgeOptions,
   SessionEvent,
+  TransferProgress,
+  WithAttachmentRef,
 } from '@session/bridge-types'
 export { BridgeClosedError, SessionClientError } from './errors'
-export type { BridgeTransport, OutgoingMessage, SessionClient, Unsubscribe } from './types'
+export type {
+  BridgeTransport,
+  MessagePage,
+  OutgoingMessage,
+  SessionClient,
+  Unsubscribe,
+} from './types'

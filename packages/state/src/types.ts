@@ -5,6 +5,7 @@ import type {
   ConversationId,
   Message,
   MessageCursor,
+  TransferProgress,
 } from '@session/client'
 
 /**
@@ -29,24 +30,22 @@ export interface MessageWindow {
  * Per session and never persisted, because libsession stores nothing about a transfer either:
  * what is on this device is answered by asking for it, not by a flag that can go stale.
  */
-export interface AttachmentTransferState {
+export interface AttachmentTransferState extends TransferProgress {
   state: 'running' | 'done' | 'failed'
-  /** Encrypted bytes, so `done / total` is the only honest fraction - not `done / size`. */
-  done: number
-  /** Zero until the server says how big the file is, which is what "indeterminate" means here. */
-  total: number
   /** The libsession code the failure carried, when `state` is `failed`. */
   error?: string
 }
 
-/** Identifies a transfer, since one attachment can have a download and a save at once. */
-export function transferKey(
-  transfer: AttachmentTransfer,
-  messageId: number,
-  index: number,
-): string {
-  return `${transfer}:${messageId}:${index}`
+/**
+ * Identifies a transfer among one message's, since one attachment can have a download and an
+ * export at once.
+ */
+export function transferKey(transfer: AttachmentTransfer, index: number): string {
+  return `${transfer}:${index}`
 }
+
+/** One message's live transfers, keyed by `transferKey`. */
+export type MessageTransfers = Record<string, AttachmentTransferState>
 
 export interface SessionState {
   hydrated: boolean
@@ -79,12 +78,11 @@ export interface SessionState {
   histories: Record<ConversationId, MessageWindow>
 
   /**
-   * Live transfers, keyed by `transferKey`, alongside the conversation each belongs to so that
-   * dropping a window drops its entries with it. Nothing draws a transfer for a conversation
-   * whose history is gone, and an auto-downloading conversation would otherwise grow this for
-   * the life of the session.
+   * Live transfers by message id, kept only for messages a loaded window holds: nothing draws a
+   * transfer for a message no screen has, and an auto-downloading conversation would otherwise
+   * grow this for the life of the session.
    */
-  transfers: Record<string, AttachmentTransferState>
+  transfers: Record<number, MessageTransfers>
 }
 
 export const emptyState: SessionState = {

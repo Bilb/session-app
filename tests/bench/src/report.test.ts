@@ -87,7 +87,7 @@ it('one new message arriving in a transcript that is already loaded', () => {
 
     const last = messages[messages.length - 1]
     if (!last) throw new Error('no fixture message')
-    const frame = messageAddedFrame(conversationId, {
+    const frame = messageAddedFrame({
       ...last,
       id: n + 1,
       timestamp: last.timestamp + 1000,

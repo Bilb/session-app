@@ -6,6 +6,20 @@ import type { AttachmentSet } from './attachmentSet'
 import { formatBytes } from './formatBytes'
 import { PENDING_COPY } from './pendingCopy'
 
+/** Enough of a bar to read as one, and not so much that the pill stops being a badge. */
+const PILL_BAR_WIDTH = 44
+
+function label(set: AttachmentSet): string {
+  if (set.state === 'fetching') {
+    return set.totalBytes === 0 ? tr('downloading') : formatBytes(set.doneBytes)
+  }
+  if (set.state === 'failed') return tr('failedToDownload')
+  // Idle: how many there are and what they weigh, which is what somebody deciding needs. The
+  // count is the half our aggregate never said, and no catalogue key takes one.
+  const count = PENDING_COPY.attachmentCount(set.count)
+  return set.sizeBytes === undefined ? count : `${count} · ${formatBytes(set.sizeBytes)}`
+}
+
 /**
  * What the set is doing, in the album's corner.
  *
@@ -40,7 +54,7 @@ export function AttachmentPill({ set }: { set: AttachmentSet }) {
           <Progress
             // Absent rather than zero while the server has not said how big it is: the first
             // report of any transfer is 0 of 0, which means beginning and not empty.
-            {...(set.total > 0 ? { value: set.done / set.total } : {})}
+            value={set.totalBytes > 0 ? set.doneBytes / set.totalBytes : undefined}
             color="$primaryColor"
             trackColor="$backgroundTertiary"
             testID={ELEMENT.conversation.attachmentProgress}
@@ -49,18 +63,4 @@ export function AttachmentPill({ set }: { set: AttachmentSet }) {
       )}
     </XStack>
   )
-}
-
-/** Enough of a bar to read as one, and not so much that the pill stops being a badge. */
-const PILL_BAR_WIDTH = 44
-
-function label(set: AttachmentSet): string {
-  if (set.state === 'fetching') {
-    return set.total === 0 ? tr('downloading') : formatBytes(set.done)
-  }
-  if (set.state === 'failed') return tr('failedToDownload')
-  // Idle: how many there are and what they weigh, which is what somebody deciding needs. The
-  // count is the half our aggregate never said, and no catalogue key takes one.
-  const count = PENDING_COPY.attachmentCount(set.count)
-  return set.size === undefined ? count : `${count} · ${formatBytes(set.size)}`
 }

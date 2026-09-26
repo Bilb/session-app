@@ -46,6 +46,8 @@ export type {
 export { List } from './List'
 export { MessageBubble, type MessageBubbleProps } from './MessageBubble'
 export { Modal } from './Modal'
+export { SegmentedToggle } from './SegmentedToggle'
+export type { Segment, SegmentedToggleProps } from './SegmentedToggle'
 export { Sheet } from './Sheet'
 export type { SheetProps } from './Sheet'
 export type { ListProps } from './List'
@@ -94,7 +96,7 @@ export { MIN_HIT_TARGET } from './buttonHitTarget'
 export { MediaViewer } from './MediaViewer'
 export type { MediaViewerItem, MediaViewerProps } from './MediaViewer'
 export { AttachmentAlbum } from './AttachmentAlbum'
-export type { AlbumItem, AttachmentAlbumProps } from './AttachmentAlbum'
+export type { AlbumImage, AlbumItem, AlbumVideo, AttachmentAlbumProps } from './AttachmentAlbum'
 export { ALBUM_MAX_TILES, ALBUM_SEAM, albumLayout, lastCell } from './albumLayout'
 export type { AlbumCell, AlbumLayout } from './albumLayout'
 export { FileRow } from './FileRow'
@@ -105,6 +107,8 @@ export {
   FILE_ROW_CONTROL,
   FILE_ROW_GAP,
   fileRowControl,
+  fileRowTone,
 } from './fileRow'
-export type { FileRowState } from './fileRow'
+export type { FileRowState, FileRowTone } from './fileRow'
 export { fileFormat, fileGlyph, splitFilename } from './attachmentFile'
+export type { WithTestID } from './with'

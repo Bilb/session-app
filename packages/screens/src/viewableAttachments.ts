@@ -1,4 +1,13 @@
+import { isViewableContentType } from '@session/basic-types'
 import type { Attachment, Message } from '@session/client'
+
+/**
+ * A whitelist rather than a prefix: `image/svg+xml`, `image/heic` and `image/tiff` are pictures no
+ * renderer here draws reliably, and desktop refuses to serve anything outside the list.
+ */
+export function isViewable(attachment: Attachment): boolean {
+  return isViewableContentType(attachment.contentType)
+}
 
 /**
  * The attachments on a message that a viewer can show.
@@ -15,21 +24,4 @@ import type { Attachment, Message } from '@session/client'
  */
 export function viewableAttachments(message: Message): Attachment[] {
   return message.attachments.filter(isViewable)
-}
-
-export function isViewable(attachment: Attachment): boolean {
-  const type = attachment.contentType
-  if (type === undefined) return false
-  return type.startsWith('image/') || type.startsWith('video/')
-}
-
-/**
- * Where each attachment sits in the viewer, keyed by where it sits in the message.
- *
- * Absent for anything the viewer cannot show. The two numbers stop agreeing the moment a document
- * sits between two pictures, so a row that passed its message index would open somebody else's
- * photograph - and on a set of four that is off by one for every row after the document.
- */
-export function viewerIndices(message: Message): ReadonlyMap<number, number> {
-  return new Map(viewableAttachments(message).map((attachment, at) => [attachment.index, at]))
 }

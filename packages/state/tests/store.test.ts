@@ -1,5 +1,5 @@
-import { friends, type FakeWorld } from '@session/client/fake'
-import { SessionClientError, type SessionClient } from '@session/client'
+import { friends, friendsWithAttachments, type FakeWorld } from '@session/client/fake'
+import { SessionClientError, type MessagePage, type SessionClient } from '@session/client'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { createSessionStore, type SessionStore } from '#src/store'
@@ -11,7 +11,7 @@ import { createSessionStore, type SessionStore } from '#src/store'
  * client - what a window load asks for, and what is thrown away when a screen stops showing one.
  */
 function seeded(): { store: SessionStore; world: FakeWorld; client: SessionClient; bob: string } {
-  const { world, clients } = friends(['Alice', 'Bob'])
+  const { world, clients } = friendsWithAttachments(['Alice', 'Bob'])
   const client = clients['Alice']
   if (!client) throw new Error('fixture did not produce a client')
   return { store: createSessionStore(client), world, client, bob: world.account('Bob').sessionId }
@@ -41,6 +41,33 @@ describe('hydrating a device that has no account', () => {
     expect(after.histories).toEqual({})
     // Still hydrated: the question was asked and answered, and the answer was "nothing".
     expect(after.hydrated).toBe(true)
+  })
+})
+
+describe('hydrating with a cache limit', () => {
+  it('hands the limit to libsession', async () => {
+    const { clients } = friends(['Alice', 'Bob'])
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const store = createSessionStore(alice, { attachmentCacheLimitBytes: 500_000_000 })
+
+    await store.actions.hydrate()
+
+    expect(await alice.getAttachmentCacheLimit()).toBe(500_000_000)
+  })
+
+  it('reads the limit back beside what the cache holds', async () => {
+    const { clients } = friends(['Alice', 'Bob'])
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const store = createSessionStore(alice, { attachmentCacheLimitBytes: 500_000_000 })
+    await store.actions.hydrate()
+
+    expect(await store.actions.getCacheSettings()).toEqual({
+      cacheDir: '',
+      limitBytes: 500_000_000,
+      usageBytes: 0,
+    })
   })
 })
 
@@ -112,7 +139,7 @@ describe('the store', () => {
     // an answer.
     expect(attachment(withOne.id)?.availability).toBe('absent')
 
-    const downloading = store.actions.downloadAttachment(withOne.id, 0)
+    const downloading = store.actions.downloadAttachment({ messageId: withOne.id, index: 0 })
     world.settle()
     await downloading
 
@@ -133,7 +160,7 @@ describe('the store', () => {
     const withOne = store.getState().histories[bob]?.messages.find((m) => m.attachments.length > 0)
     if (!withOne) throw new Error('fixture did not seed an attachment')
 
-    const downloading = store.actions.downloadAttachment(withOne.id, 0)
+    const downloading = store.actions.downloadAttachment({ messageId: withOne.id, index: 0 })
     world.settle()
     await downloading
     expect(Object.keys(store.getState().transfers).length).toBeGreaterThan(0)
@@ -144,6 +171,50 @@ describe('the store', () => {
     // it were records nothing could draw.
     expect(store.getState().histories[bob]).toBeUndefined()
     expect(Object.keys(store.getState().transfers)).toEqual([])
+  })
+
+  it('does not bring back a window forgotten while its first page was in flight', async () => {
+    const { store, bob } = fixture
+    const loading = store.actions.loadHistory(bob)
+    store.actions.forgetHistory(bob)
+    await loading
+
+    expect(store.getState().histories[bob]).toBeUndefined()
+  })
+
+  it('does not bring back a window forgotten while an older page was in flight', async () => {
+    const { store, world, bob } = fixture
+    for (let i = 0; i < 40; i += 1) {
+      await store.actions.send(bob, `m${i}`)
+      world.settle()
+    }
+    await store.actions.loadHistory(bob)
+    expect(store.getState().histories[bob]?.exhausted).toBe(false)
+
+    const older = store.actions.loadOlder(bob)
+    store.actions.forgetHistory(bob)
+    await older
+
+    expect(store.getState().histories[bob]).toBeUndefined()
+  })
+
+  it('keeps only the newest load when a window is forgotten and loaded again', async () => {
+    // StrictMode's mount, cleanup, mount: the first page lands after the second load started.
+    const { store, client, bob } = fixture
+    const pages: Array<(page: MessagePage) => void> = []
+    client.getMessages = () => new Promise((resolve) => pages.push(resolve))
+
+    const first = store.actions.loadHistory(bob)
+    store.actions.forgetHistory(bob)
+    const second = store.actions.loadHistory(bob)
+
+    pages[0]?.({ messages: [] })
+    await first
+    expect(store.getState().histories[bob]?.ready).toBe(false)
+
+    pages[1]?.({ messages: [] })
+    await second
+    expect(store.getState().histories[bob]?.ready).toBe(true)
   })
 
   it('leaves the state alone when asked to forget a conversation it never loaded', () => {

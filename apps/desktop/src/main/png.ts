@@ -8,6 +8,11 @@ import { deflateSync } from 'node:zlib'
  * on three of them. A PNG is four chunks and a CRC, and `node:zlib` supplies the only hard part.
  */
 export function encodePng(width: number, height: number, rgba: Uint8Array): Uint8Array {
+  if (rgba.length !== width * height * 4) {
+    throw new Error(
+      `png: ${String(rgba.length)} bytes is not ${String(width)}x${String(height)} RGBA`,
+    )
+  }
   // Each row is prefixed with its filter type; 0 means "store the bytes", which is what a
   // placeholder this small wants - filtering trades CPU for a compression win there is no room
   // for here.

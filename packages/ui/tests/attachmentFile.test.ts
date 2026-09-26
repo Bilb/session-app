@@ -77,6 +77,10 @@ describe('which glyph names a file', () => {
     expect(fileGlyph('clip', 'video/mp4')).toBe('fileVideo')
   })
 
+  it('reads the whole family from a type with no subtype', () => {
+    expect(fileGlyph('clip', 'video')).toBe('fileVideo')
+  })
+
   it('ends at the generic file when neither says anything', () => {
     expect(fileGlyph('attachment')).toBe('file')
     expect(fileGlyph('attachment', 'application/x-thing')).toBe('file')

@@ -51,6 +51,15 @@ dev entries. When a rule fires, fix the design - not the config.
   flipped by editing source cannot be used to bisect a bug on someone else's device, which is most
   of what a flag is for. The default belongs in the shared flag table; reading the override is a
   port, because each platform exposes the environment differently.
+- Types compose from small `With*` pieces in `packages/basic-types/src/with.ts`. A shape declared
+  inline twice gets a `With*`. A discriminated union is one shared piece plus one piece per variant
+  (`AlbumImage | AlbumVideo`), never an optional field only one variant uses.
+- `exactOptionalPropertyTypes` is on. Our optional props are `x?: T | undefined`, so a caller
+  writes `x={x}`; the `{...(x === undefined ? {} : { x })}` spread is only for a third-party prop.
+- A numeric name carries its unit (`sizeBytes`, `timeoutMs`) unless it is already a count.
+- Define constants and helpers above their first use.
+- Never define a component or render function inside another component; ESLint refuses it. Move
+  it to module scope and pass what it reads as props.
 
 ## Porting a screen
 

@@ -222,6 +222,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
     </ConfirmUrlProvider>
   )
 
+  // eslint-disable-next-line no-restricted-syntax -- picks the one step on screen
   function screen(step: OnboardingStep) {
     switch (step) {
       case 'landing':

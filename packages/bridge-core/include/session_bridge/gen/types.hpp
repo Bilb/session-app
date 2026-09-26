@@ -282,16 +282,15 @@ struct Attachment {
     std::optional<std::string> content_type;
     std::optional<std::string> filename;
     /// The file's size before encryption. Unset on an outgoing attachment that has not uploaded, and
-    /// the sender's claim on an incoming one. Not comparable with a progress report's `total`, which
-    /// counts encrypted bytes.
-    std::optional<double> size;
+    /// the sender's claim on an incoming one. Not comparable with a progress report's `totalBytes`,
+    /// which counts encrypted bytes.
+    std::optional<double> size_bytes;
     bool voice_message;
     /// Supplied by whoever attached the file - libsession does not measure images.
     std::optional<double> width;
     std::optional<double> height;
     /// Whether the sender supplied a ThumbHash, which is something to draw in the picture's place
-    /// until its bytes arrive. False for everything sent by a client that does not encode one, which
-    /// today is every 1.x client.
+    /// until its bytes arrive. False when the sender supplied none.
     ///
     /// A flag rather than the pixels: a placeholder is an image, and an image is resolved through the
     /// media port like any other rather than riding the frame stream. What it names is the second
@@ -306,18 +305,18 @@ struct Attachment {
     /// How far the transfer has got while `availability` is `fetching`, and 0 otherwise.
     ///
     /// The same encrypted-byte figures `attachment-progress` carries, so a bar drawn from these and
-    /// then fed by reports continues rather than jumping. `fetchTotal` is 0 until the server has
+    /// then fed by reports continues rather than jumping. `fetchTotalBytes` is 0 until the server has
     /// said how big the file is. What they are for is a conversation opened while a download is
     /// already running: the reports went to whoever started it.
-    double fetch_done;
-    double fetch_total;
+    double fetch_done_bytes;
+    double fetch_total_bytes;
     /// When the recipient last saved it - us on an incoming attachment, the other party on one we
     /// sent. Unset means *not known to have been saved*, which is not the same as not saved: it
     /// depends on the other end volunteering a notification.
-    std::optional<double> saved_at;
+    std::optional<double> saved_at_ms;
 
-    Attachment(double index_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<double> size_, bool voice_message_, std::optional<double> width_, std::optional<double> height_, bool has_preview_, bool uploaded_, ::session_bridge::AttachmentAvailability availability_, double fetch_done_, double fetch_total_, std::optional<double> saved_at_) :
-            index{std::move(index_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, size{std::move(size_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)}, has_preview{std::move(has_preview_)}, uploaded{std::move(uploaded_)}, availability{std::move(availability_)}, fetch_done{std::move(fetch_done_)}, fetch_total{std::move(fetch_total_)}, saved_at{std::move(saved_at_)} {}
+    Attachment(double index_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<double> size_bytes_, bool voice_message_, std::optional<double> width_, std::optional<double> height_, bool has_preview_, bool uploaded_, ::session_bridge::AttachmentAvailability availability_, double fetch_done_bytes_, double fetch_total_bytes_, std::optional<double> saved_at_ms_) :
+            index{std::move(index_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, size_bytes{std::move(size_bytes_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)}, has_preview{std::move(has_preview_)}, uploaded{std::move(uploaded_)}, availability{std::move(availability_)}, fetch_done_bytes{std::move(fetch_done_bytes_)}, fetch_total_bytes{std::move(fetch_total_bytes_)}, saved_at_ms{std::move(saved_at_ms_)} {}
 };
 
 /// The message a reply points at, resolved one level deep only: a reply to a reply shows its own
@@ -389,8 +388,8 @@ struct Message {
 /// A page of history.
 ///
 /// What each attachment's bytes are doing rides on the attachment itself - `availability`,
-/// `fetchDone`, `fetchTotal` - rather than in a list beside the page. One writer for the first
-/// picture and for every correction after it, which is what stops a window drawing an
+/// `fetchDoneBytes`, `fetchTotalBytes` - rather than in a list beside the page. One writer for
+/// the first picture and for every correction after it, which is what stops a window drawing an
 /// attachment as untouched and then taking it back.
 struct MessageListResult {
     static constexpr std::string_view type_tag = "messageList";
@@ -437,7 +436,7 @@ struct BoolResult {
             value{std::move(value_)} {}
 };
 
-/// Where a save landed, which is not always where it was asked to go: a collision becomes `name (2)`.
+/// Where an export landed, which is not always where it was asked to go: a collision becomes `name (2)`.
 struct PathResult {
     static constexpr std::string_view type_tag = "path";
 
@@ -447,7 +446,7 @@ struct PathResult {
             path{std::move(path_)} {}
 };
 
-/// Unset means no limit.
+/// Unset only in answer to `getAttachmentCacheLimit`, where it means no limit.
 struct ByteCountResult {
     static constexpr std::string_view type_tag = "byteCount";
 
@@ -576,18 +575,18 @@ struct HistoryReplacedSessionEvent {
 
 /// Which kind of transfer a progress report belongs to.
 ///
-/// libsession joins concurrent downloads of one file with each other but never joins a save, so one
-/// attachment can have two live transfers at once. Keyed without this they interleave, and a bar
+/// libsession joins concurrent downloads of one file with each other but never joins an export, so
+/// one attachment can have two live transfers at once. Keyed without this they interleave, and a bar
 /// jumps backwards.
 enum class AttachmentTransfer {
     download,
-    save,
+    export_,
 };
 
 template <>
 struct EnumTraits<AttachmentTransfer> {
     static constexpr std::string_view name = "AttachmentTransfer";
-    static constexpr std::array<std::string_view, 2> names{"download", "save"};
+    static constexpr std::array<std::string_view, 2> names{"download", "export"};
 
     static constexpr std::string_view to_string(AttachmentTransfer value) {
         return names[static_cast<std::size_t>(value)];
@@ -618,29 +617,33 @@ struct AttachmentOutcome {
 /// One report about one attachment transfer, whether a command asked for it or libsession
 /// started it on its own.
 ///
-/// The first report of a transfer is `{done: 0, total: 0}` and means it started - `total` stays 0
-/// until the server says how big the file is. `outcome` absent means still going, and exactly one
-/// report per transfer carries one: `done === total` does not mean finished, because the bytes
-/// still have to verify.
+/// The first report of a transfer is `{doneBytes: 0, totalBytes: 0}` and means it started -
+/// `totalBytes` stays 0 until the server says how big the file is. `outcome` absent means still
+/// going, and exactly one report per handler carries one: `doneBytes === totalBytes` does not
+/// mean finished, because the bytes still have to verify.
+///
+/// A download joined by a second request, or by an auto-download, has a handler for each: the
+/// joiner first gets one report of where it has got to, and every report after that, the end
+/// included, arrives once per handler - identical frames under one key.
 ///
 /// Reports for one (transfer, messageId, index) are ordered; different ones interleave, and each
 /// is rate limited to roughly one per 100ms. A transfer served from the cache reports nothing at
 /// all, so an indicator must be driven by time rather than by these arriving.
 ///
-/// `done` and `total` count *encrypted* bytes - what is actually being moved - and so do not
-/// agree with `Attachment.size`, which is the plaintext length.
+/// Both count *encrypted* bytes - what is actually being moved - and so do not agree with
+/// `Attachment.sizeBytes`, which is the plaintext length.
 struct AttachmentProgressSessionEvent {
     static constexpr std::string_view type_tag = "attachment-progress";
 
     ::session_bridge::AttachmentTransfer transfer;
     double message_id;
     double index;
-    double done;
-    double total;
+    double done_bytes;
+    double total_bytes;
     std::optional<::session_bridge::AttachmentOutcome> outcome;
 
-    AttachmentProgressSessionEvent(::session_bridge::AttachmentTransfer transfer_, double message_id_, double index_, double done_, double total_, std::optional<::session_bridge::AttachmentOutcome> outcome_) :
-            transfer{std::move(transfer_)}, message_id{std::move(message_id_)}, index{std::move(index_)}, done{std::move(done_)}, total{std::move(total_)}, outcome{std::move(outcome_)} {}
+    AttachmentProgressSessionEvent(::session_bridge::AttachmentTransfer transfer_, double message_id_, double index_, double done_bytes_, double total_bytes_, std::optional<::session_bridge::AttachmentOutcome> outcome_) :
+            transfer{std::move(transfer_)}, message_id{std::move(message_id_)}, index{std::move(index_)}, done_bytes{std::move(done_bytes_)}, total_bytes{std::move(total_bytes_)}, outcome{std::move(outcome_)} {}
 };
 
 /// libsession's own log lines, forwarded when the bridge was opened with a log level. Worth
@@ -1134,10 +1137,10 @@ struct DownloadAttachmentCommand {
             message_id{std::move(message_id_)}, index{std::move(index_)} {}
 };
 
-/// Write an attachment to a path the person chose, fetching it first if the cache does not hold
-/// it. Reads the cache but never fills it, so this is not a way to pre-fetch.
-struct SaveAttachmentCommand {
-    static constexpr std::string_view type_tag = "saveAttachment";
+/// Write an attachment out to a path the person chose, fetching it first if the cache does not
+/// hold it. Reads the cache but never fills it, so this is not a way to pre-fetch.
+struct ExportAttachmentCommand {
+    static constexpr std::string_view type_tag = "exportAttachment";
 
     double message_id;
     double index;
@@ -1145,7 +1148,7 @@ struct SaveAttachmentCommand {
     bool notify_sender;
     bool replace;
 
-    SaveAttachmentCommand(double message_id_, double index_, std::string destination_, bool notify_sender_, bool replace_) :
+    ExportAttachmentCommand(double message_id_, double index_, std::string destination_, bool notify_sender_, bool replace_) :
             message_id{std::move(message_id_)}, index{std::move(index_)}, destination{std::move(destination_)}, notify_sender{std::move(notify_sender_)}, replace{std::move(replace_)} {}
 };
 
@@ -1179,10 +1182,16 @@ struct GetAttachmentCacheLimitCommand {
 struct SetAttachmentCacheLimitCommand {
     static constexpr std::string_view type_tag = "setAttachmentCacheLimit";
 
-    std::optional<double> bytes;
+    std::optional<double> limit_bytes;
 
-    explicit SetAttachmentCacheLimitCommand(std::optional<double> bytes_) :
-            bytes{std::move(bytes_)} {}
+    explicit SetAttachmentCacheLimitCommand(std::optional<double> limit_bytes_) :
+            limit_bytes{std::move(limit_bytes_)} {}
+};
+
+/// How much disk the cached attachments occupy now, in the limit's measure, so the two can be
+/// shown together. 0 when nothing is cached or there is no cache directory.
+struct GetAttachmentCacheSizeCommand {
+    static constexpr std::string_view type_tag = "getAttachmentCacheSize";
 };
 
 struct GetPrefCommand {
@@ -1295,11 +1304,12 @@ using Command = std::variant<
         RetrySendCommand,
         DeleteMessageCommand,
         DownloadAttachmentCommand,
-        SaveAttachmentCommand,
+        ExportAttachmentCommand,
         SetAutoDownloadCommand,
         GetCacheDirCommand,
         GetAttachmentCacheLimitCommand,
         SetAttachmentCacheLimitCommand,
+        GetAttachmentCacheSizeCommand,
         GetPrefCommand,
         SetPrefCommand,
         DeliverTestMessageCommand,

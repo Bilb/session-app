@@ -86,6 +86,15 @@ describe('the content security policy', () => {
     }
   })
 
+  it('loads images only from the app and the media scheme', () => {
+    for (const dev of [true, false]) {
+      const imgSrc = contentSecurityPolicy({ dev })
+        .split('; ')
+        .find((directive) => directive.startsWith('img-src '))
+      expect(imgSrc).toBe("img-src 'self' session-media:")
+    }
+  })
+
   it('keeps the dev server relaxations out of the shipped policy', () => {
     const shipped = contentSecurityPolicy({ dev: false })
     expect(shipped).toContain("script-src 'self'")

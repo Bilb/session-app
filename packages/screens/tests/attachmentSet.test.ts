@@ -4,17 +4,17 @@ import { describe, expect, it } from 'vitest'
 
 import { summarise } from '#src/attachmentSet'
 
-function attachment(index: number, size?: number): Attachment {
+function attachment(index: number, sizeBytes?: number): Attachment {
   return {
     index,
     contentType: 'image/jpeg',
-    ...(size === undefined ? {} : { size }),
+    ...(sizeBytes === undefined ? {} : { sizeBytes }),
     voiceMessage: false,
     hasPreview: false,
     uploaded: true,
     availability: 'absent',
-    fetchDone: 0,
-    fetchTotal: 0,
+    fetchDoneBytes: 0,
+    fetchTotalBytes: 0,
   }
 }
 
@@ -23,11 +23,11 @@ function message(attachments: Attachment[]): Message {
 }
 
 function running(done: number, total: number): AttachmentTransferState {
-  return { state: 'running', done, total }
+  return { state: 'running', doneBytes: done, totalBytes: total }
 }
 
-const done: AttachmentTransferState = { state: 'done', done: 0, total: 0 }
-const failed: AttachmentTransferState = { state: 'failed', done: 0, total: 0 }
+const done: AttachmentTransferState = { state: 'done', doneBytes: 0, totalBytes: 0 }
+const failed: AttachmentTransferState = { state: 'failed', doneBytes: 0, totalBytes: 0 }
 
 function fold(
   attachments: Attachment[],
@@ -67,9 +67,9 @@ describe('what a set of attachments is doing', () => {
     // Halfway through the first of two 100-byte files: half of one file out of two.
     const two = [attachment(0, 100), attachment(1, 100)]
     const set = fold(two, { 0: running(50, 100) })
-    expect(set.done).toBe(50)
-    expect(set.total).toBe(200)
-    expect(set.size).toBe(200)
+    expect(set.doneBytes).toBe(50)
+    expect(set.totalBytes).toBe(200)
+    expect(set.sizeBytes).toBe(200)
   })
 
   it('counts a file already here as all of itself', () => {
@@ -77,13 +77,13 @@ describe('what a set of attachments is doing', () => {
     // cover ground it has already covered.
     const two = [attachment(0, 100), attachment(1, 100)]
     const set = fold(two, { 0: done, 1: running(0, 10) })
-    expect(set.done).toBe(100)
-    expect(set.total).toBe(200)
+    expect(set.doneBytes).toBe(100)
+    expect(set.totalBytes).toBe(200)
   })
 
   it('never goes backwards as one file finishes and the next begins', () => {
     // The defect this replaced: folded over the running transfers, the total changed as each
-    // file announced its own size and `done` fell back to nothing at every hand-off, so the
+    // file announced its own size and `doneBytes` fell back to nothing at every hand-off, so the
     // reading jumped twice per file.
     const two = [attachment(0, 100), attachment(1, 300)]
     const readings = [
@@ -94,16 +94,16 @@ describe('what a set of attachments is doing', () => {
       fold(two, { 0: done, 1: running(0, 30) }),
       fold(two, { 0: done, 1: running(15, 30) }),
       fold(two, { 0: done, 1: done }),
-    ].map((set) => set.done)
+    ].map((set) => set.doneBytes)
 
     expect(readings).toEqual([0, 50, 100, 100, 100, 250, 400])
     for (const [at, reading] of readings.entries()) {
       expect(reading).toBeGreaterThanOrEqual(readings[at - 1] ?? 0)
     }
     // And one total throughout, so the far end of the bar never moves either.
-    expect(new Set([fold(two, { 0: running(5, 10) }).total, fold(two, { 0: done }).total])).toEqual(
-      new Set([400]),
-    )
+    expect(
+      new Set([fold(two, { 0: running(5, 10) }).totalBytes, fold(two, { 0: done }).totalBytes]),
+    ).toEqual(new Set([400]))
   })
 
   it('does not drop when one of several running transfers finishes', () => {
@@ -114,29 +114,29 @@ describe('what a set of attachments is doing', () => {
     const mid = fold(three, { 0: running(90, 100), 1: running(50, 100), 2: running(50, 100) })
     const justAfter = fold(three, { 0: done, 1: running(50, 100), 2: running(50, 100) })
 
-    expect(mid.total).toBe(justAfter.total)
-    expect(justAfter.done).toBeGreaterThanOrEqual(mid.done)
-    expect(justAfter.done).toBe(200)
+    expect(mid.totalBytes).toBe(justAfter.totalBytes)
+    expect(justAfter.doneBytes).toBeGreaterThanOrEqual(mid.doneBytes)
+    expect(justAfter.doneBytes).toBe(200)
   })
 
   it('takes the fraction from the encrypted figures and spends it on the plaintext size', () => {
     // A transfer reports what is being moved, which is larger than the file: padding and framing.
     // The ratio is the honest thing to take from it, and the size is what to apply it to.
     const set = fold([attachment(0, 1000)], { 0: running(410, 1640) })
-    expect(set.done).toBe(250)
+    expect(set.doneBytes).toBe(250)
   })
 
   it('leaves the total at zero when an attachment did not say how big it is', () => {
-    // The same thing an absent `size` means. A bar drawn from it has to be indeterminate, which
+    // The same thing an absent `sizeBytes` means. A bar drawn from it has to be indeterminate, which
     // is also what the first report of any transfer - 0 of 0 - is saying.
     const set = fold([attachment(0)], { 0: running(0, 0) })
     expect(set.state).toBe('fetching')
-    expect(set.total).toBe(0)
-    expect(set.size).toBeUndefined()
+    expect(set.totalBytes).toBe(0)
+    expect(set.sizeBytes).toBeUndefined()
   })
 
   it('adds the sizes up, and gives none at all when one attachment did not say', () => {
-    expect(fold([attachment(0, 100), attachment(1, 200)], {}).size).toBe(300)
-    expect(fold([attachment(0, 100), attachment(1)], {}).size).toBeUndefined()
+    expect(fold([attachment(0, 100), attachment(1, 200)], {}).sizeBytes).toBe(300)
+    expect(fold([attachment(0, 100), attachment(1)], {}).sizeBytes).toBeUndefined()
   })
 })
