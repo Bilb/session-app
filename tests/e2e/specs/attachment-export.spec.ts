@@ -40,6 +40,7 @@ test('exports an attachment to a folder somebody chose @desktop @medium-risk', a
       .poll(async () => app.isVisible(ELEMENT.conversation.attachmentExport), { timeout: 10_000 })
       .toBe(true)
 
+    await app.recordReveals()
     await app.answerSaveDialogWith(destination)
     await app.tap(ELEMENT.conversation.attachmentExport)
 
@@ -58,7 +59,6 @@ test('exports an attachment to a folder somebody chose @desktop @medium-risk', a
  */
 test('writes nothing when the save dialog is dismissed @desktop @low-risk', async () => {
   const app = await DesktopApp.launch('alice')
-  const folder = mkdtempSync(join(tmpdir(), 'session2-cancel-'))
 
   try {
     await app.waitForVisible(ELEMENT.conversationList.screen)
@@ -72,8 +72,7 @@ test('writes nothing when the save dialog is dismissed @desktop @low-risk', asyn
       .poll(async () => app.isVisible(ELEMENT.conversation.attachmentExport), { timeout: 10_000 })
       .toBe(true)
 
-    // Armed first so there is a recorder to be empty, then dismissed.
-    await app.answerSaveDialogWith(join(folder, 'itinerary.pdf'))
+    await app.recordReveals()
     await app.cancelNextSaveDialog()
     await app.tap(ELEMENT.conversation.attachmentExport)
 

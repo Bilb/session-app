@@ -16,8 +16,10 @@ export interface IFileChooser {
   answerSaveDialogWith(path: string): Promise<void>
   /** Makes the next save dialog answer as though somebody dismissed it. */
   cancelNextSaveDialog(): Promise<void>
+  /** Records reveals instead of performing them; `revealedPaths` refuses to answer before this. */
+  recordReveals(): Promise<void>
   /**
-   * Every path the app has asked the operating system to reveal, in order.
+   * Every path the app has asked the operating system to reveal since `recordReveals`, in order.
    *
    * The end of the chain, and the only part of it that is observable from outside: a reveal that
    * happened is a save that got a destination, reached libsession, came back with a path, and was

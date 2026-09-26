@@ -180,14 +180,8 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser 
   // -- IFileChooser -----------------------------------------------------------------------
 
   async answerSaveDialogWith(path: string): Promise<void> {
-    await this.app.evaluate(({ dialog, shell }, chosen) => {
+    await this.app.evaluate(({ dialog }, chosen) => {
       dialog.showSaveDialog = () => Promise.resolve({ canceled: false, filePath: chosen })
-      // Recorded on the main process itself, because that is what outlives the call and what a
-      // later evaluate can read back. Replacing it also stops a file manager window opening on
-      // whoever is running the suite.
-      const global = globalThis as unknown as { sessionRevealed?: string[] }
-      global.sessionRevealed = []
-      shell.showItemInFolder = (revealed: string) => global.sessionRevealed?.push(revealed)
     }, path)
   }
 
@@ -197,10 +191,23 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser 
     })
   }
 
+  async recordReveals(): Promise<void> {
+    await this.app.evaluate(({ shell }) => {
+      // Kept on the main process because a later evaluate can read it back there. Replacing the
+      // call also stops a file manager window opening on whoever is running the suite.
+      const global = globalThis as unknown as { sessionRevealed?: string[] }
+      global.sessionRevealed = []
+      shell.showItemInFolder = (revealed: string) => global.sessionRevealed?.push(revealed)
+    })
+  }
+
   async revealedPaths(): Promise<string[]> {
-    return this.app.evaluate(
-      () => (globalThis as unknown as { sessionRevealed?: string[] }).sessionRevealed ?? [],
+    const revealed = await this.app.evaluate(
+      () => (globalThis as unknown as { sessionRevealed?: string[] }).sessionRevealed ?? null,
     )
+    // An empty answer from a recorder nobody installed would pass any "nothing was revealed" check.
+    if (revealed === null) throw new Error('revealedPaths() read before recordReveals()')
+    return revealed
   }
 
   // -- IPerformanceProbe ------------------------------------------------------------------
