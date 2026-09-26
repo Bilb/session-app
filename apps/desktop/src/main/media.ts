@@ -10,8 +10,7 @@ import { encodePng } from './png'
 /**
  * Whatever can answer with an attachment's bytes: the addon, or the fake behind the same door.
  *
- * Narrower than the transport on purpose - serving the scheme has no business with frames, and
- * the dev fake has no addon to borrow the type from.
+ * Narrower than the transport on purpose: serving the scheme has no business with frames.
  */
 export interface MediaSource {
   fetchMedia(ref: AttachmentRef): Promise<{ contentType: string; bytes: Uint8Array }>
@@ -21,11 +20,11 @@ export interface MediaSource {
 /**
  * Registered before `app.whenReady()`, which is the only time Electron accepts it.
  *
- * `standard` is what gives the scheme an origin, which is what lets a CSP name it and what stops
- * every URL under it being treated as opaque. `secure` keeps it out of the mixed-content rules a
- * page served over `file:` would otherwise apply to it. Deliberately not `supportFetchAPI`,
- * `corsEnabled` or `stream`: the renderer draws these in an `<img>`, and anything script can call
- * directly is more surface than that needs.
+ * `standard` gives it a tuple origin and a parsed host rather than an opaque URL. A CSP can name
+ * the scheme either way; the host parsing is why the ids sit in the path under a fixed word.
+ * `secure` keeps it out of the mixed-content rules a page served over `file:` would otherwise
+ * apply to it. Deliberately not `supportFetchAPI`, `corsEnabled` or `stream`: the renderer draws
+ * these in an `<img>`, and anything script can call directly is more surface than that needs.
  */
 export function registerMediaScheme(): void {
   protocol.registerSchemesAsPrivileged([
