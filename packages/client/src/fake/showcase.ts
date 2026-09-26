@@ -34,6 +34,7 @@ export function showcase(names: readonly [FixtureName, FixtureName] = ['Alice', 
     ['Four, an even grid', set(image(4))],
     ['Five: one big beside a quad', set(image(5))],
     ['Twelve, so seven are behind the count', set(image(12))],
+    ['Thirty-two', set(image(32))],
 
     // The same shapes with nothing to draw before the bytes, which is every 1.x sender.
     ['Three with no hash to draw', set(image(3), { hashed: false })],
@@ -56,6 +57,10 @@ export function showcase(names: readonly [FixtureName, FixtureName] = ['Alice', 
 
     // Nothing to do with the count: a file the server will not hand out again.
     ['One of these is gone', set(['pdf'], { expired: true })],
+    [
+      'Four of these five are gone',
+      set(['pdf', 'zip', 'sheet', 'audio', 'pdf'], { expired: (index) => index < 4 }),
+    ],
   ]
 
   for (const [body, attachments] of messages) {

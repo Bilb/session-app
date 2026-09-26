@@ -66,9 +66,9 @@ const TICK_MS = 50
  */
 const MEDIA_DIR = process.env['SESSION_FAKE_MEDIA_DIR']
 
-/** The number in `unsplash-07.jpg`, or null for a filename that is not one of these. */
+/** The number in `unsplash-07.jpg` or `unsplash-07-2.jpg`, or null for any other filename. */
 function photoNumber(filename: string | undefined): string | null {
-  const match = /^unsplash-(\d{2})\.(?:jpg|mp4)$/.exec(filename ?? '')
+  const match = /^unsplash-(\d{2})(?:-\d+)?\.(?:jpg|mp4)$/.exec(filename ?? '')
   return match?.[1] ?? null
 }
 
