@@ -34,7 +34,6 @@ export function Progress({
 }: ProgressProps) {
   const fraction = value === undefined ? undefined : Math.min(1, Math.max(0, value))
 
-
   return (
     <YStack
       height={BAR_HEIGHT}
