@@ -91,7 +91,7 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
   }
 
   /** Every command returns a result; a Response without one is a shim bug, not a value. */
-  function expect<K extends Result['type']>(response: Response, kind: K): ResultOf<K> {
+  function resultOf<K extends Result['type']>(response: Response, kind: K): ResultOf<K> {
     if (response.result?.type !== kind) {
       throw new SessionClientError(
         `Expected a ${kind} result but the bridge sent ${response.result?.type ?? 'nothing'}`,
@@ -111,7 +111,7 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
 
     async getAccountInfo(): Promise<AccountInfo> {
       const response = await call({ type: 'getAccountInfo' })
-      return expect(response, 'accountInfo').info
+      return resultOf(response, 'accountInfo').info
     },
 
     async createAccount(): Promise<void> {
@@ -151,7 +151,7 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
         type: 'getSeedMnemonic',
         ...(language === undefined ? {} : { language }),
       })
-      return expect(response, 'mnemonic').words
+      return resultOf(response, 'mnemonic').words
     },
 
     async setDisplayName(name): Promise<void> {
@@ -174,27 +174,27 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
 
     async warmNetworkCache(): Promise<boolean> {
       const response = await call({ type: 'warmNetworkCache' })
-      return expect(response, 'bool').value
+      return resultOf(response, 'bool').value
     },
 
     async getConversations(): Promise<Conversation[]> {
       const response = await call({ type: 'getConversations' })
-      return expect(response, 'conversationList').conversations
+      return resultOf(response, 'conversationList').conversations
     },
 
     async getMessageRequests(): Promise<Conversation[]> {
       const response = await call({ type: 'getMessageRequests' })
-      return expect(response, 'conversationList').conversations
+      return resultOf(response, 'conversationList').conversations
     },
 
     async getConversation(id): Promise<Conversation> {
       const response = await call({ type: 'getConversation', conversationId: id })
-      return expect(response, 'conversation').conversation
+      return resultOf(response, 'conversation').conversation
     },
 
     async openDm(sessionId): Promise<ConversationId> {
       const response = await call({ type: 'openDm', sessionId })
-      return expect(response, 'conversation').conversation.id
+      return resultOf(response, 'conversation').conversation.id
     },
 
     async markRead(id, upTo): Promise<void> {
@@ -241,7 +241,7 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
         includeDeleted: options?.includeDeleted ?? false,
         ...(before === undefined ? {} : { before }),
       })
-      const page = expect(response, 'messageList')
+      const page = resultOf(response, 'messageList')
       return { messages: page.messages }
     },
 
@@ -252,12 +252,12 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
         body: message.body,
         ...(message.replyTo === undefined ? {} : { replyTo: message.replyTo }),
       })
-      return expect(response, 'messageId').messageId
+      return resultOf(response, 'messageId').messageId
     },
 
     async retrySend(messageId): Promise<boolean> {
       const response = await call({ type: 'retrySend', messageId })
-      return expect(response, 'bool').value
+      return resultOf(response, 'bool').value
     },
 
     async deleteMessage(messageId, scope: Deletion): Promise<void> {
@@ -277,7 +277,7 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
         notifySender: options?.notifySender ?? true,
         replace: options?.replace ?? false,
       })
-      return expect(response, 'path').path
+      return resultOf(response, 'path').path
     },
 
     async setAutoDownload(id, mode: AutoDownload): Promise<void> {
@@ -286,12 +286,12 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
 
     async getCacheDir(): Promise<string> {
       const response = await call({ type: 'getCacheDir' })
-      return expect(response, 'path').path
+      return resultOf(response, 'path').path
     },
 
     async getAttachmentCacheLimit(): Promise<number | undefined> {
       const response = await call({ type: 'getAttachmentCacheLimit' })
-      return expect(response, 'byteCount').bytes
+      return resultOf(response, 'byteCount').bytes
     },
 
     async setAttachmentCacheLimit(limitBytes): Promise<void> {
@@ -303,7 +303,7 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
 
     async getPref(key): Promise<string | undefined> {
       const response = await call({ type: 'getPref', key })
-      return expect(response, 'pref').value
+      return resultOf(response, 'pref').value
     },
 
     async setPref(key, value): Promise<void> {
