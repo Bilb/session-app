@@ -6,6 +6,7 @@ import { expect, test } from '@playwright/test'
 import { ELEMENT } from '@session/test-ids'
 
 import { DesktopApp } from '../harness/DesktopApp'
+import { SEEDED_LIST } from '../harness/fixtures'
 
 /**
  * Exporting a file that is already here, all the way to bytes on disk.
@@ -25,7 +26,8 @@ import { DesktopApp } from '../harness/DesktopApp'
  */
 test('exports an attachment to a folder somebody chose @desktop @medium-risk', async () => {
   const app = await DesktopApp.launch('alice')
-  const destination = join(mkdtempSync(join(tmpdir(), 'session2-export-')), 'itinerary.pdf')
+  // The first download control belongs to the list's first row.
+  const destination = join(mkdtempSync(join(tmpdir(), 'session2-export-')), SEEDED_LIST[0])
 
   try {
     await app.waitForVisible(ELEMENT.conversationList.screen)
