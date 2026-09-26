@@ -13,10 +13,25 @@ import {
   strangers,
   type FakeWorld,
 } from '@session/client/fake'
-import type { SessionClient } from '@session/client'
+import type { Attachment, SessionClient } from '@session/client'
 import { describe, expect, it } from 'vitest'
 
 import { runSessionClientContract, type ContractHarness } from '#src/index'
+
+const ARRIVING_IMAGE: Attachment = {
+  index: 0,
+  contentType: 'image/jpeg',
+  filename: 'arriving.jpg',
+  sizeBytes: 150_000,
+  voiceMessage: false,
+  width: 1200,
+  height: 900,
+  hasPreview: false,
+  uploaded: true,
+  availability: 'absent',
+  fetchDoneBytes: 0,
+  fetchTotalBytes: 0,
+}
 
 /** The fake's clock is manual, so settling is synchronous and cannot race. */
 function settleWith(world: FakeWorld): () => Promise<void> {
@@ -78,6 +93,10 @@ const harness: ContractHarness = {
       messageId: withOne.id,
       index: 0,
       settle: settleWith(world),
+      receiveImage: () =>
+        Promise.resolve(
+          account.deliverFrom(world.account('Bob'), 'One more', world.now(), [ARRIVING_IMAGE]).id,
+        ),
     })
   },
 

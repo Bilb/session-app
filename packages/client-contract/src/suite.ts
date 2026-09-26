@@ -51,6 +51,8 @@ export interface ContractHarness {
     messageId: number
     index: number
     settle: () => Promise<void>
+    /** Delivers another incoming message holding one image, and answers its id. */
+    receiveImage: () => Promise<number>
   }>
   /** Stops and restarts a client against the same data. */
   restart(client: SessionClient): Promise<SessionClient>
@@ -631,12 +633,14 @@ export function runSessionClientContract(
     })
 
     it('reports an export as its own transfer', async () => {
-      const { client, messageId, index, settle } = await harness.withAttachment()
+      const { client, conversationId, messageId, index, settle } = await harness.withAttachment()
       const seen = collect(client)
+      const destination = `/tmp/contract-export-${String(messageId)}-${String(Date.now())}.bin`
 
-      const exporting = client.exportAttachment(messageId, index, '/tmp/contract-export.bin')
+      const exporting = client.exportAttachment(messageId, index, destination)
       await settle()
-      await exporting
+      // Nothing is at a fresh path, so nothing collides and it lands where it was sent.
+      expect(await exporting).toBe(destination)
 
       const exports = seen.events.filter(
         (e) => e.type === 'attachment-progress' && e.transfer === 'export',
@@ -645,6 +649,19 @@ export function runSessionClientContract(
       // distinguishable even for the same file - which is the only thing that keeps a single
       // progress indicator from reading two transfers as one.
       expect(exports.length).toBeGreaterThan(0)
+      const terminal = exports.filter(
+        (e) => e.type === 'attachment-progress' && e.outcome !== undefined,
+      )
+      expect(terminal.length).toBe(1)
+      expect(terminal[0]).toBe(exports[exports.length - 1])
+      const last = terminal[0]
+      if (last?.type !== 'attachment-progress') throw new Error('unreachable')
+      expect(last.outcome?.ok).toBe(true)
+
+      const saved = (await client.getMessages(conversationId)).messages
+        .find((m) => m.id === messageId)
+        ?.attachments.find((a) => a.index === index)
+      expect(typeof saved?.savedAtMs).toBe('number')
       seen.stop()
     })
 
@@ -722,6 +739,41 @@ export function runSessionClientContract(
       expect(terminal).toBeGreaterThan(fetching)
       expect(seen.events.slice(terminal).some((e) => availability(e) === 'cached')).toBe(true)
       seen.stop()
+    })
+
+    it('fetches an arriving image unasked once told to fetch images', async () => {
+      const { client, conversationId, receiveImage, settle } = await harness.withAttachment()
+      await client.setAutoDownload(conversationId, 'image-attachments')
+      const seen = collect(client)
+
+      const messageId = await receiveImage()
+      await settle()
+
+      const ended = seen.events.find(
+        (e) =>
+          e.type === 'attachment-progress' &&
+          e.transfer === 'download' &&
+          e.messageId === messageId &&
+          e.outcome !== undefined,
+      )
+      expect(ended?.type === 'attachment-progress' && ended.outcome?.ok).toBe(true)
+      const image = (await client.getMessages(conversationId)).messages.find(
+        (m) => m.id === messageId,
+      )?.attachments[0]
+      expect(image?.availability).toBe('cached')
+      seen.stop()
+    })
+
+    it('has no attachment cache limit until one is set, and reads back the one set', async () => {
+      const { alice } = await harness.friends()
+      expect(typeof (await alice.getCacheDir())).toBe('string')
+      expect(await alice.getAttachmentCacheLimit()).toBeUndefined()
+
+      await alice.setAttachmentCacheLimit(250_000_000)
+      expect(await alice.getAttachmentCacheLimit()).toBe(250_000_000)
+
+      await alice.setAttachmentCacheLimit(undefined)
+      expect(await alice.getAttachmentCacheLimit()).toBeUndefined()
     })
 
     it('measures an attachment cache with nothing in it as empty', async () => {
