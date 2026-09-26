@@ -9,12 +9,11 @@ import { viewerIndices } from './viewableAttachments'
 /**
  * How many rows a message draws before the rest moves into a sheet.
  *
- * Past this the message stops being a message with attachments and becomes a wall of rows: on a
- * phone, fourteen of them are four screenfuls, and everything said after them is unreachable
- * without scrolling past the lot. Eight is about a screenful, which is the point where the
- * transcript still reads as a conversation.
+ * Past this the message stops being a message with attachments and becomes a wall of rows, and
+ * everything said after them is unreachable without scrolling past the lot. Five leave room on a
+ * phone screen for the messages around them, so the transcript still reads as a conversation.
  */
-export const LIST_MAX_ROWS = 8
+export const LIST_MAX_ROWS = 5
 
 /**
  * Every attachment on one message, as rows.
