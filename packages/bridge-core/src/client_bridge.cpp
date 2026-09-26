@@ -12,7 +12,6 @@
 #include <session/sqlite.hpp>
 
 #include <oxenc/hex.h>
-#include <sqlite3.h>
 
 #ifdef SESSION_BRIDGE_TESTING
 #include <SessionProtos.pb.h>
@@ -79,30 +78,19 @@ namespace {
     /// below a round trip gets concurrent requests rather than faster ones.
     constexpr auto DEVNET_POLL_INTERVAL = std::chrono::milliseconds{500};
 
-    /// Where the network's own cache lives, named once so the discard and the open agree.
-    /// The path to actually open, which differs from the caller's only for an in-memory database.
-    ///
-    /// A plain ":memory:" database belongs to the connection that opened it, and libsession's pool
-    /// opens one per thread -- so the loop would migrate one database and a caller would read a
-    /// second, empty one.  Named and shared-cache makes it a single database; URI filenames are
-    /// off by default, which is what the config call turns on.
-    ///
-    /// Numbered so that two in-memory bridges in one process do not silently share a database.
-    ///
-    /// Fixed upstream in session-sqlite 65e3c78, which uses the memdb VFS rather than the
-    /// deprecated shared cache; this goes when libsession bumps that submodule.
+    /// What to open for `db_path`: ":memory:" becomes one named memdb database, because
+    /// libsession's pool opens a connection per thread and each would get its own empty one.
+    /// Numbered so two in-memory bridges never share. Relies on SQLite built with SQLITE_USE_URI.
+    /// Delete once libsession pins session-sqlite >= 65e3c78, which shares :memory: itself.
     std::filesystem::path shared_if_in_memory(const std::filesystem::path& db_path) {
         if (db_path != ":memory:")
             return db_path;
-        // Refused once SQLite has initialised, which only happens when an earlier bridge in this
-        // process already set it -- in which case the setting it wanted is the one in force.
-        sqlite3_config(SQLITE_CONFIG_URI, 1);
         static std::atomic<uint64_t> next{0};
-        return "file:session-bridge-mem-" +
-               std::to_string(next.fetch_add(1, std::memory_order_relaxed)) +
-               "?mode=memory&cache=shared";
+        return "file:/session-bridge-mem-" +
+               std::to_string(next.fetch_add(1, std::memory_order_relaxed)) + "?vfs=memdb";
     }
 
+    /// Where the network's own cache lives, named once so the discard and the open agree.
     std::filesystem::path netcache_path(const std::filesystem::path& db_path) {
         return db_path.parent_path() / "netcache";
     }
