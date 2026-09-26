@@ -169,6 +169,29 @@ export interface Attachment {
 }
 
 /**
+ * One attachment, by its message and its place in that message's list.
+ *
+ * For TypeScript signatures only: the protocol spells the two fields out on each command, because
+ * the generator takes a union member only as an object literal.
+ */
+export type AttachmentRef = { messageId: number; index: number }
+export type WithAttachmentRef = { ref: AttachmentRef }
+
+/**
+ * How far a transfer has got, in encrypted bytes, so not comparable with `Attachment.sizeBytes`.
+ * `totalBytes` is 0 until the server has said how big the file is.
+ */
+export type TransferProgress = { doneBytes: number; totalBytes: number }
+
+/** Omitted, libsession notifies the sender and writes `name (2)` rather than overwrite. */
+export type ExportAttachmentOptions = {
+  notifySender?: boolean | undefined
+  replace?: boolean | undefined
+}
+
+export type PixelSize = { width: number; height: number }
+
+/**
  * Where a page of history starts. Newest-first, keyed by (timestamp, id) so that a page seam
  * cannot duplicate or skip a message that shares a timestamp with its neighbour.
  */

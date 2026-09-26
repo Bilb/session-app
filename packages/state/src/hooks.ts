@@ -1,5 +1,6 @@
 import type {
   AccountInfo,
+  AttachmentRef,
   AttachmentTransfer,
   Conversation,
   ConversationId,
@@ -154,11 +155,10 @@ export function useMessages(id: ConversationId | undefined): {
  */
 export function useAttachmentTransfer(
   transfer: AttachmentTransfer,
-  messageId: number,
-  index: number,
+  ref: AttachmentRef,
 ): AttachmentTransferState | undefined {
   const store = useSessionStore()
-  return useStore(store, (state) => state.transfers[transferKey(transfer, messageId, index)])
+  return useStore(store, (state) => state.transfers[transferKey(transfer, ref)])
 }
 
 /**

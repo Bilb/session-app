@@ -9,7 +9,13 @@
  * Written as a function of a harness so it can be handed either implementation.
  */
 
-import type { Conversation, Message, SessionClient, SessionEvent } from '@session/client'
+import type {
+  Conversation,
+  Message,
+  MessagePage,
+  SessionClient,
+  SessionEvent,
+} from '@session/client'
 
 export interface ContractHarness {
   /** Two clients that already know each other, with no history. */
@@ -602,7 +608,7 @@ export function runSessionClientContract(
     it('answers a page with what its attachments are doing', async () => {
       const { client, conversationId, messageId, index, settle } = await harness.withAttachment()
 
-      const at = (page: { messages: Message[] }) =>
+      const at = (page: MessagePage) =>
         page.messages.find((m) => m.id === messageId)?.attachments.find((a) => a.index === index)
 
       const idle = at(await client.getMessages(conversationId))

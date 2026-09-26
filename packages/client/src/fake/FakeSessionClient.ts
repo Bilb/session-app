@@ -7,11 +7,11 @@ import type {
   Conversation,
   ConversationId,
   Deletion,
-  Message,
+  MessageCursor,
   SessionEvent,
 } from '@session/bridge-types'
 
-import type { NetworkAttachment, OutgoingMessage, SessionClient } from '../types'
+import type { MessagePage, NetworkAttachment, OutgoingMessage, SessionClient } from '../types'
 import type { FakeAccount, FakeWorld } from './world'
 
 /** Why this network will not attach, or undefined when it will. */
@@ -297,12 +297,8 @@ export class FakeSessionClient implements SessionClient {
 
   getMessages(
     id: ConversationId,
-    options?: {
-      limit?: number
-      before?: { timestamp: number; id: number }
-      includeDeleted?: boolean
-    },
-  ): Promise<{ messages: Message[] }> {
+    options?: { limit?: number; before?: MessageCursor; includeDeleted?: boolean },
+  ): Promise<MessagePage> {
     this.assertOpen()
     // A limit is a page size, not a sentinel: there is no value meaning "all of it", because
     // history grows without bound.
@@ -331,18 +327,18 @@ export class FakeSessionClient implements SessionClient {
 
   downloadAttachment(messageId: number, index: number): Promise<void> {
     this.assertOpen()
-    if (!this.account.locate(messageId, index)) {
+    if (!this.account.locate({ messageId, index })) {
       return Promise.reject(new SessionClientError(`No attachment ${messageId}:${index}`))
     }
-    return this.account.downloadAttachment(messageId, index)
+    return this.account.downloadAttachment({ messageId, index })
   }
 
   exportAttachment(messageId: number, index: number, destination: string): Promise<string> {
     this.assertOpen()
-    if (!this.account.locate(messageId, index)) {
+    if (!this.account.locate({ messageId, index })) {
       return Promise.reject(new SessionClientError(`No attachment ${messageId}:${index}`))
     }
-    return this.account.exportAttachment(messageId, index, destination)
+    return this.account.exportAttachment({ messageId, index }, destination)
   }
 
   setAutoDownload(id: ConversationId, mode: AutoDownload): Promise<void> {

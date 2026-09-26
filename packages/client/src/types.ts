@@ -15,6 +15,7 @@ import type {
   Conversation,
   ConversationId,
   Deletion,
+  ExportAttachmentOptions,
   FileServerConfig,
   Frame,
   Message,
@@ -36,6 +37,8 @@ export interface NetworkAttachment {
   /** Defaults to session-router on mainnet and testnet, onion requests on devnet. */
   router?: RouterKind
 }
+
+export type MessagePage = { messages: Message[] }
 
 export interface OutgoingMessage {
   body: string
@@ -118,7 +121,7 @@ export interface SessionClient {
   getMessages(
     id: ConversationId,
     options?: { limit?: number; before?: MessageCursor; includeDeleted?: boolean },
-  ): Promise<{ messages: Message[] }>
+  ): Promise<MessagePage>
   /**
    * Resolves as soon as libsession has stored the row, which is before it is sent. The states
    * that follow arrive as message-updated.
@@ -142,7 +145,7 @@ export interface SessionClient {
     messageId: number,
     index: number,
     destination: string,
-    options?: { notifySender?: boolean; replace?: boolean },
+    options?: ExportAttachmentOptions,
   ): Promise<string>
   /** Also records that the question was asked, which is why `none` is worth sending. */
   setAutoDownload(id: ConversationId, mode: AutoDownload): Promise<void>
