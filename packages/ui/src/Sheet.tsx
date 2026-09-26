@@ -5,7 +5,8 @@ import { ScrollView, XStack, YStack, useMedia } from 'tamagui'
 import { Button } from './Button'
 import { Icon } from './Icon'
 import { useScreenInsets } from './screenInsets'
-import { SHEET_MAX_HEIGHT, SHEET_MAX_WIDTH, SHEET_RADIUS, SHEET_SCRIM_OPACITY } from './sheet'
+import { SCRIM_OPACITY } from './scrim'
+import { SHEET_MAX_HEIGHT, SHEET_MAX_WIDTH, SHEET_RADIUS } from './sheet'
 import { Text } from './Text'
 
 export interface SheetProps {
@@ -56,7 +57,7 @@ export function Sheet({
     >
       {/* Its own layer, so its opacity does not reach the surface: an opacity on a parent applies
           to every descendant, which would make the sheet translucent too. */}
-      <YStack fullscreen backgroundColor="$surfaceInk" opacity={SHEET_SCRIM_OPACITY} />
+      <YStack fullscreen backgroundColor="$surfaceInk" opacity={SCRIM_OPACITY} />
       <YStack
         fullscreen
         alignItems="center"

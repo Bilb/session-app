@@ -20,11 +20,3 @@ export const SHEET_MAX_HEIGHT = '80%'
 
 /** As wide as a dialog gets. Wider than the alert, because this holds rows rather than a sentence. */
 export const SHEET_MAX_WIDTH = 460
-
-/**
- * How dark the page behind is.
- *
- * The same value the alert uses, and for the same reason: the dimming is what says the page has
- * stopped until this is dealt with.
- */
-export const SHEET_SCRIM_OPACITY = 0.6
