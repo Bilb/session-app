@@ -105,6 +105,12 @@ function keyOf({ messageId, index }: AttachmentRef): string {
   return `${messageId}:${index}`
 }
 
+export interface LocatedAttachment {
+  conversationId: ConversationId
+  message: Message
+  attachment: Attachment
+}
+
 interface FakeConversationState {
   conversation: Conversation
   messages: Message[]
@@ -489,9 +495,7 @@ export class FakeAccount {
   // -- Attachments ---------------------------------------------------------------------------
 
   /** The attachment and the conversation it hangs off, or undefined if there is no such pair. */
-  locate(
-    ref: AttachmentRef,
-  ): { conversationId: ConversationId; message: Message; attachment: Attachment } | undefined {
+  locate(ref: AttachmentRef): LocatedAttachment | undefined {
     for (const [conversationId, state] of this.conversations) {
       const message = state.messages.find((m) => m.id === ref.messageId)
       const attachment = message?.attachments.find((a) => a.index === ref.index)

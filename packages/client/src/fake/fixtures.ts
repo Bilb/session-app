@@ -1,8 +1,6 @@
 import { isViewableContentType, type MediaKind } from '@session/basic-types'
 import type { Attachment } from '@session/bridge-types'
 
-import type { SessionClient } from '../types'
-
 import { FakeSessionClient } from './FakeSessionClient'
 import { FakeWorld, resetFakeIds, type FakeAccount } from './world'
 
@@ -326,7 +324,7 @@ export function showcase(names: readonly [FixtureName, FixtureName] = ['Alice', 
 
 export interface FakeSetup {
   world: FakeWorld
-  clients: Record<string, SessionClient>
+  clients: Record<string, FakeSessionClient>
 }
 
 /**
