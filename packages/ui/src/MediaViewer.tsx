@@ -5,11 +5,11 @@ import type { WithMediaKind } from '@session/basic-types'
 import type { ElementId } from '@session/test-ids'
 import { SPACING } from '@session/theme-tokens'
 
+import { backChevron, forwardChevron } from './backChevron'
 import { Icon } from './Icon'
 import type { IconName } from './Icon.types'
 import { SIZE_SCALE } from './scales'
 import { Image } from './Image'
-import { isLayoutRtl } from './layoutDirection'
 import { Text } from './Text'
 import { useWindowSize } from './useWindowSize'
 
@@ -86,7 +86,6 @@ export function MediaViewer({
 }: MediaViewerProps) {
   const { width, height } = useWindowSize()
   const current = items[index]
-  const rtl = isLayoutRtl()
 
   return (
     <NativeModal visible={open} transparent={false} animationType="fade" onRequestClose={onClose}>
@@ -137,7 +136,7 @@ export function MediaViewer({
             {/* The glyph follows reading order, the index does not: previous is always index - 1,
                 and in a mirrored layout it is the chevron on the right that draws it. */}
             <Control
-              icon={rtl ? 'chevronRight' : 'chevronLeft'}
+              icon={backChevron()}
               label={previousLabel}
               disabled={index <= 0}
               onPress={() => {
@@ -145,7 +144,7 @@ export function MediaViewer({
               }}
             />
             <Control
-              icon={rtl ? 'chevronLeft' : 'chevronRight'}
+              icon={forwardChevron()}
               label={nextLabel}
               disabled={index >= items.length - 1}
               onPress={() => {

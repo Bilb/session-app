@@ -17,9 +17,8 @@ export function backChevron(): IconName {
 /**
  * Which way a control pointing onward points: into the row, the sheet or the next step.
  *
- * The other half of the same question, and here for the same reason. Derived from `backChevron`
- * rather than written out, so the pair cannot end up agreeing about only one direction.
+ * Toward the trailing edge, so it mirrors with the layout the way `backChevron` does.
  */
 export function forwardChevron(): IconName {
-  return backChevron() === 'chevronLeft' ? 'chevronRight' : 'chevronLeft'
+  return isLayoutRtl() ? 'chevronLeft' : 'chevronRight'
 }
