@@ -8,6 +8,7 @@
 import {
   FakeSessionClient,
   friends,
+  friendsWithAttachments,
   newcomer as newcomerFixture,
   strangers,
   type FakeWorld,
@@ -62,7 +63,7 @@ const harness: ContractHarness = {
   },
 
   withAttachment() {
-    const { world, clients } = friends(['Alice', 'Bob'])
+    const { world, clients } = friendsWithAttachments(['Alice', 'Bob'], { sets: ['pictures'] })
     const alice = clients['Alice']
     if (!alice) throw new Error('fixture did not produce a client')
     const conversationId = world.account('Bob').sessionId

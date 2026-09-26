@@ -7,7 +7,7 @@ import {
   createFakeTransport,
   type FakeSessionClient,
   crowd,
-  friends,
+  friendsWithAttachments,
   newcomer,
   showcase,
 } from '@session/client/fake'
@@ -139,7 +139,7 @@ export function createFakeBridge(): BridgeTransport & MediaSource {
       ? showcase()
       : peers > 0
         ? crowd({ peers, history: Number(process.env['SESSION_FAKE_HISTORY'] ?? '1') })
-        : friends(['Alice', 'Bob'], { history: 4 })
+        : friendsWithAttachments(['Alice', 'Bob'], { history: 4 })
   const alice = clients['Alice']
   if (!alice) throw new Error('the fixture did not produce a client')
 

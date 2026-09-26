@@ -1,5 +1,4 @@
 import { FakeSessionClient } from './FakeSessionClient'
-import { SEEDED_FILES, SEEDED_MANY, SEEDED_PICTURES } from './attachments'
 import { FakeWorld, resetFakeIds, type FakeAccount } from './world'
 
 /**
@@ -79,7 +78,7 @@ export function newcomer(name: FixtureName = 'Alice'): FakeSetup {
  */
 export function friends(
   names: readonly [FixtureName, FixtureName] = ['Alice', 'Bob'],
-  options: { history?: number; attachments?: boolean } = {},
+  options: { history?: number } = {},
 ): FakeSetup {
   resetFakeIds()
   const world = new FakeWorld()
@@ -95,20 +94,6 @@ export function friends(
     const sender = i % 2 === 0 ? first : second
     const recipient = sender === first ? second : first
     sender.send(recipient.sessionId, `Message ${i + 1}`)
-    world.settle()
-  }
-
-  // Delivered rather than sent: sending an attachment is not in the protocol, so the only way one
-  // exists is arriving. Nothing is fetched for either - the conversation has not been asked yet.
-  // Three messages: an album, a mixed set the list draws, and one longer than the transcript
-  // will hold. Each shape is chosen from the set rather than set by a flag, so a fixture missing
-  // one leaves that shape undrawn.
-  if (options.attachments ?? true) {
-    first.deliverFrom(second, 'Here are the photos', world.now(), SEEDED_PICTURES)
-    world.settle()
-    first.deliverFrom(second, 'And the paperwork', world.now(), SEEDED_FILES)
-    world.settle()
-    first.deliverFrom(second, 'The whole roll', world.now(), SEEDED_MANY)
     world.settle()
   }
 
