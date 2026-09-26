@@ -47,13 +47,6 @@ function swatchPng(ref: AttachmentRef): Uint8Array {
   return encodePng(1, 1, new Uint8Array([r, g, b, 255]))
 }
 
-/**
- * The bridge, backed by the fake.
- *
- * This is a dev entry and lives here so the boundary rules can say so: production code
- * never imports the fake, and the dynamic import in ../bridge.ts is what keeps it out of a
- * shipped bundle.
- */
 /** How often the dev loop drives the fake's clock. Real milliseconds, not the fake's. */
 const TICK_MS = 50
 
@@ -125,6 +118,13 @@ function fakePreview(client: FakeSessionClient, ref: AttachmentRef): Preview {
   return { width: 8, height: 6, rgba }
 }
 
+/**
+ * The bridge, backed by the fake.
+ *
+ * This is a dev entry and lives here so the boundary rules can say so: production code
+ * never imports the fake, and the dynamic import in ../bridge.ts is what keeps it out of a
+ * shipped bundle.
+ */
 export function createFakeBridge(): BridgeTransport & MediaSource {
   // A conversation list big enough to measure, when something asks for one. The default stays the
   // two-account fixture, so nothing about the ordinary dev loop changes.
