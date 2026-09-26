@@ -234,6 +234,11 @@ export function createSessionStore(
     store.setState((state) => applyEvent(state, event))
   })
 
+  // A page that lands after its window was forgotten must not bring it back, even when a new load
+  // for the same id has started since (StrictMode's mount, cleanup, mount).
+  const forgotten = new Map<ConversationId, number>()
+  const generationOf = (id: ConversationId): number => forgotten.get(id) ?? 0
+
   function patchWindow(id: ConversationId, patch: Partial<MessageWindow>): void {
     store.setState((state) => {
       const current: MessageWindow = state.histories[id] ?? {
@@ -364,7 +369,9 @@ export function createSessionStore(
       const existing = store.getState().histories[id]
       if (existing?.fetching) return
       patchWindow(id, { fetching: true })
+      const generation = generationOf(id)
       const page = await client.getMessages(id, { limit: PAGE })
+      if (generationOf(id) !== generation) return
       patchWindow(id, windowFrom(page.messages))
     },
 
@@ -373,11 +380,14 @@ export function createSessionStore(
       if (!window || window.fetching || window.exhausted || !window.oldestCursor) return
 
       patchWindow(id, { fetching: true })
+      const generation = generationOf(id)
       const page = await client.getMessages(id, { limit: PAGE, before: window.oldestCursor })
+      if (generationOf(id) !== generation) return
       patchWindow(id, windowFrom(page.messages, store.getState().histories[id]?.messages ?? []))
     },
 
     forgetHistory(id): void {
+      forgotten.set(id, generationOf(id) + 1)
       store.setState((state) => {
         const { [id]: dropped, ...histories } = state.histories
         if (dropped === undefined) return state
