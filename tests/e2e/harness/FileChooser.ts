@@ -22,8 +22,8 @@ export interface IFileChooser {
    * Every path the app has asked the operating system to reveal since `recordReveals`, in order.
    *
    * The end of the chain, and the only part of it that is observable from outside: a reveal that
-   * happened is a save that got a destination, reached libsession, came back with a path, and was
-   * allowed by the folder the main process remembered from the dialog.
+   * happened is an export that got a destination, reached the bridge, came back with a path, and
+   * was allowed by the folder the main process remembered from the dialog.
    */
   revealedPaths(): Promise<string[]>
 }

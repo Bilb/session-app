@@ -10,20 +10,17 @@ import { DesktopApp } from '../harness/DesktopApp'
 import { SEEDED_LIST } from '../harness/fixtures'
 
 /**
- * Exporting a file that is already here, all the way to bytes on disk.
+ * Exporting a file that is already here, as far as main revealing where it landed.
  *
  * Launched directly rather than through `sessionTest` because answering a save dialog is
  * desktop-only - the same reason the performance specs do - and only the chooser is replaced.
  * Everything after it is real: the IPC, the folder the main process remembers before it will
- * reveal anything in it, and libsession writing the file.
- *
- * Worth having because the verb went in before the port did. For a while the row said Export,
- * the tap resolved, and nothing happened at all.
+ * reveal anything in it, and the bridge writing the file.
  *
  * What is asserted is the reveal, not bytes on disk: the fake holds no file to write, so a
  * filesystem check here would be measuring the fake rather than the app. A reveal that happened
- * is a save that got a destination, crossed the IPC, reached libsession, came back with a path,
- * and was let through by the folder the main process remembered from the dialog.
+ * is an export that got a destination, crossed the IPC, reached the bridge, came back with a
+ * path, and was let through by the folder the main process remembered from the dialog.
  */
 test('exports an attachment to a folder somebody chose @desktop @medium-risk', async () => {
   const app = await DesktopApp.launch('alice')
@@ -50,7 +47,7 @@ test('exports an attachment to a folder somebody chose @desktop @medium-risk', a
  * The same tap, answered by somebody who changed their mind.
  *
  * Its own scenario because the cancel path is the one that runs whenever a person hesitates, and
- * a save that treated a dismissed dialog as a destination would write to whatever the empty
+ * an export that treated a dismissed dialog as a destination would write to whatever the empty
  * string resolves to.
  */
 test('writes nothing when the save dialog is dismissed @desktop @low-risk', async () => {
