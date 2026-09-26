@@ -7,8 +7,8 @@ export type FetchState = 'idle' | 'fetching' | 'ready' | 'failed' | 'unavailable
 export interface Fetch {
   state: FetchState
   /** Encrypted bytes moved and expected. Both 0 unless something is running. */
-  done: number
-  total: number
+  doneBytes: number
+  totalBytes: number
 }
 
 /**
@@ -22,7 +22,7 @@ export interface Fetch {
  * given up, and it carries fresher figures while one is running.
  */
 export function fetchOf(attachment: Attachment, report?: AttachmentTransferState): Fetch {
-  const none = { done: 0, total: 0 }
+  const none = { doneBytes: 0, totalBytes: 0 }
 
   // A verdict on the file rather than on this attempt, so retrying will not change it. Checked
   // before the cached case cannot arise: libsession reports one availability, and a copy in the
@@ -35,12 +35,12 @@ export function fetchOf(attachment: Attachment, report?: AttachmentTransferState
     return { state: 'ready', ...none }
 
   if (report?.state === 'running')
-    return { state: 'fetching', done: report.doneBytes, total: report.totalBytes }
+    return { state: 'fetching', doneBytes: report.doneBytes, totalBytes: report.totalBytes }
   if (attachment.availability === 'fetching')
     return {
       state: 'fetching',
-      done: attachment.fetchDoneBytes,
-      total: attachment.fetchTotalBytes,
+      doneBytes: attachment.fetchDoneBytes,
+      totalBytes: attachment.fetchTotalBytes,
     }
 
   return { state: 'idle', ...none }

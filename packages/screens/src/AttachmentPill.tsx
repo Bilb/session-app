@@ -40,7 +40,7 @@ export function AttachmentPill({ set }: { set: AttachmentSet }) {
           <Progress
             // Absent rather than zero while the server has not said how big it is: the first
             // report of any transfer is 0 of 0, which means beginning and not empty.
-            {...(set.total > 0 ? { value: set.done / set.total } : {})}
+            {...(set.totalBytes > 0 ? { value: set.doneBytes / set.totalBytes } : {})}
             color="$primaryColor"
             trackColor="$backgroundTertiary"
             testID={ELEMENT.conversation.attachmentProgress}
@@ -56,11 +56,11 @@ const PILL_BAR_WIDTH = 44
 
 function label(set: AttachmentSet): string {
   if (set.state === 'fetching') {
-    return set.total === 0 ? tr('downloading') : formatBytes(set.done)
+    return set.totalBytes === 0 ? tr('downloading') : formatBytes(set.doneBytes)
   }
   if (set.state === 'failed') return tr('failedToDownload')
   // Idle: how many there are and what they weigh, which is what somebody deciding needs. The
   // count is the half our aggregate never said, and no catalogue key takes one.
   const count = PENDING_COPY.attachmentCount(set.count)
-  return set.size === undefined ? count : `${count} · ${formatBytes(set.size)}`
+  return set.sizeBytes === undefined ? count : `${count} · ${formatBytes(set.sizeBytes)}`
 }

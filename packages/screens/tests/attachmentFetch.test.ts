@@ -36,7 +36,7 @@ describe('what an attachment is doing', () => {
       attachment({ availability: 'fetching', fetchDoneBytes: 100, fetchTotalBytes: 900 }),
       report({ doneBytes: 400, totalBytes: 900 }),
     )
-    expect(fetched).toEqual({ state: 'fetching', done: 400, total: 900 })
+    expect(fetched).toEqual({ state: 'fetching', doneBytes: 400, totalBytes: 900 })
   })
 
   it('falls back to the page’s figures for a transfer somebody else started', () => {
@@ -46,8 +46,8 @@ describe('what an attachment is doing', () => {
       fetchOf(attachment({ availability: 'fetching', fetchDoneBytes: 7, fetchTotalBytes: 9 })),
     ).toEqual({
       state: 'fetching',
-      done: 7,
-      total: 9,
+      doneBytes: 7,
+      totalBytes: 9,
     })
   })
 
