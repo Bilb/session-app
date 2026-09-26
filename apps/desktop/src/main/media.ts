@@ -1,5 +1,6 @@
 import { protocol } from 'electron'
 
+import { isViewableContentType, mediaKindOf } from '@session/basic-types'
 import type { Preview } from '@session/bridge-node'
 import type { AttachmentRef } from '@session/client'
 
@@ -63,6 +64,57 @@ export function parseMediaUrl(url: string): { kind: MediaUrlKind; ref: Attachmen
   return { kind, ref: { messageId, index: at } }
 }
 
+/** Leading bytes of each format the scheme serves, as `[offset, bytes]` runs that must all match. */
+const SIGNATURES: readonly (readonly [contentType: string, runs: readonly [number, string][]])[] = [
+  ['image/png', [[0, '\x89PNG\r\n\x1a\n']]],
+  ['image/jpeg', [[0, '\xff\xd8\xff']]],
+  ['image/gif', [[0, 'GIF87a']]],
+  ['image/gif', [[0, 'GIF89a']]],
+  [
+    'image/webp',
+    [
+      [0, 'RIFF'],
+      [8, 'WEBP'],
+    ],
+  ],
+  ['image/bmp', [[0, 'BM']]],
+  ['video/mp4', [[4, 'ftyp']]],
+  ['video/webm', [[0, '\x1a\x45\xdf\xa3']]],
+  ['video/ogg', [[0, 'OggS']]],
+]
+
+function sniffContentType(bytes: Uint8Array): string | null {
+  const match = SIGNATURES.find(([, runs]) =>
+    runs.every(([at, run]) => [...run].every((c, i) => bytes[at + i] === c.charCodeAt(0))),
+  )
+  return match?.[0] ?? null
+}
+
+/**
+ * The type to serve an attachment's bytes as, or null to refuse them.
+ *
+ * The sender declares the type, and an `<img>` decodes whatever format the bytes really are, so
+ * the declaration alone decides nothing. Served only when it is on the viewable list and the bytes
+ * are that family; the type returned is what the bytes are.
+ */
+export function servableContentType(declared: string, bytes: Uint8Array): string | null {
+  if (!isViewableContentType(declared)) return null
+  const sniffed = sniffContentType(bytes)
+  if (sniffed === null || mediaKindOf(sniffed) !== mediaKindOf(declared)) return null
+  return sniffed
+}
+
+function mediaHeaders(contentType: string): Record<string, string> {
+  return {
+    'content-type': contentType,
+    // Keeps the bytes from ever being taken as a script or stylesheet; it does not gate what an
+    // `<img>` decodes, which is what servableContentType is for.
+    'x-content-type-options': 'nosniff',
+    // Opened as a document rather than drawn, the response gets no script and no origin.
+    'content-security-policy': "sandbox; default-src 'none'",
+  }
+}
+
 /**
  * Serves the scheme from the bridge, in the main process, where the addon already is.
  *
@@ -82,8 +134,7 @@ export function serveMedia(bridge: MediaSource): void {
         return new Response(encodePng(preview.width, preview.height, preview.rgba), {
           status: 200,
           headers: {
-            'content-type': 'image/png',
-            'x-content-type-options': 'nosniff',
+            ...mediaHeaders('image/png'),
             // A placeholder is derived from 25 bytes that arrived with the message, so it cannot
             // change while the message exists.
             'cache-control': 'private, max-age=3600',
@@ -92,12 +143,12 @@ export function serveMedia(bridge: MediaSource): void {
       }
 
       const media = await bridge.fetchMedia(target.ref)
+      const contentType = servableContentType(media.contentType, media.bytes)
+      if (contentType === null) return new Response(null, { status: 415 })
       return new Response(new Uint8Array(media.bytes), {
         status: 200,
         headers: {
-          'content-type': media.contentType,
-          // The sender chose the type and the name, so a browser deciding for itself is a way in.
-          'x-content-type-options': 'nosniff',
+          ...mediaHeaders(contentType),
           // Bytes for one message never change, and the cache is libsession's problem rather than
           // Chromium's - but within one run, re-decrypting on every scroll past is pure waste.
           'cache-control': 'private, max-age=3600',
