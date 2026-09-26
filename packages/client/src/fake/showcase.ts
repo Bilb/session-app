@@ -36,7 +36,7 @@ export function showcase(names: readonly [FixtureName, FixtureName] = ['Alice', 
     ['Twelve, so seven are behind the count', set(image(12))],
     ['Thirty-two', set(image(32))],
 
-    // The same shapes with nothing to draw before the bytes, which is every 1.x sender.
+    // The same shapes from a sender that supplied no ThumbHash, so nothing draws before the bytes.
     ['Three with no hash to draw', set(image(3), { hashed: false })],
     ['Five with no hash to draw', set(image(5), { hashed: false })],
 
@@ -64,8 +64,7 @@ export function showcase(names: readonly [FixtureName, FixtureName] = ['Alice', 
   ]
 
   for (const [body, attachments] of messages) {
-    // Delivered rather than sent: attaching is not in the protocol, so the only way one exists is
-    // arriving. Nothing is fetched - the conversation has not been asked yet.
+    // Nothing is fetched: the conversation has not been asked what to download.
     first.deliverFrom(second, body, world.now(), attachments)
     world.settle()
   }

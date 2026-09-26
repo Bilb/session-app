@@ -290,8 +290,7 @@ struct Attachment {
     std::optional<double> width;
     std::optional<double> height;
     /// Whether the sender supplied a ThumbHash, which is something to draw in the picture's place
-    /// until its bytes arrive. False for everything sent by a client that does not encode one, which
-    /// today is every 1.x client.
+    /// until its bytes arrive. False when the sender supplied none.
     ///
     /// A flag rather than the pixels: a placeholder is an image, and an image is resolved through the
     /// media port like any other rather than riding the frame stream. What it names is the second

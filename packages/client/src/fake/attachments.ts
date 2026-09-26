@@ -9,9 +9,8 @@ import { friends, type FakeSetup, type FixtureName } from './fixtures'
  * Dimensions are the sender's and are what the placeholder is laid out from, so they are set:
  * without them a transcript jumps as each one lands.
  *
- * `hasPreview` is set because no 1.x client sends a ThumbHash at all, so this fixture is the only
- * way to see the placeholder before something learns to encode them. The fake's preview door
- * answers with a flat colour: what it exercises is the route, not the decoder.
+ * `hasPreview` is set so the placeholder is drawn. The fake's preview door answers these with a
+ * flat colour: what it exercises is the route, not the decoder.
  */
 const SEEDED_PICTURES: Attachment[] = [
   {
@@ -102,7 +101,7 @@ const SEEDED_MANY: Attachment[] = Array.from({ length: 13 }, (_, at) => ({
 }))
 
 /**
- * The average colour of each photo the dev media folder holds, as a real BlurHash.
+ * The average colour of each photo the dev media folder holds, as a real ThumbHash.
  *
  * Encoded from the files by libsession's own encoder rather than invented, so what the fake draws
  * before a photograph arrives is what a recipient would actually be sent -- including the format's
@@ -156,9 +155,8 @@ const TYPES: Record<Kind, { contentType: string; extension: string }> = {
 /**
  * One attachment of a showcase message.
  *
- * `hashed` is the axis worth being able to turn off: every 1.x client sends no BlurHash at all,
- * so the flat surface and its glyph is the permanent case and has to be as easy to look at as
- * the coloured one.
+ * `hashed: false` is a sender that supplied no ThumbHash, whose flat surface and glyph has to be
+ * as easy to look at as the coloured placeholder.
  */
 function showpiece(
   index: number,
@@ -251,8 +249,7 @@ type SeededSet = keyof typeof SEEDED_SETS
  * the list draws, and one longer than the transcript list holds - the fewest that reach each code
  * path; `expired` adds a file the server no longer holds.
  *
- * Delivered rather than sent, since the protocol cannot send one, and nothing is fetched: the
- * conversation has not been asked what to download.
+ * Nothing is fetched: the conversation has not been asked what to download.
  */
 export function friendsWithAttachments(
   names: readonly [FixtureName, FixtureName] = ['Alice', 'Bob'],
