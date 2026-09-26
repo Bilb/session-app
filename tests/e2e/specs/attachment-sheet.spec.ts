@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test'
 import { ELEMENT } from '@session/test-ids'
 
+import { openFirstConversation } from '../harness/attachments'
 import { sessionTest } from '../harness/sessionTest'
 
 /**
@@ -17,9 +18,7 @@ sessionTest({
   run: async ({ alice }) => {
     if (!alice) throw new Error('the harness did not open alice')
 
-    await alice.waitForVisible(ELEMENT.conversationList.screen)
-    await alice.tap(ELEMENT.conversationList.row(0))
-    await alice.waitForVisible(ELEMENT.conversation.screen)
+    await openFirstConversation(alice)
 
     // Two rows from the mixed message and eight of the thirteen from the long one. The five the
     // transcript is not drawing are what the sheet is for.

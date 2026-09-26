@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import { ELEMENT } from '@session/test-ids'
 
+import { downloadFirstAttachment, openFirstConversation } from '../harness/attachments'
 import { DesktopApp } from '../harness/DesktopApp'
 import { SEEDED_LIST } from '../harness/fixtures'
 
@@ -30,17 +31,10 @@ test('exports an attachment to a folder somebody chose @desktop @medium-risk', a
   const destination = join(mkdtempSync(join(tmpdir(), 'session2-export-')), SEEDED_LIST[0])
 
   try {
-    await app.waitForVisible(ELEMENT.conversationList.screen)
-    await app.tap(ELEMENT.conversationList.row(0))
-    await app.waitForVisible(ELEMENT.conversation.screen)
+    await openFirstConversation(app)
 
     // Export is only offered for bytes we hold, so the file has to arrive first.
-    await app.tap(ELEMENT.conversation.attachmentDownload)
-    await app.waitForVisible(ELEMENT.conversation.autoDownloadPrompt)
-    await app.tap(ELEMENT.conversation.autoDownloadNo)
-    await expect
-      .poll(async () => app.isVisible(ELEMENT.conversation.attachmentExport), { timeout: 10_000 })
-      .toBe(true)
+    await downloadFirstAttachment(app)
 
     await app.recordReveals()
     await app.answerSaveDialogWith(destination)
@@ -63,16 +57,9 @@ test('writes nothing when the save dialog is dismissed @desktop @low-risk', asyn
   const app = await DesktopApp.launch('alice')
 
   try {
-    await app.waitForVisible(ELEMENT.conversationList.screen)
-    await app.tap(ELEMENT.conversationList.row(0))
-    await app.waitForVisible(ELEMENT.conversation.screen)
+    await openFirstConversation(app)
 
-    await app.tap(ELEMENT.conversation.attachmentDownload)
-    await app.waitForVisible(ELEMENT.conversation.autoDownloadPrompt)
-    await app.tap(ELEMENT.conversation.autoDownloadNo)
-    await expect
-      .poll(async () => app.isVisible(ELEMENT.conversation.attachmentExport), { timeout: 10_000 })
-      .toBe(true)
+    await downloadFirstAttachment(app)
 
     await app.recordReveals()
     await app.cancelNextSaveDialog()

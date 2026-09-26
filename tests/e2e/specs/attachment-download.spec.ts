@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test'
 import { ELEMENT } from '@session/test-ids'
 
+import { downloadFirstAttachment, openFirstConversation } from '../harness/attachments'
 import { SEEDED_LIST } from '../harness/fixtures'
 import { sessionTest } from '../harness/sessionTest'
 
@@ -19,9 +20,7 @@ sessionTest({
   run: async ({ alice }) => {
     if (!alice) throw new Error('the harness did not open alice')
 
-    await alice.waitForVisible(ELEMENT.conversationList.screen)
-    await alice.tap(ELEMENT.conversationList.row(0))
-    await alice.waitForVisible(ELEMENT.conversation.screen)
+    await openFirstConversation(alice)
 
     // Nothing fetches itself. Resolving a media url *is* a download - the url is the request -
     // so a tile handed one has spent somebody's data before anyone was asked, and unset means
@@ -36,33 +35,23 @@ sessionTest({
     const names = await alice.readAllText(ELEMENT.conversation.attachmentName)
     expect(names.slice(0, SEEDED_LIST.length)).toEqual(SEEDED_LIST)
 
-    await alice.tap(ELEMENT.conversation.attachmentDownload)
-
     // Asked on the first attachment fetched in a conversation and never again, because the
-    // answer - `no` included - is what records that the question was put.
-    await alice.waitForVisible(ELEMENT.conversation.autoDownloadPrompt)
-    await alice.tap(ELEMENT.conversation.autoDownloadNo)
-    // Polled rather than read straight after the tap: a dialog fades where the overlay it
-    // replaced simply stopped being rendered, so the synchronous read was only ever passing
-    // because something else on screen was slow enough to cover the animation.
+    // answer - `no` included - is what records that the question was put. Downloaded is the row
+    // offering to export: the two verbs tell "the bytes are not here" apart from "the bytes are
+    // here and can be written out".
+    await downloadFirstAttachment(alice)
+    // Polled because the dialog fades out rather than disappearing on the tap.
     await expect
       .poll(async () => alice.isVisible(ELEMENT.conversation.autoDownloadPrompt), {
         timeout: 5_000,
       })
       .toBe(false)
 
-    // Downloaded is the row offering to export: the two verbs are what tells "the bytes are
-    // not here" apart from "the bytes are here and can be written out".
-    await expect
-      .poll(async () => alice.isVisible(ELEMENT.conversation.attachmentExport), { timeout: 10_000 })
-      .toBe(true)
-
     // Left and come back. The window is dropped when a screen stops showing it, so the store has
     // nothing to remember this by: what redraws it as downloaded is the page saying so, which is
     // the only thing that can - no event ever announces a file that is simply already here.
     await alice.tap(ELEMENT.conversation.back)
-    await alice.tap(ELEMENT.conversationList.row(0))
-    await alice.waitForVisible(ELEMENT.conversation.screen)
+    await openFirstConversation(alice)
     await expect
       .poll(async () => alice.isVisible(ELEMENT.conversation.attachmentExport), { timeout: 10_000 })
       .toBe(true)

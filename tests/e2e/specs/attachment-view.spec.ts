@@ -2,6 +2,7 @@ import { expect } from '@playwright/test'
 import { ELEMENT } from '@session/test-ids'
 
 import { SEEDED_ALBUM, SEEDED_LIST } from '../harness/fixtures'
+import { openFirstConversation } from '../harness/attachments'
 import { sessionTest } from '../harness/sessionTest'
 
 /**
@@ -28,9 +29,7 @@ sessionTest({
   run: async ({ alice }) => {
     if (!alice) throw new Error('the harness did not open alice')
 
-    await alice.waitForVisible(ELEMENT.conversationList.screen)
-    await alice.tap(ELEMENT.conversationList.row(0))
-    await alice.waitForVisible(ELEMENT.conversation.screen)
+    await openFirstConversation(alice)
 
     expect(await alice.count(ELEMENT.conversation.attachmentViewGallery)).toBe(1)
 
