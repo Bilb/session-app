@@ -5,9 +5,9 @@ import { isInChosenFolder } from '#src/main/files'
 /**
  * What the renderer is allowed to hand the operating system.
  *
- * `showItemInFolder` and `openPath` both act on a path the page supplied, and the page is not
- * trusted to have checked one - the same standard `open-external` holds itself to. The rule is
- * that a path has to sit in a folder somebody pointed at in a save dialog this run.
+ * `showItemInFolder` acts on a path the page supplied, and the page is not trusted to have
+ * checked one - the same standard `open-external` holds itself to. The rule is that a path has
+ * to sit in a folder somebody pointed at in a save dialog this run.
  */
 describe('a path the page asks to reveal', () => {
   const chosen = new Set(['/home/someone/Documents'])

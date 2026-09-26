@@ -36,6 +36,5 @@ interface Window {
     openExternal(url: string): void
     chooseExportLocation(suggestedName: string): Promise<string | null>
     revealInFolder(path: string): Promise<void>
-    openPath(path: string): Promise<void>
   }
 }
