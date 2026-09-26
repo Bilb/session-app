@@ -39,7 +39,7 @@ export function isInChosenFolder(path: unknown, folders: ReadonlySet<string>): p
  * the renderer may reach is not a decision the renderer can be trusted with.
  */
 export function serveFiles(): void {
-  ipcMain.handle('files:choose-save-location', async (event, suggested: unknown) => {
+  ipcMain.handle('files:choose-export-location', async (event, suggested: unknown) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     const name = typeof suggested === 'string' ? suggested : ''
     // Modal to the window that asked rather than to the app: a second window is not blocked by a
