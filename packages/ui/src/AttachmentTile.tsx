@@ -70,16 +70,15 @@ export function AttachmentTile({
 }: AttachmentTileProps) {
   const radius = tileRadius(side)
   /**
-   * Whether this tile's own picture has arrived.
+   * Which url's picture has arrived.
    *
-   * From the image rather than from a transfer, because that is what a url is: asking for one is
-   * what starts the fetch, and the load is the only honest report that the bytes are on screen.
-   * Each tile therefore resolves on its own - the album fills in one attachment at a time, which
-   * is the per-item signal, for no chrome at all.
+   * From the image rather than from a transfer: asking for a url is what starts the fetch, and the
+   * load is the only honest report that the bytes are on screen. Keyed on the url, so a new one
+   * starts hidden over the placeholder instead of showing an empty frame until it loads.
    */
-  const [loaded, setLoaded] = useState(false)
+  const [loadedUri, setLoadedUri] = useState<string | null>(null)
   const drawable = uri !== undefined && uri !== null
-  const here = drawable && loaded
+  const here = drawable && loadedUri === uri
   /** The sender's placeholder, where there is one and this platform can resolve it. */
   const placeholder = preview !== undefined && preview !== null ? preview : null
 
@@ -127,14 +126,14 @@ export function AttachmentTile({
       )}
 
       {!drawable ? null : (
-        <YStack opacity={loaded ? 1 : 0}>
+        <YStack opacity={here ? 1 : 0}>
           <Image
             uri={uri}
             width={side}
             height={side}
             borderRadius={radius}
             onLoad={() => {
-              setLoaded(true)
+              setLoadedUri(uri)
             }}
             {...(testID === undefined ? {} : { testID })}
           />
