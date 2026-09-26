@@ -373,6 +373,11 @@ export class FakeSessionClient implements SessionClient {
 
   setAttachmentCacheLimit(limitBytes?: number): Promise<void> {
     this.assertOpen()
+    if (limitBytes !== undefined && limitBytes < 0) {
+      return Promise.reject(
+        new SessionClientError('setAttachmentCacheLimit.limitBytes must not be negative'),
+      )
+    }
     // Remembered but not enforced: the fake caches in memory and never evicts, so a limit has
     // nothing to bound. It is kept so a screen that reads one back sees what it wrote.
     this.account.setAttachmentCacheLimit(limitBytes)

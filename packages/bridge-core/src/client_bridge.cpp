@@ -1043,8 +1043,13 @@ struct ClientBridge::Impl {
 
     void handle(double id, const SetAttachmentCacheLimitCommand& cmd) {
         std::optional<int64_t> limit_bytes;
-        if (cmd.limit_bytes)
+        if (cmd.limit_bytes) {
             limit_bytes = whole<int64_t>(*cmd.limit_bytes, "setAttachmentCacheLimit.limitBytes");
+            // libsession would store it and evict until the cache fits, which is everything.
+            if (*limit_bytes < 0)
+                throw std::invalid_argument{
+                        "setAttachmentCacheLimit.limitBytes must not be negative"};
+        }
         client->set_attachment_cache_limit(limit_bytes, on(id, [this, id] { ok(id); }));
     }
 
