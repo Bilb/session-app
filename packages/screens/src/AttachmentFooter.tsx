@@ -164,11 +164,11 @@ function caption(set: AttachmentSet): string {
   if (set.state === 'fetching') {
     // Indeterminate until the server says how big it is, which is what a total of 0 means - the
     // first report of any transfer is 0 of 0.
-    if (set.total === 0) return tr('downloading')
-    return `${formatBytes(set.done)} / ${formatBytes(set.total)}`
+    if (set.totalBytes === 0) return tr('downloading')
+    return `${formatBytes(set.doneBytes)} / ${formatBytes(set.totalBytes)}`
   }
   if (set.state === 'failed') return tr('failedToDownload')
-  return set.size === undefined ? '' : formatBytes(set.size)
+  return set.sizeBytes === undefined ? '' : formatBytes(set.sizeBytes)
 }
 
 /**

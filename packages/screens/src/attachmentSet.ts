@@ -16,26 +16,23 @@ export interface AttachmentSet {
   /** How many attachments the message has, drawn or not. */
   count: number
   /** Plaintext bytes across the set, absent when any attachment did not declare its size. */
-  size?: number
+  sizeBytes?: number | undefined
   /**
-   * How much of the whole set is here, in the same plaintext bytes `size` counts.
+   * How much of the whole set is here, in the same plaintext bytes `sizeBytes` counts.
    *
-   * **Over every attachment, not over the ones currently moving.** Folded over the running ones
-   * it went backwards: a file that landed left both sums, so `done` fell and the total fell with
-   * it - the set got smaller because part of it had arrived. A reading that goes backwards is
-   * worse than no reading.
+   * **Over every attachment, not over the ones currently moving**, so the reading never goes
+   * backwards: a file that lands would otherwise leave both sums and shrink the set.
    *
-   * A file already here counts as all of itself, so a set that was half cached starts half done
-   * rather than covering ground it has already covered. A running one counts for its share,
-   * taken as the fraction its own report gives: that fraction is computed from encrypted bytes,
-   * which is the only honest way to get it, and then applied to the plaintext size so the two
-   * numbers on screen are in the same units as each other and as `size`.
+   * A file already here counts as all of itself, so a set that was half cached starts half done.
+   * A running one counts for its share, taken as the fraction its own report gives: that fraction
+   * is computed from encrypted bytes, which is the only honest way to get it, and then applied to
+   * the plaintext size so the two numbers on screen are in the same units as each other.
    *
-   * `total` is 0 when any attachment declined to say how big it is, which is what
-   * "indeterminate" means here - the same thing an absent `size` means.
+   * `totalBytes` is 0 when any attachment declined to say how big it is, which is what
+   * "indeterminate" means here - the same thing an absent `sizeBytes` means.
    */
-  done: number
-  total: number
+  doneBytes: number
+  totalBytes: number
   /** How many failed. The gallery draws the count; only the list can say which. */
   failed: number
 }
@@ -74,8 +71,8 @@ export function summarise(
     if (fetch.state === 'fetching') {
       running += 1
       // The fraction comes from the encrypted figures because that is what is being moved; it is
-      // then spent against the plaintext size, so `done` and `total` agree with each other.
-      const fraction = fetch.total > 0 ? fetch.done / fetch.total : 0
+      // then spent against the plaintext size, so `doneBytes` and `totalBytes` agree.
+      const fraction = fetch.totalBytes > 0 ? fetch.doneBytes / fetch.totalBytes : 0
       done += (attachment.sizeBytes ?? 0) * fraction
     }
   }
@@ -92,11 +89,11 @@ export function summarise(
   return {
     state,
     count: attachments.length,
-    ...(size === undefined ? {} : { size }),
+    sizeBytes: size,
     // Rounded once, at the end: a sum of fractions of byte counts is not a byte count, and a
     // display that formatted it would show a size nobody's file has.
-    done: Math.round(done),
-    total: size ?? 0,
+    doneBytes: Math.round(done),
+    totalBytes: size ?? 0,
     failed,
   }
 }

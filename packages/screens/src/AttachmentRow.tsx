@@ -91,7 +91,7 @@ export function AttachmentRow({
       state={state}
       // Absent while the server has not said how big the file is, which is what the first report
       // of every transfer means: an empty ring rather than a full one.
-      {...(fetched.total > 0 ? { progress: fetched.done / fetched.total } : {})}
+      {...(fetched.totalBytes > 0 ? { progress: fetched.doneBytes / fetched.totalBytes } : {})}
       {...(state === 'unavailable' || state === 'fetching'
         ? {}
         : { actionLabel: actionLabel(state), onAction: act })}
@@ -121,8 +121,8 @@ function caption(
   if (state === 'failed') return tr('failedToDownload')
   if (state === 'fetching') {
     // Indeterminate until the server says how big it is, which is what a total of 0 means.
-    if (fetched.total === 0) return tr('downloading')
-    return `${formatBytes(fetched.done)} / ${formatBytes(fetched.total)}`
+    if (fetched.totalBytes === 0) return tr('downloading')
+    return `${formatBytes(fetched.doneBytes)} / ${formatBytes(fetched.totalBytes)}`
   }
   if (exporting) return PENDING_COPY.exporting
   return attachment.sizeBytes === undefined ? '' : formatBytes(attachment.sizeBytes)
