@@ -10,13 +10,11 @@ describe('a media url', () => {
   it('names a message and a position under each authority', () => {
     expect(parseMediaUrl(`${MEDIA_SCHEME}://attachment/42/1`)).toEqual({
       kind: 'attachment',
-      messageId: 42,
-      index: 1,
+      ref: { messageId: 42, index: 1 },
     })
     expect(parseMediaUrl(`${MEDIA_SCHEME}://preview/42/0`)).toEqual({
       kind: 'preview',
-      messageId: 42,
-      index: 0,
+      ref: { messageId: 42, index: 0 },
     })
   })
 

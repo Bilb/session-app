@@ -222,8 +222,12 @@ describeAddon('the N-API addon', () => {
       deferAccount: true,
     })
 
-    await expect(transport.fetchMedia(424_242, 0)).rejects.toThrow(/does not exist/)
-    await expect(transport.fetchPreview(424_242, 0)).rejects.toThrow(/no such attachment/)
+    await expect(transport.fetchMedia({ messageId: 424_242, index: 0 })).rejects.toThrow(
+      /does not exist/,
+    )
+    await expect(transport.fetchPreview({ messageId: 424_242, index: 0 })).rejects.toThrow(
+      /no such attachment/,
+    )
     transport.close()
   })
 
@@ -234,8 +238,8 @@ describeAddon('the N-API addon', () => {
       deferAccount: true,
     })
 
-    const media = transport.fetchMedia(1, 0)
-    const preview = transport.fetchPreview(1, 0)
+    const media = transport.fetchMedia({ messageId: 1, index: 0 })
+    const preview = transport.fetchPreview({ messageId: 1, index: 0 })
     transport.close()
 
     await expect(media).rejects.toThrow('the bridge is closed')

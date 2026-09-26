@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
+import type { Preview } from '@session/bridge-node'
 import type { AttachmentRef, BridgeTransport } from '@session/client'
 import {
   PHOTO_THUMBHASHES,
@@ -16,19 +17,6 @@ import type { MediaSource } from '../media'
 import { encodePng } from '../png'
 import { decodeThumbhash } from './thumbhash'
 
-/**
- * A one-pixel PNG, per attachment, in a colour derived from what it belongs to.
- *
- * Enough for the media scheme to be exercised end to end without a network: a test can assert
- * that a picture drew, and `dev:fake` shows something rather than a broken image. Deliberately
- * not a real photograph - a fixture that has to be looked at is a fixture nobody updates.
- */
-function swatchPng(messageId: number, index: number): Uint8Array {
-  const hue = (messageId * 37 + index * 89) % 360
-  const [r, g, b] = hslToRgb(hue)
-  return encodePng(1, 1, new Uint8Array([r, g, b, 255]))
-}
-
 function hslToRgb(hue: number): [number, number, number] {
   const section = hue / 60
   const x = Math.round(255 * (1 - Math.abs((section % 2) - 1)))
@@ -41,6 +29,22 @@ function hslToRgb(hue: number): [number, number, number] {
     [255, 0, x],
   ]
   return table[Math.floor(section) % 6] ?? [255, 0, 0]
+}
+
+function swatchColour({ messageId, index }: AttachmentRef): [number, number, number] {
+  return hslToRgb((messageId * 37 + index * 89) % 360)
+}
+
+/**
+ * A one-pixel PNG, per attachment, in a colour derived from what it belongs to.
+ *
+ * Enough for the media scheme to be exercised end to end without a network: a test can assert
+ * that a picture drew, and `dev:fake` shows something rather than a broken image. Deliberately
+ * not a real photograph - a fixture that has to be looked at is a fixture nobody updates.
+ */
+function swatchPng(ref: AttachmentRef): Uint8Array {
+  const [r, g, b] = swatchColour(ref)
+  return encodePng(1, 1, new Uint8Array([r, g, b, 255]))
 }
 
 /**
@@ -102,10 +106,7 @@ async function realPhoto(
  * no addon to borrow libsession's decoder from. What is drawn is therefore what a recipient would
  * be sent, limits included, rather than a downscale that flatters the format.
  */
-function fakePreview(
-  client: FakeSessionClient,
-  ref: AttachmentRef,
-): { width: number; height: number; rgba: Uint8Array } {
+function fakePreview(client: FakeSessionClient, ref: AttachmentRef): Preview {
   const photo = photoNumber(client.locate(ref)?.attachment.filename)
   const hash = photo === null ? undefined : PHOTO_THUMBHASHES[Number(photo) - 1]
   if (hash !== undefined) {
@@ -118,7 +119,7 @@ function fakePreview(
   }
 
   // An attachment with no photograph behind it still has to answer the door.
-  const [r, g, b] = hslToRgb((ref.messageId * 37 + ref.index * 89) % 360)
+  const [r, g, b] = swatchColour(ref)
   const rgba = new Uint8Array(8 * 6 * 4)
   for (let i = 0; i < 8 * 6; i += 1) rgba.set([r, g, b, 255], i * 4)
   return { width: 8, height: 6, rgba }
@@ -174,19 +175,19 @@ export function createFakeBridge(): BridgeTransport & MediaSource {
 
   return {
     ...createFakeTransport(alice),
-    async fetchMedia(messageId: number, index: number) {
+    async fetchMedia(ref: AttachmentRef) {
       // Through the same door a tap uses. Serving this scheme *is* a fetch: the real bridge
       // fills the cache and libsession announces the availability change, so a fake that handed
       // bytes back without either would leave every picture it just drew still reported as one
       // nobody has. Cheap to repeat - a cached attachment answers at once.
-      await alice.downloadAttachment(messageId, index)
-      const photo = await realPhoto(alice, { messageId, index })
+      await alice.downloadAttachment(ref.messageId, ref.index)
+      const photo = await realPhoto(alice, ref)
       if (photo) return photo
-      return { contentType: 'image/png', bytes: swatchPng(messageId, index) }
+      return { contentType: 'image/png', bytes: swatchPng(ref) }
     },
 
-    fetchPreview(messageId: number, index: number) {
-      return Promise.resolve(fakePreview(alice, { messageId, index }))
+    fetchPreview(ref: AttachmentRef) {
+      return Promise.resolve(fakePreview(alice, ref))
     },
   }
 }

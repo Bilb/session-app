@@ -1,5 +1,8 @@
 import { protocol } from 'electron'
 
+import type { Preview } from '@session/bridge-node'
+import type { AttachmentRef } from '@session/client'
+
 import { encodePng } from './png'
 
 /**
@@ -9,11 +12,8 @@ import { encodePng } from './png'
  * the dev fake has no addon to borrow the type from.
  */
 export interface MediaSource {
-  fetchMedia(messageId: number, index: number): Promise<{ contentType: string; bytes: Uint8Array }>
-  fetchPreview(
-    messageId: number,
-    index: number,
-  ): Promise<{ width: number; height: number; rgba: Uint8Array }>
+  fetchMedia(ref: AttachmentRef): Promise<{ contentType: string; bytes: Uint8Array }>
+  fetchPreview(ref: AttachmentRef): Promise<Preview>
 }
 
 /**
@@ -56,7 +56,7 @@ const PREVIEW_HOST = 'preview'
 /** `session-media://<attachment|preview>/<messageId>/<index>` split back up, or null. */
 export function parseMediaUrl(
   url: string,
-): { kind: 'attachment' | 'preview'; messageId: number; index: number } | null {
+): { kind: 'attachment' | 'preview'; ref: AttachmentRef } | null {
   let parsed: URL
   try {
     parsed = new URL(url)
@@ -74,7 +74,7 @@ export function parseMediaUrl(
   const at = Number(index)
   if (!Number.isInteger(messageId) || messageId <= 0) return null
   if (!Number.isInteger(at) || at < 0) return null
-  return { kind, messageId, index: at }
+  return { kind, ref: { messageId, index: at } }
 }
 
 /**
@@ -92,7 +92,7 @@ export function serveMedia(bridge: MediaSource): void {
 
     try {
       if (target.kind === 'preview') {
-        const preview = await bridge.fetchPreview(target.messageId, target.index)
+        const preview = await bridge.fetchPreview(target.ref)
         return new Response(encodePng(preview.width, preview.height, preview.rgba), {
           status: 200,
           headers: {
@@ -105,7 +105,7 @@ export function serveMedia(bridge: MediaSource): void {
         })
       }
 
-      const media = await bridge.fetchMedia(target.messageId, target.index)
+      const media = await bridge.fetchMedia(target.ref)
       return new Response(new Uint8Array(media.bytes), {
         status: 200,
         headers: {
