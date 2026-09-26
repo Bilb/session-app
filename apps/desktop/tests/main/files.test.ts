@@ -1,3 +1,5 @@
+import { resolve } from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 
 import { isInChosenFolder } from '#src/main/files'
@@ -31,6 +33,17 @@ describe('a path the page asks to reveal', () => {
     // A prefix test would pass these. The comparison is the whole directory, not its start.
     expect(isInChosenFolder('/home/someone/Documents-old/x.pdf', chosen)).toBe(false)
     expect(isInChosenFolder('/home/someone/Documents/nested/x.pdf', chosen)).toBe(false)
+  })
+
+  it('is resolved before it is compared', () => {
+    expect(isInChosenFolder('Downloads/itinerary.pdf', new Set([resolve('Downloads')]))).toBe(true)
+    expect(isInChosenFolder('/home/someone/Documents/../Documents/x.pdf', chosen)).toBe(true)
+    expect(isInChosenFolder('/home/someone/Documents/../.ssh/id_ed25519', chosen)).toBe(false)
+  })
+
+  it('ignores case only where paths are case-insensitive', () => {
+    expect(isInChosenFolder('/home/someone/documents/x.pdf', chosen, true)).toBe(true)
+    expect(isInChosenFolder('/home/someone/documents/x.pdf', chosen, false)).toBe(false)
   })
 
   it('is refused before anybody has chosen anything', () => {
