@@ -64,7 +64,7 @@ function encryptedSize(sizeBytes: number): number {
 }
 
 /** How many reports a transfer makes between starting and finishing. */
-const TRANSFER_STEPS = 4
+const TRANSFER_STEPS = 20
 
 /**
  * How many of the world's ticks a megabyte takes to move.
