@@ -1,6 +1,6 @@
 import { requirePorts } from '@session/app'
 import type { Message } from '@session/client'
-import type { useSessionActions } from '@session/state'
+import type { SessionActions } from '@session/state'
 
 /**
  * Writes one attachment out to a folder somebody chose, and shows them where it went.
@@ -12,7 +12,7 @@ import type { useSessionActions } from '@session/state'
 export async function exportOne(
   message: Message,
   index: number,
-  actions: ReturnType<typeof useSessionActions>,
+  actions: Pick<SessionActions, 'exportAttachment'>,
 ): Promise<void> {
   const attachment = message.attachments.find((a) => a.index === index)
   const suggested = attachment?.filename ?? `attachment-${String(index + 1)}`
