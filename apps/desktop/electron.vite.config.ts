@@ -149,6 +149,8 @@ export default defineConfig({
     build: {
       outDir: `${appDir}out/renderer`,
       emptyOutDir: true,
+      // The CSP's img-src has no data:, so an asset inlined as one would not draw.
+      assetsInlineLimit: 0,
       rollupOptions: { input: 'src/renderer/index.html' },
     },
     resolve: {
