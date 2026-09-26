@@ -35,6 +35,7 @@ interface Window {
   readonly sessionDesktop: {
     openExternal(url: string): void
     chooseExportLocation(suggestedName: string): Promise<string | null>
-    revealInFolder(path: string): Promise<void>
+    /** False when main refused a path outside the folders chosen this run. */
+    revealInFolder(path: string): Promise<boolean>
   }
 }

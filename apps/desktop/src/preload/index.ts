@@ -31,10 +31,10 @@ contextBridge.exposeInMainWorld('sessionDesktop', {
   /**
    * Where a file should go, and showing somebody where it went.
    *
-   * `invoke` rather than `send` for both because the first has an answer and the second is
-   * worth awaiting.
+   * `invoke` rather than `send` because both answer: the chosen path, and whether main revealed
+   * it or refused.
    */
   chooseExportLocation: (suggestedName: string): Promise<string | null> =>
     ipcRenderer.invoke('files:choose-export-location', suggestedName),
-  revealInFolder: (path: string): Promise<void> => ipcRenderer.invoke('files:reveal', path),
+  revealInFolder: (path: string): Promise<boolean> => ipcRenderer.invoke('files:reveal', path),
 })

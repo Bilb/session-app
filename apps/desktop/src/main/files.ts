@@ -52,7 +52,9 @@ export function serveFiles(): void {
     return answer.filePath
   })
 
-  ipcMain.handle('files:reveal', (_event, path: unknown) => {
-    if (isInChosenFolder(path, chosen)) shell.showItemInFolder(path)
+  ipcMain.handle('files:reveal', (_event, path: unknown): boolean => {
+    if (!isInChosenFolder(path, chosen)) return false
+    shell.showItemInFolder(path)
+    return true
   })
 }
