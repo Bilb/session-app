@@ -68,6 +68,73 @@ const TONE_COLOR = {
   danger: '$dangerColor',
 } as const satisfies Record<FileRowTone, string>
 
+/** Drawn inside the touch target rather than filling it, so it reads as a gauge and not a button. */
+const RING_SIDE = 28
+const RING_THICKNESS = 3
+
+/**
+ * The one control, always in the same place and always the same size.
+ *
+ * What it offers is the row's state and nothing else has to say so: not here yet means Download,
+ * here means Export. No verb is ever a word inside the caption line, and a failed row's retry is
+ * the arrow alone - "Tap to retry" under a visible button is instructions for the button.
+ */
+function Trailing({
+  state,
+  progress,
+  actionLabel,
+  onAction,
+  testID,
+}: {
+  state: FileRowState
+  progress?: number | undefined
+  actionLabel?: string | undefined
+  onAction?: (() => void) | undefined
+  testID?: ElementId | undefined
+}) {
+  const control = fileRowControl(state)
+
+  // The square is held whatever the state, so the name's width does not change when a transfer
+  // ends and the controls stay in one column down a list of rows.
+  const square = {
+    width: FILE_ROW_CONTROL,
+    height: FILE_ROW_CONTROL,
+    alignItems: 'center',
+    justifyContent: 'center',
+  } as const
+
+  if (control === null) return <YStack {...square} />
+
+  if (control === 'progress') {
+    // Not a button: the bridge has no cancel, so a ring somebody could press would be a control
+    // that does nothing. It reports, the way the album's pill does, and the caption has the counts.
+    return (
+      <YStack {...square}>
+        <ProgressRing progress={progress ?? 0} size={RING_SIDE} thickness={RING_THICKNESS} />
+      </YStack>
+    )
+  }
+
+  return (
+    <PressArea
+      {...(onAction === undefined ? {} : { onPress: onAction })}
+      {...(actionLabel === undefined ? {} : { accessibilityLabel: actionLabel })}
+      {...(testID === undefined ? {} : { testID })}
+    >
+      {() => (
+        <YStack
+          {...square}
+          borderRadius="$full"
+          hoverStyle={{ backgroundColor: '$backgroundTertiary' }}
+          pressStyle={{ backgroundColor: '$backgroundTertiary' }}
+        >
+          <Icon name={control} size="sm" color={TONE_COLOR[fileRowTone(state).control]} />
+        </YStack>
+      )}
+    </PressArea>
+  )
+}
+
 /**
  * One file on one message.
  *
@@ -176,70 +243,3 @@ export function FileRow({
     </XStack>
   )
 }
-
-/**
- * The one control, always in the same place and always the same size.
- *
- * What it offers is the row's state and nothing else has to say so: not here yet means Download,
- * here means Export. No verb is ever a word inside the caption line, and a failed row's retry is
- * the arrow alone - "Tap to retry" under a visible button is instructions for the button.
- */
-function Trailing({
-  state,
-  progress,
-  actionLabel,
-  onAction,
-  testID,
-}: {
-  state: FileRowState
-  progress?: number | undefined
-  actionLabel?: string | undefined
-  onAction?: (() => void) | undefined
-  testID?: ElementId | undefined
-}) {
-  const control = fileRowControl(state)
-
-  // The square is held whatever the state, so the name's width does not change when a transfer
-  // ends and the controls stay in one column down a list of rows.
-  const square = {
-    width: FILE_ROW_CONTROL,
-    height: FILE_ROW_CONTROL,
-    alignItems: 'center',
-    justifyContent: 'center',
-  } as const
-
-  if (control === null) return <YStack {...square} />
-
-  if (control === 'progress') {
-    // Not a button: the bridge has no cancel, so a ring somebody could press would be a control
-    // that does nothing. It reports, the way the album's pill does, and the caption has the counts.
-    return (
-      <YStack {...square}>
-        <ProgressRing progress={progress ?? 0} size={RING_SIDE} thickness={RING_THICKNESS} />
-      </YStack>
-    )
-  }
-
-  return (
-    <PressArea
-      {...(onAction === undefined ? {} : { onPress: onAction })}
-      {...(actionLabel === undefined ? {} : { accessibilityLabel: actionLabel })}
-      {...(testID === undefined ? {} : { testID })}
-    >
-      {() => (
-        <YStack
-          {...square}
-          borderRadius="$full"
-          hoverStyle={{ backgroundColor: '$backgroundTertiary' }}
-          pressStyle={{ backgroundColor: '$backgroundTertiary' }}
-        >
-          <Icon name={control} size="sm" color={TONE_COLOR[fileRowTone(state).control]} />
-        </YStack>
-      )}
-    </PressArea>
-  )
-}
-
-/** Drawn inside the touch target rather than filling it, so it reads as a gauge and not a button. */
-const RING_SIDE = 28
-const RING_THICKNESS = 3

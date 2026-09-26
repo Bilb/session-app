@@ -33,6 +33,64 @@ export type AttachmentTileProps = WithMediaUri &
   }
 
 /**
+ * Below this a play mark stops marking the picture and starts covering it.
+ *
+ * At the list's 40, the small mark is three quarters of the tile. Nothing replaces it there: the
+ * row's format label already reads MP4, which is the same fact in the space it fits in.
+ */
+const PLAY_MARK_MIN_SIDE = 56
+
+/** The play mark and the length, which are only true once the file can be played. */
+function VideoAffordances({ side, duration }: { side: number } & WithDurationLabel) {
+  const small = side < 90
+  return (
+    <>
+      {side < PLAY_MARK_MIN_SIDE ? null : (
+        <YStack
+          position="absolute"
+          top={0}
+          bottom={0}
+          left={0}
+          right={0}
+          alignItems="center"
+          justifyContent="center"
+          pointerEvents="none"
+        >
+          <YStack
+            width={small ? 30 : 40}
+            height={small ? 30 : 40}
+            borderRadius="$full"
+            alignItems="center"
+            justifyContent="center"
+            backgroundColor={TILE_SCRIM}
+          >
+            <Icon name="play" size={small ? 'sm' : 'md'} color="$textPrimary" />
+          </YStack>
+        </YStack>
+      )}
+      {duration === undefined ? null : (
+        // At every size, not only the large tile: it fits on a 70 px quarter and it is the one
+        // fact somebody wants before tapping.
+        <YStack
+          position="absolute"
+          bottom={TILE_BADGE_INSET}
+          paddingHorizontal="$2xs"
+          paddingVertical="$3xs"
+          borderRadius="$full"
+          backgroundColor={TILE_SCRIM}
+          pointerEvents="none"
+          {...logical({ insetStart: TILE_BADGE_INSET })}
+        >
+          <Text size="$caption" color="$textPrimary">
+            {duration}
+          </Text>
+        </YStack>
+      )}
+    </>
+  )
+}
+
+/**
  * One attachment, drawn as a rounded square.
  *
  * The same component serves the album, the list's thumbnails, the quote preview and the viewer's
@@ -151,61 +209,3 @@ export const AttachmentTile = memo(function AttachmentTile({
     </YStack>
   )
 })
-
-/**
- * Below this a play mark stops marking the picture and starts covering it.
- *
- * At the list's 40, the small mark is three quarters of the tile. Nothing replaces it there: the
- * row's format label already reads MP4, which is the same fact in the space it fits in.
- */
-const PLAY_MARK_MIN_SIDE = 56
-
-/** The play mark and the length, which are only true once the file can be played. */
-function VideoAffordances({ side, duration }: { side: number } & WithDurationLabel) {
-  const small = side < 90
-  return (
-    <>
-      {side < PLAY_MARK_MIN_SIDE ? null : (
-        <YStack
-          position="absolute"
-          top={0}
-          bottom={0}
-          left={0}
-          right={0}
-          alignItems="center"
-          justifyContent="center"
-          pointerEvents="none"
-        >
-          <YStack
-            width={small ? 30 : 40}
-            height={small ? 30 : 40}
-            borderRadius="$full"
-            alignItems="center"
-            justifyContent="center"
-            backgroundColor={TILE_SCRIM}
-          >
-            <Icon name="play" size={small ? 'sm' : 'md'} color="$textPrimary" />
-          </YStack>
-        </YStack>
-      )}
-      {duration === undefined ? null : (
-        // At every size, not only the large tile: it fits on a 70 px quarter and it is the one
-        // fact somebody wants before tapping.
-        <YStack
-          position="absolute"
-          bottom={TILE_BADGE_INSET}
-          paddingHorizontal="$2xs"
-          paddingVertical="$3xs"
-          borderRadius="$full"
-          backgroundColor={TILE_SCRIM}
-          pointerEvents="none"
-          {...logical({ insetStart: TILE_BADGE_INSET })}
-        >
-          <Text size="$caption" color="$textPrimary">
-            {duration}
-          </Text>
-        </YStack>
-      )}
-    </>
-  )
-}

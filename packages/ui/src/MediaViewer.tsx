@@ -40,6 +40,40 @@ export interface MediaViewerProps {
   closeTestID: ElementId
 }
 
+function Control({
+  icon,
+  label,
+  onPress,
+  disabled = false,
+  testID,
+}: {
+  icon: IconName
+  label: string
+  onPress: () => void
+  disabled?: boolean | undefined
+  testID?: ElementId | undefined
+}) {
+  return (
+    <YStack
+      width="$xl"
+      height="$xl"
+      borderRadius="$full"
+      alignItems="center"
+      justifyContent="center"
+      opacity={disabled ? 0.35 : 1}
+      // The aria spellings reach both the DOM and the native view; react-native's reach the DOM as
+      // nothing, which would leave a disabled chevron announced as pressable.
+      role="button"
+      aria-label={label}
+      aria-disabled={disabled}
+      {...(disabled ? {} : { onPress })}
+      testID={testID}
+    >
+      <Icon name={icon} size="md" color="$textPrimary" />
+    </YStack>
+  )
+}
+
 /**
  * The chrome along the top, as a fixed height.
  *
@@ -155,39 +189,5 @@ export function MediaViewer({
         )}
       </YStack>
     </NativeModal>
-  )
-}
-
-function Control({
-  icon,
-  label,
-  onPress,
-  disabled = false,
-  testID,
-}: {
-  icon: IconName
-  label: string
-  onPress: () => void
-  disabled?: boolean | undefined
-  testID?: ElementId | undefined
-}) {
-  return (
-    <YStack
-      width="$xl"
-      height="$xl"
-      borderRadius="$full"
-      alignItems="center"
-      justifyContent="center"
-      opacity={disabled ? 0.35 : 1}
-      // The aria spellings reach both the DOM and the native view; react-native's reach the DOM as
-      // nothing, which would leave a disabled chevron announced as pressable.
-      role="button"
-      aria-label={label}
-      aria-disabled={disabled}
-      {...(disabled ? {} : { onPress })}
-      testID={testID}
-    >
-      <Icon name={icon} size="md" color="$textPrimary" />
-    </YStack>
   )
 }
