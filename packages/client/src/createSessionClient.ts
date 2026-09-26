@@ -301,6 +301,11 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       })
     },
 
+    async getAttachmentCacheSize(): Promise<number> {
+      const response = await call({ type: 'getAttachmentCacheSize' })
+      return resultOf(response, 'byteCount').bytes ?? 0
+    },
+
     async getPref(key): Promise<string | undefined> {
       const response = await call({ type: 'getPref', key })
       return resultOf(response, 'pref').value

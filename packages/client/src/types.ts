@@ -155,6 +155,8 @@ export interface SessionClient {
    */
   getAttachmentCacheLimit(): Promise<number | undefined>
   setAttachmentCacheLimit(limitBytes?: number): Promise<void>
+  /** How much disk the cached attachments occupy now, measured as the limit is. */
+  getAttachmentCacheSize(): Promise<number>
 
   getPref(key: string): Promise<string | undefined>
   setPref(key: string, value: string): Promise<void>

@@ -223,6 +223,11 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     return empty
   },
 
+  getAttachmentCacheSize: async (client) => ({
+    type: 'byteCount',
+    bytes: await client.getAttachmentCacheSize(),
+  }),
+
   getPref: async (client, cmd) => {
     const value = await client.getPref(cmd.key)
     return { type: 'pref', ...(value === undefined ? {} : { value }) }
