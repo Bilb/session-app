@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { YStack } from 'tamagui'
 
 import type {
@@ -47,7 +47,7 @@ export type AttachmentTileProps = WithMediaUri &
  * `testID` addresses **the picture**, not the tile: whether an attachment arrived is a question
  * about the image, and a probe pointed at the tile finds the placeholder under it.
  */
-export function AttachmentTile({
+export const AttachmentTile = memo(function AttachmentTile({
   side,
   uri,
   kind,
@@ -150,7 +150,7 @@ export function AttachmentTile({
       )}
     </YStack>
   )
-}
+})
 
 /**
  * Below this a play mark stops marking the picture and starts covering it.
