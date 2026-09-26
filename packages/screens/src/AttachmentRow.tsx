@@ -67,13 +67,11 @@ export function AttachmentRow({
       : {
           // Left off where this is not ours to fetch: a url is the request, so handing one over
           // would spend the data the person was about to be asked about.
-          ...(mayResolve(attachment, autoDownload)
-            ? { uri: requirePorts().media.urlFor(ref) }
-            : {}),
+          uri: mayResolve(attachment, autoDownload) ? requirePorts().media.urlFor(ref) : undefined,
           kind: mediaKindOf(attachment.contentType),
           // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
           // screen by the route a picture does. Null where the platform has no resolver.
-          ...(attachment.hasPreview ? { preview: requirePorts().media.previewUrlFor(ref) } : {}),
+          preview: attachment.hasPreview ? requirePorts().media.previewUrlFor(ref) : undefined,
         }
 
   function start(): void {
@@ -85,21 +83,21 @@ export function AttachmentRow({
   }
 
   const act = state === 'ready' ? () => void exportOne(message, attachment.index, actions) : start
+  const offersAction = state !== 'unavailable' && state !== 'fetching'
 
   return (
     <FileRow
       filename={attachment.filename ?? tr('attachment')}
-      {...(attachment.contentType === undefined ? {} : { contentType: attachment.contentType })}
-      {...(thumbnail === undefined ? {} : { thumbnail })}
-      {...(thumbnail === undefined || onOpen === undefined ? {} : { onOpen })}
+      contentType={attachment.contentType}
+      thumbnail={thumbnail}
+      onOpen={thumbnail === undefined ? undefined : onOpen}
       caption={caption(attachment, state, fetched, exporting?.state)}
       state={state}
       // Absent while the server has not said how big the file is, which is what the first report
       // of every transfer means: an empty ring rather than a full one.
-      {...(fetched.totalBytes > 0 ? { progress: fetched.doneBytes / fetched.totalBytes } : {})}
-      {...(state === 'unavailable' || state === 'fetching'
-        ? {}
-        : { actionLabel: actionLabel(state), onAction: act })}
+      progress={fetched.totalBytes > 0 ? fetched.doneBytes / fetched.totalBytes : undefined}
+      actionLabel={offersAction ? actionLabel(state) : undefined}
+      onAction={offersAction ? act : undefined}
       testIDs={{
         row: ELEMENT.conversation.attachment,
         name: ELEMENT.conversation.attachmentName,

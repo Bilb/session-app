@@ -227,7 +227,7 @@ function MessageRow({
         <MessageAttachments
           message={message}
           onOpen={setViewing}
-          {...(onFirstDownload === undefined ? {} : { onFirstDownload })}
+          onFirstDownload={onFirstDownload}
           autoDownload={autoDownload}
           chosenView={chosenView}
           onChooseView={onChooseView}
