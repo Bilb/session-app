@@ -21,7 +21,9 @@ setPorts({
     ...memory.files,
     chooseExportLocation: (suggestedName) =>
       window.sessionDesktop.chooseExportLocation(suggestedName),
-    revealInFolder: (path) => window.sessionDesktop.revealInFolder(path),
+    revealInFolder: async (path) => {
+      await window.sessionDesktop.revealInFolder(path)
+    },
   },
   // The scheme the main process registered and serves from the addon - see main/media.ts.
   media: {
