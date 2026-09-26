@@ -11,13 +11,13 @@ export type ProgressProps = WithTestID & {
    * How far along, from 0 to 1. Absent means the size is not known yet, which is what a
    * transfer reports until the server answers - the track is drawn and the fill is not.
    */
-  value?: number
+  value?: number | undefined
   /**
    * The colours are the caller's because this is drawn inside a message bubble as often as on
    * the screen, and the accent tone that reads against one is invisible against the other.
    */
-  color?: string
-  trackColor?: string
+  color?: string | undefined
+  trackColor?: string | undefined
 }
 
 /**

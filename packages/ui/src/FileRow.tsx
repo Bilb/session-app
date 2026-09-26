@@ -47,16 +47,16 @@ export type FileRowProps = WithFilename &
      * The same tile the album draws, at the smaller radius step: a list of pictures and a list of
      * documents are the same list, and the leading square is the one thing that differs.
      */
-    thumbnail?: FileRowThumbnail
+    thumbnail?: FileRowThumbnail | undefined
     /** Opens what the lead square shows. Absent where there is nothing to open. */
-    onOpen?: () => void
+    onOpen?: (() => void) | undefined
     state: FileRowState
     /** How far along, 0 to 1. Absent until the server has said how big the file is. */
-    progress?: number
+    progress?: number | undefined
     /** Already worded, for what a screen reader announces the trailing control as. */
-    actionLabel?: string
-    onAction?: () => void
-    testIDs?: FileRowTestIDs
+    actionLabel?: string | undefined
+    onAction?: (() => void) | undefined
+    testIDs?: FileRowTestIDs | undefined
   }
 
 /**
@@ -104,9 +104,9 @@ export function FileRow({
       <AttachmentTile
         side={FILE_GLYPH_SIDE}
         kind={thumbnail.kind}
-        {...(thumbnail.uri === undefined ? {} : { uri: thumbnail.uri })}
-        {...(thumbnail.preview === undefined ? {} : { preview: thumbnail.preview })}
-        {...(testIDs?.thumbnail === undefined ? {} : { testID: testIDs.thumbnail })}
+        uri={thumbnail.uri}
+        preview={thumbnail.preview}
+        testID={testIDs?.thumbnail}
       />
     )
 
@@ -164,10 +164,10 @@ export function FileRow({
 
       <Trailing
         state={state}
-        {...(progress === undefined ? {} : { progress })}
-        {...(actionLabel === undefined ? {} : { actionLabel })}
-        {...(onAction === undefined ? {} : { onAction })}
-        {...(testIDs?.action === undefined ? {} : { testID: testIDs.action })}
+        progress={progress}
+        actionLabel={actionLabel}
+        onAction={onAction}
+        testID={testIDs?.action}
       />
     </XStack>
   )
@@ -188,9 +188,9 @@ function Trailing({
   testID,
 }: {
   state: FileRowState
-  progress?: number
-  actionLabel?: string
-  onAction?: () => void
+  progress?: number | undefined
+  actionLabel?: string | undefined
+  onAction?: (() => void) | undefined
   testID?: ElementId | undefined
 }) {
   const control = fileRowControl(state)

@@ -20,7 +20,7 @@ export interface SheetProps {
   /** The scrolling part. As tall as it needs to be, up to what the surface allows. */
   children: ReactNode
   /** Held at the bottom edge, outside the scroll, so it is reachable from anywhere in the body. */
-  footer?: ReactNode
+  footer?: ReactNode | undefined
   testID: ElementId
   closeTestID: ElementId
 }

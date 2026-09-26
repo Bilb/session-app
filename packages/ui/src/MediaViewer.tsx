@@ -168,7 +168,7 @@ function Control({
   icon: 'x' | 'chevronLeft' | 'chevronRight' | 'hardDriveDownload' | 'ellipsis'
   label: string
   onPress: () => void
-  disabled?: boolean
+  disabled?: boolean | undefined
   testID?: ElementId | undefined
 }) {
   return (
@@ -182,7 +182,7 @@ function Control({
       accessibilityLabel={label}
       accessibilityRole="button"
       {...(disabled ? {} : { onPress })}
-      {...(testID === undefined ? {} : { testID })}
+      testID={testID}
     >
       <Icon name={icon} size="md" color="$textPrimary" />
     </YStack>

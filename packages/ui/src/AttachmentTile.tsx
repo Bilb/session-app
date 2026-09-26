@@ -123,14 +123,12 @@ export function AttachmentTile({
             onLoad={() => {
               setLoadedUri(uri)
             }}
-            {...(testID === undefined ? {} : { testID })}
+            testID={testID}
           />
         </YStack>
       )}
 
-      {here && kind === 'video' ? (
-        <VideoAffordances side={side} {...(duration === undefined ? {} : { duration })} />
-      ) : null}
+      {here && kind === 'video' ? <VideoAffordances side={side} duration={duration} /> : null}
 
       {overflowLabel === undefined ? null : (
         // Replaces whatever is under it rather than sitting beside it: this tile stands for the
@@ -163,7 +161,7 @@ export function AttachmentTile({
 const PLAY_MARK_MIN_SIDE = 56
 
 /** The play mark and the length, which are only true once the file can be played. */
-function VideoAffordances({ side, duration }: { side: number; duration?: string }) {
+function VideoAffordances({ side, duration }: { side: number } & WithDurationLabel) {
   const small = side < 90
   return (
     <>

@@ -25,7 +25,7 @@ export type AttachmentAlbumProps = WithTestID & {
    * The corner rather than the middle of a tile: a badge on a tile reads as that tile's state, and
    * this one is about the whole message, including the attachments behind "+N".
    */
-  control?: ReactNode
+  control?: ReactNode | undefined
 }
 
 /**
@@ -62,13 +62,11 @@ export function AttachmentAlbum({
         <AttachmentTile
           side={cell.side}
           kind={item.kind}
-          {...(item.uri === undefined ? {} : { uri: item.uri })}
-          {...(item.preview === undefined ? {} : { preview: item.preview })}
-          {...(item.kind === 'video' && item.duration !== undefined
-            ? { duration: item.duration }
-            : {})}
-          {...(carriesOverflow ? { overflowLabel: overflowLabel(layout.overflow) } : {})}
-          {...(item.testID === undefined ? {} : { testID: item.testID })}
+          uri={item.uri}
+          preview={item.preview}
+          duration={item.kind === 'video' ? item.duration : undefined}
+          overflowLabel={carriesOverflow ? overflowLabel(layout.overflow) : undefined}
+          testID={item.testID}
         />
       </YStack>
     )
