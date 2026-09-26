@@ -60,10 +60,6 @@ a time, via the `port-feature` skill.
 - **Thumbnails.** A transcript fetches whole attachments to draw them, which is what libsession
   offers today. They should be generated locally from whatever can produce one rather than fetched
   as a second file from the server, and that needs an image decoder wherever it happens.
-- **Two things to ask libsession for.** `conversation_id` inside `AttachmentProgress`, so a report
-  from a command's own handler carries what the background callback already does and a screen can
-  drop what it is not showing. And `attachment_cache_size()`, a sum over the cache index: there is
-  a getter for the limit and none for the usage, so nothing can say how full it is.
 - **Three strings in settings have no catalogue key.** The attachment cache section needs
   "Attachment Cache", "Reveal" and "No limit", and the Crowdin set has nothing that fits, so they
   sit in `packages/screens/src/pendingCopy.ts` and ship as English in every locale. Each is named
