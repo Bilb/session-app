@@ -791,6 +791,15 @@ export function runSessionClientContract(
       expect(await alice.getAttachmentCacheLimit()).toBeUndefined()
     })
 
+    it('refuses a negative attachment cache limit and keeps the one it had', async () => {
+      const { alice } = await harness.friends()
+      await alice.setAttachmentCacheLimit(250_000_000)
+
+      const error = await failure(() => alice.setAttachmentCacheLimit(-1))
+      expect(error instanceof Error ? error.message : error).toContain('must not be negative')
+      expect(await alice.getAttachmentCacheLimit()).toBe(250_000_000)
+    })
+
     it('measures an attachment cache with nothing in it as empty', async () => {
       const { alice } = await harness.friends()
       expect(await alice.getAttachmentCacheSize()).toBe(0)
