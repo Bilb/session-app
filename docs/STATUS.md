@@ -13,8 +13,8 @@ a time, via the `port-feature` skill.
 
 - **Push.** `setPushToken` and `handlePushPayload` are in the protocol and the shim answers both
   with an error naming itself.
-- **Sending an attachment.** Receiving one works: metadata, a download with progress, saving to a
-  chosen path, and the per-conversation auto-download setting. `sendMessage` still takes a body
+- **Sending an attachment.** Receiving one works: metadata, a download with progress, exporting to
+  a chosen path, and the per-conversation auto-download setting. `sendMessage` still takes a body
   and nothing else, so `SendState::uploading` is a state nothing here can reach.
 - **Showing an attachment on mobile.** Desktop draws pictures inline over the `session-media`
   scheme; React Native needs a native image loader per platform - an `RCTImageURLLoader` on iOS, a

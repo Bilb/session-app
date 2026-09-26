@@ -117,7 +117,9 @@ bytes do not. They leave by a second channel instead: `session-media://attachmen
 resolved natively by each platform straight out of `ClientBridge::fetch_media`, so a picture never
 passes through JavaScript and never rides this stream. `downloadAttachment` is how a caller asks
 whether the bytes are here: libsession records nothing about a transfer, so the one call reads the
-cache, joins a fetch already running, or starts one.
+cache, joins a fetch already running, or starts one. `exportAttachment` writes a cached file to a
+destination and answers with where it landed: a collision lands at `name (2)` unless the caller
+asked to replace.
 
 The sender's placeholder is an image too, so it comes by the same road: `session-media://preview/`
 answers from `ClientBridge::fetch_preview`, which decodes the ThumbHash on the attachment's row.
