@@ -78,11 +78,9 @@ const SEEDED_FILES: Attachment[] = [
 ]
 
 /**
- * More attachments than a message draws in the transcript.
- *
- * Thirteen, so the eighth row is followed by "Show All" and the sheet has five to add. A mixed
- * set, because the rule that sends a message to the list is one plain file - and the case worth
- * having a fixture for is the one no composer can produce.
+ * More attachments than a message draws in the transcript, so the list caps and "Show All" opens
+ * the rest. A mixed set, because the rule that sends a message to the list is one plain file -
+ * and the case worth having a fixture for is the one no composer can produce.
  */
 const SEEDED_MANY: Attachment[] = Array.from({ length: 13 }, (_, at) => ({
   index: at,
@@ -170,13 +168,16 @@ function showpiece(
 ): Attachment {
   const { contentType, extension } = TYPES[kind]
   const picture = isViewableContentType(contentType)
+  // Past the last photo the numbers repeat, and a round suffix keeps the filenames distinct.
+  const number = String(((photo - 1) % PHOTO_THUMBHASHES.length) + 1).padStart(2, '0')
+  const round = Math.floor((photo - 1) / PHOTO_THUMBHASHES.length)
   return {
     index,
     contentType,
     // The number is load-bearing on a picture: the dev bridge reads it back out to decide which
     // file to serve, which is what makes the hash below describe the photo that arrives.
     filename: picture
-      ? `unsplash-${String(photo).padStart(2, '0')}.${extension}`
+      ? `unsplash-${number}${round === 0 ? '' : `-${String(round + 1)}`}.${extension}`
       : `${kind}-${String(index + 1).padStart(2, '0')}.${extension}`,
     // Spread so a set does not report one bar's worth of progress four times over.
     sizeBytes: 180_000 + index * 420_000,
@@ -191,11 +192,11 @@ function showpiece(
 }
 
 /**
- * A running number over the whole showcase, so no two pictures in it are the same photo.
+ * A running number over the whole showcase, so pictures repeat as rarely as the photos allow.
  *
- * Reset with the fixture rather than per message: thirty files and rather more attachments than
- * that, so it wraps - but a wrap between messages is much less noticeable than two identical
- * tiles side by side.
+ * Reset with the fixture rather than per message: there are more pictures than photos, so it
+ * wraps, and a wrap between messages is much less noticeable than two identical tiles side by
+ * side. Only a message with more pictures than there are photos repeats one within itself.
  */
 let nextPhoto = 0
 
@@ -203,13 +204,18 @@ export function resetPhotos(): void {
   nextPhoto = 0
 }
 
+/** `expired` as a function picks which entries the file server no longer holds. */
 export function set(
   kinds: Kind[],
-  options: { hashed?: boolean; expired?: boolean } = {},
+  options: { hashed?: boolean; expired?: boolean | ((index: number) => boolean) } = {},
 ): Attachment[] {
+  const { expired, ...rest } = options
   return kinds.map((kind, index) => {
     if (isViewableContentType(TYPES[kind].contentType)) nextPhoto += 1
-    return showpiece(index, kind, ((nextPhoto - 1) % PHOTO_THUMBHASHES.length) + 1, options)
+    return showpiece(index, kind, nextPhoto, {
+      ...rest,
+      expired: typeof expired === 'function' ? expired(index) : expired === true,
+    })
   })
 }
 
