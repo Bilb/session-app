@@ -20,7 +20,7 @@ import type { Attachment, AutoDownload } from '@session/client'
  * and the fake both apply for themselves. This one is about what drawing is allowed to start,
  * which is the half that lives up here because it is the url that does it.
  */
-export function mayFetchUnasked(attachment: Attachment, setting?: AutoDownload): boolean {
+function mayFetchUnasked(attachment: Attachment, setting?: AutoDownload): boolean {
   if (setting === 'all') return true
   // The prefix, not the viewable whitelist: this mirrors what libsession itself fetches unasked.
   if (setting === 'image-attachments') return isImageContentType(attachment.contentType)
