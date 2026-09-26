@@ -1,10 +1,12 @@
 import { YStack } from 'tamagui'
 
+import type { WithTestID } from './with'
+
 // A plain number rather than a token: the size scale starts at 8, which is twice as tall as a
 // bar should be, and a `$` name that does not exist resolves to 0 in silence.
 const BAR_HEIGHT = 4
 
-export interface ProgressProps {
+export type ProgressProps = WithTestID & {
   /**
    * How far along, from 0 to 1. Absent means the size is not known yet, which is what a
    * transfer reports until the server answers - the track is drawn and the fill is not.
@@ -16,7 +18,6 @@ export interface ProgressProps {
    */
   color?: string
   trackColor?: string
-  testID?: string
 }
 
 /**

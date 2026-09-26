@@ -1,5 +1,15 @@
 import { XStack, YStack } from 'tamagui'
 
+import type {
+  WithCaption,
+  WithContentType,
+  WithFilename,
+  WithMediaKind,
+  WithMediaPreview,
+  WithMediaUri,
+} from '@session/basic-types'
+import type { ElementId } from '@session/test-ids'
+
 import { AttachmentTile } from './AttachmentTile'
 import { fileFormat, fileGlyph, splitFilename } from './attachmentFile'
 import {
@@ -17,55 +27,37 @@ import { Text } from './Text'
 import { tileRadius } from './attachmentTile'
 
 export interface FileRowTestIDs {
-  row?: string
-  name?: string
-  caption?: string
-  action?: string
+  row?: ElementId | undefined
+  name?: ElementId | undefined
+  caption?: ElementId | undefined
+  action?: ElementId | undefined
   /** Addresses the picture inside the thumbnail, so a test can ask whether it arrived. */
-  thumbnail?: string
+  thumbnail?: ElementId | undefined
 }
 
 /** What the lead square shows when the row is for something with a picture behind it. */
-export interface FileRowThumbnail {
-  /** Where the bytes are, once they are here. Null where the platform has no resolver. */
-  uri?: string | null
-  kind: 'image' | 'video'
-  /**
-   * Where the sender's placeholder is, where they sent one. A url, resolved like `uri`: see
-   * `AttachmentTileProps`.
-   */
-  preview?: string | null
-}
+export type FileRowThumbnail = WithMediaUri & WithMediaPreview & WithMediaKind
 
-export interface FileRowProps {
-  filename: string
-  /** The sender's declared type. Absent on plenty of attachments, which the glyph copes with. */
-  contentType?: string
-  /**
-   * The picture this row stands for, where it has one.
-   *
-   * The same tile the album draws, at the smaller radius step: a list of pictures and a list of
-   * documents are the same list, and the leading square is the one thing that differs.
-   */
-  thumbnail?: FileRowThumbnail
-  /** Opens what the lead square shows. Absent where there is nothing to open. */
-  onOpen?: () => void
-  /**
-   * The one line under the name, already worded.
-   *
-   * The size at rest, both counts while fetching, the reason when there is one. A string rather
-   * than the numbers because every one of those readings is a catalogue key, and `@session/ui`
-   * imports no sibling but theme-tokens, test-ids and basic-types.
-   */
-  caption: string
-  state: FileRowState
-  /** How far along, 0 to 1. Absent until the server has said how big the file is. */
-  progress?: number
-  /** Already worded, for what a screen reader announces the trailing control as. */
-  actionLabel?: string
-  onAction?: () => void
-  testIDs?: FileRowTestIDs
-}
+export type FileRowProps = WithFilename &
+  WithContentType &
+  WithCaption & {
+    /**
+     * The picture this row stands for, where it has one.
+     *
+     * The same tile the album draws, at the smaller radius step: a list of pictures and a list of
+     * documents are the same list, and the leading square is the one thing that differs.
+     */
+    thumbnail?: FileRowThumbnail
+    /** Opens what the lead square shows. Absent where there is nothing to open. */
+    onOpen?: () => void
+    state: FileRowState
+    /** How far along, 0 to 1. Absent until the server has said how big the file is. */
+    progress?: number
+    /** Already worded, for what a screen reader announces the trailing control as. */
+    actionLabel?: string
+    onAction?: () => void
+    testIDs?: FileRowTestIDs
+  }
 
 /**
  * One file on one message.
@@ -77,6 +69,8 @@ export interface FileRowProps {
  * **Every state draws the same three columns at the same height.** A row that grew a progress bar
  * while it downloaded would move everything below it in the transcript, at the moment somebody is
  * reading it; only the glyph, the words and the trailing control change.
+ *
+ * The caption is the size at rest, both counts while fetching, and the reason when there is one.
  */
 export function FileRow({
   filename,
@@ -197,7 +191,7 @@ function Trailing({
   progress?: number
   actionLabel?: string
   onAction?: () => void
-  testID?: string
+  testID?: ElementId | undefined
 }) {
   const control = fileRowControl(state)
 

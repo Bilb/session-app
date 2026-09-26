@@ -1,51 +1,36 @@
 import { useState } from 'react'
 import { YStack } from 'tamagui'
 
+import type {
+  WithDurationLabel,
+  WithMediaKind,
+  WithMediaPreview,
+  WithMediaUri,
+} from '@session/basic-types'
+
 import { TILE_BADGE_INSET, TILE_HAIRLINE_WIDTH, TILE_SCRIM, tileRadius } from './attachmentTile'
 import { Icon } from './Icon'
 import { Image } from './Image'
 import { logical } from './logicalEdges'
 import { Text } from './Text'
+import type { WithTestID } from './with'
 
-export interface AttachmentTileProps {
-  /** Always square. The album and the list both size it; it never measures anything itself. */
-  side: number
-  /**
-   * Where the bytes are, once they are here.
-   *
-   * Absent means they are not, and the tile draws what is coming instead. `null` means this
-   * platform has no resolver for them at all, which looks the same and is not the same thing --
-   * a caller that can tell the difference says so in its own caption, not on the tile.
-   */
-  uri?: string | null
-  /** What is coming, which is all `contentType` can honestly say before any byte arrives. */
-  kind: 'image' | 'video'
-  /**
-   * Where the sender's placeholder is, where they sent one.
-   *
-   * A url like `uri`, and resolved the same way, because a decoded ThumbHash is an image: it is
-   * 25 bytes turned into pixels by whatever serves the scheme, so nothing here decodes anything.
-   * `null` means this platform has no resolver, which draws the same as having no placeholder.
-   */
-  preview?: string | null
-  /** mm:ss, drawn on a video that can be played. */
-  duration?: string
-  /**
-   * The count of attachments the album is not drawing, already worded.
-   *
-   * A string rather than a number because the wording is `andMore` in the catalogue and this
-   * package cannot reach it -- `@session/ui` imports no sibling but theme-tokens, test-ids and
-   * basic-types.
-   */
-  overflowLabel?: string
-  /**
-   * Addresses **the picture**, not the tile.
-   *
-   * The element a test asks about is the one holding the bytes: whether an attachment arrived is a
-   * question about the image, and a probe pointed at the tile finds the placeholder under it.
-   */
-  testID?: string
-}
+export type AttachmentTileProps = WithMediaUri &
+  WithMediaPreview &
+  WithMediaKind &
+  WithDurationLabel &
+  WithTestID & {
+    /** Always square. The album and the list both size it; it never measures anything itself. */
+    side: number
+    /**
+     * The count of attachments the album is not drawing, already worded.
+     *
+     * A string rather than a number because the wording is `andMore` in the catalogue and this
+     * package cannot reach it -- `@session/ui` imports no sibling but theme-tokens, test-ids and
+     * basic-types.
+     */
+    overflowLabel?: string | undefined
+  }
 
 /**
  * One attachment, drawn as a rounded square.
@@ -58,6 +43,9 @@ export interface AttachmentTileProps {
  * no duration -- the set's own control says what is happening, in the album's corner, and three
  * things promising three different futures on one picture is the state that rule exists to
  * prevent. A video gets its affordances when it can be played.
+ *
+ * `testID` addresses **the picture**, not the tile: whether an attachment arrived is a question
+ * about the image, and a probe pointed at the tile finds the placeholder under it.
  */
 export function AttachmentTile({
   side,

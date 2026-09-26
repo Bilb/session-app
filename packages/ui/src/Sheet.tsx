@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import { Modal as NativeModal } from 'react-native'
 import { ScrollView, XStack, YStack, useMedia } from 'tamagui'
 
+import type { ElementId } from '@session/test-ids'
+
 import { Button } from './Button'
 import { Icon } from './Icon'
 import { useScreenInsets } from './screenInsets'
@@ -19,8 +21,8 @@ export interface SheetProps {
   children: ReactNode
   /** Held at the bottom edge, outside the scroll, so it is reachable from anywhere in the body. */
   footer?: ReactNode
-  testID: string
-  closeTestID: string
+  testID: ElementId
+  closeTestID: ElementId
 }
 
 /**

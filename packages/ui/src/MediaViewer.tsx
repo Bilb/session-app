@@ -1,6 +1,8 @@
 import { Modal as NativeModal } from 'react-native'
 import { XStack, YStack } from 'tamagui'
 
+import type { WithMediaKind } from '@session/basic-types'
+import type { ElementId } from '@session/test-ids'
 import { SPACING } from '@session/theme-tokens'
 
 import { Icon } from './Icon'
@@ -10,11 +12,10 @@ import { isLayoutRtl } from './layoutDirection'
 import { Text } from './Text'
 import { useWindowSize } from './useWindowSize'
 
-export interface MediaViewerItem {
+export type MediaViewerItem = {
   /** Null where this platform has no resolver for the bytes, which is a state, not a failure. */
   uri: string | null
-  kind: 'image' | 'video'
-}
+} & WithMediaKind
 
 export interface MediaViewerProps {
   open: boolean
@@ -34,8 +35,8 @@ export interface MediaViewerProps {
   moreLabel: string
   previousLabel: string
   nextLabel: string
-  testID: string
-  closeTestID: string
+  testID: ElementId
+  closeTestID: ElementId
 }
 
 /**
@@ -168,7 +169,7 @@ function Control({
   label: string
   onPress: () => void
   disabled?: boolean
-  testID?: string
+  testID?: ElementId | undefined
 }) {
   return (
     <YStack

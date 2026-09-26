@@ -1,6 +1,8 @@
 import { Image as RNImage } from 'react-native'
 
-export interface ImageProps {
+import type { WithTestID } from './with'
+
+export type ImageProps = WithTestID & {
   /** Where the bytes come from. On both platforms this is the app's media scheme, not a path. */
   uri: string
   width: number
@@ -15,7 +17,6 @@ export interface ImageProps {
   borderRadius?: number
   /** Fires when the bytes are decoded and on screen, which is the only honest "it is here". */
   onLoad?: () => void
-  testID?: string
 }
 
 /**

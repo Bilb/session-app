@@ -1,23 +1,18 @@
 import type { ReactNode } from 'react'
 import { XStack, YStack } from 'tamagui'
 
+import type { WithDurationLabel, WithMediaPreview, WithMediaUri } from '@session/basic-types'
+
 import { ALBUM_SEAM, albumLayout, lastCell, type AlbumCell } from './albumLayout'
 import { AttachmentTile } from './AttachmentTile'
+import type { WithTestID } from './with'
 
-export interface AlbumItem {
-  /** Where the bytes are, once they are here. Null where this platform has no resolver. */
-  uri?: string | null
-  kind: 'image' | 'video'
-  /**
-   * Where the sender's placeholder is, where they sent one. A url, resolved like `uri`: see
-   * `AttachmentTileProps`.
-   */
-  preview?: string | null
-  duration?: string
-  testID?: string
-}
+type AlbumMedia = WithMediaUri & WithMediaPreview & WithTestID
+export type AlbumImage = AlbumMedia & { kind: 'image' }
+export type AlbumVideo = AlbumMedia & { kind: 'video' } & WithDurationLabel
+export type AlbumItem = AlbumImage | AlbumVideo
 
-export interface AttachmentAlbumProps {
+export type AttachmentAlbumProps = WithTestID & {
   items: readonly AlbumItem[]
   /** The message's own width. Never a constant: an album is as wide as the bubble it sits in. */
   width: number
@@ -31,7 +26,6 @@ export interface AttachmentAlbumProps {
    * this one is about the whole message, including the attachments behind "+N".
    */
   control?: ReactNode
-  testID?: string
 }
 
 /**
@@ -70,7 +64,9 @@ export function AttachmentAlbum({
           kind={item.kind}
           {...(item.uri === undefined ? {} : { uri: item.uri })}
           {...(item.preview === undefined ? {} : { preview: item.preview })}
-          {...(item.duration === undefined ? {} : { duration: item.duration })}
+          {...(item.kind === 'video' && item.duration !== undefined
+            ? { duration: item.duration }
+            : {})}
           {...(carriesOverflow ? { overflowLabel: overflowLabel(layout.overflow) } : {})}
           {...(item.testID === undefined ? {} : { testID: item.testID })}
         />
