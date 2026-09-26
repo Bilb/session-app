@@ -1,6 +1,8 @@
 import { memoryPorts, setPorts } from '@session/app'
 import { parseNetworkName } from '@session/basic-types'
 
+import { mediaUrl } from '../shared/mediaUrl'
+
 /**
  * The desktop app's OS ports.
  *
@@ -21,13 +23,9 @@ setPorts(
       openPath: (path) => window.sessionDesktop.openPath(path),
     },
     // The scheme the main process registered and serves from the addon - see main/media.ts.
-    // Built here rather than imported from there: this is the renderer, and main is not on its
-    // side of the sandbox.
     media: {
-      urlFor: (messageId, index) =>
-        `session-media://attachment/${String(messageId)}/${String(index)}`,
-      previewUrlFor: (messageId, index) =>
-        `session-media://preview/${String(messageId)}/${String(index)}`,
+      urlFor: (ref) => mediaUrl('attachment', ref),
+      previewUrlFor: (ref) => mediaUrl('preview', ref),
     },
     // The same variable and the same parser the main process uses, inlined at build time.
     network: {

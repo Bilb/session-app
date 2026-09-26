@@ -95,9 +95,7 @@ export function conversationListFrame(conversations: Conversation[]): Frame {
   return { type: 'event', event: { type: 'conversation-list-replaced', conversations } }
 }
 
-export function messageAddedFrame(_conversationId: string, message: Message): Frame {
-  // A batch of one: the message carries its own conversation, so the id is kept only to leave
-  // every caller of this fixture reading the same as it did.
+export function messageAddedFrame(message: Message): Frame {
   return { type: 'event', event: { type: 'messages-added', messages: [message] } }
 }
 

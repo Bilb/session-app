@@ -62,8 +62,7 @@ struct Codec<std::string> {
 template <>
 struct Codec<std::vector<std::byte>> {
     static constexpr std::string_view name = "Uint8Array";
-    // A Uint8Array rather than a Napi::Buffer: Buffer is a Node-only subclass, and the contract
-    // these are generated from says Uint8Array, which is what JSI hands back on the other platform.
+    // Not a Napi::Buffer: that Node-only subclass is not what jsi.hpp hands back.
     static Napi::Value to(Napi::Env env, const std::vector<std::byte>& value) {
         auto array = Napi::Uint8Array::New(env, value.size());
         std::memcpy(array.Data(), value.data(), value.size());
@@ -368,8 +367,8 @@ struct Codec<::session_bridge::Attachment> {
             obj.Set("contentType", Codec<std::string>::to(env, *value.content_type));
         if (value.filename)
             obj.Set("filename", Codec<std::string>::to(env, *value.filename));
-        if (value.size)
-            obj.Set("size", Codec<double>::to(env, *value.size));
+        if (value.size_bytes)
+            obj.Set("sizeBytes", Codec<double>::to(env, *value.size_bytes));
         obj.Set("voiceMessage", Codec<bool>::to(env, value.voice_message));
         if (value.width)
             obj.Set("width", Codec<double>::to(env, *value.width));
@@ -378,10 +377,10 @@ struct Codec<::session_bridge::Attachment> {
         obj.Set("hasPreview", Codec<bool>::to(env, value.has_preview));
         obj.Set("uploaded", Codec<bool>::to(env, value.uploaded));
         obj.Set("availability", Codec<::session_bridge::AttachmentAvailability>::to(env, value.availability));
-        obj.Set("fetchDone", Codec<double>::to(env, value.fetch_done));
-        obj.Set("fetchTotal", Codec<double>::to(env, value.fetch_total));
-        if (value.saved_at)
-            obj.Set("savedAt", Codec<double>::to(env, *value.saved_at));
+        obj.Set("fetchDoneBytes", Codec<double>::to(env, value.fetch_done_bytes));
+        obj.Set("fetchTotalBytes", Codec<double>::to(env, value.fetch_total_bytes));
+        if (value.saved_at_ms)
+            obj.Set("savedAtMs", Codec<double>::to(env, *value.saved_at_ms));
         return obj;
     }
     static ::session_bridge::Attachment from(const Napi::Value& value, std::string_view where) {
@@ -390,16 +389,16 @@ struct Codec<::session_bridge::Attachment> {
                 Codec<double>::from(obj.Get("index"), "Attachment.index"),
                 optional<std::string>(obj.Get("contentType"), "Attachment.contentType"),
                 optional<std::string>(obj.Get("filename"), "Attachment.filename"),
-                optional<double>(obj.Get("size"), "Attachment.size"),
+                optional<double>(obj.Get("sizeBytes"), "Attachment.sizeBytes"),
                 Codec<bool>::from(obj.Get("voiceMessage"), "Attachment.voiceMessage"),
                 optional<double>(obj.Get("width"), "Attachment.width"),
                 optional<double>(obj.Get("height"), "Attachment.height"),
                 Codec<bool>::from(obj.Get("hasPreview"), "Attachment.hasPreview"),
                 Codec<bool>::from(obj.Get("uploaded"), "Attachment.uploaded"),
                 Codec<::session_bridge::AttachmentAvailability>::from(obj.Get("availability"), "Attachment.availability"),
-                Codec<double>::from(obj.Get("fetchDone"), "Attachment.fetchDone"),
-                Codec<double>::from(obj.Get("fetchTotal"), "Attachment.fetchTotal"),
-                optional<double>(obj.Get("savedAt"), "Attachment.savedAt"));
+                Codec<double>::from(obj.Get("fetchDoneBytes"), "Attachment.fetchDoneBytes"),
+                Codec<double>::from(obj.Get("fetchTotalBytes"), "Attachment.fetchTotalBytes"),
+                optional<double>(obj.Get("savedAtMs"), "Attachment.savedAtMs"));
     }
 };
 
@@ -845,8 +844,8 @@ struct Codec<::session_bridge::AttachmentProgressSessionEvent> {
         obj.Set("transfer", Codec<::session_bridge::AttachmentTransfer>::to(env, value.transfer));
         obj.Set("messageId", Codec<double>::to(env, value.message_id));
         obj.Set("index", Codec<double>::to(env, value.index));
-        obj.Set("done", Codec<double>::to(env, value.done));
-        obj.Set("total", Codec<double>::to(env, value.total));
+        obj.Set("doneBytes", Codec<double>::to(env, value.done_bytes));
+        obj.Set("totalBytes", Codec<double>::to(env, value.total_bytes));
         if (value.outcome)
             obj.Set("outcome", Codec<::session_bridge::AttachmentOutcome>::to(env, *value.outcome));
         return obj;
@@ -857,8 +856,8 @@ struct Codec<::session_bridge::AttachmentProgressSessionEvent> {
                 Codec<::session_bridge::AttachmentTransfer>::from(obj.Get("transfer"), "AttachmentProgressSessionEvent.transfer"),
                 Codec<double>::from(obj.Get("messageId"), "AttachmentProgressSessionEvent.messageId"),
                 Codec<double>::from(obj.Get("index"), "AttachmentProgressSessionEvent.index"),
-                Codec<double>::from(obj.Get("done"), "AttachmentProgressSessionEvent.done"),
-                Codec<double>::from(obj.Get("total"), "AttachmentProgressSessionEvent.total"),
+                Codec<double>::from(obj.Get("doneBytes"), "AttachmentProgressSessionEvent.doneBytes"),
+                Codec<double>::from(obj.Get("totalBytes"), "AttachmentProgressSessionEvent.totalBytes"),
                 optional<::session_bridge::AttachmentOutcome>(obj.Get("outcome"), "AttachmentProgressSessionEvent.outcome"));
     }
 };
@@ -1567,11 +1566,11 @@ struct Codec<::session_bridge::DownloadAttachmentCommand> {
 };
 
 template <>
-struct Codec<::session_bridge::SaveAttachmentCommand> {
-    static constexpr std::string_view name = "SaveAttachmentCommand";
-    static Napi::Value to(Napi::Env env, const ::session_bridge::SaveAttachmentCommand& value) {
+struct Codec<::session_bridge::ExportAttachmentCommand> {
+    static constexpr std::string_view name = "ExportAttachmentCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::ExportAttachmentCommand& value) {
         Napi::Object obj = Napi::Object::New(env);
-        obj.Set("type", Napi::String::New(env, ::session_bridge::SaveAttachmentCommand::type_tag.data(), ::session_bridge::SaveAttachmentCommand::type_tag.size()));
+        obj.Set("type", Napi::String::New(env, ::session_bridge::ExportAttachmentCommand::type_tag.data(), ::session_bridge::ExportAttachmentCommand::type_tag.size()));
         obj.Set("messageId", Codec<double>::to(env, value.message_id));
         obj.Set("index", Codec<double>::to(env, value.index));
         obj.Set("destination", Codec<std::string>::to(env, value.destination));
@@ -1579,14 +1578,14 @@ struct Codec<::session_bridge::SaveAttachmentCommand> {
         obj.Set("replace", Codec<bool>::to(env, value.replace));
         return obj;
     }
-    static ::session_bridge::SaveAttachmentCommand from(const Napi::Value& value, std::string_view where) {
+    static ::session_bridge::ExportAttachmentCommand from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
-        return ::session_bridge::SaveAttachmentCommand(
-                Codec<double>::from(obj.Get("messageId"), "SaveAttachmentCommand.messageId"),
-                Codec<double>::from(obj.Get("index"), "SaveAttachmentCommand.index"),
-                Codec<std::string>::from(obj.Get("destination"), "SaveAttachmentCommand.destination"),
-                Codec<bool>::from(obj.Get("notifySender"), "SaveAttachmentCommand.notifySender"),
-                Codec<bool>::from(obj.Get("replace"), "SaveAttachmentCommand.replace"));
+        return ::session_bridge::ExportAttachmentCommand(
+                Codec<double>::from(obj.Get("messageId"), "ExportAttachmentCommand.messageId"),
+                Codec<double>::from(obj.Get("index"), "ExportAttachmentCommand.index"),
+                Codec<std::string>::from(obj.Get("destination"), "ExportAttachmentCommand.destination"),
+                Codec<bool>::from(obj.Get("notifySender"), "ExportAttachmentCommand.notifySender"),
+                Codec<bool>::from(obj.Get("replace"), "ExportAttachmentCommand.replace"));
     }
 };
 
@@ -1644,14 +1643,29 @@ struct Codec<::session_bridge::SetAttachmentCacheLimitCommand> {
     static Napi::Value to(Napi::Env env, const ::session_bridge::SetAttachmentCacheLimitCommand& value) {
         Napi::Object obj = Napi::Object::New(env);
         obj.Set("type", Napi::String::New(env, ::session_bridge::SetAttachmentCacheLimitCommand::type_tag.data(), ::session_bridge::SetAttachmentCacheLimitCommand::type_tag.size()));
-        if (value.bytes)
-            obj.Set("bytes", Codec<double>::to(env, *value.bytes));
+        if (value.limit_bytes)
+            obj.Set("limitBytes", Codec<double>::to(env, *value.limit_bytes));
         return obj;
     }
     static ::session_bridge::SetAttachmentCacheLimitCommand from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
         return ::session_bridge::SetAttachmentCacheLimitCommand(
-                optional<double>(obj.Get("bytes"), "SetAttachmentCacheLimitCommand.bytes"));
+                optional<double>(obj.Get("limitBytes"), "SetAttachmentCacheLimitCommand.limitBytes"));
+    }
+};
+
+template <>
+struct Codec<::session_bridge::GetAttachmentCacheSizeCommand> {
+    static constexpr std::string_view name = "GetAttachmentCacheSizeCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::GetAttachmentCacheSizeCommand& value) {
+        (void)value;
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::GetAttachmentCacheSizeCommand::type_tag.data(), ::session_bridge::GetAttachmentCacheSizeCommand::type_tag.size()));
+        return obj;
+    }
+    static ::session_bridge::GetAttachmentCacheSizeCommand from(const Napi::Value& value, std::string_view where) {
+        object(value, where);
+        return ::session_bridge::GetAttachmentCacheSizeCommand{};
     }
 };
 
@@ -1829,8 +1843,8 @@ struct Codec<::session_bridge::Command> {
             return Codec<::session_bridge::DeleteMessageCommand>::from(value, where);
         if (tag == "downloadAttachment")
             return Codec<::session_bridge::DownloadAttachmentCommand>::from(value, where);
-        if (tag == "saveAttachment")
-            return Codec<::session_bridge::SaveAttachmentCommand>::from(value, where);
+        if (tag == "exportAttachment")
+            return Codec<::session_bridge::ExportAttachmentCommand>::from(value, where);
         if (tag == "setAutoDownload")
             return Codec<::session_bridge::SetAutoDownloadCommand>::from(value, where);
         if (tag == "getCacheDir")
@@ -1839,6 +1853,8 @@ struct Codec<::session_bridge::Command> {
             return Codec<::session_bridge::GetAttachmentCacheLimitCommand>::from(value, where);
         if (tag == "setAttachmentCacheLimit")
             return Codec<::session_bridge::SetAttachmentCacheLimitCommand>::from(value, where);
+        if (tag == "getAttachmentCacheSize")
+            return Codec<::session_bridge::GetAttachmentCacheSizeCommand>::from(value, where);
         if (tag == "getPref")
             return Codec<::session_bridge::GetPrefCommand>::from(value, where);
         if (tag == "setPref")

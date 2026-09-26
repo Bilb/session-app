@@ -1,20 +1,22 @@
 import { Modal as NativeModal } from 'react-native'
 import { XStack, YStack } from 'tamagui'
 
+import type { WithMediaKind } from '@session/basic-types'
+import type { ElementId } from '@session/test-ids'
 import { SPACING } from '@session/theme-tokens'
 
+import { backChevron, forwardChevron } from './backChevron'
 import { Icon } from './Icon'
+import type { IconName } from './Icon.types'
 import { SIZE_SCALE } from './scales'
 import { Image } from './Image'
-import { isLayoutRtl } from './layoutDirection'
 import { Text } from './Text'
 import { useWindowSize } from './useWindowSize'
 
-export interface MediaViewerItem {
+export type MediaViewerItem = {
   /** Null where this platform has no resolver for the bytes, which is a state, not a failure. */
   uri: string | null
-  kind: 'image' | 'video'
-}
+} & WithMediaKind
 
 export interface MediaViewerProps {
   open: boolean
@@ -34,9 +36,51 @@ export interface MediaViewerProps {
   moreLabel: string
   previousLabel: string
   nextLabel: string
-  testID: string
-  closeTestID: string
+  testID: ElementId
+  closeTestID: ElementId
 }
+
+function Control({
+  icon,
+  label,
+  onPress,
+  disabled = false,
+  testID,
+}: {
+  icon: IconName
+  label: string
+  onPress: () => void
+  disabled?: boolean | undefined
+  testID?: ElementId | undefined
+}) {
+  return (
+    <YStack
+      width="$xl"
+      height="$xl"
+      borderRadius="$full"
+      alignItems="center"
+      justifyContent="center"
+      opacity={disabled ? 0.35 : 1}
+      // The aria spellings reach both the DOM and the native view; react-native's reach the DOM as
+      // nothing, which would leave a disabled chevron announced as pressable.
+      role="button"
+      aria-label={label}
+      aria-disabled={disabled}
+      {...(disabled ? {} : { onPress })}
+      testID={testID}
+    >
+      <Icon name={icon} size="md" color="$textPrimary" />
+    </YStack>
+  )
+}
+
+/**
+ * The chrome along the top, as a fixed height.
+ *
+ * A number because the picture below is measured against it, and a header that took its height
+ * from its content would make that measurement a guess. `$xl` control plus the air around it.
+ */
+const HEADER_HEIGHT = SIZE_SCALE.xl + SPACING.sm
 
 /**
  * One picture, full screen, over whatever was on screen.
@@ -56,14 +100,6 @@ export interface MediaViewerProps {
  * media history, and they stop at the ends rather than wrapping - wrapping hides how many there
  * are.
  */
-/**
- * The chrome along the top, as a fixed height.
- *
- * A number because the picture below is measured against it, and a header that took its height
- * from its content would make that measurement a guess. `$xl` control plus the air around it.
- */
-const HEADER_HEIGHT = SIZE_SCALE.xl + SPACING.sm
-
 export function MediaViewer({
   open,
   items,
@@ -84,7 +120,6 @@ export function MediaViewer({
 }: MediaViewerProps) {
   const { width, height } = useWindowSize()
   const current = items[index]
-  const rtl = isLayoutRtl()
 
   return (
     <NativeModal visible={open} transparent={false} animationType="fade" onRequestClose={onClose}>
@@ -97,7 +132,7 @@ export function MediaViewer({
           <Text size="$label" color="$textSecondary" flex={1}>
             {positionLabel}
           </Text>
-          <Control icon="hardDriveDownload" label={exportLabel} onPress={onExport} />
+          <Control icon="download" label={exportLabel} onPress={onExport} />
           <Control icon="ellipsis" label={moreLabel} onPress={onMore} />
         </XStack>
 
@@ -135,7 +170,7 @@ export function MediaViewer({
             {/* The glyph follows reading order, the index does not: previous is always index - 1,
                 and in a mirrored layout it is the chevron on the right that draws it. */}
             <Control
-              icon={rtl ? 'chevronRight' : 'chevronLeft'}
+              icon={backChevron()}
               label={previousLabel}
               disabled={index <= 0}
               onPress={() => {
@@ -143,7 +178,7 @@ export function MediaViewer({
               }}
             />
             <Control
-              icon={rtl ? 'chevronLeft' : 'chevronRight'}
+              icon={forwardChevron()}
               label={nextLabel}
               disabled={index >= items.length - 1}
               onPress={() => {
@@ -154,36 +189,5 @@ export function MediaViewer({
         )}
       </YStack>
     </NativeModal>
-  )
-}
-
-function Control({
-  icon,
-  label,
-  onPress,
-  disabled = false,
-  testID,
-}: {
-  icon: 'x' | 'chevronLeft' | 'chevronRight' | 'hardDriveDownload' | 'ellipsis'
-  label: string
-  onPress: () => void
-  disabled?: boolean
-  testID?: string
-}) {
-  return (
-    <YStack
-      width="$xl"
-      height="$xl"
-      borderRadius="$full"
-      alignItems="center"
-      justifyContent="center"
-      opacity={disabled ? 0.35 : 1}
-      accessibilityLabel={label}
-      accessibilityRole="button"
-      {...(disabled ? {} : { onPress })}
-      {...(testID === undefined ? {} : { testID })}
-    >
-      <Icon name={icon} size="md" color="$textPrimary" />
-    </YStack>
   )
 }

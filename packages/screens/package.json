@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@session/app": "workspace:*",
+    "@session/basic-types": "workspace:*",
     "@session/client": "workspace:*",
     "@session/localization": "workspace:*",
     "@session/state": "workspace:*",

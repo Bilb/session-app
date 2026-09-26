@@ -1,12 +1,14 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import type { Attachment, BridgeTransport, SessionClient } from '@session/client'
+import type { Preview } from '@session/bridge-node'
+import type { AttachmentRef, BridgeTransport } from '@session/client'
 import {
   PHOTO_THUMBHASHES,
   createFakeTransport,
+  type FakeSessionClient,
   crowd,
-  friends,
+  friendsWithAttachments,
   newcomer,
   showcase,
 } from '@session/client/fake'
@@ -14,19 +16,6 @@ import {
 import type { MediaSource } from '../media'
 import { encodePng } from '../png'
 import { decodeThumbhash } from './thumbhash'
-
-/**
- * A one-pixel PNG, per attachment, in a colour derived from what it belongs to.
- *
- * Enough for the media scheme to be exercised end to end without a network: a test can assert
- * that a picture drew, and `dev:fake` shows something rather than a broken image. Deliberately
- * not a real photograph - a fixture that has to be looked at is a fixture nobody updates.
- */
-function swatchPng(messageId: number, index: number): Uint8Array {
-  const hue = (messageId * 37 + index * 89) % 360
-  const [r, g, b] = hslToRgb(hue)
-  return encodePng(1, 1, new Uint8Array([r, g, b, 255]))
-}
 
 function hslToRgb(hue: number): [number, number, number] {
   const section = hue / 60
@@ -42,13 +31,22 @@ function hslToRgb(hue: number): [number, number, number] {
   return table[Math.floor(section) % 6] ?? [255, 0, 0]
 }
 
+function swatchColour({ messageId, index }: AttachmentRef): [number, number, number] {
+  return hslToRgb((messageId * 37 + index * 89) % 360)
+}
+
 /**
- * The bridge, backed by the fake.
+ * A one-pixel PNG, per attachment, in a colour derived from what it belongs to.
  *
- * This is a dev entry and lives here so the boundary rules can say so: production code
- * never imports the fake, and the dynamic import in ../bridge.ts is what keeps it out of a
- * shipped bundle.
+ * Enough for the media scheme to be exercised end to end without a network: a test can assert
+ * that a picture drew, and `dev:fake` shows something rather than a broken image. Deliberately
+ * not a real photograph - a fixture that has to be looked at is a fixture nobody updates.
  */
+function swatchPng(ref: AttachmentRef): Uint8Array {
+  const [r, g, b] = swatchColour(ref)
+  return encodePng(1, 1, new Uint8Array([r, g, b, 255]))
+}
+
 /** How often the dev loop drives the fake's clock. Real milliseconds, not the fake's. */
 const TICK_MS = 50
 
@@ -65,9 +63,9 @@ const TICK_MS = 50
  */
 const MEDIA_DIR = process.env['SESSION_FAKE_MEDIA_DIR']
 
-/** The number in `unsplash-07.jpg`, or null for a filename that is not one of these. */
+/** The number in `unsplash-07.jpg` or `unsplash-07-2.jpg`, or null for any other filename. */
 function photoNumber(filename: string | undefined): string | null {
-  const match = /^unsplash-(\d{2})\.(?:jpg|mp4)$/.exec(filename ?? '')
+  const match = /^unsplash-(\d{2})(?:-\d+)?\.(?:jpg|mp4)$/.exec(filename ?? '')
   return match?.[1] ?? null
 }
 
@@ -78,13 +76,11 @@ function photoNumber(filename: string | undefined): string | null {
  * so what a video attachment needs is a frame, and a photograph is a frame.
  */
 async function realPhoto(
-  client: SessionClient,
-  messageId: number,
-  index: number,
+  client: FakeSessionClient,
+  ref: AttachmentRef,
 ): Promise<{ contentType: string; bytes: Buffer } | null> {
   if (MEDIA_DIR === undefined) return null
-  const attachment = await findAttachment(client, messageId, index)
-  const number = photoNumber(attachment?.filename)
+  const number = photoNumber(client.locate(ref)?.attachment.filename)
   if (number === null) return null
   try {
     return {
@@ -98,19 +94,37 @@ async function realPhoto(
   }
 }
 
-async function findAttachment(
-  client: SessionClient,
-  messageId: number,
-  index: number,
-): Promise<Attachment | undefined> {
-  for (const conversation of await client.getConversations()) {
-    const page = await client.getMessages(conversation.id, { limit: 200 })
-    const message = page.messages.find((m) => m.id === messageId)
-    if (message) return message.attachments.find((a) => a.index === index)
+/**
+ * The real hash of the photograph an attachment stands in for, decoded here because the fake has
+ * no addon to borrow libsession's decoder from. What is drawn is therefore what a recipient would
+ * be sent, limits included, rather than a downscale that flatters the format.
+ */
+function fakePreview(client: FakeSessionClient, ref: AttachmentRef): Preview {
+  const photo = photoNumber(client.locate(ref)?.attachment.filename)
+  const hash = photo === null ? undefined : PHOTO_THUMBHASHES[Number(photo) - 1]
+  if (hash !== undefined) {
+    // The photographs are 4:3, and a hash says nothing about shape.
+    return decodeThumbhash(
+      Uint8Array.from(hash.match(/../g)?.map((b) => parseInt(b, 16)) ?? []),
+      32,
+      24,
+    )
   }
-  return undefined
+
+  // An attachment with no photograph behind it still has to answer the door.
+  const [r, g, b] = swatchColour(ref)
+  const rgba = new Uint8Array(8 * 6 * 4)
+  for (let i = 0; i < 8 * 6; i += 1) rgba.set([r, g, b, 255], i * 4)
+  return { width: 8, height: 6, rgba }
 }
 
+/**
+ * The bridge, backed by the fake.
+ *
+ * This is a dev entry and lives here so the boundary rules can say so: production code
+ * never imports the fake, and the dynamic import in ../bridge.ts is what keeps it out of a
+ * shipped bundle.
+ */
 export function createFakeBridge(): BridgeTransport & MediaSource {
   // A conversation list big enough to measure, when something asks for one. The default stays the
   // two-account fixture, so nothing about the ordinary dev loop changes.
@@ -126,7 +140,7 @@ export function createFakeBridge(): BridgeTransport & MediaSource {
       ? showcase()
       : peers > 0
         ? crowd({ peers, history: Number(process.env['SESSION_FAKE_HISTORY'] ?? '1') })
-        : friends(['Alice', 'Bob'], { history: 4 })
+        : friendsWithAttachments(['Alice', 'Bob'], { history: 4 })
   const alice = clients['Alice']
   if (!alice) throw new Error('the fixture did not produce a client')
 
@@ -161,38 +175,19 @@ export function createFakeBridge(): BridgeTransport & MediaSource {
 
   return {
     ...createFakeTransport(alice),
-    async fetchMedia(messageId: number, index: number) {
+    async fetchMedia(ref: AttachmentRef) {
       // Through the same door a tap uses. Serving this scheme *is* a fetch: the real bridge
       // fills the cache and libsession announces the availability change, so a fake that handed
       // bytes back without either would leave every picture it just drew still reported as one
       // nobody has. Cheap to repeat - a cached attachment answers at once.
-      await alice.downloadAttachment(messageId, index)
-      const photo = await realPhoto(alice, messageId, index)
+      await alice.downloadAttachment(ref.messageId, ref.index)
+      const photo = await realPhoto(alice, ref)
       if (photo) return photo
-      return { contentType: 'image/png', bytes: swatchPng(messageId, index) }
+      return { contentType: 'image/png', bytes: swatchPng(ref) }
     },
 
-    async fetchPreview(messageId: number, index: number) {
-      // The real hash of the photograph this stands in for, decoded here because the fake has no
-      // addon to borrow libsession's decoder from. What is drawn is therefore what a recipient
-      // would be sent, limits included, rather than a downscale that flatters the format.
-      const attachment = await findAttachment(alice, messageId, index)
-      const photo = photoNumber(attachment?.filename)
-      const hash = photo === null ? undefined : PHOTO_THUMBHASHES[Number(photo) - 1]
-      if (hash !== undefined) {
-        // The photographs are 4:3, and a hash says nothing about shape.
-        return decodeThumbhash(
-          Uint8Array.from(hash.match(/../g)?.map((b) => parseInt(b, 16)) ?? []),
-          32,
-          24,
-        )
-      }
-
-      // An attachment with no photograph behind it still has to answer the door.
-      const [r, g, b] = hslToRgb((messageId * 37 + index * 89) % 360)
-      const rgba = new Uint8Array(8 * 6 * 4)
-      for (let i = 0; i < 8 * 6; i += 1) rgba.set([r, g, b, 255], i * 4)
-      return { width: 8, height: 6, rgba }
+    fetchPreview(ref: AttachmentRef) {
+      return Promise.resolve(fakePreview(alice, ref))
     },
   }
 }

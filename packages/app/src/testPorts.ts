@@ -29,7 +29,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
     files: {
       pickFiles: () => Promise.resolve([]),
       pickImages: () => Promise.resolve([]),
-      chooseSaveLocation: () => Promise.resolve(null),
+      chooseExportLocation: () => Promise.resolve(null),
       openPath: () => Promise.resolve(),
       revealInFolder: () => Promise.resolve(),
     },

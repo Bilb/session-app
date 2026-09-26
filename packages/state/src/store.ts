@@ -1,8 +1,22 @@
-import type { AutoDownload, ConversationId, Message, SessionClient } from '@session/client'
+import type {
+  AttachmentRef,
+  AutoDownload,
+  ConversationId,
+  Message,
+  SessionClient,
+} from '@session/client'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
 import { applyEvent, mergePages, withoutHistory } from './applyEvent'
 import { emptyState, type MessageWindow, type SessionState } from './types'
+
+export interface CacheSettings {
+  /** Empty when the bridge was opened without one. */
+  cacheDir: string
+  /** Undefined means no limit. */
+  limitBytes: number | undefined
+  usageBytes: number
+}
 
 export interface SessionActions {
   /**
@@ -125,9 +139,12 @@ export interface SessionActions {
    * Progress arrives as events, so nothing is returned: a row that mounts halfway through a
    * transfer reads the same state as one that started it.
    */
-  downloadAttachment: (messageId: number, index: number) => Promise<void>
-  /** Resolves with where the file actually landed, which a collision can change. */
-  saveAttachment: (messageId: number, index: number, destination: string) => Promise<string>
+  downloadAttachment: (ref: AttachmentRef) => Promise<void>
+  /**
+   * Writes an attachment out to a path the person chose. Resolves with where it landed, which a
+   * collision can change.
+   */
+  exportAttachment: (ref: AttachmentRef, destination: string) => Promise<string>
   /**
    * What this conversation fetches unasked. Sending `none` is not the same as never calling
    * this: the call is what records that the question was asked, and only an unanswered one
@@ -142,9 +159,8 @@ export interface SessionActions {
    * transfers, since reports for a loaded window are recorded whether or not anything draws them.
    */
   forgetHistory: (id: ConversationId) => void
-  /** Where libsession caches downloads, and how much of it they may take. */
-  getCacheSettings: () => Promise<{ cacheDir: string; limit: number | undefined }>
-  setAttachmentCacheLimit: (bytes?: number) => Promise<void>
+  /** Where libsession caches downloads, how much of it they may take, and how much they do. */
+  getCacheSettings: () => Promise<CacheSettings>
   dispose: () => void
 }
 
@@ -174,7 +190,7 @@ export interface SessionStoreOptions {
    * libsession's default and is how a cache eats a disk - so every app should pass one, and what
    * it should be is a per-platform question a phone and a desktop answer differently.
    */
-  attachmentCacheLimit?: number
+  attachmentCacheLimitBytes?: number
 }
 
 /**
@@ -217,6 +233,11 @@ export function createSessionStore(
     }
     store.setState((state) => applyEvent(state, event))
   })
+
+  // A page that lands after its window was forgotten must not bring it back, even when a new load
+  // for the same id has started since (StrictMode's mount, cleanup, mount).
+  const forgotten = new Map<ConversationId, number>()
+  const generationOf = (id: ConversationId): number => forgotten.get(id) ?? 0
 
   function patchWindow(id: ConversationId, patch: Partial<MessageWindow>): void {
     store.setState((state) => {
@@ -307,8 +328,8 @@ export function createSessionStore(
     },
 
     async hydrate(): Promise<void> {
-      if (options.attachmentCacheLimit !== undefined) {
-        await client.setAttachmentCacheLimit(options.attachmentCacheLimit)
+      if (options.attachmentCacheLimitBytes !== undefined) {
+        await client.setAttachmentCacheLimit(options.attachmentCacheLimitBytes)
       }
 
       const account = await client.getAccountInfo()
@@ -348,7 +369,9 @@ export function createSessionStore(
       const existing = store.getState().histories[id]
       if (existing?.fetching) return
       patchWindow(id, { fetching: true })
+      const generation = generationOf(id)
       const page = await client.getMessages(id, { limit: PAGE })
+      if (generationOf(id) !== generation) return
       patchWindow(id, windowFrom(page.messages))
     },
 
@@ -357,11 +380,14 @@ export function createSessionStore(
       if (!window || window.fetching || window.exhausted || !window.oldestCursor) return
 
       patchWindow(id, { fetching: true })
+      const generation = generationOf(id)
       const page = await client.getMessages(id, { limit: PAGE, before: window.oldestCursor })
+      if (generationOf(id) !== generation) return
       patchWindow(id, windowFrom(page.messages, store.getState().histories[id]?.messages ?? []))
     },
 
     forgetHistory(id): void {
+      forgotten.set(id, generationOf(id) + 1)
       store.setState((state) => {
         const { [id]: dropped, ...histories } = state.histories
         if (dropped === undefined) return state
@@ -395,28 +421,25 @@ export function createSessionStore(
       return client.retrySend(messageId)
     },
 
-    async downloadAttachment(messageId, index): Promise<void> {
-      await client.downloadAttachment(messageId, index)
+    async downloadAttachment(ref): Promise<void> {
+      await client.downloadAttachment(ref.messageId, ref.index)
     },
 
-    async saveAttachment(messageId, index, destination): Promise<string> {
-      return client.saveAttachment(messageId, index, destination)
+    async exportAttachment(ref, destination): Promise<string> {
+      return client.exportAttachment(ref.messageId, ref.index, destination)
     },
 
     async setAutoDownload(id, mode): Promise<void> {
       await client.setAutoDownload(id, mode)
     },
 
-    async getCacheSettings(): Promise<{ cacheDir: string; limit: number | undefined }> {
-      const [cacheDir, limit] = await Promise.all([
+    async getCacheSettings(): Promise<CacheSettings> {
+      const [cacheDir, limitBytes, usageBytes] = await Promise.all([
         client.getCacheDir(),
         client.getAttachmentCacheLimit(),
+        client.getAttachmentCacheSize(),
       ])
-      return { cacheDir, limit }
-    },
-
-    async setAttachmentCacheLimit(bytes): Promise<void> {
-      await client.setAttachmentCacheLimit(bytes)
+      return { cacheDir, limitBytes, usageBytes }
     },
 
     async createAccount(): Promise<void> {

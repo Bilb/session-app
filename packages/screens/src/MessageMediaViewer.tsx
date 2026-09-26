@@ -1,52 +1,68 @@
+import { mediaKindOf } from '@session/basic-types'
 import { requirePorts } from '@session/app'
-import type { Message } from '@session/client'
+import type { ConversationId } from '@session/client'
 import { tr } from '@session/localization'
-import { useSessionActions } from '@session/state'
+import { useMessage, useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { MediaViewer, type MediaViewerItem } from '@session/ui'
+import { useMemo, useRef } from 'react'
 
 import { exportOne } from './exportAttachment'
 import { PENDING_COPY } from './pendingCopy'
 import { viewableAttachments } from './viewableAttachments'
 
-/**
- * The viewer, wired to one message.
- *
- * `MediaViewer` knows nothing about messages or ports: it takes resolved urls and worded labels,
- * because `@session/ui` reaches neither the catalogue nor `requirePorts`. Everything that has to
- * ask something is here.
- */
-export function MessageMediaViewer({
-  message,
-  index,
+/** An open viewer: which message, and the attachment's index in that message. */
+export interface ViewerTarget {
+  messageId: number
+  index: number
+}
+
+function MessageViewer({
+  conversationId,
+  target,
+  open,
   onIndex,
   onClose,
 }: {
-  message: Message
-  /** Null when nothing is open, so the caller holds one piece of state rather than two. */
-  index: number | null
+  conversationId: ConversationId
+  target: ViewerTarget
+  open: boolean
   onIndex: (index: number) => void
   onClose: () => void
 }) {
   const actions = useSessionActions()
-  const viewable = viewableAttachments(message)
+  const message = useMessage(conversationId, target.messageId)
+  const viewable = useMemo(
+    () => (message === undefined ? [] : viewableAttachments(message)),
+    [message],
+  )
+  const items = useMemo(
+    (): MediaViewerItem[] =>
+      viewable.map((attachment) => ({
+        // Null where the platform has no resolver. The viewer says so rather than drawing a broken
+        // picture, which is the one thing it must not do with somebody's photograph.
+        uri: requirePorts().media.urlFor({ messageId: target.messageId, index: attachment.index }),
+        kind: mediaKindOf(attachment.contentType),
+      })),
+    [viewable, target.messageId],
+  )
 
-  const items: MediaViewerItem[] = viewable.map((attachment) => ({
-    // Null where the platform has no resolver. The viewer says so rather than drawing a broken
-    // picture, which is the one thing it must not do with somebody's photograph.
-    uri: requirePorts().media.urlFor(message.id, attachment.index),
-    kind: attachment.contentType?.startsWith('video/') === true ? 'video' : 'image',
-  }))
-
-  const at = index ?? 0
+  if (message === undefined) return null
+  const at = Math.max(
+    0,
+    viewable.findIndex((a) => a.index === target.index),
+  )
   const attachment = viewable[at]
 
   return (
     <MediaViewer
-      open={index !== null}
+      open={open}
       items={items}
       index={at}
-      onIndex={onIndex}
+      onIndex={(position) => {
+        const next = viewable[position]
+        if (next !== undefined) onIndex(next.index)
+      }}
       onClose={onClose}
       onExport={() => {
         if (attachment !== undefined) void exportOne(message, attachment.index, actions)
@@ -59,12 +75,45 @@ export function MessageMediaViewer({
       closeLabel={tr('close')}
       exportLabel={PENDING_COPY.export}
       moreLabel={tr('openMessageContextMenu')}
-      // `back` rather than a `previous` the catalogue does not have. The pair reads as one
-      // thing anyway: this steps back through the set and `next` steps forward through it.
-      previousLabel={tr('back')}
+      previousLabel={PENDING_COPY.previous}
       nextLabel={tr('next')}
       testID={ELEMENT.conversation.mediaViewer}
       closeTestID={ELEMENT.conversation.mediaViewerClose}
+    />
+  )
+}
+
+/**
+ * The conversation's one viewer, open on one message's attachments at a time.
+ *
+ * `MediaViewer` knows nothing about messages or ports: it takes resolved urls and worded labels,
+ * because `@session/ui` reaches neither the catalogue nor `requirePorts`. Everything that has to
+ * ask something is here.
+ */
+export function MessageMediaViewer({
+  conversationId,
+  target,
+  onIndex,
+  onClose,
+}: {
+  conversationId: ConversationId
+  /** Null when nothing is open, so the caller holds one piece of state rather than two. */
+  target: ViewerTarget | null
+  onIndex: (index: number) => void
+  onClose: () => void
+}) {
+  // Held past closing, so the fade-out plays over the picture that was open rather than the first.
+  const last = useRef<ViewerTarget | null>(null)
+  if (target !== null) last.current = target
+  const shown = target ?? last.current
+  if (shown === null) return null
+  return (
+    <MessageViewer
+      conversationId={conversationId}
+      target={shown}
+      open={target !== null}
+      onIndex={onIndex}
+      onClose={onClose}
     />
   )
 }

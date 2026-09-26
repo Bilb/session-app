@@ -56,6 +56,7 @@ export function MessageNotificationsScreen({
   // be used.
   const [mode, setMode] = useState<NotificationMode>(fastAvailable ? 'fast' : 'slow')
 
+  // eslint-disable-next-line no-restricted-syntax -- two fixed rows; nothing to memoise
   const option = (
     value: NotificationMode,
     title: string,

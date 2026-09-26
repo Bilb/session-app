@@ -11,8 +11,8 @@ function attachment(index: number, contentType?: string): Attachment {
     hasPreview: false,
     uploaded: true,
     availability: 'absent',
-    fetchDone: 0,
-    fetchTotal: 0,
+    fetchDoneBytes: 0,
+    fetchTotalBytes: 0,
   }
 }
 

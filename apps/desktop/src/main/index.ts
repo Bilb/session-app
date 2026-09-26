@@ -11,7 +11,7 @@ import type { Request } from '@session/client'
 
 import { createBridge } from './bridge'
 import { serveFiles } from './files'
-import { registerMediaScheme, serveMedia } from './media'
+import { registerMediaScheme, serveMedia, stopServingMedia } from './media'
 import {
   applyContentProtection,
   denyAllPermissions,
@@ -199,6 +199,7 @@ app.on('window-all-closed', () => {
 
 // The bridge outlives every window, so it is closed here rather than with one of them.
 app.on('before-quit', () => {
+  stopServingMedia()
   bridge?.close()
   bridge = null
 })

@@ -41,18 +41,23 @@ export function albumLayout(count: number, width: number, seam = ALBUM_SEAM): Al
   const overflow = Math.max(count - shown, 0)
 
   if (shown <= 1) {
-    return ({ lead: { at: 0, side: width }, rows: [], overflow, width, height: width })
+    return { lead: { at: 0, side: width }, rows: [], overflow, width, height: width }
   }
 
   if (shown === 2) {
     const half = Math.floor((width - seam) / 2)
-    return ({
+    return {
       lead: null,
-      rows: [[{ at: 0, side: half }, { at: 1, side: half }]],
+      rows: [
+        [
+          { at: 0, side: half },
+          { at: 1, side: half },
+        ],
+      ],
       overflow,
       width,
       height: half,
-    })
+    }
   }
 
   if (shown === 3) {
@@ -60,27 +65,33 @@ export function albumLayout(count: number, width: number, seam = ALBUM_SEAM): Al
     // the seam are exactly the big one's height.
     const small = Math.floor((width - 2 * seam) / 3)
     const big = small * 2 + seam
-    return ({
+    return {
       lead: { at: 0, side: big },
       rows: [[{ at: 1, side: small }], [{ at: 2, side: small }]],
       overflow,
       width,
       height: big,
-    })
+    }
   }
 
   if (shown === 4) {
     const half = Math.floor((width - seam) / 2)
-    return ({
+    return {
       lead: null,
       rows: [
-        [{ at: 0, side: half }, { at: 1, side: half }],
-        [{ at: 2, side: half }, { at: 3, side: half }],
+        [
+          { at: 0, side: half },
+          { at: 1, side: half },
+        ],
+        [
+          { at: 2, side: half },
+          { at: 3, side: half },
+        ],
       ],
       overflow,
       width,
       height: half * 2 + seam,
-    })
+    }
   }
 
   // Five and up: a big square beside a 2x2. The split is 50/50 rather than the 2/3 the three-up
@@ -88,16 +99,22 @@ export function albumLayout(count: number, width: number, seam = ALBUM_SEAM): Al
   // big tile's height, which makes the right block exactly as wide as the big tile.
   const big = Math.floor((width - seam) / 2)
   const small = Math.floor((big - seam) / 2)
-  return ({
+  return {
     lead: { at: 0, side: big },
     rows: [
-      [{ at: 1, side: small }, { at: 2, side: small }],
-      [{ at: 3, side: small }, { at: 4, side: small }],
+      [
+        { at: 1, side: small },
+        { at: 2, side: small },
+      ],
+      [
+        { at: 3, side: small },
+        { at: 4, side: small },
+      ],
     ],
     overflow,
     width,
     height: big,
-  })
+  }
 }
 
 /** The last tile drawn, which is the one the overflow count sits on. */
