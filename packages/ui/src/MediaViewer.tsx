@@ -6,6 +6,7 @@ import type { ElementId } from '@session/test-ids'
 import { SPACING } from '@session/theme-tokens'
 
 import { Icon } from './Icon'
+import type { IconName } from './Icon.types'
 import { SIZE_SCALE } from './scales'
 import { Image } from './Image'
 import { isLayoutRtl } from './layoutDirection'
@@ -165,7 +166,7 @@ function Control({
   disabled = false,
   testID,
 }: {
-  icon: 'x' | 'chevronLeft' | 'chevronRight' | 'hardDriveDownload' | 'ellipsis'
+  icon: IconName
   label: string
   onPress: () => void
   disabled?: boolean | undefined
@@ -179,8 +180,11 @@ function Control({
       alignItems="center"
       justifyContent="center"
       opacity={disabled ? 0.35 : 1}
-      accessibilityLabel={label}
-      accessibilityRole="button"
+      // The aria spellings reach both the DOM and the native view; react-native's reach the DOM as
+      // nothing, which would leave a disabled chevron announced as pressable.
+      role="button"
+      aria-label={label}
+      aria-disabled={disabled}
       {...(disabled ? {} : { onPress })}
       testID={testID}
     >
