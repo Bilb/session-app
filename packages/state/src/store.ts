@@ -147,7 +147,6 @@ export interface SessionActions {
   forgetHistory: (id: ConversationId) => void
   /** Where libsession caches downloads, and how much of it they may take. */
   getCacheSettings: () => Promise<{ cacheDir: string; limitBytes: number | undefined }>
-  setAttachmentCacheLimit: (limitBytes?: number) => Promise<void>
   dispose: () => void
 }
 
@@ -416,10 +415,6 @@ export function createSessionStore(
         client.getAttachmentCacheLimit(),
       ])
       return { cacheDir, limitBytes }
-    },
-
-    async setAttachmentCacheLimit(limitBytes): Promise<void> {
-      await client.setAttachmentCacheLimit(limitBytes)
     },
 
     async createAccount(): Promise<void> {
