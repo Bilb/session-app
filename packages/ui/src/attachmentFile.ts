@@ -45,6 +45,41 @@ export function fileFormat(name: string): string {
     .toUpperCase()
 }
 
+const EXTENSIONS_BY_GLYPH: Partial<Record<IconName, readonly string[]>> = {
+  fileText: ['pdf', 'doc', 'docx', 'odt', 'pages', 'rtf', 'txt', 'md'],
+  fileSpreadsheet: ['csv', 'numbers', 'ods', 'xls', 'xlsx'],
+  fileArchive: ['7z', 'bz2', 'gz', 'rar', 'tar', 'xz', 'zip'],
+  fileCode: [
+    'c',
+    'css',
+    'go',
+    'h',
+    'html',
+    'js',
+    'json',
+    'py',
+    'rs',
+    'sh',
+    'ts',
+    'tsx',
+    'xml',
+    'yml',
+  ],
+}
+
+const BY_EXTENSION: ReadonlyMap<string, IconName> = new Map(
+  (Object.entries(EXTENSIONS_BY_GLYPH) as [IconName, readonly string[]][]).flatMap(
+    ([glyph, extensions]) => extensions.map((extension) => [extension, glyph] as const),
+  ),
+)
+
+const BY_FAMILY: Readonly<Record<string, IconName>> = {
+  audio: 'fileAudio',
+  image: 'fileImage',
+  text: 'fileText',
+  video: 'fileVideo',
+}
+
 /**
  * Which glyph names a file's family.
  *
@@ -55,49 +90,5 @@ export function fileFormat(name: string): string {
 export function fileGlyph(name: string, contentType?: string): IconName {
   const ext = parts(name).ext.slice(1).toLowerCase()
   const family = contentType?.split('/')[0]?.toLowerCase()
-  return BY_EXTENSION[ext] ?? (family === undefined ? undefined : BY_FAMILY[family]) ?? 'file'
-}
-
-const BY_EXTENSION: Readonly<Record<string, IconName>> = {
-  pdf: 'fileText',
-  doc: 'fileText',
-  docx: 'fileText',
-  odt: 'fileText',
-  pages: 'fileText',
-  rtf: 'fileText',
-  txt: 'fileText',
-  md: 'fileText',
-  csv: 'fileSpreadsheet',
-  numbers: 'fileSpreadsheet',
-  ods: 'fileSpreadsheet',
-  xls: 'fileSpreadsheet',
-  xlsx: 'fileSpreadsheet',
-  '7z': 'fileArchive',
-  bz2: 'fileArchive',
-  gz: 'fileArchive',
-  rar: 'fileArchive',
-  tar: 'fileArchive',
-  xz: 'fileArchive',
-  zip: 'fileArchive',
-  c: 'fileCode',
-  css: 'fileCode',
-  go: 'fileCode',
-  h: 'fileCode',
-  html: 'fileCode',
-  js: 'fileCode',
-  json: 'fileCode',
-  py: 'fileCode',
-  rs: 'fileCode',
-  sh: 'fileCode',
-  ts: 'fileCode',
-  tsx: 'fileCode',
-  xml: 'fileCode',
-  yml: 'fileCode',
-}
-
-const BY_FAMILY: Readonly<Record<string, IconName>> = {
-  audio: 'fileAudio',
-  image: 'fileImage',
-  text: 'fileText',
-  video: 'fileVideo',
+  return BY_EXTENSION.get(ext) ?? (family === undefined ? undefined : BY_FAMILY[family]) ?? 'file'
 }
