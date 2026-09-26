@@ -13,14 +13,7 @@ import { AutoDownloadPrompt } from './AutoDownloadPrompt'
 import { BackButton } from './BackButton'
 import { conversationTitle } from './conversationTitle'
 
-/**
- * One conversation: its transcript and a composer.
- *
- * The id arrives as a prop rather than being read off a route. Which router put it there is
- * the app's business, and reading it here would be the one import that pins this screen to
- * a platform again.
- */
-export function ConversationScreen({ conversationId }: { conversationId: string }) {
+function Conversation({ conversationId }: { conversationId: string }) {
   const conversation = useConversation(conversationId)
   const { messages, ready } = useMessages(conversationId)
   const actions = useSessionActions()
@@ -34,8 +27,8 @@ export function ConversationScreen({ conversationId }: { conversationId: string 
    *
    * Here rather than in the message row, because the transcript is a windowed list: a row
    * scrolled far enough away is unmounted, and state held inside one is a choice that undoes
-   * itself the moment somebody scrolls down and back. Dropped on leaving the conversation, which
-   * is the right scope - it is a way of reading one message, not a setting.
+   * itself the moment somebody scrolls down and back. Dropped with the conversation, which is the
+   * right scope - it is a way of reading one message, not a setting.
    */
   const [views, setViews] = useState<Record<string, AttachmentView>>({})
 
@@ -136,6 +129,19 @@ export function ConversationScreen({ conversationId }: { conversationId: string 
       )}
     </Screen>
   )
+}
+
+/**
+ * One conversation: its transcript and a composer.
+ *
+ * The id arrives as a prop rather than being read off a route. Which router put it there is
+ * the app's business, and reading it here would be the one import that pins this screen to
+ * a platform again.
+ */
+export function ConversationScreen({ conversationId }: { conversationId: string }) {
+  // A wide layout keeps this mounted and changes only the id; the key gives each conversation
+  // its own draft, attachment views and open overlays.
+  return <Conversation key={conversationId} conversationId={conversationId} />
 }
 
 /**
