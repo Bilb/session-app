@@ -5,6 +5,7 @@ import { tr } from '@session/localization'
 import { useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { MediaViewer, type MediaViewerItem } from '@session/ui'
+import { useRef } from 'react'
 
 import { exportOne } from './exportAttachment'
 import { PENDING_COPY } from './pendingCopy'
@@ -39,7 +40,10 @@ export function MessageMediaViewer({
     kind: mediaKindOf(attachment.contentType),
   }))
 
-  const at = index ?? 0
+  // Held past closing, so the fade-out plays over the picture that was open rather than the first.
+  const lastIndex = useRef(0)
+  if (index !== null) lastIndex.current = index
+  const at = index ?? lastIndex.current
   const attachment = viewable[at]
 
   return (
