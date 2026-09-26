@@ -31,10 +31,10 @@ export interface MessageWindow {
  */
 export interface AttachmentTransferState {
   state: 'running' | 'done' | 'failed'
-  /** Encrypted bytes, so `done / total` is the only honest fraction - not `done / size`. */
-  done: number
+  /** Encrypted bytes, so this over `totalBytes` is the honest fraction, not over `sizeBytes`. */
+  doneBytes: number
   /** Zero until the server says how big the file is, which is what "indeterminate" means here. */
-  total: number
+  totalBytes: number
   /** The libsession code the failure carried, when `state` is `failed`. */
   error?: string
 }

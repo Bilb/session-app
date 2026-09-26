@@ -124,10 +124,10 @@ export interface Attachment {
   filename?: string
   /**
    * The file's size before encryption. Unset on an outgoing attachment that has not uploaded, and
-   * the sender's claim on an incoming one. Not comparable with a progress report's `total`, which
-   * counts encrypted bytes.
+   * the sender's claim on an incoming one. Not comparable with a progress report's `totalBytes`,
+   * which counts encrypted bytes.
    */
-  size?: number
+  sizeBytes?: number
   voiceMessage: boolean
   /** Supplied by whoever attached the file - libsession does not measure images. */
   width?: number
@@ -154,18 +154,18 @@ export interface Attachment {
    * How far the transfer has got while `availability` is `fetching`, and 0 otherwise.
    *
    * The same encrypted-byte figures `attachment-progress` carries, so a bar drawn from these and
-   * then fed by reports continues rather than jumping. `fetchTotal` is 0 until the server has
+   * then fed by reports continues rather than jumping. `fetchTotalBytes` is 0 until the server has
    * said how big the file is. What they are for is a conversation opened while a download is
    * already running: the reports went to whoever started it.
    */
-  fetchDone: number
-  fetchTotal: number
+  fetchDoneBytes: number
+  fetchTotalBytes: number
   /**
    * When the recipient last saved it - us on an incoming attachment, the other party on one we
    * sent. Unset means *not known to have been saved*, which is not the same as not saved: it
    * depends on the other end volunteering a notification.
    */
-  savedAt?: number
+  savedAtMs?: number
 }
 
 /**

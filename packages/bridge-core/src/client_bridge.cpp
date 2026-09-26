@@ -1054,10 +1054,10 @@ struct ClientBridge::Impl {
     }
 
     void handle(double id, const SetAttachmentCacheLimitCommand& cmd) {
-        std::optional<int64_t> bytes;
-        if (cmd.bytes)
-            bytes = whole<int64_t>(*cmd.bytes, "setAttachmentCacheLimit.bytes");
-        client->set_attachment_cache_limit(bytes, on(id, [this, id] { ok(id); }));
+        std::optional<int64_t> limit_bytes;
+        if (cmd.limit_bytes)
+            limit_bytes = whole<int64_t>(*cmd.limit_bytes, "setAttachmentCacheLimit.limitBytes");
+        client->set_attachment_cache_limit(limit_bytes, on(id, [this, id] { ok(id); }));
     }
 
     void handle(double id, const GetPrefCommand& cmd) {

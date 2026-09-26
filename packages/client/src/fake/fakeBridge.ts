@@ -219,7 +219,7 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     return { type: 'byteCount', ...(bytes === undefined ? {} : { bytes }) }
   },
   setAttachmentCacheLimit: async (client, cmd) => {
-    await client.setAttachmentCacheLimit(cmd.bytes)
+    await client.setAttachmentCacheLimit(cmd.limitBytes)
     return empty
   },
 

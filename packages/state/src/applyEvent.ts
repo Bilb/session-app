@@ -92,10 +92,10 @@ function recordTransfer(
   if (!isLoaded(state, event.messageId)) return state
 
   const entry: AttachmentTransferState = {
-    // An outcome is what ends a transfer - `done === total` does not, and arrives before it.
+    // An outcome ends a transfer; `doneBytes === totalBytes` does not, and arrives before it.
     state: event.outcome === undefined ? 'running' : event.outcome.ok ? 'done' : 'failed',
-    done: event.done,
-    total: event.total,
+    doneBytes: event.doneBytes,
+    totalBytes: event.totalBytes,
     ...(event.outcome?.error === undefined ? {} : { error: event.outcome.error }),
   }
 
