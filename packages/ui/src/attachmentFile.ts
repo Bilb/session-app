@@ -54,7 +54,7 @@ export function fileFormat(name: string): string {
  */
 export function fileGlyph(name: string, contentType?: string): IconName {
   const ext = parts(name).ext.slice(1).toLowerCase()
-  const family = contentType?.slice(0, contentType.indexOf('/')).toLowerCase()
+  const family = contentType?.split('/')[0]?.toLowerCase()
   return BY_EXTENSION[ext] ?? (family === undefined ? undefined : BY_FAMILY[family]) ?? 'file'
 }
 
