@@ -581,21 +581,21 @@ export function runSessionClientContract(
       seen.stop()
     })
 
-    it('reports a save as its own transfer', async () => {
+    it('reports an export as its own transfer', async () => {
       const { client, messageId, index, settle } = await harness.withAttachment()
       const seen = collect(client)
 
-      const saving = client.saveAttachment(messageId, index, '/tmp/contract-save.bin')
+      const exporting = client.exportAttachment(messageId, index, '/tmp/contract-export.bin')
       await settle()
-      await saving
+      await exporting
 
-      const saves = seen.events.filter(
-        (e) => e.type === 'attachment-progress' && e.transfer === 'save',
+      const exports = seen.events.filter(
+        (e) => e.type === 'attachment-progress' && e.transfer === 'export',
       )
-      // libsession joins downloads with each other and never joins a save, so the two are
+      // libsession joins downloads with each other and never joins an export, so the two are
       // distinguishable even for the same file - which is the only thing that keeps a single
       // progress indicator from reading two transfers as one.
-      expect(saves.length).toBeGreaterThan(0)
+      expect(exports.length).toBeGreaterThan(0)
       seen.stop()
     })
 

@@ -333,20 +333,20 @@ describe('attachment transfers', () => {
     })
   })
 
-  it('keeps a download and a save of the same attachment apart', () => {
-    // libsession joins downloads with each other and never joins a save, so both can be running
-    // against one file: keyed only by message and index they would overwrite each other and the
-    // bar would jump backwards.
+  it('keeps a download and an export of the same attachment apart', () => {
+    // libsession joins downloads with each other and never joins an export, so both can be
+    // running against one file: keyed only by message and index they would overwrite each other
+    // and the bar would jump backwards.
     const state = replay(
       [
         progress({ transfer: 'download', done: 1024, total: 2048 }),
-        progress({ transfer: 'save', done: 64, total: 2048 }),
+        progress({ transfer: 'export', done: 64, total: 2048 }),
       ],
       loaded(),
     )
 
     expect(state.transfers['download:1:0']?.done).toBe(1024)
-    expect(state.transfers['save:1:0']?.done).toBe(64)
+    expect(state.transfers['export:1:0']?.done).toBe(64)
   })
 
   it('treats an ok outcome as finished and any other as failed', () => {

@@ -437,7 +437,7 @@ struct BoolResult {
             value{std::move(value_)} {}
 };
 
-/// Where a save landed, which is not always where it was asked to go: a collision becomes `name (2)`.
+/// Where an export landed, which is not always where it was asked to go: a collision becomes `name (2)`.
 struct PathResult {
     static constexpr std::string_view type_tag = "path";
 
@@ -576,18 +576,18 @@ struct HistoryReplacedSessionEvent {
 
 /// Which kind of transfer a progress report belongs to.
 ///
-/// libsession joins concurrent downloads of one file with each other but never joins a save, so one
-/// attachment can have two live transfers at once. Keyed without this they interleave, and a bar
+/// libsession joins concurrent downloads of one file with each other but never joins an export, so
+/// one attachment can have two live transfers at once. Keyed without this they interleave, and a bar
 /// jumps backwards.
 enum class AttachmentTransfer {
     download,
-    save,
+    export_,
 };
 
 template <>
 struct EnumTraits<AttachmentTransfer> {
     static constexpr std::string_view name = "AttachmentTransfer";
-    static constexpr std::array<std::string_view, 2> names{"download", "save"};
+    static constexpr std::array<std::string_view, 2> names{"download", "export"};
 
     static constexpr std::string_view to_string(AttachmentTransfer value) {
         return names[static_cast<std::size_t>(value)];
@@ -1134,10 +1134,10 @@ struct DownloadAttachmentCommand {
             message_id{std::move(message_id_)}, index{std::move(index_)} {}
 };
 
-/// Write an attachment to a path the person chose, fetching it first if the cache does not hold
-/// it. Reads the cache but never fills it, so this is not a way to pre-fetch.
-struct SaveAttachmentCommand {
-    static constexpr std::string_view type_tag = "saveAttachment";
+/// Write an attachment out to a path the person chose, fetching it first if the cache does not
+/// hold it. Reads the cache but never fills it, so this is not a way to pre-fetch.
+struct ExportAttachmentCommand {
+    static constexpr std::string_view type_tag = "exportAttachment";
 
     double message_id;
     double index;
@@ -1145,7 +1145,7 @@ struct SaveAttachmentCommand {
     bool notify_sender;
     bool replace;
 
-    SaveAttachmentCommand(double message_id_, double index_, std::string destination_, bool notify_sender_, bool replace_) :
+    ExportAttachmentCommand(double message_id_, double index_, std::string destination_, bool notify_sender_, bool replace_) :
             message_id{std::move(message_id_)}, index{std::move(index_)}, destination{std::move(destination_)}, notify_sender{std::move(notify_sender_)}, replace{std::move(replace_)} {}
 };
 
@@ -1295,7 +1295,7 @@ using Command = std::variant<
         RetrySendCommand,
         DeleteMessageCommand,
         DownloadAttachmentCommand,
-        SaveAttachmentCommand,
+        ExportAttachmentCommand,
         SetAutoDownloadCommand,
         GetCacheDirCommand,
         GetAttachmentCacheLimitCommand,

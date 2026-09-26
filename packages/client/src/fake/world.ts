@@ -590,16 +590,16 @@ export class FakeAccount {
   }
 
   /**
-   * Writes an attachment somewhere, fetching it if the cache does not hold it.
+   * Writes an attachment out to a chosen path, fetching it if the cache does not hold it.
    *
-   * Never joined with a download of the same file: a save streams to its destination and leaves
-   * the cache alone, so the two are separate transfers even for the same bytes.
+   * Never joined with a download of the same file: an export streams to its destination and
+   * leaves the cache alone, so the two are separate transfers even for the same bytes.
    */
-  saveAttachment(messageId: number, index: number, destination: string): Promise<string> {
+  exportAttachment(messageId: number, index: number, destination: string): Promise<string> {
     const found = this.locate(messageId, index)
     if (!found) return Promise.reject(new Error(`No attachment ${messageId}:${index}`))
 
-    return this.transfer('save', messageId, index).then(() => {
+    return this.transfer('export', messageId, index).then(() => {
       const saved = found.message.attachments.map((a) =>
         a.index === index ? { ...a, savedAt: this.world?.now() ?? Date.now() } : a,
       )

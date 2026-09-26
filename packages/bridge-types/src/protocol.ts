@@ -212,11 +212,11 @@ export type Command =
    */
   | { type: 'downloadAttachment'; messageId: number; index: number }
   /**
-   * Write an attachment to a path the person chose, fetching it first if the cache does not hold
-   * it. Reads the cache but never fills it, so this is not a way to pre-fetch.
+   * Write an attachment out to a path the person chose, fetching it first if the cache does not
+   * hold it. Reads the cache but never fills it, so this is not a way to pre-fetch.
    */
   | {
-      type: 'saveAttachment'
+      type: 'exportAttachment'
       messageId: number
       index: number
       destination: string
@@ -299,7 +299,7 @@ export type Result =
   | { type: 'hex'; hex: string }
   | { type: 'pref'; value?: string }
   | { type: 'bool'; value: boolean }
-  /** Where a save landed, which is not always where it was asked to go: a collision becomes `name (2)`. */
+  /** Where an export landed, which is not always where it was asked to go: a collision becomes `name (2)`. */
   | { type: 'path'; path: string }
   /** Unset means no limit. */
   | { type: 'byteCount'; bytes?: number }

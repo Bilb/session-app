@@ -126,8 +126,11 @@ export interface SessionActions {
    * transfer reads the same state as one that started it.
    */
   downloadAttachment: (messageId: number, index: number) => Promise<void>
-  /** Resolves with where the file actually landed, which a collision can change. */
-  saveAttachment: (messageId: number, index: number, destination: string) => Promise<string>
+  /**
+   * Writes an attachment out to a path the person chose. Resolves with where it landed, which a
+   * collision can change.
+   */
+  exportAttachment: (messageId: number, index: number, destination: string) => Promise<string>
   /**
    * What this conversation fetches unasked. Sending `none` is not the same as never calling
    * this: the call is what records that the question was asked, and only an unanswered one
@@ -399,8 +402,8 @@ export function createSessionStore(
       await client.downloadAttachment(messageId, index)
     },
 
-    async saveAttachment(messageId, index, destination): Promise<string> {
-      return client.saveAttachment(messageId, index, destination)
+    async exportAttachment(messageId, index, destination): Promise<string> {
+      return client.exportAttachment(messageId, index, destination)
     },
 
     async setAutoDownload(id, mode): Promise<void> {

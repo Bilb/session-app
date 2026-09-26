@@ -1567,11 +1567,11 @@ struct Codec<::session_bridge::DownloadAttachmentCommand> {
 };
 
 template <>
-struct Codec<::session_bridge::SaveAttachmentCommand> {
-    static constexpr std::string_view name = "SaveAttachmentCommand";
-    static Napi::Value to(Napi::Env env, const ::session_bridge::SaveAttachmentCommand& value) {
+struct Codec<::session_bridge::ExportAttachmentCommand> {
+    static constexpr std::string_view name = "ExportAttachmentCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::ExportAttachmentCommand& value) {
         Napi::Object obj = Napi::Object::New(env);
-        obj.Set("type", Napi::String::New(env, ::session_bridge::SaveAttachmentCommand::type_tag.data(), ::session_bridge::SaveAttachmentCommand::type_tag.size()));
+        obj.Set("type", Napi::String::New(env, ::session_bridge::ExportAttachmentCommand::type_tag.data(), ::session_bridge::ExportAttachmentCommand::type_tag.size()));
         obj.Set("messageId", Codec<double>::to(env, value.message_id));
         obj.Set("index", Codec<double>::to(env, value.index));
         obj.Set("destination", Codec<std::string>::to(env, value.destination));
@@ -1579,14 +1579,14 @@ struct Codec<::session_bridge::SaveAttachmentCommand> {
         obj.Set("replace", Codec<bool>::to(env, value.replace));
         return obj;
     }
-    static ::session_bridge::SaveAttachmentCommand from(const Napi::Value& value, std::string_view where) {
+    static ::session_bridge::ExportAttachmentCommand from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
-        return ::session_bridge::SaveAttachmentCommand(
-                Codec<double>::from(obj.Get("messageId"), "SaveAttachmentCommand.messageId"),
-                Codec<double>::from(obj.Get("index"), "SaveAttachmentCommand.index"),
-                Codec<std::string>::from(obj.Get("destination"), "SaveAttachmentCommand.destination"),
-                Codec<bool>::from(obj.Get("notifySender"), "SaveAttachmentCommand.notifySender"),
-                Codec<bool>::from(obj.Get("replace"), "SaveAttachmentCommand.replace"));
+        return ::session_bridge::ExportAttachmentCommand(
+                Codec<double>::from(obj.Get("messageId"), "ExportAttachmentCommand.messageId"),
+                Codec<double>::from(obj.Get("index"), "ExportAttachmentCommand.index"),
+                Codec<std::string>::from(obj.Get("destination"), "ExportAttachmentCommand.destination"),
+                Codec<bool>::from(obj.Get("notifySender"), "ExportAttachmentCommand.notifySender"),
+                Codec<bool>::from(obj.Get("replace"), "ExportAttachmentCommand.replace"));
     }
 };
 
@@ -1829,8 +1829,8 @@ struct Codec<::session_bridge::Command> {
             return Codec<::session_bridge::DeleteMessageCommand>::from(value, where);
         if (tag == "downloadAttachment")
             return Codec<::session_bridge::DownloadAttachmentCommand>::from(value, where);
-        if (tag == "saveAttachment")
-            return Codec<::session_bridge::SaveAttachmentCommand>::from(value, where);
+        if (tag == "exportAttachment")
+            return Codec<::session_bridge::ExportAttachmentCommand>::from(value, where);
         if (tag == "setAutoDownload")
             return Codec<::session_bridge::SetAutoDownloadCommand>::from(value, where);
         if (tag == "getCacheDir")
