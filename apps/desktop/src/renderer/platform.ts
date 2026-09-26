@@ -17,8 +17,8 @@ setPorts(
       // Attaching is not a thing the composer can do yet, so the pickers stay the memory ones
       // rather than becoming two dialogs nothing opens.
       ...memoryPorts().files,
-      chooseSaveLocation: (suggestedName) =>
-        window.sessionDesktop.chooseSaveLocation(suggestedName),
+      chooseExportLocation: (suggestedName) =>
+        window.sessionDesktop.chooseExportLocation(suggestedName),
       revealInFolder: (path) => window.sessionDesktop.revealInFolder(path),
       openPath: (path) => window.sessionDesktop.openPath(path),
     },

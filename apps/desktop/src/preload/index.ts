@@ -35,8 +35,8 @@ contextBridge.exposeInMainWorld('sessionDesktop', {
    * are worth awaiting: a reveal that failed and one that was refused look identical from here,
    * and main is the only side that knows which.
    */
-  chooseSaveLocation: (suggestedName: string): Promise<string | null> =>
-    ipcRenderer.invoke('files:choose-save-location', suggestedName),
+  chooseExportLocation: (suggestedName: string): Promise<string | null> =>
+    ipcRenderer.invoke('files:choose-export-location', suggestedName),
   revealInFolder: (path: string): Promise<void> => ipcRenderer.invoke('files:reveal', path),
   openPath: (path: string): Promise<void> => ipcRenderer.invoke('files:open', path),
 })
