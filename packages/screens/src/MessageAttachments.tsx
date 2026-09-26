@@ -29,7 +29,8 @@ export function MessageAttachments({
   onChooseView,
 }: {
   message: Message
-  onOpen: (at: number) => void
+  /** Takes the attachment's index in the message. */
+  onOpen: (index: number) => void
   onFirstDownload?: (() => void) | undefined
   /** What this conversation fetches unasked. Undefined means nobody has been asked. */
   autoDownload?: AutoDownload | undefined

@@ -31,7 +31,8 @@ export function MessageAlbum({
   autoDownload,
 }: {
   message: Message
-  onOpen: (at: number) => void
+  /** Takes the attachment's index in the message. */
+  onOpen: (index: number) => void
   /** The set's own control, drawn over the box the layout names. */
   control?: ReactNode
   /** What this conversation fetches unasked. Undefined means nobody has been asked. */
@@ -65,7 +66,10 @@ export function MessageAlbum({
       items={items}
       width={ALBUM_WIDTH}
       overflowLabel={(count) => tr('andMore', { count })}
-      onOpen={onOpen}
+      onOpen={(at) => {
+        const attachment = viewable[at]
+        if (attachment !== undefined) onOpen(attachment.index)
+      }}
       {...(control === undefined ? {} : { control })}
       testID={ELEMENT.conversation.attachment}
     />

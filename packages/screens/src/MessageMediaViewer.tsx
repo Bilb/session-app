@@ -25,7 +25,10 @@ export function MessageMediaViewer({
   onClose,
 }: {
   message: Message
-  /** Null when nothing is open, so the caller holds one piece of state rather than two. */
+  /**
+   * The open attachment's index in the message, not its position among the viewable ones. Null
+   * when nothing is open, so the caller holds one piece of state rather than two.
+   */
   index: number | null
   onIndex: (index: number) => void
   onClose: () => void
@@ -43,7 +46,10 @@ export function MessageMediaViewer({
   // Held past closing, so the fade-out plays over the picture that was open rather than the first.
   const lastIndex = useRef(0)
   if (index !== null) lastIndex.current = index
-  const at = index ?? lastIndex.current
+  const at = Math.max(
+    0,
+    viewable.findIndex((a) => a.index === (index ?? lastIndex.current)),
+  )
   const attachment = viewable[at]
 
   return (
@@ -51,7 +57,10 @@ export function MessageMediaViewer({
       open={index !== null}
       items={items}
       index={at}
-      onIndex={onIndex}
+      onIndex={(position) => {
+        const next = viewable[position]
+        if (next !== undefined) onIndex(next.index)
+      }}
       onClose={onClose}
       onExport={() => {
         if (attachment !== undefined) void exportOne(message, attachment.index, actions)

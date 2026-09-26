@@ -4,7 +4,7 @@ import { ELEMENT } from '@session/test-ids'
 import { forwardChevron, Icon, PressArea, Text, XStack, YStack } from '@session/ui'
 
 import { AttachmentRow } from './AttachmentRow'
-import { viewerIndices } from './viewableAttachments'
+import { isViewable } from './viewableAttachments'
 
 /**
  * How many rows a message draws before the rest moves into a sheet.
@@ -32,8 +32,8 @@ export function AttachmentList({
   onShowAll,
 }: {
   message: Message
-  /** Takes a position in the viewer's set, not in the message. See `viewerIndices`. */
-  onOpen: (at: number) => void
+  /** Takes the attachment's index in the message. */
+  onOpen: (index: number) => void
   onFirstDownload?: (() => void) | undefined
   /** What this conversation fetches unasked. Undefined means nobody has been asked. */
   autoDownload?: AutoDownload | undefined
@@ -45,32 +45,28 @@ export function AttachmentList({
    */
   onShowAll?: (() => void) | undefined
 }) {
-  const viewer = viewerIndices(message)
   const capped =
     onShowAll === undefined ? message.attachments : message.attachments.slice(0, LIST_MAX_ROWS)
   const hidden = message.attachments.length - capped.length
 
   return (
     <YStack>
-      {capped.map((attachment: Attachment) => {
-        const at = viewer.get(attachment.index)
-        return (
-          <AttachmentRow
-            key={attachment.index}
-            message={message}
-            attachment={attachment}
-            onFirstDownload={onFirstDownload}
-            autoDownload={autoDownload}
-            {...(at === undefined
-              ? {}
-              : {
-                  onOpen: () => {
-                    onOpen(at)
-                  },
-                })}
-          />
-        )
-      })}
+      {capped.map((attachment: Attachment) => (
+        <AttachmentRow
+          key={attachment.index}
+          message={message}
+          attachment={attachment}
+          onFirstDownload={onFirstDownload}
+          autoDownload={autoDownload}
+          onOpen={
+            isViewable(attachment)
+              ? () => {
+                  onOpen(attachment.index)
+                }
+              : undefined
+          }
+        />
+      ))}
       {hidden === 0 || onShowAll === undefined ? null : (
         <ShowAll count={message.attachments.length} onPress={onShowAll} />
       )}
