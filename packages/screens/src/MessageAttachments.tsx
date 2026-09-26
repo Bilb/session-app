@@ -114,7 +114,12 @@ export function MessageAttachments({
           testID={ELEMENT.conversation.attachmentSheet}
           closeTestID={ELEMENT.conversation.attachmentSheetClose}
         >
-          <AttachmentList message={message} onOpen={onOpen} onFirstDownload={onFirstDownload} />
+          <AttachmentList
+            message={message}
+            onOpen={onOpen}
+            onFirstDownload={onFirstDownload}
+            autoDownload={autoDownload}
+          />
         </Sheet>
       )}
     </YStack>
