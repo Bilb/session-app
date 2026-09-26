@@ -59,8 +59,8 @@ export function summarise(
   let ready = 0
 
   for (const attachment of attachments) {
-    if (attachment.size === undefined || size === undefined) size = undefined
-    else size += attachment.size
+    if (attachment.sizeBytes === undefined || size === undefined) size = undefined
+    else size += attachment.sizeBytes
 
     const fetch = fetchOf(attachment, reportFor(attachment))
     // Unavailable counts as neither: the set is not failing at something a retry would fix, and
@@ -69,14 +69,14 @@ export function summarise(
     if (fetch.state === 'failed') failed += 1
     if (fetch.state === 'ready') {
       ready += 1
-      done += attachment.size ?? 0
+      done += attachment.sizeBytes ?? 0
     }
     if (fetch.state === 'fetching') {
       running += 1
       // The fraction comes from the encrypted figures because that is what is being moved; it is
       // then spent against the plaintext size, so `done` and `total` agree with each other.
       const fraction = fetch.total > 0 ? fetch.done / fetch.total : 0
-      done += (attachment.size ?? 0) * fraction
+      done += (attachment.sizeBytes ?? 0) * fraction
     }
   }
 

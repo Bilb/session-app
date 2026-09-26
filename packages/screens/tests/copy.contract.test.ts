@@ -113,7 +113,6 @@ describe('screen copy', () => {
         'the list is meant to shrink: promote one via session-localization rather than adding.',
     ).toEqual([
       'attachmentCache',
-      'attachmentCacheReveal',
       'attachmentCacheNoLimit',
       'attachmentCount',
       'attachmentViewGallery',

@@ -8,13 +8,13 @@ function attachment(index: number, size?: number): Attachment {
   return {
     index,
     contentType: 'image/jpeg',
-    ...(size === undefined ? {} : { size }),
+    ...(size === undefined ? {} : { sizeBytes: size }),
     voiceMessage: false,
     hasPreview: false,
     uploaded: true,
     availability: 'absent',
-    fetchDone: 0,
-    fetchTotal: 0,
+    fetchDoneBytes: 0,
+    fetchTotalBytes: 0,
   }
 }
 
@@ -23,11 +23,11 @@ function message(attachments: Attachment[]): Message {
 }
 
 function running(done: number, total: number): AttachmentTransferState {
-  return { state: 'running', done, total }
+  return { state: 'running', doneBytes: done, totalBytes: total }
 }
 
-const done: AttachmentTransferState = { state: 'done', done: 0, total: 0 }
-const failed: AttachmentTransferState = { state: 'failed', done: 0, total: 0 }
+const done: AttachmentTransferState = { state: 'done', doneBytes: 0, totalBytes: 0 }
+const failed: AttachmentTransferState = { state: 'failed', doneBytes: 0, totalBytes: 0 }
 
 function fold(
   attachments: Attachment[],

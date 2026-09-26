@@ -35,9 +35,13 @@ export function fetchOf(attachment: Attachment, report?: AttachmentTransferState
     return { state: 'ready', ...none }
 
   if (report?.state === 'running')
-    return { state: 'fetching', done: report.done, total: report.total }
+    return { state: 'fetching', done: report.doneBytes, total: report.totalBytes }
   if (attachment.availability === 'fetching')
-    return { state: 'fetching', done: attachment.fetchDone, total: attachment.fetchTotal }
+    return {
+      state: 'fetching',
+      done: attachment.fetchDoneBytes,
+      total: attachment.fetchTotalBytes,
+    }
 
   return { state: 'idle', ...none }
 }

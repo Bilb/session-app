@@ -12,14 +12,14 @@ function attachment(overrides: Partial<Attachment> = {}): Attachment {
     hasPreview: false,
     uploaded: true,
     availability: 'absent',
-    fetchDone: 0,
-    fetchTotal: 0,
+    fetchDoneBytes: 0,
+    fetchTotalBytes: 0,
     ...overrides,
   }
 }
 
 function report(overrides: Partial<AttachmentTransferState> = {}): AttachmentTransferState {
-  return { state: 'running', done: 0, total: 0, ...overrides }
+  return { state: 'running', doneBytes: 0, totalBytes: 0, ...overrides }
 }
 
 describe('what an attachment is doing', () => {
@@ -33,8 +33,8 @@ describe('what an attachment is doing', () => {
   it('takes a running transfer’s figures over the page’s', () => {
     // Both describe the same transfer; the report is the more recent of the two.
     const fetched = fetchOf(
-      attachment({ availability: 'fetching', fetchDone: 100, fetchTotal: 900 }),
-      report({ done: 400, total: 900 }),
+      attachment({ availability: 'fetching', fetchDoneBytes: 100, fetchTotalBytes: 900 }),
+      report({ doneBytes: 400, totalBytes: 900 }),
     )
     expect(fetched).toEqual({ state: 'fetching', done: 400, total: 900 })
   })
@@ -42,7 +42,9 @@ describe('what an attachment is doing', () => {
   it('falls back to the page’s figures for a transfer somebody else started', () => {
     // An auto-download, or another window's tap. The reports went to whoever started it, so a
     // bar drawn here would begin at nothing without this.
-    expect(fetchOf(attachment({ availability: 'fetching', fetchDone: 7, fetchTotal: 9 }))).toEqual({
+    expect(
+      fetchOf(attachment({ availability: 'fetching', fetchDoneBytes: 7, fetchTotalBytes: 9 })),
+    ).toEqual({
       state: 'fetching',
       done: 7,
       total: 9,

@@ -14,7 +14,6 @@
  */
 export const PENDING_COPY = {
   attachmentCache: 'Attachment Cache',
-  attachmentCacheReveal: 'Reveal',
   attachmentCacheNoLimit: 'No limit',
   /**
    * A function, because this one takes a count.
