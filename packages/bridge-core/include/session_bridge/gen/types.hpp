@@ -620,8 +620,12 @@ struct AttachmentOutcome {
 ///
 /// The first report of a transfer is `{doneBytes: 0, totalBytes: 0}` and means it started -
 /// `totalBytes` stays 0 until the server says how big the file is. `outcome` absent means still
-/// going, and exactly one report per transfer carries one: `doneBytes === totalBytes` does not
+/// going, and exactly one report per handler carries one: `doneBytes === totalBytes` does not
 /// mean finished, because the bytes still have to verify.
+///
+/// A download joined by a second request, or by an auto-download, has a handler for each: the
+/// joiner first gets one report of where it has got to, and every report after that, the end
+/// included, arrives once per handler - identical frames under one key.
 ///
 /// Reports for one (transfer, messageId, index) are ordered; different ones interleave, and each
 /// is rate limited to roughly one per 100ms. A transfer served from the cache reports nothing at

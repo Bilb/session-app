@@ -573,8 +573,9 @@ export function runSessionClientContract(
       const terminal = reports.filter(
         (e) => e.type === 'attachment-progress' && e.outcome !== undefined,
       )
-      // Exactly one, and it is the last: a caller that treats every report as possibly-final
-      // would finish the transfer early, and one waiting for doneBytes === totalBytes never would.
+      // Exactly one for the one handler, and it is the last: a caller that treats every report as
+      // possibly-final would finish the transfer early, and one waiting for doneBytes ===
+      // totalBytes never would.
       expect(terminal.length).toBe(1)
       expect(terminal[0]).toBe(reports[reports.length - 1])
       const last = terminal[0]
@@ -582,6 +583,33 @@ export function runSessionClientContract(
       expect(last.outcome?.ok).toBe(true)
       expect(last.outcome?.error).toBeUndefined()
 
+      seen.stop()
+    })
+
+    it('joins a running download, and ends it once per handler', async () => {
+      const { client, messageId, index, settle } = await harness.withAttachment()
+      const seen = collect(client)
+
+      const first = client.downloadAttachment(messageId, index)
+      const joined = client.downloadAttachment(messageId, index)
+      await settle()
+      await Promise.all([first, joined])
+
+      const reports = seen.events.filter(
+        (e) =>
+          e.type === 'attachment-progress' &&
+          e.transfer === 'download' &&
+          e.messageId === messageId &&
+          e.index === index,
+      )
+      const terminal = reports.filter(
+        (e) => e.type === 'attachment-progress' && e.outcome !== undefined,
+      )
+      // One transfer, two handlers: each is told it finished, so a caller keyed on the transfer
+      // sees the same end twice and has to tolerate it.
+      expect(terminal.length).toBe(2)
+      expect(terminal.every((e) => e.type === 'attachment-progress' && e.outcome?.ok)).toBe(true)
+      expect(reports.slice(-2)).toEqual(terminal)
       seen.stop()
     })
 
