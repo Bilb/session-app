@@ -43,13 +43,18 @@ export function MessageAlbum({
     // resolver, and this says the person has not agreed to spend the data. Both draw the
     // placeholder, and the set's control is what offers to change it.
     ...(mayResolve(attachment, autoDownload)
-      ? { uri: requirePorts().media.urlFor(message.id, attachment.index) }
+      ? { uri: requirePorts().media.urlFor({ messageId: message.id, index: attachment.index }) }
       : {}),
     kind: attachment.contentType?.startsWith('video/') === true ? 'video' : 'image',
     // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
     // screen by the route a picture does. Null where the platform has no resolver.
     ...(attachment.hasPreview
-      ? { preview: requirePorts().media.previewUrlFor(message.id, attachment.index) }
+      ? {
+          preview: requirePorts().media.previewUrlFor({
+            messageId: message.id,
+            index: attachment.index,
+          }),
+        }
       : {}),
     testID: ELEMENT.conversation.attachmentImage,
   }))

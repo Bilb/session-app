@@ -43,9 +43,9 @@ export function AttachmentRow({
 }) {
   const actions = useSessionActions()
   // The report is the live half; `attachment.availability` is the resting one. See `fetchOf`.
-  const report = useAttachmentTransfer('download', message.id, attachment.index)
-  // The bridge calls it `save`; the button says Export. See `exportAttachment`.
-  const exporting = useAttachmentTransfer('save', message.id, attachment.index)
+  const ref = { messageId: message.id, index: attachment.index }
+  const report = useAttachmentTransfer('download', ref)
+  const exporting = useAttachmentTransfer('export', ref)
   const [error, setError] = useState(false)
 
   const fetched = fetchOf(attachment, report)
@@ -63,20 +63,18 @@ export function AttachmentRow({
           // Left off where this is not ours to fetch: a url is the request, so handing one over
           // would spend the data the person was about to be asked about.
           ...(mayResolve(attachment, autoDownload)
-            ? { uri: requirePorts().media.urlFor(message.id, attachment.index) }
+            ? { uri: requirePorts().media.urlFor(ref) }
             : {}),
           kind: attachment.contentType?.startsWith('video/') === true ? 'video' : 'image',
           // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
           // screen by the route a picture does. Null where the platform has no resolver.
-          ...(attachment.hasPreview
-            ? { preview: requirePorts().media.previewUrlFor(message.id, attachment.index) }
-            : {}),
+          ...(attachment.hasPreview ? { preview: requirePorts().media.previewUrlFor(ref) } : {}),
         }
 
   function start(): void {
     setError(false)
     onFirstDownload?.()
-    void actions.downloadAttachment(message.id, attachment.index).catch(() => {
+    void actions.downloadAttachment(ref).catch(() => {
       setError(true)
     })
   }
@@ -127,7 +125,7 @@ function caption(
     return `${formatBytes(fetched.done)} / ${formatBytes(fetched.total)}`
   }
   if (exporting) return PENDING_COPY.exporting
-  return attachment.size === undefined ? '' : formatBytes(attachment.size)
+  return attachment.sizeBytes === undefined ? '' : formatBytes(attachment.sizeBytes)
 }
 
 /**

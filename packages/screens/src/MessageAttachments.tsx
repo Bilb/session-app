@@ -1,6 +1,6 @@
 import type { Attachment, AutoDownload, Message } from '@session/client'
 import { tr } from '@session/localization'
-import { transferKey, useAttachmentTransfers, useSessionActions } from '@session/state'
+import { transferKey, useMessageTransfers, useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { Sheet, YStack } from '@session/ui'
 import { useState } from 'react'
@@ -54,7 +54,7 @@ export function MessageAttachments({
     // Every attachment, whether or not a tile is drawing it. Download and retry are the same call:
     // one that is already cached is handed over at once.
     for (const attachment of message.attachments) {
-      void actions.downloadAttachment(message.id, attachment.index)
+      void actions.downloadAttachment({ messageId: message.id, index: attachment.index })
     }
   }
 
@@ -117,15 +117,15 @@ export function MessageAttachments({
 }
 
 /**
- * The set's state, folded from every transfer this session has seen.
+ * The set's state, folded from this message's transfers.
  *
- * The record is read once rather than a hook per attachment: a hook in a loop is fine while a
- * message's attachment list cannot change, and that is a rule nobody should have to check.
+ * One record rather than a hook per attachment: a hook in a loop is fine while a message's
+ * attachment list cannot change, and that is a rule nobody should have to check.
  */
 function useAttachmentSet(message: Message): AttachmentSet {
-  const transfers = useAttachmentTransfers()
+  const transfers = useMessageTransfers(message.id)
   return summarise(
     message,
-    (attachment: Attachment) => transfers[transferKey('download', message.id, attachment.index)],
+    (attachment: Attachment) => transfers[transferKey('download', attachment.index)],
   )
 }

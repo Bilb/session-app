@@ -34,7 +34,7 @@ export function MessageMediaViewer({
   const items: MediaViewerItem[] = viewable.map((attachment) => ({
     // Null where the platform has no resolver. The viewer says so rather than drawing a broken
     // picture, which is the one thing it must not do with somebody's photograph.
-    uri: requirePorts().media.urlFor(message.id, attachment.index),
+    uri: requirePorts().media.urlFor({ messageId: message.id, index: attachment.index }),
     kind: attachment.contentType?.startsWith('video/') === true ? 'video' : 'image',
   }))
 
