@@ -26,8 +26,8 @@ export function AttachmentFooter({
   set: AttachmentSet
   onAction: () => void
   /** The shape being drawn. Absent where the reader has no choice about it. */
-  view?: AttachmentView
-  onView?: (view: AttachmentView) => void
+  view?: AttachmentView | undefined
+  onView?: ((view: AttachmentView) => void) | undefined
 }) {
   const action = verb(set)
   return (

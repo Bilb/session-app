@@ -34,30 +34,25 @@ export function MessageAlbum({
   /** Takes the attachment's index in the message. */
   onOpen: (index: number) => void
   /** The set's own control, drawn over the box the layout names. */
-  control?: ReactNode
+  control?: ReactNode | undefined
   /** What this conversation fetches unasked. Undefined means nobody has been asked. */
   autoDownload?: AutoDownload | undefined
 }) {
   const viewable = viewableAttachments(message)
 
   const items: AlbumItem[] = viewable.map((attachment) => ({
-    // Absent rather than null where this is not ours to fetch: null says the platform has no
+    // Undefined rather than null where this is not ours to fetch: null says the platform has no
     // resolver, and this says the person has not agreed to spend the data. Both draw the
     // placeholder, and the set's control is what offers to change it.
-    ...(mayResolve(attachment, autoDownload)
-      ? { uri: requirePorts().media.urlFor({ messageId: message.id, index: attachment.index }) }
-      : {}),
+    uri: mayResolve(attachment, autoDownload)
+      ? requirePorts().media.urlFor({ messageId: message.id, index: attachment.index })
+      : undefined,
     kind: mediaKindOf(attachment.contentType),
     // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
     // screen by the route a picture does. Null where the platform has no resolver.
-    ...(attachment.hasPreview
-      ? {
-          preview: requirePorts().media.previewUrlFor({
-            messageId: message.id,
-            index: attachment.index,
-          }),
-        }
-      : {}),
+    preview: attachment.hasPreview
+      ? requirePorts().media.previewUrlFor({ messageId: message.id, index: attachment.index })
+      : undefined,
     testID: ELEMENT.conversation.attachmentImage,
   }))
 
@@ -70,7 +65,7 @@ export function MessageAlbum({
         const attachment = viewable[at]
         if (attachment !== undefined) onOpen(attachment.index)
       }}
-      {...(control === undefined ? {} : { control })}
+      control={control}
       testID={ELEMENT.conversation.attachment}
     />
   )

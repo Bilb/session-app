@@ -83,21 +83,20 @@ export function MessageAttachments({
           onOpen={onOpen}
           onFirstDownload={onFirstDownload}
           autoDownload={autoDownload}
-          {...(overflows
-            ? {
-                onShowAll: () => {
+          onShowAll={
+            overflows
+              ? () => {
                   setShowingAll(true)
-                },
-              }
-            : {})}
+                }
+              : undefined
+          }
         />
       )}
       <AttachmentFooter
         set={set}
         onAction={act}
-        {...(onChooseView === undefined || !canChooseView(message)
-          ? {}
-          : { view, onView: onChooseView })}
+        view={canChooseView(message) ? view : undefined}
+        onView={onChooseView}
       />
 
       {/* The same rows and the same footer, on a surface that can be as tall as it needs to be.

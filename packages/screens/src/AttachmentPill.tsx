@@ -40,7 +40,7 @@ export function AttachmentPill({ set }: { set: AttachmentSet }) {
           <Progress
             // Absent rather than zero while the server has not said how big it is: the first
             // report of any transfer is 0 of 0, which means beginning and not empty.
-            {...(set.totalBytes > 0 ? { value: set.doneBytes / set.totalBytes } : {})}
+            value={set.totalBytes > 0 ? set.doneBytes / set.totalBytes : undefined}
             color="$primaryColor"
             trackColor="$backgroundTertiary"
             testID={ELEMENT.conversation.attachmentProgress}
