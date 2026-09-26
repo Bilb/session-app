@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import { MIN_HIT_TARGET } from '#src/buttonHitTarget'
-import { FILE_GLYPH_SIDE, FILE_LEAD_WIDTH, FILE_ROW_CONTROL, fileRowControl } from '#src/fileRow'
+import {
+  FILE_GLYPH_SIDE,
+  FILE_LEAD_WIDTH,
+  FILE_ROW_CONTROL,
+  fileRowControl,
+  fileRowTone,
+} from '#src/fileRow'
 import { TILE_RADIUS_STEP } from '#src/attachmentTile'
 
 describe('a file row’s one control', () => {
@@ -39,5 +45,28 @@ describe('a file row’s columns', () => {
     // The list's thumbnails are the same square, and an attachment tile below the step takes the
     // smaller radius - so a row of files and a row of pictures read as the same family.
     expect(FILE_GLYPH_SIDE).toBeLessThan(TILE_RADIUS_STEP)
+  })
+})
+
+describe('a file row’s colours', () => {
+  it('is red throughout after a failure', () => {
+    expect(fileRowTone('failed')).toEqual({ name: 'danger', caption: 'danger', control: 'danger' })
+  })
+
+  it('says a file is unavailable in the caption alone', () => {
+    expect(fileRowTone('unavailable')).toEqual({
+      name: 'primary',
+      caption: 'danger',
+      control: 'primary',
+    })
+  })
+
+  it('is at rest in every other state', () => {
+    for (const state of ['idle', 'fetching', 'ready'] as const)
+      expect(fileRowTone(state)).toEqual({
+        name: 'primary',
+        caption: 'secondary',
+        control: 'primary',
+      })
   })
 })

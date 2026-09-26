@@ -18,7 +18,9 @@ import {
   FILE_ROW_CONTROL,
   FILE_ROW_GAP,
   fileRowControl,
+  fileRowTone,
   type FileRowState,
+  type FileRowTone,
 } from './fileRow'
 import { Icon } from './Icon'
 import { PressArea } from './PressArea'
@@ -59,6 +61,13 @@ export type FileRowProps = WithFilename &
     testIDs?: FileRowTestIDs | undefined
   }
 
+/** An icon has no `tone`, so it takes the colour the Text tone of the same name draws in. */
+const TONE_COLOR = {
+  primary: '$textPrimary',
+  secondary: '$textSecondary',
+  danger: '$dangerColor',
+} as const satisfies Record<FileRowTone, string>
+
 /**
  * One file on one message.
  *
@@ -86,7 +95,7 @@ export function FileRow({
 }: FileRowProps) {
   const { head, tail } = splitFilename(filename)
   const format = fileFormat(filename)
-  const tone = state === 'failed' ? 'danger' : 'primary'
+  const tone = fileRowTone(state)
 
   const lead =
     thumbnail === undefined ? (
@@ -140,7 +149,7 @@ export function FileRow({
           <Text
             size="$body"
             weight="semibold"
-            tone={tone}
+            tone={tone.name}
             numberOfLines={1}
             ellipsizeMode="tail"
             flexShrink={1}
@@ -148,16 +157,11 @@ export function FileRow({
           >
             {head}
           </Text>
-          <Text size="$body" weight="semibold" tone={tone} numberOfLines={1} flexShrink={0}>
+          <Text size="$body" weight="semibold" tone={tone.name} numberOfLines={1} flexShrink={0}>
             {tail}
           </Text>
         </XStack>
-        <Text
-          size="$caption"
-          tone={state === 'failed' || state === 'unavailable' ? 'danger' : 'secondary'}
-          numberOfLines={1}
-          testID={testIDs?.caption}
-        >
+        <Text size="$caption" tone={tone.caption} numberOfLines={1} testID={testIDs?.caption}>
           {caption}
         </Text>
       </YStack>
@@ -229,11 +233,7 @@ function Trailing({
           hoverStyle={{ backgroundColor: '$backgroundTertiary' }}
           pressStyle={{ backgroundColor: '$backgroundTertiary' }}
         >
-          <Icon
-            name={control}
-            size="sm"
-            color={state === 'failed' ? '$dangerColor' : '$textPrimary'}
-          />
+          <Icon name={control} size="sm" color={TONE_COLOR[fileRowTone(state).control]} />
         </YStack>
       )}
     </PressArea>

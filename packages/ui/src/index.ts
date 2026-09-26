@@ -105,7 +105,8 @@ export {
   FILE_ROW_CONTROL,
   FILE_ROW_GAP,
   fileRowControl,
+  fileRowTone,
 } from './fileRow'
-export type { FileRowState } from './fileRow'
+export type { FileRowState, FileRowTone } from './fileRow'
 export { fileFormat, fileGlyph, splitFilename } from './attachmentFile'
 export type { WithTestID } from './with'
