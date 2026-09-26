@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_map>
 
 namespace {
 
@@ -161,7 +162,8 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
         }
     }
 
-    ~SessionBridge() override { Shutdown(); }
+    // A collected bridge drops its pending promises rather than rejecting them from a finalizer.
+    ~SessionBridge() override { Shutdown(false); }
 
   private:
     void Call(const Napi::CallbackInfo& info) {
@@ -182,146 +184,142 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
         _bridge->call(std::move(*request));
     }
 
+    /// A media request not yet settled. Only ever touched on the JavaScript thread.
+    struct PendingFetch {
+        Napi::Promise::Deferred deferred;
+        Napi::ThreadSafeFunction tsfn;
+    };
+    using PendingFetches = std::unordered_map<uint64_t, PendingFetch>;
+
+    /// A promise settled on the JavaScript thread by whatever `begin` hands its handler.
+    ///
+    /// Its own thread-safe function per request: these are as rare as a picture coming on
+    /// screen, and one shared across them would have to outlive them all to be released safely.
+    template <typename Answer, typename Begin, typename Build>
+    Napi::Value Fetch(
+            const Napi::CallbackInfo& info,
+            const char* usage,
+            const char* resource,
+            Begin begin,
+            Build build) {
+        Napi::Env env = info.Env();
+        auto deferred = Napi::Promise::Deferred::New(env);
+
+        if (!_bridge) {
+            deferred.Reject(Napi::Error::New(env, "the bridge is closed").Value());
+            return deferred.Promise();
+        }
+        if (info.Length() < 2 || !info[0].IsNumber() || !info[1].IsNumber())
+            throw Napi::TypeError::New(env, usage);
+
+        const double message_id = info[0].As<Napi::Number>().DoubleValue();
+        const double index = info[1].As<Napi::Number>().DoubleValue();
+
+        auto tsfn = Napi::ThreadSafeFunction::New(
+                env, Napi::Function::New(env, [](const Napi::CallbackInfo&) {}), resource, 0, 1);
+        // A picture that never arrives must not keep the process alive.
+        tsfn.Unref(env);
+
+        const uint64_t id = _next_fetch++;
+        _fetches->emplace(id, PendingFetch{deferred, tsfn});
+
+        // Holds the map rather than `this`: a queued answer can outlive the wrapper.
+        begin(message_id, index, [fetches = _fetches, id, tsfn, build](Answer answer) mutable {
+            auto* payload = new Answer(std::move(answer));
+            auto status = tsfn.BlockingCall(
+                    payload,
+                    [fetches, id, build](Napi::Env cb_env, Napi::Function, Answer* a) {
+                        std::unique_ptr<Answer> owned{a};
+                        auto entry = fetches->extract(id);
+                        if (entry.empty())
+                            return;  // close() has rejected it already
+                        auto& pending = entry.mapped();
+                        pending.tsfn.Release();
+                        if (owned->error)
+                            pending.deferred.Reject(
+                                    Napi::Error::New(cb_env, *owned->error).Value());
+                        else
+                            pending.deferred.Resolve(build(cb_env, *owned));
+                    });
+            if (status != napi_ok)
+                delete payload;
+        });
+
+        return deferred.Promise();
+    }
+
     /// `fetchMedia(messageId, index) -> Promise<{ contentType, bytes }>`.
     ///
     /// A promise rather than a frame, because bytes do not belong on the frame stream: its
     /// ordering is what makes a display bindable, and a file on it would stall every state frame
     /// behind a payload no event can contradict. The main process turns this into a response to
     /// a registered scheme, so the renderer receives a URL rather than a payload.
-    ///
-    /// Its own thread-safe function per request, released when that request settles: these are
-    /// as rare as a picture coming on screen, and one shared across them would have to outlive
-    /// them all to be released safely.
     Napi::Value FetchMedia(const Napi::CallbackInfo& info) {
-        Napi::Env env = info.Env();
-        auto deferred = Napi::Promise::Deferred::New(env);
+        return Fetch<session_bridge::Media>(
+                info,
+                "fetchMedia(messageId, index)",
+                "sessionBridgeMedia",
+                [this](double message_id, double index, session_bridge::MediaHandler cb) {
+                    _bridge->fetch_media(message_id, index, std::move(cb));
+                },
+                [](Napi::Env env, const session_bridge::Media& media) {
+                    // Copied, not wrapped: Electron >= 21 refuses external buffers
+                    // (ERR_NAPI_NO_EXTERNAL_BUFFERS_ALLOWED).
+                    auto bytes = Napi::Buffer<uint8_t>::Copy(
+                            env,
+                            reinterpret_cast<const uint8_t*>(media.bytes.data()),
+                            media.bytes.size());
 
-        if (!_bridge) {
-            deferred.Reject(Napi::Error::New(env, "the bridge is closed").Value());
-            return deferred.Promise();
-        }
-        if (info.Length() < 2 || !info[0].IsNumber() || !info[1].IsNumber())
-            throw Napi::TypeError::New(env, "fetchMedia(messageId, index)");
-
-        const double message_id = info[0].As<Napi::Number>().DoubleValue();
-        const double index = info[1].As<Napi::Number>().DoubleValue();
-
-        auto* settle = new Napi::Promise::Deferred(deferred);
-        auto tsfn = Napi::ThreadSafeFunction::New(
-                env, Napi::Function::New(env, [](const Napi::CallbackInfo&) {}),
-                "sessionBridgeMedia", 0, 1);
-
-        _bridge->fetch_media(
-                message_id, index, [settle, tsfn](session_bridge::Media media) mutable {
-                    auto* payload = new session_bridge::Media(std::move(media));
-                    auto status = tsfn.BlockingCall(
-                            payload,
-                            [settle](Napi::Env cb_env,
-                                     Napi::Function,
-                                     session_bridge::Media* m) {
-                                std::unique_ptr<session_bridge::Media> owned{m};
-                                std::unique_ptr<Napi::Promise::Deferred> answer{settle};
-
-                                if (owned->error) {
-                                    answer->Reject(
-                                            Napi::Error::New(cb_env, *owned->error).Value());
-                                    return;
-                                }
-
-                                // Copied into a Buffer rather than wrapping the vector: the
-                                // vector dies with this callback, and a Buffer that outlived its
-                                // storage is the one failure mode here that is not a crash.
-                                auto bytes = Napi::Buffer<uint8_t>::Copy(
-                                        cb_env,
-                                        reinterpret_cast<const uint8_t*>(owned->bytes.data()),
-                                        owned->bytes.size());
-
-                                Napi::Object result = Napi::Object::New(cb_env);
-                                result.Set("contentType", owned->content_type);
-                                result.Set("bytes", bytes);
-                                answer->Resolve(result);
-                            });
-                    if (status != napi_ok) {
-                        delete payload;
-                        delete settle;
-                    }
-                    tsfn.Release();
+                    Napi::Object result = Napi::Object::New(env);
+                    result.Set("contentType", media.content_type);
+                    result.Set("bytes", bytes);
+                    return result;
                 });
-
-        return deferred.Promise();
     }
 
     /// A decoded ThumbHash, by the same route and for the same reason as `FetchMedia`.
     Napi::Value FetchPreview(const Napi::CallbackInfo& info) {
-        Napi::Env env = info.Env();
-        auto deferred = Napi::Promise::Deferred::New(env);
+        return Fetch<session_bridge::Preview>(
+                info,
+                "fetchPreview(messageId, index)",
+                "sessionBridgePreview",
+                [this](double message_id, double index, session_bridge::PreviewHandler cb) {
+                    _bridge->fetch_preview(message_id, index, std::move(cb));
+                },
+                [](Napi::Env env, const session_bridge::Preview& preview) {
+                    auto rgba = Napi::Uint8Array::New(env, preview.rgba.size());
+                    std::memcpy(rgba.Data(), preview.rgba.data(), preview.rgba.size());
 
-        if (!_bridge) {
-            deferred.Reject(Napi::Error::New(env, "the bridge is closed").Value());
-            return deferred.Promise();
-        }
-        if (info.Length() < 2 || !info[0].IsNumber() || !info[1].IsNumber())
-            throw Napi::TypeError::New(env, "fetchPreview(messageId, index)");
-
-        const double message_id = info[0].As<Napi::Number>().DoubleValue();
-        const double index = info[1].As<Napi::Number>().DoubleValue();
-
-        auto* settle = new Napi::Promise::Deferred(deferred);
-        auto tsfn = Napi::ThreadSafeFunction::New(
-                env, Napi::Function::New(env, [](const Napi::CallbackInfo&) {}),
-                "sessionBridgePreview", 0, 1);
-
-        _bridge->fetch_preview(
-                message_id, index, [settle, tsfn](session_bridge::Preview preview) mutable {
-                    auto* payload = new session_bridge::Preview(std::move(preview));
-                    auto status = tsfn.BlockingCall(
-                            payload,
-                            [settle](Napi::Env cb_env,
-                                     Napi::Function,
-                                     session_bridge::Preview* p) {
-                                std::unique_ptr<session_bridge::Preview> owned{p};
-                                std::unique_ptr<Napi::Promise::Deferred> answer{settle};
-
-                                if (owned->error) {
-                                    answer->Reject(
-                                            Napi::Error::New(cb_env, *owned->error).Value());
-                                    return;
-                                }
-
-                                // Copied rather than wrapped, for the reason FetchMedia gives.
-                                auto rgba = Napi::Uint8Array::New(cb_env, owned->rgba.size());
-                                std::memcpy(
-                                        rgba.Data(), owned->rgba.data(), owned->rgba.size());
-
-                                Napi::Object result = Napi::Object::New(cb_env);
-                                result.Set("width", owned->width);
-                                result.Set("height", owned->height);
-                                result.Set("rgba", rgba);
-                                answer->Resolve(result);
-                            });
-                    if (status != napi_ok) {
-                        delete payload;
-                        delete settle;
-                    }
-                    tsfn.Release();
+                    Napi::Object result = Napi::Object::New(env);
+                    result.Set("width", preview.width);
+                    result.Set("height", preview.height);
+                    result.Set("rgba", rgba);
+                    return result;
                 });
-
-        return deferred.Promise();
     }
 
-    void Close(const Napi::CallbackInfo&) { Shutdown(); }
+    void Close(const Napi::CallbackInfo&) { Shutdown(true); }
 
-    void Shutdown() {
+    void Shutdown(bool reject_pending) {
         if (!_bridge)
             return;
-        // Destroying the bridge first joins Core's loop, so no frame can be produced after the
-        // sink is released and the release cannot race a call into a dead function.
+        // Destroying the bridge first joins Core's loop and drops the handlers still queued on it,
+        // so nothing can call into a thread-safe function once it is released below.
         _bridge.reset();
+        for (auto& [id, pending] : *_fetches) {
+            if (reject_pending)
+                pending.deferred.Reject(
+                        Napi::Error::New(pending.deferred.Env(), "the bridge is closed").Value());
+            pending.tsfn.Release();
+        }
+        _fetches->clear();
         _sink.Release();
     }
 
     std::unique_ptr<session_bridge::ClientBridge> _bridge;
     Napi::ThreadSafeFunction _sink;
+    std::shared_ptr<PendingFetches> _fetches = std::make_shared<PendingFetches>();
+    uint64_t _next_fetch = 0;
 };
 
 }  // namespace

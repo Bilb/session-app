@@ -3,16 +3,18 @@ import { isHex64, isIpv4, isPort } from '@session/basic-types'
 import { BridgeClosedError, SessionClientError } from '../errors'
 import type {
   AccountInfo,
+  AttachmentRef,
   AutoDownload,
   Conversation,
   ConversationId,
   Deletion,
-  Message,
+  ExportAttachmentOptions,
+  MessageCursor,
   SessionEvent,
 } from '@session/bridge-types'
 
-import type { NetworkAttachment, OutgoingMessage, SessionClient } from '../types'
-import type { FakeAccount, FakeWorld } from './world'
+import type { MessagePage, NetworkAttachment, OutgoingMessage, SessionClient } from '../types'
+import type { FakeAccount, FakeWorld, LocatedAttachment } from './world'
 
 /** Why this network will not attach, or undefined when it will. */
 function networkRefusal(config: NetworkAttachment): string | undefined {
@@ -297,12 +299,8 @@ export class FakeSessionClient implements SessionClient {
 
   getMessages(
     id: ConversationId,
-    options?: {
-      limit?: number
-      before?: { timestamp: number; id: number }
-      includeDeleted?: boolean
-    },
-  ): Promise<{ messages: Message[] }> {
+    options?: { limit?: number; before?: MessageCursor; includeDeleted?: boolean },
+  ): Promise<MessagePage> {
     this.assertOpen()
     // A limit is a page size, not a sentinel: there is no value meaning "all of it", because
     // history grows without bound.
@@ -331,18 +329,28 @@ export class FakeSessionClient implements SessionClient {
 
   downloadAttachment(messageId: number, index: number): Promise<void> {
     this.assertOpen()
-    if (!this.account.locate(messageId, index)) {
+    if (!this.account.locate({ messageId, index })) {
       return Promise.reject(new SessionClientError(`No attachment ${messageId}:${index}`))
     }
-    return this.account.downloadAttachment(messageId, index)
+    return this.account.downloadAttachment({ messageId, index })
   }
 
-  saveAttachment(messageId: number, index: number, destination: string): Promise<string> {
+  exportAttachment(
+    messageId: number,
+    index: number,
+    destination: string,
+    options?: ExportAttachmentOptions,
+  ): Promise<string> {
     this.assertOpen()
-    if (!this.account.locate(messageId, index)) {
+    if (!this.account.locate({ messageId, index })) {
       return Promise.reject(new SessionClientError(`No attachment ${messageId}:${index}`))
     }
-    return this.account.saveAttachment(messageId, index, destination)
+    return this.account.exportAttachment({ messageId, index }, destination, options?.replace)
+  }
+
+  /** Fake-only: finds an attachment in memory, where paging every conversation would miss old ones. */
+  locate(ref: AttachmentRef): LocatedAttachment | undefined {
+    return this.account.locate(ref)
   }
 
   setAutoDownload(id: ConversationId, mode: AutoDownload): Promise<void> {
@@ -363,12 +371,22 @@ export class FakeSessionClient implements SessionClient {
     return Promise.resolve(this.account.attachmentCacheLimit())
   }
 
-  setAttachmentCacheLimit(bytes?: number): Promise<void> {
+  setAttachmentCacheLimit(limitBytes?: number): Promise<void> {
     this.assertOpen()
+    if (limitBytes !== undefined && limitBytes < 0) {
+      return Promise.reject(
+        new SessionClientError('setAttachmentCacheLimit.limitBytes must not be negative'),
+      )
+    }
     // Remembered but not enforced: the fake caches in memory and never evicts, so a limit has
     // nothing to bound. It is kept so a screen that reads one back sees what it wrote.
-    this.account.setAttachmentCacheLimit(bytes)
+    this.account.setAttachmentCacheLimit(limitBytes)
     return Promise.resolve()
+  }
+
+  getAttachmentCacheSize(): Promise<number> {
+    this.assertOpen()
+    return Promise.resolve(this.account.attachmentCacheSize())
   }
 
   sendMessage(id: ConversationId, message: OutgoingMessage): Promise<number> {

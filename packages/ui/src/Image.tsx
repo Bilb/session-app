@@ -1,6 +1,8 @@
 import { Image as RNImage } from 'react-native'
 
-export interface ImageProps {
+import type { WithTestID } from './with'
+
+export type ImageProps = WithTestID & {
   /** Where the bytes come from. On both platforms this is the app's media scheme, not a path. */
   uri: string
   width: number
@@ -11,11 +13,10 @@ export interface ImageProps {
    * `cover` fills it and crops, which is what a square tile of an arbitrary photograph needs.
    * `contain` fits the whole picture inside, which is what showing somebody their picture needs.
    */
-  fit?: 'cover' | 'contain'
-  borderRadius?: number
+  fit?: 'cover' | 'contain' | undefined
+  borderRadius?: number | undefined
   /** Fires when the bytes are decoded and on screen, which is the only honest "it is here". */
-  onLoad?: () => void
-  testID?: string
+  onLoad?: (() => void) | undefined
 }
 
 /**
@@ -41,8 +42,8 @@ export function Image({
     <RNImage
       source={{ uri }}
       resizeMode={fit}
-      style={{ width, height, ...(borderRadius === undefined ? {} : { borderRadius }) }}
-      {...(onLoad === undefined ? {} : { onLoad })}
+      style={{ width, height, borderRadius }}
+      onLoad={onLoad}
       testID={testID}
     />
   )

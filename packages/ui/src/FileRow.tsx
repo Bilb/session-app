@@ -1,5 +1,15 @@
 import { XStack, YStack } from 'tamagui'
 
+import type {
+  WithCaption,
+  WithContentType,
+  WithFilename,
+  WithMediaKind,
+  WithMediaPreview,
+  WithMediaUri,
+} from '@session/basic-types'
+import type { ElementId } from '@session/test-ids'
+
 import { AttachmentTile } from './AttachmentTile'
 import { fileFormat, fileGlyph, splitFilename } from './attachmentFile'
 import {
@@ -8,7 +18,9 @@ import {
   FILE_ROW_CONTROL,
   FILE_ROW_GAP,
   fileRowControl,
+  fileRowTone,
   type FileRowState,
+  type FileRowTone,
 } from './fileRow'
 import { Icon } from './Icon'
 import { PressArea } from './PressArea'
@@ -17,167 +29,48 @@ import { Text } from './Text'
 import { tileRadius } from './attachmentTile'
 
 export interface FileRowTestIDs {
-  row?: string
-  name?: string
-  caption?: string
-  action?: string
+  row?: ElementId | undefined
+  name?: ElementId | undefined
+  caption?: ElementId | undefined
+  action?: ElementId | undefined
   /** Addresses the picture inside the thumbnail, so a test can ask whether it arrived. */
-  thumbnail?: string
+  thumbnail?: ElementId | undefined
 }
 
 /** What the lead square shows when the row is for something with a picture behind it. */
-export interface FileRowThumbnail {
-  /** Where the bytes are, once they are here. Null where the platform has no resolver. */
-  uri?: string | null
-  kind: 'image' | 'video'
-  /**
-   * Where the sender's placeholder is, where they sent one. A url, resolved like `uri`: see
-   * `AttachmentTileProps`.
-   */
-  preview?: string | null
-}
+export type FileRowThumbnail = WithMediaUri & WithMediaPreview & WithMediaKind
 
-export interface FileRowProps {
-  filename: string
-  /** The sender's declared type. Absent on plenty of attachments, which the glyph copes with. */
-  contentType?: string
-  /**
-   * The picture this row stands for, where it has one.
-   *
-   * The same tile the album draws, at the smaller radius step: a list of pictures and a list of
-   * documents are the same list, and the leading square is the one thing that differs.
-   */
-  thumbnail?: FileRowThumbnail
-  /** Opens what the lead square shows. Absent where there is nothing to open. */
-  onOpen?: () => void
-  /**
-   * The one line under the name, already worded.
-   *
-   * The size at rest, both counts while fetching, the reason when there is one. A string rather
-   * than the numbers because every one of those readings is a catalogue key, and `@session/ui`
-   * imports no sibling but theme-tokens, test-ids and basic-types.
-   */
-  caption: string
-  state: FileRowState
-  /** How far along, 0 to 1. Absent until the server has said how big the file is. */
-  progress?: number
-  /** Already worded, for what a screen reader announces the trailing control as. */
-  actionLabel?: string
-  onAction?: () => void
-  testIDs?: FileRowTestIDs
-}
+export type FileRowProps = WithFilename &
+  WithContentType &
+  WithCaption & {
+    /**
+     * The picture this row stands for, where it has one.
+     *
+     * The same tile the album draws, at the smaller radius step: a list of pictures and a list of
+     * documents are the same list, and the leading square is the one thing that differs.
+     */
+    thumbnail?: FileRowThumbnail | undefined
+    /** Opens what the lead square shows. Absent where there is nothing to open. */
+    onOpen?: (() => void) | undefined
+    state: FileRowState
+    /** How far along, 0 to 1. Absent until the server has said how big the file is. */
+    progress?: number | undefined
+    /** Already worded, for what a screen reader announces the trailing control as. */
+    actionLabel?: string | undefined
+    onAction?: (() => void) | undefined
+    testIDs?: FileRowTestIDs | undefined
+  }
 
-/**
- * One file on one message.
- *
- * The shape a message falls back to whenever a gallery cannot hold it, so it is also the thing
- * most likely to be read on a bad day - a transfer that failed, a file somebody needs off the
- * device and into a folder.
- *
- * **Every state draws the same three columns at the same height.** A row that grew a progress bar
- * while it downloaded would move everything below it in the transcript, at the moment somebody is
- * reading it; only the glyph, the words and the trailing control change.
- */
-export function FileRow({
-  filename,
-  contentType,
-  thumbnail,
-  onOpen,
-  caption,
-  state,
-  progress,
-  actionLabel,
-  onAction,
-  testIDs,
-}: FileRowProps) {
-  const { head, tail } = splitFilename(filename)
-  const format = fileFormat(filename)
-  const tone = state === 'failed' ? 'danger' : 'primary'
+/** An icon has no `tone`, so it takes the colour the Text tone of the same name draws in. */
+const TONE_COLOR = {
+  primary: '$textPrimary',
+  secondary: '$textSecondary',
+  danger: '$dangerColor',
+} as const satisfies Record<FileRowTone, string>
 
-  const lead =
-    thumbnail === undefined ? (
-      <YStack
-        width={FILE_GLYPH_SIDE}
-        height={FILE_GLYPH_SIDE}
-        borderRadius={tileRadius(FILE_GLYPH_SIDE)}
-        alignItems="center"
-        justifyContent="center"
-        backgroundColor="$backgroundTertiary"
-      >
-        <Icon name={fileGlyph(filename, contentType)} size="sm" color="$textPrimary" />
-      </YStack>
-    ) : (
-      <AttachmentTile
-        side={FILE_GLYPH_SIDE}
-        kind={thumbnail.kind}
-        {...(thumbnail.uri === undefined ? {} : { uri: thumbnail.uri })}
-        {...(thumbnail.preview === undefined ? {} : { preview: thumbnail.preview })}
-        {...(testIDs?.thumbnail === undefined ? {} : { testID: testIDs.thumbnail })}
-      />
-    )
-
-  return (
-    <XStack alignItems="center" gap={FILE_ROW_GAP} paddingVertical="$xs" testID={testIDs?.row}>
-      <YStack width={FILE_LEAD_WIDTH} alignItems="center" gap="$3xs">
-        {onOpen === undefined ? (
-          lead
-        ) : (
-          <PressArea onPress={onOpen} accessibilityLabel={filename}>
-            {() => lead}
-          </PressArea>
-        )}
-        {/* Under the lead rather than in the caption line, where it was competing with the size
-            for the same run of small grey text. It also gives every row the same two-line lead, so
-            the rows align down the message - and on a thumbnail it is what says "video". */}
-        {format === '' ? null : (
-          <Text size="$caption" tone="secondary" weight="semibold" numberOfLines={1}>
-            {format}
-          </Text>
-        )}
-      </YStack>
-
-      <YStack flex={1} minWidth={0} gap="$3xs">
-        {/* Two runs: the head gives up whatever width the row is short of and the tail cannot,
-            so a long name loses its middle instead of its extension. See `splitFilename`.
-
-            The id and the label are on the pair, never on a run: split between two elements the
-            name stops being one string, and both a screen reader and a test then read half of it. */}
-        <XStack minWidth={0} accessibilityLabel={filename} testID={testIDs?.name}>
-          <Text
-            size="$body"
-            weight="semibold"
-            tone={tone}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            flexShrink={1}
-            minWidth={0}
-          >
-            {head}
-          </Text>
-          <Text size="$body" weight="semibold" tone={tone} numberOfLines={1} flexShrink={0}>
-            {tail}
-          </Text>
-        </XStack>
-        <Text
-          size="$caption"
-          tone={state === 'failed' || state === 'unavailable' ? 'danger' : 'secondary'}
-          numberOfLines={1}
-          testID={testIDs?.caption}
-        >
-          {caption}
-        </Text>
-      </YStack>
-
-      <Trailing
-        state={state}
-        {...(progress === undefined ? {} : { progress })}
-        {...(actionLabel === undefined ? {} : { actionLabel })}
-        {...(onAction === undefined ? {} : { onAction })}
-        {...(testIDs?.action === undefined ? {} : { testID: testIDs.action })}
-      />
-    </XStack>
-  )
-}
+/** Drawn inside the touch target rather than filling it, so it reads as a gauge and not a button. */
+const RING_SIDE = 28
+const RING_THICKNESS = 3
 
 /**
  * The one control, always in the same place and always the same size.
@@ -194,10 +87,10 @@ function Trailing({
   testID,
 }: {
   state: FileRowState
-  progress?: number
-  actionLabel?: string
-  onAction?: () => void
-  testID?: string
+  progress?: number | undefined
+  actionLabel?: string | undefined
+  onAction?: (() => void) | undefined
+  testID?: ElementId | undefined
 }) {
   const control = fileRowControl(state)
 
@@ -235,17 +128,118 @@ function Trailing({
           hoverStyle={{ backgroundColor: '$backgroundTertiary' }}
           pressStyle={{ backgroundColor: '$backgroundTertiary' }}
         >
-          <Icon
-            name={control}
-            size="sm"
-            color={state === 'failed' ? '$dangerColor' : '$textPrimary'}
-          />
+          <Icon name={control} size="sm" color={TONE_COLOR[fileRowTone(state).control]} />
         </YStack>
       )}
     </PressArea>
   )
 }
 
-/** Drawn inside the touch target rather than filling it, so it reads as a gauge and not a button. */
-const RING_SIDE = 28
-const RING_THICKNESS = 3
+/**
+ * One file on one message.
+ *
+ * The shape a message falls back to whenever a gallery cannot hold it, so it is also the thing
+ * most likely to be read on a bad day - a transfer that failed, a file somebody needs off the
+ * device and into a folder.
+ *
+ * **Every state draws the same three columns at the same height.** A row that grew a progress bar
+ * while it downloaded would move everything below it in the transcript, at the moment somebody is
+ * reading it; only the glyph, the words and the trailing control change.
+ *
+ * The caption is the size at rest, both counts while fetching, and the reason when there is one.
+ */
+export function FileRow({
+  filename,
+  contentType,
+  thumbnail,
+  onOpen,
+  caption,
+  state,
+  progress,
+  actionLabel,
+  onAction,
+  testIDs,
+}: FileRowProps) {
+  const { head, tail } = splitFilename(filename)
+  const format = fileFormat(filename)
+  const tone = fileRowTone(state)
+
+  const lead =
+    thumbnail === undefined ? (
+      <YStack
+        width={FILE_GLYPH_SIDE}
+        height={FILE_GLYPH_SIDE}
+        borderRadius={tileRadius(FILE_GLYPH_SIDE)}
+        alignItems="center"
+        justifyContent="center"
+        backgroundColor="$backgroundTertiary"
+      >
+        <Icon name={fileGlyph(filename, contentType)} size="sm" color="$textPrimary" />
+      </YStack>
+    ) : (
+      <AttachmentTile
+        side={FILE_GLYPH_SIDE}
+        kind={thumbnail.kind}
+        uri={thumbnail.uri}
+        preview={thumbnail.preview}
+        testID={testIDs?.thumbnail}
+      />
+    )
+
+  return (
+    <XStack alignItems="center" gap={FILE_ROW_GAP} paddingVertical="$xs" testID={testIDs?.row}>
+      <YStack width={FILE_LEAD_WIDTH} alignItems="center" gap="$3xs">
+        {onOpen === undefined ? (
+          lead
+        ) : (
+          <PressArea onPress={onOpen} accessibilityLabel={filename}>
+            {() => lead}
+          </PressArea>
+        )}
+        {/* Under the lead rather than in the caption line, where it was competing with the size
+            for the same run of small grey text. It also gives every row the same two-line lead, so
+            the rows align down the message - and on a thumbnail it is what says "video". */}
+        {format === '' ? null : (
+          <Text size="$caption" tone="secondary" weight="semibold" numberOfLines={1}>
+            {format}
+          </Text>
+        )}
+      </YStack>
+
+      <YStack flex={1} minWidth={0} gap="$3xs">
+        {/* Two runs: the head gives up whatever width the row is short of and the tail cannot,
+            so a long name loses its middle instead of its extension. See `splitFilename`.
+
+            The id and the label are on the pair, never on a run: split between two elements the
+            name stops being one string, and both a screen reader and a test then read half of it. */}
+        <XStack minWidth={0} aria-label={filename} testID={testIDs?.name}>
+          <Text
+            size="$body"
+            weight="semibold"
+            tone={tone.name}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            flexShrink={1}
+            minWidth={0}
+          >
+            {head}
+          </Text>
+          <Text size="$body" weight="semibold" tone={tone.name} numberOfLines={1} flexShrink={0}>
+            {tail}
+          </Text>
+        </XStack>
+        <Text size="$caption" tone={tone.caption} numberOfLines={1} testID={testIDs?.caption}>
+          {caption}
+        </Text>
+      </YStack>
+
+      <Trailing
+        state={state}
+        progress={progress}
+        actionLabel={actionLabel}
+        onAction={onAction}
+        testID={testIDs?.action}
+      />
+    </XStack>
+  )
+}

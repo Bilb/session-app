@@ -12,7 +12,6 @@
 #include <session/sqlite.hpp>
 
 #include <oxenc/hex.h>
-#include <sqlite3.h>
 
 #ifdef SESSION_BRIDGE_TESTING
 #include <SessionProtos.pb.h>
@@ -79,30 +78,19 @@ namespace {
     /// below a round trip gets concurrent requests rather than faster ones.
     constexpr auto DEVNET_POLL_INTERVAL = std::chrono::milliseconds{500};
 
-    /// Where the network's own cache lives, named once so the discard and the open agree.
-    /// The path to actually open, which differs from the caller's only for an in-memory database.
-    ///
-    /// A plain ":memory:" database belongs to the connection that opened it, and libsession's pool
-    /// opens one per thread -- so the loop would migrate one database and a caller would read a
-    /// second, empty one.  Named and shared-cache makes it a single database; URI filenames are
-    /// off by default, which is what the config call turns on.
-    ///
-    /// Numbered so that two in-memory bridges in one process do not silently share a database.
-    ///
-    /// Fixed upstream in session-sqlite 65e3c78, which uses the memdb VFS rather than the
-    /// deprecated shared cache; this goes when libsession bumps that submodule.
+    /// What to open for `db_path`: ":memory:" becomes one named memdb database, because
+    /// libsession's pool opens a connection per thread and each would get its own empty one.
+    /// Numbered so two in-memory bridges never share. Relies on SQLite built with SQLITE_USE_URI.
+    /// Delete once libsession pins session-sqlite >= 65e3c78, which shares :memory: itself.
     std::filesystem::path shared_if_in_memory(const std::filesystem::path& db_path) {
         if (db_path != ":memory:")
             return db_path;
-        // Refused once SQLite has initialised, which only happens when an earlier bridge in this
-        // process already set it -- in which case the setting it wanted is the one in force.
-        sqlite3_config(SQLITE_CONFIG_URI, 1);
         static std::atomic<uint64_t> next{0};
-        return "file:session-bridge-mem-" +
-               std::to_string(next.fetch_add(1, std::memory_order_relaxed)) +
-               "?mode=memory&cache=shared";
+        return "file:/session-bridge-mem-" +
+               std::to_string(next.fetch_add(1, std::memory_order_relaxed)) + "?vfs=memdb";
     }
 
+    /// Where the network's own cache lives, named once so the discard and the open agree.
     std::filesystem::path netcache_path(const std::filesystem::path& db_path) {
         return db_path.parent_path() / "netcache";
     }
@@ -1010,14 +998,14 @@ struct ClientBridge::Impl {
                 on(id, [this, id](std::vector<std::byte>) { ok(id); }));
     }
 
-    void handle(double id, const SaveAttachmentCommand& cmd) {
-        const int64_t message_id = whole<int64_t>(cmd.message_id, "saveAttachment.messageId");
-        const auto index = whole<size_t>(cmd.index, "saveAttachment.index");
+    void handle(double id, const ExportAttachmentCommand& cmd) {
+        const int64_t message_id = whole<int64_t>(cmd.message_id, "exportAttachment.messageId");
+        const auto index = whole<size_t>(cmd.index, "exportAttachment.index");
         client->save_attachment(
                 message_id,
                 index,
                 std::filesystem::path{cmd.destination},
-                report(AttachmentTransfer::save),
+                report(AttachmentTransfer::export_),
                 on(id,
                    [this, id](std::filesystem::path saved_to) {
                        respond(id, PathResult{saved_to.string()});
@@ -1054,10 +1042,21 @@ struct ClientBridge::Impl {
     }
 
     void handle(double id, const SetAttachmentCacheLimitCommand& cmd) {
-        std::optional<int64_t> bytes;
-        if (cmd.bytes)
-            bytes = whole<int64_t>(*cmd.bytes, "setAttachmentCacheLimit.bytes");
-        client->set_attachment_cache_limit(bytes, on(id, [this, id] { ok(id); }));
+        std::optional<int64_t> limit_bytes;
+        if (cmd.limit_bytes) {
+            limit_bytes = whole<int64_t>(*cmd.limit_bytes, "setAttachmentCacheLimit.limitBytes");
+            // libsession would store it and evict until the cache fits, which is everything.
+            if (*limit_bytes < 0)
+                throw std::invalid_argument{
+                        "setAttachmentCacheLimit.limitBytes must not be negative"};
+        }
+        client->set_attachment_cache_limit(limit_bytes, on(id, [this, id] { ok(id); }));
+    }
+
+    void handle(double id, const GetAttachmentCacheSizeCommand&) {
+        client->attachment_cache_size(on(id, [this, id](int64_t bytes) {
+            respond(id, ByteCountResult{static_cast<double>(bytes)});
+        }));
     }
 
     void handle(double id, const GetPrefCommand& cmd) {
@@ -1163,17 +1162,6 @@ struct ClientBridge::Impl {
     }
 };
 
-namespace {
-    /// The bridge this process opened. One per process is already true - the apps open exactly
-    /// one - and `current()` is what lets a platform image loader rely on it, since the operating
-    /// system calls one of those and has nothing to hand it.
-    std::atomic<ClientBridge*> the_bridge{nullptr};
-}  // namespace
-
-ClientBridge* ClientBridge::current() {
-    return the_bridge.load(std::memory_order_acquire);
-}
-
 ClientBridge::ClientBridge(InitOptions options, Sink sink) :
         _impl{std::make_unique<Impl>(std::move(sink), options)} {
 
@@ -1193,10 +1181,6 @@ ClientBridge::ClientBridge(InitOptions options, Sink sink) :
     // An account that is already there needs no onboarding, so this is where its network comes
     // from. A deferred one gets it from createAccount or restoreAccount instead.
     _impl->on_account();
-
-    // Published last: everything a media request needs is built by now, so a loader that arrives
-    // the instant this returns finds a bridge that can answer.
-    the_bridge.store(this, std::memory_order_release);
 }
 
 ClientBridge::~ClientBridge() {
@@ -1206,11 +1190,6 @@ ClientBridge::~ClientBridge() {
 void ClientBridge::close() {
     if (!_impl)
         return;
-    // Unpublished first: a loader reading `current()` after this gets nullptr and fails its
-    // request rather than a pointer to something being destroyed. Compare-exchange so that a
-    // bridge closing after a second one was opened does not clear the second one's entry.
-    ClientBridge* self = this;
-    the_bridge.compare_exchange_strong(self, nullptr, std::memory_order_acq_rel);
     // Order matters. remove_logger is serialised against logging, so once it returns the callback
     // is neither running nor reachable; destroying the Client then joins Core's loop, so nothing
     // is mid-emit by the time the Impl the two of them write to goes.
@@ -1278,6 +1257,12 @@ void ClientBridge::fetch_media(double message_id, double index, MediaHandler cb)
 /// carrying more detail; whatever draws it scales this up with a linear filter.
 constexpr uint32_t preview_long_edge = 32;
 
+/// A sender-supplied side worth scaling by: JPEG's ceiling, which also keeps
+/// `preview_long_edge * side` well inside 32 bits.
+constexpr bool plausible_side(uint32_t side) {
+    return side > 0 && side <= 65535;
+}
+
 void ClientBridge::fetch_preview(double message_id, double index, PreviewHandler cb) {
     if (!_impl || !_impl->client) {
         cb(Preview{"the bridge is closed", 0, 0, {}});
@@ -1310,7 +1295,11 @@ void ClientBridge::fetch_preview(double message_id, double index, PreviewHandler
                     // comes from the attachment's own metadata; without it, square is the only
                     // honest guess.
                     uint32_t w = preview_long_edge, h = preview_long_edge;
-                    if (a.width && a.height && *a.width > 0 && *a.height > 0) {
+                    if (a.width && a.height) {
+                        if (!plausible_side(*a.width) || !plausible_side(*a.height)) {
+                            cb(Preview{"implausible attachment dimensions", 0, 0, {}});
+                            return;
+                        }
                         if (*a.width >= *a.height)
                             h = std::max(1u, preview_long_edge * *a.height / *a.width);
                         else

@@ -47,3 +47,24 @@ export function fileRowControl(state: FileRowState): IconName | 'progress' | nul
       return null
   }
 }
+
+export type FileRowTone = 'primary' | 'secondary' | 'danger'
+
+/**
+ * The colour of each part of a row, which follows from the state.
+ *
+ * A failure is red throughout, because it is the row somebody has to act on. An unavailable file
+ * says so in its caption alone: there is nothing to act on, so the name and control stay quiet.
+ */
+export function fileRowTone(state: FileRowState): {
+  name: FileRowTone
+  caption: FileRowTone
+  control: FileRowTone
+} {
+  const failed = state === 'failed'
+  return {
+    name: failed ? 'danger' : 'primary',
+    caption: failed || state === 'unavailable' ? 'danger' : 'secondary',
+    control: failed ? 'danger' : 'primary',
+  }
+}

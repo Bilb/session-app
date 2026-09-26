@@ -15,6 +15,7 @@ import type {
   Conversation,
   ConversationId,
   Deletion,
+  ExportAttachmentOptions,
   FileServerConfig,
   Frame,
   Message,
@@ -36,6 +37,8 @@ export interface NetworkAttachment {
   /** Defaults to session-router on mainnet and testnet, onion requests on devnet. */
   router?: RouterKind
 }
+
+export type MessagePage = { messages: Message[] }
 
 export interface OutgoingMessage {
   body: string
@@ -111,14 +114,14 @@ export interface SessionClient {
   /**
    * A page of history, oldest first.
    *
-   * What each attachment's bytes are doing rides on the attachment - `availability`, `fetchDone`,
-   * `fetchTotal` - so a window built from this page is already correct rather than drawing every
-   * attachment as untouched and then taking it back.
+   * What each attachment's bytes are doing rides on the attachment - `availability`,
+   * `fetchDoneBytes`, `fetchTotalBytes` - so a window built from this page is already correct
+   * rather than drawing every attachment as untouched and then taking it back.
    */
   getMessages(
     id: ConversationId,
     options?: { limit?: number; before?: MessageCursor; includeDeleted?: boolean },
-  ): Promise<{ messages: Message[] }>
+  ): Promise<MessagePage>
   /**
    * Resolves as soon as libsession has stored the row, which is before it is sent. The states
    * that follow arrive as message-updated.
@@ -134,12 +137,15 @@ export interface SessionClient {
    * once and reports nothing, and a fetch already running is joined rather than duplicated.
    */
   downloadAttachment(messageId: number, index: number): Promise<void>
-  /** Resolves with where the file actually landed: a name collision becomes `name (2)`. */
-  saveAttachment(
+  /**
+   * Writes an attachment out to a path the person chose, and resolves with where the file actually
+   * landed: a name collision becomes `name (2)`.
+   */
+  exportAttachment(
     messageId: number,
     index: number,
     destination: string,
-    options?: { notifySender?: boolean; replace?: boolean },
+    options?: ExportAttachmentOptions,
   ): Promise<string>
   /** Also records that the question was asked, which is why `none` is worth sending. */
   setAutoDownload(id: ConversationId, mode: AutoDownload): Promise<void>
@@ -151,7 +157,9 @@ export interface SessionClient {
    * which is also the default - turning caching on without a bound is how a cache eats a disk.
    */
   getAttachmentCacheLimit(): Promise<number | undefined>
-  setAttachmentCacheLimit(bytes?: number): Promise<void>
+  setAttachmentCacheLimit(limitBytes?: number): Promise<void>
+  /** How much disk the cached attachments occupy now, measured as the limit is. */
+  getAttachmentCacheSize(): Promise<number>
 
   getPref(key: string): Promise<string | undefined>
   setPref(key: string, value: string): Promise<void>

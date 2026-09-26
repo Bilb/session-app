@@ -8,6 +8,7 @@ import { Button } from './Button'
 import { Icon } from './Icon'
 import { Text } from './Text'
 import { logical } from './logicalEdges'
+import { SCRIM_OPACITY } from './scrim'
 
 interface ModalProps {
   open: boolean
@@ -86,16 +87,6 @@ const CLOSE_INSET = 2
 const ACTION_HEIGHT = 51
 
 /**
- * How dark the scrim is where there is no blur behind the dialog.
- *
- * **Where there is one there is no scrim at all**, which is the legacy client's arrangement:
- * `Modal.dimmingView` is a bare `UIVisualEffectView` pinned to the window, with no tint and no
- * alpha over it. The two do the same job, and a dim on top of a blur hides the thing the blur
- * exists to show -- a dark rectangle that might as well not have been blurred.
- */
-const SCRIM_OPACITY = 0.6
-
-/**
  * Something asked over the top of the page.
  *
  * Drawn in react-native's `Modal` rather than an absolutely-positioned panel, for the same reason
@@ -142,7 +133,8 @@ export function Modal({
         </YStack>
       )}
       {/* The scrim is its own layer so its opacity does not reach the dialog: an opacity on a
-          parent applies to every descendant, which would make the dialog translucent too. */}
+          parent applies to every descendant, which would make the dialog translucent too. None
+          over a blur, as in the legacy client: a dim on top hides what the blur shows. */}
       {Blur !== null ? null : (
         <YStack fullscreen backgroundColor="$surfaceInk" opacity={SCRIM_OPACITY} />
       )}
