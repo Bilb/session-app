@@ -1,4 +1,4 @@
-import { dirname } from 'node:path'
+import { dirname, resolve } from 'node:path'
 
 // Named imports do not survive the ESM loader here; see the note in index.ts.
 import electron from 'electron'
@@ -21,6 +21,12 @@ const { BrowserWindow, dialog, ipcMain, shell } = electron
  */
 const chosen = new Set<string>()
 
+// Windows paths are case-insensitive, and the dialog need not hand back the casing it was given.
+function folderKey(folder: string, caseInsensitive: boolean): string {
+  const resolved = resolve(folder)
+  return caseInsensitive ? resolved.toLowerCase() : resolved
+}
+
 /**
  * Whether a path sits in one of the folders somebody pointed at.
  *
@@ -28,8 +34,14 @@ const chosen = new Set<string>()
  * that decides what the renderer may hand to the operating system, and a rule that can only be
  * exercised by launching an app is one nobody exercises.
  */
-export function isInChosenFolder(path: unknown, folders: ReadonlySet<string>): path is string {
-  return typeof path === 'string' && path.length > 0 && folders.has(dirname(path))
+export function isInChosenFolder(
+  path: unknown,
+  folders: ReadonlySet<string>,
+  caseInsensitive = process.platform === 'win32',
+): path is string {
+  if (typeof path !== 'string' || path.length === 0) return false
+  const folder = folderKey(dirname(path), caseInsensitive)
+  return [...folders].some((chosenFolder) => folderKey(chosenFolder, caseInsensitive) === folder)
 }
 
 /**
