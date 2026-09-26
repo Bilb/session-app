@@ -616,7 +616,7 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   `STATUS.md`.
 
 - **2026-09-16 - A page of messages arrives with what its attachments are doing.**
-  `attachment_transfers` answers *nothing doing / running at N of M / already cached* without
+  `attachment_transfers` answers _nothing doing / running at N of M / already cached_ without
   starting anything, and `messageList` carries the answer beside the messages.
 
   It exists because nothing about a transfer is stored, so a screen that was not listening - the
