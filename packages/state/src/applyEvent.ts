@@ -103,7 +103,7 @@ function recordTransfer(
     ...state,
     transfers: {
       ...state.transfers,
-      [transferKey(event.transfer, event.messageId, event.index)]: entry,
+      [transferKey(event.transfer, event)]: entry,
     },
   }
 }

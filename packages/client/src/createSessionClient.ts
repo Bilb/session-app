@@ -7,7 +7,6 @@ import type {
   ConversationId,
   Deletion,
   Frame,
-  Message,
   Request,
   Response,
   Result,
@@ -15,7 +14,13 @@ import type {
 } from '@session/bridge-types'
 
 import { BridgeClosedError, SessionClientError } from './errors'
-import type { BridgeTransport, OutgoingMessage, SessionClient, Unsubscribe } from './types'
+import type {
+  BridgeTransport,
+  MessagePage,
+  OutgoingMessage,
+  SessionClient,
+  Unsubscribe,
+} from './types'
 
 type Pending = {
   resolve: (response: Response) => void
@@ -232,7 +237,7 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       await call({ type: 'deleteConversation', conversationId: id, keepMessages })
     },
 
-    async getMessages(id, options): Promise<{ messages: Message[] }> {
+    async getMessages(id, options): Promise<MessagePage> {
       const before = options?.before
       const response = await call({
         type: 'getMessages',

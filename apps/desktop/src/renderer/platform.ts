@@ -15,9 +15,9 @@ setPorts(
     // Built here rather than imported from there: this is the renderer, and main is not on its
     // side of the sandbox.
     media: {
-      urlFor: (messageId, index) =>
+      urlFor: ({ messageId, index }) =>
         `session-media://attachment/${String(messageId)}/${String(index)}`,
-      previewUrlFor: (messageId, index) =>
+      previewUrlFor: ({ messageId, index }) =>
         `session-media://preview/${String(messageId)}/${String(index)}`,
     },
     // The same variable and the same parser the main process uses, inlined at build time.

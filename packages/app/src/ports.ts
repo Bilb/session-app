@@ -1,4 +1,5 @@
 import type { NetworkName } from '@session/basic-types'
+import type { AttachmentRef, PixelSize } from '@session/client'
 /**
  * What the app needs from the operating system, named so shared code can ask without
  * knowing which one it is running on.
@@ -51,7 +52,7 @@ export interface FilesPort {
  * A platform that cannot show a picture should say so rather than render a broken one.
  */
 export interface MediaPort {
-  urlFor(messageId: number, index: number): string | null
+  urlFor(ref: AttachmentRef): string | null
   /**
    * The sender's ThumbHash, decoded, for drawing before the file arrives.
    *
@@ -59,12 +60,12 @@ export interface MediaPort {
    * same route a picture does and nothing has to hold pixels to show one. Only worth asking for
    * when `Attachment.hasPreview` says there is one.
    */
-  previewUrlFor(messageId: number, index: number): string | null
+  previewUrlFor(ref: AttachmentRef): string | null
 }
 
 export interface MediaProbePort {
   /** libsession does not measure images; whoever attaches one supplies the dimensions. */
-  imageSize(path: string): Promise<{ width: number; height: number } | null>
+  imageSize(path: string): Promise<PixelSize | null>
 }
 
 export interface NotificationsPort {

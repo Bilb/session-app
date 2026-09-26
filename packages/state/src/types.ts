@@ -1,10 +1,12 @@
 import type {
   AccountInfo,
+  AttachmentRef,
   AttachmentTransfer,
   Conversation,
   ConversationId,
   Message,
   MessageCursor,
+  TransferProgress,
 } from '@session/client'
 
 /**
@@ -29,23 +31,15 @@ export interface MessageWindow {
  * Per session and never persisted, because libsession stores nothing about a transfer either:
  * what is on this device is answered by asking for it, not by a flag that can go stale.
  */
-export interface AttachmentTransferState {
+export interface AttachmentTransferState extends TransferProgress {
   state: 'running' | 'done' | 'failed'
-  /** Encrypted bytes, so this over `totalBytes` is the honest fraction, not over `sizeBytes`. */
-  doneBytes: number
-  /** Zero until the server says how big the file is, which is what "indeterminate" means here. */
-  totalBytes: number
   /** The libsession code the failure carried, when `state` is `failed`. */
   error?: string
 }
 
 /** Identifies a transfer, since one attachment can have a download and an export at once. */
-export function transferKey(
-  transfer: AttachmentTransfer,
-  messageId: number,
-  index: number,
-): string {
-  return `${transfer}:${messageId}:${index}`
+export function transferKey(transfer: AttachmentTransfer, ref: AttachmentRef): string {
+  return `${transfer}:${ref.messageId}:${ref.index}`
 }
 
 export interface SessionState {

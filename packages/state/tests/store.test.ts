@@ -139,7 +139,7 @@ describe('the store', () => {
     // an answer.
     expect(attachment(withOne.id)?.availability).toBe('absent')
 
-    const downloading = store.actions.downloadAttachment(withOne.id, 0)
+    const downloading = store.actions.downloadAttachment({ messageId: withOne.id, index: 0 })
     world.settle()
     await downloading
 
@@ -160,7 +160,7 @@ describe('the store', () => {
     const withOne = store.getState().histories[bob]?.messages.find((m) => m.attachments.length > 0)
     if (!withOne) throw new Error('fixture did not seed an attachment')
 
-    const downloading = store.actions.downloadAttachment(withOne.id, 0)
+    const downloading = store.actions.downloadAttachment({ messageId: withOne.id, index: 0 })
     world.settle()
     await downloading
     expect(Object.keys(store.getState().transfers).length).toBeGreaterThan(0)

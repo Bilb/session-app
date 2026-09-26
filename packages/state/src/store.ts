@@ -1,4 +1,10 @@
-import type { AutoDownload, ConversationId, Message, SessionClient } from '@session/client'
+import type {
+  AttachmentRef,
+  AutoDownload,
+  ConversationId,
+  Message,
+  SessionClient,
+} from '@session/client'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
 import { applyEvent, mergePages, withoutHistory } from './applyEvent'
@@ -133,12 +139,12 @@ export interface SessionActions {
    * Progress arrives as events, so nothing is returned: a row that mounts halfway through a
    * transfer reads the same state as one that started it.
    */
-  downloadAttachment: (messageId: number, index: number) => Promise<void>
+  downloadAttachment: (ref: AttachmentRef) => Promise<void>
   /**
    * Writes an attachment out to a path the person chose. Resolves with where it landed, which a
    * collision can change.
    */
-  exportAttachment: (messageId: number, index: number, destination: string) => Promise<string>
+  exportAttachment: (ref: AttachmentRef, destination: string) => Promise<string>
   /**
    * What this conversation fetches unasked. Sending `none` is not the same as never calling
    * this: the call is what records that the question was asked, and only an unanswered one
@@ -405,12 +411,12 @@ export function createSessionStore(
       return client.retrySend(messageId)
     },
 
-    async downloadAttachment(messageId, index): Promise<void> {
-      await client.downloadAttachment(messageId, index)
+    async downloadAttachment(ref): Promise<void> {
+      await client.downloadAttachment(ref.messageId, ref.index)
     },
 
-    async exportAttachment(messageId, index, destination): Promise<string> {
-      return client.exportAttachment(messageId, index, destination)
+    async exportAttachment(ref, destination): Promise<string> {
+      return client.exportAttachment(ref.messageId, ref.index, destination)
     },
 
     async setAutoDownload(id, mode): Promise<void> {
