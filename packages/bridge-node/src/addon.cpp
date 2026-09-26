@@ -228,9 +228,8 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
                                     return;
                                 }
 
-                                // Copied into a Buffer rather than wrapping the vector: the
-                                // vector dies with this callback, and a Buffer that outlived its
-                                // storage is the one failure mode here that is not a crash.
+                                // Copied, not wrapped: Electron >= 21 refuses external buffers
+                                // (ERR_NAPI_NO_EXTERNAL_BUFFERS_ALLOWED).
                                 auto bytes = Napi::Buffer<uint8_t>::Copy(
                                         cb_env,
                                         reinterpret_cast<const uint8_t*>(owned->bytes.data()),
