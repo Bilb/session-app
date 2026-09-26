@@ -58,6 +58,23 @@ describe('a media url', () => {
     expect(parseMediaUrl(`${MEDIA_SCHEME}://attachment/nine/0`)).toBeNull()
   })
 
+  it('refuses anything but plain decimal ids', () => {
+    for (const pair of ['42/', '0x2A/1e1', '+42/-0', '1e300/0', '042/1', '42/01', '%34%32/1']) {
+      expect(parseMediaUrl(`${MEDIA_SCHEME}://attachment/${pair}`), pair).toBeNull()
+    }
+  })
+
+  it('refuses an id past the largest safe integer', () => {
+    // 2^53 + 1, which Number() rounds to 2^53 rather than refusing.
+    expect(parseMediaUrl(`${MEDIA_SCHEME}://attachment/9007199254740993/0`)).toBeNull()
+    expect(parseMediaUrl(`${MEDIA_SCHEME}://attachment/42/9007199254740993`)).toBeNull()
+  })
+
+  it('refuses a query or a fragment', () => {
+    expect(parseMediaUrl(`${MEDIA_SCHEME}://attachment/42/1?x=1`)).toBeNull()
+    expect(parseMediaUrl(`${MEDIA_SCHEME}://attachment/42/1#f`)).toBeNull()
+  })
+
   it('refuses a url that does not parse at all', () => {
     expect(parseMediaUrl('')).toBeNull()
     expect(parseMediaUrl('not a url')).toBeNull()

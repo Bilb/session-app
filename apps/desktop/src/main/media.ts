@@ -32,6 +32,15 @@ export function registerMediaScheme(): void {
   ])
 }
 
+// Number() alone would also take '', '0x2A', '1e1', '+42' and '-0'.
+const ID_SEGMENT = /^(0|[1-9]\d{0,15})$/
+
+function parseId(segment: string | undefined): number | null {
+  if (segment === undefined || !ID_SEGMENT.test(segment)) return null
+  const id = Number(segment)
+  return Number.isSafeInteger(id) ? id : null
+}
+
 /** `session-media://<attachment|preview>/<messageId>/<index>` split back up, or null. */
 export function parseMediaUrl(url: string): { kind: MediaUrlKind; ref: AttachmentRef } | null {
   let parsed: URL
@@ -41,16 +50,16 @@ export function parseMediaUrl(url: string): { kind: MediaUrlKind; ref: Attachmen
     return null
   }
   if (parsed.protocol !== `${MEDIA_SCHEME}:`) return null
+  if (parsed.search !== '' || parsed.hash !== '') return null
   const kind = parsed.hostname
   if (kind !== 'attachment' && kind !== 'preview') return null
 
   const [message, index, ...rest] = parsed.pathname.replace(/^\//, '').split('/')
   if (rest.length > 0) return null
 
-  const messageId = Number(message)
-  const at = Number(index)
-  if (!Number.isInteger(messageId) || messageId <= 0) return null
-  if (!Number.isInteger(at) || at < 0) return null
+  const messageId = parseId(message)
+  const at = parseId(index)
+  if (messageId === null || messageId === 0 || at === null) return null
   return { kind, ref: { messageId, index: at } }
 }
 
