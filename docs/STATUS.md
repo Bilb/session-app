@@ -20,7 +20,8 @@ a time, via the `port-feature` skill.
   scheme; React Native needs a native image loader per platform - an `RCTImageURLLoader` on iOS, a
   Fresco fetcher on Android - and neither is written, so `MediaPort.urlFor` returns null there and
   the file form is what mobile shows.
-- **A full-size viewer.** Tapping a picture does nothing: there is no screen to open.
+- **The media viewer is one picture at a time.** It pages through a message's pictures and
+  nothing more: no zoom, no video playback, no swipe to dismiss, no filmstrip.
 - **Returning to a conversation starts at the newest page.** A window is dropped when its screen
   stops showing it, so paging depth and scroll position go with it. Keeping both - so that coming
   back puts you where you were - is its own piece of work and wants doing deliberately rather than
