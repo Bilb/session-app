@@ -124,7 +124,10 @@ asked to replace.
 The sender's placeholder is an image too, so it comes by the same road: `session-media://preview/`
 answers from `ClientBridge::fetch_preview`, which decodes the ThumbHash on the attachment's row.
 Two authorities rather than one URL with a flag, so a file and its stand-in cache separately, and
-nothing decodes an image in JavaScript on either platform.
+nothing decodes an image in JavaScript on either platform. The sender's content type is a claim,
+so desktop serves an attachment only when that type is on the viewable list and the leading bytes
+are the same family, and every response carries a `sandbox` CSP: a file opened as a document gets
+no script and no origin.
 
 ## The fake, and why it is not a stub
 
