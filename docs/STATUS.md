@@ -94,3 +94,6 @@ a time, via the `port-feature` skill.
   answer. Nothing waits for the router, because `networkAttached` goes true when the bridge
   attaches rather than when the router is ready - an indicator built on it would say "connected"
   through the whole window where sending does not work.
+- **Nothing measures a transcript under movement.** No performance or regression test covers
+  navigating between conversations, scrolling a window that loads pages above and below, or
+  messages arriving, changing and being deleted - nor that attachment state survives all of it.
