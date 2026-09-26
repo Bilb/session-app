@@ -44,6 +44,25 @@ export function isInChosenFolder(
   return [...folders].some((chosenFolder) => folderKey(chosenFolder, caseInsensitive) === folder)
 }
 
+const FALLBACK_SUGGESTED_NAME = 'attachment'
+
+/**
+ * The file name to pre-fill a save dialog with, from a name the sender of the attachment chose.
+ *
+ * Only ever a bare name: a directory part, absolute or `..`, would pre-point the dialog at a
+ * folder the sender picked, one Enter away from writing there. Both separators are stripped
+ * whatever the platform, since the sender's platform is not this one.
+ */
+export function sanitiseSuggestedName(name: unknown): string {
+  if (typeof name !== 'string') return FALLBACK_SUGGESTED_NAME
+  const bare = name
+    .slice(Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\')) + 1)
+    // eslint-disable-next-line no-control-regex -- stripping control characters is the point
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .trim()
+  return bare === '' || bare === '.' || bare === '..' ? FALLBACK_SUGGESTED_NAME : bare
+}
+
 /**
  * Choosing where a file goes, and showing somebody where it went.
  *
@@ -53,7 +72,7 @@ export function isInChosenFolder(
 export function serveFiles(): void {
   ipcMain.handle('files:choose-export-location', async (event, suggested: unknown) => {
     const window = BrowserWindow.fromWebContents(event.sender)
-    const name = typeof suggested === 'string' ? suggested : ''
+    const name = sanitiseSuggestedName(suggested)
     // Modal to the window that asked rather than to the app: a second window is not blocked by a
     // save dialog it did not open.
     const answer = await (window
