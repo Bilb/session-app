@@ -44,6 +44,19 @@ describe('hydrating a device that has no account', () => {
   })
 })
 
+describe('hydrating with a cache limit', () => {
+  it('hands the limit to libsession', async () => {
+    const { clients } = friends(['Alice', 'Bob'])
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const store = createSessionStore(alice, { attachmentCacheLimitBytes: 500_000_000 })
+
+    await store.actions.hydrate()
+
+    expect(await alice.getAttachmentCacheLimit()).toBe(500_000_000)
+  })
+})
+
 describe('a start that fails', () => {
   it('ends in an error rather than in a wait that never finishes', async () => {
     // The launch screen renders while `hydrated` is false, and a rejection used to leave it false
