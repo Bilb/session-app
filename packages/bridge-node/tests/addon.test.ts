@@ -262,16 +262,16 @@ describeEcho('the generated converters', () => {
     index: 0,
     contentType: 'image/jpeg',
     filename: 'harbour ñ.jpg',
-    size: 2_411_724,
+    sizeBytes: 2_411_724,
     voiceMessage: true,
     width: 1600,
     height: 1200,
     hasPreview: true,
     uploaded: true,
     availability: 'notFound',
-    fetchDone: 0,
-    fetchTotal: 0,
-    savedAt: 1_700_000_200_000,
+    fetchDoneBytes: 0,
+    fetchTotalBytes: 0,
+    savedAtMs: 1_700_000_200_000,
   }
   const bareAttachment: Attachment = {
     index: 1,
@@ -279,8 +279,8 @@ describeEcho('the generated converters', () => {
     hasPreview: false,
     uploaded: false,
     availability: 'absent',
-    fetchDone: 0,
-    fetchTotal: 0,
+    fetchDoneBytes: 0,
+    fetchTotalBytes: 0,
   }
 
   const fullMessage: Message = {
@@ -386,8 +386,8 @@ describeEcho('the generated converters', () => {
         transfer: 'download',
         messageId: 42,
         index: 0,
-        done: 0,
-        total: 0,
+        doneBytes: 0,
+        totalBytes: 0,
       },
     },
     {
@@ -397,8 +397,8 @@ describeEcho('the generated converters', () => {
         transfer: 'export',
         messageId: 42,
         index: 1,
-        done: 2_411_748,
-        total: 2_411_748,
+        doneBytes: 2_411_748,
+        totalBytes: 2_411_748,
         outcome: { ok: true },
       },
     },

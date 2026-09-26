@@ -59,8 +59,8 @@ function progress(
     transfer: 'download',
     messageId: 1,
     index: 0,
-    done: 0,
-    total: 0,
+    doneBytes: 0,
+    totalBytes: 0,
     ...overrides,
   }
 }
@@ -324,12 +324,15 @@ describe('mergePages', () => {
 
 describe('attachment transfers', () => {
   it('records a report against the transfer it belongs to', () => {
-    const state = replay([progress(), progress({ done: 512, total: 2048 })], loaded([message()]))
+    const state = replay(
+      [progress(), progress({ doneBytes: 512, totalBytes: 2048 })],
+      loaded([message()]),
+    )
 
     expect(state.transfers['download:1:0']).toEqual({
       state: 'running',
-      done: 512,
-      total: 2048,
+      doneBytes: 512,
+      totalBytes: 2048,
     })
   })
 
@@ -339,22 +342,31 @@ describe('attachment transfers', () => {
     // and the bar would jump backwards.
     const state = replay(
       [
-        progress({ transfer: 'download', done: 1024, total: 2048 }),
-        progress({ transfer: 'export', done: 64, total: 2048 }),
+        progress({ transfer: 'download', doneBytes: 1024, totalBytes: 2048 }),
+        progress({ transfer: 'export', doneBytes: 64, totalBytes: 2048 }),
       ],
       loaded(),
     )
 
-    expect(state.transfers['download:1:0']?.done).toBe(1024)
-    expect(state.transfers['export:1:0']?.done).toBe(64)
+    expect(state.transfers['download:1:0']?.doneBytes).toBe(1024)
+    expect(state.transfers['export:1:0']?.doneBytes).toBe(64)
   })
 
   it('treats an ok outcome as finished and any other as failed', () => {
-    const ok = replay([progress({ done: 2048, total: 2048, outcome: { ok: true } })], loaded())
+    const ok = replay(
+      [progress({ doneBytes: 2048, totalBytes: 2048, outcome: { ok: true } })],
+      loaded(),
+    )
     expect(ok.transfers['download:1:0']?.state).toBe('done')
 
     const bad = replay(
-      [progress({ done: 2048, total: 2048, outcome: { ok: false, error: 'file.unreadable' } })],
+      [
+        progress({
+          doneBytes: 2048,
+          totalBytes: 2048,
+          outcome: { ok: false, error: 'file.unreadable' },
+        }),
+      ],
       loaded(),
     )
     expect(bad.transfers['download:1:0']?.state).toBe('failed')
@@ -362,9 +374,9 @@ describe('attachment transfers', () => {
   })
 
   it('does not finish a transfer that has moved every byte but reported no outcome', () => {
-    // done === total arrives before the verification does, so reading it as finished shows a
-    // file as ready that may still fail.
-    const state = replay([progress({ done: 2048, total: 2048 })], loaded())
+    // doneBytes === totalBytes arrives before the verification does, so reading it as finished
+    // shows a file as ready that may still fail.
+    const state = replay([progress({ doneBytes: 2048, totalBytes: 2048 })], loaded())
     expect(state.transfers['download:1:0']?.state).toBe('running')
   })
 
@@ -377,7 +389,7 @@ describe('attachment transfers', () => {
   it('forgets a conversation transfers when its history is replaced', () => {
     const state = replay(
       [
-        progress({ done: 512, total: 2048 }),
+        progress({ doneBytes: 512, totalBytes: 2048 }),
         { type: 'history-replaced', conversationId: '05alice' },
       ],
       loaded(),

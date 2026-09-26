@@ -294,8 +294,11 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       return expect(response, 'byteCount').bytes
     },
 
-    async setAttachmentCacheLimit(bytes): Promise<void> {
-      await call({ type: 'setAttachmentCacheLimit', ...(bytes === undefined ? {} : { bytes }) })
+    async setAttachmentCacheLimit(limitBytes): Promise<void> {
+      await call({
+        type: 'setAttachmentCacheLimit',
+        ...(limitBytes === undefined ? {} : { limitBytes }),
+      })
     },
 
     async getPref(key): Promise<string | undefined> {

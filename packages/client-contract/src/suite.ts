@@ -545,15 +545,15 @@ export function runSessionClientContract(
       if (first?.type !== 'attachment-progress') throw new Error('unreachable')
       // Nothing has been asked of a server yet, so there is no size to report and no fraction
       // to draw: the first report only means that something started.
-      expect(first.done).toBe(0)
-      expect(first.total).toBe(0)
+      expect(first.doneBytes).toBe(0)
+      expect(first.totalBytes).toBe(0)
       expect(first.outcome).toBeUndefined()
 
       const terminal = reports.filter(
         (e) => e.type === 'attachment-progress' && e.outcome !== undefined,
       )
       // Exactly one, and it is the last: a caller that treats every report as possibly-final
-      // would finish the transfer early, and one that waits for done === total would never.
+      // would finish the transfer early, and one waiting for doneBytes === totalBytes never would.
       expect(terminal.length).toBe(1)
       expect(terminal[0]).toBe(reports[reports.length - 1])
       const last = terminal[0]
@@ -611,7 +611,7 @@ export function runSessionClientContract(
       // fetch. `absent` says the next call would start a download.
       expect(idle).toBeDefined()
       expect(idle?.availability).toBe('absent')
-      expect(idle?.fetchDone).toBe(0)
+      expect(idle?.fetchDoneBytes).toBe(0)
 
       const running = client.downloadAttachment(messageId, index)
       await settle()

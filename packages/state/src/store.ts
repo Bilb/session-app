@@ -146,8 +146,8 @@ export interface SessionActions {
    */
   forgetHistory: (id: ConversationId) => void
   /** Where libsession caches downloads, and how much of it they may take. */
-  getCacheSettings: () => Promise<{ cacheDir: string; limit: number | undefined }>
-  setAttachmentCacheLimit: (bytes?: number) => Promise<void>
+  getCacheSettings: () => Promise<{ cacheDir: string; limitBytes: number | undefined }>
+  setAttachmentCacheLimit: (limitBytes?: number) => Promise<void>
   dispose: () => void
 }
 
@@ -177,7 +177,7 @@ export interface SessionStoreOptions {
    * libsession's default and is how a cache eats a disk - so every app should pass one, and what
    * it should be is a per-platform question a phone and a desktop answer differently.
    */
-  attachmentCacheLimit?: number
+  attachmentCacheLimitBytes?: number
 }
 
 /**
@@ -310,8 +310,8 @@ export function createSessionStore(
     },
 
     async hydrate(): Promise<void> {
-      if (options.attachmentCacheLimit !== undefined) {
-        await client.setAttachmentCacheLimit(options.attachmentCacheLimit)
+      if (options.attachmentCacheLimitBytes !== undefined) {
+        await client.setAttachmentCacheLimit(options.attachmentCacheLimitBytes)
       }
 
       const account = await client.getAccountInfo()
@@ -410,16 +410,16 @@ export function createSessionStore(
       await client.setAutoDownload(id, mode)
     },
 
-    async getCacheSettings(): Promise<{ cacheDir: string; limit: number | undefined }> {
-      const [cacheDir, limit] = await Promise.all([
+    async getCacheSettings(): Promise<{ cacheDir: string; limitBytes: number | undefined }> {
+      const [cacheDir, limitBytes] = await Promise.all([
         client.getCacheDir(),
         client.getAttachmentCacheLimit(),
       ])
-      return { cacheDir, limit }
+      return { cacheDir, limitBytes }
     },
 
-    async setAttachmentCacheLimit(bytes): Promise<void> {
-      await client.setAttachmentCacheLimit(bytes)
+    async setAttachmentCacheLimit(limitBytes): Promise<void> {
+      await client.setAttachmentCacheLimit(limitBytes)
     },
 
     async createAccount(): Promise<void> {

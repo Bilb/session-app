@@ -111,9 +111,9 @@ export interface SessionClient {
   /**
    * A page of history, oldest first.
    *
-   * What each attachment's bytes are doing rides on the attachment - `availability`, `fetchDone`,
-   * `fetchTotal` - so a window built from this page is already correct rather than drawing every
-   * attachment as untouched and then taking it back.
+   * What each attachment's bytes are doing rides on the attachment - `availability`,
+   * `fetchDoneBytes`, `fetchTotalBytes` - so a window built from this page is already correct
+   * rather than drawing every attachment as untouched and then taking it back.
    */
   getMessages(
     id: ConversationId,
@@ -154,7 +154,7 @@ export interface SessionClient {
    * which is also the default - turning caching on without a bound is how a cache eats a disk.
    */
   getAttachmentCacheLimit(): Promise<number | undefined>
-  setAttachmentCacheLimit(bytes?: number): Promise<void>
+  setAttachmentCacheLimit(limitBytes?: number): Promise<void>
 
   getPref(key: string): Promise<string | undefined>
   setPref(key: string, value: string): Promise<void>

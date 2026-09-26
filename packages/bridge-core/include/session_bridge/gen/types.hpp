@@ -282,9 +282,9 @@ struct Attachment {
     std::optional<std::string> content_type;
     std::optional<std::string> filename;
     /// The file's size before encryption. Unset on an outgoing attachment that has not uploaded, and
-    /// the sender's claim on an incoming one. Not comparable with a progress report's `total`, which
-    /// counts encrypted bytes.
-    std::optional<double> size;
+    /// the sender's claim on an incoming one. Not comparable with a progress report's `totalBytes`,
+    /// which counts encrypted bytes.
+    std::optional<double> size_bytes;
     bool voice_message;
     /// Supplied by whoever attached the file - libsession does not measure images.
     std::optional<double> width;
@@ -306,18 +306,18 @@ struct Attachment {
     /// How far the transfer has got while `availability` is `fetching`, and 0 otherwise.
     ///
     /// The same encrypted-byte figures `attachment-progress` carries, so a bar drawn from these and
-    /// then fed by reports continues rather than jumping. `fetchTotal` is 0 until the server has
+    /// then fed by reports continues rather than jumping. `fetchTotalBytes` is 0 until the server has
     /// said how big the file is. What they are for is a conversation opened while a download is
     /// already running: the reports went to whoever started it.
-    double fetch_done;
-    double fetch_total;
+    double fetch_done_bytes;
+    double fetch_total_bytes;
     /// When the recipient last saved it - us on an incoming attachment, the other party on one we
     /// sent. Unset means *not known to have been saved*, which is not the same as not saved: it
     /// depends on the other end volunteering a notification.
-    std::optional<double> saved_at;
+    std::optional<double> saved_at_ms;
 
-    Attachment(double index_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<double> size_, bool voice_message_, std::optional<double> width_, std::optional<double> height_, bool has_preview_, bool uploaded_, ::session_bridge::AttachmentAvailability availability_, double fetch_done_, double fetch_total_, std::optional<double> saved_at_) :
-            index{std::move(index_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, size{std::move(size_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)}, has_preview{std::move(has_preview_)}, uploaded{std::move(uploaded_)}, availability{std::move(availability_)}, fetch_done{std::move(fetch_done_)}, fetch_total{std::move(fetch_total_)}, saved_at{std::move(saved_at_)} {}
+    Attachment(double index_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<double> size_bytes_, bool voice_message_, std::optional<double> width_, std::optional<double> height_, bool has_preview_, bool uploaded_, ::session_bridge::AttachmentAvailability availability_, double fetch_done_bytes_, double fetch_total_bytes_, std::optional<double> saved_at_ms_) :
+            index{std::move(index_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, size_bytes{std::move(size_bytes_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)}, has_preview{std::move(has_preview_)}, uploaded{std::move(uploaded_)}, availability{std::move(availability_)}, fetch_done_bytes{std::move(fetch_done_bytes_)}, fetch_total_bytes{std::move(fetch_total_bytes_)}, saved_at_ms{std::move(saved_at_ms_)} {}
 };
 
 /// The message a reply points at, resolved one level deep only: a reply to a reply shows its own
@@ -389,7 +389,7 @@ struct Message {
 /// A page of history.
 ///
 /// What each attachment's bytes are doing rides on the attachment itself - `availability`,
-/// `fetchDone`, `fetchTotal` - rather than in a list beside the page. One writer for the first
+/// `fetchDoneBytes`, `fetchTotalBytes` - rather than in a list beside the page. One writer for the first
 /// picture and for every correction after it, which is what stops a window drawing an
 /// attachment as untouched and then taking it back.
 struct MessageListResult {
@@ -618,29 +618,29 @@ struct AttachmentOutcome {
 /// One report about one attachment transfer, whether a command asked for it or libsession
 /// started it on its own.
 ///
-/// The first report of a transfer is `{done: 0, total: 0}` and means it started - `total` stays 0
-/// until the server says how big the file is. `outcome` absent means still going, and exactly one
-/// report per transfer carries one: `done === total` does not mean finished, because the bytes
-/// still have to verify.
+/// The first report of a transfer is `{doneBytes: 0, totalBytes: 0}` and means it started -
+/// `totalBytes` stays 0 until the server says how big the file is. `outcome` absent means still
+/// going, and exactly one report per transfer carries one: `doneBytes === totalBytes` does not
+/// mean finished, because the bytes still have to verify.
 ///
 /// Reports for one (transfer, messageId, index) are ordered; different ones interleave, and each
 /// is rate limited to roughly one per 100ms. A transfer served from the cache reports nothing at
 /// all, so an indicator must be driven by time rather than by these arriving.
 ///
-/// `done` and `total` count *encrypted* bytes - what is actually being moved - and so do not
-/// agree with `Attachment.size`, which is the plaintext length.
+/// Both count *encrypted* bytes - what is actually being moved - and so do not agree with
+/// `Attachment.sizeBytes`, which is the plaintext length.
 struct AttachmentProgressSessionEvent {
     static constexpr std::string_view type_tag = "attachment-progress";
 
     ::session_bridge::AttachmentTransfer transfer;
     double message_id;
     double index;
-    double done;
-    double total;
+    double done_bytes;
+    double total_bytes;
     std::optional<::session_bridge::AttachmentOutcome> outcome;
 
-    AttachmentProgressSessionEvent(::session_bridge::AttachmentTransfer transfer_, double message_id_, double index_, double done_, double total_, std::optional<::session_bridge::AttachmentOutcome> outcome_) :
-            transfer{std::move(transfer_)}, message_id{std::move(message_id_)}, index{std::move(index_)}, done{std::move(done_)}, total{std::move(total_)}, outcome{std::move(outcome_)} {}
+    AttachmentProgressSessionEvent(::session_bridge::AttachmentTransfer transfer_, double message_id_, double index_, double done_bytes_, double total_bytes_, std::optional<::session_bridge::AttachmentOutcome> outcome_) :
+            transfer{std::move(transfer_)}, message_id{std::move(message_id_)}, index{std::move(index_)}, done_bytes{std::move(done_bytes_)}, total_bytes{std::move(total_bytes_)}, outcome{std::move(outcome_)} {}
 };
 
 /// libsession's own log lines, forwarded when the bridge was opened with a log level. Worth
@@ -1179,10 +1179,10 @@ struct GetAttachmentCacheLimitCommand {
 struct SetAttachmentCacheLimitCommand {
     static constexpr std::string_view type_tag = "setAttachmentCacheLimit";
 
-    std::optional<double> bytes;
+    std::optional<double> limit_bytes;
 
-    explicit SetAttachmentCacheLimitCommand(std::optional<double> bytes_) :
-            bytes{std::move(bytes_)} {}
+    explicit SetAttachmentCacheLimitCommand(std::optional<double> limit_bytes_) :
+            limit_bytes{std::move(limit_bytes_)} {}
 };
 
 struct GetPrefCommand {

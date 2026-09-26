@@ -57,10 +57,10 @@ export function resetFakeIds(): void {
  *
  * Progress counts encrypted bytes, which are more than the file is: a 24-byte header and 17 bytes
  * of framing per 32KiB chunk. Reproduced rather than approximated so that a caller reading a
- * percentage off `Attachment.size` disagrees with the fake, as it would with libsession.
+ * percentage off `Attachment.sizeBytes` disagrees with the fake, as it would with libsession.
  */
-function encryptedSize(size: number): number {
-  return 24 + size + Math.ceil(size / 32_768) * 17
+function encryptedSize(sizeBytes: number): number {
+  return 24 + sizeBytes + Math.ceil(sizeBytes / 32_768) * 17
 }
 
 /** How many reports a transfer makes between starting and finishing. */
@@ -142,10 +142,10 @@ export class FakeAccount {
   /** Downloads in flight, so a second request for one joins it rather than starting another. */
   private readonly downloading = new Map<string, Promise<void>>()
   /** Where each running transfer has got to, so a page can be told without waiting for a report. */
-  private readonly running = new Map<string, { done: number; total: number }>()
+  private readonly running = new Map<string, { doneBytes: number; totalBytes: number }>()
   /** Bumped by a restart: a transfer that was running does not survive the process. */
   private generation = 0
-  private cacheLimit: number | undefined
+  private cacheLimitBytes: number | undefined
 
   constructor(options: FakeAccountOptions) {
     this.displayName = options.displayName
@@ -545,19 +545,19 @@ export class FakeAccount {
             : this.isCached(message.id, attachment.index)
               ? ('cached' as const)
               : ('absent' as const),
-          fetchDone: running?.done ?? 0,
-          fetchTotal: running?.total ?? 0,
+          fetchDoneBytes: running?.doneBytes ?? 0,
+          fetchTotalBytes: running?.totalBytes ?? 0,
         }
       }),
     }))
   }
 
   attachmentCacheLimit(): number | undefined {
-    return this.cacheLimit
+    return this.cacheLimitBytes
   }
 
-  setAttachmentCacheLimit(bytes?: number): void {
-    this.cacheLimit = bytes
+  setAttachmentCacheLimit(limitBytes?: number): void {
+    this.cacheLimitBytes = limitBytes
   }
 
   setAutoDownload(id: ConversationId, mode: AutoDownload): void {
@@ -601,7 +601,7 @@ export class FakeAccount {
 
     return this.transfer('export', messageId, index).then(() => {
       const saved = found.message.attachments.map((a) =>
-        a.index === index ? { ...a, savedAt: this.world?.now() ?? Date.now() } : a,
+        a.index === index ? { ...a, savedAtMs: this.world?.now() ?? Date.now() } : a,
       )
       this.updateMessage(found.conversationId, messageId, { attachments: saved })
       return destination
@@ -616,20 +616,20 @@ export class FakeAccount {
    */
   private transfer(transfer: AttachmentTransfer, messageId: number, index: number): Promise<void> {
     const found = this.locate(messageId, index)
-    const total = encryptedSize(found?.attachment.size ?? 0)
+    const totalBytes = encryptedSize(found?.attachment.sizeBytes ?? 0)
     const world = this.world
     const generation = this.generation
 
     const key = `${messageId}:${index}`
-    const report = (done: number, outcome?: AttachmentOutcome): void => {
+    const report = (doneBytes: number, outcome?: AttachmentOutcome): void => {
       if (generation !== this.generation) return
       // The size is not known until the server answers, which is what the first report means.
-      const announced = done === 0 && outcome === undefined ? 0 : total
+      const announcedBytes = doneBytes === 0 && outcome === undefined ? 0 : totalBytes
       // Remembered as well as announced, and remembered as exactly what was announced: a page
       // loading midway is told where this is without waiting for the next report, and a caller
       // cannot tell the two routes apart.
       if (transfer === 'download') {
-        if (outcome === undefined) this.running.set(key, { done, total: announced })
+        if (outcome === undefined) this.running.set(key, { doneBytes, totalBytes: announcedBytes })
         else this.running.delete(key)
       }
       this.emit({
@@ -637,25 +637,25 @@ export class FakeAccount {
         transfer,
         messageId,
         index,
-        done,
-        total: announced,
+        doneBytes,
+        totalBytes: announcedBytes,
         ...(outcome === undefined ? {} : { outcome }),
       })
     }
 
     report(0)
     if (!world) {
-      report(total, { ok: true })
+      report(totalBytes, { ok: true })
       return Promise.resolve()
     }
 
     // Spread over a span that follows the size, with the same number of reports either way: the
     // bar moves in the same increments on any file, and a bigger one takes longer to get there.
-    const span = transferTicks(total)
+    const span = transferTicks(totalBytes)
     return new Promise<void>((resolve, reject) => {
       for (let step = 1; step < TRANSFER_STEPS; step += 1) {
         world.schedule((span * step) / TRANSFER_STEPS, () =>
-          report(Math.round((total * step) / TRANSFER_STEPS)),
+          report(Math.round((totalBytes * step) / TRANSFER_STEPS)),
         )
       }
       world.schedule(span, () => {
@@ -663,7 +663,7 @@ export class FakeAccount {
           reject(new Error('the transfer did not survive the restart'))
           return
         }
-        report(total, { ok: true })
+        report(totalBytes, { ok: true })
         resolve()
       })
     })

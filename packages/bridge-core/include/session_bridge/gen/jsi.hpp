@@ -350,16 +350,16 @@ struct JSIConverter<::session_bridge::Attachment> final {
                 JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "index"))),
                 ::session_bridge::optional_from_jsi<std::string>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "contentType"))),
                 ::session_bridge::optional_from_jsi<std::string>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "filename"))),
-                ::session_bridge::optional_from_jsi<double>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "size"))),
+                ::session_bridge::optional_from_jsi<double>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "sizeBytes"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "voiceMessage"))),
                 ::session_bridge::optional_from_jsi<double>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "width"))),
                 ::session_bridge::optional_from_jsi<double>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "height"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "hasPreview"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "uploaded"))),
                 JSIConverter<::session_bridge::AttachmentAvailability>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "availability"))),
-                JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fetchDone"))),
-                JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fetchTotal"))),
-                ::session_bridge::optional_from_jsi<double>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "savedAt"))));
+                JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fetchDoneBytes"))),
+                JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fetchTotalBytes"))),
+                ::session_bridge::optional_from_jsi<double>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "savedAtMs"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::Attachment& arg) {
         jsi::Object obj(runtime);
@@ -368,8 +368,8 @@ struct JSIConverter<::session_bridge::Attachment> final {
             obj.setProperty(runtime, PropNameIDCache::get(runtime, "contentType"), JSIConverter<std::string>::toJSI(runtime, *arg.content_type));
         if (arg.filename)
             obj.setProperty(runtime, PropNameIDCache::get(runtime, "filename"), JSIConverter<std::string>::toJSI(runtime, *arg.filename));
-        if (arg.size)
-            obj.setProperty(runtime, PropNameIDCache::get(runtime, "size"), JSIConverter<double>::toJSI(runtime, *arg.size));
+        if (arg.size_bytes)
+            obj.setProperty(runtime, PropNameIDCache::get(runtime, "sizeBytes"), JSIConverter<double>::toJSI(runtime, *arg.size_bytes));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "voiceMessage"), JSIConverter<bool>::toJSI(runtime, arg.voice_message));
         if (arg.width)
             obj.setProperty(runtime, PropNameIDCache::get(runtime, "width"), JSIConverter<double>::toJSI(runtime, *arg.width));
@@ -378,10 +378,10 @@ struct JSIConverter<::session_bridge::Attachment> final {
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "hasPreview"), JSIConverter<bool>::toJSI(runtime, arg.has_preview));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "uploaded"), JSIConverter<bool>::toJSI(runtime, arg.uploaded));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "availability"), JSIConverter<::session_bridge::AttachmentAvailability>::toJSI(runtime, arg.availability));
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "fetchDone"), JSIConverter<double>::toJSI(runtime, arg.fetch_done));
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "fetchTotal"), JSIConverter<double>::toJSI(runtime, arg.fetch_total));
-        if (arg.saved_at)
-            obj.setProperty(runtime, PropNameIDCache::get(runtime, "savedAt"), JSIConverter<double>::toJSI(runtime, *arg.saved_at));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "fetchDoneBytes"), JSIConverter<double>::toJSI(runtime, arg.fetch_done_bytes));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "fetchTotalBytes"), JSIConverter<double>::toJSI(runtime, arg.fetch_total_bytes));
+        if (arg.saved_at_ms)
+            obj.setProperty(runtime, PropNameIDCache::get(runtime, "savedAtMs"), JSIConverter<double>::toJSI(runtime, *arg.saved_at_ms));
         return obj;
     }
     static inline bool canConvert(jsi::Runtime&, const jsi::Value& value) {
@@ -930,8 +930,8 @@ struct JSIConverter<::session_bridge::AttachmentProgressSessionEvent> final {
                 JSIConverter<::session_bridge::AttachmentTransfer>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "transfer"))),
                 JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "messageId"))),
                 JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "index"))),
-                JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "done"))),
-                JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "total"))),
+                JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "doneBytes"))),
+                JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "totalBytes"))),
                 ::session_bridge::optional_from_jsi<::session_bridge::AttachmentOutcome>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "outcome"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::AttachmentProgressSessionEvent& arg) {
@@ -940,8 +940,8 @@ struct JSIConverter<::session_bridge::AttachmentProgressSessionEvent> final {
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "transfer"), JSIConverter<::session_bridge::AttachmentTransfer>::toJSI(runtime, arg.transfer));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "messageId"), JSIConverter<double>::toJSI(runtime, arg.message_id));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "index"), JSIConverter<double>::toJSI(runtime, arg.index));
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "done"), JSIConverter<double>::toJSI(runtime, arg.done));
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "total"), JSIConverter<double>::toJSI(runtime, arg.total));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "doneBytes"), JSIConverter<double>::toJSI(runtime, arg.done_bytes));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "totalBytes"), JSIConverter<double>::toJSI(runtime, arg.total_bytes));
         if (arg.outcome)
             obj.setProperty(runtime, PropNameIDCache::get(runtime, "outcome"), JSIConverter<::session_bridge::AttachmentOutcome>::toJSI(runtime, *arg.outcome));
         return obj;
@@ -1930,13 +1930,13 @@ struct JSIConverter<::session_bridge::SetAttachmentCacheLimitCommand> final {
     static inline ::session_bridge::SetAttachmentCacheLimitCommand fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
         jsi::Object obj = arg.asObject(runtime);
         return ::session_bridge::SetAttachmentCacheLimitCommand(
-                ::session_bridge::optional_from_jsi<double>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bytes"))));
+                ::session_bridge::optional_from_jsi<double>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "limitBytes"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::SetAttachmentCacheLimitCommand& arg) {
         jsi::Object obj(runtime);
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::SetAttachmentCacheLimitCommand::type_tag));
-        if (arg.bytes)
-            obj.setProperty(runtime, PropNameIDCache::get(runtime, "bytes"), JSIConverter<double>::toJSI(runtime, *arg.bytes));
+        if (arg.limit_bytes)
+            obj.setProperty(runtime, PropNameIDCache::get(runtime, "limitBytes"), JSIConverter<double>::toJSI(runtime, *arg.limit_bytes));
         return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
