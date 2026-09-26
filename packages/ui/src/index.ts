@@ -46,6 +46,8 @@ export type {
 export { List } from './List'
 export { MessageBubble, type MessageBubbleProps } from './MessageBubble'
 export { Modal } from './Modal'
+export { SegmentedToggle } from './SegmentedToggle'
+export type { Segment, SegmentedToggleProps } from './SegmentedToggle'
 export { Sheet } from './Sheet'
 export type { SheetProps } from './Sheet'
 export type { ListProps } from './List'
