@@ -50,7 +50,7 @@ const AlbumTile = memo(function AlbumTile({
   if (item === undefined) return null
   return (
     <YStack
-      accessibilityRole="button"
+      role="button"
       onPress={() => {
         onOpen(at)
       }}

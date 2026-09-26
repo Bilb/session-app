@@ -212,7 +212,7 @@ export function FileRow({
 
             The id and the label are on the pair, never on a run: split between two elements the
             name stops being one string, and both a screen reader and a test then read half of it. */}
-        <XStack minWidth={0} accessibilityLabel={filename} testID={testIDs?.name}>
+        <XStack minWidth={0} aria-label={filename} testID={testIDs?.name}>
           <Text
             size="$body"
             weight="semibold"
