@@ -60,11 +60,12 @@ a time, via the `port-feature` skill.
 - **Thumbnails.** A transcript fetches whole attachments to draw them, which is what libsession
   offers today. They should be generated locally from whatever can produce one rather than fetched
   as a second file from the server, and that needs an image decoder wherever it happens.
-- **Three strings in settings have no catalogue key.** The attachment cache section needs
-  "Attachment Cache", "Reveal" and "No limit", and the Crowdin set has nothing that fits, so they
-  sit in `packages/screens/src/pendingCopy.ts` and ship as English in every locale. Each is named
-  for the token it is destined for; `copy.contract.test.ts` pins the list so a fourth cannot join
-  quietly. They want a pull request against session-localization and a submodule bump.
+- **Attachment strings have no catalogue key.** The cache section's heading and labels, a set's
+  count, the gallery/list toggle, Export with its two states, and the viewer's Previous have
+  nothing in the Crowdin set that fits, so they sit in `packages/screens/src/pendingCopy.ts` and
+  ship as English in every locale - the count with English plurals. Each is named for the token it
+  is destined for; `copy.contract.test.ts` pins the list so another cannot join quietly. They want
+  a pull request against session-localization and a submodule bump.
 - **`device::Type` for the new clients.** Device records are user-visible on linked devices, so
   this is an upstream conversation.
 - **The desktop app's name is a placeholder.** `app.setName('session-app')` deliberately avoids
