@@ -1010,14 +1010,14 @@ struct ClientBridge::Impl {
                 on(id, [this, id](std::vector<std::byte>) { ok(id); }));
     }
 
-    void handle(double id, const SaveAttachmentCommand& cmd) {
-        const int64_t message_id = whole<int64_t>(cmd.message_id, "saveAttachment.messageId");
-        const auto index = whole<size_t>(cmd.index, "saveAttachment.index");
+    void handle(double id, const ExportAttachmentCommand& cmd) {
+        const int64_t message_id = whole<int64_t>(cmd.message_id, "exportAttachment.messageId");
+        const auto index = whole<size_t>(cmd.index, "exportAttachment.index");
         client->save_attachment(
                 message_id,
                 index,
                 std::filesystem::path{cmd.destination},
-                report(AttachmentTransfer::save),
+                report(AttachmentTransfer::export_),
                 on(id,
                    [this, id](std::filesystem::path saved_to) {
                        respond(id, PathResult{saved_to.string()});

@@ -272,7 +272,7 @@ describeAddon('addon', () => {
           'approveConversation has no libsession counterpart; see docs/STATUS.md',
         'reports a download from nothing to a result': OFFLINE_ATTACHMENTS,
         'answers a download of what is already here without reporting again': OFFLINE_ATTACHMENTS,
-        'reports a save as its own transfer': OFFLINE_ATTACHMENTS,
+        'reports an export as its own transfer': OFFLINE_ATTACHMENTS,
         'answers a page with what its attachments are doing': OFFLINE_ATTACHMENTS,
         'remembers being told to download nothing, which is not the same as never asking':
           OFFLINE_ATTACHMENTS,

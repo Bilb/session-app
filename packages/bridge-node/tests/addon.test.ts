@@ -394,7 +394,7 @@ describeEcho('the generated converters', () => {
       type: 'event',
       event: {
         type: 'attachment-progress',
-        transfer: 'save',
+        transfer: 'export',
         messageId: 42,
         index: 1,
         done: 2_411_748,

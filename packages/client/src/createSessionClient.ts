@@ -268,9 +268,9 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       await call({ type: 'downloadAttachment', messageId, index })
     },
 
-    async saveAttachment(messageId, index, destination, options): Promise<string> {
+    async exportAttachment(messageId, index, destination, options): Promise<string> {
       const response = await call({
-        type: 'saveAttachment',
+        type: 'exportAttachment',
         messageId,
         index,
         destination,

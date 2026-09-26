@@ -43,11 +43,11 @@ export type AutoDownload = 'none' | 'image-attachments' | 'all'
 /**
  * Which kind of transfer a progress report belongs to.
  *
- * libsession joins concurrent downloads of one file with each other but never joins a save, so one
- * attachment can have two live transfers at once. Keyed without this they interleave, and a bar
+ * libsession joins concurrent downloads of one file with each other but never joins an export, so
+ * one attachment can have two live transfers at once. Keyed without this they interleave, and a bar
  * jumps backwards.
  */
-export type AttachmentTransfer = 'download' | 'save'
+export type AttachmentTransfer = 'download' | 'export'
 
 /**
  * Whether an attachment's bytes are here, on their way, or neither.

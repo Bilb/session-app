@@ -134,8 +134,11 @@ export interface SessionClient {
    * once and reports nothing, and a fetch already running is joined rather than duplicated.
    */
   downloadAttachment(messageId: number, index: number): Promise<void>
-  /** Resolves with where the file actually landed: a name collision becomes `name (2)`. */
-  saveAttachment(
+  /**
+   * Writes an attachment out to a path the person chose, and resolves with where the file actually
+   * landed: a name collision becomes `name (2)`.
+   */
+  exportAttachment(
     messageId: number,
     index: number,
     destination: string,

@@ -39,7 +39,7 @@ export interface AttachmentTransferState {
   error?: string
 }
 
-/** Identifies a transfer, since one attachment can have a download and a save at once. */
+/** Identifies a transfer, since one attachment can have a download and an export at once. */
 export function transferKey(
   transfer: AttachmentTransfer,
   messageId: number,

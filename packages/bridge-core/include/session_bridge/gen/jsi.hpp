@@ -1836,19 +1836,19 @@ struct JSIConverter<::session_bridge::DownloadAttachmentCommand> final {
 };
 
 template <>
-struct JSIConverter<::session_bridge::SaveAttachmentCommand> final {
-    static inline ::session_bridge::SaveAttachmentCommand fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+struct JSIConverter<::session_bridge::ExportAttachmentCommand> final {
+    static inline ::session_bridge::ExportAttachmentCommand fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
         jsi::Object obj = arg.asObject(runtime);
-        return ::session_bridge::SaveAttachmentCommand(
+        return ::session_bridge::ExportAttachmentCommand(
                 JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "messageId"))),
                 JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "index"))),
                 JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "destination"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "notifySender"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "replace"))));
     }
-    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::SaveAttachmentCommand& arg) {
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::ExportAttachmentCommand& arg) {
         jsi::Object obj(runtime);
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::SaveAttachmentCommand::type_tag));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::ExportAttachmentCommand::type_tag));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "messageId"), JSIConverter<double>::toJSI(runtime, arg.message_id));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "index"), JSIConverter<double>::toJSI(runtime, arg.index));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "destination"), JSIConverter<std::string>::toJSI(runtime, arg.destination));
@@ -1860,7 +1860,7 @@ struct JSIConverter<::session_bridge::SaveAttachmentCommand> final {
         if (!value.isObject())
             return false;
         jsi::Value type = value.getObject(runtime).getProperty(runtime, PropNameIDCache::get(runtime, "type"));
-        return type.isString() && type.getString(runtime).utf8(runtime) == ::session_bridge::SaveAttachmentCommand::type_tag;
+        return type.isString() && type.getString(runtime).utf8(runtime) == ::session_bridge::ExportAttachmentCommand::type_tag;
     }
 };
 
@@ -2142,8 +2142,8 @@ struct JSIConverter<::session_bridge::Command> final {
             return JSIConverter<::session_bridge::DeleteMessageCommand>::fromJSI(runtime, arg);
         if (tag == "downloadAttachment")
             return JSIConverter<::session_bridge::DownloadAttachmentCommand>::fromJSI(runtime, arg);
-        if (tag == "saveAttachment")
-            return JSIConverter<::session_bridge::SaveAttachmentCommand>::fromJSI(runtime, arg);
+        if (tag == "exportAttachment")
+            return JSIConverter<::session_bridge::ExportAttachmentCommand>::fromJSI(runtime, arg);
         if (tag == "setAutoDownload")
             return JSIConverter<::session_bridge::SetAutoDownloadCommand>::fromJSI(runtime, arg);
         if (tag == "getCacheDir")
@@ -2180,7 +2180,7 @@ struct JSIConverter<::session_bridge::Command> final {
         if (!type.isString())
             return false;
         std::string tag = type.getString(runtime).utf8(runtime);
-        return tag == "getAccountInfo" || tag == "createAccount" || tag == "restoreAccountFromWords" || tag == "checkRecoveryPhrase" || tag == "restoreAccountFromSeed" || tag == "discardAccount" || tag == "keepAccount" || tag == "getSeedMnemonic" || tag == "setDisplayName" || tag == "attachNetwork" || tag == "warmNetworkCache" || tag == "setPollInterval" || tag == "pollOnce" || tag == "setPushToken" || tag == "handlePushPayload" || tag == "getConversations" || tag == "getMessageRequests" || tag == "getConversation" || tag == "openDm" || tag == "markRead" || tag == "setBlocked" || tag == "setNickname" || tag == "setPriority" || tag == "approveConversation" || tag == "deleteConversation" || tag == "getMessages" || tag == "sendMessage" || tag == "retrySend" || tag == "deleteMessage" || tag == "downloadAttachment" || tag == "saveAttachment" || tag == "setAutoDownload" || tag == "getCacheDir" || tag == "getAttachmentCacheLimit" || tag == "setAttachmentCacheLimit" || tag == "getPref" || tag == "setPref" || tag == "deliverTestMessage" || tag == "getTestAccountSeed" || tag == "approveTestContact" || tag == "echoTestFrame";
+        return tag == "getAccountInfo" || tag == "createAccount" || tag == "restoreAccountFromWords" || tag == "checkRecoveryPhrase" || tag == "restoreAccountFromSeed" || tag == "discardAccount" || tag == "keepAccount" || tag == "getSeedMnemonic" || tag == "setDisplayName" || tag == "attachNetwork" || tag == "warmNetworkCache" || tag == "setPollInterval" || tag == "pollOnce" || tag == "setPushToken" || tag == "handlePushPayload" || tag == "getConversations" || tag == "getMessageRequests" || tag == "getConversation" || tag == "openDm" || tag == "markRead" || tag == "setBlocked" || tag == "setNickname" || tag == "setPriority" || tag == "approveConversation" || tag == "deleteConversation" || tag == "getMessages" || tag == "sendMessage" || tag == "retrySend" || tag == "deleteMessage" || tag == "downloadAttachment" || tag == "exportAttachment" || tag == "setAutoDownload" || tag == "getCacheDir" || tag == "getAttachmentCacheLimit" || tag == "setAttachmentCacheLimit" || tag == "getPref" || tag == "setPref" || tag == "deliverTestMessage" || tag == "getTestAccountSeed" || tag == "approveTestContact" || tag == "echoTestFrame";
     }
 };
 

@@ -337,12 +337,12 @@ export class FakeSessionClient implements SessionClient {
     return this.account.downloadAttachment(messageId, index)
   }
 
-  saveAttachment(messageId: number, index: number, destination: string): Promise<string> {
+  exportAttachment(messageId: number, index: number, destination: string): Promise<string> {
     this.assertOpen()
     if (!this.account.locate(messageId, index)) {
       return Promise.reject(new SessionClientError(`No attachment ${messageId}:${index}`))
     }
-    return this.account.saveAttachment(messageId, index, destination)
+    return this.account.exportAttachment(messageId, index, destination)
   }
 
   setAutoDownload(id: ConversationId, mode: AutoDownload): Promise<void> {

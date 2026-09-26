@@ -34,8 +34,8 @@ export interface PickedFile {
 export interface FilesPort {
   pickFiles(options?: { multiple?: boolean }): Promise<PickedFile[]>
   pickImages(options?: { multiple?: boolean }): Promise<PickedFile[]>
-  /** Where to save something; null when the person cancelled. */
-  chooseSaveLocation(suggestedName: string): Promise<string | null>
+  /** Where to export a file to; null when the person cancelled. */
+  chooseExportLocation(suggestedName: string): Promise<string | null>
   openPath(path: string): Promise<void>
   revealInFolder(path: string): Promise<void>
 }

@@ -202,9 +202,9 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     await client.downloadAttachment(cmd.messageId, cmd.index)
     return empty
   },
-  saveAttachment: async (client, cmd) => ({
+  exportAttachment: async (client, cmd) => ({
     type: 'path',
-    path: await client.saveAttachment(cmd.messageId, cmd.index, cmd.destination, {
+    path: await client.exportAttachment(cmd.messageId, cmd.index, cmd.destination, {
       notifySender: cmd.notifySender,
       replace: cmd.replace,
     }),
