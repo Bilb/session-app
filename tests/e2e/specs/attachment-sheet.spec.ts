@@ -2,14 +2,18 @@ import { expect } from '@playwright/test'
 import { ELEMENT } from '@session/test-ids'
 
 import { openFirstConversation } from '../harness/attachments'
+import { SEEDED_LIST, SEEDED_ROLL } from '../harness/fixtures'
 import { sessionTest } from '../harness/sessionTest'
+
+// @session/screens' LIST_MAX_ROWS: importing screens would pull react-native into Playwright.
+const LIST_MAX_ROWS = 5
 
 /**
  * A set longer than the transcript will hold.
  *
- * Eight rows and then a way to the rest, rather than fourteen rows the reader has to scroll past
- * to reach whatever was said next. The sheet holds the same rows and the same footer, so nothing
- * is only reachable from one of the two.
+ * A few rows and then a way to the rest, rather than every row for the reader to scroll past to
+ * reach whatever was said next. The sheet holds the same rows and the same footer, so nothing is
+ * only reachable from one of the two.
  */
 sessionTest({
   title: 'moves a long set of attachments into a sheet',
@@ -20,20 +24,20 @@ sessionTest({
 
     await openFirstConversation(alice)
 
-    // Two rows from the mixed message and eight of the thirteen from the long one. The five the
-    // transcript is not drawing are what the sheet is for.
+    // Every row of the short list and the first few of the roll; the album names nothing.
+    const inTranscript = SEEDED_LIST.length + LIST_MAX_ROWS
     await expect
       .poll(async () => alice.count(ELEMENT.conversation.attachmentName), { timeout: 10_000 })
-      .toBe(10)
+      .toBe(inTranscript)
     expect(await alice.count(ELEMENT.conversation.attachmentShowAll)).toBe(1)
 
     await alice.tap(ELEMENT.conversation.attachmentShowAll)
     await alice.waitForVisible(ELEMENT.conversation.attachmentSheet)
 
-    // Every one of them, and the footer that acts on all of them.
+    // The whole roll over the transcript still drawn behind it, and the footer that acts on it.
     await expect
       .poll(async () => alice.count(ELEMENT.conversation.attachmentName), { timeout: 5_000 })
-      .toBe(23)
+      .toBe(inTranscript + SEEDED_ROLL.length)
     expect(await alice.isVisible(ELEMENT.conversation.attachmentFooter)).toBe(true)
 
     await alice.screenshot('attachment-sheet-desktop')
