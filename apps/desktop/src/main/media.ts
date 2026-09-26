@@ -145,7 +145,7 @@ export function serveMedia(bridge: MediaSource): void {
       const media = await bridge.fetchMedia(target.ref)
       const contentType = servableContentType(media.contentType, media.bytes)
       if (contentType === null) return new Response(null, { status: 415 })
-      return new Response(new Uint8Array(media.bytes), {
+      return new Response(media.bytes, {
         status: 200,
         headers: {
           ...mediaHeaders(contentType),
