@@ -87,7 +87,8 @@ reference: the tablet layout will catch most of a phone layout's mistakes.
 **Tests live in `tests/`, never in `src/`.** Every package puts them in its own
 `packages/<pkg>/tests/`, mirroring the `src/` path they cover -
 `src/nav/routes.ts` is tested by `tests/nav/routes.contract.test.ts`. Cross-app end-to-end
-specs stay in the repo's top-level `tests/e2e/`.
+specs stay in the repo's top-level `tests/e2e/`. A spec that launches an app itself rather than
+through `sessionTest` closes it in a `finally`, or a failed assertion leaves the process running.
 
 A test reaches its own package through `#src/*`, never `../src/*`:
 
