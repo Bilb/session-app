@@ -98,7 +98,7 @@ export function MediaViewer({
           <Text size="$label" color="$textSecondary" flex={1}>
             {positionLabel}
           </Text>
-          <Control icon="hardDriveDownload" label={exportLabel} onPress={onExport} />
+          <Control icon="download" label={exportLabel} onPress={onExport} />
           <Control icon="ellipsis" label={moreLabel} onPress={onMore} />
         </XStack>
 
