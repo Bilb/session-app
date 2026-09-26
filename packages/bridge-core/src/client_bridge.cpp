@@ -1157,17 +1157,6 @@ struct ClientBridge::Impl {
     }
 };
 
-namespace {
-    /// The bridge this process opened. One per process is already true - the apps open exactly
-    /// one - and `current()` is what lets a platform image loader rely on it, since the operating
-    /// system calls one of those and has nothing to hand it.
-    std::atomic<ClientBridge*> the_bridge{nullptr};
-}  // namespace
-
-ClientBridge* ClientBridge::current() {
-    return the_bridge.load(std::memory_order_acquire);
-}
-
 ClientBridge::ClientBridge(InitOptions options, Sink sink) :
         _impl{std::make_unique<Impl>(std::move(sink), options)} {
 
@@ -1187,10 +1176,6 @@ ClientBridge::ClientBridge(InitOptions options, Sink sink) :
     // An account that is already there needs no onboarding, so this is where its network comes
     // from. A deferred one gets it from createAccount or restoreAccount instead.
     _impl->on_account();
-
-    // Published last: everything a media request needs is built by now, so a loader that arrives
-    // the instant this returns finds a bridge that can answer.
-    the_bridge.store(this, std::memory_order_release);
 }
 
 ClientBridge::~ClientBridge() {
@@ -1200,11 +1185,6 @@ ClientBridge::~ClientBridge() {
 void ClientBridge::close() {
     if (!_impl)
         return;
-    // Unpublished first: a loader reading `current()` after this gets nullptr and fails its
-    // request rather than a pointer to something being destroyed. Compare-exchange so that a
-    // bridge closing after a second one was opened does not clear the second one's entry.
-    ClientBridge* self = this;
-    the_bridge.compare_exchange_strong(self, nullptr, std::memory_order_acq_rel);
     // Order matters. remove_logger is serialised against logging, so once it returns the callback
     // is neither running nor reachable; destroying the Client then joins Core's loop, so nothing
     // is mid-emit by the time the Impl the two of them write to goes.

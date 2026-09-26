@@ -191,6 +191,9 @@ class ClientBridge {
     ///
     /// `cb` runs on whichever thread libsession finished on, which is Core's loop. It must only
     /// hand the bytes on, for the same reason `Sink` must only enqueue.
+    ///
+    /// A native image loader calling this or `fetch_preview` is invoked by the OS with no bridge
+    /// in hand, and must obtain one in a way that cannot race `close()`.
     void fetch_media(double message_id, double index, MediaHandler cb);
 
     /// A blurred stand-in for an attachment, decoded from the ThumbHash its sender supplied.
@@ -205,13 +208,6 @@ class ClientBridge {
     ///
     /// Reports no progress and touches no network: the bytes it needs arrived with the message.
     void fetch_preview(double message_id, double index, PreviewHandler cb);
-
-    /// The bridge this process opened, or nullptr before one exists.
-    ///
-    /// A platform's image loader is reached by the operating system rather than by us - an
-    /// `RCTImageURLLoader`, a Fresco fetcher, a registered scheme - so it has no way to be handed
-    /// anything. One client per process is already true; this is what lets that be relied on.
-    static ClientBridge* current();
 
     /// Stops delivering frames and destroys the Client, which joins Core's loop. Idempotent, and
     /// implied by the destructor. Handlers for calls still in flight are dropped rather than
