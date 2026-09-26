@@ -62,8 +62,7 @@ struct Codec<std::string> {
 template <>
 struct Codec<std::vector<std::byte>> {
     static constexpr std::string_view name = "Uint8Array";
-    // A Uint8Array rather than a Napi::Buffer: Buffer is a Node-only subclass, and the contract
-    // these are generated from says Uint8Array, which is what JSI hands back on the other platform.
+    // Not a Napi::Buffer: that Node-only subclass is not what jsi.hpp hands back.
     static Napi::Value to(Napi::Env env, const std::vector<std::byte>& value) {
         auto array = Napi::Uint8Array::New(env, value.size());
         std::memcpy(array.Data(), value.data(), value.size());
