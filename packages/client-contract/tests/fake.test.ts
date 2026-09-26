@@ -62,8 +62,10 @@ const harness: ContractHarness = {
     return { client, phrase: await client.getSeedMnemonic() }
   },
 
-  withAttachment() {
-    const { world, clients } = friendsWithAttachments(['Alice', 'Bob'], { sets: ['pictures'] })
+  withAttachment(options = {}) {
+    const { world, clients } = friendsWithAttachments(['Alice', 'Bob'], {
+      sets: [options.expired === true ? 'expired' : 'pictures'],
+    })
     const alice = clients['Alice']
     if (!alice) throw new Error('fixture did not produce a client')
     const conversationId = world.account('Bob').sessionId

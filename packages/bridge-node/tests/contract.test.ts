@@ -277,6 +277,8 @@ describeAddon('addon', () => {
         'counts a downloaded attachment in the cache size': OFFLINE_ATTACHMENTS,
         'remembers being told to download nothing, which is not the same as never asking':
           OFFLINE_ATTACHMENTS,
+        'fails a download of a file the server no longer holds, and says so on the page':
+          OFFLINE_ATTACHMENTS,
       },
     },
   )

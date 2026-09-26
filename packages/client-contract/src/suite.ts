@@ -9,12 +9,13 @@
  * Written as a function of a harness so it can be handed either implementation.
  */
 
-import type {
-  Conversation,
-  Message,
-  MessagePage,
-  SessionClient,
-  SessionEvent,
+import {
+  ATTACHMENT_NOT_FOUND,
+  type Conversation,
+  type Message,
+  type MessagePage,
+  type SessionClient,
+  type SessionEvent,
 } from '@session/client'
 
 export interface ContractHarness {
@@ -40,8 +41,10 @@ export interface ContractHarness {
    * Its own entry rather than a flag on `friends`, because an implementation that cannot produce
    * an incoming attachment cannot produce one for any scenario, and skipping the scenarios is
    * then the honest answer rather than a fixture that quietly has none.
+   *
+   * `expired` asks for one the file server no longer holds.
    */
-  withAttachment(): Promise<{
+  withAttachment(options?: { expired?: boolean }): Promise<{
     client: SessionClient
     conversationId: string
     messageId: number
@@ -627,6 +630,34 @@ export function runSessionClientContract(
       // truth, and asking for the bytes to find out would be a download rather than a question.
       const cached = at(await client.getMessages(conversationId))
       expect(cached?.availability).toBe('cached')
+    })
+
+    it('fails a download of a file the server no longer holds, and says so on the page', async () => {
+      const { client, conversationId, messageId, index, settle } = await harness.withAttachment({
+        expired: true,
+      })
+      const at = async () =>
+        (await client.getMessages(conversationId)).messages
+          .find((m) => m.id === messageId)
+          ?.attachments.find((a) => a.index === index)
+      expect((await at())?.availability).toBe('notFound')
+
+      const seen = collect(client)
+      const running = failure(() => client.downloadAttachment(messageId, index))
+      await settle()
+      expect((await running) instanceof Error).toBe(true)
+
+      const terminal = seen.events.filter(
+        (e) => e.type === 'attachment-progress' && e.outcome !== undefined,
+      )
+      expect(terminal.length).toBe(1)
+      const last = terminal[0]
+      if (last?.type !== 'attachment-progress') throw new Error('unreachable')
+      expect(last.outcome).toEqual({ ok: false, error: ATTACHMENT_NOT_FOUND })
+
+      // A verdict, so the page keeps offering "ask them to resend" rather than a retry.
+      expect((await at())?.availability).toBe('notFound')
+      seen.stop()
     })
 
     it('measures an attachment cache with nothing in it as empty', async () => {
