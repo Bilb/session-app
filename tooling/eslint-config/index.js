@@ -65,6 +65,19 @@ const SCALED_PROPS = [
   'fontSize',
 ].join('|')
 
+/**
+ * A function named like a component, and a named function inside it that renders.
+ *
+ * A callback handed straight to a call or a prop (`items.map((x) => <X />)`, `renderItem={...}`,
+ * a render-prop child) has no name to be reused under, so it does not count.
+ */
+const COMPONENT =
+  ':matches(FunctionDeclaration[id.name=/^[A-Z]/], FunctionExpression[id.name=/^[A-Z]/], ' +
+  'VariableDeclarator[id.name=/^[A-Z]/] > :matches(ArrowFunctionExpression, FunctionExpression))'
+const NESTED_RENDER =
+  ':matches(FunctionDeclaration, VariableDeclarator > :matches(ArrowFunctionExpression, ' +
+  'FunctionExpression)):has(JSXElement, JSXFragment)'
+
 export function baseConfig({ tsconfigRootDir, zone }) {
   return tseslint.config(
     { ignores: ['dist/**', 'out/**', 'build/**', 'coverage/**', '**/gen/**', '**/generated/**'] },
@@ -124,6 +137,13 @@ export function baseConfig({ tsconfigRootDir, zone }) {
               'Name a token here ("$md", "$none") rather than a number, so the scale stays the ' +
               'single place a value changes. If the number is deliberately off-scale -- a measured ' +
               'client value -- give it a named constant and disable this rule with the reason.',
+          },
+          {
+            selector: `${COMPONENT} ${NESTED_RENDER}`,
+            message:
+              'A component or render function defined inside a component is rebuilt on every ' +
+              'render: drawn as <Inner /> React remounts it, and either way it cannot be memoised. ' +
+              'Move it to module scope and pass what it reads as props.',
           },
           {
             selector:
