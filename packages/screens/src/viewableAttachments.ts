@@ -2,6 +2,14 @@ import { isViewableContentType } from '@session/basic-types'
 import type { Attachment, Message } from '@session/client'
 
 /**
+ * A whitelist rather than a prefix: `image/svg+xml`, `image/heic` and `image/tiff` are pictures no
+ * renderer here draws reliably, and desktop refuses to serve anything outside the list.
+ */
+export function isViewable(attachment: Attachment): boolean {
+  return isViewableContentType(attachment.contentType)
+}
+
+/**
  * The attachments on a message that a viewer can show.
  *
  * Derived from `contentType` rather than taken from `Message.galleryViewable`, which is the one
@@ -16,12 +24,4 @@ import type { Attachment, Message } from '@session/client'
  */
 export function viewableAttachments(message: Message): Attachment[] {
   return message.attachments.filter(isViewable)
-}
-
-/**
- * A whitelist rather than a prefix: `image/svg+xml`, `image/heic` and `image/tiff` are pictures no
- * renderer here draws reliably, and desktop refuses to serve anything outside the list.
- */
-export function isViewable(attachment: Attachment): boolean {
-  return isViewableContentType(attachment.contentType)
 }

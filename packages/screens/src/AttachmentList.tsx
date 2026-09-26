@@ -15,6 +15,30 @@ import { AttachmentRow } from './AttachmentRow'
 export const LIST_MAX_ROWS = 5
 
 /**
+ * The row that opens the rest.
+ *
+ * It says how many there are in total rather than how many are hidden: somebody deciding whether
+ * to open it wants the size of the thing they are opening, and "6 more" makes them add.
+ */
+function ShowAll({ count, onPress }: { count: number; onPress: () => void }) {
+  return (
+    <PressArea onPress={onPress} testID={ELEMENT.conversation.attachmentShowAll}>
+      {() => (
+        <XStack alignItems="center" gap="$xs" paddingVertical="$xs">
+          <Text size="$label" weight="semibold" color="$accentText" flex={1}>
+            {tr('showAll')}
+          </Text>
+          <Text size="$label" tone="secondary">
+            {count}
+          </Text>
+          <Icon name={forwardChevron()} size="sm" color="$textSecondary" />
+        </XStack>
+      )}
+    </PressArea>
+  )
+}
+
+/**
  * Every attachment on one message, as rows.
  *
  * Message order, every attachment, pictures included: the set is one object and a list that drew
@@ -49,29 +73,5 @@ export function AttachmentList({
         <ShowAll count={message.attachments.length} onPress={onShowAll} />
       )}
     </YStack>
-  )
-}
-
-/**
- * The row that opens the rest.
- *
- * It says how many there are in total rather than how many are hidden: somebody deciding whether
- * to open it wants the size of the thing they are opening, and "6 more" makes them add.
- */
-function ShowAll({ count, onPress }: { count: number; onPress: () => void }) {
-  return (
-    <PressArea onPress={onPress} testID={ELEMENT.conversation.attachmentShowAll}>
-      {() => (
-        <XStack alignItems="center" gap="$xs" paddingVertical="$xs">
-          <Text size="$label" weight="semibold" color="$accentText" flex={1}>
-            {tr('showAll')}
-          </Text>
-          <Text size="$label" tone="secondary">
-            {count}
-          </Text>
-          <Icon name={forwardChevron()} size="sm" color="$textSecondary" />
-        </XStack>
-      )}
-    </PressArea>
   )
 }
