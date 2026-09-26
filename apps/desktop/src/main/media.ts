@@ -161,3 +161,9 @@ export function serveMedia(bridge: MediaSource): void {
     }
   })
 }
+
+/** Called before the bridge closes, so nothing asks a closing bridge for bytes. */
+export function stopServingMedia(): void {
+  // A quit before the bridge opened never installed the handler.
+  if (protocol.isProtocolHandled(MEDIA_SCHEME)) protocol.unhandle(MEDIA_SCHEME)
+}
