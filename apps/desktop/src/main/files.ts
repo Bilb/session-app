@@ -1,3 +1,4 @@
+import { realpathSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 
 // Named imports do not survive the ESM loader here; see the note in index.ts.
@@ -8,10 +9,10 @@ const { BrowserWindow, dialog, ipcMain, shell } = electron
 /**
  * Folders the person has pointed at in a save dialog this run.
  *
- * What makes `reveal` safe to expose at all. It hands a path to the operating system, and the
- * renderer is not trusted to have checked one -- the same standard `open-external` holds itself
- * to. A path is allowed only if it sits in a folder somebody chose here, which is the one way a
- * folder gets into this set.
+ * What makes `reveal` and `exportAttachment` safe to expose at all. Both hand a path to an
+ * operation the renderer cannot be trusted to have checked -- the same standard `open-external`
+ * holds itself to. A path is allowed only if it sits in a folder somebody chose here, which is the
+ * one way a folder gets into this set.
  *
  * By folder rather than by exact path because the path that comes back is not the path that went
  * out: a save that collides becomes `name (2)`, so an allowlist of the strings this handed over
@@ -21,10 +22,18 @@ const { BrowserWindow, dialog, ipcMain, shell } = electron
  */
 const chosen = new Set<string>()
 
-// Windows paths are case-insensitive, and the dialog need not hand back the casing it was given.
+// Resolved and, where it exists, symlink-followed, so a folder cannot read as contained by
+// pointing somewhere else -- a folder not created yet has nothing to follow and compares as given.
 function folderKey(folder: string, caseInsensitive: boolean): string {
   const resolved = resolve(folder)
-  return caseInsensitive ? resolved.toLowerCase() : resolved
+  const real = (() => {
+    try {
+      return realpathSync(resolved)
+    } catch {
+      return resolved
+    }
+  })()
+  return caseInsensitive ? real.toLowerCase() : real
 }
 
 /**
@@ -42,6 +51,17 @@ export function isInChosenFolder(
   if (typeof path !== 'string' || path.length === 0) return false
   const folder = folderKey(dirname(path), caseInsensitive)
   return [...folders].some((chosenFolder) => folderKey(chosenFolder, caseInsensitive) === folder)
+}
+
+/**
+ * Whether the renderer may have an attachment written to this path.
+ *
+ * The bridge command that writes one takes whatever destination the request carries and has no
+ * containment check of its own -- this is the one place that sees every such request before it
+ * reaches the native write, so it is the whole of the check.
+ */
+export function mayExportTo(destination: unknown): boolean {
+  return isInChosenFolder(destination, chosen)
 }
 
 const FALLBACK_SUGGESTED_NAME = 'attachment'
