@@ -54,15 +54,14 @@ export function summarise(
   let failed = 0
   let running = 0
   let ready = 0
+  let unavailable = 0
 
   for (const attachment of attachments) {
     if (attachment.sizeBytes === undefined || size === undefined) size = undefined
     else size += attachment.sizeBytes
 
     const fetch = fetchOf(attachment, reportFor(attachment))
-    // Unavailable counts as neither: the set is not failing at something a retry would fix, and
-    // it is not ready either. A message of one expired file rests at idle, and its one control
-    // is the row's, which says what happened.
+    if (fetch.state === 'unavailable') unavailable += 1
     if (fetch.state === 'failed') failed += 1
     if (fetch.state === 'ready') {
       ready += 1
@@ -77,12 +76,18 @@ export function summarise(
     }
   }
 
+  // Unavailable is excluded from what the set needs to resolve: an expired file cannot become
+  // ready, and counting it against the total left a set with one expired file among others stuck
+  // at idle forever. A set that is nothing but expired files has nothing to resolve and rests at
+  // idle instead of a vacuous 'ready' - the footer already withholds Export unless count is 1, so
+  // this never offers exporting the one file that arrived without going through the list.
+  const resolvable = attachments.length - unavailable
   const state: AttachmentSetState =
     failed > 0
       ? 'failed'
       : running > 0
         ? 'fetching'
-        : attachments.length > 0 && ready === attachments.length
+        : resolvable > 0 && ready === resolvable
           ? 'ready'
           : 'idle'
 

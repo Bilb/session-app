@@ -4,7 +4,11 @@ import { describe, expect, it } from 'vitest'
 
 import { summarise } from '#src/attachmentSet'
 
-function attachment(index: number, sizeBytes?: number): Attachment {
+function attachment(
+  index: number,
+  sizeBytes?: number,
+  availability: Attachment['availability'] = 'absent',
+): Attachment {
   return {
     index,
     contentType: 'image/jpeg',
@@ -12,7 +16,7 @@ function attachment(index: number, sizeBytes?: number): Attachment {
     voiceMessage: false,
     hasPreview: false,
     uploaded: true,
-    availability: 'absent',
+    availability,
     fetchDoneBytes: 0,
     fetchTotalBytes: 0,
   }
@@ -46,6 +50,18 @@ describe('what a set of attachments is doing', () => {
   it('is ready only when every attachment is', () => {
     expect(fold([attachment(0), attachment(1)], { 0: done }).state).toBe('idle')
     expect(fold([attachment(0), attachment(1)], { 0: done, 1: done }).state).toBe('ready')
+  })
+
+  it('reaches ready once every resolvable attachment has, expired ones aside', () => {
+    // The defect this replaced: an expired attachment counted against the total forever, so a
+    // set with one ready file and one expired one sat at idle with a dead Download control.
+    const expired = attachment(1, undefined, 'notFound')
+    expect(fold([attachment(0), expired], { 0: done }).state).toBe('ready')
+  })
+
+  it('rests at idle, not a vacuous ready, when nothing in the set can resolve', () => {
+    const expired = attachment(0, undefined, 'notFound')
+    expect(fold([expired], {}).state).toBe('idle')
   })
 
   it('counts every attachment, not the ones a gallery draws', () => {
