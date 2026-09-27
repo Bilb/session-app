@@ -101,7 +101,7 @@ const GLYPHS = {
  * optical weight, and flipping one gives a worse result than drawing the other - so a caller that
  * needs the pair chooses between them with `isLayoutRtl()` and they are deliberately absent here.
  */
-const MIRRORED_IN_RTL: ReadonlySet<IconName> = new Set(['list', 'video'])
+const MIRRORED_IN_RTL: ReadonlySet<IconName> = new Set(['list'])
 
 /**
  * One icon, drawn from the set the app has agreed on.
