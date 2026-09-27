@@ -1,3 +1,4 @@
+import { realpathSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 
 // Named imports do not survive the ESM loader here; see the note in index.ts.
@@ -21,10 +22,18 @@ const { BrowserWindow, dialog, ipcMain, shell } = electron
  */
 const chosen = new Set<string>()
 
-// Windows paths are case-insensitive, and the dialog need not hand back the casing it was given.
+// Resolved and, where it exists, symlink-followed, so a folder cannot read as contained by
+// pointing somewhere else -- a folder not created yet has nothing to follow and compares as given.
 function folderKey(folder: string, caseInsensitive: boolean): string {
   const resolved = resolve(folder)
-  return caseInsensitive ? resolved.toLowerCase() : resolved
+  const real = (() => {
+    try {
+      return realpathSync(resolved)
+    } catch {
+      return resolved
+    }
+  })()
+  return caseInsensitive ? real.toLowerCase() : real
 }
 
 /**
