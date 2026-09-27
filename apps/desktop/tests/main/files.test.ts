@@ -1,4 +1,6 @@
-import { resolve } from 'node:path'
+import { mkdirSync, mkdtempSync, symlinkSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
@@ -54,6 +56,22 @@ describe('a path the page asks to reveal', () => {
     for (const nonsense of ['', null, undefined, 42, {}]) {
       expect(isInChosenFolder(nonsense, chosen)).toBe(false)
     }
+  })
+
+  it('follows a symlink to compare by the real folder, not by name', () => {
+    // A chosen folder reached through one name and a candidate path through another must be
+    // recognised as the same folder - and a candidate that resolves somewhere else must not,
+    // even where the two names happen to look alike.
+    const root = mkdtempSync(join(tmpdir(), 'session-app-files-test-'))
+    const real = join(root, 'real')
+    const elsewhere = join(root, 'elsewhere')
+    mkdirSync(real)
+    mkdirSync(elsewhere)
+    const alias = join(root, 'alias')
+    symlinkSync(real, alias)
+
+    expect(isInChosenFolder(join(real, 'x.pdf'), new Set([alias]))).toBe(true)
+    expect(isInChosenFolder(join(elsewhere, 'x.pdf'), new Set([alias]))).toBe(false)
   })
 })
 
