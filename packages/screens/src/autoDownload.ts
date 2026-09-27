@@ -34,7 +34,12 @@ function mayFetchUnasked(attachment: Attachment, setting?: AutoDownload): boolea
  * and refusing to draw them would be answering a question nobody asked. It became askable with
  * `availability` - before that the only thing that knew was a transfer this session happened to
  * watch, which a freshly loaded page does not have.
+ *
+ * **Expired is a hard no, asked or not.** A url is a request, and asking for a file the file
+ * server has already given up on would only fail - the setting has nothing to do with it.
  */
 export function mayResolve(attachment: Attachment, setting?: AutoDownload): boolean {
+  if (attachment.availability === 'notFound' || attachment.availability === 'unreadable')
+    return false
   return attachment.availability === 'cached' || mayFetchUnasked(attachment, setting)
 }
