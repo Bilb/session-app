@@ -9,10 +9,10 @@ const { BrowserWindow, dialog, ipcMain, shell } = electron
 /**
  * Folders the person has pointed at in a save dialog this run.
  *
- * What makes `reveal` safe to expose at all. It hands a path to the operating system, and the
- * renderer is not trusted to have checked one -- the same standard `open-external` holds itself
- * to. A path is allowed only if it sits in a folder somebody chose here, which is the one way a
- * folder gets into this set.
+ * What makes `reveal` and `exportAttachment` safe to expose at all. Both hand a path to an
+ * operation the renderer cannot be trusted to have checked -- the same standard `open-external`
+ * holds itself to. A path is allowed only if it sits in a folder somebody chose here, which is the
+ * one way a folder gets into this set.
  *
  * By folder rather than by exact path because the path that comes back is not the path that went
  * out: a save that collides becomes `name (2)`, so an allowlist of the strings this handed over
@@ -51,6 +51,17 @@ export function isInChosenFolder(
   if (typeof path !== 'string' || path.length === 0) return false
   const folder = folderKey(dirname(path), caseInsensitive)
   return [...folders].some((chosenFolder) => folderKey(chosenFolder, caseInsensitive) === folder)
+}
+
+/**
+ * Whether the renderer may have an attachment written to this path.
+ *
+ * The bridge command that writes one takes whatever destination the request carries and has no
+ * containment check of its own -- this is the one place that sees every such request before it
+ * reaches the native write, so it is the whole of the check.
+ */
+export function mayExportTo(destination: unknown): boolean {
+  return isInChosenFolder(destination, chosen)
 }
 
 const FALLBACK_SUGGESTED_NAME = 'attachment'
