@@ -33,4 +33,11 @@ describe('what drawing may fetch unasked', () => {
   it('draws what is already here whatever the setting', () => {
     expect(mayResolve(attachment('image/jpeg', 'cached'), 'none')).toBe(true)
   })
+
+  it('refuses an expired attachment even when the setting would otherwise fetch it unasked', () => {
+    // The defect this replaced: the album handed a url to a tile the file server has already
+    // given up on, because only the row checked availability before calling this.
+    expect(mayResolve(attachment('image/jpeg', 'notFound'), 'all')).toBe(false)
+    expect(mayResolve(attachment('image/jpeg', 'unreadable'), 'all')).toBe(false)
+  })
 })
