@@ -6,7 +6,12 @@ import { describe, expect, it } from 'vitest'
 
 import type { Frame, Request } from '@session/client'
 
-import { ExportGate, sanitiseSuggestedName } from '#src/main/files'
+import {
+  ExportGate,
+  MAX_PATH_CHARS,
+  MAX_SUGGESTED_NAME_CHARS,
+  sanitiseSuggestedName,
+} from '#src/main/files'
 
 function exportTo(destination: string, id = 1, replace = false): Request {
   return {
@@ -103,6 +108,16 @@ describe('an export the page asks for', () => {
     expect(typeof gate.admit(exportTo(join(real, 'x.pdf')))).not.toBe('string')
   })
 
+  it('is refused when it is longer than any real path', () => {
+    const folder = '/home/someone/Documents/'
+    const longest = folder + 'x'.repeat(MAX_PATH_CHARS - folder.length)
+    const gate = new ExportGate(false)
+    gate.grant(longest, false)
+    gate.grant(longest + 'x', false)
+    expect(typeof gate.admit(exportTo(longest, 1))).not.toBe('string')
+    expect(typeof gate.admit(exportTo(longest + 'x', 2))).toBe('string')
+  })
+
   it('passes every other command through untouched', () => {
     const gate = new ExportGate(false)
     const other: Request = { id: 3, command: { type: 'getAccountInfo' } }
@@ -165,6 +180,12 @@ describe('the name a save dialog is pre-filled with', () => {
     // Shown as `invoiceexe.pdf` while it would save as an executable.
     expect(sanitiseSuggestedName('invoice\u202efdp.exe')).toBe('invoicefdp.exe')
     expect(sanitiseSuggestedName('a\u2066b\u2069\u200e\u200f\u061c\u0085c.txt')).toBe('abc.txt')
+  })
+
+  it('falls back rather than trimming a name longer than a filesystem allows', () => {
+    const longest = 'x'.repeat(MAX_SUGGESTED_NAME_CHARS)
+    expect(sanitiseSuggestedName(longest)).toBe(longest)
+    expect(sanitiseSuggestedName(longest + 'x')).toBe('attachment')
   })
 
   it('falls back when nothing usable is left', () => {

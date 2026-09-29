@@ -1,4 +1,4 @@
-import type { BrowserWindow, Session, WebContents, WebPreferences } from 'electron'
+import type { BrowserWindow, Session, WebContents, WebFrameMain, WebPreferences } from 'electron'
 
 import { MEDIA_SCHEME } from '../shared/mediaUrl'
 
@@ -128,4 +128,12 @@ export function denyAllPermissions(session: Session): void {
     callback(false)
   })
   session.setPermissionCheckHandler(() => false)
+}
+
+/** Whether an IPC message came from the app's own document, rather than a frame inside it. */
+export function isFromAppFrame(
+  frame: Pick<WebFrameMain, 'url' | 'parent'> | null,
+  appUrl: string,
+): boolean {
+  return frame !== null && frame.parent === null && isAppNavigation(frame.url, appUrl)
 }

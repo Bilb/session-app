@@ -6,7 +6,17 @@ import type { Frame, Request } from '@session/client'
 // Named imports do not survive the ESM loader here; see the note in index.ts.
 import electron from 'electron'
 
-const { app, BrowserWindow, dialog, ipcMain, shell } = electron
+import type { BrowserWindow } from 'electron'
+
+import { isFromAppFrame } from './security'
+
+const { app, dialog, shell } = electron
+
+/** Linux's PATH_MAX. */
+export const MAX_PATH_CHARS = 4096
+
+/** The file-name limit on ext4, APFS and NTFS. */
+export const MAX_SUGGESTED_NAME_CHARS = 255
 
 // Resolved and, where it exists, symlink-followed, so a folder cannot read as contained by
 // pointing somewhere else -- a folder not created yet has nothing to follow and compares as given.
@@ -31,6 +41,10 @@ function pathKey(path: string, caseInsensitive: boolean): string {
   )
 }
 
+function isPath(path: unknown): path is string {
+  return typeof path === 'string' && path !== '' && path.length <= MAX_PATH_CHARS
+}
+
 /**
  * What the renderer may write and reveal, decided by what a save dialog answered.
  *
@@ -47,8 +61,9 @@ function pathKey(path: string, caseInsensitive: boolean): string {
  * - **A reveal is only of a path an export reported landing at**, which is where libsession put
  *   the file whatever it was asked for.
  *
- * Pure, so it can be tested without an Electron process. Not persisted: a path chosen last week
- * is not something this run has any reason to reach.
+ * One per window, and pure, so it can be tested without an Electron process. Neither persisted
+ * nor shared: a path chosen last week, or in another window, is not one this has any reason to
+ * reach.
  */
 export class ExportGate {
   private readonly grants = new Map<string, { replace: boolean }>()
@@ -68,8 +83,7 @@ export class ExportGate {
     // by the bridge.
     const command = request.command as Request['command'] | undefined
     if (command?.type !== 'exportAttachment') return request
-    if (typeof command.destination !== 'string' || command.destination === '')
-      return 'exportAttachment.destination is not a path'
+    if (!isPath(command.destination)) return 'exportAttachment.destination is not a path'
     const key = pathKey(command.destination, this.caseInsensitive)
     const granted = this.grants.get(key)
     if (granted === undefined) return 'exportAttachment.destination was not chosen in a save dialog'
@@ -86,16 +100,9 @@ export class ExportGate {
   }
 
   mayReveal(path: unknown): path is string {
-    return (
-      typeof path === 'string' &&
-      path !== '' &&
-      this.revealable.has(pathKey(path, this.caseInsensitive))
-    )
+    return isPath(path) && this.revealable.has(pathKey(path, this.caseInsensitive))
   }
 }
-
-/** The one gate, shared by every window: a grant is the person's, not a window's. */
-export const exportGate = new ExportGate()
 
 const FALLBACK_SUGGESTED_NAME = 'attachment'
 
@@ -107,7 +114,9 @@ const FALLBACK_SUGGESTED_NAME = 'attachment'
  * whatever the platform, since the sender's platform is not this one.
  */
 export function sanitiseSuggestedName(name: unknown): string {
-  if (typeof name !== 'string') return FALLBACK_SUGGESTED_NAME
+  if (typeof name !== 'string' || name.length > MAX_SUGGESTED_NAME_CHARS) {
+    return FALLBACK_SUGGESTED_NAME
+  }
   const bare = name
     .slice(Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\')) + 1)
     // C0, C1 and the bidi controls: `invoice\u202efdp.exe` would otherwise be shown, in the dialog
@@ -119,38 +128,39 @@ export function sanitiseSuggestedName(name: unknown): string {
 }
 
 /**
- * Choosing where a file goes, and showing somebody where it went.
+ * Choosing where a file goes, and showing somebody where it went, for one window. Returns the
+ * window's export gate, which its bridge relay passes every request through.
  *
  * In main because that is where Electron's `dialog` and `shell` are, and because deciding what
  * the renderer may reach is not a decision the renderer can be trusted with.
  */
-export function serveFiles(): void {
+export function serveFiles(window: BrowserWindow, appUrl: string): ExportGate {
+  const gate = new ExportGate()
   // Where the last export went, so the next dialog opens there. For this run only.
   let lastFolder: string | undefined
+  const { ipc } = window.webContents
 
-  ipcMain.handle('files:choose-export-location', async (event, suggested: unknown) => {
-    const window = BrowserWindow.fromWebContents(event.sender)
-    const name = sanitiseSuggestedName(suggested)
-    const options = {
-      defaultPath: join(lastFolder ?? app.getPath('downloads'), name),
+  ipc.handle('files:choose-export-location', async (event, suggested: unknown) => {
+    if (!isFromAppFrame(event.senderFrame, appUrl)) return null
+    // Modal to this window rather than to the app: a second window is not blocked by a save
+    // dialog it did not open.
+    const answer = await dialog.showSaveDialog(window, {
+      defaultPath: join(lastFolder ?? app.getPath('downloads'), sanitiseSuggestedName(suggested)),
       // macOS and Windows ask before an existing name is chosen; Linux asks only when told to, and
       // that question is what makes an overwrite the person's answer rather than a guess.
-      properties: ['showOverwriteConfirmation' as const, 'createDirectory' as const],
-    }
-    // Modal to the window that asked rather than to the app: a second window is not blocked by a
-    // save dialog it did not open.
-    const answer = await (window
-      ? dialog.showSaveDialog(window, options)
-      : dialog.showSaveDialog(options))
+      properties: ['showOverwriteConfirmation', 'createDirectory'],
+    })
     if (answer.canceled || answer.filePath === '') return null
     lastFolder = dirname(answer.filePath)
-    exportGate.grant(answer.filePath, existsSync(answer.filePath))
+    gate.grant(answer.filePath, existsSync(answer.filePath))
     return answer.filePath
   })
 
-  ipcMain.handle('files:reveal', (_event, path: unknown): boolean => {
-    if (!exportGate.mayReveal(path)) return false
+  ipc.handle('files:reveal', (event, path: unknown): boolean => {
+    if (!isFromAppFrame(event.senderFrame, appUrl) || !gate.mayReveal(path)) return false
     shell.showItemInFolder(path)
     return true
   })
+
+  return gate
 }

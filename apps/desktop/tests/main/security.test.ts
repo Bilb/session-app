@@ -4,6 +4,7 @@ import {
   contentSecurityPolicy,
   hardenedWebPreferences,
   isAppNavigation,
+  isFromAppFrame,
   shouldProtectContent,
 } from '#src/main/security'
 
@@ -102,5 +103,20 @@ describe('the content security policy', () => {
     expect(shipped).not.toContain('ws:')
 
     expect(contentSecurityPolicy({ dev: true })).toContain("script-src 'self' 'unsafe-inline'")
+  })
+})
+
+describe('the sender of an IPC message', () => {
+  const appUrl = 'file:///opt/session/resources/app/out/renderer/index.html'
+  const mainFrame = { url: appUrl, parent: null }
+
+  it('is the app when it is the main frame showing the app', () => {
+    expect(isFromAppFrame(mainFrame, appUrl)).toBe(true)
+  })
+
+  it('is not the app when it is a subframe, another page, or gone', () => {
+    expect(isFromAppFrame({ url: appUrl, parent: mainFrame } as never, appUrl)).toBe(false)
+    expect(isFromAppFrame({ url: 'https://example.com/', parent: null }, appUrl)).toBe(false)
+    expect(isFromAppFrame(null, appUrl)).toBe(false)
   })
 })
