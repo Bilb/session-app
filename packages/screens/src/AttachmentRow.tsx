@@ -89,6 +89,7 @@ export function AttachmentRow({
               ? requirePorts().media.urlFor(ref)
               : undefined,
           kind: mediaKindOf(attachment.contentType),
+          fetchesOnOpen: state === 'idle' || state === 'failed',
           // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
           // screen by the route a picture does. Null where the platform has no resolver.
           preview: attachment.hasPreview ? requirePorts().media.previewUrlFor(ref) : undefined,

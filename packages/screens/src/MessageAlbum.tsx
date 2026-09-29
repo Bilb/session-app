@@ -49,9 +49,15 @@ export function MessageAlbum({
     .filter((attachment) => fetchFor(attachment).state === 'failed')
     .map((attachment) => String(attachment.index))
     .join()
+  // Which a press would download rather than open: see `MessageAttachments`' `onOpen`.
+  const fetchableKey = viewable
+    .filter((attachment) => ['idle', 'failed'].includes(fetchFor(attachment).state))
+    .map((attachment) => String(attachment.index))
+    .join()
   // Memoised so the album's memoised tiles keep their items until the message or setting changes.
   const items = useMemo((): AlbumItem[] => {
     const failed = new Set(failedKey.split(','))
+    const fetchable = new Set(fetchableKey.split(','))
     return viewable.map((attachment) => ({
       // Undefined rather than null where this is not ours to fetch: null says the platform has
       // no resolver, and this says the person has not agreed to spend the data. Both draw the
@@ -66,9 +72,10 @@ export function MessageAlbum({
       preview: attachment.hasPreview
         ? requirePorts().media.previewUrlFor({ messageId: message.id, index: attachment.index })
         : undefined,
+      fetchesOnOpen: fetchable.has(String(attachment.index)),
       testID: ELEMENT.conversation.attachmentImage,
     }))
-  }, [viewable, message.id, autoDownload, failedKey])
+  }, [viewable, message.id, autoDownload, failedKey, fetchableKey])
 
   return (
     <AttachmentAlbum

@@ -45,6 +45,8 @@ export function AttachmentPill({ set }: { set: AttachmentSet }) {
       paddingVertical="$3xs"
       borderRadius="$full"
       backgroundColor={TILE_SCRIM}
+      // Not a control, so a pointer over it is still over the tile beneath.
+      pointerEvents="none"
       testID={ELEMENT.conversation.attachmentPill}
     >
       <Text size="$caption" color="$textPrimary">
