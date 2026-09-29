@@ -161,6 +161,12 @@ describe('the name a save dialog is pre-filled with', () => {
     expect(sanitiseSuggestedName('in\u0000voice\u001b[31m.pdf\u007f\n')).toBe('invoice[31m.pdf')
   })
 
+  it('drops C1 and the controls that reorder text', () => {
+    // Shown as `invoiceexe.pdf` while it would save as an executable.
+    expect(sanitiseSuggestedName('invoice\u202efdp.exe')).toBe('invoicefdp.exe')
+    expect(sanitiseSuggestedName('a\u2066b\u2069\u200e\u200f\u061c\u0085c.txt')).toBe('abc.txt')
+  })
+
   it('falls back when nothing usable is left', () => {
     for (const nothing of ['', '   ', '.', '..', '../..', 'folder/', '\u0000\u0001', null, 42]) {
       expect(sanitiseSuggestedName(nothing)).toBe('attachment')

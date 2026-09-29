@@ -110,8 +110,10 @@ export function sanitiseSuggestedName(name: unknown): string {
   if (typeof name !== 'string') return FALLBACK_SUGGESTED_NAME
   const bare = name
     .slice(Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\')) + 1)
+    // C0, C1 and the bidi controls: `invoice\u202efdp.exe` would otherwise be shown, in the dialog
+    // and in the file manager, as `invoiceexe.pdf`.
     // eslint-disable-next-line no-control-regex -- stripping control characters is the point
-    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .replace(/[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '')
     .trim()
   return bare === '' || bare === '.' || bare === '..' ? FALLBACK_SUGGESTED_NAME : bare
 }
