@@ -5,11 +5,14 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 // The default import plus a destructure is the form that works under both loaders.
 import electron from 'electron'
 
-const { app, BrowserWindow, MessageChannelMain, clipboard, ipcMain, session, shell } = electron
+const { app, BrowserWindow, Menu, MessageChannelMain, clipboard, ipcMain, session, shell } =
+  electron
 
 import type { Request } from '@session/client'
+import { isCrowdinLocale, setLocale } from '@session/localization'
 
 import { createBridge } from './bridge'
+import { editMenuItems } from './editMenu'
 import {
   ACTIVATING_INPUT,
   acceptsCopy,
@@ -130,6 +133,17 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
       })
     if (!accepted) throw new Error('clipboard write refused')
     await clipboard.writeText(text)
+  })
+
+  // The menu below is drawn here, so it follows the language the person chose in the app.
+  ipc.on('locale', (event, locale: unknown) => {
+    if (!isFromAppFrame(event.senderFrame, appUrl)) return
+    if (typeof locale === 'string' && isCrowdinLocale(locale)) setLocale(locale)
+  })
+
+  window.webContents.on('context-menu', (_event, params) => {
+    const items = editMenuItems(params)
+    if (items.length > 0) Menu.buildFromTemplate(items).popup({ window })
   })
 
   /**
