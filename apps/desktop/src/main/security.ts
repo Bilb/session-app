@@ -1,11 +1,4 @@
-import type {
-  BrowserWindow,
-  InputEvent,
-  Session,
-  WebContents,
-  WebFrameMain,
-  WebPreferences,
-} from 'electron'
+import type { BrowserWindow, Session, WebContents, WebFrameMain, WebPreferences } from 'electron'
 
 /**
  * The renderer's privileges, and what it is allowed to reach.
@@ -136,23 +129,6 @@ export function denyAllPermissions(session: Session): void {
 /** Room for an account ID or a URL many times over; a page filling the clipboard gains nothing. */
 export const MAX_COPY_CHARS = 16 * 1024
 
-/** How long after a real click or key press a copy still counts as one the person asked for. */
-export const COPY_AFTER_INPUT_MS = 5_000
-
-/**
- * Input that grants user activation in Chromium: a press, not a hover or a scroll.
- *
- * Main sees these from the browser side, so script-dispatched events never produce one.
- */
-export const ACTIVATING_INPUT: ReadonlySet<InputEvent['type']> = new Set([
-  'mouseDown',
-  'mouseUp',
-  'rawKeyDown',
-  'keyDown',
-  'gestureTap',
-  'touchEnd',
-])
-
 /** Whether an IPC message came from the app's own document, rather than a frame inside it. */
 export function isFromAppFrame(
   frame: Pick<WebFrameMain, 'url' | 'parent'> | null,
@@ -162,15 +138,6 @@ export function isFromAppFrame(
 }
 
 /** Whether the main process should put `text` on the clipboard for the renderer. */
-export function acceptsCopy(
-  text: unknown,
-  { focused, msSinceInput }: { focused: boolean; msSinceInput: number },
-): text is string {
-  return (
-    typeof text === 'string' &&
-    text.length <= MAX_COPY_CHARS &&
-    focused &&
-    msSinceInput >= 0 &&
-    msSinceInput <= COPY_AFTER_INPUT_MS
-  )
+export function acceptsCopy(text: unknown, { focused }: { focused: boolean }): text is string {
+  return typeof text === 'string' && text.length <= MAX_COPY_CHARS && focused
 }

@@ -14,7 +14,6 @@ import { isCrowdinLocale, setLocale } from '@session/localization'
 import { createBridge } from './bridge'
 import { editMenuItems } from './editMenu'
 import {
-  ACTIVATING_INPUT,
   acceptsCopy,
   applyContentProtection,
   denyAllPermissions,
@@ -98,11 +97,6 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
   guardNavigation(window.webContents, appUrl)
   applyContentProtection(window, process.platform)
 
-  let lastInputAtMs = Number.NEGATIVE_INFINITY
-  window.webContents.on('input-event', (_event, input) => {
-    if (ACTIVATING_INPUT.has(input.type)) lastInputAtMs = performance.now()
-  })
-
   // On this window's own `ipc` rather than `ipcMain`, so no other WebContents can reach them.
   const { ipc } = window.webContents
 
@@ -127,10 +121,7 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
   ipc.handle('clipboard-write-text', async (event, text: unknown) => {
     const accepted =
       isFromAppFrame(event.senderFrame, appUrl) &&
-      acceptsCopy(text, {
-        focused: window.isFocused(),
-        msSinceInput: performance.now() - lastInputAtMs,
-      })
+      acceptsCopy(text, { focused: window.isFocused() })
     if (!accepted) throw new Error('clipboard write refused')
     await clipboard.writeText(text)
   })

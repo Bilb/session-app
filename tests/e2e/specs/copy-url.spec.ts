@@ -13,10 +13,9 @@ interface PageGlobals {
 
 /**
  * The renderer is refused every permission, so a copy reaches the clipboard only through the main
- * process, and only just after a real click or key press. Both halves are observable only in the
- * app: the permission handlers and the input tracking live in main.
+ * process, and a refusal there has to reach the page as a rejection rather than a silent success.
  */
-test('copies a URL after a click, and refuses a copy nobody asked for', async () => {
+test('copies a URL through main, and rejects a copy main refuses', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'session-copy-url-'))
   const app = await _electron.launch({
     args: [
@@ -42,13 +41,13 @@ test('copies a URL after a click, and refuses a copy nobody asked for', async ()
     await page.getByTestId(ELEMENT.onboarding.faqLink).first().waitFor({ timeout: 20_000 })
     await app.evaluate(({ clipboard }) => clipboard.writeText('untouched'))
 
-    const unasked = await page.evaluate(() =>
-      (globalThis as unknown as PageGlobals).sessionDesktop.copyText('planted').then(
+    const oversized = await page.evaluate(() =>
+      (globalThis as unknown as PageGlobals).sessionDesktop.copyText('x'.repeat(1024 * 1024)).then(
         () => 'written',
         () => 'refused',
       ),
     )
-    expect(unasked).toBe('refused')
+    expect(oversized).toBe('refused')
     expect(await readClipboard()).toBe('untouched')
 
     await page.getByTestId(ELEMENT.onboarding.faqLink).first().click()

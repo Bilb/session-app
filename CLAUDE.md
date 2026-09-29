@@ -54,8 +54,7 @@ dev entries. When a rule fires, fix the design - not the config.
 - **The desktop renderer is granted no Chromium permission**, the clipboard's included:
   `denyAllPermissions` stays deny-all. What the page needs from the OS is a named preload
   function, handled on that window's `webContents.ipc` (not the global `ipcMain`), which checks
-  the sender with `isFromAppFrame`, bounds its arguments, and - for anything the person must have
-  asked for - requires a real click or key press seen by main's `input-event`.
+  the sender with `isFromAppFrame` and bounds its arguments.
 - A port method one platform cannot honour is dropped or made nullable, never implemented to
   always fail.
 

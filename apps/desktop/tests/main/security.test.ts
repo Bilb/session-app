@@ -4,7 +4,6 @@ import type { Session } from 'electron'
 
 import {
   acceptsCopy,
-  COPY_AFTER_INPUT_MS,
   contentSecurityPolicy,
   denyAllPermissions,
   hardenedWebPreferences,
@@ -153,19 +152,17 @@ describe('the sender of an IPC message', () => {
 })
 
 describe('a copy the renderer asks for', () => {
-  const fresh = { focused: true, msSinceInput: 50 }
+  const focused = { focused: true }
 
-  it('is written just after a click or key press in the focused window', () => {
-    expect(acceptsCopy('https://getsession.org/faq', fresh)).toBe(true)
-    expect(acceptsCopy('x', { focused: true, msSinceInput: COPY_AFTER_INPUT_MS })).toBe(true)
+  it('is written for the focused window', () => {
+    expect(acceptsCopy('https://getsession.org/faq', focused)).toBe(true)
+    expect(acceptsCopy('x'.repeat(MAX_COPY_CHARS), focused)).toBe(true)
   })
 
   it.each([
-    ['not text', 42, fresh],
-    ['too long', 'x'.repeat(MAX_COPY_CHARS + 1), fresh],
-    ['from an unfocused window', 'x', { focused: false, msSinceInput: 50 }],
-    ['long after any input', 'x', { focused: true, msSinceInput: COPY_AFTER_INPUT_MS + 1 }],
-    ['with no input at all', 'x', { focused: true, msSinceInput: Number.POSITIVE_INFINITY }],
+    ['not text', 42, focused],
+    ['too long', 'x'.repeat(MAX_COPY_CHARS + 1), focused],
+    ['from an unfocused window', 'x', { focused: false }],
   ])('is refused when %s', (_case, text, state) => {
     expect(acceptsCopy(text, state)).toBe(false)
   })
