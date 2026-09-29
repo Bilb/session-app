@@ -4,7 +4,12 @@ import { join, resolve } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { isInChosenFolder, mayExportTo, sanitiseSuggestedName } from '#src/main/files'
+import {
+  isInChosenFolder,
+  MAX_PATH_CHARS,
+  MAX_SUGGESTED_NAME_CHARS,
+  sanitiseSuggestedName,
+} from '#src/main/files'
 
 /**
  * What the renderer is allowed to hand the operating system.
@@ -52,6 +57,13 @@ describe('a path the page asks to reveal', () => {
     expect(isInChosenFolder('/home/someone/Documents/itinerary.pdf', new Set())).toBe(false)
   })
 
+  it('is refused when it is longer than any real path', () => {
+    const folder = '/home/someone/Documents/'
+    const longest = folder + 'x'.repeat(MAX_PATH_CHARS - folder.length)
+    expect(isInChosenFolder(longest, chosen)).toBe(true)
+    expect(isInChosenFolder(longest + 'x', chosen)).toBe(false)
+  })
+
   it('is refused when it is not a path at all', () => {
     for (const nonsense of ['', null, undefined, 42, {}]) {
       expect(isInChosenFolder(nonsense, chosen)).toBe(false)
@@ -75,13 +87,6 @@ describe('a path the page asks to reveal', () => {
   })
 })
 
-describe('whether the renderer may have an attachment written to a path', () => {
-  it('refuses every path before anything has been chosen', () => {
-    expect(mayExportTo('/home/someone/Documents/x.pdf')).toBe(false)
-    expect(mayExportTo('/etc/passwd')).toBe(false)
-  })
-})
-
 describe('the name a save dialog is pre-filled with', () => {
   it('keeps an ordinary name as it is', () => {
     expect(sanitiseSuggestedName('itinerary (final).pdf')).toBe('itinerary (final).pdf')
@@ -96,6 +101,12 @@ describe('the name a save dialog is pre-filled with', () => {
 
   it('drops control characters', () => {
     expect(sanitiseSuggestedName('in\u0000voice\u001b[31m.pdf\u007f\n')).toBe('invoice[31m.pdf')
+  })
+
+  it('falls back rather than trimming a name longer than a filesystem allows', () => {
+    const longest = 'x'.repeat(MAX_SUGGESTED_NAME_CHARS)
+    expect(sanitiseSuggestedName(longest)).toBe(longest)
+    expect(sanitiseSuggestedName(longest + 'x')).toBe('attachment')
   })
 
   it('falls back when nothing usable is left', () => {

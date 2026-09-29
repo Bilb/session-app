@@ -5,18 +5,19 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 // The default import plus a destructure is the form that works under both loaders.
 import electron from 'electron'
 
-const { app, BrowserWindow, MessageChannelMain, ipcMain, session, shell } = electron
+const { app, BrowserWindow, MessageChannelMain, session, shell } = electron
 
 import type { Request } from '@session/client'
 
 import { createBridge } from './bridge'
-import { mayExportTo, serveFiles } from './files'
+import { serveFiles } from './files'
 import { registerMediaScheme, serveMedia, stopServingMedia } from './media'
 import {
   applyContentProtection,
   denyAllPermissions,
   guardNavigation,
   hardenedWebPreferences,
+  isFromAppFrame,
   refuseNewContents,
 } from './security'
 
@@ -102,6 +103,28 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
   guardNavigation(window.webContents, appUrl)
   applyContentProtection(window, process.platform)
 
+  // On this window's own `ipc` rather than `ipcMain`, so no other WebContents can reach them.
+  const { ipc } = window.webContents
+
+  /**
+   * A link the app decided to hand to the person's browser.
+   *
+   * Restricted to http(s) here rather than at the caller: `openExternal` gives any scheme to the
+   * OS, and a `file:` or a custom scheme reaching it is how a link becomes a launched program.
+   * The renderer is not trusted to have checked.
+   *
+   * Plain http is allowed, which is what all three legacy clients do -- two of them go further
+   * and upgrade a scheme-less address to https rather than refusing it. Case-insensitive for the
+   * same reason the desktop client's is: a scheme is not case-sensitive, and `HTTP://` silently
+   * doing nothing is worse than opening it.
+   */
+  ipc.on('open-external', (event, url: unknown) => {
+    if (!isFromAppFrame(event.senderFrame, appUrl)) return
+    if (typeof url === 'string' && /^https?:\/\//i.test(url)) void shell.openExternal(url)
+  })
+
+  const files = serveFiles(window, appUrl)
+
   /**
    * Nothing opens a window here, whatever asks.
    *
@@ -139,7 +162,7 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
         // this is the point that has to refuse one outside a folder a save dialog actually chose.
         if (
           request.command?.type === 'exportAttachment' &&
-          !mayExportTo(request.command.destination)
+          !files.mayExportTo(request.command.destination)
         ) {
           port?.postMessage({
             type: 'response',
@@ -185,24 +208,7 @@ app.on('web-contents-created', (_event, contents) => {
 
 void app.whenReady().then(async () => {
   denyAllPermissions(session.defaultSession)
-  ipcMain.handle('session-ping', () => 'pong')
 
-  /**
-   * A link the app decided to hand to the person's browser.
-   *
-   * Restricted to http(s) here rather than at the caller: `openExternal` gives any scheme to the
-   * OS, and a `file:` or a custom scheme reaching it is how a link becomes a launched program.
-   * The renderer is not trusted to have checked.
-   *
-   * Plain http is allowed, which is what all three legacy clients do -- two of them go further
-   * and upgrade a scheme-less address to https rather than refusing it. Case-insensitive for the
-   * same reason the desktop client's is: a scheme is not case-sensitive, and `HTTP://` silently
-   * doing nothing is worse than opening it.
-   */
-  ipcMain.on('open-external', (_event, url: unknown) => {
-    if (typeof url === 'string' && /^https?:\/\//i.test(url)) void shell.openExternal(url)
-  })
-  serveFiles()
   await createWindow()
 
   app.on('activate', () => {
