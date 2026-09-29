@@ -422,7 +422,7 @@ describeEcho('the generated converters', () => {
     { type: 'response', response: { id: 900_013, result: { type: 'empty' } } },
     {
       type: 'response',
-      response: { id: 900_014, result: { type: 'path', path: '/tmp/a (2).jpg' } },
+      response: { id: 900_014, result: { type: 'path', path: '/tmp/a (1).jpg' } },
     },
     {
       type: 'response',

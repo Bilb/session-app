@@ -676,8 +676,8 @@ export function runSessionClientContract(
       }
 
       expect(await exported()).toBe(`${stem}.bin`)
-      expect(await exported(false)).toBe(`${stem} (2).bin`)
-      expect(await exported()).toBe(`${stem} (3).bin`)
+      expect(await exported(false)).toBe(`${stem} (1).bin`)
+      expect(await exported()).toBe(`${stem} (2).bin`)
       expect(await exported(true)).toBe(`${stem}.bin`)
     })
 

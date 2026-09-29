@@ -273,8 +273,8 @@ struct EnumTraits<AttachmentAvailability> {
 
 /// An attachment on a stored message, in either direction.
 ///
-/// Nothing here says whether the bytes are on this device: that is answered by asking for them, and
-/// `downloadAttachment` answers at once when they are already cached.
+/// Whether the bytes are on this device is `availability`. Asking for them is a download, which the
+/// conversation's auto-download setting may have said no to.
 struct Attachment {
     /// Position in the message's list, and what every attachment call takes.
     double index;
@@ -374,9 +374,9 @@ struct Message {
     /// Optional rather than defaulted, because `sent` here would claim a sync that never happened.
     std::optional<::session_bridge::SendState> sync_state;
     std::vector<::session_bridge::Attachment> attachments;
-    /// Whether this message's attachments could be shown as pictures rather than listed as files.
-    /// libsession's rule, not one to re-derive from content types: today it is "has attachments, and
-    /// every one of them is an image", and it may narrow.
+    /// libsession's answer to whether this message's attachments could be shown as pictures rather
+    /// than listed as files: "has attachments, and every one is `image/*`". It does not say whether
+    /// this client can draw them, which is the screens' decision to make.
     bool gallery_viewable;
     std::optional<::session_bridge::Reply> reply_to;
     std::optional<::session_bridge::Deletion> deleted;
@@ -436,7 +436,7 @@ struct BoolResult {
             value{std::move(value_)} {}
 };
 
-/// Where an export landed, which is not always where it was asked to go: a collision becomes `name (2)`.
+/// Where an export landed, which is not always where it was asked to go: a collision becomes `name (1)`.
 struct PathResult {
     static constexpr std::string_view type_tag = "path";
 
@@ -1129,7 +1129,7 @@ struct DeleteMessageCommand {
 ///
 /// One call covers all three cases: it answers at once when the file is already cached, joins a
 /// fetch already running - reporting from wherever that has got to - and starts one only when
-/// nothing else has. So it is also how a caller asks whether the bytes are here.
+/// nothing else has. Whether the bytes are here is the attachment's `availability`, not this.
 struct DownloadAttachmentCommand {
     static constexpr std::string_view type_tag = "downloadAttachment";
 

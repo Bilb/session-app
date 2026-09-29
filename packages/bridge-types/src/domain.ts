@@ -120,8 +120,8 @@ export interface AttachmentOutcome {
 /**
  * An attachment on a stored message, in either direction.
  *
- * Nothing here says whether the bytes are on this device: that is answered by asking for them, and
- * `downloadAttachment` answers at once when they are already cached.
+ * Whether the bytes are on this device is `availability`. Asking for them is a download, which the
+ * conversation's auto-download setting may have said no to.
  */
 export interface Attachment {
   /** Position in the message's list, and what every attachment call takes. */
@@ -189,7 +189,7 @@ export type WithAttachmentRef = { ref: AttachmentRef }
  */
 export type TransferProgress = { doneBytes: number; totalBytes: number }
 
-/** Omitted, libsession notifies the sender and writes `name (2)` rather than overwrite. */
+/** Omitted, libsession notifies the sender and writes `name (1)` rather than overwrite. */
 export type ExportAttachmentOptions = {
   notifySender?: boolean | undefined
   replace?: boolean | undefined
@@ -243,9 +243,9 @@ export interface Message {
   syncState?: SendState
   attachments: Attachment[]
   /**
-   * Whether this message's attachments could be shown as pictures rather than listed as files.
-   * libsession's rule, not one to re-derive from content types: today it is "has attachments, and
-   * every one of them is an image", and it may narrow.
+   * libsession's answer to whether this message's attachments could be shown as pictures rather
+   * than listed as files: "has attachments, and every one is `image/*`". It does not say whether
+   * this client can draw them, which is the screens' decision to make.
    */
   galleryViewable: boolean
   replyTo?: Reply

@@ -133,8 +133,8 @@ export interface SessionActions {
    */
   retry: (messageId: number) => Promise<boolean>
   /**
-   * Fetches an attachment, and answers whether the bytes are here by fetching them: one that is
-   * already cached resolves at once and reports nothing at all.
+   * Fetches an attachment: one that is already cached resolves at once and reports nothing at
+   * all. Whether the bytes are here is the attachment's `availability`, not this.
    *
    * Progress arrives as events, so nothing is returned: a row that mounts halfway through a
    * transfer reads the same state as one that started it.

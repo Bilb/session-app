@@ -720,7 +720,7 @@ export class FakeAccount {
   }
 
   /**
-   * libsession's `name (2).ext`, `name (3).ext`... for a path already written. The fake has no
+   * libsession's `name (1).ext`, `name (2).ext`... for a path already written. The fake has no
    * disk, so "already written" means exported to this session.
    */
   private unusedPath(destination: string): string {
@@ -729,7 +729,7 @@ export class FakeAccount {
     const dot = destination.lastIndexOf('.')
     const split = dot > slash + 1 ? dot : destination.length
     const [stem, extension] = [destination.slice(0, split), destination.slice(split)]
-    for (let n = 2; ; n += 1) {
+    for (let n = 1; ; n += 1) {
       const candidate = `${stem} (${String(n)})${extension}`
       if (!this.exported.has(candidate)) return candidate
     }

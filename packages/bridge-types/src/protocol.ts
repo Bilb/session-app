@@ -208,7 +208,7 @@ export type Command =
    *
    * One call covers all three cases: it answers at once when the file is already cached, joins a
    * fetch already running - reporting from wherever that has got to - and starts one only when
-   * nothing else has. So it is also how a caller asks whether the bytes are here.
+   * nothing else has. Whether the bytes are here is the attachment's `availability`, not this.
    */
   | { type: 'downloadAttachment'; messageId: number; index: number }
   /**
@@ -304,7 +304,7 @@ export type Result =
   | { type: 'hex'; hex: string }
   | { type: 'pref'; value?: string }
   | { type: 'bool'; value: boolean }
-  /** Where an export landed, which is not always where it was asked to go: a collision becomes `name (2)`. */
+  /** Where an export landed, which is not always where it was asked to go: a collision becomes `name (1)`. */
   | { type: 'path'; path: string }
   /** Unset only in answer to `getAttachmentCacheLimit`, where it means no limit. */
   | { type: 'byteCount'; bytes?: number }
