@@ -8,7 +8,7 @@ import { Button } from './Button'
 import { Icon } from './Icon'
 import { useScreenInsets } from './screenInsets'
 import { SCRIM_OPACITY } from './scrim'
-import { SHEET_MAX_HEIGHT, SHEET_MAX_WIDTH, SHEET_RADIUS } from './sheet'
+import { SHEET_MAX_HEIGHT, SHEET_MAX_WIDTH, SHEET_RADIUS } from './sheetLayout'
 import { Text } from './Text'
 
 export interface SheetProps {

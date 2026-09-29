@@ -30,6 +30,9 @@
 #include <filesystem>
 #include <functional>
 #include <limits>
+#include <memory>
+#include <mutex>
+#include <optional>
 #include <ranges>
 #include <stdexcept>
 #include <utility>
@@ -523,15 +526,16 @@ struct ClientBridge::Impl {
     }
 
     void respond(double id, Result result) {
-        emit(ResponseFrame{Response{id, std::nullopt, std::move(result)}});
+        emit(ResponseFrame{Response{id, std::nullopt, std::nullopt, std::move(result)}});
     }
 
     void ok(double id) {
         respond(id, EmptyResult{});
     }
 
-    void fail(double id, std::string_view message) {
-        emit(ResponseFrame{Response{id, std::string{message}, std::nullopt}});
+    void fail(
+            double id, std::string_view message, std::optional<std::string> code = std::nullopt) {
+        emit(ResponseFrame{Response{id, std::string{message}, std::move(code), std::nullopt}});
     }
 
     /// Wraps a handler so that the error leg is written once rather than at every call site.
@@ -541,7 +545,7 @@ struct ClientBridge::Impl {
     auto on(double id, F&& f) {
         return [this, id, f = std::forward<F>(f)](auto&& result) {
             if (!result) {
-                fail(id, result.error().message);
+                fail(id, result.error().message, std::string{result.error().code});
                 return;
             }
             // Client::_dispatch_out only logs what escapes a handler, so an uncaught throw here
@@ -1208,46 +1212,58 @@ void ClientBridge::fetch_media(double message_id, double index, MediaHandler cb)
         return;
     }
 
+    // Both asked from here, on the caller's thread, and joined: a callback runs on Core's loop,
+    // where `close()` can null `client` under it, so neither may reach back for the Client.
+    struct Join {
+        std::mutex lock;
+        MediaHandler cb;
+        int64_t id = 0;
+        size_t at = 0;
+        std::optional<session::Expected<std::optional<client::Message>>> message;
+        std::optional<session::Expected<std::vector<std::byte>>> bytes;
+
+        void settle() {
+            auto& msg = *message;
+            if (!msg)
+                return cb(Media{std::string{msg.error().message}, {}, {}});
+            if (!*msg || at >= (*msg)->attachments.size())
+                return cb(Media{not_found("attachment", std::to_string(id)), {}, {}});
+            if (!*bytes)
+                return cb(Media{std::string{bytes->error().message}, {}, {}});
+            // The sender's claim, and the only description there is. Whoever renders it is
+            // handling bytes from a stranger either way.
+            auto content_type =
+                    (*msg)->attachments[at].content_type.value_or("application/octet-stream");
+            cb(Media{std::nullopt, std::move(content_type), **std::move(bytes)});
+        }
+    };
+    auto join = std::make_shared<Join>();
+    join->cb = std::move(cb);
+
     try {
-        const int64_t id = whole<int64_t>(message_id, "media.messageId");
-        const auto at = whole<size_t>(index, "media.index");
-        auto* impl = _impl.get();
+        join->id = whole<int64_t>(message_id, "media.messageId");
+        join->at = whole<size_t>(index, "media.index");
 
-        impl->client->message(
-                id,
-                [impl, id, at, cb = std::move(cb)](
-                        session::Expected<std::optional<client::Message>> r) mutable {
-                    if (!r) {
-                        cb(Media{std::string{r.error().message}, {}, {}});
-                        return;
-                    }
-                    auto& msg = *r;
-                    if (!msg || at >= msg->attachments.size()) {
-                        cb(Media{not_found("attachment", std::to_string(id)), {}, {}});
-                        return;
-                    }
-
-                    // The sender's claim, and the only description there is. Whoever renders it
-                    // is handling bytes from a stranger either way.
-                    std::string content_type =
-                            msg->attachments[at].content_type.value_or("application/octet-stream");
-
-                    impl->client->attachment_data(
-                            id,
-                            at,
-                            impl->report(AttachmentTransfer::download),
-                            [cb = std::move(cb), content_type = std::move(content_type)](
-                                    session::Expected<std::vector<std::byte>> r) mutable {
-                                if (!r) {
-                                    cb(Media{std::string{r.error().message}, {}, {}});
-                                    return;
-                                }
-                                auto bytes = *std::move(r);
-                                cb(Media{std::nullopt, std::move(content_type), std::move(bytes)});
-                            });
+        _impl->client->message(
+                join->id, [join](session::Expected<std::optional<client::Message>> r) mutable {
+                    std::lock_guard l{join->lock};
+                    join->message.emplace(std::move(r));
+                    if (join->bytes)
+                        join->settle();
+                });
+        _impl->client->attachment_data(
+                join->id,
+                join->at,
+                _impl->report(AttachmentTransfer::download),
+                [join](session::Expected<std::vector<std::byte>> r) mutable {
+                    std::lock_guard l{join->lock};
+                    join->bytes.emplace(std::move(r));
+                    if (join->message)
+                        join->settle();
                 });
     } catch (const std::exception& e) {
-        cb(Media{std::string{e.what()}, {}, {}});
+        // Either call throwing means `bytes` is never set, so nothing else settles this.
+        join->cb(Media{std::string{e.what()}, {}, {}});
     }
 }
 
@@ -1256,12 +1272,6 @@ void ClientBridge::fetch_media(double message_id, double index, MediaHandler cb)
 /// A ThumbHash holds at most 7 cycles across the image, so decoding larger costs time without
 /// carrying more detail; whatever draws it scales this up with a linear filter.
 constexpr uint32_t preview_long_edge = 32;
-
-/// A sender-supplied side worth scaling by: JPEG's ceiling, which also keeps
-/// `preview_long_edge * side` well inside 32 bits.
-constexpr bool plausible_side(uint32_t side) {
-    return side > 0 && side <= 65535;
-}
 
 void ClientBridge::fetch_preview(double message_id, double index, PreviewHandler cb) {
     if (!_impl || !_impl->client) {
@@ -1286,7 +1296,7 @@ void ClientBridge::fetch_preview(double message_id, double index, PreviewHandler
                     }
 
                     const auto& a = msg->attachments[at];
-                    if (!a.thumbhash || !image::thumbhash::valid(*a.thumbhash)) {
+                    if (!previewable(a)) {
                         cb(Preview{"no preview", 0, 0, {}});
                         return;
                     }
@@ -1296,10 +1306,6 @@ void ClientBridge::fetch_preview(double message_id, double index, PreviewHandler
                     // honest guess.
                     uint32_t w = preview_long_edge, h = preview_long_edge;
                     if (a.width && a.height) {
-                        if (!plausible_side(*a.width) || !plausible_side(*a.height)) {
-                            cb(Preview{"implausible attachment dimensions", 0, 0, {}});
-                            return;
-                        }
                         if (*a.width >= *a.height)
                             h = std::max(1u, preview_long_edge * *a.height / *a.width);
                         else

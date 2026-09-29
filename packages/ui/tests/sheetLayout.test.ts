@@ -1,7 +1,7 @@
 import { RADII } from '@session/theme-tokens'
 import { describe, expect, it } from 'vitest'
 
-import { SHEET_MAX_HEIGHT, SHEET_MAX_WIDTH, SHEET_RADIUS } from '#src/sheet'
+import { SHEET_MAX_HEIGHT, SHEET_MAX_WIDTH, SHEET_RADIUS } from '#src/sheetLayout'
 
 describe('a sheet’s metrics', () => {
   it('takes the corner the radius ladder names for a bottom sheet', () => {

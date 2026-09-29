@@ -133,13 +133,13 @@ export interface SessionClient {
 
   /**
    * Fetch an attachment into libsession's cache, reporting progress as `attachment-progress`
-   * events. Also how a caller asks whether the bytes are already here: a cached file resolves at
-   * once and reports nothing, and a fetch already running is joined rather than duplicated.
+   * events. A cached file resolves at once and reports nothing, and a fetch already running is
+   * joined rather than duplicated. Whether the bytes are here is the attachment's `availability`.
    */
   downloadAttachment(messageId: number, index: number): Promise<void>
   /**
    * Writes an attachment out to a path the person chose, and resolves with where the file actually
-   * landed: a name collision becomes `name (2)`.
+   * landed: a name collision becomes `name (1)`.
    */
   exportAttachment(
     messageId: number,

@@ -644,6 +644,8 @@ struct Codec<::session_bridge::Response> {
         obj.Set("id", Codec<double>::to(env, value.id));
         if (value.error)
             obj.Set("error", Codec<std::string>::to(env, *value.error));
+        if (value.code)
+            obj.Set("code", Codec<std::string>::to(env, *value.code));
         if (value.result)
             obj.Set("result", Codec<::session_bridge::Result>::to(env, *value.result));
         return obj;
@@ -653,6 +655,7 @@ struct Codec<::session_bridge::Response> {
         return ::session_bridge::Response(
                 Codec<double>::from(obj.Get("id"), "Response.id"),
                 optional<std::string>(obj.Get("error"), "Response.error"),
+                optional<std::string>(obj.Get("code"), "Response.code"),
                 optional<::session_bridge::Result>(obj.Get("result"), "Response.result"));
     }
 };
