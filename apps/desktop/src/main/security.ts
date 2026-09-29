@@ -1,4 +1,11 @@
-import type { BrowserWindow, Session, WebContents, WebPreferences } from 'electron'
+import type {
+  BrowserWindow,
+  InputEvent,
+  Session,
+  WebContents,
+  WebFrameMain,
+  WebPreferences,
+} from 'electron'
 
 /**
  * The renderer's privileges, and what it is allowed to reach.
@@ -114,27 +121,56 @@ export function guardNavigation(contents: WebContents, appUrl: string): void {
 }
 
 /**
- * The permissions the renderer is granted, and nothing else.
+ * Denies every permission, including the clipboard's.
  *
- * `clipboard-sanitized-write` is what `navigator.clipboard.writeText` needs, and without it every
- * copy in the app -- an address from the open-link confirm, say -- fails with a refused
- * write. Write only, and sanitised: a page can put text on the clipboard but not read what is
- * there, which is the half that would matter if content in this window were ever not the app's.
- *
- * Notifications are the next one it will want; granting it means deciding that here rather than
- * letting Chromium's prompt decide it in a window showing remote content.
+ * What the page needs from the OS it asks the main process for by name, through the preload, so
+ * the check is ours rather than Chromium's. Notifications will go the same way.
  */
-const PERMITTED: ReadonlySet<string> = new Set(['clipboard-sanitized-write'])
-
-/** Whether the renderer may have a permission. Every one not named above is refused. */
-export function permits(permission: string): boolean {
-  return PERMITTED.has(permission)
+export function denyAllPermissions(session: Session): void {
+  session.setPermissionRequestHandler((_contents, _permission, callback) => {
+    callback(false)
+  })
+  session.setPermissionCheckHandler(() => false)
 }
 
-/** Refuses every permission the app does not ask for. See `PERMITTED`. */
-export function denyAllPermissions(session: Session): void {
-  session.setPermissionRequestHandler((_contents, permission, callback) => {
-    callback(permits(permission))
-  })
-  session.setPermissionCheckHandler((_contents, permission) => permits(permission))
+/** Room for an account ID or a URL many times over; a page filling the clipboard gains nothing. */
+export const MAX_COPY_CHARS = 16 * 1024
+
+/** How long after a real click or key press a copy still counts as one the person asked for. */
+export const COPY_AFTER_INPUT_MS = 5_000
+
+/**
+ * Input that grants user activation in Chromium: a press, not a hover or a scroll.
+ *
+ * Main sees these from the browser side, so script-dispatched events never produce one.
+ */
+export const ACTIVATING_INPUT: ReadonlySet<InputEvent['type']> = new Set([
+  'mouseDown',
+  'mouseUp',
+  'rawKeyDown',
+  'keyDown',
+  'gestureTap',
+  'touchEnd',
+])
+
+/** Whether an IPC message came from the app's own document, rather than a frame inside it. */
+export function isFromAppFrame(
+  frame: Pick<WebFrameMain, 'url' | 'parent'> | null,
+  appUrl: string,
+): boolean {
+  return frame !== null && frame.parent === null && isAppNavigation(frame.url, appUrl)
+}
+
+/** Whether the main process should put `text` on the clipboard for the renderer. */
+export function acceptsCopy(
+  text: unknown,
+  { focused, msSinceInput }: { focused: boolean; msSinceInput: number },
+): text is string {
+  return (
+    typeof text === 'string' &&
+    text.length <= MAX_COPY_CHARS &&
+    focused &&
+    msSinceInput >= 0 &&
+    msSinceInput <= COPY_AFTER_INPUT_MS
+  )
 }

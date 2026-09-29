@@ -5,16 +5,19 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 // The default import plus a destructure is the form that works under both loaders.
 import electron from 'electron'
 
-const { app, BrowserWindow, MessageChannelMain, ipcMain, session, shell } = electron
+const { app, BrowserWindow, MessageChannelMain, clipboard, ipcMain, session, shell } = electron
 
 import type { Request } from '@session/client'
 
 import { createBridge } from './bridge'
 import {
+  ACTIVATING_INPUT,
+  acceptsCopy,
   applyContentProtection,
   denyAllPermissions,
   guardNavigation,
   hardenedWebPreferences,
+  isFromAppFrame,
   refuseNewContents,
 } from './security'
 
@@ -92,6 +95,43 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
   guardNavigation(window.webContents, appUrl)
   applyContentProtection(window, process.platform)
 
+  let lastInputAtMs = Number.NEGATIVE_INFINITY
+  window.webContents.on('input-event', (_event, input) => {
+    if (ACTIVATING_INPUT.has(input.type)) lastInputAtMs = performance.now()
+  })
+
+  // On this window's own `ipc` rather than `ipcMain`, so no other WebContents can reach them.
+  const { ipc } = window.webContents
+
+  /**
+   * A link the app decided to hand to the person's browser.
+   *
+   * Restricted to http(s) here rather than at the caller: `openExternal` gives any scheme to the
+   * OS, and a `file:` or a custom scheme reaching it is how a link becomes a launched program.
+   * The renderer is not trusted to have checked.
+   *
+   * Plain http is allowed, which is what all three legacy clients do -- two of them go further
+   * and upgrade a scheme-less address to https rather than refusing it. Case-insensitive for the
+   * same reason the desktop client's is: a scheme is not case-sensitive, and `HTTP://` silently
+   * doing nothing is worse than opening it.
+   */
+  ipc.on('open-external', (event, url: unknown) => {
+    if (!isFromAppFrame(event.senderFrame, appUrl)) return
+    if (typeof url === 'string' && /^https?:\/\//i.test(url)) void shell.openExternal(url)
+  })
+
+  // Rejects rather than resolving, so a refused copy is not reported to the person as done.
+  ipc.handle('clipboard-write-text', async (event, text: unknown) => {
+    const accepted =
+      isFromAppFrame(event.senderFrame, appUrl) &&
+      acceptsCopy(text, {
+        focused: window.isFocused(),
+        msSinceInput: performance.now() - lastInputAtMs,
+      })
+    if (!accepted) throw new Error('clipboard write refused')
+    await clipboard.writeText(text)
+  })
+
   /**
    * Nothing opens a window here, whatever asks.
    *
@@ -160,21 +200,6 @@ void app.whenReady().then(async () => {
   denyAllPermissions(session.defaultSession)
   ipcMain.handle('session-ping', () => 'pong')
 
-  /**
-   * A link the app decided to hand to the person's browser.
-   *
-   * Restricted to http(s) here rather than at the caller: `openExternal` gives any scheme to the
-   * OS, and a `file:` or a custom scheme reaching it is how a link becomes a launched program.
-   * The renderer is not trusted to have checked.
-   *
-   * Plain http is allowed, which is what all three legacy clients do -- two of them go further
-   * and upgrade a scheme-less address to https rather than refusing it. Case-insensitive for the
-   * same reason the desktop client's is: a scheme is not case-sensitive, and `HTTP://` silently
-   * doing nothing is worse than opening it.
-   */
-  ipcMain.on('open-external', (_event, url: unknown) => {
-    if (typeof url === 'string' && /^https?:\/\//i.test(url)) void shell.openExternal(url)
-  })
   await createWindow()
 
   app.on('activate', () => {

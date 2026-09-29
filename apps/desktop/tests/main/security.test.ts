@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
+import type { Session } from 'electron'
+
 import {
-  permits,
+  acceptsCopy,
+  COPY_AFTER_INPUT_MS,
   contentSecurityPolicy,
+  denyAllPermissions,
   hardenedWebPreferences,
   isAppNavigation,
+  isFromAppFrame,
+  MAX_COPY_CHARS,
   shouldProtectContent,
 } from '#src/main/security'
 
@@ -98,19 +104,69 @@ describe('the content security policy', () => {
 })
 
 describe('permissions', () => {
-  /** Without it every copy in the app fails with a refused write. */
-  it('lets the page write the clipboard', () => {
-    expect(permits('clipboard-sanitized-write')).toBe(true)
+  type RequestHandler = (
+    contents: unknown,
+    permission: string,
+    grant: (ok: boolean) => void,
+  ) => void
+  type CheckHandler = (contents: unknown, permission: string) => boolean
+
+  function installed(): { request: RequestHandler; check: CheckHandler } {
+    let request: RequestHandler | null = null
+    let check: CheckHandler | null = null
+    denyAllPermissions({
+      setPermissionRequestHandler: (handler: RequestHandler) => (request = handler),
+      setPermissionCheckHandler: (handler: CheckHandler) => (check = handler),
+    } as unknown as Session)
+    if (request === null || check === null) throw new Error('a handler was not installed')
+    return { request, check }
+  }
+
+  it.each([
+    'clipboard-sanitized-write',
+    'clipboard-read',
+    'notifications',
+    'media',
+    'openExternal',
+  ])('refuses %s, when asked and when checked', (permission) => {
+    const { request, check } = installed()
+    let granted: boolean | null = null
+    request(null, permission, (ok) => (granted = ok))
+    expect(granted).toBe(false)
+    expect(check(null, permission)).toBe(false)
+  })
+})
+
+describe('the sender of an IPC message', () => {
+  const appUrl = 'file:///opt/session/resources/app/out/renderer/index.html'
+  const mainFrame = { url: appUrl, parent: null }
+
+  it('is the app when it is the main frame showing the app', () => {
+    expect(isFromAppFrame(mainFrame, appUrl)).toBe(true)
   })
 
-  it('refuses reading it, and everything else', () => {
-    for (const permission of [
-      'clipboard-read',
-      'notifications',
-      'media',
-      'geolocation',
-      'openExternal',
-    ])
-      expect(permits(permission)).toBe(false)
+  it('is not the app when it is a subframe, another page, or gone', () => {
+    expect(isFromAppFrame({ url: appUrl, parent: mainFrame } as never, appUrl)).toBe(false)
+    expect(isFromAppFrame({ url: 'https://example.com/', parent: null }, appUrl)).toBe(false)
+    expect(isFromAppFrame(null, appUrl)).toBe(false)
+  })
+})
+
+describe('a copy the renderer asks for', () => {
+  const fresh = { focused: true, msSinceInput: 50 }
+
+  it('is written just after a click or key press in the focused window', () => {
+    expect(acceptsCopy('https://getsession.org/faq', fresh)).toBe(true)
+    expect(acceptsCopy('x', { focused: true, msSinceInput: COPY_AFTER_INPUT_MS })).toBe(true)
+  })
+
+  it.each([
+    ['not text', 42, fresh],
+    ['too long', 'x'.repeat(MAX_COPY_CHARS + 1), fresh],
+    ['from an unfocused window', 'x', { focused: false, msSinceInput: 50 }],
+    ['long after any input', 'x', { focused: true, msSinceInput: COPY_AFTER_INPUT_MS + 1 }],
+    ['with no input at all', 'x', { focused: true, msSinceInput: Number.POSITIVE_INFINITY }],
+  ])('is refused when %s', (_case, text, state) => {
+    expect(acceptsCopy(text, state)).toBe(false)
   })
 })

@@ -65,8 +65,7 @@ setPorts(
       openAppSettings: null,
     },
     clipboard: {
-      setString: (value) => navigator.clipboard.writeText(value),
-      getString: () => navigator.clipboard.readText(),
+      setString: (value) => window.sessionDesktop.copyText(value),
     },
   }),
 )
