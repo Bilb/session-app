@@ -4,9 +4,11 @@ import type { ElementId } from '@session/test-ids'
 
 import { Icon } from './Icon'
 import type { IconName } from './Icon.types'
+import { FEEDBACK_TRANSITION } from './feedbackTransition'
 import { PressArea } from './PressArea'
 import { SEGMENT_PADDING, selectedSegment } from './segmentedToggleLayout'
 import { SEGMENT_HEIGHT, SEGMENT_WIDTH } from './segmentedToggleMetrics'
+import { StateLayer } from './StateLayer'
 
 export type Segment<V> = {
   value: V
@@ -47,8 +49,13 @@ function SegmentButton<V>({
           borderRadius="$sm"
           alignItems="center"
           justifyContent="center"
+          position="relative"
+          group="control"
+          cursor="pointer"
           backgroundColor={selected ? '$backgroundPrimary' : 'transparent'}
+          style={FEEDBACK_TRANSITION}
         >
+          <StateLayer group="control" tone="ink" borderRadius="$sm" />
           <Icon
             name={segment.icon}
             size="xs"
