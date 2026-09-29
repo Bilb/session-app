@@ -21,6 +21,12 @@ export interface SheetProps {
   children: ReactNode
   /** Held at the bottom edge, outside the scroll, so it is reachable from anywhere in the body. */
   footer?: ReactNode | undefined
+  /**
+   * Drawn inside this sheet's own modal, above it: where anything opened from the sheet has to
+   * go. iOS presents a modal from its parent's view controller, and a sibling's is already busy
+   * presenting this one, so a modal rendered beside the sheet never appears while it is open.
+   */
+  overlay?: ReactNode | undefined
   testID: ElementId
   closeTestID: ElementId
 }
@@ -44,6 +50,7 @@ export function Sheet({
   closeLabel,
   children,
   footer,
+  overlay,
   testID,
   closeTestID,
 }: SheetProps) {
@@ -126,6 +133,7 @@ export function Sheet({
           )}
         </YStack>
       </YStack>
+      {overlay}
     </NativeModal>
   )
 }

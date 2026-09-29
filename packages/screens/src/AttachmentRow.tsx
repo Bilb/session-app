@@ -105,10 +105,10 @@ export function AttachmentRow({
       filename={attachment.filename ?? tr('attachment')}
       contentType={attachment.contentType}
       thumbnail={thumbnail}
-      // Opens only a picture that is here, as the legacy clients do; otherwise the tap fetches it.
       onOpen={
         thumbnail === undefined
           ? undefined
+      // Opens only a picture that is here, as the legacy clients do; otherwise the tap fetches it.
           : () => {
               if (state === 'ready') ui.openViewer(message.id, attachment.index)
               else if (state === 'idle' || state === 'failed') start()
