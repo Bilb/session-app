@@ -8,7 +8,12 @@ import type {
   WithMediaUri,
 } from '@session/basic-types'
 
-import { TILE_BADGE_INSET, TILE_HAIRLINE_WIDTH, TILE_SCRIM, tileRadius } from './attachmentTileStyle'
+import {
+  TILE_BADGE_INSET,
+  TILE_HAIRLINE_WIDTH,
+  TILE_SCRIM,
+  tileRadius,
+} from './attachmentTileStyle'
 import { Icon } from './Icon'
 import { Image } from './Image'
 import { logical } from './logicalEdges'
