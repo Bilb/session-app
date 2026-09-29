@@ -37,6 +37,7 @@
 #include <vector>
 
 #include "convert.hpp"
+#include "mark_downloaded.hpp"
 
 namespace session_bridge {
 
@@ -1008,6 +1009,8 @@ struct ClientBridge::Impl {
                 report(AttachmentTransfer::export_),
                 on(id,
                    [this, id](std::filesystem::path saved_to) {
+                       // Before the answer, which is what the app reveals the file on.
+                       mark_downloaded(saved_to);
                        respond(id, PathResult{saved_to.string()});
                    }),
                 cmd.notify_sender,
