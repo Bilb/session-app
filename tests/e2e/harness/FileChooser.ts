@@ -7,9 +7,9 @@
  * has no counterpart on a device - iOS and Android will need their own mechanism to answer the
  * same question, and the signature stays a string so it promotes unchanged if they ever share one.
  *
- * This stubs the *chooser*, not the write. Everything after the path is chosen - the IPC, the
- * folder the main process remembers, libsession writing the bytes - is the real thing, which is
- * the whole reason a test like this is worth having.
+ * This stubs the *chooser*, not the write. What follows the path being chosen is real: the IPC,
+ * the grant main records from the dialog, and main's export and reveal gates. The bridge under
+ * this harness is the fake, which answers with a path and writes nothing.
  */
 export interface IFileChooser {
   /** Makes the next save dialog answer with this path instead of appearing. */
@@ -23,7 +23,7 @@ export interface IFileChooser {
    *
    * The end of the chain, and the only part of it that is observable from outside: a reveal that
    * happened is an export that got a destination, reached the bridge, came back with a path, and
-   * was allowed by the folder the main process remembered from the dialog.
+   * was allowed by the grant main recorded from the dialog.
    */
   revealedPaths(): Promise<string[]>
 }

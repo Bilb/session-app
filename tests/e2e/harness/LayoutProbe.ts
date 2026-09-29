@@ -12,4 +12,9 @@ export interface ILayoutProbe {
   documentDirection(): Promise<string>
   /** Which half of the window the element's centre sits in. */
   horizontalHalf(id: ElementId): Promise<'left' | 'right'>
+  /**
+   * Whether the first element's centre is left of the second's. Of two siblings, this is what
+   * says whether the row holding them mirrored, which the window's halves cannot.
+   */
+  isLeftOf(first: ElementId, second: ElementId): Promise<boolean>
 }

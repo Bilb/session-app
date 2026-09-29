@@ -26,21 +26,26 @@ test('choosing a right-to-left language mirrors the layout', async () => {
 
   try {
     const trigger = ELEMENT.languagePicker.trigger
+    // The trigger's neighbour in the header's group of controls.
+    const neighbour = ELEMENT.onboarding.faqLink
     await app.waitForVisible(trigger, { timeoutMs: 20_000 })
 
     // Asserted before as well as after: a document that was already `rtl` would pass the second
     // check without the picker having done anything.
     expect(await app.documentDirection()).not.toBe('rtl')
     const before = await app.horizontalHalf(trigger)
+    expect(await app.isLeftOf(trigger, neighbour)).toBe(true)
 
     await app.tap(trigger)
     await app.waitForVisible(ELEMENT.languagePicker.panel)
     await app.tap(ELEMENT.languagePicker.option(RTL_LOCALE))
 
     await expect.poll(async () => app.documentDirection()).toBe('rtl')
-    // `dir` stays correct for an element placed with a physical edge; the trigger changing sides
-    // is the layout itself mirroring.
+    // `dir` changes whatever the layout does. Changing halves of the window shows the page's own
+    // row mirrored; changing sides of its neighbour shows the header's row did too, which a
+    // control pinned with `left` or `right` inside it would not.
     await expect.poll(async () => app.horizontalHalf(trigger)).not.toBe(before)
+    await expect.poll(async () => app.isLeftOf(trigger, neighbour)).toBe(false)
 
     await app.screenshot('right-to-left')
   } finally {

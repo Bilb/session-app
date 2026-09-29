@@ -144,9 +144,8 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser,
 
   async imageLoaded(id: ElementId, options?: { timeoutMs?: number }): Promise<boolean> {
     const element = this.locator(id).first()
-    // No element is an answer, not an error. The id is on the picture rather than on the tile
-    // from here on, so a tile that was never given a url has nothing carrying it - and "is the
-    // picture here" is false in exactly that case.
+    // No element is an answer, not an error: the id is on the picture, not the tile, so a tile
+    // never given a url has nothing carrying it - and "is the picture here" is false exactly then.
     try {
       await element.waitFor({ state: 'attached', timeout: options?.timeoutMs ?? 10_000 })
     } catch {
@@ -190,15 +189,23 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser,
 
   // -- IFileChooser -----------------------------------------------------------------------
 
+  // Each arms one answer. A dialog nothing armed rejects rather than opening, so a spec that
+  // exports twice after arming once fails there instead of reusing the answer.
   async answerSaveDialogWith(path: string): Promise<void> {
     await this.app.evaluate(({ dialog }, chosen) => {
-      dialog.showSaveDialog = () => Promise.resolve({ canceled: false, filePath: chosen })
+      dialog.showSaveDialog = () => {
+        dialog.showSaveDialog = () => Promise.reject(new Error('A save dialog nothing answered'))
+        return Promise.resolve({ canceled: false, filePath: chosen })
+      }
     }, path)
   }
 
   async cancelNextSaveDialog(): Promise<void> {
     await this.app.evaluate(({ dialog }) => {
-      dialog.showSaveDialog = () => Promise.resolve({ canceled: true, filePath: '' })
+      dialog.showSaveDialog = () => {
+        dialog.showSaveDialog = () => Promise.reject(new Error('A save dialog nothing answered'))
+        return Promise.resolve({ canceled: true, filePath: '' })
+      }
     })
   }
 
@@ -237,6 +244,15 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser,
       () => (globalThis as unknown as DocumentGlobals).document.documentElement.clientWidth,
     )
     return box.x + box.width / 2 > width / 2 ? 'right' : 'left'
+  }
+
+  async isLeftOf(first: ElementId, second: ElementId): Promise<boolean> {
+    const [a, b] = await Promise.all([
+      this.locator(first).first().boundingBox(),
+      this.locator(second).first().boundingBox(),
+    ])
+    if (a === null || b === null) throw new Error(`${first} or ${second} is not laid out`)
+    return a.x + a.width / 2 < b.x + b.width / 2
   }
 
   // -- IPerformanceProbe ------------------------------------------------------------------

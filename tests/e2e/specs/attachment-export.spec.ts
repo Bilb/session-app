@@ -14,13 +14,13 @@ import { SEEDED_LIST } from '../harness/fixtures'
  *
  * Launched directly rather than through `sessionTest` because answering a save dialog is
  * desktop-only - the same reason the performance specs do - and only the chooser is replaced.
- * Everything after it is real: the IPC, the folder the main process remembers before it will
- * reveal anything in it, and the bridge writing the file.
+ * What follows it is real: the IPC, the grant main records from the dialog, and main's export and
+ * reveal gates. The bridge is the fake, which answers with a path and writes nothing.
  *
  * What is asserted is the reveal, not bytes on disk: the fake holds no file to write, so a
  * filesystem check here would be measuring the fake rather than the app. A reveal that happened
- * is an export that got a destination, crossed the IPC, reached the bridge, came back with a
- * path, and was let through by the folder the main process remembered from the dialog.
+ * is an export that got a destination, crossed the IPC, was admitted by main's gate, came back
+ * from the bridge with a path, and was one main allows revealing.
  */
 test('exports an attachment to a folder somebody chose @desktop @medium-risk', async () => {
   const app = await DesktopApp.launch('alice')
