@@ -79,10 +79,12 @@ export function AttachmentRow({
       ? undefined
       : {
           // Left off where this is not ours to fetch: a url is the request, so handing one over
-          // would spend the data the person was about to be asked about.
-          uri: mayResolve(attachment, ui.autoDownload)
-            ? requirePorts().media.urlFor(ref)
-            : undefined,
+          // would spend the data the person was about to be asked about. Left off after a failure
+          // too, so a retry hands it over afresh and the image tries again.
+          uri:
+            mayResolve(attachment, ui.autoDownload) && state !== 'failed'
+              ? requirePorts().media.urlFor(ref)
+              : undefined,
           kind: mediaKindOf(attachment.contentType),
           // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
           // screen by the route a picture does. Null where the platform has no resolver.
@@ -103,11 +105,13 @@ export function AttachmentRow({
       filename={attachment.filename ?? tr('attachment')}
       contentType={attachment.contentType}
       thumbnail={thumbnail}
+      // Opens only a picture that is here, as the legacy clients do; otherwise the tap fetches it.
       onOpen={
         thumbnail === undefined
           ? undefined
           : () => {
-              ui.openViewer(message.id, attachment.index)
+              if (state === 'ready') ui.openViewer(message.id, attachment.index)
+              else if (state === 'idle' || state === 'failed') start()
             }
       }
       caption={caption(attachment, state, fetched, exporting?.state)}

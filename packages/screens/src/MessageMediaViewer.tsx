@@ -2,11 +2,12 @@ import { mediaKindOf } from '@session/basic-types'
 import { requirePorts } from '@session/app'
 import type { ConversationId } from '@session/client'
 import { tr } from '@session/localization'
-import { useMessage, useSessionActions } from '@session/state'
+import { transferKey, useMessage, useMessageTransfers, useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { MediaViewer, type MediaViewerItem } from '@session/ui'
 import { useMemo, useRef } from 'react'
 
+import { fetchOf } from './attachmentFetch'
 import { exportOne } from './exportAttachment'
 import { PENDING_COPY } from './pendingCopy'
 import { viewableAttachments } from './viewableAttachments'
@@ -32,9 +33,17 @@ function MessageViewer({
 }) {
   const actions = useSessionActions()
   const message = useMessage(conversationId, target.messageId)
+  const transfers = useMessageTransfers(target.messageId)
+  // Only what is here, as the legacy clients' galleries: the url is the request, so an item that
+  // is not would start a download nobody asked for, and paging stops at what has arrived.
   const viewable = useMemo(
-    () => (message === undefined ? [] : viewableAttachments(message)),
-    [message],
+    () =>
+      message === undefined
+        ? []
+        : viewableAttachments(message).filter(
+            (a) => fetchOf(a, transfers[transferKey('download', a.index)]).state === 'ready',
+          ),
+    [message, transfers],
   )
   const items = useMemo(
     (): MediaViewerItem[] =>
@@ -72,6 +81,7 @@ function MessageViewer({
       onMore={() => undefined}
       positionLabel={`${String(at + 1)} / ${String(items.length)}`}
       unavailableLabel={tr('attachmentsErrorNotSupported')}
+      failedLabel={tr('attachmentsErrorOpen')}
       closeLabel={tr('close')}
       exportLabel={PENDING_COPY.export}
       moreLabel={tr('openMessageContextMenu')}
