@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { MIN_HIT_TARGET } from '#src/buttonHitTarget'
-import { selectedSegment } from '#src/segmentedToggle'
+import { selectedSegment } from '#src/segmentedToggleLayout'
 import * as web from '#src/segmentedToggleMetrics'
 import * as native from '#src/segmentedToggleMetrics.native'
 

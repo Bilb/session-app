@@ -34,7 +34,7 @@ export const FILE_ROW_GAP = SPACING.sm
 export function fileRowControl(state: FileRowState): IconName | 'progress' | null {
   switch (state) {
     case 'idle':
-      return 'download'
+      return 'cloudDownload'
     case 'fetching':
       return 'progress'
     // Export, which is a different verb from Download and deliberately a different glyph: one

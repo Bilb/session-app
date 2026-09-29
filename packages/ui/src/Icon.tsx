@@ -3,6 +3,7 @@ import { ChevronDown } from '@tamagui/lucide-icons-2/icons/ChevronDown'
 import { ChevronLeft } from '@tamagui/lucide-icons-2/icons/ChevronLeft'
 import { ChevronRight } from '@tamagui/lucide-icons-2/icons/ChevronRight'
 import { CircleHelp } from '@tamagui/lucide-icons-2/icons/CircleHelp'
+import { CloudDownload } from '@tamagui/lucide-icons-2/icons/CloudDownload'
 import { Clock } from '@tamagui/lucide-icons-2/icons/Clock'
 import { Download } from '@tamagui/lucide-icons-2/icons/Download'
 import { Ellipsis } from '@tamagui/lucide-icons-2/icons/Ellipsis'
@@ -54,6 +55,7 @@ const GLYPHS = {
   chevronRight: ChevronRight,
   circleHelp: CircleHelp,
   clock: Clock,
+  cloudDownload: CloudDownload,
   download: Download,
   ellipsis: Ellipsis,
   externalLink: ExternalLink,

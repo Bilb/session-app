@@ -1,8 +1,11 @@
 import { XStack, YStack } from 'tamagui'
 
+import { SPACING } from '@session/theme-tokens'
+
 import type {
   WithCaption,
   WithContentType,
+  WithFetchesOnOpen,
   WithFilename,
   WithMediaKind,
   WithMediaPreview,
@@ -21,12 +24,13 @@ import {
   fileRowTone,
   type FileRowState,
   type FileRowTone,
-} from './fileRow'
+} from './fileRowState'
+import { FetchHint } from './FetchHint'
 import { Icon } from './Icon'
-import { PressArea } from './PressArea'
 import { ProgressRing } from './ProgressRing'
+import { StateLayer } from './StateLayer'
 import { Text } from './Text'
-import { tileRadius } from './attachmentTile'
+import { tileRadius } from './attachmentTileStyle'
 
 export interface FileRowTestIDs {
   row?: ElementId | undefined
@@ -38,7 +42,7 @@ export interface FileRowTestIDs {
 }
 
 /** What the lead square shows when the row is for something with a picture behind it. */
-export type FileRowThumbnail = WithMediaUri & WithMediaPreview & WithMediaKind
+export type FileRowThumbnail = WithMediaUri & WithMediaPreview & WithMediaKind & WithFetchesOnOpen
 
 export type FileRowProps = WithFilename &
   WithContentType &
@@ -50,7 +54,8 @@ export type FileRowProps = WithFilename &
      * documents are the same list, and the leading square is the one thing that differs.
      */
     thumbnail?: FileRowThumbnail | undefined
-    /** Opens what the lead square shows. Absent where there is nothing to open. */
+    /** Opens what the lead square shows. Absent where there is nothing to open. A press on the
+     * rest of the row is `onAction`'s. */
     onOpen?: (() => void) | undefined
     state: FileRowState
     /** How far along, 0 to 1. Absent until the server has said how big the file is. */
@@ -116,22 +121,23 @@ function Trailing({
   }
 
   return (
-    <PressArea
-      {...(onAction === undefined ? {} : { onPress: onAction })}
-      {...(actionLabel === undefined ? {} : { accessibilityLabel: actionLabel })}
-      {...(testID === undefined ? {} : { testID })}
+    <YStack
+      {...square}
+      role="button"
+      position="relative"
+      group="control"
+      cursor="pointer"
+      {...(actionLabel === undefined ? {} : { 'aria-label': actionLabel })}
+      testID={testID}
+      onPress={(event) => {
+        // The row answers a press with the same action; this one is already it.
+        event.stopPropagation()
+        onAction?.()
+      }}
     >
-      {() => (
-        <YStack
-          {...square}
-          borderRadius="$full"
-          hoverStyle={{ backgroundColor: '$backgroundTertiary' }}
-          pressStyle={{ backgroundColor: '$backgroundTertiary' }}
-        >
-          <Icon name={control} size="sm" color={TONE_COLOR[fileRowTone(state).control]} />
-        </YStack>
-      )}
-    </PressArea>
+      <StateLayer group="control" tone="ink" borderRadius="$full" />
+      <Icon name={control} size="sm" color={TONE_COLOR[fileRowTone(state).control]} />
+    </YStack>
   )
 }
 
@@ -187,14 +193,39 @@ export function FileRow({
     )
 
   return (
-    <XStack alignItems="center" gap={FILE_ROW_GAP} paddingVertical="$xs" testID={testIDs?.row}>
+    <XStack
+      alignItems="center"
+      gap={FILE_ROW_GAP}
+      paddingVertical="$xs"
+      position="relative"
+      testID={testIDs?.row}
+      {...(onAction === undefined
+        ? {}
+        : { group: 'row' as const, cursor: 'pointer', onPress: onAction })}
+    >
+      {onAction === undefined ? null : (
+        <StateLayer group="row" tone="ink" borderRadius="$sm" bleed={SPACING.xs} />
+      )}
       <YStack width={FILE_LEAD_WIDTH} alignItems="center" gap="$3xs">
         {onOpen === undefined ? (
           lead
         ) : (
-          <PressArea onPress={onOpen} accessibilityLabel={filename}>
-            {() => lead}
-          </PressArea>
+          <YStack
+            role="button"
+            aria-label={filename}
+            position="relative"
+            group="tile"
+            cursor="pointer"
+            onPress={(event) => {
+              // Opening the picture is not the row's download or export.
+              event.stopPropagation()
+              onOpen()
+            }}
+          >
+            {lead}
+            <StateLayer group="tile" tone="scrim" borderRadius={tileRadius(FILE_GLYPH_SIDE)} />
+            {thumbnail?.fetchesOnOpen === true ? <FetchHint side={FILE_GLYPH_SIDE} /> : null}
+          </YStack>
         )}
         {/* Under the lead rather than in the caption line, where it was competing with the size
             for the same run of small grey text. It also gives every row the same two-line lead, so

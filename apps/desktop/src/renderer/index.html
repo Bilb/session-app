@@ -22,6 +22,14 @@
         display: flex;
         flex-direction: column;
       }
+      /* Nothing is selectable until a component opts in with `userSelect`. */
+      body {
+        user-select: none;
+      }
+      input,
+      textarea {
+        user-select: text;
+      }
     </style>
   </head>
   <body>

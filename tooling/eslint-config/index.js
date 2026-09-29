@@ -2,6 +2,7 @@ import js from '@eslint/js'
 import importX from 'eslint-plugin-import-x'
 import tseslint from 'typescript-eslint'
 
+import { caseCollision } from './caseCollision.js'
 import {
   desktopMainZone,
   desktopRendererZone,
@@ -87,7 +88,7 @@ export function baseConfig({ tsconfigRootDir, zone }) {
       languageOptions: {
         parserOptions: { projectService: true, tsconfigRootDir },
       },
-      plugins: { 'import-x': importX },
+      plugins: { 'import-x': importX, session: { rules: { 'case-collision': caseCollision } } },
       settings: {
         'import-x/resolver': { typescript: { alwaysTryTypes: true } },
       },
@@ -117,6 +118,7 @@ export function baseConfig({ tsconfigRootDir, zone }) {
         'import-x/no-duplicates': 'error',
         // TypeScript resolves without extensions; ".js" is not this repo's convention.
         'import-x/extensions': ['error', 'never', { json: 'always' }],
+        'session/case-collision': 'error',
 
         'no-restricted-syntax': [
           'error',
