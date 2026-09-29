@@ -30,6 +30,9 @@
 #include <filesystem>
 #include <functional>
 #include <limits>
+#include <memory>
+#include <mutex>
+#include <optional>
 #include <ranges>
 #include <stdexcept>
 #include <utility>
@@ -1208,46 +1211,58 @@ void ClientBridge::fetch_media(double message_id, double index, MediaHandler cb)
         return;
     }
 
+    // Both asked from here, on the caller's thread, and joined: a callback runs on Core's loop,
+    // where `close()` can null `client` under it, so neither may reach back for the Client.
+    struct Join {
+        std::mutex lock;
+        MediaHandler cb;
+        int64_t id = 0;
+        size_t at = 0;
+        std::optional<session::Expected<std::optional<client::Message>>> message;
+        std::optional<session::Expected<std::vector<std::byte>>> bytes;
+
+        void settle() {
+            auto& msg = *message;
+            if (!msg)
+                return cb(Media{std::string{msg.error().message}, {}, {}});
+            if (!*msg || at >= (*msg)->attachments.size())
+                return cb(Media{not_found("attachment", std::to_string(id)), {}, {}});
+            if (!*bytes)
+                return cb(Media{std::string{bytes->error().message}, {}, {}});
+            // The sender's claim, and the only description there is. Whoever renders it is
+            // handling bytes from a stranger either way.
+            auto content_type =
+                    (*msg)->attachments[at].content_type.value_or("application/octet-stream");
+            cb(Media{std::nullopt, std::move(content_type), **std::move(bytes)});
+        }
+    };
+    auto join = std::make_shared<Join>();
+    join->cb = std::move(cb);
+
     try {
-        const int64_t id = whole<int64_t>(message_id, "media.messageId");
-        const auto at = whole<size_t>(index, "media.index");
-        auto* impl = _impl.get();
+        join->id = whole<int64_t>(message_id, "media.messageId");
+        join->at = whole<size_t>(index, "media.index");
 
-        impl->client->message(
-                id,
-                [impl, id, at, cb = std::move(cb)](
-                        session::Expected<std::optional<client::Message>> r) mutable {
-                    if (!r) {
-                        cb(Media{std::string{r.error().message}, {}, {}});
-                        return;
-                    }
-                    auto& msg = *r;
-                    if (!msg || at >= msg->attachments.size()) {
-                        cb(Media{not_found("attachment", std::to_string(id)), {}, {}});
-                        return;
-                    }
-
-                    // The sender's claim, and the only description there is. Whoever renders it
-                    // is handling bytes from a stranger either way.
-                    std::string content_type =
-                            msg->attachments[at].content_type.value_or("application/octet-stream");
-
-                    impl->client->attachment_data(
-                            id,
-                            at,
-                            impl->report(AttachmentTransfer::download),
-                            [cb = std::move(cb), content_type = std::move(content_type)](
-                                    session::Expected<std::vector<std::byte>> r) mutable {
-                                if (!r) {
-                                    cb(Media{std::string{r.error().message}, {}, {}});
-                                    return;
-                                }
-                                auto bytes = *std::move(r);
-                                cb(Media{std::nullopt, std::move(content_type), std::move(bytes)});
-                            });
+        _impl->client->message(
+                join->id, [join](session::Expected<std::optional<client::Message>> r) mutable {
+                    std::lock_guard l{join->lock};
+                    join->message.emplace(std::move(r));
+                    if (join->bytes)
+                        join->settle();
+                });
+        _impl->client->attachment_data(
+                join->id,
+                join->at,
+                _impl->report(AttachmentTransfer::download),
+                [join](session::Expected<std::vector<std::byte>> r) mutable {
+                    std::lock_guard l{join->lock};
+                    join->bytes.emplace(std::move(r));
+                    if (join->message)
+                        join->settle();
                 });
     } catch (const std::exception& e) {
-        cb(Media{std::string{e.what()}, {}, {}});
+        // Either call throwing means `bytes` is never set, so nothing else settles this.
+        join->cb(Media{std::string{e.what()}, {}, {}});
     }
 }
 
