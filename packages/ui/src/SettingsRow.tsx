@@ -16,7 +16,6 @@ import { PressArea } from './PressArea'
 import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import { SPACE_SCALE } from './scales'
 import { Text } from './Text'
-import { offScaleText } from './textHeight'
 
 /**
  * How tall a row is before its content makes it taller.
@@ -25,14 +24,6 @@ import { offScaleText } from './textHeight'
  * difference between a comfortable list and a fiddly one is entirely this number.
  */
 const ROW_MIN_HEIGHT = 56
-
-/**
- * A subtitle's size: the desktop client's 13, which falls between the ramp's 12 and 14.
- *
- * Off the ramp on purpose. At 14 a subtitle is the size of body text under a 16 label, and the two
- * lines stop reading as a name and its explanation.
- */
-const SUBTITLE_SIZE = 13
 
 /** How wide the leading icon's column is, so labels line up whether or not a row has one. */
 const ICON_COLUMN = 24
@@ -167,11 +158,10 @@ export function SettingsRow({
               </Text>
               {subtitle === undefined ? null : (
                 // The label's colour, not the muted one: the desktop client draws a row's
-                // explanation in the body text, and it is read rather than glanced at.
-                <Text
-                  {...offScaleText(SUBTITLE_SIZE)}
-                  color={disabled ? '$textDisabled' : '$textPrimary'}
-                >
+                // explanation in the body text, and it is read rather than glanced at. The label
+                // size, not the body's: at 14 it is as large as body text under a 16 name, and the
+                // two lines stop reading as a name and its explanation.
+                <Text size="$label" color={disabled ? '$textDisabled' : '$textPrimary'}>
                   {subtitle}
                 </Text>
               )}

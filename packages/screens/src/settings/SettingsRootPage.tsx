@@ -5,7 +5,6 @@ import { ELEMENT } from '@session/test-ids'
 import {
   Avatar,
   Button,
-  offScaleText,
   ProBadge,
   RecoveryPasswordShield,
   SessionTokenMark,
@@ -114,9 +113,6 @@ function ClearDataActions({
  */
 const PILL_PADDING = { top: 6, bottom: 5, side: 15 } as const
 
-/** The pill's text, which the client leaves at its modal body's 15 -- between the ramp's 14 and 16. */
-const PILL_TEXT = 15
-
 /**
  * "Your Account ID", in a pill with a rule running out from each side of it.
  *
@@ -135,7 +131,7 @@ function AccountIdPill() {
         borderWidth={1}
         borderColor="$bordersColor"
       >
-        <Text {...offScaleText(PILL_TEXT)} tone="secondary" userSelect="none">
+        <Text size="$body" tone="secondary" userSelect="none">
           {tr('accountIdYours')}
         </Text>
       </YStack>
