@@ -5,6 +5,12 @@ import type { WithDurationLabel, WithMediaPreview, WithMediaUri } from '@session
 
 import { ALBUM_SEAM, albumLayout, lastCell } from './albumLayout'
 import { AttachmentTile } from './AttachmentTile'
+import {
+  TILE_HOVER_OPACITY,
+  TILE_PRESS_OPACITY,
+  TILE_SCRIM,
+  tileRadius,
+} from './attachmentTileStyle'
 import type { WithTestID } from './with'
 
 type AlbumMedia = WithMediaUri & WithMediaPreview & WithTestID
@@ -51,9 +57,16 @@ const AlbumTile = memo(function AlbumTile({
   return (
     <YStack
       role="button"
+      position="relative"
+      // Sized explicitly: `group` makes this a CSS size container on the web, which no longer
+      // takes its width from what it holds.
+      width={side}
+      height={side}
+      cursor="pointer"
       onPress={() => {
         onOpen(at)
       }}
+      group
     >
       <AttachmentTile
         side={side}
@@ -63,6 +76,21 @@ const AlbumTile = memo(function AlbumTile({
         duration={item.kind === 'video' ? item.duration : undefined}
         overflowLabel={overflowLabel}
         testID={item.testID}
+      />
+      {/* Its own layer, not a style on the tile's clipping view, which must not change as the
+          picture lands. */}
+      <YStack
+        position="absolute"
+        top={0}
+        bottom={0}
+        start={0}
+        end={0}
+        borderRadius={tileRadius(side)}
+        backgroundColor={TILE_SCRIM}
+        opacity={0}
+        $group-hover={{ opacity: TILE_HOVER_OPACITY }}
+        $group-press={{ opacity: TILE_PRESS_OPACITY }}
+        pointerEvents="none"
       />
     </YStack>
   )
