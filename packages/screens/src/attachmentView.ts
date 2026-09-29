@@ -29,9 +29,9 @@ export function canChooseView(message: Message): boolean {
  * Not `Message.galleryViewable`: that means *every* attachment is an `image/`, so it sends a
  * message mixing photographs with a video to the list, which the album draws perfectly well.
  *
- * `chosen` is the reader's answer where they have given one. It can only ever pick the gallery
- * over the default, because the default *is* the gallery wherever the gallery is possible - so a
- * stale choice on a set that has none is ignored rather than obeyed.
+ * `chosen` is the reader's answer where they have given one. The default is the gallery wherever
+ * one is possible, so the only choice that changes anything is the list; a choice on a set that
+ * cannot be a gallery is ignored.
  */
 export function attachmentView(message: Message, chosen?: AttachmentView): AttachmentView {
   if (!canChooseView(message)) return 'list'

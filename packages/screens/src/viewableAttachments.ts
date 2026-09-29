@@ -20,7 +20,7 @@ export function isViewable(attachment: Attachment): boolean {
  *
  * Order is the message's own, so an index here is a position in the viewer and
  * `attachment.index` is the position in the message. Those are not the same number as soon as a
- * document sits between two pictures, and confusing them saves the wrong file.
+ * document sits between two pictures, and confusing them exports the wrong file.
  */
 export function viewableAttachments(message: Message): Attachment[] {
   return message.attachments.filter(isViewable)

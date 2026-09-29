@@ -77,11 +77,9 @@ export function summarise(
     }
   }
 
-  // Unavailable is excluded from what the set needs to resolve: an expired file cannot become
-  // ready, and counting it against the total left a set with one expired file among others stuck
-  // at idle forever. A set that is nothing but expired files has nothing to resolve and rests at
-  // idle instead of a vacuous 'ready' - the footer already withholds Export unless count is 1, so
-  // this never offers exporting the one file that arrived without going through the list.
+  // Unavailable files are left out of what the set must resolve: they can never become ready. The
+  // footer withholds Export unless count is 1, so a set that is ready around an expired file never
+  // offers to export the one that arrived.
   const resolvable = attachments.length - unavailable
   const state: AttachmentSetState =
     failed > 0
