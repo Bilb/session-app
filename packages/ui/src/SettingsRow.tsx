@@ -115,15 +115,13 @@ export function SettingsRow({
             minHeight={ROW_MIN_HEIGHT}
             alignItems="center"
             gap="$sm"
-            // The client's 20 either side, which the separators are inset by too, so a line
-            // starts where a row's content does.
-            paddingHorizontal="$lg"
-            // 16 above and below on a phone, the product owner's choice: roomier than any legacy
-            // client, which each pad the height by about half the width or not at all. A one-line
-            // row still stops at the height floor; this is what a row with a subtitle gets. The wide
-            // designs keep the tighter rows.
-            paddingVertical="$md"
-            $gtSm={{ paddingVertical: '$xs' }}
+            // 16 either side, which the separators are inset by too, so a line starts where a
+            // row's content does. 12 above and below, on every platform: a one-line row stops at
+            // the height floor, which already centres its label about 16 from each end, so this is
+            // what a row with a subtitle gets. Less at the ends than the sides because a line's own
+            // leading adds to the space above and below it.
+            paddingHorizontal="$md"
+            paddingVertical="$sm"
             {...(inert
               ? {}
               : {
@@ -208,7 +206,7 @@ export function SettingsGroup({ children }: { children: ReactNode }) {
       {rows.map((row, at) => (
         <Fragment key={at}>
           {at === 0 ? null : (
-            <YStack height={SEPARATOR} marginHorizontal="$lg" backgroundColor="$separatorColor" />
+            <YStack height={SEPARATOR} marginHorizontal="$md" backgroundColor="$separatorColor" />
           )}
           {row}
         </Fragment>
