@@ -59,9 +59,11 @@ describe('what a set of attachments is doing', () => {
     expect(fold([attachment(0), expired], { 0: done }).state).toBe('ready')
   })
 
-  it('rests at idle, not a vacuous ready, when nothing in the set can resolve', () => {
+  it('is unavailable, with nothing to offer, when nothing in the set can resolve', () => {
     const expired = attachment(0, undefined, 'notFound')
-    expect(fold([expired], {}).state).toBe('idle')
+    const unreadable = attachment(1, undefined, 'unreadable')
+    expect(fold([expired], {}).state).toBe('unavailable')
+    expect(fold([expired, unreadable], {}).state).toBe('unavailable')
   })
 
   it('counts every attachment, not the ones a gallery draws', () => {

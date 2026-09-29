@@ -46,6 +46,7 @@ function caption(set: AttachmentSet): string {
     return `${formatBytes(set.doneBytes)} / ${formatBytes(set.totalBytes)}`
   }
   if (set.state === 'failed') return tr('failedToDownload')
+  if (set.state === 'unavailable') return tr('attachmentsExpired')
   return set.sizeBytes === undefined ? '' : formatBytes(set.sizeBytes)
 }
 
@@ -58,7 +59,7 @@ function caption(set: AttachmentSet): string {
  * offering one Export that quietly writes the first is worse than offering none.
  */
 function verb(set: AttachmentSet): string | null {
-  if (set.state === 'fetching') return null
+  if (set.state === 'fetching' || set.state === 'unavailable') return null
   if (set.state === 'failed') return tr('retry')
   if (set.state === 'ready') return set.count === 1 ? PENDING_COPY.export : null
   return tr('download')

@@ -7,9 +7,10 @@ import { fetchOf } from './attachmentFetch'
  * What a message's attachments are collectively doing.
  *
  * `failed` beats `fetching`, because a set where one file is never coming cannot complete: a bar
- * that would stop short is a worse thing to draw than a retry.
+ * that would stop short is a worse thing to draw than a retry. `unavailable` is a set of nothing but
+ * expired or unreadable files, which has nothing left to fetch and nothing to offer.
  */
-export type AttachmentSetState = 'ready' | 'fetching' | 'failed' | 'idle'
+export type AttachmentSetState = 'ready' | 'fetching' | 'failed' | 'idle' | 'unavailable'
 
 export interface AttachmentSet {
   state: AttachmentSetState
@@ -87,9 +88,11 @@ export function summarise(
       ? 'failed'
       : running > 0
         ? 'fetching'
-        : resolvable > 0 && ready === resolvable
-          ? 'ready'
-          : 'idle'
+        : attachments.length > 0 && resolvable === 0
+          ? 'unavailable'
+          : resolvable > 0 && ready === resolvable
+            ? 'ready'
+            : 'idle'
 
   return {
     state,

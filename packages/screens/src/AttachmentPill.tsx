@@ -14,6 +14,7 @@ function label(set: AttachmentSet): string {
     return set.totalBytes === 0 ? tr('downloading') : formatBytes(set.doneBytes)
   }
   if (set.state === 'failed') return tr('failedToDownload')
+  if (set.state === 'unavailable') return tr('attachmentsExpired')
   // Idle: how many there are and what they weigh, which is what somebody deciding needs. The
   // count is the half our aggregate never said, and no catalogue key takes one.
   const count = PENDING_COPY.attachmentCount(set.count)
