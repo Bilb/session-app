@@ -55,6 +55,8 @@ export const ELEMENT = {
     autoDownloadPrompt: 'auto-download-prompt',
     autoDownloadYes: 'auto-download-yes',
     autoDownloadNo: 'auto-download-no',
+    autoDownloadClose: 'auto-download-close',
+    autoDownloadOption: (mode: string) => `auto-download-${mode}` as const,
     composerInput: 'message-composer',
     sendButton: 'send-button',
   },
