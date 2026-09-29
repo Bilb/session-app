@@ -149,10 +149,9 @@ function AccountHeader({ sessionId, name }: { sessionId: string; name: string })
     <YStack
       alignItems="center"
       gap="$sm"
+      // Nothing underneath: the page's own gap separates the ID from the first group, the same
+      // space as sits between the groups.
       paddingTop="$lg"
-      // Nothing under the phones' Share and Copy: the page's own gap is what separates them from
-      // the first group, the same space as sits between the groups.
-      paddingBottom={shareText === null ? '$lg' : '$none'}
     >
       <Avatar id={sessionId} name={name} size={PROFILE_AVATAR} />
       {name === '' ? null : (

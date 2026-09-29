@@ -4,7 +4,6 @@ import { Icon } from './Icon'
 import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
 import { Text } from './Text'
-import { offScaleText } from './textHeight'
 import { useTokenColor } from './useTokenColor'
 
 /**
@@ -19,7 +18,6 @@ import { useTokenColor } from './useTokenColor'
 const WIDTH = 320
 const RADIUS = 6
 const GLYPH = 30
-const TEXT_SIZE = 13
 const STRIP = 4
 const TOAST_PADDING = 8
 const BODY_PADDING = 6
@@ -78,7 +76,7 @@ export function ToastCard({
       <YStack {...logical({ marginEnd: GLYPH_AFTER })}>
         <Icon name="info" size={GLYPH} color="$textPrimary" />
       </YStack>
-      <Text flex={1} {...offScaleText(TEXT_SIZE)}>
+      <Text flex={1} size="$body">
         {text}
       </Text>
       {/* The cross the library draws in the top trailing corner. The whole toast already closes
