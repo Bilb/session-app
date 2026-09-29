@@ -5,8 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 // The default import plus a destructure is the form that works under both loaders.
 import electron from 'electron'
 
-const { app, BrowserWindow, Menu, MessageChannelMain, clipboard, ipcMain, session, shell } =
-  electron
+const { app, BrowserWindow, Menu, MessageChannelMain, clipboard, session, shell } = electron
 
 import type { Request } from '@session/client'
 import { isCrowdinLocale, setLocale } from '@session/localization'
@@ -203,7 +202,6 @@ app.on('web-contents-created', (_event, contents) => {
 
 void app.whenReady().then(async () => {
   denyAllPermissions(session.defaultSession)
-  ipcMain.handle('session-ping', () => 'pong')
 
   await createWindow()
 
