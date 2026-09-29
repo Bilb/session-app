@@ -3,6 +3,7 @@ import { globSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
 import { absentSubmodules, turboTasksIn } from '#src/ci'
+import { pushedFiles } from '#src/files'
 import { undeclaredImports, type WorkspacePackage } from '#src/manifests'
 import { check, type Task } from '#src/rules'
 
@@ -46,9 +47,7 @@ const tasks: Task[] = dry.tasks
     outputs: task.resolvedTaskDefinition.outputs,
   }))
 
-const committed = new Set(
-  execFileSync('git', ['ls-files'], { cwd: repoRoot, encoding: 'utf8' }).split('\n'),
-)
+const committed = pushedFiles(repoRoot)
 
 const violations = check(tasks, {
   absent,
@@ -63,7 +62,7 @@ interface Manifest {
   optionalDependencies?: Record<string, string>
 }
 
-// Every committed manifest but the root's, which is the workspace rather than a package in it.
+// Every manifest the push carries but the root's, which is the workspace rather than a package in it.
 const manifests = [...committed]
   .filter((path) => path.endsWith('/package.json') && !path.includes('node_modules/'))
   .map((path) => ({
