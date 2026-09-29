@@ -1,26 +1,12 @@
-import { realpathSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { existsSync, realpathSync } from 'node:fs'
+import { basename, dirname, join, resolve } from 'node:path'
+
+import type { Frame, Request } from '@session/client'
 
 // Named imports do not survive the ESM loader here; see the note in index.ts.
 import electron from 'electron'
 
-const { BrowserWindow, dialog, ipcMain, shell } = electron
-
-/**
- * Folders the person has pointed at in a save dialog this run.
- *
- * What makes `reveal` and `exportAttachment` safe to expose at all. Both hand a path to an
- * operation the renderer cannot be trusted to have checked -- the same standard `open-external`
- * holds itself to. A path is allowed only if it sits in a folder somebody chose here, which is the
- * one way a folder gets into this set.
- *
- * By folder rather than by exact path because the path that comes back is not the path that went
- * out: a save that collides becomes `name (2)`, so an allowlist of the strings this handed over
- * would refuse exactly the file it had just written.
- *
- * Not persisted. A folder chosen last week is not something this run has any reason to reach.
- */
-const chosen = new Set<string>()
+const { app, BrowserWindow, dialog, ipcMain, shell } = electron
 
 // Resolved and, where it exists, symlink-followed, so a folder cannot read as contained by
 // pointing somewhere else -- a folder not created yet has nothing to follow and compares as given.
@@ -36,33 +22,80 @@ function folderKey(folder: string, caseInsensitive: boolean): string {
   return caseInsensitive ? real.toLowerCase() : real
 }
 
-/**
- * Whether a path sits in one of the folders somebody pointed at.
- *
- * Pure and exported so it can be tested without an Electron process: it is the whole of the rule
- * that decides what the renderer may hand to the operating system, and a rule that can only be
- * exercised by launching an app is one nobody exercises.
- */
-export function isInChosenFolder(
-  path: unknown,
-  folders: ReadonlySet<string>,
-  caseInsensitive = process.platform === 'win32',
-): path is string {
-  if (typeof path !== 'string' || path.length === 0) return false
-  const folder = folderKey(dirname(path), caseInsensitive)
-  return [...folders].some((chosenFolder) => folderKey(chosenFolder, caseInsensitive) === folder)
+// A file's key is its folder's key plus its own name, since the file itself need not exist yet.
+function pathKey(path: string, caseInsensitive: boolean): string {
+  const name = basename(resolve(path))
+  return join(
+    folderKey(dirname(resolve(path)), caseInsensitive),
+    caseInsensitive ? name.toLowerCase() : name,
+  )
 }
 
 /**
- * Whether the renderer may have an attachment written to this path.
+ * What the renderer may write and reveal, decided by what a save dialog answered.
  *
- * The bridge command that writes one takes whatever destination the request carries and has no
- * containment check of its own -- this is the one place that sees every such request before it
- * reaches the native write, so it is the whole of the check.
+ * `save_attachment` writes wherever a request's `destination` says, with no containment of its
+ * own, and `showItemInFolder` acts on any path it is given, so the page -- not trusted, as
+ * `open-external` is not -- is held to this:
+ *
+ * - **An export goes only to the exact path a dialog returned, once.** A grant is spent by the
+ *   export it admits, so one answer cannot become a standing licence to write any name in that
+ *   folder.
+ * - **Whether it overwrites is main's to say**, from whether the file existed when the dialog
+ *   returned: every platform's dialog asks before an existing name is chosen, so that is the
+ *   answer the person gave. Whatever the request said is replaced.
+ * - **A reveal is only of a path an export reported landing at**, which is where libsession put
+ *   the file whatever it was asked for.
+ *
+ * Pure, so it can be tested without an Electron process. Not persisted: a path chosen last week
+ * is not something this run has any reason to reach.
  */
-export function mayExportTo(destination: unknown): boolean {
-  return isInChosenFolder(destination, chosen)
+export class ExportGate {
+  private readonly grants = new Map<string, { replace: boolean }>()
+  private readonly exporting = new Set<number>()
+  private readonly revealable = new Set<string>()
+
+  constructor(private readonly caseInsensitive = process.platform === 'win32') {}
+
+  /** Records a dialog's answer. `exists`: whether a file was already at that path. */
+  grant(path: string, exists: boolean): void {
+    this.grants.set(pathKey(path, this.caseInsensitive), { replace: exists })
+  }
+
+  /** The request to send on, or why it is refused. Only `exportAttachment` is ever changed. */
+  admit(request: Request): Request | string {
+    // Renderer input, so not necessarily a request at all; anything else goes on to be refused
+    // by the bridge.
+    const command = request.command as Request['command'] | undefined
+    if (command?.type !== 'exportAttachment') return request
+    if (typeof command.destination !== 'string' || command.destination === '')
+      return 'exportAttachment.destination is not a path'
+    const key = pathKey(command.destination, this.caseInsensitive)
+    const granted = this.grants.get(key)
+    if (granted === undefined) return 'exportAttachment.destination was not chosen in a save dialog'
+    this.grants.delete(key)
+    this.exporting.add(request.id)
+    return { ...request, command: { ...command, replace: granted.replace } }
+  }
+
+  /** Watches the frames going back, for where an admitted export landed. */
+  observe(frame: Frame): void {
+    if (frame.type !== 'response' || !this.exporting.delete(frame.response.id)) return
+    const result = frame.response.result
+    if (result?.type === 'path') this.revealable.add(pathKey(result.path, this.caseInsensitive))
+  }
+
+  mayReveal(path: unknown): path is string {
+    return (
+      typeof path === 'string' &&
+      path !== '' &&
+      this.revealable.has(pathKey(path, this.caseInsensitive))
+    )
+  }
 }
+
+/** The one gate, shared by every window: a grant is the person's, not a window's. */
+export const exportGate = new ExportGate()
 
 const FALLBACK_SUGGESTED_NAME = 'attachment'
 
@@ -90,21 +123,31 @@ export function sanitiseSuggestedName(name: unknown): string {
  * the renderer may reach is not a decision the renderer can be trusted with.
  */
 export function serveFiles(): void {
+  // Where the last export went, so the next dialog opens there. For this run only.
+  let lastFolder: string | undefined
+
   ipcMain.handle('files:choose-export-location', async (event, suggested: unknown) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     const name = sanitiseSuggestedName(suggested)
+    const options = {
+      defaultPath: join(lastFolder ?? app.getPath('downloads'), name),
+      // macOS and Windows ask before an existing name is chosen; Linux asks only when told to, and
+      // that question is what makes an overwrite the person's answer rather than a guess.
+      properties: ['showOverwriteConfirmation' as const, 'createDirectory' as const],
+    }
     // Modal to the window that asked rather than to the app: a second window is not blocked by a
     // save dialog it did not open.
     const answer = await (window
-      ? dialog.showSaveDialog(window, { defaultPath: name })
-      : dialog.showSaveDialog({ defaultPath: name }))
+      ? dialog.showSaveDialog(window, options)
+      : dialog.showSaveDialog(options))
     if (answer.canceled || answer.filePath === '') return null
-    chosen.add(dirname(answer.filePath))
+    lastFolder = dirname(answer.filePath)
+    exportGate.grant(answer.filePath, existsSync(answer.filePath))
     return answer.filePath
   })
 
   ipcMain.handle('files:reveal', (_event, path: unknown): boolean => {
-    if (!isInChosenFolder(path, chosen)) return false
+    if (!exportGate.mayReveal(path)) return false
     shell.showItemInFolder(path)
     return true
   })

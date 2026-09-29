@@ -10,7 +10,7 @@ const { app, BrowserWindow, MessageChannelMain, ipcMain, session, shell } = elec
 import type { Request } from '@session/client'
 
 import { createBridge } from './bridge'
-import { mayExportTo, serveFiles } from './files'
+import { exportGate, serveFiles } from './files'
 import { registerMediaScheme, serveMedia, stopServingMedia } from './media'
 import {
   applyContentProtection,
@@ -128,29 +128,21 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
 
     // A frame is a plain object built by the addon; structured clone carries it to the renderer.
     open.setSink((frame) => {
+      exportGate.observe(frame)
       port?.postMessage(frame)
     })
     port1.on('message', (event: { data: unknown }) => {
       // Renderer input: an exception escaping here is an uncaught one in the main process.
       try {
         const request = event.data as Request
-        // The one command that names a filesystem path of its own choosing: `save_attachment`
-        // writes wherever `destination` says with no containment check on the native side, so
-        // this is the point that has to refuse one outside a folder a save dialog actually chose.
-        if (
-          request.command?.type === 'exportAttachment' &&
-          !mayExportTo(request.command.destination)
-        ) {
-          port?.postMessage({
-            type: 'response',
-            response: {
-              id: request.id,
-              error: 'exportAttachment.destination is not a chosen folder',
-            },
-          })
+        // The one command that names a filesystem path of its own choosing, and `save_attachment`
+        // has no containment of its own, so every request passes the gate on its way to the bridge.
+        const admitted = exportGate.admit(request)
+        if (typeof admitted === 'string') {
+          port?.postMessage({ type: 'response', response: { id: request.id, error: admitted } })
           return
         }
-        open.send(request)
+        open.send(admitted)
       } catch {
         // No id to answer on, so there is nobody to tell.
       }
