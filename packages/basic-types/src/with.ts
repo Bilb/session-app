@@ -22,6 +22,8 @@ export type WithMediaKind = { kind: MediaKind }
 export type WithMediaUri = { uri?: string | null | undefined }
 /** The sender's placeholder, as a url resolved like `uri`, with the same absent/`null` meanings. */
 export type WithMediaPreview = { preview?: string | null | undefined }
+/** A press on it downloads it rather than opening it, which hovering it says. */
+export type WithFetchesOnOpen = { fetchesOnOpen?: boolean | undefined }
 export type WithFilename = { filename: string }
 /** The sender's declared type, absent on plenty of attachments. */
 export type WithContentType = { contentType?: string | undefined }

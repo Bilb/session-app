@@ -20,6 +20,7 @@ export type IconName =
   | 'chevronRight'
   | 'circleHelp'
   | 'clock'
+  | 'cloudDownload'
   | 'download'
   | 'ellipsis'
   | 'externalLink'

@@ -14,7 +14,7 @@ describe('a file row’s one control', () => {
   it('follows from the state, and says which verb it is', () => {
     // Not cached -> Download, cached -> Export. Two verbs and two glyphs: one moves bytes into the
     // cache, the other writes a file we already hold out to a folder somebody chose.
-    expect(fileRowControl('idle')).toBe('download')
+    expect(fileRowControl('idle')).toBe('cloudDownload')
     expect(fileRowControl('ready')).toBe('hardDriveDownload')
     expect(fileRowControl('idle')).not.toBe(fileRowControl('ready'))
   })

@@ -5,6 +5,7 @@ import { SPACING } from '@session/theme-tokens'
 import type {
   WithCaption,
   WithContentType,
+  WithFetchesOnOpen,
   WithFilename,
   WithMediaKind,
   WithMediaPreview,
@@ -24,6 +25,7 @@ import {
   type FileRowState,
   type FileRowTone,
 } from './fileRowState'
+import { FetchHint } from './FetchHint'
 import { Icon } from './Icon'
 import { ProgressRing } from './ProgressRing'
 import { StateLayer } from './StateLayer'
@@ -40,7 +42,7 @@ export interface FileRowTestIDs {
 }
 
 /** What the lead square shows when the row is for something with a picture behind it. */
-export type FileRowThumbnail = WithMediaUri & WithMediaPreview & WithMediaKind
+export type FileRowThumbnail = WithMediaUri & WithMediaPreview & WithMediaKind & WithFetchesOnOpen
 
 export type FileRowProps = WithFilename &
   WithContentType &
@@ -222,6 +224,7 @@ export function FileRow({
           >
             {lead}
             <StateLayer group="tile" tone="scrim" borderRadius={tileRadius(FILE_GLYPH_SIDE)} />
+            {thumbnail?.fetchesOnOpen === true ? <FetchHint side={FILE_GLYPH_SIDE} /> : null}
           </YStack>
         )}
         {/* Under the lead rather than in the caption line, where it was competing with the size
