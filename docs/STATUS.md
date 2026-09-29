@@ -23,9 +23,9 @@ a time, via the `port-feature` skill.
 - **The media viewer is one picture at a time.** It pages through a message's pictures and
   nothing more: no zoom, no video playback, no swipe to dismiss, no filmstrip.
 - **Returning to a conversation starts at the newest page.** A window is dropped when its screen
-  stops showing it, so paging depth and scroll position go with it. Keeping both - so that coming
-  back puts you where you were - is its own piece of work and wants doing deliberately rather than
-  by keeping every window loaded for the session, which is what this replaced.
+  stops showing it, so paging depth and scroll position go with it. Keeping both, so that coming
+  back puts you where you were, is its own piece of work; keeping every window loaded for the
+  session is not the way to do it.
 - **Anything a message can be beyond text**: no reactions, replies, edits, deletes or read
   receipts.
 - **A devnet cannot have its own Pro backend.** The key libsession verifies proofs against is a

@@ -115,11 +115,11 @@ its poll ticker and exposes no one-shot entry point. Both are open questions in 
 Attachment metadata, transfer progress and the per-conversation auto-download setting cross;
 bytes do not. They leave by a second channel instead: `session-media://attachment/<id>/<index>`,
 resolved natively by each platform straight out of `ClientBridge::fetch_media`, so a picture never
-passes through JavaScript and never rides this stream. `downloadAttachment` is how a caller asks
-whether the bytes are here: libsession records nothing about a transfer, so the one call reads the
-cache, joins a fetch already running, or starts one. `exportAttachment` writes a cached file to a
-destination and answers with where it landed: a collision lands at `name (2)` unless the caller
-asked to replace.
+passes through JavaScript and never rides this stream. Whether the bytes are here is the
+attachment's `availability` on the page. `downloadAttachment` reads the cache, joins a fetch
+already running, or starts one. `exportAttachment` writes the file to a destination, fetching it
+first if the cache does not hold it, and answers with where it landed: a collision lands at
+`name (1)` unless the caller asked to replace.
 
 The sender's placeholder is an image too, so it comes by the same road: `session-media://preview/`
 answers from `ClientBridge::fetch_preview`, which decodes the ThumbHash on the attachment's row.
@@ -190,7 +190,8 @@ directly would skip whichever one it did not go through.
 
 Desktop checks a second time in its main process. That is a different boundary rather than a
 duplicate: the main process does not trust the renderer, while the shared check is the app
-deciding what it is willing to open at all.
+deciding what it is willing to open at all. Files written and revealed have a main-process check
+of their own, for the same reason; see the 2026-09-29 entry in the decision log.
 
 **A missing scheme becomes `https` rather than a refusal**, and only where the text already
 looks like a host. Both mobile clients do this, and both pick https rather than the http a
@@ -368,6 +369,24 @@ Every shared file is checked two or three ways per run, with no synthetic profil
 ## Decision log
 
 Append one paragraph per decision. Undocumented decisions are what rot.
+
+- **2026-09-29 - Desktop main admits an export only to the path its dialog returned.**
+  `save_attachment` writes wherever it is told, with no containment of its own, and
+  `showItemInFolder` acts on any path, so the renderer is held to what a save dialog answered. The
+  answer is a one-shot grant for that exact path, kept by the window whose dialog it was and spent
+  by the export it admits. Main sets
+  `replace` from whether a file was already there when the dialog returned, since every platform's
+  dialog asks before an existing name is chosen, and ignores what the request said. A reveal is
+  allowed only for the path an admitted export reported landing at, which is where libsession put
+  the file whatever it was asked for.
+
+  By exact path rather than by folder: a folder grant turns one answer into a licence to create or
+  overwrite any name in that folder for the rest of the run. Nothing is persisted: a path chosen in
+  an earlier run is not one this run has any reason to reach.
+
+  The shim marks every exported file as downloaded from the internet - Mark-of-the-Web on
+  Windows, the quarantine property on macOS - because it is a stranger's file written by plain
+  file I/O, which no operating system check would otherwise see.
 
 - **2026-09-23 - Every outward address lives in libsession.** One source of truth, rather than
   libsession's table plus whatever the app adds beside it. The contract test enforces it by refusing
@@ -578,8 +597,9 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   A transfer's progress is broadcast on the stream, not routed to the command that asked for it. A
   download outlives the tap that started it and is drawn by a row that may not have existed when it
   began, so the report lands in the store like any other event, `SessionEvent` stays one union and
-  the facade keeps its plain fan-out. It is the one arm that is not whole state, because libsession
-  stores none for a transfer in flight.
+  the facade keeps its plain fan-out. It is the one arm that is not whole state: a report is one
+  transfer's progress, and a screen that missed some reads `availability` and the fetch figures
+  from the page instead.
 
   `Conversation.autoDownload` is optional, and unset is not `none`. Unset means nobody has been
   asked what this conversation should fetch unprompted; `none` means they were asked and declined.
