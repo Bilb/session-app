@@ -37,7 +37,7 @@ export function useAttachmentSet(message: Message): {
     for (const attachment of missing) {
       actions
         .downloadAttachment({ messageId: message.id, index: attachment.index })
-        // A failed download ends its transfer as `failed`, which the set already folds in.
+        // A refusal is recorded as a failed transfer by the store, which the set already folds in.
         .catch(() => undefined)
     }
   }

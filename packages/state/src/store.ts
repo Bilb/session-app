@@ -7,7 +7,7 @@ import type {
 } from '@session/client'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
-import { applyEvent, mergePages, withoutHistory } from './applyEvent'
+import { applyEvent, mergePages, recordRefusal, withoutHistory } from './applyEvent'
 import { emptyState, type MessageWindow, type SessionState } from './types'
 
 export interface CacheSettings {
@@ -422,7 +422,12 @@ export function createSessionStore(
     },
 
     async downloadAttachment(ref): Promise<void> {
-      await client.downloadAttachment(ref.messageId, ref.index)
+      try {
+        await client.downloadAttachment(ref.messageId, ref.index)
+      } catch (error) {
+        store.setState((state) => recordRefusal(state, 'download', ref))
+        throw error
+      }
     },
 
     async exportAttachment(ref, destination): Promise<string> {

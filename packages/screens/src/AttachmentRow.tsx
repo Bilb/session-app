@@ -9,7 +9,6 @@ import {
 } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { FileRow, type FileRowState, type FileRowThumbnail } from '@session/ui'
-import { useState } from 'react'
 
 import { fetchOf, type Fetch } from './attachmentFetch'
 import { mayResolve } from './autoDownload'
@@ -68,12 +67,9 @@ export function AttachmentRow({
   const ref = { messageId: message.id, index: attachment.index }
   const report = useAttachmentTransfer('download', ref)
   const exporting = useAttachmentTransfer('export', ref)
-  const [error, setError] = useState(false)
 
   const fetched = fetchOf(attachment, report)
-  // A rejected call is this component's own knowledge and reaches no event, so it is the one
-  // thing here that neither libsession nor a report can supply.
-  const state: FileRowState = error && fetched.state === 'idle' ? 'failed' : fetched.state
+  const state: FileRowState = fetched.state
 
   // A picture fetches itself as it draws: the url *is* the request, and the same call reads the
   // cache, joins a transfer already running, or starts one. Absent once expired, where asking
@@ -94,11 +90,9 @@ export function AttachmentRow({
         }
 
   function start(): void {
-    setError(false)
     ui.requestAutoDownloadPrompt()
-    void actions.downloadAttachment(ref).catch(() => {
-      setError(true)
-    })
+    // A refusal is recorded as a failed transfer by the store, which `fetchOf` reads.
+    void actions.downloadAttachment(ref).catch(() => undefined)
   }
 
   const act = state === 'ready' ? () => void exportOne(message, attachment.index, actions) : start
