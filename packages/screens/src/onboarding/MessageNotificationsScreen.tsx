@@ -32,6 +32,72 @@ function fastModeDescription(service: NotificationsPort['pushService']): string 
   return tr('notificationsFastModeDescription')
 }
 
+interface NotificationOptionProps {
+  value: NotificationMode
+  title: string
+  description: string
+  badge: string | null
+  selected: boolean
+  disabled: boolean
+  onSelect: (mode: NotificationMode) => void
+}
+
+/**
+ * **A bordered box with a radio beside it, and no fill.** Both clients draw it this way: a border
+ * around the text only, and the radio outside it in a 24pt gutter to the trailing side, centred
+ * against the whole text block rather than against the title. Neither fills the box, and neither
+ * changes it on selection -- the dot is the entire signal.
+ */
+function NotificationOption({
+  value,
+  title,
+  description,
+  badge,
+  selected,
+  disabled,
+  onSelect,
+}: NotificationOptionProps) {
+  return (
+    <XStack
+      role="radio"
+      aria-checked={selected}
+      alignItems="center"
+      gap={ROW_GAP}
+      pointerEvents={disabled ? 'none' : 'auto'}
+      cursor="pointer"
+      onPress={() => {
+        onSelect(value)
+      }}
+      testID={ELEMENT.onboarding.notificationsOption(value)}
+    >
+      <YStack
+        flex={1}
+        gap={TEXT_GAP}
+        paddingHorizontal={BOX_PADDING_X}
+        paddingVertical={BOX_PADDING_Y}
+        borderRadius="$md"
+        borderWidth={1}
+        borderColor="$bordersColor"
+      >
+        {/* Dimmed by colour rather than by fading the row, so an unavailable option still reads
+            as a box rather than a smudge. */}
+        <Text size="$bodyLarge" weight="bold" {...(disabled ? { tone: 'disabled' as const } : {})}>
+          {title}
+        </Text>
+        <Text size="$label" {...(disabled ? { tone: 'disabled' as const } : {})}>
+          {description}
+        </Text>
+        {badge === null ? null : (
+          <Text size="$body" weight="bold" tone={disabled ? 'secondary' : 'accent'}>
+            {badge}
+          </Text>
+        )}
+      </YStack>
+      <RadioIndicator selected={selected} disabled={disabled} />
+    </XStack>
+  )
+}
+
 /**
  * Which way notifications arrive.
  *
@@ -56,66 +122,6 @@ export function MessageNotificationsScreen({
   // be used.
   const [mode, setMode] = useState<NotificationMode>(fastAvailable ? 'fast' : 'slow')
 
-  // eslint-disable-next-line no-restricted-syntax -- two fixed rows; nothing to memoise
-  const option = (
-    value: NotificationMode,
-    title: string,
-    description: string,
-    badge: string | null,
-    disabled: boolean,
-  ) => {
-    const selected = mode === value
-    return (
-      /**
-       * **A bordered box with a radio beside it, and no fill.** Both clients draw it this way: a
-       * border around the text only, and the radio outside it in a 24pt gutter to the trailing
-       * side, centred against the whole text block rather than against the title. Neither fills
-       * the box, and neither changes it on selection -- the dot is the entire signal.
-       */
-      <XStack
-        role="radio"
-        aria-checked={selected}
-        alignItems="center"
-        gap={ROW_GAP}
-        pointerEvents={disabled ? 'none' : 'auto'}
-        cursor="pointer"
-        onPress={() => {
-          setMode(value)
-        }}
-        testID={ELEMENT.onboarding.notificationsOption(value)}
-      >
-        <YStack
-          flex={1}
-          gap={TEXT_GAP}
-          paddingHorizontal={BOX_PADDING_X}
-          paddingVertical={BOX_PADDING_Y}
-          borderRadius="$md"
-          borderWidth={1}
-          borderColor="$bordersColor"
-        >
-          {/* Dimmed by colour rather than by fading the row, so an unavailable option still reads
-              as a box rather than a smudge. */}
-          <Text
-            size="$bodyLarge"
-            weight="bold"
-            {...(disabled ? { tone: 'disabled' as const } : {})}
-          >
-            {title}
-          </Text>
-          <Text size="$label" {...(disabled ? { tone: 'disabled' as const } : {})}>
-            {description}
-          </Text>
-          {badge === null ? null : (
-            <Text size="$body" weight="bold" tone={disabled ? 'secondary' : 'accent'}>
-              {badge}
-            </Text>
-          )}
-        </YStack>
-        <RadioIndicator selected={selected} disabled={disabled} />
-      </XStack>
-    )
-  }
-
   return (
     <OnboardingStep
       title={tr('notificationsMessage')}
@@ -136,20 +142,24 @@ export function MessageNotificationsScreen({
       }
     >
       <YStack gap="$sm">
-        {option(
-          'fast',
-          tr('notificationsFastMode'),
-          fastModeDescription(notifications.pushService),
-          fastAvailable ? tr('recommended') : tr('unavailable'),
-          !fastAvailable,
-        )}
-        {option(
-          'slow',
-          tr('notificationsSlowMode'),
-          tr('notificationsSlowModeDescription'),
-          null,
-          false,
-        )}
+        <NotificationOption
+          value="fast"
+          title={tr('notificationsFastMode')}
+          description={fastModeDescription(notifications.pushService)}
+          badge={fastAvailable ? tr('recommended') : tr('unavailable')}
+          selected={mode === 'fast'}
+          disabled={!fastAvailable}
+          onSelect={setMode}
+        />
+        <NotificationOption
+          value="slow"
+          title={tr('notificationsSlowMode')}
+          description={tr('notificationsSlowModeDescription')}
+          badge={null}
+          selected={mode === 'slow'}
+          disabled={false}
+          onSelect={setMode}
+        />
       </YStack>
     </OnboardingStep>
   )
