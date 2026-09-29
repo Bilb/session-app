@@ -1,29 +1,19 @@
 import { CLIENT_URLS, enableDebugMode, requirePorts, toggleDebugMode, URLS } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import {
-  offScaleText,
-  PressArea,
-  SessionTokenLogo,
-  Text,
-  useModals,
-  useToast,
-  XStack,
-  YStack,
-} from '@session/ui'
+import { PressArea, SessionTokenLogo, Text, useModals, useToast, XStack, YStack } from '@session/ui'
 import { useRef, useState } from 'react'
 
 import { confirmLink } from './confirmLink'
 
 /**
  * The desktop client's `SessionInfo` measurements, none of them on a scale: the logo 20 high, 5
- * between it and the line under it, 10 between the version and the commit, both at 13, and at half
- * strength until the pointer is on one.
+ * between it and the line under it, 10 between the version and the commit, and at half strength
+ * until the pointer is on one.
  */
 const LOGO_HEIGHT = 20
 const LOGO_GAP = 5
 const STAMP_GAP = 10
-const STAMP_SIZE = 13
 const RESTING = 0.5
 
 /** How many presses on the commit turn debug mode over: the client's ten. */
@@ -141,12 +131,7 @@ function DesktopSessionInfo() {
           }}
         >
           {() => (
-            <Text
-              {...offScaleText(STAMP_SIZE)}
-              opacity={RESTING}
-              hoverStyle={{ opacity: 1 }}
-              cursor="pointer"
-            >
+            <Text size="$label" opacity={RESTING} hoverStyle={{ opacity: 1 }} cursor="pointer">
               {`v${version}`}
             </Text>
           )}
@@ -164,12 +149,7 @@ function DesktopSessionInfo() {
             }}
           >
             {() => (
-              <Text
-                {...offScaleText(STAMP_SIZE)}
-                opacity={RESTING}
-                hoverStyle={{ opacity: 1 }}
-                cursor="pointer"
-              >
+              <Text size="$label" opacity={RESTING} hoverStyle={{ opacity: 1 }} cursor="pointer">
                 {commit}
               </Text>
             )}
