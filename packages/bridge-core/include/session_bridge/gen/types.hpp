@@ -477,10 +477,13 @@ struct Response {
     /// enum: the message says which constraint, and inventing codes would throw that away. Set
     /// instead of `result`, never beside it.
     std::optional<std::string> error;
+    /// libsession's dotted code for `error` (`file.not_found`), where libsession gave one. What a
+    /// caller matches on; `error` is for people. Absent for a refusal the shim makes itself.
+    std::optional<std::string> code;
     std::optional<::session_bridge::Result> result;
 
-    Response(double id_, std::optional<std::string> error_, std::optional<::session_bridge::Result> result_) :
-            id{std::move(id_)}, error{std::move(error_)}, result{std::move(result_)} {}
+    Response(double id_, std::optional<std::string> error_, std::optional<std::string> code_, std::optional<::session_bridge::Result> result_) :
+            id{std::move(id_)}, error{std::move(error_)}, code{std::move(code_)}, result{std::move(result_)} {}
 };
 
 struct ResponseFrame {

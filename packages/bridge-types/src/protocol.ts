@@ -317,6 +317,11 @@ export interface Response {
    * instead of `result`, never beside it.
    */
   error?: string
+  /**
+   * libsession's dotted code for `error` (`file.not_found`), where libsession gave one. What a
+   * caller matches on; `error` is for people. Absent for a refusal the shim makes itself.
+   */
+  code?: string
   result?: Result
 }
 

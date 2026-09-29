@@ -387,6 +387,10 @@ describeEcho('the generated converters', () => {
     { type: 'response', response: { id: 900_003, error: 'nope' } },
     {
       type: 'response',
+      response: { id: 900_020, error: 'The file server no longer has it', code: 'file.not_found' },
+    },
+    {
+      type: 'response',
       response: { id: 900_004, result: { type: 'mnemonic', words: ['a', 'b'] } },
     },
     {

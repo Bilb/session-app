@@ -5,9 +5,12 @@
  */
 export class SessionClientError extends Error {
   override readonly name = 'SessionClientError'
+  /** libsession's dotted code (`file.not_found`) where it gave one: what a caller matches on. */
+  readonly code: string | undefined
 
-  constructor(message: string) {
+  constructor(message: string, code?: string) {
     super(message)
+    this.code = code
   }
 }
 

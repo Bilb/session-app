@@ -10,7 +10,8 @@
  */
 
 import {
-  ATTACHMENT_NOT_FOUND,
+  FILE_NOT_FOUND,
+  SessionClientError,
   type AttachmentAvailability,
   type Conversation,
   type Message,
@@ -704,7 +705,7 @@ export function runSessionClientContract(
       expect(cached?.availability).toBe('cached')
     })
 
-    it('fails a download of a file the server no longer holds, and says so on the page', async () => {
+    it('refuses a download of a file the server no longer holds, before any transfer starts', async () => {
       const { client, conversationId, messageId, index, settle } = await harness.withAttachment({
         expired: true,
       })
@@ -715,24 +716,14 @@ export function runSessionClientContract(
       expect((await at())?.availability).toBe('notFound')
 
       const seen = collect(client)
-      const running = failure(() => client.downloadAttachment(messageId, index))
+      const refused = await failure(() => client.downloadAttachment(messageId, index))
       await settle()
-      expect((await running) instanceof Error).toBe(true)
 
-      const terminal = seen.events.filter(
-        (e) => e.type === 'attachment-progress' && e.outcome !== undefined,
-      )
-      expect(terminal.length).toBe(1)
-      const last = terminal[0]
-      if (last?.type !== 'attachment-progress') throw new Error('unreachable')
-      expect(last.outcome).toEqual({ ok: false, error: ATTACHMENT_NOT_FOUND })
-
-      // A verdict, so the page keeps offering "ask them to resend" rather than a retry.
+      // A verdict is answered from what is stored, so nothing is fetched and nothing reports: the
+      // refusal and the page are the only places it shows.
+      expect(refused instanceof SessionClientError && refused.code).toBe(FILE_NOT_FOUND)
+      expect(seen.events.filter((e) => e.type === 'attachment-progress')).toEqual([])
       expect((await at())?.availability).toBe('notFound')
-      const after = seen.events.slice(seen.events.indexOf(last))
-      expect(after.some((e) => announcedAvailability(e, messageId, index) === 'notFound')).toBe(
-        true,
-      )
       seen.stop()
     })
 

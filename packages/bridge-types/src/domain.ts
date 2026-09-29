@@ -81,21 +81,28 @@ export type AttachmentAvailability =
   | 'unreadable'
 
 /**
- * Why a transfer ended, as libsession's own stable code.
+ * Why an attachment operation failed, as libsession's own stable code: a transfer's `outcome`, or
+ * a refused command's `code`.
  *
  * **Open, not a union**: libsession adds codes without it being a breaking change, so anything
  * matching on these needs a default branch rather than an exhaustive switch.
  */
 export type AttachmentError = string
 
+/** No message has this id. */
+export const MESSAGE_NOT_FOUND: AttachmentError = 'message.not_found'
+/** The message exists and has no attachment at this index. */
+export const ATTACHMENT_NOT_FOUND: AttachmentError = 'attachment.not_found'
 /** The file is no longer at the path it was attached from. Reported on an upload, never a fetch. */
 export const ATTACHMENT_FILE_MISSING: AttachmentError = 'attachment.file_missing'
 /** The file server does not hold it. The sender's to repair by sending it again. */
-export const ATTACHMENT_NOT_FOUND: AttachmentError = 'file.not_found'
+export const FILE_NOT_FOUND: AttachmentError = 'file.not_found'
 /** It arrived but could not be turned back into the file it claims to be. Not worth retrying. */
-export const ATTACHMENT_UNREADABLE: AttachmentError = 'file.unreadable'
+export const FILE_UNREADABLE: AttachmentError = 'file.unreadable'
 /** This attempt failed for a reason that may not recur, so retrying is reasonable. */
-export const ATTACHMENT_DOWNLOAD_FAILED: AttachmentError = 'file.download_failed'
+export const FILE_DOWNLOAD_FAILED: AttachmentError = 'file.download_failed'
+/** An export could not be written to its destination. */
+export const FILE_SAVE_FAILED: AttachmentError = 'file.save_failed'
 
 /**
  * How a transfer ended, on the one report that ends it.

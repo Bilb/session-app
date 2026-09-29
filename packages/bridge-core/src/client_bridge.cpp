@@ -526,15 +526,16 @@ struct ClientBridge::Impl {
     }
 
     void respond(double id, Result result) {
-        emit(ResponseFrame{Response{id, std::nullopt, std::move(result)}});
+        emit(ResponseFrame{Response{id, std::nullopt, std::nullopt, std::move(result)}});
     }
 
     void ok(double id) {
         respond(id, EmptyResult{});
     }
 
-    void fail(double id, std::string_view message) {
-        emit(ResponseFrame{Response{id, std::string{message}, std::nullopt}});
+    void fail(
+            double id, std::string_view message, std::optional<std::string> code = std::nullopt) {
+        emit(ResponseFrame{Response{id, std::string{message}, std::move(code), std::nullopt}});
     }
 
     /// Wraps a handler so that the error leg is written once rather than at every call site.
@@ -544,7 +545,7 @@ struct ClientBridge::Impl {
     auto on(double id, F&& f) {
         return [this, id, f = std::forward<F>(f)](auto&& result) {
             if (!result) {
-                fail(id, result.error().message);
+                fail(id, result.error().message, std::string{result.error().code});
                 return;
             }
             // Client::_dispatch_out only logs what escapes a handler, so an uncaught throw here
