@@ -21,12 +21,12 @@ import {
   fileRowTone,
   type FileRowState,
   type FileRowTone,
-} from './fileRow'
+} from './fileRowState'
 import { Icon } from './Icon'
 import { PressArea } from './PressArea'
 import { ProgressRing } from './ProgressRing'
 import { Text } from './Text'
-import { tileRadius } from './attachmentTile'
+import { tileRadius } from './attachmentTileStyle'
 
 export interface FileRowTestIDs {
   row?: ElementId | undefined

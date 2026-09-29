@@ -7,8 +7,8 @@ import {
   FILE_ROW_CONTROL,
   fileRowControl,
   fileRowTone,
-} from '#src/fileRow'
-import { TILE_RADIUS_STEP } from '#src/attachmentTile'
+} from '#src/fileRowState'
+import { TILE_RADIUS_STEP } from '#src/attachmentTileStyle'
 
 describe('a file row’s one control', () => {
   it('follows from the state, and says which verb it is', () => {

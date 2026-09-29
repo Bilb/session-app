@@ -91,7 +91,7 @@ export { logical } from './logicalEdges'
 export type { LogicalEdges } from './logicalEdges.types'
 export { AttachmentTile } from './AttachmentTile'
 export type { AttachmentTileProps } from './AttachmentTile'
-export { TILE_RADIUS_STEP, TILE_SCRIM, tileRadius } from './attachmentTile'
+export { TILE_RADIUS_STEP, TILE_SCRIM, tileRadius } from './attachmentTileStyle'
 export { MIN_HIT_TARGET } from './buttonHitTarget'
 export { MediaViewer } from './MediaViewer'
 export type { MediaViewerItem, MediaViewerProps } from './MediaViewer'
@@ -108,7 +108,7 @@ export {
   FILE_ROW_GAP,
   fileRowControl,
   fileRowTone,
-} from './fileRow'
-export type { FileRowState, FileRowTone } from './fileRow'
+} from './fileRowState'
+export type { FileRowState, FileRowTone } from './fileRowState'
 export { fileFormat, fileGlyph, splitFilename } from './attachmentFile'
 export type { WithTestID } from './with'

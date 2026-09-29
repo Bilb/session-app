@@ -5,7 +5,7 @@ import type { ElementId } from '@session/test-ids'
 import { Icon } from './Icon'
 import type { IconName } from './Icon.types'
 import { PressArea } from './PressArea'
-import { SEGMENT_PADDING, selectedSegment } from './segmentedToggle'
+import { SEGMENT_PADDING, selectedSegment } from './segmentedToggleLayout'
 import { SEGMENT_HEIGHT, SEGMENT_WIDTH } from './segmentedToggleMetrics'
 
 export type Segment<V> = {
