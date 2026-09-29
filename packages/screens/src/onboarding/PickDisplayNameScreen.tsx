@@ -97,10 +97,13 @@ export function PickDisplayNameScreen({
         placeholder={tr('displayNameEnter')}
         autoCapitalize="words"
         autoFocus
-        onSubmit={() => {
+        onSubmit={(typed) => {
+          // The return key refuses what the disabled Continue refuses. The field's own check is
+          // live, and an empty field has nothing to say while it is being filled in.
+          if (displayNameProblem(typed) === 'empty') return
           // Edges taken off and nothing else: see `displayNameAsStored`, and `displayName.ts` for
           // why the characters between them are left exactly as typed.
-          onContinue(displayNameAsStored(name))
+          onContinue(displayNameAsStored(typed))
         }}
         testID={ELEMENT.onboarding.displayNameInput}
         endWidth={remaining <= COUNTER_THRESHOLD ? COUNTER_WIDTH : 0}
