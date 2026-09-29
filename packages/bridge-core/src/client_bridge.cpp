@@ -1272,12 +1272,6 @@ void ClientBridge::fetch_media(double message_id, double index, MediaHandler cb)
 /// carrying more detail; whatever draws it scales this up with a linear filter.
 constexpr uint32_t preview_long_edge = 32;
 
-/// A sender-supplied side worth scaling by: JPEG's ceiling, which also keeps
-/// `preview_long_edge * side` well inside 32 bits.
-constexpr bool plausible_side(uint32_t side) {
-    return side > 0 && side <= 65535;
-}
-
 void ClientBridge::fetch_preview(double message_id, double index, PreviewHandler cb) {
     if (!_impl || !_impl->client) {
         cb(Preview{"the bridge is closed", 0, 0, {}});
@@ -1301,7 +1295,7 @@ void ClientBridge::fetch_preview(double message_id, double index, PreviewHandler
                     }
 
                     const auto& a = msg->attachments[at];
-                    if (!a.thumbhash || !image::thumbhash::valid(*a.thumbhash)) {
+                    if (!previewable(a)) {
                         cb(Preview{"no preview", 0, 0, {}});
                         return;
                     }
@@ -1311,10 +1305,6 @@ void ClientBridge::fetch_preview(double message_id, double index, PreviewHandler
                     // honest guess.
                     uint32_t w = preview_long_edge, h = preview_long_edge;
                     if (a.width && a.height) {
-                        if (!plausible_side(*a.width) || !plausible_side(*a.height)) {
-                            cb(Preview{"implausible attachment dimensions", 0, 0, {}});
-                            return;
-                        }
                         if (*a.width >= *a.height)
                             h = std::max(1u, preview_long_edge * *a.height / *a.width);
                         else

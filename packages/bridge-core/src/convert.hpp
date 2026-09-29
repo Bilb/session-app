@@ -4,6 +4,8 @@
 #include <session/client/conversation.hpp>
 #include <session/client/message.hpp>
 
+#include <cstdint>
+
 #include "session_bridge/gen/types.hpp"
 
 namespace session_bridge {
@@ -24,5 +26,14 @@ Message to_bridge(::session::client::Message&& from);
 /// applies them in. Only the paged query reverses, because paging runs the other way.
 std::vector<Message> to_bridge(std::vector<::session::client::Message>&& from);
 Conversation to_bridge(::session::client::AnyConversation&& from);
+
+/// Whether `fetch_preview` can decode a placeholder for this attachment: what `hasPreview` says.
+bool previewable(const ::session::client::Attachment& a);
+
+/// A sender-supplied side worth scaling by: JPEG's ceiling, which also keeps a preview's
+/// `long_edge * side` well inside 32 bits.
+constexpr bool plausible_side(uint32_t side) {
+    return side > 0 && side <= 65535;
+}
 
 }  // namespace session_bridge
