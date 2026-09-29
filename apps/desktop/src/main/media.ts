@@ -144,9 +144,10 @@ export function serveMedia(bridge: MediaSource): void {
         headers: mediaHeaders(contentType),
       })
     } catch {
-      // What went wrong is already on the frame stream as a failed transfer, which is where the
-      // row that asked is watching. A status here would only be read by the image element.
-      return new Response(null, { status: 404 })
+      // Only a failure after a transfer started is on the frame stream too. A verdict, a missing
+      // message or a failed preview is known from this status alone, so whoever draws the url
+      // has to handle the image failing. Not stored, so the url is asked again after a retry.
+      return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } })
     }
   })
 }
