@@ -16,6 +16,7 @@ import {
   initialOnboarding,
   onboardingReducer,
   type OnboardingDesign,
+  type OnboardingEvent,
   type OnboardingState,
   type OnboardingStep,
   type RecoveryInput,
@@ -41,6 +42,105 @@ interface OnboardingFlowProps {
    * True from the first step past the landing screen until everything has been committed.
    */
   onRunningChange?: (running: boolean) => void
+}
+
+interface OnboardingScreenProps {
+  step: OnboardingStep
+  state: OnboardingState
+  dispatch: (event: OnboardingEvent) => void
+  busy: boolean
+  /** Past the last question: the account is being made under the step still on screen. */
+  committing: boolean
+  rejected: boolean
+  profileArrived: boolean
+  onBack: () => void
+  onAbandonPhrase: () => void
+  onSubmitPhrase: (from: RecoveryInput) => void
+}
+
+function OnboardingScreen({
+  step,
+  state,
+  dispatch,
+  busy,
+  committing,
+  rejected,
+  profileArrived,
+  onBack,
+  onAbandonPhrase,
+  onSubmitPhrase,
+}: OnboardingScreenProps) {
+  switch (step) {
+    case 'landing':
+      return (
+        <LandingScreen
+          onCreate={() => {
+            dispatch({ type: 'chooseCreate' })
+          }}
+          onRestore={() => {
+            dispatch({ type: 'chooseRestore' })
+          }}
+        />
+      )
+
+    case 'pickDisplayName':
+      return (
+        <PickDisplayNameScreen
+          afterFailedRestore={state.afterFailedRestore}
+          initialName={state.displayName ?? ''}
+          rejected={state.commitFailed}
+          busy={busy}
+          onBack={onBack}
+          onContinue={(name) => {
+            dispatch({ type: 'nameEntered', name })
+          }}
+        />
+      )
+
+    case 'loadAccount':
+      return (
+        <LoadAccountScreen
+          busy={busy}
+          rejected={rejected}
+          backDisabled={busy}
+          onBack={onAbandonPhrase}
+          onContinue={onSubmitPhrase}
+        />
+      )
+
+    case 'messageNotifications':
+      return (
+        <MessageNotificationsScreen
+          busy={busy}
+          onBack={onBack}
+          onContinue={(mode) => {
+            dispatch({ type: 'notificationsChosen', mode, profileArrived })
+          }}
+        />
+      )
+
+    case 'loading':
+      return (
+        <LoadingScreen
+          onBack={onBack}
+          backDisabled={committing}
+          onGaveUp={
+            // Null once the account is being made: the wait is over, and a deadline still
+            // running would announce a timeout on top of a restore that already arrived.
+            committing
+              ? null
+              : () => {
+                  dispatch({ type: 'restoreGaveUp' })
+                }
+          }
+        />
+      )
+
+    case 'done':
+      // Unreachable: `done` renders the step it was reached from. Here because the switch is
+      // exhaustive over the step type, which is what makes a new step a compile error.
+      return null
+  }
 }
 
 /**
@@ -188,6 +288,49 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
     )
   }, [state, actions, onRunningChange])
 
+  const abandonPhrase = () => {
+    // The refusal described the attempt that was just abandoned. Left standing, coming back to
+    // this screen shows an error over an empty field, and switching to the QR tab shows one over a
+    // camera that has scanned nothing.
+    setRejected(false)
+    // Whoever abandons the attempt clears its flag: the resolution will not, because by then it
+    // belongs to an attempt nobody is waiting for.
+    attempt.current += 1
+    setBusy(false)
+    dispatch({ type: 'back' })
+  }
+
+  /**
+   * **Checked, then taken over, both before leaving the phrase screen.**
+   *
+   * Checked first so that a phrase with a typo in it never mints anything: the refusal puts
+   * somebody back on the screen with what they typed still on it, and nothing has happened. Taken
+   * over immediately after, so that fetching the profile runs while the next screen is being read
+   * -- on a phone that is the notification question, and the wait after it is often over before it
+   * is drawn. Minting late spends that overlap, which is the one both mobile clients take.
+   *
+   * Going back from there on is a discard rather than a navigation. See `goBack`.
+   */
+  const submitPhrase = (from: RecoveryInput) => {
+    const mine = ++attempt.current
+    setBusy(true)
+    setRejected(false)
+    void check(from, actions)
+      .then(() => actions.restoreAccount(from))
+      .then(() => {
+        if (attempt.current !== mine) return
+        dispatch({ type: 'phraseEntered', from })
+      })
+      .catch(() => {
+        if (attempt.current !== mine) return
+        setRejected(true)
+      })
+      .finally(() => {
+        if (attempt.current !== mine) return
+        setBusy(false)
+      })
+  }
+
   // At `done` the last step stays on screen while the account is made -- see `committingStep`.
   const committingNow = state.step === 'done'
   /**
@@ -199,18 +342,31 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
    * screens that stay up at `done` are exactly the ones whose button was just pressed.
    */
   const working = busy || committingNow
-  const body = screen(committingNow ? committingStep(state) : state.step)
+  const shownStep = committingNow ? committingStep(state) : state.step
+  const body = (
+    <OnboardingScreen
+      step={shownStep}
+      state={state}
+      dispatch={dispatch}
+      busy={working}
+      committing={committingNow}
+      rejected={rejected}
+      profileArrived={profileArrived}
+      onBack={goBack}
+      onAbandonPhrase={abandonPhrase}
+      onSubmitPhrase={submitPhrase}
+    />
+  )
 
   return (
     <ConfirmUrlProvider>
       {/* **Phone only.** The wide designs cross-fade inside the chrome, which is what the desktop
-          client does; a horizontal push is a mobile idiom. Nothing renders at `done`, so there is
-          nothing to slide in either -- wrapping it would animate a blank pane over the last step. */}
-      {!isWideDesign(design) && body !== null ? (
+          client does; a horizontal push is a mobile idiom. */}
+      {!isWideDesign(design) ? (
         <StepTransition
           // The step the commit is drawn over, not `done` -- `body` is that step's screen, and
           // a key change here swaps panes, which remounts it and restarts the wait it is showing.
-          stepKey={committingNow ? committingStep(state) : state.step}
+          stepKey={shownStep}
           direction={state.lastMove}
           instant={flag('disableAnimations')}
         >
@@ -221,119 +377,6 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
       )}
     </ConfirmUrlProvider>
   )
-
-  // eslint-disable-next-line no-restricted-syntax -- picks the one step on screen
-  function screen(step: OnboardingStep) {
-    switch (step) {
-      case 'landing':
-        return (
-          <LandingScreen
-            onCreate={() => {
-              dispatch({ type: 'chooseCreate' })
-            }}
-            onRestore={() => {
-              dispatch({ type: 'chooseRestore' })
-            }}
-          />
-        )
-
-      case 'pickDisplayName':
-        return (
-          <PickDisplayNameScreen
-            afterFailedRestore={state.afterFailedRestore}
-            initialName={state.displayName ?? ''}
-            rejected={state.commitFailed}
-            busy={working}
-            onBack={goBack}
-            onContinue={(name) => {
-              dispatch({ type: 'nameEntered', name })
-            }}
-          />
-        )
-
-      case 'loadAccount':
-        return (
-          <LoadAccountScreen
-            busy={working}
-            rejected={rejected}
-            backDisabled={working}
-            onBack={() => {
-              // The refusal described the attempt that was just abandoned. Left standing, coming
-              // back to this screen shows an error over an empty field, and switching to the QR
-              // tab shows one over a camera that has scanned nothing.
-              setRejected(false)
-              // Whoever abandons the attempt clears its flag: the resolution will not, because
-              // by then it belongs to an attempt nobody is waiting for.
-              attempt.current += 1
-              setBusy(false)
-              dispatch({ type: 'back' })
-            }}
-            onContinue={(from) => {
-              // **Checked, then taken over, both before leaving this screen.**
-              //
-              // Checked first so that a phrase with a typo in it never mints anything: the refusal
-              // puts somebody back on this screen with what they typed still on it, and nothing
-              // has happened. Taken over immediately after, so that fetching the profile runs
-              // while the next screen is being read -- on a phone that is the notification
-              // question, and the wait after it is often over before it is drawn. Minting late
-              // spends that overlap, which is the one both mobile clients take.
-              //
-              // Going back from here on is a discard rather than a navigation. See `goBack`.
-              const mine = ++attempt.current
-              setBusy(true)
-              setRejected(false)
-              void check(from, actions)
-                .then(() => actions.restoreAccount(from))
-                .then(() => {
-                  if (attempt.current !== mine) return
-                  dispatch({ type: 'phraseEntered', from })
-                })
-                .catch(() => {
-                  if (attempt.current !== mine) return
-                  setRejected(true)
-                })
-                .finally(() => {
-                  if (attempt.current !== mine) return
-                  setBusy(false)
-                })
-            }}
-          />
-        )
-
-      case 'messageNotifications':
-        return (
-          <MessageNotificationsScreen
-            busy={working}
-            onBack={goBack}
-            onContinue={(mode) => {
-              dispatch({ type: 'notificationsChosen', mode, profileArrived })
-            }}
-          />
-        )
-
-      case 'loading':
-        return (
-          <LoadingScreen
-            onBack={goBack}
-            backDisabled={committingNow}
-            onGaveUp={
-              // Null once the account is being made: the wait is over, and a deadline still
-              // running would announce a timeout on top of a restore that already arrived.
-              committingNow
-                ? null
-                : () => {
-                    dispatch({ type: 'restoreGaveUp' })
-                  }
-            }
-          />
-        )
-
-      case 'done':
-        // Unreachable: `done` renders the step it was reached from. Here because the switch is
-        // exhaustive over the step type, which is what makes a new step a compile error.
-        return null
-    }
-  }
 }
 
 /**
