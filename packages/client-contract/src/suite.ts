@@ -10,7 +10,9 @@
  */
 
 import {
+  ATTACHMENT_NOT_FOUND,
   FILE_NOT_FOUND,
+  MESSAGE_NOT_FOUND,
   SessionClientError,
   type AttachmentAvailability,
   type Conversation,
@@ -725,6 +727,30 @@ export function runSessionClientContract(
       expect(seen.events.filter((e) => e.type === 'attachment-progress')).toEqual([])
       expect((await at())?.availability).toBe('notFound')
       seen.stop()
+    })
+
+    it('refuses an attachment of a message that does not exist', async () => {
+      const { alice } = await harness.friends()
+      const destination = `/tmp/contract-missing-${String(Date.now())}.bin`
+
+      const download = await failure(() => alice.downloadAttachment(999_999, 0))
+      const exported = await failure(() => alice.exportAttachment(999_999, 0, destination))
+
+      expect(download instanceof SessionClientError && download.code).toBe(MESSAGE_NOT_FOUND)
+      expect(exported instanceof SessionClientError && exported.code).toBe(MESSAGE_NOT_FOUND)
+    })
+
+    it('refuses an attachment index the message does not have', async () => {
+      const { client, messageId, index } = await harness.withAttachment()
+      const destination = `/tmp/contract-missing-${String(Date.now())}.bin`
+
+      const download = await failure(() => client.downloadAttachment(messageId, index + 1))
+      const exported = await failure(() =>
+        client.exportAttachment(messageId, index + 1, destination),
+      )
+
+      expect(download instanceof SessionClientError && download.code).toBe(ATTACHMENT_NOT_FOUND)
+      expect(exported instanceof SessionClientError && exported.code).toBe(ATTACHMENT_NOT_FOUND)
     })
 
     it('announces an attachment as fetching while its download runs', async () => {
