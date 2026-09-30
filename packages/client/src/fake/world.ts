@@ -19,6 +19,7 @@ import {
   ATTACHMENT_NOT_FOUND,
   FILE_NOT_FOUND,
   FILE_UNREADABLE,
+  MESSAGE_NOT_FOUND,
   type AccountInfo,
   type Attachment,
   type AttachmentAvailability,
@@ -133,12 +134,15 @@ function refuseVerdict(ref: AttachmentRef, verdict: Verdict): Promise<never> {
   return Promise.reject(new SessionClientError(message, VERDICT_ERRORS[verdict]))
 }
 
-function refuseMissing(ref: AttachmentRef): Promise<never> {
+function refuseMissing(ref: AttachmentRef, messageExists: boolean): Promise<never> {
+  const id = String(ref.messageId)
   return Promise.reject(
-    new SessionClientError(
-      `Message ${String(ref.messageId)} has no attachment ${String(ref.index)}`,
-      ATTACHMENT_NOT_FOUND,
-    ),
+    messageExists
+      ? new SessionClientError(
+          `Message ${id} has no attachment ${String(ref.index)}`,
+          ATTACHMENT_NOT_FOUND,
+        )
+      : new SessionClientError(`There is no message ${id}`, MESSAGE_NOT_FOUND),
   )
 }
 
@@ -559,6 +563,13 @@ export class FakeAccount {
     return undefined
   }
 
+  private hasMessage(messageId: number): boolean {
+    for (const [, state] of this.conversations) {
+      if (state.messages.some((m) => m.id === messageId)) return true
+    }
+    return false
+  }
+
   isCached(ref: AttachmentRef): boolean {
     return this.cached.has(keyOf(ref))
   }
@@ -656,7 +667,7 @@ export class FakeAccount {
    */
   downloadAttachment(ref: AttachmentRef): Promise<void> {
     const key = keyOf(ref)
-    if (!this.locate(ref)) return refuseMissing(ref)
+    if (!this.locate(ref)) return refuseMissing(ref, this.hasMessage(ref.messageId))
     if (this.cached.has(key)) return Promise.resolve()
 
     const joined = this.downloading.get(key)
@@ -703,7 +714,7 @@ export class FakeAccount {
    */
   exportAttachment(ref: AttachmentRef, destination: string, replace = false): Promise<string> {
     const found = this.locate(ref)
-    if (!found) return refuseMissing(ref)
+    if (!found) return refuseMissing(ref, this.hasMessage(ref.messageId))
 
     const verdict = this.cached.has(keyOf(ref)) ? undefined : this.verdicts.get(keyOf(ref))
     if (verdict !== undefined) return refuseVerdict(ref, verdict)

@@ -329,9 +329,6 @@ export class FakeSessionClient implements SessionClient {
 
   downloadAttachment(messageId: number, index: number): Promise<void> {
     this.assertOpen()
-    if (!this.account.locate({ messageId, index })) {
-      return Promise.reject(new SessionClientError(`No attachment ${messageId}:${index}`))
-    }
     return this.account.downloadAttachment({ messageId, index })
   }
 
@@ -342,9 +339,6 @@ export class FakeSessionClient implements SessionClient {
     options?: ExportAttachmentOptions,
   ): Promise<string> {
     this.assertOpen()
-    if (!this.account.locate({ messageId, index })) {
-      return Promise.reject(new SessionClientError(`No attachment ${messageId}:${index}`))
-    }
     return this.account.exportAttachment({ messageId, index }, destination, options?.replace)
   }
 
