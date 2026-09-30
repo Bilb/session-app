@@ -12,6 +12,7 @@ import {
   TILE_BADGE_INSET,
   TILE_HAIRLINE_WIDTH,
   TILE_SCRIM,
+  tilePlaceholder,
   tileRadius,
 } from './attachmentTileStyle'
 import { Icon } from './Icon'
@@ -130,8 +131,8 @@ export const AttachmentTile = memo(function AttachmentTile({
   const [loadedUri, setLoadedUri] = useState<string | null>(null)
   const drawable = uri !== undefined && uri !== null
   const here = drawable && loadedUri === uri
-  /** The sender's placeholder, where there is one and this platform can resolve it. */
-  const placeholder = preview !== undefined && preview !== null ? preview : null
+  const [failedPreview, setFailedPreview] = useState<string | null>(null)
+  const placeholder = tilePlaceholder(preview, failedPreview)
 
   return (
     <YStack
@@ -156,7 +157,15 @@ export const AttachmentTile = memo(function AttachmentTile({
           hash, so for every message that exists today this is the glyph. */}
       {placeholder !== null ? (
         <YStack position="absolute" top={0} bottom={0} left={0} right={0}>
-          <Image uri={placeholder} width={side} height={side} borderRadius={radius} />
+          <Image
+            uri={placeholder}
+            width={side}
+            height={side}
+            borderRadius={radius}
+            onError={() => {
+              setFailedPreview(placeholder)
+            }}
+          />
         </YStack>
       ) : (
         <YStack

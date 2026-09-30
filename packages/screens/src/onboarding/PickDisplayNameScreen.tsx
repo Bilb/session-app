@@ -59,6 +59,8 @@ export function PickDisplayNameScreen({
       title={afterFailedRestore ? tr('displayNameNew') : tr('displayNamePick')}
       description={afterFailedRestore ? tr('displayNameErrorNew') : tr('displayNameDescription')}
       onBack={onBack}
+      // A back press while the account is being made, or discarded, starts a second one.
+      backDisabled={busy}
       testID={ELEMENT.onboarding.displayNameScreen}
       footer={
         <Button

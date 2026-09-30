@@ -147,6 +147,8 @@ export function serveMedia(bridge: MediaSource): void {
       // Only a failure after a transfer started is on the frame stream too. A verdict, a missing
       // message or a failed preview is known from this status alone, so whoever draws the url
       // has to handle the image failing. Not stored, so the url is asked again after a retry.
+      // TODO: once sending exists, serve a sender's own attachment from its local copy while it
+      // uploads; libsession refuses a file not uploaded yet, so that picture is a 404 here.
       return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } })
     }
   })
