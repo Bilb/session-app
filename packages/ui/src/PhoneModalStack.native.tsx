@@ -27,21 +27,14 @@ export interface PhoneModalStackProps {
   closeLabel: string
   /** Closes the modal from its first screen, or undefined where it cannot be left that way. */
   onClose?: (() => void) | undefined
-  /** The platform took screens off -- a back swipe, the back button -- and the stack must follow. */
+  /** The platform removed `count` screens (back swipe, back button); the stack must follow. */
   onPop: (count: number) => void
   closeTestID?: string | undefined
 }
 
 /**
- * A modal's screens on a phone, on the platform's own navigation stack.
- *
- * What the iOS client does with settings: a full-screen modal holding a navigation controller, so a
- * pushed screen arrives with the system's push, its title and back button in the system's bar, and
- * the back swipe. Android gets its own native stack and bar the same way. The close is the bar's
- * leading item on the first screen; a pushed screen has back there instead.
- *
- * The stack still decides what is on it. A swipe or the back button that takes screens off is
- * reported through `onPop`, and the stack follows, as it follows any other move.
+ * A modal's screens on a phone, on the platform's native stack and bar. `screens` stays the source
+ * of truth: screens the platform removes (back swipe, back button) are reported through `onPop`.
  */
 export function PhoneModalStack({
   screens,
@@ -52,8 +45,7 @@ export function PhoneModalStack({
 }: PhoneModalStackProps) {
   const background = useTokenColor('$backgroundPrimary')
   const text = useTokenColor('$textPrimary')
-  // The modal runs to the bottom of the screen, under the home indicator. Whatever sits last -- the
-  // end of the scroll, or a screen's footer -- is held clear of it.
+  // The modal runs under the home indicator; the last thing on a screen is held clear of it.
   const bottom = useScreenInsets().bottom
 
   return (
@@ -69,8 +61,7 @@ export function PhoneModalStack({
           contentStyle={[styles.fill, { backgroundColor: background }]}
           headerConfig={{
             title: screen.title,
-            // 26 bold, as both phone clients draw a settings title -- on the first screen and on a
-            // pushed one alike. The system's own is 17, which reads as a different, lesser screen.
+            // 26 bold on every screen, as both phone clients draw a settings title.
             titleFontSize: FONT_SIZE.headingLarge,
             titleFontWeight: '700',
             backgroundColor: background,
@@ -84,8 +75,8 @@ export function PhoneModalStack({
               at === 0 && onClose !== undefined ? (
                 <ScreenStackHeaderLeftView>
                   {BAR_DRAWS_BUTTON ? (
-                    // A bare glyph, as the system's own back button is: the bar draws the glass
-                    // button around it, and a pressed state of ours on top reads as two buttons.
+                    // A bare glyph: the bar draws the glass button, so a pressed state of ours
+                    // would read as two buttons.
                     <PressArea
                       accessibilityLabel={closeLabel}
                       onPress={onClose}
@@ -94,8 +85,6 @@ export function PhoneModalStack({
                       {() => <Icon name="x" size="lg" color="$textPrimary" />}
                     </PressArea>
                   ) : (
-                    // Where the bar draws nothing, the desktop's close: a circle that fills while
-                    // it is held, so the glyph is not the whole control.
                     <XStack alignItems="center" gap={TITLE_AFTER_CLOSE}>
                       <BarButton
                         icon="x"
@@ -103,8 +92,7 @@ export function PhoneModalStack({
                         onPress={onClose}
                         testID={closeTestID}
                       />
-                      {/* Android's bar drops its title once there is a leading item, so the title
-                          is drawn here, where a pushed screen's sits after its back arrow. */}
+                      {/* Android's bar drops its title once there is a leading item. */}
                       {Platform.OS === 'android' ? (
                         <Text size="$headingLarge" weight="bold" numberOfLines={1}>
                           {screen.title}
@@ -137,17 +125,11 @@ export function PhoneModalStack({
   )
 }
 
-/**
- * Whether the bar draws its own button around a leading item. iOS 26's bars put a glass button
- * behind it, which answers a press itself; earlier iOS and Android draw nothing.
- */
+/** iOS 26's bars draw a glass button around a leading item; earlier iOS and Android do not. */
 const BAR_DRAWS_BUTTON =
   Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26
 
-/**
- * The room between the close and the title on Android, so the title starts where the bar puts a
- * pushed screen's after its back arrow -- measured against Help's, rather than a rung of the scale.
- */
+/** Lines the Android title up with where the bar places a pushed screen's title; off-scale. */
 const TITLE_AFTER_CLOSE = 19
 
 const styles = StyleSheet.create({ fill: { flex: 1 } })

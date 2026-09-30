@@ -12,13 +12,9 @@ const wrappers = readdirSync(SRC)
   .filter(({ source }) => source.includes('<PressArea'))
 
 /**
- * A frame inside a `PressArea` that declares a `pressStyle` must let the touch through.
- *
- * tamagui attaches its own press handling on native to any view that declares one, so the frame
- * claims the touch and the `Pressable` around it never fires: the control draws and cannot be
- * pressed on a phone, while on the web -- where the passthrough is empty -- it works.
- *
- * A grep, as `Button.contract.test.ts` is: this package has no native renderer to press with.
+ * On native, tamagui gives any view declaring a `pressStyle` its own press handling, so the frame
+ * claims the touch and the `Pressable` around it never fires; the web is unaffected. A grep because
+ * this package has no native renderer to press with.
  */
 describe('a PressArea frame with a press style', () => {
   it('is found by this test at all, so a move cannot make it vacuous', () => {

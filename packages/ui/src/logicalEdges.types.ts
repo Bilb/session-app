@@ -4,9 +4,8 @@
  * `start` is where a line begins and `end` where it finishes: left and right respectively in
  * English, the other way round in Arabic.
  *
- * Pixels, or a percentage -- the tab indicator is placed by its share of the bar. **Not tokens**:
- * these reach the platform as raw style, where tamagui resolves nothing, so a `$` name is dropped
- * without complaint. A caller with a rung in mind reads its number from the scale.
+ * Pixels or a percentage, never tokens: these reach the platform as raw style, where tamagui
+ * resolves nothing, so a `$` name is silently dropped. Read a rung's number from the scale.
  */
 type LogicalLength = number | `${number}%`
 
@@ -21,6 +20,6 @@ export interface LogicalEdges {
   insetEnd?: LogicalLength
   /** A rule down the trailing edge: the divider between two panes, which mirrors with them. */
   borderEndWidth?: LogicalLength
-  /** A colour the platform can draw, from `useTokenColor` -- never a `$` name. See the lengths. */
+  /** From `useTokenColor`, never a `$` name, for the same reason as the lengths. */
   borderEndColor?: string
 }

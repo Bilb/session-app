@@ -28,10 +28,7 @@ const SURFACES = [
   '$backgroundNested',
 ]
 
-/**
- * The states laid over a surface rather than replacing it, which body text is held to clear on
- * every rung as well -- `overlays.test.ts` in theme-tokens is where that is asserted.
- */
+/** Laid over a surface, not replacing it; theme-tokens' `overlays.test.ts` keeps text readable. */
 const OVERLAYS = ['$hoverOverlay', '$pressedOverlay']
 
 /** Whether a state's declared background leaves the surface ladder. */

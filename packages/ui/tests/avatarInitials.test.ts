@@ -18,7 +18,6 @@ describe('avatarInitials', () => {
     expect(avatarInitials('  bob  ', ID)).toBe('BO')
   })
 
-  /** The two characters after the prefix, as a one-word name gives two. */
   it('shows the two characters after the account ID’s prefix when there is no name, or the name is the ID', () => {
     expect(avatarInitials('', ID)).toBe('AB')
     expect(avatarInitials(ID, ID)).toBe('AB')

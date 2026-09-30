@@ -91,10 +91,7 @@ const Frame = styled(XStack, {
           opacity: 0.82,
         },
       },
-      /**
-       * Laid over whatever is behind it rather than swapped for a surface, so the step shows on a
-       * dialog, on a card, and on a row that is hovered itself.
-       */
+      /** Overlays rather than surfaces, so the step shows on any ground, even a hovered row. */
       ghost: {
         backgroundColor: 'transparent',
         borderColor: 'transparent',

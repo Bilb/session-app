@@ -54,12 +54,8 @@ const SELECTION = `::selection {
 }`
 
 /**
- * The desktop client's scrollbar: six pixels, rounded, and nearly invisible until it is reached for.
- *
- * Muted text washed to a tenth for the track and a fifth for the thumb, full strength under the
- * pointer -- the client's own values are exactly its muted text at those alphas, so taking the role
- * rather than the colours keeps them right in every theme. The platform's default is a light grey
- * gutter that reads as part of the layout on a dark theme.
+ * The desktop client's scrollbar. Its colours are exactly muted text at these alphas, so taking the
+ * role keeps them right in every theme; the platform default is a grey gutter on a dark theme.
  */
 const SCROLLBAR = `::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track {

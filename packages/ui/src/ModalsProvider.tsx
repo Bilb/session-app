@@ -16,43 +16,29 @@ export interface ModalScreen {
   /** Drawn in the modal's own header, so a screen does not draw a title of its own. */
   title: string
   render: () => ReactNode
-  /**
-   * The row of actions along the bottom, outside the scrolling body.
-   *
-   * The client's `buttonChildren`, and the same division of labour: the frame belongs to the
-   * modal and what goes in it belongs to the screen, so a screen with nothing to confirm simply
-   * does not supply one.
-   */
+  /** Actions along the bottom, outside the scrolling body: the client's `buttonChildren`. */
   footer?: () => ReactNode
 }
 
 export interface ModalPresentation {
   /**
-   * A panel of screens, or a single alert. Defaults to `panel`.
-   *
-   * An alert is `Modal`'s dialog shown over the stack -- a confirm asked from inside settings --
-   * so there is one alert in the app however it was opened. It has one screen: its title, its body
-   * and its footer as the actions.
+   * A panel of screens, or a single alert. Defaults to `panel`. An alert is drawn as `Modal`'s
+   * `AlertBox`, with its one screen's footer as the actions.
    */
   kind?: 'panel' | 'alert'
   /** Which of the client's three widths a panel draws at. Defaults to `normal`. */
   width?: PanelWidth
-  /** The alert's own ids, since an alert is not the settings panel and a test addresses it. */
+  /** An alert's own test ids. */
   testID?: string
   closeTestID?: string
   /**
-   * Whether the scrim, Escape and the hardware back button may close it. Defaults to true.
-   *
-   * Off for something that has to be answered. It does not stop the modal's *own* screens being
-   * walked back -- a wizard that must be finished can still have a back control.
+   * Whether the scrim, Escape and the hardware back button may close it. Defaults to true. Its own
+   * screens can still be walked back either way.
    */
   dismissible?: boolean
   /**
-   * Whether an alert draws the cross in its corner. Defaults to `dismissible`.
-   *
-   * Off for one that asks a question and puts its own Cancel in the actions: a cross beside two
-   * labelled answers is a third, unlabelled one. Such an alert can still be left from the scrim --
-   * the desktop client's Clear All Data has no cross and closes on a click outside.
+   * Whether an alert draws the cross in its corner. Defaults to `dismissible`. Turn it off when the
+   * actions include a Cancel; the scrim still closes it, as in the desktop client's Clear All Data.
    */
   showClose?: boolean
   /** The screen it opens on. Further screens arrive through `push`. */
@@ -60,11 +46,8 @@ export interface ModalPresentation {
 }
 
 /**
- * A screen as the stack holds it.
- *
- * With an identity of its own, because every screen of a panel stays mounted: a screen popped and
- * another pushed in its place has to be a new component, not the old one's -- scroll position and
- * all -- showing different contents.
+ * A screen with a key of its own: every screen stays mounted, so one pushed in place of a popped
+ * one must remount rather than inherit the old one's state.
  */
 interface HeldScreen extends ModalScreen {
   key: string
@@ -94,44 +77,29 @@ export interface Modals {
   /** Closes everything, for a navigation that leaves the surface the modals belong to. */
   dismissAll: () => void
   /**
-   * Stops the named modal being dismissed from the scrim, Escape or the back button, for one whose
-   * action has started: leaving a confirm while what it confirmed is still running says it was
-   * cancelled when it was not. Unknown ids are ignored.
+   * Makes the named modal non-dismissible, for a confirm whose action is running: leaving it then
+   * implies a cancel that did not happen. Unknown ids are ignored.
    */
   lock: (id: string) => void
 }
 
 const ModalsContext = createContext<Modals | null>(null)
 
-/** The stack itself, for the host that draws it. Separate so a caller re-renders only on its own. */
+/** Separate from `ModalsContext` so `useModals` callers do not re-render on every stack change. */
 const EntriesContext = createContext<readonly OpenModal[]>([])
 
 /**
- * Holds what is open over the page.
- *
- * **One provider for the whole app, mounted at the root.** A modal opened from a settings row three
- * components deep must not be drawn inside that row -- it belongs over everything, it has to
- * outlive the row being unmounted, and a modal that opens another has to be able to sit under it.
- * So callers name what they want opened and nothing else; where it is drawn is this module's.
- * Inside the store and the navigator, since what it draws are screens that read both.
- *
- * The rules for what closes what are in `modalStack.ts`, deliberately apart from react: they are
- * the part worth holding still.
+ * Holds what is open over the page. Mount once at the app root, inside the store and the
+ * navigator, since the screens it draws read both.
  */
 export function ModalStackProvider({ children }: { children: ReactNode }) {
   const [entries, setEntries] = useState<readonly OpenModal[]>([])
 
-  /**
-   * Ids are a counter rather than the array's length or a random value: length repeats as soon as
-   * something is closed and reopened, and a close handler holding the old id would then shut the
-   * new modal. Monotonic means an id names one presentation for ever.
-   */
+  // Monotonic, so a stale close handler can never match a later modal.
   const nextId = useRef(0)
 
   const modals = useMemo<Modals>(() => {
-    // Acts on the frontmost modal, because that is the only one anybody can be interacting with.
-    // Returning the stack unchanged when there is nothing to do keeps every caller free of the
-    // check -- `pop` on a first screen is what a back control does at the bottom of one.
+    // Applies `change` to the frontmost modal; `null` leaves the stack unchanged.
     function mapTop(change: (entry: OpenModal) => OpenModal | null): void {
       setEntries((current) => {
         const top = current.at(-1)
@@ -173,13 +141,6 @@ export function ModalStackProvider({ children }: { children: ReactNode }) {
         setEntries((current) => dismissFrom(current, id))
       },
 
-      /**
-       * Pushes a screen, keeping the one below it.
-       *
-       * **A history stack, not a parent map**: back returns where you came from, so a screen
-       * reachable from two places needs no table saying which one it returns to, and cannot return
-       * to the wrong one.
-       */
       push: (screen) => {
         const key = `screen-${String(nextId.current++)}`
         mapTop((top) => ({
@@ -243,12 +204,7 @@ export function useModalEntries(): readonly OpenModal[] {
   return useContext(EntriesContext)
 }
 
-/**
- * What the frontmost modal's chrome shows, and what its controls do.
- *
- * Asked for rather than passed down, so a screen deep inside a modal can push another screen
- * without every component between it and the host forwarding a callback.
- */
+/** The frontmost modal's title and navigation, for a screen deep inside it. */
 export function useModalNavigation(): {
   title: string
   canGoBack: boolean

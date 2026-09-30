@@ -84,13 +84,12 @@ export const ELEMENT = {
     cacheFolder: 'settings-cache-folder',
     cacheUsage: 'settings-cache-usage',
     cacheLimit: 'settings-cache-limit',
-    /** The modal the settings tree is drawn in, and the controls in its chrome. */
     modal: 'settings-modal',
     modalClose: 'settings-modal-close',
     modalBack: 'settings-modal-back',
-    /** One row of the root list, addressed by what it leads to rather than by position. */
+    /** A root-list row, keyed by where it leads rather than by position. */
     row: (name: string) => `settings-row-${name}` as const,
-    /** The version stamp along the bottom, which is also the debug-mode control. */
+    /** The version stamp, which is also the debug-mode control. */
     version: 'settings-version',
     commit: 'settings-commit',
   },

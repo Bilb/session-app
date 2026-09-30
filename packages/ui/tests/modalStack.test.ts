@@ -24,7 +24,6 @@ describe('backAction', () => {
   })
 
   it('answers for the topmost modal, not the one underneath', () => {
-    // Deep in settings, with a confirmation over the top. Back belongs to the confirmation.
     expect(backAction([modal('settings', 4), modal('confirm')])).toEqual({ kind: 'modal' })
   })
 
@@ -37,8 +36,6 @@ describe('backAction', () => {
   })
 
   it('still walks the screens of a modal that refuses dismissal', () => {
-    // Refusing to be closed is not refusing to be navigated: a wizard that must be finished can
-    // still have its own back.
     expect(backAction([modal('wizard', 2, false)])).toEqual({ kind: 'screen' })
   })
 })
@@ -67,8 +64,7 @@ describe('dismissFrom', () => {
   })
 
   it('does not hand back the array it was given', () => {
-    // The stack goes into react state, where mutating the previous value is invisible until it is
-    // not. Every path returns a new array, including the ones that change nothing.
+    // The result goes into react state, so even a no-op must not return the previous value.
     const stack = [modal('a')]
     expect(dismissFrom(stack, 'gone')).not.toBe(stack)
   })

@@ -5,9 +5,8 @@ import { logical, backChevron, BarButton, YStack } from '@session/ui'
 /**
  * The way back out of an onboarding step, drawn in four places.
  *
- * A bar button, so on iOS 26 it sits on glass like the back in the system's own bar on the Help
- * screen, and elsewhere is the desktop's circle. Told what back means because onboarding's steps
- * are not routes.
+ * A bar button, so on iOS 26 it sits on glass like the system's own back, and elsewhere is the
+ * desktop's circle. Told what back means because onboarding's steps are not routes.
  */
 export function OnboardingBackButton({
   onPress,
@@ -30,16 +29,10 @@ export function OnboardingBackButton({
 /** The control's width: a `md` circular bar button's. */
 const BACK_WIDTH = 40
 
-/**
- * Air between the control and the heading. Glass on iOS 26 makes the whole circle visible, so it
- * has to clear the text rather than only the glyph.
- */
+/** Clears the heading with the whole circle, which iOS 26's glass makes visible. */
 const BACK_GAP = 6
 
-/**
- * Where the heading starts, measured from the column's edge. The control and the heading share a
- * row, so moving one alone means the gap has to be taken out of the offset.
- */
+/** Where the heading starts, from the column's edge. */
 const HEADING_INSET = 4
 
 /**
@@ -57,8 +50,8 @@ export function WideBackButton({
 }) {
   return (
     <YStack
-      // Negative, because the control hangs outside the fixed-width column rather than sitting in
-      // it; the end margin is the gap, so the heading stays put however far out the control hangs.
+      // Negative, because the control hangs outside the fixed-width column. The end margin is the
+      // gap, so the heading stays put however far out the control hangs.
       {...logical({ marginStart: HEADING_INSET - BACK_WIDTH - BACK_GAP, marginEnd: BACK_GAP })}
       height={34}
       justifyContent="center"

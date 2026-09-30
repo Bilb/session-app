@@ -2,9 +2,8 @@
 const ID_PREFIX = /^(05|15|25|00|03)[0-9a-f]{2,}$/i
 
 /**
- * Characters as a reader counts them. An emoji built from several code points is one, and so is a
- * letter with its accent; slicing code units would cut an emoji initial in half.
- * Code points where the runtime has no segmenter, which splits only the composed emoji.
+ * Characters as a reader counts them, so an emoji initial is not cut in half. Code points where
+ * the runtime has no segmenter, which splits only composed emoji.
  */
 function graphemes(text: string): string[] {
   if (typeof Intl.Segmenter === 'function')
@@ -15,22 +14,15 @@ function graphemes(text: string): string[] {
 }
 
 /**
- * The letters an avatar shows until it has a picture: one rule for every platform, where the three
- * clients each have their own.
- *
- * - **A name of one word gives its first two characters**, as all three do.
- * - **Several words give the first character of each of the first two**, split at spaces and
- *   hyphens as the desktop client splits them.
- * - **No name falls back to the account ID, past its prefix**, and takes the two characters after
- *   it, the way a one-word name gives two -- the product owner's call, so an unnamed avatar is as
- *   full as a named one.
- * - Letters of any script and emoji are kept whole, as the phones keep them.
- * - Upper-cased for the locale before counting, so a German ß becomes the SS it is in capitals.
+ * The letters an avatar shows until it has a picture, one rule for every platform:
+ * - one word gives its first two characters; several give the first of each of the first two,
+ *   split at spaces and hyphens as the desktop client splits them;
+ * - no name gives the two characters after the account ID's prefix (the product owner's call);
+ * - upper-cased for the locale before counting, so ß becomes SS.
  */
 export function avatarInitials(name: string, id: string): string {
   const trimmed = name.trim()
-  // With no name the ID is taken past its prefix whatever follows it. The pattern only tells a name
-  // that is an ID from one that is not.
+  // The pattern only spots a name that is an ID; the ID itself is sliced whatever its content.
   if (trimmed === '' || ID_PREFIX.test(trimmed))
     return graphemes(trimmed === '' ? id.trim() : trimmed)
       .slice(2, 4)

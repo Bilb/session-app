@@ -8,9 +8,8 @@ import { ELEMENT } from '@session/test-ids'
 const repoRoot = join(import.meta.dirname, '../../..')
 
 /**
- * The little of the page's DOM the scroll check touches, declared here rather than by adding `dom`
- * to this package's lib: harness code runs in Node, and only these bodies run in the renderer. The
- * same arrangement as `DesktopApp.ts`'s page globals.
+ * The DOM the renderer-side bodies touch, declared here because harness code runs in Node and
+ * this package's lib has no `dom`.
  */
 interface PageNode {
   scrollTop: number
@@ -22,17 +21,8 @@ interface PageGlobals {
 }
 
 /**
- * Settings opens over the list, walks into a child screen, comes back, and asks on top of itself.
- *
- * **The whole point of the spec is the two stacks interacting**, and nothing smaller can see it.
- * `modalStack.ts`'s unit tests cover the rules, but they are given a stack -- they cannot show that
- * pushing a screen and closing a nested modal leave the tree where it was. And a render test cannot
- * either: the host draws inside the platform's modal, which is where a mistake about what covers
- * what actually shows up.
- *
- * Four things are asserted in one pass rather than four specs, because each needs the state the one
- * before it left behind: a fresh launch per assertion would spend twenty seconds getting back to
- * where the last one finished.
+ * The two stacks interacting inside the platform's modal, which only an e2e run can see. One pass
+ * rather than four specs because each step needs the state the last one left.
  */
 test('settings opens over the list, pushes Help, and asks on top of itself', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'session-settings-modal-'))
@@ -58,13 +48,11 @@ test('settings opens over the list, pushes Help, and asks on top of itself', asy
   await page.getByTestId(ELEMENT.conversationList.screen).first().waitFor({ timeout: 25_000 })
   await page.getByTestId(ELEMENT.conversationList.settings).first().click()
 
-  // The account ID is the one thing this screen exists to hand somebody, so it is what says the
-  // screen arrived rather than the modal frame around it.
+  // The account ID, not the modal frame, is what says the screen arrived.
   await expect(page.getByTestId(ELEMENT.settings.accountId).first()).toBeVisible()
-  // Nothing to go back to yet. A back control on a first screen is the classic off-by-one here.
   await expect(page.getByTestId(ELEMENT.settings.modalBack)).toHaveCount(0)
 
-  // Scrolled far enough to bring Help into view, so there is a position for going back to keep.
+  // A scroll position for going back to preserve.
   const scrolledTo = await page.evaluate((helpId) => {
     const { document } = globalThis as unknown as PageGlobals
     const help = document.querySelector(`[data-testid="${helpId}"]`)
@@ -78,9 +66,8 @@ test('settings opens over the list, pushes Help, and asks on top of itself', asy
 
   await page.getByTestId(ELEMENT.settings.row('help')).first().click()
   await expect(page.getByTestId(ELEMENT.help.link('faq')).first()).toBeVisible()
-  // One modal, one screen deeper: the back control appears, and the root is kept but hidden --
-  // still mounted, so going back returns to it as it was, but out of reach of a press or a screen
-  // reader. Playwright counts `opacity: 0` as visible, so the hiding is read off the tree.
+  // The root stays mounted but hidden. Playwright counts `opacity: 0` as visible, so the hiding
+  // is read off `aria-hidden`.
   await expect(page.getByTestId(ELEMENT.settings.modalBack).first()).toBeVisible()
   const hiddenRoot = page.locator(
     `[aria-hidden="true"] [data-testid="${ELEMENT.settings.accountId}"]`,
@@ -90,8 +77,7 @@ test('settings opens over the list, pushes Help, and asks on top of itself', asy
   await page.getByTestId(ELEMENT.settings.modalBack).first().click()
   await expect(hiddenRoot).toHaveCount(0)
   await expect(page.getByTestId(ELEMENT.settings.modalBack)).toHaveCount(0)
-  // **Back to the same place, not the top.** The root never went, so its scroll position did not
-  // either.
+  // Back to the same scroll position, not the top.
   const scrolledBack = await page.evaluate((helpId) => {
     const { document } = globalThis as unknown as PageGlobals
     let at = document.querySelector(`[data-testid="${helpId}"]`)
@@ -100,8 +86,7 @@ test('settings opens over the list, pushes Help, and asks on top of itself', asy
   }, ELEMENT.settings.row('help'))
   expect(scrolledBack).toBe(scrolledTo)
 
-  // **A press on the panel's own empty space is not a press outside it.** The backdrop is a layer
-  // behind the panel, so nothing inside has to stop a press reaching it.
+  // A press on the panel's empty space is not a press outside it.
   const panel = await page.getByTestId(ELEMENT.settings.modal).first().boundingBox()
   if (panel === null) throw new Error('no settings panel')
   await page.mouse.click(panel.x + 12, panel.y + panel.height / 2)
@@ -110,23 +95,21 @@ test('settings opens over the list, pushes Help, and asks on top of itself', asy
   // A second modal over the first, which is the case the platform's own nesting gets wrong.
   await page.getByTestId(ELEMENT.settings.clearData).first().click()
   await expect(page.getByTestId(ELEMENT.settings.confirmClearDataButton).first()).toBeVisible()
-  // **The settings screen is still mounted underneath.** Cancelling has to return to it, and it
-  // can only do that by never having gone.
+  // Settings stays mounted underneath, so Cancel can return to it.
   await expect(page.getByTestId(ELEMENT.settings.accountId).first()).toBeVisible()
 
   await page.getByTestId(ELEMENT.settings.cancelClearData).first().click()
   await expect(page.getByTestId(ELEMENT.settings.confirmClearDataButton)).toHaveCount(0)
   await expect(page.getByTestId(ELEMENT.settings.accountId).first()).toBeVisible()
 
-  // **The scrim leaves the confirm too**, as the desktop client's does -- it has no cross, so this
-  // and Cancel are the ways out -- and only the confirm: settings stays open under it.
+  // The scrim leaves the confirm (it has no cross), and only the confirm.
   await page.getByTestId(ELEMENT.settings.clearData).first().click()
   await expect(page.getByTestId(ELEMENT.settings.confirmClearDataButton).first()).toBeVisible()
   await page.mouse.click(5, 5)
   await expect(page.getByTestId(ELEMENT.settings.confirmClearDataButton)).toHaveCount(0)
   await expect(page.getByTestId(ELEMENT.settings.accountId).first()).toBeVisible()
 
-  // And closing leaves the list, not a blank pane -- settings was never a route.
+  // Closing leaves the list, not a blank pane: settings was never a route.
   await page.getByTestId(ELEMENT.settings.modalClose).first().click()
   await expect(page.getByTestId(ELEMENT.settings.accountId)).toHaveCount(0)
   await expect(page.getByTestId(ELEMENT.conversationList.screen).first()).toBeVisible()

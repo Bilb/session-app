@@ -11,21 +11,16 @@ import { PhoneModalStack } from './PhoneModalStack'
 export type { ModalStackRootProps }
 
 /**
- * The app with its modals, presented on a phone the way the platform presents a modal.
+ * The app with its modals; on a phone each panel is a native full-screen modal holding its own
+ * native stack, as the iOS client presents settings. Inside react-native's `Modal` a
+ * react-native-screens stack receives no taps, so panels cannot go through `ModalStackHost`.
  *
- * **A phone's settings panel is a native full-screen modal**, holding its own navigation stack:
- * what the iOS client does with settings. It slides up and back down with the system's own
- * animation, and its screens are the platform's pushes. Drawn inside react-native's `Modal`
- * instead, the stack's screens receive no taps -- the native stack moves them out of the touch
- * handling a `Modal` gives its content -- while scrolling, being native, still works.
+ * The app is always the root screen of a native stack, even on a tablet: crossing the breakpoint
+ * must not move it in the tree, which would remount all of it.
  *
- * So the app sits in the root screen of a native stack, always, and each phone panel is presented
- * above it. **Always**, not only on a phone: a tablet turning, or a window crossing the breakpoint,
- * must not move the app to a different place in the tree, which would remount all of it.
- *
- * An alert goes through `ModalStackHost`, in the topmost native modal if there is one -- iOS can
- * only present from a screen that is not already presenting -- and from the app otherwise. On a
- * tablet everything goes through the host, as on the desktop.
+ * Alerts go through `ModalStackHost` inside the topmost native modal (iOS cannot present from a
+ * screen that is already presenting), or over the app when none is open. On a tablet everything
+ * goes through the host.
  */
 export function ModalStackRoot({ children, ...host }: ModalStackRootProps) {
   const entries = useModalEntries()
@@ -41,8 +36,7 @@ export function ModalStackRoot({ children, ...host }: ModalStackRootProps) {
         : entries
       : entries.slice(entries.indexOf(lastPanel) + 1)
 
-  // Android's back button, which a native stack presented this way does not answer by itself. One
-  // level, as everywhere: a pushed screen, otherwise the modal.
+  // A native stack presented this way does not answer Android's back button by itself.
   useEffect(() => {
     if (panels.length === 0) return undefined
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -65,13 +59,11 @@ export function ModalStackRoot({ children, ...host }: ModalStackRootProps) {
           key={entry.id}
           screenId={entry.id}
           stackPresentation="fullScreenModal"
-          // Each phone's own entrance: iOS covers from the bottom, and Android fades up from a little
-          // below, as the legacy client's settings activity opens, rather than pushing across.
+          // Android fades up from below, as the legacy client's settings activity opens.
           stackAnimation={Platform.OS === 'android' ? 'fade_from_bottom' : 'default'}
           headerConfig={{ hidden: true }}
           contentStyle={styles.fill}
-          // The platform took it away itself -- nothing does on a full-screen modal today, but
-          // the stack has to follow if it ever does.
+          // If the platform ever dismisses it itself, the stack has to follow.
           onDismissed={() => {
             modals.dismiss(entry.id)
           }}

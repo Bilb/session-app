@@ -42,11 +42,9 @@ export function RecoveryPasswordMark({ size, color }: MarkProps) {
 }
 
 /**
- * The filled shield with the keyhole cut through it: the Recovery Password row's glyph.
- *
- * Not `RecoveryPasswordMark` above, which is the outline with the loop inside it and belongs beside
- * the heading. **`evenodd` on the path**, not on the `Svg`: react-native-svg reads the fill rule
- * from the shape, and under the default rule the keyhole fills in and the shield draws as a blob.
+ * The filled keyhole shield: the Recovery Password row's glyph (`RecoveryPasswordMark` is the
+ * heading's). `evenodd` must be on the path, not the `Svg`: react-native-svg reads the fill rule
+ * from the shape, and without it the keyhole fills in.
  */
 export function RecoveryPasswordShield({ size, color }: MarkProps) {
   const fill = useTokenColor(color)
@@ -72,11 +70,8 @@ export function SessionTokenMark({ size, color }: MarkProps) {
 }
 
 /**
- * The Pro badge: PRO in the accent's on-colour on a rounded box of the accent.
- *
- * Android's `ic_pro_badge`, which is the whole badge in one drawing, box and letters. Flat on every
- * client -- the gradients belong to the Pro page, not to this. `color` is the box's; the letters take
- * `onAccent`, since they sit on the accent.
+ * The Pro badge, Android's `ic_pro_badge`, flat on every client. `color` is the box's; the letters
+ * take `onAccent`.
  */
 export function ProBadge({ size, color }: MarkProps) {
   const box = useTokenColor(color)

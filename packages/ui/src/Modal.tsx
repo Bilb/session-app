@@ -132,13 +132,11 @@ export function Modal({
           <Blur dark={dark} />
         </YStack>
       )}
-      {/* **A scrim only where there is no blur.** Where there is one there is no scrim at all,
-          which is the legacy client's arrangement: `Modal.dimmingView` is a bare
-          `UIVisualEffectView` pinned to the window, with no tint and no alpha over it. A dim on top
-          of a blur hides the thing the blur exists to show. */}
+      {/* No scrim over a blur, as the legacy client's `Modal.dimmingView` is a bare
+          `UIVisualEffectView`: a dim would hide what the blur shows. */}
       {Blur !== null ? null : <YStack fullscreen backgroundColor="$scrim" />}
-      {/* A press outside the dialog lands here, behind it, rather than on its container: a
-          container that takes presses stops its body scrolling. See `ModalStackHost`'s backdrop. */}
+      {/* Presses outside land here rather than on a pressable container, which would stop the
+          body scrolling. See `ModalStackHost`'s backdrop. */}
       <YStack fullscreen {...(dismiss === undefined ? {} : { onPress: dismiss })} />
       <YStack
         fullscreen
@@ -178,13 +176,7 @@ interface AlertBoxProps {
   bottomInset?: number
 }
 
-/**
- * The dialog itself, without the window it is shown in.
- *
- * Apart from `Modal` so there is one alert in the app however it is presented: `Modal` puts it in a
- * platform modal of its own, and the modal stack draws it over a settings panel. A confirm drawn as
- * a panel would have neither the alert's metrics nor its shape.
- */
+/** The dialog without its window, so `Modal` and the modal stack draw the same alert. */
 export function AlertBox({
   title,
   closeLabel,
@@ -230,9 +222,7 @@ export function AlertBox({
           >
             <Button
               variant="ghost"
-              // The size of the touch target rather than of the glyph, which is the same
-              // reason the onboarding back control is `md`: an `xs` button is a 24pt square to
-              // hit, and a cross in the corner of a dialog is exactly where that is felt.
+              // Sized for the touch target: an `xs` button is a 24pt square to hit.
               size="md"
               circular
               accessibilityLabel={closeLabel}
@@ -247,11 +237,8 @@ export function AlertBox({
       {children}
 
       {actions === undefined ? null : (
-        /* Equal widths running the full width of the dialog, with no gap and no side margins
-           -- the client's `fillEqually`. Each action is as tall as a control rather than as
-           tall as its label. */
-        /* Clipped to the dialog's own corners too, so a cell that fills its width when held
-           stops at the rounded bottom edge rather than squaring it off. */
+        /* Full width, no gap: the client's `fillEqually`. Clipped so a held cell's fill stops
+           at the rounded bottom corners. */
         <XStack
           alignItems="stretch"
           marginTop={ACTIONS_GAP}
@@ -262,10 +249,8 @@ export function AlertBox({
           borderBottomRightRadius={RADIUS}
           overflow="hidden"
         >
-          {/* Each action takes an equal share of the full width -- the client's `fillEqually`
-              -- with no gap, so the two share an edge the way its alert's buttons do. The
-              actions ask for that themselves with `fill`, because a fragment of them arrives
-              here as one child and cannot be divided from the outside. */}
+          {/* The actions take their equal share themselves with `fill`: a fragment of them
+              arrives here as one child and cannot be divided from outside. */}
           {actions}
         </XStack>
       )}

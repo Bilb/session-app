@@ -6,7 +6,6 @@ import { accountIdLines } from '#src/settings/accountIdLines'
 const ID = `05${'ab'.repeat(32)}`
 
 describe('accountIdLines', () => {
-  /** The desktop client's `3lines`: two long lines over a short one. */
   it('breaks a real account ID where the desktop client does', () => {
     expect(accountIdLines(ID).map((line) => line.length)).toEqual([27, 27, 12])
   })

@@ -29,25 +29,14 @@ interface ModalStackHostProps {
   testID?: string
   closeTestID?: string
   backTestID?: string
-  /**
-   * Which of the open modals this draws. All of them unless told otherwise: on a phone the
-   * settings panel is presented natively and only the alerts come through here. See
-   * `ModalStackRoot`.
-   */
+  /** Which open modals to draw; defaults to all. See `ModalStackRoot.native.tsx`. */
   entries?: readonly OpenModal[]
 }
 
 /**
- * Draws whatever `ModalStackProvider` is holding.
- *
- * **One react-native `Modal` for the whole stack, with the layers inside it.** Nesting the
- * platform's own modals is the obvious alternative and it is a trap: on iOS a second one presented
- * from inside the first is a separate window, so the two animate independently, the scrims
- * multiply, and dismissing the outer takes the inner with it whatever the stack says. Keeping one
- * window means the rules in `modalStack.ts` decide what closes, rather than the platform.
- *
- * Mounted once, beside the app's own content rather than inside it -- a modal presented from a
- * settings row has to outlive that row.
+ * Draws whatever `ModalStackProvider` holds, as layers inside one react-native `Modal`. Nested
+ * native modals are separate windows on iOS, which animate and dismiss independently of
+ * `modalStack.ts`. Mount once, beside the app rather than inside it.
  */
 export function ModalStackHost({
   closeLabel,
@@ -65,20 +54,14 @@ export function ModalStackHost({
   const wide = useMedia().gtSm
   const shadowColor = useTokenColor('$shadow')
 
-  // The desktop client's anchoring: a fixed margin from the top of the window and the same at the
-  // bottom, in window height rather than a percentage -- a percentage of padding is measured
-  // against the width.
+  // In pixels, because a percentage padding resolves against the width.
   const { height: windowHeight } = useWindowSize()
   const inset = Math.round(windowHeight * PANEL_INSET_RATIO)
   const panelHeight = windowHeight - 2 * inset
 
   const top = entries.at(-1)
-  // The phone's panel is the whole screen, so it keeps its header out from under the status bar
-  // and its content off the home indicator.
   const screenInsets = useScreenInsets()
-  // **A phone's settings slide up**, as a modal does there; a panel over a wide window fades in,
-  // as the desktop client's does. Decided by what opens the stack: an alert with nothing under it
-  // fades on both.
+  // Decided by the bottom entry, so an alert with nothing under it fades on every width.
   const slides = !wide && entries[0]?.kind === 'panel'
 
   return (
@@ -86,12 +69,10 @@ export function ModalStackHost({
       visible={entries.length > 0}
       transparent
       animationType={slides ? 'slide' : 'fade'}
-      // Escape on the web, the hardware button on Android. Both mean one level, which is not
-      // always the modal: see `backAction`.
+      // Escape on the web, the hardware button on Android: one level, per `backAction`.
       onRequestClose={modals.back}
     >
       {Blur === null ? (
-        // The same backdrop as an alert's, so a panel and a dialog over it dim the page alike.
         <YStack fullscreen backgroundColor="$scrim" />
       ) : (
         <YStack fullscreen>
@@ -108,15 +89,9 @@ export function ModalStackHost({
             }
           : undefined
 
-        // **Each layer above the first sets back what it covers**, the way the desktop client gives
-        // every modal a backdrop of its own: a confirm over settings should push settings back, not
-        // sit level with it. With the backdrop the platform draws -- a blur on iOS, so an alert over
-        // the panel looks as it does on its own; elsewhere black, so the dims compound into darker
-        // rather than lighter.
-        //
-        // A layer of its own drawn before the modal, not a child of it: on the web an absolutely
-        // placed child paints over its in-flow siblings whatever the order, so a dim inside the
-        // layer would cover the very dialog it is meant to sit behind.
+        // Each layer above the first dims what it covers, as the desktop client gives every modal
+        // its own backdrop. A sibling drawn before the modal, not a child: on the web an absolute
+        // child paints over its in-flow siblings, so it would cover the dialog.
         const layerScrim =
           index === 0 ? null : Blur === null ? (
             <YStack fullscreen backgroundColor="$scrim" pointerEvents="none" />
@@ -126,11 +101,9 @@ export function ModalStackHost({
             </YStack>
           )
 
-        // **A press outside the modal lands on a layer of its own**, behind it, rather than on the
-        // modal's container with the modal stopping it. A container that takes presses is a touch
-        // target on native wherever its children are not, so a drag starting in a gap between
-        // groups or on a disabled row goes to it instead of the scroller, and does not scroll. The
-        // layer above lets every touch outside the modal through to this one.
+        // Presses outside land on this layer rather than on a pressable container: on native a
+        // pressable container claims drags that start in gaps or on disabled rows, so they do
+        // not scroll. The layer above passes outside touches through with `box-none`.
         const backdrop = (
           <YStack
             fullscreen
@@ -154,8 +127,7 @@ export function ModalStackHost({
                 <AlertBox
                   title={screen?.title ?? ''}
                   closeLabel={closeLabel}
-                  // See `ModalPresentation.showClose`: leaving from the scrim and offering a cross
-                  // are separate questions.
+                  // Independent of `dismissible`; see `ModalPresentation.showClose`.
                   showClose={entry.showClose}
                   onClose={() => {
                     modals.dismiss(entry.id)
@@ -178,10 +150,8 @@ export function ModalStackHost({
               fullscreen
               alignItems="center"
               {...(wide ? { paddingHorizontal: '$lg', paddingTop: inset } : {})}
-              // Only the frontmost layer answers a press: the ones below it are visible context,
-              // not controls. Without this a tap meant for the scrim of the top modal lands on a
-              // row of the one underneath. `box-none` passes a touch outside the panel down to the
-              // backdrop.
+              // Only the frontmost layer takes presses, or a tap on the top scrim reaches a row
+              // underneath. `box-none` passes a touch outside the panel down to the backdrop.
               pointerEvents={frontmost ? 'box-none' : 'none'}
             >
               <YStack
@@ -189,42 +159,34 @@ export function ModalStackHost({
                 {...(wide
                   ? {
                       maxWidth: PANEL_WIDTH[entry.width],
-                      // **One height for every screen, anchored to the top.** A panel sized to
-                      // each screen moves its bottom edge on every push and, centred, its top edge
-                      // too -- which reads as the panel jumping rather than the screen changing.
-                      // Fixed, a push is only the content changing, and a transition between two
-                      // screens has two boxes of the same size to move between.
+                      // One height for every screen, anchored to the top, so a push does not
+                      // move the panel's edges.
                       height: panelHeight,
                       borderRadius: PANEL_RADIUS,
                       borderWidth: 1,
                       borderColor: '$bordersColor',
                       boxShadow: `0px 0px ${String(PANEL_SHADOW_BLUR[dark ? 'dark' : 'light'])}px 0px ${shadowColor}`,
                     }
-                  : // **A height, not `flex`.** A narrow window gets the whole thing rather than a
-                    // panel in the middle of one, and asking to fill the space says so directly --
-                    // where a share of it depends on what the layer is doing with the rest.
+                  : // Full screen on a narrow window; a height, since a `flex` share depends on
+                    // the layer's other children.
                     {
                       height: '100%',
                       paddingTop: screenInsets.top,
                       paddingBottom: screenInsets.bottom,
                     })}
-                // The page's own surface, lifted by the border and the shadow rather than by a
-                // lighter colour: the desktop client's panel is near-black on a near-black page.
+                // The page's own surface, lifted by border and shadow, as in the desktop client.
                 backgroundColor="$backgroundPrimary"
-                // Clipped so a row pressed at the top or bottom of the list stops at the corner
-                // rather than squaring it off.
+                // Keeps a pressed row's highlight inside the rounded corners.
                 overflow="hidden"
                 testID={testID}
               >
                 <XStack height={HEADER_HEIGHT} alignItems="center" paddingHorizontal="$xs">
-                  {/* The two controls hold their columns whether or not they are drawn, so the
-                      title stays put as a screen is pushed. A title that shifts sideways when a
-                      back chevron appears reads as the whole panel having moved. */}
+                  {/* Both control columns keep their width when empty, so the title stays put
+                      as a screen is pushed. */}
                   <YStack width={HEADER_HEIGHT}>
                     {entry.stack.length <= 1 ? (
-                      // **On a phone the close is where a modal's always is**: the leading corner,
-                      // on the first screen only -- a pushed screen has back there instead. The wide
-                      // panel keeps the desktop client's close in the trailing corner.
+                      // Narrow: close leads, on the first screen only. Wide: it trails, as on
+                      // the desktop client.
                       wide || !entry.dismissible ? null : (
                         <BarButton
                           icon="x"
@@ -245,8 +207,6 @@ export function ModalStackHost({
                     )}
                   </YStack>
 
-                  {/* One size on every screen of a panel. A push changes what is under the
-                      header, not the header's weight. */}
                   <Text
                     flex={1}
                     size="$title"
@@ -271,13 +231,10 @@ export function ModalStackHost({
                   </YStack>
                 </XStack>
 
-                {/* **Every screen stays mounted; only the frontmost is shown.** Going back is
-                    then a return to the screen as it was left -- scrolled where it was, holding
-                    whatever it held -- rather than a fresh copy starting from the top. The others
-                    are hidden from sight, from presses and from a screen reader. */}
-                {/* `relative` so the screens below are placed against this body: on the web a
-                    stack is `static` unless it says so, and an absolute child then resolves
-                    against the page -- see `containingBlock.contract.test.ts`. */}
+                {/* Every screen stays mounted so back returns to it as it was left (scroll,
+                    state); only the frontmost is visible. */}
+                {/* `relative`: on the web a stack is `static` by default, so absolute children
+                    would resolve against the page. See `containingBlock.contract.test.ts`. */}
                 <YStack flex={1} position="relative">
                   {entry.stack.map((held, at) => {
                     const showing = at === entry.stack.length - 1
@@ -289,19 +246,11 @@ export function ModalStackHost({
                         pointerEvents={showing ? 'auto' : 'none'}
                         aria-hidden={!showing}
                       >
-                        {/* Each screen scrolls within the panel rather than growing it. */}
                         <ScrollView
                           flex={1}
-                          // **Not a control, so it should not carry a focus ring.** Opening the
-                          // platform's modal moves focus to the first focusable node inside it,
-                          // which on the web is a scroller -- and the browser then draws its own
-                          // ring, in its own colour, around the whole body. It stays focusable and
-                          // still scrolls from the keyboard; what a keyboard reader follows is the
-                          // ring on the row it tabs to.
-                          //
-                          // The style, not the width: `outline-style: auto` is the browser's own
-                          // ring and it draws at the platform's thickness whatever width is asked
-                          // for, so a zero width leaves it exactly as it was.
+                          // On the web the modal focuses this scroller on open and the browser
+                          // rings the whole body. The style, not the width: `outline-style: auto`
+                          // ignores the width. It stays focusable and keyboard-scrollable.
                           focusStyle={{ outlineStyle: 'none' }}
                         >
                           {held.render()}
@@ -312,11 +261,8 @@ export function ModalStackHost({
                 </YStack>
 
                 {screen?.footer === undefined ? null : (
-                  /* Equal widths across the panel with no gap and no margins -- the client's
-                     `fillEqually`, and the same shape `Modal` draws an alert's actions in. The row
-                     is needed rather than optional: the actions ask for an equal share with
-                     `fill`, and a share of a column's height is nothing, so laid out down the
-                     panel they collapse to none. */
+                  /* A row is required: the actions take an equal share with `fill`, which
+                     collapses to nothing in a column. */
                   <XStack alignItems="stretch" height={ACTION_HEIGHT}>
                     {screen.footer()}
                   </XStack>

@@ -97,9 +97,7 @@ export function ConversationListScreen() {
             pressStyle={{ backgroundColor: '$backgroundTertiary' }}
             borderRadius="$full"
             testID={ELEMENT.conversationList.settings}
-            // Over the list rather than beside it: settings is a tree of its own and every
-            // client draws it over whatever you were doing, so closing it puts you back there
-            // instead of navigating you somewhere.
+            // A modal, as every client draws settings, so closing it returns to the list.
             onPress={openSettings}
           >
             <Icon name="settings" size="lg" color="$textSecondary" />

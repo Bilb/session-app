@@ -17,52 +17,34 @@ import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import { SPACE_SCALE } from './scales'
 import { Text } from './Text'
 
-/**
- * How tall a row is before its content makes it taller.
- *
- * A control's rung rather than a line of text's: a row is something to hit, and on a phone the
- * difference between a comfortable list and a fiddly one is entirely this number.
- */
+/** A control's rung rather than a text line's: a row is a tap target. */
 const ROW_MIN_HEIGHT = 56
 
 /** How wide the leading icon's column is, so labels line up whether or not a row has one. */
 const ICON_COLUMN = 24
 
 /**
- * The line between two rows of a group: the desktop client's half pixel.
- *
- * Half rather than one because a whole pixel lands on one device pixel or two depending on where
- * the row falls, so the lines of one group draw at different weights; half is one device pixel on
- * every display that has two, and the thinnest line on one that does not.
+ * The desktop client's half pixel: a whole one lands on one device pixel or two depending on
+ * position, so one group's lines would draw at different weights.
  */
 const SEPARATOR = 0.5
 
 export interface SettingsRowProps {
   label: string
   /**
-   * The leading glyph. Rows in one group either all have one or none do.
-   *
-   * A name from the icon set, or one of Session's own marks for the rows the client draws with its
-   * own artwork -- the recovery shield, the network token. Or an element drawn as it is given, for
-   * a glyph that is not one colour on a square -- the Pro badge -- which the caller sizes and tones.
+   * Rows in one group either all have one or none do. An element is drawn as given, for a glyph
+   * that is not one colour on a square (the Pro badge); the caller sizes and tones it.
    */
   icon?: IconName | ComponentType<MarkProps> | ReactElement
   /** Draws the icon in the accent, for the row the client singles out that way: Donate. */
   accentIcon?: boolean
   /** A second line under the label, for a row whose meaning is not obvious from its name. */
   subtitle?: string
-  /**
-   * The trailing side: a current value, a switch, a button.
-   *
-   * Nothing by default, and in particular no chevron: the client's rows carry none, whether or not
-   * they lead to a screen.
-   */
+  /** A value, a switch, a button. No chevron by default: the client's rows carry none. */
   trailing?: ReactNode
   /** Tints the label and its icon, for a row that destroys something. */
   destructive?: boolean
-  /**
-   * Without one the row is static: drawn as it is, with nothing to press but its trailing control.
-   */
+  /** Without one the row is static, with nothing to press but its trailing control. */
   onPress?: () => void
   /** For a row whose screen is not built yet. See the component. */
   disabled?: boolean
@@ -70,19 +52,11 @@ export interface SettingsRowProps {
 }
 
 /**
- * One row of a settings list.
+ * One row of a settings list: the desktop client's `PanelButton`.
  *
- * The desktop client's `PanelButton`: a glyph, a label, and whatever belongs on the other side.
- * **Nothing here knows what it is for** -- a row that navigates, a row that toggles and a row that
- * deletes an account are the same component with different trailing content, which is what keeps a
- * list of twelve of them reading as one list.
- *
- * A row whose screen is not built yet still draws, `disabled`. The settings tree arrives one screen
- * per change, so such a row belongs on screen rather than hidden -- hiding it would make the list
- * shorter now and change its order later, and the order is the design. **It draws as disabled, not
- * merely as unresponsive**: a row that looks live and does nothing reads as broken rather than as
- * not there yet. Said rather than inferred from a missing `onPress`, because a row with nothing to
- * press but its trailing control is not unavailable.
+ * A row whose screen is not built yet is shown `disabled` rather than hidden, so the list keeps its
+ * designed order. `disabled` is explicit because a row with no `onPress` may still have a live
+ * trailing control.
  */
 export function SettingsRow({
   label,
@@ -97,8 +71,7 @@ export function SettingsRow({
 }: SettingsRowProps) {
   const inert = disabled || onPress === undefined
   const tone = disabled ? '$textDisabled' : destructive ? '$dangerColor' : '$textPrimary'
-  // `accentText` rather than the accent itself: it falls back to the body text on a light ground,
-  // where the accent as a glyph is too faint -- which is what the client does with this icon.
+  // `accentText`, not the accent: as a glyph the accent is too faint on a light ground.
   const iconTone = accentIcon && !disabled ? '$accentText' : tone
 
   return (
@@ -108,18 +81,14 @@ export function SettingsRow({
       testID={testID}
     >
       {(pressed) => (
-        // The row's surface on a frame of its own, so the states can be laid over it: an overlay
-        // steps from whatever it covers, where a surface role would step from the page.
+        // Its own frame, so the state overlays step from the row's surface rather than the page.
         <YStack backgroundColor="$backgroundSecondary">
           <XStack
             minHeight={ROW_MIN_HEIGHT}
             alignItems="center"
             gap="$sm"
-            // 16 either side, which the separators are inset by too, so a line starts where a
-            // row's content does. 12 above and below, on every platform: a one-line row stops at
-            // the height floor, which already centres its label about 16 from each end, so this is
-            // what a row with a subtitle gets. Less at the ends than the sides because a line's own
-            // leading adds to the space above and below it.
+            // The side padding matches the separators' inset, so a line starts where content does.
+            // Less vertically because a line's own leading adds to it.
             paddingHorizontal="$md"
             paddingVertical="$sm"
             {...(inert
@@ -128,10 +97,9 @@ export function SettingsRow({
                   cursor: 'pointer',
                   hoverStyle: { backgroundColor: '$hoverOverlay' },
                   pressStyle: { backgroundColor: '$pressedOverlay' },
-                  // Native: the press belongs to `PressArea`, which reports it here. A frame that
-                  // declares a `pressStyle` claims the touch for tamagui otherwise, and the row
-                  // never fires. Only here, because it takes the subtree with it: on a row with no
-                  // press of its own the trailing control is what is pressed.
+                  // Native: without this a frame with a `pressStyle` claims the touch from
+                  // `PressArea` and the row never fires. Pressable rows only: it takes the subtree
+                  // with it, and on a static row the trailing control is what gets pressed.
                   ...PRESS_PASSTHROUGH,
                   ...(pressed ? { backgroundColor: '$pressedOverlay' } : {}),
                 })}
@@ -143,8 +111,7 @@ export function SettingsRow({
                 ) : isValidElement(icon) ? (
                   icon
                 ) : (
-                  // A mark fills its box where a lucide glyph sits inside a margin, so it is drawn
-                  // a rung smaller to read at the same weight as its neighbours.
+                  // A mark fills its box where a lucide glyph has a margin: a rung smaller.
                   <Mark mark={icon} color={iconTone} />
                 )}
               </YStack>
@@ -155,10 +122,8 @@ export function SettingsRow({
                 {label}
               </Text>
               {subtitle === undefined ? null : (
-                // The label's colour, not the muted one: the desktop client draws a row's
-                // explanation in the body text, and it is read rather than glanced at. The label
-                // size, not the body's: at 14 it is as large as body text under a 16 name, and the
-                // two lines stop reading as a name and its explanation.
+                // Unmuted, as the desktop client draws it. Label size so it reads as the name's
+                // explanation rather than as a second line of body text.
                 <Text size="$label" color={disabled ? '$textDisabled' : '$textPrimary'}>
                   {subtitle}
                 </Text>
@@ -166,8 +131,7 @@ export function SettingsRow({
             </YStack>
 
             {trailing === undefined ? null : (
-              // More room than between the icon and the label: the label is the icon's, and the
-              // trailing control is something else -- text that wraps into it reads as run on.
+              // More room than icon-to-label, so wrapped label text does not run into the control.
               <YStack
                 {...logical({ paddingStart: SPACE_SCALE.xs, paddingEnd: SPACE_SCALE['2xs'] })}
               >
@@ -189,15 +153,10 @@ function Mark({ mark: Drawn, color }: { mark: ComponentType<MarkProps>; color: s
 }
 
 /**
- * A run of rows drawn as one block.
+ * A run of rows drawn as one block: the client's `PanelButtonGroup`.
  *
- * The client's `PanelButtonGroup`. The grouping is the only thing saying which rows belong
- * together -- the root settings page has five groups and no headings at all, so the gaps between
- * blocks carry the whole structure.
- *
- * The separators are drawn here, between rows, so a row never has to know whether it is last. Inset
- * from both edges and running under the icons, as the client's do: a divider the full width of the
- * card reads as two cards.
+ * Separators are drawn here so a row need not know whether it is last, inset from both edges as
+ * the client's are: a full-width divider reads as two cards.
  */
 export function SettingsGroup({ children }: { children: ReactNode }) {
   const rows = Children.toArray(children)
@@ -216,11 +175,8 @@ export function SettingsGroup({ children }: { children: ReactNode }) {
 }
 
 /**
- * A heading over a group, with an optional explanation under it.
- *
- * The client's `PanelLabelWithDescription`, and used as sparingly: the root settings page has no
- * headings, and Help has one per group. A heading over a group of rows whose names already say
- * what they are is noise.
+ * A heading over a group, with an optional explanation: the client's `PanelLabelWithDescription`.
+ * Use sparingly; over rows whose names already say what they are it is noise.
  */
 export function SettingsSection({ label, description }: { label: string; description?: string }) {
   return (

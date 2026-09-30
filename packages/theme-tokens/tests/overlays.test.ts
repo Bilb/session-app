@@ -14,10 +14,7 @@ function blackAlpha(value: string): number | null {
 }
 
 describe('the scrim and the shadow', () => {
-  /**
-   * A backdrop drawn in a theme's own surface colour lightens a dark page rather than dimming it:
-   * every dark surface is lighter than its page.
-   */
+  /** A theme-coloured backdrop would lighten a dark page: every dark surface is lighter. */
   it('are black in every theme and accent, whatever the palette', () => {
     const wrong: string[] = []
     for (const theme of THEMES)
@@ -56,10 +53,7 @@ function over(overlay: string, surface: string): string {
     .join('')}`
 }
 
-/**
- * The least a hover may move its surface. A step of 1.02 is present in the numbers and invisible
- * on screen.
- */
+/** The least a hover may move its surface; 1.02 passes the numbers but is invisible on screen. */
 const MIN_HOVER_STEP = 1.05
 
 const SURFACES = [
@@ -71,9 +65,8 @@ const SURFACES = [
 
 describe('the hover and pressed overlays', () => {
   /**
-   * Hover and press drawn as surface roles are a fixed distance from the page: on the recessed
-   * surface a dialog sits on, such a hover is one shade from it and, in the light themes, such a
-   * press is lighter than the hover.
+   * Surface roles are a fixed distance from the page, so on a dialog's recessed ground a
+   * surface-role hover barely shows and, in the light themes, the press is lighter than the hover.
    */
   it('step away from every surface a control can sit on, the press further than the hover', () => {
     const wrong: string[] = []
@@ -94,14 +87,9 @@ describe('the hover and pressed overlays', () => {
   })
 
   /**
-   * What lets a control take one without restating its label: body text is derived to clear every
-   * surface, and this holds that for a surface with a state laid over it too.
-   * `Button.contract.test.ts` relies on it.
-   *
-   * **Muted text holds only the floor a glyph needs** while a control is hovered or held. In the
-   * light themes it sits close enough to 4.5 on the bare surfaces that a darker ground takes it under,
-   * and holding it there would mean darkening muted text on every screen for a state that lasts as
-   * long as a press. No control draws its label in it; what it colours on a control is an icon.
+   * Lets a control take an overlay without restating its label; `Button.contract.test.ts` relies
+   * on it. Muted text only needs the glyph floor: in the light themes it sits near 4.5 on bare
+   * surfaces, and no control draws a label in it, only icons.
    */
   it('leave body text readable, and muted glyphs visible, on every surface they cover', () => {
     const wrong: string[] = []

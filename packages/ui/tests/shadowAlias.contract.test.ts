@@ -4,11 +4,8 @@ import { describe, expect, it } from 'vitest'
 import { buildThemes } from '#src/themes'
 
 /**
- * Tamagui's own shadow names read the theme's shadow role.
- *
- * A fixed colour here would sit outside theme-tokens and suit only one kind of theme: a light
- * theme's shadow on a dark theme is a quarter as strong as it should be. Any component using
- * Tamagui's `shadowColor` resolves through these names.
+ * Any component using Tamagui's `shadowColor` resolves through these names, so a fixed colour would
+ * suit only one polarity.
  */
 describe("Tamagui's shadow names", () => {
   it('carry the theme role, and so differ between a light theme and a dark one', () => {

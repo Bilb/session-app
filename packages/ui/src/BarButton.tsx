@@ -14,16 +14,13 @@ export interface BarButtonProps {
   testID?: string | undefined
 }
 
-/** The diameter: a `md` circular button's, so glass and circle take the same room. */
+/** A `md` circular button's diameter, so glass and circle take the same room. */
 const DIAMETER = SIZE_SCALE['2xl']
 
 /**
- * A close or back beside a title, drawn the way the platform draws its own.
- *
- * **On glass where there is glass** -- iOS 26, where every bar button sits on it, including the ones
- * the system draws in a native bar -- so a close drawn here and one in the system's bar read as one
- * control. **Elsewhere the desktop's circle**, which fills while held: the glyph alone would give
- * no sign of being pressed.
+ * A close or back beside a title, drawn as the platform draws its own: on glass on iOS 26, to
+ * match the system's bar buttons; elsewhere the desktop's circle, which fills while held because
+ * the glyph alone shows no press.
  */
 export function BarButton({
   icon,

@@ -25,13 +25,10 @@ import { confirmLink } from './confirmLink'
 import { HelpPage } from './HelpPage'
 import { LocalizedText } from '../LocalizedText'
 
-/** How long the copy control says it worked before going back to offering to do it again. */
+/** How long the copy control shows that it worked. */
 const COPIED_FOR_MS = 2000
 
-/**
- * The Pro badge's height in the row: iOS's `.small`, 32 by 14.5. Wider than the icon column, which
- * it overhangs a little either side, as the clients' badges do beside their square glyphs.
- */
+/** iOS's `.small` badge, 32 by 14.5: it overhangs the icon column, as the clients' badges do. */
 const PRO_BADGE = 14.5
 
 /** The avatar at the top: the desktop client's `AvatarSize.XL`. */
@@ -42,9 +39,8 @@ function confirmClearData(modals: Modals, clear: () => Promise<void>): void {
   const id = modals.present({
     kind: 'alert',
     testID: ELEMENT.settings.confirmClearData,
-    // Left from the scrim or Escape, as the desktop client's is, but with no cross: there are two
-    // answers in the footer, and somebody deciding whether to erase their account wants to read
-    // the word Cancel rather than infer it from a glyph.
+    // No cross: somebody deciding whether to erase their account should read the word Cancel.
+    // The scrim and Escape still leave, as on desktop.
     showClose: false,
     initial: {
       title: tr('clearDataAll'),
@@ -56,12 +52,7 @@ function confirmClearData(modals: Modals, clear: () => Promise<void>): void {
   })
 }
 
-/**
- * The confirm's two answers, which hold still once Clear is pressed.
- *
- * Both are disabled and the alert stops being dismissible while the clear runs, so nothing can
- * look like a cancel of something that is already happening.
- */
+/** Locked while the clear runs, so nothing can look like a cancel of what is already happening. */
 function ClearDataActions({
   modals,
   id,
@@ -107,18 +98,10 @@ function ClearDataActions({
   )
 }
 
-/**
- * The client's own measurements for the pill, which sit on neither scale: a line of caption text
- * in 6 above, 5 below and 15 either side. Rounded onto rungs the pill reads as a button.
- */
+/** The client's measurements, off the scale on purpose: rounded onto rungs it reads as a button. */
 const PILL_PADDING = { top: 6, bottom: 5, side: 15 } as const
 
-/**
- * "Your Account ID", in a pill with a rule running out from each side of it.
- *
- * The desktop client's `AccountIdPill`: it heads the ID as a label, and the rules are what separate
- * the account block from the name above it without a divider of its own.
- */
+/** "Your Account ID" in a pill between two rules: the desktop client's `AccountIdPill`. */
 function AccountIdPill() {
   return (
     <XStack alignSelf="stretch" alignItems="center">
@@ -141,11 +124,8 @@ function AccountIdPill() {
 }
 
 /**
- * The account, above the rows.
- *
- * The account ID is the one piece of state a person has to be able to read off the screen -- it is
- * what somebody else needs in order to write to this device -- so it wraps rather than truncates
- * and has a control of its own rather than being tappable text.
+ * The account, above the rows. The ID is what someone needs to message this account, so it wraps
+ * rather than truncates and gets a copy control rather than being tappable text.
  */
 function AccountHeader({ sessionId, name }: { sessionId: string; name: string }) {
   const [copied, setCopied] = useState(false)
@@ -159,12 +139,11 @@ function AccountHeader({ sessionId, name }: { sessionId: string; name: string })
         </Text>
       )}
       <AccountIdPill />
-      {/* One element per line, so the break is where it was put rather than wherever the text
-          engine found room. See `accountIdLines`. */}
+      {/* One element per line, so the text engine cannot move the breaks. */}
       <YStack alignItems="center" testID={ELEMENT.settings.accountId}>
         {accountIdLines(sessionId).map((line, at) => (
-          // By position, not by content: an ID's lines can repeat -- a fake account's are runs of
-          // zeroes -- and two siblings with one key is a warning on the web and a crash on iOS.
+          // Keyed by position: lines can repeat (the fake's IDs are runs of zeroes), and duplicate
+          // keys crash on iOS.
           <Text key={at} size="$bodyLarge" fontFamily="$mono">
             {line}
           </Text>
@@ -192,18 +171,10 @@ function AccountHeader({ sessionId, name }: { sessionId: string; name: string })
 }
 
 /**
- * The landing screen of the settings modal: the account, then five groups of rows.
+ * The landing screen of the settings modal: the account, then five unheaded groups of rows.
  *
- * **A disabled row is one whose screen is not built yet.** They are drawn anyway, because the
- * order of the list is the design -- a list that grows a row in the middle later is a different
- * list from the designed one.
- *
- * **The grouping carries the whole structure**, because the client's root page has no headings at
- * all -- only the gaps between blocks say which rows belong together.
- *
- * Every row that leads to a child screen pushes it onto this modal rather than opening one of its
- * own, so the back control returns here. The two that are not screens behave as the client's do: a
- * link leaves through a confirmation, and clearing data asks on top of this.
+ * Child screens are pushed onto this modal rather than opening their own, so back returns here.
+ * A disabled row is one whose screen is not built yet.
  */
 export function SettingsRootPage() {
   const account = useAccount()
@@ -211,19 +182,14 @@ export function SettingsRootPage() {
   const modals = useModals()
   const nav = useNav()
 
-  // Not a fallback string, because there is no honest one. This screen exists to hand somebody
-  // their account ID; with no account there is nothing to show and no reason to be here, and
-  // whatever opened it has gone wrong upstream.
+  // No fallback: without an account there is no honest ID to show, so the caller is at fault.
   if (account?.sessionId === undefined)
     throw new Error('SettingsRootPage: no account. Onboarding has to run before this opens.')
 
   const sessionId = account.sessionId
   const name = account.displayName ?? ''
 
-  /**
-   * Each row's glyph: the client's own artwork where it draws one, and otherwise the client's choice
-   * wherever our set has the same one.
-   */
+  /** The client's own artwork where it has one, otherwise its choice from our icon set. */
   const icon = {
     donate: 'heart',
     path: 'info',
@@ -263,8 +229,7 @@ export function SettingsRootPage() {
             confirmLink(modals, URLS.donationsApp)
           }}
         />
-        {/* The client draws a live onion-path indicator as this row's icon and opens the path in a
-            modal of its own. Both wait on the path screen. */}
+        {/* The client's live onion-path icon and path modal both wait on the path screen. */}
         <SettingsRow
           label={tr('onionRoutingPath')}
           icon={icon.path}
@@ -304,8 +269,7 @@ export function SettingsRootPage() {
           disabled
           testID={ELEMENT.settings.row('appearance')}
         />
-        {/* Not a child screen in the client either: it closes the modal and shows the requests
-            list, which here is a route of its own. So this one leaves rather than descends. */}
+        {/* Leaves rather than descends, as in the client: the requests list is a route. */}
         <SettingsRow
           label={tr('sessionMessageRequests')}
           icon={icon.requests}
