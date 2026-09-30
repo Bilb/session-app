@@ -21,3 +21,16 @@ export const FACE_WEIGHTS = {
 
 /** A face the body can be drawn in. */
 export type Face = keyof typeof FACE_WEIGHTS
+
+/** The key a bundled Roboto would be registered under in `FONT_ASSETS`. */
+export const BODY_FAMILY_KEY = 'Roboto'
+
+/**
+ * The face the body is drawn in on a platform, given the faces the app bundles.
+ *
+ * The body family names Roboto first. Android has it system-wide; iOS has none and draws San
+ * Francisco in its place, unless the app bundles Roboto -- which it would do through `FONT_ASSETS`.
+ */
+export function drawnBodyFace(os: string, bundled: Readonly<Record<string, unknown>>): Face {
+  return os === 'ios' && !(BODY_FAMILY_KEY in bundled) ? 'sanFrancisco' : 'roboto'
+}
