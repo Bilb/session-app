@@ -1,22 +1,39 @@
 /* eslint-disable @typescript-eslint/triple-slash-reference --
    The asset declarations reach consumers only through a path reference. See tamaguiCSS.ts. */
 /// <reference path="./assets.d.ts" />
+import robotoBold from '../assets/fonts/Roboto-Bold.ttf'
+import robotoMedium from '../assets/fonts/Roboto-Medium.ttf'
+import robotoRegular from '../assets/fonts/Roboto-Regular.ttf'
 import robotoMono from '../assets/fonts/RobotoMono-VariableFont_wght.ttf'
 
-import { MONO_FAMILY } from './monoFamily'
+import type { FontAssets } from './fontAssets.types'
+
+/** One face the desktop ships, which `tamaguiCSS.ts` declares as an `@font-face` rule. */
+export interface BundledFace {
+  family: string
+  /** One weight, or a variable file's range. */
+  weight: string
+  src: string
+}
 
 /**
- * The faces the mobile app has to register before it can draw them, keyed by family.
+ * The faces the desktop bundles. The phones' are in `fontAssets.native.ts`.
  *
- * Only the phones' bundled faces. The body font is the system's on both: Android has Roboto, and
- * iOS draws San Francisco, as the legacy client does. Registering Roboto here would change that,
- * since `drawnBodyFace` reads this to decide iOS's face. The desktop bundles its own faces, Roboto
- * included, as `@font-face` rules in `tamaguiCSS.ts`.
+ * Roboto, shipped rather than assumed: it is the face the desktop client uses, and it is not
+ * installed on macOS or on most Windows machines, so naming it in the font stack without shipping it
+ * falls through to the platform's default, which is how this app was drawing a serif. Three weights,
+ * because the type scale asks for regular, semibold and bold and nothing else. Roboto Mono, for the
+ * account ID, is one variable file, so one rule covers its range.
  *
- * Here rather than in the app so the file and the name it is looked up by live together: a face
- * registered under any other key is never found, and the text falls back without complaint.
- *
- * One variable file, drawn at its default instance, which is the 400 the ID is set in. A request
- * for another weight on native gets that instance too, so nothing should ask for one.
+ * Two lists rather than one because Metro bundles every file a module it loads imports: listing
+ * these for the phones would ship three Roboto files that Android already has and iOS does not draw.
  */
-export const FONT_ASSETS = { [MONO_FAMILY]: robotoMono }
+export const BUNDLED_FACES: readonly BundledFace[] = [
+  { family: 'Roboto', weight: '400', src: robotoRegular },
+  { family: 'Roboto', weight: '500', src: robotoMedium },
+  { family: 'Roboto', weight: '700', src: robotoBold },
+  { family: 'Roboto Mono', weight: '100 700', src: robotoMono },
+]
+
+/** Nothing to register at runtime on the desktop: the stylesheet loads every face above. */
+export const FONT_ASSETS: FontAssets = {}
