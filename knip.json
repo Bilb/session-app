@@ -17,7 +17,8 @@
     "@session/bridge-rn",
     "react-native-nitro-modules",
     "react-native-keyboard-controller",
-    "react-native-safe-area-context"
+    "react-native-safe-area-context",
+    "react-native-screens"
   ],
   "ignore": [
     "**/*.native.ts",

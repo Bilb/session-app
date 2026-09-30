@@ -11,6 +11,8 @@ import { MessageNotificationsScreen } from './MessageNotificationsScreen'
 import { PickDisplayNameScreen } from './PickDisplayNameScreen'
 import {
   backDiscardsAccount,
+  backAction,
+  backPath,
   committingStep,
   isWideDesign,
   initialOnboarding,
@@ -188,6 +190,19 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
     )
   }, [state, actions, onRunningChange])
 
+  /** Back from the phrase screen, which abandons whatever attempt is in flight. */
+  const abandonRestore = () => {
+    // The refusal described the attempt that was just abandoned. Left standing, coming back to this
+    // screen shows an error over an empty field, and switching to the QR tab shows one over a camera
+    // that has scanned nothing.
+    setRejected(false)
+    // Whoever abandons the attempt clears its flag: the resolution will not, because by then it
+    // belongs to an attempt nobody is waiting for.
+    attempt.current += 1
+    setBusy(false)
+    dispatch({ type: 'back' })
+  }
+
   // At `done` the last step stays on screen while the account is made -- see `committingStep`.
   const committingNow = state.step === 'done'
   /**
@@ -199,7 +214,8 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
    * screens that stay up at `done` are exactly the ones whose button was just pressed.
    */
   const working = busy || committingNow
-  const body = screen(committingNow ? committingStep(state) : state.step)
+  const shownStep = committingNow ? committingStep(state) : state.step
+  const body = screen(shownStep)
 
   return (
     <ConfirmUrlProvider>
@@ -209,10 +225,11 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
       {!isWideDesign(design) && body !== null ? (
         <StepTransition
           // The step the commit is drawn over, not `done` -- `body` is that step's screen, and
-          // a key change here swaps panes, which remounts it and restarts the wait it is showing.
-          stepKey={committingNow ? committingStep(state) : state.step}
-          direction={state.lastMove}
+          // a key change here pushes a new screen, which remounts it and restarts the wait it is
+          // showing.
+          path={backPath({ ...state, step: shownStep })}
           instant={flag('disableAnimations')}
+          onBack={backFrom(shownStep)}
         >
           {body}
         </StepTransition>
@@ -221,6 +238,14 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
       )}
     </ConfirmUrlProvider>
   )
+
+  /** What back does from a step, as the stack's swipe offers it. See `backAction`. */
+  function backFrom(step: OnboardingStep): (() => void) | undefined {
+    const action = backAction(step, working)
+    if (action === 'back') return goBack
+    if (action === 'abandonRestore') return abandonRestore
+    return undefined
+  }
 
   function screen(step: OnboardingStep) {
     switch (step) {
@@ -256,17 +281,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
             busy={working}
             rejected={rejected}
             backDisabled={working}
-            onBack={() => {
-              // The refusal described the attempt that was just abandoned. Left standing, coming
-              // back to this screen shows an error over an empty field, and switching to the QR
-              // tab shows one over a camera that has scanned nothing.
-              setRejected(false)
-              // Whoever abandons the attempt clears its flag: the resolution will not, because
-              // by then it belongs to an attempt nobody is waiting for.
-              attempt.current += 1
-              setBusy(false)
-              dispatch({ type: 'back' })
-            }}
+            onBack={abandonRestore}
             onContinue={(from) => {
               // **Checked, then taken over, both before leaving this screen.**
               //
@@ -314,7 +329,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
         return (
           <LoadingScreen
             onBack={goBack}
-            backDisabled={committingNow}
+            backDisabled={working}
             onGaveUp={
               // Null once the account is being made: the wait is over, and a deadline still
               // running would announce a timeout on top of a restore that already arrived.
