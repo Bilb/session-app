@@ -113,6 +113,7 @@ function Trailing({
   if (control === 'progress') {
     // Not a button: the bridge has no cancel, so a ring somebody could press would be a control
     // that does nothing. It reports, the way the album's pill does, and the caption has the counts.
+    // TODO: make this a cancel once libsession and the bridge can stop a transfer.
     return (
       <YStack {...square}>
         <ProgressRing progress={progress ?? 0} size={RING_SIDE} thickness={RING_THICKNESS} />
