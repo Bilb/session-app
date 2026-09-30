@@ -217,7 +217,7 @@ export function AlertBox({
       <XStack alignItems="flex-start" gap="$xs">
         {/* Centred across the full width, with the cross overlaid rather than taking a column,
             so the title is centred on the dialog and not on what is left of it. */}
-        {/* 17 on iOS, 16 on Android. */}
+        {/* The ramp's 16, Android's title size: iOS's 17 falls between rungs. */}
         <Text flex={1} size="$bodyLarge" weight="bold" textAlign="center" userSelect="none">
           {title}
         </Text>
