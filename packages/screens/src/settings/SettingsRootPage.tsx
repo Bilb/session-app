@@ -14,11 +14,10 @@ import {
   useModals,
   XStack,
   YStack,
-  type IconName,
-  type MarkProps,
+  type SettingsRowProps,
   type Modals,
 } from '@session/ui'
-import { useState, type ComponentType } from 'react'
+import { useState } from 'react'
 
 import { accountIdLines } from './accountIdLines'
 import { confirmLink } from './confirmLink'
@@ -30,6 +29,14 @@ const COPIED_FOR_MS = 2000
 
 /** iOS's `.small` badge, 32 by 14.5: it overhangs the icon column, as the clients' badges do. */
 const PRO_BADGE = 14.5
+
+/** One row of the root list, as `SettingsRow` takes it. */
+type RowSpec = Pick<
+  SettingsRowProps,
+  'label' | 'icon' | 'onPress' | 'accentIcon' | 'destructive'
+> & {
+  testID: string
+}
 
 /** The avatar at the top: the desktop client's `AvatarSize.XL`. */
 const PROFILE_AVATAR = 90
@@ -189,129 +196,83 @@ export function SettingsRootPage() {
   const sessionId = account.sessionId
   const name = account.displayName ?? ''
 
-  /** The client's own artwork where it has one, otherwise its choice from our icon set. */
-  const icon = {
-    donate: 'heart',
-    path: 'info',
-    network: SessionTokenMark,
-    privacy: 'lockKeyhole',
-    notifications: 'volume',
-    conversations: 'messageSquare',
-    appearance: 'paintbrush',
-    requests: 'messageSquareWarning',
-    preferences: 'settings',
-    recovery: RecoveryPasswordShield,
-    help: 'circleHelp',
-    clear: 'trash',
-  } satisfies Record<string, IconName | ComponentType<MarkProps>>
+  const row = ELEMENT.settings.row
+  // Rows without `onPress` draw disabled: their screens are not built yet.
+  const groups: RowSpec[][] = [
+    [
+      {
+        label: tr('upgradeSession'),
+        icon: <ProBadge size={PRO_BADGE} color="$textDisabled" />,
+        testID: row('pro'),
+      },
+    ],
+    [
+      {
+        label: tr('donate'),
+        icon: 'heart',
+        accentIcon: true,
+        testID: row('donate'),
+        onPress: () => {
+          confirmLink(modals, URLS.donationsApp)
+        },
+      },
+      // The live onion-path icon and path modal both wait on the path screen.
+      { label: tr('onionRoutingPath'), icon: 'info', testID: row('onion-path') },
+      { label: tr('networkName'), icon: SessionTokenMark, testID: row('network') },
+    ],
+    [
+      { label: tr('sessionPrivacy'), icon: 'lockKeyhole', testID: row('privacy') },
+      { label: tr('sessionNotifications'), icon: 'volume', testID: row('notifications') },
+      { label: tr('sessionConversations'), icon: 'messageSquare', testID: row('conversations') },
+      { label: tr('sessionAppearance'), icon: 'paintbrush', testID: row('appearance') },
+      {
+        label: tr('sessionMessageRequests'),
+        icon: 'messageSquareWarning',
+        testID: row('message-requests'),
+        // Leaves rather than descends: the requests list is a route of its own.
+        onPress: () => {
+          modals.dismissAll()
+          nav.push(routes.requests())
+        },
+      },
+      { label: tr('preferences'), icon: 'settings', testID: row('preferences') },
+    ],
+    [
+      {
+        label: tr('sessionRecoveryPassword'),
+        icon: RecoveryPasswordShield,
+        testID: row('recovery-password'),
+      },
+      {
+        label: tr('sessionHelp'),
+        icon: 'circleHelp',
+        testID: row('help'),
+        onPress: () => {
+          modals.push({ title: tr('sessionHelp'), render: () => <HelpPage /> })
+        },
+      },
+      {
+        label: tr('sessionClearData'),
+        icon: 'trash',
+        destructive: true,
+        testID: ELEMENT.settings.clearData,
+        onPress: () => {
+          confirmClearData(modals, () => actions.clearDeviceData())
+        },
+      },
+    ],
+  ]
 
   return (
     <YStack paddingHorizontal="$md" paddingBottom="$md" gap="$lg">
       <AccountHeader sessionId={sessionId} name={name} />
-
-      {/* First on every client, and shown to every account: one with no Pro is offered it. */}
-      <SettingsGroup>
-        <SettingsRow
-          label={tr('upgradeSession')}
-          icon={<ProBadge size={PRO_BADGE} color="$textDisabled" />}
-          disabled
-          testID={ELEMENT.settings.row('pro')}
-        />
-      </SettingsGroup>
-
-      <SettingsGroup>
-        <SettingsRow
-          label={tr('donate')}
-          icon={icon.donate}
-          accentIcon
-          testID={ELEMENT.settings.row('donate')}
-          onPress={() => {
-            confirmLink(modals, URLS.donationsApp)
-          }}
-        />
-        {/* The client's live onion-path icon and path modal both wait on the path screen. */}
-        <SettingsRow
-          label={tr('onionRoutingPath')}
-          icon={icon.path}
-          disabled
-          testID={ELEMENT.settings.row('onion-path')}
-        />
-        <SettingsRow
-          label={tr('networkName')}
-          icon={icon.network}
-          disabled
-          testID={ELEMENT.settings.row('network')}
-        />
-      </SettingsGroup>
-
-      <SettingsGroup>
-        <SettingsRow
-          label={tr('sessionPrivacy')}
-          icon={icon.privacy}
-          disabled
-          testID={ELEMENT.settings.row('privacy')}
-        />
-        <SettingsRow
-          label={tr('sessionNotifications')}
-          icon={icon.notifications}
-          disabled
-          testID={ELEMENT.settings.row('notifications')}
-        />
-        <SettingsRow
-          label={tr('sessionConversations')}
-          icon={icon.conversations}
-          disabled
-          testID={ELEMENT.settings.row('conversations')}
-        />
-        <SettingsRow
-          label={tr('sessionAppearance')}
-          icon={icon.appearance}
-          disabled
-          testID={ELEMENT.settings.row('appearance')}
-        />
-        {/* Leaves rather than descends, as in the client: the requests list is a route. */}
-        <SettingsRow
-          label={tr('sessionMessageRequests')}
-          icon={icon.requests}
-          testID={ELEMENT.settings.row('message-requests')}
-          onPress={() => {
-            modals.dismissAll()
-            nav.push(routes.requests())
-          }}
-        />
-        <SettingsRow
-          label={tr('preferences')}
-          icon={icon.preferences}
-          disabled
-          testID={ELEMENT.settings.row('preferences')}
-        />
-      </SettingsGroup>
-
-      <SettingsGroup>
-        <SettingsRow
-          label={tr('sessionRecoveryPassword')}
-          icon={icon.recovery}
-          disabled
-          testID={ELEMENT.settings.row('recovery-password')}
-        />
-        <SettingsRow
-          label={tr('sessionHelp')}
-          icon={icon.help}
-          testID={ELEMENT.settings.row('help')}
-          onPress={() => {
-            modals.push({ title: tr('sessionHelp'), render: () => <HelpPage /> })
-          }}
-        />
-        <SettingsRow
-          label={tr('sessionClearData')}
-          icon={icon.clear}
-          destructive
-          testID={ELEMENT.settings.clearData}
-          onPress={() => {
-            confirmClearData(modals, () => actions.clearDeviceData())
-          }}
-        />
-      </SettingsGroup>
+      {groups.map((rows) => (
+        <SettingsGroup key={rows[0]?.testID}>
+          {rows.map((spec) => (
+            <SettingsRow key={spec.testID} {...spec} disabled={spec.onPress === undefined} />
+          ))}
+        </SettingsGroup>
+      ))}
     </YStack>
   )
 }
