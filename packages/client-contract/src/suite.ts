@@ -741,13 +741,13 @@ export function runSessionClientContract(
     })
 
     it('refuses an attachment index the message does not have', async () => {
-      const { client, messageId, index } = await harness.withAttachment()
+      const { client, messageId } = await harness.withAttachment()
       const destination = `/tmp/contract-missing-${String(Date.now())}.bin`
+      // Past any count a message can carry: an implementation may seed more than the one promised.
+      const missing = 999
 
-      const download = await failure(() => client.downloadAttachment(messageId, index + 1))
-      const exported = await failure(() =>
-        client.exportAttachment(messageId, index + 1, destination),
-      )
+      const download = await failure(() => client.downloadAttachment(messageId, missing))
+      const exported = await failure(() => client.exportAttachment(messageId, missing, destination))
 
       expect(download instanceof SessionClientError && download.code).toBe(ATTACHMENT_NOT_FOUND)
       expect(exported instanceof SessionClientError && exported.code).toBe(ATTACHMENT_NOT_FOUND)
