@@ -22,7 +22,7 @@ const RTL_LOCALE = 'ar'
  * that opens the app on onboarding, where the language picker is.
  */
 test('choosing a right-to-left language mirrors the layout', async () => {
-  const app = await DesktopApp.launch('alice', { env: { SESSION_FAKE_NO_ACCOUNT: '1' } })
+  const app = await DesktopApp.launch('alice', { env: { EXPO_PUBLIC_SESSION_NO_ACCOUNT: '1' } })
 
   try {
     const trigger = ELEMENT.languagePicker.trigger
