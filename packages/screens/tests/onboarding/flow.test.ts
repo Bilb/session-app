@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import {
   asksAboutNotifications,
+  backAction,
+  backPath,
   committingStep,
   backDiscardsAccount,
   isWideDesign,
@@ -280,35 +282,100 @@ describe('the tablet sequences', () => {
   })
 })
 
-describe('which way a move goes', () => {
-  it('goes forward through the sequence', () => {
-    expect(run([CREATE]).lastMove).toBe('forward')
-    expect(run([CREATE, NAME]).lastMove).toBe('forward')
-    expect(run([CREATE, NAME, FAST]).lastMove).toBe('forward')
+describe('the path back', () => {
+  const BACK: OnboardingEvent = { type: 'back' }
+  const GAVE_UP: OnboardingEvent = { type: 'restoreGaveUp' }
+  const FAILED: OnboardingEvent = { type: 'commitFailed' }
+  const ARRIVED: OnboardingEvent = {
+    type: 'notificationsChosen',
+    mode: 'fast',
+    profileArrived: true,
+  }
+
+  /** What the phones' stack holds where a step stays on screen at `done`. */
+  const shownPath = (state: OnboardingState) =>
+    backPath(state.step === 'done' ? { ...state, step: committingStep(state) } : state)
+
+  it('ends at the step on screen, and leads back to the landing screen', () => {
+    expect(backPath(run([CREATE, NAME]))).toEqual([
+      'landing',
+      'pickDisplayName',
+      'messageNotifications',
+    ])
+    expect(backPath(run([RESTORE, PHRASE, FAST]))).toEqual([
+      'landing',
+      'loadAccount',
+      'messageNotifications',
+      'loading',
+    ])
   })
 
-  it('goes back when somebody backs out', () => {
-    expect(run([CREATE, { type: 'back' }]).lastMove).toBe('back')
+  it('goes back to the phrase, not the wait, after a restore whose wait ran out', () => {
+    // History would put the finished loader under the name screen, and a swipe would drag it out.
+    expect(backPath(run([RESTORE, PHRASE, FAST, GAVE_UP]))).toEqual([
+      'landing',
+      'loadAccount',
+      'pickDisplayName',
+    ])
   })
 
-  it('goes back when a step is returned to after a refusal', () => {
-    // Both land on a screen that has already been seen, so sliding them in from the far side
-    // would say the flow had moved on.
-    expect(run([RESTORE, PHRASE, { type: 'restoreFailed' }]).lastMove).toBe('back')
-    expect(run([CREATE, NAME, FAST, { type: 'commitFailed' }]).lastMove).toBe('back')
+  it('goes back to the start, not the notification question, after a restore whose commit failed', () => {
+    expect(backPath(run([RESTORE, PHRASE, ARRIVED, FAILED]))).toEqual([
+      'landing',
+      'pickDisplayName',
+    ])
   })
 
-  it('leaves the last move alone when the window resizes', () => {
-    const backed = run([CREATE, { type: 'back' }])
-    const resized = onboardingReducer(backed, { type: 'designChanged', design: 'desktop' })
-    expect(resized.lastMove).toBe('back')
+  it('puts where back goes directly under the top, whatever the sequence', () => {
+    const sequences: OnboardingEvent[][] = [
+      [CREATE],
+      [CREATE, NAME],
+      [CREATE, NAME, FAST, FAILED],
+      [RESTORE],
+      [RESTORE, PHRASE],
+      [RESTORE, PHRASE, FAST],
+      [RESTORE, PHRASE, FAST, GAVE_UP],
+      [RESTORE, PHRASE, ARRIVED, FAILED],
+      [RESTORE, PHRASE, FAST, BACK],
+    ]
+    for (const events of sequences) {
+      const state = run(events)
+      expect(backPath(state).at(-2) ?? null, events.map((e) => e.type).join(' ')).toBe(
+        onboardingReducer(state, BACK) === state ? null : onboardingReducer(state, BACK).step,
+      )
+    }
   })
 
-  it('records the move even where back starts the flow over', () => {
-    // `back` to the landing screen rebuilds the state from scratch, which would otherwise hand
-    // the transition a fresh `forward`.
-    expect(run([RESTORE, { type: 'back' }]).step).toBe('landing')
-    expect(run([RESTORE, { type: 'back' }]).lastMove).toBe('back')
+  it('holds the step drawn at done on top while the account is made', () => {
+    expect(shownPath(run([CREATE, NAME, FAST])).at(-1)).toBe('messageNotifications')
+    expect(shownPath(run([RESTORE, PHRASE, FAST, GAVE_UP, NAME])).at(-1)).toBe('pickDisplayName')
+  })
+})
+
+describe('what back does', () => {
+  it('does nothing while work is running, from any step', () => {
+    for (const step of [
+      'landing',
+      'loadAccount',
+      'pickDisplayName',
+      'messageNotifications',
+      'loading',
+      'done',
+    ] as const) {
+      expect(backAction(step, true), step).toBeNull()
+    }
+  })
+
+  it('abandons the attempt from the phrase screen, and steps back elsewhere', () => {
+    expect(backAction('loadAccount', false)).toBe('abandonRestore')
+    expect(backAction('pickDisplayName', false)).toBe('back')
+    expect(backAction('messageNotifications', false)).toBe('back')
+    expect(backAction('loading', false)).toBe('back')
+  })
+
+  it('has nowhere to go before the landing screen or once the account is being made', () => {
+    expect(backAction('landing', false)).toBeNull()
+    expect(backAction('done', false)).toBeNull()
   })
 })
 

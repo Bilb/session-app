@@ -32,6 +32,9 @@ export function canChooseView(message: Message): boolean {
  * `chosen` is the reader's answer where they have given one. The default is the gallery wherever
  * one is possible, so the only choice that changes anything is the list; a choice on a set that
  * cannot be a gallery is ignored.
+ *
+ * TODO: surface libsession's per-message gallery decision through the bridge and store the
+ * reader's choice there; it is screen state today, so it is lost when the conversation closes.
  */
 export function attachmentView(message: Message, chosen?: AttachmentView): AttachmentView {
   if (!canChooseView(message)) return 'list'
