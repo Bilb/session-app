@@ -5,9 +5,7 @@
    these sources -- screens and both apps -- fails on the .png and .ttf imports below. */
 /// <reference path="./assets.d.ts" />
 import { config } from './config'
-import robotoBold from '../assets/fonts/Roboto-Bold.ttf'
-import robotoMedium from '../assets/fonts/Roboto-Medium.ttf'
-import robotoRegular from '../assets/fonts/Roboto-Regular.ttf'
+import { BUNDLED_FACES } from './fontAssets'
 
 /**
  * Puts the configuration's stylesheet in the document, which is what makes a theme a theme here.
@@ -28,31 +26,18 @@ import robotoRegular from '../assets/fonts/Roboto-Regular.ttf'
  */
 const ID = 'tamagui-css'
 
-/**
- * Roboto, shipped rather than assumed.
- *
- * It is the face the desktop client uses, and it is not installed on macOS or on most Windows
- * machines -- so naming it in the font stack without shipping it silently falls through to whatever
- * the platform's default is, which is how this app was drawing a serif. Three weights, because the
- * type scale asks for regular, semibold and bold and nothing else.
- */
-const FONT_FACES = [
-  { weight: 400, src: robotoRegular },
-  { weight: 500, src: robotoMedium },
-  { weight: 700, src: robotoBold },
-]
-  .map(
-    ({ weight, src }) => `@font-face {
-  font-family: 'Roboto';
+/** Every face the desktop bundles, as `@font-face` rules. The list is in `fontAssets.ts`. */
+const FONT_FACES = BUNDLED_FACES.map(
+  ({ family, weight, src }) => `@font-face {
+  font-family: '${family}';
   font-style: normal;
-  font-weight: ${String(weight)};
+  font-weight: ${weight};
   /* Nothing is drawn in a fallback face and then reflowed: the text is the layout on these
      screens, and a swap moves every button under the cursor. */
   font-display: block;
   src: url('${src}') format('truetype');
 }`,
-  )
-  .join('\n')
+).join('\n')
 
 /**
  * What selected text looks like.

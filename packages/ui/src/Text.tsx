@@ -2,6 +2,9 @@ import type { ComponentProps } from 'react'
 
 import { SizableText, styled } from 'tamagui'
 
+import { BODY_FACE } from './bodyFace'
+import { FACE_WEIGHTS } from './faceWeights'
+
 /**
  * Text.
  *
@@ -33,16 +36,11 @@ export const Text = styled(SizableText, {
        */
       disabled: { color: '$textDisabled' },
     },
-    /**
-     * **Roboto has no 600.** Its weights are 100, 300, 400, 500, 700 and 900, so asking for 600
-     * gets a browser-synthesised bold -- the regular face algorithmically thickened -- which is
-     * blurrier and wider than a drawn one and does not match anything a design tool renders.
-     * `semibold` therefore means Medium, which is the weight that actually exists between the two.
-     */
+    /** What each asks for depends on the face drawn: see `faceWeights.ts`. */
     weight: {
-      regular: { fontWeight: '400' },
-      semibold: { fontWeight: '500' },
-      bold: { fontWeight: '700' },
+      regular: { fontWeight: FACE_WEIGHTS[BODY_FACE].regular },
+      semibold: { fontWeight: FACE_WEIGHTS[BODY_FACE].semibold },
+      bold: { fontWeight: FACE_WEIGHTS[BODY_FACE].bold },
     },
   } as const,
 
