@@ -30,7 +30,7 @@ export function OnboardingBackButton({
 const BACK_WIDTH = 40
 
 /** Clears the heading with the whole circle, which iOS 26's glass makes visible. */
-const BACK_GAP = 6
+const BACK_GAP = 8
 
 /** Where the heading starts, from the column's edge. */
 const HEADING_INSET = 4
@@ -53,7 +53,7 @@ export function WideBackButton({
       // Negative, because the control hangs outside the fixed-width column. The end margin is the
       // gap, so the heading stays put however far out the control hangs.
       {...logical({ marginStart: HEADING_INSET - BACK_WIDTH - BACK_GAP, marginEnd: BACK_GAP })}
-      height={34}
+      height="$xl"
       justifyContent="center"
     >
       <OnboardingBackButton onPress={onPress} disabled={disabled} />

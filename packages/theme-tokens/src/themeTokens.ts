@@ -129,15 +129,15 @@ const WARNING_BASE = { light: '#A64B00', dark: '#FCB159' } as const
 
 /**
  * Black with polarity-keyed alpha, never theme colours: a darkening taken from a dark theme's
- * palette lightens it. Values are the desktop client's.
+ * palette lightens it.
  */
 const SCRIM = { light: 'rgba(0, 0, 0, 0.2)', dark: 'rgba(0, 0, 0, 0.5)' } as const
 const SHADOW = { light: 'rgba(0, 0, 0, 0.25)', dark: 'rgba(0, 0, 0, 1)' } as const
 
 /**
  * Overlays rather than surface roles, so the step is relative to whatever the control sits on; a
- * surface-role hover vanishes on a dialog's recessed ground. Hover is the desktop client's row
- * hover; press is double it so the two stay apart.
+ * surface-role hover vanishes on a dialog's recessed ground. Press is double hover so the two
+ * stay apart.
  */
 const HOVER_OVERLAY = { light: 'rgba(0, 0, 0, 0.04)', dark: 'rgba(255, 255, 255, 0.05)' } as const
 const PRESSED_OVERLAY = { light: 'rgba(0, 0, 0, 0.08)', dark: 'rgba(255, 255, 255, 0.1)' } as const

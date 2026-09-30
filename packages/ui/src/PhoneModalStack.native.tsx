@@ -7,6 +7,7 @@ import { ScrollView, XStack, YStack } from 'tamagui'
 import { BarButton } from './BarButton'
 import { Icon } from './Icon'
 import { ACTION_HEIGHT } from './modalPanelMetrics'
+import { SPACE_SCALE } from './scales'
 import { PressArea } from './PressArea'
 import { useScreenInsets } from './screenInsets'
 import { Text } from './Text'
@@ -61,7 +62,6 @@ export function PhoneModalStack({
           contentStyle={[styles.fill, { backgroundColor: background }]}
           headerConfig={{
             title: screen.title,
-            // 26 bold on every screen, as both phone clients draw a settings title.
             titleFontSize: FONT_SIZE.headingLarge,
             titleFontWeight: '700',
             backgroundColor: background,
@@ -129,7 +129,7 @@ export function PhoneModalStack({
 const BAR_DRAWS_BUTTON =
   Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26
 
-/** Lines the Android title up with where the bar places a pushed screen's title; off-scale. */
-const TITLE_AFTER_CLOSE = 19
+/** Lines the Android title up with where the bar places a pushed screen's title. */
+const TITLE_AFTER_CLOSE = SPACE_SCALE.lg
 
 const styles = StyleSheet.create({ fill: { flex: 1 } })

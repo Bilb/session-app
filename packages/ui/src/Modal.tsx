@@ -8,6 +8,8 @@ import { Button } from './Button'
 import { Icon } from './Icon'
 import { Text } from './Text'
 import { logical } from './logicalEdges'
+import { ACTION_HEIGHT } from './modalPanelMetrics'
+import { RADIUS_SCALE, SPACE_SCALE } from './scales'
 import { ALERT_BORDER, alertShadow } from './alertEdge'
 
 interface ModalProps {
@@ -54,19 +56,11 @@ interface ModalProps {
   bottomInset?: number
 }
 
-/**
- * The dialog's own metrics, from the legacy client rather than from our scales.
- *
- * `Modal.swift` builds this with numbers that are not on either type or space ladder -- an 11pt
- * radius, a 51pt button, 24 above the title and 4 below the buttons -- so they are written here as
- * themselves. Rounded onto the nearest rung instead, the dialog reads as a different one: heavier
- * padding, rounder corners and shorter buttons.
- */
-const RADIUS = 11
-const SIDE_INSET = 35
-const TOP_INSET = 24
-const BOTTOM_INSET = 4
-const CONTENT_GAP = 8
+const RADIUS = RADIUS_SCALE.md
+const SIDE_INSET = SPACE_SCALE['2xl']
+const TOP_INSET = SPACE_SCALE.xl
+const BOTTOM_INSET = SPACE_SCALE['2xs']
+const CONTENT_GAP = SPACE_SCALE.xs
 
 /**
  * The extra air above the actions, on top of the body's own rhythm.
@@ -74,17 +68,16 @@ const CONTENT_GAP = 8
  * The row is a different kind of thing from the lines above it -- it runs the full width and is
  * held down at the dialog's edge -- and at the body's gap it read as another line of the copy.
  */
-const ACTIONS_GAP = 16
+const ACTIONS_GAP = SPACE_SCALE.md
 
 /**
  * How far the close's **touch target** sits from the dialog's own corner.
  *
  * It belongs to the dialog rather than to the column of text, so it is pulled back out of the
  * content inset. Small because the target is much bigger than the glyph -- what the eye measures
- * is the cross, which ends up about ten points in from each edge, where the client draws it.
+ * is the cross, which ends up about ten points in from each edge.
  */
-const CLOSE_INSET = 2
-const ACTION_HEIGHT = 51
+const CLOSE_INSET = SPACE_SCALE['3xs']
 
 /**
  * Something asked over the top of the page.
@@ -132,8 +125,7 @@ export function Modal({
           <Blur dark={dark} />
         </YStack>
       )}
-      {/* No scrim over a blur, as the legacy client's `Modal.dimmingView` is a bare
-          `UIVisualEffectView`: a dim would hide what the blur shows. */}
+      {/* No scrim over a blur: a dim would hide what the blur shows. */}
       {Blur !== null ? null : <YStack fullscreen backgroundColor="$scrim" />}
       {/* Presses outside land here rather than on a pressable container, which would stop the
           body scrolling. See `ModalStackHost`'s backdrop. */}
@@ -199,7 +191,7 @@ export function AlertBox({
       paddingHorizontal={sideInset}
       paddingBottom={bottomInset}
       borderRadius={RADIUS}
-      // The surface above the page, which is what an alert sits on in the client.
+      // The surface above the page.
       backgroundColor="$backgroundSecondary"
       // Its edge against a dimmed page is the same surface over another. See `alertEdge.ts`.
       {...ALERT_BORDER}
@@ -236,7 +228,7 @@ export function AlertBox({
       {children}
 
       {actions === undefined ? null : (
-        /* Full width, no gap: the client's `fillEqually`. Clipped so a held cell's fill stops
+        /* Full width, no gap, equal shares. Clipped so a held cell's fill stops
            at the rounded bottom corners. */
         <XStack
           alignItems="stretch"

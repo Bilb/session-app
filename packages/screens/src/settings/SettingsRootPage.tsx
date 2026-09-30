@@ -27,7 +27,10 @@ import { LocalizedText } from '../LocalizedText'
 /** How long the copy control shows that it worked. */
 const COPIED_FOR_MS = 2000
 
-/** iOS's `.small` badge, 32 by 14.5: it overhangs the icon column, as the clients' badges do. */
+/**
+ * Off the size scale on purpose: a brand badge sized to sit level with the row's icons. At 16 its
+ * width crowds the label. Wider than the icon column, which it overhangs.
+ */
 const PRO_BADGE = 14.5
 
 /** One row of the root list, as `SettingsRow` takes it. */
@@ -38,7 +41,6 @@ type RowSpec = Pick<
   testID: string
 }
 
-/** The avatar at the top: the desktop client's `AvatarSize.XL`. */
 const PROFILE_AVATAR = 90
 
 /** Asks before deleting everything on the device, on top of the settings modal. */
@@ -105,18 +107,15 @@ function ClearDataActions({
   )
 }
 
-/** The client's measurements, off the scale on purpose: rounded onto rungs it reads as a button. */
-const PILL_PADDING = { top: 6, bottom: 5, side: 15 } as const
-
-/** "Your Account ID" in a pill between two rules: the desktop client's `AccountIdPill`. */
+/** "Your Account ID" in a pill between two rules. */
 function AccountIdPill() {
   return (
     <XStack alignSelf="stretch" alignItems="center">
       <YStack flex={1} height={1} backgroundColor="$bordersColor" />
       <YStack
-        paddingTop={PILL_PADDING.top}
-        paddingBottom={PILL_PADDING.bottom}
-        paddingHorizontal={PILL_PADDING.side}
+        paddingTop="$2xs"
+        paddingBottom="$2xs"
+        paddingHorizontal="$sm"
         borderRadius="$full"
         borderWidth={1}
         borderColor="$bordersColor"

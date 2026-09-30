@@ -4,7 +4,7 @@ import { Platform, StyleSheet } from 'react-native'
 
 /**
  * `expo-blur` takes an intensity on top of the material, where UIKit takes only the material, so
- * 100 is the legacy client's blur; with no scrim behind it, the blur is the whole backdrop. Light
+ * 100 is the full material; with no scrim behind it, the blur is the whole backdrop. Light
  * is eased to 80 because the full light material reads as nearly opaque over a light page.
  */
 const INTENSITY = { dark: 100, light: 80 } as const

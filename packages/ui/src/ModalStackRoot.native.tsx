@@ -12,7 +12,7 @@ export type { ModalStackRootProps }
 
 /**
  * The app with its modals; on a phone each panel is a native full-screen modal holding its own
- * native stack, as the iOS client presents settings. Inside react-native's `Modal` a
+ * native stack. Inside react-native's `Modal` a
  * react-native-screens stack receives no taps, so panels cannot go through `ModalStackHost`.
  *
  * The app is always the root screen of a native stack, even on a tablet: crossing the breakpoint
@@ -59,7 +59,7 @@ export function ModalStackRoot({ children, ...host }: ModalStackRootProps) {
           key={entry.id}
           screenId={entry.id}
           stackPresentation="fullScreenModal"
-          // Android fades up from below, as the legacy client's settings activity opens.
+          // Android fades up from below, as an Android activity opens.
           stackAnimation={Platform.OS === 'android' ? 'fade_from_bottom' : 'default'}
           headerConfig={{ hidden: true }}
           contentStyle={styles.fill}

@@ -89,8 +89,7 @@ export function ModalStackHost({
             }
           : undefined
 
-        // Each layer above the first dims what it covers, as the desktop client gives every modal
-        // its own backdrop. A sibling drawn before the modal, not a child: on the web an absolute
+        // Each layer above the first dims what it covers. A sibling drawn before the modal, not a child: on the web an absolute
         // child paints over its in-flow siblings, so it would cover the dialog.
         const layerScrim =
           index === 0 ? null : Blur === null ? (
@@ -174,7 +173,7 @@ export function ModalStackHost({
                       paddingTop: screenInsets.top,
                       paddingBottom: screenInsets.bottom,
                     })}
-                // The page's own surface, lifted by border and shadow, as in the desktop client.
+                // The page's own surface, lifted by border and shadow.
                 backgroundColor="$backgroundPrimary"
                 // Keeps a pressed row's highlight inside the rounded corners.
                 overflow="hidden"
@@ -185,8 +184,7 @@ export function ModalStackHost({
                       as a screen is pushed. */}
                   <YStack width={HEADER_HEIGHT}>
                     {entry.stack.length <= 1 ? (
-                      // Narrow: close leads, on the first screen only. Wide: it trails, as on
-                      // the desktop client.
+                      // Narrow: close leads, on the first screen only. Wide: it trails.
                       wide || !entry.dismissible ? null : (
                         <BarButton
                           icon="x"

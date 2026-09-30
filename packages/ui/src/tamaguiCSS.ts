@@ -54,7 +54,7 @@ const SELECTION = `::selection {
 }`
 
 /**
- * The desktop client's scrollbar. Its colours are exactly muted text at these alphas, so taking the
+ * The scrollbar. Its colours are muted text at these alphas, so taking the
  * role keeps them right in every theme; the platform default is a grey gutter on a dark theme.
  */
 const SCROLLBAR = `::-webkit-scrollbar { width: 6px; height: 6px; }

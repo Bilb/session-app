@@ -59,7 +59,7 @@ export function RecoveryPasswordShield({ size, color }: MarkProps) {
   )
 }
 
-/** The Session Network token's mark, which the client draws on the Session Network row. */
+/** The Session Network token's mark, for the Session Network row. */
 export function SessionTokenMark({ size, color }: MarkProps) {
   const fill = useTokenColor(color)
   return (
@@ -70,7 +70,7 @@ export function SessionTokenMark({ size, color }: MarkProps) {
 }
 
 /**
- * The Pro badge, Android's `ic_pro_badge`, flat on every client. `color` is the box's; the letters
+ * The Pro badge. `color` is the box's; the letters
  * take `onAccent`.
  */
 export function ProBadge({ size, color }: MarkProps) {

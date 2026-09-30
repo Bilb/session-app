@@ -16,7 +16,7 @@ export interface ModalScreen {
   /** Drawn in the modal's own header, so a screen does not draw a title of its own. */
   title: string
   render: () => ReactNode
-  /** Actions along the bottom, outside the scrolling body: the client's `buttonChildren`. */
+  /** Actions along the bottom, outside the scrolling body. */
   footer?: () => ReactNode
 }
 
@@ -26,7 +26,7 @@ export interface ModalPresentation {
    * `AlertBox`, with its one screen's footer as the actions.
    */
   kind?: 'panel' | 'alert'
-  /** Which of the client's three widths a panel draws at. Defaults to `normal`. */
+  /** Which of the three panel widths it draws at. Defaults to `normal`. */
   width?: PanelWidth
   /** An alert's own test ids. */
   testID?: string
@@ -38,7 +38,7 @@ export interface ModalPresentation {
   dismissible?: boolean
   /**
    * Whether an alert draws the cross in its corner. Defaults to `dismissible`. Turn it off when the
-   * actions include a Cancel; the scrim still closes it, as in the desktop client's Clear All Data.
+   * actions include a Cancel; the scrim still closes it, as Clear All Data's does.
    */
   showClose?: boolean
   /** The screen it opens on. Further screens arrive through `push`. */

@@ -14,17 +14,17 @@ import type { IconName } from './Icon.types'
 import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
 import { PRESS_PASSTHROUGH } from './pressPassthrough'
-import { SPACE_SCALE } from './scales'
+import { SIZE_SCALE, SPACE_SCALE } from './scales'
 import { Text } from './Text'
 
 /** A control's rung rather than a text line's: a row is a tap target. */
-const ROW_MIN_HEIGHT = 56
+const ROW_MIN_HEIGHT = SIZE_SCALE['4xl']
 
 /** How wide the leading icon's column is, so labels line up whether or not a row has one. */
-const ICON_COLUMN = 24
+const ICON_COLUMN = SIZE_SCALE.lg
 
 /**
- * The desktop client's half pixel: a whole one lands on one device pixel or two depending on
+ * Half a pixel: a whole one lands on one device pixel or two depending on
  * position, so one group's lines would draw at different weights.
  */
 const SEPARATOR = 0.5
@@ -36,11 +36,11 @@ export interface SettingsRowProps {
    * that is not one colour on a square (the Pro badge); the caller sizes and tones it.
    */
   icon?: IconName | ComponentType<MarkProps> | ReactElement
-  /** Draws the icon in the accent, for the row the client singles out that way: Donate. */
+  /** Draws the icon in the accent, as Donate's is. */
   accentIcon?: boolean
   /** A second line under the label, for a row whose meaning is not obvious from its name. */
   subtitle?: string
-  /** A value, a switch, a button. No chevron by default: the client's rows carry none. */
+  /** A value, a switch, a button. No chevron by default. */
   trailing?: ReactNode
   /** Tints the label and its icon, for a row that destroys something. */
   destructive?: boolean
@@ -52,7 +52,7 @@ export interface SettingsRowProps {
 }
 
 /**
- * One row of a settings list: the desktop client's `PanelButton`.
+ * One row of a settings list.
  *
  * A row whose screen is not built yet is shown `disabled` rather than hidden, so the list keeps its
  * designed order. `disabled` is explicit because a row with no `onPress` may still have a live
@@ -122,7 +122,7 @@ export function SettingsRow({
                 {label}
               </Text>
               {subtitle === undefined ? null : (
-                // Unmuted, as the desktop client draws it. Label size so it reads as the name's
+                // Unmuted. Label size so it reads as the name's
                 // explanation rather than as a second line of body text.
                 <Text size="$label" color={disabled ? '$textDisabled' : '$textPrimary'}>
                   {subtitle}
@@ -146,17 +146,17 @@ export function SettingsRow({
 }
 
 /** The pixel height a mark is drawn at: the icon ladder's `md`, a rung under the glyphs' `lg`. */
-const MARK_SIZE = 20
+const MARK_SIZE = SIZE_SCALE.md
 
 function Mark({ mark: Drawn, color }: { mark: ComponentType<MarkProps>; color: string }) {
   return <Drawn size={MARK_SIZE} color={color} />
 }
 
 /**
- * A run of rows drawn as one block: the client's `PanelButtonGroup`.
+ * A run of rows drawn as one block.
  *
- * Separators are drawn here so a row need not know whether it is last, inset from both edges as
- * the client's are: a full-width divider reads as two cards.
+ * Separators are drawn here so a row need not know whether it is last, inset from both edges:
+ * a full-width divider reads as two cards.
  */
 export function SettingsGroup({ children }: { children: ReactNode }) {
   const rows = Children.toArray(children)
@@ -175,7 +175,7 @@ export function SettingsGroup({ children }: { children: ReactNode }) {
 }
 
 /**
- * A heading over a group, with an optional explanation: the client's `PanelLabelWithDescription`.
+ * A heading over a group, with an optional explanation.
  * Use sparingly; over rows whose names already say what they are it is noise.
  */
 export function SettingsSection({ label, description }: { label: string; description?: string }) {

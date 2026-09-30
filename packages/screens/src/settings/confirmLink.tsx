@@ -32,7 +32,7 @@ export function confirmLink(modals: Modals, url: string): void {
       footer: () => (
         <>
           <Button
-            // Ghost, not simple: the clients highlight the whole cell when held.
+            // Ghost, not simple, so the whole cell highlights when held.
             variant="ghost"
             fill
             // The actions share edges across the dialog, so a rounded highlight would leave gaps.

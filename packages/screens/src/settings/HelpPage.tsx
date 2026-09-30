@@ -14,8 +14,8 @@ import {
 import { confirmLink } from './confirmLink'
 
 /**
- * In the desktop client's order. `feedback` goes to `URLS.survey`, not `URLS.feedback`, matching
- * the client so support answers about "the feedback link" hold on both.
+ * `feedback` goes to `URLS.survey`, not `URLS.feedback`, matching the shipping clients so support
+ * answers about "the feedback link" hold on both.
  */
 const LINKS = [
   { name: 'faq', label: 'helpFAQ', description: 'helpFAQDescription', url: URLS.faq },
@@ -60,7 +60,7 @@ export function HelpPage() {
               key={link.name}
               label={tr(link.label)}
               subtitle={tr(link.description)}
-              // The accent on dark, body text on light: the client's pairing for this glyph.
+              // The accent on dark, body text on light, where the accent is too faint as a glyph.
               trailing={<Icon name="externalLink" size="md" color="$accentText" />}
               testID={ELEMENT.help.link(link.name)}
               onPress={() => {

@@ -19,7 +19,7 @@ function colorFor(id: string): string {
   return ACCENTS[hash % ACCENTS.length] ?? ACCENTS[0] ?? '#31F196'
 }
 
-/** Initials against the diameter, from the desktop's `AvatarPlaceHolder`; one letter gets more. */
+/** Initials scale with the diameter; one letter gets more room. */
 const INITIALS_RATIO = { one: 0.5, more: 0.4 } as const
 
 export interface AvatarProps {
@@ -42,8 +42,7 @@ export function Avatar({ id, name, size = 40, testID }: AvatarProps) {
       justifyContent="center"
       testID={testID}
     >
-      {/* White, as all three clients draw it: the circle is the account's colour, not the theme's,
-          so no theme role fits. */}
+      {/* White: the circle is the account's colour, not the theme's, so no theme role fits. */}
       <Text size={`$${initialsSize}`} weight="bold" color={COLORS.WHITE}>
         {letters}
       </Text>
