@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, symlinkSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -7,10 +7,13 @@ import { describe, expect, it } from 'vitest'
 import type { Frame, Request } from '@session/client'
 
 import {
+  dialogDefaultPath,
   ExportGate,
   MAX_PATH_CHARS,
   MAX_SUGGESTED_NAME_CHARS,
+  readLastFolder,
   sanitiseSuggestedName,
+  writeLastFolder,
 } from '#src/main/files'
 
 function exportTo(destination: string, id = 1, replace = false): Request {
@@ -192,5 +195,43 @@ describe('the name a save dialog is pre-filled with', () => {
     for (const nothing of ['', '   ', '.', '..', '../..', 'folder/', '\u0000\u0001', null, 42]) {
       expect(sanitiseSuggestedName(nothing)).toBe('attachment')
     }
+  })
+})
+
+describe('where a save dialog opens', () => {
+  it('leaves the folder to macOS and Windows, which remember it themselves', () => {
+    expect(dialogDefaultPath('a.jpg', 'darwin', '/last', '/downloads')).toBe('a.jpg')
+    expect(dialogDefaultPath('a.jpg', 'win32', '/last', '/downloads')).toBe('a.jpg')
+  })
+
+  it('opens on Linux where the last export went, else in Downloads', () => {
+    expect(dialogDefaultPath('a.jpg', 'linux', '/last', '/downloads')).toBe(join('/last', 'a.jpg'))
+    expect(dialogDefaultPath('a.jpg', 'linux', undefined, '/downloads')).toBe(
+      join('/downloads', 'a.jpg'),
+    )
+  })
+
+  it('remembers the last folder across runs', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'last-folder-'))
+    const file = join(dir, 'last-export-folder')
+    expect(readLastFolder(file)).toBeUndefined()
+    writeLastFolder(file, dir)
+    expect(readLastFolder(file)).toBe(dir)
+  })
+
+  it('forgets a folder that is gone, or is not a folder', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'last-folder-'))
+    const file = join(dir, 'last-export-folder')
+    const gone = join(dir, 'gone')
+    mkdirSync(gone)
+    writeLastFolder(file, gone)
+    rmSync(gone, { recursive: true })
+    expect(readLastFolder(file)).toBeUndefined()
+
+    writeLastFolder(file, file)
+    expect(readLastFolder(file)).toBeUndefined()
+
+    writeFileSync(file, '')
+    expect(readLastFolder(file)).toBeUndefined()
   })
 })

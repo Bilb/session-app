@@ -1,4 +1,4 @@
-import { existsSync, realpathSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 
 import type { Frame, Request } from '@session/client'
@@ -128,6 +128,44 @@ export function sanitiseSuggestedName(name: unknown): string {
 }
 
 /**
+ * The folder a save dialog last answered, read back from `file`, or undefined if it is gone.
+ *
+ * Only ever a dialog's starting point, never a grant: `ExportGate` still admits nothing a dialog
+ * did not return, so a tampered file can do no more than open the dialog somewhere odd.
+ */
+export function readLastFolder(file: string): string | undefined {
+  try {
+    const folder = readFileSync(file, 'utf8')
+    return isPath(folder) && statSync(folder).isDirectory() ? folder : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export function writeLastFolder(file: string, folder: string): void {
+  try {
+    writeFileSync(file, folder, { mode: 0o600 })
+  } catch {
+    // Losing it only costs the next dialog its starting folder.
+  }
+}
+
+/**
+ * macOS's and Windows's dialogs remember the last folder per app across runs when given a bare
+ * name, so there the OS decides. Linux's (GTK, or the desktop portal) do not reliably, so there we
+ * start from the folder we remembered.
+ */
+export function dialogDefaultPath(
+  name: string,
+  platform: NodeJS.Platform,
+  lastFolder: string | undefined,
+  downloads: string,
+): string {
+  if (platform === 'darwin' || platform === 'win32') return name
+  return join(lastFolder ?? downloads, name)
+}
+
+/**
  * Choosing where a file goes, and showing somebody where it went, for one window. Returns the
  * window's export gate, which its bridge relay passes every request through.
  *
@@ -136,8 +174,8 @@ export function sanitiseSuggestedName(name: unknown): string {
  */
 export function serveFiles(window: BrowserWindow, appUrl: string): ExportGate {
   const gate = new ExportGate()
-  // Where the last export went, so the next dialog opens there. For this run only.
-  let lastFolder: string | undefined
+  const lastFolderFile = join(app.getPath('userData'), 'last-export-folder')
+  let lastFolder = readLastFolder(lastFolderFile)
   const { ipc } = window.webContents
 
   ipc.handle('files:choose-export-location', async (event, suggested: unknown) => {
@@ -145,13 +183,19 @@ export function serveFiles(window: BrowserWindow, appUrl: string): ExportGate {
     // Modal to this window rather than to the app: a second window is not blocked by a save
     // dialog it did not open.
     const answer = await dialog.showSaveDialog(window, {
-      defaultPath: join(lastFolder ?? app.getPath('downloads'), sanitiseSuggestedName(suggested)),
+      defaultPath: dialogDefaultPath(
+        sanitiseSuggestedName(suggested),
+        process.platform,
+        lastFolder,
+        app.getPath('downloads'),
+      ),
       // macOS and Windows ask before an existing name is chosen; Linux asks only when told to, and
       // that question is what makes an overwrite the person's answer rather than a guess.
       properties: ['showOverwriteConfirmation', 'createDirectory'],
     })
     if (answer.canceled || answer.filePath === '') return null
     lastFolder = dirname(answer.filePath)
+    writeLastFolder(lastFolderFile, lastFolder)
     gate.grant(answer.filePath, existsSync(answer.filePath))
     return answer.filePath
   })
