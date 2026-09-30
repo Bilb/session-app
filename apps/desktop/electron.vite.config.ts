@@ -79,6 +79,7 @@ const workspacePackages = [
   '@session/app',
   '@session/basic-types',
   '@session/bridge-node',
+  '@session/bridge-types',
   '@session/client',
   '@session/localization',
   '@session/state',
