@@ -214,6 +214,9 @@ importers:
       '@session/client':
         specifier: workspace:*
         version: link:../../packages/client
+      '@session/localization':
+        specifier: workspace:*
+        version: link:../../packages/localization
       '@session/screens':
         specifier: workspace:*
         version: link:../../packages/screens

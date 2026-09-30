@@ -8,7 +8,6 @@ import type { Ports } from './ports'
  */
 export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
   let databaseKey: Uint8Array | null = null
-  let clipboard = ''
   const notificationTaps = new Set<(conversationId: string) => void>()
   const focusHandlers = new Set<(focused: boolean) => void>()
 
@@ -54,11 +53,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
       setBadgeCount: () => Promise.resolve(),
     },
     clipboard: {
-      setString: (value) => {
-        clipboard = value
-        return Promise.resolve()
-      },
-      getString: () => Promise.resolve(clipboard),
+      setString: () => Promise.resolve(),
     },
     linking: {
       openUrl: () => Promise.resolve(),

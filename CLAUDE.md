@@ -51,6 +51,13 @@ dev entries. When a rule fires, fix the design - not the config.
   flipped by editing source cannot be used to bisect a bug on someone else's device, which is most
   of what a flag is for. The default belongs in the shared flag table; reading the override is a
   port, because each platform exposes the environment differently.
+- **The desktop renderer is granted no Chromium permission**, the clipboard's included:
+  `denyAllPermissions` stays deny-all. What the page needs from the OS is a named preload
+  function, handled on that window's `webContents.ipc` (not the global `ipcMain`), which checks
+  the sender with `isFromAppFrame` and bounds its arguments. ESLint refuses `ipcMain` in desktop
+  main, and an `ipc` handler that does not call `isFromAppFrame`.
+- A port method one platform cannot honour is dropped or made nullable, never implemented to
+  always fail.
 
 ## Porting a screen
 

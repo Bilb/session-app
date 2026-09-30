@@ -1,5 +1,6 @@
 import { memoryPorts, setPorts } from '@session/app'
 import { parseNetworkName } from '@session/basic-types'
+import { getLocale, subscribeLocale } from '@session/localization'
 
 /**
  * The desktop app's OS ports.
@@ -65,8 +66,14 @@ setPorts(
       openAppSettings: null,
     },
     clipboard: {
-      setString: (value) => navigator.clipboard.writeText(value),
-      getString: () => navigator.clipboard.readText(),
+      setString: (value) => window.sessionDesktop.copyText(value),
     },
   }),
 )
+
+// Main draws the right-click menu, and has no other way to learn the language chosen here.
+function shareLocale(): void {
+  window.sessionDesktop.setLocale(getLocale())
+}
+shareLocale()
+subscribeLocale(shareLocale)
