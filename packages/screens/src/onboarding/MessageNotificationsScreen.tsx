@@ -127,6 +127,8 @@ export function MessageNotificationsScreen({
       title={tr('notificationsMessage')}
       description={tr('onboardingMessageNotificationExplanation')}
       onBack={onBack}
+      // A back press while the account is being made, or discarded, starts a second one.
+      backDisabled={busy}
       testID={ELEMENT.onboarding.notificationsScreen}
       // The options end in a bordered box and there is no message to hold room for, so nothing
       // else would keep the button off it.

@@ -11,6 +11,8 @@ import { MessageNotificationsScreen } from './MessageNotificationsScreen'
 import { PickDisplayNameScreen } from './PickDisplayNameScreen'
 import {
   backDiscardsAccount,
+  backAction,
+  backPath,
   committingStep,
   isWideDesign,
   initialOnboarding,
@@ -123,7 +125,7 @@ function OnboardingScreen({
       return (
         <LoadingScreen
           onBack={onBack}
-          backDisabled={committing}
+          backDisabled={busy}
           onGaveUp={
             // Null once the account is being made: the wait is over, and a deadline still
             // running would announce a timeout on top of a restore that already arrived.
@@ -288,10 +290,11 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
     )
   }, [state, actions, onRunningChange])
 
-  const abandonPhrase = () => {
-    // The refusal described the attempt that was just abandoned. Left standing, coming back to
-    // this screen shows an error over an empty field, and switching to the QR tab shows one over a
-    // camera that has scanned nothing.
+  /** Back from the phrase screen, which abandons whatever attempt is in flight. */
+  const abandonRestore = () => {
+    // The refusal described the attempt that was just abandoned. Left standing, coming back to this
+    // screen shows an error over an empty field, and switching to the QR tab shows one over a camera
+    // that has scanned nothing.
     setRejected(false)
     // Whoever abandons the attempt clears its flag: the resolution will not, because by then it
     // belongs to an attempt nobody is waiting for.
@@ -343,6 +346,13 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
    */
   const working = busy || committingNow
   const shownStep = committingNow ? committingStep(state) : state.step
+  /** What back does from the shown step, as the stack's swipe offers it. See `backAction`. */
+  const swipeBack = (() => {
+    const action = backAction(shownStep, working)
+    if (action === 'back') return goBack
+    if (action === 'abandonRestore') return abandonRestore
+    return undefined
+  })()
   const body = (
     <OnboardingScreen
       step={shownStep}
@@ -353,7 +363,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
       rejected={rejected}
       profileArrived={profileArrived}
       onBack={goBack}
-      onAbandonPhrase={abandonPhrase}
+      onAbandonPhrase={abandonRestore}
       onSubmitPhrase={submitPhrase}
     />
   )
@@ -365,10 +375,11 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
       {!isWideDesign(design) ? (
         <StepTransition
           // The step the commit is drawn over, not `done` -- `body` is that step's screen, and
-          // a key change here swaps panes, which remounts it and restarts the wait it is showing.
-          stepKey={shownStep}
-          direction={state.lastMove}
+          // a key change here pushes a new screen, which remounts it and restarts the wait it is
+          // showing.
+          path={backPath({ ...state, step: shownStep })}
           instant={flag('disableAnimations')}
+          onBack={swipeBack}
         >
           {body}
         </StepTransition>
