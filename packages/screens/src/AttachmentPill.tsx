@@ -1,8 +1,8 @@
-import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Progress, Text, TILE_SCRIM, XStack, YStack } from '@session/ui'
 
 import type { AttachmentSet } from './attachmentSet'
+import { sharedCaption } from './attachmentSetCaption'
 import { formatBytes } from './formatBytes'
 import { PENDING_COPY } from './pendingCopy'
 
@@ -10,11 +10,9 @@ import { PENDING_COPY } from './pendingCopy'
 const PILL_BAR_WIDTH = 44
 
 function label(set: AttachmentSet): string {
-  if (set.state === 'fetching') {
-    return set.totalBytes === 0 ? tr('downloading') : formatBytes(set.doneBytes)
-  }
-  if (set.state === 'failed') return tr('failedToDownload')
-  if (set.state === 'unavailable') return tr('attachmentsExpired')
+  const shared = sharedCaption(set)
+  if (shared !== null) return shared
+  if (set.state === 'fetching') return formatBytes(set.doneBytes)
   // Idle: how many there are and what they weigh, which is what somebody deciding needs. The
   // count is the half our aggregate never said, and no catalogue key takes one.
   const count = PENDING_COPY.attachmentCount(set.count)

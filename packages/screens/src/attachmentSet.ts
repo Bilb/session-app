@@ -36,6 +36,8 @@ export interface AttachmentSet {
   totalBytes: number
   /** How many failed. The gallery draws the count; only the list can say which. */
   failed: number
+  /** How many of the unavailable ones are unreadable rather than expired, which is captioned apart. */
+  unreadable: number
 }
 
 /**
@@ -56,13 +58,17 @@ export function summarise(
   let running = 0
   let ready = 0
   let unavailable = 0
+  let unreadable = 0
 
   for (const attachment of attachments) {
     if (attachment.sizeBytes === undefined || size === undefined) size = undefined
     else size += attachment.sizeBytes
 
     const fetch = fetchOf(attachment, reportFor(attachment))
-    if (fetch.state === 'unavailable') unavailable += 1
+    if (fetch.state === 'unavailable') {
+      unavailable += 1
+      if (attachment.availability === 'unreadable') unreadable += 1
+    }
     if (fetch.state === 'failed') failed += 1
     if (fetch.state === 'ready') {
       ready += 1
@@ -101,5 +107,6 @@ export function summarise(
     doneBytes: Math.round(done),
     totalBytes: size ?? 0,
     failed,
+    unreadable,
   }
 }
