@@ -1,6 +1,7 @@
 import { useTextDirection } from '@session/screens'
 import { SessionStoreProvider, type SessionStore } from '@session/state'
-import { DirectionRoot, Text, UIProvider, YStack } from '@session/ui'
+import { DirectionRoot, FONT_ASSETS, Text, UIProvider, YStack } from '@session/ui'
+import { useFonts } from 'expo-font'
 import { Slot } from 'expo-router'
 import { KeyboardProvider } from 'react-native-keyboard-controller'
 import { useEffect, useState } from 'react'
@@ -22,6 +23,10 @@ export default function RootLayout() {
   // be the component that creates the subtree, not a provider wrapped around one.
   // And which way that language reads, which `DirectionRoot` below mirrors the tree to.
   const rtl = useTextDirection()
+
+  // Not awaited: nothing waits on a face. Text drawn before it arrives is in the fallback and
+  // redraws when it lands, which is better than holding the whole app on a file read.
+  useFonts(FONT_ASSETS)
 
   const [store, setStore] = useState<SessionStore | null>(null)
 

@@ -87,7 +87,6 @@ const ports = memoryPorts({
   },
   clipboard: {
     setString: (value) => Clipboard.setStringAsync(value).then(() => undefined),
-    getString: () => Clipboard.getStringAsync(),
   },
   linking: {
     // Unchanged, and repeated because a port override replaces the whole object rather than

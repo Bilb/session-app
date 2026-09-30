@@ -112,3 +112,4 @@ export {
 export type { FileRowState, FileRowTone } from './fileRowState'
 export { fileFormat, fileGlyph, splitFilename } from './attachmentFile'
 export type { WithTestID } from './with'
+export { FONT_ASSETS } from './fontAssets'

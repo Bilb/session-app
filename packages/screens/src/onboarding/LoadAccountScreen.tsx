@@ -236,8 +236,8 @@ function PhrasePane({
           // Generic rather than "incorrect": the bridge flattens libsession's several refusals
           // into one message, so this cannot tell which it was.
           error={rejected ? tr('recoveryPasswordErrorMessageGeneric') : null}
-          onSubmit={() => {
-            onContinue({ words: phraseWords(phrase) })
+          onSubmit={(typed) => {
+            onContinue({ words: phraseWords(typed) })
           }}
           reserveErrorSpace
           errorTestID={ELEMENT.onboarding.recoveryPhraseError}

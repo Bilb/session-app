@@ -2,7 +2,7 @@
   "name": "@session/turbo-guard",
   "version": "0.0.0",
   "private": true,
-  "description": "Checks that turbo's cache keys cover what each cached output depends on, as CI's checkout sees it",
+  "description": "Checks that turbo's cache keys cover what each cached output depends on, and that every package declares the siblings it imports, as CI's checkout sees it",
   "type": "module",
   "imports": {
     "#src/*": [
