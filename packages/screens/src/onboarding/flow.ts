@@ -92,14 +92,6 @@ export interface OnboardingState {
    * the name picker, the last screen that can be asked again.
    */
   commitFailed: boolean
-  /**
-   * Which way the last move went.
-   *
-   * The transition has to travel the way a stack would move it, and a flow with no stack behind it
-   * has nothing else to ask. Recorded rather than inferred, because `back` is not the only event
-   * that goes backwards.
-   */
-  lastMove: 'forward' | 'back'
 }
 
 export function initialOnboarding(design: OnboardingDesign): OnboardingState {
@@ -112,7 +104,6 @@ export function initialOnboarding(design: OnboardingDesign): OnboardingState {
     recovery: null,
     notifications: null,
     commitFailed: false,
-    lastMove: 'forward',
   }
 }
 
@@ -191,6 +182,52 @@ export function committingStep(state: OnboardingState): OnboardingStep {
 }
 
 /**
+ * The steps back leads through from the one in `state`, oldest first, ending with it.
+ *
+ * What the phones' native stack holds, so the screen a back swipe uncovers is always the one back
+ * goes to. The order the steps were visited in would disagree wherever back is a rule rather than
+ * a return: after a restore whose wait ran out, back from the name goes to the phrase, not to the
+ * wait that was on screen before it.
+ */
+export function backPath(state: OnboardingState): OnboardingStep[] {
+  const path: OnboardingStep[] = [state.step]
+  for (
+    let step = previousStep(state);
+    step !== null && !path.includes(step);
+    step = previousStep({ ...state, step })
+  ) {
+    path.unshift(step)
+  }
+  return path
+}
+
+/**
+ * What back does from the step on screen, or null where it does nothing.
+ *
+ * Nothing before the landing screen, and nothing while work is running -- the account being made,
+ * a phrase being checked, or an account being discarded. A second back in that time runs a second
+ * discard, or reveals a screen whose Continue restarts a commit that is still in flight. The phrase
+ * screen's back abandons the attempt rather than stepping back through it.
+ */
+export function backAction(
+  step: OnboardingStep,
+  working: boolean,
+): 'back' | 'abandonRestore' | null {
+  if (working) return null
+  switch (step) {
+    case 'landing':
+    case 'done':
+      return null
+    case 'loadAccount':
+      return 'abandonRestore'
+    case 'pickDisplayName':
+    case 'messageNotifications':
+    case 'loading':
+      return 'back'
+  }
+}
+
+/**
  * Whether going back from here has to throw an account away first.
  *
  * **True wherever one has been minted.** Restore mints at the phrase, so every step past it
@@ -210,30 +247,7 @@ export function backDiscardsAccount(state: OnboardingState): boolean {
 }
 
 export function onboardingReducer(state: OnboardingState, event: OnboardingEvent): OnboardingState {
-  const next = advance(state, event)
-  const move = moveOf(event)
-  if (move === null || next === state) return next
-  return { ...next, lastMove: move }
-}
-
-/**
- * Which way an event travels.
- *
- * `back` is not the only one that goes backwards: a refused phrase and a refused commit both
- * return to a screen that has already been seen, and sliding those in from the far side would say
- * the flow had moved on. A resize is not a move at all and leaves the last one alone.
- */
-function moveOf(event: OnboardingEvent): 'forward' | 'back' | null {
-  switch (event.type) {
-    case 'back':
-    case 'restoreFailed':
-    case 'commitFailed':
-      return 'back'
-    case 'designChanged':
-      return null
-    default:
-      return 'forward'
-  }
+  return advance(state, event)
 }
 
 function advance(state: OnboardingState, event: OnboardingEvent): OnboardingState {

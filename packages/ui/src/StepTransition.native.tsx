@@ -1,8 +1,7 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { StyleSheet } from 'react-native'
 import { ScreenStack, ScreenStackItem } from 'react-native-screens'
 
-import { nextStack } from './stepStack'
 import type { StepTransitionProps } from './StepTransition.types'
 
 export type { StepTransitionProps }
@@ -10,8 +9,8 @@ export type { StepTransitionProps }
 /**
  * The push and pop between onboarding steps, as the platform's own navigation stack draws them.
  *
- * **The flow's reducer is what decides the step**; this mirrors it into a native stack, so a
- * move forward is the platform's push and a move back its pop -- the same curve, the same timing,
+ * **The flow's reducer is what decides the step**; this mirrors the path back from it into a
+ * native stack, so the screen a swipe uncovers is the one back goes to, and a move forward is the platform's push and a move back its pop -- the same curve, the same timing,
  * interruptible, and on iOS with the interactive back swipe. A swipe that completes asks the flow
  * to go back through `onBack`, exactly as the step's own back control does, and the stack then
  * follows the flow like any other move.
@@ -21,25 +20,15 @@ export type { StepTransitionProps }
  *
  * The phones only: the wide designs cross-fade inside their chrome and never reach this.
  */
-export function StepTransition({
-  stepKey,
-  direction,
-  instant = false,
-  onBack,
-  children,
-}: StepTransitionProps) {
-  const [stack, setStack] = useState<string[]>([stepKey])
+export function StepTransition({ path, instant = false, onBack, children }: StepTransitionProps) {
   const shown = useRef(new Map<string, ReactNode>())
-  shown.current.set(stepKey, children)
-
-  // Follows the flow as it renders rather than in an effect, so the frame that has the new step
-  // is the frame that pushes it.
-  if (stack.at(-1) !== stepKey) setStack(nextStack(stack, stepKey, direction))
+  const onTop = path.at(-1)
+  if (onTop !== undefined) shown.current.set(onTop, children)
 
   return (
     <ScreenStack style={styles.fill}>
-      {stack.map((key) => {
-        const top = key === stack.at(-1)
+      {path.map((key) => {
+        const top = key === onTop
         return (
           <ScreenStackItem
             key={key}

@@ -11,6 +11,8 @@ import { MessageNotificationsScreen } from './MessageNotificationsScreen'
 import { PickDisplayNameScreen } from './PickDisplayNameScreen'
 import {
   backDiscardsAccount,
+  backAction,
+  backPath,
   committingStep,
   isWideDesign,
   initialOnboarding,
@@ -225,10 +227,9 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
           // The step the commit is drawn over, not `done` -- `body` is that step's screen, and
           // a key change here pushes a new screen, which remounts it and restarts the wait it is
           // showing.
-          stepKey={shownStep}
-          direction={state.lastMove}
+          path={backPath({ ...state, step: shownStep })}
           instant={flag('disableAnimations')}
-          onBack={backFrom(shownStep) ?? undefined}
+          onBack={backFrom(shownStep)}
         >
           {body}
         </StepTransition>
@@ -238,26 +239,12 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
     </ConfirmUrlProvider>
   )
 
-  /**
-   * What back does from each step, or null where it does nothing.
-   *
-   * The same answer each screen's own back control is given, so the stack's swipe can never leave
-   * a step that control would refuse: nothing before the landing screen, and nothing while the
-   * work a step started is still running.
-   */
-  function backFrom(step: OnboardingStep): (() => void) | null {
-    switch (step) {
-      case 'landing':
-      case 'done':
-        return null
-      case 'pickDisplayName':
-      case 'messageNotifications':
-        return goBack
-      case 'loadAccount':
-        return working ? null : abandonRestore
-      case 'loading':
-        return committingNow ? null : goBack
-    }
+  /** What back does from a step, as the stack's swipe offers it. See `backAction`. */
+  function backFrom(step: OnboardingStep): (() => void) | undefined {
+    const action = backAction(step, working)
+    if (action === 'back') return goBack
+    if (action === 'abandonRestore') return abandonRestore
+    return undefined
   }
 
   function screen(step: OnboardingStep) {
@@ -342,7 +329,7 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
         return (
           <LoadingScreen
             onBack={goBack}
-            backDisabled={committingNow}
+            backDisabled={working}
             onGaveUp={
               // Null once the account is being made: the wait is over, and a deadline still
               // running would announce a timeout on top of a restore that already arrived.
