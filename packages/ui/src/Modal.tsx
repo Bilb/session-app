@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Modal as NativeModal } from 'react-native'
-import { XStack, YStack } from 'tamagui'
+import { useTheme, XStack, YStack } from 'tamagui'
 
 import { useBackdropBlur } from './backdropBlur'
 import { useThemeIsDark } from './UIProvider'
@@ -8,7 +8,7 @@ import { Button } from './Button'
 import { Icon } from './Icon'
 import { Text } from './Text'
 import { logical } from './logicalEdges'
-import { ALERT_EDGE } from './alertEdge'
+import { ALERT_BORDER, alertShadow } from './alertEdge'
 
 interface ModalProps {
   open: boolean
@@ -197,6 +197,7 @@ export function AlertBox({
   sideInset = SIDE_INSET,
   bottomInset = BOTTOM_INSET,
 }: AlertBoxProps) {
+  const theme = useTheme()
   return (
     <YStack
       width="100%"
@@ -208,9 +209,9 @@ export function AlertBox({
       borderRadius={RADIUS}
       // The surface above the page, which is what an alert sits on in the client.
       backgroundColor="$backgroundSecondary"
-      // Its edge against a dimmed page is the same surface over another, so each platform draws
-      // the separation its client does.
-      {...ALERT_EDGE}
+      // Its edge against a dimmed page is the same surface over another. See `alertEdge.ts`.
+      {...ALERT_BORDER}
+      boxShadow={alertShadow(String(theme.shadow?.val ?? ''))}
       testID={testID}
     >
       <XStack alignItems="flex-start" gap="$xs">
