@@ -3,6 +3,7 @@ import { ELEMENT } from '@session/test-ids'
 import { PressArea, SegmentedToggle, Text, XStack, type Segment } from '@session/ui'
 
 import type { AttachmentSet } from './attachmentSet'
+import { sharedCaption } from './attachmentSetCaption'
 import type { AttachmentView } from './attachmentView'
 import { formatBytes } from './formatBytes'
 import { PENDING_COPY } from './pendingCopy'
@@ -39,15 +40,11 @@ const VIEW_SEGMENTS: readonly [Segment<AttachmentView>, Segment<AttachmentView>]
 ]
 
 function caption(set: AttachmentSet): string {
+  const shared = sharedCaption(set)
+  if (shared !== null) return shared
   if (set.state === 'fetching') {
-    // Indeterminate until the server says how big it is, which is what a total of 0 means - the
-    // first report of any transfer is 0 of 0.
-    if (set.totalBytes === 0) return tr('downloading')
     return `${formatBytes(set.doneBytes)} / ${formatBytes(set.totalBytes)}`
   }
-  if (set.state === 'failed') return tr('failedToDownload')
-  if (set.state === 'unavailable')
-    return tr(set.unreadable === set.count ? 'attachmentsErrorOpen' : 'attachmentsExpired')
   return set.sizeBytes === undefined ? '' : formatBytes(set.sizeBytes)
 }
 
