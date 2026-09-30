@@ -6,14 +6,8 @@ import { useRef, useState } from 'react'
 
 import { confirmLink } from './confirmLink'
 
-/**
- * The desktop client's `SessionInfo` measurements, none of them on a scale: the logo 20 high, 5
- * between it and the line under it, 10 between the version and the commit, and at half strength
- * until the pointer is on one.
- */
 const LOGO_HEIGHT = 20
-const LOGO_GAP = 5
-const STAMP_GAP = 10
+/** Half strength until the pointer is on it. */
 const RESTING = 0.5
 
 /** How many presses on the commit turn debug mode over: the client's ten. */
@@ -50,7 +44,7 @@ function PhoneSessionInfo() {
   const detail = [buildNumber, commit].filter((part) => part !== null).join(' - ')
 
   return (
-    <YStack alignItems="center" gap={LOGO_GAP}>
+    <YStack alignItems="center" gap="$2xs">
       <PressArea
         accessibilityLabel={URLS.token}
         testID={ELEMENT.settings.tokenLogo}
@@ -97,7 +91,7 @@ function DesktopSessionInfo() {
   const [logoHovered, setLogoHovered] = useState(false)
 
   return (
-    <YStack alignItems="center" gap={LOGO_GAP}>
+    <YStack alignItems="center" gap="$2xs">
       <PressArea
         accessibilityLabel={URLS.token}
         testID={ELEMENT.settings.tokenLogo}
@@ -123,7 +117,7 @@ function DesktopSessionInfo() {
         )}
       </PressArea>
 
-      <XStack gap={STAMP_GAP}>
+      <XStack gap="$xs">
         <PressArea
           testID={ELEMENT.settings.version}
           onPress={() => {
