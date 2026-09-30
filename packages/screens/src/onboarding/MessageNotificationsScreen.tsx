@@ -128,6 +128,9 @@ export function MessageNotificationsScreen({
       description={tr('onboardingMessageNotificationExplanation')}
       onBack={onBack}
       testID={ELEMENT.onboarding.notificationsScreen}
+      // The options end in a bordered box and there is no message to hold room for, so nothing
+      // else would keep the button off it.
+      footerGap
       footer={
         <Button
           variant="outlineAccent"

@@ -1,4 +1,4 @@
-import type { BrowserWindow, Session, WebContents, WebPreferences } from 'electron'
+import type { BrowserWindow, Session, WebContents, WebFrameMain, WebPreferences } from 'electron'
 
 import { MEDIA_SCHEME } from '../shared/mediaUrl'
 
@@ -118,14 +118,30 @@ export function guardNavigation(contents: WebContents, appUrl: string): void {
 }
 
 /**
- * Denies every permission, which is every permission the app does not yet ask for.
+ * Denies every permission, including the clipboard's.
  *
- * Notifications are the first one it will want; granting it means deciding that here rather than
- * letting Chromium's prompt decide it in a window showing remote content.
+ * What the page needs from the OS it asks the main process for by name, through the preload, so
+ * the check is ours rather than Chromium's. Notifications will go the same way.
  */
 export function denyAllPermissions(session: Session): void {
   session.setPermissionRequestHandler((_contents, _permission, callback) => {
     callback(false)
   })
   session.setPermissionCheckHandler(() => false)
+}
+
+/** Room for an account ID or a URL many times over; a page filling the clipboard gains nothing. */
+export const MAX_COPY_CHARS = 16 * 1024
+
+/** Whether an IPC message came from the app's own document, rather than a frame inside it. */
+export function isFromAppFrame(
+  frame: Pick<WebFrameMain, 'url' | 'parent'> | null,
+  appUrl: string,
+): boolean {
+  return frame !== null && frame.parent === null && isAppNavigation(frame.url, appUrl)
+}
+
+/** Whether the main process should put `text` on the clipboard for the renderer. */
+export function acceptsCopy(text: unknown, { focused }: { focused: boolean }): text is string {
+  return typeof text === 'string' && text.length <= MAX_COPY_CHARS && focused
 }

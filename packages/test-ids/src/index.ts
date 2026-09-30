@@ -150,6 +150,9 @@ export const ELEMENT = {
     scanQrPane: 'onboarding-scan-qr-pane',
     scanQrPreview: 'onboarding-scan-qr-preview',
     cameraAccess: 'onboarding-camera-access',
+    cameraSettingsDialog: 'onboarding-camera-settings',
+    cameraSettingsOpen: 'onboarding-camera-settings-open',
+    cameraSettingsCancel: 'onboarding-camera-settings-cancel',
 
     notificationsScreen: 'onboarding-notifications-screen',
     notificationsOption: (mode: string) => `onboarding-notifications-${mode}` as const,

@@ -33,9 +33,7 @@ test('the restore screen offers no QR tab where nothing can scan', async () => {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '',
       EXPO_PUBLIC_SESSION_FAKE: '1',
-      SESSION_FAKE: '1',
-      SESSION_FAKE_NO_ACCOUNT: '1',
-      SESSION_DATA_DIR: dataDir,
+      EXPO_PUBLIC_SESSION_NO_ACCOUNT: '1',
     },
   })
   const page = await app.firstWindow()

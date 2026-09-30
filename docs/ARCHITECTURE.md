@@ -326,6 +326,12 @@ committed output is not also one of its inputs. It models CI's checkout rather t
 so it gives the same answer in a tree with every submodule present. The second rule is the only
 guard for its case: a dependant replaying a stale result leaves the tree untouched.
 
+**It also refuses a `@session/*` import the importing package does not declare.** Nothing else
+sees one: the hoisted layout links every package at the root and tsconfig paths map the siblings
+to their source, so typecheck and lint resolve it and pass. A bundler resolving from the package
+itself does not, and turbo is wrong before that -- `^build` and a task's cache key follow the
+declared graph, so an undeclared sibling is neither built first nor hashed.
+
 - **`@session/localization` is built before anything is lint-checked with types.** It is consumed
   as built output, so its declarations have to exist first. Without them the typed rules do not
   fail -- they go blind: `tr()` resolves to the error type and every rule touching it reports

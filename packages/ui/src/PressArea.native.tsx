@@ -30,7 +30,9 @@ export function PressArea({
 }: PressAreaProps) {
   return (
     <Pressable
-      {...(fill ? { style: { flex: 1 } } : {})}
+      // The zero basis spelled out: under `flex: 1` alone each label's width leaks into the split,
+      // and two fill buttons with different labels come out different widths.
+      {...(fill ? { style: { flexGrow: 1, flexShrink: 1, flexBasis: 0 } } : {})}
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}

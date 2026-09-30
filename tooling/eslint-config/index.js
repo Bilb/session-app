@@ -79,6 +79,69 @@ const NESTED_RENDER =
   ':matches(FunctionDeclaration, VariableDeclarator > :matches(ArrowFunctionExpression, ' +
   'FunctionExpression)):has(JSXElement, JSXFragment)'
 
+const RESTRICTED_SYNTAX = [
+  {
+    selector: 'TSImportType',
+    message: "Add a top-level `import type { T } from '...'` instead of an inline import() type.",
+  },
+  // A bare number on a prop that reads a token scale. Both spellings are covered, because
+  // a literal is invisible to anything that checks tokens: it is not a token resolving to
+  // the wrong value, it is a value that never asked the scale. `$none` is the zero.
+  {
+    selector:
+      'JSXAttribute[name.name=/^' +
+      SCALED_PROPS +
+      '$/] > JSXExpressionContainer > Literal[raw=/^[0-9]+(\\.[0-9]+)?$/]',
+    message:
+      'Name a token here ("$md", "$none") rather than a number, so the scale stays the ' +
+      'single place a value changes. If the number is deliberately off-scale -- a measured ' +
+      'client value -- give it a named constant and disable this rule with the reason.',
+  },
+  {
+    selector: `${COMPONENT} ${NESTED_RENDER}`,
+    message:
+      'A component or render function defined inside a component is rebuilt on every ' +
+      'render: drawn as <Inner /> React remounts it, and either way it cannot be memoised. ' +
+      'Move it to module scope and pass what it reads as props.',
+  },
+  {
+    selector: 'Property[key.name=/^' + SCALED_PROPS + '$/] > Literal[raw=/^[0-9]+(\\.[0-9]+)?$/]',
+    message:
+      'Name a token here rather than a number, so the scale stays the single place a ' +
+      'value changes. If it is deliberately off-scale, give it a named constant and ' +
+      'disable this rule with the reason.',
+  },
+]
+
+const IPC_REGISTRATION = 'on|once|addListener|prependListener|handle|handleOnce'
+
+/**
+ * Desktop main: IPC is registered on a window's own `webContents.ipc`, and every handler checks
+ * its sender. Spread in place of the base rule, which a second `no-restricted-syntax` replaces.
+ */
+export const desktopMainIpcRules = {
+  'no-restricted-syntax': [
+    'error',
+    ...RESTRICTED_SYNTAX,
+    {
+      selector: "Identifier[name='ipcMain']",
+      message:
+        "Register on the window's `webContents.ipc`, not `ipcMain`: every WebContents can reach " +
+        'ipcMain, including ones the app did not make.',
+    },
+    {
+      selector:
+        'CallExpression[callee.property.name=/^(' +
+        IPC_REGISTRATION +
+        ")$/]:matches([callee.object.name='ipc'], [callee.object.property.name='ipc'])" +
+        " > :function:not(:has(CallExpression[callee.name='isFromAppFrame']))",
+      message:
+        'An IPC handler checks its sender with `isFromAppFrame(event.senderFrame, appUrl)`: ' +
+        "a frame inside the page can send on the window's `ipc` too.",
+    },
+  ],
+}
+
 export function baseConfig({ tsconfigRootDir, zone }) {
   return tseslint.config(
     { ignores: ['dist/**', 'out/**', 'build/**', 'coverage/**', '**/gen/**', '**/generated/**'] },
@@ -120,42 +183,7 @@ export function baseConfig({ tsconfigRootDir, zone }) {
         'import-x/extensions': ['error', 'never', { json: 'always' }],
         'session/case-collision': 'error',
 
-        'no-restricted-syntax': [
-          'error',
-          {
-            selector: 'TSImportType',
-            message:
-              "Add a top-level `import type { T } from '...'` instead of an inline import() type.",
-          },
-          // A bare number on a prop that reads a token scale. Both spellings are covered, because
-          // a literal is invisible to anything that checks tokens: it is not a token resolving to
-          // the wrong value, it is a value that never asked the scale. `$none` is the zero.
-          {
-            selector:
-              'JSXAttribute[name.name=/^' +
-              SCALED_PROPS +
-              '$/] > JSXExpressionContainer > Literal[raw=/^[0-9]+(\\.[0-9]+)?$/]',
-            message:
-              'Name a token here ("$md", "$none") rather than a number, so the scale stays the ' +
-              'single place a value changes. If the number is deliberately off-scale -- a measured ' +
-              'client value -- give it a named constant and disable this rule with the reason.',
-          },
-          {
-            selector: `${COMPONENT} ${NESTED_RENDER}`,
-            message:
-              'A component or render function defined inside a component is rebuilt on every ' +
-              'render: drawn as <Inner /> React remounts it, and either way it cannot be memoised. ' +
-              'Move it to module scope and pass what it reads as props.',
-          },
-          {
-            selector:
-              'Property[key.name=/^' + SCALED_PROPS + '$/] > Literal[raw=/^[0-9]+(\\.[0-9]+)?$/]',
-            message:
-              'Name a token here rather than a number, so the scale stays the single place a ' +
-              'value changes. If it is deliberately off-scale, give it a named constant and ' +
-              'disable this rule with the reason.',
-          },
-        ],
+        'no-restricted-syntax': ['error', ...RESTRICTED_SYNTAX],
       },
     },
     {

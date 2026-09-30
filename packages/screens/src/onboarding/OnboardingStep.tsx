@@ -34,6 +34,15 @@ interface OnboardingStepProps {
   /** Sits between the field and the control, in space that is held whether or not it is filled. */
   error?: ReactNode
   footer?: ReactNode
+  /**
+   * Holds the wide design's control away from content that ends without a reserve under it.
+   *
+   * On the wide design the control follows the content directly, and what normally separates them
+   * is space held for a message -- `error` here, or the reserve an `InputField` keeps under itself.
+   * A step with neither, whose content ends in a box, otherwise has its button against the box's
+   * edge. Asked for rather than inferred, because a step cannot see whether its children reserve.
+   */
+  footerGap?: boolean
   testID: string
   /** Passed straight through to the chrome, which draws it in place of the Session mark. */
   barTitle?: string
@@ -62,6 +71,7 @@ export function OnboardingStep({
   children,
   error,
   footer,
+  footerGap = false,
   testID,
   barTitle,
   banner,
@@ -84,6 +94,7 @@ export function OnboardingStep({
         backDisabled={backDisabled}
         {...(error === undefined ? {} : { error })}
         {...(footer === undefined ? {} : { footer })}
+        footerGap={footerGap}
       >
         {children}
       </OnboardingStepBody>
@@ -107,6 +118,7 @@ export function OnboardingStepBody({
   children,
   error,
   footer,
+  footerGap = false,
 }: Omit<OnboardingStepProps, 'testID' | 'barTitle' | 'banner'>) {
   const wide = useMedia().gtSm
 
@@ -158,7 +170,7 @@ export function OnboardingStepBody({
 
           {/* On the wide design the action stays with the content, in a column that is already a
             fixed width. The phone's lives at the bottom of the screen -- see below. */}
-          {wide ? footer : null}
+          {!wide ? null : footerGap ? <YStack paddingTop="$lg">{footer}</YStack> : footer}
         </YStack>
       </XStack>
       {/* Twice the weight of the spacer above, which is what leaves the block above centre. */}
