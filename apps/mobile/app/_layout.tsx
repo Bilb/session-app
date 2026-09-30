@@ -73,9 +73,6 @@ export default function RootLayout() {
               <MobileNavProvider>
                 <MobileCameraProvider>
                   <DirectionRoot rtl={rtl}>
-                    {/* Inside the store and the navigator, because what it draws are screens
-                        that read both. Beside the routed content rather than within it, so a
-                        modal opened from a list row outlives that row. */}
                     <ModalStackProvider>
                       {/* Never keyed on the language: that mirrors the strings by remounting the
                           routed subtree, discarding whatever the screen holds. Each route

@@ -49,9 +49,6 @@ export function App() {
       <SessionStoreProvider store={store}>
         <MemoryRouter>
           <DesktopNavProvider>
-            {/* Inside the store and the router, because what it draws are screens that read
-                both. Beside the shell rather than within it, so a modal opened from a list row
-                outlives that row and is drawn over the whole window. */}
             <ModalStackProvider>
               <ModalHost>
                 <Shell />

@@ -113,6 +113,7 @@ const EntriesContext = createContext<readonly OpenModal[]>([])
  * components deep must not be drawn inside that row -- it belongs over everything, it has to
  * outlive the row being unmounted, and a modal that opens another has to be able to sit under it.
  * So callers name what they want opened and nothing else; where it is drawn is this module's.
+ * Inside the store and the navigator, since what it draws are screens that read both.
  *
  * The rules for what closes what are in `modalStack.ts`, deliberately apart from react: they are
  * the part worth holding still.
