@@ -189,15 +189,6 @@ function AccountIdLines({ sessionId }: { sessionId: string }) {
 }
 
 /**
- * The desktop client's gap between the ID and its copy glyph, which is not on the scale: 10, where
- * the rungs either side are 8 and 12.
- */
-const COPY_GAP = 10
-
-/** The copy glyph: its 15, a size the icon ladder does not have. */
-const COPY_GLYPH = 15
-
-/**
  * The ID with the desktop client's copy glyph beside it, where there is no share sheet.
  *
  * The glyph sits at the ID's trailing side, centred on its three lines, and the ID itself copies
@@ -214,7 +205,7 @@ function DesktopAccountId({ sessionId }: { sessionId: string }) {
       })
   }
   return (
-    <XStack alignItems="center" gap={COPY_GAP}>
+    <XStack alignItems="center" gap="$xs">
       <PressArea accessibilityLabel={tr('copy')} onPress={copy}>
         {() => (
           <YStack cursor="pointer">
@@ -229,7 +220,7 @@ function DesktopAccountId({ sessionId }: { sessionId: string }) {
         accessibilityLabel={tr('copy')}
         testID={ELEMENT.settings.copyAccountId}
         onPress={copy}
-        icon={<Icon name="copy" size={COPY_GLYPH} color="$accentText" />}
+        icon={<Icon name="copy" size="sm" color="$accentText" />}
       />
     </XStack>
   )
