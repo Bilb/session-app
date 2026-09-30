@@ -11,6 +11,7 @@ import {
   SPACE_SCALE,
   Z_INDEX_SCALE,
 } from './scales'
+import { MONO_FAMILY } from './monoFamily'
 import { buildThemes, DEFAULT_THEME, themeName } from './themes'
 
 /**
@@ -37,6 +38,18 @@ const bodyFont = createFont({
   letterSpacing: LETTER_SPACING_SCALE,
 })
 
+/**
+ * Roboto Mono, for the account ID: every character the same width, so the three lines of an ID are
+ * one block and a character can be found again by its column. The desktop client's `--font-mono`.
+ */
+const monoFont = createFont({
+  family: MONO_FAMILY,
+  size: FONT_SIZE_SCALE,
+  lineHeight: LINE_HEIGHT_SCALE,
+  weight: FONT_WEIGHT_SCALE,
+  letterSpacing: LETTER_SPACING_SCALE,
+})
+
 export const tokens = createTokens({
   color: COLOR_SCALE,
   space: SPACE_SCALE,
@@ -46,7 +59,7 @@ export const tokens = createTokens({
 })
 
 export const config = createTamagui({
-  fonts: { body: bodyFont, heading: bodyFont },
+  fonts: { body: bodyFont, heading: bodyFont, mono: monoFont },
   tokens,
   themes: buildThemes(),
   media: {

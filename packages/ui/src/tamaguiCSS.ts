@@ -8,6 +8,7 @@ import { config } from './config'
 import robotoBold from '../assets/fonts/Roboto-Bold.ttf'
 import robotoMedium from '../assets/fonts/Roboto-Medium.ttf'
 import robotoRegular from '../assets/fonts/Roboto-Regular.ttf'
+import robotoMono from '../assets/fonts/RobotoMono-VariableFont_wght.ttf'
 
 /**
  * Puts the configuration's stylesheet in the document, which is what makes a theme a theme here.
@@ -54,6 +55,15 @@ const FONT_FACES = [
   )
   .join('\n')
 
+/** The account ID's face. One variable file, so one declaration covers its weight range. */
+const MONO_FACE = `@font-face {
+  font-family: 'Roboto Mono';
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url('${robotoMono}') format('truetype');
+}`
+
 /**
  * What selected text looks like.
  *
@@ -71,7 +81,7 @@ const SELECTION = `::selection {
 if (!document.getElementById(ID)) {
   const style = document.createElement('style')
   style.id = ID
-  style.textContent = `${FONT_FACES}\n${SELECTION}\n${config.getCSS()}`
+  style.textContent = `${FONT_FACES}\n${MONO_FACE}\n${SELECTION}\n${config.getCSS()}`
   // Prepended, not appended: index.html's own rules come after and must keep winning, and so must
   // anything a component inserts at runtime.
   document.head.prepend(style)
