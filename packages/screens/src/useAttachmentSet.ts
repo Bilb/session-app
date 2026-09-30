@@ -1,7 +1,7 @@
 import type { Attachment, Message } from '@session/client'
 import { transferKey, useMessageTransfers, useSessionActions } from '@session/state'
 
-import { fetchOf } from './attachmentFetch'
+import { fetchOf, type Fetch } from './attachmentFetch'
 import { summarise, type AttachmentSet } from './attachmentSet'
 import { useConversationUi } from './conversationUi'
 import { exportOne } from './exportAttachment'
@@ -15,6 +15,8 @@ import { exportOne } from './exportAttachment'
  */
 export function useAttachmentSet(message: Message): {
   set: AttachmentSet
+  /** One attachment's state, from the same reports the set was folded from. */
+  fetchFor: (attachment: Attachment) => Fetch
   /** Fetches every attachment that is neither here nor on its way. */
   downloadMissing: () => void
   /** The footer's verb: exports the one file of a set that has arrived, else fetches the rest. */
@@ -25,11 +27,12 @@ export function useAttachmentSet(message: Message): {
   const transfers = useMessageTransfers(message.id)
   const reportFor = (attachment: Attachment) => transfers[transferKey('download', attachment.index)]
   const set = summarise(message, reportFor)
+  const fetchFor = (attachment: Attachment) => fetchOf(attachment, reportFor(attachment))
 
   function downloadMissing(): void {
     // Unavailable is left out: retrying it would only fail again.
     const missing = message.attachments.filter((attachment) => {
-      const state = fetchOf(attachment, reportFor(attachment)).state
+      const state = fetchFor(attachment).state
       return state === 'idle' || state === 'failed'
     })
     if (missing.length === 0) return
@@ -37,7 +40,7 @@ export function useAttachmentSet(message: Message): {
     for (const attachment of missing) {
       actions
         .downloadAttachment({ messageId: message.id, index: attachment.index })
-        // A failed download ends its transfer as `failed`, which the set already folds in.
+        // A refusal is recorded as a failed transfer by the store, which the set already folds in.
         .catch(() => undefined)
     }
   }
@@ -52,5 +55,5 @@ export function useAttachmentSet(message: Message): {
     downloadMissing()
   }
 
-  return { set, downloadMissing, act }
+  return { set, fetchFor, downloadMissing, act }
 }

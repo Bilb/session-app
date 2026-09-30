@@ -53,15 +53,16 @@ describe('what a set of attachments is doing', () => {
   })
 
   it('reaches ready once every resolvable attachment has, expired ones aside', () => {
-    // The defect this replaced: an expired attachment counted against the total forever, so a
-    // set with one ready file and one expired one sat at idle with a dead Download control.
+    // An expired file can never become ready, so it cannot hold the rest of the set at idle.
     const expired = attachment(1, undefined, 'notFound')
     expect(fold([attachment(0), expired], { 0: done }).state).toBe('ready')
   })
 
-  it('rests at idle, not a vacuous ready, when nothing in the set can resolve', () => {
+  it('is unavailable, with nothing to offer, when nothing in the set can resolve', () => {
     const expired = attachment(0, undefined, 'notFound')
-    expect(fold([expired], {}).state).toBe('idle')
+    const unreadable = attachment(1, undefined, 'unreadable')
+    expect(fold([expired], {}).state).toBe('unavailable')
+    expect(fold([expired, unreadable], {}).state).toBe('unavailable')
   })
 
   it('counts every attachment, not the ones a gallery draws', () => {
@@ -98,9 +99,7 @@ describe('what a set of attachments is doing', () => {
   })
 
   it('never goes backwards as one file finishes and the next begins', () => {
-    // The defect this replaced: folded over the running transfers, the total changed as each
-    // file announced its own size and `doneBytes` fell back to nothing at every hand-off, so the
-    // reading jumped twice per file.
+    // Folded over every file, so the total stays fixed while one file hands over to the next.
     const two = [attachment(0, 100), attachment(1, 300)]
     const readings = [
       fold(two, { 0: running(0, 10) }),

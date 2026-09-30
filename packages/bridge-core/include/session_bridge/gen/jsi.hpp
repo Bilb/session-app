@@ -695,6 +695,7 @@ struct JSIConverter<::session_bridge::Response> final {
         return ::session_bridge::Response(
                 JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "id"))),
                 ::session_bridge::optional_from_jsi<std::string>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "error"))),
+                ::session_bridge::optional_from_jsi<std::string>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "code"))),
                 ::session_bridge::optional_from_jsi<::session_bridge::Result>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "result"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::Response& arg) {
@@ -702,6 +703,8 @@ struct JSIConverter<::session_bridge::Response> final {
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "id"), JSIConverter<double>::toJSI(runtime, arg.id));
         if (arg.error)
             obj.setProperty(runtime, PropNameIDCache::get(runtime, "error"), JSIConverter<std::string>::toJSI(runtime, *arg.error));
+        if (arg.code)
+            obj.setProperty(runtime, PropNameIDCache::get(runtime, "code"), JSIConverter<std::string>::toJSI(runtime, *arg.code));
         if (arg.result)
             obj.setProperty(runtime, PropNameIDCache::get(runtime, "result"), JSIConverter<::session_bridge::Result>::toJSI(runtime, *arg.result));
         return obj;

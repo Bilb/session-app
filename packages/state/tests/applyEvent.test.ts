@@ -1,7 +1,7 @@
 import type { Conversation, Message, SessionEvent } from '@session/client'
 import { describe, expect, it } from 'vitest'
 
-import { applyEvent, mergePages } from '#src/applyEvent'
+import { applyEvent, mergePages, recordRefusal } from '#src/applyEvent'
 import { emptyState, type SessionState } from '#src/types'
 
 function conversation(overrides: Partial<Conversation> = {}): Conversation {
@@ -496,6 +496,76 @@ describe('attachment transfers', () => {
     )
     expect(state.histories['05alice']?.ready).toBe(false)
     expect(state.transfers).toEqual({})
+  })
+
+  it('drops a finished download once its message is announced, so an eviction reads as absent', () => {
+    const withFile = message({
+      attachments: [
+        {
+          index: 0,
+          voiceMessage: false,
+          hasPreview: false,
+          uploaded: true,
+          availability: 'cached',
+          fetchDoneBytes: 0,
+          fetchTotalBytes: 0,
+        },
+      ],
+    })
+    const done = replay(
+      [
+        progress({ doneBytes: 9, totalBytes: 9, outcome: { ok: true } }),
+        progress({ transfer: 'export', doneBytes: 9, totalBytes: 9, outcome: { ok: true } }),
+      ],
+      loaded([withFile]),
+    )
+    const announced = applyEvent(done, { type: 'messages-updated', messages: [withFile] })
+
+    expect(announced.transfers[1]?.['download:0']).toBeUndefined()
+    expect(announced.transfers[1]?.['export:0']?.state).toBe('done')
+  })
+
+  it('keeps a failed download when its message is announced', () => {
+    // Availability cannot say a fetch failed transiently, so this report is the only record.
+    const withFile = message({
+      attachments: [
+        {
+          index: 0,
+          voiceMessage: false,
+          hasPreview: false,
+          uploaded: true,
+          availability: 'absent',
+          fetchDoneBytes: 0,
+          fetchTotalBytes: 0,
+        },
+      ],
+    })
+    const failed = replay([progress({ outcome: { ok: false } })], loaded([withFile]))
+    const announced = applyEvent(failed, { type: 'messages-updated', messages: [withFile] })
+    expect(announced.transfers[1]?.['download:0']?.state).toBe('failed')
+  })
+
+  it('records a refusal that reached no event as a failed transfer', () => {
+    const refused = recordRefusal(loaded(), 'download', { messageId: 1, index: 0 })
+    expect(refused.transfers[1]?.['download:0']).toEqual({
+      state: 'failed',
+      doneBytes: 0,
+      totalBytes: 0,
+    })
+  })
+
+  it('leaves a failed report from libsession in place of a refusal', () => {
+    const reported = replay(
+      [
+        progress({
+          doneBytes: 3,
+          totalBytes: 9,
+          outcome: { ok: false, error: 'file.download_failed' },
+        }),
+      ],
+      loaded(),
+    )
+    expect(recordRefusal(reported, 'download', { messageId: 1, index: 0 })).toBe(reported)
   })
 
   it('leaves the transfer map alone when nothing in it changed', () => {

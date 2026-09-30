@@ -112,9 +112,12 @@ export interface NotificationsPort {
   setBadgeCount(count: number): Promise<void>
 }
 
+/**
+ * Write only. Pasting into a field needs no port; a Paste button would, and desktop would then
+ * need its own gated read in the main process, because the renderer is refused `clipboard-read`.
+ */
 export interface ClipboardPort {
   setString(value: string): Promise<void>
-  getString(): Promise<string>
 }
 
 export interface LinkingPort {

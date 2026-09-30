@@ -31,9 +31,7 @@ function mayFetchUnasked(attachment: Attachment, setting?: AutoDownload): boolea
  * Whether a tile should be given a url at all.
  *
  * Cached is not a permission question: the bytes are on this device, reading them costs nothing
- * and refusing to draw them would be answering a question nobody asked. It became askable with
- * `availability` - before that the only thing that knew was a transfer this session happened to
- * watch, which a freshly loaded page does not have.
+ * and refusing to draw them would be answering a question nobody asked.
  *
  * **Expired is a hard no, asked or not.** A url is a request, and asking for a file the file
  * server has already given up on would only fail - the setting has nothing to do with it.

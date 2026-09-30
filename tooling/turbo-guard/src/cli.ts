@@ -1,8 +1,10 @@
 import { execFileSync } from 'node:child_process'
 import { globSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 import { absentSubmodules, turboTasksIn } from '#src/ci'
+import { pushedFiles } from '#src/files'
+import { undeclaredImports, type WorkspacePackage } from '#src/manifests'
 import { check, type Task } from '#src/rules'
 
 const repoRoot = join(import.meta.dirname, '../../..')
@@ -45,23 +47,79 @@ const tasks: Task[] = dry.tasks
     outputs: task.resolvedTaskDefinition.outputs,
   }))
 
-const committed = new Set(
-  execFileSync('git', ['ls-files'], { cwd: repoRoot, encoding: 'utf8' }).split('\n'),
-)
+const committed = pushedFiles(repoRoot)
 
 const violations = check(tasks, {
   absent,
   committed: (glob) => globSync(glob, { cwd: repoRoot }).filter((path) => committed.has(path)),
 })
 
+interface Manifest {
+  name?: string
+  dependencies?: Record<string, string>
+  devDependencies?: Record<string, string>
+  peerDependencies?: Record<string, string>
+  optionalDependencies?: Record<string, string>
+}
+
+// Every manifest the push carries but the root's, which is the workspace rather than a package in it.
+const manifests = [...committed]
+  .filter((path) => path.endsWith('/package.json') && !path.includes('node_modules/'))
+  .map((path) => ({
+    directory: dirname(path),
+    manifest: JSON.parse(readFileSync(join(repoRoot, path), 'utf8')) as Manifest,
+  }))
+  .filter(({ manifest }) => manifest.name !== undefined)
+
+/** The package a file belongs to: the deepest manifest above it. */
+function ownerOf(file: string): string | undefined {
+  return manifests
+    .map(({ directory }) => directory)
+    .filter((directory) => file.startsWith(`${directory}/`))
+    .sort((a, b) => b.length - a.length)[0]
+}
+
+const SOURCE = /\.(?:[cm]?[jt]sx?)$/
+
+/**
+ * This tool's own tests, left out of the import check: their fixtures are import statements
+ * written as strings, which a text scan cannot tell from the real thing.
+ */
+const OWN_TESTS = 'tooling/turbo-guard/tests/'
+const packages: WorkspacePackage[] = manifests.map(({ directory, manifest }) => ({
+  name: manifest.name ?? directory,
+  directory,
+  declared: new Set(
+    [
+      manifest.dependencies,
+      manifest.devDependencies,
+      manifest.peerDependencies,
+      manifest.optionalDependencies,
+    ].flatMap((field) => Object.keys(field ?? {})),
+  ),
+  sources: [...committed]
+    .filter(
+      (file) => SOURCE.test(file) && !file.startsWith(OWN_TESTS) && ownerOf(file) === directory,
+    )
+    .map((file) => ({ path: file, text: readFileSync(join(repoRoot, file), 'utf8') })),
+}))
+
+const undeclared = undeclaredImports(packages)
+
 const without = absent.length === 0 ? '' : ` (without ${absent.join(', ')})`
-if (violations.length === 0) {
+if (violations.length === 0 && undeclared.length === 0) {
   process.stdout.write(
-    `turbo-guard: ${String(tasks.length)} tasks in CI's run checked against its checkout${without}\n`,
+    `turbo-guard: ${String(tasks.length)} tasks in CI's run checked against its checkout${without}, ` +
+      `and ${String(packages.length)} manifests against their imports\n`,
   )
 } else {
   for (const violation of violations)
     process.stderr.write(`turbo-guard: ${violation.task} [${violation.rule}] ${violation.detail}\n`)
+  for (const found of undeclared)
+    process.stderr.write(
+      `turbo-guard: ${found.package} [undeclared-import] ${found.file} imports ${found.imports}, ` +
+        `which its package.json does not declare\n`,
+    )
   process.stderr.write(
     `\nChecked as CI's checkout${without}. See "The build graph" in docs/ARCHITECTURE.md.\n`,
   )

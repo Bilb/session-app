@@ -55,6 +55,8 @@ export const ELEMENT = {
     autoDownloadPrompt: 'auto-download-prompt',
     autoDownloadYes: 'auto-download-yes',
     autoDownloadNo: 'auto-download-no',
+    autoDownloadClose: 'auto-download-close',
+    autoDownloadOption: (mode: string) => `auto-download-${mode}` as const,
     composerInput: 'message-composer',
     sendButton: 'send-button',
   },
@@ -150,6 +152,9 @@ export const ELEMENT = {
     scanQrPane: 'onboarding-scan-qr-pane',
     scanQrPreview: 'onboarding-scan-qr-preview',
     cameraAccess: 'onboarding-camera-access',
+    cameraSettingsDialog: 'onboarding-camera-settings',
+    cameraSettingsOpen: 'onboarding-camera-settings-open',
+    cameraSettingsCancel: 'onboarding-camera-settings-cancel',
 
     notificationsScreen: 'onboarding-notifications-screen',
     notificationsOption: (mode: string) => `onboarding-notifications-${mode}` as const,

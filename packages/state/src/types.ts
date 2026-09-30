@@ -28,7 +28,7 @@ export interface MessageWindow {
  * How one attachment transfer is going, as the reports left it.
  *
  * Per session and never persisted, because libsession stores nothing about a transfer either:
- * what is on this device is answered by asking for it, not by a flag that can go stale.
+ * what is on this device is the attachment's `availability`, which libsession keeps current.
  */
 export interface AttachmentTransferState extends TransferProgress {
   state: 'running' | 'done' | 'failed'

@@ -123,6 +123,8 @@ describe('screen copy', () => {
       'exporting',
       'exportFailed',
       'previous',
+      'autoDownloadAllFiles',
+      'autoDownloadImagesOnly',
     ])
   })
 })

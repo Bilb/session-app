@@ -1,7 +1,7 @@
 import { RADII } from '@session/theme-tokens'
 import { describe, expect, it } from 'vitest'
 
-import { TILE_RADIUS_STEP, tileRadius } from '#src/attachmentTile'
+import { TILE_RADIUS_STEP, tileRadius } from '#src/attachmentTileStyle'
 
 describe('a tile’s corner', () => {
   it('takes the larger radius at the sizes an album draws', () => {

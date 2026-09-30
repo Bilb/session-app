@@ -1,4 +1,11 @@
-import type { Conversation, ConversationId, Message, SessionEvent } from '@session/client'
+import type {
+  AttachmentRef,
+  AttachmentTransfer,
+  Conversation,
+  ConversationId,
+  Message,
+  SessionEvent,
+} from '@session/client'
 
 import type { AttachmentTransferState, MessageWindow, SessionState } from './types'
 import { transferKey } from './types'
@@ -101,6 +108,30 @@ function recordTransfer(
     ...state,
     transfers: { ...state.transfers, [event.messageId]: { ...transfers, [key]: entry } },
   }
+}
+
+/**
+ * Records a command libsession refused before any transfer existed, as a failed one.
+ *
+ * Such a refusal reaches no event, so without this the only thing that knew was whichever caller
+ * held the promise. A report that already said `failed` is left alone: it carries the real figures.
+ */
+export function recordRefusal(
+  state: SessionState,
+  transfer: AttachmentTransfer,
+  ref: AttachmentRef,
+): SessionState {
+  if (state.transfers[ref.messageId]?.[transferKey(transfer, ref.index)]?.state === 'failed')
+    return state
+  return recordTransfer(state, {
+    type: 'attachment-progress',
+    transfer,
+    messageId: ref.messageId,
+    index: ref.index,
+    doneBytes: 0,
+    totalBytes: 0,
+    outcome: { ok: false },
+  })
 }
 
 function sameTransfer(
@@ -213,7 +244,30 @@ function upsertMessage(
   }
 
   const updated: MessageWindow = { ...window, messages }
-  return { ...state, histories: { ...state.histories, [conversationId]: updated } }
+  return {
+    ...state,
+    histories: { ...state.histories, [conversationId]: updated },
+    transfers: withoutFinishedDownloads(state.transfers, message),
+  }
+}
+
+/**
+ * A message's finished downloads, dropped once the message itself is announced: from then on its
+ * `availability` says what they left, and a report kept past that would outlive an eviction.
+ */
+function withoutFinishedDownloads(
+  transfers: SessionState['transfers'],
+  message: Message,
+): SessionState['transfers'] {
+  const own = transfers[message.id]
+  if (own === undefined) return transfers
+  const finished = message.attachments
+    .map((a) => transferKey('download', a.index))
+    .filter((key) => own[key]?.state === 'done')
+  if (finished.length === 0) return transfers
+  const kept = { ...own }
+  for (const key of finished) delete kept[key]
+  return { ...transfers, [message.id]: kept }
 }
 
 /**

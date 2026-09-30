@@ -133,9 +133,11 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
   const [draft, setDraft] = useState('')
   // Unset means nobody has been asked what this conversation should fetch unprompted, which is
   // not the same as having been asked and said no. Asked once, on the first attachment fetched.
+  // A request made while the conversation is still loading is held, and asked once it is known
+  // to be unset.
   const [prompting, setPrompting] = useState(false)
-  const unasked = conversation !== undefined && conversation.autoDownload === undefined
   const autoDownload = conversation?.autoDownload
+  const asking = prompting && conversation !== undefined && autoDownload === undefined
   /**
    * Which shape each message's attachments were last asked for, keyed by message id.
    *
@@ -155,7 +157,7 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
       conversationId,
       autoDownload,
       requestAutoDownloadPrompt: () => {
-        if (unasked) setPrompting(true)
+        if (autoDownload === undefined) setPrompting(true)
       },
       viewFor: (messageId) => views[messageId],
       chooseView: (messageId, view) => {
@@ -166,7 +168,7 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
       },
       openSheet: setSheet,
     }),
-    [conversationId, autoDownload, unasked, views],
+    [conversationId, autoDownload, views],
   )
 
   function send(): void {
@@ -248,34 +250,38 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
           </Button>
         </XStack>
 
-        <MessageMediaViewer
-          conversationId={conversationId}
-          // Held back while the prompt is up: two modals cannot be presented at once on iOS.
-          target={prompting ? null : viewer}
-          onIndex={(index) => {
-            setViewer((open) => (open === null ? null : { ...open, index }))
-          }}
-          onClose={() => {
-            setViewer(null)
-          }}
-        />
         <AttachmentSheet
           conversationId={conversationId}
           messageId={sheet}
           onClose={() => {
             setSheet(null)
           }}
+          overlay={
+            <>
+              <MessageMediaViewer
+                conversationId={conversationId}
+                // Held back while the prompt is up: iOS presents one modal per parent at a time.
+                target={asking ? null : viewer}
+                onIndex={(index) => {
+                  setViewer((open) => (open === null ? null : { ...open, index }))
+                }}
+                onClose={() => {
+                  setViewer(null)
+                }}
+              />
+              {conversation === undefined ? null : (
+                <AutoDownloadPrompt
+                  open={asking}
+                  conversationId={conversationId}
+                  conversationName={title}
+                  onAnswered={() => {
+                    setPrompting(false)
+                  }}
+                />
+              )}
+            </>
+          }
         />
-        {conversation === undefined ? null : (
-          <AutoDownloadPrompt
-            open={prompting}
-            conversationId={conversationId}
-            conversationName={title}
-            onAnswered={() => {
-              setPrompting(false)
-            }}
-          />
-        )}
       </Screen>
     </ConversationUiContext.Provider>
   )

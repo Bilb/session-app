@@ -68,6 +68,20 @@ describe('what an attachment is doing', () => {
     expect(fetchOf(attachment({ availability: 'cached' })).state).toBe('ready')
   })
 
+  it('reads a cached file as ready over a failed report', () => {
+    // The bytes can land by another route - another message naming the same file - and a cache
+    // hit reports nothing that would replace the failure.
+    expect(fetchOf(attachment({ availability: 'cached' }), report({ state: 'failed' })).state).toBe(
+      'ready',
+    )
+  })
+
+  it('reads a fetch somebody else started over an earlier failure', () => {
+    expect(
+      fetchOf(attachment({ availability: 'fetching' }), report({ state: 'failed' })).state,
+    ).toBe('fetching')
+  })
+
   it('prefers a finished report to an availability that has not caught up', () => {
     // A download resolves before the message carrying the new availability is reported, so for a
     // moment the two disagree and the row must not go back to offering a download.

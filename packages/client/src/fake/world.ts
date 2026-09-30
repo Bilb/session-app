@@ -17,7 +17,8 @@
 import { isImageContentType } from '@session/basic-types'
 import {
   ATTACHMENT_NOT_FOUND,
-  ATTACHMENT_UNREADABLE,
+  FILE_NOT_FOUND,
+  FILE_UNREADABLE,
   type AccountInfo,
   type Attachment,
   type AttachmentAvailability,
@@ -115,8 +116,30 @@ function keyOf({ messageId, index }: AttachmentRef): string {
 type Verdict = Extract<AttachmentAvailability, 'notFound' | 'unreadable'>
 
 const VERDICT_ERRORS: Record<Verdict, AttachmentError> = {
-  notFound: ATTACHMENT_NOT_FOUND,
-  unreadable: ATTACHMENT_UNREADABLE,
+  notFound: FILE_NOT_FOUND,
+  unreadable: FILE_UNREADABLE,
+}
+
+/**
+ * libsession's refusal of a file it has a verdict on: thrown before any transfer exists, so it
+ * rejects with nothing on the stream, as the real one does.
+ */
+function refuseVerdict(ref: AttachmentRef, verdict: Verdict): Promise<never> {
+  const what = `ttachment ${String(ref.index)} of message ${String(ref.messageId)}`
+  const message =
+    verdict === 'notFound'
+      ? `The file server no longer has a${what}`
+      : `A${what} cannot be read as its sender described it`
+  return Promise.reject(new SessionClientError(message, VERDICT_ERRORS[verdict]))
+}
+
+function refuseMissing(ref: AttachmentRef): Promise<never> {
+  return Promise.reject(
+    new SessionClientError(
+      `Message ${String(ref.messageId)} has no attachment ${String(ref.index)}`,
+      ATTACHMENT_NOT_FOUND,
+    ),
+  )
 }
 
 function isVerdict(availability: AttachmentAvailability): availability is Verdict {
@@ -633,7 +656,7 @@ export class FakeAccount {
    */
   downloadAttachment(ref: AttachmentRef): Promise<void> {
     const key = keyOf(ref)
-    if (!this.locate(ref)) return Promise.reject(new Error(`No attachment ${key}`))
+    if (!this.locate(ref)) return refuseMissing(ref)
     if (this.cached.has(key)) return Promise.resolve()
 
     const joined = this.downloading.get(key)
@@ -650,10 +673,11 @@ export class FakeAccount {
     }
 
     const verdict = this.verdicts.get(key)
+    if (verdict !== undefined) return refuseVerdict(ref, verdict)
+
     const running = this.transfer(
       'download',
       ref,
-      verdict === undefined ? undefined : VERDICT_ERRORS[verdict],
       () => this.downloading.get(key)?.handlers ?? 1,
     ).then(
       () => {
@@ -679,11 +703,12 @@ export class FakeAccount {
    */
   exportAttachment(ref: AttachmentRef, destination: string, replace = false): Promise<string> {
     const found = this.locate(ref)
-    if (!found) return Promise.reject(new Error(`No attachment ${keyOf(ref)}`))
+    if (!found) return refuseMissing(ref)
 
     const verdict = this.cached.has(keyOf(ref)) ? undefined : this.verdicts.get(keyOf(ref))
-    const failure = verdict === undefined ? undefined : VERDICT_ERRORS[verdict]
-    return this.transfer('export', ref, failure).then(() => {
+    if (verdict !== undefined) return refuseVerdict(ref, verdict)
+
+    return this.transfer('export', ref).then(() => {
       const saved = found.message.attachments.map((a) =>
         a.index === ref.index ? { ...a, savedAtMs: this.world?.now() ?? Date.now() } : a,
       )
@@ -695,7 +720,7 @@ export class FakeAccount {
   }
 
   /**
-   * libsession's `name (2).ext`, `name (3).ext`... for a path already written. The fake has no
+   * libsession's `name (1).ext`, `name (2).ext`... for a path already written. The fake has no
    * disk, so "already written" means exported to this session.
    */
   private unusedPath(destination: string): string {
@@ -704,7 +729,7 @@ export class FakeAccount {
     const dot = destination.lastIndexOf('.')
     const split = dot > slash + 1 ? dot : destination.length
     const [stem, extension] = [destination.slice(0, split), destination.slice(split)]
-    for (let n = 2; ; n += 1) {
+    for (let n = 1; ; n += 1) {
       const candidate = `${stem} (${String(n)})${extension}`
       if (!this.exported.has(candidate)) return candidate
     }
@@ -714,14 +739,11 @@ export class FakeAccount {
    * One transfer, reported on the world's clock.
    *
    * The first report is 0 of 0 - the size is not known until the server answers - and exactly one
-   * report per handler carries a result, which is the only thing that says it finished. A
-   * `failure` is what the server answers at once, so it ends at 0 of 0 without moving a byte, and
-   * rejects.
+   * report per handler carries a result, which is the only thing that says it finished.
    */
   private transfer(
     transfer: AttachmentTransfer,
     ref: AttachmentRef,
-    failure?: AttachmentError,
     handlers: () => number = () => 1,
   ): Promise<void> {
     const found = this.locate(ref)
@@ -750,35 +772,9 @@ export class FakeAccount {
       }
       for (let handler = handlers(); handler > 0; handler -= 1) this.emit(event)
     }
-    // libsession announces what a download changes on every message showing the file: `fetching`
-    // once it has started, and whatever a failure left behind once it has ended.
-    const announce = (): void => {
-      if (transfer === 'download') this.announceAttachment(ref.messageId)
-    }
-
     report(0, 0)
-    announce()
-    if (failure !== undefined) {
-      const refused = new SessionClientError(`${failure}: attachment ${key} cannot be fetched`)
-      const fail = (): void => {
-        report(0, 0, { ok: false, error: failure })
-        announce()
-      }
-      if (!world) {
-        fail()
-        return Promise.reject(refused)
-      }
-      return new Promise<void>((_resolve, reject) => {
-        world.schedule(MIN_TRANSFER_TICKS, () => {
-          if (generation !== this.generation) {
-            reject(new Error('the transfer did not survive the restart'))
-            return
-          }
-          fail()
-          reject(refused)
-        })
-      })
-    }
+    // libsession announces `fetching` on every message showing the file once a download starts.
+    if (transfer === 'download') this.announceAttachment(ref.messageId)
 
     if (!world) {
       report(sizeBytes, sizeBytes, { ok: true })

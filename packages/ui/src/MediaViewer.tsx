@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Modal as NativeModal } from 'react-native'
 import { XStack, YStack } from 'tamagui'
 
@@ -31,6 +32,8 @@ export interface MediaViewerProps {
   positionLabel: string
   /** Shown in place of a picture this platform cannot draw. */
   unavailableLabel: string
+  /** Shown in place of a picture whose bytes did not load, which an image does not retry. */
+  failedLabel: string
   closeLabel: string
   exportLabel: string
   moreLabel: string
@@ -110,6 +113,7 @@ export function MediaViewer({
   onMore,
   positionLabel,
   unavailableLabel,
+  failedLabel,
   closeLabel,
   exportLabel,
   moreLabel,
@@ -120,15 +124,23 @@ export function MediaViewer({
 }: MediaViewerProps) {
   const { width, height } = useWindowSize()
   const current = items[index]
+  // By url, so paging to another picture is not drawn as failed, and one that is fetched again
+  // under a new url is tried again.
+  const [failedUri, setFailedUri] = useState<string | null>(null)
+  const failed = current?.uri != null && current.uri === failedUri
+  const close = (): void => {
+    setFailedUri(null)
+    onClose()
+  }
 
   return (
-    <NativeModal visible={open} transparent={false} animationType="fade" onRequestClose={onClose}>
+    <NativeModal visible={open} transparent={false} animationType="fade" onRequestClose={close}>
       {/* `relative`, so the chevrons below resolve against this and not the page: on the web a
           stack is static unless it says so, and react-native's Modal does not supply one. */}
       <YStack position="relative" flex={1} backgroundColor="$backgroundPrimary" testID={testID}>
         {/* Along the top, and nothing along the bottom: the bottom edge is where a thumb rests. */}
         <XStack height={HEADER_HEIGHT} alignItems="center" gap="$xs" paddingHorizontal="$sm">
-          <Control icon="x" label={closeLabel} onPress={onClose} testID={closeTestID} />
+          <Control icon="x" label={closeLabel} onPress={close} testID={closeTestID} />
           <Text size="$label" color="$textSecondary" flex={1}>
             {positionLabel}
           </Text>
@@ -137,9 +149,9 @@ export function MediaViewer({
         </XStack>
 
         <YStack flex={1} alignItems="center" justifyContent="center">
-          {current === undefined || current.uri === null ? (
+          {current === undefined || current.uri === null || failed ? (
             <Text size="$body" color="$textSecondary">
-              {unavailableLabel}
+              {failed ? failedLabel : unavailableLabel}
             </Text>
           ) : (
             // The box is the window minus the header, not the window: sized to the window it
@@ -151,6 +163,9 @@ export function MediaViewer({
               width={width}
               height={Math.max(height - HEADER_HEIGHT, 0)}
               fit="contain"
+              onError={() => {
+                setFailedUri(current.uri)
+              }}
             />
           )}
         </YStack>

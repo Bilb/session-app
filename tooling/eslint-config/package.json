@@ -7,6 +7,14 @@
     ".": "./index.js",
     "./zones": "./zones.js"
   },
+  "imports": {
+    "#src/*": [
+      "./*.js"
+    ]
+  },
+  "scripts": {
+    "test": "vitest run"
+  },
   "dependencies": {
     "@eslint/js": "catalog:",
     "eslint-import-resolver-typescript": "catalog:",
@@ -14,6 +22,7 @@
     "typescript-eslint": "catalog:"
   },
   "devDependencies": {
-    "eslint": "catalog:"
+    "eslint": "catalog:",
+    "vitest": "catalog:"
   }
 }
