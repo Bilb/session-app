@@ -17,15 +17,19 @@ ipcRenderer.on('session-bridge-port', (event) => {
 })
 
 /**
- * Opening a link in the person's own browser.
+ * The whole of what the page may ask for: one argument each, checked by the main process.
  *
- * The whole of what the page may ask for, and deliberately one function with one argument: the
- * main process decides what a URL is allowed to be, and nothing here can widen that. It exists
- * because the window-open handler refuses everything, so the app needs a way to say "this one,
- * and I meant it" that a `target="_blank"` in content we did not write cannot reach.
+ * `openExternal` exists because the window-open handler refuses everything, so the app needs a way
+ * to say "this one, and I meant it" that a `target="_blank"` in content we did not write cannot
+ * reach. `copyText` exists because every permission is refused, the clipboard's included.
+ * `setLocale` is for what main draws itself, the right-click menu.
  */
 contextBridge.exposeInMainWorld('sessionDesktop', {
   openExternal: (url: string) => {
     ipcRenderer.send('open-external', url)
+  },
+  copyText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard-write-text', text),
+  setLocale: (locale: string) => {
+    ipcRenderer.send('locale', locale)
   },
 })

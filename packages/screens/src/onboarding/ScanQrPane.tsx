@@ -1,8 +1,8 @@
 import { requirePorts, useCamera } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, ScannerFrame, Text, useMedia, useScreenInsets, YStack } from '@session/ui'
-import { useCallback, useRef, type ReactNode } from 'react'
+import { Button, Modal, ScannerFrame, Text, useMedia, useScreenInsets, YStack } from '@session/ui'
+import { useCallback, useRef, useState, type ReactNode } from 'react'
 
 /** How far the message floats above the home indicator. */
 const MESSAGE_LIFT = 16
@@ -25,15 +25,13 @@ interface ScanQrPaneProps {
 /**
  * The other way into a restore: point the camera at somebody else's recovery QR.
  *
- * **Four states, and the clients draw all four.** Nobody has been asked yet, or asked and refused
- * -- both offer to ask again. Refused permanently, where asking again does nothing and the only
- * way forward is the app's own settings page. And granted, which is the camera itself.
- *
- * What the button says differs by platform, and the reason is worth knowing: see `ask` on the
- * camera port.
+ * **Until access is granted it says why it needs the camera and offers Continue.** Continue asks
+ * for access while the platform will still ask; once it is refused for good, asking does nothing,
+ * so Continue explains where it can be changed and offers the app's settings page instead.
  */
 export function ScanQrPane({ onScan, showing = true, error = null }: ScanQrPaneProps) {
   const camera = useCamera()
+  const [settingsPrompt, setSettingsPrompt] = useState(false)
   const insets = useScreenInsets()
   const wide = useMedia().gtSm
   /**
@@ -112,34 +110,67 @@ export function ScanQrPane({ onScan, showing = true, error = null }: ScanQrPaneP
     )
   }
 
-  const blocked = camera.access === 'blocked'
+  const close = () => {
+    setSettingsPrompt(false)
+  }
 
   return (
-    <Message
-      testID={ELEMENT.onboarding.scanQrPane}
-      text={blocked ? tr('cameraGrantAccessDenied') : tr('cameraGrantAccessQr')}
-      action={
-        <Button
-          variant="ghostAccent"
-          testID={ELEMENT.onboarding.cameraAccess}
-          onPress={() => {
-            if (blocked) {
-              // Asking again does nothing once it is blocked; the settings page is the only place
-              // this can be changed from.
-              void requirePorts().linking.openAppSettings?.()
-              return
-            }
-            void camera.request()
-          }}
-        >
-          {blocked
-            ? tr('sessionSettings')
-            : camera.ask === 'grant'
-              ? tr('cameraGrantAccess')
-              : tr('theContinue')}
-        </Button>
-      }
-    />
+    <>
+      <Message
+        testID={ELEMENT.onboarding.scanQrPane}
+        text={tr('cameraGrantAccessQr')}
+        action={
+          <Button
+            variant="ghostAccent"
+            testID={ELEMENT.onboarding.cameraAccess}
+            onPress={() => {
+              if (camera.access === 'blocked') setSettingsPrompt(true)
+              else void camera.request()
+            }}
+          >
+            {tr('theContinue')}
+          </Button>
+        }
+      />
+      <Modal
+        open={settingsPrompt}
+        onClose={close}
+        title={tr('cameraAccessRequired')}
+        closeLabel={tr('close')}
+        showClose={false}
+        testID={ELEMENT.onboarding.cameraSettingsDialog}
+        closeTestID={ELEMENT.onboarding.cameraSettingsCancel}
+        actions={
+          <>
+            <Button
+              variant="ghost"
+              fill
+              borderRadius="$none"
+              testID={ELEMENT.onboarding.cameraSettingsOpen}
+              onPress={() => {
+                close()
+                void requirePorts().linking.openAppSettings?.()
+              }}
+            >
+              {tr('sessionSettings')}
+            </Button>
+            <Button
+              variant="ghost"
+              fill
+              borderRadius="$none"
+              testID={ELEMENT.onboarding.cameraSettingsCancel}
+              onPress={close}
+            >
+              {tr('cancel')}
+            </Button>
+          </>
+        }
+      >
+        <Text size="$body" textAlign="center">
+          {tr('cameraAccessInstructions')}
+        </Text>
+      </Modal>
+    </>
   )
 }
 

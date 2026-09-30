@@ -13,8 +13,8 @@ export function createFakeBridge(): BridgeTransport {
   // two-account fixture, so nothing about the ordinary dev loop changes.
   const peers = Number(process.env['SESSION_FAKE_CONVERSATIONS'] ?? '0')
   // No identity yet, which is the only way to reach onboarding: everywhere else the app sees an
-  // account and goes straight past it.
-  const fresh = process.env['SESSION_FAKE_NO_ACCOUNT'] === '1'
+  // account and goes straight past it. The name mobile reads, so one variable does this on both.
+  const fresh = process.env['EXPO_PUBLIC_SESSION_NO_ACCOUNT'] === '1'
   const { world, clients } = fresh
     ? newcomer()
     : peers > 0
