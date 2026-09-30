@@ -405,6 +405,9 @@ importers:
       '@session/basic-types':
         specifier: workspace:*
         version: link:../basic-types
+      '@session/client':
+        specifier: workspace:*
+        version: link:../client
     devDependencies:
       '@session/eslint-config':
         specifier: workspace:*
@@ -8438,7 +8441,9 @@ snapshots:
       metro-runtime: 0.84.6
     transitivePeerDependencies:
       - '@babel/core'
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@react-native/metro-config@0.87.1(@babel/core@7.29.7)':
     dependencies:
