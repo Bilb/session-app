@@ -17,7 +17,7 @@ import { useAttachmentSet } from './useAttachmentSet'
  */
 export function MessageAttachments({ message }: { message: Message }) {
   const ui = useConversationUi()
-  const { set, act, downloadMissing } = useAttachmentSet(message)
+  const { set, fetchFor, act, downloadMissing } = useAttachmentSet(message)
   const view = attachmentView(message, ui.viewFor(message.id))
   const overflows = view === 'list' && message.attachments.length > LIST_MAX_ROWS
 
@@ -31,11 +31,14 @@ export function MessageAttachments({ message }: { message: Message }) {
         <MessageAlbum
           message={message}
           autoDownload={ui.autoDownload}
-          // A tile is the whole set's, so tapping one fetches every attachment the album stands
-          // for; a row in the list fetches only its own.
+          fetchFor={fetchFor}
+          // Opens only a picture that is here, as the legacy clients do. A tile is the whole set's,
+          // so tapping one that is not fetches every attachment the album stands for.
           onOpen={(index) => {
-            downloadMissing()
-            ui.openViewer(message.id, index)
+            const tapped = message.attachments.find((a) => a.index === index)
+            if (tapped !== undefined && fetchFor(tapped).state === 'ready')
+              ui.openViewer(message.id, index)
+            else downloadMissing()
           }}
           control={<AttachmentPill set={set} />}
         />

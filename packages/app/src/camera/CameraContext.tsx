@@ -26,16 +26,6 @@ export interface CameraPort {
   /** What the OS says right now. `unknown` until it has been asked once. */
   access: CameraAccess
   /**
-   * How the control that asks for the camera should describe itself.
-   *
-   * **Not a style choice.** Apple rejected a release of the legacy client whose button said "Grant
-   * Camera Access", on the grounds that pressing it does not grant anything -- it opens the OS
-   * prompt, which is free to refuse. The clients have said different things on the two platforms
-   * ever since, so which one this is is a fact about the store the build ships through and belongs
-   * here rather than in the screen.
-   */
-  ask: 'grant' | 'continue'
-  /**
    * Ask the OS, showing its prompt if this is the first time.
    *
    * Resolves with what the answer became, which is what a screen needs to decide what to draw

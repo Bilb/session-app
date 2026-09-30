@@ -1,7 +1,6 @@
 import { CameraProvider, type CameraAccess, type CameraPort } from '@session/app'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import { useMemo, type ReactNode } from 'react'
-import { Platform } from 'react-native'
 
 /**
  * expo-camera, behind the port.
@@ -16,9 +15,6 @@ export function MobileCameraProvider({ children }: { children: ReactNode }) {
   const camera = useMemo<CameraPort>(
     () => ({
       access: read(permission),
-      // Apple's review is the reason the two platforms differ; `CameraPort` in
-      // `packages/app/src/ports.ts` says what each value promises.
-      ask: Platform.OS === 'ios' ? 'continue' : 'grant',
       request: async () => read(await request()),
       Preview: ({ onScan, active = true, testID }) => (
         <CameraView

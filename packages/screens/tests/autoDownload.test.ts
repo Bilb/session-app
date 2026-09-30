@@ -35,8 +35,7 @@ describe('what drawing may fetch unasked', () => {
   })
 
   it('refuses an expired attachment even when the setting would otherwise fetch it unasked', () => {
-    // The defect this replaced: the album handed a url to a tile the file server has already
-    // given up on, because only the row checked availability before calling this.
+    // The album's tiles rely on this, not on the row, to refuse a file the server has given up on.
     expect(mayResolve(attachment('image/jpeg', 'notFound'), 'all')).toBe(false)
     expect(mayResolve(attachment('image/jpeg', 'unreadable'), 'all')).toBe(false)
   })

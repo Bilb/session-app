@@ -17,6 +17,8 @@ export type ImageProps = WithTestID & {
   borderRadius?: number | undefined
   /** Fires when the bytes are decoded and on screen, which is the only honest "it is here". */
   onLoad?: (() => void) | undefined
+  /** Fires when the bytes could not be fetched or decoded. Nothing retries on its own. */
+  onError?: (() => void) | undefined
 }
 
 /**
@@ -33,6 +35,7 @@ export function Image({
   fit = 'cover',
   borderRadius,
   onLoad,
+  onError,
   testID,
 }: ImageProps) {
   // react-native's own Image rather than tamagui's: react-native-web turns `source` into an
@@ -44,6 +47,7 @@ export function Image({
       resizeMode={fit}
       style={{ width, height, borderRadius }}
       onLoad={onLoad}
+      onError={onError}
       testID={testID}
     />
   )

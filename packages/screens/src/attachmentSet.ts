@@ -7,9 +7,10 @@ import { fetchOf } from './attachmentFetch'
  * What a message's attachments are collectively doing.
  *
  * `failed` beats `fetching`, because a set where one file is never coming cannot complete: a bar
- * that would stop short is a worse thing to draw than a retry.
+ * that would stop short is a worse thing to draw than a retry. `unavailable` is a set of nothing but
+ * expired or unreadable files, which has nothing left to fetch and nothing to offer.
  */
-export type AttachmentSetState = 'ready' | 'fetching' | 'failed' | 'idle'
+export type AttachmentSetState = 'ready' | 'fetching' | 'failed' | 'idle' | 'unavailable'
 
 export interface AttachmentSet {
   state: AttachmentSetState
@@ -76,20 +77,20 @@ export function summarise(
     }
   }
 
-  // Unavailable is excluded from what the set needs to resolve: an expired file cannot become
-  // ready, and counting it against the total left a set with one expired file among others stuck
-  // at idle forever. A set that is nothing but expired files has nothing to resolve and rests at
-  // idle instead of a vacuous 'ready' - the footer already withholds Export unless count is 1, so
-  // this never offers exporting the one file that arrived without going through the list.
+  // Unavailable files are left out of what the set must resolve: they can never become ready. The
+  // footer withholds Export unless count is 1, so a set that is ready around an expired file never
+  // offers to export the one that arrived.
   const resolvable = attachments.length - unavailable
   const state: AttachmentSetState =
     failed > 0
       ? 'failed'
       : running > 0
         ? 'fetching'
-        : resolvable > 0 && ready === resolvable
-          ? 'ready'
-          : 'idle'
+        : attachments.length > 0 && resolvable === 0
+          ? 'unavailable'
+          : resolvable > 0 && ready === resolvable
+            ? 'ready'
+            : 'idle'
 
   return {
     state,

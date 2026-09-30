@@ -22,6 +22,8 @@ export async function exportOne(
     const saved = await actions.exportAttachment({ messageId: message.id, index }, destination)
     await requirePorts().files.revealInFolder(saved)
   } catch {
-    // A failed export ends its own transfer as `failed`, which the row's caption draws.
+    // Only a list row draws a failed export transfer, and a refusal before one starts (an expired
+    // file, a destination refused) reaches no transfer at all.
+    // TODO(#63): say an export failed as a toast, wherever it was started from.
   }
 }

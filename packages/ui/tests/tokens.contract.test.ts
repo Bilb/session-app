@@ -95,6 +95,7 @@ function known(): Set<string> {
   // Font families, which are named in the config rather than in a scale.
   names.add('body')
   names.add('heading')
+  names.add('mono')
 
   return names
 }

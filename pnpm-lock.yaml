@@ -78,6 +78,9 @@ catalogs:
     expo-file-system:
       specifier: ~57.0.6
       version: 57.0.6
+    expo-font:
+      specifier: ~57.0.3
+      version: 57.0.3
     expo-linking:
       specifier: ~57.0.9
       version: 57.0.9
@@ -208,9 +211,15 @@ importers:
       '@session/bridge-node':
         specifier: workspace:*
         version: link:../../packages/bridge-node
+      '@session/bridge-types':
+        specifier: workspace:*
+        version: link:../../packages/bridge-types
       '@session/client':
         specifier: workspace:*
         version: link:../../packages/client
+      '@session/localization':
+        specifier: workspace:*
+        version: link:../../packages/localization
       '@session/screens':
         specifier: workspace:*
         version: link:../../packages/screens
@@ -317,6 +326,9 @@ importers:
       expo-file-system:
         specifier: 'catalog:'
         version: 57.0.6(expo@57.0.19)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))
+      expo-font:
+        specifier: 'catalog:'
+        version: 57.0.3(expo@57.0.19)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
       expo-linking:
         specifier: 'catalog:'
         version: 57.0.9(expo@57.0.19)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
@@ -389,6 +401,13 @@ importers:
         version: 5.0.0(@types/node@26.4.1)(vite@8.2.2(@types/node@26.4.1)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.0))
 
   packages/app:
+    dependencies:
+      '@session/basic-types':
+        specifier: workspace:*
+        version: link:../basic-types
+      '@session/client':
+        specifier: workspace:*
+        version: link:../client
     devDependencies:
       '@session/eslint-config':
         specifier: workspace:*
@@ -863,6 +882,9 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 10.9.1(jiti@2.7.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.0(@types/node@26.4.1)(vite@8.2.2(@types/node@26.4.1)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.0))
 
   tooling/turbo-guard:
     dependencies:

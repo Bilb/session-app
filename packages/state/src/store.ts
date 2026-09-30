@@ -7,7 +7,7 @@ import type {
 } from '@session/client'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
-import { applyEvent, mergePages, withoutHistory } from './applyEvent'
+import { applyEvent, mergePages, recordRefusal, withoutHistory } from './applyEvent'
 import { emptyState, type MessageWindow, type SessionState } from './types'
 
 export interface CacheSettings {
@@ -133,8 +133,8 @@ export interface SessionActions {
    */
   retry: (messageId: number) => Promise<boolean>
   /**
-   * Fetches an attachment, and answers whether the bytes are here by fetching them: one that is
-   * already cached resolves at once and reports nothing at all.
+   * Fetches an attachment: one that is already cached resolves at once and reports nothing at
+   * all. Whether the bytes are here is the attachment's `availability`, not this.
    *
    * Progress arrives as events, so nothing is returned: a row that mounts halfway through a
    * transfer reads the same state as one that started it.
@@ -422,7 +422,12 @@ export function createSessionStore(
     },
 
     async downloadAttachment(ref): Promise<void> {
-      await client.downloadAttachment(ref.messageId, ref.index)
+      try {
+        await client.downloadAttachment(ref.messageId, ref.index)
+      } catch (error) {
+        store.setState((state) => recordRefusal(state, 'download', ref))
+        throw error
+      }
     },
 
     async exportAttachment(ref, destination): Promise<string> {

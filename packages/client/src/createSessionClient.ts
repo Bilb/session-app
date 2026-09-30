@@ -71,7 +71,9 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       if (!waiting) return
       pending.delete(response.id)
       if (response.error !== undefined) {
-        waiting.reject(new SessionClientError(`${waiting.command}: ${response.error}`))
+        waiting.reject(
+          new SessionClientError(`${waiting.command}: ${response.error}`, response.code),
+        )
       } else {
         waiting.resolve(response)
       }

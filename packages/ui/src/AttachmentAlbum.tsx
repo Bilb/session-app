@@ -1,13 +1,21 @@
 import { memo, type ReactNode } from 'react'
 import { XStack, YStack } from 'tamagui'
 
-import type { WithDurationLabel, WithMediaPreview, WithMediaUri } from '@session/basic-types'
+import type {
+  WithDurationLabel,
+  WithFetchesOnOpen,
+  WithMediaPreview,
+  WithMediaUri,
+} from '@session/basic-types'
 
 import { ALBUM_SEAM, albumLayout, lastCell } from './albumLayout'
 import { AttachmentTile } from './AttachmentTile'
+import { FetchHint } from './FetchHint'
+import { tileRadius } from './attachmentTileStyle'
+import { StateLayer } from './StateLayer'
 import type { WithTestID } from './with'
 
-type AlbumMedia = WithMediaUri & WithMediaPreview & WithTestID
+type AlbumMedia = WithMediaUri & WithMediaPreview & WithFetchesOnOpen & WithTestID
 export type AlbumImage = AlbumMedia & { kind: 'image' }
 export type AlbumVideo = AlbumMedia & { kind: 'video' } & WithDurationLabel
 export type AlbumItem = AlbumImage | AlbumVideo
@@ -51,9 +59,12 @@ const AlbumTile = memo(function AlbumTile({
   return (
     <YStack
       role="button"
+      position="relative"
+      cursor="pointer"
       onPress={() => {
         onOpen(at)
       }}
+      group="tile"
     >
       <AttachmentTile
         side={side}
@@ -64,6 +75,8 @@ const AlbumTile = memo(function AlbumTile({
         overflowLabel={overflowLabel}
         testID={item.testID}
       />
+      <StateLayer group="tile" tone="scrim" borderRadius={tileRadius(side)} />
+      {item.fetchesOnOpen === true ? <FetchHint side={side} /> : null}
     </YStack>
   )
 })

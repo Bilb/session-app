@@ -60,6 +60,13 @@ dev entries. When a rule fires, fix the design - not the config.
 - Define constants and helpers above their first use.
 - Never define a component or render function inside another component; ESLint refuses it. Move
   it to module scope and pass what it reads as props.
+- **The desktop renderer is granted no Chromium permission**, the clipboard's included:
+  `denyAllPermissions` stays deny-all. What the page needs from the OS is a named preload
+  function, handled on that window's `webContents.ipc` (not the global `ipcMain`), which checks
+  the sender with `isFromAppFrame` and bounds its arguments. ESLint refuses `ipcMain` in desktop
+  main, and an `ipc` handler that does not call `isFromAppFrame`.
+- A port method one platform cannot honour is dropped or made nullable, never implemented to
+  always fail.
 
 ## Porting a screen
 

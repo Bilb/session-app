@@ -5,18 +5,22 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 // The default import plus a destructure is the form that works under both loaders.
 import electron from 'electron'
 
-const { app, BrowserWindow, MessageChannelMain, ipcMain, session, shell } = electron
+const { app, BrowserWindow, Menu, MessageChannelMain, clipboard, session, shell } = electron
 
 import type { Request } from '@session/client'
+import { isCrowdinLocale, setLocale } from '@session/localization'
 
 import { createBridge } from './bridge'
-import { mayExportTo, serveFiles } from './files'
+import { editMenuItems } from './editMenu'
+import { serveFiles } from './files'
 import { registerMediaScheme, serveMedia, stopServingMedia } from './media'
 import {
+  acceptsCopy,
   applyContentProtection,
   denyAllPermissions,
   guardNavigation,
   hardenedWebPreferences,
+  isFromAppFrame,
   refuseNewContents,
 } from './security'
 
@@ -102,6 +106,48 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
   guardNavigation(window.webContents, appUrl)
   applyContentProtection(window, process.platform)
 
+  // On this window's own `ipc` rather than `ipcMain`, so no other WebContents can reach them.
+  const { ipc } = window.webContents
+
+  /**
+   * A link the app decided to hand to the person's browser.
+   *
+   * Restricted to http(s) here rather than at the caller: `openExternal` gives any scheme to the
+   * OS, and a `file:` or a custom scheme reaching it is how a link becomes a launched program.
+   * The renderer is not trusted to have checked.
+   *
+   * Plain http is allowed, which is what all three legacy clients do -- two of them go further
+   * and upgrade a scheme-less address to https rather than refusing it. Case-insensitive for the
+   * same reason the desktop client's is: a scheme is not case-sensitive, and `HTTP://` silently
+   * doing nothing is worse than opening it.
+   */
+  ipc.on('open-external', (event, url: unknown) => {
+    if (!isFromAppFrame(event.senderFrame, appUrl)) return
+    if (typeof url === 'string' && /^https?:\/\//i.test(url)) void shell.openExternal(url)
+  })
+
+  const files = serveFiles(window, appUrl)
+
+  // Rejects rather than resolving, so a refused copy is not reported to the person as done.
+  ipc.handle('clipboard-write-text', async (event, text: unknown) => {
+    const accepted =
+      isFromAppFrame(event.senderFrame, appUrl) &&
+      acceptsCopy(text, { focused: window.isFocused() })
+    if (!accepted) throw new Error('clipboard write refused')
+    await clipboard.writeText(text)
+  })
+
+  // The menu below is drawn here, so it follows the language the person chose in the app.
+  ipc.on('locale', (event, locale: unknown) => {
+    if (!isFromAppFrame(event.senderFrame, appUrl)) return
+    if (typeof locale === 'string' && isCrowdinLocale(locale)) setLocale(locale)
+  })
+
+  window.webContents.on('context-menu', (_event, params) => {
+    const items = editMenuItems(params)
+    if (items.length > 0) Menu.buildFromTemplate(items).popup({ window })
+  })
+
   /**
    * Nothing opens a window here, whatever asks.
    *
@@ -128,29 +174,21 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
 
     // A frame is a plain object built by the addon; structured clone carries it to the renderer.
     open.setSink((frame) => {
+      files.observe(frame)
       port?.postMessage(frame)
     })
     port1.on('message', (event: { data: unknown }) => {
       // Renderer input: an exception escaping here is an uncaught one in the main process.
       try {
         const request = event.data as Request
-        // The one command that names a filesystem path of its own choosing: `save_attachment`
-        // writes wherever `destination` says with no containment check on the native side, so
-        // this is the point that has to refuse one outside a folder a save dialog actually chose.
-        if (
-          request.command?.type === 'exportAttachment' &&
-          !mayExportTo(request.command.destination)
-        ) {
-          port?.postMessage({
-            type: 'response',
-            response: {
-              id: request.id,
-              error: 'exportAttachment.destination is not a chosen folder',
-            },
-          })
+        // The one command that names a filesystem path of its own choosing, and `save_attachment`
+        // has no containment of its own, so every request passes the gate on its way to the bridge.
+        const admitted = files.admit(request)
+        if (typeof admitted === 'string') {
+          port?.postMessage({ type: 'response', response: { id: request.id, error: admitted } })
           return
         }
-        open.send(request)
+        open.send(admitted)
       } catch {
         // No id to answer on, so there is nobody to tell.
       }
@@ -185,24 +223,7 @@ app.on('web-contents-created', (_event, contents) => {
 
 void app.whenReady().then(async () => {
   denyAllPermissions(session.defaultSession)
-  ipcMain.handle('session-ping', () => 'pong')
 
-  /**
-   * A link the app decided to hand to the person's browser.
-   *
-   * Restricted to http(s) here rather than at the caller: `openExternal` gives any scheme to the
-   * OS, and a `file:` or a custom scheme reaching it is how a link becomes a launched program.
-   * The renderer is not trusted to have checked.
-   *
-   * Plain http is allowed, which is what all three legacy clients do -- two of them go further
-   * and upgrade a scheme-less address to https rather than refusing it. Case-insensitive for the
-   * same reason the desktop client's is: a scheme is not case-sensitive, and `HTTP://` silently
-   * doing nothing is worse than opening it.
-   */
-  ipcMain.on('open-external', (_event, url: unknown) => {
-    if (typeof url === 'string' && /^https?:\/\//i.test(url)) void shell.openExternal(url)
-  })
-  serveFiles()
   await createWindow()
 
   app.on('activate', () => {

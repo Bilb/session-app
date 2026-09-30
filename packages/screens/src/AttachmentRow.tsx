@@ -9,7 +9,6 @@ import {
 } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { FileRow, type FileRowState, type FileRowThumbnail } from '@session/ui'
-import { useState } from 'react'
 
 import { fetchOf, type Fetch } from './attachmentFetch'
 import { mayResolve } from './autoDownload'
@@ -25,7 +24,10 @@ function caption(
   fetched: Fetch,
   exporting: AttachmentTransferState['state'] | undefined,
 ): string {
-  if (state === 'unavailable') return tr('attachmentsExpired')
+  if (state === 'unavailable')
+    return tr(
+      attachment.availability === 'unreadable' ? 'attachmentsErrorOpen' : 'attachmentsExpired',
+    )
   if (state === 'failed') return tr('failedToDownload')
   if (state === 'fetching') {
     // Indeterminate until the server says how big it is, which is what a total of 0 means.
@@ -68,12 +70,9 @@ export function AttachmentRow({
   const ref = { messageId: message.id, index: attachment.index }
   const report = useAttachmentTransfer('download', ref)
   const exporting = useAttachmentTransfer('export', ref)
-  const [error, setError] = useState(false)
 
   const fetched = fetchOf(attachment, report)
-  // A rejected call is this component's own knowledge and reaches no event, so it is the one
-  // thing here that neither libsession nor a report can supply.
-  const state: FileRowState = error && fetched.state === 'idle' ? 'failed' : fetched.state
+  const state: FileRowState = fetched.state
 
   // A picture fetches itself as it draws: the url *is* the request, and the same call reads the
   // cache, joins a transfer already running, or starts one. Absent once expired, where asking
@@ -83,22 +82,23 @@ export function AttachmentRow({
       ? undefined
       : {
           // Left off where this is not ours to fetch: a url is the request, so handing one over
-          // would spend the data the person was about to be asked about.
-          uri: mayResolve(attachment, ui.autoDownload)
-            ? requirePorts().media.urlFor(ref)
-            : undefined,
+          // would spend the data the person was about to be asked about. Left off after a failure
+          // too, so a retry hands it over afresh and the image tries again.
+          uri:
+            mayResolve(attachment, ui.autoDownload) && state !== 'failed'
+              ? requirePorts().media.urlFor(ref)
+              : undefined,
           kind: mediaKindOf(attachment.contentType),
+          fetchesOnOpen: state === 'idle' || state === 'failed',
           // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
           // screen by the route a picture does. Null where the platform has no resolver.
           preview: attachment.hasPreview ? requirePorts().media.previewUrlFor(ref) : undefined,
         }
 
   function start(): void {
-    setError(false)
     ui.requestAutoDownloadPrompt()
-    void actions.downloadAttachment(ref).catch(() => {
-      setError(true)
-    })
+    // A refusal is recorded as a failed transfer by the store, which `fetchOf` reads.
+    void actions.downloadAttachment(ref).catch(() => undefined)
   }
 
   const act = state === 'ready' ? () => void exportOne(message, attachment.index, actions) : start
@@ -109,11 +109,13 @@ export function AttachmentRow({
       filename={attachment.filename ?? tr('attachment')}
       contentType={attachment.contentType}
       thumbnail={thumbnail}
+      // Opens only a picture that is here, as the legacy clients do; otherwise the tap fetches it.
       onOpen={
         thumbnail === undefined
           ? undefined
           : () => {
-              ui.openViewer(message.id, attachment.index)
+              if (state === 'ready') ui.openViewer(message.id, attachment.index)
+              else if (state === 'idle' || state === 'failed') start()
             }
       }
       caption={caption(attachment, state, fetched, exporting?.state)}

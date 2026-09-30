@@ -10,10 +10,13 @@ export type {
   UrlScheme,
 } from './sessionBridgeOptions'
 export {
-  ATTACHMENT_DOWNLOAD_FAILED,
   ATTACHMENT_FILE_MISSING,
   ATTACHMENT_NOT_FOUND,
-  ATTACHMENT_UNREADABLE,
+  FILE_DOWNLOAD_FAILED,
+  FILE_NOT_FOUND,
+  FILE_SAVE_FAILED,
+  FILE_UNREADABLE,
+  MESSAGE_NOT_FOUND,
 } from './domain'
 export type {
   AccountInfo,

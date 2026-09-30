@@ -11,6 +11,7 @@ import {
   SPACE_SCALE,
   Z_INDEX_SCALE,
 } from './scales'
+import { MONO_FAMILY } from './monoFamily'
 import { buildThemes, DEFAULT_THEME, themeName } from './themes'
 
 /**
@@ -37,6 +38,18 @@ const bodyFont = createFont({
   letterSpacing: LETTER_SPACING_SCALE,
 })
 
+/**
+ * Roboto Mono, for the account ID: every character the same width, so the three lines of an ID are
+ * one block and a character can be found again by its column. The desktop client's `--font-mono`.
+ */
+const monoFont = createFont({
+  family: MONO_FAMILY,
+  size: FONT_SIZE_SCALE,
+  lineHeight: LINE_HEIGHT_SCALE,
+  weight: FONT_WEIGHT_SCALE,
+  letterSpacing: LETTER_SPACING_SCALE,
+})
+
 export const tokens = createTokens({
   color: COLOR_SCALE,
   space: SPACE_SCALE,
@@ -46,7 +59,7 @@ export const tokens = createTokens({
 })
 
 export const config = createTamagui({
-  fonts: { body: bodyFont, heading: bodyFont },
+  fonts: { body: bodyFont, heading: bodyFont, mono: monoFont },
   tokens,
   themes: buildThemes(),
   media: {
@@ -67,6 +80,9 @@ export const config = createTamagui({
     // font scale -- both have an `md` -- and the text comes out at a spacing value.
     defaultFont: 'body',
     onlyAllowShorthands: false,
+    // A group is only a hover and press target here. As the default `inline-size` container it
+    // stops taking its width from its content, which collapses any row or tile marked as one.
+    webContainerType: 'normal',
   },
   defaultTheme: themeName(DEFAULT_THEME),
 })
@@ -76,4 +92,9 @@ export type AppConfig = typeof config
 declare module 'tamagui' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   interface TamaguiCustomConfig extends AppConfig {}
+  // Named so a control nested in another answers only to its own hover: an unnamed group matches
+  // any grouped ancestor, which lights every layer inside a hovered row.
+  interface TypeOverride {
+    groupNames(): 'tile' | 'row' | 'control'
+  }
 }
