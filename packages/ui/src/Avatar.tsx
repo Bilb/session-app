@@ -2,8 +2,8 @@ import { COLORS, PRIMARY_COLOR_HEX } from '@session/theme-tokens'
 import { XStack } from 'tamagui'
 
 import { avatarInitials } from './avatarInitials'
+import { rampSizeAtMost } from './rampSize'
 import { Text } from './Text'
-import { offScaleText } from './textHeight'
 
 /**
  * Initials on a colour derived from the id, until a display picture is fetched.
@@ -21,8 +21,8 @@ function colorFor(id: string): string {
 
 /**
  * How large the initials are against the circle: the desktop client's `AvatarPlaceHolder`, which
- * sizes them from the diameter rather than from the type ramp, so an avatar reads the same at any
- * size. A single letter is larger, having the width of two to itself.
+ * sizes them from the diameter, so an avatar reads the same at any size. A single letter is
+ * larger, having the width of two to itself.
  */
 const INITIALS_RATIO = { one: 0.5, more: 0.4 } as const
 
@@ -35,7 +35,7 @@ export interface AvatarProps {
 
 export function Avatar({ id, name, size = 40, testID }: AvatarProps) {
   const letters = avatarInitials(name, id)
-  const fontSize = Math.floor(size * INITIALS_RATIO[letters.length > 1 ? 'more' : 'one'])
+  const initialsSize = rampSizeAtMost(size * INITIALS_RATIO[letters.length > 1 ? 'more' : 'one'])
   return (
     <XStack
       width={size}
@@ -48,7 +48,7 @@ export function Avatar({ id, name, size = 40, testID }: AvatarProps) {
     >
       {/* White on every colour and in every theme, as all three clients draw it: the circle's
           colour is the account's, not the theme's, so the letters cannot take a theme role. */}
-      <Text {...offScaleText(fontSize)} weight="bold" color={COLORS.WHITE}>
+      <Text size={`$${initialsSize}`} weight="bold" color={COLORS.WHITE}>
         {letters}
       </Text>
     </XStack>

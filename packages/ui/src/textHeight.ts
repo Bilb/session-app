@@ -14,14 +14,3 @@ import { FONT_SIZE, LINE_HEIGHT_RATIO } from '@session/theme-tokens'
 export function textHeight(size: keyof typeof FONT_SIZE, lines: number): number {
   return Math.round(FONT_SIZE[size] * LINE_HEIGHT_RATIO * lines)
 }
-
-/**
- * A font size that is not on the ramp, with the line height the ramp would have given it.
- *
- * For the few places a legacy client's measurement falls between two rungs and rounding it reads as
- * a different design -- each caller names its own constant and says why. Spread onto a `Text`; a
- * bare `fontSize` would keep the line box of whichever size it replaced.
- */
-export function offScaleText(fontSize: number): { fontSize: number; lineHeight: number } {
-  return { fontSize, lineHeight: Math.round(fontSize * LINE_HEIGHT_RATIO) }
-}
