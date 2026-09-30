@@ -65,6 +65,14 @@ describe('what a set of attachments is doing', () => {
     expect(fold([expired, unreadable], {}).state).toBe('unavailable')
   })
 
+  it('says how many unavailable files are unreadable rather than expired', () => {
+    const expired = attachment(0, undefined, 'notFound')
+    const unreadable = attachment(1, undefined, 'unreadable')
+    expect(fold([unreadable], {}).unreadable).toBe(1)
+    expect(fold([expired, unreadable], {}).unreadable).toBe(1)
+    expect(fold([expired], {}).unreadable).toBe(0)
+  })
+
   it('counts every attachment, not the ones a gallery draws', () => {
     // A message can carry 32 and an album draws five. A count taken from the tiles would be wrong
     // in exactly the case somebody needs it.

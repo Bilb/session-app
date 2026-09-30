@@ -46,7 +46,8 @@ function caption(set: AttachmentSet): string {
     return `${formatBytes(set.doneBytes)} / ${formatBytes(set.totalBytes)}`
   }
   if (set.state === 'failed') return tr('failedToDownload')
-  if (set.state === 'unavailable') return tr('attachmentsExpired')
+  if (set.state === 'unavailable')
+    return tr(set.unreadable === set.count ? 'attachmentsErrorOpen' : 'attachmentsExpired')
   return set.sizeBytes === undefined ? '' : formatBytes(set.sizeBytes)
 }
 
