@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BackHandler, StyleSheet } from 'react-native'
+import { BackHandler, Platform, StyleSheet } from 'react-native'
 import { ScreenStack, ScreenStackItem } from 'react-native-screens'
 import { useMedia } from 'tamagui'
 
@@ -65,6 +65,9 @@ export function ModalStackRoot({ children, ...host }: ModalStackRootProps) {
           key={entry.id}
           screenId={entry.id}
           stackPresentation="fullScreenModal"
+          // Each phone's own entrance: iOS covers from the bottom, and Android fades up from a little
+          // below, as the legacy client's settings activity opens, rather than pushing across.
+          stackAnimation={Platform.OS === 'android' ? 'fade_from_bottom' : 'default'}
           headerConfig={{ hidden: true }}
           contentStyle={styles.fill}
           // The platform took it away itself -- nothing does on a full-screen modal today, but
