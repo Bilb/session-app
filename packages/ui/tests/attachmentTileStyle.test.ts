@@ -1,7 +1,7 @@
 import { RADII } from '@session/theme-tokens'
 import { describe, expect, it } from 'vitest'
 
-import { TILE_RADIUS_STEP, tileRadius } from '#src/attachmentTileStyle'
+import { TILE_RADIUS_STEP, tilePlaceholder, tileRadius } from '#src/attachmentTileStyle'
 
 describe('a tile’s corner', () => {
   it('takes the larger radius at the sizes an album draws', () => {
@@ -24,5 +24,26 @@ describe('a tile’s corner', () => {
     // Two steps and no more: three would stop the album's tiles and the list's thumbnails reading
     // as the same family, which is the whole reason there is one component.
     expect(new Set([tileRadius(1), tileRadius(40), tileRadius(64), tileRadius(400)]).size).toBe(2)
+  })
+})
+
+describe('a tile’s placeholder', () => {
+  it('is the sender’s preview where there is one', () => {
+    expect(tilePlaceholder('session-media://preview/1/0', null)).toBe('session-media://preview/1/0')
+  })
+
+  it('is none without a preview, so the glyph is drawn', () => {
+    expect(tilePlaceholder(undefined, null)).toBeNull()
+    expect(tilePlaceholder(null, null)).toBeNull()
+  })
+
+  it('is none once that preview failed to load, so the tile is not left blank', () => {
+    expect(tilePlaceholder('session-media://preview/1/0', 'session-media://preview/1/0')).toBeNull()
+  })
+
+  it('gives a new preview url its own attempt', () => {
+    expect(tilePlaceholder('session-media://preview/2/0', 'session-media://preview/1/0')).toBe(
+      'session-media://preview/2/0',
+    )
   })
 })

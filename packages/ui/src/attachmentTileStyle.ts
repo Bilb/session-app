@@ -45,3 +45,17 @@ export const TILE_HAIRLINE_WIDTH = 1
  * to be written as a CSS logical property or it does not mirror, which is what that helper is for.
  */
 export const TILE_BADGE_INSET = SPACING['2xs']
+
+/**
+ * The sender's placeholder a tile draws under its picture, or null for the glyph.
+ *
+ * A placeholder that failed to load draws nothing, so it counts as none: the tile then says what
+ * it holds with the glyph and the hairline. Keyed on the url, so a new one gets its own attempt.
+ */
+export function tilePlaceholder(
+  preview: string | null | undefined,
+  failedPreview: string | null,
+): string | null {
+  if (preview === undefined || preview === null) return null
+  return preview === failedPreview ? null : preview
+}
