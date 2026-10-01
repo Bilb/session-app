@@ -74,20 +74,23 @@ export function Screen({
         both platforms. A bare responder rather than a Touchable: no feedback, no role for a
         screen reader to announce, and no claim at all while the keyboard is down - see
         `backgroundDismissResponder`. A list inside dismisses on its own, `List` says how.
+
+        On the avoiding view itself, never a wrapper: it measures its offset from its parent, and
+        a wrapper at the frame's top hides the top inset, leaving the composer under the keyboard.
       */}
-      <View style={FILL} {...DISMISS_ON_BACKGROUND}>
-        {avoidsKeyboard ? (
-          <KeyboardAvoidingView style={FILL} behavior="padding">
-            <YStack flex={1} {...(padded ? { padding: '$md' } : {})}>
-              {children}
-            </YStack>
-          </KeyboardAvoidingView>
-        ) : (
+      {avoidsKeyboard ? (
+        <KeyboardAvoidingView style={FILL} behavior="padding" {...DISMISS_ON_BACKGROUND}>
           <YStack flex={1} {...(padded ? { padding: '$md' } : {})}>
             {children}
           </YStack>
-        )}
-      </View>
+        </KeyboardAvoidingView>
+      ) : (
+        <View style={FILL} {...DISMISS_ON_BACKGROUND}>
+          <YStack flex={1} {...(padded ? { padding: '$md' } : {})}>
+            {children}
+          </YStack>
+        </View>
+      )}
     </YStack>
   )
 }

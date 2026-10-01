@@ -84,3 +84,14 @@ describe('a native screen', () => {
     expect(screen).toContain('backgroundDismissResponder')
   })
 })
+
+describe('a native screen', () => {
+  it('keeps the keyboard-avoiding view directly in the inset frame', () => {
+    // It measures its offset from its parent: under a wrapper it misses the top inset, and lifts
+    // the composer short of the keyboard by exactly that much.
+    const text = source('Screen.native.tsx')
+    const avoiding = text.indexOf('<KeyboardAvoidingView')
+    expect(avoiding).toBeGreaterThanOrEqual(0)
+    expect(text.slice(text.indexOf('return ('), avoiding)).not.toMatch(/<View\b/)
+  })
+})
