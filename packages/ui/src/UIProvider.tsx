@@ -1,5 +1,5 @@
 import type { PrimaryColorState, ThemeState } from '@session/theme-tokens'
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useLayoutEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { TamaguiProvider } from 'tamagui'
 
@@ -9,7 +9,14 @@ import { GlassProvider, type Glass } from './glass'
 // Side-effecting: puts the compiled themes in the document on the web, and does nothing on native.
 // See tamaguiCSS.ts - without it every `$token` colour resolves to an undefined custom property.
 import './tamaguiCSS'
-import { DEFAULT_ACCENT, DEFAULT_THEME, isDarkTheme, themeName } from './themes'
+import {
+  DEFAULT_ACCENT,
+  DEFAULT_THEME,
+  isDarkTheme,
+  isThemeRegistered,
+  registerTheme,
+  themeName,
+} from './themes'
 
 export interface UIProviderProps {
   children: ReactNode
@@ -39,9 +46,22 @@ export function UIProvider({
   backdropBlur,
   glass,
 }: UIProviderProps) {
+  // What tamagui is drawing, which trails `theme` by one layout pass when the theme is new to it:
+  // it is registered in an effect, since adding one updates every mounted themed component and a
+  // render cannot do that. A layout effect, so the frame drawn in the old theme is never painted.
+  const [shown, setShown] = useState(() =>
+    isThemeRegistered(theme, accent)
+      ? { theme, accent }
+      : { theme: DEFAULT_THEME, accent: DEFAULT_ACCENT },
+  )
+  useLayoutEffect(() => {
+    registerTheme(theme, accent)
+    setShown({ theme, accent })
+  }, [theme, accent])
+
   return (
-    <TamaguiProvider config={config} defaultTheme={themeName(theme, accent)}>
-      <ThemeIsDarkContext.Provider value={isDarkTheme(theme)}>
+    <TamaguiProvider config={config} defaultTheme={themeName(shown.theme, shown.accent)}>
+      <ThemeIsDarkContext.Provider value={isDarkTheme(shown.theme)}>
         <BackdropBlurProvider value={backdropBlur ?? null}>
           <GlassProvider value={glass ?? null}>{children}</GlassProvider>
         </BackdropBlurProvider>
