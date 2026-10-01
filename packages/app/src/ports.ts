@@ -133,13 +133,9 @@ export interface LinkingPort {
 
 export interface SharePort {
   /**
-   * Hands text to the platform's share sheet, or null where there is none.
+   * Hands text to the platform's share sheet, or null where there is none (the desktop).
    *
-   * The phones have one for any app; the desktop has nothing equivalent. **The null is also the
-   * answer to which controls a screen offers**: the settings account block draws Copy and Share on
-   * a phone and the desktop client's copy glyph where sharing is not a thing, so it reads this
-   * rather than guessing a platform from the window's width -- a tablet has the wide layout and
-   * still has a share sheet.
+   * Null rather than a no-op, so a screen leaves out what would only send through it.
    */
   shareText: ((text: string) => Promise<void>) | null
 }

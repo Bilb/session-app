@@ -5,8 +5,6 @@ import { ELEMENT } from '@session/test-ids'
 import {
   Avatar,
   Button,
-  Icon,
-  PressArea,
   ProBadge,
   RecoveryPasswordShield,
   SessionTokenMark,
@@ -14,7 +12,6 @@ import {
   SettingsRow,
   Text,
   useModals,
-  useToast,
   XStack,
   YStack,
   type SettingsRowProps,
@@ -22,17 +19,11 @@ import {
 } from '@session/ui'
 import { useState } from 'react'
 
-import { accountIdLines } from './accountIdLines'
+import { AccountIdControls } from './AccountIdControls'
 import { confirmLink } from './confirmLink'
 import { ConversationsPage } from './ConversationsPage'
 import { HelpPage } from './HelpPage'
 import { LocalizedText } from '../LocalizedText'
-
-/**
- * How long Copy says it worked: iOS's four seconds, with the button held so a second press does
- * not look like a failure.
- */
-const COPIED_FOR_MS = 4000
 
 /**
  * Off the size scale on purpose: a brand badge sized to sit level with the row's icons. At 16 its
@@ -141,16 +132,11 @@ function AccountIdPill() {
  * rather than truncates and gets a copy control rather than being tappable text.
  */
 function AccountHeader({ sessionId, name }: { sessionId: string; name: string }) {
-  // Which controls, by whether there is a share sheet rather than by the window: a tablet has the
-  // wide layout and the phones' controls. See `SharePort`.
-  const shareText = requirePorts().share.shareText
-
   return (
     <YStack
       alignItems="center"
       gap="$sm"
-      // Nothing underneath: the page's own gap separates the ID from the first group, the same
-      // space as sits between the groups.
+      // No bottom padding: the page's gap already separates the ID from the first group.
       paddingTop="$lg"
     >
       <Avatar id={sessionId} name={name} size={PROFILE_AVATAR} />
@@ -160,120 +146,8 @@ function AccountHeader({ sessionId, name }: { sessionId: string; name: string })
         </Text>
       )}
       <AccountIdPill />
-      {shareText === null ? (
-        <DesktopAccountId sessionId={sessionId} />
-      ) : (
-        <>
-          <AccountIdLines sessionId={sessionId} />
-          <PhoneAccountActions sessionId={sessionId} shareText={shareText} />
-        </>
-      )}
+      <AccountIdControls sessionId={sessionId} />
     </YStack>
-  )
-}
-
-/** The ID, one element per line. */
-function AccountIdLines({ sessionId }: { sessionId: string }) {
-  return (
-    // One element per line, so the text engine cannot move the breaks.
-    <YStack alignItems="center" testID={ELEMENT.settings.accountId}>
-      {accountIdLines(sessionId).map((line, at) => (
-        // Keyed by position: lines can repeat (the fake's IDs are runs of zeroes), and duplicate
-        // keys crash on iOS.
-        <Text key={at} size="$bodyLarge" fontFamily="$mono">
-          {line}
-        </Text>
-      ))}
-    </YStack>
-  )
-}
-
-/**
- * The ID with the desktop client's copy glyph beside it, where there is no share sheet.
- *
- * The glyph sits at the ID's trailing side, centred on its three lines, and the ID itself copies
- * when pressed -- the client does both. Either says so with the same toast every copy raises.
- */
-function DesktopAccountId({ sessionId }: { sessionId: string }) {
-  const toasts = useToast()
-  const copy = () => {
-    void requirePorts()
-      .clipboard.setString(sessionId)
-      .then(() => {
-        // One id for every copy, so copying twice shows the toast again rather than two of them.
-        toasts.show(tr('copied'), { id: 'copied-to-clipboard' })
-      })
-  }
-  return (
-    <XStack alignItems="center" gap="$xs">
-      <PressArea accessibilityLabel={tr('copy')} onPress={copy}>
-        {() => (
-          <YStack cursor="pointer">
-            <AccountIdLines sessionId={sessionId} />
-          </YStack>
-        )}
-      </PressArea>
-      <Button
-        variant="ghost"
-        size="xs"
-        circular
-        accessibilityLabel={tr('copy')}
-        testID={ELEMENT.settings.copyAccountId}
-        onPress={copy}
-        icon={<Icon name="copy" size="sm" color="$accentText" />}
-      />
-    </XStack>
-  )
-}
-
-/**
- * Share and Copy under the ID, as both phone clients draw them.
- *
- * Share hands over the bare ID, as iOS does. Android's Share sends the invitation instead, which
- * is what Invite a Friend is for, so the two controls would otherwise do the same thing.
- */
-function PhoneAccountActions({
-  sessionId,
-  shareText,
-}: {
-  sessionId: string
-  shareText: (text: string) => Promise<void>
-}) {
-  const [copied, setCopied] = useState(false)
-  return (
-    // Across the whole width the groups below take, split evenly, as the Android client lays them
-    // out; Share first, as both phone clients order them. The accent's outline pill, on both.
-    <XStack alignSelf="stretch" gap="$md">
-      <Button
-        variant="outlineAccent"
-        fill
-        testID={ELEMENT.settings.shareAccountId}
-        onPress={() => {
-          void shareText(sessionId)
-        }}
-      >
-        {tr('share')}
-      </Button>
-      <Button
-        variant="outlineAccent"
-        fill
-        // Held while it says Copied, so the confirmation is not undone by a second press.
-        disabled={copied}
-        testID={ELEMENT.settings.copyAccountId}
-        onPress={() => {
-          void requirePorts()
-            .clipboard.setString(sessionId)
-            .then(() => {
-              setCopied(true)
-              setTimeout(() => {
-                setCopied(false)
-              }, COPIED_FOR_MS)
-            })
-        }}
-      >
-        {copied ? tr('copied') : tr('copy')}
-      </Button>
-    </XStack>
   )
 }
 
@@ -306,7 +180,7 @@ export function SettingsRootPage() {
         icon: <ProBadge size={PRO_BADGE} color="$textDisabled" />,
         testID: row('pro'),
       },
-      // Phones only: without a share sheet there is nothing to send the invitation through.
+      // Only where there is a share sheet to send the invitation through.
       ...(shareText === null
         ? []
         : [
