@@ -165,21 +165,16 @@ export interface SharePort {
 
 export interface WindowPort {
   /**
-   * Shuts the app down, or null where the platform cannot.
+   * Shuts the app down, or null where the build cannot.
    *
    * **This exists for the case that needs it rather than as a quit button.** After the device's
-   * data is cleared the process is holding a database that no longer exists, and the legacy
-   * clients do not try to carry on either -- iOS calls `exit(0)` straight after clearing. Ending
-   * the process is what makes the next launch the clean one.
+   * data is cleared the process is holding a database that no longer exists. Ending the process
+   * is what makes the next launch the clean one.
    *
-   * Desktop closes its window, which with one window is quitting. Android ends its task. **Null on
-   * iOS**, which offers no way to do this from JavaScript, so the screen reads the null and omits
-   * the control rather than offering one that does nothing.
-   *
-   * TODO: give iOS one. The legacy client calls `exit(0)` straight after clearing, so the gap is
-   * a native call the bridge does not expose rather than something the platform refuses -- and
-   * until it exists, an iOS device whose data was just cleared is left holding a database that no
-   * longer exists until somebody relaunches by hand.
+   * Desktop closes its window, which with one window is quitting. The phones end the process at
+   * once, without the teardown `exit()` runs -- see `modules/process-exit` in the mobile app. Null
+   * where a phone build predates that module, so a screen omits the control rather than offering
+   * one that does nothing.
    */
   close: (() => void) | null
   isFocused(): boolean

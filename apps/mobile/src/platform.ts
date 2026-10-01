@@ -3,9 +3,10 @@ import { parseNetworkName } from '@session/basic-types'
 import * as Clipboard from 'expo-clipboard'
 import Constants from 'expo-constants'
 import * as SecureStore from 'expo-secure-store'
-import { BackHandler, Linking, Platform, Share } from 'react-native'
+import { Linking, Platform, Share } from 'react-native'
 
 import { flagOverride } from './flagOverrides'
+import { terminateProcess } from './processExit'
 
 /**
  * Whose servers fast mode would use, which is what the onboarding screen has to name.
@@ -136,14 +137,6 @@ setPorts({
   ...ports,
   window: {
     ...ports.window,
-    // Android ends the task; iOS offers no way to do this from JavaScript and would need a native
-    // call the bridge does not expose yet. Null rather than a no-op, so a screen omits the control
-    // instead of offering one that does nothing -- see `WindowPort`.
-    close:
-      Platform.OS === 'android'
-        ? () => {
-            BackHandler.exitApp()
-          }
-        : null,
+    close: terminateProcess,
   },
 })
