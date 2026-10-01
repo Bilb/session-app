@@ -2,11 +2,11 @@ import type { ConversationId, Message } from '@session/client'
 import { tr } from '@session/localization'
 import { useMessage } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
-import { Sheet } from '@session/ui'
+import { List, Sheet } from '@session/ui'
 import { useRef, type ReactNode } from 'react'
 
 import { AttachmentFooter } from './AttachmentFooter'
-import { AttachmentList } from './AttachmentList'
+import { AttachmentRow } from './AttachmentRow'
 import { useAttachmentSet } from './useAttachmentSet'
 
 function SheetFooter({ message }: { message: Message }) {
@@ -41,8 +41,18 @@ function MessageSheet({
         footer={message === undefined ? undefined : <SheetFooter message={message} />}
         testID={ELEMENT.conversation.attachmentSheet}
         closeTestID={ELEMENT.conversation.attachmentSheetClose}
+        bodyIsList
       >
-        {message === undefined ? null : <AttachmentList message={message} />}
+        {message === undefined ? null : (
+          // Windowed: a set this long mounted all at once is a pause between the tap and the sheet.
+          <List
+            data={message.attachments}
+            keyExtractor={(attachment) => String(attachment.index)}
+            renderItem={(attachment) => <AttachmentRow message={message} attachment={attachment} />}
+            fitsContent
+            paddingHorizontal="md"
+          />
+        )}
       </Sheet>
     </>
   )

@@ -1,8 +1,9 @@
-import { expect } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { ELEMENT } from '@session/test-ids'
 
 import { SEEDED_ALBUM, SEEDED_LIST } from '../harness/fixtures'
-import { openFirstConversation } from '../harness/attachments'
+import { downloadFirstAttachment, openFirstConversation } from '../harness/attachments'
+import { DesktopApp } from '../harness/DesktopApp'
 import { sessionTest } from '../harness/sessionTest'
 
 /**
@@ -48,4 +49,36 @@ sessionTest({
 
     await alice.screenshot('attachment-view-list-desktop')
   },
+})
+
+/**
+ * A list in a bubble has a width to draw into.
+ *
+ * A downloaded picture is the row most likely to lose its name, because its thumbnail is what
+ * takes the lead column. On a phone a list that sized itself gave the names and the footer's total
+ * no width at all; Chromium lays the same tree out wider, so that half is held by
+ * `attachmentWidth.contract.test.ts` in screens, and this is the desktop half.
+ *
+ * Launched directly rather than through `sessionTest`, because the clip check is a layout probe
+ * and `ISessionApp` has none.
+ */
+test('draws every name and the total in full in a list', async () => {
+  const app = await DesktopApp.launch('alice')
+  try {
+    await openFirstConversation(app)
+    await downloadFirstAttachment(app)
+    await app.tap(ELEMENT.conversation.attachmentViewList)
+
+    await expect
+      .poll(async () => (await app.readAllText(ELEMENT.conversation.attachmentName)).length, {
+        timeout: 5_000,
+      })
+      .toBeGreaterThanOrEqual(SEEDED_ALBUM.length + SEEDED_LIST.length)
+    expect(await app.clipped(ELEMENT.conversation.attachmentName)).not.toContain(true)
+    expect(await app.clipped(ELEMENT.conversation.attachmentState)).not.toContain(true)
+
+    await app.screenshot('attachment-view-list-names-desktop')
+  } finally {
+    await app.close()
+  }
 })

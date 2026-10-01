@@ -52,6 +52,14 @@ interface PageGlobals {
 }
 
 /** What the layout probe's page-side bodies touch. */
+/** Only what `clipped` reads of an element, since this program has no DOM types. */
+interface LaidOutNode {
+  textContent: string | null
+  clientWidth: number
+  scrollWidth: number
+  querySelectorAll(selector: string): ArrayLike<LaidOutNode>
+}
+
 interface DocumentGlobals {
   document: { documentElement: { dir: string; clientWidth: number } }
 }
@@ -243,6 +251,24 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser,
       () => (globalThis as unknown as DocumentGlobals).document.documentElement.clientWidth,
     )
     return box.x + box.width / 2 > width / 2 ? 'right' : 'left'
+  }
+
+  async verticalCentre(id: ElementId): Promise<number> {
+    const box = await this.locator(id).first().boundingBox()
+    if (box === null) throw new Error(`${id} is not laid out`)
+    return box.y + box.height / 2
+  }
+
+  async clipped(id: ElementId): Promise<boolean[]> {
+    return this.locator(id).evaluateAll((elements) =>
+      (elements as unknown as LaidOutNode[]).map((element) =>
+        [element, ...Array.from(element.querySelectorAll('*'))].some(
+          (node) =>
+            (node.textContent ?? '') !== '' &&
+            (node.clientWidth === 0 || node.scrollWidth > node.clientWidth + 1),
+        ),
+      ),
+    )
   }
 
   async isLeftOf(first: ElementId, second: ElementId): Promise<boolean> {
