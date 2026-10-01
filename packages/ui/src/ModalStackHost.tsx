@@ -89,8 +89,9 @@ export function ModalStackHost({
             }
           : undefined
 
-        // Each layer above the first dims what it covers. A sibling drawn before the modal, not a child: on the web an absolute
-        // child paints over its in-flow siblings, so it would cover the dialog.
+        // Each layer above the first dims what it covers. A sibling drawn before the modal, not a
+        // child: on the web an absolute child paints over its in-flow siblings, so it would cover
+        // the dialog.
         const layerScrim =
           index === 0 ? null : Blur === null ? (
             <YStack fullscreen backgroundColor="$scrim" pointerEvents="none" />
