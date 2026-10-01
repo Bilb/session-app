@@ -141,7 +141,7 @@ export const PHOTO_THUMBHASHES: readonly string[] = [
   '61491a15846579787f878889788888777692700709', // 29
   '90e7050d82488745976a77508a5767994795600309', // 30
 ]
-type Kind = MediaKind | 'pdf' | 'zip' | 'sheet' | 'audio'
+export type Kind = MediaKind | 'pdf' | 'zip' | 'sheet' | 'audio'
 
 const TYPES: Record<Kind, { contentType: string; extension: string }> = {
   image: { contentType: 'image/jpeg', extension: 'jpg' },

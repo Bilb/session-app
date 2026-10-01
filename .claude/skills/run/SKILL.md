@@ -112,8 +112,15 @@ The desktop app needs the addon built before any of those will start; see
 Against the fake:
 
 ```sh
+pnpm fake-media:fetch                          # once: the thirty photographs the fake draws
+pnpm --filter @session/mobile fake-media:push  # once per device or after `pm clear`
 pnpm dev:fake               # both; or dev:desktop:fake / dev:mobile:fake
 ```
+
+The fake refuses to start without its photographs and names the command that fixes it. Which
+world it opens is `EXPO_PUBLIC_SESSION_FAKE_FIXTURE` - `friends`, `showcase`, `backlog`,
+`newcomer`, `crowd` - and `EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN=10` makes every transfer ten times
+slower, on both apps.
 
 Every variable carries `EXPO_PUBLIC_`, desktop's included: Metro inlines one into the bundle only
 when its name does, and it caches the transform - so a Metro started without it keeps serving a

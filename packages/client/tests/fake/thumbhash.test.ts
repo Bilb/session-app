@@ -1,6 +1,7 @@
+import { toHex } from '@session/basic-types'
 import { describe, expect, it } from 'vitest'
 
-import { decodeThumbhash } from '#src/main/dev/thumbhash'
+import { decodeThumbhash } from '#src/fake/thumbhash'
 
 function bytes(hex: string): Uint8Array {
   return Uint8Array.from(hex.match(/../g)?.map((b) => parseInt(b, 16)) ?? [])
@@ -45,7 +46,7 @@ describe('the dev ThumbHash decoder', () => {
       const decoded = decodeThumbhash(bytes(hash), 8, 6)
       expect(decoded.width).toBe(8)
       expect(decoded.height).toBe(6)
-      expect(Buffer.from(decoded.rgba).toString('hex')).toBe(expected)
+      expect(toHex(decoded.rgba)).toBe(expected)
     }
   })
 
