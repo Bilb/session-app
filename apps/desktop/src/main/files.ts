@@ -142,6 +142,13 @@ export function readLastFolder(file: string): string | undefined {
   }
 }
 
+/**
+ * Records the folder a save dialog just answered, so the next dialog - in this run or a later
+ * one - opens there. `readLastFolder` reads it back.
+ *
+ * The file holds the bare path, readable by this user only. Best effort: a failed write is
+ * dropped rather than failing the export it follows.
+ */
 export function writeLastFolder(file: string, folder: string): void {
   try {
     writeFileSync(file, folder, { mode: 0o600 })
