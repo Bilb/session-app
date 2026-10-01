@@ -1,8 +1,18 @@
 import { requirePorts } from '@session/app'
 import { tr } from '@session/localization'
 import { useSessionActions } from '@session/state'
-import { Modal, Screen, Text, YStack } from '@session/ui'
 import { ELEMENT } from '@session/test-ids'
+import {
+  Button,
+  Icon,
+  Screen,
+  Text,
+  useModals,
+  useToast,
+  XStack,
+  YStack,
+  type Modals,
+} from '@session/ui'
 import { useState } from 'react'
 
 import { LocalizedText } from './LocalizedText'
@@ -20,40 +30,21 @@ interface StartupFailedScreenProps {
  *
  * **The second outcome of a launch.** Without it, a rejection between the app opening and
  * libsession answering is indistinguishable from a database still migrating: the launch screen
- * stays up and neither ever ends.
+ * stays up and neither ever ends. Drawn in the default theme, which is what the launch screen was
+ * drawn in -- the theme is a preference in the database that just failed to open.
  *
- * A styled screen rather than the legacy client's plain `UIAlertController`. Its reason for the
- * plain one holds here too -- it *"may not have access to the database when displaying this so
- * can't extract theme information"* -- but costs nothing, because the default theme is already
- * what the launch screen was drawn in.
+ * **Clearing is the only way forward offered**, and it leads to onboarding, where somebody either
+ * starts again or enters their recovery phrase. No Retry: `start` runs the queries again, but the
+ * failures that land here -- a database that will not open, a migration that did not finish --
+ * happen in the bridge's init, which it does not repeat.
  *
- * **Clearing is the only way forward offered**, and it covers both of the client's two: they differ
- * only in what happens next, which here is onboarding, where a phrase is entered. No retry -- iOS
- * has none either, and the thing that would make the failure go away is what already failed.
- * Exporting the logs is absent because there is no logging port to write them.
+ * TODO: an Export Logs button, once the app keeps logs. The explanation asks for them, and nothing
+ * here lets somebody hand them over.
  */
 export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
   const actions = useSessionActions()
+  const modals = useModals()
   const close = requirePorts().window.close
-  const [confirming, setConfirming] = useState(false)
-  const [clearing, setClearing] = useState(false)
-
-  const clear = () => {
-    setClearing(true)
-    void actions
-      .clearDeviceData()
-      .then(() => {
-        // The process is now holding a database that no longer exists, so it ends rather than
-        // carries on -- which is what makes the next launch the clean one, and what the legacy
-        // clients do. Where the platform cannot end it, the screen stays put and the person
-        // relaunches; see `WindowPort`.
-        close?.()
-      })
-      .finally(() => {
-        setClearing(false)
-        setConfirming(false)
-      })
-  }
 
   return (
     <Screen padded testID={ELEMENT.startupFailed.screen}>
@@ -63,28 +54,22 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
             {tr('theError')}
           </Text>
           <LocalizedText text={tr('databaseErrorGeneric')} textAlign="center" />
-          {/* libsession's message, kept apart from the explanation and drawn quieter. It is not
-              written for anybody in particular, but it is the only thing in this screen that
-              differs between one failure and another, and somebody reading a screenshot back to
-              us needs it. */}
-          <Text
-            tone="secondary"
-            size="$caption"
-            textAlign="center"
-            testID={ELEMENT.startupFailed.reason}
-          >
-            {error}
-          </Text>
+          <FailureReason error={error} />
         </YStack>
 
         <YStack gap="$sm" width="100%" maxWidth={348}>
           <TextButton
             label={['clearDevice']}
-            variant="outline"
-            destructive
+            variant="danger"
             testID={ELEMENT.startupFailed.clear}
             onPress={() => {
-              setConfirming(true)
+              confirmClear(modals, async () => {
+                await actions.clearDeviceData()
+                // The process is now holding a database that no longer exists, so it ends rather
+                // than carries on, which is what makes the next launch the clean one. Where it
+                // cannot be ended the screen stays put and the person relaunches.
+                close?.()
+              })
             }}
           />
           {close === null ? null : (
@@ -99,29 +84,107 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
           )}
         </YStack>
       </YStack>
-
-      <Modal
-        open={confirming}
-        onClose={() => {
-          setConfirming(false)
-        }}
-        title={tr('clearDevice')}
-        closeLabel={tr('cancel')}
-        testID={ELEMENT.startupFailed.confirmClear}
-        closeTestID={ELEMENT.startupFailed.cancelClear}
-        actions={
-          <TextButton
-            label={['clearDevice']}
-            variant="ghost"
-            destructive
-            loading={clearing}
-            testID={ELEMENT.startupFailed.confirmClearButton}
-            onPress={clear}
-          />
-        }
-      >
-        <LocalizedText text={tr('clearDeviceDescription')} />
-      </Modal>
     </Screen>
+  )
+}
+
+/**
+ * libsession's message, apart from the explanation and drawn quieter, with a control that copies
+ * it. It is the only thing on this screen that differs between one failure and another, and it is
+ * what support needs.
+ */
+function FailureReason({ error }: { error: string }) {
+  const toasts = useToast()
+  const copy = () => {
+    void requirePorts()
+      .clipboard.setString(error)
+      .then(() => {
+        toasts.show(tr('copied'), { id: 'copied-to-clipboard' })
+      })
+  }
+  return (
+    <XStack alignItems="center" gap="$xs">
+      <Text
+        flexShrink={1}
+        tone="secondary"
+        size="$caption"
+        textAlign="center"
+        testID={ELEMENT.startupFailed.reason}
+      >
+        {error}
+      </Text>
+      <Button
+        variant="ghost"
+        size="xs"
+        circular
+        accessibilityLabel={tr('copy')}
+        testID={ELEMENT.startupFailed.copyReason}
+        onPress={copy}
+        icon={<Icon name="copy" size="sm" color="$textSecondary" />}
+      />
+    </XStack>
+  )
+}
+
+/** Asks before clearing, as every other destructive confirmation does: Clear beside Cancel. */
+function confirmClear(modals: Modals, clear: () => Promise<void>): void {
+  const id = modals.present({
+    kind: 'alert',
+    testID: ELEMENT.startupFailed.confirmClear,
+    // No cross: somebody deciding whether to erase their account should read the word Cancel.
+    showClose: false,
+    initial: {
+      title: tr('clearDevice'),
+      render: () => (
+        <LocalizedText text={tr('clearDeviceDescription')} size="$body" textAlign="center" />
+      ),
+      footer: () => <ClearActions modals={modals} id={id} clear={clear} />,
+    },
+  })
+}
+
+/** Locked while the clear runs, so nothing can look like a cancel of what is already happening. */
+function ClearActions({
+  modals,
+  id,
+  clear,
+}: {
+  modals: Modals
+  id: string
+  clear: () => Promise<void>
+}) {
+  const [running, setRunning] = useState(false)
+  return (
+    <>
+      <Button
+        variant="ghost"
+        fill
+        borderRadius="$none"
+        destructive
+        disabled={running}
+        testID={ELEMENT.startupFailed.confirmClearButton}
+        onPress={() => {
+          setRunning(true)
+          modals.lock(id)
+          void clear().finally(() => {
+            modals.dismissAll()
+          })
+        }}
+      >
+        {tr('clear')}
+      </Button>
+      <Button
+        variant="ghost"
+        fill
+        borderRadius="$none"
+        disabled={running}
+        testID={ELEMENT.startupFailed.cancelClear}
+        onPress={() => {
+          modals.dismiss(id)
+        }}
+      >
+        {tr('cancel')}
+      </Button>
+    </>
   )
 }

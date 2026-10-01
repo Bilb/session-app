@@ -19,5 +19,16 @@ export function createFakeBridge(): BridgeTransport {
     world.settle()
   }, 50)
 
+  // A start that refuses, as the desktop's `SESSION_FAKE_FAILED_START` does: the failure screen is
+  // otherwise reachable only with a database somebody has already broken. The message is one
+  // libsession really gives, so the screen looks the way it does in the wild.
+  //
+  // TODO: a Developer Settings switch that fails the next launch, once that screen exists, so a
+  // build without this variable can reach it too.
+  if (process.env['EXPO_PUBLIC_SESSION_FAKE_FAILED_START'] === '1') {
+    alice.getAccountInfo = () =>
+      Promise.reject(new Error('getConversations: Invalid conversation id: not a hex session ID'))
+  }
+
   return createFakeTransport(alice)
 }
