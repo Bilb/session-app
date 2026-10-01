@@ -16,6 +16,7 @@
     "android": "GRADLE_OPTS=-Dorg.gradle.configuration-cache=false node --env-file-if-exists=../../.env ../../node_modules/expo/bin/cli run:android",
     "ios": "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 node --env-file-if-exists=../../.env ../../node_modules/expo/bin/cli run:ios",
     "prebuild": "LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 expo prebuild",
+    "fake-media:push": "./scripts/push-fake-media.sh",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"
