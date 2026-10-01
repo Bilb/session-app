@@ -19,16 +19,22 @@ function AboveModals({ children }: { children: ReactNode }) {
 }
 
 /**
- * The newest toast, centred above the bottom of the screen's safe area.
+ * How many are shown at once on a phone, fewer than the desktop's: each takes the full width.
+ * Older ones stay queued behind them until a newer one goes.
+ */
+const PHONE_LIMIT = 3
+
+/**
+ * The toasts, centred above the bottom of the screen's safe area, newest on top as on the desktop.
  *
- * One at a time, as the platform's own toasts are: there is no room on a phone for a stack, and a
- * newer message replaces the one before it rather than pushing it up the screen.
+ * Stacked rather than one at a time, so a second message does not hide the first while both may
+ * still matter. They go quickly enough, and a press dismisses one.
  */
 export function ToastHost({ testID, closeTestID, closeLabel }: ToastHostProps) {
   const { toasts, dismiss } = useToastQueue()
   const insets = useScreenInsets()
-  const newest = toasts[0]
-  if (newest === undefined) return null
+  const shown = toasts.slice(0, PHONE_LIMIT)
+  if (shown.length === 0) return null
   return (
     <AboveModals>
       <YStack
@@ -37,18 +43,21 @@ export function ToastHost({ testID, closeTestID, closeLabel }: ToastHostProps) {
         alignItems="center"
         paddingHorizontal="$md"
         paddingBottom={insets.bottom + SPACE_SCALE.xl}
+        gap="$xs"
         pointerEvents="box-none"
       >
-        <ToastCard
-          key={newest.serial}
-          text={newest.text}
-          testID={testID}
-          closeTestID={closeTestID}
-          closeLabel={closeLabel}
-          onPress={() => {
-            dismiss(newest.serial)
-          }}
-        />
+        {shown.map((toast) => (
+          <ToastCard
+            key={toast.serial}
+            text={toast.text}
+            testID={testID}
+            closeTestID={closeTestID}
+            closeLabel={closeLabel}
+            onPress={() => {
+              dismiss(toast.serial)
+            }}
+          />
+        ))}
       </YStack>
     </AboveModals>
   )
