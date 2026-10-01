@@ -6,11 +6,13 @@ import type { WithMediaKind } from '@session/basic-types'
 import type { ElementId } from '@session/test-ids'
 import { SPACING } from '@session/theme-tokens'
 
+import { TILE_SCRIM } from './attachmentTileStyle'
 import { backChevron, forwardChevron } from './backChevron'
 import { Icon } from './Icon'
 import type { IconName } from './Icon.types'
 import { SIZE_SCALE } from './scales'
 import { Image } from './Image'
+import { SafeArea } from './SafeArea'
 import { Text } from './Text'
 import { useWindowSize } from './useWindowSize'
 
@@ -27,7 +29,6 @@ export interface MediaViewerProps {
   onIndex: (index: number) => void
   onClose: () => void
   onExport: () => void
-  onMore: () => void
   /** Already worded: this package cannot reach the catalogue. "2 of 5". */
   positionLabel: string
   /** Shown in place of a picture this platform cannot draw. */
@@ -36,12 +37,14 @@ export interface MediaViewerProps {
   failedLabel: string
   closeLabel: string
   exportLabel: string
-  moreLabel: string
   previousLabel: string
   nextLabel: string
   testID: ElementId
   closeTestID: ElementId
   exportTestID: ElementId
+  previousTestID: ElementId
+  nextTestID: ElementId
+  imageTestID: ElementId
 }
 
 function Control({
@@ -49,12 +52,15 @@ function Control({
   label,
   onPress,
   disabled = false,
+  overMedia = false,
   testID,
 }: {
   icon: IconName
   label: string
   onPress: () => void
   disabled?: boolean | undefined
+  /** Drawn over the picture rather than the chrome, so it carries its own backdrop. */
+  overMedia?: boolean | undefined
   testID?: ElementId | undefined
 }) {
   return (
@@ -65,6 +71,7 @@ function Control({
       alignItems="center"
       justifyContent="center"
       opacity={disabled ? 0.35 : 1}
+      {...(overMedia ? { backgroundColor: TILE_SCRIM } : {})}
       // The aria spellings reach both the DOM and the native view; react-native's reach the DOM as
       // nothing, which would leave a disabled chevron announced as pressable.
       role="button"
@@ -111,20 +118,23 @@ export function MediaViewer({
   onIndex,
   onClose,
   onExport,
-  onMore,
   positionLabel,
   unavailableLabel,
   failedLabel,
   closeLabel,
   exportLabel,
-  moreLabel,
   previousLabel,
   nextLabel,
   testID,
   closeTestID,
   exportTestID,
+  previousTestID,
+  nextTestID,
+  imageTestID,
 }: MediaViewerProps) {
   const { width, height } = useWindowSize()
+  // The box the picture gets, measured, since the safe area's insets are the platform's to know.
+  const [box, setBox] = useState({ width, height: Math.max(height - HEADER_HEIGHT, 0) })
   const current = items[index]
   // By url, so paging to another picture is not drawn as failed, and one that is fetched again
   // under a new url is tried again.
@@ -137,73 +147,96 @@ export function MediaViewer({
 
   return (
     <NativeModal visible={open} transparent={false} animationType="fade" onRequestClose={close}>
-      {/* `relative`, so the chevrons below resolve against this and not the page: on the web a
-          stack is static unless it says so, and react-native's Modal does not supply one. */}
-      <YStack position="relative" flex={1} backgroundColor="$backgroundPrimary" testID={testID}>
-        {/* Along the top, and nothing along the bottom: the bottom edge is where a thumb rests. */}
-        <XStack height={HEADER_HEIGHT} alignItems="center" gap="$xs" paddingHorizontal="$sm">
-          <Control icon="x" label={closeLabel} onPress={close} testID={closeTestID} />
-          <Text size="$label" color="$textSecondary" flex={1}>
-            {positionLabel}
-          </Text>
-          <Control icon="download" label={exportLabel} onPress={onExport} testID={exportTestID} />
-          <Control icon="ellipsis" label={moreLabel} onPress={onMore} />
-        </XStack>
+      <YStack flex={1} backgroundColor="$backgroundPrimary" testID={testID}>
+        {/* A modal is drawn edge to edge on Android, under the status bar where nothing can be
+            tapped, so the chrome keeps clear of it like any screen. */}
+        <SafeArea>
+          <YStack position="relative" flex={1}>
+            {/* Along the top, and nothing along the bottom: the bottom edge is where a thumb rests. */}
+            <XStack height={HEADER_HEIGHT} alignItems="center" gap="$xs" paddingHorizontal="$sm">
+              <Control icon="x" label={closeLabel} onPress={close} testID={closeTestID} />
+              <Text size="$label" color="$textSecondary" flex={1}>
+                {positionLabel}
+              </Text>
+              <Control
+                icon="download"
+                label={exportLabel}
+                onPress={onExport}
+                testID={exportTestID}
+              />
+            </XStack>
 
-        <YStack flex={1} alignItems="center" justifyContent="center">
-          {current === undefined || current.uri === null || failed ? (
-            <Text size="$body" color="$textSecondary">
-              {failed ? failedLabel : unavailableLabel}
-            </Text>
-          ) : (
-            // The box is the window minus the header, not the window: sized to the window it
-            // overflows the column it is in, and what gets squeezed out is the chrome above it.
-            // `contain` because this is somebody being shown their own picture - a crop here
-            // would be hiding part of the thing they opened.
-            <Image
-              uri={current.uri}
-              width={width}
-              height={Math.max(height - HEADER_HEIGHT, 0)}
-              fit="contain"
-              onError={() => {
-                setFailedUri(current.uri)
+            {/* The chevrons are laid over this box rather than the whole screen, so they centre on
+                the picture and not on a height that includes the header. */}
+            <YStack
+              position="relative"
+              flex={1}
+              alignItems="center"
+              justifyContent="center"
+              onLayout={(event) => {
+                const measured = event.nativeEvent.layout
+                setBox({ width: measured.width, height: measured.height })
               }}
-            />
-          )}
-        </YStack>
-
-        {items.length < 2 ? null : (
-          <XStack
-            position="absolute"
-            top={0}
-            bottom={0}
-            left={0}
-            right={0}
-            alignItems="center"
-            justifyContent="space-between"
-            paddingHorizontal="$xs"
-            pointerEvents="box-none"
-          >
-            {/* The glyph follows reading order, the index does not: previous is always index - 1,
-                and in a mirrored layout it is the chevron on the right that draws it. */}
-            <Control
-              icon={backChevron()}
-              label={previousLabel}
-              disabled={index <= 0}
-              onPress={() => {
-                onIndex(index - 1)
-              }}
-            />
-            <Control
-              icon={forwardChevron()}
-              label={nextLabel}
-              disabled={index >= items.length - 1}
-              onPress={() => {
-                onIndex(index + 1)
-              }}
-            />
-          </XStack>
-        )}
+            >
+              {current === undefined || current.uri === null || failed ? (
+                <Text size="$body" color="$textSecondary">
+                  {failed ? failedLabel : unavailableLabel}
+                </Text>
+              ) : (
+                // The box below the header, not the window: sized to the window it overflows the
+                // column it is in, and what gets squeezed out is the chrome above it. `contain`
+                // because this is somebody being shown their own picture - a crop here would be
+                // hiding part of the thing they opened.
+                <Image
+                  uri={current.uri}
+                  width={box.width}
+                  height={box.height}
+                  fit="contain"
+                  testID={imageTestID}
+                  onError={() => {
+                    setFailedUri(current.uri)
+                  }}
+                />
+              )}
+              {items.length < 2 ? null : (
+                <XStack
+                  position="absolute"
+                  top={0}
+                  bottom={0}
+                  left={0}
+                  right={0}
+                  alignItems="center"
+                  justifyContent="space-between"
+                  paddingHorizontal="$xs"
+                  pointerEvents="box-none"
+                >
+                  {/* The glyph follows reading order, the index does not: previous is always index - 1,
+                  and in a mirrored layout it is the chevron on the right that draws it. */}
+                  <Control
+                    icon={backChevron()}
+                    label={previousLabel}
+                    disabled={index <= 0}
+                    overMedia
+                    testID={previousTestID}
+                    onPress={() => {
+                      onIndex(index - 1)
+                    }}
+                  />
+                  <Control
+                    icon={forwardChevron()}
+                    label={nextLabel}
+                    disabled={index >= items.length - 1}
+                    overMedia
+                    testID={nextTestID}
+                    onPress={() => {
+                      onIndex(index + 1)
+                    }}
+                  />
+                </XStack>
+              )}
+            </YStack>
+          </YStack>
+        </SafeArea>
       </YStack>
     </NativeModal>
   )
