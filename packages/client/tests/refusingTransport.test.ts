@@ -1,0 +1,15 @@
+import { describe, expect, it } from 'vitest'
+
+import { createRefusingTransport } from '#src/refusingTransport'
+import { createSessionClient } from '#src/createSessionClient'
+
+/** What a bridge that could not be made answers with, through the client every screen uses. */
+describe('a refusing transport', () => {
+  it('answers every request with why the bridge could not start', async () => {
+    const client = createSessionClient(createRefusingTransport('no native module'))
+    await expect(client.getAccountInfo()).rejects.toThrow(
+      /the bridge could not start: no native module/,
+    )
+    await expect(client.discardAccount()).rejects.toThrow(/the bridge could not start/)
+  })
+})

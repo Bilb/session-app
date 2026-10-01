@@ -7,7 +7,7 @@ import electron from 'electron'
 
 const { app, BrowserWindow, Menu, MessageChannelMain, clipboard, session, shell } = electron
 
-import type { Request } from '@session/client'
+import { createRefusingTransport, type Request } from '@session/client'
 import { isCrowdinLocale, setLocale } from '@session/localization'
 
 import { createBridge } from './bridge'
@@ -57,11 +57,24 @@ registerMediaScheme()
  * database there instead of carrying on with the one already open, so it is built once, every
  * window is wired to it, and it is closed when the app quits.
  */
+/** A bridge that could not be made, standing in for one: see `createRefusingTransport`. */
+function refusingBridge(reason: string): Awaited<ReturnType<typeof createBridge>> {
+  const refuse = () => Promise.reject(new Error(`the bridge could not start: ${reason}`))
+  return { ...createRefusingTransport(reason), fetchMedia: refuse, fetchPreview: refuse }
+}
+
 let bridge: Awaited<ReturnType<typeof createBridge>> | null = null
 
 async function requireBridge(): Promise<NonNullable<typeof bridge>> {
   if (bridge === null) {
-    bridge = await createBridge()
+    // A bridge that cannot be made is answered for rather than thrown: every request the window
+    // sends is refused with why, and the store shows the startup-failure screen. Thrown, it left
+    // the app with no window at all.
+    bridge = await createBridge().catch((error: unknown) => {
+      const reason = error instanceof Error ? error.message : String(error)
+      console.error(`[session] the bridge could not start: ${reason}`)
+      return refusingBridge(reason)
+    })
     // With the bridge rather than with a window: `protocol.handle` installs one handler for the
     // whole session, and the scheme has to outlive a window for the same reason the bridge does.
     serveMedia(bridge)
