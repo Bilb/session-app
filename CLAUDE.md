@@ -17,7 +17,10 @@ theme-tokens/test-ids/basic-types; `screens` imports ui/state/app/client/localiz
 apps/mobile; `electron` only in desktop main and preload; `react-router` only in the desktop nav
 driver; no node builtins in shared packages; the Nitro module only from
 `packages/client/src/*.native.*`; the addon only from desktop main; the fake only from tests and
-dev entries. When a rule fires, fix the design - not the config.
+dev entries. depcruise alone also refuses orphan files, unresolvable imports, `src` importing a
+test, and shipped code importing a devDependency. It runs twice: `root.cjs` resolves as the desktop
+bundle does and `native.cjs` as Metro does, which is the only pass that sees a `.native` file.
+When a rule fires, fix the design - not the config.
 
 ## Hard rules
 

@@ -20,7 +20,7 @@
     "android": "pnpm --filter @session/mobile android",
     "ios": "pnpm --filter @session/mobile ios",
     "lint": "turbo lint",
-    "boundaries": "depcruise --config tooling/depcruise-config/root.cjs $(ls -d packages apps tests tooling 2>/dev/null)",
+    "boundaries": "depcruise --config tooling/depcruise-config/root.cjs packages apps tests tooling && depcruise --config tooling/depcruise-config/native.cjs packages apps tests tooling",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "knip": "knip",
