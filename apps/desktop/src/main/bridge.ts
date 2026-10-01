@@ -12,9 +12,7 @@ import {
   parseLogSpec,
   parseRouterKind,
 } from '@session/basic-types'
-import type { BridgeTransport } from '@session/client'
-
-import type { MediaSource } from './media'
+import type { BridgeTransport, MediaSource } from '@session/client'
 
 const { app, safeStorage } = electron
 

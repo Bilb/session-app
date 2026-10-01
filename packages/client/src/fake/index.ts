@@ -12,7 +12,14 @@ export { PHOTO_THUMBHASHES, friendsWithAttachments } from './attachments'
 export { FIXTURE_NAMES, crowd, friends, newcomer, solo, strangers } from './fixtures'
 export { showcase } from './showcase'
 export type { FakeSetup, FixtureName } from './fixtures'
-export { fakePreviewPixels, PHOTO_COUNT, photoFileName, photoFileNames, photoNumber } from './media'
+export {
+  createFakeMediaSource,
+  fakePreviewPixels,
+  PHOTO_COUNT,
+  photoFileName,
+  photoFileNames,
+  photoNumber,
+} from './media'
 export { decodeThumbhash } from './thumbhash'
 export { backlog } from './backlog'
 export { driveFakeClock, FAKE_FIXTURES, pickFakeFixture } from './devSetup'

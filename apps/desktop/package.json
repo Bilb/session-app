@@ -38,6 +38,7 @@
     "react-router": "catalog:"
   },
   "devDependencies": {
+    "@session/client-contract": "workspace:*",
     "@session/eslint-config": "workspace:*",
     "@session/typescript-config": "workspace:*",
     "@types/node": "catalog:",

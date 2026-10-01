@@ -1,6 +1,8 @@
 import { isViewableContentType } from '@session/basic-types'
 import type { AttachmentRef } from '@session/bridge-types'
 
+import type { MediaSource } from '../types'
+
 import { PHOTO_THUMBHASHES } from './attachments'
 import type { FakeSessionClient } from './FakeSessionClient'
 import { decodeThumbhash, type Decoded } from './thumbhash'
@@ -57,9 +59,38 @@ function hexBytes(hex: string): Uint8Array {
  * what is drawn is what a recipient would be sent, limits included.
  */
 export function fakePreviewPixels(client: FakeSessionClient, ref: AttachmentRef): Decoded {
+  // As the shim does: the hash arrived with the message or there is none.
+  if (client.locate(ref)?.attachment.hasPreview !== true) throw new Error('no preview: no hash')
   const photo = photoNumber(photoFileName(client, ref) ?? undefined)
   const hash = photo === null ? undefined : PHOTO_THUMBHASHES[Number(photo) - 1]
   if (hash === undefined) throw new Error('no preview: not a picture')
   // The photographs are 4:3; the hash's own ratio is only approximate (lx/ly, one part in seven).
   return decodeThumbhash(hexBytes(hash), 32, 24)
+}
+
+/**
+ * The bytes behind each media URL on the fake: what the real bridge's `fetchMedia` and
+ * `fetchPreview` answer. `readPhoto` reads a dev photograph by file name, wherever the app keeps
+ * them.
+ */
+export function createFakeMediaSource(
+  client: FakeSessionClient,
+  readPhoto: (fileName: string) => Promise<Uint8Array>,
+): MediaSource {
+  return {
+    async fetchMedia(ref) {
+      // Serving the scheme is a fetch: the real bridge fills the cache and announces the change,
+      // so bytes handed back without it would leave the picture reported as one nobody has.
+      await client.downloadAttachment(ref.messageId, ref.index)
+      const photo = photoFileName(client, ref)
+      if (photo === null) throw new Error('not a picture')
+      // A video is served its still: nothing here plays one.
+      return { contentType: 'image/jpeg', bytes: await readPhoto(photo) }
+    },
+    fetchPreview(ref) {
+      return new Promise((resolve) => {
+        resolve(fakePreviewPixels(client, ref))
+      })
+    },
+  }
 }
