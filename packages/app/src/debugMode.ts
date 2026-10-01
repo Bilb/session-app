@@ -30,8 +30,7 @@ export function useDebugMode(): boolean {
 }
 
 /**
- * Turns debug mode over for the rest of the run and says where it now is: the desktop client's
- * ten presses, which toggle it both ways.
+ * Turns debug mode over for the rest of the run and says where it now is.
  *
  * In memory only: a relaunch returns to the flag. See `debugMode` in the flag table.
  */
@@ -39,16 +38,6 @@ export function toggleDebugMode(): boolean {
   const on = !isOn()
   set(on)
   return on
-}
-
-/**
- * Turns debug mode on for the rest of the run: the iOS client's taps, which only ever enable it.
- * Returns whether this changed anything.
- */
-export function enableDebugMode(): boolean {
-  if (isOn()) return false
-  set(true)
-  return true
 }
 
 /** Test seam: forgets the run's changes. */

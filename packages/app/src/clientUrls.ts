@@ -11,8 +11,7 @@ const REPOSITORY = 'https://github.com/session-foundation/session-app'
 
 export const CLIENT_URLS = {
   /**
-   * A version's release page, as the desktop client links its own: the tag is the version with a
-   * `v` in front. Built whether or not the release exists yet -- a development build's version has
+   * A version's release page: the tag is the version with a `v` in front. Built whether or not the release exists yet -- a development build's version has
    * no page, and the link says where it would be.
    */
   release: (version: string) => `${REPOSITORY}/releases/tag/v${version}`,

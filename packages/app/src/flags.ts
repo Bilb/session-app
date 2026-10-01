@@ -79,11 +79,11 @@ export const FLAGS = {
   disableAnimations: false,
 
   /**
-   * Debug mode, as the desktop client means it: what reveals its debug menu.
+   * Debug mode: what reveals Developer Settings.
    *
-   * The environment sets where it starts, as `SESSION_DEV` does there; ten presses on the commit
-   * in settings turn it over for the rest of the run, and a relaunch puts it back -- the client
-   * does not keep it either. Off, because a release build is not a debugging one.
+   * The environment sets where it starts; ten presses on the build stamp in settings turn it over
+   * for the rest of the run, and a relaunch puts it back. Off, because a release build is not a
+   * debugging one.
    */
   debugMode: false,
 } as const

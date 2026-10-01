@@ -1,93 +1,26 @@
-import { CLIENT_URLS, enableDebugMode, requirePorts, toggleDebugMode, URLS } from '@session/app'
-import { tr } from '@session/localization'
+import { CLIENT_URLS, requirePorts, URLS } from '@session/app'
 import { ELEMENT } from '@session/test-ids'
-import { PressArea, SessionTokenLogo, Text, useModals, useToast, XStack, YStack } from '@session/ui'
-import { useRef, useState } from 'react'
+import { PressArea, SessionTokenLogo, Text, useModals, XStack, YStack } from '@session/ui'
+import { useState } from 'react'
 
 import { confirmLink } from './confirmLink'
+import { useDebugModePresses } from './debugModePresses'
 
 const LOGO_HEIGHT = 20
 /** Half strength until the pointer is on it. */
 const RESTING = 0.5
 
-/** How many presses on the commit turn debug mode over: the client's ten. */
-const PRESSES_FOR_DEBUG = 10
-
-/** The phones' logo, 24 high on both, and the iOS client's taps and the most time between them. */
-const PHONE_LOGO_HEIGHT = 24
-const TAPS_FOR_DEBUG = 9
-const TAP_WINDOW_MS = 500
-
 /**
- * The foot of the settings page: the network's logo, then which build this is.
+ * The foot of the settings page: the network's logo, then the version and the commit side by side.
  *
- * Drawn as each client draws it: the desktop's version and commit side by side, the phones' one
- * line. Which is decided as the account controls are, by whether there is a share sheet -- a tablet
- * is a phone here, whatever its layout.
+ * The logo leaves for the token site and the version for its release page, both through the usual
+ * confirmation. Pressing the commit is how debug mode is turned over.
  */
 export function SessionInfo() {
-  return requirePorts().share.shareText === null ? <DesktopSessionInfo /> : <PhoneSessionInfo />
-}
-
-/**
- * The phones' footer: the logo, then "Version 1.2.3 (45 - abcdef12)" -- the iOS client's line, which
- * the product owner asked for, built on the catalogue's `updateVersion` as the Android client's is.
- *
- * Nine taps turn debug mode on and leave it on, as the iOS client's do, each within half a second of
- * the last or the count starts again. No toast, as there: what says it worked is the Developer
- * Settings row appearing.
- */
-function PhoneSessionInfo() {
   const modals = useModals()
-  const { version, commit, buildNumber } = requirePorts().build
-  const taps = useRef({ count: 0, at: 0 })
-  const detail = [buildNumber, commit].filter((part) => part !== null).join(' - ')
-
-  return (
-    <YStack alignItems="center" gap="$2xs">
-      <PressArea
-        accessibilityLabel={URLS.token}
-        testID={ELEMENT.settings.tokenLogo}
-        onPress={() => {
-          confirmLink(modals, URLS.token)
-        }}
-      >
-        {() => <SessionTokenLogo size={PHONE_LOGO_HEIGHT} color="$textSecondary" />}
-      </PressArea>
-      <PressArea
-        testID={ELEMENT.settings.version}
-        onPress={() => {
-          const now = Date.now()
-          const held = now - taps.current.at <= TAP_WINDOW_MS ? taps.current.count : 0
-          taps.current = { count: held + 1, at: now }
-          if (taps.current.count < TAPS_FOR_DEBUG) return
-          taps.current = { count: 0, at: 0 }
-          enableDebugMode()
-        }}
-      >
-        {() => (
-          <Text size="$label" tone="secondary" textAlign="center">
-            {tr('updateVersion', { version: detail === '' ? version : `${version} (${detail})` })}
-          </Text>
-        )}
-      </PressArea>
-    </YStack>
-  )
-}
-
-/**
- * The desktop client's `SessionInfo`: the logo, then the version and the commit.
- *
- * The logo leaves for the token site, and the version for its release page, both through the
- * usual confirmation. Ten presses on the commit turn debug mode over, as the client's do.
- */
-function DesktopSessionInfo() {
-  const modals = useModals()
-  const toasts = useToast()
+  const onCommitPress = useDebugModePresses()
   const { version, commit } = requirePorts().build
-  const presses = useRef(0)
-  // The client's logo brightens from the muted text to the body text under the pointer. A fill,
-  // so it is told rather than styled: a hover style reaches the frame, not the drawing inside it.
+  // A fill, so it is set from state: a hover style reaches the frame, not the drawing inside it.
   const [logoHovered, setLogoHovered] = useState(false)
 
   return (
@@ -131,17 +64,7 @@ function DesktopSessionInfo() {
           )}
         </PressArea>
         {commit === null ? null : (
-          <PressArea
-            testID={ELEMENT.settings.commit}
-            onPress={() => {
-              presses.current += 1
-              if (presses.current < PRESSES_FOR_DEBUG) return
-              presses.current = 0
-              toasts.show(toggleDebugMode() ? tr('debugModeEnabled') : tr('debugModeDisabled'), {
-                id: 'debug-mode',
-              })
-            }}
-          >
+          <PressArea testID={ELEMENT.settings.commit} onPress={onCommitPress}>
             {() => (
               <Text size="$label" opacity={RESTING} hoverStyle={{ opacity: 1 }} cursor="pointer">
                 {commit}

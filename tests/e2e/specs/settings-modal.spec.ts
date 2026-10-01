@@ -112,8 +112,7 @@ test('settings opens over the list, pushes Help, and asks on top of itself', asy
     await page.getByTestId(ELEMENT.toast.close).first().click()
     await expect(page.getByTestId(ELEMENT.toast.item)).toHaveCount(0)
 
-    // **The foot of the page names the build**, and ten presses on its commit turn debug mode over,
-    // as the desktop client's do.
+    // **The foot of the page names the build**, and ten presses on its commit turn debug mode over.
     await expect(page.getByTestId(ELEMENT.settings.version).first()).toHaveText(/^v\d+\.\d+\.\d+$/)
     const commit = page.getByTestId(ELEMENT.settings.commit).first()
     await expect(commit).toHaveText(/^[0-9a-f]{8}(-dirty)?$/)
@@ -125,6 +124,8 @@ test('settings opens over the list, pushes Help, and asks on top of itself', asy
     await expect(page.getByTestId(ELEMENT.onboarding.openUrlDialog)).toHaveCount(0)
     for (let press = 0; press < 10; press += 1) await commit.click()
     await expect(page.getByTestId(ELEMENT.toast.item).first()).toHaveText('Debug mode enabled')
+    await expect(page.getByTestId(ELEMENT.settings.row('developer-settings')).first()).toBeVisible()
+    await page.getByTestId(ELEMENT.toast.close).first().click()
 
     // A second modal over the first, which is the case the platform's own nesting gets wrong.
     await page.getByTestId(ELEMENT.settings.clearData).first().click()

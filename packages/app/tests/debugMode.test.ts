@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { enableDebugMode, resetDebugMode, toggleDebugMode } from '#src/debugMode'
+import { resetDebugMode, toggleDebugMode } from '#src/debugMode'
 import { resetPorts, setPorts } from '#src/ports'
 import { memoryPorts } from '#src/testPorts'
 
@@ -26,12 +26,5 @@ describe('debug mode', () => {
       }),
     )
     expect(toggleDebugMode()).toBe(false)
-  })
-
-  /** The phones' taps turn it on and leave it on, as the iOS client's do. */
-  it('is only ever turned on by enabling, and says whether it changed', () => {
-    setPorts(memoryPorts())
-    expect(enableDebugMode()).toBe(true)
-    expect(enableDebugMode()).toBe(false)
   })
 })
