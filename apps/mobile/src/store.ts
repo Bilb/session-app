@@ -9,6 +9,8 @@ import { createSessionClient, type BridgeTransport, type FetchLike } from '@sess
 import { createSessionStore } from '@session/state'
 import { Platform } from 'react-native'
 
+import { refuseUnstagedExports } from './exportGate'
+import { mayExportTo } from './files'
 import { resolveDatabaseKey, sessionPaths } from './storage'
 
 /**
@@ -103,7 +105,7 @@ async function openTransport(): Promise<BridgeTransport> {
 const ATTACHMENT_CACHE_LIMIT_BYTES = 500_000_000
 
 export const storePromise = openTransport().then((transport) =>
-  createSessionStore(createSessionClient(transport), {
+  createSessionStore(createSessionClient(refuseUnstagedExports(transport, mayExportTo)), {
     attachmentCacheLimitBytes: ATTACHMENT_CACHE_LIMIT_BYTES,
     // Reaches logcat as ReactNativeJS on Android, and the device console on iOS.
     log: (level, line) => {

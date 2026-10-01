@@ -17,7 +17,10 @@ export async function exportOne(
   const attachment = message.attachments.find((a) => a.index === index)
   const suggested = attachment?.filename ?? `attachment-${String(index + 1)}`
   try {
-    const destination = await requirePorts().files.chooseExportLocation(suggested)
+    const destination = await requirePorts().files.chooseExportLocation(
+      suggested,
+      attachment?.contentType,
+    )
     if (destination === null) return
     const saved = await actions.exportAttachment({ messageId: message.id, index }, destination)
     await requirePorts().files.revealInFolder(saved)

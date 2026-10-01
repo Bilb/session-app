@@ -35,9 +35,20 @@ export interface PickedFile {
 export interface FilesPort {
   pickFiles(options?: { multiple?: boolean }): Promise<PickedFile[]>
   pickImages(options?: { multiple?: boolean }): Promise<PickedFile[]>
-  /** Where to export a file to; null when the person cancelled. */
-  chooseExportLocation(suggestedName: string): Promise<string | null>
+  /**
+   * Where to export a file to; null when the person cancelled.
+   *
+   * `contentType` is the sender's claim, for a platform whose destination depends on the kind of
+   * file: mobile sends a picture to the photo library and anything else to a folder.
+   */
+  chooseExportLocation(suggestedName: string, contentType?: string): Promise<string | null>
   openPath(path: string): Promise<void>
+  /**
+   * Shows the person where an export landed.
+   *
+   * On mobile this is also where the file reaches its destination: libsession writes to a real
+   * path, and neither a photo library nor a picked folder is one.
+   */
   revealInFolder(path: string): Promise<void>
 }
 

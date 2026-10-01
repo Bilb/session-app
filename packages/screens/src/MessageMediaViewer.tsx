@@ -89,6 +89,7 @@ function MessageViewer({
       nextLabel={tr('next')}
       testID={ELEMENT.conversation.mediaViewer}
       closeTestID={ELEMENT.conversation.mediaViewerClose}
+      exportTestID={ELEMENT.conversation.mediaViewerExport}
     />
   )
 }

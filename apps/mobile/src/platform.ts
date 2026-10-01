@@ -4,6 +4,7 @@ import * as Clipboard from 'expo-clipboard'
 import * as SecureStore from 'expo-secure-store'
 import { BackHandler, Linking, Platform } from 'react-native'
 
+import { exportFiles, sweepStagedExports } from './files'
 import { flagOverride } from './flagOverrides'
 
 /**
@@ -113,8 +114,12 @@ const ports = memoryPorts({
   },
 })
 
+sweepStagedExports()
+
 setPorts({
   ...ports,
+  // The pickers stay the memory ones until the composer can attach.
+  files: { ...ports.files, ...exportFiles },
   window: {
     ...ports.window,
     // Android ends the task; iOS offers no way to do this from JavaScript and would need a native

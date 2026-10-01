@@ -50,6 +50,7 @@ export const ELEMENT = {
     attachmentSheetClose: 'message-attachment-sheet-close',
     mediaViewer: 'media-viewer',
     mediaViewerClose: 'media-viewer-close',
+    mediaViewerExport: 'media-viewer-export',
     mediaViewerPrevious: 'media-viewer-previous',
     mediaViewerNext: 'media-viewer-next',
     autoDownloadPrompt: 'auto-download-prompt',
