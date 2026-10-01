@@ -5,6 +5,7 @@ import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
 import { SPACE_SCALE } from './scales'
 import { Text } from './Text'
+import type { ToastCardProps } from './ToastCard.types'
 import { useTokenColor } from './useTokenColor'
 
 const WIDTH = 320
@@ -23,20 +24,7 @@ const CLOSE_RESTING = 0.7
  * One toast: the same strip and glyph for every message, neither coloured by type. A press
  * anywhere on it dismisses it.
  */
-export function ToastCard({
-  text,
-  onPress,
-  closeLabel,
-  testID,
-  closeTestID,
-}: {
-  text: string
-  onPress: () => void
-  /** Names the close cross for a screen reader, since it is drawn as a glyph. */
-  closeLabel: string
-  testID: string
-  closeTestID: string
-}) {
+export function ToastCard({ text, onPress, closeLabel, testID, closeTestID }: ToastCardProps) {
   const accent = useTokenColor('$primaryColor')
   const shadow = useTokenColor('$shadow')
   return (

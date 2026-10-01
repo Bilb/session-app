@@ -3,7 +3,6 @@ import { Platform } from 'react-native'
 import { FullWindowOverlay } from 'react-native-screens'
 import { YStack } from 'tamagui'
 
-import { SPACE_SCALE } from './scales'
 import { ToastCard } from './ToastCard'
 import type { ToastHostProps } from './ToastHost.types'
 import { useToastQueue } from './Toasts'
@@ -17,32 +16,36 @@ function AboveModals({ children }: { children: ReactNode }) {
   return Platform.OS === 'ios' ? <FullWindowOverlay>{children}</FullWindowOverlay> : children
 }
 
-/** Draws the toasts at the bottom of the screen, newest on top. */
+/**
+ * The newest toast, centred at the bottom of the screen.
+ *
+ * One at a time, as the platform's own toasts are: there is no room on a phone for a stack, and a
+ * newer message replaces the one before it rather than pushing it up the screen.
+ */
 export function ToastHost({ testID, closeTestID, closeLabel }: ToastHostProps) {
   const { toasts, dismiss } = useToastQueue()
-  if (toasts.length === 0) return null
+  const newest = toasts[0]
+  if (newest === undefined) return null
   return (
     <AboveModals>
       <YStack
         fullscreen
         justifyContent="flex-end"
         alignItems="center"
-        paddingBottom={SPACE_SCALE['2xl']}
-        gap="$md"
+        paddingHorizontal="$md"
+        paddingBottom="$xl"
         pointerEvents="box-none"
       >
-        {toasts.map((toast) => (
-          <ToastCard
-            key={toast.serial}
-            text={toast.text}
-            testID={testID}
-            closeTestID={closeTestID}
-            closeLabel={closeLabel}
-            onPress={() => {
-              dismiss(toast.serial)
-            }}
-          />
-        ))}
+        <ToastCard
+          key={newest.serial}
+          text={newest.text}
+          testID={testID}
+          closeTestID={closeTestID}
+          closeLabel={closeLabel}
+          onPress={() => {
+            dismiss(newest.serial)
+          }}
+        />
       </YStack>
     </AboveModals>
   )
