@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { absentSubmodules, turboTasksIn } from '#src/ci'
+import { absentSubmodules, pnpmSteps, turboTasksIn } from '#src/ci'
 
 const WORKFLOW = `
       - run: git submodule update --init --recursive packages/localization/src/localization-src
@@ -10,6 +10,39 @@ const WORKFLOW = `
       - run: pnpm typecheck
       - run: pnpm codegen:check
 `
+
+describe('pnpmSteps', () => {
+  it('reads every one-line pnpm step, arguments included, with or without a name', () => {
+    const workflow = `${WORKFLOW}      - name: Dedupe\n        run: pnpm dedupe --check\n`
+    expect(pnpmSteps(workflow)).toEqual({
+      steps: [
+        'install --frozen-lockfile',
+        'lint',
+        'boundaries',
+        'typecheck',
+        'codegen:check',
+        'dedupe --check',
+      ],
+      unreadable: [],
+    })
+  })
+
+  it('reports a block or chained run that calls pnpm, and ignores a block that does not', () => {
+    const workflow = `
+      - run: |
+          git diff --exit-code
+      - name: Knip
+        run: |
+          echo checking
+          pnpm knip
+      - run: "pnpm test"
+`
+    expect(pnpmSteps(workflow)).toEqual({
+      steps: [],
+      unreadable: ['line 5: run: |', 'line 8: - run: "pnpm test"'],
+    })
+  })
+})
 
 describe('turboTasksIn', () => {
   it('follows each pnpm step to the turbo tasks it starts, and skips the ones that are not turbo', () => {

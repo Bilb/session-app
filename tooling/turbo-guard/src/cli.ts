@@ -2,8 +2,11 @@ import { execFileSync } from 'node:child_process'
 import { globSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
+import { CHECKS } from '@session/checks'
+
 import { absentSubmodules, turboTasksIn } from '#src/ci'
 import { pushedFiles } from '#src/files'
+import { hookDrift } from '#src/hooks'
 import { undeclaredImports, type WorkspacePackage } from '#src/manifests'
 import { check, type Task } from '#src/rules'
 
@@ -106,11 +109,20 @@ const packages: WorkspacePackage[] = manifests.map(({ directory, manifest }) => 
 
 const undeclared = undeclaredImports(packages)
 
+const drift = hookDrift(
+  workflow,
+  CHECKS,
+  [...committed]
+    .filter((path) => path.startsWith('.githooks/'))
+    .map((path) => ({ path, text: readFileSync(join(repoRoot, path), 'utf8') })),
+)
+
 const without = absent.length === 0 ? '' : ` (without ${absent.join(', ')})`
-if (violations.length === 0 && undeclared.length === 0) {
+if (violations.length === 0 && undeclared.length === 0 && drift.length === 0) {
   process.stdout.write(
     `turbo-guard: ${String(tasks.length)} tasks in CI's run checked against its checkout${without}, ` +
-      `and ${String(packages.length)} manifests against their imports\n`,
+      `${String(packages.length)} manifests against their imports, ` +
+      `and the git hooks' checks against CI's steps\n`,
   )
 } else {
   for (const violation of violations)
@@ -120,6 +132,7 @@ if (violations.length === 0 && undeclared.length === 0) {
       `turbo-guard: ${found.package} [undeclared-import] ${found.file} imports ${found.imports}, ` +
         `which its package.json does not declare\n`,
     )
+  for (const found of drift) process.stderr.write(`turbo-guard: [${found.rule}] ${found.detail}\n`)
   process.stderr.write(
     `\nChecked as CI's checkout${without}. See "The build graph" in docs/ARCHITECTURE.md.\n`,
   )

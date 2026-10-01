@@ -8,9 +8,11 @@
     "pnpm": ">=10"
   },
   "scripts": {
+    "prepare": "node --disable-warning=ExperimentalWarning tooling/checks/src/installHooks.ts",
     "build": "turbo build",
     "codegen": "turbo codegen",
     "codegen:check": "turbo codegen:check",
+    "checks": "node --disable-warning=ExperimentalWarning tooling/checks/src/cli.ts",
     "dev": "turbo dev",
     "dev:fake": "turbo dev:fake",
     "dev:desktop": "pnpm --filter @session/desktop dev",
@@ -24,8 +26,8 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "knip": "knip",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format": "prettier --write --cache .",
+    "format:check": "prettier --check --cache .",
     "lint:manifests": "eslint --no-config-lookup --config eslint.config.js \"**/package.json\" pnpm-workspace.yaml && pnpm --filter @session/turbo-guard check"
   },
   "devDependencies": {

@@ -158,3 +158,9 @@ turbo gen package|screen|port|bridge-capability
 English everywhere - commits, PRs, comments, docs. Commit subjects are imperative; no AI
 attribution or co-author trailers. Branch off `main` and open a PR; never push to `main`.
 Comments explain a constraint or a choice; they never restate the code.
+
+`pnpm install` points git at `.githooks/`. `tooling/checks/src/checks.ts` places every `pnpm`
+step of CI in pre-commit, in pre-push (narrowed to the packages the branch changes), or in CI alone
+with a reason; `lint:manifests` fails when it and the workflow disagree, so a new CI check goes
+there too. commit-msg refuses co-author and AI attribution lines. Never commit or push with
+`--no-verify`: fix what the hook found.
