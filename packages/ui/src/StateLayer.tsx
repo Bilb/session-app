@@ -25,12 +25,15 @@ export function StateLayer({
   tone,
   borderRadius,
   bleed = 0,
+  atRest = false,
 }: {
   group: GroupNames
   tone: keyof typeof TONES
   borderRadius?: number | '$sm' | '$full' | undefined
   /** How far past the group's sides to draw, for a row whose content runs to its edges. */
   bleed?: number | undefined
+  /** Drawn at the hover strength without a pointer, for touch, where nothing hovers. */
+  atRest?: boolean | undefined
 }) {
   const { color, hover, press } = TONES[tone]
   return (
@@ -42,7 +45,7 @@ export function StateLayer({
       right={-bleed}
       {...(borderRadius === undefined ? {} : { borderRadius })}
       backgroundColor={color}
-      opacity={0}
+      opacity={atRest ? hover : 0}
       pointerEvents="none"
       style={FEEDBACK_TRANSITION}
       {...{

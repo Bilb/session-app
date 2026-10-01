@@ -1,5 +1,5 @@
 import { memo, type ReactNode } from 'react'
-import { XStack, YStack } from 'tamagui'
+import { isWeb, XStack, YStack } from 'tamagui'
 
 import type {
   WithDurationLabel,
@@ -7,6 +7,7 @@ import type {
   WithMediaPreview,
   WithMediaUri,
 } from '@session/basic-types'
+import type { ElementId } from '@session/test-ids'
 
 import { ALBUM_SEAM, albumLayout, lastCell } from './albumLayout'
 import { AttachmentTile } from './AttachmentTile'
@@ -34,6 +35,7 @@ export type AttachmentAlbumProps = WithTestID & {
    * this one is about the whole message, including the attachments behind "+N".
    */
   control?: ReactNode | undefined
+  fetchTestID: ElementId
 }
 
 /**
@@ -56,6 +58,9 @@ const AlbumTile = memo(function AlbumTile({
   onOpen: (at: number) => void
 }) {
   if (item === undefined) return null
+  // A tile that would fetch is the whole set's, so it dims with the album, and at rest on touch
+  // under the album's cloud. One that is here opens its own picture, so it answers on its own.
+  const fetches = item.fetchesOnOpen === true
   return (
     <YStack
       role="button"
@@ -64,7 +69,7 @@ const AlbumTile = memo(function AlbumTile({
       onPress={() => {
         onOpen(at)
       }}
-      group="tile"
+      {...(fetches ? {} : { group: 'tile' as const })}
     >
       <AttachmentTile
         side={side}
@@ -75,8 +80,12 @@ const AlbumTile = memo(function AlbumTile({
         overflowLabel={overflowLabel}
         testID={item.testID}
       />
-      <StateLayer group="tile" tone="scrim" borderRadius={tileRadius(side)} />
-      {item.fetchesOnOpen === true ? <FetchHint side={side} /> : null}
+      <StateLayer
+        group={fetches ? 'album' : 'tile'}
+        tone="scrim"
+        borderRadius={tileRadius(side)}
+        atRest={fetches && !isWeb}
+      />
     </YStack>
   )
 })
@@ -95,6 +104,7 @@ export function AttachmentAlbum({
   overflowLabel,
   onOpen,
   control,
+  fetchTestID,
   testID,
 }: AttachmentAlbumProps) {
   const layout = albumLayout(items.length, width)
@@ -102,6 +112,24 @@ export function AttachmentAlbum({
 
   const overflowAt = layout.overflow > 0 ? last?.at : undefined
   const overflowText = overflowAt === undefined ? undefined : overflowLabel(layout.overflow)
+  // One cloud for the message: a press on any tile fetches the whole set, so no tile is its own.
+  const fetchAt = items.findIndex((item) => item.fetchesOnOpen === true)
+  const fetchesOnOpen = fetchAt !== -1
+  // Centred on the album, the three-up's cloud would sit off-centre on its big tile, near the seam.
+  const threeUp =
+    layout.lead !== null && layout.rows.length > 0 && layout.rows.every((row) => row.length === 1)
+  const hintOver = threeUp ? layout.lead?.side : undefined
+  const hint = fetchesOnOpen ? (
+    <FetchHint
+      side={hintOver ?? width}
+      group="album"
+      restsOnTouch
+      onPress={() => {
+        onOpen(fetchAt)
+      }}
+      testID={fetchTestID}
+    />
+  ) : null
 
   const beside = (
     <YStack gap={ALBUM_SEAM}>
@@ -124,7 +152,7 @@ export function AttachmentAlbum({
 
   return (
     // `relative`, so the control resolves against the album and not the page.
-    <YStack position="relative" testID={testID}>
+    <YStack position="relative" group="album" testID={testID}>
       {layout.lead === null ? (
         beside
       ) : (
@@ -137,6 +165,17 @@ export function AttachmentAlbum({
             onOpen={onOpen}
           />
           {layout.rows.length === 0 ? null : beside}
+        </XStack>
+      )}
+
+      {hintOver === undefined ? (
+        hint
+      ) : (
+        // A row, so the box sits over the big tile in either reading direction.
+        <XStack position="absolute" top={0} bottom={0} left={0} right={0} pointerEvents="none">
+          <YStack position="relative" width={hintOver} height={hintOver}>
+            {hint}
+          </YStack>
         </XStack>
       )}
 

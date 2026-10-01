@@ -227,7 +227,9 @@ export function FileRow({
           >
             {lead}
             <StateLayer group="tile" tone="scrim" borderRadius={tileRadius(FILE_GLYPH_SIDE)} />
-            {thumbnail?.fetchesOnOpen === true ? <FetchHint side={FILE_GLYPH_SIDE} /> : null}
+            {thumbnail?.fetchesOnOpen === true ? (
+              <FetchHint side={FILE_GLYPH_SIDE} group="tile" />
+            ) : null}
           </YStack>
         )}
         {/* Under the lead rather than in the caption line, where it was competing with the size
