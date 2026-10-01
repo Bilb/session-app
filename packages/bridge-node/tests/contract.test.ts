@@ -279,6 +279,7 @@ describeAddon('addon', () => {
           OFFLINE_ATTACHMENTS,
         'refuses a download of a file the server no longer holds, before any transfer starts':
           OFFLINE_ATTACHMENTS,
+        'refuses an attachment index the message does not have': OFFLINE_ATTACHMENTS,
         'announces an attachment as fetching while its download runs': OFFLINE_ATTACHMENTS,
         'joins a running download, and ends it once per handler': OFFLINE_ATTACHMENTS,
         'fetches an arriving image unasked once told to fetch images': OFFLINE_ATTACHMENTS,
