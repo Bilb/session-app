@@ -142,8 +142,8 @@ export interface LinkingPort {
 export interface BuildPort {
   readonly version: string
   /**
-   * Eight characters, with `-dirty` when the tree had changes on top. Null where the build was not made from a git checkout, rather than a hash it cannot vouch
-   * for.
+   * Eight characters, with `-dirty` when the tree had changes on top. Null where the build was not
+   * made from a git checkout, rather than a hash it cannot vouch for.
    */
   readonly commit: string | null
   /**

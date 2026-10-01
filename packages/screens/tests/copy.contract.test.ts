@@ -72,7 +72,7 @@ function literalsIn(path: string): string[] {
     found.push(`${path.slice(path.indexOf('packages/'))}:${String(line + 1)} ${trimmed}`)
   }
 
-  /** A literal, or each literal a conditional can produce, since `on ? 'A' : 'B'` is two strings. */
+  /** A literal, or each one a conditional can produce, since `on ? 'A' : 'B'` is two strings. */
   const reportLiterals = (node: ts.Expression) => {
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))
       report(node, node.text)
