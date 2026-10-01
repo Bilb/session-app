@@ -8,8 +8,9 @@ user did back to it. That is the whole idea, and everything else here follows fr
 clients hold no logic worth duplicating, there is no reason to write them three times.
 
 So there are two apps and neither is where the interesting code lives. `apps/mobile` is Expo,
-Android and iOS, phone and tablet. `apps/desktop` is Electron, Linux, macOS and Windows. Both are
-adapters: route files, OS integration, boot order. There is no web app - desktop means Electron.
+Android and iOS, phone and tablet. `apps/desktop` is Electron, Linux and Windows only: macOS gets
+the native app. Both are adapters: route files, OS integration, boot order. There is no web app -
+desktop means Electron.
 
 ## Reading order
 

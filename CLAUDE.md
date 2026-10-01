@@ -1,10 +1,10 @@
 # session-app
 
 One shared UI and one set of shared screens across an Expo app (`apps/mobile`, Android + iOS,
-phone + tablet) and an Electron app (`apps/desktop`, Linux/macOS/Windows). libsession-util
-(`client` branch, `libsession-util/` submodule) is the backbone: it owns the database, polling,
-sending, receiving, attachments and retries, and pushes whole-state events. Apps render what
-libsession says the state is and forward actions to it.
+phone + tablet) and an Electron app (`apps/desktop`, Linux and Windows; macOS gets the native app
+instead). libsession-util (`client` branch, `libsession-util/` submodule) is the backbone: it
+owns the database, polling, sending, receiving, attachments and retries, and pushes whole-state
+events. Apps render what libsession says the state is and forward actions to it.
 
 `docs/ARCHITECTURE.md` has the map. There is no web app: desktop means Electron.
 
