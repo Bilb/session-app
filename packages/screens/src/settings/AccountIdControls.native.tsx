@@ -7,7 +7,7 @@ import { useState } from 'react'
 import { AccountIdText } from './AccountIdText'
 import type { AccountIdControlsProps } from './AccountIdControls.types'
 
-/** How long Copy says it worked. The button is held meanwhile, so a second press does not undo it. */
+/** How long Copy says it worked. The button is held meanwhile, so a second press cannot undo it. */
 const COPIED_FOR_MS = 4000
 
 /**
