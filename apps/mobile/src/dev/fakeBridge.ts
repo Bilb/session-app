@@ -1,4 +1,3 @@
-import { requirePorts, setPorts } from '@session/app'
 import { serveNativeMediaFrom, type BridgeTransport } from '@session/client'
 import {
   createFakeMediaSource,
@@ -10,9 +9,8 @@ import {
   type FakeSessionClient,
 } from '@session/client/fake'
 import { Directory, File, Paths } from 'expo-file-system'
-import { Platform } from 'react-native'
 
-import { fakeExportSource, fakeMediaPort } from './fakeMedia'
+import { fakeExportSource } from './fakeMedia'
 
 function fileUrl(path: string): string {
   return `file://${path.split('/').map(encodeURIComponent).join('/')}`
@@ -84,19 +82,14 @@ export function createFakeBridge(): BridgeTransport {
   driveFakeClock(world, process.env['EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN'])
 
   writingExports(alice, photos)
-  if (Platform.OS === 'android') {
-    // Through the real loader: the port is platform.ts's, and only the bytes are the fake's.
-    serveNativeMediaFrom(
-      createFakeMediaSource(alice, async (photo) => {
-        const uri = photos.get(photo)
-        if (uri === undefined) throw new Error(`no dev photograph ${photo}`)
-        return new Uint8Array(await new File(uri).arrayBuffer())
-      }),
-    )
-  } else {
-    // Installed here rather than in platform.ts, so that no production module imports the fake.
-    setPorts({ ...requirePorts(), media: fakeMediaPort(alice, photos) })
-  }
+  // Through the real loaders: the port is platform.ts's, and only the bytes are the fake's.
+  serveNativeMediaFrom(
+    createFakeMediaSource(alice, async (photo) => {
+      const uri = photos.get(photo)
+      if (uri === undefined) throw new Error(`no dev photograph ${photo}`)
+      return new Uint8Array(await new File(uri).arrayBuffer())
+    }),
+  )
 
   return createFakeTransport(alice)
 }

@@ -681,3 +681,15 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   with a body. The fake has no libsession behind it, so `serveMediaFrom` lets JavaScript be the
   source: each load is posted to the JS thread, the only thread that may touch a JavaScript value,
   and the host test holds that under ThreadSanitizer.
+
+- **2026-10-01 - iOS draws `session-media://` through an `RCTImageURLLoader`.** Registered
+  through `codegenConfig.ios.modulesConformingToProtocol`, which Expo's `RCTAppDependencyProvider`
+  hands to React Native. The answer, on Core's loop or the JS thread, is handed to a concurrent
+  queue the loader owns, which runs `servable_image_type`, decodes with ImageIO no larger than
+  the view needs under a `cover` fit, with the file's orientation applied and a GIF as an
+  `RCTAnimatedImage`, and hands React Native a `UIImage` whose bytes are the shim's, held by the
+  `NSData` deallocator rather than copied. Nothing is written to disk: a URL loader is not behind
+  `NSURLCache`. React Native caches only the images it decoded itself from an HTTP response, so a
+  picture from this loader is decoded again on each mount until the loader keeps a cache of its
+  own. The fake registers itself as the source with `serveMediaFrom` on both platforms, so it
+  draws through the real loaders.
