@@ -1,0 +1,114 @@
+// Copied into session-playwright's tests/automation/ by the legacy-sender skill; delete it after.
+// Not a test: a driver for the legacy Session Desktop, run through Playwright for its helpers.
+import { _electron as electron, type Page, test } from '@playwright/test';
+import { readFileSync, writeFileSync } from 'fs';
+import { homedir } from 'os';
+import { basename, join } from 'path';
+
+import { newUser } from './setup/new_user';
+import { sendNewMessage } from './utilities/send_message';
+import {
+  checkPathLight,
+  clickOnElement,
+  pasteIntoInput,
+} from './utilities/utils';
+
+const ACTION = process.env.ATTACH_ACTION ?? 'create';
+const INSTANCE = process.env.ATTACH_INSTANCE ?? 'attachsender';
+const OUT = process.env.ATTACH_OUT ?? `/tmp/legacy-${INSTANCE}.json`;
+const TARGETS = (process.env.ATTACH_TARGETS ?? '')
+  .split(',')
+  .map((t) => t.trim())
+  .filter(Boolean);
+
+// A first message on mainnet, or an upload, can take well past the helpers' 20 s.
+const SENT_TIMEOUT_MS = 180_000;
+
+const samples = join(__dirname, '../../sample_files');
+const devMedia = join(homedir(), '.cache/session-app/dev-media');
+const photo = (n: number) =>
+  join(devMedia, `unsplash-${String(n).padStart(2, '0')}.jpg`);
+
+async function launch() {
+  const app = await electron.launch({
+    args: [
+      join(process.env.SESSION_DESKTOP_ROOT as string, 'app/ts/mains/main_node.js'),
+      '--disable-gpu',
+    ],
+    env: {
+      ...process.env,
+      NODE_ENV: 'production',
+      // Not openApp's test-integration prefix: global.setup deletes those, and this one persists.
+      NODE_APP_INSTANCE: `devprod${INSTANCE}`,
+      ELECTRON_RUN_AS_NODE: '',
+    },
+  });
+  const window = await app.firstWindow();
+  await window.waitForLoadState('domcontentloaded');
+  return { app, window };
+}
+
+async function waitSent(window: Page, text: string) {
+  await window
+    .locator('[data-testid=message-container]', { hasText: text })
+    .locator('[data-testid=msg-status][data-testtype=sent]')
+    .first()
+    .waitFor({ timeout: SENT_TIMEOUT_MS });
+}
+
+async function sendText(window: Page, to: string, text: string) {
+  await sendNewMessage(window, to, text).catch(() => waitSent(window, text));
+  console.log(`sent: ${text}`);
+}
+
+/**
+ * Pictures and videos can share a message; any other file goes alone, and the composer refuses
+ * it while something is staged. Staging is one file at a time, each picture rescaled first, so
+ * Send waits for all of them or the rest are staged into the next message.
+ */
+async function sendFiles(window: Page, paths: Array<string>, text: string) {
+  await window.setInputFiles("input[type='file']", paths);
+  const staged = window.getByTestId('staged-attachments-container');
+  const visual = paths.every((p) => /\.(png|jpe?g|gif|webp|mp4|mov)$/i.test(p));
+  if (visual) {
+    await staged
+      .locator('img[alt="Staged attachment"]')
+      .nth(paths.length - 1)
+      .waitFor({ timeout: 60_000 });
+  } else {
+    await staged.getByText(basename(paths[0])).waitFor({ timeout: 60_000 });
+  }
+  await pasteIntoInput(window, 'message-input-text-area', text);
+  await clickOnElement({ window, strategy: 'data-testid', selector: 'send-message-button' });
+  await waitSent(window, text);
+  console.log(`sent: ${text} (${paths.length} file${paths.length === 1 ? '' : 's'})`);
+}
+
+test('legacy sender', async () => {
+  test.setTimeout(60 * 60_000);
+  const { app, window } = await launch();
+  try {
+    if (ACTION === 'create') {
+      const user = await newUser(window, process.env.ATTACH_NAME ?? INSTANCE);
+      writeFileSync(OUT, JSON.stringify(user));
+      return;
+    }
+    console.log(`sender ${JSON.parse(readFileSync(OUT, 'utf8')).accountid}`);
+    await checkPathLight(window);
+    for (const target of TARGETS) {
+      const tag = target.slice(0, 8);
+      if (ACTION === 'text') {
+        await sendText(window, target, process.env.ATTACH_TEXT ?? `hello ${tag} from legacy`);
+        continue;
+      }
+      await sendText(window, target, `hello ${tag} from legacy`);
+      await sendFiles(window, [join(samples, 'test-image.png')], `one picture ${tag}`);
+      await sendFiles(window, [1, 2, 3].map(photo), `three pictures ${tag}`);
+      await sendFiles(window, [4, 5, 6, 7, 8, 9, 10].map(photo), `seven pictures ${tag}`);
+      await sendFiles(window, [join(samples, 'test-file.pdf')], `a pdf ${tag}`);
+      await sendFiles(window, [join(samples, 'test-video.mp4')], `a video ${tag}`);
+    }
+  } finally {
+    await app.close();
+  }
+});
