@@ -1,6 +1,7 @@
 import { Portal, YStack } from 'tamagui'
 
 import { ToastCard } from './ToastCard'
+import type { ToastHostProps } from './ToastHost.types'
 import { useToastQueue } from './Toasts'
 
 /**
@@ -12,12 +13,12 @@ import { useToastQueue } from './Toasts'
 const TOAST_LAYER = 10_000
 
 /**
- * Draws the toasts, bottom right, newest on top -- the desktop client's corner.
+ * Draws the toasts in the trailing bottom corner, newest on top.
  *
  * In a portal of its own, which covers the window and lets presses through everywhere but on a
  * toast. Mounted once at the root, beside the modal stack.
  */
-export function ToastHost({ testID, closeLabel }: { testID: string; closeLabel: string }) {
+export function ToastHost({ testID, closeTestID, closeLabel }: ToastHostProps) {
   const { toasts, dismiss } = useToastQueue()
   if (toasts.length === 0) return null
   return (
@@ -29,7 +30,6 @@ export function ToastHost({ testID, closeLabel }: { testID: string; closeLabel: 
         justifyContent="flex-end"
         alignItems="flex-end"
         padding="$md"
-        // The library's 16 between stacked toasts.
         gap="$md"
         pointerEvents="box-none"
         aria-live="polite"
@@ -39,6 +39,7 @@ export function ToastHost({ testID, closeLabel }: { testID: string; closeLabel: 
             key={toast.serial}
             text={toast.text}
             testID={testID}
+            closeTestID={closeTestID}
             closeLabel={closeLabel}
             onPress={() => {
               dismiss(toast.serial)

@@ -1,41 +1,49 @@
+import type { ReactNode } from 'react'
+import { Platform } from 'react-native'
+import { FullWindowOverlay } from 'react-native-screens'
 import { YStack } from 'tamagui'
 
 import { SPACE_SCALE } from './scales'
 import { ToastCard } from './ToastCard'
+import type { ToastHostProps } from './ToastHost.types'
 import { useToastQueue } from './Toasts'
 
 /**
- * Draws the toasts at the bottom of the screen, over the app.
- *
- * **Not over an open modal**: react-native's `Modal` is a window of its own, and this is not in it.
- * The phones' copy confirms on the button, as iOS's does, rather than with a toast; a caller that
- * needs one over settings has to bring it into that window.
+ * Above the settings modal on iOS, which presents it in a window of its own: drawn in the app's
+ * window, a toast raised from inside settings would be behind the panel that raised it. Android's
+ * modal stack is a view in the app's window, and the toasts are already drawn after it.
  */
-export function ToastHost({ testID, closeLabel }: { testID: string; closeLabel: string }) {
+function AboveModals({ children }: { children: ReactNode }) {
+  return Platform.OS === 'ios' ? <FullWindowOverlay>{children}</FullWindowOverlay> : children
+}
+
+/** Draws the toasts at the bottom of the screen, newest on top. */
+export function ToastHost({ testID, closeTestID, closeLabel }: ToastHostProps) {
   const { toasts, dismiss } = useToastQueue()
   if (toasts.length === 0) return null
   return (
-    <YStack
-      position="absolute"
-      bottom={SPACE_SCALE['2xl']}
-      left={0}
-      right={0}
-      alignItems="center"
-      // The library's 16 between stacked toasts.
-      gap="$md"
-      pointerEvents="box-none"
-    >
-      {toasts.map((toast) => (
-        <ToastCard
-          key={toast.serial}
-          text={toast.text}
-          testID={testID}
-          closeLabel={closeLabel}
-          onPress={() => {
-            dismiss(toast.serial)
-          }}
-        />
-      ))}
-    </YStack>
+    <AboveModals>
+      <YStack
+        fullscreen
+        justifyContent="flex-end"
+        alignItems="center"
+        paddingBottom={SPACE_SCALE['2xl']}
+        gap="$md"
+        pointerEvents="box-none"
+      >
+        {toasts.map((toast) => (
+          <ToastCard
+            key={toast.serial}
+            text={toast.text}
+            testID={testID}
+            closeTestID={closeTestID}
+            closeLabel={closeLabel}
+            onPress={() => {
+              dismiss(toast.serial)
+            }}
+          />
+        ))}
+      </YStack>
+    </AboveModals>
   )
 }

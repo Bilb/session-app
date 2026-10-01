@@ -101,6 +101,7 @@ export const ELEMENT = {
   },
   toast: {
     item: 'toast',
+    close: 'toast-close',
   },
   networkOverlay: {
     badge: 'network-overlay-badge',

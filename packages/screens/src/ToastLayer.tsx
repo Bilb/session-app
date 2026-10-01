@@ -4,5 +4,11 @@ import { ToastHost } from '@session/ui'
 
 /** The toasts, with their test id named here rather than by each app, as `ModalHost` does. */
 export function ToastLayer() {
-  return <ToastHost testID={ELEMENT.toast.item} closeLabel={tr('close')} />
+  return (
+    <ToastHost
+      testID={ELEMENT.toast.item}
+      closeTestID={ELEMENT.toast.close}
+      closeLabel={tr('close')}
+    />
+  )
 }

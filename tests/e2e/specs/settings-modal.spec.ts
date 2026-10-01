@@ -101,14 +101,15 @@ test('settings opens over the list, pushes Help, and asks on top of itself', asy
     await page.mouse.click(panel.x + 12, panel.y + panel.height / 2)
     await expect(page.getByTestId(ELEMENT.settings.accountId).first()).toBeVisible()
 
-    // **Copying says so over the panel.** The desktop client's glyph beside the ID, and its toast --
-    // drawn above the modal layer, which is where a toast raised from inside settings has to be.
+    // **Copying says so over the panel**: a toast raised from inside settings has to be drawn above
+    // the modal layer.
     await page.getByTestId(ELEMENT.settings.copyAccountId).first().click()
     const toast = page.getByTestId(ELEMENT.toast.item).first()
     await expect(toast).toBeVisible()
     // The catalogue's `copied`, in the English the suite runs in.
     await expect(toast).toHaveText('Copied')
-    await toast.click()
+    // Its own close, so nothing after this waits out the toast's timer.
+    await page.getByTestId(ELEMENT.toast.close).first().click()
     await expect(page.getByTestId(ELEMENT.toast.item)).toHaveCount(0)
 
     // A second modal over the first, which is the case the platform's own nesting gets wrong.

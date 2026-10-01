@@ -10,7 +10,7 @@ import {
 
 import { withoutToast, withToast, type QueuedToast } from './toastQueue'
 
-/** How long a toast stays: the desktop client's `autoClose`. */
+/** How long a toast stays before it dismisses itself. */
 const DURATION_MS = 3000
 
 export interface Toasts {

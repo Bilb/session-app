@@ -7,15 +7,14 @@ export interface QueuedToast {
   serial: number
 }
 
-/** How many are on screen at once: the desktop client's `limit`. */
+/** How many are on screen at once; showing another drops the oldest. */
 export const TOAST_LIMIT = 5
 
 /**
  * The queue after one more is shown: newest first, a toast with the same id replaced rather than
  * repeated, and the oldest dropped beyond the limit.
  *
- * Apart from React for the reason `modalStack.ts` is: these are the rules worth holding still,
- * and they are easiest to hold as data.
+ * Kept out of React so the rules can be tested as data.
  */
 export function withToast(queue: readonly QueuedToast[], toast: QueuedToast): QueuedToast[] {
   return [toast, ...queue.filter((held) => held.id !== toast.id)].slice(0, TOAST_LIMIT)
