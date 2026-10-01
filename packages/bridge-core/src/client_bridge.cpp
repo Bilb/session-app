@@ -263,6 +263,12 @@ namespace {
     /// the last attempt did not finish -- a crash, or a kill, somewhere in the middle of it.
     constexpr std::string_view provisional_account_key = "account.provisional";
 
+    /// `g` itself, as an expression whose type depends on `T`.
+    template <typename T, typename G>
+    G& dependent_on(G& g) {
+        return g;
+    }
+
 }  // namespace
 
 struct ClientBridge::Impl {
@@ -554,7 +560,9 @@ struct ClientBridge::Impl {
             try {
                 using R = std::decay_t<decltype(result)>;
                 if constexpr (std::is_void_v<typename R::value_type>)
-                    f();
+                    // Made dependent on R: the NDK's clang checks a non-dependent `f()` in the
+                    // discarded branch as soon as `on` is instantiated, and every value handler fails.
+                    dependent_on<R>(f)();
                 else
                     f(*std::forward<decltype(result)>(result));
             } catch (const std::exception& e) {
