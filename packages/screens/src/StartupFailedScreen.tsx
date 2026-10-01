@@ -19,9 +19,7 @@ import { LocalizedText } from './LocalizedText'
 import { TextButton } from './TextButton'
 
 interface StartupFailedScreenProps {
-  /**
-   * libsession's own words. Shown, because they are the only thing that says which failure it was.
-   */
+  /** libsession's own words: the only thing on the screen that says which failure it was. */
   error: string
 }
 
@@ -33,13 +31,9 @@ interface StartupFailedScreenProps {
  * stays up and neither ever ends. Drawn in the default theme, which is what the launch screen was
  * drawn in -- the theme is a preference in the database that just failed to open.
  *
- * **Clearing is the only way forward offered**, and it leads to onboarding, where somebody either
- * starts again or enters their recovery phrase. No Retry: `start` runs the queries again, but the
- * failures that land here -- a database that will not open, a migration that did not finish --
- * happen in the bridge's init, which it does not repeat.
- *
- * TODO: an Export Logs button, once the app keeps logs. The explanation asks for them, and nothing
- * here lets somebody hand them over.
+ * **Clearing is the only way forward offered**, and it leads straight to onboarding, where somebody
+ * either starts again or enters their recovery phrase. No Retry: what lands here is a request the
+ * open database refused, and asking it again gets the same answer.
  */
 export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
   const actions = useSessionActions()
@@ -58,18 +52,23 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
         </YStack>
 
         <YStack gap="$sm" width="100%" maxWidth={348}>
+          {/* TODO: hook up once the app keeps logs. The explanation asks for them, and nothing
+              here lets somebody hand them over yet. Drawn disabled meanwhile, so the screen is
+              looked at in its final layout. */}
+          <TextButton
+            label={['helpReportABugExportLogs']}
+            variant="outline"
+            disabled
+            testID={ELEMENT.startupFailed.exportLogs}
+          />
           <TextButton
             label={['clearDevice']}
             variant="danger"
             testID={ELEMENT.startupFailed.clear}
             onPress={() => {
-              confirmClear(modals, async () => {
-                await actions.clearDeviceData()
-                // The process is now holding a database that no longer exists, so it ends rather
-                // than carries on, which is what makes the next launch the clean one. Where it
-                // cannot be ended the screen stays put and the person relaunches.
-                close?.()
-              })
+              // No quit afterwards: the bridge reopens a fresh database in place, and the store
+              // starts again on it, which with no account on the device is onboarding.
+              confirmClear(modals, () => actions.clearDeviceData())
             }}
           />
           {close === null ? null : (
@@ -95,12 +94,13 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
  */
 function FailureReason({ error }: { error: string }) {
   const toasts = useToast()
+  const clipboard = requirePorts().clipboard
   const copy = () => {
-    void requirePorts()
-      .clipboard.setString(error)
-      .then(() => {
-        toasts.show(tr('copied'), { id: 'copied-to-clipboard' })
-      })
+    void clipboard.setString(error).then(() => {
+      // Not where the OS confirms the copy itself: Android 13 and later show their own clipboard
+      // preview, and a toast as well would say it twice.
+      if (!clipboard.confirmsCopy) toasts.show(tr('copied'), { id: 'copied-to-clipboard' })
+    })
   }
   return (
     <XStack alignItems="center" gap="$xs">

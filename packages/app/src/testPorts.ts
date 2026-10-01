@@ -56,6 +56,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
     },
     clipboard: {
       setString: () => Promise.resolve(),
+      confirmsCopy: false,
     },
     linking: {
       openUrl: () => Promise.resolve(),

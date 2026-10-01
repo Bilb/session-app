@@ -93,6 +93,7 @@ setPorts(
     },
     clipboard: {
       setString: (value) => window.sessionDesktop.copyText(value),
+      confirmsCopy: false,
     },
   }),
 )

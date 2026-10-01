@@ -118,6 +118,11 @@ export interface NotificationsPort {
  */
 export interface ClipboardPort {
   setString(value: string): Promise<void>
+  /**
+   * Whether the OS says so itself when something is copied, so the app should not as well.
+   * Android 13 and later show a clipboard preview on every copy.
+   */
+  readonly confirmsCopy: boolean
 }
 
 export interface LinkingPort {

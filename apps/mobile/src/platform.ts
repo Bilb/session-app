@@ -107,6 +107,8 @@ const ports = memoryPorts({
   },
   clipboard: {
     setString: (value) => Clipboard.setStringAsync(value).then(() => undefined),
+    // Android 13 (API 33) added the system's own preview of what was copied.
+    confirmsCopy: Platform.OS === 'android' && Number(Platform.Version) >= 33,
   },
   linking: {
     // Unchanged, and repeated because a port override replaces the whole object rather than

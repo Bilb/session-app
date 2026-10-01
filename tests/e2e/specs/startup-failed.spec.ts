@@ -35,6 +35,9 @@ test('a failed start shows why, copies it, and asks before clearing', async () =
       timeout: 20_000,
     })
 
+    // Export Logs is there in its final place, and disabled until the app keeps logs.
+    await expect(page.getByTestId(ELEMENT.startupFailed.exportLogs).first()).toBeDisabled()
+
     // The reason is libsession's own message, and the control beside it puts exactly that on the
     // clipboard for support.
     const reason = page.getByTestId(ELEMENT.startupFailed.reason).first()

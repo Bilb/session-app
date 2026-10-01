@@ -126,6 +126,7 @@ export const ELEMENT = {
     screen: 'startup-failed',
     reason: 'startup-failed-reason',
     copyReason: 'startup-failed-copy-reason',
+    exportLogs: 'startup-failed-export-logs',
     clear: 'startup-failed-clear',
     quit: 'startup-failed-quit',
     confirmClear: 'startup-failed-confirm-clear',
