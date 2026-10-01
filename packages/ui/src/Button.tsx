@@ -218,7 +218,7 @@ const PRESSED = {
   ghost: { backgroundColor: '$pressedOverlay' },
   ghostAccent: { backgroundColor: '$pressedOverlay' },
   simple: { opacity: 0.7 },
-  danger: { opacity: 0.7 },
+  danger: { backgroundColor: '$dangerColor', borderColor: '$dangerColor', opacity: 0.82 },
 } as const
 
 /**
@@ -228,7 +228,7 @@ const PRESSED = {
  * to win over anything else. Everything else only shades the surface behind the label, and the
  * label's own meaning survives -- see `destructive` below.
  */
-const INVERTS_ON_PRESS = new Set(['solid', 'outline', 'outlineAccent'])
+const INVERTS_ON_PRESS = new Set(['solid', 'outline', 'outlineAccent', 'danger'])
 
 /**
  * Label colour follows the variant.
