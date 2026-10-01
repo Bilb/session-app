@@ -80,6 +80,9 @@ export const config = createTamagui({
     // font scale -- both have an `md` -- and the text comes out at a spacing value.
     defaultFont: 'body',
     onlyAllowShorthands: false,
+    // A group is only a hover and press target here. As the default `inline-size` container it
+    // stops taking its width from its content, which collapses any row or tile marked as one.
+    webContainerType: 'normal',
   },
   defaultTheme: themeName(DEFAULT_THEME),
 })
@@ -89,4 +92,9 @@ export type AppConfig = typeof config
 declare module 'tamagui' {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
   interface TamaguiCustomConfig extends AppConfig {}
+  // Named so a control nested in another answers only to its own hover: an unnamed group matches
+  // any grouped ancestor, which lights every layer inside a hovered row.
+  interface TypeOverride {
+    groupNames(): 'tile' | 'row' | 'control'
+  }
 }

@@ -1,106 +1,18 @@
-import type { Message } from '@session/client'
-import { useConversation, useMessages, useSessionActions } from '@session/state'
+import type { ConversationId, Message } from '@session/client'
+import { useConversation, useMessage, useMessages, useSessionActions } from '@session/state'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Button, Input, List, Screen, Separator, Text, XStack, YStack } from '@session/ui'
-import { useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 
+import { AttachmentSheet } from './AttachmentSheet'
+import type { AttachmentView } from './attachmentView'
+import { ConversationUiContext, type ConversationUi } from './conversationUi'
+import { MessageAttachments } from './MessageAttachments'
+import { MessageMediaViewer, type ViewerTarget } from './MessageMediaViewer'
+import { AutoDownloadPrompt } from './AutoDownloadPrompt'
 import { BackButton } from './BackButton'
 import { conversationTitle } from './conversationTitle'
-
-/**
- * One conversation: its transcript and a composer.
- *
- * The id arrives as a prop rather than being read off a route. Which router put it there is
- * the app's business, and reading it here would be the one import that pins this screen to
- * a platform again.
- */
-export function ConversationScreen({ conversationId }: { conversationId: string }) {
-  const conversation = useConversation(conversationId)
-  const { messages, ready } = useMessages(conversationId)
-  const actions = useSessionActions()
-  const [draft, setDraft] = useState('')
-
-  function send(): void {
-    const body = draft.trim()
-    if (body.length === 0) return
-    // Cleared straight away: libsession stores the row before the promise settles, so the
-    // message appears on its own and there is nothing to put back if this fails.
-    setDraft('')
-    void actions.send(conversationId, body)
-  }
-
-  // The id stands in for the conversation as well as for the name: opening one from a route
-  // beats the store hydrating it, and a header that says nothing for a moment is a header
-  // that flickers.
-  const title = conversationTitle(conversation ?? { id: conversationId })
-
-  return (
-    <Screen testID={ELEMENT.conversation.screen}>
-      <XStack
-        paddingHorizontal="$md"
-        paddingVertical="$sm"
-        gap="$sm"
-        alignItems="center"
-        testID={ELEMENT.conversation.header}
-      >
-        <BackButton testID={ELEMENT.conversation.back} />
-        <Text
-          size="$bodyLarge"
-          weight="semibold"
-          numberOfLines={1}
-          testID={ELEMENT.conversation.headerName}
-        >
-          {title}
-        </Text>
-      </XStack>
-
-      <Separator borderColor="$bordersColor" />
-
-      {ready ? (
-        // No itemHeight: a bubble is as tall as its body wraps to, so the list has to measure.
-        <List
-          data={messages}
-          keyExtractor={(message) => String(message.id)}
-          renderItem={(message, index) => (
-            <YStack paddingHorizontal="$md" paddingBottom="$sm">
-              <MessageRow message={message} index={index} />
-            </YStack>
-          )}
-        />
-      ) : (
-        <YStack flex={1} padding="$md">
-          <Text tone="secondary">{tr('loading')}</Text>
-        </YStack>
-      )}
-
-      <XStack
-        padding="$md"
-        gap="$sm"
-        alignItems="center"
-        borderTopWidth={1}
-        borderTopColor="$bordersColor"
-      >
-        <Input
-          grow
-          value={draft}
-          onChangeText={setDraft}
-          placeholder={tr('message')}
-          onSubmit={send}
-          testID={ELEMENT.conversation.composerInput}
-        />
-        <Button
-          size="md"
-          onPress={send}
-          disabled={draft.trim().length === 0}
-          testID={ELEMENT.conversation.sendButton}
-        >
-          {tr('send')}
-        </Button>
-      </XStack>
-    </Screen>
-  )
-}
 
 /**
  * What a send state is called on screen. Only the ones worth showing say anything.
@@ -137,8 +49,24 @@ function stateLabel(state: Message['sendState']): string | undefined {
  */
 const RETRYABLE: readonly Message['sendState'][] = ['failed', 'interrupted']
 
-function MessageRow({ message, index }: { message: Message; index: number }) {
+/**
+ * One message, read by id so an event that changes one message re-renders one row.
+ *
+ * `index` is the row's place in the transcript and only addresses it for tests.
+ */
+const MessageRow = memo(function MessageRow({
+  conversationId,
+  messageId,
+  index,
+}: {
+  conversationId: ConversationId
+  messageId: number
+  index: number
+}) {
   const actions = useSessionActions()
+  const message = useMessage(conversationId, messageId)
+  if (message === undefined) return null
+
   const label = message.outgoing ? stateLabel(message.sendState) : undefined
   const retryable = message.outgoing && RETRYABLE.includes(message.sendState)
 
@@ -153,13 +81,16 @@ function MessageRow({ message, index }: { message: Message; index: number }) {
       gap="$2xs"
       testID={ELEMENT.conversation.messageRow(index)}
     >
-      <Text
-        size="$body"
-        color={message.outgoing ? '$onAccent' : '$messageBubbleIncomingText'}
-        testID={ELEMENT.conversation.messageBody}
-      >
-        {message.body}
-      </Text>
+      {message.body.length === 0 ? null : (
+        <Text
+          size="$body"
+          color={message.outgoing ? '$onAccent' : '$messageBubbleIncomingText'}
+          testID={ELEMENT.conversation.messageBody}
+        >
+          {message.body}
+        </Text>
+      )}
+      {message.attachments.length === 0 ? null : <MessageAttachments message={message} />}
       {label === undefined ? null : (
         <XStack alignItems="center" gap="$xs">
           {/* On the fill, not on the page: a label only ever appears on an outgoing message, so a
@@ -193,4 +124,178 @@ function MessageRow({ message, index }: { message: Message; index: number }) {
       )}
     </YStack>
   )
+})
+
+function Conversation({ conversationId }: { conversationId: ConversationId }) {
+  const conversation = useConversation(conversationId)
+  const { messages, ready } = useMessages(conversationId)
+  const actions = useSessionActions()
+  const [draft, setDraft] = useState('')
+  // Unset means nobody has been asked what this conversation should fetch unprompted, which is
+  // not the same as having been asked and said no. Asked once, on the first attachment fetched.
+  // A request made while the conversation is still loading is held, and asked once it is known
+  // to be unset.
+  const [prompting, setPrompting] = useState(false)
+  const autoDownload = conversation?.autoDownload
+  const asking = prompting && conversation !== undefined && autoDownload === undefined
+  /**
+   * Which shape each message's attachments were last asked for, keyed by message id.
+   *
+   * Here rather than in the message row, because the transcript is a windowed list: a row
+   * scrolled far enough away is unmounted, and state held inside one is a choice that undoes
+   * itself the moment somebody scrolls down and back. Dropped with the conversation, which is the
+   * right scope - it is a way of reading one message, not a setting.
+   */
+  const [views, setViews] = useState<Record<number, AttachmentView>>({})
+  // One viewer and one sheet for the whole transcript, so two can never be open at once.
+  const [viewer, setViewer] = useState<ViewerTarget | null>(null)
+  const [sheet, setSheet] = useState<number | null>(null)
+
+  // Memoised so typing in the composer does not re-render every message through the context.
+  const ui = useMemo(
+    (): ConversationUi => ({
+      conversationId,
+      autoDownload,
+      requestAutoDownloadPrompt: () => {
+        if (autoDownload === undefined) setPrompting(true)
+      },
+      viewFor: (messageId) => views[messageId],
+      chooseView: (messageId, view) => {
+        setViews((all) => ({ ...all, [messageId]: view }))
+      },
+      openViewer: (messageId, index) => {
+        setViewer({ messageId, index })
+      },
+      openSheet: setSheet,
+    }),
+    [conversationId, autoDownload, views],
+  )
+
+  function send(): void {
+    const body = draft.trim()
+    if (body.length === 0) return
+    // Cleared straight away: libsession stores the row before the promise settles, so the
+    // message appears on its own and there is nothing to put back if this fails.
+    setDraft('')
+    void actions.send(conversationId, body)
+  }
+
+  // The id stands in for the conversation as well as for the name: opening one from a route
+  // beats the store hydrating it, and a header that says nothing for a moment is a header
+  // that flickers.
+  const title = conversationTitle(conversation ?? { id: conversationId })
+
+  return (
+    <ConversationUiContext.Provider value={ui}>
+      <Screen testID={ELEMENT.conversation.screen}>
+        <XStack
+          paddingHorizontal="$md"
+          paddingVertical="$sm"
+          gap="$sm"
+          alignItems="center"
+          testID={ELEMENT.conversation.header}
+        >
+          <BackButton testID={ELEMENT.conversation.back} />
+          <Text
+            size="$bodyLarge"
+            weight="semibold"
+            numberOfLines={1}
+            testID={ELEMENT.conversation.headerName}
+          >
+            {title}
+          </Text>
+        </XStack>
+
+        <Separator borderColor="$bordersColor" />
+
+        {ready ? (
+          // No itemHeight: a bubble is as tall as its body wraps to, so the list has to measure.
+          <List
+            data={messages}
+            keyExtractor={(message) => String(message.id)}
+            renderItem={(message, index) => (
+              <YStack paddingHorizontal="$md" paddingBottom="$sm">
+                <MessageRow conversationId={conversationId} messageId={message.id} index={index} />
+              </YStack>
+            )}
+          />
+        ) : (
+          <YStack flex={1} padding="$md">
+            <Text tone="secondary">{tr('loading')}</Text>
+          </YStack>
+        )}
+
+        <XStack
+          padding="$md"
+          gap="$sm"
+          alignItems="center"
+          borderTopWidth={1}
+          borderTopColor="$bordersColor"
+        >
+          <Input
+            grow
+            value={draft}
+            onChangeText={setDraft}
+            placeholder={tr('message')}
+            onSubmit={send}
+            testID={ELEMENT.conversation.composerInput}
+          />
+          <Button
+            size="md"
+            onPress={send}
+            disabled={draft.trim().length === 0}
+            testID={ELEMENT.conversation.sendButton}
+          >
+            {tr('send')}
+          </Button>
+        </XStack>
+
+        <AttachmentSheet
+          conversationId={conversationId}
+          messageId={sheet}
+          onClose={() => {
+            setSheet(null)
+          }}
+          overlay={
+            <>
+              <MessageMediaViewer
+                conversationId={conversationId}
+                // Held back while the prompt is up: iOS presents one modal per parent at a time.
+                target={asking ? null : viewer}
+                onIndex={(index) => {
+                  setViewer((open) => (open === null ? null : { ...open, index }))
+                }}
+                onClose={() => {
+                  setViewer(null)
+                }}
+              />
+              {conversation === undefined ? null : (
+                <AutoDownloadPrompt
+                  open={asking}
+                  conversationId={conversationId}
+                  conversationName={title}
+                  onAnswered={() => {
+                    setPrompting(false)
+                  }}
+                />
+              )}
+            </>
+          }
+        />
+      </Screen>
+    </ConversationUiContext.Provider>
+  )
+}
+
+/**
+ * One conversation: its transcript and a composer.
+ *
+ * The id arrives as a prop rather than being read off a route. Which router put it there is
+ * the app's business, and reading it here would be the one import that pins this screen to
+ * a platform again.
+ */
+export function ConversationScreen({ conversationId }: { conversationId: string }) {
+  // A wide layout keeps this mounted and changes only the id; the key gives each conversation
+  // its own draft, attachment views and open overlays.
+  return <Conversation key={conversationId} conversationId={conversationId} />
 }

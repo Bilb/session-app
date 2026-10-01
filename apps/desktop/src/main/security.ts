@@ -1,5 +1,7 @@
 import type { BrowserWindow, Session, WebContents, WebFrameMain, WebPreferences } from 'electron'
 
+import { MEDIA_SCHEME } from '../shared/mediaUrl'
+
 /**
  * The renderer's privileges, and what it is allowed to reach.
  *
@@ -49,7 +51,9 @@ export function contentSecurityPolicy({ dev }: { dev: boolean }): string {
     "default-src 'none'",
     `script-src 'self'${dev ? " 'unsafe-inline'" : ''}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    // session-media: is the only door to an attachment's bytes (main/media.ts). No data: or blob:,
+    // so script cannot draw bytes that door never vetted; the build sets assetsInlineLimit: 0.
+    `img-src 'self' ${MEDIA_SCHEME}:`,
     // Attachments are played from a blob the renderer built, and `default-src 'none'` would
     // otherwise refuse them: media has no fallback of its own.
     "media-src 'self' blob:",

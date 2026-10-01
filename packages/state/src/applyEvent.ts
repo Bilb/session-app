@@ -1,6 +1,14 @@
-import type { Conversation, ConversationId, Message, SessionEvent } from '@session/client'
+import type {
+  AttachmentRef,
+  AttachmentTransfer,
+  Conversation,
+  ConversationId,
+  Message,
+  SessionEvent,
+} from '@session/client'
 
-import type { MessageWindow, SessionState } from './types'
+import type { AttachmentTransferState, MessageWindow, SessionState } from './types'
+import { transferKey } from './types'
 
 /**
  * The whole projection, as one pure function.
@@ -28,13 +36,20 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
     case 'request-list-replaced':
       return { ...state, requests: event.conversations }
 
-    case 'message-added':
-    case 'message-updated':
-      return upsertMessage(state, event.conversationId, event.message)
+    case 'messages-added':
+    case 'messages-updated':
+      // Folded one at a time rather than grouped by conversation first: a batch may span
+      // conversations, and applying them in the order given is what makes the result the same
+      // as a reload.
+      return event.messages.reduce(
+        (next, message) => upsertMessage(next, message.conversationId, message),
+        state,
+      )
 
-    case 'history-replaced':
+    case 'history-replaced': {
       // Only the id comes back, so the window is dropped rather than patched: whatever is
       // left of it is no longer known to be true. The screen refetches.
+      const window = state.histories[event.conversationId]
       return {
         ...state,
         histories: {
@@ -46,7 +61,12 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
             fetching: false,
           },
         },
+        transfers: withoutHistory(state.transfers, window?.messages ?? []),
       }
+    }
+
+    case 'attachment-progress':
+      return recordTransfer(state, event)
 
     case 'log':
       return state
@@ -57,6 +77,93 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
       event satisfies never
       return state
   }
+}
+
+/**
+ * Records one report, dropping those for a message no loaded window holds.
+ *
+ * By message, because a report names no conversation. A report that arrives between a message
+ * being announced and it landing in a window is dropped; the bar starts on the next one.
+ */
+function recordTransfer(
+  state: SessionState,
+  event: Extract<SessionEvent, { type: 'attachment-progress' }>,
+): SessionState {
+  if (!isLoaded(state, event.messageId)) return state
+
+  const entry: AttachmentTransferState = {
+    // An outcome ends a transfer; `doneBytes === totalBytes` does not, and arrives before it.
+    state: event.outcome === undefined ? 'running' : event.outcome.ok ? 'done' : 'failed',
+    doneBytes: event.doneBytes,
+    totalBytes: event.totalBytes,
+    ...(event.outcome?.error === undefined ? {} : { error: event.outcome.error }),
+  }
+
+  const transfers = state.transfers[event.messageId]
+  const key = transferKey(event.transfer, event.index)
+  // A download joined by a second handler reports every step once per handler.
+  if (sameTransfer(transfers?.[key], entry)) return state
+
+  return {
+    ...state,
+    transfers: { ...state.transfers, [event.messageId]: { ...transfers, [key]: entry } },
+  }
+}
+
+/**
+ * Records a command libsession refused before any transfer existed, as a failed one.
+ *
+ * Such a refusal reaches no event, so without this the only thing that knew was whichever caller
+ * held the promise. A report that already said `failed` is left alone: it carries the real figures.
+ */
+export function recordRefusal(
+  state: SessionState,
+  transfer: AttachmentTransfer,
+  ref: AttachmentRef,
+): SessionState {
+  if (state.transfers[ref.messageId]?.[transferKey(transfer, ref.index)]?.state === 'failed')
+    return state
+  return recordTransfer(state, {
+    type: 'attachment-progress',
+    transfer,
+    messageId: ref.messageId,
+    index: ref.index,
+    doneBytes: 0,
+    totalBytes: 0,
+    outcome: { ok: false },
+  })
+}
+
+function sameTransfer(
+  stored: AttachmentTransferState | undefined,
+  entry: AttachmentTransferState,
+): boolean {
+  return (
+    stored !== undefined &&
+    stored.state === entry.state &&
+    stored.doneBytes === entry.doneBytes &&
+    stored.totalBytes === entry.totalBytes &&
+    stored.error === entry.error
+  )
+}
+
+/** Whether any loaded window holds this message, which is what makes a report worth keeping. */
+function isLoaded(state: SessionState, messageId: number): boolean {
+  return Object.values(state.histories).some(
+    (window) => window.ready && window.messages.some((m) => m.id === messageId),
+  )
+}
+
+/** The transfers without those of the messages a dropped window held. */
+export function withoutHistory(
+  transfers: SessionState['transfers'],
+  messages: readonly Message[],
+): SessionState['transfers'] {
+  const dropped = messages.filter((m) => m.id in transfers)
+  if (dropped.length === 0) return transfers
+  const kept = { ...transfers }
+  for (const message of dropped) delete kept[message.id]
+  return kept
 }
 
 type ListKey = 'conversations' | 'requests'
@@ -98,13 +205,14 @@ function upsertConversation(state: SessionState, conversation: Conversation): Se
 }
 
 function removeConversation(state: SessionState, id: ConversationId): SessionState {
-  const { [id]: _history, ...histories } = state.histories
+  const { [id]: history, ...histories } = state.histories
 
   return {
     ...state,
     conversations: without(state.conversations, id),
     requests: without(state.requests, id),
     histories,
+    transfers: withoutHistory(state.transfers, history?.messages ?? []),
   }
 }
 
@@ -136,7 +244,30 @@ function upsertMessage(
   }
 
   const updated: MessageWindow = { ...window, messages }
-  return { ...state, histories: { ...state.histories, [conversationId]: updated } }
+  return {
+    ...state,
+    histories: { ...state.histories, [conversationId]: updated },
+    transfers: withoutFinishedDownloads(state.transfers, message),
+  }
+}
+
+/**
+ * A message's finished downloads, dropped once the message itself is announced: from then on its
+ * `availability` says what they left, and a report kept past that would outlive an eviction.
+ */
+function withoutFinishedDownloads(
+  transfers: SessionState['transfers'],
+  message: Message,
+): SessionState['transfers'] {
+  const own = transfers[message.id]
+  if (own === undefined) return transfers
+  const finished = message.attachments
+    .map((a) => transferKey('download', a.index))
+    .filter((key) => own[key]?.state === 'done')
+  if (finished.length === 0) return transfers
+  const kept = { ...own }
+  for (const key of finished) delete kept[key]
+  return { ...transfers, [message.id]: kept }
 }
 
 /**

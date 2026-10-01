@@ -1,0 +1,29 @@
+/**
+ * Answering a native file dialog without one opening.
+ *
+ * Deliberately not part of `ISessionApp`, by that interface's own rule: a save dialog is the
+ * operating system's window and no automation driver can drive one. What can be done is to
+ * replace the call that opens it, which Playwright allows in Electron's main process and which
+ * has no counterpart on a device - iOS and Android will need their own mechanism to answer the
+ * same question, and the signature stays a string so it promotes unchanged if they ever share one.
+ *
+ * This stubs the *chooser*, not the write. What follows the path being chosen is real: the IPC,
+ * the grant main records from the dialog, and main's export and reveal gates. The bridge under
+ * this harness is the fake, which answers with a path and writes nothing.
+ */
+export interface IFileChooser {
+  /** Makes the next save dialog answer with this path instead of appearing. */
+  answerSaveDialogWith(path: string): Promise<void>
+  /** Makes the next save dialog answer as though somebody dismissed it. */
+  cancelNextSaveDialog(): Promise<void>
+  /** Records reveals instead of performing them; `revealedPaths` refuses to answer before this. */
+  recordReveals(): Promise<void>
+  /**
+   * Every path the app has asked the operating system to reveal since `recordReveals`, in order.
+   *
+   * The end of the chain, and the only part of it that is observable from outside: a reveal that
+   * happened is an export that got a destination, reached the bridge, came back with a path, and
+   * was allowed by the grant main recorded from the dialog.
+   */
+  revealedPaths(): Promise<string[]>
+}

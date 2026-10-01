@@ -28,6 +28,15 @@ contextBridge.exposeInMainWorld('sessionDesktop', {
   openExternal: (url: string) => {
     ipcRenderer.send('open-external', url)
   },
+  /**
+   * Where a file should go, and showing somebody where it went.
+   *
+   * `invoke` rather than `send` because both answer: the chosen path, and whether main revealed
+   * it or refused.
+   */
+  chooseExportLocation: (suggestedName: string): Promise<string | null> =>
+    ipcRenderer.invoke('files:choose-export-location', suggestedName),
+  revealInFolder: (path: string): Promise<boolean> => ipcRenderer.invoke('files:reveal', path),
   copyText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard-write-text', text),
   setLocale: (locale: string) => {
     ipcRenderer.send('locale', locale)

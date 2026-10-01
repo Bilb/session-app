@@ -4,6 +4,7 @@
 #include <session/client/conversation.hpp>
 #include <session/client/conversation_id.hpp>
 #include <session/core/devices.hpp>
+#include <session/image/thumbhash.hpp>
 #include <session/logging.hpp>
 #include <session/mnemonics.hpp>
 #include <session/network/network_opt.hpp>
@@ -21,11 +22,17 @@
 #endif
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <cstring>
 #include <filesystem>
+#include <functional>
 #include <limits>
+#include <memory>
+#include <mutex>
+#include <optional>
 #include <ranges>
 #include <stdexcept>
 #include <utility>
@@ -33,6 +40,7 @@
 #include <vector>
 
 #include "convert.hpp"
+#include "mark_downloaded.hpp"
 
 namespace session_bridge {
 
@@ -73,6 +81,18 @@ namespace {
     /// enough above zero that the polls do not overlap: nothing serialises them, so an interval
     /// below a round trip gets concurrent requests rather than faster ones.
     constexpr auto DEVNET_POLL_INTERVAL = std::chrono::milliseconds{500};
+
+    /// What to open for `db_path`: ":memory:" becomes one named memdb database, because
+    /// libsession's pool opens a connection per thread and each would get its own empty one.
+    /// Numbered so two in-memory bridges never share. Relies on SQLite built with SQLITE_USE_URI.
+    /// Delete once libsession pins session-sqlite >= 65e3c78, which shares :memory: itself.
+    std::filesystem::path shared_if_in_memory(const std::filesystem::path& db_path) {
+        if (db_path != ":memory:")
+            return db_path;
+        static std::atomic<uint64_t> next{0};
+        return "file:/session-bridge-mem-" +
+               std::to_string(next.fetch_add(1, std::memory_order_relaxed)) + "?vfs=memdb";
+    }
 
     /// Where the network's own cache lives, named once so the discard and the open agree.
     std::filesystem::path netcache_path(const std::filesystem::path& db_path) {
@@ -294,36 +314,50 @@ struct ClientBridge::Impl {
                             impl->event(RequestListReplacedSessionEvent{
                                     Impl::conversations(std::move(convos))});
                         },
-                .message_added =
-                        [impl](const client::ConversationId& id, client::Message m) {
-                            impl->event(
-                                    MessageAddedSessionEvent{id.to_string(), to_bridge(std::move(m))});
+                // A batch, and it may span conversations: one file is one file, so fetching or
+                // evicting it changes every message showing it. Each Message carries its own
+                // conversation, which is why neither of these is told one.
+                .messages_added =
+                        [impl](std::vector<client::Message>&& ms) {
+                            impl->event(MessagesAddedSessionEvent{to_bridge(std::move(ms))});
                         },
-                .message_updated =
-                        [impl](const client::ConversationId& id, client::Message m) {
-                            impl->event(
-                                    MessageUpdatedSessionEvent{id.to_string(), to_bridge(std::move(m))});
+                .messages_updated =
+                        [impl](std::vector<client::Message>&& ms) {
+                            impl->event(MessagesUpdatedSessionEvent{to_bridge(std::move(ms))});
                         },
                 .history_replaced =
                         [impl](const client::ConversationId& id) {
                             impl->event(HistoryReplacedSessionEvent{id.to_string()});
                         },
-                // attachment_progress and display_picture_progress are deliberately left unset:
-                // no transfer is part of the protocol, so there is no frame to report one on.
+                .attachment_progress =
+                        [impl](const client::ConversationId&,
+                               const client::AttachmentProgress& p) {
+                            // Background fetches only: a transfer a command started reports through
+                            // the handler that command passed, and both land on the same stream.
+                            //
+                            // The conversation is dropped rather than forwarded: a command-started
+                            // transfer carries only a message and an index, so a frame with this
+                            // field would have it on the background reports and not on the ones
+                            // every tap produces. A message id names the message either way.
+                            impl->attachment_progress(AttachmentTransfer::download, p);
+                        },
+                // display_picture_progress is deliberately left unset: no screen draws a display
+                // picture yet, so there is nothing a report would feed.
         };
 
         // The key options are types rather than values, so which one is used has to be a branch
         // rather than an argument. Only one of these ever runs, which is what makes moving the
         // callbacks in each of them safe.
+        auto path = shared_if_in_memory(options.db_path);
         auto open = [&](auto&&... key) {
             if (options.defer_account)
                 return std::make_unique<client::Client>(
-                        options.db_path,
+                        path,
                         std::move(cbs),
                         core::defer_account{},
                         std::forward<decltype(key)>(key)...);
             return std::make_unique<client::Client>(
-                    options.db_path, std::move(cbs), std::forward<decltype(key)>(key)...);
+                    path, std::move(cbs), std::forward<decltype(key)>(key)...);
         };
 
         if (options.raw_key)
@@ -388,12 +422,12 @@ struct ClientBridge::Impl {
         if (type == Type::Unknown)
             return;
 
-        auto info = client->core.devices.device_info(await).first;
+        auto info = client->core.devices.device_info(session::await).first;
         info.type = type;
         // Ignored for a known type, but it is what we would have been stored as before that type
         // existed, and leaving it set keeps a stale string in the record.
         info.other_device.clear();
-        client->core.devices.update_info(info, await);
+        client->core.devices.update_info(info, session::await);
     }
 
     /// Gives Core a way off the machine. Idempotent enough to call whenever an account appears:
@@ -493,31 +527,36 @@ struct ClientBridge::Impl {
     }
 
     void respond(double id, Result result) {
-        emit(ResponseFrame{Response{id, std::nullopt, std::move(result)}});
+        emit(ResponseFrame{Response{id, std::nullopt, std::nullopt, std::move(result)}});
     }
 
     void ok(double id) {
         respond(id, EmptyResult{});
     }
 
-    void fail(double id, std::string_view message) {
-        emit(ResponseFrame{Response{id, std::string{message}, std::nullopt}});
+    void fail(
+            double id, std::string_view message, std::optional<std::string> code = std::nullopt) {
+        emit(ResponseFrame{Response{id, std::string{message}, std::move(code), std::nullopt}});
     }
 
     /// Wraps a handler so that the error leg is written once rather than at every call site.
-    /// `failable_function`'s leading error argument is the whole convention, and forgetting to
-    /// check it is the one mistake it exists to prevent.
+    /// `result_function` hands the value and the failure as one object, and unwrapping it without
+    /// checking is the one mistake this exists to prevent.
     template <typename F>
     auto on(double id, F&& f) {
-        return [this, id, f = std::forward<F>(f)](std::optional<std::string> error, auto&&... rest) {
-            if (error) {
-                fail(id, *error);
+        return [this, id, f = std::forward<F>(f)](auto&& result) {
+            if (!result) {
+                fail(id, result.error().message, std::string{result.error().code});
                 return;
             }
             // Client::_dispatch_out only logs what escapes a handler, so an uncaught throw here
             // is a request that never gets a Response. setNickname on note to self is one.
             try {
-                f(std::forward<decltype(rest)>(rest)...);
+                using R = std::decay_t<decltype(result)>;
+                if constexpr (std::is_void_v<typename R::value_type>)
+                    f();
+                else
+                    f(*std::forward<decltype(result)>(result));
             } catch (const std::exception& e) {
                 fail(id, e.what());
             }
@@ -546,6 +585,36 @@ struct ClientBridge::Impl {
         return client::Conversation{*client, client::ConversationId::parse(id)};
     }
 
+    /// One transfer report, on the stream, whoever asked for it.
+    ///
+    /// Taken by const reference and copied out of: libsession lends a progress payload rather than
+    /// giving it, because the same one is reported against repeatedly.
+    void attachment_progress(
+            AttachmentTransfer transfer, const client::AttachmentProgress& p) {
+        event(AttachmentProgressSessionEvent{
+                transfer,
+                static_cast<double>(p.message_id),
+                static_cast<double>(p.index),
+                static_cast<double>(p.done),
+                static_cast<double>(p.total),
+                // One report per transfer carries an outcome; the rest are still running.
+                p.result ? std::optional{AttachmentOutcome{
+                                   p.result->has_value(),
+                                   p.result->has_value()
+                                           ? std::nullopt
+                                           : std::optional{std::string{p.result->error().code}}}}
+                         : std::nullopt});
+    }
+
+    /// The progress handler a command passes libsession, which reports to the stream rather than
+    /// to the request: a transfer outlives the tap that started it, and the row that draws it may
+    /// not have existed when it began.
+    std::function<void(const client::AttachmentProgress&)> report(AttachmentTransfer transfer) {
+        return [this, transfer](const client::AttachmentProgress& p) {
+            attachment_progress(transfer, p);
+        };
+    }
+
     // One handler per command. Dispatch is a std::visit over the Command variant, so a command
     // added to @session/bridge-types that has no handler here is a compile error, not a request
     // that quietly falls through.
@@ -572,7 +641,7 @@ struct ClientBridge::Impl {
 
     void handle(double id, const CreateAccountCommand&) {
         mark_provisional();
-        client->core.globals.create_account(await);
+        client->core.globals.create_account(session::await);
         on_account();
         ok(id);
     }
@@ -586,7 +655,7 @@ struct ClientBridge::Impl {
         b32 seed;
         std::memcpy(seed.data(), raw.data(), seed.size());
         mark_provisional();
-        client->core.globals.restore_account(core::predefined_seed{std::span{seed}}, await);
+        client->core.globals.restore_account(core::predefined_seed{std::span{seed}}, session::await);
         on_account();
         fetch_restored_profile();
         ok(id);
@@ -598,7 +667,7 @@ struct ClientBridge::Impl {
         client->core.globals.restore_account(
                 cmd.language ? core::predefined_seed{words, *cmd.language}
                              : core::predefined_seed{words},
-                await);
+                session::await);
         on_account();
         fetch_restored_profile();
         ok(id);
@@ -878,6 +947,8 @@ struct ClientBridge::Impl {
                             // than every caller remembering to.
                             for (auto& m : std::views::reverse(messages))
                                 out.push_back(to_bridge(std::move(m)));
+                            // No second query for what the attachments are doing: availability
+                            // rides on each attachment, so the page is already the whole answer.
                             respond(id, MessageListResult{std::move(out)});
                         }));
     }
@@ -918,6 +989,81 @@ struct ClientBridge::Impl {
                 client->delete_message(message_id, std::move(answer));
                 break;
         }
+    }
+
+    void handle(double id, const DownloadAttachmentCommand& cmd) {
+        const int64_t message_id = whole<int64_t>(cmd.message_id, "downloadAttachment.messageId");
+        const auto index = whole<size_t>(cmd.index, "downloadAttachment.index");
+        // The bytes are dropped: this is the call that *fills* the cache, and filling it is the
+        // whole of what the command does. What reads the file is the media scheme.
+        client->attachment_data(
+                message_id,
+                index,
+                report(AttachmentTransfer::download),
+                on(id, [this, id](std::vector<std::byte>) { ok(id); }));
+    }
+
+    void handle(double id, const ExportAttachmentCommand& cmd) {
+        const int64_t message_id = whole<int64_t>(cmd.message_id, "exportAttachment.messageId");
+        const auto index = whole<size_t>(cmd.index, "exportAttachment.index");
+        client->save_attachment(
+                message_id,
+                index,
+                std::filesystem::path{cmd.destination},
+                report(AttachmentTransfer::export_),
+                on(id,
+                   [this, id](std::filesystem::path saved_to) {
+                       // Before the answer, which is what the app reveals the file on.
+                       mark_downloaded(saved_to);
+                       respond(id, PathResult{saved_to.string()});
+                   }),
+                cmd.notify_sender,
+                cmd.replace);
+    }
+
+    void handle(double id, const SetAutoDownloadCommand& cmd) {
+        client::AutoDownload mode = client::AutoDownload::none;
+        // No default label: -Werror=switch makes a new mode a build failure rather than one that
+        // silently downloads nothing.
+        switch (cmd.mode) {
+            case AutoDownload::none: mode = client::AutoDownload::none; break;
+            case AutoDownload::image_attachments:
+                mode = client::AutoDownload::image_attachments;
+                break;
+            case AutoDownload::all: mode = client::AutoDownload::all; break;
+        }
+        convo(cmd.conversation_id).set_auto_download(mode, on(id, [this, id] { ok(id); }));
+    }
+
+    void handle(double id, const GetCacheDirCommand&) {
+        respond(id, PathResult{options.cache_dir.string()});
+    }
+
+    void handle(double id, const GetAttachmentCacheLimitCommand&) {
+        client->attachment_cache_limit(on(id, [this, id](std::optional<int64_t> bytes) {
+            respond(id,
+                    ByteCountResult{
+                            bytes ? std::optional<double>{static_cast<double>(*bytes)}
+                                  : std::nullopt});
+        }));
+    }
+
+    void handle(double id, const SetAttachmentCacheLimitCommand& cmd) {
+        std::optional<int64_t> limit_bytes;
+        if (cmd.limit_bytes) {
+            limit_bytes = whole<int64_t>(*cmd.limit_bytes, "setAttachmentCacheLimit.limitBytes");
+            // libsession would store it and evict until the cache fits, which is everything.
+            if (*limit_bytes < 0)
+                throw std::invalid_argument{
+                        "setAttachmentCacheLimit.limitBytes must not be negative"};
+        }
+        client->set_attachment_cache_limit(limit_bytes, on(id, [this, id] { ok(id); }));
+    }
+
+    void handle(double id, const GetAttachmentCacheSizeCommand&) {
+        client->attachment_cache_size(on(id, [this, id](int64_t bytes) {
+            respond(id, ByteCountResult{static_cast<double>(bytes)});
+        }));
     }
 
     void handle(double id, const GetPrefCommand& cmd) {
@@ -1061,6 +1207,124 @@ void ClientBridge::close() {
     _impl->warm.reset();
     _impl->client.reset();
     _impl.reset();
+}
+
+void ClientBridge::fetch_media(double message_id, double index, MediaHandler cb) {
+    if (!_impl || !_impl->client) {
+        cb(Media{"the bridge is closed", {}, {}});
+        return;
+    }
+
+    // Both asked from here, on the caller's thread, and joined: a callback runs on Core's loop,
+    // where `close()` can null `client` under it, so neither may reach back for the Client.
+    struct Join {
+        std::mutex lock;
+        MediaHandler cb;
+        int64_t id = 0;
+        size_t at = 0;
+        std::optional<session::Expected<std::optional<client::Message>>> message;
+        std::optional<session::Expected<std::vector<std::byte>>> bytes;
+
+        void settle() {
+            auto& msg = *message;
+            if (!msg)
+                return cb(Media{std::string{msg.error().message}, {}, {}});
+            if (!*msg || at >= (*msg)->attachments.size())
+                return cb(Media{not_found("attachment", std::to_string(id)), {}, {}});
+            if (!*bytes)
+                return cb(Media{std::string{bytes->error().message}, {}, {}});
+            // The sender's claim, and the only description there is. Whoever renders it is
+            // handling bytes from a stranger either way.
+            auto content_type =
+                    (*msg)->attachments[at].content_type.value_or("application/octet-stream");
+            cb(Media{std::nullopt, std::move(content_type), **std::move(bytes)});
+        }
+    };
+    auto join = std::make_shared<Join>();
+    join->cb = std::move(cb);
+
+    try {
+        join->id = whole<int64_t>(message_id, "media.messageId");
+        join->at = whole<size_t>(index, "media.index");
+
+        _impl->client->message(
+                join->id, [join](session::Expected<std::optional<client::Message>> r) mutable {
+                    std::lock_guard l{join->lock};
+                    join->message.emplace(std::move(r));
+                    if (join->bytes)
+                        join->settle();
+                });
+        _impl->client->attachment_data(
+                join->id,
+                join->at,
+                _impl->report(AttachmentTransfer::download),
+                [join](session::Expected<std::vector<std::byte>> r) mutable {
+                    std::lock_guard l{join->lock};
+                    join->bytes.emplace(std::move(r));
+                    if (join->message)
+                        join->settle();
+                });
+    } catch (const std::exception& e) {
+        // Either call throwing means `bytes` is never set, so nothing else settles this.
+        join->cb(Media{std::string{e.what()}, {}, {}});
+    }
+}
+
+/// The long edge of a decoded placeholder.
+///
+/// A ThumbHash holds at most 7 cycles across the image, so decoding larger costs time without
+/// carrying more detail; whatever draws it scales this up with a linear filter.
+constexpr uint32_t preview_long_edge = 32;
+
+void ClientBridge::fetch_preview(double message_id, double index, PreviewHandler cb) {
+    if (!_impl || !_impl->client) {
+        cb(Preview{"the bridge is closed", 0, 0, {}});
+        return;
+    }
+
+    try {
+        const int64_t id = whole<int64_t>(message_id, "preview.messageId");
+        const auto at = whole<size_t>(index, "preview.index");
+
+        _impl->client->message(
+                id, [at, cb = std::move(cb)](session::Expected<std::optional<client::Message>> r) mutable {
+                    if (!r) {
+                        cb(Preview{std::string{r.error().message}, 0, 0, {}});
+                        return;
+                    }
+                    auto& msg = *r;
+                    if (!msg || at >= msg->attachments.size()) {
+                        cb(Preview{"no such attachment", 0, 0, {}});
+                        return;
+                    }
+
+                    const auto& a = msg->attachments[at];
+                    if (!previewable(a)) {
+                        cb(Preview{"no preview", 0, 0, {}});
+                        return;
+                    }
+
+                    // A hash carries no usable record of the source's shape, so the aspect ratio
+                    // comes from the attachment's own metadata; without it, square is the only
+                    // honest guess.
+                    uint32_t w = preview_long_edge, h = preview_long_edge;
+                    if (a.width && a.height) {
+                        if (*a.width >= *a.height)
+                            h = std::max(1u, preview_long_edge * *a.height / *a.width);
+                        else
+                            w = std::max(1u, preview_long_edge * *a.width / *a.height);
+                    }
+
+                    auto img = image::thumbhash::decode(*a.thumbhash, w, h);
+                    cb(Preview{
+                            std::nullopt,
+                            static_cast<double>(img.width),
+                            static_cast<double>(img.height),
+                            std::move(img.rgba)});
+                });
+    } catch (const std::exception& e) {
+        cb(Preview{std::string{e.what()}, 0, 0, {}});
+    }
 }
 
 void ClientBridge::call(Request request) {

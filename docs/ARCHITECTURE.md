@@ -112,10 +112,22 @@ Two commands in the protocol have no libsession counterpart and answer with an e
 something that half works. `approveConversation`: approval is not a flag anyone sets, it is
 recorded by messages flowing, so writing to someone is what approves them. `pollOnce`: Core owns
 its poll ticker and exposes no one-shot entry point. Both are open questions in `STATUS.md`.
-Attachments do not cross the bridge at all: not the bytes, not the metadata on a message, not
-the transfer progress, not the per-conversation auto-download setting. Reading a cache file
-libsession wrote means decrypting it, which is a design of its own - see `STATUS.md` - and the
-rest was protocol surface for a feature no screen offers yet.
+Attachment metadata, transfer progress and the per-conversation auto-download setting cross;
+bytes do not. They leave by a second channel instead: `session-media://attachment/<id>/<index>`,
+resolved natively by each platform straight out of `ClientBridge::fetch_media`, so a picture never
+passes through JavaScript and never rides this stream. Whether the bytes are here is the
+attachment's `availability` on the page. `downloadAttachment` reads the cache, joins a fetch
+already running, or starts one. `exportAttachment` writes the file to a destination, fetching it
+first if the cache does not hold it, and answers with where it landed: a collision lands at
+`name (1)` unless the caller asked to replace.
+
+The sender's placeholder is an image too, so it comes by the same road: `session-media://preview/`
+answers from `ClientBridge::fetch_preview`, which decodes the ThumbHash on the attachment's row.
+Two authorities rather than one URL with a flag, so a file and its stand-in cache separately, and
+nothing decodes an image in JavaScript on either platform. The sender's content type is a claim,
+so desktop serves an attachment only when that type is on the viewable list and the leading bytes
+are the same family, and every response carries a `sandbox` CSP: a file opened as a document gets
+no script and no origin.
 
 ## The fake, and why it is not a stub
 
@@ -178,7 +190,8 @@ directly would skip whichever one it did not go through.
 
 Desktop checks a second time in its main process. That is a different boundary rather than a
 duplicate: the main process does not trust the renderer, while the shared check is the app
-deciding what it is willing to open at all.
+deciding what it is willing to open at all. Files written and revealed have a main-process check
+of their own, for the same reason; see the 2026-09-29 entry in the decision log.
 
 **A missing scheme becomes `https` rather than a refusal**, and only where the text already
 looks like a host. Both mobile clients do this, and both pick https rather than the http a
@@ -362,6 +375,24 @@ Every shared file is checked two or three ways per run, with no synthetic profil
 ## Decision log
 
 Append one paragraph per decision. Undocumented decisions are what rot.
+
+- **2026-09-29 - Desktop main admits an export only to the path its dialog returned.**
+  `save_attachment` writes wherever it is told, with no containment of its own, and
+  `showItemInFolder` acts on any path, so the renderer is held to what a save dialog answered. The
+  answer is a one-shot grant for that exact path, kept by the window whose dialog it was and spent
+  by the export it admits. Main sets
+  `replace` from whether a file was already there when the dialog returned, since every platform's
+  dialog asks before an existing name is chosen, and ignores what the request said. A reveal is
+  allowed only for the path an admitted export reported landing at, which is where libsession put
+  the file whatever it was asked for.
+
+  By exact path rather than by folder: a folder grant turns one answer into a licence to create or
+  overwrite any name in that folder for the rest of the run. Nothing is persisted: a path chosen in
+  an earlier run is not one this run has any reason to reach.
+
+  The shim marks every exported file as downloaded from the internet - Mark-of-the-Web on
+  Windows, the quarantine property on macOS - because it is a stranger's file written by plain
+  file I/O, which no operating system check would otherwise see.
 
 - **2026-09-23 - Every outward address lives in libsession.** One source of truth, rather than
   libsession's table plus whatever the app adds beside it. The contract test enforces it by refusing
@@ -564,3 +595,42 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   A devnet with nothing configured attaches **nothing**, never mainnet: real traffic on a build
   whose owner believes it is a sandbox is the failure worth preventing, and an overlay stamping
   `devnet` over it would confirm the belief rather than contradict it.
+
+- **2026-09-15 - Attachments over the bridge.** Metadata, transfer progress and the
+  per-conversation auto-download setting cross; bytes do not. This supersedes the 2026-09-08 entry
+  that took attachments out of the protocol.
+
+  A transfer's progress is broadcast on the stream, not routed to the command that asked for it. A
+  download outlives the tap that started it and is drawn by a row that may not have existed when it
+  began, so the report lands in the store like any other event, `SessionEvent` stays one union and
+  the facade keeps its plain fan-out. It is the one arm that is not whole state: a report is one
+  transfer's progress, and a screen that missed some reads `availability` and the fetch figures
+  from the page instead.
+
+  `Conversation.autoDownload` is optional, and unset is not `none`. Unset means nobody has been
+  asked what this conversation should fetch unprompted; `none` means they were asked and declined.
+  Only unset prompts, and calling the setter with either answer is what records that the question
+  was put.
+
+  Nothing stores whether an attachment is downloaded. Each attachment on a page carries its
+  `availability` and, while it is fetching, how far it has got, so a screen that was not listening -
+  the conversation closed, the renderer reloaded, the process restarted - is right from the page
+  alone, and there is no flag for an eviction or a pruned cache directory to make stale.
+
+  Bytes leave by `session-media://`, not by the frame stream. A decrypted attachment is not state,
+  so no event can contradict it, and a multi-megabyte payload on a FIFO stalls every state frame
+  behind it. `ClientBridge::fetch_media` answers its own caller, and a renderer gets a URL its
+  platform resolves: `protocol.handle` on Electron, an image loader per platform on mobile. Progress
+  still goes to the sink, so a picture loading draws the same bar a tap does, and the codegen
+  subset never needs a bytes primitive. A standard scheme gets the special-scheme host parser, so
+  `session-media://5/0` would canonicalise to the host `0.0.0.5`, hence the fixed `attachment`
+  authority with both ids in the path. And tamagui's `Image` passes `source` through as a DOM
+  attribute, producing an `<img>` with nothing to load, so `@session/ui`'s wraps react-native's,
+  which react-native-web turns into something that fetches.
+
+- **2026-09-16 - A history window lives as long as its screen.** `useMessages` drops
+  `histories[id]` when it stops showing that id, and the transfers of the messages it held go with
+  it. Keyed on the id rather than on unmounting, because a wide layout keeps the detail pane
+  mounted and only swaps the prop. The store is then a view of what is on screen, so a progress
+  report for a message no window holds is dropped. The cost is that returning to a conversation
+  reloads it and loses paging depth and scroll position, which is in `STATUS.md`.

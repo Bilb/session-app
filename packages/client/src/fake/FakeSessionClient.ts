@@ -3,15 +3,18 @@ import { isHex64, isIpv4, isPort } from '@session/basic-types'
 import { BridgeClosedError, SessionClientError } from '../errors'
 import type {
   AccountInfo,
+  AttachmentRef,
+  AutoDownload,
   Conversation,
   ConversationId,
   Deletion,
-  Message,
+  ExportAttachmentOptions,
+  MessageCursor,
   SessionEvent,
 } from '@session/bridge-types'
 
-import type { NetworkAttachment, OutgoingMessage, SessionClient } from '../types'
-import type { FakeAccount, FakeWorld } from './world'
+import type { MessagePage, NetworkAttachment, OutgoingMessage, SessionClient } from '../types'
+import type { FakeAccount, FakeWorld, LocatedAttachment } from './world'
 
 /** Why this network will not attach, or undefined when it will. */
 function networkRefusal(config: NetworkAttachment): string | undefined {
@@ -296,12 +299,8 @@ export class FakeSessionClient implements SessionClient {
 
   getMessages(
     id: ConversationId,
-    options?: {
-      limit?: number
-      before?: { timestamp: number; id: number }
-      includeDeleted?: boolean
-    },
-  ): Promise<Message[]> {
+    options?: { limit?: number; before?: MessageCursor; includeDeleted?: boolean },
+  ): Promise<MessagePage> {
     this.assertOpen()
     // A limit is a page size, not a sentinel: there is no value meaning "all of it", because
     // history grows without bound.
@@ -324,7 +323,64 @@ export class FakeSessionClient implements SessionClient {
       : all
     const limit = options?.limit ?? 50
     // Newest-first paging, returned oldest-first so a transcript can render it directly.
-    return Promise.resolve(older.slice(Math.max(0, older.length - limit)))
+    const messages = older.slice(Math.max(0, older.length - limit))
+    return Promise.resolve({ messages: this.account.withAvailability(messages) })
+  }
+
+  downloadAttachment(messageId: number, index: number): Promise<void> {
+    this.assertOpen()
+    return this.account.downloadAttachment({ messageId, index })
+  }
+
+  exportAttachment(
+    messageId: number,
+    index: number,
+    destination: string,
+    options?: ExportAttachmentOptions,
+  ): Promise<string> {
+    this.assertOpen()
+    return this.account.exportAttachment({ messageId, index }, destination, options?.replace)
+  }
+
+  /** Fake-only: finds an attachment in memory, where paging every conversation would miss old ones. */
+  locate(ref: AttachmentRef): LocatedAttachment | undefined {
+    return this.account.locate(ref)
+  }
+
+  setAutoDownload(id: ConversationId, mode: AutoDownload): Promise<void> {
+    this.assertOpen()
+    this.account.setAutoDownload(id, mode)
+    return Promise.resolve()
+  }
+
+  getCacheDir(): Promise<string> {
+    this.assertOpen()
+    // The fake writes nothing to disk, and says so rather than naming a directory that is not
+    // there: a screen offering to reveal one has to handle the empty case anyway.
+    return Promise.resolve('')
+  }
+
+  getAttachmentCacheLimit(): Promise<number | undefined> {
+    this.assertOpen()
+    return Promise.resolve(this.account.attachmentCacheLimit())
+  }
+
+  setAttachmentCacheLimit(limitBytes?: number): Promise<void> {
+    this.assertOpen()
+    if (limitBytes !== undefined && limitBytes < 0) {
+      return Promise.reject(
+        new SessionClientError('setAttachmentCacheLimit.limitBytes must not be negative'),
+      )
+    }
+    // Remembered but not enforced: the fake caches in memory and never evicts, so a limit has
+    // nothing to bound. It is kept so a screen that reads one back sees what it wrote.
+    this.account.setAttachmentCacheLimit(limitBytes)
+    return Promise.resolve()
+  }
+
+  getAttachmentCacheSize(): Promise<number> {
+    this.assertOpen()
+    return Promise.resolve(this.account.attachmentCacheSize())
   }
 
   sendMessage(id: ConversationId, message: OutgoingMessage): Promise<number> {

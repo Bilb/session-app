@@ -192,29 +192,45 @@ inline std::optional<T> optional_from_jsi(
 
 namespace margelo::nitro {
 
-/// Binary as an ArrayBuffer, which is what a Uint8Array's \`.buffer\` is on the way through.
+/// Binary as a Uint8Array in both directions, as napi.hpp carries it.
 ///
-/// Copied on the way in rather than held: Nitro's ArrayBuffer may be a view onto memory JavaScript
-/// still owns, and the shim's work happens on another thread where that is not safe to assume.
+/// Copied on the way in rather than held: the view's memory is JavaScript's, and the shim's work
+/// happens on another thread where that is not safe to assume.
 template <>
 struct JSIConverter<std::vector<std::byte>> final {
     static inline std::vector<std::byte> fromJSI(
             facebook::jsi::Runtime& runtime, const facebook::jsi::Value& value) {
-        auto buffer = JSIConverter<std::shared_ptr<ArrayBuffer>>::fromJSI(runtime, value);
-        const auto* first = reinterpret_cast<const std::byte*>(buffer->data());
-        return {first, first + buffer->size()};
+        if (!canConvert(runtime, value))
+            throw std::invalid_argument("expected a Uint8Array");
+        auto view = value.getObject(runtime);
+        auto buffer = view.getProperty(runtime, PropNameIDCache::get(runtime, "buffer"))
+                              .getObject(runtime)
+                              .getArrayBuffer(runtime);
+        const auto offset = static_cast<size_t>(
+                view.getProperty(runtime, PropNameIDCache::get(runtime, "byteOffset")).asNumber());
+        const auto length = static_cast<size_t>(
+                view.getProperty(runtime, PropNameIDCache::get(runtime, "byteLength")).asNumber());
+        const auto* first = reinterpret_cast<const std::byte*>(buffer.data(runtime)) + offset;
+        return {first, first + length};
     }
 
     static inline facebook::jsi::Value toJSI(
             facebook::jsi::Runtime& runtime, const std::vector<std::byte>& value) {
         auto buffer = ArrayBuffer::allocate(value.size());
         std::memcpy(buffer->data(), value.data(), value.size());
-        return JSIConverter<std::shared_ptr<ArrayBuffer>>::toJSI(runtime, buffer);
+        return uint8_array(runtime).callAsConstructor(
+                runtime, JSIConverter<std::shared_ptr<ArrayBuffer>>::toJSI(runtime, buffer));
     }
 
     static inline bool canConvert(
             facebook::jsi::Runtime& runtime, const facebook::jsi::Value& value) {
-        return JSIConverter<std::shared_ptr<ArrayBuffer>>::canConvert(runtime, value);
+        return value.isObject() &&
+               value.getObject(runtime).instanceOf(runtime, uint8_array(runtime));
+    }
+
+  private:
+    static inline facebook::jsi::Function uint8_array(facebook::jsi::Runtime& runtime) {
+        return runtime.global().getPropertyAsFunction(runtime, "Uint8Array");
     }
 };
 

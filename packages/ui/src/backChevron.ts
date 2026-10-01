@@ -13,3 +13,12 @@ import type { IconName } from './Icon.types'
 export function backChevron(): IconName {
   return isLayoutRtl() ? 'chevronRight' : 'chevronLeft'
 }
+
+/**
+ * Which way a control pointing onward points: into the row, the sheet or the next step.
+ *
+ * Toward the trailing edge, so it mirrors with the layout the way `backChevron` does.
+ */
+export function forwardChevron(): IconName {
+  return isLayoutRtl() ? 'chevronLeft' : 'chevronRight'
+}

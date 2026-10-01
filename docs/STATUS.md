@@ -13,7 +13,19 @@ a time, via the `port-feature` skill.
 
 - **Push.** `setPushToken` and `handlePushPayload` are in the protocol and the shim answers both
   with an error naming itself.
-- **Attachments**, in any form - nothing about them is in the protocol. See the decision log.
+- **Sending an attachment.** Receiving one works: metadata, a download with progress, exporting to
+  a chosen path, and the per-conversation auto-download setting. `sendMessage` still takes a body
+  and nothing else, so `SendState::uploading` is a state nothing here can reach.
+- **Showing an attachment on mobile.** Desktop draws pictures inline over the `session-media`
+  scheme; React Native needs a native image loader per platform - an `RCTImageURLLoader` on iOS, a
+  Fresco fetcher on Android - and neither is written, so `MediaPort.urlFor` returns null there and
+  the file form is what mobile shows.
+- **The media viewer is one picture at a time.** It pages through a message's pictures and
+  nothing more: no zoom, no video playback, no swipe to dismiss, no filmstrip.
+- **Returning to a conversation starts at the newest page.** A window is dropped when its screen
+  stops showing it, so paging depth and scroll position go with it. Keeping both, so that coming
+  back puts you where you were, is its own piece of work; keeping every window loaded for the
+  session is not the way to do it.
 - **Anything a message can be beyond text**: no reactions, replies, edits, deletes or read
   receipts.
 - **A devnet cannot have its own Pro backend.** The key libsession verifies proofs against is a
@@ -45,9 +57,15 @@ a time, via the `port-feature` skill.
   can be designed: a supported one-shot poll entry point; decrypting a push envelope without
   opening the database, for the notification service extension; and whether an extension and the
   app can hold the same database at once.
-- **Attachments.** The cache files libsession writes are encrypted, so displaying one needs a
-  decrypting path - a custom protocol on desktop, something equivalent on mobile - rather than
-  bytes over the bridge. Whatever comes back should be designed with the screens that use it.
+- **Thumbnails.** A transcript fetches whole attachments to draw them, which is what libsession
+  offers today. They should be generated locally from whatever can produce one rather than fetched
+  as a second file from the server, and that needs an image decoder wherever it happens.
+- **Attachment strings have no catalogue key.** The cache section's heading and labels, a set's
+  count, the gallery/list toggle, Export with its two states, and the viewer's Previous have
+  nothing in the Crowdin set that fits, so they sit in `packages/screens/src/pendingCopy.ts` and
+  ship as English in every locale - the count with English plurals. Each is named for the token it
+  is destined for; `copy.contract.test.ts` pins the list so another cannot join quietly. They want
+  a pull request against session-localization and a submodule bump.
 - **`device::Type` for the new clients.** Device records are user-visible on linked devices, so
   this is an upstream conversation.
 - **The desktop app's name is a placeholder.** `app.setName('session-app')` deliberately avoids
@@ -76,3 +94,6 @@ a time, via the `port-feature` skill.
   answer. Nothing waits for the router, because `networkAttached` goes true when the bridge
   attaches rather than when the router is ready - an indicator built on it would say "connected"
   through the whole window where sending does not work.
+- **Nothing measures a transcript under movement.** No performance or regression test covers
+  navigating between conversations, scrolling a window that loads pages above and below, or
+  messages arriving, changing and being deleted - nor that attachment state survives all of it.

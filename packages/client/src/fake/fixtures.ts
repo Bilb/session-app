@@ -1,5 +1,3 @@
-import type { SessionClient } from '../types'
-
 import { FakeSessionClient } from './FakeSessionClient'
 import { FakeWorld, resetFakeIds, type FakeAccount } from './world'
 
@@ -9,7 +7,12 @@ import { FakeWorld, resetFakeIds, type FakeAccount } from './world'
  * A fixture is meant to look like state that was already there when the app started, so it
  * seeds quietly; the events a test cares about are the ones it causes itself.
  */
-function ensureDm(self: FakeAccount, peer: FakeAccount, world: FakeWorld, request = false): void {
+export function ensureDm(
+  self: FakeAccount,
+  peer: FakeAccount,
+  world: FakeWorld,
+  request = false,
+): void {
   if (self.get(peer.sessionId)) return
   self.upsertConversation(
     {
@@ -48,7 +51,7 @@ export type FixtureName = (typeof FIXTURE_NAMES)[number]
 
 export interface FakeSetup {
   world: FakeWorld
-  clients: Record<string, SessionClient>
+  clients: Record<string, FakeSessionClient>
 }
 
 /**

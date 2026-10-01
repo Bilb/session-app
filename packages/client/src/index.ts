@@ -2,16 +2,32 @@ export { createSessionClient } from './createSessionClient'
 export { discoverSeedNodes, seedNodesFrom } from './discoverSeedNodes'
 export type { FetchLike } from './discoverSeedNodes'
 export { createNativeBridgeTransport } from './nativeTransport'
+export {
+  ATTACHMENT_FILE_MISSING,
+  ATTACHMENT_NOT_FOUND,
+  FILE_DOWNLOAD_FAILED,
+  FILE_NOT_FOUND,
+  FILE_SAVE_FAILED,
+  FILE_UNREADABLE,
+  MESSAGE_NOT_FOUND,
+} from '@session/bridge-types'
 export type {
   AccountInfo,
+  Attachment,
+  AttachmentAvailability,
+  AttachmentRef,
+  AttachmentTransfer,
+  AutoDownload,
   Command,
   Conversation,
   ConversationId,
   ConversationKind,
   Deletion,
+  ExportAttachmentOptions,
   Frame,
   Message,
   MessageCursor,
+  PixelSize,
   Reply,
   Request,
   Response,
@@ -19,6 +35,14 @@ export type {
   SendState,
   SessionBridgeOptions,
   SessionEvent,
+  TransferProgress,
+  WithAttachmentRef,
 } from '@session/bridge-types'
 export { BridgeClosedError, SessionClientError } from './errors'
-export type { BridgeTransport, OutgoingMessage, SessionClient, Unsubscribe } from './types'
+export type {
+  BridgeTransport,
+  MessagePage,
+  OutgoingMessage,
+  SessionClient,
+  Unsubscribe,
+} from './types'

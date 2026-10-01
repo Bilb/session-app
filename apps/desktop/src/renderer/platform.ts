@@ -2,6 +2,10 @@ import { memoryPorts, setPorts } from '@session/app'
 import { parseNetworkName } from '@session/basic-types'
 import { getLocale, subscribeLocale } from '@session/localization'
 
+import { mediaUrl } from '../shared/mediaUrl'
+
+const memory = memoryPorts()
+
 /**
  * The desktop app's OS ports.
  *
@@ -12,6 +16,21 @@ import { getLocale, subscribeLocale } from '@session/localization'
  */
 setPorts(
   memoryPorts({
+    files: {
+      // Attaching is not a thing the composer can do yet, so the pickers stay the memory ones
+      // rather than becoming two dialogs nothing opens.
+      ...memory.files,
+      chooseExportLocation: (suggestedName) =>
+        window.sessionDesktop.chooseExportLocation(suggestedName),
+      revealInFolder: async (path) => {
+        await window.sessionDesktop.revealInFolder(path)
+      },
+    },
+    // The scheme the main process registered and serves from the addon - see main/media.ts.
+    media: {
+      urlFor: (ref) => mediaUrl('attachment', ref),
+      previewUrlFor: (ref) => mediaUrl('preview', ref),
+    },
     // The same variable and the same parser the main process uses, inlined at build time.
     network: {
       // The fake is one of the networks, so the same variable that chooses the transport answers
@@ -22,15 +41,14 @@ setPorts(
           : parseNetworkName(import.meta.env.EXPO_PUBLIC_SESSION_NETID),
     },
     // Substituted at build time alongside the netid, because the renderer cannot read the
-    // environment. That makes a desktop override a rebuild rather than a relaunch -- worth fixing
-    // once the preload has an IPC surface to carry it, since a flag you cannot flip on someone
+    // environment. That makes a desktop override a rebuild rather than a relaunch, which main
+    // reading it and the preload carrying it across would fix: a flag you cannot flip on someone
     // else's machine does half of what a flag is for.
     flags: {
       override: (name) => import.meta.env.EXPO_PUBLIC_SESSION_FLAGS?.[name] ?? null,
     },
     window: {
-      // One window, so closing it is quitting. `window.close()` rather than an IPC call because
-      // there is no IPC surface in the preload yet and this needs none.
+      // One window, so closing it is quitting, and `window.close()` needs no IPC call to do it.
       close: () => {
         window.close()
       },

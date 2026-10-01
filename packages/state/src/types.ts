@@ -1,9 +1,11 @@
 import type {
   AccountInfo,
+  AttachmentTransfer,
   Conversation,
   ConversationId,
   Message,
   MessageCursor,
+  TransferProgress,
 } from '@session/client'
 
 /**
@@ -21,6 +23,29 @@ export interface MessageWindow {
   /** Guards against firing a second page request while the first is still out. */
   fetching: boolean
 }
+
+/**
+ * How one attachment transfer is going, as the reports left it.
+ *
+ * Per session and never persisted, because libsession stores nothing about a transfer either:
+ * what is on this device is the attachment's `availability`, which libsession keeps current.
+ */
+export interface AttachmentTransferState extends TransferProgress {
+  state: 'running' | 'done' | 'failed'
+  /** The libsession code the failure carried, when `state` is `failed`. */
+  error?: string
+}
+
+/**
+ * Identifies a transfer among one message's, since one attachment can have a download and an
+ * export at once.
+ */
+export function transferKey(transfer: AttachmentTransfer, index: number): string {
+  return `${transfer}:${index}`
+}
+
+/** One message's live transfers, keyed by `transferKey`. */
+export type MessageTransfers = Record<string, AttachmentTransferState>
 
 export interface SessionState {
   hydrated: boolean
@@ -51,6 +76,13 @@ export interface SessionState {
   requests: Conversation[]
 
   histories: Record<ConversationId, MessageWindow>
+
+  /**
+   * Live transfers by message id, kept only for messages a loaded window holds: nothing draws a
+   * transfer for a message no screen has, and an auto-downloading conversation would otherwise
+   * grow this for the life of the session.
+   */
+  transfers: Record<number, MessageTransfers>
 }
 
 export const emptyState: SessionState = {
@@ -60,4 +92,5 @@ export const emptyState: SessionState = {
   conversations: [],
   requests: [],
   histories: {},
+  transfers: {},
 }

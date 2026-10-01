@@ -1,5 +1,8 @@
 import type {
   AccountInfo,
+  AttachmentOutcome,
+  AttachmentTransfer,
+  AutoDownload,
   Conversation,
   ConversationId,
   Deletion,
@@ -198,6 +201,50 @@ export type Command =
   | { type: 'sendMessage'; conversationId: ConversationId; body: string; replyTo?: number }
   | { type: 'retrySend'; messageId: number }
   | { type: 'deleteMessage'; messageId: number; scope: Deletion }
+  // Attachments. Nothing here carries bytes: a transfer is reported by `attachment-progress`
+  // events, and the file itself is reached by the media scheme each platform resolves natively.
+  /**
+   * Fetch an attachment into libsession's cache, reporting progress as it goes.
+   *
+   * One call covers all three cases: it answers at once when the file is already cached, joins a
+   * fetch already running - reporting from wherever that has got to - and starts one only when
+   * nothing else has. Whether the bytes are here is the attachment's `availability`, not this.
+   */
+  | { type: 'downloadAttachment'; messageId: number; index: number }
+  /**
+   * Write an attachment out to a path the person chose, fetching it first if the cache does not
+   * hold it. Reads the cache but never fills it, so this is not a way to pre-fetch.
+   */
+  | {
+      type: 'exportAttachment'
+      messageId: number
+      index: number
+      destination: string
+      notifySender: boolean
+      replace: boolean
+    }
+  /** Also records that the question was asked at all, which is why `none` is worth sending. */
+  | { type: 'setAutoDownload'; conversationId: ConversationId; mode: AutoDownload }
+  /**
+   * The directory libsession was given to cache downloads in.
+   *
+   * Asked for rather than read back from the options the app passed, because the app that passed
+   * them is not always the one that draws them: the desktop renderer is sandboxed and the path
+   * was chosen in the main process.
+   */
+  | { type: 'getCacheDir' }
+  | { type: 'getAttachmentCacheLimit' }
+  /**
+   * How much disk the cached attachments may occupy, evicted least-recently-used. Bytes on disk,
+   * which is what caching actually costs: the files are encrypted and padded, so the total is
+   * larger than the same attachments as plain files. Unset means no limit.
+   */
+  | { type: 'setAttachmentCacheLimit'; limitBytes?: number }
+  /**
+   * How much disk the cached attachments occupy now, in the limit's measure, so the two can be
+   * shown together. 0 when nothing is cached or there is no cache directory.
+   */
+  | { type: 'getAttachmentCacheSize' }
   // App preferences, stored in libsession's globals table so they sit beside the account
   // instead of in a second store the app would have to keep in step.
   | { type: 'getPref'; key: string }
@@ -244,11 +291,23 @@ export type Result =
    * newest first because that is the direction paging runs; the shim reverses. Getting this
    * wrong shows up as a conversation that reads bottom to top.
    */
+  /**
+   * A page of history.
+   *
+   * What each attachment's bytes are doing rides on the attachment itself - `availability`,
+   * `fetchDoneBytes`, `fetchTotalBytes` - rather than in a list beside the page. One writer for
+   * the first picture and for every correction after it, which is what stops a window drawing an
+   * attachment as untouched and then taking it back.
+   */
   | { type: 'messageList'; messages: Message[] }
   | { type: 'messageId'; messageId: number }
   | { type: 'hex'; hex: string }
   | { type: 'pref'; value?: string }
   | { type: 'bool'; value: boolean }
+  /** Where an export landed, which is not always where it was asked to go: a collision becomes `name (1)`. */
+  | { type: 'path'; path: string }
+  /** Unset only in answer to `getAttachmentCacheLimit`, where it means no limit. */
+  | { type: 'byteCount'; bytes?: number }
 
 export interface Response {
   id: number
@@ -258,6 +317,11 @@ export interface Response {
    * instead of `result`, never beside it.
    */
   error?: string
+  /**
+   * libsession's dotted code for `error` (`file.not_found`), where libsession gave one. What a
+   * caller matches on; `error` is for people. Absent for a refusal the shim makes itself.
+   */
+  code?: string
   result?: Result
 }
 
@@ -271,6 +335,9 @@ export interface Response {
  *
  * The shim emits these and the app reads them, with nothing in between rewriting an arm - which
  * is why there is one type rather than a wire one and an app one.
+ *
+ * `attachment-progress` is the one arm that is not whole state, because a transfer has none to
+ * carry: libsession stores nothing about one in flight, and the report is the only record there is.
  */
 export type SessionEvent =
   | { type: 'conversation-added'; conversation: Conversation }
@@ -278,9 +345,49 @@ export type SessionEvent =
   | { type: 'conversation-removed'; conversationId: ConversationId }
   | { type: 'conversation-list-replaced'; conversations: Conversation[] }
   | { type: 'request-list-replaced'; conversations: Conversation[] }
-  | { type: 'message-added'; conversationId: ConversationId; message: Message }
-  | { type: 'message-updated'; conversationId: ConversationId; message: Message }
+  /**
+   * Messages arrived or changed, oldest first.
+   *
+   * A batch, and **it may span conversations**: one cause routinely reaches several, because a
+   * file is one file and fetching or evicting it changes every message showing it, wherever
+   * those are. Each `Message` carries its own `conversationId` for that reason.
+   *
+   * Reported for every message in every conversation rather than whichever one is on screen -
+   * there is no notion here of what the app is showing, so deciding what to redraw is the app's.
+   * A message can also arrive here because something it *quotes* changed.
+   */
+  | { type: 'messages-added'; messages: Message[] }
+  | { type: 'messages-updated'; messages: Message[] }
   | { type: 'history-replaced'; conversationId: ConversationId }
+  /**
+   * One report about one attachment transfer, whether a command asked for it or libsession
+   * started it on its own.
+   *
+   * The first report of a transfer is `{doneBytes: 0, totalBytes: 0}` and means it started -
+   * `totalBytes` stays 0 until the server says how big the file is. `outcome` absent means still
+   * going, and exactly one report per handler carries one: `doneBytes === totalBytes` does not
+   * mean finished, because the bytes still have to verify.
+   *
+   * A download joined by a second request, or by an auto-download, has a handler for each: the
+   * joiner first gets one report of where it has got to, and every report after that, the end
+   * included, arrives once per handler - identical frames under one key.
+   *
+   * Reports for one (transfer, messageId, index) are ordered; different ones interleave, and each
+   * is rate limited to roughly one per 100ms. A transfer served from the cache reports nothing at
+   * all, so an indicator must be driven by time rather than by these arriving.
+   *
+   * Both count *encrypted* bytes - what is actually being moved - and so do not agree with
+   * `Attachment.sizeBytes`, which is the plaintext length.
+   */
+  | {
+      type: 'attachment-progress'
+      transfer: AttachmentTransfer
+      messageId: number
+      index: number
+      doneBytes: number
+      totalBytes: number
+      outcome?: AttachmentOutcome
+    }
   /**
    * libsession's own log lines, forwarded when the bridge was opened with a log level. Worth
    * having because the state machine reports what happened and never why.

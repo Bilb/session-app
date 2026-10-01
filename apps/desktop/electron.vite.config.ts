@@ -79,6 +79,7 @@ const workspacePackages = [
   '@session/app',
   '@session/basic-types',
   '@session/bridge-node',
+  '@session/bridge-types',
   '@session/client',
   '@session/localization',
   '@session/state',
@@ -149,6 +150,8 @@ export default defineConfig({
     build: {
       outDir: `${appDir}out/renderer`,
       emptyOutDir: true,
+      // The CSP's img-src has no data:, so an asset inlined as one would not draw.
+      assetsInlineLimit: 0,
       rollupOptions: { input: 'src/renderer/index.html' },
     },
     resolve: {

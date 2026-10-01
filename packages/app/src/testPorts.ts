@@ -28,10 +28,12 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
     files: {
       pickFiles: () => Promise.resolve([]),
       pickImages: () => Promise.resolve([]),
-      chooseSaveLocation: () => Promise.resolve(null),
+      chooseExportLocation: () => Promise.resolve(null),
       openPath: () => Promise.resolve(),
       revealInFolder: () => Promise.resolve(),
     },
+    // No resolver in a test process, so callers draw the file form rather than a broken picture.
+    media: { urlFor: () => null, previewUrlFor: () => null },
     mediaProbe: {
       imageSize: () => Promise.resolve(null),
     },

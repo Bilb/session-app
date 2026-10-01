@@ -2,12 +2,14 @@
 
 #include <oxenc/hex.h>
 #include <session/client/conversation_id.hpp>
+#include <session/image/thumbhash.hpp>
 
 #include <algorithm>
 #include <chrono>
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace session_bridge {
 
@@ -58,7 +60,53 @@ namespace {
         return Deletion::here;
     }
 
+    AutoDownload auto_download(client::AutoDownload a) {
+        switch (a) {
+            case client::AutoDownload::none: return AutoDownload::none;
+            case client::AutoDownload::image_attachments: return AutoDownload::image_attachments;
+            case client::AutoDownload::all: return AutoDownload::all;
+        }
+        return AutoDownload::none;
+    }
+
+    AttachmentAvailability availability(client::AttachmentAvailability a) {
+        switch (a) {
+            case client::AttachmentAvailability::cached: return AttachmentAvailability::cached;
+            case client::AttachmentAvailability::fetching: return AttachmentAvailability::fetching;
+            case client::AttachmentAvailability::absent: return AttachmentAvailability::absent;
+            case client::AttachmentAvailability::not_found: return AttachmentAvailability::not_found;
+            case client::AttachmentAvailability::unreadable:
+                return AttachmentAvailability::unreadable;
+        }
+        return AttachmentAvailability::absent;
+    }
+
+
 }  // namespace
+
+bool previewable(const ::session::client::Attachment& a) {
+    if (!a.thumbhash || !image::thumbhash::valid(*a.thumbhash))
+        return false;
+    // Missing dimensions fall back to square; present but implausible ones are refused.
+    return !(a.width && a.height) || (plausible_side(*a.width) && plausible_side(*a.height));
+}
+
+Attachment to_bridge(::session::client::Attachment&& from) {
+    return Attachment(
+            static_cast<double>(from.index),
+            std::move(from.content_type),
+            std::move(from.filename),
+            number(from.size),
+            from.voice_message,
+            number(from.width),
+            number(from.height),
+            previewable(from),
+            from.uploaded,
+            availability(from.availability),
+            static_cast<double>(from.fetch_done),
+            static_cast<double>(from.fetch_total),
+            from.saved_at ? std::optional<double>{epoch_ms(*from.saved_at)} : std::nullopt);
+}
 
 Message to_bridge(::session::client::Message&& from) {
     std::optional<Reply> reply;
@@ -80,6 +128,11 @@ Message to_bridge(::session::client::Message&& from) {
     if (from.deleted)
         deleted = deletion(*from.deleted);
 
+    std::vector<Attachment> attachments;
+    attachments.reserve(from.attachments.size());
+    for (auto& a : from.attachments)
+        attachments.push_back(to_bridge(std::move(a)));
+
     return Message(
             static_cast<double>(from.id),
             from.conversation.to_string(),
@@ -95,8 +148,18 @@ Message to_bridge(::session::client::Message&& from) {
             // a delivery to our other devices that was never attempted.
             from.sync_send_state ? std::optional<SendState>{send_state(*from.sync_send_state)}
                                  : std::nullopt,
+            std::move(attachments),
+            from.gallery_viewable,
             std::move(reply),
             deleted);
+}
+
+std::vector<Message> to_bridge(std::vector<::session::client::Message>&& from) {
+    std::vector<Message> out;
+    out.reserve(from.size());
+    for (auto& m : from)
+        out.push_back(to_bridge(std::move(m)));
+    return out;
 }
 
 Conversation to_bridge(::session::client::AnyConversation&& from) {
@@ -129,13 +192,14 @@ Conversation to_bridge(::session::client::AnyConversation&& from) {
             static_cast<double>(base.priority),
             static_cast<double>(std::max(0, base.unread)),
             base.marked_unread,
-            // libsession previews the last message as a struct now, and the protocol carries a
-            // snippet string. An unset preview means the conversation has nothing to show; a set
-            // one with an empty body means the message was attachments alone, which this bridge
-            // has no way to describe until attachments are in the protocol. Both are no snippet,
-            // which is what the row already renders for a conversation nobody has written in.
+            // The snippet is a message body. An unset preview and a preview whose body is empty -
+            // a message that was attachments alone - both mean no snippet, which is what the row
+            // already renders for a conversation nobody has written in. Naming the files instead
+            // needs copy, so it belongs to whoever draws the row.
             non_empty(base.last_preview ? std::move(base.last_preview->body) : std::string{}),
             mute_ms > 0 ? std::optional<double>{static_cast<double>(mute_ms)} : std::nullopt,
+            base.auto_download ? std::optional<AutoDownload>{auto_download(*base.auto_download)}
+                               : std::nullopt,
             request,
             awaiting_approval,
             note_to_self,

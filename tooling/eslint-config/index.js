@@ -2,6 +2,7 @@ import js from '@eslint/js'
 import importX from 'eslint-plugin-import-x'
 import tseslint from 'typescript-eslint'
 
+import { caseCollision } from './caseCollision.js'
 import {
   desktopMainZone,
   desktopRendererZone,
@@ -65,6 +66,19 @@ const SCALED_PROPS = [
   'fontSize',
 ].join('|')
 
+/**
+ * A function named like a component, and a named function inside it that renders.
+ *
+ * A callback handed straight to a call or a prop (`items.map((x) => <X />)`, `renderItem={...}`,
+ * a render-prop child) has no name to be reused under, so it does not count.
+ */
+const COMPONENT =
+  ':matches(FunctionDeclaration[id.name=/^[A-Z]/], FunctionExpression[id.name=/^[A-Z]/], ' +
+  'VariableDeclarator[id.name=/^[A-Z]/] > :matches(ArrowFunctionExpression, FunctionExpression))'
+const NESTED_RENDER =
+  ':matches(FunctionDeclaration, VariableDeclarator > :matches(ArrowFunctionExpression, ' +
+  'FunctionExpression)):has(JSXElement, JSXFragment)'
+
 const RESTRICTED_SYNTAX = [
   {
     selector: 'TSImportType',
@@ -82,6 +96,13 @@ const RESTRICTED_SYNTAX = [
       'Name a token here ("$md", "$none") rather than a number, so the scale stays the ' +
       'single place a value changes. If the number is deliberately off-scale -- a measured ' +
       'client value -- give it a named constant and disable this rule with the reason.',
+  },
+  {
+    selector: `${COMPONENT} ${NESTED_RENDER}`,
+    message:
+      'A component or render function defined inside a component is rebuilt on every ' +
+      'render: drawn as <Inner /> React remounts it, and either way it cannot be memoised. ' +
+      'Move it to module scope and pass what it reads as props.',
   },
   {
     selector: 'Property[key.name=/^' + SCALED_PROPS + '$/] > Literal[raw=/^[0-9]+(\\.[0-9]+)?$/]',
@@ -130,7 +151,7 @@ export function baseConfig({ tsconfigRootDir, zone }) {
       languageOptions: {
         parserOptions: { projectService: true, tsconfigRootDir },
       },
-      plugins: { 'import-x': importX },
+      plugins: { 'import-x': importX, session: { rules: { 'case-collision': caseCollision } } },
       settings: {
         'import-x/resolver': { typescript: { alwaysTryTypes: true } },
       },
@@ -160,6 +181,7 @@ export function baseConfig({ tsconfigRootDir, zone }) {
         'import-x/no-duplicates': 'error',
         // TypeScript resolves without extensions; ".js" is not this repo's convention.
         'import-x/extensions': ['error', 'never', { json: 'always' }],
+        'session/case-collision': 'error',
 
         'no-restricted-syntax': ['error', ...RESTRICTED_SYNTAX],
       },

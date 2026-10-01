@@ -7,6 +7,8 @@ import { _electron, type ElectronApplication, type Page } from '@playwright/test
 import type { ElementId } from '@session/test-ids'
 
 import type { ISessionApp } from './ISessionApp'
+import type { IFileChooser } from './FileChooser'
+import type { ILayoutProbe } from './LayoutProbe'
 import type { IPerformanceProbe } from './PerformanceProbe'
 
 /**
@@ -22,6 +24,23 @@ interface LongTask {
   duration: number
 }
 
+/** What `imageLoaded`'s page-side body touches, and nothing more. */
+interface MediaElement {
+  getAttribute: (name: string) => string | null
+  style?: { backgroundImage?: string }
+  querySelector: (selector: string) => { style?: { backgroundImage?: string } } | null
+}
+
+interface MediaGlobals {
+  Image: new () => {
+    naturalWidth: number
+    src: string
+    onload: (() => void) | null
+    onerror: (() => void) | null
+  }
+  setTimeout: (callback: () => void, ms: number) => unknown
+}
+
 interface PageGlobals {
   __longTasks?: LongTask[]
   PerformanceObserver: new (
@@ -29,6 +48,11 @@ interface PageGlobals {
   ) => { observe: (options: { type: string; buffered: boolean }) => void }
   requestAnimationFrame: (callback: () => void) => number
   performance: { now: () => number }
+}
+
+/** What the layout probe's page-side bodies touch. */
+interface DocumentGlobals {
+  document: { documentElement: { dir: string; clientWidth: number } }
 }
 
 const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
@@ -40,7 +64,7 @@ const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
  * writes is the same string the component was given. There is no per-platform locator table
  * here, and there should not need to be one.
  */
-export class DesktopApp implements ISessionApp, IPerformanceProbe {
+export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser, ILayoutProbe {
   readonly platform = 'desktop' as const
 
   private constructor(
@@ -50,7 +74,11 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe {
     private readonly dataDir: string,
   ) {}
 
-  static async launch(identity: string): Promise<DesktopApp> {
+  /** `env` is merged over the variables every launch sets, so a spec can override them. */
+  static async launch(
+    identity: string,
+    options: { env?: Record<string, string> | undefined } = {},
+  ): Promise<DesktopApp> {
     // Its own data directory, thrown away afterwards: two clients in one run must never
     // share libsession's database, and a leftover one would make the next run start with
     // yesterday's conversations.
@@ -71,6 +99,7 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe {
         EXPO_PUBLIC_SESSION_FAKE: '1',
         SESSION_IDENTITY: identity,
         SESSION_DATA_DIR: dataDir,
+        ...options.env,
       },
     })
 
@@ -109,8 +138,121 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe {
     return this.locator(id).allTextContents()
   }
 
+  async count(id: ElementId): Promise<number> {
+    return this.locator(id).count()
+  }
+
+  async imageLoaded(id: ElementId, options?: { timeoutMs?: number }): Promise<boolean> {
+    const element = this.locator(id).first()
+    // No element is an answer, not an error: the id is on the picture, not the tile, so a tile
+    // never given a url has nothing carrying it - and "is the picture here" is false exactly then.
+    try {
+      await element.waitFor({ state: 'attached', timeout: options?.timeoutMs ?? 10_000 })
+    } catch {
+      return false
+    }
+
+    // react-native-web draws an Image as a div with a background-image rather than an <img>, so
+    // there is no naturalWidth to read. Loading the same URL again answers the question and is
+    // free: whatever the element fetched is in the renderer's cache by then.
+    return element.evaluate(
+      (node: unknown, timeoutMs: number) =>
+        new Promise<boolean>((resolve) => {
+          const el = node as MediaElement
+          const g = globalThis as unknown as MediaGlobals
+          const own = el.style?.backgroundImage ?? ''
+          const nested = el.querySelector('div')?.style?.backgroundImage ?? ''
+          const source =
+            el.getAttribute('src') ?? /url\("?([^")]+)"?\)/.exec(own || nested)?.[1] ?? null
+          if (source === null) {
+            resolve(false)
+            return
+          }
+          const probe = new g.Image()
+          probe.onload = () => resolve(probe.naturalWidth > 0)
+          probe.onerror = () => resolve(false)
+          probe.src = source
+          g.setTimeout(() => resolve(false), timeoutMs)
+        }),
+      options?.timeoutMs ?? 10_000,
+    )
+  }
+
   async screenshot(name: string): Promise<void> {
-    await this.page.screenshot({ path: join(repoRoot, 'test-results', `${name}.png`) })
+    // Animations frozen at their end state, so an artifact taken the moment a surface opens is
+    // the surface rather than a frame of it fading in - which is a picture that reads as a bug.
+    await this.page.screenshot({
+      path: join(repoRoot, 'test-results', `${name}.png`),
+      animations: 'disabled',
+    })
+  }
+
+  // -- IFileChooser -----------------------------------------------------------------------
+
+  // Each arms one answer. A dialog nothing armed rejects rather than opening, so a spec that
+  // exports twice after arming once fails there instead of reusing the answer.
+  async answerSaveDialogWith(path: string): Promise<void> {
+    await this.app.evaluate(({ dialog }, chosen) => {
+      dialog.showSaveDialog = () => {
+        dialog.showSaveDialog = () => Promise.reject(new Error('A save dialog nothing answered'))
+        return Promise.resolve({ canceled: false, filePath: chosen })
+      }
+    }, path)
+  }
+
+  async cancelNextSaveDialog(): Promise<void> {
+    await this.app.evaluate(({ dialog }) => {
+      dialog.showSaveDialog = () => {
+        dialog.showSaveDialog = () => Promise.reject(new Error('A save dialog nothing answered'))
+        return Promise.resolve({ canceled: true, filePath: '' })
+      }
+    })
+  }
+
+  async recordReveals(): Promise<void> {
+    await this.app.evaluate(({ shell }) => {
+      // Kept on the main process because a later evaluate can read it back there. Replacing the
+      // call also stops a file manager window opening on whoever is running the suite.
+      const global = globalThis as unknown as { sessionRevealed?: string[] }
+      global.sessionRevealed = []
+      shell.showItemInFolder = (revealed: string) => global.sessionRevealed?.push(revealed)
+    })
+  }
+
+  async revealedPaths(): Promise<string[]> {
+    const revealed = await this.app.evaluate(
+      () => (globalThis as unknown as { sessionRevealed?: string[] }).sessionRevealed ?? null,
+    )
+    // An empty answer from a recorder nobody installed would pass any "nothing was revealed" check.
+    if (revealed === null) throw new Error('revealedPaths() read before recordReveals()')
+    return revealed
+  }
+
+  // -- ILayoutProbe -----------------------------------------------------------------------
+
+  async documentDirection(): Promise<string> {
+    return this.page.evaluate(
+      () => (globalThis as unknown as DocumentGlobals).document.documentElement.dir,
+    )
+  }
+
+  async horizontalHalf(id: ElementId): Promise<'left' | 'right'> {
+    const box = await this.locator(id).first().boundingBox()
+    if (box === null) throw new Error(`${id} is not laid out`)
+    // Electron windows have no emulated viewport, so page.viewportSize() is null here.
+    const width = await this.page.evaluate(
+      () => (globalThis as unknown as DocumentGlobals).document.documentElement.clientWidth,
+    )
+    return box.x + box.width / 2 > width / 2 ? 'right' : 'left'
+  }
+
+  async isLeftOf(first: ElementId, second: ElementId): Promise<boolean> {
+    const [a, b] = await Promise.all([
+      this.locator(first).first().boundingBox(),
+      this.locator(second).first().boundingBox(),
+    ])
+    if (a === null || b === null) throw new Error(`${first} or ${second} is not laid out`)
+    return a.x + a.width / 2 < b.x + b.width / 2
   }
 
   // -- IPerformanceProbe ------------------------------------------------------------------

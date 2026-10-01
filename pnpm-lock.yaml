@@ -405,6 +405,9 @@ importers:
       '@session/basic-types':
         specifier: workspace:*
         version: link:../basic-types
+      '@session/client':
+        specifier: workspace:*
+        version: link:../client
     devDependencies:
       '@session/eslint-config':
         specifier: workspace:*
@@ -732,6 +735,12 @@ importers:
 
   packages/ui:
     dependencies:
+      '@session/basic-types':
+        specifier: workspace:*
+        version: link:../basic-types
+      '@session/test-ids':
+        specifier: workspace:*
+        version: link:../test-ids
       '@session/theme-tokens':
         specifier: workspace:*
         version: link:../theme-tokens
@@ -876,6 +885,9 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 10.9.1(jiti@2.7.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.0(@types/node@26.4.1)(vite@8.2.2(@types/node@26.4.1)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.0))
 
   tooling/turbo-guard:
     dependencies:
@@ -8432,7 +8444,9 @@ snapshots:
       metro-runtime: 0.84.6
     transitivePeerDependencies:
       - '@babel/core'
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@react-native/metro-config@0.87.1(@babel/core@7.29.7)':
     dependencies:

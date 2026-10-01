@@ -11,9 +11,11 @@
 
 import type {
   AccountInfo,
+  AutoDownload,
   Conversation,
   ConversationId,
   Deletion,
+  ExportAttachmentOptions,
   FileServerConfig,
   Frame,
   Message,
@@ -35,6 +37,8 @@ export interface NetworkAttachment {
   /** Defaults to session-router on mainnet and testnet, onion requests on devnet. */
   router?: RouterKind
 }
+
+export type MessagePage = { messages: Message[] }
 
 export interface OutgoingMessage {
   body: string
@@ -107,10 +111,17 @@ export interface SessionClient {
   approveConversation(id: ConversationId): Promise<void>
   deleteConversation(id: ConversationId, keepMessages?: boolean): Promise<void>
 
+  /**
+   * A page of history, oldest first.
+   *
+   * What each attachment's bytes are doing rides on the attachment - `availability`,
+   * `fetchDoneBytes`, `fetchTotalBytes` - so a window built from this page is already correct
+   * rather than drawing every attachment as untouched and then taking it back.
+   */
   getMessages(
     id: ConversationId,
     options?: { limit?: number; before?: MessageCursor; includeDeleted?: boolean },
-  ): Promise<Message[]>
+  ): Promise<MessagePage>
   /**
    * Resolves as soon as libsession has stored the row, which is before it is sent. The states
    * that follow arrive as message-updated.
@@ -119,6 +130,36 @@ export interface SessionClient {
   /** Resumes a send that failed, and answers whether there was anything left to resume. */
   retrySend(messageId: number): Promise<boolean>
   deleteMessage(messageId: number, scope: Deletion): Promise<void>
+
+  /**
+   * Fetch an attachment into libsession's cache, reporting progress as `attachment-progress`
+   * events. A cached file resolves at once and reports nothing, and a fetch already running is
+   * joined rather than duplicated. Whether the bytes are here is the attachment's `availability`.
+   */
+  downloadAttachment(messageId: number, index: number): Promise<void>
+  /**
+   * Writes an attachment out to a path the person chose, and resolves with where the file actually
+   * landed: a name collision becomes `name (1)`.
+   */
+  exportAttachment(
+    messageId: number,
+    index: number,
+    destination: string,
+    options?: ExportAttachmentOptions,
+  ): Promise<string>
+  /** Also records that the question was asked, which is why `none` is worth sending. */
+  setAutoDownload(id: ConversationId, mode: AutoDownload): Promise<void>
+  /** Where libsession caches downloads. Empty when the bridge was opened without one. */
+  getCacheDir(): Promise<string>
+  /**
+   * How much disk the cached attachments may occupy, evicted least-recently-used. Bytes on disk,
+   * which is more than the files are: they are encrypted and padded. Undefined means no limit,
+   * which is also the default - turning caching on without a bound is how a cache eats a disk.
+   */
+  getAttachmentCacheLimit(): Promise<number | undefined>
+  setAttachmentCacheLimit(limitBytes?: number): Promise<void>
+  /** How much disk the cached attachments occupy now, measured as the limit is. */
+  getAttachmentCacheSize(): Promise<number>
 
   getPref(key: string): Promise<string | undefined>
   setPref(key: string, value: string): Promise<void>

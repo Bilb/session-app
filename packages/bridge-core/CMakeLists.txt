@@ -97,13 +97,19 @@ endfunction()
 # tooling/bridge-codegen and committed, so this target needs nothing but a compiler.
 add_library(session-bridge-core STATIC
     src/client_bridge.cpp
-    src/convert.cpp)
+    src/convert.cpp
+    src/mark_downloaded.cpp)
 
 target_include_directories(session-bridge-core
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 target_link_libraries(session-bridge-core PUBLIC libsession::client)
+
+# What `mark_downloaded` sets the quarantine property through. macOS only: iOS has no Gatekeeper.
+if(APPLE AND NOT CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    target_link_libraries(session-bridge-core PRIVATE "-framework CoreFoundation" "-framework CoreServices")
+endif()
 
 set_property(TARGET session-bridge-core PROPERTY POSITION_INDEPENDENT_CODE ON)
 

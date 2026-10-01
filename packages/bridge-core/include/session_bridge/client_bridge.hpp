@@ -120,6 +120,34 @@ struct InitOptions {
 /// receipt and every other call in flight; a sink that throws loses the frame.
 using Sink = std::function<void(Frame)>;
 
+/// The answer to one media request: the bytes, or why there are none.
+///
+/// `error` and `bytes` are exclusive - a failure carries no content type either, since what the
+/// sender claimed describes a file that never arrived.
+struct Media {
+    std::optional<std::string> error;
+    std::string content_type;
+    std::vector<std::byte> bytes;
+};
+
+using MediaHandler = std::function<void(Media)>;
+
+/// The answer to one preview request: a decoded ThumbHash, or why there is none.
+///
+/// Raw pixels rather than an encoded image, because nothing here is the right place to pick a
+/// format: the only consumer is whatever serves the media scheme on this platform, and it hands
+/// them to that platform's own image pipeline.
+///
+/// RGBA8, row-major, not alpha-premultiplied, and `width * height * 4` long.
+struct Preview {
+    std::optional<std::string> error;
+    double width = 0;
+    double height = 0;
+    std::vector<std::byte> rgba;
+};
+
+using PreviewHandler = std::function<void(Preview)>;
+
 /// One libsession Client behind one ordered frame stream.
 ///
 /// Deliberately sets **no libsession dispatcher**. `callbacks.hpp` prescribes handlers that move
@@ -149,6 +177,37 @@ class ClientBridge {
     /// comes back as a Response with `error` set. Throwing here would surface on whichever thread
     /// the adapter happens to call from, where nothing knows which request it belonged to.
     void call(Request request);
+
+    /// An attachment's bytes, decrypted, for something that draws them.
+    ///
+    /// **Deliberately not a command.** The frame stream carries state, and its ordering is what
+    /// makes a display bindable - putting a file on it would stall every state frame behind a
+    /// payload that no event can contradict anyway. So this answers its own caller, and what
+    /// reaches a renderer is a URL its platform resolves natively rather than a frame.
+    ///
+    /// Progress still goes to the sink, as `attachment-progress` with `transfer: "download"`, so
+    /// a picture loading draws the same bar as a tap does and a row that mounts halfway through
+    /// reads the same state. A file already cached reports nothing and answers at once.
+    ///
+    /// `cb` runs on whichever thread libsession finished on, which is Core's loop. It must only
+    /// hand the bytes on, for the same reason `Sink` must only enqueue.
+    ///
+    /// A native image loader calling this or `fetch_preview` is invoked by the OS with no bridge
+    /// in hand, and must obtain one in a way that cannot race `close()`.
+    void fetch_media(double message_id, double index, MediaHandler cb);
+
+    /// A blurred stand-in for an attachment, decoded from the ThumbHash its sender supplied.
+    ///
+    /// Answers its own caller for the same reason `fetch_media` does, and is resolved through the
+    /// same scheme: a placeholder is an image, and an image the renderer gets as a URL rather than
+    /// as a frame.
+    ///
+    /// Holds nothing between calls. The hash is 25 bytes in libsession's own row, so this reads
+    /// it and decodes it each time rather than keeping a cache the platform already keeps: what
+    /// fetches a URL caches what came back.
+    ///
+    /// Reports no progress and touches no network: the bytes it needs arrived with the message.
+    void fetch_preview(double message_id, double index, PreviewHandler cb);
 
     /// Stops delivering frames and destroys the Client, which joins Core's loop. Idempotent, and
     /// implied by the destructor. Handlers for calls still in flight are dropped rather than

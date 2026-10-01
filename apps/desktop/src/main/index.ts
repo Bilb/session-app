@@ -12,6 +12,8 @@ import { isCrowdinLocale, setLocale } from '@session/localization'
 
 import { createBridge } from './bridge'
 import { editMenuItems } from './editMenu'
+import { serveFiles } from './files'
+import { registerMediaScheme, serveMedia, stopServingMedia } from './media'
 import {
   acceptsCopy,
   applyContentProtection,
@@ -38,6 +40,9 @@ app.setName('session-app')
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 
+// Before whenReady, which is the only point Electron accepts a privileged scheme.
+registerMediaScheme()
+
 /**
  * The bridge, which outlives any particular window.
  *
@@ -55,7 +60,12 @@ const here = fileURLToPath(new URL('.', import.meta.url))
 let bridge: Awaited<ReturnType<typeof createBridge>> | null = null
 
 async function requireBridge(): Promise<NonNullable<typeof bridge>> {
-  bridge ??= await createBridge()
+  if (bridge === null) {
+    bridge = await createBridge()
+    // With the bridge rather than with a window: `protocol.handle` installs one handler for the
+    // whole session, and the scheme has to outlive a window for the same reason the bridge does.
+    serveMedia(bridge)
+  }
   return bridge
 }
 
@@ -116,6 +126,8 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
     if (typeof url === 'string' && /^https?:\/\//i.test(url)) void shell.openExternal(url)
   })
 
+  const files = serveFiles(window, appUrl)
+
   // Rejects rather than resolving, so a refused copy is not reported to the person as done.
   ipc.handle('clipboard-write-text', async (event, text: unknown) => {
     const accepted =
@@ -162,12 +174,21 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
 
     // A frame is a plain object built by the addon; structured clone carries it to the renderer.
     open.setSink((frame) => {
+      files.observe(frame)
       port?.postMessage(frame)
     })
     port1.on('message', (event: { data: unknown }) => {
       // Renderer input: an exception escaping here is an uncaught one in the main process.
       try {
-        open.send(event.data as Request)
+        const request = event.data as Request
+        // The one command that names a filesystem path of its own choosing, and `save_attachment`
+        // has no containment of its own, so every request passes the gate on its way to the bridge.
+        const admitted = files.admit(request)
+        if (typeof admitted === 'string') {
+          port?.postMessage({ type: 'response', response: { id: request.id, error: admitted } })
+          return
+        }
+        open.send(admitted)
       } catch {
         // No id to answer on, so there is nobody to tell.
       }
@@ -216,6 +237,7 @@ app.on('window-all-closed', () => {
 
 // The bridge outlives every window, so it is closed here rather than with one of them.
 app.on('before-quit', () => {
+  stopServingMedia()
   bridge?.close()
   bridge = null
 })

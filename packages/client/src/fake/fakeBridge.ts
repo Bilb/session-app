@@ -174,14 +174,14 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     return empty
   },
 
-  getMessages: async (client, cmd) => ({
-    type: 'messageList',
-    messages: await client.getMessages(cmd.conversationId, {
+  getMessages: async (client, cmd) => {
+    const page = await client.getMessages(cmd.conversationId, {
       limit: cmd.limit,
       includeDeleted: cmd.includeDeleted,
       ...(cmd.before === undefined ? {} : { before: cmd.before }),
-    }),
-  }),
+    })
+    return { type: 'messageList', messages: page.messages }
+  },
   sendMessage: async (client, cmd) => ({
     type: 'messageId',
     messageId: await client.sendMessage(cmd.conversationId, {
@@ -197,6 +197,36 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     await client.deleteMessage(cmd.messageId, cmd.scope)
     return { type: 'bool', value: true }
   },
+
+  downloadAttachment: async (client, cmd) => {
+    await client.downloadAttachment(cmd.messageId, cmd.index)
+    return empty
+  },
+  exportAttachment: async (client, cmd) => ({
+    type: 'path',
+    path: await client.exportAttachment(cmd.messageId, cmd.index, cmd.destination, {
+      notifySender: cmd.notifySender,
+      replace: cmd.replace,
+    }),
+  }),
+  setAutoDownload: async (client, cmd) => {
+    await client.setAutoDownload(cmd.conversationId, cmd.mode)
+    return empty
+  },
+  getCacheDir: async (client) => ({ type: 'path', path: await client.getCacheDir() }),
+  getAttachmentCacheLimit: async (client) => {
+    const bytes = await client.getAttachmentCacheLimit()
+    return { type: 'byteCount', ...(bytes === undefined ? {} : { bytes }) }
+  },
+  setAttachmentCacheLimit: async (client, cmd) => {
+    await client.setAttachmentCacheLimit(cmd.limitBytes)
+    return empty
+  },
+
+  getAttachmentCacheSize: async (client) => ({
+    type: 'byteCount',
+    bytes: await client.getAttachmentCacheSize(),
+  }),
 
   getPref: async (client, cmd) => {
     const value = await client.getPref(cmd.key)

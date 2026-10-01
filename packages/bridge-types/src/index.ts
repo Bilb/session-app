@@ -9,15 +9,35 @@ export type {
   SessionBridgeOptions,
   UrlScheme,
 } from './sessionBridgeOptions'
+export {
+  ATTACHMENT_FILE_MISSING,
+  ATTACHMENT_NOT_FOUND,
+  FILE_DOWNLOAD_FAILED,
+  FILE_NOT_FOUND,
+  FILE_SAVE_FAILED,
+  FILE_UNREADABLE,
+  MESSAGE_NOT_FOUND,
+} from './domain'
 export type {
   AccountInfo,
+  Attachment,
+  AttachmentAvailability,
+  AttachmentError,
+  AttachmentOutcome,
+  AttachmentRef,
+  AttachmentTransfer,
+  AutoDownload,
   Conversation,
   ConversationId,
   ConversationKind,
   Deletion,
+  ExportAttachmentOptions,
   Message,
   MessageCursor,
+  PixelSize,
   Reply,
   SendState,
+  TransferProgress,
+  WithAttachmentRef,
 } from './domain'
 export type { Command, Frame, Request, Response, Result, SessionEvent } from './protocol'

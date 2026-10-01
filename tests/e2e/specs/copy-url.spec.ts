@@ -30,7 +30,7 @@ test('copies a URL through main, and rejects a copy main refuses', async () => {
       ELECTRON_RUN_AS_NODE: '',
       EXPO_PUBLIC_SESSION_FAKE: '1',
       SESSION_FAKE: '1',
-      SESSION_FAKE_NO_ACCOUNT: '1',
+      EXPO_PUBLIC_SESSION_NO_ACCOUNT: '1',
       SESSION_DATA_DIR: dataDir,
     },
   })

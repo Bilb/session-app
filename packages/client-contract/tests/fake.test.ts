@@ -8,14 +8,30 @@
 import {
   FakeSessionClient,
   friends,
+  friendsWithAttachments,
   newcomer as newcomerFixture,
   strangers,
   type FakeWorld,
 } from '@session/client/fake'
-import type { SessionClient } from '@session/client'
+import type { Attachment, SessionClient } from '@session/client'
 import { describe, expect, it } from 'vitest'
 
 import { runSessionClientContract, type ContractHarness } from '#src/index'
+
+const ARRIVING_IMAGE: Attachment = {
+  index: 0,
+  contentType: 'image/jpeg',
+  filename: 'arriving.jpg',
+  sizeBytes: 150_000,
+  voiceMessage: false,
+  width: 1200,
+  height: 900,
+  hasPreview: false,
+  uploaded: true,
+  availability: 'absent',
+  fetchDoneBytes: 0,
+  fetchTotalBytes: 0,
+}
 
 /** The fake's clock is manual, so settling is synchronous and cannot race. */
 function settleWith(world: FakeWorld): () => Promise<void> {
@@ -59,6 +75,29 @@ const harness: ContractHarness = {
     if (!client) throw new Error('fixture did not produce a client')
     // The fake's own phrase, which is the only one it can be asked to agree is genuine.
     return { client, phrase: await client.getSeedMnemonic() }
+  },
+
+  withAttachment(options = {}) {
+    const { world, clients } = friendsWithAttachments(['Alice', 'Bob'], {
+      sets: [options.expired === true ? 'expired' : 'pictures'],
+    })
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const conversationId = world.account('Bob').sessionId
+    const account = world.account('Alice')
+    const withOne = account.messages(conversationId).find((m) => m.attachments.length > 0)
+    if (!withOne) throw new Error('fixture did not seed an attachment')
+    return Promise.resolve({
+      client: alice,
+      conversationId,
+      messageId: withOne.id,
+      index: 0,
+      settle: settleWith(world),
+      receiveImage: () =>
+        Promise.resolve(
+          account.deliverFrom(world.account('Bob'), 'One more', world.now(), [ARRIVING_IMAGE]).id,
+        ),
+    })
   },
 
   restart(client: SessionClient) {

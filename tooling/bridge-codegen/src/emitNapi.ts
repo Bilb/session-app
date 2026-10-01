@@ -116,6 +116,7 @@ ${construct}
 
 #include <array>
 #include <cstddef>
+#include <cstring>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -171,8 +172,11 @@ struct Codec<std::string> {
 template <>
 struct Codec<std::vector<std::byte>> {
     static constexpr std::string_view name = "Uint8Array";
+    // Not a Napi::Buffer: that Node-only subclass is not what jsi.hpp hands back.
     static Napi::Value to(Napi::Env env, const std::vector<std::byte>& value) {
-        return Napi::Buffer<std::byte>::Copy(env, value.data(), value.size());
+        auto array = Napi::Uint8Array::New(env, value.size());
+        std::memcpy(array.Data(), value.data(), value.size());
+        return array;
     }
     static std::vector<std::byte> from(const Napi::Value& value, std::string_view where) {
         if (!value.IsTypedArray())
@@ -193,7 +197,9 @@ struct Codec<SecretBytes> {
     static constexpr std::string_view name = "Uint8Array";
     static Napi::Value to(Napi::Env env, const SecretBytes& value) {
         auto bytes = value.bytes();
-        return Napi::Buffer<std::byte>::Copy(env, bytes.data(), bytes.size());
+        auto array = Napi::Uint8Array::New(env, bytes.size());
+        std::memcpy(array.Data(), bytes.data(), bytes.size());
+        return array;
     }
     static SecretBytes from(const Napi::Value& value, std::string_view where) {
         return SecretBytes{Codec<std::vector<std::byte>>::from(value, where)};

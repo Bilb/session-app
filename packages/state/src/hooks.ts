@@ -1,4 +1,11 @@
-import type { AccountInfo, Conversation, ConversationId, Message } from '@session/client'
+import type {
+  AccountInfo,
+  AttachmentRef,
+  AttachmentTransfer,
+  Conversation,
+  ConversationId,
+  Message,
+} from '@session/client'
 import {
   createContext,
   createElement,
@@ -10,8 +17,9 @@ import {
 } from 'react'
 import { useStore } from 'zustand'
 
+import { selectAttachmentTransfer, selectMessage, selectMessageTransfers } from './selectors'
 import type { SessionActions, SessionStore } from './store'
-import type { MessageWindow } from './types'
+import type { AttachmentTransferState, MessageTransfers, MessageWindow } from './types'
 
 const StoreContext = createContext<SessionStore | null>(null)
 
@@ -111,6 +119,18 @@ export function useMessages(id: ConversationId | undefined): {
     if (!window.ready && !window.fetching) void store.actions.loadHistory(id)
   }, [id, window.ready, window.fetching, store])
 
+  // Dropped when this stops showing `id`, and reloaded on the way back.
+  //
+  // Keyed on the id rather than on unmounting, because on a wide layout the detail pane stays
+  // mounted and only the prop changes - there is no unmount to hang this on. Its own effect so
+  // the cleanup sees the id it was set up with rather than whatever is current.
+  useEffect(() => {
+    if (id === undefined) return undefined
+    return () => {
+      store.actions.forgetHistory(id)
+    }
+  }, [id, store])
+
   const loadOlder = useCallback(() => {
     if (id !== undefined) void store.actions.loadOlder(id)
   }, [id, store])
@@ -124,6 +144,44 @@ export function useMessages(id: ConversationId | undefined): {
     }),
     [window, loadOlder],
   )
+}
+
+/**
+ * How one attachment transfer is going, or undefined when none has been seen this session.
+ *
+ * Undefined does not mean the bytes are absent: a transfer that finished before this app was
+ * started left nothing behind, because libsession records nothing about one either. The way to
+ * find out is to ask for the file - a cached one answers at once.
+ */
+export function useAttachmentTransfer(
+  transfer: AttachmentTransfer,
+  ref: AttachmentRef,
+): AttachmentTransferState | undefined {
+  const store = useSessionStore()
+  return useStore(store, (state) => selectAttachmentTransfer(state, transfer, ref))
+}
+
+/**
+ * One message's live transfers, keyed by `transferKey`.
+ *
+ * For folding a whole message's attachments into one answer without a hook per attachment. The
+ * same object until one of this message's transfers moves, so a report for another message does
+ * not re-render this one.
+ */
+export function useMessageTransfers(messageId: number): MessageTransfers {
+  const store = useSessionStore()
+  return useStore(store, (state) => selectMessageTransfers(state, messageId))
+}
+
+/**
+ * One message of a loaded window, or undefined when no loaded window holds it.
+ *
+ * The object the last event carried, so this re-renders when that message changes and not when
+ * a neighbour does.
+ */
+export function useMessage(conversationId: ConversationId, messageId: number): Message | undefined {
+  const store = useSessionStore()
+  return useStore(store, (state) => selectMessage(state, conversationId, messageId))
 }
 
 /** Unread requests, which is not the same as the number of requests. */
