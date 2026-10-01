@@ -1,4 +1,5 @@
-import { memoryPorts, setPorts, type NotificationsPort } from '@session/app'
+import { memoryPorts, setPorts, type MediaPort, type NotificationsPort } from '@session/app'
+import { mediaUrl } from '@session/app/mediaUrl'
 import { parseNetworkName } from '@session/basic-types'
 import * as Clipboard from 'expo-clipboard'
 import * as SecureStore from 'expo-secure-store'
@@ -28,6 +29,19 @@ const PUSH_SERVICE: NotificationsPort['pushService'] = ((): NotificationsPort['p
 
 const DATABASE_KEY = 'session2.database-key'
 
+/**
+ * The scheme where a native loader resolves it - Fresco on Android - and nothing elsewhere: iOS
+ * has no loader yet, and saying so draws the file form, which works, rather than an image that
+ * never loads.
+ */
+const MEDIA: MediaPort =
+  Platform.OS === 'android'
+    ? {
+        urlFor: (ref) => mediaUrl('attachment', ref),
+        previewUrlFor: (ref) => mediaUrl('preview', ref),
+      }
+    : { urlFor: () => null, previewUrlFor: () => null }
+
 // Hex rather than base64: the keychain stores strings, and hex needs no polyfill on either
 // platform's JavaScript engine.
 function bytesToHex(bytes: Uint8Array): string {
@@ -52,10 +66,7 @@ function hexToBytes(hex: string): Uint8Array {
  * screen depends on it reaching the OS.
  */
 const ports = memoryPorts({
-  // No resolver yet: React Native's image loaders take a native plug-in per platform - an
-  // RCTImageURLLoader on iOS, a Fresco fetcher on Android - and neither is written. Saying so
-  // draws the file form, which works, rather than an image that never loads.
-  media: { urlFor: () => null, previewUrlFor: () => null },
+  media: MEDIA,
   // The same variable and the same parser store.ts gives the transport, so the overlay cannot
   // name a network libsession never attached to. EXPO_PUBLIC_ for the reason store.ts gives.
   network: {

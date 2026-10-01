@@ -14,7 +14,7 @@ import type { ConfigContext, ExpoConfig } from 'expo/config'
  * detect. `import { IOSConfig }` therefore fails at load with "does not provide an export named",
  * while the plain functions beside it import fine. Through `require` they are ordinary properties.
  */
-const { IOSConfig, withXcodeProject } = createRequire(import.meta.url)(
+const { IOSConfig, withMainApplication, withXcodeProject } = createRequire(import.meta.url)(
   '@expo/config-plugins',
 ) as typeof ConfigPlugins
 
@@ -168,6 +168,28 @@ const withPermissionStrings: ConfigPlugins.ConfigPlugin = (config) =>
   })
 
 /**
+ * Hands React Native's Fresco the configuration that draws `session-media://` on Android.
+ *
+ * The only way in: `FrescoModule` takes its configuration from `MainPackageConfig`, and the
+ * generated MainApplication builds `PackageList(this)` without one. Throws rather than skipping
+ * when the line is not there, because a template change would otherwise ship an app whose pictures
+ * never load.
+ */
+const withSessionMedia: ConfigPlugins.ConfigPlugin = (config) =>
+  withMainApplication(config, (android) => {
+    const source = android.modResults.contents
+    if (source.includes('SessionMedia.packageConfig')) return android
+    const call = 'PackageList(this)'
+    if (!source.includes(call) || android.modResults.language !== 'kt') {
+      throw new Error(`MainApplication has no ${call} to hand the media configuration to`)
+    }
+    android.modResults.contents = source
+      .replace(call, 'PackageList(this, SessionMedia.packageConfig(this))')
+      .replace(/^(package .*)$/m, '$1\n\nimport session.bridge.rn.SessionMedia')
+    return android
+  })
+
+/**
  * What a local build's bundle identifier gets on the end.
  *
  * **`-test` by default, and deliberately so.** An identifier is reserved with Apple by the first
@@ -190,75 +212,77 @@ function bundleId(config: ConfigContext['config']): string {
  * Everything static stays in the JSON, where it is easier to read.
  */
 export default ({ config }: ConfigContext): ExpoConfig =>
-  withPermissionStrings({
-    ...config,
-    name: config.name ?? 'Session',
-    slug: config.slug ?? 'session-app',
-    plugins: [
-      ...(config.plugins ?? []),
-      // The camera is the scanner behind the restore screen's QR tab.
-      [
-        'expo-camera',
-        {
-          cameraPermission: englishPermission('NSCameraUsageDescription'),
-          // The plugin adds RECORD_AUDIO to the Android manifest unless told not to, and a
-          // dangerous permission on the store listing wants a reason. The only camera here reads
-          // QR codes.
-          recordAudioAndroid: false,
-        },
+  withSessionMedia(
+    withPermissionStrings({
+      ...config,
+      name: config.name ?? 'Session',
+      slug: config.slug ?? 'session-app',
+      plugins: [
+        ...(config.plugins ?? []),
+        // The camera is the scanner behind the restore screen's QR tab.
+        [
+          'expo-camera',
+          {
+            cameraPermission: englishPermission('NSCameraUsageDescription'),
+            // The plugin adds RECORD_AUDIO to the Android manifest unless told not to, and a
+            // dangerous permission on the store listing wants a reason. The only camera here reads
+            // QR codes.
+            recordAudioAndroid: false,
+          },
+        ],
+        // Exporting a picture or a video puts it in the photo library. The plugin's own strings
+        // would replace the catalogue's, and `false` deletes the key from the plist outright.
+        // It also sets android:requestLegacyExternalStorage, which Android 10 alone reads and is
+        // what lets a photo export write to DCIM there; 11 and up ignore it.
+        [
+          'expo-media-library',
+          {
+            photosPermission: englishPermission('NSPhotoLibraryUsageDescription'),
+            savePhotosPermission: englishPermission('NSPhotoLibraryAddUsageDescription'),
+            granularPermissions: ['photo', 'video'],
+          },
+        ],
       ],
-      // Exporting a picture or a video puts it in the photo library. The plugin's own strings
-      // would replace the catalogue's, and `false` deletes the key from the plist outright.
-      // It also sets android:requestLegacyExternalStorage, which Android 10 alone reads and is
-      // what lets a photo export write to DCIM there; 11 and up ignore it.
-      [
-        'expo-media-library',
-        {
-          photosPermission: englishPermission('NSPhotoLibraryUsageDescription'),
-          savePhotosPermission: englishPermission('NSPhotoLibraryAddUsageDescription'),
-          granularPermissions: ['photo', 'video'],
+      ios: {
+        ...config.ios,
+        bundleIdentifier: bundleId(config),
+        entitlements: {
+          ...config.ios?.entitlements,
+          // **Follows the identifier, because it has to.** The access group is the app's own
+          // identifier prefixed by the team, so a `-test` build entitled to the unsuffixed group is
+          // entitled to a group it is not in -- and the keychain refuses it. That surfaces as
+          // expo-secure-store failing to store the database key, which is the app not starting
+          // rather than a warning.
+          'keychain-access-groups': [`$(AppIdentifierPrefix)${bundleId(config)}`],
         },
-      ],
-    ],
-    ios: {
-      ...config.ios,
-      bundleIdentifier: bundleId(config),
-      entitlements: {
-        ...config.ios?.entitlements,
-        // **Follows the identifier, because it has to.** The access group is the app's own
-        // identifier prefixed by the team, so a `-test` build entitled to the unsuffixed group is
-        // entitled to a group it is not in -- and the keychain refuses it. That surfaces as
-        // expo-secure-store failing to store the database key, which is the app not starting
-        // rather than a warning.
-        'keychain-access-groups': [`$(AppIdentifierPrefix)${bundleId(config)}`],
+        infoPlist: {
+          ...config.ios?.infoPlist,
+          // Every purpose string the plugins above do not write. English only here;
+          // `permissionLocales` puts each of the other languages into its own `.lproj`, keyed off
+          // this same map.
+          ...Object.fromEntries(
+            Object.keys(PERMISSION_STRINGS)
+              .filter((plistKey) => !PLUGIN_WRITTEN_KEYS.has(plistKey))
+              .map((plistKey) => [plistKey, englishPermission(plistKey)]),
+          ),
+          // The service the local-network prompt is triggered by. The client's own name, and not a
+          // service anything offers: browsing for it is what makes iOS ask, which is the whole
+          // reason it is declared. Without this array the usage description above never appears.
+          NSBonjourServices: ['_session_local_network_access_check._tcp'],
+          /**
+           * **What makes iOS offer a per-app language at all**, and what makes the `.lproj` strings
+           * above reachable: a bundle is localized for the languages it declares here.
+           *
+           * Settings shows a Preferred Language row only for a bundle declaring more than one
+           * localization. Nothing sends anybody there -- the picker owns the language -- but iOS
+           * reports whatever is chosen as the app's effective locale, which is what the picker's
+           * *Default* row follows.
+           *
+           * The catalogue's own identifiers. iOS matches them by the usual BCP-47 rules rather than
+           * exactly, so one it does not recognise costs a row in that list and nothing else.
+           */
+          CFBundleLocalizations: shippedLocales(),
+        },
       },
-      infoPlist: {
-        ...config.ios?.infoPlist,
-        // Every purpose string the plugins above do not write. English only here;
-        // `permissionLocales` puts each of the other languages into its own `.lproj`, keyed off
-        // this same map.
-        ...Object.fromEntries(
-          Object.keys(PERMISSION_STRINGS)
-            .filter((plistKey) => !PLUGIN_WRITTEN_KEYS.has(plistKey))
-            .map((plistKey) => [plistKey, englishPermission(plistKey)]),
-        ),
-        // The service the local-network prompt is triggered by. The client's own name, and not a
-        // service anything offers: browsing for it is what makes iOS ask, which is the whole
-        // reason it is declared. Without this array the usage description above never appears.
-        NSBonjourServices: ['_session_local_network_access_check._tcp'],
-        /**
-         * **What makes iOS offer a per-app language at all**, and what makes the `.lproj` strings
-         * above reachable: a bundle is localized for the languages it declares here.
-         *
-         * Settings shows a Preferred Language row only for a bundle declaring more than one
-         * localization. Nothing sends anybody there -- the picker owns the language -- but iOS
-         * reports whatever is chosen as the app's effective locale, which is what the picker's
-         * *Default* row follows.
-         *
-         * The catalogue's own identifiers. iOS matches them by the usual BCP-47 rules rather than
-         * exactly, so one it does not recognise costs a row in that list and nothing else.
-         */
-        CFBundleLocalizations: shippedLocales(),
-      },
-    },
-  })
+    }),
+  )

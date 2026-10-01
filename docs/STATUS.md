@@ -16,10 +16,9 @@ a time, via the `port-feature` skill.
 - **Sending an attachment.** Receiving one works: metadata, a download with progress, exporting to
   a chosen path, and the per-conversation auto-download setting. `sendMessage` still takes a body
   and nothing else, so `SendState::uploading` is a state nothing here can reach.
-- **Showing an attachment on mobile.** Desktop draws pictures inline over the `session-media`
-  scheme; React Native needs a native image loader per platform - an `RCTImageURLLoader` on iOS, a
-  Fresco fetcher on Android - and neither is written, so `MediaPort.urlFor` returns null there and
-  the file form is what mobile shows.
+- **Showing an attachment on iOS.** Desktop and Android draw pictures inline over the
+  `session-media` scheme. iOS needs its `RCTImageURLLoader`, which is not written, so
+  `MediaPort.urlFor` returns null there and the file form is what iOS shows.
 - **The media viewer is one picture at a time.** It pages through a message's pictures and
   nothing more: no zoom, no video playback, no swipe to dismiss, no filmstrip.
 - **Returning to a conversation starts at the newest page.** A window is dropped when its screen
