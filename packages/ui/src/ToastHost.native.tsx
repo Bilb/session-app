@@ -3,6 +3,8 @@ import { Platform } from 'react-native'
 import { FullWindowOverlay } from 'react-native-screens'
 import { YStack } from 'tamagui'
 
+import { useScreenInsets } from './screenInsets'
+import { SPACE_SCALE } from './scales'
 import { ToastCard } from './ToastCard'
 import type { ToastHostProps } from './ToastHost.types'
 import { useToastQueue } from './Toasts'
@@ -17,13 +19,14 @@ function AboveModals({ children }: { children: ReactNode }) {
 }
 
 /**
- * The newest toast, centred at the bottom of the screen.
+ * The newest toast, centred above the bottom of the screen's safe area.
  *
  * One at a time, as the platform's own toasts are: there is no room on a phone for a stack, and a
  * newer message replaces the one before it rather than pushing it up the screen.
  */
 export function ToastHost({ testID, closeTestID, closeLabel }: ToastHostProps) {
   const { toasts, dismiss } = useToastQueue()
+  const insets = useScreenInsets()
   const newest = toasts[0]
   if (newest === undefined) return null
   return (
@@ -33,7 +36,7 @@ export function ToastHost({ testID, closeTestID, closeLabel }: ToastHostProps) {
         justifyContent="flex-end"
         alignItems="center"
         paddingHorizontal="$md"
-        paddingBottom="$xl"
+        paddingBottom={insets.bottom + SPACE_SCALE.xl}
         pointerEvents="box-none"
       >
         <ToastCard
