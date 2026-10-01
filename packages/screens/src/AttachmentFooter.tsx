@@ -95,7 +95,12 @@ export function AttachmentFooter({
       testID={ELEMENT.conversation.attachmentFooter}
     >
       {view === undefined || onView === undefined ? null : (
-        <SegmentedToggle segments={VIEW_SEGMENTS} value={view} onChange={onView} />
+        <SegmentedToggle
+          segments={VIEW_SEGMENTS}
+          value={view}
+          onChange={onView}
+          testID={ELEMENT.conversation.attachmentViewToggle}
+        />
       )}
       <Text
         size="$caption"

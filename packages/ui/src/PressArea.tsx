@@ -22,13 +22,16 @@ export function PressArea({
   disabled = false,
   fill = false,
   accessibilityLabel,
+  role = 'button',
+  checked,
   testID,
   children,
 }: PressAreaProps) {
   return (
     <YStack
       {...(fill ? { flex: 1 } : {})}
-      role="button"
+      role={role}
+      {...(checked === undefined ? {} : { 'aria-checked': checked })}
       disabled={disabled}
       onPress={disabled ? undefined : onPress}
       aria-label={accessibilityLabel}

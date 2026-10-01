@@ -4,9 +4,10 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
- * A frame inside a `PressArea` that declares a `pressStyle` must pass the touch through.
+ * A frame inside a `PressArea` that declares a `pressStyle`, or names a `group` its children style
+ * the press of, must pass the touch through.
  *
- * tamagui attaches its own press handling to any view that declares one, so on native the frame
+ * tamagui attaches its own press handling to any view that declares either, so on native the frame
  * claims the touch and the `Pressable` around it never fires: the control draws and does nothing.
  * Invisible on the web, where the split does not apply. A grep rather than a render test, for the
  * reason `pressArea.contract.test.ts` gives: nothing short of a device shows the failure.
@@ -18,7 +19,7 @@ describe('a PressArea whose child styles its own press', () => {
 
   for (const file of files) {
     const source = readFileSync(join(dir, file), 'utf8')
-    if (!source.includes('<PressArea') || !/\bpressStyle[=:]/.test(source)) continue
+    if (!source.includes('<PressArea') || !/\b(pressStyle|group)[=:]/.test(source)) continue
     found.push(file)
     it(`${file} spreads PRESS_PASSTHROUGH into it`, () => {
       expect(source).toMatch(/\{\.\.\.PRESS_PASSTHROUGH\}/)

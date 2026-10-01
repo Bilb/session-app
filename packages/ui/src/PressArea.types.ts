@@ -14,6 +14,12 @@ export interface PressAreaProps {
   /** Takes an equal share of the row it is in, so a dialog's actions can share their width. */
   fill?: boolean
   accessibilityLabel?: string
+  /**
+   * `switch` for a control that flips between two values, announced with `checked` as its state.
+   * A button otherwise.
+   */
+  role?: 'button' | 'switch'
+  checked?: boolean
   testID?: string
   /**
    * The control, told whether it is currently pressed.
