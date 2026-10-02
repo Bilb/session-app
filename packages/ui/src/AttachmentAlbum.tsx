@@ -35,6 +35,8 @@ export type AttachmentAlbumProps = WithTestID & {
    * this one is about the whole message, including the attachments behind "+N".
    */
   control?: ReactNode | undefined
+  /** Already worded; what the cloud that fetches the set is announced as. */
+  fetchLabel: string
   fetchTestID: ElementId
 }
 
@@ -104,6 +106,7 @@ export function AttachmentAlbum({
   overflowLabel,
   onOpen,
   control,
+  fetchLabel,
   fetchTestID,
   testID,
 }: AttachmentAlbumProps) {
@@ -127,6 +130,7 @@ export function AttachmentAlbum({
       onPress={() => {
         onOpen(fetchAt)
       }}
+      label={fetchLabel}
       testID={fetchTestID}
     />
   ) : null

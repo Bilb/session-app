@@ -26,6 +26,7 @@ export function StateLayer({
   borderRadius,
   bleed = 0,
   atRest = false,
+  pressed = false,
 }: {
   group: GroupNames
   tone: keyof typeof TONES
@@ -34,6 +35,8 @@ export function StateLayer({
   bleed?: number | undefined
   /** Drawn at the hover strength without a pointer, for touch, where nothing hovers. */
   atRest?: boolean | undefined
+  /** Drawn at the press strength, for a control whose touch is handled above the group's view. */
+  pressed?: boolean | undefined
 }) {
   const { color, hover, press } = TONES[tone]
   return (
@@ -45,7 +48,7 @@ export function StateLayer({
       right={-bleed}
       {...(borderRadius === undefined ? {} : { borderRadius })}
       backgroundColor={color}
-      opacity={atRest ? hover : 0}
+      opacity={pressed ? press : atRest ? hover : 0}
       pointerEvents="none"
       style={FEEDBACK_TRANSITION}
       {...{

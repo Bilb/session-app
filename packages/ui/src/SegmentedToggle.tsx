@@ -35,7 +35,16 @@ export type SegmentedToggleProps<V> = {
   testID: ElementId
 }
 
-function SegmentFace({ segment, selected }: { segment: Segment<unknown>; selected: boolean }) {
+function SegmentFace({
+  segment,
+  selected,
+  pressed,
+}: {
+  segment: Segment<unknown>
+  selected: boolean
+  /** From the `PressArea` above: on native the face passes the touch through, so it cannot tell. */
+  pressed: boolean
+}) {
   return (
     <YStack
       width={SEGMENT_WIDTH}
@@ -47,10 +56,12 @@ function SegmentFace({ segment, selected }: { segment: Segment<unknown>; selecte
       group="control"
       cursor="pointer"
       backgroundColor={selected ? '$backgroundPrimary' : 'transparent'}
+      // The aria spelling reaches both the DOM and, through react-native, the native view's state.
+      aria-selected={selected}
       style={FEEDBACK_TRANSITION}
       {...PRESS_PASSTHROUGH}
     >
-      <StateLayer group="control" tone="ink" borderRadius="$sm" />
+      <StateLayer group="control" tone="ink" borderRadius="$sm" pressed={pressed} />
       <Icon name={segment.icon} size="xs" color={selected ? '$textPrimary' : '$textSecondary'} />
     </YStack>
   )
@@ -73,7 +84,7 @@ function SegmentButton<V>({
       accessibilityLabel={segment.label}
       testID={segment.testID}
     >
-      {() => <SegmentFace segment={segment} selected={selected} />}
+      {(pressed) => <SegmentFace segment={segment} selected={selected} pressed={pressed} />}
     </PressArea>
   )
 }
@@ -107,12 +118,17 @@ export function SegmentedToggle<V>({ segments, value, onChange, testID }: Segmen
         hitSlop={toggleSlop(SEGMENT_HEIGHT, SEGMENT_TARGET)}
         testID={testID}
       >
-        {() => (
+        {(pressed) => (
           <XStack {...track}>
             {segments.map((segment, at) => (
-              // The segment's own id stays on its face, so a test can still ask which is chosen.
+              // The segment's own id stays on its face, with its state, so a test can ask which
+              // is chosen. A press lights the face the tap is choosing, which is the other one.
               <YStack key={segment.testID} testID={segment.testID}>
-                <SegmentFace segment={segment} selected={at === selected} />
+                <SegmentFace
+                  segment={segment}
+                  selected={at === selected}
+                  pressed={pressed && at !== selected}
+                />
               </YStack>
             ))}
           </XStack>

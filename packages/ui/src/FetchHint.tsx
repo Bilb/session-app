@@ -18,6 +18,7 @@ export function FetchHint({
   group,
   restsOnTouch = false,
   onPress,
+  label,
   testID,
 }: Partial<WithTestID> & {
   side: number
@@ -26,9 +27,12 @@ export function FetchHint({
   restsOnTouch?: boolean | undefined
   /**
    * Makes the cloud itself take a press, where it sits over a seam between tiles that would
-   * otherwise swallow it. Hidden from assistive tech: the tiles already offer the same action.
+   * otherwise swallow it. It is then the set's named control, so a reader lands on one thing
+   * that says what it does.
    */
   onPress?: (() => void) | undefined
+  /** Already worded; what the pressable cloud is announced as. */
+  label?: string | undefined
 }) {
   const small = side < LARGE_TILE
   return (
@@ -54,7 +58,7 @@ export function FetchHint({
         backgroundColor={TILE_SCRIM}
         {...(onPress === undefined
           ? {}
-          : { onPress, cursor: 'pointer', 'aria-hidden': true, testID })}
+          : { onPress, cursor: 'pointer', role: 'button', 'aria-label': label, testID })}
       >
         <Icon name="cloudDownload" size={small ? 'xs' : 'md'} color="$textPrimary" />
       </YStack>
