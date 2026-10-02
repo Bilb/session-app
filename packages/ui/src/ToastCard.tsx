@@ -3,21 +3,21 @@ import { XStack, YStack } from 'tamagui'
 import { Icon } from './Icon'
 import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
-import { SPACE_SCALE } from './scales'
+import { RADIUS_SCALE, SIZE_SCALE, SPACE_SCALE } from './scales'
 import { Text } from './Text'
 import type { ToastCardProps } from './ToastCard.types'
 import { useTokenColor } from './useTokenColor'
 
 const WIDTH = 320
-const RADIUS = 6
+const RADIUS = RADIUS_SCALE.sm
 const STRIP = 4
 const PADDING_BLOCK = SPACE_SCALE.xl
-const GLYPH = 30
-const GLYPH_BEFORE = 19
-const GLYPH_AFTER = 15
+const GLYPH = SIZE_SCALE.xl
+const GLYPH_BEFORE = SPACE_SCALE.lg
+const GLYPH_AFTER = SPACE_SCALE.md
 /** The close cross, in from the top trailing corner, at 70% until the pointer is on it. */
 const CLOSE_INSET = SPACE_SCALE.xs
-const CLOSE_GLYPH = 14
+const CLOSE_GLYPH = SIZE_SCALE.sm
 const CLOSE_RESTING = 0.7
 
 /**
