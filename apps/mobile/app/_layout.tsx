@@ -1,4 +1,10 @@
-import { ModalHost, ToastLayer, useTextDirection } from '@session/screens'
+import {
+  ModalHost,
+  registerStoredAppearance,
+  StoredThemeProvider,
+  ToastLayer,
+  useTextDirection,
+} from '@session/screens'
 import { SessionStoreProvider, type SessionStore } from '@session/state'
 import {
   DirectionRoot,
@@ -43,6 +49,7 @@ export default function RootLayout() {
     let live = true
     void storePromise.then((created) => {
       if (!live) return
+      registerStoredAppearance(created)
       setStore(created)
       // `start`, not `hydrate`: a rejection here has no screen to land on, so the store turns it
       // into state instead. See `start` in `packages/state/src/store.ts`.
@@ -59,8 +66,9 @@ export default function RootLayout() {
     // than on one of their own.
     <KeyboardProvider>
       <SafeAreaProvider>
-        <UIProvider backdropBlur={mobileBackdropBlur} glass={mobileGlass}>
-          {store === null ? (
+        {store === null ? (
+          // Before the store there is no account to have chosen a theme, so this is the default.
+          <UIProvider backdropBlur={mobileBackdropBlur} glass={mobileGlass}>
             <YStack
               flex={1}
               alignItems="center"
@@ -69,8 +77,10 @@ export default function RootLayout() {
             >
               <Text tone="secondary">Starting…</Text>
             </YStack>
-          ) : (
-            <SessionStoreProvider store={store}>
+          </UIProvider>
+        ) : (
+          <SessionStoreProvider store={store}>
+            <StoredThemeProvider backdropBlur={mobileBackdropBlur} glass={mobileGlass}>
               <MobileNavProvider>
                 <MobileCameraProvider>
                   <DirectionRoot rtl={rtl}>
@@ -88,9 +98,9 @@ export default function RootLayout() {
                   </DirectionRoot>
                 </MobileCameraProvider>
               </MobileNavProvider>
-            </SessionStoreProvider>
-          )}
-        </UIProvider>
+            </StoredThemeProvider>
+          </SessionStoreProvider>
+        )}
       </SafeAreaProvider>
     </KeyboardProvider>
   )
