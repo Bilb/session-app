@@ -4,9 +4,14 @@
  * root.cjs resolves as the desktop bundle does: a `.native` file's own imports are checked there,
  * but no import ever lands on one, which is why root once reported every `.native` file as an
  * orphan. Here an import does land on one, so cycles are checked again on the graph Metro sees,
- * and the orphan rule catches a `.native` file that imports nothing. That is all it catches: to
- * dependency-cruiser an orphan has neither dependents nor dependencies, so a dead `.native` file
- * that imports anything is not detected by this pass, and knip ignores `.native` files too.
+ * and `native-unreachable` refuses a `.native` file the mobile bundle never reaches. Reachable
+ * means a chain of imports the cruise can see, resolved `.native` first, from one of the mobile
+ * roots: `apps/mobile/index.ts`, a route file under `apps/mobile/app/`, or the fake's dev entry
+ * under `apps/mobile/src/dev/`. A file only reached through a port set at runtime or a dynamic
+ * import gets its root added to the rule, never an exemption.
+ *
+ * What neither pass can see is a `.native` file whose plain twin is missing: Metro resolves it and
+ * root.cjs never lands on it, so turbo-guard (`lint:manifests`) refuses that one.
  *
  * Only the `.native` split is resolved. Metro would also take `.ios`, `.android` and `.web`, but no
  * pass here does, so such a file is refused until a split needs it and this config learns it.
@@ -21,10 +26,21 @@ const rule = (name) => {
   return found
 }
 
+/** Where the mobile bundle starts: the entry, the route files, and the fake's dev entry. */
+const MOBILE_ROOTS = '^apps/mobile/(index\\.ts$|app/|src/dev/)'
+
 module.exports = {
   forbidden: [
     rule('no-circular'),
-    { ...rule('no-orphans'), from: { orphan: true, path: '\\.native\\.tsx?$' } },
+    {
+      name: 'native-unreachable',
+      comment:
+        'No mobile root imports this .native file, so Metro never bundles it: it is dead code ' +
+        'root.cjs cannot see. Delete it, or add the root that loads it to MOBILE_ROOTS.',
+      severity: 'error',
+      from: { path: MOBILE_ROOTS },
+      to: { path: '\\.native\\.tsx?$', reachable: false },
+    },
   ],
   required: [
     {

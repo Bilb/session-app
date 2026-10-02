@@ -9,6 +9,7 @@ import { pushedFiles } from '#src/files'
 import { hookDrift } from '#src/hooks'
 import { importViolations, type WorkspacePackage } from '#src/manifests'
 import { check, type Task } from '#src/rules'
+import { nativeWithoutTwin } from '#src/twins'
 
 const repoRoot = join(import.meta.dirname, '../../..')
 const WORKFLOW = '.github/workflows/ci.yml'
@@ -117,6 +118,7 @@ const packages: WorkspacePackage[] = manifests.map(({ directory, manifest }) => 
 }))
 
 const imports = importViolations(packages)
+const twinless = nativeWithoutTwin(committed)
 
 const drift = hookDrift(
   workflow,
@@ -127,11 +129,16 @@ const drift = hookDrift(
 )
 
 const without = absent.length === 0 ? '' : ` (without ${absent.join(', ')})`
-if (violations.length === 0 && imports.length === 0 && drift.length === 0) {
+if (
+  violations.length === 0 &&
+  imports.length === 0 &&
+  twinless.length === 0 &&
+  drift.length === 0
+) {
   process.stdout.write(
     `turbo-guard: ${String(tasks.length)} tasks in CI's run checked against its checkout${without}, ` +
       `${String(packages.length)} manifests against their imports, ` +
-      `and the git hooks' checks against CI's steps\n`,
+      `every .native file against its twin, and the git hooks' checks against CI's steps\n`,
   )
 } else {
   for (const violation of violations)
@@ -142,6 +149,10 @@ if (violations.length === 0 && imports.length === 0 && drift.length === 0) {
         (found.rule === 'undeclared-import'
           ? 'which its package.json does not declare\n'
           : 'which its package.json lists only under devDependencies, so it is absent at runtime\n'),
+    )
+  for (const file of twinless)
+    process.stderr.write(
+      `turbo-guard: [native-without-twin] ${file} has no plain twin, so desktop cannot resolve it\n`,
     )
   for (const found of drift) process.stderr.write(`turbo-guard: [${found.rule}] ${found.detail}\n`)
   process.stderr.write(
