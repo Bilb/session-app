@@ -18,5 +18,7 @@ export const SHEET_RADIUS = RADII.xl
  */
 export const SHEET_MAX_HEIGHT = '80%'
 
-/** As wide as a dialog gets. Wider than the alert, because this holds rows rather than a sentence. */
+/**
+ * As wide as a dialog gets. Wider than the alert, because this holds rows rather than a sentence.
+ */
 export const SHEET_MAX_WIDTH = 460

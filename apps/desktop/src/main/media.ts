@@ -63,7 +63,9 @@ export function parseMediaUrl(url: string): { kind: MediaUrlKind; ref: Attachmen
   return { kind, ref: { messageId, index: at } }
 }
 
-/** Leading bytes of each format the scheme serves, as `[offset, bytes]` runs that must all match. */
+/**
+ * Leading bytes of each format the scheme serves, as `[offset, bytes]` runs that must all match.
+ */
 const SIGNATURES: readonly (readonly [contentType: string, runs: readonly [number, string][]])[] = [
   ['image/png', [[0, '\x89PNG\r\n\x1a\n']]],
   ['image/jpeg', [[0, '\xff\xd8\xff']]],

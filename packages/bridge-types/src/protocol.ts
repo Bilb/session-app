@@ -304,7 +304,10 @@ export type Result =
   | { type: 'hex'; hex: string }
   | { type: 'pref'; value?: string }
   | { type: 'bool'; value: boolean }
-  /** Where an export landed, which is not always where it was asked to go: a collision becomes `name (1)`. */
+  /**
+   * Where an export landed, which is not always where it was asked to go: a collision becomes
+   * `name (1)`.
+   */
   | { type: 'path'; path: string }
   /** Unset only in answer to `getAttachmentCacheLimit`, where it means no limit. */
   | { type: 'byteCount'; bytes?: number }

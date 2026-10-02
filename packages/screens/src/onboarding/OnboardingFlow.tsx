@@ -293,8 +293,8 @@ export function OnboardingFlow({ onRunningChange }: OnboardingFlowProps = {}) {
   /** Back from the phrase screen, which abandons whatever attempt is in flight. */
   const abandonRestore = () => {
     // The refusal described the attempt that was just abandoned. Left standing, coming back to this
-    // screen shows an error over an empty field, and switching to the QR tab shows one over a camera
-    // that has scanned nothing.
+    // screen shows an error over an empty field, and switching to the QR tab shows one over a
+    // camera that has scanned nothing.
     setRejected(false)
     // Whoever abandons the attempt clears its flag: the resolution will not, because by then it
     // belongs to an attempt nobody is waiting for.

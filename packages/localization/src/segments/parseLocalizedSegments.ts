@@ -17,9 +17,9 @@ import type { SegmentArg } from './argWrappers'
  * Splits on ALL placeholder keys at once so that string arg values containing
  * patterns like "{icon}" are never re-scanned - they land directly in a TextSegment.
  *
- * Example:
- *   parseLocalizedSegments('Tap {icon} to share', { icon: icon(LUCIDE_ICONS_UNICODE.SHARE) })
- *   => [{ type: 'text', value: 'Tap ' }, { type: 'icon', unicode: ..., rtlMirror: false }, { type: 'text', value: ' to share' }]
+ * Example: parseLocalizedSegments('Tap {icon} to share', { icon: icon(LUCIDE_ICONS_UNICODE.SHARE)
+ * }) => [{ type: 'text', value: 'Tap ' }, { type: 'icon', unicode: ..., rtlMirror: false }, { type:
+ * 'text', value: ' to share' }]
  */
 export function parseLocalizedSegments(
   rawTemplate: string,

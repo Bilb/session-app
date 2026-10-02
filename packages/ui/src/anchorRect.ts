@@ -9,8 +9,8 @@ export interface AnchorRect {
 /**
  * What the two platforms offer for measuring an element, neither of which the other has.
  *
- * Feature-detected rather than split into `.native.ts` and `.ts`, because the question is which
- * API the object in hand actually has. Tamagui renders a real DOM node on the web and a react-native
+ * Feature-detected rather than split into `.native.ts` and `.ts`, because the question is which API
+ * the object in hand actually has. Tamagui renders a real DOM node on the web and a react-native
  * host component on a device, and this is the one place that difference shows.
  */
 interface MeasurableNode {

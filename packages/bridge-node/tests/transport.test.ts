@@ -9,7 +9,8 @@ import { createNodeBridgeTransport } from '#src/index'
 
 // Enough of the addon to drive the transport without building any C++. The throws mirror the real
 // Call(): a non-object is rejected before any field is read. Written out at run time because
-// require() needs a real file and a committed .cjs is dead weight to every tool that walks the repo.
+// require() needs a real file and a committed .cjs is dead weight to every tool that walks the
+// repo.
 const stub = `
 class SessionBridge {
   constructor(options, onFrame) {

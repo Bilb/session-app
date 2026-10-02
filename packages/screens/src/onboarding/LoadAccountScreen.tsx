@@ -144,8 +144,8 @@ export function LoadAccountScreen({
             <ScanQrPane
               showing={tab === 'qr'}
               onScan={(value) => {
-                // Handed over as it was read. Whether it decodes to a seed is libsession's to say, and
-                // its refusal comes back the same way a typed phrase's does.
+                // Handed over as it was read. Whether it decodes to a seed is libsession's to say,
+                // and its refusal comes back the same way a typed phrase's does.
                 onContinue({ hexSeed: value })
               }}
               error={rejected ? tr('qrNotRecoveryPassword') : null}

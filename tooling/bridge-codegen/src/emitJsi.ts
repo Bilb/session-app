@@ -1,7 +1,9 @@
 import { BANNER, cppType, fieldType, forEachDeclaration, member, NAMESPACE } from '#src/cpp'
 import type { Field, Model, Struct } from '#src/model'
 
-/** `createFromAscii` reads bytes as code points, so a tag with anything else would come out wrong. */
+/**
+ * `createFromAscii` reads bytes as code points, so a tag with anything else would come out wrong.
+ */
 function assertAscii(text: string, where: string): void {
   // eslint-disable-next-line no-control-regex
   if (!/^[\x00-\x7f]*$/.test(text)) throw new Error(`${where}: "${text}" is not ASCII`)

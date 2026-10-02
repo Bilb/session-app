@@ -73,7 +73,9 @@ const TONE_COLOR = {
   danger: '$dangerColor',
 } as const satisfies Record<FileRowTone, string>
 
-/** Drawn inside the touch target rather than filling it, so it reads as a gauge and not a button. */
+/**
+ * Drawn inside the touch target rather than filling it, so it reads as a gauge and not a button.
+ */
 const RING_SIDE = 28
 const RING_THICKNESS = 3
 
@@ -243,7 +245,7 @@ export function FileRow({
             so a long name loses its middle instead of its extension. See `splitFilename`.
 
             The id and the label are on the pair, never on a run: split between two elements the
-            name stops being one string, and both a screen reader and a test then read half of it. */}
+            name stops being one string, and both a screen reader and a test then read half. */}
         <XStack minWidth={0} aria-label={filename} testID={testIDs?.name}>
           <Text
             size="$body"

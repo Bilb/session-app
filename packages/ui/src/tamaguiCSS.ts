@@ -44,9 +44,9 @@ const FONT_FACES = BUNDLED_FACES.map(
  *
  * The browser's default selection is a blue wash that a dark theme renders as near-invisible: on
  * the language picker's search field, selecting all of it looked exactly like selecting none of it.
- * There is no token for this because nothing else in the app needed one -- the accent at low opacity
- * is the same treatment every other selected surface gets, and it keeps the text readable rather
- * than inverting it.
+ * There is no token for this because nothing else in the app needed one -- the accent at low
+ * opacity is the same treatment every other selected surface gets, and it keeps the text readable
+ * rather than inverting it.
  */
 const SELECTION = `::selection {
   background: color-mix(in srgb, var(--primaryColor) 35%, transparent);

@@ -78,8 +78,8 @@ function failures(t: ThemeTokens): Check[] {
   if (hexToOklch(t.warningColor).c < MIN_SEMANTIC_CHROMA) out.push('warning distinct from text')
 
   // Each surface against *its own parent*, which is a tree and not a line. Secondary and tertiary
-  // are both children of the page -- a recessed panel and a selected row -- and nested is a child of
-  // secondary. Checking nested against tertiary would compare two branches rather than a step,
+  // are both children of the page -- a recessed panel and a selected row -- and nested is a child
+  // of secondary. Checking nested against tertiary would compare two branches rather than a step,
   // which reports a collapsed ladder on two thirds of light bases that are in fact fine.
   const steps: [string, string][] = [
     [t.backgroundSecondary, t.backgroundPrimary],

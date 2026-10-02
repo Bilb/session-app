@@ -52,9 +52,9 @@ function ScopeOption({
  * Both answers are recorded, `no` included: calling the setter is what marks the question as
  * asked, and a client that stored "no" as "not asked" would put this on screen for ever.
  *
- * **A dialog rather than an overlay inside the screen.** An absolutely positioned cover resolves its
- * offsets against the nearest containing block, which on the web is the page unless a stack says
- * otherwise. `Modal` puts up its own surface, with nothing to resolve against.
+ * **A dialog rather than an overlay inside the screen.** An absolutely positioned cover resolves
+ * its offsets against the nearest containing block, which on the web is the page unless a stack
+ * says otherwise. `Modal` puts up its own surface, with nothing to resolve against.
  *
  * No cross, and not dismissible by a tap outside: this asks a question, and a third unlabelled
  * answer beside Yes and No is not one of the choices. All files is preselected, because that is

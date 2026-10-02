@@ -150,8 +150,8 @@ describe('what a set of attachments is doing', () => {
   })
 
   it('leaves the total at zero when an attachment did not say how big it is', () => {
-    // The same thing an absent `sizeBytes` means. A bar drawn from it has to be indeterminate, which
-    // is also what the first report of any transfer - 0 of 0 - is saying.
+    // The same thing an absent `sizeBytes` means. A bar drawn from it has to be indeterminate,
+    // which is also what the first report of any transfer - 0 of 0 - is saying.
     const set = fold([attachment(0)], { 0: running(0, 0) })
     expect(set.state).toBe('fetching')
     expect(set.totalBytes).toBe(0)

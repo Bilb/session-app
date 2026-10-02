@@ -13,7 +13,9 @@ export function doc(lines: string[], indent = ''): string {
   return lines.map((line) => `${indent}///${line ? ' ' + line : ''}\n`).join('')
 }
 
-/** The C++ spelling of a TypeScript type reference, fully qualified so it reads the same anywhere. */
+/**
+ * The C++ spelling of a TypeScript type reference, fully qualified so it reads the same anywhere.
+ */
 export function cppType(type: TypeRef): string {
   switch (type.kind) {
     case 'string':

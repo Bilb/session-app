@@ -9,11 +9,12 @@ export type { StepTransitionProps }
 /**
  * The push and pop between onboarding steps, as the platform's own navigation stack draws them.
  *
- * **The flow's reducer is what decides the step**; this mirrors the path back from it into a
- * native stack, so the screen a swipe uncovers is the one back goes to, and a move forward is the platform's push and a move back its pop -- the same curve, the same timing,
- * interruptible, and on iOS with the interactive back swipe. A swipe that completes asks the flow
- * to go back through `onBack`, exactly as the step's own back control does, and the stack then
- * follows the flow like any other move.
+ * **The flow's reducer is what decides the step**; this mirrors the path back from it into a native
+ * stack, so the screen a swipe uncovers is the one back goes to, and a move forward is the
+ * platform's push and a move back its pop -- the same curve, the same timing, interruptible, and on
+ * iOS with the interactive back swipe. A swipe that completes asks the flow to go back through
+ * `onBack`, exactly as the step's own back control does, and the stack then follows the flow like
+ * any other move.
  *
  * Every step on the stack stays mounted beneath the one showing, as a native stack keeps them; the
  * one on top always renders `children`, and those below render what they last showed.

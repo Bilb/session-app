@@ -39,9 +39,10 @@ const SAY_SO_IN_A_DIALOG_AFTER_MS = 30_000
  * anything drawn here is drawn without knowing whether there is an account, so a list or onboarding
  * would be a decision made on missing information and corrected a frame later.
  *
- * **It says nothing for the first five seconds**, which is the iOS pattern -- `LoadingViewController`
- * shows its logo and holds everything else back behind the same two thresholds. A permanent
- * "Loading" makes every launch look slow; a logo that sits there briefly looks like starting up.
+ * **It says nothing for the first five seconds**, which is the iOS pattern --
+ * `LoadingViewController` shows its logo and holds everything else back behind the same two
+ * thresholds. A permanent "Loading" makes every launch look slow; a logo that sits there briefly
+ * looks like starting up.
  *
  * The theme here is necessarily the default rather than the person's own: a theme preference lives
  * in libsession's globals, and this screen is what is on the screen *because* libsession has not

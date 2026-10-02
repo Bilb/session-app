@@ -4,7 +4,8 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
- * Read rather than rendered, following `Icon.contract.test.ts`: this package has no DOM environment.
+ * Read rather than rendered, following `Icon.contract.test.ts`: this package has no DOM
+ * environment.
  *
  * The hazard is structural, so the source is enough to see it. `color` on the frame -- a
  * `styled(XStack)`, a View -- reaches a `Text` on neither platform by itself, so a variant can

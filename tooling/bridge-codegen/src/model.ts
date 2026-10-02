@@ -327,7 +327,9 @@ class Extractor {
     )
   }
 
-  /** Records that `name` is this declaration's to generate, and rejects anything else claiming it. */
+  /**
+   * Records that `name` is this declaration's to generate, and rejects anything else claiming it.
+   */
   private claim(name: string, node: ts.Node): void {
     const existing = this.owners.get(name)
     if (existing && existing !== node) {
