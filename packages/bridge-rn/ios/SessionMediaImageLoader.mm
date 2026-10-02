@@ -105,9 +105,14 @@ RCT_EXPORT_MODULE()
     return NO;
 }
 
+/// Concurrent: every block owns what it touches, and a microsecond preview must not wait behind
+/// an album's decodes.
 - (instancetype)init {
     if (self = [super init])
-        _drain = dispatch_queue_create("session-media", DISPATCH_QUEUE_SERIAL);
+        _drain = dispatch_queue_create(
+                "session-media",
+                dispatch_queue_attr_make_with_qos_class(
+                        DISPATCH_QUEUE_CONCURRENT, QOS_CLASS_USER_INITIATED, 0));
     return self;
 }
 
