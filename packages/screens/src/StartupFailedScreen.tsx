@@ -2,21 +2,12 @@ import { requirePorts } from '@session/app'
 import { tr } from '@session/localization'
 import { useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
-import {
-  Button,
-  Icon,
-  Screen,
-  Text,
-  useModals,
-  useToast,
-  XStack,
-  YStack,
-  type Modals,
-} from '@session/ui'
+import { Button, Icon, Screen, Text, useModals, XStack, YStack, type Modals } from '@session/ui'
 import { useState } from 'react'
 
 import { LocalizedText } from './LocalizedText'
 import { TextButton } from './TextButton'
+import { useCopyWithToast } from './useCopyWithToast'
 
 interface StartupFailedScreenProps {
   /** libsession's own words: the only thing on the screen that says which failure it was. */
@@ -93,14 +84,9 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
  * what support needs.
  */
 function FailureReason({ error }: { error: string }) {
-  const toasts = useToast()
-  const clipboard = requirePorts().clipboard
+  const copyWithToast = useCopyWithToast()
   const copy = () => {
-    void clipboard.setString(error).then(() => {
-      // Not where the OS confirms the copy itself: Android 13 and later show their own clipboard
-      // preview, and a toast as well would say it twice.
-      if (!clipboard.confirmsCopy) toasts.show(tr('copied'), { id: 'copied-to-clipboard' })
-    })
+    copyWithToast(error)
   }
   return (
     <XStack alignItems="center" gap="$xs">

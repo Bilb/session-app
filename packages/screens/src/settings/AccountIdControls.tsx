@@ -1,8 +1,8 @@
-import { requirePorts } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Icon, PressArea, useToast, XStack, YStack } from '@session/ui'
+import { Button, Icon, PressArea, XStack, YStack } from '@session/ui'
 
+import { useCopyWithToast } from '../useCopyWithToast'
 import { AccountIdText } from './AccountIdText'
 import type { AccountIdControlsProps } from './AccountIdControls.types'
 
@@ -11,14 +11,9 @@ import type { AccountIdControlsProps } from './AccountIdControls.types'
  * pressed as well, and either raises the same toast.
  */
 export function AccountIdControls({ sessionId }: AccountIdControlsProps) {
-  const toasts = useToast()
+  const copyWithToast = useCopyWithToast()
   const copy = () => {
-    void requirePorts()
-      .clipboard.setString(sessionId)
-      .then(() => {
-        // One id for every copy, so copying twice shows the toast again rather than two of them.
-        toasts.show(tr('copied'), { id: 'copied-to-clipboard' })
-      })
+    copyWithToast(sessionId)
   }
   return (
     <XStack alignItems="center" gap="$xs">
