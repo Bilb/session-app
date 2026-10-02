@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Modal as NativeModal } from 'react-native'
-import { XStack, YStack } from 'tamagui'
+import { isWeb, XStack, YStack } from 'tamagui'
 
 import type { WithMediaKind } from '@session/basic-types'
 import type { ElementId } from '@session/test-ids'
@@ -47,6 +47,9 @@ export interface MediaViewerProps {
   imageTestID: ElementId
 }
 
+/** Grows a control drawn at `$xl` to Android's 48 target, which clears Apple's 44. Touch only. */
+const CONTROL_SLOP = (SIZE_SCALE['3xl'] - SIZE_SCALE.xl) / 2
+
 function Control({
   icon,
   label,
@@ -78,6 +81,7 @@ function Control({
       aria-label={label}
       aria-disabled={disabled}
       {...(disabled ? {} : { onPress })}
+      {...(isWeb ? {} : { hitSlop: CONTROL_SLOP })}
       testID={testID}
     >
       <Icon name={icon} size="md" color="$textPrimary" />

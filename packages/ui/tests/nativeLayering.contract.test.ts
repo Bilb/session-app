@@ -60,6 +60,11 @@ describe('the media viewer', () => {
   it('gives both chevrons a backdrop of their own, since they sit on the picture', () => {
     expect(viewer.match(/overMedia\n/g)?.length).toBe(2)
   })
+
+  it('grows each control to a thumb’s target on touch', () => {
+    expect(viewer).toContain("CONTROL_SLOP = (SIZE_SCALE['3xl'] - SIZE_SCALE.xl) / 2")
+    expect(viewer).toMatch(/isWeb \? \{\} : \{ hitSlop: CONTROL_SLOP \}/)
+  })
 })
 
 describe('a sheet', () => {
