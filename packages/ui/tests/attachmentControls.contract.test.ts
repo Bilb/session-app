@@ -48,3 +48,19 @@ describe('the segmented toggle', () => {
     expect(toggle).toMatch(/<StateLayer[^>]*pressed=\{pressed\}/)
   })
 })
+
+describe('the three-up’s cloud', () => {
+  const album = source('AttachmentAlbum.tsx')
+
+  it('takes a press, and leaves the tile under the rest of its box its own', () => {
+    // `none` on the box excludes the whole subtree on native, so the cloud's press never fired.
+    expect(album).not.toContain('pointerEvents="none"')
+    expect(album).toMatch(
+      /<XStack position="absolute"[^>]*pointerEvents="box-none">\s*<YStack[^>]*pointerEvents="box-none"/,
+    )
+  })
+
+  it('sits over the tile that fetches', () => {
+    expect(album).toContain('cellPlace(layout, fetchAt)')
+  })
+})

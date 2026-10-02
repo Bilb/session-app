@@ -9,10 +9,11 @@ import type {
 } from '@session/basic-types'
 import type { ElementId } from '@session/test-ids'
 
-import { ALBUM_SEAM, albumLayout, lastCell } from './albumLayout'
+import { ALBUM_SEAM, albumLayout, cellPlace, lastCell } from './albumLayout'
 import { AttachmentTile } from './AttachmentTile'
 import { FetchHint } from './FetchHint'
 import { tileRadius } from './attachmentTileStyle'
+import { logical } from './logicalEdges'
 import { StateLayer } from './StateLayer'
 import type { WithTestID } from './with'
 
@@ -118,13 +119,14 @@ export function AttachmentAlbum({
   // One cloud for the message: a press on any tile fetches the whole set, so no tile is its own.
   const fetchAt = items.findIndex((item) => item.fetchesOnOpen === true)
   const fetchesOnOpen = fetchAt !== -1
-  // Centred on the album, the three-up's cloud would sit off-centre on its big tile, near the seam.
+  // Centred on the album, the three-up's cloud would sit off-centre on its big tile, near the
+  // seam; there it sits over the tile that fetches instead.
   const threeUp =
     layout.lead !== null && layout.rows.length > 0 && layout.rows.every((row) => row.length === 1)
-  const hintOver = threeUp ? layout.lead?.side : undefined
+  const hintPlace = threeUp && fetchesOnOpen ? cellPlace(layout, fetchAt) : undefined
   const hint = fetchesOnOpen ? (
     <FetchHint
-      side={hintOver ?? width}
+      side={hintPlace?.side ?? width}
       group="album"
       restsOnTouch
       onPress={() => {
@@ -172,12 +174,20 @@ export function AttachmentAlbum({
         </XStack>
       )}
 
-      {hintOver === undefined ? (
+      {hintPlace === undefined ? (
         hint
       ) : (
-        // A row, so the box sits over the big tile in either reading direction.
-        <XStack position="absolute" top={0} bottom={0} left={0} right={0} pointerEvents="none">
-          <YStack position="relative" width={hintOver} height={hintOver}>
+        // A row, so the box sits over its tile in either reading direction. `box-none` down to the
+        // cloud, so the tile under the rest of the box keeps its own press.
+        <XStack position="absolute" top={0} bottom={0} left={0} right={0} pointerEvents="box-none">
+          <YStack
+            position="relative"
+            width={hintPlace.side}
+            height={hintPlace.side}
+            marginTop={hintPlace.top}
+            pointerEvents="box-none"
+            {...logical({ marginStart: hintPlace.start })}
+          >
             {hint}
           </YStack>
         </XStack>
