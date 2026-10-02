@@ -1,10 +1,5 @@
 {
   "extends": "@session/typescript-config/bundler.json",
-  "compilerOptions": {
-    // For `scripts` and `tests` only, which run under node and vitest. `src` ships to platforms
-    // with no node, which `pnpm boundaries` is what enforces.
-    "types": ["node"]
-  },
-  "include": ["src", "tests", "scripts"],
+  "include": ["src", "tests"],
   "exclude": ["node_modules", "dist"]
 }
