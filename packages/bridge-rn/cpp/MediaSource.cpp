@@ -34,6 +34,11 @@ void clear_media_source(const MediaSource* source) {
         registered.reset();
 }
 
+bool media_served_by_another(const MediaSource* mine) {
+    std::lock_guard lock{registry_mutex};
+    return registered && registered.get() != mine;
+}
+
 std::optional<PendingAnswers::Handler> PendingAnswers::take(uint64_t id) {
     std::lock_guard lock{_mutex};
     auto entry = _handlers.extract(id);

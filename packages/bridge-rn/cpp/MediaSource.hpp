@@ -38,6 +38,10 @@ std::shared_ptr<MediaSource> media_source();
 /// the one that replaced it.
 void clear_media_source(const MediaSource* source);
 
+/// Whether a source other than `mine` is registered. The registry is one per process and a bridge
+/// is one per HybridObject, so this, not a member, is what a would-be source must refuse on.
+bool media_served_by_another(const MediaSource* mine);
+
 /// The handlers a source has handed out and not yet answered, so closing can answer them.
 class PendingAnswers : public std::enable_shared_from_this<PendingAnswers> {
   public:

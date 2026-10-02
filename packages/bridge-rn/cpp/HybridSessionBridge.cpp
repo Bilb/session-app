@@ -251,7 +251,10 @@ jsi::Value HybridSessionBridge::setSink(
 void HybridSessionBridge::init(const SessionBridgeOptions& options) {
     if (_bridge)
         throw std::runtime_error{"the bridge is already open"};
-    if (_served)
+    // The registry's, not only this instance's: serveNativeMediaFrom holds its own HybridObject.
+    if (_served
+        || std::dynamic_pointer_cast<::session_bridge_rn::JsMediaSource>(
+                ::session_bridge_rn::media_source()))
         throw std::runtime_error{"media is being served from JavaScript; close() first"};
     // libsession publishes the state it already has while the Client is constructed, so a sink
     // installed afterwards has missed the first frames. Refused rather than allowed to lose them.
@@ -357,6 +360,8 @@ jsi::Value HybridSessionBridge::serveMediaFrom(
         throw jsi::JSError(runtime, "serveMediaFrom(fetchMedia, fetchPreview) takes two functions");
     if (_bridge)
         throw jsi::JSError(runtime, "the bridge is open, and answers the loaders itself");
+    if (::session_bridge_rn::media_served_by_another(_served.get()))
+        throw jsi::JSError(runtime, "another bridge is serving media; close() it first");
 
     BorrowingReference<jsi::Function> media;
     BorrowingReference<jsi::Function> preview;
@@ -419,6 +424,8 @@ void HybridSessionBridge::close() {
         _media->fail_pending();
         _media.reset();
     }
+    // A job the JS dispatcher accepted and then dropped in a reload is answered only here, by the
+    // destructor's close() of the old instance: fail_all is what keeps that load answered once.
     if (_served) {
         ::session_bridge_rn::clear_media_source(_served.get());
         _served->close();

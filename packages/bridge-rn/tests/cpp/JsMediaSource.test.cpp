@@ -263,6 +263,47 @@ void a_js_thread_that_has_gone_fails_the_load() {
     CHECK(tally.answers[0] == 1 && !tally.ok[0]);
 }
 
+/// A reload can quit the JS queue between a job being accepted and run: the job is dropped, and
+/// the load is answered by close(), which the old instance's destructor runs.
+void a_job_accepted_and_dropped_is_answered_once_by_close() {
+    auto source = std::make_shared<JsMediaSource>(
+            [](std::function<void()>) { return true; },
+            [](double, double, session_bridge::MediaHandler) {},
+            [](double, double, session_bridge::PreviewHandler) {});
+    Tally tally;
+    tally.open(2);
+    source->fetch_media(1, 0, [&](session_bridge::Media m) { tally.record(0, !m.error); });
+    source->fetch_preview(1, 0, [&](session_bridge::Preview p) { tally.record(1, !p.error); });
+    CHECK(tally.answers[0] == 0 && tally.answers[1] == 0);
+    source->close();
+    CHECK(tally.answers[0] == 1 && !tally.ok[0]);
+    CHECK(tally.answers[1] == 1 && !tally.ok[1]);
+}
+
+/// The registry is one per process, so what a would-be source refuses on is who is registered,
+/// not what the HybridObject asking happens to hold.
+void the_registry_says_whether_another_source_is_serving() {
+    using session_bridge_rn::media_served_by_another;
+    auto make = [] {
+        return std::make_shared<JsMediaSource>(
+                [](std::function<void()>) { return true; },
+                [](double, double, session_bridge::MediaHandler) {},
+                [](double, double, session_bridge::PreviewHandler) {});
+    };
+    auto mine = make();
+    auto other = make();
+    CHECK(!media_served_by_another(nullptr));
+    session_bridge_rn::set_media_source(mine);
+    CHECK(!media_served_by_another(mine.get()));
+    CHECK(media_served_by_another(other.get()));
+    CHECK(media_served_by_another(nullptr));
+    // A source closing late cannot unset the one that replaced it.
+    session_bridge_rn::clear_media_source(other.get());
+    CHECK(media_served_by_another(nullptr));
+    session_bridge_rn::clear_media_source(mine.get());
+    CHECK(!media_served_by_another(nullptr));
+}
+
 }  // namespace
 
 int main() {
@@ -270,6 +311,8 @@ int main() {
     concurrent_fetches_of_one_ref_are_each_answered_once();
     closing_answers_what_is_pending_and_everything_after();
     a_js_thread_that_has_gone_fails_the_load();
+    a_job_accepted_and_dropped_is_answered_once_by_close();
+    the_registry_says_whether_another_source_is_serving();
     if (failures == 0)
         std::puts("JsMediaSource: all passed");
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
