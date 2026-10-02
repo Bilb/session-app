@@ -16,4 +16,4 @@ export { fakePreviewPixels, PHOTO_COUNT, photoFileName, photoFileNames, photoNum
 export { decodeThumbhash } from './thumbhash'
 export { backlog } from './backlog'
 export { driveFakeClock, FAKE_FIXTURES, pickFakeFixture } from './devSetup'
-export type { FakeDevOptions, FakeFixture } from './devSetup'
+export type { FakeDevEnv, FakeFixture } from './devSetup'

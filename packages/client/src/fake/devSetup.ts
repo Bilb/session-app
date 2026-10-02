@@ -7,31 +7,42 @@ import type { FakeWorld } from './world'
 /**
  * Which world an app's dev fake starts in, and how fast its clock runs, from the environment.
  *
- * Shared so desktop and mobile start the same worlds from the same variables; each app reads its
- * environment its own way - desktop main from `process.env`, mobile from names Expo inlines - and
- * hands the raw strings here.
+ * Shared so desktop and mobile start the same worlds from the same variables.
  */
 
 export const FAKE_FIXTURES = ['friends', 'showcase', 'backlog', 'newcomer', 'crowd'] as const
 
 export type FakeFixture = (typeof FAKE_FIXTURES)[number]
 
-/** The raw values of the variables that choose a dev fake's world, unset as undefined. */
-export interface FakeDevOptions {
-  /** `EXPO_PUBLIC_SESSION_FAKE_FIXTURE`, on every platform: one of `FAKE_FIXTURES`. */
-  fixture?: string | undefined
-  /** Older than the fixture, and `newcomer`: `EXPO_PUBLIC_SESSION_NO_ACCOUNT=1` on every platform. */
-  noAccount?: string | undefined
-  /** Desktop's `SESSION_FAKE_SHOWCASE=1`, older than the fixture: `showcase`. */
-  showcase?: string | undefined
-  /** Desktop's `SESSION_FAKE_CONVERSATIONS`: how many peers `crowd` makes, and `crowd` when set. */
-  conversations?: string | undefined
-  /** Desktop's `SESSION_FAKE_HISTORY`: messages per peer in `crowd`. */
-  history?: string | undefined
+/**
+ * The variables that choose a dev fake's world, unset as undefined. One name on every platform:
+ * desktop hands `process.env` over whole, mobile a record of literal reads, since Expo inlines a
+ * variable only where its name is written out.
+ */
+export interface FakeDevEnv {
+  /** One of `FAKE_FIXTURES`. Wins over the two below. */
+  EXPO_PUBLIC_SESSION_FAKE_FIXTURE?: string | undefined
+  /** `1` opens `newcomer`. Older than the fixture. */
+  EXPO_PUBLIC_SESSION_NO_ACCOUNT?: string | undefined
+  /** How many peers `crowd` makes, and `crowd` when set. */
+  EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS?: string | undefined
+  /** Messages per peer in `crowd`. */
+  EXPO_PUBLIC_SESSION_FAKE_CROWD_HISTORY?: string | undefined
 }
 
-function chosenFixture(options: FakeDevOptions): FakeFixture {
-  const named = options.fixture?.trim()
+/** Unset as undefined; anything that is not a count is loud, as a typo must not size a world quietly. */
+function positiveInt(name: keyof FakeDevEnv, raw: string | undefined): number | undefined {
+  const text = raw?.trim()
+  if (text === undefined || text === '') return undefined
+  const value = Number(text)
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${name}=${text} is not a positive whole number`)
+  }
+  return value
+}
+
+function chosenFixture(env: FakeDevEnv, crowdPeers: number | undefined): FakeFixture {
+  const named = env.EXPO_PUBLIC_SESSION_FAKE_FIXTURE?.trim()
   if (named !== undefined && named !== '') {
     if ((FAKE_FIXTURES as readonly string[]).includes(named)) return named as FakeFixture
     // Loud rather than a fallback: a typo would otherwise open some other world and look fine.
@@ -39,15 +50,22 @@ function chosenFixture(options: FakeDevOptions): FakeFixture {
       `EXPO_PUBLIC_SESSION_FAKE_FIXTURE=${named} is not a fixture; use one of ${FAKE_FIXTURES.join(', ')}`,
     )
   }
-  if (options.noAccount === '1') return 'newcomer'
-  if (options.showcase === '1') return 'showcase'
-  if (Number(options.conversations ?? '0') > 0) return 'crowd'
+  if (env.EXPO_PUBLIC_SESSION_NO_ACCOUNT === '1') return 'newcomer'
+  if (crowdPeers !== undefined) return 'crowd'
   return 'friends'
 }
 
-/** The world the options name, and which fixture that was. */
-export function pickFakeFixture(options: FakeDevOptions): FakeSetup & { fixture: FakeFixture } {
-  const fixture = chosenFixture(options)
+/** The world the environment names, and which fixture that was. */
+export function pickFakeFixture(env: FakeDevEnv): FakeSetup & { fixture: FakeFixture } {
+  const peers = positiveInt(
+    'EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS',
+    env.EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS,
+  )
+  const history = positiveInt(
+    'EXPO_PUBLIC_SESSION_FAKE_CROWD_HISTORY',
+    env.EXPO_PUBLIC_SESSION_FAKE_CROWD_HISTORY,
+  )
+  const fixture = chosenFixture(env, peers)
   switch (fixture) {
     case 'newcomer':
       return { fixture, ...newcomer() }
@@ -56,13 +74,7 @@ export function pickFakeFixture(options: FakeDevOptions): FakeSetup & { fixture:
     case 'backlog':
       return { fixture, ...backlog() }
     case 'crowd':
-      return {
-        fixture,
-        ...crowd({
-          peers: Math.max(1, Number(options.conversations ?? '100')),
-          history: Number(options.history ?? '1'),
-        }),
-      }
+      return { fixture, ...crowd({ peers: peers ?? 100, history: history ?? 1 }) }
     case 'friends':
       return { fixture, ...friendsWithAttachments(['Alice', 'Bob'], { history: 4 }) }
   }

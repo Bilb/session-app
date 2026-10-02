@@ -5,6 +5,7 @@ import {
   driveFakeClock,
   photoFileNames,
   pickFakeFixture,
+  type FakeDevEnv,
   type FakeSessionClient,
 } from '@session/client/fake'
 import { Directory, File, Paths } from 'expo-file-system'
@@ -64,14 +65,17 @@ function pushedPhotos(): Map<string, string> {
  * platforms show the same seeded conversations while the real bridge is being built.
  *
  * Every variable is spelled out: Expo inlines `process.env.EXPO_PUBLIC_*` only where the name is
- * written literally. The fixture and the clock have the same names on desktop.
+ * written literally. They are the same names desktop reads.
  */
 export function createFakeBridge(): BridgeTransport {
   const photos = pushedPhotos()
-  const { world, clients } = pickFakeFixture({
-    fixture: process.env['EXPO_PUBLIC_SESSION_FAKE_FIXTURE'],
-    noAccount: process.env['EXPO_PUBLIC_SESSION_NO_ACCOUNT'],
-  })
+  const env: FakeDevEnv = {
+    EXPO_PUBLIC_SESSION_FAKE_FIXTURE: process.env['EXPO_PUBLIC_SESSION_FAKE_FIXTURE'],
+    EXPO_PUBLIC_SESSION_NO_ACCOUNT: process.env['EXPO_PUBLIC_SESSION_NO_ACCOUNT'],
+    EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS: process.env['EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS'],
+    EXPO_PUBLIC_SESSION_FAKE_CROWD_HISTORY: process.env['EXPO_PUBLIC_SESSION_FAKE_CROWD_HISTORY'],
+  }
+  const { world, clients } = pickFakeFixture(env)
   const alice = clients['Alice']
   if (!alice) throw new Error('the fixture did not produce a client')
 

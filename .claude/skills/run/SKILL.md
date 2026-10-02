@@ -119,12 +119,15 @@ pnpm dev:fake               # both; or dev:desktop:fake / dev:mobile:fake
 
 The fake refuses to start without its photographs and names the command that fixes it. Which
 world it opens is `EXPO_PUBLIC_SESSION_FAKE_FIXTURE` - `friends`, `showcase`, `backlog`,
-`newcomer`, `crowd` - and `EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN=10` makes every transfer ten times
-slower, on both apps.
+`newcomer`, `crowd` - with `EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS` and
+`EXPO_PUBLIC_SESSION_FAKE_CROWD_HISTORY` sizing `crowd`, and `EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN=10`
+makes every transfer ten times slower, on both apps.
 
-Every variable carries `EXPO_PUBLIC_`, desktop's included: Metro inlines one into the bundle only
-when its name does, and it caches the transform - so a Metro started without it keeps serving a
-bundle that ignores it until `expo start --clear`.
+Every variable an app reads carries `EXPO_PUBLIC_`, desktop's included: Metro inlines one into the
+bundle only when its name does, and it caches the transform - so a Metro started without it keeps
+serving a bundle that ignores it until `expo start --clear`. `SESSION_FAKE_MEDIA_DIR` is the one
+without it: a path on the host, read by the fetch script, desktop main and the push script, never
+by a bundle.
 
 ## Against a local devnet
 

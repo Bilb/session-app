@@ -14,18 +14,63 @@ describe('the world a dev fake starts in', () => {
   })
 
   it('is the one EXPO_PUBLIC_SESSION_FAKE_FIXTURE names', () => {
-    expect(pickFakeFixture({ fixture: 'backlog' }).fixture).toBe('backlog')
-    expect(pickFakeFixture({ fixture: 'showcase' }).fixture).toBe('showcase')
+    expect(pickFakeFixture({ EXPO_PUBLIC_SESSION_FAKE_FIXTURE: 'backlog' }).fixture).toBe('backlog')
+    expect(pickFakeFixture({ EXPO_PUBLIC_SESSION_FAKE_FIXTURE: 'showcase' }).fixture).toBe(
+      'showcase',
+    )
   })
 
-  it('still answers the older variables', () => {
-    expect(pickFakeFixture({ noAccount: '1' }).fixture).toBe('newcomer')
-    expect(pickFakeFixture({ showcase: '1' }).fixture).toBe('showcase')
-    expect(pickFakeFixture({ conversations: '3' }).fixture).toBe('crowd')
+  it('still answers the older no-account switch, and crowd from its size alone', () => {
+    expect(pickFakeFixture({ EXPO_PUBLIC_SESSION_NO_ACCOUNT: '1' }).fixture).toBe('newcomer')
+    expect(pickFakeFixture({ EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS: '3' }).fixture).toBe('crowd')
+  })
+
+  it('treats an empty value as unset', () => {
+    expect(
+      pickFakeFixture({
+        EXPO_PUBLIC_SESSION_FAKE_FIXTURE: '',
+        EXPO_PUBLIC_SESSION_NO_ACCOUNT: '',
+        EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS: '',
+        EXPO_PUBLIC_SESSION_FAKE_CROWD_HISTORY: '',
+      }).fixture,
+    ).toBe('friends')
+  })
+
+  it('sizes crowd from both knobs', async () => {
+    const { clients } = pickFakeFixture({
+      EXPO_PUBLIC_SESSION_FAKE_FIXTURE: 'crowd',
+      EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS: '3',
+      EXPO_PUBLIC_SESSION_FAKE_CROWD_HISTORY: '2',
+    })
+    const alice = clients['Alice']
+    if (!alice) throw new Error('no Alice')
+    const conversations = await alice.getConversations()
+    expect(conversations).toHaveLength(3)
+    const [first] = conversations
+    if (!first) throw new Error('no conversation')
+    const { messages } = await alice.getMessages(first.id, { limit: 100 })
+    expect(messages).toHaveLength(2)
   })
 
   it('refuses a name that is not a fixture, rather than opening another world', () => {
-    expect(() => pickFakeFixture({ fixture: 'showcse' })).toThrow(/not a fixture/)
+    expect(() => pickFakeFixture({ EXPO_PUBLIC_SESSION_FAKE_FIXTURE: 'showcse' })).toThrow(
+      /not a fixture/,
+    )
+  })
+
+  it('refuses a size that is not a count, rather than a world of NaN peers', () => {
+    expect(() => pickFakeFixture({ EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS: 'ten' })).toThrow(
+      /EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS=ten is not a positive whole number/,
+    )
+    expect(() => pickFakeFixture({ EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS: '0' })).toThrow(
+      /not a positive whole number/,
+    )
+    expect(() =>
+      pickFakeFixture({
+        EXPO_PUBLIC_SESSION_FAKE_FIXTURE: 'crowd',
+        EXPO_PUBLIC_SESSION_FAKE_CROWD_HISTORY: '1.5',
+      }),
+    ).toThrow(/EXPO_PUBLIC_SESSION_FAKE_CROWD_HISTORY=1.5 is not a positive whole number/)
   })
 })
 

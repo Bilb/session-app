@@ -51,15 +51,7 @@ export function createFakeBridge(): BridgeTransport & MediaSource {
   // Before anything else, so nothing opens halfway.
   requirePhotos()
 
-  // The fixture, the clock and the no-account switch mean the same on every platform, so they carry
-  // EXPO_PUBLIC_ here as on mobile; the rest are desktop's own.
-  const { world, clients } = pickFakeFixture({
-    fixture: process.env['EXPO_PUBLIC_SESSION_FAKE_FIXTURE'],
-    noAccount: process.env['EXPO_PUBLIC_SESSION_NO_ACCOUNT'],
-    showcase: process.env['SESSION_FAKE_SHOWCASE'],
-    conversations: process.env['SESSION_FAKE_CONVERSATIONS'],
-    history: process.env['SESSION_FAKE_HISTORY'],
-  })
+  const { world, clients } = pickFakeFixture(process.env)
   const alice = clients['Alice']
   if (!alice) throw new Error('the fixture did not produce a client')
 
