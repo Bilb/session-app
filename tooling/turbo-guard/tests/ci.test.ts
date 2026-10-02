@@ -27,10 +27,14 @@ describe('pnpmSteps', () => {
     })
   })
 
-  it('reports a block or chained run that calls pnpm, and ignores a block that does not', () => {
+  it('reports a block or chained run that calls pnpm, and ignores a block of git, echo and shell', () => {
     const workflow = `
       - run: |
-          git diff --exit-code
+          if ! git diff --exit-code --stat; then
+            git diff
+            echo "::error::changed"
+            exit 1
+          fi
       - name: Knip
         run: |
           echo checking
@@ -39,8 +43,22 @@ describe('pnpmSteps', () => {
 `
     expect(pnpmSteps(workflow)).toEqual({
       steps: [],
-      unreadable: ['line 5: run: |', 'line 8: - run: "pnpm test"'],
+      unreadable: ['line 9: run: |', 'line 12: - run: "pnpm test"'],
     })
+  })
+
+  it('reports a run that reaches a tool without pnpm, since it may be a check too', () => {
+    const workflow = `
+      - run: echo done
+      - run: npx knip
+      - run: node tooling/x.ts
+      - run: xvfb-run -a pnpm test:e2e:fast
+`
+    expect(pnpmSteps(workflow).unreadable).toEqual([
+      'line 3: - run: npx knip',
+      'line 4: - run: node tooling/x.ts',
+      'line 5: - run: xvfb-run -a pnpm test:e2e:fast',
+    ])
   })
 })
 

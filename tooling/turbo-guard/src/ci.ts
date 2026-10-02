@@ -2,8 +2,12 @@
  * Reading CI's own configuration, so the guard checks what CI runs rather than a list that drifts.
  *
  * Deliberately line-based rather than a YAML parse: the steps it reads are one-line, and any other
- * `run:` that calls pnpm is reported rather than missed.
+ * `run:` beyond git, echo and the shell around them is reported rather than missed.
  */
+
+/** A line that is not a check: git plumbing, a message, exit, and the shell control around them. */
+const HARMLESS =
+  /^(?:(?:if|elif|while|until|then|else|do)\s+|!\s+)*(?:git|echo|exit|fi|then|else|done)\b/
 
 /** The lines of a YAML block scalar opened on `lines[index]`, a key indented by `indent`. */
 function blockBelow(lines: readonly string[], index: number, indent: number): string[] {
@@ -18,7 +22,7 @@ function blockBelow(lines: readonly string[], index: number, indent: number): st
 export interface PnpmSteps {
   /** What follows `pnpm ` in each one-line `run: pnpm ...` step. */
   steps: string[]
-  /** Every other `run:` that calls pnpm, which the rules reading `steps` would not see. */
+  /** Every other `run:` that is not plainly harmless, which the rules reading `steps` would not see. */
   unreadable: string[]
 }
 
@@ -36,7 +40,7 @@ export function pnpmSteps(workflow: string): PnpmSteps {
       continue
     }
     const script = /^[|>]/.test(value) ? blockBelow(lines, index, indent) : [value]
-    if (script.some((text) => /\bpnpm\b/.test(text)))
+    if (script.some((text) => text.trim() !== '' && !HARMLESS.test(text.trim())))
       found.unreadable.push(`line ${String(index + 1)}: ${line.trim()}`)
   }
   return found
