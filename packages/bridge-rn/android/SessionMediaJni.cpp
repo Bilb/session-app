@@ -20,12 +20,14 @@ jmethodID on_failure = nullptr;
 pthread_key_t detach_on_exit;
 
 /// The calling thread's JNIEnv, attaching it if it is one of Core's: ART aborts the process when
-/// an attached native thread exits undetached, hence the key whose destructor detaches it.
+/// an attached native thread exits undetached, hence the key whose destructor detaches it. Null
+/// when the VM refuses the attach, which leaves no way to answer Java at all.
 JNIEnv* attached_env() {
     JNIEnv* env = nullptr;
     if (java_vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_6) == JNI_OK)
         return env;
-    java_vm->AttachCurrentThread(&env, nullptr);
+    if (java_vm->AttachCurrentThread(&env, nullptr) != JNI_OK)
+        return nullptr;
     pthread_setspecific(detach_on_exit, env);
     return env;
 }
@@ -37,45 +39,76 @@ void fail(JNIEnv* env, jobject load, const std::string& message) {
 }
 
 /// Hands `bytes` to Java as a direct buffer over this memory, which Java frees through
-/// `nativeRelease` once it has copied it into Fresco's pool.
+/// `nativeRelease` once it has copied it into Fresco's pool. Null, with the memory already freed,
+/// when the VM refuses the buffer: it leaves an IllegalArgumentException pending, cleared here.
 jobject lend(JNIEnv* env, std::vector<std::byte>&& bytes, jlong& handle) {
     auto* held = new std::vector<std::byte>(std::move(bytes));
+    jobject buffer = env->NewDirectByteBuffer(held->data(), static_cast<jlong>(held->size()));
+    if (!buffer) {
+        env->ExceptionClear();
+        delete held;
+        handle = 0;
+        return nullptr;
+    }
     handle = reinterpret_cast<jlong>(held);
-    return env->NewDirectByteBuffer(held->data(), static_cast<jlong>(held->size()));
+    return buffer;
 }
+
+constexpr const char* UNLENDABLE = "the bytes do not fit a ByteBuffer";
 
 /// Answers on whichever thread the source answered on - Core's loop, or the JS thread - and only
 /// hands on: every method it calls enqueues onto the loader's own thread and returns.
 void answer_media(jobject load, ::session_bridge::Media media) {
     JNIEnv* env = attached_env();
+    if (!env)
+        return;
     if (media.error) {
         fail(env, load, *media.error);
     } else if (::session_bridge::servable_image_type(media.content_type, media.bytes)) {
         // Fresco reads the format from the bytes, which the check has just said are a picture's.
         jlong handle = 0;
         jobject buffer = lend(env, std::move(media.bytes), handle);
-        env->CallVoidMethod(load, on_media, buffer, handle);
-        env->DeleteLocalRef(buffer);
+        if (!buffer) {
+            fail(env, load, UNLENDABLE);
+        } else {
+            env->CallVoidMethod(load, on_media, buffer, handle);
+            env->DeleteLocalRef(buffer);
+        }
     } else {
         fail(env, load, "not a picture the decoder may be handed");
     }
     env->DeleteGlobalRef(load);
 }
 
+/// Larger than any ThumbHash decodes to, and small enough that `width * height * 4` fits a jint.
+constexpr double MAX_PREVIEW_SIDE = 16384;
+
 void answer_preview(jobject load, ::session_bridge::Preview preview) {
     JNIEnv* env = attached_env();
-    const auto width = static_cast<jint>(preview.width);
-    const auto height = static_cast<jint>(preview.height);
+    if (!env)
+        return;
+    // Checked as doubles: casting NaN or 1e12 to jint is undefined, so no cast may come first.
+    const bool sized = preview.width > 0 && preview.width <= MAX_PREVIEW_SIDE
+                    && preview.height > 0 && preview.height <= MAX_PREVIEW_SIDE;
     if (preview.error) {
         fail(env, load, *preview.error);
-    } else if (width <= 0 || height <= 0
-               || preview.rgba.size() != static_cast<size_t>(width) * height * 4) {
-        fail(env, load, "a preview whose pixels do not match its size");
+    } else if (!sized) {
+        fail(env, load, "a preview whose size is not a picture's");
     } else {
-        jlong handle = 0;
-        jobject buffer = lend(env, std::move(preview.rgba), handle);
-        env->CallVoidMethod(load, on_preview, width, height, buffer, handle);
-        env->DeleteLocalRef(buffer);
+        const auto width = static_cast<jint>(preview.width);
+        const auto height = static_cast<jint>(preview.height);
+        if (preview.rgba.size() != static_cast<size_t>(width) * static_cast<size_t>(height) * 4) {
+            fail(env, load, "a preview whose pixels do not match its size");
+        } else {
+            jlong handle = 0;
+            jobject buffer = lend(env, std::move(preview.rgba), handle);
+            if (!buffer) {
+                fail(env, load, UNLENDABLE);
+            } else {
+                env->CallVoidMethod(load, on_preview, width, height, buffer, handle);
+                env->DeleteLocalRef(buffer);
+            }
+        }
     }
     env->DeleteGlobalRef(load);
 }
