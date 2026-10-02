@@ -30,7 +30,10 @@ export interface FakeDevEnv {
   EXPO_PUBLIC_SESSION_FAKE_CROWD_HISTORY?: string | undefined
 }
 
-/** Unset as undefined; anything that is not a count is loud, as a typo must not size a world quietly. */
+/**
+ * Unset as undefined; anything that is not a count is loud, as a typo must not size a world
+ * quietly.
+ */
 function positiveInt(name: keyof FakeDevEnv, raw: string | undefined): number | undefined {
   const text = raw?.trim()
   if (text === undefined || text === '') return undefined
@@ -92,10 +95,10 @@ export const FAKE_TICK_MS = 50
 /**
  * Runs the fake's clock for an app, since there is no test to advance it.
  *
- * `slowdown` is `EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN`. Unset, each tick drains the whole queue, so a transfer
- * finishes between two frames. Set to N, each tick advances only 1/N of the tick's time, so every
- * state lasts N times as long and a download is slow enough to watch the placeholder, the bar,
- * the ring and the footer change. Returns what stops it.
+ * `slowdown` is `EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN`. Unset, each tick drains the whole queue, so
+ * a transfer finishes between two frames. Set to N, each tick advances only 1/N of the tick's
+ * time, so every state lasts N times as long and a download is slow enough to watch the
+ * placeholder, the bar, the ring and the footer change. Returns what stops it.
  */
 export function driveFakeClock(world: FakeWorld, slowdown: string | undefined): () => void {
   const divisor = Number(slowdown ?? '0')
