@@ -59,3 +59,23 @@ export function tilePlaceholder(
   if (preview === undefined || preview === null) return null
   return preview === failedPreview ? null : preview
 }
+
+/** What a tile is showing for its url. */
+export type TileFace = 'pending' | 'picture' | 'failed'
+
+/**
+ * Which face a tile wears over its placeholder, from what the image has reported for `uri`.
+ *
+ * Keyed on the url, so a new one starts over hidden rather than inheriting the last one's load or
+ * failure. `failed` keeps the url: the picture is here and did not decode, which is not a
+ * transfer failure, so nothing upstream withholds and re-hands it.
+ */
+export function tileFace(
+  uri: string | null | undefined,
+  loadedUri: string | null,
+  failedUri: string | null,
+): TileFace {
+  if (uri === undefined || uri === null) return 'pending'
+  if (uri === loadedUri) return 'picture'
+  return uri === failedUri ? 'failed' : 'pending'
+}

@@ -1,7 +1,7 @@
 import { RADII } from '@session/theme-tokens'
 import { describe, expect, it } from 'vitest'
 
-import { TILE_RADIUS_STEP, tilePlaceholder, tileRadius } from '#src/attachmentTileStyle'
+import { TILE_RADIUS_STEP, tileFace, tilePlaceholder, tileRadius } from '#src/attachmentTileStyle'
 
 describe('a tile’s corner', () => {
   it('takes the larger radius at the sizes an album draws', () => {
@@ -45,5 +45,29 @@ describe('a tile’s placeholder', () => {
     expect(tilePlaceholder('session-media://preview/2/0', 'session-media://preview/1/0')).toBe(
       'session-media://preview/2/0',
     )
+  })
+})
+
+describe('a tile’s face', () => {
+  const url = 'session-media://attachment/1/0'
+
+  it('is pending with no url, and until the picture reports in', () => {
+    expect(tileFace(undefined, null, null)).toBe('pending')
+    expect(tileFace(null, null, null)).toBe('pending')
+    expect(tileFace(url, null, null)).toBe('pending')
+  })
+
+  it('is the picture once it loaded', () => {
+    expect(tileFace(url, url, null)).toBe('picture')
+  })
+
+  it('is failed once the picture could not be decoded, so it does not read as still downloading', () => {
+    expect(tileFace(url, null, url)).toBe('failed')
+  })
+
+  it('starts over for a new url rather than inheriting the last one’s load or failure', () => {
+    const next = 'session-media://attachment/2/0'
+    expect(tileFace(next, url, null)).toBe('pending')
+    expect(tileFace(next, null, url)).toBe('pending')
   })
 })
