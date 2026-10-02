@@ -1,11 +1,14 @@
 package session.bridge.rn
 
 import android.app.Application
+import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
 import android.util.Log
 import com.facebook.imagepipeline.bitmaps.SimpleBitmapReleaser
 import com.facebook.common.memory.PooledByteBuffer
 import com.facebook.common.references.CloseableReference
+import com.facebook.imagepipeline.core.ImagePipelineFactory
 import com.facebook.imagepipeline.core.ProducerFactory
 import com.facebook.imagepipeline.core.ProducerSequenceFactory
 import com.facebook.imagepipeline.image.CloseableImage
@@ -44,6 +47,26 @@ object SessionMedia {
           ReactFrescoDefaults.builder(application)
               .setCustomFetchSequenceFactories(setOf(SessionMediaSequenceFactory()))
               .build())
+
+  /**
+   * Refuses an app whose Fresco was never handed [packageConfig]: a generated `android/` from
+   * before the loader compiles and runs, and every picture then fails to load with nothing in the
+   * console. Thrown in a debuggable build; a release logs it and loads fail as they would have.
+   * Says nothing until Fresco is initialised, which the caller arranges.
+   */
+  internal fun checkInstalled(context: Context) {
+    if (!ImagePipelineFactory.hasBeenInitialized()) return
+    val factories =
+        ImagePipelineFactory.getInstance().imagePipeline.config.customProducerSequenceFactories
+    if (factories.any { it is SessionMediaSequenceFactory }) return
+    val message =
+        "Fresco was not handed SessionMedia.packageConfig, so no session-media:// picture can " +
+            "load: apps/mobile/android predates the media loader. Regenerate it with " +
+            "`expo prebuild --platform android --clean` in apps/mobile, then `pnpm android`."
+    val debuggable = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+    if (debuggable) throw IllegalStateException(message)
+    Log.e("SessionMedia", message)
+  }
 }
 
 internal object SessionMediaNative {

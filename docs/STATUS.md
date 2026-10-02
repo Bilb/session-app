@@ -33,7 +33,9 @@ a time, via the `port-feature` skill.
 - **Android has not been run against a devnet.** iOS has - it discovered 15 seed nodes, built its
   paths and polled its swarm - and the two share everything above the Nitro module, so what is
   untried is the Android side of that module rather than any of the logic. A dev client built
-  since the shim last changed is what it needs.
+  since the shim last changed is what it needs, from an `android/` regenerated since the media
+  loader landed: `pnpm android` prebuilds only when that directory is absent, and a stale one
+  refuses to start in debug and says so.
 - **Onboarding is one button.** `restoreAccount` is a bridge command already, with no screen.
 - **No contact list and no QR scanner.** Starting a conversation means pasting an account ID.
 - **iOS device builds and a release-shaped xcframework.** The simulator works; nothing has been
