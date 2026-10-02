@@ -1,4 +1,5 @@
 import { CLIENT_URLS, requirePorts, URLS } from '@session/app'
+import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { PressArea, SessionTokenLogo, Text, useModals, XStack, YStack } from '@session/ui'
 import { useState } from 'react'
@@ -26,7 +27,7 @@ export function SessionInfo() {
   return (
     <YStack alignItems="center" gap="$2xs">
       <PressArea
-        accessibilityLabel={URLS.token}
+        accessibilityLabel={tr('networkName')}
         testID={ELEMENT.settings.tokenLogo}
         onPress={() => {
           confirmLink(modals, URLS.token)

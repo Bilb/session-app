@@ -22,7 +22,7 @@ export function SessionInfo() {
   return (
     <YStack alignItems="center" gap="$2xs">
       <PressArea
-        accessibilityLabel={URLS.token}
+        accessibilityLabel={tr('networkName')}
         testID={ELEMENT.settings.tokenLogo}
         onPress={() => {
           confirmLink(modals, URLS.token)
