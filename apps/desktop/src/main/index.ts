@@ -5,10 +5,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 // The default import plus a destructure is the form that works under both loaders.
 import electron from 'electron'
 
-const { app, BrowserWindow, Menu, MessageChannelMain, clipboard, session, shell } = electron
+const { app, BrowserWindow, Menu, MessageChannelMain, clipboard, dialog, session, shell } = electron
 
 import type { Request } from '@session/client'
-import { isCrowdinLocale, setLocale } from '@session/localization'
+import { isCrowdinLocale, setLocale, tr } from '@session/localization'
 
 import { createBridge } from './bridge'
 import { editMenuItems } from './editMenu'
@@ -221,15 +221,25 @@ app.on('web-contents-created', (_event, contents) => {
   refuseNewContents(contents)
 })
 
-void app.whenReady().then(async () => {
-  denyAllPermissions(session.defaultSession)
+app
+  .whenReady()
+  .then(async () => {
+    denyAllPermissions(session.defaultSession)
 
-  await createWindow()
+    await createWindow()
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) void createWindow()
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) void createWindow()
+    })
   })
-})
+  .catch((error: unknown) => {
+    // With no window there is nothing to close, so window-all-closed never fires and the process
+    // would sit headless until killed. Said out loud as well, for a start from a launcher.
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(message)
+    dialog.showErrorBox(tr('theError'), message)
+    app.exit(1)
+  })
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
