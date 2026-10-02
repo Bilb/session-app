@@ -61,24 +61,69 @@ function source(name: string): string {
   return `https://picsum.photos/seed/session-${String(seed)}/1600/1200.jpg`
 }
 
-mkdirSync(folder, { recursive: true })
-let fetched = 0
-for (const [name, expected] of PHOTOS) {
-  const path = join(folder, name)
-  if (existsSync(path) && sha256(readFileSync(path)) === expected) continue
+const ATTEMPTS = 3
+
+async function download(url: string): Promise<Uint8Array> {
   const deadline = new AbortController()
   const timer = setTimeout(() => {
     deadline.abort()
   }, 30_000)
-  const response = await fetch(source(name), { signal: deadline.signal }).finally(() => {
+  try {
+    const response = await fetch(url, { signal: deadline.signal })
+    if (!response.ok) throw new Error(`answered ${String(response.status)}`)
+    return new Uint8Array(await response.arrayBuffer())
+  } finally {
     clearTimeout(timer)
-  })
-  if (!response.ok) throw new Error(`${name}: ${source(name)} answered ${String(response.status)}`)
-  const bytes = new Uint8Array(await response.arrayBuffer())
-  if (sha256(bytes) !== expected) {
-    throw new Error(`${name}: ${source(name)} is not the photograph the fixtures were hashed from`)
   }
-  writeFileSync(path, bytes)
-  fetched += 1
 }
-console.log(`${String(PHOTOS.length)} dev photographs in ${folder} (${String(fetched)} fetched)`)
+
+function reason(error: unknown): string {
+  if (!(error instanceof Error)) return String(error)
+  return error.cause instanceof Error ? `${error.message}: ${error.cause.message}` : error.message
+}
+
+/** A short pause between tries: a CDN's hiccup is not a reason to fail a whole CI run. */
+async function downloadWithRetries(name: string): Promise<Uint8Array> {
+  const url = source(name)
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await download(url)
+    } catch (error) {
+      if (attempt === ATTEMPTS) {
+        throw new Error(
+          `${name}: ${url} failed ${String(ATTEMPTS)} times, last: ${reason(error)}`,
+          {
+            cause: error,
+          },
+        )
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1_000 * attempt))
+    }
+  }
+}
+
+async function main(): Promise<void> {
+  mkdirSync(folder, { recursive: true })
+  let fetched = 0
+  for (const [name, expected] of PHOTOS) {
+    const path = join(folder, name)
+    if (existsSync(path) && sha256(readFileSync(path)) === expected) continue
+    const bytes = await downloadWithRetries(name)
+    if (sha256(bytes) !== expected) {
+      throw new Error(
+        `${name}: ${source(name)} is not the photograph the fixtures were hashed from`,
+      )
+    }
+    writeFileSync(path, bytes)
+    fetched += 1
+  }
+  console.log(`${String(PHOTOS.length)} dev photographs in ${folder} (${String(fetched)} fetched)`)
+}
+
+try {
+  await main()
+} catch (error) {
+  // The message names the photograph and the cause; a stack would only point back here.
+  console.error(error instanceof Error ? error.message : String(error))
+  process.exit(1)
+}
