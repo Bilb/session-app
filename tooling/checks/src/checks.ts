@@ -43,6 +43,7 @@ export const CHECKS: readonly Check[] = [
   { run: 'boundaries', stage: 'pre-commit', when: new RegExp(`${CODE.source}|${MANIFEST.source}`) },
   { run: 'typecheck', stage: 'pre-push', perPackage: true },
   { run: 'test', stage: 'pre-push', perPackage: true },
+  { run: 'test:native', stage: 'ci-only', because: 'needs a C++ toolchain with ThreadSanitizer' },
   { run: 'knip', stage: 'pre-push' },
   { run: 'dedupe --check', stage: 'pre-commit', when: MANIFEST },
   { run: 'codegen:check', stage: 'pre-commit', when: /^packages\/bridge-types\// },

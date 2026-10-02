@@ -25,6 +25,7 @@
     "boundaries": "depcruise --config tooling/depcruise-config/root.cjs packages apps tests tooling && depcruise --config tooling/depcruise-config/native.cjs packages apps tests tooling",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
+    "test:native": "pnpm --filter @session/bridge-rn run --if-present test:native",
     "knip": "knip",
     "format": "prettier --write --cache .",
     "format:check": "prettier --check --cache .",
