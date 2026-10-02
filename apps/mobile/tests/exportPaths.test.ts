@@ -5,10 +5,11 @@ import {
   exportFileName,
   folderDocumentUri,
   isGrantedFolderUri,
+  numberedName,
   photoLibraryExtension,
+  placeUnderFreeName,
   stagedPath,
   stagingTokenOf,
-  unusedName,
 } from '#src/exportPaths'
 
 const ROOT = '/data/user/0/org.getsession.session2/cache/session-exports'
@@ -122,16 +123,53 @@ describe('a path handed to exportAttachment or back to the port', () => {
 })
 
 describe('a name in a folder that already holds it', () => {
-  it('is kept when nothing there has it', () => {
-    expect(unusedName('itinerary.pdf', new Set(['other.pdf']))).toBe('itinerary.pdf')
+  it('is numbered the way libsession numbers a collision', () => {
+    expect(numberedName('itinerary.pdf', 0)).toBe('itinerary.pdf')
+    expect(numberedName('itinerary.pdf', 1)).toBe('itinerary (1).pdf')
+    expect(numberedName('itinerary.pdf', 2)).toBe('itinerary (2).pdf')
+    expect(numberedName('notes', 1)).toBe('notes (1)')
   })
 
-  it('is numbered the way libsession numbers a collision', () => {
-    expect(unusedName('itinerary.pdf', new Set(['itinerary.pdf']))).toBe('itinerary (1).pdf')
-    expect(unusedName('itinerary.pdf', new Set(['itinerary.pdf', 'itinerary (1).pdf']))).toBe(
-      'itinerary (2).pdf',
+  it('is found by attempting each name in turn, never by listing the folder', async () => {
+    const held = new Set(['itinerary.pdf', 'itinerary (1).pdf'])
+    const tried: string[] = []
+    await placeUnderFreeName(
+      'itinerary.pdf',
+      (candidate) => {
+        tried.push(candidate)
+        if (held.has(candidate)) throw new Error('taken')
+      },
+      (error) => error instanceof Error && error.message === 'taken',
     )
-    expect(unusedName('notes', new Set(['notes']))).toBe('notes (1)')
+    expect(tried).toEqual(['itinerary.pdf', 'itinerary (1).pdf', 'itinerary (2).pdf'])
+  })
+
+  it('passes any other failure straight through', async () => {
+    const revoked = new Error('revoked')
+    await expect(
+      placeUnderFreeName(
+        'x.pdf',
+        () => {
+          throw revoked
+        },
+        () => false,
+      ),
+    ).rejects.toBe(revoked)
+  })
+
+  it('gives up after a thousand collisions', async () => {
+    let tries = 0
+    await expect(
+      placeUnderFreeName(
+        'x.pdf',
+        () => {
+          tries += 1
+          throw new Error('taken')
+        },
+        () => true,
+      ),
+    ).rejects.toThrow('taken')
+    expect(tries).toBe(1001)
   })
 })
 

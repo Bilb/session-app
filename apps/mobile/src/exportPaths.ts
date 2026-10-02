@@ -104,19 +104,38 @@ export function stagingTokenOf(
   return token
 }
 
-/**
- * `name (1).ext`, `name (2).ext`... the first that is not taken, as libsession names a collision.
- *
- * A picked folder refuses a copy onto a name it already holds, and overwriting somebody's file
- * with an attachment is not the answer.
- */
-export function unusedName(name: string, taken: ReadonlySet<string>): string {
-  if (!taken.has(name)) return name
+/** More collisions than any folder holds of one name; past it the collision is the answer. */
+const MAX_COLLISIONS = 1000
+
+/** `name` for 0, then `name (1).ext`, `name (2).ext`... as libsession names a collision. */
+export function numberedName(name: string, n: number): string {
+  if (n === 0) return name
   const dot = name.lastIndexOf('.')
   const [stem, extension] = dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, '']
-  for (let n = 1; ; n += 1) {
-    const candidate = `${stem} (${String(n)})${extension}`
-    if (!taken.has(candidate)) return candidate
+  return `${stem} (${String(n)})${extension}`
+}
+
+/**
+ * Runs `place` under the name, then under each numbered variant, until one lands.
+ *
+ * By attempting rather than by listing the folder first: a document tree lists its children by
+ * id, which on most providers is not the display name a copy collides on, and the listing is one
+ * synchronous provider query per child. `taken` says whether a failure was the name being in
+ * use; any other failure, and the thousandth collision, propagate.
+ */
+export async function placeUnderFreeName(
+  name: string,
+  place: (candidate: string) => void | Promise<void>,
+  taken: (error: unknown, candidate: string) => boolean,
+): Promise<void> {
+  for (let n = 0; ; n += 1) {
+    const candidate = numberedName(name, n)
+    try {
+      await place(candidate)
+      return
+    } catch (error) {
+      if (n >= MAX_COLLISIONS || !taken(error, candidate)) throw error
+    }
   }
 }
 
