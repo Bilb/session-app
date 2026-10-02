@@ -209,6 +209,8 @@ export default ({ config }: ConfigContext): ExpoConfig =>
       ],
       // Exporting a picture or a video puts it in the photo library. The plugin's own strings
       // would replace the catalogue's, and `false` deletes the key from the plist outright.
+      // It also sets android:requestLegacyExternalStorage, which Android 10 alone reads and is
+      // what lets a photo export write to DCIM there; 11 and up ignore it.
       [
         'expo-media-library',
         {
