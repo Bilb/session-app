@@ -550,13 +550,13 @@ importers:
       '@session/basic-types':
         specifier: workspace:*
         version: link:../basic-types
+      '@session/bridge-rn':
+        specifier: workspace:*
+        version: link:../bridge-rn
       '@session/bridge-types':
         specifier: workspace:*
         version: link:../bridge-types
     devDependencies:
-      '@session/bridge-rn':
-        specifier: workspace:*
-        version: link:../bridge-rn
       '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config

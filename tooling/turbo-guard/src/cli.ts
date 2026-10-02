@@ -7,7 +7,7 @@ import { CHECKS } from '@session/checks'
 import { absentSubmodules, turboTasksIn } from '#src/ci'
 import { pushedFiles } from '#src/files'
 import { hookDrift } from '#src/hooks'
-import { undeclaredImports, type WorkspacePackage } from '#src/manifests'
+import { importViolations, type WorkspacePackage } from '#src/manifests'
 import { check, type Task } from '#src/rules'
 
 const repoRoot = join(import.meta.dirname, '../../..')
@@ -100,6 +100,14 @@ const packages: WorkspacePackage[] = manifests.map(({ directory, manifest }) => 
       manifest.optionalDependencies,
     ].flatMap((field) => Object.keys(field ?? {})),
   ),
+  devOnly: new Set(
+    Object.keys(manifest.devDependencies ?? {}).filter(
+      (name) =>
+        ![manifest.dependencies, manifest.peerDependencies, manifest.optionalDependencies].some(
+          (field) => field !== undefined && name in field,
+        ),
+    ),
+  ),
   sources: [...committed]
     .filter(
       (file) => SOURCE.test(file) && !file.startsWith(OWN_TESTS) && ownerOf(file) === directory,
@@ -107,7 +115,7 @@ const packages: WorkspacePackage[] = manifests.map(({ directory, manifest }) => 
     .map((file) => ({ path: file, text: readFileSync(join(repoRoot, file), 'utf8') })),
 }))
 
-const undeclared = undeclaredImports(packages)
+const imports = importViolations(packages)
 
 const drift = hookDrift(
   workflow,
@@ -118,7 +126,7 @@ const drift = hookDrift(
 )
 
 const without = absent.length === 0 ? '' : ` (without ${absent.join(', ')})`
-if (violations.length === 0 && undeclared.length === 0 && drift.length === 0) {
+if (violations.length === 0 && imports.length === 0 && drift.length === 0) {
   process.stdout.write(
     `turbo-guard: ${String(tasks.length)} tasks in CI's run checked against its checkout${without}, ` +
       `${String(packages.length)} manifests against their imports, ` +
@@ -127,10 +135,12 @@ if (violations.length === 0 && undeclared.length === 0 && drift.length === 0) {
 } else {
   for (const violation of violations)
     process.stderr.write(`turbo-guard: ${violation.task} [${violation.rule}] ${violation.detail}\n`)
-  for (const found of undeclared)
+  for (const found of imports)
     process.stderr.write(
-      `turbo-guard: ${found.package} [undeclared-import] ${found.file} imports ${found.imports}, ` +
-        `which its package.json does not declare\n`,
+      `turbo-guard: ${found.package} [${found.rule}] ${found.file} imports ${found.imports}, ` +
+        (found.rule === 'undeclared-import'
+          ? 'which its package.json does not declare\n'
+          : 'which its package.json lists only under devDependencies, so it is absent at runtime\n'),
     )
   for (const found of drift) process.stderr.write(`turbo-guard: [${found.rule}] ${found.detail}\n`)
   process.stderr.write(
