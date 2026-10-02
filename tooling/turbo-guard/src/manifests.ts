@@ -22,7 +22,9 @@ export interface ImportViolation {
 const SIBLING =
   /(?:\bfrom\s+|\bimport\s*\(\s*|\brequire\s*\(\s*|^\s*import\s+)['"](@session\/[\w.-]+)/gm
 
-/** What a package ships, as root.cjs's not-to-dev-dep draws it: src/, less tests and dev entries. */
+/**
+ * What a package ships, as root.cjs's not-to-dev-dep draws it: src/, less tests and dev entries.
+ */
 const SHIPPED = /^(?:packages|apps)\/[^/]+\/src\//
 const NOT_SHIPPED = /\.(?:test|spec)\.[cm]?[jt]sx?$|\/dev\//
 

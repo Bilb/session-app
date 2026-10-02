@@ -22,7 +22,10 @@ function blockBelow(lines: readonly string[], index: number, indent: number): st
 export interface PnpmSteps {
   /** What follows `pnpm ` in each one-line `run: pnpm ...` step. */
   steps: string[]
-  /** Every other `run:` that is not plainly harmless, which the rules reading `steps` would not see. */
+  /**
+   * Every other `run:` that is not plainly harmless, which the rules reading `steps` would not
+   * see.
+   */
   unreadable: string[]
 }
 
