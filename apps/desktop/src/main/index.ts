@@ -43,6 +43,12 @@ const here = fileURLToPath(new URL('.', import.meta.url))
 // Before whenReady, which is the only point Electron accepts a privileged scheme.
 registerMediaScheme()
 
+/** A bridge that could not be made, standing in for one: see `createRefusingTransport`. */
+function refusingBridge(reason: string): Awaited<ReturnType<typeof createBridge>> {
+  const refuse = () => Promise.reject(new Error(`the bridge could not start: ${reason}`))
+  return { ...createRefusingTransport(reason), fetchMedia: refuse, fetchPreview: refuse }
+}
+
 /**
  * The bridge, which outlives any particular window.
  *
@@ -57,12 +63,6 @@ registerMediaScheme()
  * database there instead of carrying on with the one already open, so it is built once, every
  * window is wired to it, and it is closed when the app quits.
  */
-/** A bridge that could not be made, standing in for one: see `createRefusingTransport`. */
-function refusingBridge(reason: string): Awaited<ReturnType<typeof createBridge>> {
-  const refuse = () => Promise.reject(new Error(`the bridge could not start: ${reason}`))
-  return { ...createRefusingTransport(reason), fetchMedia: refuse, fetchPreview: refuse }
-}
-
 let bridge: Awaited<ReturnType<typeof createBridge>> | null = null
 
 async function requireBridge(): Promise<NonNullable<typeof bridge>> {
