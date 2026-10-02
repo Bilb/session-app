@@ -113,7 +113,10 @@ function keyOf({ messageId, index }: AttachmentRef): string {
  */
 export const NOT_YET = 'data:image/png;base64,'
 
-/** Where an export's bytes come from: the photograph for a picture, a line of text for anything else. */
+/**
+ * Where an export's bytes come from: the photograph for a picture, a line of text for anything
+ * else.
+ */
 export type ExportSource = { photo: string } | { text: Uint8Array }
 
 export function fakeExportSource(
@@ -131,13 +134,13 @@ export function fakeExportSource(
  * The media port on the fake, until mobile has a native loader to serve it through.
  *
  * Pictures are the dev photographs pushed to the device (`photos`, file URLs by name), and
- * placeholders the fixture's real ThumbHashes, decoded. React Native draws both kinds of URL on both
- * platforms with no plug-in.
+ * placeholders the fixture's real ThumbHashes, decoded. React Native draws both kinds of URL on
+ * both platforms with no plug-in.
  *
- * Resolving an attachment's URL starts the fake's download once, as a native loader would fetch it
- * once and cache it: the URL is the request. The picture is only handed over once that transfer
- * has finished, so under `EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN` the placeholder and the bar show for as long as
- * the transfer takes, as they do on desktop.
+ * Resolving an attachment's URL starts the fake's download once, as a native loader would fetch
+ * it once and cache it: the URL is the request. The picture is only handed over once that
+ * transfer has finished, so under `EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN` the placeholder and the bar
+ * show for as long as the transfer takes, as they do on desktop.
  */
 export function fakeMediaPort(
   client: FakeSessionClient,
