@@ -66,6 +66,9 @@ export const MEDIA_URL_VECTORS: readonly MediaUrlVector[] = [
     '%34%32/1',
   ].map((pair) => ({ url: `${S}attachment/${pair}`, parsed: null })),
   { url: `${S}attachment/ 42/1`, parsed: null },
+  // ASCII digits only: not Arabic-Indic, not fullwidth.
+  { url: `${S}attachment/\u0664\u0662/1`, parsed: null },
+  { url: `${S}attachment/\uff14\uff12/1`, parsed: null },
 
   // Past the largest safe integer, which Number() would round rather than refuse.
   { url: `${S}attachment/9007199254740992/0`, parsed: null },
@@ -75,6 +78,11 @@ export const MEDIA_URL_VECTORS: readonly MediaUrlVector[] = [
 
   { url: `${S}attachment/42/1?x=1`, parsed: null },
   { url: `${S}attachment/42/1#f`, parsed: null },
+  // Nothing past the pair, not even a byte a C string would end at or a line would.
+  { url: `${S}attachment/1/0\0`, parsed: null },
+  { url: `${S}attachment/1/0\n`, parsed: null },
+  { url: `${S}/`, parsed: null },
+  { url: S, parsed: null },
   { url: '', parsed: null },
   { url: 'not a url', parsed: null },
 ]
@@ -117,6 +125,8 @@ export const SERVABLE_VECTORS: readonly ServableVector[] = [
   { declared: 'video/ogg', bytes: OGG, served: 'video/ogg' },
   { declared: 'Image/PNG; charset=binary', bytes: PNG, served: 'image/png' },
   { declared: '  image/png  ', bytes: PNG, served: 'image/png' },
+  // Only ASCII space is trimmed off a declared type: a no-break space is not, on any platform.
+  { declared: '\u00a0image/png', bytes: PNG, served: null },
 
   // The wrong image format named: what the bytes are is what is served.
   { declared: 'image/png', bytes: JPEG, served: 'image/jpeg' },
