@@ -57,7 +57,7 @@ env -u ELECTRON_RUN_AS_NODE NO_CLEAN=1 NO_TUI=1 USE_XVFB=0 PLAYWRIGHT_WORKERS_CO
 
 | `ATTACH_ACTION` | does                                                                      |
 | --------------- | ------------------------------------------------------------------------- |
-| `create`        | a new account; ID and recovery phrase go to `ATTACH_OUT`                  |
+| `create`        | a new account; ID and recovery phrase go to `ATTACH_OUT` (mode 0600)      |
 | `text`          | `ATTACH_TEXT` (or a hello) to each of `ATTACH_TARGETS`                    |
 | `send`          | a hello, then one picture, three, seven, a PDF and a video to each target |
 

@@ -2,7 +2,7 @@
 // Not a test: a driver for the legacy Session Desktop, run through Playwright for its helpers.
 import { _electron as electron, type Page, test } from '@playwright/test';
 import { readFileSync, writeFileSync } from 'fs';
-import { homedir } from 'os';
+import { homedir, tmpdir } from 'os';
 import { basename, join } from 'path';
 
 import { newUser } from './setup/new_user';
@@ -15,7 +15,7 @@ import {
 
 const ACTION = process.env.ATTACH_ACTION ?? 'create';
 const INSTANCE = process.env.ATTACH_INSTANCE ?? 'attachsender';
-const OUT = process.env.ATTACH_OUT ?? `/tmp/legacy-${INSTANCE}.json`;
+const OUT = process.env.ATTACH_OUT ?? join(tmpdir(), `legacy-${INSTANCE}.json`);
 const TARGETS = (process.env.ATTACH_TARGETS ?? '')
   .split(',')
   .map((t) => t.trim())
@@ -90,7 +90,8 @@ test('legacy sender', async () => {
   try {
     if (ACTION === 'create') {
       const user = await newUser(window, process.env.ATTACH_NAME ?? INSTANCE);
-      writeFileSync(OUT, JSON.stringify(user));
+      // The file holds the recovery phrase: owner-only, however the temp dir is shared.
+      writeFileSync(OUT, JSON.stringify(user), { mode: 0o600 });
       return;
     }
     console.log(`sender ${JSON.parse(readFileSync(OUT, 'utf8')).accountid}`);
