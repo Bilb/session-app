@@ -167,9 +167,10 @@ export interface WindowPort {
   /**
    * Shuts the app down, or null where the build cannot.
    *
-   * **This exists for the case that needs it rather than as a quit button.** After the device's
-   * data is cleared the process is holding a database that no longer exists. Ending the process
-   * is what makes the next launch the clean one.
+   * Two callers. A screen's Quit, where the app cannot get going. And the end of a clear on a
+   * device whose account was loaded, where `restart` cannot be had: by then the account's messages
+   * and names have sat in JavaScript strings, which nothing can scrub, and only the end of the
+   * process gives that memory back.
    *
    * Desktop closes its window, which with one window is quitting. The phones end the process at
    * once, without the teardown `exit()` runs -- see `modules/process-exit` in the mobile app. Null
@@ -177,6 +178,15 @@ export interface WindowPort {
    * one that does nothing.
    */
   close: (() => void) | null
+  /**
+   * Ends the process and starts the app again in a fresh one, or null where the platform cannot.
+   *
+   * What a clear of a loaded account ends with where it can be had: the same reason as `close`,
+   * and the person lands on onboarding rather than at a home screen that looks like a crash.
+   * Desktop relaunches through main; Android restarts its task. iOS lets no app relaunch itself,
+   * so it is null there and the caller falls back to `close`.
+   */
+  restart: (() => void) | null
   isFocused(): boolean
   /** Drives read receipts and whether a notification is worth showing. */
   onFocusChange(handler: (focused: boolean) => void): () => void

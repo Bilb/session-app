@@ -57,6 +57,9 @@ setPorts(
       close: () => {
         window.close()
       },
+      restart: () => {
+        window.sessionDesktop.restart()
+      },
       isFocused: () => document.hasFocus(),
       onFocusChange: (handler) => {
         const onFocus = () => handler(true)

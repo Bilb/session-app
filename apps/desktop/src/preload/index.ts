@@ -22,7 +22,8 @@ ipcRenderer.on('session-bridge-port', (event) => {
  * `openExternal` exists because the window-open handler refuses everything, so the app needs a way
  * to say "this one, and I meant it" that a `target="_blank"` in content we did not write cannot
  * reach. `copyText` exists because every permission is refused, the clipboard's included.
- * `setLocale` is for what main draws itself, the right-click menu.
+ * `setLocale` is for what main draws itself, the right-click menu. `restart` is the only way the
+ * page can end its own process.
  */
 contextBridge.exposeInMainWorld('sessionDesktop', {
   openExternal: (url: string) => {
@@ -40,5 +41,8 @@ contextBridge.exposeInMainWorld('sessionDesktop', {
   copyText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard-write-text', text),
   setLocale: (locale: string) => {
     ipcRenderer.send('locale', locale)
+  },
+  restart: () => {
+    ipcRenderer.send('restart')
   },
 })

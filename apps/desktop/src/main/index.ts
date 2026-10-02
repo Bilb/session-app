@@ -137,6 +137,14 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
     await clipboard.writeText(text)
   })
 
+  // A fresh process rather than a reloaded window: a reload can keep the renderer, and with it
+  // whatever the cleared account left in its memory. See `restart` on the window port.
+  ipc.on('restart', (event) => {
+    if (!isFromAppFrame(event.senderFrame, appUrl)) return
+    app.relaunch()
+    app.exit(0)
+  })
+
   // The menu below is drawn here, so it follows the language the person chose in the app.
   ipc.on('locale', (event, locale: unknown) => {
     if (!isFromAppFrame(event.senderFrame, appUrl)) return

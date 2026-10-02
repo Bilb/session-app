@@ -1,7 +1,10 @@
 import { requireOptionalNativeModule } from 'expo'
+import { Platform } from 'react-native'
 
 interface ProcessExitModule {
   terminate(): void
+  /** Android only: iOS lets no app relaunch itself. */
+  restart?(): void
 }
 
 /**
@@ -17,4 +20,15 @@ export const terminateProcess: (() => void) | null =
     ? null
     : () => {
         ProcessExit.terminate()
+      }
+
+/**
+ * Ends the process and starts the app again, on Android. Null on iOS, which has no way to, and in
+ * a build whose module predates it.
+ */
+export const restartProcess: (() => void) | null =
+  Platform.OS !== 'android' || ProcessExit?.restart === undefined
+    ? null
+    : () => {
+        ProcessExit.restart?.()
       }

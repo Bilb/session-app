@@ -24,6 +24,7 @@ import { confirmLink } from './confirmLink'
 import { ConversationsPage } from './ConversationsPage'
 import { HelpPage } from './HelpPage'
 import { SessionInfo } from './SessionInfo'
+import { endAfterClear } from '../endAfterClear'
 import { LocalizedText } from '../LocalizedText'
 
 /**
@@ -265,7 +266,10 @@ export function SettingsRootPage() {
         destructive: true,
         testID: ELEMENT.settings.clearData,
         onPress: () => {
-          confirmClearData(modals, () => actions.clearDeviceData())
+          // The process ends once the clear is done: see `endAfterClear`.
+          // TODO: iOS closes rather than relaunching, which can read as a crash. Say so in the
+          // confirm once the catalogue has a string for it.
+          confirmClearData(modals, () => actions.clearDeviceData().then(endAfterClear))
         },
       },
     ],

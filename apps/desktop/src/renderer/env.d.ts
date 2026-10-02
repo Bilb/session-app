@@ -44,5 +44,7 @@ interface Window {
     /** Rejects when the main process refuses: no recent click or key press, or too long. */
     copyText(text: string): Promise<void>
     setLocale(locale: string): void
+    /** Ends this process and starts the app again in a fresh one. */
+    restart(): void
   }
 }

@@ -6,7 +6,7 @@ import * as SecureStore from 'expo-secure-store'
 import { Linking, Platform, Share } from 'react-native'
 
 import { flagOverride } from './flagOverrides'
-import { terminateProcess } from './processExit'
+import { restartProcess, terminateProcess } from './processExit'
 
 /**
  * Whose servers fast mode would use, which is what the onboarding screen has to name.
@@ -138,5 +138,6 @@ setPorts({
   window: {
     ...ports.window,
     close: terminateProcess,
+    restart: restartProcess,
   },
 })
