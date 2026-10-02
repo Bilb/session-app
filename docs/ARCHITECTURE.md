@@ -638,13 +638,8 @@ Append one paragraph per decision. Undocumented decisions are what rot.
 - **2026-09-28 - Mobile resolves `session-media://` in a native image loader per platform.**
   `MediaPort.urlFor` stays synchronous and the URL stays the request, so the bytes never enter
   JavaScript: the loader recognises the scheme, asks the shim, and hands the platform a decoded
-  image. On Android that is a Fresco `CustomProducerSequenceFactory`, installed by a config plugin
-  that builds `PackageList(this, MainPackageConfig(...))`: nothing initialises Fresco before
-  React Native's `FrescoModule`, and a config handed in replaces React Native's default, so it
-  rebuilds what that default sets - the OkHttp fetcher with React Native's cookie jar,
-  `DownsampleMode.AUTO`, the Systrace listener. On iOS it is an `RCTImageURLLoader`, registered
-  through `codegenConfig.ios.modulesConformingToProtocol`, which Expo's `RCTAppDependencyProvider`
-  hands to React Native. Both were proven by throwaway spikes before any of it was built.
+  image. Android's is a Fresco producer sequence and iOS's an `RCTImageURLLoader`; each has its
+  own entry below when it lands.
 
   Rejected for Android: a non-exported `ContentProvider` and a `content://` URL, which is what the
   legacy client does and would serve Glide and Media3 too. Fresco reads a content URI
@@ -659,17 +654,8 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   canonical form only, because Chromium canonicalises before a handler sees a URL and a native
   loader is handed the one the app built.
 
-  A loader reaches the bridge through a process-wide media source the Nitro bridge registers and
-  clears before it closes, holding a copy of the `shared_ptr` so `close()` cannot free the bridge
-  under a load in flight. Neither loader waits on the network: each starts the fetch and returns,
-  the answer arrives on Core's loop and is handed straight to a queue the loader owns. Previews are
-  RGBA handed over as a bitmap rather than encoded; only desktop encodes, because
-  `protocol.handle` answers with a body. No plaintext is written: Fresco's disk-cache producers are
-  left out of the sequence, and an iOS URL loader is not behind `NSURLCache`.
-
   The Nitro bridge has `fetchMedia` and `fetchPreview` as the addon does, returning `ArrayBuffer`s
   the client views as `Uint8Array`, so the transport has one shape and a device-side contract run
   can assert bytes. Nothing in the app calls them. The fake answers the same `MediaSource`
-  contract through `createFakeMediaSource`; on mobile it will go through the loaders by
-  registering a JavaScript-backed source, as the fake has no libsession behind it.
-  Video is out of scope until a tile has a still on any platform.
+  contract through `createFakeMediaSource`. Video is out of scope until a tile has a still on any
+  platform.
