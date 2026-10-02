@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cmath>
 #include <memory>
 #include <string>
 #include <utility>
@@ -22,6 +23,27 @@ static NSError* SessionMediaError(const std::string& message) {
                            userInfo:@{
                                NSLocalizedDescriptionKey : [NSString stringWithUTF8String:message.c_str()]
                            }];
+}
+
+/// The source's stored pixel size from its header, or zero when it does not say.
+static CGSize SourcePixelSize(CGImageSourceRef source) {
+    NSDictionary* properties =
+            (__bridge_transfer NSDictionary*)CGImageSourceCopyPropertiesAtIndex(source, 0, nullptr);
+    return CGSizeMake(
+            [properties[(id)kCGImagePropertyPixelWidth] doubleValue],
+            [properties[(id)kCGImagePropertyPixelHeight] doubleValue]);
+}
+
+/// The longest edge a decode may have for a view of `longest` device pixels.
+///
+/// The fit never reaches a loader (Fabric asks with stretch for every request), so this assumes
+/// `cover`: the picture's shorter edge spans the view, and its longer edge overshoots by the aspect
+/// ratio. Never past the file's own size, so nothing is upsized.
+static CGFloat ThumbnailBound(CGFloat longest, CGSize pixels) {
+    if (pixels.width <= 0 || pixels.height <= 0)
+        return longest;
+    const CGFloat aspect = std::max(pixels.width / pixels.height, pixels.height / pixels.width);
+    return std::min(std::ceil(longest * aspect), std::max(pixels.width, pixels.height));
 }
 
 /// Decodes on the calling queue rather than at first draw, and no larger than the view asks for:
@@ -38,7 +60,8 @@ static UIImage* _Nullable DecodedImage(NSData* data, CGSize size, CGFloat scale)
     } mutableCopy];
     const CGFloat longest = std::max(size.width, size.height) * std::max<CGFloat>(scale, 1);
     if (longest > 0)
-        options[(id)kCGImageSourceThumbnailMaxPixelSize] = @(longest);
+        options[(id)kCGImageSourceThumbnailMaxPixelSize] =
+                @(ThumbnailBound(longest, SourcePixelSize(source)));
     CGImageRef decoded =
             CGImageSourceCreateThumbnailAtIndex(source, 0, (__bridge CFDictionaryRef)options);
     CFRelease(source);
