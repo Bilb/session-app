@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { SEGMENT_PADDING, selectedSegment, toggleSlop } from '#src/segmentedToggleLayout'
+import {
+  SEGMENT_PADDING,
+  selectedSegment,
+  toggleRowHeight,
+  toggleSlop,
+} from '#src/segmentedToggleLayout'
 import * as web from '#src/segmentedToggleMetrics'
 import * as native from '#src/segmentedToggleMetrics.native'
 
@@ -18,12 +23,22 @@ describe('a segmented toggle on touch', () => {
     expect(native.SEGMENT_HEIGHT + 2 * SEGMENT_PADDING + 2 * slop).toBeGreaterThanOrEqual(48)
     expect(2 * native.SEGMENT_WIDTH + 3 * SEGMENT_PADDING + 2 * slop).toBeGreaterThanOrEqual(48)
   })
+
+  it('sits in a row tall enough to hold the slop, which stops at the row’s edge', () => {
+    const slop = toggleSlop(native.SEGMENT_HEIGHT, native.SEGMENT_TARGET)
+    const target = native.SEGMENT_HEIGHT + 2 * SEGMENT_PADDING + 2 * slop
+    expect(toggleRowHeight(FOOTER_HEIGHT, native.SEGMENT_TARGET)).toBeGreaterThanOrEqual(target)
+  })
 })
 
 describe('a segmented toggle with a pointer', () => {
   it('lets each segment be clicked, drawn small', () => {
     expect(web.SEGMENT_TAPS).toBe('segment')
     expect(web.SEGMENT_HEIGHT + 2 * SEGMENT_PADDING).toBeLessThanOrEqual(FOOTER_HEIGHT)
+  })
+
+  it('leaves the row it sits in at the caption line’s height', () => {
+    expect(toggleRowHeight(FOOTER_HEIGHT, web.SEGMENT_TARGET)).toBe(FOOTER_HEIGHT)
   })
 })
 

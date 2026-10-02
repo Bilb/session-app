@@ -16,3 +16,11 @@ export function selectedSegment<V>(
 export function toggleSlop(segmentHeight: number, target: number): number {
   return Math.max(0, (target - (segmentHeight + 2 * SEGMENT_PADDING)) / 2)
 }
+
+/**
+ * How tall the row holding the toggle has to be for a slop to reach `target`: a slop never extends
+ * past the parent's bounds on either platform, so the row is what bounds the target.
+ */
+export function toggleRowHeight(rowHeight: number, target: number): number {
+  return Math.max(rowHeight, target)
+}

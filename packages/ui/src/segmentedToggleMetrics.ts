@@ -9,5 +9,5 @@
 export const SEGMENT_HEIGHT = 22
 export const SEGMENT_WIDTH = 28
 export const SEGMENT_TAPS: 'segment' | 'whole' = 'segment'
-/** Unused on the web, where the drawn segment is the target. */
+/** Nothing to grow to on the web, where the drawn segment is the target. */
 export const SEGMENT_TARGET = 0
