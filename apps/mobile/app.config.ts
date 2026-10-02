@@ -89,6 +89,16 @@ const PERMISSION_STRINGS: Record<string, string> = {
   NSLocalNetworkUsageDescription: 'permissionsLocalNetworkAccessRequiredIos',
 }
 
+/**
+ * The purpose strings a plugin writes, from `englishPermission` below, so the Android permission
+ * each one comes with is declared by the same entry. `ios.infoPlist` writes every other one.
+ */
+const PLUGIN_WRITTEN_KEYS = new Set([
+  'NSCameraUsageDescription',
+  'NSPhotoLibraryUsageDescription',
+  'NSPhotoLibraryAddUsageDescription',
+])
+
 /** The English of one of them, which is what the plist itself carries. */
 function englishPermission(plistKey: string): string {
   const key = PERMISSION_STRINGS[plistKey]
@@ -184,10 +194,9 @@ export default ({ config }: ConfigContext): ExpoConfig =>
     ...config,
     name: config.name ?? 'Session',
     slug: config.slug ?? 'session-app',
-    // The camera is the scanner behind the restore screen's QR tab. Declared through the plugin
-    // rather than by writing the plist key directly, so the Android permission comes with it.
     plugins: [
       ...(config.plugins ?? []),
+      // The camera is the scanner behind the restore screen's QR tab.
       [
         'expo-camera',
         {
@@ -196,6 +205,16 @@ export default ({ config }: ConfigContext): ExpoConfig =>
           // dangerous permission on the store listing wants a reason. The only camera here reads
           // QR codes.
           recordAudioAndroid: false,
+        },
+      ],
+      // Exporting a picture or a video puts it in the photo library. The plugin's own strings
+      // would replace the catalogue's, and `false` deletes the key from the plist outright.
+      [
+        'expo-media-library',
+        {
+          photosPermission: englishPermission('NSPhotoLibraryUsageDescription'),
+          savePhotosPermission: englishPermission('NSPhotoLibraryAddUsageDescription'),
+          granularPermissions: ['photo', 'video'],
         },
       ],
     ],
@@ -213,12 +232,12 @@ export default ({ config }: ConfigContext): ExpoConfig =>
       },
       infoPlist: {
         ...config.ios?.infoPlist,
-        // Every purpose string but the camera's, which the plugin above writes so that the Android
-        // permission comes with it. English only here; `permissionLocales` puts each of the other
-        // languages into its own `.lproj`, keyed off this same map.
+        // Every purpose string the plugins above do not write. English only here;
+        // `permissionLocales` puts each of the other languages into its own `.lproj`, keyed off
+        // this same map.
         ...Object.fromEntries(
           Object.keys(PERMISSION_STRINGS)
-            .filter((plistKey) => plistKey !== 'NSCameraUsageDescription')
+            .filter((plistKey) => !PLUGIN_WRITTEN_KEYS.has(plistKey))
             .map((plistKey) => [plistKey, englishPermission(plistKey)]),
         ),
         // The service the local-network prompt is triggered by. The client's own name, and not a
