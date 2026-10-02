@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { _electron, type ElectronApplication, type Page } from '@playwright/test'
 import type { ElementId } from '@session/test-ids'
 
+import { FAKE_LAUNCH_ENV } from './fakeEnv'
 import type { ISessionApp } from './ISessionApp'
 import type { IFileChooser } from './FileChooser'
 import type { ILayoutProbe } from './LayoutProbe'
@@ -94,9 +95,7 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser,
       ],
       env: {
         ...process.env,
-        // Electron refuses Chromium's flags when this is set, and terminals set it.
-        ELECTRON_RUN_AS_NODE: '',
-        EXPO_PUBLIC_SESSION_FAKE: '1',
+        ...FAKE_LAUNCH_ENV,
         SESSION_IDENTITY: identity,
         SESSION_DATA_DIR: dataDir,
         ...options.env,
