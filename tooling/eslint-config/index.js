@@ -3,6 +3,7 @@ import importX from 'eslint-plugin-import-x'
 import tseslint from 'typescript-eslint'
 
 import { caseCollision } from './caseCollision.js'
+import { commentLength } from './commentLength.js'
 import {
   desktopMainZone,
   desktopRendererZone,
@@ -151,7 +152,10 @@ export function baseConfig({ tsconfigRootDir, zone }) {
       languageOptions: {
         parserOptions: { projectService: true, tsconfigRootDir },
       },
-      plugins: { 'import-x': importX, session: { rules: { 'case-collision': caseCollision } } },
+      plugins: {
+        'import-x': importX,
+        session: { rules: { 'case-collision': caseCollision, 'comment-length': commentLength } },
+      },
       settings: {
         'import-x/resolver': { typescript: { alwaysTryTypes: true } },
       },
@@ -182,6 +186,7 @@ export function baseConfig({ tsconfigRootDir, zone }) {
         // TypeScript resolves without extensions; ".js" is not this repo's convention.
         'import-x/extensions': ['error', 'never', { json: 'always' }],
         'session/case-collision': 'error',
+        'session/comment-length': 'error',
 
         'no-restricted-syntax': ['error', ...RESTRICTED_SYNTAX],
       },

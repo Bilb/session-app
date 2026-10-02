@@ -128,8 +128,8 @@ export function OnboardingStepBody({
        * **Centred, and pulled upward — not top-aligned.** The legacy client splits the free space
        * with a spacer above and below, then pulls the block up again with a bottom padding of a
        * button's height and a third capped spacer. The result sits above the middle of the screen,
-       * and ours started hard under the bar instead, which is the discrepancy that could not be seen
-       * past to judge the keyboard avoidance.
+       * and ours started hard under the bar instead, which is the discrepancy that could not be
+       * seen past to judge the keyboard avoidance.
        *
        * Only on the phone: the wide design centres its own reserved block already.
        */}

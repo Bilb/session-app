@@ -9,7 +9,9 @@ import { LocalizedText } from './LocalizedText'
 import { TextButton } from './TextButton'
 
 interface StartupFailedScreenProps {
-  /** libsession's own words. Shown, because they are the only thing that says which failure it was. */
+  /**
+   * libsession's own words. Shown, because they are the only thing that says which failure it was.
+   */
   error: string
 }
 

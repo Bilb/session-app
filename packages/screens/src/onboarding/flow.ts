@@ -131,7 +131,9 @@ export type OnboardingEvent =
   | { type: 'restoreFailed' }
   /** The bridge refused to make or name the account. See `commitFailed`. */
   | { type: 'commitFailed' }
-  /** The window crossed the width that decides which design is in use -- a rotation, or a resize. */
+  /**
+   * The window crossed the width that decides which design is in use -- a rotation, or a resize.
+   */
   | { type: 'designChanged'; design: OnboardingDesign }
   | { type: 'back' }
 

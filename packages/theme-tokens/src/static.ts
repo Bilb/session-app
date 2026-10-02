@@ -79,7 +79,8 @@ export const RADII = {
   '2xl': 28,
   /**
    * The pill. A length rather than `50%`, which resolves per axis and turns a wide control into an
-   * ellipse; an oversized length is reduced to half the shorter side, giving a capsule at any width.
+   * ellipse; an oversized length is reduced to half the shorter side, giving a capsule at any
+   * width.
    */
   full: 9999,
 } as const

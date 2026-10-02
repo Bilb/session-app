@@ -7,8 +7,8 @@ import { fetchOf } from './attachmentFetch'
  * What a message's attachments are collectively doing.
  *
  * `failed` beats `fetching`, because a set where one file is never coming cannot complete: a bar
- * that would stop short is a worse thing to draw than a retry. `unavailable` is a set of nothing but
- * expired or unreadable files, which has nothing left to fetch and nothing to offer.
+ * that would stop short is a worse thing to draw than a retry. `unavailable` is a set of nothing
+ * but expired or unreadable files, which has nothing left to fetch and nothing to offer.
  */
 export type AttachmentSetState = 'ready' | 'fetching' | 'failed' | 'idle' | 'unavailable'
 
@@ -36,7 +36,9 @@ export interface AttachmentSet {
   totalBytes: number
   /** How many failed. The gallery draws the count; only the list can say which. */
   failed: number
-  /** How many of the unavailable ones are unreadable rather than expired, which is captioned apart. */
+  /**
+   * How many of the unavailable ones are unreadable rather than expired, which is captioned apart.
+   */
   unreadable: number
 }
 

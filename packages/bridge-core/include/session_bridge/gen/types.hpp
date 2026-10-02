@@ -436,7 +436,8 @@ struct BoolResult {
             value{std::move(value_)} {}
 };
 
-/// Where an export landed, which is not always where it was asked to go: a collision becomes `name (1)`.
+/// Where an export landed, which is not always where it was asked to go: a collision becomes
+/// `name (1)`.
 struct PathResult {
     static constexpr std::string_view type_tag = "path";
 

@@ -1,5 +1,6 @@
 /**
- * This function can be used to make sure all the possible values as input of a switch as taken care off, without having a default case.
+ * This function can be used to make sure all the possible values as input of a switch as taken care
+ * off, without having a default case.
  *
  */
 export function assertUnreachable(_x: never, message: string): never {

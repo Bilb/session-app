@@ -165,9 +165,9 @@ export default defineConfig({
       esbuildOptions: { resolveExtensions: WEB_FIRST_EXTENSIONS },
     },
     define: {
-      // The main process reads EXPO_PUBLIC_SESSION_NETID from the environment to pick the netid; the
-      // renderer cannot read the environment at all, so it gets the same value substituted here.
-      // Both readers have to resolve to one value, or the overlay names a network libsession
+      // The main process reads EXPO_PUBLIC_SESSION_NETID from the environment to pick the netid;
+      // the renderer cannot read the environment at all, so it gets the same value substituted
+      // here. Both readers have to resolve to one value, or the overlay names a network libsession
       // never attached to.
       'import.meta.env.EXPO_PUBLIC_SESSION_NETID': JSON.stringify(
         process.env['EXPO_PUBLIC_SESSION_NETID'] ?? 'mainnet',

@@ -9,7 +9,9 @@
 import type { LibsessionLogLevel, LogCategoryLevel } from '@session/bridge-types'
 
 export interface LogSpec {
-  /** Applied to every category first, so the pairs below are overrides rather than the whole set. */
+  /**
+   * Applied to every category first, so the pairs below are overrides rather than the whole set.
+   */
   level?: LibsessionLogLevel
   categories: LogCategoryLevel[]
 }

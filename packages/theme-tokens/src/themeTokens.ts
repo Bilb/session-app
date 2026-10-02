@@ -130,7 +130,9 @@ const WARNING_BASE = { light: '#A64B00', dark: '#FCB159' } as const
 /** What a disabled label still has to manage, on every surface. Below AA on purpose. */
 const DISABLED_FLOOR = 2
 
-/** How much of the body text's chroma survives being dimmed. Measured off Ocean Light: 0.053/0.080. */
+/**
+ * How much of the body text's chroma survives being dimmed. Measured off Ocean Light: 0.053/0.080.
+ */
 const CHROMA_DECAY = 0.66
 
 /**

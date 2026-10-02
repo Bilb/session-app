@@ -13,7 +13,9 @@ import { StateLayer } from './StateLayer'
 export type Segment<V> = {
   value: V
   icon: IconName
-  /** Already worded; what a screen reader announces the segment as, since it is drawn as a glyph. */
+  /**
+   * Already worded; what a screen reader announces the segment as, since it is drawn as a glyph.
+   */
   label: string
   testID: ElementId
 }

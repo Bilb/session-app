@@ -384,8 +384,8 @@ export function Button({
           {typeof children === 'string' ? (
             <Text
               size={size === 'xs' || size === 'sm' ? '$label' : '$body'}
-              // Bold, which is what the desktop client's button is: `font-weight: 700` unless a caller
-              // says otherwise, and none of the onboarding callers do.
+              // Bold, which is what the desktop client's button is: `font-weight: 700` unless a
+              // caller says otherwise, and none of the onboarding callers do.
               weight="bold"
               color={INHERITED_LABEL ?? (pressed && !inert ? pressedLabel : nativeLabel)}
             >

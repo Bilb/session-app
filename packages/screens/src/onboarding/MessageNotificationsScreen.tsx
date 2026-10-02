@@ -101,9 +101,9 @@ function NotificationOption({
 /**
  * Which way notifications arrive.
  *
- * The last screen of the create sequence, and **the point at which the account is actually made** --
- * everything before it was collected and held. It comes before the restore wait rather than after,
- * so that a restore is not fifteen seconds of nothing followed by a question.
+ * The last screen of the create sequence, and **the point at which the account is actually made**
+ * -- everything before it was collected and held. It comes before the restore wait rather than
+ * after, so that a restore is not fifteen seconds of nothing followed by a question.
  *
  * Fast mode is push and slow mode is polling. Where the build has no push service the fast option
  * is shown and marked unavailable rather than hidden: it is the recommended choice everywhere it
