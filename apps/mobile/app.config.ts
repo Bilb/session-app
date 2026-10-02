@@ -6,6 +6,10 @@ import { fileURLToPath } from 'node:url'
 import type * as ConfigPlugins from '@expo/config-plugins'
 import type { ConfigContext, ExpoConfig } from 'expo/config'
 
+// Through the package's imports map: Expo evaluates this file with node's ESM resolver, which
+// needs an extension on a relative path and finds one in the map.
+import { withSessionMedia } from '#plugins/withSessionMedia'
+
 /**
  * Required rather than imported, because node cannot see half of this module's exports.
  *
@@ -14,7 +18,7 @@ import type { ConfigContext, ExpoConfig } from 'expo/config'
  * detect. `import { IOSConfig }` therefore fails at load with "does not provide an export named",
  * while the plain functions beside it import fine. Through `require` they are ordinary properties.
  */
-const { IOSConfig, withMainApplication, withXcodeProject } = createRequire(import.meta.url)(
+const { IOSConfig, withXcodeProject } = createRequire(import.meta.url)(
   '@expo/config-plugins',
 ) as typeof ConfigPlugins
 
@@ -165,28 +169,6 @@ const withPermissionStrings: ConfigPlugins.ConfigPlugin = (config) =>
       { projectRoot: ios.modRequest.projectRoot, project: ios.modResults },
     )
     return ios
-  })
-
-/**
- * Hands React Native's Fresco the configuration that draws `session-media://` on Android.
- *
- * The only way in: `FrescoModule` takes its configuration from `MainPackageConfig`, and the
- * generated MainApplication builds `PackageList(this)` without one. Throws rather than skipping
- * when the line is not there, because a template change would otherwise ship an app whose pictures
- * never load.
- */
-const withSessionMedia: ConfigPlugins.ConfigPlugin = (config) =>
-  withMainApplication(config, (android) => {
-    const source = android.modResults.contents
-    if (source.includes('SessionMedia.packageConfig')) return android
-    const call = 'PackageList(this)'
-    if (!source.includes(call) || android.modResults.language !== 'kt') {
-      throw new Error(`MainApplication has no ${call} to hand the media configuration to`)
-    }
-    android.modResults.contents = source
-      .replace(call, 'PackageList(this, SessionMedia.packageConfig(this))')
-      .replace(/^(package .*)$/m, '$1\n\nimport session.bridge.rn.SessionMedia')
-    return android
   })
 
 /**
