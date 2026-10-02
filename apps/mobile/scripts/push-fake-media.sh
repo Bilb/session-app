@@ -14,14 +14,26 @@ if [ "$count" -ne 30 ]; then
     exit 1
 fi
 
-adb="${ANDROID_HOME:-$HOME/Android/Sdk}/platform-tools/adb"
+# ANDROID_HOME first, then the two default SDK locations, then whatever adb the shell knows.
+sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+if [ -z "$sdk" ]; then
+    for candidate in "$HOME/Android/Sdk" "$HOME/Library/Android/sdk"; do
+        [ -x "$candidate/platform-tools/adb" ] && sdk="$candidate" && break
+    done
+fi
+adb="${sdk:+$sdk/platform-tools/adb}"
+[ -x "$adb" ] || adb="$(command -v adb || true)"
+if [ -z "$adb" ]; then
+    echo "adb not found: set ANDROID_HOME, or put adb on PATH" >&2
+    exit 1
+fi
 package=org.getsession.session2
 staging=/data/local/tmp/session-fake-media
 
-timeout 60 "$adb" shell rm -rf "$staging"
-timeout 60 "$adb" shell mkdir -p "$staging"
-timeout 300 "$adb" push "$src"/unsplash-*.jpg "$staging/" >/dev/null 2>&1
-timeout 60 "$adb" shell run-as "$package" mkdir -p files/fake-media
-timeout 120 "$adb" shell run-as "$package" sh -c "'cp $staging/unsplash-*.jpg files/fake-media/'"
-timeout 60 "$adb" shell rm -rf "$staging"
+"$adb" shell rm -rf "$staging"
+"$adb" shell mkdir -p "$staging"
+"$adb" push "$src"/unsplash-*.jpg "$staging/" >/dev/null
+"$adb" shell run-as "$package" mkdir -p files/fake-media
+"$adb" shell run-as "$package" sh -c "'cp $staging/unsplash-*.jpg files/fake-media/'"
+"$adb" shell rm -rf "$staging"
 echo "pushed $count photographs from $src; restart the app to pick them up"
