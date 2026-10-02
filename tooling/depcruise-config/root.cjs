@@ -201,7 +201,9 @@ module.exports = {
     },
     {
       name: 'no-duplicate-dep-types',
-      comment: 'A peer that is also a devDependency is how a library gets it for its own tests.',
+      comment:
+        'Any pair that includes a peer is exempt: peer plus devDependency is how a library gets it ' +
+        'for its own tests, and peer plus dependency falls under the same exemption.',
       severity: 'error',
       from: {},
       to: { moreThanOneDependencyType: true, dependencyTypesNot: ['type-only', 'npm-peer'] },

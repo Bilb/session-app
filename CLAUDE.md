@@ -21,7 +21,7 @@ dev entries. depcruise alone also refuses orphan files, unresolvable imports, `s
 test, and shipped code importing a registry devDependency; a `@session/*` sibling listed only under
 devDependencies is turbo-guard's to refuse (`lint:manifests`), since the tsconfig alias hides it
 from depcruise. depcruise runs twice: `root.cjs` resolves as the desktop bundle does and
-`native.cjs` as Metro does, which is the only pass that sees a `.native` file.
+`native.cjs` as Metro does, which is the only pass that resolves an import to a `.native` file.
 When a rule fires, fix the design - not the config.
 
 ## Hard rules
