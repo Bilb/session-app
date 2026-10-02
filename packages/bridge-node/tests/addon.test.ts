@@ -223,10 +223,10 @@ describeAddon('the N-API addon', () => {
     })
 
     await expect(transport.fetchMedia({ messageId: 424_242, index: 0 })).rejects.toThrow(
-      /does not exist/,
+      'attachment 0 of message 424242 does not exist',
     )
     await expect(transport.fetchPreview({ messageId: 424_242, index: 0 })).rejects.toThrow(
-      /no such attachment/,
+      'attachment 0 of message 424242 does not exist',
     )
     transport.close()
   })
