@@ -140,6 +140,43 @@ export async function placeUnderFreeName(
 }
 
 /**
+ * The staging tokens this run handed out, and which of them has been written to.
+ *
+ * A token admits exactly one write, as desktop's gate spends a grant: it leaves `pending` when
+ * the gate lets the request through and `written` when the port has delivered. Not persisted, so
+ * a relaunch forgets every token and the sweep removes the folders.
+ */
+export class StagedExports<Delivery> {
+  private readonly pending = new Map<string, Delivery>()
+  private readonly written = new Map<string, Delivery>()
+
+  constructor(private readonly root: string) {}
+
+  stage(token: string, delivery: Delivery): void {
+    this.pending.set(token, delivery)
+  }
+
+  /** Spends the token `destination` was staged under: true once, false after and for anything else. */
+  admit(destination: unknown): boolean {
+    const token = stagingTokenOf(destination, this.root, this.pending)
+    const delivery = token === null ? undefined : this.pending.get(token)
+    if (token === null || delivery === undefined) return false
+    this.pending.delete(token)
+    this.written.set(token, delivery)
+    return true
+  }
+
+  /** Takes the delivery an admitted write landed in; null unless `path` is in a folder one was admitted to. */
+  deliver(path: unknown): { token: string; delivery: Delivery } | null {
+    const token = stagingTokenOf(path, this.root, this.written)
+    const delivery = token === null ? undefined : this.written.get(token)
+    if (token === null || delivery === undefined) return null
+    this.written.delete(token)
+    return { token, delivery }
+  }
+}
+
+/**
  * Whether a remembered folder is a document tree the Storage Access Framework granted.
  *
  * Read back from a file only this app writes, and checked anyway: attachments get written wherever

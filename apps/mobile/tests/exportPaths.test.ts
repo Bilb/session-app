@@ -9,6 +9,7 @@ import {
   photoLibraryExtension,
   placeUnderFreeName,
   stagedPath,
+  StagedExports,
   stagingTokenOf,
 } from '#src/exportPaths'
 
@@ -119,6 +120,43 @@ describe('a path handed to exportAttachment or back to the port', () => {
   it('never builds a staging path from a token that could be one', () => {
     expect(() => stagedPath(ROOT, '../files', 'x')).toThrow()
     expect(() => stagedPath(ROOT, '', 'x')).toThrow()
+  })
+})
+
+describe('a staging token', () => {
+  const path = stagedPath(ROOT, TOKEN, 'itinerary.pdf')
+
+  it('admits the one write it was handed out for, and the port takes where it landed', () => {
+    const staged = new StagedExports<string>(ROOT)
+    staged.stage(TOKEN, 'photos')
+    expect(staged.admit(path)).toBe(true)
+    expect(staged.deliver(`${ROOT}/${TOKEN}/itinerary (1).pdf`)).toEqual({
+      token: TOKEN,
+      delivery: 'photos',
+    })
+  })
+
+  it('is spent by that write: a second to the same folder is refused', () => {
+    const staged = new StagedExports<string>(ROOT)
+    staged.stage(TOKEN, 'photos')
+    expect(staged.admit(path)).toBe(true)
+    expect(staged.admit(path)).toBe(false)
+    expect(staged.admit(stagedPath(ROOT, TOKEN, 'other.pdf'))).toBe(false)
+  })
+
+  it('gives the port nothing that was only staged, or already delivered', () => {
+    const staged = new StagedExports<string>(ROOT)
+    staged.stage(TOKEN, 'photos')
+    expect(staged.deliver(path)).toBeNull()
+    staged.admit(path)
+    expect(staged.deliver(path)).not.toBeNull()
+    expect(staged.deliver(path)).toBeNull()
+  })
+
+  it('admits nothing it never handed out', () => {
+    const staged = new StagedExports<string>(ROOT)
+    expect(staged.admit(path)).toBe(false)
+    expect(staged.admit(`${ROOT}/${TOKEN}/../../files/session.db`)).toBe(false)
   })
 })
 

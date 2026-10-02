@@ -11,7 +11,7 @@ import {
   photoLibraryExtension,
   placeUnderFreeName,
   stagedPath,
-  stagingTokenOf,
+  StagedExports,
 } from './exportPaths'
 
 /**
@@ -20,12 +20,11 @@ import {
  */
 type Delivery = { to: 'photos' } | { to: 'folder'; folder: Directory }
 
-/** Exports chosen but not yet handed on, by staging token. Not persisted, like desktop's. */
-const pending = new Map<string, Delivery>()
-
 // libsession takes filesystem paths and expo-file-system takes URLs, as in storage.ts.
 const cacheRoot = Paths.cache.uri.replace(/^file:\/\//, '').replace(/\/+$/, '')
 const EXPORT_ROOT = `${cacheRoot}/session-exports`
+
+const staged = new StagedExports<Delivery>(EXPORT_ROOT)
 
 // Per segment, because a sender's name may hold `#` or `%`, which a URL would read as syntax.
 function fileUrl(path: string): string {
@@ -56,13 +55,14 @@ export function sweepStagedExports(): void {
 }
 
 /**
- * Whether an `exportAttachment` destination is one this port handed out and has not delivered.
+ * Whether an `exportAttachment` destination is one this port handed out and nothing has written
+ * to, spending it.
  *
  * The check desktop's main process makes before a request reaches the native write: that
  * command writes anywhere, and the name in the path came from the sender.
  */
 export function mayExportTo(destination: unknown): boolean {
-  return stagingTokenOf(destination, EXPORT_ROOT, pending) !== null
+  return staged.admit(destination)
 }
 
 /**
@@ -239,20 +239,19 @@ export const exportFiles: Pick<FilesPort, 'chooseExportLocation' | 'revealInFold
     if (delivery === null) return null
     const token = Crypto.randomUUID()
     new Directory(fileUrl(`${EXPORT_ROOT}/${token}`)).create({ intermediates: true })
-    pending.set(token, delivery)
+    staged.stage(token, delivery)
     return stagedPath(EXPORT_ROOT, token, exportFileName(suggestedName, contentType))
   },
 
   async revealInFolder(path) {
-    const token = stagingTokenOf(path, EXPORT_ROOT, pending)
-    const delivery = token === null ? undefined : pending.get(token)
-    if (token === null || delivery === undefined) throw new Error('not a staged export')
-    pending.delete(token)
+    const written = staged.deliver(path)
+    if (written === null) throw new Error('not a staged export')
+    const { token, delivery } = written
     let asset: Asset | null = null
     try {
-      const staged = new File(fileUrl(path))
-      if (delivery.to === 'photos') asset = await Asset.create(staged.uri)
-      else await deliverToFolder(staged, delivery.folder)
+      const file = new File(fileUrl(path))
+      if (delivery.to === 'photos') asset = await Asset.create(file.uri)
+      else await deliverToFolder(file, delivery.folder)
     } finally {
       removeStaging(token)
     }
