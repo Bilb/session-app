@@ -51,7 +51,6 @@ interface PageGlobals {
   performance: { now: () => number }
 }
 
-/** What the layout probe's page-side bodies touch. */
 /** Only what `clipped` reads of an element, since this program has no DOM types. */
 interface LaidOutNode {
   textContent: string | null
@@ -60,6 +59,7 @@ interface LaidOutNode {
   querySelectorAll(selector: string): ArrayLike<LaidOutNode>
 }
 
+/** What the layout probe's page-side bodies touch. */
 interface DocumentGlobals {
   document: { documentElement: { dir: string; clientWidth: number } }
 }
