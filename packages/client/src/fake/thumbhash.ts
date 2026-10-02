@@ -41,9 +41,9 @@ function readShape(hash: Uint8Array): Shape {
 /**
  * Decodes `hash` into `width` x `height` pixels.
  *
- * The hash carries no record of the source's shape, so the caller supplies the aspect ratio from
- * the attachment's own metadata. Decode small: the format holds at most 7 cycles across the image,
- * so a larger decode costs time without carrying more.
+ * The hash's own ratio is approximate (lx/ly, to one part in seven), so the caller passes the
+ * attachment's real shape. Decode small: the format holds at most 7 cycles across the image, so a
+ * larger decode costs time without carrying more.
  */
 export function decodeThumbhash(hash: Uint8Array, width: number, height: number): Decoded {
   if (hash.length < 5) throw new Error('thumbhash: too short')

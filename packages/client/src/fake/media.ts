@@ -60,6 +60,6 @@ export function fakePreviewPixels(client: FakeSessionClient, ref: AttachmentRef)
   const photo = photoNumber(photoFileName(client, ref) ?? undefined)
   const hash = photo === null ? undefined : PHOTO_THUMBHASHES[Number(photo) - 1]
   if (hash === undefined) throw new Error('no preview: not a picture')
-  // The photographs are 4:3, and a hash says nothing about shape.
+  // The photographs are 4:3; the hash's own ratio is only approximate (lx/ly, one part in seven).
   return decodeThumbhash(hexBytes(hash), 32, 24)
 }
