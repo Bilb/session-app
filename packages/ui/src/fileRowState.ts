@@ -2,6 +2,7 @@ import { SPACING } from '@session/theme-tokens'
 
 import { MIN_HIT_TARGET } from './buttonHitTarget'
 import type { IconName } from './Icon.types'
+import { textHeight } from './textHeight'
 
 /**
  * What a file row can be doing.
@@ -25,6 +26,12 @@ export const FILE_ROW_CONTROL = MIN_HIT_TARGET
 
 /** Between the lead, the name and the control. */
 export const FILE_ROW_GAP = SPACING.sm
+
+/** The square with a format line under it, held whether or not the file has one, so rows align. */
+export const FILE_LEAD_HEIGHT = FILE_GLYPH_SIDE + SPACING['3xs'] + textHeight('caption', 1)
+
+/** The row's fixed height, for a list's `getItemLayout`: its tallest column inside its padding. */
+export const FILE_ROW_HEIGHT = 2 * SPACING.xs + Math.max(FILE_LEAD_HEIGHT, FILE_ROW_CONTROL)
 
 /**
  * What the row's one control offers, which follows from the state with no further rule.

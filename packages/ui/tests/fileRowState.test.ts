@@ -3,12 +3,16 @@ import { describe, expect, it } from 'vitest'
 import { MIN_HIT_TARGET } from '#src/buttonHitTarget'
 import {
   FILE_GLYPH_SIDE,
+  FILE_LEAD_HEIGHT,
   FILE_LEAD_WIDTH,
   FILE_ROW_CONTROL,
+  FILE_ROW_HEIGHT,
   fileRowControl,
   fileRowTone,
 } from '#src/fileRowState'
+import { SPACING } from '@session/theme-tokens'
 import { TILE_RADIUS_STEP } from '#src/attachmentTileStyle'
+import { textHeight } from '#src/textHeight'
 
 describe('a file row’s one control', () => {
   it('follows from the state, and says which verb it is', () => {
@@ -68,5 +72,13 @@ describe('a file row’s colours', () => {
         caption: 'secondary',
         control: 'primary',
       })
+  })
+})
+
+describe('a file row’s height', () => {
+  it('is the lead with its format line, inside the row’s padding, and holds the control', () => {
+    expect(FILE_LEAD_HEIGHT).toBe(FILE_GLYPH_SIDE + SPACING['3xs'] + textHeight('caption', 1))
+    expect(FILE_ROW_HEIGHT).toBe(2 * SPACING.xs + FILE_LEAD_HEIGHT)
+    expect(FILE_ROW_HEIGHT - 2 * SPACING.xs).toBeGreaterThanOrEqual(FILE_ROW_CONTROL)
   })
 })

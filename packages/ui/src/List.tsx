@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { FlatList } from 'react-native'
 
 import { SPACING } from '@session/theme-tokens'
@@ -64,6 +64,14 @@ export function List<T>({
     [renderItem],
   )
 
+  const contentContainerStyle = useMemo(
+    () =>
+      paddingHorizontal === undefined
+        ? undefined
+        : { paddingHorizontal: SPACING[paddingHorizontal] },
+    [paddingHorizontal],
+  )
+
   const getItemLayout = useCallback(
     (_: ArrayLike<T> | null | undefined, index: number) => ({
       length: itemHeight ?? 0,
@@ -76,9 +84,7 @@ export function List<T>({
   return (
     <FlatList
       style={fitsContent ? FITS_CONTENT : FILLS}
-      {...(paddingHorizontal === undefined
-        ? {}
-        : { contentContainerStyle: { paddingHorizontal: SPACING[paddingHorizontal] } })}
+      {...(contentContainerStyle === undefined ? {} : { contentContainerStyle })}
       data={data}
       renderItem={renderRow}
       keyExtractor={keyExtractor}

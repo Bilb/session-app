@@ -109,6 +109,7 @@ export {
   FILE_LEAD_WIDTH,
   FILE_ROW_CONTROL,
   FILE_ROW_GAP,
+  FILE_ROW_HEIGHT,
   fileRowControl,
   fileRowTone,
 } from './fileRowState'

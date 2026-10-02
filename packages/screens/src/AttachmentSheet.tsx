@@ -1,13 +1,15 @@
-import type { ConversationId, Message } from '@session/client'
+import type { Attachment, ConversationId, Message } from '@session/client'
 import { tr } from '@session/localization'
 import { useMessage } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
-import { List, Sheet } from '@session/ui'
-import { useRef, type ReactNode } from 'react'
+import { FILE_ROW_HEIGHT, List, Sheet } from '@session/ui'
+import { useCallback, useRef, type ReactNode } from 'react'
 
 import { AttachmentFooter } from './AttachmentFooter'
 import { AttachmentRow } from './AttachmentRow'
 import { useAttachmentSet } from './useAttachmentSet'
+
+const attachmentKey = (attachment: Attachment): string => String(attachment.index)
 
 function SheetFooter({ message }: { message: Message }) {
   const { set, act } = useAttachmentSet(message)
@@ -29,6 +31,11 @@ function MessageSheet({
 }) {
   const message = useMessage(conversationId, messageId)
   const shown = open && message !== undefined
+  const renderRow = useCallback(
+    (attachment: Attachment) =>
+      message === undefined ? null : <AttachmentRow message={message} attachment={attachment} />,
+    [message],
+  )
   return (
     <>
       {shown ? null : overlay}
@@ -46,10 +53,13 @@ function MessageSheet({
       >
         {message === undefined ? null : (
           // Windowed: a set this long mounted all at once is a pause between the tap and the sheet.
+          // With the row height given, the sheet opens at its full height rather than growing as
+          // the rows measure.
           <List
             data={message.attachments}
-            keyExtractor={(attachment) => String(attachment.index)}
-            renderItem={(attachment) => <AttachmentRow message={message} attachment={attachment} />}
+            keyExtractor={attachmentKey}
+            renderItem={renderRow}
+            itemHeight={FILE_ROW_HEIGHT}
             fitsContent
             paddingHorizontal="md"
           />

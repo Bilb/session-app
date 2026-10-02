@@ -17,6 +17,7 @@ import { AttachmentTile } from './AttachmentTile'
 import { fileFormat, fileGlyph, splitFilename } from './attachmentFile'
 import {
   FILE_GLYPH_SIDE,
+  FILE_LEAD_HEIGHT,
   FILE_LEAD_WIDTH,
   FILE_ROW_CONTROL,
   FILE_ROW_GAP,
@@ -209,7 +210,7 @@ export function FileRow({
       {onAction === undefined ? null : (
         <StateLayer group="row" tone="ink" borderRadius="$sm" bleed={SPACING.xs} />
       )}
-      <YStack width={FILE_LEAD_WIDTH} alignItems="center" gap="$3xs">
+      <YStack width={FILE_LEAD_WIDTH} height={FILE_LEAD_HEIGHT} alignItems="center" gap="$3xs">
         {onOpen === undefined ? (
           lead
         ) : (
