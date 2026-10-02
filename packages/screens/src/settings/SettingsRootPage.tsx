@@ -84,9 +84,12 @@ function ClearDataActions({
         onPress={() => {
           setRunning(true)
           modals.lock(id)
-          void clear().finally(() => {
-            modals.dismissAll()
-          })
+          // A failure is shown by the startup-failure screen: the store sets it as the reason.
+          void clear()
+            .catch(() => {})
+            .finally(() => {
+              modals.dismissAll()
+            })
         }}
       >
         {tr('clear')}

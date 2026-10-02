@@ -33,7 +33,8 @@ export interface SessionActions {
    * Deletes everything on this device and starts again from nothing.
    *
    * The way out of a database that cannot be opened. Destructive and unrecoverable without a
-   * recovery phrase, so nothing calls it without asking twice.
+   * recovery phrase, so nothing calls it without asking twice. A clear that fails sets
+   * `startupError` to why, and rejects.
    */
   clearDeviceData: () => Promise<void>
   /**
@@ -310,7 +311,18 @@ export function createSessionStore(
       // which is where somebody restores from their recovery phrase -- so this is both of the
       // legacy client's options, clear and clear-then-restore, which differ there only in what
       // they do next.
-      await client.discardAccount()
+      try {
+        await client.discardAccount()
+      } catch (error) {
+        // A failed clear is a failed start by another name: the database is closed or gone and
+        // nothing above it can carry on, so it lands where every other one does, with its own
+        // reason. Rejects as well, so a caller that goes on to something only a clear allows --
+        // ending the process -- does not.
+        const message = error instanceof Error ? error.message : String(error)
+        log('error', `[session] could not clear the device: ${message}`)
+        store.setState({ startupError: message })
+        throw error
+      }
       store.setState({ ...emptyState })
       await actions.start()
     },

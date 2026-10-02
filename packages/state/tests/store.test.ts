@@ -112,6 +112,24 @@ describe('a start that fails', () => {
   })
 })
 
+describe('a clear that fails', () => {
+  it('shows why, as a start that failed, and rejects', async () => {
+    // Pressed on the failure screen, a discard that fails used to dismiss the confirm and leave
+    // the old reason up, as though the button did nothing. Rejecting as well is what stops a
+    // caller ending the process after a clear that did not happen.
+    const { clients } = friends(['Alice', 'Bob'])
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const store = createSessionStore(alice)
+    await store.actions.start()
+
+    alice.discardAccount = () => Promise.reject(new SessionClientError('disk full'))
+
+    await expect(store.actions.clearDeviceData()).rejects.toThrow('disk full')
+    expect(store.getState().startupError).toBe('disk full')
+  })
+})
+
 describe('the store', () => {
   let fixture: ReturnType<typeof seeded>
 

@@ -152,9 +152,12 @@ function ClearActions({
         onPress={() => {
           setRunning(true)
           modals.lock(id)
-          void clear().finally(() => {
-            modals.dismissAll()
-          })
+          // A failure is shown by the screen itself: the store sets it as the reason.
+          void clear()
+            .catch(() => {})
+            .finally(() => {
+              modals.dismissAll()
+            })
         }}
       >
         {tr('clear')}
