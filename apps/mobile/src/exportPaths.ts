@@ -15,7 +15,10 @@ const FALLBACK_NAME = 'attachment'
 /** Well under the 255 bytes ext4, f2fs and APFS allow a name, leaving room for ` (1)`. */
 const MAX_NAME_BYTES = 200
 
-/** Longer than any real extension; past it the last dot is part of the stem, which the cap may cut. */
+/**
+ * Longer than any real extension; past it the last dot is part of the stem, which the cap may
+ * cut.
+ */
 const MAX_EXTENSION_BYTES = 16
 
 /**
@@ -156,7 +159,10 @@ export class StagedExports<Delivery> {
     this.pending.set(token, delivery)
   }
 
-  /** Spends the token `destination` was staged under: true once, false after and for anything else. */
+  /**
+   * Spends the token `destination` was staged under: true once, false after and for anything
+   * else.
+   */
   admit(destination: unknown): boolean {
     const token = stagingTokenOf(destination, this.root, this.pending)
     const delivery = token === null ? undefined : this.pending.get(token)
@@ -166,7 +172,10 @@ export class StagedExports<Delivery> {
     return true
   }
 
-  /** Takes the delivery an admitted write landed in; null unless `path` is in a folder one was admitted to. */
+  /**
+   * Takes the delivery an admitted write landed in; null unless `path` is in a folder one was
+   * admitted to.
+   */
   deliver(path: unknown): { token: string; delivery: Delivery } | null {
     const token = stagingTokenOf(path, this.root, this.written)
     const delivery = token === null ? undefined : this.written.get(token)
