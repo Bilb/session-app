@@ -689,7 +689,8 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   the view needs under a `cover` fit, with the file's orientation applied and a GIF as an
   `RCTAnimatedImage`, and hands React Native a `UIImage` whose bytes are the shim's, held by the
   `NSData` deallocator rather than copied. Nothing is written to disk: a URL loader is not behind
-  `NSURLCache`. React Native caches only the images it decoded itself from an HTTP response, so a
-  picture from this loader is decoded again on each mount until the loader keeps a cache of its
-  own. The fake registers itself as the source with `serveMediaFrom` on both platforms, so it
+  `NSURLCache`. React Native caches only the images it decoded itself from an HTTP response, so
+  the loader keeps its own bounded cache of decoded tiles and previews, keyed by URL, size and
+  scale, and never a viewer-size picture, so paging the viewer cannot evict a screen of tiles. The
+  fake registers itself as the source with `serveMediaFrom` on both platforms, so it
   draws through the real loaders.

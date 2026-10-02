@@ -114,6 +114,29 @@ static UIImage* _Nullable PreviewImage(std::shared_ptr<::session_bridge::Preview
     return result;
 }
 
+/// Decoded tiles and previews, keyed by URL, size and scale. React Native caches only what it
+/// decoded itself from an HTTP response, so a loader's answers would otherwise decode again on
+/// every mount; bounded per entry so a viewer-size picture never evicts a screen of tiles.
+static const NSUInteger kCacheTotalCostBytes = 48 * 1024 * 1024;
+static const NSUInteger kCacheEntryCostLimitBytes = 4 * 1024 * 1024;
+
+static NSString* CacheKey(NSURL* url, CGSize size, CGFloat scale) {
+    return [NSString stringWithFormat:@"%@|%.0f|%.0f|%.2f",
+                                      url.absoluteString,
+                                      size.width,
+                                      size.height,
+                                      scale];
+}
+
+static void Remember(NSCache<NSString*, UIImage*>* cache, NSString* key, UIImage* image) {
+    CGImageRef pixels = image.CGImage;
+    if (!pixels)
+        return;
+    const NSUInteger cost = CGImageGetBytesPerRow(pixels) * CGImageGetHeight(pixels);
+    if (cost > 0 && cost <= kCacheEntryCostLimitBytes)
+        [cache setObject:image forKey:key cost:cost];
+}
+
 /**
  * Draws `session-media://` URLs: the image loader behind `MediaPort.urlFor` on iOS.
  *
@@ -127,6 +150,7 @@ static UIImage* _Nullable PreviewImage(std::shared_ptr<::session_bridge::Preview
 
 @implementation SessionMediaImageLoader {
     dispatch_queue_t _drain;
+    NSCache<NSString*, UIImage*>* _cache;
 }
 
 RCT_EXPORT_MODULE()
@@ -138,12 +162,31 @@ RCT_EXPORT_MODULE()
 /// Concurrent: every block owns what it touches, and a microsecond preview must not wait behind
 /// an album's decodes.
 - (instancetype)init {
-    if (self = [super init])
+    if (self = [super init]) {
         _drain = dispatch_queue_create(
                 "session-media",
                 dispatch_queue_attr_make_with_qos_class(
                         DISPATCH_QUEUE_CONCURRENT, QOS_CLASS_USER_INITIATED, 0));
+        _cache = [NSCache new];
+        _cache.name = @"session-media";
+        _cache.totalCostLimit = kCacheTotalCostBytes;
+        // Emptied when React Native's own image cache is: under memory pressure, and on the way
+        // to the background.
+        NSNotificationCenter* centre = NSNotificationCenter.defaultCenter;
+        [centre addObserver:_cache
+                   selector:@selector(removeAllObjects)
+                       name:UIApplicationDidReceiveMemoryWarningNotification
+                     object:nil];
+        [centre addObserver:_cache
+                   selector:@selector(removeAllObjects)
+                       name:UIApplicationWillResignActiveNotification
+                     object:nil];
+    }
     return self;
+}
+
+- (void)dealloc {
+    [NSNotificationCenter.defaultCenter removeObserver:_cache];
 }
 
 - (BOOL)canLoadImageURL:(NSURL*)requestURL {
@@ -154,8 +197,10 @@ RCT_EXPORT_MODULE()
     return YES;
 }
 
+/// React Native's cache takes only the images it decodes itself from an HTTP response; this
+/// loader keeps its own.
 - (BOOL)shouldCacheLoadedImages {
-    return YES;
+    return NO;
 }
 
 - (float)loaderPriority {
@@ -178,6 +223,11 @@ RCT_EXPORT_MODULE()
         completionHandler(SessionMediaError("not a media URL"), nil);
         return nil;
     }
+    NSString* key = CacheKey(imageURL, size, scale);
+    if (UIImage* cached = [_cache objectForKey:key]) {
+        completionHandler(nil, cached);
+        return nil;
+    }
     auto source = ::session_bridge_rn::media_source();
     if (!source) {
         completionHandler(SessionMediaError("nothing is serving media"), nil);
@@ -186,6 +236,7 @@ RCT_EXPORT_MODULE()
 
     auto cancelled = std::make_shared<std::atomic<bool>>(false);
     dispatch_queue_t drain = _drain;
+    NSCache<NSString*, UIImage*>* cache = _cache;
     RCTImageLoaderCompletionBlock done = [completionHandler copy];
 
     if (parsed->kind == ::session_bridge::MediaUrlKind::preview) {
@@ -199,6 +250,8 @@ RCT_EXPORT_MODULE()
                     return;
                 }
                 UIImage* image = PreviewImage(preview);
+                if (image)
+                    Remember(cache, key, image);
                 done(image ? nil : SessionMediaError("a preview whose pixels do not match its size"),
                      image);
             });
@@ -228,9 +281,13 @@ RCT_EXPORT_MODULE()
                                                        }];
                 // A GIF is React Native's own animated type, every frame at full size as its GIF
                 // decoder does: `RCTUIImageViewAnimated` steps through them, a UIImage is frame 0.
-                UIImage* image = *type == "image/gif"
-                        ? [[RCTAnimatedImage alloc] initWithData:data scale:scale]
-                        : DecodedImage(data, size, scale);
+                const bool animated = *type == "image/gif";
+                UIImage* image = animated ? [[RCTAnimatedImage alloc] initWithData:data scale:scale]
+                                          : DecodedImage(data, size, scale);
+                // An animated image holds its source and the file's bytes, which its poster frame
+                // does not measure, so only stills are kept.
+                if (image && !animated)
+                    Remember(cache, key, image);
                 done(image ? nil : SessionMediaError("the picture did not decode"), image);
             });
         });
