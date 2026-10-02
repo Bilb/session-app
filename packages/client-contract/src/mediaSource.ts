@@ -36,6 +36,15 @@ async function failure(call: () => Promise<unknown>): Promise<unknown> {
 
 const NOWHERE: AttachmentRef = { messageId: 987_654_321, index: 0 }
 
+/** What every source says of a ref that names nothing, the file and its preview alike. */
+function unknownRefMessage({ messageId, index }: AttachmentRef): string {
+  return `attachment ${String(index)} of message ${String(messageId)} does not exist`
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
 export function runMediaSourceContract(
   harness: MediaSourceHarness,
   t: TestFns,
@@ -52,8 +61,13 @@ export function runMediaSourceContract(
   describe('media source', () => {
     it('refuses a ref that names nothing, for the file and for its preview', async () => {
       const { source } = await harness.empty()
-      expect(await failure(() => source.fetchMedia(NOWHERE))).toBeDefined()
-      expect(await failure(() => source.fetchPreview(NOWHERE))).toBeDefined()
+      const media = await failure(() => source.fetchMedia(NOWHERE))
+      const preview = await failure(() => source.fetchPreview(NOWHERE))
+      expect(media instanceof Error).toBe(true)
+      expect(preview instanceof Error).toBe(true)
+      // One fact, however it is asked for: the preview says no more and no less than the file.
+      expect(messageOf(media)).toBe(unknownRefMessage(NOWHERE))
+      expect(messageOf(preview)).toBe(unknownRefMessage(NOWHERE))
     })
 
     it('answers a picture with its bytes and the type they were sent as', async () => {

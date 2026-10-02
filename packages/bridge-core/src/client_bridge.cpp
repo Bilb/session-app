@@ -55,6 +55,11 @@ namespace {
         return std::string{what} + " " + id + " does not exist";
     }
 
+    /// The fake says the same sentence; the media source contract holds the two to it.
+    std::string no_such_attachment(int64_t id, size_t at) {
+        return not_found("attachment", std::to_string(at) + " of message " + std::to_string(id));
+    }
+
     /// A number from JavaScript as a whole number of type T, or an error naming the field.
     ///
     /// Every numeric field crosses as a double, and `static_cast` to an integer type is undefined
@@ -1238,7 +1243,7 @@ void ClientBridge::fetch_media(double message_id, double index, MediaHandler cb)
             if (!msg)
                 return cb(Media{std::string{msg.error().message}, {}, {}});
             if (!*msg || at >= (*msg)->attachments.size())
-                return cb(Media{not_found("attachment", std::to_string(id)), {}, {}});
+                return cb(Media{no_such_attachment(id, at), {}, {}});
             if (!*bytes)
                 return cb(Media{std::string{bytes->error().message}, {}, {}});
             // The sender's claim, and the only description there is. Whoever renders it is
@@ -1295,14 +1300,16 @@ void ClientBridge::fetch_preview(double message_id, double index, PreviewHandler
         const auto at = whole<size_t>(index, "preview.index");
 
         _impl->client->message(
-                id, [at, cb = std::move(cb)](session::Expected<std::optional<client::Message>> r) mutable {
+                id,
+                [id, at, cb = std::move(cb)](
+                        session::Expected<std::optional<client::Message>> r) mutable {
                     if (!r) {
                         cb(Preview{std::string{r.error().message}, 0, 0, {}});
                         return;
                     }
                     auto& msg = *r;
                     if (!msg || at >= msg->attachments.size()) {
-                        cb(Preview{"no such attachment", 0, 0, {}});
+                        cb(Preview{no_such_attachment(id, at), 0, 0, {}});
                         return;
                     }
 

@@ -68,6 +68,12 @@ export function fakePreviewPixels(client: FakeSessionClient, ref: AttachmentRef)
   return decodeThumbhash(hexBytes(hash), 32, 24)
 }
 
+/** The shim's sentence for a ref that names nothing; the media source contract holds both to it. */
+function refuseUnknown(client: FakeSessionClient, { messageId, index }: AttachmentRef): void {
+  if (client.locate({ messageId, index }) !== undefined) return
+  throw new Error(`attachment ${String(index)} of message ${String(messageId)} does not exist`)
+}
+
 /**
  * The bytes behind each media URL on the fake: what the real bridge's `fetchMedia` and
  * `fetchPreview` answer. `readPhoto` reads a dev photograph by file name, wherever the app keeps
@@ -79,6 +85,7 @@ export function createFakeMediaSource(
 ): MediaSource {
   return {
     async fetchMedia(ref) {
+      refuseUnknown(client, ref)
       // Serving the scheme is a fetch: the real bridge fills the cache and announces the change,
       // so bytes handed back without it would leave the picture reported as one nobody has.
       await client.downloadAttachment(ref.messageId, ref.index)
@@ -89,6 +96,7 @@ export function createFakeMediaSource(
     },
     fetchPreview(ref) {
       return new Promise((resolve) => {
+        refuseUnknown(client, ref)
         resolve(fakePreviewPixels(client, ref))
       })
     },
