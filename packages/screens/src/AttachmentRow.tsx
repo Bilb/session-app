@@ -11,7 +11,7 @@ import { ELEMENT } from '@session/test-ids'
 import { FileRow, type FileRowState, type FileRowThumbnail } from '@session/ui'
 
 import { fetchOf, type Fetch } from './attachmentFetch'
-import { mayResolve } from './autoDownload'
+import { mayDrawInline } from './autoDownload'
 import { useConversationUi } from './conversationUi'
 import { formatBytes } from './formatBytes'
 import { PENDING_COPY } from './pendingCopy'
@@ -85,7 +85,7 @@ export function AttachmentRow({
           // would spend the data the person was about to be asked about. Left off after a failure
           // too, so a retry hands it over afresh and the image tries again.
           uri:
-            mayResolve(attachment, ui.autoDownload) && state !== 'failed'
+            mayDrawInline(attachment, ui.autoDownload) && state !== 'failed'
               ? requirePorts().media.urlFor(ref)
               : undefined,
           kind: mediaKindOf(attachment.contentType),
