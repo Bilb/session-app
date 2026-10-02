@@ -68,3 +68,23 @@ jobs:
           CCACHE_DIR: ${{ runner.temp }}/ccache
 
       - run: pnpm --filter @session/bridge-node test
+
+  # A job of its own rather than a step, so a run that hits the timeout is reported too. Only the
+  # scheduled run: a dispatched one has someone watching it.
+  notify:
+    needs: addon
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post the failure to Discord
+        env:
+          WEBHOOK: ${{ secrets.ALERT_DISCORD_WEBHOOK_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "::warning::ALERT_DISCORD_WEBHOOK_URL is not set, so the failure is not reported."
+            exit 0
+          fi
+          jq -n --arg content "❌ **${GITHUB_REPOSITORY#*/} nightly-native** failed on \`${GITHUB_REF_NAME}\`."$'\n'"$RUN_URL" \
+            '{content: $content, allowed_mentions: {parse: []}}' |
+            curl --fail-with-body -sS -H 'Content-Type: application/json' --data-binary @- "$WEBHOOK"
