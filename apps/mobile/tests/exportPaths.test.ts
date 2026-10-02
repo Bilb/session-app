@@ -23,10 +23,9 @@ describe('the name an export is written under', () => {
     expect(exportFileName('itinerary.pdf')).toBe('itinerary.pdf')
   })
 
-  it('drops any directory part, whichever separator the sender used', () => {
+  it('is the bare name, as every platform starts from', () => {
     expect(exportFileName('../../files/session/mainnet/session.db')).toBe('session.db')
-    expect(exportFileName('/data/data/org.getsession.session2/x.pdf')).toBe('x.pdf')
-    expect(exportFileName('..\\..\\evil.pdf')).toBe('evil.pdf')
+    expect(exportFileName('invoice\u202efdp.exe')).toBe('invoicefdp.exe')
   })
 
   it('falls back to a plain name when nothing usable is left', () => {
@@ -35,10 +34,7 @@ describe('the name an export is written under', () => {
     }
   })
 
-  it('strips control characters and leading dots', () => {
-    expect(exportFileName('in\u0000voice\n.pdf')).toBe('invoice.pdf')
-    expect(exportFileName('invoice\u202efdp.exe')).toBe('invoicefdp.exe')
-    expect(exportFileName('a\u2066b\u2069\u200e\u0085c.txt')).toBe('abc.txt')
+  it('strips leading dots', () => {
     expect(exportFileName('.hidden.pdf')).toBe('hidden.pdf')
   })
 

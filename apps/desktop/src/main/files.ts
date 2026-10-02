@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 
+import { bareFileName } from '@session/app/exportFileName'
 import type { Frame, Request } from '@session/client'
 
 // Named imports do not survive the ESM loader here; see the note in index.ts.
@@ -110,20 +111,13 @@ const FALLBACK_SUGGESTED_NAME = 'attachment'
  * The file name to pre-fill a save dialog with, from a name the sender of the attachment chose.
  *
  * Only ever a bare name: a directory part, absolute or `..`, would pre-point the dialog at a
- * folder the sender picked, one Enter away from writing there. Both separators are stripped
- * whatever the platform, since the sender's platform is not this one.
+ * folder the sender picked, one Enter away from writing there.
  */
 export function sanitiseSuggestedName(name: unknown): string {
   if (typeof name !== 'string' || name.length > MAX_SUGGESTED_NAME_CHARS) {
     return FALLBACK_SUGGESTED_NAME
   }
-  const bare = name
-    .slice(Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\')) + 1)
-    // C0, C1 and the bidi controls: `invoice\u202efdp.exe` would otherwise be shown, in the dialog
-    // and in the file manager, as `invoiceexe.pdf`.
-    // eslint-disable-next-line no-control-regex -- stripping control characters is the point
-    .replace(/[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '')
-    .trim()
+  const bare = bareFileName(name)
   return bare === '' || bare === '.' || bare === '..' ? FALLBACK_SUGGESTED_NAME : bare
 }
 

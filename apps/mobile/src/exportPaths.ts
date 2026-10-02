@@ -1,3 +1,4 @@
+import { bareFileName } from '@session/app/exportFileName'
 import { utf8Encode } from '@session/basic-types'
 
 /**
@@ -59,20 +60,11 @@ function capped(stem: string, extension: string): string {
  * A bare file name from the sender's suggestion: no directory part, no control characters, no
  * leading dots, bounded in length.
  *
- * Both separators are stripped whatever the platform, since the sender's platform is not this
- * one. A picture headed for the photo library gets the extension its declared type calls for.
+ * A picture headed for the photo library gets the extension its declared type calls for.
  */
 export function exportFileName(suggested: unknown, contentType?: string): string {
-  const raw = typeof suggested === 'string' ? suggested : ''
-  const bare = raw
-    .slice(Math.max(raw.lastIndexOf('/'), raw.lastIndexOf('\\')) + 1)
-    // C0, C1 and the bidi controls: `invoice\u202efdp.exe` would otherwise be shown as
-    // `invoiceexe.pdf` in the picker and in the file manager.
-    // eslint-disable-next-line no-control-regex -- stripping control characters is the point
-    .replace(/[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '')
-    .trim()
-    // A leading dot hides the file, and MediaStore refuses a hidden name outright.
-    .replace(/^\.+/, '')
+  // A leading dot hides the file, and MediaStore refuses a hidden name outright.
+  const bare = bareFileName(suggested).replace(/^\.+/, '')
   const name = bare === '' ? FALLBACK_NAME : bare
 
   const dot = name.lastIndexOf('.')
