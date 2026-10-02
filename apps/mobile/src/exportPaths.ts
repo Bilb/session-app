@@ -14,6 +14,9 @@ const FALLBACK_NAME = 'attachment'
 /** Well under the 255 bytes ext4, f2fs and APFS allow a name, leaving room for ` (1)`. */
 const MAX_NAME_BYTES = 200
 
+/** Longer than any real extension; past it the last dot is part of the stem, which the cap may cut. */
+const MAX_EXTENSION_BYTES = 16
+
 /**
  * What the photo library accepts, and the extension to give each.
  *
@@ -73,7 +76,8 @@ export function exportFileName(suggested: unknown, contentType?: string): string
   const name = bare === '' ? FALLBACK_NAME : bare
 
   const dot = name.lastIndexOf('.')
-  const [stem, extension] = dot > 0 ? [name.slice(0, dot), name.slice(dot + 1)] : [name, '']
+  const splits = dot > 0 && utf8Encode(name.slice(dot + 1)).length <= MAX_EXTENSION_BYTES
+  const [stem, extension] = splits ? [name.slice(0, dot), name.slice(dot + 1)] : [name, '']
   const forced = photoLibraryExtension(contentType)
   return capped(stem, forced ?? extension)
 }

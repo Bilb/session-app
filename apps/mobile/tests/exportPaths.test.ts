@@ -54,6 +54,13 @@ describe('the name an export is written under', () => {
     expect(utf8Encode(name).length).toBeLessThanOrEqual(200)
     expect(name.endsWith('.pdf')).toBe(true)
   })
+
+  it('is bounded when the extension alone is longer than the bound', () => {
+    for (const long of [`a.${'x'.repeat(300)}`, `report.${'é'.repeat(250)}`]) {
+      expect(utf8Encode(exportFileName(long)).length).toBeLessThanOrEqual(200)
+    }
+    expect(exportFileName(`a.${'x'.repeat(300)}`, 'image/jpeg').endsWith('.jpg')).toBe(true)
+  })
 })
 
 describe('which files go to the photo library', () => {
