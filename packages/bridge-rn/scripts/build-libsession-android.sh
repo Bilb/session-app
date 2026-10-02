@@ -12,7 +12,16 @@ libsession="$here/../../../libsession-util"
 ndk="${ANDROID_NDK:-${NDK:-}}"
 
 if [ -z "$ndk" ]; then
-    sdk="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/Android/Sdk}}"
+    sdk="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+    # Where Android Studio puts it when neither is set: under Library on a Mac, at the top of the
+    # home directory everywhere else.
+    if [ -z "$sdk" ]; then
+        if [ "$(uname -s)" = Darwin ]; then
+            sdk="$HOME/Library/Android/sdk"
+        else
+            sdk="$HOME/Android/Sdk"
+        fi
+    fi
     # The version the module pins, read from its build.gradle rather than written down twice -
     # and emphatically not the newest installed. These static libraries and SessionBridgeRN link
     # into one .so, so two NDKs means two libc++ runtimes: the tell is `undefined symbol:
@@ -72,6 +81,15 @@ exec /usr/bin/ar "\$@"
 SHIM
 chmod +x "$shim/ar"
 export PATH="$shim:$PATH"
+
+# **The autoconf dependencies are given the NDK's archiver by full path.** session-deps used to pass
+# one to their configure (`deps_ar`); the copy oxen-libquic now pins dropped it as unread, so
+# configure falls back to `ar` from PATH -- the shim above, and through it macOS's ar, whose
+# archives of Android objects carry no symbol index lld can read. The tell is `undefined symbol:
+# program_name` while linking libtasn1's and libunistring's own tools. A full path rather than the
+# name `ar`, which is what `deps_ar` passed and what worked; CMake's MRI step still finds the shim.
+export AR="$llvm_ar"
+export RANLIB="$ndk/toolchains/llvm/prebuilt/$host/bin/llvm-ranlib"
 
 # **A fallback for every dependency download, not a replacement.** `LOCAL_MIRROR` is a list of base
 # URLs that `expand_urls` appends each source filename to, tried in order after the upstream one --
