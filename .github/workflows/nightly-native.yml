@@ -1,0 +1,70 @@
+name: nightly-native
+
+# The addon tests skip without a built addon, and ci.yml builds none: nothing else on the per-PR
+# job compiles C++, and libsession with its static dependencies is a long build. Once a night, and
+# by hand after a change to the shim or the submodule.
+on:
+  schedule:
+    - cron: '0 15 * * *' # 01:00 Sydney
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-native
+  cancel-in-progress: true
+
+jobs:
+  addon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ccache
+
+      - id: libsession
+        run: echo "sha=$(git rev-parse HEAD:libsession-util)" >> "$GITHUB_OUTPUT"
+
+      # gmp, nettle, gnutls and the rest are built from source, each waiting on the one before it:
+      # most of a cold run. Their stamps live in this tree, so a restored one skips them.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            packages/bridge-node/build/static-deps
+            packages/bridge-node/build/static-deps-sources
+          key: native-static-deps-${{ runner.os }}-${{ steps.libsession.outputs.sha }}
+
+      # A checkout stamps every source newer than any cached object, so ninja recompiles libsession
+      # whatever is restored; ccache is what makes that cheap.
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: native-ccache-${{ runner.os }}-${{ steps.libsession.outputs.sha }}-${{ github.run_id }}
+          restore-keys: |
+            native-ccache-${{ runner.os }}-${{ steps.libsession.outputs.sha }}-
+            native-ccache-${{ runner.os }}-
+
+      # The testing build: the contract and echo suites skip against a production addon.
+      - run: pnpm --filter @session/bridge-node build:native:testing
+        env:
+          CCACHE_DIR: ${{ runner.temp }}/ccache
+          CCACHE_MAXSIZE: 1G
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
+          SESSION_BRIDGE_DEPS_MIRROR: https://oxen.rocks/deps
+
+      - run: ccache --show-stats
+        env:
+          CCACHE_DIR: ${{ runner.temp }}/ccache
+
+      - run: pnpm --filter @session/bridge-node test
