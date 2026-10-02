@@ -1,3 +1,4 @@
+#import <React/RCTAnimatedImage.h>
 #import <React/RCTBridgeModule.h>
 #import <React/RCTImageURLLoader.h>
 
@@ -225,7 +226,11 @@ RCT_EXPORT_MODULE()
                                                        deallocator:^(void*, NSUInteger) {
                                                            (void)media;
                                                        }];
-                UIImage* image = DecodedImage(data, size, scale);
+                // A GIF is React Native's own animated type, every frame at full size as its GIF
+                // decoder does: `RCTUIImageViewAnimated` steps through them, a UIImage is frame 0.
+                UIImage* image = *type == "image/gif"
+                        ? [[RCTAnimatedImage alloc] initWithData:data scale:scale]
+                        : DecodedImage(data, size, scale);
                 done(image ? nil : SessionMediaError("the picture did not decode"), image);
             });
         });
