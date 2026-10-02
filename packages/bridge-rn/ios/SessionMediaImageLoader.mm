@@ -52,9 +52,15 @@ static UIImage* _Nullable DecodedImage(NSData* data, CGSize size, CGFloat scale)
 
 /// A preview's RGBA, which is not premultiplied - what `kCGImageAlphaLast` describes.
 static UIImage* _Nullable PreviewImage(std::shared_ptr<::session_bridge::Preview> preview) {
-    const auto width = static_cast<size_t>(preview->width);
-    const auto height = static_cast<size_t>(preview->height);
-    if (width == 0 || height == 0 || preview->rgba.size() != width * height * 4)
+    // Bounded as doubles first: a JavaScript source may answer NaN or 1e12, and casting either
+    // to size_t is undefined before the check would run.
+    constexpr double max_edge = 16384;
+    const double w = preview->width, h = preview->height;
+    if (!(w > 0 && w <= max_edge && h > 0 && h <= max_edge))
+        return nil;
+    const auto width = static_cast<size_t>(w);
+    const auto height = static_cast<size_t>(h);
+    if (preview->rgba.size() != width * height * 4)
         return nil;
     // The provider keeps the preview alive for as long as the image needs its pixels.
     auto* held = new std::shared_ptr<::session_bridge::Preview>(std::move(preview));
