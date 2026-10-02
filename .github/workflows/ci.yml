@@ -42,7 +42,7 @@ jobs:
       - run: pnpm boundaries
       - run: pnpm typecheck
       - run: pnpm test
-      - run: pnpm --filter @session/bridge-rn test:native
+      - run: pnpm test:native
       - run: pnpm knip
       - run: pnpm dedupe --check
       - run: pnpm codegen:check
