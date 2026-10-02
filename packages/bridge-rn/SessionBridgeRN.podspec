@@ -17,7 +17,7 @@ Pod::Spec.new do |s|
   # the addon, the Android Gradle plugin for Android, and the iOS build script here - because
   # CocoaPods compiles only what lives inside the pod directory and drops a glob that reaches
   # out of it without saying so.
-  s.source_files = "cpp/**/*.{hpp,cpp}", "ios/**/*.{h,mm}"
+  s.source_files = "cpp/**/*.{hpp,cpp}", "ios/*.{h,mm}"
 
   # libsession, and the shim built against it. Both produced by
   # `pnpm --filter @session/bridge-rn build:libsession:ios`, neither committed.
