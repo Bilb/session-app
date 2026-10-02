@@ -164,5 +164,6 @@ Comments explain a constraint or a choice; they never restate the code.
 `pnpm install` points git at `.githooks/`. `tooling/checks/src/checks.ts` places every `pnpm`
 step of CI in pre-commit, in pre-push (narrowed to the packages the branch changes), or in CI alone
 with a reason; `lint:manifests` fails when it and the workflow disagree, so a new CI check goes
-there too. commit-msg refuses co-author and AI attribution lines. Never commit or push with
-`--no-verify`: fix what the hook found.
+there too. A hook checks the working tree, not the commit: CI is the authority, and a commit that
+left a fix unstaged fails there. commit-msg refuses co-author and AI attribution lines. Never commit
+or push with `--no-verify`: fix what the hook found.

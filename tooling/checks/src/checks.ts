@@ -3,6 +3,10 @@
  *
  * turbo-guard fails when this and the workflow disagree, so a check added to CI has to be placed
  * here: in a hook, or in CI alone with the reason it cannot run earlier.
+ *
+ * A hook judges the working tree, not the index or the pushed ref: only the `when` triggers read
+ * the staged list. CI is the authority and a hook the fast approximation; judging the index would
+ * cost a checkout per commit, and refusing unstaged edits would ban partial staging.
  */
 
 export const HOOK_STAGES = ['pre-commit', 'pre-push'] as const
