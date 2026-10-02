@@ -5,15 +5,31 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pkg="$here/../.."
 out="${TMPDIR:-/tmp}/session-bridge-rn-tests"
 mkdir -p "$out"
+
+# The media vectors, as the TypeScript table currently reads: rewritten on every run so the C++
+# side cannot pass against a stale copy.
+pnpm --filter @session/client-contract --silent media-vectors:hpp "$out/media_vectors.hpp"
+
 # ThreadSanitizer, because what these tests exist to catch is a value touched on the wrong thread.
-"${CXX:-g++}" -std=c++20 -g -O1 -fsanitize=thread -pthread \
-    -I"$pkg/cpp" -I"$pkg/../bridge-core/include" \
+flags=(-std=c++20 -g -O1 -fsanitize=thread -pthread
+    -I"$pkg/cpp" -I"$pkg/../bridge-core/include" -I"$out")
+
+# ThreadSanitizer cannot map its shadow memory under the address randomisation newer kernels use by
+# default, so the binaries run with it off where setarch can do that.
+run() {
+    if command -v setarch >/dev/null; then
+        setarch "$(uname -m)" -R "$1"
+    else
+        "$1"
+    fi
+}
+
+"${CXX:-g++}" "${flags[@]}" \
     "$pkg/cpp/MediaSource.cpp" "$pkg/cpp/JsMediaSource.cpp" "$here/JsMediaSource.test.cpp" \
     -o "$out/JsMediaSource.test"
-# ThreadSanitizer cannot map its shadow memory under the address randomisation newer kernels use by
-# default, so the binary runs with it off where setarch can do that.
-if command -v setarch >/dev/null; then
-    setarch "$(uname -m)" -R "$out/JsMediaSource.test"
-else
-    "$out/JsMediaSource.test"
-fi
+run "$out/JsMediaSource.test"
+
+"${CXX:-g++}" "${flags[@]}" \
+    "$pkg/../bridge-core/src/media_url.cpp" "$here/media_url.test.cpp" \
+    -o "$out/media_url.test"
+run "$out/media_url.test"

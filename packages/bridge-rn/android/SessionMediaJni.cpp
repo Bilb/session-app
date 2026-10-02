@@ -50,8 +50,8 @@ void answer_media(jobject load, ::session_bridge::Media media) {
     JNIEnv* env = attached_env();
     if (media.error) {
         fail(env, load, *media.error);
-    } else if (::session_bridge::servable_content_type(media.content_type, media.bytes)) {
-        // Fresco reads the format from the bytes, which the check has just said agree.
+    } else if (::session_bridge::servable_image_type(media.content_type, media.bytes)) {
+        // Fresco reads the format from the bytes, which the check has just said are a picture's.
         jlong handle = 0;
         jobject buffer = lend(env, std::move(media.bytes), handle);
         env->CallVoidMethod(load, on_media, buffer, handle);
