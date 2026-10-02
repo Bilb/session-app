@@ -40,12 +40,33 @@ describe('the checks', () => {
       if (check.stage === 'ci-only') expect(check.because.trim()).not.toBe('')
   })
 
-  it('run boundaries for a staged source file and codegen only for bridge-types', () => {
-    const runs = (file: string) =>
-      commandsFor(CHECKS, 'pre-commit', [file], null).map((args) => args.join(' '))
+  const runs = (file: string) =>
+    commandsFor(CHECKS, 'pre-commit', [file], null).map((args) => args.join(' '))
+
+  it('run boundaries for a staged source file, and not codegen', () => {
     expect(runs('packages/ui/src/Button.tsx')).toContain('boundaries')
     expect(runs('packages/ui/src/Button.tsx')).not.toContain('codegen:check')
-    expect(runs('packages/bridge-types/src/x.ts')).toContain('codegen:check')
+  })
+
+  it('run codegen:check for what any of the three generators reads or writes', () => {
+    for (const file of [
+      'packages/bridge-types/src/x.ts',
+      'packages/bridge-rn/src/specs/SessionBridge.nitro.ts',
+      'packages/bridge-rn/nitrogen/generated/shared/c++/HybridSessionBridgeSpec.hpp',
+      'packages/bridge-core/include/session_bridge/gen/commands.hpp',
+      'tooling/bridge-codegen/src/emit.ts',
+      'packages/app/scripts/generateUrls.ts',
+      'packages/app/src/urls.generated.ts',
+      'libsession-util',
+    ])
+      expect(runs(file), file).toContain('codegen:check')
+    for (const file of [
+      'packages/bridge-rn/src/index.ts',
+      'packages/bridge-rn/cpp/shim.cpp',
+      'packages/app/src/urls.ts',
+      'libsession-util-notes.md',
+    ])
+      expect(runs(file), file).not.toContain('codegen:check')
   })
 
   it('run lint:manifests for every file turbo-guard reads, not only manifests', () => {

@@ -5,7 +5,8 @@
  * here: in a hook, or in CI alone with the reason it cannot run earlier.
  */
 
-export type HookStage = 'pre-commit' | 'pre-push'
+export const HOOK_STAGES = ['pre-commit', 'pre-push'] as const
+export type HookStage = (typeof HOOK_STAGES)[number]
 
 interface WithRun {
   /** What follows `pnpm ` in the workflow step, verbatim. */
@@ -29,6 +30,20 @@ export type Check = HookCheck | CiOnlyCheck
 
 const CODE = /\.[cm]?[jt]sx?$/
 const MANIFEST = /(^|\/)package\.json$|^pnpm-(lock|workspace)\.yaml$/
+// What the three generators read or write: bridge-codegen, nitrogen and app's URL table. The bare
+// `libsession-util` path is the submodule pointer, which is how a bump appears in a diff.
+const CODEGEN = new RegExp(
+  [
+    '^packages/bridge-types/',
+    '^packages/bridge-rn/src/.*\\.nitro\\.ts$',
+    '^packages/bridge-rn/nitrogen/generated/',
+    '^packages/bridge-core/include/session_bridge/gen/',
+    '^tooling/bridge-codegen/src/',
+    '^packages/app/scripts/',
+    '^packages/app/src/urls\\.generated\\.ts$',
+    '^libsession-util$',
+  ].join('|'),
+)
 
 export const CHECKS: readonly Check[] = [
   {
@@ -46,7 +61,7 @@ export const CHECKS: readonly Check[] = [
   { run: 'test:native', stage: 'ci-only', because: 'needs a C++ toolchain with ThreadSanitizer' },
   { run: 'knip', stage: 'pre-push' },
   { run: 'dedupe --check', stage: 'pre-commit', when: MANIFEST },
-  { run: 'codegen:check', stage: 'pre-commit', when: /^packages\/bridge-types\// },
+  { run: 'codegen:check', stage: 'pre-commit', when: CODEGEN },
 ]
 
 /** The pnpm arguments a hook at `stage` runs, given the files it covers and the push's base. */
