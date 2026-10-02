@@ -13,6 +13,7 @@ import {
   stagedPath,
   StagedExports,
 } from './exportPaths'
+import { deliverIntoTree } from './safDocument'
 
 /**
  * Where an export goes once libsession has written it: the photo library, or a folder somebody
@@ -27,6 +28,11 @@ const EXPORT_ROOT = `${cacheRoot}/session-exports`
 const staged = new StagedExports<Delivery>(EXPORT_ROOT)
 
 // Per segment, because a sender's name may hold `#` or `%`, which a URL would read as syntax.
+/** The path behind a `file://` URL, which is what a native module opens. */
+function pathOf(file: File): string {
+  return decodeURIComponent(file.uri.replace(/^file:\/\//, ''))
+}
+
 function fileUrl(path: string): string {
   return `file://${path.split('/').map(encodeURIComponent).join('/')}`
 }
@@ -169,11 +175,16 @@ function isNameTaken(error: unknown): boolean {
 }
 
 /**
- * Copies into a document tree, where expo-file-system renames nothing: `File.rename` opens a
- * local path, and a move within the tree changes the parent and keeps the name. So the staged
- * file takes each candidate name in turn and the copy itself is the probe.
+ * Copies into a document tree. The native module writes `<name>.part` and renames it once whole,
+ * asking the provider for free names; without it (a dev client older than the module) the
+ * staged file takes each candidate name in turn and the copy itself is the probe, since
+ * expo-file-system renames nothing in a tree.
  */
 async function copyIntoTree(staged: File, folder: Directory): Promise<void> {
+  if (deliverIntoTree !== null) {
+    await deliverIntoTree(folder.uri, pathOf(staged), staged.name)
+    return
+  }
   await placeUnderFreeName(
     staged.name,
     async (candidate) => {
