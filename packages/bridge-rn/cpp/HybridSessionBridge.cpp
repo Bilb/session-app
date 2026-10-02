@@ -95,6 +95,12 @@ namespace {
         return std::make_exception_ptr(std::runtime_error{"the bridge is closed"});
     }
 
+    /// Worded as call() words its own refusal, so a log says which way the caller is wrong.
+    std::exception_ptr not_open_error(const char* method) {
+        return std::make_exception_ptr(
+                std::runtime_error{std::string{method} + "() before init()"});
+    }
+
     /// The shim's vector, handed to JavaScript as the ArrayBuffer's own storage rather than copied.
     std::shared_ptr<ArrayBuffer> buffer_of(std::vector<std::byte>&& bytes) {
         // wrap() refuses a null pointer, which is what an empty vector may hold.
@@ -230,6 +236,7 @@ void HybridSessionBridge::init(const SessionBridgeOptions& options) {
                             JSIConverter<::session_bridge::Frame>::toJSI(runtime, frame));
                 });
             });
+    _opened = true;
 }
 
 void HybridSessionBridge::call(::session_bridge::Request request) {
@@ -241,7 +248,8 @@ void HybridSessionBridge::call(::session_bridge::Request request) {
 std::shared_ptr<Promise<NativeMedia>> HybridSessionBridge::fetchMedia(
         double messageId, double index) {
     if (!_bridge)
-        return Promise<NativeMedia>::rejected(closed_error());
+        return Promise<NativeMedia>::rejected(
+                _opened ? closed_error() : not_open_error("fetchMedia"));
     return settled_by<NativeMedia, ::session_bridge::Media>(
             _fetches,
             [&](::session_bridge::MediaHandler cb) {
@@ -256,7 +264,8 @@ std::shared_ptr<Promise<NativeMedia>> HybridSessionBridge::fetchMedia(
 std::shared_ptr<Promise<NativePreview>> HybridSessionBridge::fetchPreview(
         double messageId, double index) {
     if (!_bridge)
-        return Promise<NativePreview>::rejected(closed_error());
+        return Promise<NativePreview>::rejected(
+                _opened ? closed_error() : not_open_error("fetchPreview"));
     return settled_by<NativePreview, ::session_bridge::Preview>(
             _fetches,
             [&](::session_bridge::PreviewHandler cb) {

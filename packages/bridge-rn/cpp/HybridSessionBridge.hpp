@@ -70,6 +70,8 @@ class HybridSessionBridge : public HybridSessionBridgeSpec {
     std::shared_ptr<Sink> _sink;
     std::shared_ptr<PendingFetches> _fetches = std::make_shared<PendingFetches>();
     std::unique_ptr<::session_bridge::ClientBridge> _bridge;
+    /// Tells a null `_bridge` apart: not yet opened before init(), closed after.
+    bool _opened = false;
 };
 
 }  // namespace margelo::nitro::session::bridge::rn

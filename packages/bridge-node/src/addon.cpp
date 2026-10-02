@@ -346,8 +346,11 @@ Napi::Value ParseMediaUrl(const Napi::CallbackInfo& info) {
 /// `servableContentType(declared, bytes) -> string | null`, the shim's check, for the same reason.
 Napi::Value ServableContentType(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
-    if (info.Length() < 2 || !info[0].IsString() || !info[1].IsTypedArray())
-        throw Napi::TypeError::New(env, "servableContentType(declared, bytes)");
+    // A Uint8Array by element type, not any TypedArray: ElementLength() of a wider one would
+    // hand the shim a fraction of the buffer and let a vector pass against the wrong prefix.
+    if (info.Length() < 2 || !info[0].IsString() || !info[1].IsTypedArray() ||
+        info[1].As<Napi::TypedArray>().TypedArrayType() != napi_uint8_array)
+        throw Napi::TypeError::New(env, "servableContentType(declared, bytes: Uint8Array)");
     auto bytes = info[1].As<Napi::Uint8Array>();
     auto served = session_bridge::servable_content_type(
             info[0].As<Napi::String>().Utf8Value(),
