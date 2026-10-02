@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest'
 import { createFakeMediaSource } from '#src/fake/media'
 import { friendsWithAttachments, showcase } from '#src/fake/index'
 
+// The photo names are ASCII, so a byte per character stands in for a file's bytes.
 const readPhoto = (name: string): Promise<Uint8Array> =>
-  Promise.resolve(new TextEncoder().encode(name))
+  Promise.resolve(Uint8Array.from(name, (c) => c.charCodeAt(0)))
+const asText = (bytes: Uint8Array): string => String.fromCharCode(...bytes)
 
 async function showcasePhoto() {
   const { world, clients } = showcase()
@@ -31,7 +33,7 @@ describe('the fake media source', () => {
     await Promise.resolve()
     expect(answered).toBe(false)
     world.settle()
-    expect(new TextDecoder().decode((await media).bytes)).toBe('unsplash-01.jpg')
+    expect(asText((await media).bytes)).toBe('unsplash-01.jpg')
     expect(alice.isCached(ref)).toBe(true)
   })
 
@@ -50,7 +52,7 @@ describe('the fake media source', () => {
     const served = pictures.map((ref) => source.fetchMedia(ref))
     world.settle()
     for (const media of await Promise.all(served)) {
-      expect(new TextDecoder().decode(media.bytes)).toMatch(/^unsplash-\d{2}\.jpg$/)
+      expect(asText(media.bytes)).toMatch(/^unsplash-\d{2}\.jpg$/)
     }
   })
 
