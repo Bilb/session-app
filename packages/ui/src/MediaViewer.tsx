@@ -156,7 +156,8 @@ export function MediaViewer({
             tapped, so the chrome keeps clear of it like any screen. */}
         <SafeArea>
           <YStack position="relative" flex={1}>
-            {/* Along the top, and nothing along the bottom: the bottom edge is where a thumb rests. */}
+            {/* Along the top, and nothing along the bottom: the bottom edge is where a thumb
+                rests. */}
             <XStack height={HEADER_HEIGHT} alignItems="center" gap="$xs" paddingHorizontal="$sm">
               <Control icon="x" label={closeLabel} onPress={close} testID={closeTestID} />
               <Text size="$label" color="$textSecondary" flex={1}>
@@ -214,8 +215,9 @@ export function MediaViewer({
                   paddingHorizontal="$xs"
                   pointerEvents="box-none"
                 >
-                  {/* The glyph follows reading order, the index does not: previous is always index - 1,
-                  and in a mirrored layout it is the chevron on the right that draws it. */}
+                  {/* The glyph follows reading order, the index does not: previous is always
+                  index - 1, and in a mirrored layout it is the chevron on the right that draws
+                  it. */}
                   <Control
                     icon={backChevron()}
                     label={previousLabel}

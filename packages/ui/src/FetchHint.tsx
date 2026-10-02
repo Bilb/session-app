@@ -23,7 +23,10 @@ export function FetchHint({
 }: Partial<WithTestID> & {
   side: number
   group: GroupNames
-  /** Shown without a press on touch, where nothing hovers; off where the row already offers Download. */
+  /**
+   * Shown without a press on touch, where nothing hovers; off where the row already offers
+   * Download.
+   */
   restsOnTouch?: boolean | undefined
   /**
    * Makes the cloud itself take a press, where it sits over a seam between tiles that would
