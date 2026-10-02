@@ -2,7 +2,7 @@ export { createSessionClient } from './createSessionClient'
 export { discoverSeedNodes, seedNodesFrom } from './discoverSeedNodes'
 export type { FetchLike } from './discoverSeedNodes'
 export { createNativeBridgeTransport } from './nativeTransport'
-export { createRefusingTransport } from './refusingTransport'
+export { BRIDGE_UNAVAILABLE, createRefusingTransport } from './refusingTransport'
 export {
   ATTACHMENT_FILE_MISSING,
   ATTACHMENT_NOT_FOUND,

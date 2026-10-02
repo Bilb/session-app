@@ -5,6 +5,7 @@ import type {
   Message,
   SessionClient,
 } from '@session/client'
+import { BRIDGE_UNAVAILABLE, SessionClientError } from '@session/client'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
 import { applyEvent, mergePages, recordRefusal, withoutHistory } from './applyEvent'
@@ -290,7 +291,7 @@ export function createSessionStore(
 
   const actions: SessionActions = {
     async start(): Promise<void> {
-      store.setState({ startupError: null })
+      store.setState({ startupError: null, startupClearable: true })
       try {
         await actions.hydrate()
       } catch (error) {
@@ -301,7 +302,8 @@ export function createSessionStore(
         // and a launch screen that never went away, identical from the outside to a slow start.
         const message = error instanceof Error ? error.message : String(error)
         log('error', `[session] could not start: ${message}`)
-        store.setState({ startupError: message })
+        const noBridge = error instanceof SessionClientError && error.code === BRIDGE_UNAVAILABLE
+        store.setState({ startupError: message, startupClearable: !noBridge })
       }
     },
 

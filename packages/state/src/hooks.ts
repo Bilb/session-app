@@ -58,6 +58,12 @@ export function useStartupError(): string | null {
   return useStore(store, (state) => state.startupError)
 }
 
+/** Whether clearing the device could get past a failed start: see `startupClearable`. */
+export function useStartupClearable(): boolean {
+  const store = useSessionStore()
+  return useStore(store, (state) => state.startupClearable)
+}
+
 /** The whole of what libsession says about the account, or null before the first answer. */
 export function useAccount(): AccountInfo | null {
   const store = useSessionStore()

@@ -1,6 +1,6 @@
 import { requirePorts } from '@session/app'
 import { tr } from '@session/localization'
-import { useSessionActions } from '@session/state'
+import { useSessionActions, useStartupClearable } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { Button, Icon, Screen, Text, useModals, XStack, YStack, type Modals } from '@session/ui'
 import { useState } from 'react'
@@ -24,12 +24,14 @@ interface StartupFailedScreenProps {
  *
  * **Clearing is the only way forward offered**, and it leads straight to onboarding, where somebody
  * either starts again or enters their recovery phrase. No Retry: what lands here is a request the
- * open database refused, and asking it again gets the same answer.
+ * open database refused, and asking it again gets the same answer. Where the bridge itself could
+ * not be made there is nothing to clear with, and Quit is all that is left.
  */
 export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
   const actions = useSessionActions()
   const modals = useModals()
   const close = requirePorts().window.close
+  const clearable = useStartupClearable()
 
   return (
     <Screen padded testID={ELEMENT.startupFailed.screen}>
@@ -52,16 +54,20 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
             disabled
             testID={ELEMENT.startupFailed.exportLogs}
           />
-          <TextButton
-            label={['clearDevice']}
-            variant="danger"
-            testID={ELEMENT.startupFailed.clear}
-            onPress={() => {
-              // No quit afterwards: the bridge reopens a fresh database in place, and the store
-              // starts again on it, which with no account on the device is onboarding.
-              confirmClear(modals, () => actions.clearDeviceData())
-            }}
-          />
+          {/* Not where there is no bridge to clear with: a Clear that is known to fail is a
+              destructive-looking button that does nothing. */}
+          {clearable ? (
+            <TextButton
+              label={['clearDevice']}
+              variant="danger"
+              testID={ELEMENT.startupFailed.clear}
+              onPress={() => {
+                // No quit afterwards: the bridge reopens a fresh database in place, and the store
+                // starts again on it, which with no account on the device is onboarding.
+                confirmClear(modals, () => actions.clearDeviceData())
+              }}
+            />
+          ) : null}
           {close === null ? null : (
             <TextButton
               label={['quit']}

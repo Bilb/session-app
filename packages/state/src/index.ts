@@ -14,6 +14,7 @@ export {
   useMessages,
   useRequests,
   useSessionActions,
+  useStartupClearable,
   useStartupError,
   useUnreadRequestCount,
 } from './hooks'
