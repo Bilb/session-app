@@ -29,7 +29,8 @@ export function MessageAttachments({ message }: { message: Message }) {
   return (
     // One width in either shape: a bubble fits its content, so a list left to size itself gives
     // its names and the footer's total no width at all, and the bubble would resize on a toggle.
-    <YStack gap="$3xs" width={ALBUM_WIDTH}>
+    // Capped at the bubble's inside, so where a pane is too narrow the list shrinks instead.
+    <YStack gap="$3xs" width={ALBUM_WIDTH} maxWidth="100%">
       {view === 'gallery' ? (
         <MessageAlbum
           message={message}

@@ -14,8 +14,15 @@ import { describe, expect, it } from 'vitest'
 describe('the attachments of a message', () => {
   const source = readFileSync(join(import.meta.dirname, '../src/MessageAttachments.tsx'), 'utf8')
 
+  const root = source.slice(source.indexOf('return (\n'))
+
   it('take the album’s width in the list as well as the gallery', () => {
-    const root = source.slice(source.indexOf('return (\n'))
     expect(root).toMatch(/^return \(\n(\s*\/\/.*\n)*\s*<YStack[^>]*width=\{ALBUM_WIDTH\}/)
+  })
+
+  it('shrink to the bubble’s inside where the pane is too narrow for that width', () => {
+    // The bubble is a share of the pane; below about 340 dp that share is less than the album
+    // needs, and a fixed width would run out of the bubble rather than giving the list less.
+    expect(root).toMatch(/^return \(\n(\s*\/\/.*\n)*\s*<YStack[^>]*maxWidth="100%"/)
   })
 })
