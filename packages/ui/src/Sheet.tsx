@@ -34,6 +34,7 @@ export interface SheetProps {
   overlay?: ReactNode | undefined
   testID: ElementId
   closeTestID: ElementId
+  scrimTestID: ElementId
 }
 
 /**
@@ -59,6 +60,7 @@ export function Sheet({
   overlay,
   testID,
   closeTestID,
+  scrimTestID,
 }: SheetProps) {
   const wide = useMedia().gtSm
   const insets = useScreenInsets()
@@ -76,7 +78,15 @@ export function Sheet({
           The scrim is what closes, as a sibling behind the sheet rather than an ancestor of it: a
           press handler on an ancestor claims every touch that starts in the sheet, and the list
           inside then cannot start a scroll from a slow drag. */}
-      <YStack fullscreen backgroundColor="$surfaceInk" opacity={SCRIM_OPACITY} onPress={onClose} />
+      <YStack
+        fullscreen
+        backgroundColor="$surfaceInk"
+        opacity={SCRIM_OPACITY}
+        // Hidden from a reader: it is a second way to close, and Close is already announced.
+        aria-hidden
+        onPress={onClose}
+        testID={scrimTestID}
+      />
       <YStack
         fullscreen
         alignItems="center"

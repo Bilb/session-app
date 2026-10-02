@@ -15,9 +15,9 @@ function source(file: string): string {
   return readFileSync(join(import.meta.dirname, '../src', file), 'utf8')
 }
 
-/** The props of the first JSX element opening at `marker`, up to its closing `>`. */
-function openingTag(text: string, marker: string): string {
-  const start = text.indexOf(marker)
+/** The props of the first JSX element opening at `marker` after `from`, up to its closing `>`. */
+function openingTag(text: string, marker: string, from = 0): string {
+  const start = text.indexOf(marker, from)
   expect(start).toBeGreaterThanOrEqual(0)
   return text.slice(start, text.indexOf('>\n', start))
 }
@@ -67,31 +67,36 @@ describe('a sheet', () => {
 
   it('closes from its scrim, and claims no press on anything around its body', () => {
     // A press handler on an ancestor of the scroller holds every touch that starts in the sheet,
-    // and a slow drag then never becomes a scroll. The two handlers are the scrim's and the close
-    // button's, and the scrim is a sibling of the surface rather than its parent.
-    expect(sheet.match(/onPress=/g)?.length).toBe(2)
+    // and a slow drag then never becomes a scroll. So the scrim is what closes, as a sibling of
+    // the surface, and neither the frame that places the surface nor the surface itself presses.
+    const scrim = /<YStack\s+fullscreen[^>]*onPress=\{onClose\}[^>]*\/>/.exec(sheet)
+    expect(scrim).not.toBeNull()
+    const scrimEnd = (scrim?.index ?? 0) + (scrim?.[0].length ?? 0)
+    const surfaceTagEnd = sheet.indexOf('>\n', sheet.indexOf('testID={testID}'))
+    expect(surfaceTagEnd).toBeGreaterThan(scrimEnd)
+    expect(sheet.slice(scrimEnd, surfaceTagEnd)).not.toContain('onPress')
     expect(sheet).not.toContain('stopPropagation')
-    expect(sheet).toMatch(
-      /<YStack fullscreen backgroundColor="\$surfaceInk"[^>]*onPress=\{onClose\}/,
-    )
   })
 })
 
 describe('a native screen', () => {
+  const screen = source('Screen.native.tsx')
+
   it('wraps its content in no touchable, so a list inside can start a scroll', () => {
-    const screen = source('Screen.native.tsx')
     expect(screen).not.toMatch(/<(Touchable\w*|Pressable)\b/)
     expect(screen).toContain('backgroundDismissResponder')
   })
-})
 
-describe('a native screen', () => {
   it('keeps the keyboard-avoiding view directly in the inset frame', () => {
-    // It measures its offset from its parent: under a wrapper it misses the top inset, and lifts
-    // the composer short of the keyboard by exactly that much.
-    const text = source('Screen.native.tsx')
-    const avoiding = text.indexOf('<KeyboardAvoidingView')
+    // It measures its offset from its parent: under a wrapper of any kind it misses the top
+    // inset, and lifts the composer short of the keyboard by exactly that much.
+    const frame = openingTag(screen, '<YStack', screen.indexOf('return ('))
+    expect(frame).toContain('paddingTop=')
+    const avoiding = screen.indexOf('<KeyboardAvoidingView')
     expect(avoiding).toBeGreaterThanOrEqual(0)
-    expect(text.slice(text.indexOf('return ('), avoiding)).not.toMatch(/<View\b/)
+    const between = screen
+      .slice(screen.indexOf(frame) + frame.length, avoiding)
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
+    expect(between).not.toMatch(/<\w+/)
   })
 })

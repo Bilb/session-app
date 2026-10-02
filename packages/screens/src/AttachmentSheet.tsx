@@ -41,6 +41,7 @@ function MessageSheet({
         footer={message === undefined ? undefined : <SheetFooter message={message} />}
         testID={ELEMENT.conversation.attachmentSheet}
         closeTestID={ELEMENT.conversation.attachmentSheetClose}
+        scrimTestID={ELEMENT.conversation.attachmentSheetScrim}
         bodyIsList
       >
         {message === undefined ? null : (
