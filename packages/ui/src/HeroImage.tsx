@@ -7,7 +7,9 @@ import { XStack, YStack } from 'tamagui'
 
 import heroSource from '../assets/onboarding-hero.png'
 
-/** Vite returns a URL string and Metro an opaque asset id. `Image` takes either, spelled this way. */
+/**
+ * Vite returns a URL string and Metro an opaque asset id. `Image` takes either, spelled this way.
+ */
 const source = typeof heroSource === 'string' ? { uri: heroSource } : heroSource
 
 const ASPECT = 1629 / 2160

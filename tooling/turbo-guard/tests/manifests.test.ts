@@ -22,7 +22,10 @@ const DEV = { devOnly: ['@session/bridge-rn'] }
 const USES_DEV = "import { createSessionBridge } from '@session/bridge-rn'\n"
 
 describe('importViolations', () => {
-  /** Typecheck and lint pass on this; a bundler resolving from the package, as electron-vite does, does not. */
+  /**
+   * Typecheck and lint pass on this; a bundler resolving from the package, as electron-vite does,
+   * does not.
+   */
   it('finds a sibling imported without being declared', () => {
     expect(importViolations([pkg("import { tr } from '@session/localization'\n")])).toEqual([
       {

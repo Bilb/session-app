@@ -10,8 +10,9 @@ function bytes(hex: string): Uint8Array {
  * Hash and expected pixels, both produced by `session::image::thumbhash` itself.
  *
  * The hashes are three of the dev photographs and two synthetic images, encoded by libsession; the
- * pixels are what libsession's own decoder returns for them at 8x6. That is the whole point of the vectors: this
- * decoder exists only because the fake has no addon, so what it must match is the real one.
+ * pixels are what libsession's own decoder returns for them at 8x6. That is the whole point of the
+ * vectors: this decoder exists only because the fake has no addon, so what it must match is the
+ * real one.
  */
 const VECTORS: readonly (readonly [string, string])[] = [
   [

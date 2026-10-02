@@ -11,7 +11,8 @@ const repoRoot = join(import.meta.dirname, '../../..')
  * Where the app's own code lives: every package's `src` and both apps.
  *
  * Generated output is left out because it is not written here -- the table itself, and the
- * localization catalogue, whose strings carry addresses in their copy and are regenerated wholesale.
+ * localization catalogue, whose strings carry addresses in their copy and are regenerated
+ * wholesale.
  */
 const SOURCE_ROOTS = [
   ...readdirSync(join(repoRoot, 'packages')).map((name) => join('packages', name, 'src')),

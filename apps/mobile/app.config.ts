@@ -105,8 +105,8 @@ function englishPermission(plistKey: string): string {
  * of strings taking no arguments is searched, which is why nothing here substitutes `{app_name}` --
  * a string carrying a token is in another table and is not a permission string.
  *
- * Values are escaped here because the writer is not: it interpolates straight into `key = "value";`,
- * where a quotation mark would close the string early.
+ * Values are escaped here because the writer is not: it interpolates straight into `key =
+ * "value";`, where a quotation mark would close the string early.
  */
 function permissionLocales(): Record<string, { ios: Record<string, string> }> {
   const catalogue = generated('translations.ts')

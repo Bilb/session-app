@@ -267,10 +267,10 @@ export function baseFits(background: string, polarity: 'light' | 'dark'): boolea
  * How saturated a base can be and still carry a palette.
  *
  * Lightness was the only term here until a sweep of the knob space measured the other one. Validity
- * falls off steadily with base chroma, and 0.12 is the knee: capping there lifts the pass rate among
- * admitted bases from 90% to 93% while still admitting three quarters of them. Above it the returns
- * flatten and the colours stop being backgrounds -- a page at chroma 0.23 is a brand colour someone
- * has typed into the wrong box.
+ * falls off steadily with base chroma, and 0.12 is the knee: capping there lifts the pass rate
+ * among admitted bases from 90% to 93% while still admitting three quarters of them. Above it the
+ * returns flatten and the colours stop being backgrounds -- a page at chroma 0.23 is a brand colour
+ * someone has typed into the wrong box.
  */
 const MAX_BASE_CHROMA = 0.12
 

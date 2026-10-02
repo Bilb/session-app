@@ -140,8 +140,8 @@ export async function createBridge(): Promise<BridgeTransport & MediaSource> {
     // opens, and the first screen the user sees is a conversation list for an identity nobody
     // chose.
     deferAccount: true,
-    // The bridge attaches this once an account exists - on open if there already is one, and
-    // after onboarding otherwise. EXPO_PUBLIC_SESSION_NETID picks it; unset means mainnet, and there is
+    // The bridge attaches this once an account exists - on open if there already is one, and after
+    // onboarding otherwise. EXPO_PUBLIC_SESSION_NETID picks it; unset means mainnet, and there is
     // deliberately no way to spell "offline" here: that is what EXPO_PUBLIC_SESSION_FAKE is for.
     ...(netid === undefined ? {} : { netid }),
     ...(seedNodes === undefined ? {} : { seedNodes }),

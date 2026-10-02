@@ -26,7 +26,10 @@ interface ProgressRingProps {
   /** How far round, 0 to 1. Clamped, because a ring that has gone past its end reads as a bug. */
   progress: number
   size: number
-  /** Ring thickness. Kept proportional by the caller rather than derived, so a small ring stays legible. */
+  /**
+   * Ring thickness. Kept proportional by the caller rather than derived, so a small ring stays
+   * legible.
+   */
   thickness?: number
 }
 

@@ -261,7 +261,9 @@ export interface Conversation {
   nickname?: string
   lastActivity: number
   priority: number
-  /** A count on the conversation, never a flag on a message: libsession has no per-message unread. */
+  /**
+   * A count on the conversation, never a flag on a message: libsession has no per-message unread.
+   */
   unreadCount: number
   markedUnread: boolean
   snippet?: string

@@ -12,7 +12,9 @@ import type { IconName } from './Icon.types'
  */
 export type FileRowState = 'idle' | 'fetching' | 'ready' | 'failed' | 'unavailable'
 
-/** The square the glyph sits in. The list's thumbnail is the same size, so the two columns line up. */
+/**
+ * The square the glyph sits in. The list's thumbnail is the same size, so the two columns line up.
+ */
 export const FILE_GLYPH_SIDE = 40
 
 /** Wide enough for the square and for a four-letter format under it. */

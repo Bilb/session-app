@@ -154,9 +154,9 @@ export function strangers(
  * One account with an arbitrarily large, already-approved conversation list.
  *
  * `solo` cycles the eight named fixtures and so tops out at eight peers, which is the right size
- * for a flow test and useless for a measurement: the costs worth knowing - the projection re-sorting
- * the list, React mounting every row - only appear at a scale no hand-written fixture reaches.
- * Names here are generated rather than drawn from FIXTURE_NAMES for the same reason.
+ * for a flow test and useless for a measurement: the costs worth knowing - the projection
+ * re-sorting the list, React mounting every row - only appear at a scale no hand-written fixture
+ * reaches. Names here are generated rather than drawn from FIXTURE_NAMES for the same reason.
  */
 export function crowd(options: { peers: number; history?: number; name?: FixtureName }): FakeSetup {
   resetFakeIds()

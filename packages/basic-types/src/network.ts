@@ -76,7 +76,9 @@ export function isHex64(value: unknown): value is string {
   return typeof value === 'string' && HEX64.test(value)
 }
 
-/** libsession dials a seed directly and resolves no host names, so a name here never becomes one. */
+/**
+ * libsession dials a seed directly and resolves no host names, so a name here never becomes one.
+ */
 export function isIpv4(value: unknown): value is string {
   if (typeof value !== 'string') return false
   const match = IPV4.exec(value)
@@ -87,7 +89,9 @@ export function isPort(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0 && value <= 65535
 }
 
-/** The trimmed value, or undefined for both unset and whitespace: a blank line in a .env is unset. */
+/**
+ * The trimmed value, or undefined for both unset and whitespace: a blank line in a .env is unset.
+ */
 function set(value: string | undefined): string | undefined {
   const trimmed = value?.trim()
   return trimmed === undefined || trimmed.length === 0 ? undefined : trimmed

@@ -65,7 +65,8 @@ interface Manifest {
   optionalDependencies?: Record<string, string>
 }
 
-// Every manifest the push carries but the root's, which is the workspace rather than a package in it.
+// Every manifest the push carries but the root's, which is the workspace rather than a package in
+// it.
 const manifests = [...committed]
   .filter((path) => path.endsWith('/package.json') && !path.includes('node_modules/'))
   .map((path) => ({

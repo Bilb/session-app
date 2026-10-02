@@ -342,7 +342,9 @@ export class FakeSessionClient implements SessionClient {
     return this.account.exportAttachment({ messageId, index }, destination, options?.replace)
   }
 
-  /** Fake-only: finds an attachment in memory, where paging every conversation would miss old ones. */
+  /**
+   * Fake-only: finds an attachment in memory, where paging every conversation would miss old ones.
+   */
   locate(ref: AttachmentRef): LocatedAttachment | undefined {
     return this.account.locate(ref)
   }
