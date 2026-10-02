@@ -212,7 +212,10 @@ RCT_EXPORT_MODULE()
                     done(SessionMediaError(*media->error), nil);
                     return;
                 }
-                if (!::session_bridge::servable_content_type(media->content_type, media->bytes)) {
+                const auto type =
+                        ::session_bridge::servable_content_type(media->content_type, media->bytes);
+                // Images only: a video has no decoder here, and `ftyp` bytes may be HEIF.
+                if (!type || !type->starts_with("image/")) {
                     done(SessionMediaError("not a picture the decoder may be handed"), nil);
                     return;
                 }
