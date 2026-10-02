@@ -1,9 +1,9 @@
 # session-app
 
-One shared UI across an Expo app (Android and iOS, phone and tablet) and an Electron app (Linux
-and Windows; macOS gets the native app). libsession-util's `client` branch is the backbone: it
-owns the database, polling, sending, receiving, attachments and retries. The apps render what
-it says the state is and forward actions to it.
+One shared UI across an Expo app (Android and iOS, phone and tablet) and an Electron app
+(Linux, macOS, Windows). libsession-util's `client` branch is the backbone: it owns the
+database, polling, sending, receiving, attachments and retries. The apps render what it says
+the state is and forward actions to it.
 
 There is no web app. Desktop means Electron.
 
