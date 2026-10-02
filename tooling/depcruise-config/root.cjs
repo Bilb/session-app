@@ -15,7 +15,7 @@ const mayOnlyDependOn = (pkg, allowed) => ({
   severity: 'error',
   from: { path: `^packages/${pkg}/` },
   to: {
-    path: `^packages/(?!${[pkg, ...allowed].join('|')})[^/]+/`,
+    path: `^packages/(?!(${[pkg, ...allowed].join('|')})/)[^/]+/`,
   },
 })
 
@@ -43,7 +43,7 @@ module.exports = {
     mayOnlyDependOn('client-contract', ['client', 'basic-types']),
     mayOnlyDependOn('state', ['client', 'basic-types']),
     mayOnlyDependOn('ui', ['theme-tokens', 'test-ids', 'basic-types']),
-    mayOnlyDependOn('app', ['client', 'state', 'basic-types']),
+    mayOnlyDependOn('app', ['client', 'client-contract', 'state', 'basic-types']),
     mayOnlyDependOn('bridge-node', ['client', 'client-contract', 'bridge-types']),
     mayOnlyDependOn('bridge-rn', ['bridge-types']),
     mayOnlyDependOn('screens', [
