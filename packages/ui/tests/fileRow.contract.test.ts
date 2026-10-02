@@ -18,4 +18,10 @@ describe('a file row', () => {
       /<XStack\s+alignItems="center"\s+gap=\{FILE_ROW_GAP\}\s+paddingVertical="\$xs"/,
     )
   })
+
+  it('pins the name row to left-to-right, so a Latin name keeps head then tail under RTL', () => {
+    // The row mirrors with the layout; the name is two runs, and mirrored they read ".pdf" first.
+    expect(row).toContain("NAME_DIRECTION = { direction: 'ltr' }")
+    expect(row).toMatch(/<XStack[^>]*style=\{NAME_DIRECTION\}[^>]*testID=\{testIDs\?\.name\}/)
+  })
 })

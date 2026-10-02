@@ -74,6 +74,9 @@ const TONE_COLOR = {
   danger: '$dangerColor',
 } as const satisfies Record<FileRowTone, string>
 
+/** A filename reads head then tail whatever the language around it. */
+const NAME_DIRECTION = { direction: 'ltr' } as const
+
 /**
  * Drawn inside the touch target rather than filling it, so it reads as a gauge and not a button.
  */
@@ -249,7 +252,7 @@ export function FileRow({
 
             The id and the label are on the pair, never on a run: split between two elements the
             name stops being one string, and both a screen reader and a test then read half. */}
-        <XStack minWidth={0} aria-label={filename} testID={testIDs?.name}>
+        <XStack minWidth={0} aria-label={filename} style={NAME_DIRECTION} testID={testIDs?.name}>
           <Text
             size="$body"
             weight="semibold"
