@@ -1,9 +1,12 @@
 /**
  * The graph as Metro resolves it, `.native` first.
  *
- * root.cjs resolves the way the desktop bundle does, so it never reaches a `.native` file and
- * cannot tell a live one from a dead one. Cycles are checked again because which file an import
- * lands on decides whether there is one.
+ * root.cjs resolves as the desktop bundle does: a `.native` file's own imports are checked there,
+ * but no import ever lands on one, which is why root once reported every `.native` file as an
+ * orphan. Here an import does land on one, so cycles are checked again on the graph Metro sees,
+ * and the orphan rule catches a `.native` file that imports nothing. That is all it catches: to
+ * dependency-cruiser an orphan has neither dependents nor dependencies, so a dead `.native` file
+ * that imports anything is not detected by this pass, and knip ignores `.native` files too.
  *
  * Only the `.native` split is resolved. Metro would also take `.ios`, `.android` and `.web`, but no
  * pass here does, so such a file is refused until a split needs it and this config learns it.
