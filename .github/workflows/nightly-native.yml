@@ -33,7 +33,9 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ccache
 
       - id: libsession
-        run: echo "sha=$(git rev-parse HEAD:libsession-util)" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "sha=$(git rev-parse HEAD:libsession-util)" >> "$GITHUB_OUTPUT"
+          echo "image=$ImageOS" >> "$GITHUB_OUTPUT"
 
       # gmp, nettle, gnutls and the rest are built from source, each waiting on the one before it:
       # most of a cold run. Their stamps live in this tree, so a restored one skips them.
@@ -42,7 +44,8 @@ jobs:
           path: |
             packages/bridge-node/build/static-deps
             packages/bridge-node/build/static-deps-sources
-          key: native-static-deps-${{ runner.os }}-${{ steps.libsession.outputs.sha }}
+          # The bridge's configure flags pick the deps; a new runner image brings a new toolchain.
+          key: native-static-deps-${{ steps.libsession.outputs.image }}-${{ steps.libsession.outputs.sha }}-${{ hashFiles('packages/bridge-node/package.json', 'packages/bridge-core/CMakeLists.txt') }}
 
       # A checkout stamps every source newer than any cached object, so ninja recompiles libsession
       # whatever is restored; ccache is what makes that cheap.
@@ -69,22 +72,23 @@ jobs:
 
       - run: pnpm --filter @session/bridge-node test
 
-  # A job of its own rather than a step, so a run that hits the timeout is reported too. Only the
-  # scheduled run: a dispatched one has someone watching it.
+  # A job of its own rather than a step, and any result but success, so a timeout or a
+  # cancellation is reported too. Only the scheduled run: a dispatched one has someone watching it.
   notify:
     needs: addon
-    if: failure() && github.event_name == 'schedule'
+    if: always() && github.event_name == 'schedule' && needs.addon.result != 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Post the failure to Discord
         env:
           WEBHOOK: ${{ secrets.ALERT_DISCORD_WEBHOOK_URL }}
+          RESULT: ${{ needs.addon.result }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           if [ -z "$WEBHOOK" ]; then
             echo "::warning::ALERT_DISCORD_WEBHOOK_URL is not set, so the failure is not reported."
             exit 0
           fi
-          jq -n --arg content "❌ **${GITHUB_REPOSITORY#*/} nightly-native** failed on \`${GITHUB_REF_NAME}\`."$'\n'"$RUN_URL" \
+          jq -n --arg content "❌ **${GITHUB_REPOSITORY#*/} nightly-native** ended in \`${RESULT}\` on \`${GITHUB_REF_NAME}\`."$'\n'"$RUN_URL" \
             '{content: $content, allowed_mentions: {parse: []}}' |
             curl --fail-with-body -sS -H 'Content-Type: application/json' --data-binary @- "$WEBHOOK"
