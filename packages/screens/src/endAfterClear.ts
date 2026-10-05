@@ -10,5 +10,6 @@ import { requirePorts } from '@session/app'
  */
 export function endAfterClear(): void {
   const { restart, close } = requirePorts().window
-  ;(restart ?? close)?.()
+  const end = restart ?? close
+  end?.()
 }
