@@ -8,7 +8,6 @@ import {
   StartingScreen,
   StartupFailedScreen,
   RequestsScreen,
-  SettingsScreen,
   useLocale,
   usePersistedLocale,
   useTextDirection,
@@ -91,7 +90,6 @@ function Shell() {
           <Route path="c/:id" element={<ConversationRoute />} />
           <Route path="new" element={<NewConversationScreen />} />
           <Route path="requests" element={<RequestsScreen />} />
-          <Route path="settings" element={<SettingsScreen />} />
         </Routes>
       }
       // Any route but the list has something to show in the detail pane, not just a

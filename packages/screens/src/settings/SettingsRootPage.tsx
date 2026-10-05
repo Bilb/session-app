@@ -21,6 +21,7 @@ import { useState } from 'react'
 
 import { accountIdLines } from './accountIdLines'
 import { confirmLink } from './confirmLink'
+import { ConversationsPage } from './ConversationsPage'
 import { HelpPage } from './HelpPage'
 import { LocalizedText } from '../LocalizedText'
 
@@ -222,7 +223,14 @@ export function SettingsRootPage() {
     [
       { label: tr('sessionPrivacy'), icon: 'lockKeyhole', testID: row('privacy') },
       { label: tr('sessionNotifications'), icon: 'volume', testID: row('notifications') },
-      { label: tr('sessionConversations'), icon: 'messageSquare', testID: row('conversations') },
+      {
+        label: tr('sessionConversations'),
+        icon: 'messageSquare',
+        testID: row('conversations'),
+        onPress: () => {
+          modals.push({ title: tr('sessionConversations'), render: () => <ConversationsPage /> })
+        },
+      },
       { label: tr('sessionAppearance'), icon: 'paintbrush', testID: row('appearance') },
       {
         label: tr('sessionMessageRequests'),
