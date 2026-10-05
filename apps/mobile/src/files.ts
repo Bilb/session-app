@@ -8,12 +8,14 @@ import {
   exportFileName,
   folderDocumentUri,
   isGrantedFolderUri,
+  numberedName,
+  partName,
   photoLibraryExtension,
   placeUnderFreeName,
   stagedPath,
   StagedExports,
 } from './exportPaths'
-import { deliverIntoTree } from './safDocument'
+import { deliverIntoTree, FOLDER_ACCESS_LOST } from './safDocument'
 
 /**
  * Where an export goes once libsession has written it: the photo library, or a folder somebody
@@ -178,77 +180,73 @@ function revealTarget(delivery: Delivery, asset: Asset | null): string | null {
   return folderDocumentUri(delivery.folder.uri)
 }
 
-/**
- * expo-file-system's code for a copy refused because the name is in use. Android's: iOS passes
- * the file manager's error through with no code of its own.
- */
-const NAME_TAKEN = 'ERR_DESTINATION_ALREADY_EXISTS'
+const NAME_IN_USE = new Error('name in use')
 
-function isNameTaken(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === NAME_TAKEN
-}
-
-/**
- * Copies into a document tree. The native module writes `<name>.part` and renames it once whole,
- * asking the provider for free names; without it (a dev client older than the module) the
- * staged file takes each candidate name in turn and the copy itself is the probe, since
- * expo-file-system renames nothing in a tree.
- */
-async function copyIntoTree(staged: File, folder: Directory): Promise<void> {
-  if (deliverIntoTree !== null) {
-    await deliverIntoTree(folder.uri, pathOf(staged), staged.name)
-    return
-  }
-  await placeUnderFreeName(
-    staged.name,
+/** Runs `place` under the first name `nameFor` gives that `folder` does not hold yet. */
+function inFolderUnderFreeName(
+  folder: Directory,
+  name: string,
+  nameFor: (name: string, n: number) => string,
+  place: (candidate: string) => void | Promise<void>,
+): Promise<void> {
+  return placeUnderFreeName(
+    name,
     async (candidate) => {
-      if (candidate !== staged.name) staged.rename(candidate)
-      await staged.copy(folder)
+      if (new File(folder, candidate).exists) throw NAME_IN_USE
+      await place(candidate)
     },
-    isNameTaken,
+    (error) => error === NAME_IN_USE,
+    nameFor,
   )
 }
 
 /**
- * Copies into a local folder under a `.part` name and renames into place, so a copy that dies
- * leaves a file that looks unfinished rather than one that looks whole. The rename is the probe:
- * the file manager refuses one onto a name in use with no code to tell it from anything else, so
- * a failed one is read back by whether the name is there.
+ * Copies into a local folder under a temporary name and renames it into place, so a copy that
+ * dies leaves a file that looks unfinished rather than one that looks whole. Neither step
+ * replaces a file already there; the file manager also refuses both onto a name in use.
  */
 async function copyThenRename(staged: File, folder: Directory): Promise<void> {
   const name = staged.name
-  staged.rename(`${name}.part`)
+  await inFolderUnderFreeName(folder, name, partName, async (candidate) => {
+    staged.rename(candidate)
+    await staged.copy(folder)
+  })
   const part = new File(folder, staged.name)
   try {
-    // A `.part` left by an export that died is nothing anybody wants kept.
-    await staged.copy(folder, { overwrite: true })
-    await placeUnderFreeName(
-      name,
-      (candidate) => {
-        part.rename(candidate)
-      },
-      (_error, candidate) => new File(folder, candidate).exists,
-    )
+    await inFolderUnderFreeName(folder, name, numberedName, (candidate) => {
+      part.rename(candidate)
+    })
   } catch (error) {
     try {
       part.delete()
     } catch {
-      // Never made, or gone; the failure being reported is the copy's.
+      // Gone already; the failure being reported is the rename's.
     }
     throw error
   }
 }
 
+function isFolderAccessLost(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === FOLDER_ACCESS_LOST
+  )
+}
+
 /** Puts a staged file in a picked folder under a name nothing there has. */
 async function deliverToFolder(staged: File, folder: Directory): Promise<void> {
+  // A picked folder is a plain path on iOS and a document tree on Android.
+  if (deliverIntoTree === null) {
+    await copyThenRename(staged, folder)
+    return
+  }
   try {
-    // A picked folder is a document tree on Android and a plain path on iOS.
-    if (folder.uri.startsWith('file://')) await copyThenRename(staged, folder)
-    else await copyIntoTree(staged, folder)
+    await deliverIntoTree(folder.uri, pathOf(staged), staged.name)
   } catch (error) {
-    // A grant revoked in the system settings fails the copy like anything else would, and only
-    // the picker can tell them apart; forgetting costs one prompt.
-    if (!isNameTaken(error)) remember(null)
+    // A grant revoked in the system settings: only the picker can get a new one.
+    if (isFolderAccessLost(error)) remember(null)
     throw error
   }
 }

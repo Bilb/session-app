@@ -6,6 +6,7 @@ import {
   folderDocumentUri,
   isGrantedFolderUri,
   numberedName,
+  partName,
   photoLibraryExtension,
   placeUnderFreeName,
   stagedPath,
@@ -177,7 +178,12 @@ describe('a name in a folder that already holds it', () => {
     expect(numberedName('notes', 1)).toBe('notes (1)')
   })
 
-  it('is found by attempting each name in turn, never by listing the folder', async () => {
+  it('is written first under a temporary name libsession would use, numbered when taken', () => {
+    expect(partName('report.pdf', 0)).toBe('report.pdf.sessiondl')
+    expect(partName('report.pdf', 1)).toBe('report.pdf.sessiondl1')
+  })
+
+  it('is found by attempting each name in turn', async () => {
     const held = new Set(['itinerary.pdf', 'itinerary (1).pdf'])
     const tried: string[] = []
     await placeUnderFreeName(
@@ -189,6 +195,20 @@ describe('a name in a folder that already holds it', () => {
       (error) => error instanceof Error && error.message === 'taken',
     )
     expect(tried).toEqual(['itinerary.pdf', 'itinerary (1).pdf', 'itinerary (2).pdf'])
+  })
+
+  it('steps through whichever naming it is given', async () => {
+    const tried: string[] = []
+    await placeUnderFreeName(
+      'x.pdf',
+      (candidate) => {
+        tried.push(candidate)
+        if (tried.length < 3) throw new Error('taken')
+      },
+      () => true,
+      partName,
+    )
+    expect(tried).toEqual(['x.pdf.sessiondl', 'x.pdf.sessiondl1', 'x.pdf.sessiondl2'])
   })
 
   it('passes any other failure straight through', async () => {
