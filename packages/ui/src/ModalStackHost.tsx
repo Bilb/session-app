@@ -1,5 +1,5 @@
 import { Fragment } from 'react'
-import { Modal as NativeModal } from 'react-native'
+import { Modal as NativeModal, Platform } from 'react-native'
 import { ScrollView, useMedia, XStack, YStack } from 'tamagui'
 
 import { useBackdropBlur } from './backdropBlur'
@@ -20,6 +20,11 @@ import { useThemeIsDark } from './UIProvider'
 import { useScreenInsets } from './screenInsets'
 import { useTokenColor } from './useTokenColor'
 import { useWindowSize } from './useWindowSize'
+
+/** The web style that takes a held screen out of focus and the accessibility tree. */
+function hiddenUnless(showing: boolean): { visibility: 'visible' | 'hidden' } {
+  return { visibility: showing ? 'visible' : 'hidden' }
+}
 
 interface ModalStackHostProps {
   /** Names the close control for a screen reader, since it is drawn as a cross. */
@@ -244,6 +249,11 @@ export function ModalStackHost({
                         opacity={showing ? 1 : 0}
                         pointerEvents={showing ? 'auto' : 'none'}
                         aria-hidden={!showing}
+                        // On the web neither of the two above takes a screen out of the Tab order,
+                        // so focus would walk the hidden screens behind the top one. `visibility`
+                        // does, and keeps the scroll position back returns to, where `display:
+                        // none` would lose it. Native has no such property, nor the problem.
+                        {...(Platform.OS === 'web' ? { style: hiddenUnless(showing) } : {})}
                       >
                         <ScrollView
                           flex={1}
