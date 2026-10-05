@@ -220,6 +220,8 @@ export default ({ config }: ConfigContext): ExpoConfig =>
           granularPermissions: ['photo', 'video'],
         },
       ],
+      // Legacy Android's floor.
+      ['expo-build-properties', { android: { minSdkVersion: 26 } }],
     ],
     android: {
       ...config.android,
