@@ -216,10 +216,22 @@ export default ({ config }: ConfigContext): ExpoConfig =>
         {
           photosPermission: englishPermission('NSPhotoLibraryUsageDescription'),
           savePhotosPermission: englishPermission('NSPhotoLibraryAddUsageDescription'),
+          // Unset, the plugin declares audio too. Images and video are blocked below.
           granularPermissions: ['photo', 'video'],
         },
       ],
     ],
+    android: {
+      ...config.android,
+      // The media-library plugin declares reading the library, which saving to it never does;
+      // Play asks every app declaring them to justify it.
+      blockedPermissions: [
+        ...(config.android?.blockedPermissions ?? []),
+        'android.permission.READ_MEDIA_IMAGES',
+        'android.permission.READ_MEDIA_VIDEO',
+        'android.permission.READ_MEDIA_VISUAL_USER_SELECTED',
+      ],
+    },
     ios: {
       ...config.ios,
       bundleIdentifier: bundleId(config),
