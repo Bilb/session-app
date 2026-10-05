@@ -15,6 +15,17 @@ export const PubkeyPrefix = {
   group: prefixGroup,
 }
 
+/**
+ * Every prefix an account ID can start with. Each says what kind of key follows rather than whose:
+ * a standard account, a group, a community-blinded one (15, 25) or an unblinded one (00).
+ */
+export const AccountIdPrefix = {
+  ...PubkeyPrefix,
+  blinded15: '15',
+  blinded25: '25',
+  unblinded: '00',
+} as const
+
 type PubkeyPrefixT = typeof PubkeyPrefix
 
 export type PubkeyPrefixType = PubkeyPrefixT[keyof PubkeyPrefixT]

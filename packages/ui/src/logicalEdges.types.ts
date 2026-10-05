@@ -7,7 +7,7 @@
  * Pixels or a percentage, never tokens: these reach the platform as raw style, where tamagui
  * resolves nothing, so a `$` name is silently dropped. Read a rung's number from the scale.
  */
-type LogicalLength = number | `${number}%`
+export type LogicalLength = number | `${number}%`
 
 export interface LogicalEdges {
   marginStart?: LogicalLength
@@ -18,8 +18,11 @@ export interface LogicalEdges {
   insetStart?: LogicalLength
   /** Absolute positioning: distance from the trailing edge of the containing block. */
   insetEnd?: LogicalLength
-  /** A rule down the trailing edge: the divider between two panes, which mirrors with them. */
-  borderEndWidth?: LogicalLength
+  /**
+   * A rule down the trailing edge: the divider between two panes, which mirrors with them. Pixels
+   * only: neither CSS nor react-native has a percentage border width.
+   */
+  borderEndWidth?: number
   /** From `useTokenColor`, never a `$` name, for the same reason as the lengths. */
   borderEndColor?: string
 }

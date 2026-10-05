@@ -77,6 +77,8 @@ export type { BackdropBlur, BackdropBlurProps } from './backdropBlur'
 export type { Glass, GlassProps } from './glass'
 
 export { config, tokens } from './config'
+// The numbers behind the named scales, for a raw style that tamagui does not resolve.
+export { SIZE_SCALE, SPACE_SCALE } from './scales'
 export {
   buildThemes,
   DEFAULT_ACCENT,

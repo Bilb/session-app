@@ -1,6 +1,6 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { logical, backChevron, BarButton, YStack } from '@session/ui'
+import { logical, backChevron, BarButton, SIZE_SCALE, SPACE_SCALE, YStack } from '@session/ui'
 
 /**
  * The way back out of an onboarding step, drawn in four places.
@@ -27,13 +27,13 @@ export function OnboardingBackButton({
 }
 
 /** The control's width: a `md` circular bar button's. */
-const BACK_WIDTH = 40
+const BACK_WIDTH = SIZE_SCALE['2xl']
 
 /** Clears the heading with the whole circle, which iOS 26's glass makes visible. */
-const BACK_GAP = 8
+const BACK_GAP = SPACE_SCALE.xs
 
 /** Where the heading starts, from the column's edge. */
-const HEADING_INSET = 4
+const HEADING_INSET = SPACE_SCALE['2xs']
 
 /**
  * The same control, hung off the side of the wide column.

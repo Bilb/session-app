@@ -1,5 +1,7 @@
-/** The prefixes an account ID starts with, which say what kind of ID it is rather than whose. */
-const ID_PREFIX = /^(05|15|25|00|03)[0-9a-f]{2,}$/i
+import { AccountIdPrefix } from '@session/basic-types'
+
+/** A name that is really an account ID: one of its prefixes, then hex. */
+const ID_PREFIX = new RegExp(`^(${Object.values(AccountIdPrefix).join('|')})[0-9a-f]{2,}$`, 'i')
 
 /**
  * Characters as a reader counts them, so an emoji initial is not cut in half. Code points where
