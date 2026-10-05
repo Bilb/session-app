@@ -124,12 +124,26 @@ async function pickFolder(): Promise<Directory | null> {
   }
 }
 
+/**
+ * Whether saving to the photo library needs a grant here. MediaStore takes an insert from any app
+ * from Android 11; below it the write goes through the filesystem and needs storage access.
+ */
+function photoLibraryNeedsGrant(): boolean {
+  return Platform.OS === 'ios' || Number(Platform.Version) < 30
+}
+
+async function photoLibraryWritable(): Promise<boolean> {
+  if (!photoLibraryNeedsGrant()) return true
+  // Add-only: nothing that reads the library.
+  const permission = await requestPermissionsAsync(true, ['photo', 'video'])
+  return permission.granted
+}
+
 async function chooseDelivery(contentType: string | undefined): Promise<Delivery | null> {
-  if (photoLibraryExtension(contentType) !== null) {
-    // Add-only: saving asks for nothing that reads the library, and on Android 13 and up for
-    // nothing at all.
-    const permission = await requestPermissionsAsync(true, ['photo', 'video'])
-    return permission.granted ? { to: 'photos' } : null
+  // A refused grant sends the picture to a folder, as any other file, rather than nowhere.
+  // TODO(#62): on a permanent refusal, say why, as legacy's permissionsStorageDeniedLegacy does.
+  if (photoLibraryExtension(contentType) !== null && (await photoLibraryWritable())) {
+    return { to: 'photos' }
   }
   const folder = await pickFolder()
   return folder === null ? null : { to: 'folder', folder }
