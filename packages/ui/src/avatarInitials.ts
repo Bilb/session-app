@@ -1,7 +1,4 @@
-import { AccountIdPrefix } from '@session/basic-types'
-
-/** A name that is really an account ID: one of its prefixes, then hex. */
-const ID_PREFIX = new RegExp(`^(${Object.values(AccountIdPrefix).join('|')})[0-9a-f]{2,}$`, 'i')
+import { looksLikeAccountId } from '@session/basic-types'
 
 /**
  * Characters as a reader counts them, so an emoji initial is not cut in half. Code points where
@@ -25,7 +22,7 @@ function graphemes(text: string): string[] {
 export function avatarInitials(name: string, id: string): string {
   const trimmed = name.trim()
   // The pattern only spots a name that is an ID; the ID itself is sliced whatever its content.
-  if (trimmed === '' || ID_PREFIX.test(trimmed))
+  if (trimmed === '' || looksLikeAccountId(trimmed))
     return graphemes(trimmed === '' ? id.trim() : trimmed)
       .slice(2, 4)
       .join('')
