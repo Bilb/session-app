@@ -1,4 +1,4 @@
-import { bareFileName } from '@session/app/exportFileName'
+import { bareFileName, MAX_SUGGESTED_NAME_CHARS } from '@session/app/exportFileName'
 import { utf8Encode } from '@session/basic-types'
 
 /**
@@ -63,11 +63,14 @@ function capped(stem: string, extension: string): string {
  * A bare file name from the sender's suggestion: no directory part, no control characters, no
  * leading dots, bounded in length.
  *
+ * A suggestion longer than `MAX_SUGGESTED_NAME_CHARS` is not shortened but replaced, as desktop
+ * does; shortening one by code point is quadratic in its length, which the sender chooses.
  * A picture headed for the photo library gets the extension its declared type calls for.
  */
 export function exportFileName(suggested: unknown, contentType?: string): string {
+  const tooLong = typeof suggested === 'string' && suggested.length > MAX_SUGGESTED_NAME_CHARS
   // A leading dot hides the file, and MediaStore refuses a hidden name outright.
-  const bare = bareFileName(suggested).replace(/^\.+/, '')
+  const bare = tooLong ? '' : bareFileName(suggested).replace(/^\.+/, '')
   const name = bare === '' ? FALLBACK_NAME : bare
 
   const dot = name.lastIndexOf('.')
