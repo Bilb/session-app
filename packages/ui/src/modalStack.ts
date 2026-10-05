@@ -35,6 +35,20 @@ export function backAction(modals: readonly StackedModal[]): BackAction {
 }
 
 /**
+ * A screen stack with the named screen and everything pushed after it removed: what the platform
+ * did when it dismissed that screen.
+ *
+ * Keyed rather than counted, because react-native-screens reports a dismissal for a screen JS
+ * removed itself as well as for one the person swiped away. A key already gone is a no-op, so that
+ * echo pops nothing -- the guard react-navigation's native stack uses. The first screen is never
+ * removed this way: leaving it is closing the modal.
+ */
+export function popFrom<T extends { key: string }>(stack: readonly T[], key: string): T[] {
+  const at = stack.findIndex((screen) => screen.key === key)
+  return at <= 0 ? [...stack] : stack.slice(0, at)
+}
+
+/**
  * Removes a modal and everything opened from it, always returning a new array.
  *
  * An unknown id is a no-op rather than an error: a close handler can outlive what it closes, e.g.

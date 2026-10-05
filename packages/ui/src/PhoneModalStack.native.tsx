@@ -13,6 +13,15 @@ import { useScreenInsets } from './screenInsets'
 import { Text } from './Text'
 import { useTokenColor } from './useTokenColor'
 
+/** iOS 26's bars draw a glass button around a leading item; earlier iOS and Android do not. */
+const BAR_DRAWS_BUTTON =
+  Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26
+
+/** Lines the Android title up with where the bar places a pushed screen's title. */
+const TITLE_AFTER_CLOSE = SPACE_SCALE.lg
+
+const styles = StyleSheet.create({ fill: { flex: 1 } })
+
 /** One screen of the modal, as the phone's stack draws it. */
 interface PhoneModalScreen {
   key: string
@@ -28,9 +37,17 @@ export interface PhoneModalStackProps {
   closeLabel: string
   /** Closes the modal from its first screen, or undefined where it cannot be left that way. */
   onClose?: (() => void) | undefined
-  /** The platform removed `count` screens (back swipe, back button); the stack must follow. */
-  onPop: (count: number) => void
+  /**
+   * The platform dismissed the screen with this key (back swipe, back button); the stack must
+   * follow. Also reported for a screen JS removed itself, which the stack ignores by key.
+   */
+  onPop: (key: string) => void
   closeTestID?: string | undefined
+  /**
+   * On each screen's content. Back is the platform's own control, so it carries no id of ours: a
+   * test reaches it through the system's back.
+   */
+  testID?: string | undefined
 }
 
 /**
@@ -43,6 +60,7 @@ export function PhoneModalStack({
   onClose,
   onPop,
   closeTestID,
+  testID,
 }: PhoneModalStackProps) {
   const background = useTokenColor('$backgroundPrimary')
   const text = useTokenColor('$textPrimary')
@@ -56,8 +74,8 @@ export function PhoneModalStack({
           key={screen.key}
           screenId={screen.key}
           gestureEnabled={at > 0}
-          onDismissed={(event) => {
-            onPop(event.nativeEvent.dismissCount)
+          onDismissed={() => {
+            onPop(screen.key)
           }}
           contentStyle={[styles.fill, { backgroundColor: background }]}
           headerConfig={{
@@ -106,6 +124,7 @@ export function PhoneModalStack({
         >
           <ScrollView
             flex={1}
+            {...(testID === undefined ? {} : { testID })}
             {...(screen.footer === undefined
               ? { contentContainerStyle: { paddingBottom: bottom } }
               : {})}
@@ -124,12 +143,3 @@ export function PhoneModalStack({
     </ScreenStack>
   )
 }
-
-/** iOS 26's bars draw a glass button around a leading item; earlier iOS and Android do not. */
-const BAR_DRAWS_BUTTON =
-  Platform.OS === 'ios' && Number.parseInt(String(Platform.Version), 10) >= 26
-
-/** Lines the Android title up with where the bar places a pushed screen's title. */
-const TITLE_AFTER_CLOSE = SPACE_SCALE.lg
-
-const styles = StyleSheet.create({ fill: { flex: 1 } })

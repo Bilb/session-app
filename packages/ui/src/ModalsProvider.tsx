@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 
-import { backAction, dismissFrom, type StackedModal } from './modalStack'
+import { backAction, dismissFrom, popFrom, type StackedModal } from './modalStack'
 import type { PanelWidth } from './modalPanelMetrics'
 
 /** One page inside a modal. A modal always has at least one. */
@@ -72,6 +72,12 @@ export interface Modals {
   push: (screen: ModalScreen) => void
   /** Pops the frontmost modal's own screen stack, stopping at its first screen. */
   pop: () => void
+  /**
+   * Follows the platform: removes the named screen and those above it from the named modal, as a
+   * native back gesture did. A screen already gone is ignored, so a dismissal the platform reports
+   * for a pop that started here does not pop a second one.
+   */
+  popScreen: (modalId: string, screenKey: string) => void
   /** One level back: a screen if there is one to go back to, otherwise the modal. */
   back: () => void
   /** Closes everything, for a navigation that leaves the surface the modals belong to. */
@@ -155,6 +161,18 @@ export function ModalStackProvider({ children }: { children: ReactNode }) {
           top.stack.length <= 1
             ? null
             : { ...top, screens: top.screens - 1, stack: top.stack.slice(0, -1) },
+        )
+      },
+
+      popScreen: (modalId, screenKey) => {
+        setEntries((current) =>
+          current.map((entry) => {
+            if (entry.id !== modalId) return entry
+            const stack = popFrom(entry.stack, screenKey)
+            return stack.length === entry.stack.length
+              ? entry
+              : { ...entry, screens: stack.length, stack }
+          }),
         )
       },
 

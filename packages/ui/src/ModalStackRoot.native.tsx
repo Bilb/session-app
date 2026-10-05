@@ -78,10 +78,11 @@ export function ModalStackRoot({ children, ...host }: ModalStackRootProps) {
                   }
                 : undefined
             }
-            onPop={(count) => {
-              for (let popped = 0; popped < count; popped += 1) modals.pop()
+            onPop={(key) => {
+              modals.popScreen(entry.id, key)
             }}
             closeTestID={host.closeTestID}
+            testID={host.testID}
           />
           {entry === lastPanel ? <ModalStackHost {...host} entries={drawnByHost} /> : null}
         </ScreenStackItem>

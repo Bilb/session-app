@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { backAction, dismissFrom, type StackedModal } from '../src/modalStack'
+import { backAction, dismissFrom, popFrom, type StackedModal } from '../src/modalStack'
 
 function modal(id: string, screens = 1, dismissible = true): StackedModal {
   return { id, screens, dismissible }
@@ -67,5 +67,24 @@ describe('dismissFrom', () => {
     // The result goes into react state, so even a no-op must not return the previous value.
     const stack = [modal('a')]
     expect(dismissFrom(stack, 'gone')).not.toBe(stack)
+  })
+})
+
+describe('popFrom', () => {
+  const stack = [{ key: 'root' }, { key: 'help' }, { key: 'faq' }]
+
+  it('removes the dismissed screen and everything pushed after it', () => {
+    expect(popFrom(stack, 'help')).toEqual([{ key: 'root' }])
+    expect(popFrom(stack, 'faq')).toEqual([{ key: 'root' }, { key: 'help' }])
+  })
+
+  it('ignores a screen already gone, so a dismissal echoing a pop pops nothing more', () => {
+    // react-native-screens reports a dismissal for a screen JS removed as well as for one the
+    // person swiped away; counting those would pop a second screen.
+    expect(popFrom(stack.slice(0, 2), 'faq')).toEqual([{ key: 'root' }, { key: 'help' }])
+  })
+
+  it('never removes the first screen: leaving that is closing the modal', () => {
+    expect(popFrom(stack, 'root')).toEqual(stack)
   })
 })
