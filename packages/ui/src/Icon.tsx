@@ -3,8 +3,9 @@ import { ChevronDown } from '@tamagui/lucide-icons-2/icons/ChevronDown'
 import { ChevronLeft } from '@tamagui/lucide-icons-2/icons/ChevronLeft'
 import { ChevronRight } from '@tamagui/lucide-icons-2/icons/ChevronRight'
 import { CircleHelp } from '@tamagui/lucide-icons-2/icons/CircleHelp'
-import { CloudDownload } from '@tamagui/lucide-icons-2/icons/CloudDownload'
 import { Clock } from '@tamagui/lucide-icons-2/icons/Clock'
+import { CloudDownload } from '@tamagui/lucide-icons-2/icons/CloudDownload'
+import { Copy } from '@tamagui/lucide-icons-2/icons/Copy'
 import { Download } from '@tamagui/lucide-icons-2/icons/Download'
 import { Ellipsis } from '@tamagui/lucide-icons-2/icons/Ellipsis'
 import { ExternalLink } from '@tamagui/lucide-icons-2/icons/ExternalLink'
@@ -20,18 +21,28 @@ import { FileText } from '@tamagui/lucide-icons-2/icons/FileText'
 import { FileVideo } from '@tamagui/lucide-icons-2/icons/FileVideo'
 import { FolderOpen } from '@tamagui/lucide-icons-2/icons/FolderOpen'
 import { HardDriveDownload } from '@tamagui/lucide-icons-2/icons/HardDriveDownload'
+import { Heart } from '@tamagui/lucide-icons-2/icons/Heart'
 import { Image } from '@tamagui/lucide-icons-2/icons/Image'
+import { Info } from '@tamagui/lucide-icons-2/icons/Info'
+import { KeyRound } from '@tamagui/lucide-icons-2/icons/KeyRound'
 import { LayoutGrid } from '@tamagui/lucide-icons-2/icons/LayoutGrid'
 import { Link } from '@tamagui/lucide-icons-2/icons/Link'
 import { List } from '@tamagui/lucide-icons-2/icons/List'
+import { LockKeyhole } from '@tamagui/lucide-icons-2/icons/LockKeyhole'
+import { MessageSquare } from '@tamagui/lucide-icons-2/icons/MessageSquare'
+import { MessageSquareWarning } from '@tamagui/lucide-icons-2/icons/MessageSquareWarning'
+import { PaintbrushVertical } from '@tamagui/lucide-icons-2/icons/PaintbrushVertical'
 import { Play } from '@tamagui/lucide-icons-2/icons/Play'
 import { Plus } from '@tamagui/lucide-icons-2/icons/Plus'
 import { RotateCw } from '@tamagui/lucide-icons-2/icons/RotateCw'
 import { Search } from '@tamagui/lucide-icons-2/icons/Search'
 import { Settings } from '@tamagui/lucide-icons-2/icons/Settings'
 import { Share2 } from '@tamagui/lucide-icons-2/icons/Share2'
+import { Trash2 } from '@tamagui/lucide-icons-2/icons/Trash2'
 import { TriangleAlert } from '@tamagui/lucide-icons-2/icons/TriangleAlert'
+import { UserRoundPlus } from '@tamagui/lucide-icons-2/icons/UserRoundPlus'
 import { Video } from '@tamagui/lucide-icons-2/icons/Video'
+import { Volume2 } from '@tamagui/lucide-icons-2/icons/Volume2'
 import { X } from '@tamagui/lucide-icons-2/icons/X'
 
 import type { IconName, IconProps, IconSize } from './Icon.types'
@@ -56,6 +67,7 @@ const GLYPHS = {
   circleHelp: CircleHelp,
   clock: Clock,
   cloudDownload: CloudDownload,
+  copy: Copy,
   download: Download,
   ellipsis: Ellipsis,
   externalLink: ExternalLink,
@@ -71,18 +83,28 @@ const GLYPHS = {
   fileVideo: FileVideo,
   folderOpen: FolderOpen,
   hardDriveDownload: HardDriveDownload,
+  heart: Heart,
   image: Image,
+  info: Info,
+  keyRound: KeyRound,
   layoutGrid: LayoutGrid,
   link: Link,
   list: List,
+  lockKeyhole: LockKeyhole,
+  messageSquare: MessageSquare,
+  messageSquareWarning: MessageSquareWarning,
+  paintbrush: PaintbrushVertical,
   play: Play,
   plus: Plus,
   rotateCw: RotateCw,
   search: Search,
   settings: Settings,
   share2: Share2,
+  trash: Trash2,
   triangleAlert: TriangleAlert,
+  userRoundPlus: UserRoundPlus,
   video: Video,
+  volume: Volume2,
   x: X,
 } satisfies Record<IconName, typeof Plus>
 

@@ -5,7 +5,7 @@ import {
   parseNetworkName,
   parseRouterKind,
 } from '@session/basic-types'
-import type { BridgeTransport, FetchLike } from '@session/client'
+import { createRefusingTransport, type BridgeTransport, type FetchLike } from '@session/client'
 import { createSessionStore } from '@session/state'
 import { Platform } from 'react-native'
 
@@ -103,7 +103,22 @@ async function openTransport(): Promise<BridgeTransport> {
  */
 const ATTACHMENT_CACHE_LIMIT_BYTES = 500_000_000
 
-export const storePromise = openTransport().then((transport) =>
+/**
+ * The bridge, or one that refuses everything with why it could not be made. Either way there is a
+ * store, so a bridge that will not start reaches the startup-failure screen rather than leaving the
+ * launch screen up for good -- nothing waits on a promise that rejected with no one to hear it.
+ */
+async function openTransportOrRefusal(): Promise<BridgeTransport> {
+  try {
+    return await openTransport()
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    console.error(`[session] the bridge could not start: ${reason}`)
+    return createRefusingTransport(reason)
+  }
+}
+
+export const storePromise = openTransportOrRefusal().then((transport) =>
   createSessionStore(mobileClient(transport), {
     attachmentCacheLimitBytes: ATTACHMENT_CACHE_LIMIT_BYTES,
     // Reaches logcat as ReactNativeJS on Android, and the device console on iOS.

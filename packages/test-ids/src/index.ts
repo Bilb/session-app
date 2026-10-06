@@ -77,6 +77,8 @@ export const ELEMENT = {
     displayName: 'settings-display-name',
     accountId: 'settings-account-id',
     copyAccountId: 'settings-copy-account-id',
+    shareAccountId: 'settings-share-account-id',
+    tokenLogo: 'settings-token-logo',
     networkStatus: 'settings-network-status',
     clearData: 'settings-clear-data',
     confirmClearData: 'settings-confirm-clear-data',
@@ -85,6 +87,23 @@ export const ELEMENT = {
     cacheFolder: 'settings-cache-folder',
     cacheUsage: 'settings-cache-usage',
     cacheLimit: 'settings-cache-limit',
+    modal: 'settings-modal',
+    modalClose: 'settings-modal-close',
+    modalBack: 'settings-modal-back',
+    /** A root-list row, keyed by where it leads rather than by position. */
+    row: (name: string) => `settings-row-${name}` as const,
+    /** The version stamp, which is also the debug-mode control. */
+    version: 'settings-version',
+    commit: 'settings-commit',
+  },
+  help: {
+    reportABug: 'help-report-a-bug',
+    exportLogs: 'help-export-logs',
+    link: (name: string) => `help-link-${name}` as const,
+  },
+  toast: {
+    item: 'toast',
+    close: 'toast-close',
   },
   networkOverlay: {
     badge: 'network-overlay-badge',
@@ -107,6 +126,8 @@ export const ELEMENT = {
   startupFailed: {
     screen: 'startup-failed',
     reason: 'startup-failed-reason',
+    copyReason: 'startup-failed-copy-reason',
+    exportLogs: 'startup-failed-export-logs',
     clear: 'startup-failed-clear',
     quit: 'startup-failed-quit',
     confirmClear: 'startup-failed-confirm-clear',

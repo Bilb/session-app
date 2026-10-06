@@ -21,8 +21,16 @@ const SOURCE_ROOTS = [
   'apps/mobile/app',
 ]
 
+/** The one file an address may be written in: the app's own, which libsession does not carry. */
+const CLIENT_TABLE = join('packages', 'app', 'src', 'clientUrls.ts')
+
 function isSource(path: string): boolean {
-  return /\.(ts|tsx)$/.test(path) && !path.includes('generated') && !path.includes('node_modules')
+  return (
+    /\.(ts|tsx)$/.test(path) &&
+    !path.includes('generated') &&
+    !path.includes('node_modules') &&
+    path !== CLIENT_TABLE
+  )
 }
 
 function sourceFiles(): string[] {
@@ -72,6 +80,16 @@ describe('the addresses the app links', () => {
    */
   it('are never written out in app code - add a new one to libsession instead', () => {
     expect(writtenAddresses()).toEqual([])
+  })
+
+  /**
+   * The app's own table carries only what is the app's own. An address the library already has,
+   * copied here, is the second list the rule above exists to stop.
+   */
+  it("hold nothing in the app's own table that libsession already has", () => {
+    const own = readFileSync(join(repoRoot, CLIENT_TABLE), 'utf8')
+    const shared = Object.values(URLS).map((address) => address.replace(/\/$/, ''))
+    expect(shared.filter((address) => own.includes(address))).toEqual([])
   })
 
   /**

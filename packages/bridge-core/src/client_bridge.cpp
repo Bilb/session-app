@@ -274,6 +274,9 @@ namespace {
 struct ClientBridge::Impl {
     Sink sink;
     std::unique_ptr<client::Client> client;
+    /// Why there is no client, when the database would not open: what every request is refused
+    /// with until a discard opens a fresh one. Empty while a client is open.
+    std::string open_failure;
     InitOptions options;
     session::LoggerHandle logger;
     /// The network held only to fill the node cache, before there is an account to attach one.
@@ -743,7 +746,13 @@ struct ClientBridge::Impl {
             std::filesystem::remove_all(path, ec);
         }
 
-        open_client();
+        try {
+            open_client();
+        } catch (const std::exception& e) {
+            open_failure = e.what();
+            throw;
+        }
+        open_failure.clear();
     }
 
     void handle(double id, const DiscardAccountCommand&) {
@@ -1180,7 +1189,18 @@ struct ClientBridge::Impl {
 ClientBridge::ClientBridge(InitOptions options, Sink sink) :
         _impl{std::make_unique<Impl>(std::move(sink), options)} {
 
-    _impl->open_client();
+    // **A database that will not open leaves a bridge without a client, not no bridge.** Thrown
+    // from here it took the bridge with it, so the app had nothing to ask and nothing to show: on
+    // a phone the launch screen stayed up for good. Kept instead, every request is refused with
+    // the reason -- which is what the startup-failure screen shows -- and a discard, which is how
+    // somebody clears the device from that screen, opens a fresh database in its place.
+    try {
+        _impl->open_client();
+    } catch (const std::exception& e) {
+        _impl->client.reset();
+        _impl->open_failure = e.what();
+        return;
+    }
 
     // **An account nobody confirmed does not survive a restart.** Between minting one and the end
     // of whatever was setting it up there is a window, and a crash in it leaves an identity behind
@@ -1345,8 +1365,14 @@ void ClientBridge::call(Request request) {
     // no client, and every request after it used to return from here without a response at all.
     // Nothing above has a timeout, so the promise each was made for never settled and the app
     // simply stopped, with nothing said anywhere.
-    if (!_impl->client) {
-        _impl->fail(request.id, "the bridge has no database open");
+    //
+    // A discard is the exception: it is what replaces a database that would not open.
+    if (!_impl->client && !std::holds_alternative<DiscardAccountCommand>(request.command)) {
+        _impl->fail(
+                request.id,
+                _impl->open_failure.empty()
+                        ? std::string{"the bridge has no database open"}
+                        : "the bridge has no database open: " + _impl->open_failure);
         return;
     }
 

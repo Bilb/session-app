@@ -3,14 +3,11 @@ import { BlurView } from 'expo-blur'
 import { Platform, StyleSheet } from 'react-native'
 
 /**
- * How strong the blur is.
- *
- * `expo-blur` takes a 0-100 intensity as well as a material, where UIKit takes only the material,
- * so full strength is what asks for the material as the legacy client gets it. There is no scrim
- * behind this -- the blur is the whole backdrop, as it is there -- so anything less separates the
- * dialog from the page less than the client does.
+ * `expo-blur` takes an intensity on top of the material, where UIKit takes only the material, so
+ * 100 is the full material; with no scrim behind it, the blur is the whole backdrop. Light
+ * is eased to 80 because the full light material reads as nearly opaque over a light page.
  */
-const INTENSITY = 100
+const INTENSITY = { dark: 100, light: 80 } as const
 
 /**
  * What the legacy client puts behind a modal on iOS, and nowhere else.
@@ -35,7 +32,7 @@ export const mobileBackdropBlur: BackdropBlur | null =
            * with (`.systemUltraThinMaterialLight` for `classicLight` and `oceanLight`).
            */
           tint={dark ? 'systemUltraThinMaterialDark' : 'systemUltraThinMaterialLight'}
-          intensity={INTENSITY}
+          intensity={dark ? INTENSITY.dark : INTENSITY.light}
           style={StyleSheet.absoluteFill}
         />
       )
