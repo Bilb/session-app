@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs'
+import { mkdirSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -63,6 +63,47 @@ test('a failed start shows why, copies it, asks before clearing, and recovers in
     await page.getByTestId(ELEMENT.startupFailed.confirmClearButton).first().click()
     await expect(page.getByTestId(ELEMENT.onboarding.createAccount).first()).toBeVisible()
     await expect(page.getByTestId(ELEMENT.startupFailed.screen)).toHaveCount(0)
+  } finally {
+    await app.close()
+  }
+})
+
+/**
+ * A bridge that could not be made at all: nothing was opened, so the screen does not call it a
+ * database error, offers nothing to clear, and shows the reason as the bridge gave it.
+ */
+test('a bridge that could not be made says why, without blaming the database', async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'session-no-bridge-'))
+  // The fake refuses to make its bridge without its dev photographs.
+  const noPhotos = join(dataDir, 'no-photos')
+  mkdirSync(noPhotos)
+  const app = await _electron.launch({
+    args: [
+      join(repoRoot, 'apps/desktop/out/main/index.js'),
+      `--user-data-dir=${dataDir}`,
+      '--no-sandbox',
+      '--disable-gpu',
+      '--disable-dev-shm-usage',
+    ],
+    env: {
+      ...process.env,
+      ...FAKE_LAUNCH_ENV,
+      SESSION_FAKE_MEDIA_DIR: noPhotos,
+      SESSION_DATA_DIR: dataDir,
+    },
+  })
+  try {
+    const page = await app.firstWindow()
+    await expect(page.getByTestId(ELEMENT.startupFailed.screen).first()).toBeVisible({
+      timeout: 20_000,
+    })
+    await expect(page.getByText('An unknown error occurred.').first()).toBeVisible()
+    await expect(page.getByText(/database error/)).toHaveCount(0)
+    await expect(page.getByTestId(ELEMENT.startupFailed.reason).first()).toHaveText(
+      /^the bridge could not start: The fake needs its dev photographs in .* Run: pnpm fake-media:fetch$/,
+    )
+    await expect(page.getByTestId(ELEMENT.startupFailed.clear)).toHaveCount(0)
+    await expect(page.getByTestId(ELEMENT.startupFailed.quit).first()).toBeVisible()
   } finally {
     await app.close()
   }
