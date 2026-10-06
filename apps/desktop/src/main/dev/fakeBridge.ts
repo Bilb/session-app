@@ -63,7 +63,7 @@ export function createFakeBridge(): BridgeTransport & MediaSource {
   // to open it on purpose. `unopenable` refuses as the real bridge does, with libsession's own
   // reason, and lets a discard through -- so the screen's Clear Device works here too.
   const served =
-    process.env['SESSION_FAKE_FAILED_START'] === '1'
+    process.env['EXPO_PUBLIC_SESSION_FAKE_FAILED_START'] === '1'
       ? unopenable(alice, 'file is not a database')
       : alice
 
