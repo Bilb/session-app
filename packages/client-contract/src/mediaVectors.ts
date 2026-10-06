@@ -1,7 +1,8 @@
 /**
- * What every reader of the media scheme must accept and refuse: desktop's `parseMediaUrl` and
- * `servableContentType` in TypeScript, and the shim's `parse_media_url` and
- * `servable_content_type` in C++, which both mobile loaders call. One table, so they cannot drift.
+ * What every reader of the media scheme must accept and refuse: `@session/app`'s `parseMediaUrl`
+ * and desktop's `servableContentType` in TypeScript, and the shim's `parse_media_url` and
+ * `servable_content_type` in C++, which both mobile loaders call. The C++ half is held to this
+ * table only where the addon is built, which the per-PR job does not do.
  */
 
 export interface MediaUrlVector {
