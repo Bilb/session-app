@@ -174,6 +174,8 @@ describeAddon('addon', () => {
   let root: string
   let sequence = 0
   const open: Peer[] = []
+  /** Clients opened outside `openPeer`, closed with the rest. */
+  const closeAfter: SessionClient[] = []
   /** Which peer a SessionClient belongs to, so a restart can find the database again. */
   const peers = new Map<SessionClient, Peer>()
 
@@ -183,6 +185,7 @@ describeAddon('addon', () => {
 
   afterAll(async () => {
     for (const peer of open) peer.client.close()
+    for (const client of closeAfter) client.close()
     await rm(root, { recursive: true, force: true })
   })
 
@@ -248,6 +251,24 @@ describeAddon('addon', () => {
       return Promise.reject(
         new Error('the offline addon harness cannot produce an incoming attachment'),
       )
+    },
+
+    async unopenable() {
+      sequence += 1
+      // A database libsession wrote, opened again under a different key: the real way one stops
+      // opening. Deferred on the second open, so the fresh database a discard makes has no account.
+      const dir = join(root, `unopenable-${String(sequence)}`)
+      const first = await openPeer(dir)
+      first.client.close()
+      const transport = createNodeBridgeTransport({
+        dbPath: join(dir, 'session.db'),
+        cacheDir: join(dir, 'cache'),
+        rawKey: new Uint8Array(32).fill(12),
+        deferAccount: true,
+      })
+      const client = createSessionClient(transport)
+      closeAfter.push(client)
+      return client
     },
 
     async restart(client: SessionClient) {

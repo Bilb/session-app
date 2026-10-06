@@ -77,6 +77,15 @@ export const FLAGS = {
    * differs each run, and a tap aimed at a control that has not settled misses.
    */
   disableAnimations: false,
+
+  /**
+   * Debug mode: what reveals Developer Settings.
+   *
+   * The environment sets where it starts; ten presses on the build stamp in settings turn it over
+   * for the rest of the run, and a relaunch puts it back. Off, because a release build is not a
+   * debugging one.
+   */
+  debugMode: false,
 } as const
 
 export type FlagName = keyof typeof FLAGS

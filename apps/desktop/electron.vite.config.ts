@@ -6,7 +6,8 @@
  * @tamagui/vite-plugin is deliberately absent: it peers on vite 8 and electron-vite is on
  * 7. It is an optimising compiler rather than a requirement, so the app runs without it.
  */
-import { existsSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import react from '@vitejs/plugin-react'
@@ -21,6 +22,38 @@ const appDir = fileURLToPath(new URL('.', import.meta.url))
 // again at runtime for its own use: an explicit variable wins in both, so the two agree.
 const dotEnv = fileURLToPath(new URL('../../.env', import.meta.url))
 if (existsSync(dotEnv)) process.loadEnvFile(dotEnv)
+
+/**
+ * The commit this build is made from: eight characters, and `-dirty` over uncommitted changes.
+ *
+ * `apps/mobile/metro.config.js` computes the same stamp for the phones; the two are kept identical
+ * so a stamp means the same on every platform. A submodule counts only if its pointer moved, not
+ * for work inside it. Null outside a git checkout, where there is nothing honest to say.
+ */
+function commitStamp(): string | null {
+  const git = (...args: string[]) =>
+    execFileSync('git', args, {
+      cwd: appDir,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+  try {
+    const commit = git('rev-parse', 'HEAD').trim().slice(0, 8)
+    const dirty =
+      git('status', '--porcelain', '--untracked-files=no', '--ignore-submodules=dirty').trim() !==
+      ''
+    return dirty ? `${commit}-dirty` : commit
+  } catch {
+    return null
+  }
+}
+
+/** This app's own version, which is the one its builds are released as. */
+const version = (
+  JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
+    version: string
+  }
+).version
 
 /**
  * The renderer loads from `file:` once packaged, where no response header can carry a CSP, so it
@@ -189,6 +222,10 @@ export default defineConfig({
           ),
         ),
       ),
+      // Which build this is, for the settings stamp and anything that has to name its binary.
+      // Read here because the renderer can reach neither git nor its own manifest.
+      'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_VERSION': JSON.stringify(version),
+      'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_COMMIT': JSON.stringify(commitStamp()),
       // react-native-web reads these; without them the bundle throws on first render.
       global: 'globalThis',
       __DEV__: JSON.stringify(process.env['NODE_ENV'] !== 'production'),

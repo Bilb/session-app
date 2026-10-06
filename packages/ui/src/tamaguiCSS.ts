@@ -53,10 +53,29 @@ const SELECTION = `::selection {
   color: var(--textPrimary);
 }`
 
+/**
+ * The scrollbar. Its colours are muted text at these alphas, so taking the
+ * role keeps them right in every theme; the platform default is a grey gutter on a dark theme.
+ */
+const SCROLLBAR = `::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track {
+  background-color: color-mix(in srgb, var(--textSecondary) 10%, transparent);
+  border-radius: 20px;
+}
+::-webkit-scrollbar-track:hover {
+  background-color: color-mix(in srgb, var(--textSecondary) 20%, transparent);
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--textSecondary) 20%, transparent);
+  border-radius: 20px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--textSecondary); }
+::-webkit-scrollbar-corner { background: transparent; }`
+
 if (!document.getElementById(ID)) {
   const style = document.createElement('style')
   style.id = ID
-  style.textContent = `${FONT_FACES}\n${SELECTION}\n${config.getCSS()}`
+  style.textContent = `${FONT_FACES}\n${SELECTION}\n${SCROLLBAR}\n${config.getCSS()}`
   // Prepended, not appended: index.html's own rules come after and must keep winning, and so must
   // anything a component inserts at runtime.
   document.head.prepend(style)

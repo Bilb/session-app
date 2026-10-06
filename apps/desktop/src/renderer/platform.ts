@@ -47,10 +47,18 @@ setPorts(
     flags: {
       override: (name) => import.meta.env.EXPO_PUBLIC_SESSION_FLAGS?.[name] ?? null,
     },
+    build: {
+      version: import.meta.env.EXPO_PUBLIC_SESSION_BUILD_VERSION,
+      commit: import.meta.env.EXPO_PUBLIC_SESSION_BUILD_COMMIT,
+      buildNumber: null,
+    },
     window: {
       // One window, so closing it is quitting, and `window.close()` needs no IPC call to do it.
       close: () => {
         window.close()
+      },
+      restart: () => {
+        window.sessionDesktop.restart()
       },
       isFocused: () => document.hasFocus(),
       onFocusChange: (handler) => {
@@ -85,6 +93,7 @@ setPorts(
     },
     clipboard: {
       setString: (value) => window.sessionDesktop.copyText(value),
+      confirmsCopy: false,
     },
   }),
 )

@@ -3,29 +3,30 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+const SRC = join(import.meta.dirname, '../src')
+
+/** Every shared component that wraps its frame in a `PressArea`. */
+const wrappers = readdirSync(SRC)
+  .filter((file) => file.endsWith('.tsx') && !file.startsWith('PressArea'))
+  .map((file) => ({ file, source: readFileSync(join(SRC, file), 'utf8') }))
+  .filter(({ source }) => source.includes('<PressArea'))
+
 /**
- * A frame inside a `PressArea` that declares a `pressStyle` must pass the touch through.
- *
- * tamagui attaches its own press handling to any view that declares one, so on native the frame
- * claims the touch and the `Pressable` around it never fires: the control draws and does nothing.
- * Invisible on the web, where the split does not apply. A grep rather than a render test, for the
- * reason `pressArea.contract.test.ts` gives: nothing short of a device shows the failure.
+ * On native, tamagui gives any view declaring a `pressStyle` its own press handling, so the frame
+ * claims the touch and the `Pressable` around it never fires; the web is unaffected. A grep because
+ * this package has no native renderer to press with.
  */
-describe('a PressArea whose child styles its own press', () => {
-  const dir = join(import.meta.dirname, '../src')
-  const files = readdirSync(dir).filter((f) => f.endsWith('.tsx') && !f.startsWith('PressArea'))
-  const found: string[] = []
+describe('a PressArea frame with a press style', () => {
+  it('is found by this test at all, so a move cannot make it vacuous', () => {
+    expect(wrappers.map(({ file }) => file)).toEqual(
+      expect.arrayContaining(['Button.tsx', 'SettingsRow.tsx']),
+    )
+  })
 
-  for (const file of files) {
-    const source = readFileSync(join(dir, file), 'utf8')
-    if (!source.includes('<PressArea') || !/\bpressStyle[=:]/.test(source)) continue
-    found.push(file)
-    it(`${file} spreads PRESS_PASSTHROUGH into it`, () => {
-      expect(source).toMatch(/\{\.\.\.PRESS_PASSTHROUGH\}/)
-    })
-  }
-
-  it('is found at all, so a rename cannot leave the cases above ungenerated', () => {
-    expect(found).toContain('Button.tsx')
+  it('spreads PRESS_PASSTHROUGH', () => {
+    const missing = wrappers
+      .filter(({ source }) => /pressStyle/.test(source) && !/\.\.\.PRESS_PASSTHROUGH/.test(source))
+      .map(({ file }) => file)
+    expect(missing).toEqual([])
   })
 })

@@ -7,7 +7,6 @@ import type { ElementId } from '@session/test-ids'
 import { Button } from './Button'
 import { Icon } from './Icon'
 import { useScreenInsets } from './screenInsets'
-import { SCRIM_OPACITY } from './scrim'
 import { SHEET_MAX_HEIGHT, SHEET_MAX_WIDTH, SHEET_RADIUS } from './sheetLayout'
 import { Text } from './Text'
 
@@ -64,9 +63,7 @@ export function Sheet({
       animationType={wide ? 'fade' : 'slide'}
       onRequestClose={onClose}
     >
-      {/* Its own layer, so its opacity does not reach the surface: an opacity on a parent applies
-          to every descendant, which would make the sheet translucent too. */}
-      <YStack fullscreen backgroundColor="$surfaceInk" opacity={SCRIM_OPACITY} />
+      <YStack fullscreen backgroundColor="$scrim" />
       <YStack
         fullscreen
         alignItems="center"

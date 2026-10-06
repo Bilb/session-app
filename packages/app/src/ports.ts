@@ -40,6 +40,9 @@ export interface FilesPort {
    *
    * `contentType` is the sender's claim, for a platform whose destination depends on the kind of
    * file: mobile sends a picture to the photo library and anything else to a folder.
+   *
+   * Rejects with `ExportAccessRefused` when that destination needs access the OS will not ask
+   * for again.
    */
   chooseExportLocation(suggestedName: string, contentType?: string): Promise<string | null>
   openPath(path: string): Promise<void>
@@ -129,6 +132,11 @@ export interface NotificationsPort {
  */
 export interface ClipboardPort {
   setString(value: string): Promise<void>
+  /**
+   * Whether the OS says so itself when something is copied, so the app should not as well.
+   * Android 13 and later show a clipboard preview on every copy.
+   */
+  readonly confirmsCopy: boolean
 }
 
 export interface LinkingPort {
@@ -142,25 +150,62 @@ export interface LinkingPort {
   openAppSettings: (() => Promise<void>) | null
 }
 
+/**
+ * Which build this is: the version it was released as and the commit it was made from.
+ *
+ * Answered where the build is assembled, as the rest of these are: the version is each app's own,
+ * and the commit is read from git by the bundler as it builds, which a committed file could not do
+ * -- it would have to contain the hash of the commit it is in. Wanted by the settings stamp, and by
+ * any log that has to say which binary produced it.
+ */
+export interface BuildPort {
+  readonly version: string
+  /**
+   * Eight characters, with `-dirty` when the tree had changes on top. Null where the build was not
+   * made from a git checkout, rather than a hash it cannot vouch for.
+   */
+  readonly commit: string | null
+  /**
+   * The store build number the phones show after the version -- iOS's `CFBundleVersion`, Android's
+   * `versionCode`. Null where there is none, which is the desktop, and a phone whose configuration
+   * does not set one.
+   */
+  readonly buildNumber: string | null
+}
+
+export interface SharePort {
+  /**
+   * Hands text to the platform's share sheet, or null where there is none (the desktop).
+   *
+   * Null rather than a no-op, so a screen leaves out what would only send through it.
+   */
+  shareText: ((text: string) => Promise<void>) | null
+}
+
 export interface WindowPort {
   /**
-   * Shuts the app down, or null where the platform cannot.
+   * Shuts the app down, or null where the build cannot.
    *
-   * **This exists for the case that needs it rather than as a quit button.** After the device's
-   * data is cleared the process is holding a database that no longer exists, and the legacy
-   * clients do not try to carry on either -- iOS calls `exit(0)` straight after clearing. Ending
-   * the process is what makes the next launch the clean one.
+   * Two callers. A screen's Quit, where the app cannot get going. And the end of a clear on a
+   * device whose account was loaded, where `restart` cannot be had: by then the account's messages
+   * and names have sat in JavaScript strings, which nothing can scrub, and only the end of the
+   * process gives that memory back.
    *
-   * Desktop closes its window, which with one window is quitting. Android ends its task. **Null on
-   * iOS**, which offers no way to do this from JavaScript, so the screen reads the null and omits
-   * the control rather than offering one that does nothing.
-   *
-   * TODO: give iOS one. The legacy client calls `exit(0)` straight after clearing, so the gap is
-   * a native call the bridge does not expose rather than something the platform refuses -- and
-   * until it exists, an iOS device whose data was just cleared is left holding a database that no
-   * longer exists until somebody relaunches by hand.
+   * Desktop closes its window, which with one window is quitting. The phones end the process at
+   * once, without the teardown `exit()` runs -- see `modules/process-exit` in the mobile app. Null
+   * where a phone build predates that module, so a screen omits the control rather than offering
+   * one that does nothing.
    */
   close: (() => void) | null
+  /**
+   * Ends the process and starts the app again in a fresh one, or null where the platform cannot.
+   *
+   * What a clear of a loaded account ends with where it can be had: the same reason as `close`,
+   * and the person lands on onboarding rather than at a home screen that looks like a crash.
+   * Desktop relaunches through main; Android restarts its task. iOS lets no app relaunch itself,
+   * so it is null there and the caller falls back to `close`.
+   */
+  restart: (() => void) | null
   isFocused(): boolean
   /** Drives read receipts and whether a notification is worth showing. */
   onFocusChange(handler: (focused: boolean) => void): () => void
@@ -203,6 +248,8 @@ export interface Ports {
   notifications: NotificationsPort
   clipboard: ClipboardPort
   linking: LinkingPort
+  share: SharePort
+  build: BuildPort
   window: WindowPort
 }
 
