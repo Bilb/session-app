@@ -130,6 +130,10 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser,
     return this.locator(id).first().isVisible()
   }
 
+  async isDisabled(id: ElementId): Promise<boolean> {
+    return (await this.locator(id).first().getAttribute('aria-disabled')) === 'true'
+  }
+
   async tap(id: ElementId): Promise<void> {
     await this.locator(id).first().click()
   }

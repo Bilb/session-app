@@ -36,7 +36,12 @@ sessionTest({
 
     expect(await alice.isVisible(ELEMENT.conversation.mediaViewerClose)).toBe(true)
     expect(await alice.isVisible(ELEMENT.conversation.mediaViewerExport)).toBe(true)
+    // Previous is disabled only on the first item, so its change is the viewer having moved.
+    expect(await alice.isDisabled(ELEMENT.conversation.mediaViewerPrevious)).toBe(true)
     await alice.tap(ELEMENT.conversation.mediaViewerNext)
+    await expect
+      .poll(async () => alice.isDisabled(ELEMENT.conversation.mediaViewerPrevious))
+      .toBe(false)
     await alice.screenshot('attachment-viewer-desktop')
 
     await alice.tap(ELEMENT.conversation.mediaViewerClose)
