@@ -8,6 +8,7 @@ import {
   pickFakeFixture,
   type FakeDevEnv,
   type FakeSessionClient,
+  unopenable,
 } from '@session/client/fake'
 import { Directory, File, Paths } from 'expo-file-system'
 import { Platform } from 'react-native'
@@ -98,5 +99,17 @@ export function createFakeBridge(): BridgeTransport {
     setPorts({ ...requirePorts(), media: fakeMediaPort(alice, photos) })
   }
 
-  return createFakeTransport(alice)
+  // A database that will not open, as on desktop: the failure screen is otherwise reachable only
+  // with one somebody has already broken. `unopenable` refuses as the real bridge does, with
+  // libsession's own reason, and lets a discard through -- so the screen's Clear Device works here
+  // too.
+  //
+  // TODO: a Developer Settings switch that fails the next launch, once that screen exists, so a
+  // build without this variable can reach it too.
+  const served =
+    process.env['EXPO_PUBLIC_SESSION_FAKE_FAILED_START'] === '1'
+      ? unopenable(alice, 'file is not a database')
+      : alice
+
+  return createFakeTransport(served)
 }

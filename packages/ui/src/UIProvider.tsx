@@ -1,14 +1,22 @@
 import type { PrimaryColorState, ThemeState } from '@session/theme-tokens'
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useLayoutEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { TamaguiProvider } from 'tamagui'
 
 import { BackdropBlurProvider, type BackdropBlur } from './backdropBlur'
 import { config } from './config'
+import { GlassProvider, type Glass } from './glass'
 // Side-effecting: puts the compiled themes in the document on the web, and does nothing on native.
 // See tamaguiCSS.ts - without it every `$token` colour resolves to an undefined custom property.
 import './tamaguiCSS'
-import { DEFAULT_ACCENT, DEFAULT_THEME, isDarkTheme, themeName } from './themes'
+import {
+  DEFAULT_ACCENT,
+  DEFAULT_THEME,
+  isDarkTheme,
+  isThemeRegistered,
+  registerTheme,
+  themeName,
+} from './themes'
 
 export interface UIProviderProps {
   children: ReactNode
@@ -21,6 +29,8 @@ export interface UIProviderProps {
    * left out on the desktop client, where a dialog simply darkens what is behind it.
    */
   backdropBlur?: BackdropBlur | null
+  /** What draws a glass button, where the platform has glass. See `glass.ts`. */
+  glass?: Glass | null
 }
 
 /**
@@ -34,11 +44,29 @@ export function UIProvider({
   theme = DEFAULT_THEME,
   accent = DEFAULT_ACCENT,
   backdropBlur,
+  glass,
 }: UIProviderProps) {
+  // What tamagui is drawing. On the first mount the theme is registered before anything themed
+  // exists to be woken by it, so the first frame is already in it. A theme that arrives later and
+  // is new to tamagui is registered in the layout effect -- adding one wakes every mounted themed
+  // component, which a render must not do -- and drawn a pass later, never painted in the old one.
+  // One registered before it reaches here (see `registerStoredAppearance`) is drawn at once.
+  const [shown, setShown] = useState(() => {
+    registerTheme(theme, accent)
+    return { theme, accent }
+  })
+  useLayoutEffect(() => {
+    registerTheme(theme, accent)
+    setShown((prev) => (prev.theme === theme && prev.accent === accent ? prev : { theme, accent }))
+  }, [theme, accent])
+  const drawn = isThemeRegistered(theme, accent) ? { theme, accent } : shown
+
   return (
-    <TamaguiProvider config={config} defaultTheme={themeName(theme, accent)}>
-      <ThemeIsDarkContext.Provider value={isDarkTheme(theme)}>
-        <BackdropBlurProvider value={backdropBlur ?? null}>{children}</BackdropBlurProvider>
+    <TamaguiProvider config={config} defaultTheme={themeName(drawn.theme, drawn.accent)}>
+      <ThemeIsDarkContext.Provider value={isDarkTheme(drawn.theme)}>
+        <BackdropBlurProvider value={backdropBlur ?? null}>
+          <GlassProvider value={glass ?? null}>{children}</GlassProvider>
+        </BackdropBlurProvider>
       </ThemeIsDarkContext.Provider>
     </TamaguiProvider>
   )

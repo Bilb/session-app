@@ -4,11 +4,10 @@
  * `start` is where a line begins and `end` where it finishes: left and right respectively in
  * English, the other way round in Arabic.
  *
- * A number is pixels and a string is whatever CSS or react-native would make of it, which in
- * practice means a percentage -- the tab indicator is placed by its share of the bar. Not tokens:
- * the platforms disagree about what one means here and neither takes one for an inset.
+ * Pixels or a percentage, never tokens: these reach the platform as raw style, where tamagui
+ * resolves nothing, so a `$` name is silently dropped. Read a rung's number from the scale.
  */
-export type LogicalLength = number | string
+export type LogicalLength = number | `${number}%`
 
 export interface LogicalEdges {
   marginStart?: LogicalLength
@@ -19,7 +18,15 @@ export interface LogicalEdges {
   insetStart?: LogicalLength
   /** Absolute positioning: distance from the trailing edge of the containing block. */
   insetEnd?: LogicalLength
-  /** A rule down the trailing edge: the divider between two panes, which mirrors with them. */
-  borderEndWidth?: LogicalLength
+  /** A rule down the leading edge: a toast's accent strip, which mirrors with the text. */
+  borderStartWidth?: number
+  /** A colour the platform can draw, from `useTokenColor` -- never a `$` name. */
+  borderStartColor?: string
+  /**
+   * A rule down the trailing edge: the divider between two panes, which mirrors with them. Pixels
+   * only: neither CSS nor react-native has a percentage border width.
+   */
+  borderEndWidth?: number
+  /** From `useTokenColor`, never a `$` name, for the same reason as the lengths. */
   borderEndColor?: string
 }

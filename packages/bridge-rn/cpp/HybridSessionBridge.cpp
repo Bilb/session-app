@@ -107,7 +107,7 @@ namespace {
 
     /// The shim's vector, handed to JavaScript as the ArrayBuffer's own storage rather than copied.
     std::shared_ptr<ArrayBuffer> buffer_of(std::vector<std::byte>&& bytes) {
-        // wrap() refuses a null pointer, which is what an empty vector may hold.
+        // wrap() takes a _Nonnull pointer, and an empty vector's data() may be null.
         if (bytes.empty())
             return ArrayBuffer::allocate(0);
         auto* owned = new std::vector<std::byte>(std::move(bytes));

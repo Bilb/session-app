@@ -13,8 +13,8 @@ import { createNodeBridgeTransport } from '#src/index'
 /**
  * The addon against the real libsession, with no network attached.
  *
- * Skipped when the addon has not been built, because the per-PR job compiles no C++ - the
- * native workflow is where this runs. `turbo build:native` is what makes it run here.
+ * Skipped when the addon has not been built, because the per-PR job compiles no C++.
+ * `turbo build:native` is what makes it run here.
  */
 const addon = join(import.meta.dirname, '../build/Release/session_bridge_node.node')
 const describeAddon = existsSync(addon) ? describe : describe.skip
@@ -69,6 +69,55 @@ describeAddon('the N-API addon', () => {
     expect(response.response.result.info.haveAccount).toBe(false)
 
     transport.close()
+  })
+
+  /**
+   * A database that will not open -- here, one written under another key -- used to throw out of
+   * the bridge's constructor, which left an app with nothing to ask and so nothing to show.
+   */
+  it('refuses requests with the reason a database will not open, until a discard replaces it', async () => {
+    const opened = { dbPath: join(dir, 'unopenable.db'), cacheDir: join(dir, 'unopenable-cache') }
+    const ask = async (
+      transport: ReturnType<typeof createNodeBridgeTransport>,
+      request: Request,
+    ): Promise<Frame> => {
+      const answered = new Promise<Frame>((resolve) => {
+        transport.setSink((frame) => {
+          if (frame.type === 'response' && frame.response.id === request.id) resolve(frame)
+        })
+      })
+      transport.send(request)
+      return answered
+    }
+
+    const first = createNodeBridgeTransport({
+      ...opened,
+      rawKey: new Uint8Array(32).fill(1),
+      deferAccount: false,
+    })
+    await ask(first, { id: 1, command: { type: 'getAccountInfo' } })
+    first.close()
+
+    const wrongKey = createNodeBridgeTransport({
+      ...opened,
+      rawKey: new Uint8Array(32).fill(2),
+      deferAccount: false,
+    })
+    const refused = await ask(wrongKey, { id: 2, command: { type: 'getAccountInfo' } })
+    if (refused.type !== 'response') throw new Error('no response frame')
+    expect(refused.response.error).toMatch(/^the bridge has no database open: ./)
+
+    const discarded = await ask(wrongKey, { id: 3, command: { type: 'discardAccount' } })
+    if (discarded.type !== 'response') throw new Error('no response frame')
+    expect(discarded.response.error).toBeUndefined()
+
+    const fresh = await ask(wrongKey, { id: 4, command: { type: 'getAccountInfo' } })
+    if (fresh.type !== 'response' || fresh.response.result?.type !== 'accountInfo')
+      throw new Error(
+        `no account info: ${fresh.type === 'response' ? String(fresh.response.error) : ''}`,
+      )
+    expect(fresh.response.result.info.haveAccount).toBe(true)
+    wrongKey.close()
   })
 
   it('forwards libsession logging, and takes only its own logger off when it closes', async () => {

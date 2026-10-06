@@ -11,6 +11,7 @@ import {
   friendsWithAttachments,
   newcomer as newcomerFixture,
   strangers,
+  unopenable,
   type FakeWorld,
 } from '@session/client/fake'
 import type { Attachment, SessionClient } from '@session/client'
@@ -75,6 +76,13 @@ const harness: ContractHarness = {
     if (!client) throw new Error('fixture did not produce a client')
     // The fake's own phrase, which is the only one it can be asked to agree is genuine.
     return { client, phrase: await client.getSeedMnemonic() }
+  },
+
+  unopenable() {
+    const { clients } = newcomerFixture()
+    const client = Object.values(clients)[0]
+    if (!client) throw new Error('fixture did not produce a client')
+    return Promise.resolve(unopenable(client, 'file is not a database'))
   },
 
   withAttachment(options = {}) {

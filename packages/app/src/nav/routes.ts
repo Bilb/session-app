@@ -10,7 +10,6 @@ export const routes = {
   conversation: (id: string) => `/c/${encodeURIComponent(id)}`,
   newConversation: () => '/new',
   requests: () => '/requests',
-  settings: () => '/settings',
 } as const
 
 /**

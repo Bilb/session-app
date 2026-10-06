@@ -1,6 +1,21 @@
-import { useTextDirection } from '@session/screens'
+import {
+  ModalHost,
+  registerStoredAppearance,
+  StoredThemeProvider,
+  ToastLayer,
+  useFirstPaintHeld,
+  useTextDirection,
+} from '@session/screens'
 import { SessionStoreProvider, type SessionStore } from '@session/state'
-import { DirectionRoot, FONT_ASSETS, Text, UIProvider, YStack } from '@session/ui'
+import {
+  DirectionRoot,
+  FONT_ASSETS,
+  ModalStackProvider,
+  Text,
+  ToastProvider,
+  UIProvider,
+  YStack,
+} from '@session/ui'
 import { useFonts } from 'expo-font'
 import { Slot } from 'expo-router'
 import { KeyboardProvider } from 'react-native-keyboard-controller'
@@ -8,6 +23,7 @@ import { useEffect, useState } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import { mobileBackdropBlur } from '../src/backdrop'
+import { mobileGlass } from '../src/glass'
 import { MobileCameraProvider } from '../src/camera'
 import { MobileNavProvider } from '../src/nav'
 import { storePromise } from '../src/store'
@@ -29,11 +45,13 @@ export default function RootLayout() {
   useFonts(FONT_ASSETS)
 
   const [store, setStore] = useState<SessionStore | null>(null)
+  const held = useFirstPaintHeld(false)
 
   useEffect(() => {
     let live = true
     void storePromise.then((created) => {
       if (!live) return
+      registerStoredAppearance(created)
       setStore(created)
       // `start`, not `hydrate`: a rejection here has no screen to land on, so the store turns it
       // into state instead. See `start` in `packages/state/src/store.ts`.
@@ -50,31 +68,44 @@ export default function RootLayout() {
     // than on one of their own.
     <KeyboardProvider>
       <SafeAreaProvider>
-        <UIProvider backdropBlur={mobileBackdropBlur}>
-          {store === null ? (
-            <YStack
-              flex={1}
-              alignItems="center"
-              justifyContent="center"
-              backgroundColor="$backgroundPrimary"
-            >
-              <Text tone="secondary">Starting…</Text>
-            </YStack>
-          ) : (
-            <SessionStoreProvider store={store}>
+        {store === null ? (
+          // Held as the provider holds, on the same budget from launch: a placeholder drawn in the
+          // default theme now would be redrawn in the account's a moment later.
+          held ? null : (
+            <UIProvider backdropBlur={mobileBackdropBlur} glass={mobileGlass}>
+              <YStack
+                flex={1}
+                alignItems="center"
+                justifyContent="center"
+                backgroundColor="$backgroundPrimary"
+              >
+                <Text tone="secondary">Starting…</Text>
+              </YStack>
+            </UIProvider>
+          )
+        ) : (
+          <SessionStoreProvider store={store}>
+            <StoredThemeProvider backdropBlur={mobileBackdropBlur} glass={mobileGlass}>
               <MobileNavProvider>
                 <MobileCameraProvider>
                   <DirectionRoot rtl={rtl}>
-                    {/* Never keyed on the language: that mirrors the strings by remounting the
-                        routed subtree, discarding whatever the screen holds. Each route
-                        subscribes with `useLocale` instead. */}
-                    <Slot />
+                    <ModalStackProvider>
+                      {/* Never keyed on the language: that mirrors the strings by remounting the
+                          routed subtree, discarding whatever the screen holds. Each route
+                          subscribes with `useLocale` instead. */}
+                      <ToastProvider>
+                        <ModalHost>
+                          <Slot />
+                        </ModalHost>
+                        <ToastLayer />
+                      </ToastProvider>
+                    </ModalStackProvider>
                   </DirectionRoot>
                 </MobileCameraProvider>
               </MobileNavProvider>
-            </SessionStoreProvider>
-          )}
-        </UIProvider>
+            </StoredThemeProvider>
+          </SessionStoreProvider>
+        )}
       </SafeAreaProvider>
     </KeyboardProvider>
   )

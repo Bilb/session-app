@@ -9,21 +9,25 @@ const readPhoto = (): Promise<Uint8Array> => Promise.resolve(JPEG)
 
 const harness: MediaSourceHarness = {
   withAttachments() {
-    const { world, clients } = friendsWithAttachments(['Alice', 'Bob'], { sets: ['files'] })
+    const { world, clients } = friendsWithAttachments(['Alice', 'Bob'], { sets: ['pictures'] })
     const alice = clients['Alice']
     if (!alice) throw new Error('fixture did not produce a client')
-    const conversationId = world.account('Bob').sessionId
-    const message = world
-      .account('Alice')
-      .messages(conversationId)
-      .find((m) => m.attachments.length === 2)
-    if (!message) throw new Error('fixture did not seed a picture beside a file')
+    const recipient = world.account('Alice')
+    const sender = world.account('Bob')
+    const conversationId = sender.sessionId
+    const album = recipient.messages(conversationId).find((m) => m.attachments.length > 0)
+    const png = album?.attachments.find((a) => a.contentType === 'image/png')
+    if (!album || !png?.hasPreview) throw new Error('fixture did not seed a hashed PNG')
+    const unhashed = recipient.deliverFrom(sender, 'No hash', world.now(), [
+      { ...png, index: 0, hasPreview: false },
+    ])
+    world.settle()
     return Promise.resolve({
       source: createFakeMediaSource(alice, readPhoto),
       client: alice,
       conversationId,
-      picture: { messageId: message.id, index: 0 },
-      unhashed: { messageId: message.id, index: 1 },
+      picture: { messageId: album.id, index: png.index },
+      unhashed: { messageId: unhashed.id, index: 0 },
       settle: () => {
         world.settle()
         return Promise.resolve()

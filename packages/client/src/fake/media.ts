@@ -1,4 +1,4 @@
-import { isViewableContentType } from '@session/basic-types'
+import { isViewableContentType, isViewableVideo } from '@session/basic-types'
 import type { AttachmentRef } from '@session/bridge-types'
 
 import type { MediaSource } from '../types'
@@ -90,9 +90,11 @@ export function createFakeMediaSource(
       // so bytes handed back without it would leave the picture reported as one nobody has.
       await client.downloadAttachment(ref.messageId, ref.index)
       const photo = photoFileName(client, ref)
-      if (photo === null) throw new Error('not a picture')
-      // A video is served its still: nothing here plays one.
-      return { contentType: 'image/jpeg', bytes: await readPhoto(photo) }
+      const declared = client.locate(ref)?.attachment.contentType
+      if (photo === null || declared === undefined) throw new Error('not a picture')
+      // A video is served its still, which a video type would get refused: nothing here plays one.
+      const contentType = isViewableVideo(declared) ? 'image/jpeg' : declared
+      return { contentType, bytes: await readPhoto(photo) }
     },
     fetchPreview(ref) {
       return new Promise((resolve) => {

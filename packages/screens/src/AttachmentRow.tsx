@@ -16,6 +16,7 @@ import { useConversationUi } from './conversationUi'
 import { formatBytes } from './formatBytes'
 import { PENDING_COPY } from './pendingCopy'
 import { exportOne } from './exportAttachment'
+import { useExportFeedback } from './useExportFeedback'
 import { isViewable } from './viewableAttachments'
 
 function caption(
@@ -65,6 +66,7 @@ export function AttachmentRow({
   attachment: Attachment
 }) {
   const actions = useSessionActions()
+  const feedback = useExportFeedback()
   const ui = useConversationUi()
   // The report is the live half; `attachment.availability` is the resting one. See `fetchOf`.
   const ref = { messageId: message.id, index: attachment.index }
@@ -101,7 +103,8 @@ export function AttachmentRow({
     void actions.downloadAttachment(ref).catch(() => undefined)
   }
 
-  const act = state === 'ready' ? () => void exportOne(message, attachment.index, actions) : start
+  const act =
+    state === 'ready' ? () => void exportOne(message, attachment.index, actions, feedback) : start
   const offersAction = state !== 'unavailable' && state !== 'fetching'
 
   return (
