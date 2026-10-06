@@ -17,10 +17,10 @@ import { AttachmentTile } from './AttachmentTile'
 import { fileFormat, fileGlyph, splitFilename } from './attachmentFile'
 import {
   FILE_GLYPH_SIDE,
-  FILE_LEAD_HEIGHT,
   FILE_LEAD_WIDTH,
   FILE_ROW_CONTROL,
   FILE_ROW_GAP,
+  fileLeadHeight,
   fileRowControl,
   fileRowTone,
   type FileRowState,
@@ -31,6 +31,7 @@ import { Icon } from './Icon'
 import { ProgressRing } from './ProgressRing'
 import { StateLayer } from './StateLayer'
 import { Text } from './Text'
+import { useFontScale } from './useFontScale'
 import { tileRadius } from './attachmentTileStyle'
 
 export interface FileRowTestIDs {
@@ -176,6 +177,7 @@ export function FileRow({
   const { head, tail } = splitFilename(filename)
   const format = fileFormat(filename)
   const tone = fileRowTone(state)
+  const fontScale = useFontScale()
 
   const lead =
     thumbnail === undefined ? (
@@ -213,7 +215,12 @@ export function FileRow({
       {onAction === undefined ? null : (
         <StateLayer group="row" tone="ink" borderRadius="$sm" bleed={SPACING.xs} />
       )}
-      <YStack width={FILE_LEAD_WIDTH} height={FILE_LEAD_HEIGHT} alignItems="center" gap="$3xs">
+      <YStack
+        width={FILE_LEAD_WIDTH}
+        height={fileLeadHeight(fontScale)}
+        alignItems="center"
+        gap="$3xs"
+      >
         {onOpen === undefined ? (
           lead
         ) : (

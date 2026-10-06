@@ -2,7 +2,7 @@ import type { Attachment, ConversationId, Message } from '@session/client'
 import { tr } from '@session/localization'
 import { useMessage } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
-import { FILE_ROW_HEIGHT, List, Sheet } from '@session/ui'
+import { fileRowHeight, List, Sheet, useFontScale } from '@session/ui'
 import { useCallback, useRef, type ReactNode } from 'react'
 
 import { AttachmentFooter } from './AttachmentFooter'
@@ -31,6 +31,7 @@ function MessageSheet({
 }) {
   const message = useMessage(conversationId, messageId)
   const shown = open && message !== undefined
+  const rowHeight = fileRowHeight(useFontScale())
   const renderRow = useCallback(
     (attachment: Attachment) =>
       message === undefined ? null : <AttachmentRow message={message} attachment={attachment} />,
@@ -59,7 +60,7 @@ function MessageSheet({
             data={message.attachments}
             keyExtractor={attachmentKey}
             renderItem={renderRow}
-            itemHeight={FILE_ROW_HEIGHT}
+            itemHeight={rowHeight}
             fitsContent
             paddingHorizontal="md"
           />

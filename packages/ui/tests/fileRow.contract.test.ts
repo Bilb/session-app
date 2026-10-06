@@ -10,10 +10,12 @@ import { describe, expect, it } from 'vitest'
 describe('a file row', () => {
   const row = readFileSync(join(import.meta.dirname, '../src/FileRow.tsx'), 'utf8')
 
-  it('holds the lead at the height FILE_ROW_HEIGHT counts, with the padding it counts', () => {
+  it('holds the lead at the height fileRowHeight counts, with the padding it counts', () => {
     // `getItemLayout` places rows by that constant, so a row that measured differently would
     // scroll to the wrong place.
-    expect(row).toMatch(/<YStack width=\{FILE_LEAD_WIDTH\} height=\{FILE_LEAD_HEIGHT\}/)
+    expect(row).toMatch(
+      /<YStack\s+width=\{FILE_LEAD_WIDTH\}\s+height=\{fileLeadHeight\(fontScale\)\}/,
+    )
     expect(row).toMatch(
       /<XStack\s+alignItems="center"\s+gap=\{FILE_ROW_GAP\}\s+paddingVertical="\$xs"/,
     )
