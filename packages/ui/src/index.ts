@@ -81,10 +81,12 @@ export { config, tokens } from './config'
 // The numbers behind the named scales, for a raw style that tamagui does not resolve.
 export { SIZE_SCALE, SPACE_SCALE } from './scales'
 export {
+  appearanceFrom,
   buildThemes,
   DEFAULT_ACCENT,
   DEFAULT_THEME,
   PRIMARY_COLORS,
+  registerTheme,
   themeName,
   THEME_STATES,
 } from './themes'

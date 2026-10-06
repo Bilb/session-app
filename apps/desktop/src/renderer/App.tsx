@@ -9,17 +9,21 @@ import {
   StartupFailedScreen,
   RequestsScreen,
   ToastLayer,
+  registerStoredAppearance,
+  StoredThemeProvider,
   useLocale,
   usePersistedLocale,
   useTextDirection,
 } from '@session/screens'
 import { SessionStoreProvider, useAccount, useHydrated, useStartupError } from '@session/state'
-import { ModalStackProvider, Text, ToastProvider, UIProvider, YStack } from '@session/ui'
+import { ModalStackProvider, Text, ToastProvider, YStack } from '@session/ui'
 import { useEffect, useState } from 'react'
 import { MemoryRouter, Route, Routes, useLocation, useParams } from 'react-router'
 
 import { DesktopNavProvider } from './nav'
 import { store } from './store'
+
+registerStoredAppearance(store)
 
 /**
  * The desktop app.
@@ -45,8 +49,8 @@ export function App() {
   }, [])
 
   return (
-    <UIProvider>
-      <SessionStoreProvider store={store}>
+    <SessionStoreProvider store={store}>
+      <StoredThemeProvider>
         <MemoryRouter>
           <DesktopNavProvider>
             <ModalStackProvider>
@@ -59,8 +63,8 @@ export function App() {
             </ModalStackProvider>
           </DesktopNavProvider>
         </MemoryRouter>
-      </SessionStoreProvider>
-    </UIProvider>
+      </StoredThemeProvider>
+    </SessionStoreProvider>
   )
 }
 
