@@ -1,8 +1,9 @@
 import { requirePorts, type ExportAccess } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, type Modals } from '@session/ui'
+import { Button, useModals, useToast, type Modals } from '@session/ui'
 
+import type { ExportFeedback } from './exportAttachment'
 import { LocalizedText } from './LocalizedText'
 
 function AccessActions({ modals, id }: { modals: Modals; id: string }) {
@@ -42,7 +43,7 @@ function AccessActions({ modals, id }: { modals: Modals; id: string }) {
  * Says why an export cannot go where it should, once the OS has stopped asking: the access can
  * now only be granted from the app's page in the system settings, which this offers to open.
  */
-export function explainExportAccessRefused(modals: Modals, access: ExportAccess): void {
+function explainAccessRefused(modals: Modals, access: ExportAccess): void {
   const id = modals.present({
     kind: 'alert',
     testID: ELEMENT.conversation.exportAccessDialog,
@@ -59,4 +60,19 @@ export function explainExportAccessRefused(modals: Modals, access: ExportAccess)
       footer: () => <AccessActions modals={modals} id={id} />,
     },
   })
+}
+
+/** `exportOne`'s feedback: an alert for a refusal only the settings can undo, else a toast. */
+export function useExportFeedback(): ExportFeedback {
+  const modals = useModals()
+  const toasts = useToast()
+  return {
+    accessRefused: (access) => {
+      explainAccessRefused(modals, access)
+    },
+    failed: () => {
+      // One id, so a second failure shows the toast afresh rather than stacking another.
+      toasts.show(tr('attachmentsSaveError'), { id: 'export-failed' })
+    },
+  }
 }

@@ -36,6 +36,10 @@ function installFiles(files: Partial<FilesPort>): FilesPort {
   return installed
 }
 
+function feedback() {
+  return { accessRefused: vi.fn(), failed: vi.fn() }
+}
+
 afterEach(() => {
   resetPorts()
 })
@@ -49,7 +53,7 @@ describe('exporting one attachment', () => {
       Promise.resolve(destination.replace('.pdf', ' (1).pdf')),
     )
 
-    await exportOne(message([attachment(0)]), 0, { exportAttachment: write }, vi.fn())
+    await exportOne(message([attachment(0)]), 0, { exportAttachment: write }, feedback())
 
     expect(choose).toHaveBeenCalledWith('itinerary.pdf', 'application/pdf')
     expect(write).toHaveBeenCalledWith({ messageId: 7, index: 0 }, '/chosen/itinerary.pdf')
@@ -66,7 +70,7 @@ describe('exporting one attachment', () => {
       attachment(1, { filename: 'b.jpg', contentType: 'image/jpeg' }),
     ]
 
-    await exportOne(message(set), 1, { exportAttachment: write }, vi.fn())
+    await exportOne(message(set), 1, { exportAttachment: write }, feedback())
 
     expect(choose).toHaveBeenCalledWith('b.jpg', 'image/jpeg')
     expect(write).toHaveBeenCalledWith({ messageId: 7, index: 1 }, '/chosen/b.jpg')
@@ -78,54 +82,66 @@ describe('exporting one attachment', () => {
     const nameless = attachment(1)
     delete nameless.filename
 
-    await exportOne(message([attachment(0), nameless]), 1, { exportAttachment: vi.fn() }, vi.fn())
+    await exportOne(
+      message([attachment(0), nameless]),
+      1,
+      { exportAttachment: vi.fn() },
+      feedback(),
+    )
 
     expect(choose).toHaveBeenCalledWith('attachment-2', 'application/pdf')
   })
 
-  it('writes nothing when the person cancels', async () => {
+  it('writes nothing, and says nothing, when the person cancels', async () => {
     const reveal = vi.fn(() => Promise.resolve())
     installFiles({ chooseExportLocation: () => Promise.resolve(null), revealInFolder: reveal })
     const write = vi.fn()
+    const said = feedback()
 
-    await exportOne(message([attachment(0)]), 0, { exportAttachment: write }, vi.fn())
+    await exportOne(message([attachment(0)]), 0, { exportAttachment: write }, said)
 
     expect(write).not.toHaveBeenCalled()
     expect(reveal).not.toHaveBeenCalled()
+    expect(said.failed).not.toHaveBeenCalled()
+    expect(said.accessRefused).not.toHaveBeenCalled()
   })
 
-  it('reveals nothing and throws nothing when the write fails', async () => {
+  it('says it failed, reveals nothing and throws nothing when the write fails', async () => {
     const reveal = vi.fn(() => Promise.resolve())
     installFiles({
       chooseExportLocation: () => Promise.resolve('/chosen/x'),
       revealInFolder: reveal,
     })
+    const said = feedback()
 
     await expect(
       exportOne(
         message([attachment(0)]),
         0,
         { exportAttachment: () => Promise.reject(new Error('not a chosen folder')) },
-        vi.fn(),
+        said,
       ),
     ).resolves.toBeUndefined()
     expect(reveal).not.toHaveBeenCalled()
+    expect(said.failed).toHaveBeenCalledOnce()
   })
 
-  it('throws nothing when handing the file on fails', async () => {
+  it('says it failed, and throws nothing, when handing the file on fails', async () => {
     installFiles({
       chooseExportLocation: () => Promise.resolve('/chosen/x'),
       revealInFolder: () => Promise.reject(new Error('photo library refused it')),
     })
+    const said = feedback()
 
     await expect(
       exportOne(
         message([attachment(0)]),
         0,
         { exportAttachment: () => Promise.resolve('/chosen/x') },
-        vi.fn(),
+        said,
       ),
     ).resolves.toBeUndefined()
+    expect(said.failed).toHaveBeenCalledOnce()
   })
 
   it('explains a refused access the OS will not ask for again, and writes nothing', async () => {
@@ -133,20 +149,22 @@ describe('exporting one attachment', () => {
       chooseExportLocation: () => Promise.reject(new ExportAccessRefused('storage')),
     })
     const write = vi.fn()
-    const explain = vi.fn()
+    const said = feedback()
 
-    await exportOne(message([attachment(0)]), 0, { exportAttachment: write }, explain)
+    await exportOne(message([attachment(0)]), 0, { exportAttachment: write }, said)
 
     expect(write).not.toHaveBeenCalled()
-    expect(explain).toHaveBeenCalledWith('storage')
+    expect(said.accessRefused).toHaveBeenCalledWith('storage')
+    expect(said.failed).not.toHaveBeenCalled()
   })
 
-  it('explains nothing for any other failure', async () => {
+  it('says a choice that failed for any other reason failed', async () => {
     installFiles({ chooseExportLocation: () => Promise.reject(new Error('picker crashed')) })
-    const explain = vi.fn()
+    const said = feedback()
 
-    await exportOne(message([attachment(0)]), 0, { exportAttachment: vi.fn() }, explain)
+    await exportOne(message([attachment(0)]), 0, { exportAttachment: vi.fn() }, said)
 
-    expect(explain).not.toHaveBeenCalled()
+    expect(said.accessRefused).not.toHaveBeenCalled()
+    expect(said.failed).toHaveBeenCalledOnce()
   })
 })
