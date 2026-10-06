@@ -8,13 +8,14 @@ import {
   type AttachmentTransferState,
 } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
-import { FileRow, type FileRowState, type FileRowThumbnail } from '@session/ui'
+import { FileRow, type FileRowState, type FileRowThumbnail, useModals } from '@session/ui'
 
 import { fetchOf, type Fetch } from './attachmentFetch'
 import { mayResolve } from './autoDownload'
 import { useConversationUi } from './conversationUi'
 import { formatBytes } from './formatBytes'
 import { PENDING_COPY } from './pendingCopy'
+import { explainExportAccessRefused } from './exportAccessAlert'
 import { exportOne } from './exportAttachment'
 import { isViewable } from './viewableAttachments'
 
@@ -65,6 +66,7 @@ export function AttachmentRow({
   attachment: Attachment
 }) {
   const actions = useSessionActions()
+  const modals = useModals()
   const ui = useConversationUi()
   // The report is the live half; `attachment.availability` is the resting one. See `fetchOf`.
   const ref = { messageId: message.id, index: attachment.index }
@@ -101,7 +103,13 @@ export function AttachmentRow({
     void actions.downloadAttachment(ref).catch(() => undefined)
   }
 
-  const act = state === 'ready' ? () => void exportOne(message, attachment.index, actions) : start
+  const act =
+    state === 'ready'
+      ? () =>
+          void exportOne(message, attachment.index, actions, (access) => {
+            explainExportAccessRefused(modals, access)
+          })
+      : start
   const offersAction = state !== 'unavailable' && state !== 'fetching'
 
   return (

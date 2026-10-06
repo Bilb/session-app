@@ -1,4 +1,4 @@
-import { requirePorts } from '@session/app'
+import { ExportAccessRefused, requirePorts, type ExportAccess } from '@session/app'
 import type { Message } from '@session/client'
 import type { SessionActions } from '@session/state'
 
@@ -13,6 +13,8 @@ export async function exportOne(
   message: Message,
   index: number,
   actions: Pick<SessionActions, 'exportAttachment'>,
+  /** Called when the destination needs access the OS will not ask for again. */
+  onAccessRefused: (access: ExportAccess) => void,
 ): Promise<void> {
   const attachment = message.attachments.find((a) => a.index === index)
   const suggested = attachment?.filename ?? `attachment-${String(index + 1)}`
@@ -24,7 +26,11 @@ export async function exportOne(
     if (destination === null) return
     const saved = await actions.exportAttachment({ messageId: message.id, index }, destination)
     await requirePorts().files.revealInFolder(saved)
-  } catch {
+  } catch (error) {
+    if (error instanceof ExportAccessRefused) {
+      onAccessRefused(error.access)
+      return
+    }
     // Only a list row draws a failed export transfer, and a refusal before one starts (an expired
     // file, a destination refused) reaches no transfer at all.
     // TODO(#63): say an export failed as a toast, wherever it was started from.

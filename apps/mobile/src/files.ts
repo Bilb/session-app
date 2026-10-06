@@ -1,4 +1,4 @@
-import type { FilesPort } from '@session/app'
+import { ExportAccessRefused, type FilesPort } from '@session/app'
 import * as Crypto from 'expo-crypto'
 import { Directory, File, Paths } from 'expo-file-system'
 import { Asset, requestPermissionsAsync } from 'expo-media-library'
@@ -134,16 +134,23 @@ function photoLibraryNeedsGrant(): boolean {
   return Platform.OS === 'ios' || Number(Platform.Version) < 30
 }
 
+/**
+ * Whether the photo library will take a save. A refusal the OS will ask about again is false; one
+ * it will not is thrown, since only the system settings can undo it.
+ */
 async function photoLibraryWritable(): Promise<boolean> {
   if (!photoLibraryNeedsGrant()) return true
   // Add-only: nothing that reads the library.
   const permission = await requestPermissionsAsync(true, ['photo', 'video'])
-  return permission.granted
+  if (permission.granted) return true
+  if (!permission.canAskAgain) {
+    throw new ExportAccessRefused(Platform.OS === 'ios' ? 'photoLibrary' : 'storage')
+  }
+  return false
 }
 
 async function chooseDelivery(contentType: string | undefined): Promise<Delivery | null> {
-  // A refused grant sends the picture to a folder, as any other file, rather than nowhere.
-  // TODO(#62): on a permanent refusal, say why, as legacy's permissionsStorageDeniedLegacy does.
+  // A refusal the OS will ask about again sends the picture to a folder, as any other file.
   if (photoLibraryExtension(contentType) !== null && (await photoLibraryWritable())) {
     return { to: 'photos' }
   }
