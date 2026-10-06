@@ -34,6 +34,8 @@ export function PressArea({
       role={role}
       {...(checked === undefined ? {} : { 'aria-checked': checked })}
       {...(toggled === undefined ? {} : { 'aria-pressed': toggled })}
+      // A control's label is not selectable text; set here so a new control cannot forget it.
+      userSelect="none"
       disabled={disabled}
       onPress={disabled ? undefined : onPress}
       aria-label={accessibilityLabel}

@@ -144,4 +144,12 @@ describe('the dev clock', () => {
     expect(settle).not.toHaveBeenCalled()
     stop()
   })
+
+  it('refuses a slowdown that is not a count, rather than running at full speed', () => {
+    const world = { settle: vi.fn(), advance: vi.fn() } as never
+    expect(() => driveFakeClock(world, '1O')).toThrow(
+      /EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN=1O is not a positive whole number/,
+    )
+    expect(() => driveFakeClock(world, '0.5')).toThrow(/not a positive whole number/)
+  })
 })

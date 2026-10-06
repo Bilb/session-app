@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 
-import { bareFileName } from '@session/app/exportFileName'
+import { bareFileName, MAX_SUGGESTED_NAME_CHARS } from '@session/app/exportFileName'
 import type { Frame, Request } from '@session/client'
 
 // Named imports do not survive the ESM loader here; see the note in index.ts.
@@ -15,9 +15,6 @@ const { app, dialog, shell } = electron
 
 /** Linux's PATH_MAX. */
 export const MAX_PATH_CHARS = 4096
-
-/** The file-name limit on ext4, APFS and NTFS. */
-export const MAX_SUGGESTED_NAME_CHARS = 255
 
 // Resolved and, where it exists, symlink-followed, so a folder cannot read as contained by
 // pointing somewhere else -- a folder not created yet has nothing to follow and compares as given.

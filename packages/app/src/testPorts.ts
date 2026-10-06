@@ -56,6 +56,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
     },
     clipboard: {
       setString: () => Promise.resolve(),
+      confirmsCopy: false,
     },
     linking: {
       openUrl: () => Promise.resolve(),
@@ -65,10 +66,15 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
       // would claim it had.
       openAppSettings: null,
     },
+    // Null, not a no-op, for the same reason as `openAppSettings`: a screen reads it to decide
+    // whether to offer Share at all. The phones install their own.
+    share: { shareText: null },
+    build: { version: '0.0.0', commit: null, buildNumber: null },
     window: {
       // Null, not a no-op: nothing in a test or on a phone can close the app, and a screen asks
       // this port whether to offer the door at all -- see `WindowPort` in `./ports`.
       close: null,
+      restart: null,
       isFocused: () => true,
       onFocusChange: (handler) => {
         focusHandlers.add(handler)

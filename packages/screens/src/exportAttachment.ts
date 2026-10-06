@@ -1,6 +1,14 @@
-import { requirePorts } from '@session/app'
+import { ExportAccessRefused, requirePorts, type ExportAccess } from '@session/app'
 import type { Message } from '@session/client'
 import type { SessionActions } from '@session/state'
+
+/** What an export says when it does not land. Nothing is said for a cancel. */
+export interface ExportFeedback {
+  /** The destination needs access the OS will not ask for again. */
+  accessRefused: (access: ExportAccess) => void
+  /** Anything else that stopped it: a refused write, a failed hand-off. */
+  failed: () => void
+}
 
 /**
  * Writes one attachment out to a folder somebody chose, and shows them where it went.
@@ -13,6 +21,7 @@ export async function exportOne(
   message: Message,
   index: number,
   actions: Pick<SessionActions, 'exportAttachment'>,
+  feedback: ExportFeedback,
 ): Promise<void> {
   const attachment = message.attachments.find((a) => a.index === index)
   const suggested = attachment?.filename ?? `attachment-${String(index + 1)}`
@@ -24,9 +33,10 @@ export async function exportOne(
     if (destination === null) return
     const saved = await actions.exportAttachment({ messageId: message.id, index }, destination)
     await requirePorts().files.revealInFolder(saved)
-  } catch {
-    // Only a list row draws a failed export transfer, and a refusal before one starts (an expired
+  } catch (error) {
+    // Said here rather than by a transfer row: a refusal before the write starts (an expired
     // file, a destination refused) reaches no transfer at all.
-    // TODO(#63): say an export failed as a toast, wherever it was started from.
+    if (error instanceof ExportAccessRefused) feedback.accessRefused(error.access)
+    else feedback.failed()
   }
 }

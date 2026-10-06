@@ -1,0 +1,90 @@
+import { describe, expect, it } from 'vitest'
+
+import { backAction, dismissFrom, popFrom, type StackedModal } from '../src/modalStack'
+
+function modal(id: string, screens = 1, dismissible = true): StackedModal {
+  return { id, screens, dismissible }
+}
+
+describe('backAction', () => {
+  it('does nothing when nothing is open', () => {
+    expect(backAction([])).toEqual({ kind: 'none' })
+  })
+
+  it('closes a modal sitting on its own first screen', () => {
+    expect(backAction([modal('settings')])).toEqual({ kind: 'modal' })
+  })
+
+  it('walks back a screen before closing the modal it is in', () => {
+    expect(backAction([modal('settings', 3)])).toEqual({ kind: 'screen' })
+  })
+
+  it('closes the modal once its screens are back to the first', () => {
+    expect(backAction([modal('settings', 1)])).toEqual({ kind: 'modal' })
+  })
+
+  it('answers for the topmost modal, not the one underneath', () => {
+    expect(backAction([modal('settings', 4), modal('confirm')])).toEqual({ kind: 'modal' })
+  })
+
+  it('walks the topmost modal own screens even when a deeper one is underneath', () => {
+    expect(backAction([modal('settings', 4), modal('picker', 2)])).toEqual({ kind: 'screen' })
+  })
+
+  it('stops at a modal that refuses dismissal rather than closing its parent', () => {
+    expect(backAction([modal('settings', 3), modal('confirm', 1, false)])).toEqual({ kind: 'none' })
+  })
+
+  it('still walks the screens of a modal that refuses dismissal', () => {
+    expect(backAction([modal('wizard', 2, false)])).toEqual({ kind: 'screen' })
+  })
+})
+
+describe('dismissFrom', () => {
+  it('removes the named modal', () => {
+    expect(dismissFrom([modal('a'), modal('b')], 'b').map((m) => m.id)).toEqual(['a'])
+  })
+
+  it('removes everything opened from it', () => {
+    const stack = [modal('a'), modal('b'), modal('c')]
+    expect(dismissFrom(stack, 'b').map((m) => m.id)).toEqual(['a'])
+  })
+
+  it('empties the stack when the bottom one goes', () => {
+    expect(dismissFrom([modal('a'), modal('b')], 'a')).toEqual([])
+  })
+
+  it('leaves the stack alone for an id that is not there', () => {
+    const stack = [modal('a'), modal('b')]
+    expect(dismissFrom(stack, 'gone').map((m) => m.id)).toEqual(['a', 'b'])
+  })
+
+  it('leaves an empty stack empty', () => {
+    expect(dismissFrom([], 'a')).toEqual([])
+  })
+
+  it('does not hand back the array it was given', () => {
+    // The result goes into react state, so even a no-op must not return the previous value.
+    const stack = [modal('a')]
+    expect(dismissFrom(stack, 'gone')).not.toBe(stack)
+  })
+})
+
+describe('popFrom', () => {
+  const stack = [{ key: 'root' }, { key: 'help' }, { key: 'faq' }]
+
+  it('removes the dismissed screen and everything pushed after it', () => {
+    expect(popFrom(stack, 'help')).toEqual([{ key: 'root' }])
+    expect(popFrom(stack, 'faq')).toEqual([{ key: 'root' }, { key: 'help' }])
+  })
+
+  it('ignores a screen already gone, so a dismissal echoing a pop pops nothing more', () => {
+    // react-native-screens reports a dismissal for a screen JS removed as well as for one the
+    // person swiped away; counting those would pop a second screen.
+    expect(popFrom(stack.slice(0, 2), 'faq')).toEqual([{ key: 'root' }, { key: 'help' }])
+  })
+
+  it('never removes the first screen: leaving that is closing the modal', () => {
+    expect(popFrom(stack, 'root')).toEqual(stack)
+  })
+})

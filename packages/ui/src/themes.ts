@@ -1,3 +1,4 @@
+import { addTheme } from 'tamagui'
 import {
   getThemeTokens,
   type PrimaryColorState,
@@ -56,6 +57,19 @@ export const DEFAULT_THEME: ThemeState = 'classic-dark'
 export const DEFAULT_ACCENT: PrimaryColorState = 'green'
 
 /**
+ * The theme and accent a stored choice names, each falling back to the default where this build
+ * does not ship the name -- a preference outlives the build that wrote it.
+ */
+export function appearanceFrom(stored: { theme: string; accent: string } | null): {
+  theme: ThemeState
+  accent: PrimaryColorState
+} {
+  const theme = THEME_STATES.find((name) => name === stored?.theme) ?? DEFAULT_THEME
+  const accent = PRIMARY_COLORS.find((name) => name === stored?.accent) ?? DEFAULT_ACCENT
+  return { theme, accent }
+}
+
+/**
  * The names tamagui's own components reach for.
  *
  * Session's vocabulary is semantic and its own - `backgroundPrimary`, `textSecondary` - and
@@ -95,7 +109,8 @@ const TAMAGUI_NAMES = [
 /** The list above is what must exist; this is what each one means in Session's terms. */
 function tamaguiAliases(tokens: ThemeTokens): Record<(typeof TAMAGUI_NAMES)[number], string> {
   const clear = 'rgba(0, 0, 0, 0)'
-  const shadow = 'rgba(0, 0, 0, 0.25)'
+  // Per theme: a light theme's shadow is too weak on a dark one.
+  const shadow = tokens.shadow
 
   return {
     background: tokens.backgroundPrimary,
@@ -134,35 +149,73 @@ function toTamaguiTheme(tokens: ThemeTokens): Record<string, string> {
   }
 }
 
+/**
+ * The one theme a name stands for: a base theme carries the default accent, so a component drawn
+ * outside any accent sub-theme still resolves `$primaryColor`.
+ */
+function tamaguiThemeFor(theme: ThemeState, accent?: PrimaryColorState): Record<string, string> {
+  return toTamaguiTheme(getThemeTokens(theme, accent ?? DEFAULT_ACCENT))
+}
+
+/**
+ * What the configuration is created with: the default theme, and the pair tamagui needs by name.
+ * Every other theme is registered the first time it is shown -- see `registerTheme`.
+ *
+ * `dark` and `light` are not spare themes, they are what makes the rest of them work on the web.
+ * Tamagui compiles a theme into a CSS rule whose selector list it assembles from the theme names,
+ * and it only starts that list for a theme literally called `dark` or `light`
+ * (see getThemeCSSRules). Every name here is `classicDark`-shaped, so without them the list came
+ * out empty and the rule with it: `, .tm_xxt { ... }`, a leading comma, which is invalid CSS that
+ * every browser drops without a word, and no `$token` colour resolved on the desktop at all. They
+ * are the classic pair; nothing selects them by name.
+ */
+export function initialThemes(): Record<string, Record<string, string>> {
+  return {
+    dark: tamaguiThemeFor('classic-dark'),
+    light: tamaguiThemeFor('classic-light'),
+    [themeName(DEFAULT_THEME)]: tamaguiThemeFor(DEFAULT_THEME),
+    [themeName(DEFAULT_THEME, DEFAULT_ACCENT)]: tamaguiThemeFor(DEFAULT_THEME, DEFAULT_ACCENT),
+  }
+}
+
+/**
+ * Every theme there is, base and accent sub-theme alike. Not what the app registers -- that is
+ * `initialThemes` and then `registerTheme` -- but what the contract tests hold each one to.
+ */
 export function buildThemes(): Record<string, Record<string, string>> {
-  const themes: Record<string, Record<string, string>> = {}
-
-  // `dark` and `light` are not spare themes, they are what makes the rest of them work on the web.
-  //
-  // Tamagui compiles a theme into a CSS rule whose selector list it assembles from the theme names,
-  // and it only starts that list for a theme literally called `dark` or `light`
-  // (see getThemeCSSRules). Every name here is `classicDark`-shaped, so the list came out empty and
-  // the rule with it: `, .tm_xxt { ... }`, a leading comma, which is invalid CSS that every browser
-  // drops without a word. The result was a desktop app in which no `$token` colour resolved to
-  // anything and every screen fell back to the browser's black on white, while believing it was
-  // showing classic dark. Native never noticed: there is no CSS there, and a theme reaches a
-  // component through context as resolved values.
-  //
-  // The two are the classic pair, which is what a base light and a base dark are here. Nothing
-  // selects them by name - `themeName()` never produces one - so they cost a rule each and change
-  // nothing about what the app draws.
-  themes['dark'] = toTamaguiTheme(getThemeTokens('classic-dark', DEFAULT_ACCENT))
-  themes['light'] = toTamaguiTheme(getThemeTokens('classic-light', DEFAULT_ACCENT))
-
+  const themes = initialThemes()
   for (const theme of THEME_STATES) {
-    // The base carries the default accent so a component rendered outside any sub-theme
-    // still resolves $primaryColor instead of falling through to nothing.
-    themes[themeName(theme)] = toTamaguiTheme(getThemeTokens(theme, DEFAULT_ACCENT))
-
+    themes[themeName(theme)] = tamaguiThemeFor(theme)
     for (const accent of PRIMARY_COLORS) {
-      themes[themeName(theme, accent)] = toTamaguiTheme(getThemeTokens(theme, accent))
+      themes[themeName(theme, accent)] = tamaguiThemeFor(theme, accent)
     }
   }
-
   return themes
+}
+
+/** The names tamagui already has, so a theme is derived and added once. */
+const registered = new Set(Object.keys(initialThemes()))
+
+/**
+ * Adds a theme to tamagui the first time it is asked for, and says its name.
+ *
+ * **Registered when first shown, not at launch**, so launch does not grow with the number of
+ * themes a person can make. On the web `addTheme` writes the theme's CSS as it goes, which is the
+ * part `getCSS()` did for the initial ones.
+ */
+export function registerTheme(theme: ThemeState, accent: PrimaryColorState): string {
+  for (const [name, values] of [
+    [themeName(theme), tamaguiThemeFor(theme)],
+    [themeName(theme, accent), tamaguiThemeFor(theme, accent)],
+  ] as const) {
+    if (registered.has(name)) continue
+    addTheme({ name, theme: values, insertCSS: true })
+    registered.add(name)
+  }
+  return themeName(theme, accent)
+}
+
+/** Whether a theme can be shown without registering it first. */
+export function isThemeRegistered(theme: ThemeState, accent: PrimaryColorState): boolean {
+  return registered.has(themeName(theme, accent))
 }
