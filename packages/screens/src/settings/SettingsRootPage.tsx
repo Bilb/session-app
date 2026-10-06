@@ -1,5 +1,5 @@
 import { requirePorts, URLS, useNav, routes } from '@session/app'
-import { tr, tStripped } from '@session/localization'
+import { toPlainText, tr } from '@session/localization'
 import { useAccount, useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import {
@@ -189,7 +189,8 @@ export function SettingsRootPage() {
               icon: 'userRoundPlus',
               testID: row('invite'),
               onPress: () => {
-                void shareText(tStripped('accountIdShare', { account_id: sessionId }))
+                // Plain text with its paragraphs: the ID and the link on lines of their own.
+                void shareText(toPlainText(tr('accountIdShare', { account_id: sessionId })))
               },
             } satisfies RowSpec,
           ]),
