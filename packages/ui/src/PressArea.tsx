@@ -24,6 +24,7 @@ export function PressArea({
   accessibilityLabel,
   role = 'button',
   checked,
+  toggled,
   testID,
   children,
 }: PressAreaProps) {
@@ -32,6 +33,7 @@ export function PressArea({
       {...(fill ? { flex: 1 } : {})}
       role={role}
       {...(checked === undefined ? {} : { 'aria-checked': checked })}
+      {...(toggled === undefined ? {} : { 'aria-pressed': toggled })}
       disabled={disabled}
       onPress={disabled ? undefined : onPress}
       aria-label={accessibilityLabel}
