@@ -3,22 +3,25 @@ import { describe, expect, it } from 'vitest'
 
 import { mainApplicationServingMedia, withSessionMedia } from '#plugins/withSessionMedia'
 
-/** The shape Expo's template generates, cut down to the lines the rewrite reads. */
+/**
+ * SDK 57's template, cut down to the lines the rewrite reads. `PackageList(this)` sits in a `lazy`
+ * lambda, which has no receiver, so `this` is the Application `packageConfig` takes.
+ */
 const KOTLIN = `package org.getsession.session2
 
 import android.app.Application
 import com.facebook.react.PackageList
 
 class MainApplication : Application(), ReactApplication {
-  override val reactNativeHost: ReactNativeHost = ReactNativeHostWrapper(
-      this,
-      object : DefaultReactNativeHost(this) {
-        override fun getPackages(): List<ReactPackage> {
-          val packages = PackageList(this).packages
-          return packages
+  override val reactHost: ReactHost by lazy {
+    ExpoReactHostFactory.getDefaultReactHost(
+      context = applicationContext,
+      packageList =
+        PackageList(this).packages.apply {
+          // add(MyReactNativePackage())
         }
-      }
-  )
+    )
+  }
 }
 `
 
