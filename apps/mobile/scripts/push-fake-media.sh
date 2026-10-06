@@ -5,7 +5,8 @@ set -euo pipefail
 # Android device or emulator over adb, or a booted iOS simulator.
 #
 # Usage: push-fake-media.sh [--android|--ios] [folder]. Without a flag it pushes to whichever of
-# the two is attached, and refuses to guess when both are.
+# the two is attached, and refuses to guess when both are. With several simulators booted, name one
+# with SESSION_SIMULATOR=<udid>.
 #
 # The folder desktop's fake reads: SESSION_FAKE_MEDIA_DIR, or ~/.cache/session-app/dev-media, which
 # `pnpm fake-media:fetch` fills.
@@ -19,7 +20,7 @@ case "${1:-}" in
 esac
 
 src="${1:-${SESSION_FAKE_MEDIA_DIR:-$HOME/.cache/session-app/dev-media}}"
-count=$( (ls "$src"/unsplash-*.jpg 2>/dev/null || true) | wc -l)
+count=$( (ls "$src"/unsplash-*.jpg 2>/dev/null || true) | wc -l | tr -d " ")
 if [ "$count" -ne 30 ]; then
     echo "expected 30 dev photographs in $src, found $count. Run: pnpm fake-media:fetch" >&2
     exit 1
@@ -84,14 +85,25 @@ push_ios() {
         echo "xcrun not found: the iOS simulator needs a Mac with Xcode" >&2
         exit 1
     fi
+    local device="${SESSION_SIMULATOR:-booted}"
+    # `booted` picks one of several without saying which.
+    if [ "$device" = booted ]; then
+        local booted
+        booted="$(xcrun simctl list devices booted | grep -c Booted || true)"
+        if [ "$booted" -gt 1 ]; then
+            echo "$booted simulators are booted: name one with SESSION_SIMULATOR=<udid>" >&2
+            xcrun simctl list devices booted | grep Booted >&2
+            exit 1
+        fi
+    fi
     # app.config.ts appends SESSION_BUNDLE_SUFFIX, -test unless set, on iOS only.
     local bundle="org.getsession.session2${SESSION_BUNDLE_SUFFIX--test}"
     local container
-    container="$(xcrun simctl get_app_container booted "$bundle" data 2>/dev/null || true)"
+    container="$(xcrun simctl get_app_container "$device" "$bundle" data 2>/dev/null || true)"
     # Empty also when the simulator reports Booted without serving requests; see the run skill's
     # references/ios.md.
     if [ -z "$container" ]; then
-        echo "no data container for $bundle on the booted simulator: install the app first" >&2
+        echo "no data container for $bundle on simulator $device: install the app first" >&2
         exit 1
     fi
     mkdir -p "$container/Documents/fake-media"
