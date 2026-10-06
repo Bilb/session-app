@@ -1,6 +1,8 @@
-import { PRIMARY_COLOR_HEX } from '@session/theme-tokens'
+import { COLORS, PRIMARY_COLOR_HEX } from '@session/theme-tokens'
 import { XStack } from 'tamagui'
 
+import { avatarInitials } from './avatarInitials'
+import { rampSizeAtMost } from './rampSize'
 import { Text } from './Text'
 
 /**
@@ -17,13 +19,8 @@ function colorFor(id: string): string {
   return ACCENTS[hash % ACCENTS.length] ?? ACCENTS[0] ?? '#31F196'
 }
 
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '?'
-  const first = parts[0]?.[0] ?? ''
-  const second = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : ''
-  return (first + second).toUpperCase()
-}
+/** Initials scale with the diameter; one letter gets more room. */
+const INITIALS_RATIO = { one: 0.5, more: 0.4 } as const
 
 export interface AvatarProps {
   id: string
@@ -33,6 +30,8 @@ export interface AvatarProps {
 }
 
 export function Avatar({ id, name, size = 40, testID }: AvatarProps) {
+  const letters = avatarInitials(name, id)
+  const initialsSize = rampSizeAtMost(size * INITIALS_RATIO[letters.length > 1 ? 'more' : 'one'])
   return (
     <XStack
       width={size}
@@ -43,8 +42,9 @@ export function Avatar({ id, name, size = 40, testID }: AvatarProps) {
       justifyContent="center"
       testID={testID}
     >
-      <Text size={size >= 40 ? '$body' : '$caption'} weight="bold" color="#000000">
-        {initials(name)}
+      {/* White: the circle is the account's colour, not the theme's, so no theme role fits. */}
+      <Text size={`$${initialsSize}`} weight="bold" color={COLORS.WHITE}>
+        {letters}
       </Text>
     </XStack>
   )

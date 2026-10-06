@@ -5,6 +5,7 @@ import { TamaguiProvider } from 'tamagui'
 
 import { BackdropBlurProvider, type BackdropBlur } from './backdropBlur'
 import { config } from './config'
+import { GlassProvider, type Glass } from './glass'
 // Side-effecting: puts the compiled themes in the document on the web, and does nothing on native.
 // See tamaguiCSS.ts - without it every `$token` colour resolves to an undefined custom property.
 import './tamaguiCSS'
@@ -21,6 +22,8 @@ export interface UIProviderProps {
    * left out on the desktop client, where a dialog simply darkens what is behind it.
    */
   backdropBlur?: BackdropBlur | null
+  /** What draws a glass button, where the platform has glass. See `glass.ts`. */
+  glass?: Glass | null
 }
 
 /**
@@ -34,11 +37,14 @@ export function UIProvider({
   theme = DEFAULT_THEME,
   accent = DEFAULT_ACCENT,
   backdropBlur,
+  glass,
 }: UIProviderProps) {
   return (
     <TamaguiProvider config={config} defaultTheme={themeName(theme, accent)}>
       <ThemeIsDarkContext.Provider value={isDarkTheme(theme)}>
-        <BackdropBlurProvider value={backdropBlur ?? null}>{children}</BackdropBlurProvider>
+        <BackdropBlurProvider value={backdropBlur ?? null}>
+          <GlassProvider value={glass ?? null}>{children}</GlassProvider>
+        </BackdropBlurProvider>
       </ThemeIsDarkContext.Provider>
     </TamaguiProvider>
   )

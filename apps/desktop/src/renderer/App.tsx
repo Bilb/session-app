@@ -2,18 +2,19 @@ import {
   AdaptiveShell,
   ConversationListScreen,
   ConversationScreen,
+  ModalHost,
   NewConversationScreen,
   OnboardingFlow,
   StartingScreen,
   StartupFailedScreen,
   RequestsScreen,
-  SettingsScreen,
+  ToastLayer,
   useLocale,
   usePersistedLocale,
   useTextDirection,
 } from '@session/screens'
 import { SessionStoreProvider, useAccount, useHydrated, useStartupError } from '@session/state'
-import { Text, UIProvider, YStack } from '@session/ui'
+import { ModalStackProvider, Text, ToastProvider, UIProvider, YStack } from '@session/ui'
 import { useEffect, useState } from 'react'
 import { MemoryRouter, Route, Routes, useLocation, useParams } from 'react-router'
 
@@ -48,7 +49,14 @@ export function App() {
       <SessionStoreProvider store={store}>
         <MemoryRouter>
           <DesktopNavProvider>
-            <Shell />
+            <ModalStackProvider>
+              <ToastProvider>
+                <ModalHost>
+                  <Shell />
+                </ModalHost>
+                <ToastLayer />
+              </ToastProvider>
+            </ModalStackProvider>
           </DesktopNavProvider>
         </MemoryRouter>
       </SessionStoreProvider>
@@ -86,7 +94,6 @@ function Shell() {
           <Route path="c/:id" element={<ConversationRoute />} />
           <Route path="new" element={<NewConversationScreen />} />
           <Route path="requests" element={<RequestsScreen />} />
-          <Route path="settings" element={<SettingsScreen />} />
         </Routes>
       }
       // Any route but the list has something to show in the detail pane, not just a

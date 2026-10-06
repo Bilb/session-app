@@ -1,6 +1,14 @@
-import { useTextDirection } from '@session/screens'
+import { ModalHost, ToastLayer, useTextDirection } from '@session/screens'
 import { SessionStoreProvider, type SessionStore } from '@session/state'
-import { DirectionRoot, FONT_ASSETS, Text, UIProvider, YStack } from '@session/ui'
+import {
+  DirectionRoot,
+  FONT_ASSETS,
+  ModalStackProvider,
+  Text,
+  ToastProvider,
+  UIProvider,
+  YStack,
+} from '@session/ui'
 import { useFonts } from 'expo-font'
 import { Slot } from 'expo-router'
 import { KeyboardProvider } from 'react-native-keyboard-controller'
@@ -8,6 +16,7 @@ import { useEffect, useState } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import { mobileBackdropBlur } from '../src/backdrop'
+import { mobileGlass } from '../src/glass'
 import { MobileCameraProvider } from '../src/camera'
 import { MobileNavProvider } from '../src/nav'
 import { storePromise } from '../src/store'
@@ -50,7 +59,7 @@ export default function RootLayout() {
     // than on one of their own.
     <KeyboardProvider>
       <SafeAreaProvider>
-        <UIProvider backdropBlur={mobileBackdropBlur}>
+        <UIProvider backdropBlur={mobileBackdropBlur} glass={mobileGlass}>
           {store === null ? (
             <YStack
               flex={1}
@@ -65,10 +74,17 @@ export default function RootLayout() {
               <MobileNavProvider>
                 <MobileCameraProvider>
                   <DirectionRoot rtl={rtl}>
-                    {/* Never keyed on the language: that mirrors the strings by remounting the
-                        routed subtree, discarding whatever the screen holds. Each route
-                        subscribes with `useLocale` instead. */}
-                    <Slot />
+                    <ModalStackProvider>
+                      {/* Never keyed on the language: that mirrors the strings by remounting the
+                          routed subtree, discarding whatever the screen holds. Each route
+                          subscribes with `useLocale` instead. */}
+                      <ToastProvider>
+                        <ModalHost>
+                          <Slot />
+                        </ModalHost>
+                        <ToastLayer />
+                      </ToastProvider>
+                    </ModalStackProvider>
                   </DirectionRoot>
                 </MobileCameraProvider>
               </MobileNavProvider>

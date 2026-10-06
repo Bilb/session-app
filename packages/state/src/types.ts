@@ -60,6 +60,11 @@ export interface SessionState {
    * only thing that tells anybody which failure it was, and there is nowhere else it survives.
    */
   startupError: string | null
+  /**
+   * Whether clearing the device could get past `startupError`. False when the bridge itself could
+   * not be made: every request is refused, the discard a clear makes included.
+   */
+  startupClearable: boolean
 
   /**
    * Complete lists, in the order libsession sent them. libsession sends whole state, so partial
@@ -89,6 +94,7 @@ export const emptyState: SessionState = {
   hydrated: false,
   account: null,
   startupError: null,
+  startupClearable: true,
   conversations: [],
   requests: [],
   histories: {},

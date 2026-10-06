@@ -1,5 +1,10 @@
 import type { BridgeTransport } from '@session/client'
-import { createFakeTransport, friendsWithAttachments, newcomer } from '@session/client/fake'
+import {
+  createFakeTransport,
+  friendsWithAttachments,
+  newcomer,
+  unopenable,
+} from '@session/client/fake'
 
 /**
  * The bridge, backed by the fake - the same arrangement the desktop app uses, so both
@@ -19,5 +24,17 @@ export function createFakeBridge(): BridgeTransport {
     world.settle()
   }, 50)
 
-  return createFakeTransport(alice)
+  // A database that will not open, as the desktop's `SESSION_FAKE_FAILED_START` does: the failure
+  // screen is otherwise reachable only with one somebody has already broken. `unopenable` refuses
+  // as the real bridge does, with libsession's own reason, and lets a discard through -- so the
+  // screen's Clear Device works here too.
+  //
+  // TODO: a Developer Settings switch that fails the next launch, once that screen exists, so a
+  // build without this variable can reach it too.
+  const served =
+    process.env['EXPO_PUBLIC_SESSION_FAKE_FAILED_START'] === '1'
+      ? unopenable(alice, 'file is not a database')
+      : alice
+
+  return createFakeTransport(served)
 }

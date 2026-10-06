@@ -11,6 +11,7 @@ import {
   friendsWithAttachments,
   newcomer,
   showcase,
+  unopenable,
 } from '@session/client/fake'
 
 import type { MediaSource } from '../media'
@@ -164,17 +165,17 @@ export function createFakeBridge(): BridgeTransport & MediaSource {
   }, TICK_MS)
   ticking.unref?.()
 
-  // A start that refuses, which is otherwise only reachable with a database somebody has already
+  // A database that will not open, which is otherwise only reachable with one somebody has already
   // broken. The failure screen is the one screen nobody sees by accident, so there has to be a way
-  // to open it on purpose -- the message is libsession's own words for the failure that produced
-  // it, so the screen looks the way it does in the wild rather than the way a placeholder does.
-  if (process.env['SESSION_FAKE_FAILED_START'] === '1') {
-    alice.getAccountInfo = () =>
-      Promise.reject(new Error('getConversations: Invalid conversation id: not a hex session ID'))
-  }
+  // to open it on purpose. `unopenable` refuses as the real bridge does, with libsession's own
+  // reason, and lets a discard through -- so the screen's Clear Device works here too.
+  const served =
+    process.env['SESSION_FAKE_FAILED_START'] === '1'
+      ? unopenable(alice, 'file is not a database')
+      : alice
 
   return {
-    ...createFakeTransport(alice),
+    ...createFakeTransport(served),
     async fetchMedia(ref: AttachmentRef) {
       // Through the same door a tap uses. Serving this scheme *is* a fetch: the real bridge
       // fills the cache and libsession announces the availability change, so a fake that handed

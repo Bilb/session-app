@@ -127,6 +127,21 @@ const DANGER_BASE = '#E12D19'
  */
 const WARNING_BASE = { light: '#A64B00', dark: '#FCB159' } as const
 
+/**
+ * Black with polarity-keyed alpha, never theme colours: a darkening taken from a dark theme's
+ * palette lightens it.
+ */
+const SCRIM = { light: 'rgba(0, 0, 0, 0.2)', dark: 'rgba(0, 0, 0, 0.5)' } as const
+const SHADOW = { light: 'rgba(0, 0, 0, 0.25)', dark: 'rgba(0, 0, 0, 1)' } as const
+
+/**
+ * Overlays rather than surface roles, so the step is relative to whatever the control sits on; a
+ * surface-role hover vanishes on a dialog's recessed ground. Press is double hover so the two
+ * stay apart.
+ */
+const HOVER_OVERLAY = { light: 'rgba(0, 0, 0, 0.04)', dark: 'rgba(255, 255, 255, 0.05)' } as const
+const PRESSED_OVERLAY = { light: 'rgba(0, 0, 0, 0.08)', dark: 'rgba(255, 255, 255, 0.1)' } as const
+
 /** What a disabled label still has to manage, on every surface. Below AA on purpose. */
 const DISABLED_FLOOR = 2
 
@@ -355,6 +370,13 @@ export type ThemeTokens = {
   separatorColor: string
   messageBubbleIncomingBg: string
   messageBubbleIncomingText: string
+  /** Dims the page behind a dialog or panel. Nothing is read on it, so no contrast rule applies. */
+  scrim: string
+  /** A raised element's shadow. */
+  shadow: string
+  /** Laid over a control while hovered / held; translucent, so it steps from any surface. */
+  hoverOverlay: string
+  pressedOverlay: string
 }
 
 /**
@@ -574,6 +596,10 @@ export function deriveTokens(knobs: ThemeKnobs, accent: string): ThemeTokens {
       incomingBg,
       CONTRAST.normal,
     ),
+    scrim: SCRIM[polarity],
+    shadow: SHADOW[polarity],
+    hoverOverlay: HOVER_OVERLAY[polarity],
+    pressedOverlay: PRESSED_OVERLAY[polarity],
     ...overrides,
   }
 }

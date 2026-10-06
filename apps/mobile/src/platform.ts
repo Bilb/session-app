@@ -1,10 +1,12 @@
 import { memoryPorts, setPorts, type NotificationsPort } from '@session/app'
 import { parseNetworkName } from '@session/basic-types'
 import * as Clipboard from 'expo-clipboard'
+import Constants from 'expo-constants'
 import * as SecureStore from 'expo-secure-store'
-import { BackHandler, Linking, Platform } from 'react-native'
+import { Linking, Platform, Share } from 'react-native'
 
 import { flagOverride } from './flagOverrides'
+import { restartProcess, terminateProcess } from './processExit'
 
 /**
  * Whose servers fast mode would use, which is what the onboarding screen has to name.
@@ -85,8 +87,28 @@ const ports = memoryPorts({
     onTap: () => () => undefined,
     setBadgeCount: () => Promise.resolve(),
   },
+  build: {
+    // The version app.json gives the build, which is what the stores and the OS know it as.
+    version: Constants.expoConfig?.version ?? '0.0.0',
+    // Inlined by Metro from what its config read out of git. See metro.config.js.
+    commit: process.env['EXPO_PUBLIC_SESSION_BUILD_COMMIT'] || null,
+    // What app.json gives the native build, or null where it sets none.
+    buildNumber:
+      Platform.OS === 'ios'
+        ? (Constants.expoConfig?.ios?.buildNumber ?? null)
+        : Constants.expoConfig?.android?.versionCode === undefined
+          ? null
+          : String(Constants.expoConfig.android.versionCode),
+  },
+  share: {
+    // The platform's sheet, with the text alone: no title or subject, which iOS would drop and
+    // Android would show as a heading above what was shared.
+    shareText: (text) => Share.share({ message: text }).then(() => undefined),
+  },
   clipboard: {
     setString: (value) => Clipboard.setStringAsync(value).then(() => undefined),
+    // Android 13 (API 33) added the system's own preview of what was copied.
+    confirmsCopy: Platform.OS === 'android' && Number(Platform.Version) >= 33,
   },
   linking: {
     // Unchanged, and repeated because a port override replaces the whole object rather than
@@ -117,14 +139,7 @@ setPorts({
   ...ports,
   window: {
     ...ports.window,
-    // Android ends the task; iOS offers no way to do this from JavaScript and would need a native
-    // call the bridge does not expose yet. Null rather than a no-op, so a screen omits the control
-    // instead of offering one that does nothing -- see `WindowPort`.
-    close:
-      Platform.OS === 'android'
-        ? () => {
-            BackHandler.exitApp()
-          }
-        : null,
+    close: terminateProcess,
+    restart: restartProcess,
   },
 })

@@ -27,6 +27,7 @@ const OVERRIDES: Record<string, string | undefined> = {
     process.env.EXPO_PUBLIC_SESSION_FLAG_FORCE_FAST_MODE_AVAILABLE,
   EXPO_PUBLIC_SESSION_FLAG_DISABLE_ANIMATIONS:
     process.env.EXPO_PUBLIC_SESSION_FLAG_DISABLE_ANIMATIONS,
+  EXPO_PUBLIC_SESSION_FLAG_DEBUG_MODE: process.env.EXPO_PUBLIC_SESSION_FLAG_DEBUG_MODE,
 }
 
 /** What the flags port hands back: the override, or nothing set. */

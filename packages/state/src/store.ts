@@ -5,6 +5,7 @@ import type {
   Message,
   SessionClient,
 } from '@session/client'
+import { BRIDGE_UNAVAILABLE, SessionClientError } from '@session/client'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
 import { applyEvent, mergePages, recordRefusal, withoutHistory } from './applyEvent'
@@ -33,7 +34,8 @@ export interface SessionActions {
    * Deletes everything on this device and starts again from nothing.
    *
    * The way out of a database that cannot be opened. Destructive and unrecoverable without a
-   * recovery phrase, so nothing calls it without asking twice.
+   * recovery phrase, so nothing calls it without asking twice. A clear that fails sets
+   * `startupError` to why, and rejects.
    */
   clearDeviceData: () => Promise<void>
   /**
@@ -289,7 +291,7 @@ export function createSessionStore(
 
   const actions: SessionActions = {
     async start(): Promise<void> {
-      store.setState({ startupError: null })
+      store.setState({ startupError: null, startupClearable: true })
       try {
         await actions.hydrate()
       } catch (error) {
@@ -300,7 +302,8 @@ export function createSessionStore(
         // and a launch screen that never went away, identical from the outside to a slow start.
         const message = error instanceof Error ? error.message : String(error)
         log('error', `[session] could not start: ${message}`)
-        store.setState({ startupError: message })
+        const noBridge = error instanceof SessionClientError && error.code === BRIDGE_UNAVAILABLE
+        store.setState({ startupError: message, startupClearable: !noBridge })
       }
     },
 
@@ -310,7 +313,18 @@ export function createSessionStore(
       // which is where somebody restores from their recovery phrase -- so this is both of the
       // legacy client's options, clear and clear-then-restore, which differ there only in what
       // they do next.
-      await client.discardAccount()
+      try {
+        await client.discardAccount()
+      } catch (error) {
+        // A failed clear is a failed start by another name: the database is closed or gone and
+        // nothing above it can carry on, so it lands where every other one does, with its own
+        // reason. Rejects as well, so a caller that goes on to something only a clear allows --
+        // ending the process -- does not.
+        const message = error instanceof Error ? error.message : String(error)
+        log('error', `[session] could not clear the device: ${message}`)
+        store.setState({ startupError: message })
+        throw error
+      }
       store.setState({ ...emptyState })
       await actions.start()
     },

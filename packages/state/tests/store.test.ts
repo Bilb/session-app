@@ -1,5 +1,11 @@
 import { friends, friendsWithAttachments, type FakeWorld } from '@session/client/fake'
-import { SessionClientError, type MessagePage, type SessionClient } from '@session/client'
+import {
+  createRefusingTransport,
+  createSessionClient,
+  SessionClientError,
+  type MessagePage,
+  type SessionClient,
+} from '@session/client'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { createSessionStore, type SessionStore } from '#src/store'
@@ -109,6 +115,41 @@ describe('a start that fails', () => {
     await store.actions.start()
     expect(store.getState().startupError).toBeNull()
     expect(store.getState().hydrated).toBe(true)
+  })
+})
+
+describe('a start with no bridge behind it', () => {
+  it('says a clear cannot help, where a refused start says it can', async () => {
+    const refused = createSessionStore(createSessionClient(createRefusingTransport('no module')))
+    await refused.actions.start()
+    expect(refused.getState().startupError).toMatch(/the bridge could not start: no module/)
+    expect(refused.getState().startupClearable).toBe(false)
+
+    const { clients } = friends(['Alice', 'Bob'])
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const store = createSessionStore(alice)
+    alice.getAccountInfo = () => Promise.reject(new SessionClientError('file is not a database'))
+    await store.actions.start()
+    expect(store.getState().startupClearable).toBe(true)
+  })
+})
+
+describe('a clear that fails', () => {
+  it('shows why, as a start that failed, and rejects', async () => {
+    // Pressed on the failure screen, a discard that fails used to dismiss the confirm and leave
+    // the old reason up, as though the button did nothing. Rejecting as well is what stops a
+    // caller ending the process after a clear that did not happen.
+    const { clients } = friends(['Alice', 'Bob'])
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const store = createSessionStore(alice)
+    await store.actions.start()
+
+    alice.discardAccount = () => Promise.reject(new SessionClientError('disk full'))
+
+    await expect(store.actions.clearDeviceData()).rejects.toThrow('disk full')
+    expect(store.getState().startupError).toBe('disk full')
   })
 })
 
