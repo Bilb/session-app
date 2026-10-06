@@ -1,4 +1,4 @@
-import { XStack, YStack } from 'tamagui'
+import { isWeb, XStack, YStack } from 'tamagui'
 
 import { SPACING } from '@session/theme-tokens'
 
@@ -14,7 +14,7 @@ import type {
 import type { ElementId } from '@session/test-ids'
 
 import { AttachmentTile } from './AttachmentTile'
-import { fileFormat, fileGlyph, splitFilename } from './attachmentFile'
+import { fileFormat, fileGlyph, nameDirection, splitFilename } from './attachmentFile'
 import {
   FILE_GLYPH_SIDE,
   FILE_LEAD_WIDTH,
@@ -75,8 +75,11 @@ const TONE_COLOR = {
   danger: '$dangerColor',
 } as const satisfies Record<FileRowTone, string>
 
-/** A filename reads head then tail whatever the language around it. */
-const NAME_DIRECTION = { direction: 'ltr' } as const
+/**
+ * The caption is the app's copy, so its words order by their own script rather than by the
+ * name's direction it sits under. Native text already takes its paragraph direction that way.
+ */
+const CAPTION_BIDI = isWeb ? ({ unicodeBidi: 'plaintext' } as const) : undefined
 
 /**
  * Drawn inside the touch target rather than filling it, so it reads as a gauge and not a button.
@@ -176,6 +179,8 @@ export function FileRow({
 }: FileRowProps) {
   const { head, tail } = splitFilename(filename)
   const format = fileFormat(filename)
+  // On the name and the caption together, so the two share an edge.
+  const direction = { direction: nameDirection(filename) }
   const tone = fileRowTone(state)
   const fontScale = useFontScale()
 
@@ -253,13 +258,13 @@ export function FileRow({
         )}
       </YStack>
 
-      <YStack flex={1} minWidth={0} gap="$3xs">
+      <YStack flex={1} minWidth={0} gap="$3xs" style={direction}>
         {/* Two runs: the head gives up whatever width the row is short of and the tail cannot,
             so a long name loses its middle instead of its extension. See `splitFilename`.
 
             The id and the label are on the pair, never on a run: split between two elements the
             name stops being one string, and both a screen reader and a test then read half. */}
-        <XStack minWidth={0} aria-label={filename} style={NAME_DIRECTION} testID={testIDs?.name}>
+        <XStack minWidth={0} aria-label={filename} testID={testIDs?.name}>
           <Text
             size="$body"
             weight="semibold"
@@ -275,7 +280,17 @@ export function FileRow({
             {tail}
           </Text>
         </XStack>
-        <Text size="$caption" tone={tone.caption} numberOfLines={1} testID={testIDs?.caption}>
+        {/* Sized to its words, so the column's direction places it rather than each platform's
+            own alignment of a line of text. */}
+        <Text
+          size="$caption"
+          tone={tone.caption}
+          numberOfLines={1}
+          alignSelf="flex-start"
+          maxWidth="100%"
+          style={CAPTION_BIDI}
+          testID={testIDs?.caption}
+        >
           {caption}
         </Text>
       </YStack>
