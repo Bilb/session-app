@@ -311,6 +311,8 @@ void HybridSessionBridge::init(const SessionBridgeOptions& options) {
                 });
             });
     _media = std::make_shared<::session_bridge_rn::BridgeMediaSource>(*_bridge);
+    // Replaces any other bridge's: after a reload the old instance closes only from its
+    // destructor, which can run after this, and its close() clears only a source it still owns.
     ::session_bridge_rn::set_media_source(_media);
     _opened = true;
 }
