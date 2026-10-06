@@ -40,7 +40,6 @@ const ROUTES: RouteContract[] = [
   { path: routes.conversation('05abc'), desktop: 'c/:id', mobile: 'c/[id].tsx' },
   { path: routes.newConversation(), desktop: 'new', mobile: 'new.tsx' },
   { path: routes.requests(), desktop: 'requests', mobile: 'requests.tsx' },
-  { path: routes.settings(), desktop: 'settings', mobile: 'settings.tsx' },
 ]
 
 function declaredDesktopPaths(): string[] {

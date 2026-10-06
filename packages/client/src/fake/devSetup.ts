@@ -34,7 +34,7 @@ export interface FakeDevEnv {
  * Unset as undefined; anything that is not a count is loud, as a typo must not size a world
  * quietly.
  */
-function positiveInt(name: keyof FakeDevEnv, raw: string | undefined): number | undefined {
+function positiveInt(name: string, raw: string | undefined): number | undefined {
   const text = raw?.trim()
   if (text === undefined || text === '') return undefined
   const value = Number(text)
@@ -95,13 +95,13 @@ export const FAKE_TICK_MS = 50
 /**
  * Runs the fake's clock for an app, since there is no test to advance it.
  *
- * `slowdown` is `EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN`. Unset, each tick drains the whole queue, so
- * a transfer finishes between two frames. Set to N, each tick advances only 1/N of the tick's
+ * `slowdown` is `EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN`. Unset or 1, each tick drains the whole queue,
+ * so a transfer finishes between two frames. Set to N, each tick advances only 1/N of the tick's
  * time, so every state lasts N times as long and a download is slow enough to watch the
  * placeholder, the bar, the ring and the footer change. Returns what stops it.
  */
 export function driveFakeClock(world: FakeWorld, slowdown: string | undefined): () => void {
-  const divisor = Number(slowdown ?? '0')
+  const divisor = positiveInt('EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN', slowdown) ?? 1
   const ticking = timers.setInterval(() => {
     if (divisor > 1) world.advance(FAKE_TICK_MS / divisor)
     else world.settle()

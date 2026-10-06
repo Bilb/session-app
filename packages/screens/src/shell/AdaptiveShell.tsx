@@ -1,4 +1,4 @@
-import { logical, useMedia, XStack, YStack } from '@session/ui'
+import { logical, useMedia, useTokenColor, XStack, YStack } from '@session/ui'
 import type { ReactNode } from 'react'
 
 /**
@@ -22,6 +22,7 @@ export function AdaptiveShell({
   placeholder?: ReactNode
 }) {
   const media = useMedia()
+  const rule = useTokenColor('$bordersColor')
 
   if (media.gtSm) {
     return (
@@ -31,7 +32,7 @@ export function AdaptiveShell({
           // The rule between the two panes sits on the edge the list ends at, which in Arabic is
           // its left: a physical right keeps the divider on the detail pane's outer edge and
           // leaves the two panes touching.
-          {...logical({ borderEndWidth: 1, borderEndColor: '$bordersColor' })}
+          {...logical({ borderEndWidth: 1, borderEndColor: rule })}
         >
           {list}
         </YStack>

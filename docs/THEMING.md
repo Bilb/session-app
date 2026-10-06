@@ -46,7 +46,7 @@ Ask what the thing _is_, not what colour you want.
 | ------------------------------------------------------------- | ---------------------------------- |
 | the page                                                      | `backgroundPrimary`                |
 | a card, a list panel, a recessed pane                         | `backgroundSecondary`              |
-| a selected row, a filled input, a hover surface               | `backgroundTertiary`               |
+| a selected row, a filled input                                | `backgroundTertiary`               |
 | a card **inside** a card                                      | `backgroundNested`                 |
 | body text                                                     | `textPrimary`                      |
 | a caption, a timestamp, a section label, a snippet            | `textSecondary`                    |
@@ -64,6 +64,9 @@ Ask what the thing _is_, not what colour you want.
 | a switch thumb, a QR panel                                    | `surfaceInverted`                  |
 | the modules printed on that panel                             | `surfaceInk`                       |
 | an incoming bubble, and its text                              | `messageBubbleIncomingBg` / `Text` |
+| the page dimmed behind a dialog or panel                      | `scrim`                            |
+| a raised element's shadow                                     | `shadow`                           |
+| a control hovered / held, laid over whatever it sits on       | `hoverOverlay` / `pressedOverlay`  |
 
 No hex outside `@session/theme-tokens`. `pnpm --filter @session/ui test` fails on a token name that
 does not exist, because tamagui resolves a missing token to `0` silently.
@@ -81,6 +84,13 @@ feature-row description.
 
 **Five times now**, counting body text picked against the base while the surfaces stepped the other
 way — which produced black body text above light muted text on the same card.
+
+**Six**, counting hover and press drawn as the tertiary and nested surfaces. A ghost button in a
+dialog on the recessed surface hovered one shade from it, and in the light themes its press was
+lighter than its hover. A state is not a surface: it is `hoverOverlay` / `pressedOverlay`, laid
+over the control's own ground, so the step is from whatever that ground is. One limit: body text
+clears AA on every surface with a state over it, and muted text clears only the 3:1 a glyph needs,
+so a row that carries muted text and sits on the page steps to the next surface instead.
 
 If you add a role, derive it from its parent (`above()`, not `at()`) and clear its floor against
 _every_ surface it can appear on (`contrastAdjustAll`, `contrastPreferAll`, `contrastPickAll`).
@@ -118,6 +128,12 @@ wrong on both dark ones, which is what an earlier version of this did.
 
 The switch thumb takes `surfaceInverted` for the same reason: light in every theme, because a dark
 thumb reads as switched off.
+
+**A darkening is black, not a role borrowed from the palette.** `scrim` and `shadow` are the two
+roles not derived from a theme's colours: translucent black, with only the alpha keyed on polarity,
+the way the desktop client keys them. Anything that dims or shades takes one of them. A dimming
+built from a theme's own surfaces lightens a dark theme instead — every dark surface is lighter than
+its page. Neither role carries a contrast obligation: nothing is read on them.
 
 **Illustrations are exempt. Text and controls are not.** The Session mark and the network diagram
 keep the brand green even on white.
