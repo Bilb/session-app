@@ -67,6 +67,12 @@ export interface ContractHarness {
    * one - the fake has a canonical phrase and libsession has a word list.
    */
   newcomer(): Promise<{ client: SessionClient; phrase: string[] }>
+  /**
+   * One client whose database would not open -- written under another key, or otherwise
+   * unreadable. How it is made unreadable is the implementation's business; what the suite holds
+   * is how the client behaves once it is.
+   */
+  unopenable(): Promise<SessionClient>
 }
 
 type Runner = (name: string, body: () => Promise<void> | void) => void
@@ -246,6 +252,20 @@ export function runSessionClientContract(
       // The same identity, not merely an identity: a restore that kept the wrong seed would also
       // pass a bare `haveAccount` check.
       expect(after.sessionId).toBe(kept)
+    })
+
+    it('refuses requests while its database will not open, until a discard replaces it', async () => {
+      // The startup-failure screen depends on both halves: the refusal is what it shows, and the
+      // discard is what its Clear Device does.
+      const client = await harness.unopenable()
+      const refused = await failure(() => client.getAccountInfo())
+      expect(
+        refused instanceof Error && refused.message.includes('the bridge has no database open'),
+      ).toBe(true)
+
+      await client.discardAccount()
+
+      expect((await client.getAccountInfo()).haveAccount).toBe(false)
     })
 
     it('leaves nothing of an account behind when it is discarded', async () => {

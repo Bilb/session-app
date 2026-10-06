@@ -60,6 +60,11 @@ export interface SessionState {
    * only thing that tells anybody which failure it was, and there is nowhere else it survives.
    */
   startupError: string | null
+  /**
+   * Whether clearing the device could get past `startupError`. False when the bridge itself could
+   * not be made: every request is refused, the discard a clear makes included.
+   */
+  startupClearable: boolean
 
   /**
    * Complete lists, in the order libsession sent them. libsession sends whole state, so partial
@@ -83,14 +88,32 @@ export interface SessionState {
    * grow this for the life of the session.
    */
   transfers: Record<number, MessageTransfers>
+
+  /**
+   * The theme and accent the account chose, as stored, or null where it has not chosen.
+   *
+   * Strings rather than the theme package's types: this package does not know which themes exist,
+   * and a stored name a later build no longer ships has to fall back somewhere that does. Read with
+   * the account, so a device with no account -- onboarding, or one just cleared -- has none: a
+   * theme is the account's, and a distinctive one left behind would tie a cleared device back to
+   * it.
+   */
+  appearance: StoredAppearance | null
+}
+
+export interface StoredAppearance {
+  theme: string
+  accent: string
 }
 
 export const emptyState: SessionState = {
   hydrated: false,
   account: null,
   startupError: null,
+  startupClearable: true,
   conversations: [],
   requests: [],
   histories: {},
   transfers: {},
+  appearance: null,
 }

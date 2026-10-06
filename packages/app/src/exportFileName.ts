@@ -1,6 +1,14 @@
 // Imported by desktop main and mobile: no platform APIs.
 
 /**
+ * The longest suggestion either app will make a name from; past it, both use their fallback.
+ *
+ * The file-name limit on ext4, APFS and NTFS. It also bounds the work spent on a name the sender
+ * chose, however long they made it.
+ */
+export const MAX_SUGGESTED_NAME_CHARS = 255
+
+/**
  * The bare file name in a sender's suggestion: no directory part, no control characters.
  *
  * Both separators are stripped whatever the platform, since the sender's platform is not this

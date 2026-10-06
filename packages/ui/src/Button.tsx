@@ -91,13 +91,13 @@ const Frame = styled(XStack, {
           opacity: 0.82,
         },
       },
-      /** Two steps, because one is invisible inside a list row that hovers to the same surface. */
+      /** Overlays rather than surfaces, so the step shows on any ground, even a hovered row. */
       ghost: {
         backgroundColor: 'transparent',
         borderColor: 'transparent',
         color: '$textPrimary',
-        hoverStyle: { backgroundColor: '$backgroundTertiary' },
-        pressStyle: { backgroundColor: '$backgroundNested' },
+        hoverStyle: { backgroundColor: '$hoverOverlay' },
+        pressStyle: { backgroundColor: '$pressedOverlay' },
       },
       /**
        * `ghost`, in the accent.
@@ -111,8 +111,8 @@ const Frame = styled(XStack, {
         backgroundColor: 'transparent',
         borderColor: 'transparent',
         color: '$primaryColor',
-        hoverStyle: { backgroundColor: '$backgroundTertiary' },
-        pressStyle: { backgroundColor: '$backgroundNested' },
+        hoverStyle: { backgroundColor: '$hoverOverlay' },
+        pressStyle: { backgroundColor: '$pressedOverlay' },
       },
       /**
        * Text on its own, no frame -- what the desktop client calls Simple and uses for every modal
@@ -215,10 +215,10 @@ const PRESSED = {
   solid: { backgroundColor: '$accentPressed', borderColor: '$accentPressed' },
   outline: { backgroundColor: '$textPrimary', borderColor: '$textPrimary', opacity: 0.82 },
   outlineAccent: { backgroundColor: '$primaryColor', borderColor: '$primaryColor', opacity: 0.82 },
-  ghost: { backgroundColor: '$backgroundNested' },
-  ghostAccent: { backgroundColor: '$backgroundNested' },
+  ghost: { backgroundColor: '$pressedOverlay' },
+  ghostAccent: { backgroundColor: '$pressedOverlay' },
   simple: { opacity: 0.7 },
-  danger: { opacity: 0.7 },
+  danger: { backgroundColor: '$dangerColor', borderColor: '$dangerColor', opacity: 0.82 },
 } as const
 
 /**
@@ -228,7 +228,7 @@ const PRESSED = {
  * to win over anything else. Everything else only shades the surface behind the label, and the
  * label's own meaning survives -- see `destructive` below.
  */
-const INVERTS_ON_PRESS = new Set(['solid', 'outline', 'outlineAccent'])
+const INVERTS_ON_PRESS = new Set(['solid', 'outline', 'outlineAccent', 'danger'])
 
 /**
  * Label colour follows the variant.

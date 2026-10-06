@@ -7,7 +7,6 @@ import type { ElementId } from '@session/test-ids'
 import { Button } from './Button'
 import { Icon } from './Icon'
 import { useScreenInsets } from './screenInsets'
-import { SCRIM_OPACITY } from './scrim'
 import { SHEET_MAX_HEIGHT, SHEET_MAX_WIDTH, SHEET_RADIUS } from './sheetLayout'
 import { Text } from './Text'
 
@@ -72,16 +71,12 @@ export function Sheet({
       animationType={wide ? 'fade' : 'slide'}
       onRequestClose={onClose}
     >
-      {/* Its own layer, so its opacity does not reach the surface: an opacity on a parent applies
-          to every descendant, which would make the sheet translucent too.
-
-          The scrim is what closes, as a sibling behind the sheet rather than an ancestor of it: a
+      {/* The scrim is what closes, as a sibling behind the sheet rather than an ancestor of it: a
           press handler on an ancestor claims every touch that starts in the sheet, and the list
           inside then cannot start a scroll from a slow drag. */}
       <YStack
         fullscreen
-        backgroundColor="$surfaceInk"
-        opacity={SCRIM_OPACITY}
+        backgroundColor="$scrim"
         // Hidden from a reader: it is a second way to close, and Close is already announced.
         aria-hidden
         onPress={onClose}

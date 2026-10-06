@@ -9,6 +9,7 @@ import { useMemo, useRef } from 'react'
 
 import { fetchOf } from './attachmentFetch'
 import { exportOne } from './exportAttachment'
+import { useExportFeedback } from './useExportFeedback'
 import { PENDING_COPY } from './pendingCopy'
 import { viewableAttachments } from './viewableAttachments'
 
@@ -32,6 +33,7 @@ function MessageViewer({
   onClose: () => void
 }) {
   const actions = useSessionActions()
+  const feedback = useExportFeedback()
   const message = useMessage(conversationId, target.messageId)
   const transfers = useMessageTransfers(target.messageId)
   // Only what is here, as the legacy clients' galleries: the url is the request, so an item that
@@ -74,7 +76,7 @@ function MessageViewer({
       }}
       onClose={onClose}
       onExport={() => {
-        if (attachment !== undefined) void exportOne(message, attachment.index, actions)
+        if (attachment !== undefined) void exportOne(message, attachment.index, actions, feedback)
       }}
       positionLabel={`${String(at + 1)} / ${String(items.length)}`}
       unavailableLabel={tr('attachmentsErrorNotSupported')}
