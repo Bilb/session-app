@@ -17,12 +17,17 @@ function source(file: string): string {
 describe('the album’s download cloud', () => {
   const hint = source('FetchHint.tsx')
   // Everything a pressable cloud carries is in the one spread that `onPress` switches on.
-  const pressable = /onPress === undefined\s*\?\s*\{\}\s*:\s*\{([^}]*)\}/.exec(hint)?.[1] ?? ''
+  const pressable =
+    /onPress === undefined\s*\?\s*\{\}\s*:\s*\{([\s\S]*?)\}\)\}/.exec(hint)?.[1] ?? ''
 
   it('is the set’s named control where it takes the press', () => {
     expect(pressable).toContain("role: 'button'")
     expect(pressable).toContain("'aria-label': label")
     expect(pressable).toContain('testID')
+  })
+
+  it('is an accessibility element on iOS, which tamagui makes only a stack with tabIndex 0', () => {
+    expect(pressable).toContain('isWeb ? {} : { tabIndex: 0 }')
   })
 
   it('is not hidden from the tree its id is looked up in', () => {

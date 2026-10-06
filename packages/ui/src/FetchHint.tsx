@@ -61,7 +61,15 @@ export function FetchHint({
         backgroundColor={TILE_SCRIM}
         {...(onPress === undefined
           ? {}
-          : { onPress, cursor: 'pointer', role: 'button', 'aria-label': label, testID })}
+          : {
+              onPress,
+              cursor: 'pointer',
+              role: 'button',
+              'aria-label': label,
+              testID,
+              // tamagui sets `accessible` on native only for this; without it VoiceOver skips it.
+              ...(isWeb ? {} : { tabIndex: 0 }),
+            })}
       >
         <Icon name="cloudDownload" size={small ? 'xs' : 'md'} color="$textPrimary" />
       </YStack>
