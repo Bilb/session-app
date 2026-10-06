@@ -67,8 +67,7 @@ export type TileFace = 'pending' | 'picture' | 'failed'
  * Which face a tile wears over its placeholder, from what the image has reported for `uri`.
  *
  * Keyed on the url, so a new one starts over hidden rather than inheriting the last one's load or
- * failure. `failed` keeps the url: the picture is here and did not decode, which is not a
- * transfer failure, so nothing upstream withholds and re-hands it.
+ * failure.
  */
 export function tileFace(
   uri: string | null | undefined,
@@ -78,4 +77,18 @@ export function tileFace(
   if (uri === undefined || uri === null) return 'pending'
   if (uri === loadedUri) return 'picture'
   return uri === failedUri ? 'failed' : 'pending'
+}
+
+/**
+ * The failure a tile still holds against its url.
+ *
+ * Forgotten while the url is withheld: a native loader's fetch is the download, so its failure is
+ * a transfer's, and the retry hands back the very same url. Held on, that retry would wear
+ * `failed` until it landed.
+ */
+export function heldFailure(
+  uri: string | null | undefined,
+  failedUri: string | null,
+): string | null {
+  return uri === undefined || uri === null ? null : failedUri
 }
