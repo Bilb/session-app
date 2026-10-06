@@ -20,7 +20,8 @@ function AboveModals({ children }: { children: ReactNode }) {
 
 /**
  * How many are shown at once on a phone, fewer than the desktop's: each takes the full width.
- * Older ones stay queued behind them until a newer one goes.
+ * Every toast's timer runs from when it is raised, shown or not, so one beyond the third appears
+ * only if an earlier one is closed before its time is up.
  */
 const PHONE_LIMIT = 3
 

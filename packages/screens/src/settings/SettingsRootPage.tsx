@@ -129,7 +129,7 @@ function AccountIdPill() {
 
 /**
  * The account, above the rows. The ID is what someone needs to message this account, so it wraps
- * rather than truncates and gets a copy control rather than being tappable text.
+ * rather than truncates, with a copy control beside it; on desktop the ID copies when pressed too.
  */
 function AccountHeader({ sessionId, name }: { sessionId: string; name: string }) {
   return (
