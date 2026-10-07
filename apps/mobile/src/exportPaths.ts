@@ -54,10 +54,21 @@ export function photoLibraryExtension(contentType: string | undefined): string |
   return (essence === undefined ? undefined : PHOTO_LIBRARY_TYPES[essence]) ?? null
 }
 
-/** Whether this platform's photo library takes the type; anything else goes to a folder. */
+/** Whether this platform's photo library takes the type. */
 export function photoLibraryTakes(contentType: string | undefined, os: 'ios' | 'android'): boolean {
   if (photoLibraryExtension(contentType) === null) return false
   return os === 'android' || !REFUSED_BY_IOS_PHOTOS.has(essenceOf(contentType) ?? '')
+}
+
+/**
+ * Whether Android files this in a media collection rather than Downloads: what its photo library
+ * takes, and any sound, as legacy Android does.
+ */
+export function isMediaStoreMedia(contentType: string | undefined): boolean {
+  return (
+    photoLibraryTakes(contentType, 'android') ||
+    (essenceOf(contentType)?.startsWith('audio/') ?? false)
+  )
 }
 
 function fitsBytes(name: string): boolean {
@@ -210,26 +221,4 @@ export class StagedExports<Delivery> {
     this.written.delete(token)
     return { token, delivery }
   }
-}
-
-/**
- * Whether a remembered folder is a document tree the Storage Access Framework granted.
- *
- * Read back from a file only this app writes, and checked anyway: attachments get written wherever
- * this points, so nothing but a tree somebody picked may stand in for one.
- */
-export function isGrantedFolderUri(uri: unknown): uri is string {
-  return typeof uri === 'string' && /^content:\/\/[\w.-]+\/tree\/\S+$/.test(uri)
-}
-
-/**
- * The folder a granted document tree stands for, as a document URI a file manager opens.
- *
- * A tree URI names the grant, `.../tree/<id>`, and a view intent wants the document,
- * `.../document/<id>`; the id is the same. Null for anything that is not a granted tree.
- */
-export function folderDocumentUri(treeUri: string): string | null {
-  if (!isGrantedFolderUri(treeUri)) return null
-  const match = /^(content:\/\/[\w.-]+)\/tree\/([^/]+)/.exec(treeUri)
-  return match === null ? null : `${match[1] ?? ''}/document/${match[2] ?? ''}`
 }

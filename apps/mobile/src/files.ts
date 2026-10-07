@@ -2,12 +2,11 @@ import { ExportAccessRefused, type FilesPort } from '@session/app'
 import * as Crypto from 'expo-crypto'
 import { Directory, File, Paths } from 'expo-file-system'
 import { Asset, requestPermissionsAsync } from 'expo-media-library'
-import { Linking, Platform } from 'react-native'
+import { Linking, PermissionsAndroid, Platform } from 'react-native'
 
 import {
   exportFileName,
-  folderDocumentUri,
-  isGrantedFolderUri,
+  isMediaStoreMedia,
   numberedName,
   partName,
   photoLibraryTakes,
@@ -15,13 +14,15 @@ import {
   stagedPath,
   StagedExports,
 } from './exportPaths'
-import { deliverIntoTree, FOLDER_ACCESS_LOST } from './safDocument'
+import { saveToMediaStore } from './mediaStore'
 
 /**
- * Where an export goes once libsession has written it: the photo library, or a folder somebody
- * picked. Neither is a path libsession could write to, so the file is staged first.
+ * Where an export goes once libsession has written it, which is where the legacy clients put it:
+ * on Android, MediaStore, filed by type; on iOS, Photos or a folder somebody picks. None is a path
+ * libsession could write to, so the file is staged first.
  */
-type Delivery = { to: 'photos' } | { to: 'folder'; folder: Directory }
+type Delivery =
+  { to: 'mediaStore'; media: boolean } | { to: 'photos' } | { to: 'folder'; folder: Directory }
 
 // libsession takes filesystem paths and expo-file-system takes URLs, as in storage.ts.
 const cacheRoot = Paths.cache.uri.replace(/^file:\/\//, '').replace(/\/+$/, '')
@@ -74,118 +75,71 @@ export function mayExportTo(destination: unknown): boolean {
 }
 
 /**
- * The folder somebody picked for files last time, on Android.
- *
- * The picker's grant is persistable, and asking for a folder on every export put Android's "Allow
- * access" prompt in front of each one. iOS hands out a security-scoped URL that does not outlive
- * the pick, so it asks every time and has no prompt to repeat.
+ * Android 9 and below save through the filesystem, which takes the storage grant. Any refusal
+ * stops the export with the dialog that leads to the settings, as legacy Android does; there is
+ * nowhere else to put the file without the grant.
  */
-const rememberedFolder = new File(Paths.document, 'export-folder')
-
-// Android 11 and up refuse to grant the Download folder itself to a picker, so the first pick
-// starts one that can be granted.
-const FIRST_PICK_TREE =
-  'content://com.android.externalstorage.documents/document/primary%3ADocuments'
-
-function recalledFolder(): Directory | null {
-  if (Platform.OS !== 'android') return null
-  try {
-    if (!rememberedFolder.exists) return null
-    const uri = rememberedFolder.textSync().trim()
-    if (!isGrantedFolderUri(uri)) return null
-    const folder = new Directory(uri)
-    return folder.exists ? folder : null
-  } catch {
-    // A revoked grant reads as a folder that is not there, and the picker asks again.
-    return null
-  }
+async function requireStorageGrant(): Promise<void> {
+  const answer = await PermissionsAndroid.request(
+    PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+  )
+  if (answer !== PermissionsAndroid.RESULTS.GRANTED) throw new ExportAccessRefused('storage')
 }
 
-function remember(folder: Directory | null): void {
-  if (Platform.OS !== 'android') return
-  try {
-    if (folder !== null) rememberedFolder.write(folder.uri)
-    else if (rememberedFolder.exists) rememberedFolder.delete()
-  } catch {
-    // Forgetting costs a prompt next time, nothing more.
-  }
+/**
+ * Whether iOS Photos will take a save, asking for add-only access. A refusal the OS will ask
+ * about again is false; one it will not is thrown, since only the system settings can undo it.
+ */
+async function photosWritable(): Promise<boolean> {
+  const permission = await requestPermissionsAsync(true, ['photo', 'video'])
+  if (permission.granted) return true
+  if (!permission.canAskAgain) throw new ExportAccessRefused('photoLibrary')
+  return false
 }
 
 async function pickFolder(): Promise<Directory | null> {
-  const recalled = recalledFolder()
-  if (recalled !== null) return recalled
   try {
-    const picked = await Directory.pickDirectoryAsync(
-      Platform.OS === 'android' ? FIRST_PICK_TREE : undefined,
-    )
-    remember(picked)
-    return picked
+    return await Directory.pickDirectoryAsync()
   } catch {
     // The picker rejects on cancel, which is the one answer this port has for "nothing chosen".
     return null
   }
 }
 
-/**
- * Whether saving to the photo library needs a grant here. MediaStore takes an insert from any app
- * from Android 11; below it the write goes through the filesystem and needs storage access.
- */
-function photoLibraryNeedsGrant(): boolean {
-  return Platform.OS === 'ios' || Number(Platform.Version) < 30
-}
-
-/**
- * Whether the photo library will take a save. A refusal the OS will ask about again is false; one
- * it will not is thrown, since only the system settings can undo it.
- */
-async function photoLibraryWritable(): Promise<boolean> {
-  if (!photoLibraryNeedsGrant()) return true
-  // Add-only: nothing that reads the library.
-  const permission = await requestPermissionsAsync(true, ['photo', 'video'])
-  if (permission.granted) return true
-  if (!permission.canAskAgain) {
-    throw new ExportAccessRefused(Platform.OS === 'ios' ? 'photoLibrary' : 'storage')
-  }
-  return false
-}
-
 async function chooseDelivery(contentType: string | undefined): Promise<Delivery | null> {
-  // A refusal the OS will ask about again sends the picture to a folder, as any other file.
-  const os = Platform.OS === 'ios' ? 'ios' : 'android'
-  if (photoLibraryTakes(contentType, os) && (await photoLibraryWritable())) {
-    return { to: 'photos' }
+  if (Platform.OS === 'android') {
+    if (Number(Platform.Version) < 29) await requireStorageGrant()
+    return { to: 'mediaStore', media: isMediaStoreMedia(contentType) }
   }
+  // A refusal the OS will ask about again sends the picture to a folder, as any other file.
+  if (photoLibraryTakes(contentType, 'ios') && (await photosWritable())) return { to: 'photos' }
   const folder = await pickFolder()
   return folder === null ? null : { to: 'folder', folder }
 }
 
 /**
- * Opens where an export went, as desktop opens its file manager on the file: the photo in the
- * gallery, or the folder in the file manager.
+ * Opens where an export went, as desktop opens its file manager on the file: the picture or video
+ * in the gallery, anything else in Downloads.
  *
  * Best effort. The file has landed by now, so a device with nothing to open it in has lost
  * nothing, and the export is not reported as failed for it.
  */
-async function revealDelivered(target: string | null): Promise<void> {
-  if (target === null) return
+async function revealDelivered(delivery: Delivery, landed: string | null): Promise<void> {
   try {
-    await Linking.openURL(target)
+    if (delivery.to === 'mediaStore' && !delivery.media) {
+      await Linking.sendIntent('android.intent.action.VIEW_DOWNLOADS')
+    } else if (Platform.OS === 'ios') {
+      // iOS has no view of one photo or one folder another app can be pointed at from here, so
+      // it opens the app that holds it.
+      await Linking.openURL(delivery.to === 'photos' ? 'photos-redirect://' : 'shareddocuments://')
+    } else if (landed?.startsWith('content://') === true) {
+      // A file:// URL is refused to other apps on Android 7 and up, so a save on 9 and below,
+      // which the scanner files later, opens nothing.
+      await Linking.openURL(landed)
+    }
   } catch {
     // Nothing on the device opens it; the file is where it was put either way.
   }
-}
-
-/**
- * What to open once a delivery has landed, or null where there is nothing to open.
- *
- * iOS has no view of one photo or one folder another app can be pointed at from here, so it opens
- * the app that holds it: Photos, or Files.
- */
-function revealTarget(delivery: Delivery, asset: Asset | null): string | null {
-  if (Platform.OS === 'ios')
-    return delivery.to === 'photos' ? 'photos-redirect://' : 'shareddocuments://'
-  if (delivery.to === 'photos') return asset?.id ?? null
-  return folderDocumentUri(delivery.folder.uri)
 }
 
 const NAME_IN_USE = new Error('name in use')
@@ -209,8 +163,8 @@ function inFolderUnderFreeName(
 }
 
 /**
- * Copies into a local folder under a temporary name and renames it into place, so a copy that
- * dies leaves a file that looks unfinished rather than one that looks whole. Neither step
+ * Copies into a picked iOS folder under a temporary name and renames it into place, so a copy
+ * that dies leaves a file that looks unfinished rather than one that looks whole. Neither step
  * replaces a file already there; the file manager also refuses both onto a name in use.
  */
 async function copyThenRename(staged: File, folder: Directory): Promise<void> {
@@ -234,35 +188,22 @@ async function copyThenRename(staged: File, folder: Directory): Promise<void> {
   }
 }
 
-function isFolderAccessLost(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === FOLDER_ACCESS_LOST
-  )
-}
-
-/** Puts a staged file in a picked folder under a name nothing there has. */
-async function deliverToFolder(staged: File, folder: Directory): Promise<void> {
-  // A picked folder is a plain path on iOS and a document tree on Android.
-  if (deliverIntoTree === null) {
-    await copyThenRename(staged, folder)
-    return
+/** Puts a staged file where `delivery` says; resolves to what to open afterwards, if anything. */
+async function deliver(file: File, delivery: Delivery): Promise<string | null> {
+  if (delivery.to === 'mediaStore') {
+    if (saveToMediaStore === null) throw new Error('MediaStore is Android only')
+    return saveToMediaStore(pathOf(file), file.name, delivery.media)
   }
-  try {
-    await deliverIntoTree(folder.uri, pathOf(staged), staged.name)
-  } catch (error) {
-    // A grant revoked in the system settings: only the picker can get a new one.
-    if (isFolderAccessLost(error)) remember(null)
-    throw error
-  }
+  if (delivery.to === 'photos') return (await Asset.create(file.uri)).id
+  await copyThenRename(file, delivery.folder)
+  return null
 }
 
 /**
- * Exporting, on mobile: a picture or a video goes to the photo library and anything else to a
- * folder somebody picks, which is what both legacy clients do. Android remembers the folder.
- * Once it has landed, where it went is opened, as desktop opens its file manager.
+ * Exporting, on mobile, to where the legacy clients put the file. Android saves everything
+ * through MediaStore and asks for nothing from Android 10; iOS sends a picture or a video to
+ * Photos and anything else to a folder somebody picks. Once it has landed, where it went is
+ * opened, as desktop opens its file manager.
  */
 export const exportFiles: Pick<FilesPort, 'chooseExportLocation' | 'revealInFolder'> = {
   async chooseExportLocation(suggestedName, contentType) {
@@ -278,14 +219,12 @@ export const exportFiles: Pick<FilesPort, 'chooseExportLocation' | 'revealInFold
     const written = staged.deliver(path)
     if (written === null) throw new Error('not a staged export')
     const { token, delivery } = written
-    let asset: Asset | null = null
+    let landed: string | null
     try {
-      const file = new File(fileUrl(path))
-      if (delivery.to === 'photos') asset = await Asset.create(file.uri)
-      else await deliverToFolder(file, delivery.folder)
+      landed = await deliver(new File(fileUrl(path)), delivery)
     } finally {
       removeStaging(token)
     }
-    await revealDelivered(revealTarget(delivery, asset))
+    await revealDelivered(delivery, landed)
   },
 }

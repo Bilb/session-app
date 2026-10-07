@@ -3,8 +3,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   exportFileName,
-  folderDocumentUri,
-  isGrantedFolderUri,
+  isMediaStoreMedia,
   numberedName,
   partName,
   photoLibraryExtension,
@@ -88,6 +87,20 @@ describe('which files go to the photo library', () => {
       undefined,
     ]) {
       expect(photoLibraryExtension(type)).toBeNull()
+    }
+  })
+})
+
+describe('what Android files in a media collection', () => {
+  it('is what the photo library takes, and any sound', () => {
+    expect(isMediaStoreMedia('image/png')).toBe(true)
+    expect(isMediaStoreMedia('video/3gpp')).toBe(true)
+    expect(isMediaStoreMedia('audio/mpeg')).toBe(true)
+  })
+
+  it('leaves everything else to Downloads', () => {
+    for (const type of ['application/pdf', 'video/webm', 'image/svg+xml', undefined]) {
+      expect(isMediaStoreMedia(type)).toBe(false)
     }
   })
 })
@@ -253,43 +266,5 @@ describe('a name in a folder that already holds it', () => {
       ),
     ).rejects.toThrow('taken')
     expect(tries).toBe(1001)
-  })
-})
-
-describe('a remembered export folder', () => {
-  it('is accepted only as a granted document tree', () => {
-    expect(
-      isGrantedFolderUri('content://com.android.externalstorage.documents/tree/primary%3ADownload'),
-    ).toBe(true)
-    for (const other of [
-      'file:///data/user/0/org.getsession.session2/files',
-      '/sdcard/Download',
-      'content://com.android.externalstorage.documents/document/primary%3ADownload',
-      'content://evil/tree/x y',
-      '',
-      null,
-    ]) {
-      expect(isGrantedFolderUri(other)).toBe(false)
-    }
-  })
-})
-
-describe('the folder an export is revealed in', () => {
-  it('is the document the granted tree stands for', () => {
-    expect(
-      folderDocumentUri('content://com.android.externalstorage.documents/tree/primary%3ADocuments'),
-    ).toBe('content://com.android.externalstorage.documents/document/primary%3ADocuments')
-    expect(
-      folderDocumentUri(
-        'content://com.android.externalstorage.documents/tree/primary%3ADocuments%2FSession',
-      ),
-    ).toBe('content://com.android.externalstorage.documents/document/primary%3ADocuments%2FSession')
-  })
-
-  it('is nothing for what is not a granted tree', () => {
-    expect(folderDocumentUri('file:///data/user/0/org.getsession.session2/files')).toBeNull()
-    expect(
-      folderDocumentUri('content://com.android.externalstorage.documents/document/x'),
-    ).toBeNull()
   })
 })
