@@ -68,6 +68,8 @@ export function FetchHint({
               'aria-label': label,
               testID,
               // tamagui sets `accessible` on native only for this; without it VoiceOver skips it.
+              // TODO: every tamagui stack with a role or onPress needs this; sweep them all,
+              // then make it a CLAUDE.md rule held by a source check.
               ...(isWeb ? {} : { tabIndex: 0 }),
             })}
       >
