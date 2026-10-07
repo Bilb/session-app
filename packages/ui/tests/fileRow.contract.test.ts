@@ -10,18 +10,26 @@ import { describe, expect, it } from 'vitest'
 describe('a file row', () => {
   const row = readFileSync(join(import.meta.dirname, '../src/FileRow.tsx'), 'utf8')
 
-  it('holds the lead at the height FILE_ROW_HEIGHT counts, with the padding it counts', () => {
+  it('holds the lead at the height fileRowHeight counts, with the padding it counts', () => {
     // `getItemLayout` places rows by that constant, so a row that measured differently would
     // scroll to the wrong place.
-    expect(row).toMatch(/<YStack width=\{FILE_LEAD_WIDTH\} height=\{FILE_LEAD_HEIGHT\}/)
+    expect(row).toMatch(
+      /<YStack\s+width=\{FILE_LEAD_WIDTH\}\s+height=\{fileLeadHeight\(fontScale\)\}/,
+    )
     expect(row).toMatch(
       /<XStack\s+alignItems="center"\s+gap=\{FILE_ROW_GAP\}\s+paddingVertical="\$xs"/,
     )
   })
 
-  it('pins the name row to left-to-right, so a Latin name keeps head then tail under RTL', () => {
-    // The row mirrors with the layout; the name is two runs, and mirrored they read ".pdf" first.
-    expect(row).toContain("NAME_DIRECTION = { direction: 'ltr' }")
-    expect(row).toMatch(/<XStack[^>]*style=\{NAME_DIRECTION\}[^>]*testID=\{testIDs\?\.name\}/)
+  it('takes its direction from the name’s own script, on the name and caption together', () => {
+    // Pinned to the layout, an Arabic name read tail-first in one direction or the other.
+    expect(row).toContain('direction: nameDirection(filename)')
+    expect(row).toMatch(/<YStack flex=\{1\} minWidth=\{0\} gap="\$3xs" style=\{direction\}>/)
+    expect(row).not.toContain("direction: 'ltr'")
+    expect(row).toMatch(
+      /<Text[^>]*alignSelf="flex-start"[^>]*style=\{CAPTION_BIDI\}[^>]*testID=\{testIDs\?\.caption\}/,
+    )
+    // The caption is the app's copy: under an Arabic name, "52.5 kB" would read "kB 52.5".
+    expect(row).toContain("unicodeBidi: 'plaintext'")
   })
 })

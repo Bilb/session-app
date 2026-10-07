@@ -23,6 +23,7 @@ export type Segment<V> = {
    * Already worded; what a screen reader announces the segment as, since it is drawn as a glyph.
    */
   label: string
+  /** The segment's button with a pointer. On touch only the whole control's `testID` exists. */
   testID: ElementId
 }
 
@@ -56,8 +57,6 @@ function SegmentFace({
       group="control"
       cursor="pointer"
       backgroundColor={selected ? '$backgroundPrimary' : 'transparent'}
-      // The aria spelling reaches both the DOM and, through react-native, the native view's state.
-      aria-selected={selected}
       style={FEEDBACK_TRANSITION}
       {...PRESS_PASSTHROUGH}
     >
@@ -82,6 +81,7 @@ function SegmentButton<V>({
         onChange(segment.value)
       }}
       accessibilityLabel={segment.label}
+      toggled={selected}
       testID={segment.testID}
     >
       {(pressed) => <SegmentFace segment={segment} selected={selected} pressed={pressed} />}
@@ -121,15 +121,14 @@ export function SegmentedToggle<V>({ segments, value, onChange, testID }: Segmen
         {(pressed) => (
           <XStack {...track}>
             {segments.map((segment, at) => (
-              // The segment's own id stays on its face, with its state, so a test can ask which
-              // is chosen. A press lights the face the tap is choosing, which is the other one.
-              <YStack key={segment.testID} testID={segment.testID}>
-                <SegmentFace
-                  segment={segment}
-                  selected={at === selected}
-                  pressed={pressed && at !== selected}
-                />
-              </YStack>
+              // No id on a face: iOS hides an accessible Pressable's children from a test's search.
+              // A press lights the face the tap is choosing, which is the other one.
+              <SegmentFace
+                key={segment.testID}
+                segment={segment}
+                selected={at === selected}
+                pressed={pressed && at !== selected}
+              />
             ))}
           </XStack>
         )}

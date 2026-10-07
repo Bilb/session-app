@@ -36,6 +36,7 @@ export type { TopTab, TopTabsProps } from './TopTabs.types'
 export { SafeArea, type SafeAreaProps } from './SafeArea'
 export { useTokenColor } from './useTokenColor'
 export { useWindowSize } from './useWindowSize'
+export { useFontScale } from './useFontScale'
 export { ProgressRing } from './ProgressRing'
 export type { AvatarProps } from './Avatar'
 export { BarButton, type BarButtonProps } from './BarButton'
@@ -130,8 +131,8 @@ export {
   FILE_LEAD_WIDTH,
   FILE_ROW_CONTROL,
   FILE_ROW_GAP,
-  FILE_ROW_HEIGHT,
   fileRowControl,
+  fileRowHeight,
   fileRowTone,
 } from './fileRowState'
 export type { FileRowState, FileRowTone } from './fileRowState'

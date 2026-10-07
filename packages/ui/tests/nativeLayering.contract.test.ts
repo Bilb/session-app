@@ -46,11 +46,15 @@ describe('the media viewer', () => {
   })
 
   it('lays the chevrons over the picture\u2019s own box, so they centre on the picture', () => {
-    const box = viewer.indexOf('onLayout=')
+    const box = viewer.lastIndexOf('<YStack', viewer.indexOf('onLayout='))
+    // Its closing tag is the first one back at its own indentation.
+    const indent = viewer.slice(viewer.lastIndexOf('\n', box) + 1, box)
+    const boxEnd = viewer.indexOf(`\n${indent}</YStack>`, box)
     const chevrons = viewer.indexOf('testID={previousTestID}')
     const header = viewer.indexOf('testID={exportTestID}')
     expect(box).toBeGreaterThan(header)
     expect(chevrons).toBeGreaterThan(box)
+    expect(chevrons).toBeLessThan(boxEnd)
   })
 
   it('offers no control that does nothing', () => {
@@ -81,6 +85,8 @@ describe('a sheet', () => {
     expect(surfaceTagEnd).toBeGreaterThan(scrimEnd)
     expect(sheet.slice(scrimEnd, surfaceTagEnd)).not.toContain('onPress')
     expect(sheet).not.toContain('stopPropagation')
+    // The frame that places the surface covers the scrim, so it must let touches through to it.
+    expect(openingTag(sheet, '<YStack', scrimEnd)).toContain('pointerEvents="box-none"')
   })
 })
 

@@ -20,6 +20,11 @@ export interface PressAreaProps {
    */
   role?: 'button' | 'switch'
   checked?: boolean
+  /**
+   * A button that stays on until pressed again, announced as pressed while it is. A segment of a
+   * choice drawn as buttons; not the transient press `children` is told about.
+   */
+  toggled?: boolean
   testID?: string
   /**
    * The control, told whether it is currently pressed.
