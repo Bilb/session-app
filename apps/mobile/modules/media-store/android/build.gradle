@@ -7,7 +7,7 @@ group = 'org.getsession'
 version = '0.0.0'
 
 android {
-  namespace "org.getsession.safdocument"
+  namespace "org.getsession.mediastore"
   defaultConfig {
     versionCode 1
     versionName '0.0.0'

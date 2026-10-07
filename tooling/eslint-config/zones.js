@@ -8,9 +8,9 @@
  * exists for whoever has the editor plugin installed.
  */
 
-/** @type {(patterns: Array<{group: string[], message: string}>) => import('eslint').Linter.Config['rules']} */
-const restrict = (patterns) => ({
-  'no-restricted-imports': ['error', { patterns }],
+/** @type {(patterns: Array<{group: string[], message: string}>, paths?: Array<{name: string, importNames: string[], message: string}>) => import('eslint').Linter.Config['rules']} */
+const restrict = (patterns, paths = []) => ({
+  'no-restricted-imports': ['error', { patterns, paths }],
 })
 
 const NO_TAMAGUI = {
@@ -79,8 +79,20 @@ export const uiZone = restrict([
   NO_BRIDGE_NODE,
 ])
 
+// dependency-cruiser sees modules, not the names imported from them, so only this rule holds it.
+const ONLY_GATED_MOBILE_CLIENT = {
+  name: '@session/client',
+  importNames: ['createSessionClient'],
+  message:
+    'Build the client with mobileClient() from src/client.ts, which refuses an export to a ' +
+    'destination the files port did not stage.',
+}
+
 /** apps/mobile - Expo and react-native are its own; electron and the node addon are not. */
-export const mobileAppZone = restrict([NO_DEEP, NO_ELECTRON, NO_ROUTER, NO_BRIDGE_NODE])
+export const mobileAppZone = restrict(
+  [NO_DEEP, NO_ELECTRON, NO_ROUTER, NO_BRIDGE_NODE],
+  [ONLY_GATED_MOBILE_CLIENT],
+)
 
 /** The desktop renderer: DOM + react-router, but never electron or the addon directly. */
 export const desktopRendererZone = restrict([
