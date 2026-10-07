@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports -- the one place the export gate is applied
 import { createSessionClient, type BridgeTransport, type SessionClient } from '@session/client'
 
 import { refuseUnstagedExports } from './exportGate'
