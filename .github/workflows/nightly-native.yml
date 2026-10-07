@@ -1,0 +1,83 @@
+name: nightly-native
+
+# The addon tests skip without a built addon, and ci.yml builds none: nothing else on the per-PR
+# job compiles C++, and libsession with its static dependencies is a long build. Once a night, and
+# by hand after a change to the shim or the submodule.
+on:
+  schedule:
+    - cron: '0 15 * * *' # 01:00 Sydney (AEST), 02:00 (AEDT)
+  workflow_dispatch:
+
+concurrency:
+  # Per event, so a dispatch and the nightly never cancel each other: a cancelled nightly alerts.
+  group: nightly-native-${{ github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  addon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ccache
+
+      - id: libsession
+        run: echo "sha=$(git rev-parse HEAD:libsession-util)" >> "$GITHUB_OUTPUT"
+
+      # libsession and its static deps compile on every run: a checkout is newer than any cached
+      # object, and ninja reruns any step its .ninja_log lacks. ccache is what makes that cheap.
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/ccache
+          key: native-ccache-${{ runner.os }}-${{ steps.libsession.outputs.sha }}-${{ github.run_id }}
+          restore-keys: |
+            native-ccache-${{ runner.os }}-${{ steps.libsession.outputs.sha }}-
+            native-ccache-${{ runner.os }}-
+
+      # The testing build: the contract and echo suites skip against a production addon.
+      - run: pnpm --filter @session/bridge-node build:native:testing
+        env:
+          CCACHE_DIR: ${{ runner.temp }}/ccache
+          CCACHE_MAXSIZE: 1G
+          CMAKE_C_COMPILER_LAUNCHER: ccache
+          CMAKE_CXX_COMPILER_LAUNCHER: ccache
+          SESSION_BRIDGE_DEPS_MIRROR: https://oxen.rocks/deps
+
+      - run: ccache --show-stats
+        env:
+          CCACHE_DIR: ${{ runner.temp }}/ccache
+
+      - run: pnpm --filter @session/bridge-node test
+
+  # A job of its own rather than a step, and any result but success, so a timeout or a
+  # cancellation is reported too. Only the scheduled run: a dispatched one has someone watching it.
+  notify:
+    needs: addon
+    if: always() && github.event_name == 'schedule' && needs.addon.result != 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post the failure to Discord
+        env:
+          WEBHOOK: ${{ secrets.ALERT_DISCORD_WEBHOOK_URL }}
+          RESULT: ${{ needs.addon.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "::warning::ALERT_DISCORD_WEBHOOK_URL is not set, so the failure is not reported."
+            exit 0
+          fi
+          jq -n --arg content "❌ **${GITHUB_REPOSITORY#*/} nightly-native** ended in \`${RESULT}\` on \`${GITHUB_REF_NAME}\`."$'\n'"$RUN_URL" \
+            '{content: $content, allowed_mentions: {parse: []}}' |
+            curl --fail-with-body -sS -H 'Content-Type: application/json' --data-binary @- "$WEBHOOK"
