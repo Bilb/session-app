@@ -62,9 +62,9 @@ env -u ELECTRON_RUN_AS_NODE NO_CLEAN=1 NO_TUI=1 USE_XVFB=0 PLAYWRIGHT_WORKERS_CO
 | `send`          | a hello, then one picture, three, seven, a PDF and a video to each target |
 
 `ATTACH_TARGETS` is comma-separated account IDs. `ATTACH_INSTANCE` (default `attachsender`)
-picks the data directory, `~/.config/Session-production-devprod<instance>`, which persists
-between runs: create once, send many times. Nothing else may have that instance open - stop a
-hand-started one first.
+picks the data directory, `Session-production-devprod<instance>` under `~/.config` on Linux and
+`~/Library/Application Support` on macOS, which persists between runs: create once, send many
+times. Nothing else may have that instance open - stop a hand-started one first.
 
 Why each setting is there:
 
@@ -80,14 +80,10 @@ throwaway data directory, and a sender that forgets its account between runs is 
 
 ## Order matters: let the client write first
 
-A message from a stranger lands in Message Requests on every client, and session-app's
-conversation list does not show requests. Have the receiving client send the sender a message
-first - writing to someone approves them - then send from the legacy side.
-
-The legacy sender currently **does not receive** messages from session-app clients: it never
-shows the client's hello and keeps its "recipient has approved" banner, which also hides its
-attachment button. The driver stages files directly, so sending still works; just do not wait
-for the legacy side to see the client's reply.
+A message from a stranger lands in Message Requests on every client. session-app's conversation
+list does not show requests as rows, only as an unread badge that opens them, and the badge goes
+once they are read. Have the receiving client send the sender a message first - writing to
+someone approves them - then send from the legacy side.
 
 ## Traps in the driver, already handled
 
@@ -100,6 +96,9 @@ for the legacy side to see the client's reply.
 - **`window.evaluate` with a function fails** (`result is not a function`) because the TS
   transform wraps it in helpers the page lacks. Pass a string instead.
 - **Wait for the onion path** (`checkPathLight`) after launch, or the first send times out.
+- **`TEST_PRO_BACKEND` is forced off.** session-playwright's `.env` may set it for its Pro tests.
+  With no dev Pro backend configured, the legacy app then throws on every poll that returns 1o1
+  messages and never shows what the clients send, while configs still sync and it looks healthy.
 
 ## Driving the receiving clients
 
@@ -111,8 +110,9 @@ from `uiautomator dump` _after_ the keyboard is up. `input text` takes `%s` for 
 press with no keyboard up leaves the app, and the next `input text` goes into the launcher's
 search.
 
-**Desktop** - over CDP, not Playwright's `_electron`. Under Playwright's launcher `safeStorage`
-cannot unseal the database key, and the app then never opens a window. Start the built app
+**Desktop** - over CDP, not Playwright's `_electron`. Playwright launches Electron with
+`--password-store=basic --use-mock-keychain`, so `safeStorage` never reaches the real keychain,
+cannot unseal the database key, and the app never opens a window. Start the built app
 yourself and connect:
 
 ```sh

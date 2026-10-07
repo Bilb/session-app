@@ -1,7 +1,7 @@
 // Copied into session-playwright's tests/automation/ by the legacy-sender skill; delete it after.
 // Not a test: a driver for the legacy Session Desktop, run through Playwright for its helpers.
 import { _electron as electron, type Page, test } from '@playwright/test';
-import { readFileSync, writeFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { homedir, tmpdir } from 'os';
 import { basename, join } from 'path';
 
@@ -41,6 +41,9 @@ async function launch() {
       // Not openApp's test-integration prefix: global.setup deletes those, and this one persists.
       NODE_APP_INSTANCE: `devprod${INSTANCE}`,
       ELECTRON_RUN_AS_NODE: '',
+      // session-playwright's .env may set it for its Pro tests; with no dev backend configured, the
+      // sender then throws on every 1o1 poll and never receives. Empty turns it off.
+      TEST_PRO_BACKEND: '',
     },
   });
   const window = await app.firstWindow();
@@ -57,7 +60,12 @@ async function waitSent(window: Page, text: string) {
 }
 
 async function sendText(window: Page, to: string, text: string) {
-  await sendNewMessage(window, to, text).catch(() => waitSent(window, text));
+  // sendNewMessage waits only 20 s for the sent tick; on a slow first send, keep waiting.
+  await sendNewMessage(window, to, text).catch((err) =>
+    waitSent(window, text).catch(() => {
+      throw err;
+    }),
+  );
   console.log(`sent: ${text}`);
 }
 
@@ -94,7 +102,9 @@ test('legacy sender', async () => {
       writeFileSync(OUT, JSON.stringify(user), { mode: 0o600 });
       return;
     }
-    console.log(`sender ${JSON.parse(readFileSync(OUT, 'utf8')).accountid}`);
+    if (existsSync(OUT)) {
+      console.log(`sender ${JSON.parse(readFileSync(OUT, 'utf8')).accountid}`);
+    }
     await checkPathLight(window);
     for (const target of TARGETS) {
       const tag = target.slice(0, 8);
