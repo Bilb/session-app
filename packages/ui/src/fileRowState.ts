@@ -28,10 +28,21 @@ export const FILE_ROW_CONTROL = MIN_HIT_TARGET
 export const FILE_ROW_GAP = SPACING.sm
 
 /** The square with a format line under it, held whether or not the file has one, so rows align. */
-export const FILE_LEAD_HEIGHT = FILE_GLYPH_SIDE + SPACING['3xs'] + textHeight('caption', 1)
+export function fileLeadHeight(fontScale: number): number {
+  return FILE_GLYPH_SIDE + SPACING['3xs'] + textHeight('caption', 1, fontScale)
+}
 
-/** The row's fixed height, for a list's `getItemLayout`: its tallest column inside its padding. */
-export const FILE_ROW_HEIGHT = 2 * SPACING.xs + Math.max(FILE_LEAD_HEIGHT, FILE_ROW_CONTROL)
+/**
+ * The row's height, for a list's `getItemLayout`: its tallest column inside its padding.
+ *
+ * The text grows with the OS font scale and the glyph and control do not, so past about 2.4 the
+ * name column is the tallest.
+ */
+export function fileRowHeight(fontScale: number): number {
+  const name =
+    textHeight('body', 1, fontScale) + SPACING['3xs'] + textHeight('caption', 1, fontScale)
+  return 2 * SPACING.xs + Math.max(fileLeadHeight(fontScale), name, FILE_ROW_CONTROL)
+}
 
 /**
  * What the row's one control offers, which follows from the state with no further rule.

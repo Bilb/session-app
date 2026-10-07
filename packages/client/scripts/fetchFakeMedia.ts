@@ -1,19 +1,20 @@
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 /**
- * Downloads the thirty dev photographs the fake draws, into the folder both apps read.
+ * Downloads the thirty dev photographs the fake draws, into the folder desktop reads and mobile's
+ * push script copies onto the device.
  *
  * `pnpm fake-media:fetch`. The folder is `$SESSION_FAKE_MEDIA_DIR`, or
  * `~/.cache/session-app/dev-media` when that is unset, which is where desktop's fake and mobile's
  * push script look by default. Kept out of the repository: several megabytes of somebody else's
  * photographs are not something to commit.
  *
- * From Lorem Picsum by seed, which answers the same file for the same seed. Each is checked against
- * its checksum, because the fixtures' ThumbHashes were encoded from these exact files: a different
- * photograph under the same name would draw a placeholder that belongs to another picture.
+ * From Lorem Picsum by seed. Each is checked against its checksum, because the fixtures'
+ * ThumbHashes were encoded from these exact files: a different photograph under the same name would
+ * draw a placeholder that belongs to another picture.
  */
 
 const PHOTOS: readonly (readonly [string, string])[] = [
@@ -102,21 +103,45 @@ async function downloadWithRetries(name: string): Promise<Uint8Array> {
   }
 }
 
+function mismatchReport(mismatched: readonly string[], checked: number): string {
+  const names = mismatched.join(', ')
+  if (mismatched.length < checked / 2) {
+    return (
+      `${String(mismatched.length)} of ${String(checked)} photographs downloaded are not the ones ` +
+      `the fixtures were hashed from: ${names}. Run the fetch again; if the same ones fail, ` +
+      `Picsum is serving different images for those seeds.`
+    )
+  }
+  return (
+    `PICSUM HAS CHANGED: ${String(mismatched.length)} of ${String(checked)} photographs downloaded ` +
+    `are not the ones the fixtures were hashed from` +
+    (mismatched.length === checked ? '. ' : ` (${names}). `) +
+    `Picsum maps a seed to an index into its whole library, and re-encodes each image per ` +
+    `request, so an image added there or an encoder upgrade changes every seed at once. The fake ` +
+    `cannot start until the photographs are replaced: pick new ones, re-encode the fixtures' ` +
+    `ThumbHashes from them, and update the checksums in packages/client/scripts/fetchFakeMedia.ts.`
+  )
+}
+
 async function main(): Promise<void> {
   mkdirSync(folder, { recursive: true })
   let fetched = 0
+  const mismatched: string[] = []
   for (const [name, expected] of PHOTOS) {
     const path = join(folder, name)
     if (existsSync(path) && sha256(readFileSync(path)) === expected) continue
     const bytes = await downloadWithRetries(name)
+    // Every one is checked before failing: one wrong file is a bad download, all of them is Picsum.
     if (sha256(bytes) !== expected) {
-      throw new Error(
-        `${name}: ${source(name)} is not the photograph the fixtures were hashed from`,
-      )
+      mismatched.push(name)
+      continue
     }
-    writeFileSync(path, bytes)
+    // The fakes only check that each file exists, so a write cut short must not leave one.
+    writeFileSync(`${path}.part`, bytes)
+    renameSync(`${path}.part`, path)
     fetched += 1
   }
+  if (mismatched.length > 0) throw new Error(mismatchReport(mismatched, PHOTOS.length))
   console.log(`${String(PHOTOS.length)} dev photographs in ${folder} (${String(fetched)} fetched)`)
 }
 

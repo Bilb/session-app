@@ -212,19 +212,33 @@ export default ({ config }: ConfigContext): ExpoConfig =>
             recordAudioAndroid: false,
           },
         ],
-        // Exporting a picture or a video puts it in the photo library. The plugin's own strings
-        // would replace the catalogue's, and `false` deletes the key from the plist outright.
-        // It also sets android:requestLegacyExternalStorage, which Android 10 alone reads and is
-        // what lets a photo export write to DCIM there; 11 and up ignore it.
+        // iOS saves an exported picture or video to Photos through this. The plugin's own strings
+        // would replace the catalogue's, and `false` deletes the key from the plist outright. On
+        // Android it declares WRITE_EXTERNAL_STORAGE, which exporting on 9 and below needs;
+        // `modules/media-store` does the saving there.
         [
           'expo-media-library',
           {
             photosPermission: englishPermission('NSPhotoLibraryUsageDescription'),
             savePhotosPermission: englishPermission('NSPhotoLibraryAddUsageDescription'),
+            // Unset, the plugin declares audio too. Images and video are blocked below.
             granularPermissions: ['photo', 'video'],
           },
         ],
+        // Legacy Android's floor.
+        ['expo-build-properties', { android: { minSdkVersion: 26 } }],
       ],
+      android: {
+        ...config.android,
+        // The media-library plugin declares reading the library, which saving to it never does;
+        // Play asks every app declaring them to justify it.
+        blockedPermissions: [
+          ...(config.android?.blockedPermissions ?? []),
+          'android.permission.READ_MEDIA_IMAGES',
+          'android.permission.READ_MEDIA_VIDEO',
+          'android.permission.READ_MEDIA_VISUAL_USER_SELECTED',
+        ],
+      },
       ios: {
         ...config.ios,
         bundleIdentifier: bundleId(config),

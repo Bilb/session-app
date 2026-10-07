@@ -1,5 +1,4 @@
 import { mediaKindOf } from '@session/basic-types'
-import { requirePorts } from '@session/app'
 import type { ConversationId } from '@session/client'
 import { tr } from '@session/localization'
 import { transferKey, useMessage, useMessageTransfers, useSessionActions } from '@session/state'
@@ -9,8 +8,9 @@ import { useMemo, useRef } from 'react'
 
 import { fetchOf } from './attachmentFetch'
 import { exportOne } from './exportAttachment'
+import { useExportFeedback } from './useExportFeedback'
 import { PENDING_COPY } from './pendingCopy'
-import { viewableAttachments } from './viewableAttachments'
+import { viewableAttachments, viewerUri } from './viewableAttachments'
 
 /** An open viewer: which message, and the attachment's index in that message. */
 export interface ViewerTarget {
@@ -32,6 +32,7 @@ function MessageViewer({
   onClose: () => void
 }) {
   const actions = useSessionActions()
+  const feedback = useExportFeedback()
   const message = useMessage(conversationId, target.messageId)
   const transfers = useMessageTransfers(target.messageId)
   // Only what is here, as the legacy clients' galleries: the url is the request, so an item that
@@ -50,7 +51,7 @@ function MessageViewer({
       viewable.map((attachment) => ({
         // Null where the platform has no resolver. The viewer says so rather than drawing a broken
         // picture, which is the one thing it must not do with somebody's photograph.
-        uri: requirePorts().media.urlFor({ messageId: target.messageId, index: attachment.index }),
+        uri: viewerUri(target.messageId, attachment),
         kind: mediaKindOf(attachment.contentType),
       })),
     [viewable, target.messageId],
@@ -74,7 +75,7 @@ function MessageViewer({
       }}
       onClose={onClose}
       onExport={() => {
-        if (attachment !== undefined) void exportOne(message, attachment.index, actions)
+        if (attachment !== undefined) void exportOne(message, attachment.index, actions, feedback)
       }}
       positionLabel={`${String(at + 1)} / ${String(items.length)}`}
       unavailableLabel={tr('attachmentsErrorNotSupported')}

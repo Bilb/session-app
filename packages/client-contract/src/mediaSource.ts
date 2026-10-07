@@ -1,16 +1,17 @@
 /**
  * What every media source must do: the addon, the Nitro bridge and the fake answer a media URL
- * through it, so a picture drawn on the fake predicts one drawn on libsession.
+ * through it, so a picture drawn on the fake predicts one drawn on libsession. Only the fake can
+ * produce an incoming attachment offline, so only the fake runs the scenarios that need one.
  */
 
-import type { AttachmentRef, MediaSource, SessionClient } from '@session/client'
+import type { Attachment, AttachmentRef, MediaSource, SessionClient } from '@session/client'
 
 import type { TestFns } from './suite'
 
 export interface MediaSourceHarness {
   /**
-   * A source over a client holding one incoming message with a picture that carries a hash and a
-   * file that does not, neither of them fetched.
+   * A source over a client holding two incoming pictures, neither fetched: one sent with a hash,
+   * in a type other than the JPEG every dev photograph is, and one sent without a hash.
    */
   withAttachments(): Promise<{
     source: MediaSource
@@ -45,6 +46,15 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
+async function attachmentOf(
+  client: SessionClient,
+  conversationId: string,
+  { messageId, index }: AttachmentRef,
+): Promise<Attachment | undefined> {
+  const page = await client.getMessages(conversationId, { limit: 50 })
+  return page.messages.find((m) => m.id === messageId)?.attachments.find((a) => a.index === index)
+}
+
 export function runMediaSourceContract(
   harness: MediaSourceHarness,
   t: TestFns,
@@ -71,13 +81,15 @@ export function runMediaSourceContract(
     })
 
     it('answers a picture with its bytes and the type they were sent as', async () => {
-      const { source, picture, settle } = await harness.withAttachments()
+      const { source, client, conversationId, picture, settle } = await harness.withAttachments()
       const answer = source.fetchMedia(picture)
       await settle()
       const media = await answer
       expect(media.bytes instanceof Uint8Array).toBe(true)
       expect(media.bytes.length).toBeGreaterThan(0)
-      expect(media.contentType.startsWith('image/')).toBe(true)
+      const declared = (await attachmentOf(client, conversationId, picture))?.contentType
+      expect(declared?.startsWith('image/')).toBe(true)
+      expect(media.contentType).toBe(declared)
     })
 
     it('reports a picture as cached once its bytes have been served', async () => {
@@ -85,10 +97,7 @@ export function runMediaSourceContract(
       const answer = source.fetchMedia(picture)
       await settle()
       await answer
-      const page = await client.getMessages(conversationId, { limit: 50 })
-      const attachment = page.messages
-        .find((m) => m.id === picture.messageId)
-        ?.attachments.find((a) => a.index === picture.index)
+      const attachment = await attachmentOf(client, conversationId, picture)
       expect(attachment?.availability).toBe('cached')
     })
 

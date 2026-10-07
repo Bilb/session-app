@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest'
 import { MIN_HIT_TARGET } from '#src/buttonHitTarget'
 import {
   FILE_GLYPH_SIDE,
-  FILE_LEAD_HEIGHT,
   FILE_LEAD_WIDTH,
   FILE_ROW_CONTROL,
-  FILE_ROW_HEIGHT,
+  fileLeadHeight,
   fileRowControl,
+  fileRowHeight,
   fileRowTone,
 } from '#src/fileRowState'
 import { SPACING } from '@session/theme-tokens'
@@ -77,8 +77,19 @@ describe('a file row’s colours', () => {
 
 describe('a file row’s height', () => {
   it('is the lead with its format line, inside the row’s padding, and holds the control', () => {
-    expect(FILE_LEAD_HEIGHT).toBe(FILE_GLYPH_SIDE + SPACING['3xs'] + textHeight('caption', 1))
-    expect(FILE_ROW_HEIGHT).toBe(2 * SPACING.xs + FILE_LEAD_HEIGHT)
-    expect(FILE_ROW_HEIGHT - 2 * SPACING.xs).toBeGreaterThanOrEqual(FILE_ROW_CONTROL)
+    expect(fileLeadHeight(1)).toBe(FILE_GLYPH_SIDE + SPACING['3xs'] + textHeight('caption', 1))
+    expect(fileRowHeight(1)).toBe(2 * SPACING.xs + fileLeadHeight(1))
+    expect(fileRowHeight(1) - 2 * SPACING.xs).toBeGreaterThanOrEqual(FILE_ROW_CONTROL)
+  })
+
+  it('grows the format line with the OS font scale', () => {
+    expect(fileLeadHeight(2)).toBe(FILE_GLYPH_SIDE + SPACING['3xs'] + textHeight('caption', 1, 2))
+    expect(fileRowHeight(1.5)).toBe(2 * SPACING.xs + fileLeadHeight(1.5))
+  })
+
+  it('holds the name and caption once they outgrow the lead', () => {
+    const name = textHeight('body', 1, 3) + SPACING['3xs'] + textHeight('caption', 1, 3)
+    expect(name).toBeGreaterThan(fileLeadHeight(3))
+    expect(fileRowHeight(3)).toBe(2 * SPACING.xs + name)
   })
 })

@@ -376,6 +376,35 @@ Every shared file is checked two or three ways per run, with no synthetic profil
 
 Append one paragraph per decision. Undocumented decisions are what rot.
 
+- **2026-10-08 - Mobile exports go where the legacy clients put them.** libsession writes the
+  export into the app's cache, the files port admits only that staged path, and the staged file
+  is then handed on:
+
+  | platform     | a picture or video      | a sound | anything else              | asks for                 |
+  | ------------ | ----------------------- | ------- | -------------------------- | ------------------------ |
+  | Android 10+  | Pictures / Movies       | Music   | Download                   | nothing                  |
+  | Android 8, 9 | Pictures / Movies       | Music   | Download                   | `WRITE_EXTERNAL_STORAGE` |
+  | iOS          | Photos (3GPP: a folder) | folder  | a folder, picked each time | add-only Photos access   |
+
+  Android files by the MIME type the name implies, as legacy Android's `SaveAttachmentTask` does,
+  so a name whose type a media collection refuses goes to Download. From Android 10 the row is
+  inserted pending and published once the copy is whole: no other app sees a half-written file,
+  MediaStore deletes the row itself if the app dies first, and it numbers a name already taken.
+  On 8 and 9 the same public folders are written directly, under a hidden temporary name renamed
+  once whole, then scanned. Without the grant there is nowhere to write, so any refusal ends the
+  export with the dialog that leads to the settings, as legacy does. iOS copies into the picked
+  folder under a temporary name renamed into place; Photos refuses 3GPP, so that goes to a folder.
+
+  Not a folder picker on Android. The Storage Access Framework hands the write to whichever
+  provider was picked, and a provider may refuse a rename, refuse a delete, or advertise a rename
+  it then refuses. Against a provider built to do each, a temporary name either failed the export
+  or left an empty file behind. MediaStore is one implementation with one behaviour on every
+  version, and is where users of the legacy client already find their files.
+
+  Deliberately unlike legacy: on 8 and 9 legacy filed pictures and videos in the app's own
+  external folder, which uninstalling deletes; these go to the public folders. A duplicate there
+  is numbered `name (1)`, as MediaStore numbers one from 10, rather than legacy's `name-1`.
+
 - **2026-09-29 - Desktop main admits an export only to the path its dialog returned.**
   `save_attachment` writes wherever it is told, with no containment of its own, and
   `showItemInFolder` acts on any path, so the renderer is held to what a save dialog answered. The
@@ -672,8 +701,8 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   is up and refuses in a debuggable build.
 
   A loader reaches the bridge through a process-wide media source the Nitro bridge registers and
-  clears before it closes, holding a copy of the `shared_ptr` so `close()` cannot free the bridge
-  under a load in flight. The loader does not wait on the network: it starts the fetch and
+  clears before it closes. `close()` detaches the source under its lock before destroying the
+  bridge, and every fetch holds that lock, so a load in flight never reaches a freed bridge. The loader does not wait on the network: it starts the fetch and
   returns, the answer arrives on Core's loop and is handed to a thread the loader owns, which
   copies the bytes into Fresco's pool. The gate is `servable_image_type`: a video is servable to
   desktop's `protocol.handle`, but no picture decoder may be handed one. Previews are RGBA handed

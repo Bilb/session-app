@@ -6,6 +6,7 @@
 
 #include <pthread.h>
 
+#include <climits>
 #include <cstddef>
 #include <string>
 #include <utility>
@@ -32,22 +33,37 @@ JNIEnv* attached_env() {
     return env;
 }
 
+/// Left pending on one of Core's threads, an exception would break that thread's next JNI call.
+bool clear_pending(JNIEnv* env) {
+    if (!env->ExceptionCheck())
+        return false;
+    env->ExceptionClear();
+    return true;
+}
+
 void fail(JNIEnv* env, jobject load, const std::string& message) {
     jstring text = env->NewStringUTF(message.c_str());
+    if (!text) {
+        clear_pending(env);
+        return;
+    }
     env->CallVoidMethod(load, on_failure, text);
+    clear_pending(env);
     env->DeleteLocalRef(text);
 }
 
-/// Hands `bytes` to Java as a direct buffer over this memory, which Java frees through
-/// `nativeRelease` once it has copied it into Fresco's pool. Null, with the memory already freed,
-/// when the VM refuses the buffer: it leaves an IllegalArgumentException pending, cleared here.
+/// Hands `bytes` to Java as a direct buffer over this memory, which Java frees through `release`
+/// once it has copied it into Fresco's pool. Null, with the memory already freed, when the bytes
+/// are past a jint - ART aborts the process rather than refuse that - or the VM is out of memory.
 jobject lend(JNIEnv* env, std::vector<std::byte>&& bytes, jlong& handle) {
+    handle = 0;
+    if (bytes.size() > static_cast<size_t>(INT_MAX))
+        return nullptr;
     auto* held = new std::vector<std::byte>(std::move(bytes));
     jobject buffer = env->NewDirectByteBuffer(held->data(), static_cast<jlong>(held->size()));
     if (!buffer) {
-        env->ExceptionClear();
+        clear_pending(env);
         delete held;
-        handle = 0;
         return nullptr;
     }
     handle = reinterpret_cast<jlong>(held);
@@ -55,6 +71,7 @@ jobject lend(JNIEnv* env, std::vector<std::byte>&& bytes, jlong& handle) {
 }
 
 constexpr const char* UNLENDABLE = "the bytes do not fit a ByteBuffer";
+constexpr const char* REFUSED = "the loader's thread did not take the answer";
 
 /// Answers on whichever thread the source answered on - Core's loop, or the JS thread - and only
 /// hands on: every method it calls enqueues onto the loader's own thread and returns.
@@ -72,6 +89,11 @@ void answer_media(jobject load, ::session_bridge::Media media) {
             fail(env, load, UNLENDABLE);
         } else {
             env->CallVoidMethod(load, on_media, buffer, handle);
+            // A throw means the loader's thread never took the job, so nothing else releases it.
+            if (clear_pending(env)) {
+                delete reinterpret_cast<std::vector<std::byte>*>(handle);
+                fail(env, load, REFUSED);
+            }
             env->DeleteLocalRef(buffer);
         }
     } else {
@@ -106,6 +128,10 @@ void answer_preview(jobject load, ::session_bridge::Preview preview) {
                 fail(env, load, UNLENDABLE);
             } else {
                 env->CallVoidMethod(load, on_preview, width, height, buffer, handle);
+                if (clear_pending(env)) {
+                    delete reinterpret_cast<std::vector<std::byte>*>(handle);
+                    fail(env, load, REFUSED);
+                }
                 env->DeleteLocalRef(buffer);
             }
         }
@@ -141,6 +167,8 @@ jint register_media_loader(JavaVM* vm) {
 extern "C" JNIEXPORT void JNICALL
 Java_session_bridge_rn_SessionMediaNative_fetch(JNIEnv* env, jclass, jstring url, jobject load) {
     const char* chars = env->GetStringUTFChars(url, nullptr);
+    if (!chars)
+        return;  // OutOfMemoryError is pending and is thrown from fetch().
     const std::string text{chars};
     env->ReleaseStringUTFChars(url, chars);
 

@@ -23,6 +23,12 @@ describe('the attachment footer', () => {
     expect(row).toContain('marginVertical={-ROW_OVERHANG}')
   })
 
+  it('grows the verb to the row as well, rather than leaving it a caption-high target', () => {
+    const verb = source.slice(source.lastIndexOf('<PressArea'), source.indexOf('</PressArea>'))
+    expect(source).toMatch(/ACTION_SLOP = SEGMENTED_TOGGLE_TARGET \/ 2/)
+    expect(verb).toContain('hitSlop={ACTION_SLOP}')
+  })
+
   it('lets a touch on the overhang through to what is drawn under it', () => {
     expect(row).toContain('pointerEvents="box-none"')
   })

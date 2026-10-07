@@ -132,7 +132,8 @@ Every variable an app reads carries `EXPO_PUBLIC_`, desktop's included: Metro in
 bundle only when its name does, and it caches the transform - so a Metro started without it keeps
 serving a bundle that ignores it until `expo start --clear`. `SESSION_FAKE_MEDIA_DIR` is the one
 without it: a path on the host, read by the fetch script, desktop main and the push script, never
-by a bundle.
+by a bundle. turbo hands a task only what `turbo.json` lets through: `dev` and `dev:fake` forward
+`EXPO_PUBLIC_SESSION_*` and `SESSION_*`, so a variable named otherwise needs adding there.
 
 ## Against a local devnet
 

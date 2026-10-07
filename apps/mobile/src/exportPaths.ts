@@ -1,4 +1,4 @@
-import { bareFileName } from '@session/app/exportFileName'
+import { bareFileName, MAX_SUGGESTED_NAME_CHARS } from '@session/app/exportFileName'
 import { utf8Encode } from '@session/basic-types'
 
 /**
@@ -41,10 +41,34 @@ const PHOTO_LIBRARY_TYPES: Readonly<Record<string, string>> = {
   'video/3gpp': '3gp',
 }
 
+/** MediaStore files these, and iOS Photos refuses them with PHPhotosErrorDomain 3302. */
+const REFUSED_BY_IOS_PHOTOS: ReadonlySet<string> = new Set(['video/3gpp'])
+
+function essenceOf(contentType: string | undefined): string | undefined {
+  return contentType?.split(';')[0]?.trim().toLowerCase()
+}
+
 /** The extension to file this under in the photo library, or null when it does not go there. */
 export function photoLibraryExtension(contentType: string | undefined): string | null {
-  const essence = contentType?.split(';')[0]?.trim().toLowerCase()
+  const essence = essenceOf(contentType)
   return (essence === undefined ? undefined : PHOTO_LIBRARY_TYPES[essence]) ?? null
+}
+
+/** Whether this platform's photo library takes the type. */
+export function photoLibraryTakes(contentType: string | undefined, os: 'ios' | 'android'): boolean {
+  if (photoLibraryExtension(contentType) === null) return false
+  return os === 'android' || !REFUSED_BY_IOS_PHOTOS.has(essenceOf(contentType) ?? '')
+}
+
+/**
+ * Whether Android files this in a media collection rather than Downloads: what its photo library
+ * takes, and any sound, as legacy Android does.
+ */
+export function isMediaStoreMedia(contentType: string | undefined): boolean {
+  return (
+    photoLibraryTakes(contentType, 'android') ||
+    (essenceOf(contentType)?.startsWith('audio/') ?? false)
+  )
 }
 
 function fitsBytes(name: string): boolean {
@@ -63,11 +87,14 @@ function capped(stem: string, extension: string): string {
  * A bare file name from the sender's suggestion: no directory part, no control characters, no
  * leading dots, bounded in length.
  *
+ * A suggestion longer than `MAX_SUGGESTED_NAME_CHARS` is not shortened but replaced, as desktop
+ * does; shortening one by code point is quadratic in its length, which the sender chooses.
  * A picture headed for the photo library gets the extension its declared type calls for.
  */
 export function exportFileName(suggested: unknown, contentType?: string): string {
+  const tooLong = typeof suggested === 'string' && suggested.length > MAX_SUGGESTED_NAME_CHARS
   // A leading dot hides the file, and MediaStore refuses a hidden name outright.
-  const bare = bareFileName(suggested).replace(/^\.+/, '')
+  const bare = tooLong ? '' : bareFileName(suggested).replace(/^\.+/, '')
   const name = bare === '' ? FALLBACK_NAME : bare
 
   const dot = name.lastIndexOf('.')
@@ -119,20 +146,31 @@ export function numberedName(name: string, n: number): string {
 }
 
 /**
- * Runs `place` under the name, then under each numbered variant, until one lands.
+ * The temporary name an export is written under before it is renamed into place: `.sessiondl`,
+ * then `.sessiondl1`, `.sessiondl2`..., as libsession names its own.
  *
- * By attempting rather than by listing the folder first: a document tree lists its children by
- * id, which on most providers is not the display name a copy collides on, and the listing is one
- * synchronous provider query per child. `taken` says whether a failure was the name being in
- * use; any other failure, and the thousandth collision, propagate.
+ * Never `.part`: somebody's own `report.pdf.part` from a browser is a plausible file to find next
+ * to `report.pdf`, and one named after us is not. Numbered rather than replaced when taken.
+ */
+export function partName(name: string, n: number): string {
+  return `${name}.sessiondl${n === 0 ? '' : String(n)}`
+}
+
+/**
+ * Runs `place` under `nameFor(name, 0)`, then under each next one, until one lands.
+ *
+ * By attempting rather than by listing the folder first, so a name taken between the listing and
+ * the write is still caught. `taken` says whether a failure was the name being in use; any other
+ * failure, and the thousandth collision, propagate.
  */
 export async function placeUnderFreeName(
   name: string,
   place: (candidate: string) => void | Promise<void>,
   taken: (error: unknown, candidate: string) => boolean,
+  nameFor: (name: string, n: number) => string = numberedName,
 ): Promise<void> {
   for (let n = 0; ; n += 1) {
-    const candidate = numberedName(name, n)
+    const candidate = nameFor(name, n)
     try {
       await place(candidate)
       return
@@ -183,26 +221,4 @@ export class StagedExports<Delivery> {
     this.written.delete(token)
     return { token, delivery }
   }
-}
-
-/**
- * Whether a remembered folder is a document tree the Storage Access Framework granted.
- *
- * Read back from a file only this app writes, and checked anyway: attachments get written wherever
- * this points, so nothing but a tree somebody picked may stand in for one.
- */
-export function isGrantedFolderUri(uri: unknown): uri is string {
-  return typeof uri === 'string' && /^content:\/\/[\w.-]+\/tree\/\S+$/.test(uri)
-}
-
-/**
- * The folder a granted document tree stands for, as a document URI a file manager opens.
- *
- * A tree URI names the grant, `.../tree/<id>`, and a view intent wants the document,
- * `.../document/<id>`; the id is the same. Null for anything that is not a granted tree.
- */
-export function folderDocumentUri(treeUri: string): string | null {
-  if (!isGrantedFolderUri(treeUri)) return null
-  const match = /^(content:\/\/[\w.-]+)\/tree\/([^/]+)/.exec(treeUri)
-  return match === null ? null : `${match[1] ?? ''}/document/${match[2] ?? ''}`
 }

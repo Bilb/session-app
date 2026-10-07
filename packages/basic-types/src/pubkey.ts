@@ -15,6 +15,33 @@ export const PubkeyPrefix = {
   group: prefixGroup,
 }
 
+/**
+ * Every prefix an account ID can start with. Each says what kind of key follows rather than whose:
+ * a standard account, a group, a community-blinded one (15, 25) or an unblinded one (00).
+ */
+export const AccountIdPrefix = {
+  ...PubkeyPrefix,
+  blinded15: '15',
+  blinded25: '25',
+  unblinded: '00',
+} as const
+
+const ACCOUNT_ID_LIKE = new RegExp(
+  `^(${Object.values(AccountIdPrefix).join('|')})[0-9a-f]{2,}$`,
+  'i',
+)
+
+/**
+ * Whether text looks like an account ID: one of its prefixes, then hex.
+ *
+ * **Looks like, not is.** Deliberately loose -- any length past the prefix -- because it spots a
+ * display name that is an ID, where a truncated one counts too. Not a validator: `is05Pubkey` and
+ * `is03Pubkey` check the real shape.
+ */
+export function looksLikeAccountId(text: string): boolean {
+  return ACCOUNT_ID_LIKE.test(text)
+}
+
 type PubkeyPrefixT = typeof PubkeyPrefix
 
 export type PubkeyPrefixType = PubkeyPrefixT[keyof PubkeyPrefixT]

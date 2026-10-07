@@ -4,6 +4,34 @@ const path = require('node:path')
 const projectRoot = __dirname
 const workspaceRoot = path.resolve(projectRoot, '../..')
 
+const { execFileSync } = require('node:child_process')
+
+/**
+ * The commit this bundle is made from, as the desktop config stamps it -- the two are kept
+ * identical. See `commitStamp` in `apps/desktop/electron.vite.config.ts`.
+ *
+ * Put in the environment before anything is transformed, which is what lets Metro inline it as it
+ * does any `EXPO_PUBLIC_` variable. Empty outside a git checkout.
+ */
+function commitStamp() {
+  const git = (...args) =>
+    execFileSync('git', args, {
+      cwd: projectRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+  try {
+    const commit = git('rev-parse', 'HEAD').trim().slice(0, 8)
+    const dirty =
+      git('status', '--porcelain', '--untracked-files=no', '--ignore-submodules=dirty').trim() !==
+      ''
+    return dirty ? `${commit}-dirty` : commit
+  } catch {
+    return ''
+  }
+}
+process.env.EXPO_PUBLIC_SESSION_BUILD_COMMIT = commitStamp()
+
 const config = getDefaultConfig(projectRoot)
 
 /**

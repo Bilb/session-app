@@ -4,13 +4,13 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+import { MAX_SUGGESTED_NAME_CHARS } from '@session/app/exportFileName'
 import type { Frame, Request } from '@session/client'
 
 import {
   dialogDefaultPath,
   ExportGate,
   MAX_PATH_CHARS,
-  MAX_SUGGESTED_NAME_CHARS,
   readLastFolder,
   sanitiseSuggestedName,
   writeLastFolder,

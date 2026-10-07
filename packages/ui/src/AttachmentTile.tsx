@@ -12,6 +12,7 @@ import {
   TILE_BADGE_INSET,
   TILE_HAIRLINE_WIDTH,
   TILE_SCRIM,
+  heldFailure,
   tileFace,
   tilePlaceholder,
   tileRadius,
@@ -163,9 +164,11 @@ export const AttachmentTile = memo(function AttachmentTile({
    * starts hidden over the placeholder instead of showing an empty frame until it loads.
    */
   const [loadedUri, setLoadedUri] = useState<string | null>(null)
-  // A picture that fetched and did not decode: a corrupt file, or bytes the loader refused.
-  // Drawn as failed rather than left on the placeholder, which would say "still downloading".
+  // A picture that did not load: a corrupt file, bytes the loader refused, or a native loader's
+  // failed download. Drawn as failed rather than left on the placeholder, which says "downloading".
   const [failedUri, setFailedUri] = useState<string | null>(null)
+  const stillFailed = heldFailure(uri, failedUri)
+  if (stillFailed !== failedUri) setFailedUri(stillFailed)
   const drawable = uri !== undefined && uri !== null
   const face = tileFace(uri, loadedUri, failedUri)
   const here = face === 'picture'

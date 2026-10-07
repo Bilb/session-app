@@ -1,12 +1,12 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { logical, backChevron, Button, Icon, YStack } from '@session/ui'
+import { logical, backChevron, BarButton, SIZE_SCALE, SPACE_SCALE, YStack } from '@session/ui'
 
 /**
  * The way back out of an onboarding step, drawn in four places.
  *
- * `md` so the pressed highlight covers the touch target rather than just the glyph. Told what back
- * means because onboarding's steps are not routes.
+ * A bar button, so on iOS 26 it sits on glass like the system's own back, and elsewhere is the
+ * desktop's circle. Told what back means because onboarding's steps are not routes.
  */
 export function OnboardingBackButton({
   onPress,
@@ -16,21 +16,24 @@ export function OnboardingBackButton({
   disabled?: boolean
 }) {
   return (
-    <Button
-      variant="ghost"
-      size="md"
-      circular
+    <BarButton
+      icon={backChevron()}
       accessibilityLabel={tr('back')}
       testID={ELEMENT.onboarding.back}
       onPress={onPress}
       disabled={disabled}
-      icon={<Icon name={backChevron()} size="lg" color="$textPrimary" />}
     />
   )
 }
 
-/** Negative, because the control hangs outside the fixed-width column rather than sitting in it. */
-const BACK_OFFSET = -36
+/** The control's width: a `md` circular bar button's. */
+const BACK_WIDTH = SIZE_SCALE['2xl']
+
+/** Clears the heading with the whole circle, which iOS 26's glass makes visible. */
+const BACK_GAP = SPACE_SCALE.xs
+
+/** Where the heading starts, from the column's edge. */
+const HEADING_INSET = SPACE_SCALE['2xs']
 
 /**
  * The same control, hung off the side of the wide column.
@@ -46,7 +49,13 @@ export function WideBackButton({
   disabled?: boolean
 }) {
   return (
-    <YStack {...logical({ marginStart: BACK_OFFSET })} height={34} justifyContent="center">
+    <YStack
+      // Negative, because the control hangs outside the fixed-width column. The end margin is the
+      // gap, so the heading stays put however far out the control hangs.
+      {...logical({ marginStart: HEADING_INSET - BACK_WIDTH - BACK_GAP, marginEnd: BACK_GAP })}
+      height="$xl"
+      justifyContent="center"
+    >
       <OnboardingBackButton onPress={onPress} disabled={disabled} />
     </YStack>
   )

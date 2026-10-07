@@ -32,6 +32,9 @@ const FOOTER_HEIGHT = 30
 const ROW_HEIGHT = toggleRowHeight(FOOTER_HEIGHT, SEGMENTED_TOGGLE_TARGET)
 const ROW_OVERHANG = (ROW_HEIGHT - FOOTER_HEIGHT) / 2
 
+/** Clipped to the row like the toggle's, so the verb's target is the row's full height. */
+const ACTION_SLOP = SEGMENTED_TOGGLE_TARGET / 2
+
 /**
  * Gallery or list, for a set that can be drawn either way.
  *
@@ -134,6 +137,7 @@ export function AttachmentFooter({
         <PressArea
           onPress={onAction}
           accessibilityLabel={action}
+          hitSlop={ACTION_SLOP}
           testID={ELEMENT.conversation.attachmentAction}
         >
           {() => (

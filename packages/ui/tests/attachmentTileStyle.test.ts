@@ -1,7 +1,13 @@
 import { RADII } from '@session/theme-tokens'
 import { describe, expect, it } from 'vitest'
 
-import { TILE_RADIUS_STEP, tileFace, tilePlaceholder, tileRadius } from '#src/attachmentTileStyle'
+import {
+  heldFailure,
+  TILE_RADIUS_STEP,
+  tileFace,
+  tilePlaceholder,
+  tileRadius,
+} from '#src/attachmentTileStyle'
 
 describe('a tile’s corner', () => {
   it('takes the larger radius at the sizes an album draws', () => {
@@ -69,5 +75,19 @@ describe('a tile’s face', () => {
     const next = 'session-media://attachment/2/0'
     expect(tileFace(next, url, null)).toBe('pending')
     expect(tileFace(next, null, url)).toBe('pending')
+  })
+})
+
+describe('the failure a tile holds', () => {
+  const url = 'session-media://attachment/1/0'
+
+  it('holds it while the url is still handed over', () => {
+    expect(heldFailure(url, url)).toBe(url)
+  })
+
+  it('forgets it once the url is withheld, so the retry of the same url starts over hidden', () => {
+    expect(heldFailure(undefined, url)).toBeNull()
+    expect(heldFailure(null, url)).toBeNull()
+    expect(tileFace(url, null, heldFailure(undefined, url))).toBe('pending')
   })
 })

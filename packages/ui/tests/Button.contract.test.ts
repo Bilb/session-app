@@ -28,10 +28,13 @@ const SURFACES = [
   '$backgroundNested',
 ]
 
+/** Laid over a surface, not replacing it; theme-tokens' `overlays.test.ts` keeps text readable. */
+const OVERLAYS = ['$hoverOverlay', '$pressedOverlay']
+
 /** Whether a state's declared background leaves the surface ladder. */
 function leavesTheLadder(declared: string): boolean {
   const fill = /backgroundColor: '(\$\w+)'/.exec(declared)?.[1]
-  return fill !== undefined && !SURFACES.includes(fill)
+  return fill !== undefined && !SURFACES.includes(fill) && !OVERLAYS.includes(fill)
 }
 
 /** The body of each `variant:` entry, keyed by name. */
@@ -103,5 +106,24 @@ describe('every Button variant', () => {
     expect(inverts.filter((name) => !new RegExp(`^\\s+${name}:`, 'm').test(pressedLabel))).toEqual(
       [],
     )
+  })
+
+  /**
+   * And that native fills where the web fills. `PRESSED` restates each `pressStyle` for the phones,
+   * and a variant whose web press fills while its native press only dims has a label coloured for
+   * a fill that never arrives -- which is what `danger` had.
+   */
+  it('fills on a native press with the same colour its web press fills with', () => {
+    const pressed = /const PRESSED = \{[\s\S]*?\n\} as const/.exec(source)?.[0] ?? ''
+    const mismatched: string[] = []
+    for (const [name, body] of found) {
+      const web = /pressStyle: \{[^}]*backgroundColor: '(\$\w+)'/.exec(body)?.[1]
+      if (web === undefined || !leavesTheLadder(`backgroundColor: '${web}'`)) continue
+      const native = new RegExp(`^\\s+${name}: \\{[^}]*backgroundColor: '(\\$\\w+)'`, 'm').exec(
+        pressed,
+      )?.[1]
+      if (native !== web) mismatched.push(`${name}: web ${web}, native ${String(native)}`)
+    }
+    expect(mismatched).toEqual([])
   })
 })

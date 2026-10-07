@@ -107,7 +107,7 @@ namespace {
 
     /// The shim's vector, handed to JavaScript as the ArrayBuffer's own storage rather than copied.
     std::shared_ptr<ArrayBuffer> buffer_of(std::vector<std::byte>&& bytes) {
-        // wrap() refuses a null pointer, which is what an empty vector may hold.
+        // wrap() takes a _Nonnull pointer, and an empty vector's data() may be null.
         if (bytes.empty())
             return ArrayBuffer::allocate(0);
         auto* owned = new std::vector<std::byte>(std::move(bytes));
@@ -311,6 +311,8 @@ void HybridSessionBridge::init(const SessionBridgeOptions& options) {
                 });
             });
     _media = std::make_shared<::session_bridge_rn::BridgeMediaSource>(*_bridge);
+    // Replaces any other bridge's: after a reload the old instance closes only from its
+    // destructor, which can run after this, and its close() clears only a source it still owns.
     ::session_bridge_rn::set_media_source(_media);
     _opened = true;
 }

@@ -3,10 +3,11 @@ import { describe, expect, it } from 'vitest'
 
 import {
   exportFileName,
-  folderDocumentUri,
-  isGrantedFolderUri,
+  isMediaStoreMedia,
   numberedName,
+  partName,
   photoLibraryExtension,
+  photoLibraryTakes,
   placeUnderFreeName,
   stagedPath,
   StagedExports,
@@ -47,17 +48,26 @@ describe('the name an export is written under', () => {
   })
 
   it('is bounded in bytes, keeping its extension', () => {
-    const long = `${'é'.repeat(300)}.pdf`
+    const long = `${'中'.repeat(150)}.pdf`
     const name = exportFileName(long)
     expect(utf8Encode(name).length).toBeLessThanOrEqual(200)
     expect(name.endsWith('.pdf')).toBe(true)
   })
 
   it('is bounded when the extension alone is longer than the bound', () => {
-    for (const long of [`a.${'x'.repeat(300)}`, `report.${'é'.repeat(250)}`]) {
+    for (const long of [`a.${'x'.repeat(250)}`, `report.${'中'.repeat(240)}`]) {
       expect(utf8Encode(exportFileName(long)).length).toBeLessThanOrEqual(200)
     }
-    expect(exportFileName(`a.${'x'.repeat(300)}`, 'image/jpeg').endsWith('.jpg')).toBe(true)
+    expect(exportFileName(`a.${'x'.repeat(250)}`, 'image/jpeg').endsWith('.jpg')).toBe(true)
+  })
+
+  it('falls back, as desktop does, for a suggestion longer than any file system takes', () => {
+    const huge = `${'é'.repeat(100_000)}.pdf`
+    const started = performance.now()
+    expect(exportFileName(huge)).toBe('attachment')
+    expect(exportFileName(huge, 'image/png')).toBe('attachment.png')
+    expect(performance.now() - started).toBeLessThan(100)
+    expect(exportFileName(`${'x'.repeat(251)}.pdf`)).toBe(`${'x'.repeat(196)}.pdf`)
   })
 })
 
@@ -77,6 +87,35 @@ describe('which files go to the photo library', () => {
       undefined,
     ]) {
       expect(photoLibraryExtension(type)).toBeNull()
+    }
+  })
+})
+
+describe('what Android files in a media collection', () => {
+  it('is what the photo library takes, and any sound', () => {
+    expect(isMediaStoreMedia('image/png')).toBe(true)
+    expect(isMediaStoreMedia('video/3gpp')).toBe(true)
+    expect(isMediaStoreMedia('audio/mpeg')).toBe(true)
+  })
+
+  it('leaves everything else to Downloads', () => {
+    for (const type of ['application/pdf', 'video/webm', 'image/svg+xml', undefined]) {
+      expect(isMediaStoreMedia(type)).toBe(false)
+    }
+  })
+})
+
+describe("which platform's photo library takes a type", () => {
+  it('sends a 3GPP video to a folder on iOS, whose Photos refuses it', () => {
+    expect(photoLibraryTakes('video/3gpp', 'ios')).toBe(false)
+    expect(photoLibraryTakes('video/3gpp', 'android')).toBe(true)
+  })
+
+  it('takes the other library types on both', () => {
+    for (const os of ['ios', 'android'] as const) {
+      expect(photoLibraryTakes('image/webp', os)).toBe(true)
+      expect(photoLibraryTakes('Video/MP4; codecs=avc1', os)).toBe(true)
+      expect(photoLibraryTakes('application/pdf', os)).toBe(false)
     }
   })
 })
@@ -168,7 +207,12 @@ describe('a name in a folder that already holds it', () => {
     expect(numberedName('notes', 1)).toBe('notes (1)')
   })
 
-  it('is found by attempting each name in turn, never by listing the folder', async () => {
+  it('is written first under a temporary name libsession would use, numbered when taken', () => {
+    expect(partName('report.pdf', 0)).toBe('report.pdf.sessiondl')
+    expect(partName('report.pdf', 1)).toBe('report.pdf.sessiondl1')
+  })
+
+  it('is found by attempting each name in turn', async () => {
     const held = new Set(['itinerary.pdf', 'itinerary (1).pdf'])
     const tried: string[] = []
     await placeUnderFreeName(
@@ -180,6 +224,20 @@ describe('a name in a folder that already holds it', () => {
       (error) => error instanceof Error && error.message === 'taken',
     )
     expect(tried).toEqual(['itinerary.pdf', 'itinerary (1).pdf', 'itinerary (2).pdf'])
+  })
+
+  it('steps through whichever naming it is given', async () => {
+    const tried: string[] = []
+    await placeUnderFreeName(
+      'x.pdf',
+      (candidate) => {
+        tried.push(candidate)
+        if (tried.length < 3) throw new Error('taken')
+      },
+      () => true,
+      partName,
+    )
+    expect(tried).toEqual(['x.pdf.sessiondl', 'x.pdf.sessiondl1', 'x.pdf.sessiondl2'])
   })
 
   it('passes any other failure straight through', async () => {
@@ -208,43 +266,5 @@ describe('a name in a folder that already holds it', () => {
       ),
     ).rejects.toThrow('taken')
     expect(tries).toBe(1001)
-  })
-})
-
-describe('a remembered export folder', () => {
-  it('is accepted only as a granted document tree', () => {
-    expect(
-      isGrantedFolderUri('content://com.android.externalstorage.documents/tree/primary%3ADownload'),
-    ).toBe(true)
-    for (const other of [
-      'file:///data/user/0/org.getsession.session2/files',
-      '/sdcard/Download',
-      'content://com.android.externalstorage.documents/document/primary%3ADownload',
-      'content://evil/tree/x y',
-      '',
-      null,
-    ]) {
-      expect(isGrantedFolderUri(other)).toBe(false)
-    }
-  })
-})
-
-describe('the folder an export is revealed in', () => {
-  it('is the document the granted tree stands for', () => {
-    expect(
-      folderDocumentUri('content://com.android.externalstorage.documents/tree/primary%3ADocuments'),
-    ).toBe('content://com.android.externalstorage.documents/document/primary%3ADocuments')
-    expect(
-      folderDocumentUri(
-        'content://com.android.externalstorage.documents/tree/primary%3ADocuments%2FSession',
-      ),
-    ).toBe('content://com.android.externalstorage.documents/document/primary%3ADocuments%2FSession')
-  })
-
-  it('is nothing for what is not a granted tree', () => {
-    expect(folderDocumentUri('file:///data/user/0/org.getsession.session2/files')).toBeNull()
-    expect(
-      folderDocumentUri('content://com.android.externalstorage.documents/document/x'),
-    ).toBeNull()
   })
 })

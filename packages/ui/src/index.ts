@@ -7,7 +7,16 @@
  */
 
 export { Avatar } from './Avatar'
-export { RecoveryPasswordMark, SessionBrand, SessionWordmark } from './Brand'
+export {
+  ProBadge,
+  RecoveryPasswordMark,
+  RecoveryPasswordShield,
+  SessionBrand,
+  SessionTokenLogo,
+  SessionTokenMark,
+  SessionWordmark,
+  type MarkProps,
+} from './Brand'
 export { HeroImage } from './HeroImage'
 export { KeyboardAvoiding } from './KeyboardAvoiding'
 export { PressArea } from './PressArea'
@@ -27,8 +36,10 @@ export type { TopTab, TopTabsProps } from './TopTabs.types'
 export { SafeArea, type SafeAreaProps } from './SafeArea'
 export { useTokenColor } from './useTokenColor'
 export { useWindowSize } from './useWindowSize'
+export { useFontScale } from './useFontScale'
 export { ProgressRing } from './ProgressRing'
 export type { AvatarProps } from './Avatar'
+export { BarButton, type BarButtonProps } from './BarButton'
 export { Button } from './Button'
 export type { ButtonProps } from './Button'
 export { Icon } from './Icon'
@@ -53,22 +64,33 @@ export { toggleRowHeight } from './segmentedToggleLayout'
 export { SEGMENT_TARGET as SEGMENTED_TOGGLE_TARGET } from './segmentedToggleMetrics'
 export { Sheet } from './Sheet'
 export type { SheetProps } from './Sheet'
+export { ModalStackProvider, useModalNavigation, useModals } from './ModalsProvider'
+export type { Modals, ModalPresentation, ModalScreen } from './ModalsProvider'
+export { ModalStackHost } from './ModalStackHost'
+export { ModalStackRoot } from './ModalStackRoot'
 export type { ListProps } from './List'
 export type { InputProps } from './Input.types'
 export { Progress } from './Progress'
 export type { ProgressProps } from './Progress'
 export { Screen } from './Screen'
+export { SettingsGroup, SettingsRow, SettingsSection } from './SettingsRow'
+export type { SettingsRowProps } from './SettingsRow'
 export { Text, type TextProps, type TextSize } from './Text'
 export { UIProvider } from './UIProvider'
 export type { UIProviderProps } from './UIProvider'
 export type { BackdropBlur, BackdropBlurProps } from './backdropBlur'
+export type { Glass, GlassProps } from './glass'
 
 export { config, tokens } from './config'
+// The numbers behind the named scales, for a raw style that tamagui does not resolve.
+export { SIZE_SCALE, SPACE_SCALE } from './scales'
 export {
+  appearanceFrom,
   buildThemes,
   DEFAULT_ACCENT,
   DEFAULT_THEME,
   PRIMARY_COLORS,
+  registerTheme,
   themeName,
   THEME_STATES,
 } from './themes'
@@ -109,11 +131,13 @@ export {
   FILE_LEAD_WIDTH,
   FILE_ROW_CONTROL,
   FILE_ROW_GAP,
-  FILE_ROW_HEIGHT,
   fileRowControl,
+  fileRowHeight,
   fileRowTone,
 } from './fileRowState'
 export type { FileRowState, FileRowTone } from './fileRowState'
 export { fileFormat, fileGlyph, splitFilename } from './attachmentFile'
 export type { WithTestID } from './with'
 export { FONT_ASSETS } from './fontAssets'
+export { ToastHost } from './ToastHost'
+export { ToastProvider, useToast, type Toasts } from './Toasts'
