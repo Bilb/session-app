@@ -13,10 +13,10 @@ import { sessionTest } from '../harness/sessionTest'
  * and the reader wants the names and the sizes instead.
  *
  * The conversation holds three attachment messages, oldest first: an album of two photographs,
- * which names nothing; a picture and a document, a list from the start; and a roll with a
+ * which names nothing; a picture and two documents, a list from the start; and a roll with a
  * document in it, also a list. Only the album offers the toggle - with a document in the set the
  * gallery is impossible rather than unwanted. So before the toggle the first names on screen are
- * the picture-and-document list's, and after it the album's come ahead of them.
+ * the picture-and-documents list's, and after it the album's come ahead of them.
  *
  * That the choice survives the row being unmounted is not asserted here: the transcript is a
  * windowed list and scrolling one far enough to recycle a row is the kind of step that passes

@@ -17,12 +17,17 @@ function source(file: string): string {
 describe('the album’s download cloud', () => {
   const hint = source('FetchHint.tsx')
   // Everything a pressable cloud carries is in the one spread that `onPress` switches on.
-  const pressable = /onPress === undefined\s*\?\s*\{\}\s*:\s*\{([^}]*)\}/.exec(hint)?.[1] ?? ''
+  const pressable =
+    /onPress === undefined\s*\?\s*\{\}\s*:\s*\{([\s\S]*?)\}\)\}/.exec(hint)?.[1] ?? ''
 
   it('is the set’s named control where it takes the press', () => {
     expect(pressable).toContain("role: 'button'")
     expect(pressable).toContain("'aria-label': label")
     expect(pressable).toContain('testID')
+  })
+
+  it('is an accessibility element on iOS, which tamagui makes only a stack with tabIndex 0', () => {
+    expect(pressable).toContain('isWeb ? {} : { tabIndex: 0 }')
   })
 
   it('is not hidden from the tree its id is looked up in', () => {
@@ -32,19 +37,33 @@ describe('the album’s download cloud', () => {
 
 describe('the segmented toggle', () => {
   const toggle = source('SegmentedToggle.tsx')
+  // Each path on its own, so one cannot answer for the other: the touch branch up to the
+  // pointer path's `return`, and the pointer path's segment button.
+  const whole = toggle.indexOf("SEGMENT_TAPS === 'whole'")
+  const touch = toggle.slice(whole, toggle.indexOf('\n  return (', whole))
+  const pointer = toggle.slice(
+    toggle.indexOf('function SegmentButton'),
+    toggle.indexOf('export function'),
+  )
 
-  it('says on each face whether it is the chosen one', () => {
-    expect(toggle).toMatch(/aria-selected=\{selected\}/)
+  it('says on each segment button whether it is the chosen one', () => {
+    // On the button a reader lands on: ARIA defines no `aria-selected` on a button or its face.
+    expect(pointer).toContain('toggled={selected}')
+    expect(toggle).not.toContain('aria-selected')
+    expect(source('PressArea.tsx')).toContain("'aria-pressed': toggled")
   })
 
-  it('keeps each face’s id with its face on touch, where the whole control is the target', () => {
-    expect(toggle).toMatch(
-      /<YStack key=\{segment\.testID\} testID=\{segment\.testID\}>\s*<SegmentFace/,
-    )
+  it('is one switch on touch, addressed by its own id, with no id inside it', () => {
+    // iOS hides an accessible Pressable's children from the tree a test looks ids up in.
+    expect(touch).toMatch(/role="switch"\s+checked=\{selected === 1\}/)
+    expect(touch).toContain('testID={testID}')
+    expect(touch.match(/testID=/g)?.length).toBe(1)
   })
 
   it('lights a face from the press the PressArea reports, since the face passes the touch through', () => {
-    expect(toggle).toMatch(/\{\(pressed\) =>[\s\S]*?<SegmentFace[^>]*pressed=\{pressed/)
+    for (const path of [touch, pointer]) {
+      expect(path).toMatch(/\{\(pressed\) =>[\s\S]*?<SegmentFace[^>]*pressed=\{pressed\b/)
+    }
     expect(toggle).toMatch(/<StateLayer[^>]*pressed=\{pressed\}/)
   })
 })

@@ -27,6 +27,7 @@ export function PressArea({
   accessibilityLabel,
   role = 'button',
   checked,
+  toggled,
   testID,
   children,
 }: PressAreaProps) {
@@ -36,7 +37,15 @@ export function PressArea({
       // and two fill buttons with different labels come out different widths.
       {...(fill ? { style: { flexGrow: 1, flexShrink: 1, flexBasis: 0 } } : {})}
       accessibilityRole={role}
-      {...(checked === undefined ? {} : { accessibilityState: { checked } })}
+      // Native has no `pressed` state for a toggle button; both readers announce `selected`.
+      {...(checked === undefined && toggled === undefined
+        ? {}
+        : {
+            accessibilityState: {
+              ...(checked === undefined ? {} : { checked }),
+              ...(toggled === undefined ? {} : { selected: toggled }),
+            },
+          })}
       disabled={disabled}
       onPress={onPress}
       {...(hitSlop === undefined || hitSlop === 0 ? {} : { hitSlop })}

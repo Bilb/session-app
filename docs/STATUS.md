@@ -36,8 +36,8 @@ a time, via the `port-feature` skill.
   since the shim last changed is what it needs, from an `android/` regenerated since the media
   loader landed: `pnpm android` prebuilds only when that directory is absent, and a stale one
   refuses to start in debug and says so.
-- **Onboarding is one button.** `restoreAccount` is a bridge command already, with no screen.
-- **No contact list and no QR scanner.** Starting a conversation means pasting an account ID.
+- **No contact list, and the QR scanner only restores an account.** Starting a conversation means
+  pasting an account ID.
 - **iOS device builds and a release-shaped xcframework.** The simulator works; nothing has been
   signed with a real identity.
 - **devnet refuses rather than half-working.** It needs seed nodes - a public key, an address and

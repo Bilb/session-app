@@ -32,6 +32,20 @@ session_bridge_strict_switches(${PROJECT_NAME})
 # whole reason this is an N-API addon rather than a NAN one.
 target_compile_definitions(${PROJECT_NAME} PRIVATE NAPI_VERSION=8)
 
+# Only the N-API entry points leave the addon. On Linux, Electron has already loaded the system's
+# gnutls and nettle, and an exported copy of ours binds to those instead, built against other
+# headers. On macOS, dyld coalesces exported weak definitions across every image in the process.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_options(${PROJECT_NAME} PRIVATE
+        "LINKER:--version-script=${CMAKE_CURRENT_SOURCE_DIR}/exports.map")
+    set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY LINK_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/exports.map)
+elseif(APPLE)
+    target_link_options(${PROJECT_NAME} PRIVATE
+        "LINKER:-exported_symbol,_napi_register_module_v1"
+        "LINKER:-exported_symbol,_node_api_module_get_api_version_v1")
+endif()
+
 if(MSVC AND CMAKE_JS_NODELIB_DEF AND CMAKE_JS_NODELIB_TARGET)
     execute_process(COMMAND ${CMAKE_AR} /def:${CMAKE_JS_NODELIB_DEF}
         /out:${CMAKE_JS_NODELIB_TARGET} ${CMAKE_STATIC_LINKER_FLAGS})

@@ -19,6 +19,8 @@ export interface ILayoutProbe {
    * with no width to draw into.
    */
   clipped(id: ElementId): Promise<boolean[]>
+  /** For every element with this id, the direction its text is laid out in. */
+  directions(id: ElementId): Promise<string[]>
   /**
    * Whether the first element's centre is left of the second's. Of two siblings, this is what
    * says whether the row holding them mirrored, which the window's halves cannot.
