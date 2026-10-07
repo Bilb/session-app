@@ -41,10 +41,23 @@ const PHOTO_LIBRARY_TYPES: Readonly<Record<string, string>> = {
   'video/3gpp': '3gp',
 }
 
+/** MediaStore files these, and iOS Photos refuses them with PHPhotosErrorDomain 3302. */
+const REFUSED_BY_IOS_PHOTOS: ReadonlySet<string> = new Set(['video/3gpp'])
+
+function essenceOf(contentType: string | undefined): string | undefined {
+  return contentType?.split(';')[0]?.trim().toLowerCase()
+}
+
 /** The extension to file this under in the photo library, or null when it does not go there. */
 export function photoLibraryExtension(contentType: string | undefined): string | null {
-  const essence = contentType?.split(';')[0]?.trim().toLowerCase()
+  const essence = essenceOf(contentType)
   return (essence === undefined ? undefined : PHOTO_LIBRARY_TYPES[essence]) ?? null
+}
+
+/** Whether this platform's photo library takes the type; anything else goes to a folder. */
+export function photoLibraryTakes(contentType: string | undefined, os: 'ios' | 'android'): boolean {
+  if (photoLibraryExtension(contentType) === null) return false
+  return os === 'android' || !REFUSED_BY_IOS_PHOTOS.has(essenceOf(contentType) ?? '')
 }
 
 function fitsBytes(name: string): boolean {

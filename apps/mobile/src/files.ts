@@ -10,7 +10,7 @@ import {
   isGrantedFolderUri,
   numberedName,
   partName,
-  photoLibraryExtension,
+  photoLibraryTakes,
   placeUnderFreeName,
   stagedPath,
   StagedExports,
@@ -151,7 +151,8 @@ async function photoLibraryWritable(): Promise<boolean> {
 
 async function chooseDelivery(contentType: string | undefined): Promise<Delivery | null> {
   // A refusal the OS will ask about again sends the picture to a folder, as any other file.
-  if (photoLibraryExtension(contentType) !== null && (await photoLibraryWritable())) {
+  const os = Platform.OS === 'ios' ? 'ios' : 'android'
+  if (photoLibraryTakes(contentType, os) && (await photoLibraryWritable())) {
     return { to: 'photos' }
   }
   const folder = await pickFolder()

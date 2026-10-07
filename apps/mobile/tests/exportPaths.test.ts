@@ -8,6 +8,7 @@ import {
   numberedName,
   partName,
   photoLibraryExtension,
+  photoLibraryTakes,
   placeUnderFreeName,
   stagedPath,
   StagedExports,
@@ -87,6 +88,21 @@ describe('which files go to the photo library', () => {
       undefined,
     ]) {
       expect(photoLibraryExtension(type)).toBeNull()
+    }
+  })
+})
+
+describe("which platform's photo library takes a type", () => {
+  it('sends a 3GPP video to a folder on iOS, whose Photos refuses it', () => {
+    expect(photoLibraryTakes('video/3gpp', 'ios')).toBe(false)
+    expect(photoLibraryTakes('video/3gpp', 'android')).toBe(true)
+  })
+
+  it('takes the other library types on both', () => {
+    for (const os of ['ios', 'android'] as const) {
+      expect(photoLibraryTakes('image/webp', os)).toBe(true)
+      expect(photoLibraryTakes('Video/MP4; codecs=avc1', os)).toBe(true)
+      expect(photoLibraryTakes('application/pdf', os)).toBe(false)
     }
   })
 })
