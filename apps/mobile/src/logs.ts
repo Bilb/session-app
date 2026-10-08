@@ -14,6 +14,7 @@ import { Directory, File, FileMode, Paths } from 'expo-file-system'
 import { AppState, Platform } from 'react-native'
 
 import { flagVariables } from './flagOverrides'
+import { SessionLogs } from './sessionLogs'
 
 const SALT_FILE = '.salt'
 const SALT_BYTES = 16
@@ -108,10 +109,10 @@ function osName(): string {
 }
 
 /**
- * The model, where React Native knows it. Android reports it; iOS does not without a native
- * module, so it says which kind of device and admits the rest.
+ * The model, where React Native knows it, for a build without `modules/session-logs`. Android
+ * reports it; iOS does not, so it says which kind of device and admits the rest.
  */
-function model(): string {
+function fallbackModel(): string {
   if (Platform.OS === 'android') {
     const constants = Platform.constants as { Manufacturer?: string; Model?: string }
     return [constants.Manufacturer, constants.Model].filter(Boolean).join(' ') || 'unknown'
@@ -164,12 +165,15 @@ const opened = (async (): Promise<LogWriter> => {
     // The spec store.ts opens the bridge with, so what libsession is asked to emit is also kept.
     minLevel: minLevelFromSpec(process.env['EXPO_PUBLIC_SESSION_LOG']),
   })
+  // The hardware identifier and install source, which only native code can read. A failure here
+  // costs the block two facts, never the logger.
+  const native = await SessionLogs?.diagnostics().catch(() => undefined)
   startLogger(logger, {
     launchedAtMs: launchMs,
-    model: model(),
+    model: native?.model ?? fallbackModel(),
     os: osName(),
     locale: Intl.DateTimeFormat().resolvedOptions().locale,
-    install: 'unknown',
+    install: native?.install ?? 'unknown',
     platformRows: [],
     // The same variables, literally named, that store.ts opens the bridge with.
     network: {
