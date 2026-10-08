@@ -26,7 +26,7 @@ describe('libsessionLine', () => {
   })
 
   it('reads the prefix whatever unit its uptime has reached', () => {
-    for (const uptime of ['+0.420s', '+3m50.208s', '+1h2m3.4s']) {
+    for (const uptime of ['+0.420s', '+3m50.208s', '+1h03m50.208s', '+26h03m07.120s']) {
       expect(
         libsessionLine(
           'info',

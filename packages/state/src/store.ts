@@ -226,7 +226,8 @@ function appLevel(level: string): LogLevel {
 
 /**
  * libsession's own prefix: `[2026-10-08 17:55:06] [+0.420s] [core.gbl:info|core/globals.cpp:150] `,
- * its uptime written `+3m50.208s` past a minute and `+1h2m3.4s` past an hour.
+ * its uptime written `+3m50.208s` past a minute and `+1h03m50.208s` past an hour, with no larger
+ * unit after that (`+26h03m07.120s`) - oxen-logging's `startup_elapsed_flag`.
  *
  * The local time and uptime repeat the app's own columns in another zone and from another zero,
  * so they are dropped. The level in it is the one the line was logged at, which the event's own
