@@ -13,8 +13,9 @@ a time, via the `port-feature` skill.
 
 - **Push.** `setPushToken` and `handlePushPayload` are in the protocol and the shim answers both
   with an error naming itself.
-- **Sending an attachment.** Receiving one works: metadata, a download with progress, exporting to
-  a chosen path, and the per-conversation auto-download setting. `sendMessage` still takes a body
+- **Sending an attachment.** Receiving one works: metadata, a download with progress, exporting
+  (desktop to a chosen path, mobile where the legacy clients put it), and the per-conversation
+  auto-download setting. `sendMessage` still takes a body
   and nothing else, so `SendState::uploading` is a state nothing here can reach.
 - **Showing an attachment on iOS.** Desktop and Android draw pictures inline over the
   `session-media` scheme. iOS needs its `RCTImageURLLoader`, which is not written, so
@@ -30,12 +31,9 @@ a time, via the `port-feature` skill.
 - **A devnet cannot have its own Pro backend.** The key libsession verifies proofs against is a
   `constexpr` read at one call site in `core.cpp`, so pointing a build at another deployment needs
   a libsession change. Nothing here configures one, and nothing here has Pro code to configure.
-- **Android has not been run against a devnet.** iOS has - it discovered 15 seed nodes, built its
-  paths and polled its swarm - and the two share everything above the Nitro module, so what is
-  untried is the Android side of that module rather than any of the logic. A dev client built
-  since the shim last changed is what it needs, from an `android/` regenerated since the media
-  loader landed: `pnpm android` prebuilds only when that directory is absent, and a stale one
-  refuses to start in debug and says so.
+- **Android needs an `android/` regenerated since the media loader landed.** `pnpm android`
+  prebuilds only when that directory is absent, and a stale one refuses to start in debug and says
+  so.
 - **No contact list, and the QR scanner only restores an account.** Starting a conversation means
   pasting an account ID.
 - **iOS device builds and a release-shaped xcframework.** The simulator works; nothing has been
