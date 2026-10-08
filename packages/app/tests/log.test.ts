@@ -1,7 +1,14 @@
 import { createLogger, Pseudonyms } from '@session/logging'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { appLog, installLogger, logStoreMilestones, resetLogger, startLogger } from '#src/log'
+import {
+  appLog,
+  installLogger,
+  logStoreMilestones,
+  networkRows,
+  resetLogger,
+  startLogger,
+} from '#src/log'
 import { resetPorts, setPorts } from '#src/ports'
 import { memoryPorts } from '#src/testPorts'
 
@@ -75,13 +82,21 @@ describe('startLogger', () => {
       model: 'iPhone',
       locale: 'en-AU',
       install: 'unknown',
-      logSpec: '',
+      network: {
+        fake: false,
+        netid: 'testnet',
+        router: undefined,
+        devnetSeedUrl: undefined,
+        fileServerUrl: undefined,
+        logSpec: '',
+      },
       previousRun: null,
     })
     const bodies = lines.map((line) => line.slice(70))
     expect(bodies[0]).toBe('──── Session 1.2.3 (7) launched ────')
     expect(bodies).toContain('  App          1.2.3 (7) · commit abc12345 · variant dev')
     expect(bodies).toContain("  Log level    libsession's default")
+    expect(bodies).toContain('  Network      testnet · Session Router (default)')
     expect(bodies.slice(-2)).toEqual(['>>> launch', 'held'])
   })
 })
@@ -100,5 +115,41 @@ describe('logStoreMilestones', () => {
       '>>> account created',
       '>>> start failed reason="database is locked"',
     ])
+  })
+})
+
+describe('networkRows', () => {
+  const none = {
+    fake: false,
+    netid: undefined,
+    router: undefined,
+    devnetSeedUrl: undefined,
+    fileServerUrl: undefined,
+    logSpec: undefined,
+  }
+
+  it("says which transport and whether it was chosen or libsession's default", () => {
+    expect(networkRows(none).network).toBe('mainnet · Session Router (default)')
+    expect(networkRows({ ...none, netid: 'devnet' }).network).toBe(
+      'devnet · onion requests (default)',
+    )
+    expect(networkRows({ ...none, router: 'onion-requests' }).network).toBe(
+      'mainnet · onion requests (set)',
+    )
+  })
+
+  it('lists the further settings that were given, and the log spec', () => {
+    const rows = networkRows({
+      ...none,
+      netid: 'devnet',
+      devnetSeedUrl: 'http://10.0.0.5:22023',
+      logSpec: 'info,network=debug',
+    })
+    expect(rows.networkSettings).toEqual([['Seed node', 'http://10.0.0.5:22023']])
+    expect(rows.logSpec).toBe('info,network=debug')
+  })
+
+  it('names the fake for what it is', () => {
+    expect(networkRows({ ...none, fake: true }).network).toBe('fake (no libsession)')
   })
 })

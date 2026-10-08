@@ -79,6 +79,30 @@ function developerSetting(name: string): string | undefined {
 }
 
 /**
+ * The network settings this run's bridge is opened with, for the log's startup block. The same
+ * shape as `NetworkSettings` in `@session/app`, which main cannot import: it carries React.
+ */
+export interface NetworkSettings {
+  fake: boolean
+  netid: string | undefined
+  router: string | undefined
+  devnetSeedUrl: string | undefined
+  fileServerUrl: string | undefined
+  logSpec: string | undefined
+}
+
+export function networkSettings(): NetworkSettings {
+  return {
+    fake: developerSetting('EXPO_PUBLIC_SESSION_FAKE') === '1',
+    netid: developerSetting('EXPO_PUBLIC_SESSION_NETID'),
+    router: developerSetting('EXPO_PUBLIC_SESSION_ROUTER'),
+    devnetSeedUrl: developerSetting('EXPO_PUBLIC_SESSION_DEVNET_SEED_URL'),
+    fileServerUrl: developerSetting('EXPO_PUBLIC_SESSION_FILE_SERVER_URL'),
+    logSpec: developerSetting('EXPO_PUBLIC_SESSION_LOG'),
+  }
+}
+
+/**
  * Opens the bridge the renderer talks to.
  *
  * Everything above this file sees frames either way.

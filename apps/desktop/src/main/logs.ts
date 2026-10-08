@@ -22,6 +22,7 @@ import {
   type PreviousRun,
 } from '@session/logging'
 
+import { networkSettings, type NetworkSettings } from './bridge'
 import { isFromAppFrame } from './security'
 
 const { app } = electron
@@ -111,6 +112,7 @@ interface LogSession {
   /** Main's uptime as the renderer asked, so both processes write one clock. */
   uptimeMs: number
   previousRun: PreviousRun | null
+  network: NetworkSettings
   platform: string
   osVersion: string
   model: string
@@ -172,6 +174,7 @@ export function serveLogs(window: Electron.BrowserWindow, appUrl: string): void 
       saltHex: Buffer.from(salt).toString('hex'),
       uptimeMs: process.uptime() * 1000,
       previousRun: writer.previousRun,
+      network: networkSettings(),
       platform: friendlyPlatform(),
       osVersion: process.getSystemVersion(),
       model: `${arch()} · kernel ${release()}`,

@@ -118,7 +118,15 @@ const opened = (async (): Promise<LogWriter> => {
     model: model(),
     locale: Intl.DateTimeFormat().resolvedOptions().locale,
     install: 'unknown',
-    logSpec: process.env['EXPO_PUBLIC_SESSION_LOG'] ?? '',
+    // The same variables, literally named, that store.ts opens the bridge with.
+    network: {
+      fake: process.env['EXPO_PUBLIC_SESSION_FAKE'] === '1',
+      netid: process.env['EXPO_PUBLIC_SESSION_NETID'],
+      router: process.env['EXPO_PUBLIC_SESSION_ROUTER'],
+      devnetSeedUrl: process.env['EXPO_PUBLIC_SESSION_DEVNET_SEED_URL'],
+      fileServerUrl: process.env['EXPO_PUBLIC_SESSION_FILE_SERVER_URL'],
+      logSpec: process.env['EXPO_PUBLIC_SESSION_LOG'],
+    },
     previousRun: writer.previousRun,
   })
 

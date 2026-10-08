@@ -287,10 +287,6 @@ export default defineConfig({
       'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_VARIANT': JSON.stringify(
         process.env['EXPO_PUBLIC_SESSION_BUILD_VARIANT'] ?? '',
       ),
-      // The libsession log spec main reads at launch, so the startup block can say what it is.
-      'import.meta.env.EXPO_PUBLIC_SESSION_LOG': JSON.stringify(
-        process.env['EXPO_PUBLIC_SESSION_LOG'] ?? '',
-      ),
       // react-native-web reads these; without them the bundle throws on first render.
       global: 'globalThis',
       __DEV__: JSON.stringify(process.env['NODE_ENV'] !== 'production'),

@@ -32,8 +32,6 @@ interface ImportMetaEnv {
   readonly EXPO_PUBLIC_SESSION_BUILD_VARIANT: string
   /** Vite's own: true under the dev server, false in a built bundle. */
   readonly DEV: boolean
-  /** The libsession log spec main was started with, for the startup block. */
-  readonly EXPO_PUBLIC_SESSION_LOG: string
 }
 
 interface ImportMeta {
@@ -57,6 +55,14 @@ interface Window {
       saltHex: string
       uptimeMs: number
       previousRun: { file: string; endedCleanly: boolean; lastMarker: string | null } | null
+      network: {
+        fake: boolean
+        netid: string | undefined
+        router: string | undefined
+        devnetSeedUrl: string | undefined
+        fileServerUrl: string | undefined
+        logSpec: string | undefined
+      }
       platform: string
       osVersion: string
       model: string

@@ -1,3 +1,4 @@
+import { parseNetworkName, parseRouterKind } from '@session/basic-types'
 import {
   startupBlock,
   type LogFields,
@@ -105,6 +106,53 @@ export function logStoreMilestones(store: {
   })
 }
 
+/**
+ * The settings a run's network was chosen by, raw, as each app reads them from its environment.
+ *
+ * Read where the bridge is opened rather than from the network port, so the block says what this
+ * run is attached to even where a build-time value and a runtime one could differ - a desktop dev
+ * build, whose renderer's values are substituted when it is built.
+ */
+export interface NetworkSettings {
+  fake: boolean
+  netid: string | undefined
+  router: string | undefined
+  devnetSeedUrl: string | undefined
+  fileServerUrl: string | undefined
+  logSpec: string | undefined
+}
+
+const ROUTER_NAMES = { 'onion-requests': 'onion requests', 'session-router': 'Session Router' }
+
+/**
+ * The startup block's network rows: which network, which transport and whether it was chosen or
+ * defaulted, then any further setting that was given. A setting added to the bridge belongs here,
+ * so the block keeps saying everything a run was configured with.
+ */
+export function networkRows(settings: NetworkSettings): {
+  network: string
+  networkSettings: (readonly [string, string])[]
+  logSpec: string
+} {
+  const logSpec =
+    settings.logSpec === undefined || settings.logSpec === ''
+      ? "libsession's default"
+      : settings.logSpec
+  if (settings.fake) return { network: 'fake (no libsession)', networkSettings: [], logSpec }
+  const name = parseNetworkName(settings.netid)
+  const chosen = parseRouterKind(settings.router)
+  // libsession's own default: Session Router on the public networks, onion requests on a devnet.
+  const router = chosen ?? (name === 'devnet' ? 'onion-requests' : 'session-router')
+  const extra: (readonly [string, string])[] = []
+  if (settings.devnetSeedUrl) extra.push(['Seed node', settings.devnetSeedUrl])
+  if (settings.fileServerUrl) extra.push(['File server', settings.fileServerUrl])
+  return {
+    network: `${name} · ${ROUTER_NAMES[router]} (${chosen === undefined ? 'default' : 'set'})`,
+    networkSettings: extra,
+    logSpec,
+  }
+}
+
 /** What only the platform can say about itself, for the startup block. */
 export interface PlatformFacts {
   platform: string
@@ -113,8 +161,8 @@ export interface PlatformFacts {
   locale: string
   /** Where the OS says the app came from, or `unknown`. */
   install: string
-  /** The libsession log spec in force, as written; empty for libsession's default. */
-  logSpec: string
+  /** The network settings the bridge was opened with, as this platform read them. */
+  network: NetworkSettings
   previousRun: PreviousRun | null
 }
 
@@ -127,7 +175,8 @@ export interface PlatformFacts {
  * the build, the network and the flags, and the platform the rest.
  */
 export function startLogger(logger: Logger, facts: PlatformFacts): void {
-  const { build, network } = requirePorts()
+  const { build } = requirePorts()
+  const network = networkRows(facts.network)
   logger.block(
     'startup',
     startupBlock({
@@ -141,9 +190,10 @@ export function startLogger(logger: Logger, facts: PlatformFacts): void {
       model: facts.model,
       locale: facts.locale,
       utcOffsetMinutes: -new Date().getTimezoneOffset(),
-      network: network.name,
+      network: network.network,
+      networkSettings: network.networkSettings,
       flagOverrides: overriddenFlags(),
-      logSpec: facts.logSpec === '' ? "libsession's default" : facts.logSpec,
+      logSpec: network.logSpec,
       previousRun: facts.previousRun,
     }),
   )

@@ -14,7 +14,10 @@ export interface StartupFacts {
   model: string
   locale: string
   utcOffsetMinutes: number
+  /** `testnet · Session Router (default)`: what this run is attached to, and how. */
   network: string
+  /** Further network settings this run was started with, label then value; empty when none. */
+  networkSettings: ReadonlyArray<readonly [string, string]>
   /** `NAME=value` for each flag overridden in this build's environment. */
   flagOverrides: readonly string[]
   /** The libsession log spec in force, as written: `info,network=debug`. */
@@ -73,6 +76,7 @@ export function startupBlock(facts: StartupFacts): string[] {
     row('Device', `${facts.model} · ${facts.platform} ${facts.osVersion}`),
     row('Locale', `${facts.locale} · ${utcOffset(facts.utcOffsetMinutes)}`),
     row('Network', facts.network),
+    ...facts.networkSettings.map(([label, value]) => row(label, value)),
     row(
       'Flags',
       facts.flagOverrides.length === 0 ? 'none overridden' : facts.flagOverrides.join(' · '),

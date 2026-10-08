@@ -61,7 +61,7 @@ export async function startLogging(store: SessionStore): Promise<void> {
     model: session.model,
     locale: session.locale,
     install: 'unknown',
-    logSpec: import.meta.env.EXPO_PUBLIC_SESSION_LOG,
+    network: session.network,
     previousRun: session.previousRun,
   })
   logStoreMilestones(store)
