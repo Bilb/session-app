@@ -7,6 +7,7 @@ import {
 import { parseNetworkName } from '@session/basic-types'
 import * as Clipboard from 'expo-clipboard'
 import Constants from 'expo-constants'
+import * as Sharing from 'expo-sharing'
 import { Directory, File, Paths } from 'expo-file-system'
 import * as SecureStore from 'expo-secure-store'
 import { Linking, Platform, Share } from 'react-native'
@@ -201,18 +202,24 @@ const ports = memoryPorts({
     span: (first, last) =>
       Promise.resolve({ firstLine: edgeLine(first, 'first'), lastLine: edgeLine(last, 'last') }),
     /**
-     * Compressed natively into the cache, then the share sheet with the file. iOS only for now:
-     * Android's sheet takes a file only through a content provider, which this build lacks.
+     * Compressed natively into the cache, then shared, as the legacy clients do, rather than saved
+     * through a picker. expo-sharing because Android's sheet takes a file only through a content
+     * provider, which it brings; on iOS it is the same activity sheet React Native's own opens.
+     *
+     * The sheet does not say whether anything was sent, so a closed sheet counts as delivered.
      */
     deliver:
-      nativeLogs === null || Platform.OS !== 'ios'
+      nativeLogs === null
         ? null
         : async (name, parts) => {
             const out = new File(Paths.cache, name)
             if (out.exists) out.delete()
             await nativeLogs.gzip(parts, pathOf(logDirectory.uri), pathOf(out.uri))
-            const result = await Share.share({ url: out.uri })
-            return result.action === Share.sharedAction
+            await Sharing.shareAsync(out.uri, {
+              mimeType: 'application/gzip',
+              UTI: 'org.gnu.gnu-zip-archive',
+            })
+            return true
           },
   },
   diagnostics: { snapshot: diagnosticsSnapshot },

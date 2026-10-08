@@ -251,8 +251,9 @@ export interface LogsPort {
   span(first: string, last: string): Promise<{ firstLine: string | null; lastLine: string | null }>
   /**
    * Compresses the parts, in order, into one gzip file called `name`, and hands it to the person:
-   * a save dialog on desktop, the share sheet on a phone. False when they cancelled; null where
-   * this build cannot export at all, so a screen leaves the control out.
+   * a save dialog on desktop, the share sheet on a phone. False when they cancelled, where the
+   * platform can tell; null where this build cannot export at all, so a screen leaves the control
+   * out.
    */
   deliver: ((name: string, parts: readonly ExportPart[]) => Promise<boolean>) | null
 }

@@ -42,6 +42,7 @@
     "expo-linking": "catalog:",
     "expo-router": "catalog:",
     "expo-secure-store": "catalog:",
+    "expo-sharing": "catalog:",
     "expo-splash-screen": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
