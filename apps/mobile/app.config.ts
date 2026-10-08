@@ -198,6 +198,17 @@ export default ({ config }: ConfigContext): ExpoConfig =>
           recordAudioAndroid: false,
         },
       ],
+      [
+        'expo-splash-screen',
+        {
+          // The legacy clients' launch screen: the logo on black, at its size there, in every
+          // theme -- nothing is known about the account's theme until after it has gone.
+          image: './assets/splash-logo.png',
+          imageWidth: 58,
+          resizeMode: 'contain',
+          backgroundColor: '#000000',
+        },
+      ],
     ],
     ios: {
       ...config.ios,

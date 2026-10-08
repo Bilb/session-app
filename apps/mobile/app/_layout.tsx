@@ -26,6 +26,7 @@ import { mobileBackdropBlur } from '../src/backdrop'
 import { mobileGlass } from '../src/glass'
 import { MobileCameraProvider } from '../src/camera'
 import { MobileNavProvider } from '../src/nav'
+import { HideSplashOnMount } from '../src/splash'
 import { storePromise } from '../src/store'
 
 /**
@@ -80,12 +81,14 @@ export default function RootLayout() {
                 backgroundColor="$backgroundPrimary"
               >
                 <Text tone="secondary">Starting…</Text>
+                <HideSplashOnMount />
               </YStack>
             </UIProvider>
           )
         ) : (
           <SessionStoreProvider store={store}>
             <StoredThemeProvider backdropBlur={mobileBackdropBlur} glass={mobileGlass}>
+              <HideSplashOnMount />
               <MobileNavProvider>
                 <MobileCameraProvider>
                   <DirectionRoot rtl={rtl}>

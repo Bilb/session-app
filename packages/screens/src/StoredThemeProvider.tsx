@@ -14,9 +14,10 @@ import { useFirstPaintHeld } from './firstPaintHold'
  * default theme and redrawn in the chosen one. What shows meanwhile is what the platform draws
  * behind the app.
  *
- * TODO: on the desktop that is the window's own background, which knows nothing of the theme; the
- * main process has the bridge before the window and could read the theme for it. On the phones it
- * is the system's root view, until the native splash is held over this with expo-splash-screen.
+ * On the phones that is the native launch screen, which the mobile app holds until this draws.
+ *
+ * TODO: on the desktop it is the window's own background, which knows nothing of the theme; the
+ * main process has the bridge before the window and could read the theme for it.
  */
 export function StoredThemeProvider(props: Omit<UIProviderProps, 'theme' | 'accent'>) {
   const hydrated = useHydrated()
