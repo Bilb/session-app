@@ -454,6 +454,28 @@ export function runSessionClientContract(
       expect(deleted?.deleted).toBe('here')
     })
 
+    it('never gives a deleted message id to a newer message', async () => {
+      const { alice, bobId, settle } = await harness.friends()
+      const { sessionId } = await alice.getAccountInfo()
+      if (!sessionId) throw new Error('unreachable')
+      const noteToSelf = await alice.openDm(sessionId)
+      await alice.sendMessage(noteToSelf, { body: 'kept' })
+      await alice.sendMessage(bobId, { body: 'gone' })
+      await settle()
+
+      // Removes the newest row, whose id is the one a reusing insert would take next.
+      const { messages } = await alice.getMessages(bobId, { includeDeleted: true })
+      const highest = Math.max(...messages.map((m) => m.id))
+      await alice.deleteConversation(bobId)
+      await settle()
+
+      await alice.sendMessage(noteToSelf, { body: 'next' })
+      await settle()
+      const { messages: after } = await alice.getMessages(noteToSelf)
+      const next = after.find((m) => m.body === 'next')
+      expect(next?.id).toBeGreaterThan(highest)
+    })
+
     it('refuses a seed that is not 32 bytes of hex', async () => {
       const { alice } = await harness.friends()
 
