@@ -101,6 +101,8 @@ export const FILE_NOT_FOUND: AttachmentError = 'file.not_found'
 export const FILE_UNREADABLE: AttachmentError = 'file.unreadable'
 /** This attempt failed for a reason that may not recur, so retrying is reasonable. */
 export const FILE_DOWNLOAD_FAILED: AttachmentError = 'file.download_failed'
+/** The request was withdrawn, or the attachment was deleted while it was being fetched. */
+export const FILE_DOWNLOAD_CANCELLED: AttachmentError = 'file.download_cancelled'
 /** An export could not be written to its destination. */
 export const FILE_SAVE_FAILED: AttachmentError = 'file.save_failed'
 
