@@ -99,6 +99,8 @@ const ports = memoryPorts({
         : Constants.expoConfig?.android?.versionCode === undefined
           ? null
           : String(Constants.expoConfig.android.versionCode),
+    // Said by whoever assembles the build, and inlined by Metro like the commit.
+    variant: process.env['EXPO_PUBLIC_SESSION_BUILD_VARIANT'] || 'unknown',
   },
   share: {
     // The platform's sheet, with the text alone: no title or subject, which iOS would drop and

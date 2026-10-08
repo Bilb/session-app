@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "@session/basic-types": "workspace:*",
-    "@session/client": "workspace:*"
+    "@session/client": "workspace:*",
+    "@session/logging": "workspace:*"
   }
 }

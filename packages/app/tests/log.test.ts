@@ -1,0 +1,94 @@
+import { createLogger, Pseudonyms } from '@session/logging'
+import { afterEach, describe, expect, it } from 'vitest'
+
+import { appLog, installLogger, logLaunch, logStoreMilestones } from '#src/log'
+import { resetPorts, setPorts } from '#src/ports'
+import { memoryPorts } from '#src/testPorts'
+
+function capture(): string[] {
+  const lines: string[] = []
+  installLogger(
+    createLogger({
+      sink: { write: (written) => lines.push(...written) },
+      pseudonyms: new Pseudonyms(new Uint8Array(16)),
+      uptimeMs: () => 0,
+    }),
+  )
+  return lines
+}
+
+interface State {
+  startupError: string | null
+  account: { haveAccount: boolean } | null
+}
+
+function fakeStore() {
+  let listener: ((state: State, previous: State) => void) | null = null
+  let state: State = { startupError: null, account: null }
+  return {
+    subscribe(next: (state: State, previous: State) => void) {
+      listener = next
+      return () => undefined
+    },
+    set(patch: Partial<State>) {
+      const previous = state
+      state = { ...state, ...patch }
+      listener?.(state, previous)
+    },
+  }
+}
+
+afterEach(() => {
+  resetPorts()
+})
+
+describe('appLog', () => {
+  it('holds lines logged before the logger arrives and writes them in order', () => {
+    appLog.info('ui', 'first')
+    appLog.marker('lifecycle', 'second')
+    const lines = capture()
+    expect(lines.map((line) => line.slice(70))).toEqual(['first', '>>> second'])
+  })
+})
+
+describe('logLaunch', () => {
+  it('writes the startup block from the ports, then the launch marker', () => {
+    setPorts(
+      memoryPorts({
+        build: { version: '1.2.3', commit: 'abc12345', buildNumber: '7', variant: 'dev' },
+      }),
+    )
+    const lines = capture()
+    logLaunch({
+      platform: 'iOS',
+      osVersion: '26.1',
+      model: 'iPhone',
+      locale: 'en-AU',
+      install: 'unknown',
+      logSpec: '',
+      previousRun: null,
+    })
+    const bodies = lines.map((line) => line.slice(70))
+    expect(bodies[0]).toBe('──── Session 1.2.3 (7) launched ────')
+    expect(bodies).toContain('  App          1.2.3 (7) · commit abc12345 · variant dev')
+    expect(bodies).toContain("  Log level    libsession's default")
+    expect(bodies.at(-1)).toBe('>>> launch')
+  })
+})
+
+describe('logStoreMilestones', () => {
+  it('marks the start, the account, and a failed start with its reason', () => {
+    const lines = capture()
+    const store = fakeStore()
+    logStoreMilestones(store)
+    store.set({ account: { haveAccount: false } })
+    store.set({ account: { haveAccount: true } })
+    store.set({ startupError: 'database is locked' })
+    expect(lines.map((line) => line.slice(70))).toEqual([
+      '>>> start ok',
+      '>>> account none',
+      '>>> account created',
+      '>>> start failed reason="database is locked"',
+    ])
+  })
+})

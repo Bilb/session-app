@@ -69,7 +69,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
     // Null, not a no-op, for the same reason as `openAppSettings`: a screen reads it to decide
     // whether to offer Share at all. The phones install their own.
     share: { shareText: null },
-    build: { version: '0.0.0', commit: null, buildNumber: null },
+    build: { version: '0.0.0', commit: null, buildNumber: null, variant: 'unknown' },
     window: {
       // Null, not a no-op: nothing in a test or on a phone can close the app, and a screen asks
       // this port whether to offer the door at all -- see `WindowPort` in `./ports`.

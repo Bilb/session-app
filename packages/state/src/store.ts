@@ -179,13 +179,15 @@ export interface SessionActions {
 export type SessionStore = StoreApi<SessionState> & { actions: SessionActions }
 
 /**
- * How much the reader is meant to care.
+ * How much the reader is meant to care: libsession's six levels, so a line keeps the level it was
+ * logged at all the way to the file. Folding `critical` into `error` on the way through was what
+ * an adapter used to do, and it erased the one distinction a crash report needed.
  *
- * Passed as an argument rather than split into four functions, because an app maps every level
- * to a console call in one place, and a level added later would otherwise be a breaking change
- * for every implementation.
+ * Passed as an argument rather than split into six functions, because an app maps every level in
+ * one place, and a level added later would otherwise be a breaking change for every
+ * implementation.
  */
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
+export type LogLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'critical'
 
 export interface SessionStoreOptions {
   /**
@@ -196,7 +198,7 @@ export interface SessionStoreOptions {
    * inconvenience, because which console a line reaches is a per-platform question. Each app
    * passes its own; leaving it out is silence.
    */
-  log?: (level: LogLevel, line: string) => void
+  log?: (level: LogLevel, category: string, message: string) => void
   /**
    * How much disk the attachment cache may occupy, in bytes. Left out means no limit, which is
    * libsession's default and is how a cache eats a disk - so every app should pass one, and what
@@ -205,25 +207,11 @@ export interface SessionStoreOptions {
   attachmentCacheLimitBytes?: number
 }
 
-/**
- * libsession's levels onto the app's.
- *
- * libsession has two the app does not: `trace`, which is a louder `debug`, and `critical`,
- * which is an `error` nobody recovers from. Neither earns a console method of its own, and the
- * original level is still in the line itself.
- */
+const LEVELS: readonly string[] = ['trace', 'debug', 'info', 'warn', 'error', 'critical']
+
+/** libsession's level names are the app's; anything else it might send is written as `info`. */
 function appLevel(level: string): LogLevel {
-  switch (level) {
-    case 'info':
-      return 'info'
-    case 'warn':
-      return 'warn'
-    case 'error':
-    case 'critical':
-      return 'error'
-    default:
-      return 'debug'
-  }
+  return LEVELS.includes(level) ? (level as LogLevel) : 'info'
 }
 
 const PAGE = 30
@@ -240,7 +228,7 @@ export function createSessionStore(
     // rather than stored: it is not state, and it is the only place the *reason* for a send
     // that ends in `failed` shows up - the state machine reports what happened, never why.
     if (event.type === 'log') {
-      log(appLevel(event.level), `[libsession ${event.level}] ${event.category}: ${event.message}`)
+      log(appLevel(event.level), event.category, event.message)
       return
     }
     store.setState((state) => applyEvent(state, event))
@@ -293,7 +281,8 @@ export function createSessionStore(
     } catch (error) {
       log(
         'error',
-        `[session] ${name} failed: ${error instanceof Error ? error.message : String(error)}`,
+        'session',
+        `${name} failed: ${error instanceof Error ? error.message : String(error)}`,
       )
       throw error
     }
@@ -311,7 +300,7 @@ export function createSessionStore(
         // rather than a promise nobody was holding. Left uncaught it was an unhandled rejection
         // and a launch screen that never went away, identical from the outside to a slow start.
         const message = error instanceof Error ? error.message : String(error)
-        log('error', `[session] could not start: ${message}`)
+        log('error', 'session', `could not start: ${message}`)
         const noBridge = error instanceof SessionClientError && error.code === BRIDGE_UNAVAILABLE
         store.setState({ startupError: message, startupClearable: !noBridge })
       }
@@ -331,7 +320,7 @@ export function createSessionStore(
         // reason. Rejects as well, so a caller that goes on to something only a clear allows --
         // ending the process -- does not.
         const message = error instanceof Error ? error.message : String(error)
-        log('error', `[session] could not clear the device: ${message}`)
+        log('error', 'session', `could not clear the device: ${message}`)
         store.setState({ startupError: message })
         throw error
       }
@@ -365,11 +354,12 @@ export function createSessionStore(
       // place that learns it. `run`'s references say where each platform's console ends up.
       log(
         'info',
+        'session',
         account.haveAccount
-          ? `[session] account ${account.sessionId ?? '(no id)'}, network ${
+          ? `account ${account.sessionId ?? '(no id)'}, network ${
               account.networkAttached ? 'attached' : 'not attached'
             }`
-          : '[session] no account on this device yet',
+          : 'no account on this device yet',
       )
 
       if (!account.haveAccount) {

@@ -14,6 +14,7 @@ import {
 import { createSessionStore } from '@session/state'
 import { Platform } from 'react-native'
 
+import { storeLog, watchStore } from './logs'
 import { resolveDatabaseKey, sessionPaths } from './storage'
 
 /**
@@ -117,17 +118,16 @@ async function openTransportOrRefusal(): Promise<BridgeTransport> {
     return await openTransport()
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error)
-    console.error(`[session] the bridge could not start: ${reason}`)
+    storeLog('error', 'session', `the bridge could not start: ${reason}`)
     return createRefusingTransport(reason)
   }
 }
 
-export const storePromise = openTransportOrRefusal().then((transport) =>
-  createSessionStore(createSessionClient(transport), {
+export const storePromise = openTransportOrRefusal().then((transport) => {
+  const store = createSessionStore(createSessionClient(transport), {
     attachmentCacheLimitBytes: ATTACHMENT_CACHE_LIMIT_BYTES,
-    // Reaches logcat as ReactNativeJS on Android, and the device console on iOS.
-    log: (level, line) => {
-      console[level](line)
-    },
-  }),
-)
+    log: storeLog,
+  })
+  watchStore(store)
+  return store
+})

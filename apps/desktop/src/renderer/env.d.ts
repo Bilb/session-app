@@ -28,6 +28,12 @@ interface ImportMetaEnv {
   readonly EXPO_PUBLIC_SESSION_BUILD_VERSION: string
   /** The commit stamp, or null outside a git checkout. See `commitStamp` in the config. */
   readonly EXPO_PUBLIC_SESSION_BUILD_COMMIT: string | null
+  /** What the build was made as, from whoever assembled it; empty when they did not say. */
+  readonly EXPO_PUBLIC_SESSION_BUILD_VARIANT: string
+  /** Vite's own: true under the dev server, false in a built bundle. */
+  readonly DEV: boolean
+  /** The libsession log spec main was started with, for the startup block. */
+  readonly EXPO_PUBLIC_SESSION_LOG: string
 }
 
 interface ImportMeta {
@@ -46,5 +52,17 @@ interface Window {
     setLocale(locale: string): void
     /** Ends this process and starts the app again in a fresh one. */
     restart(): void
+    /** The salt and facts the renderer's logger needs; see `LogSession` in main's `logs.ts`. */
+    openLog(): Promise<{
+      saltHex: string
+      uptimeMs: number
+      previousRun: { file: string; endedCleanly: boolean; lastMarker: string | null } | null
+      platform: string
+      osVersion: string
+      model: string
+      locale: string
+    }>
+    /** Finished lines, for main to write; `urgent` asks for them on disk now. */
+    appendLog(lines: string[], urgent: boolean): void
   }
 }

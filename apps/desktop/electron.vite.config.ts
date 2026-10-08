@@ -169,6 +169,7 @@ const workspacePackages = [
   '@session/bridge-types',
   '@session/client',
   '@session/localization',
+  '@session/logging',
   '@session/state',
   '@session/theme-tokens',
 ]
@@ -281,6 +282,15 @@ export default defineConfig({
       // Read here because the renderer can reach neither git nor its own manifest.
       'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_VERSION': JSON.stringify(version),
       'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_COMMIT': JSON.stringify(commitStamp()),
+      // What the build was made as -- `website`, `store`... -- said by whoever assembles it, for
+      // the log's startup block. Empty is written as `unknown` rather than guessed at.
+      'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_VARIANT': JSON.stringify(
+        process.env['EXPO_PUBLIC_SESSION_BUILD_VARIANT'] ?? '',
+      ),
+      // The libsession log spec main reads at launch, so the startup block can say what it is.
+      'import.meta.env.EXPO_PUBLIC_SESSION_LOG': JSON.stringify(
+        process.env['EXPO_PUBLIC_SESSION_LOG'] ?? '',
+      ),
       // react-native-web reads these; without them the bundle throws on first render.
       global: 'globalThis',
       __DEV__: JSON.stringify(process.env['NODE_ENV'] !== 'production'),

@@ -157,6 +157,12 @@ export interface BuildPort {
    * does not set one.
    */
   readonly buildNumber: string | null
+  /**
+   * What the build was made as -- `store`, `testflight`, `website`, `fdroid`, `dev` -- said by
+   * whoever assembled it through `EXPO_PUBLIC_SESSION_BUILD_VARIANT`. `unknown` when nobody did,
+   * rather than a guess from the platform: two builds of one platform can be different variants.
+   */
+  readonly variant: string
 }
 
 export interface SharePort {

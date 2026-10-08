@@ -14,6 +14,7 @@ import { createBridge } from './bridge'
 import { editMenuItems } from './editMenu'
 import { serveFiles } from './files'
 import { launchColors } from './launchColors'
+import { openLogs, serveLogs } from './logs'
 import { registerMediaScheme, serveMedia, stopServingMedia } from './media'
 import {
   acceptsCopy,
@@ -38,6 +39,9 @@ import {
  * decides on branding, not a name anyone chose.
  */
 app.setName('session-app')
+
+// As early as the data directory is known, so the launch marker is the first line of the run.
+void openLogs()
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 
@@ -74,6 +78,9 @@ async function requireBridge(): Promise<NonNullable<typeof bridge>> {
     bridge = await createBridge().catch((error: unknown) => {
       const reason = error instanceof Error ? error.message : String(error)
       console.error(`[session] the bridge could not start: ${reason}`)
+      void openLogs().then(({ logger }) => {
+        logger.error('main', 'the bridge could not start', { reason })
+      })
       return refusingBridge(reason)
     })
     // With the bridge rather than with a window: `protocol.handle` installs one handler for the
@@ -144,6 +151,7 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
   })
 
   const files = serveFiles(window, appUrl)
+  serveLogs(window, appUrl)
 
   // Rejects rather than resolving, so a refused copy is not reported to the person as done.
   ipc.handle('clipboard-write-text', async (event, text: unknown) => {
@@ -262,6 +270,10 @@ app.on('window-all-closed', () => {
 
 // The bridge outlives every window, so it is closed here rather than with one of them.
 app.on('before-quit', () => {
+  // Written synchronously by the writer, so it lands before the process is gone.
+  void openLogs().then(({ logger }) => {
+    logger.marker('lifecycle', 'quit')
+  })
   stopServingMedia()
   bridge?.close()
   bridge = null

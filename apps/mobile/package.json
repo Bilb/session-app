@@ -25,6 +25,7 @@
     "@session/basic-types": "workspace:*",
     "@session/bridge-rn": "workspace:*",
     "@session/client": "workspace:*",
+    "@session/logging": "workspace:*",
     "@session/screens": "workspace:*",
     "@session/state": "workspace:*",
     "@session/theme-tokens": "workspace:*",
