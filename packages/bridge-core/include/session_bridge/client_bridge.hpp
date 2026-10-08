@@ -110,6 +110,13 @@ struct InitOptions {
     /// created rather than refused - libsession's `Cat()` makes one on demand - so it matches
     /// nothing and costs nothing, which is why the names are checked before they get here.
     std::vector<LogCategoryLevel> log_categories;
+
+    /// Runs once a discard has replaced the database, on the thread that ran the discard.
+    ///
+    /// libsession never hands a message id out twice within one database, but a new database
+    /// numbers from 1 again, so anything kept by message id - a decoded picture behind a
+    /// `session-media://` URL - names a different message afterwards and has to go here.
+    std::function<void()> on_database_replaced;
 };
 
 /// Receives one `Frame` per call, in the order libsession produced them.

@@ -18,6 +18,7 @@ JavaVM* java_vm = nullptr;
 jmethodID on_media = nullptr;
 jmethodID on_preview = nullptr;
 jmethodID on_failure = nullptr;
+jclass media_native = nullptr;
 pthread_key_t detach_on_exit;
 
 /// The calling thread's JNIEnv, attaching it if it is one of Core's: ART aborts the process when
@@ -139,6 +140,21 @@ void answer_preview(jobject load, ::session_bridge::Preview preview) {
     env->DeleteGlobalRef(load);
 }
 
+void forget_pictures() {
+    JNIEnv* env = attached_env();
+    if (!env)
+        return;
+    // Looked up here rather than at load: that initialises the class, whose initialiser loads
+    // this very library.
+    static jmethodID forget = env->GetStaticMethodID(media_native, "forgetPictures", "()V");
+    if (!forget) {
+        clear_pending(env);
+        return;
+    }
+    env->CallStaticVoidMethod(media_native, forget);
+    clear_pending(env);
+}
+
 }  // namespace
 
 namespace session_bridge_rn {
@@ -158,6 +174,12 @@ jint register_media_loader(JavaVM* vm) {
     env->DeleteLocalRef(load);
     if (!on_media || !on_preview || !on_failure)
         return JNI_ERR;
+    jclass native = env->FindClass("session/bridge/rn/SessionMediaNative");
+    if (!native)
+        return JNI_ERR;
+    media_native = static_cast<jclass>(env->NewGlobalRef(native));
+    env->DeleteLocalRef(native);
+    set_media_forgetter(forget_pictures);
     pthread_key_create(&detach_on_exit, [](void*) { java_vm->DetachCurrentThread(); });
     return JNI_VERSION_1_6;
 }
