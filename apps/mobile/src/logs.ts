@@ -15,10 +15,15 @@ const SALT_FILE = '.salt'
 const SALT_BYTES = 16
 
 /**
- * When the JavaScript runtime started, which is as near to the process starting as JavaScript
- * can see, and so the zero of the uptime column and the name of this launch's file.
+ * The zero of the uptime column and the name of this launch's file: when this bundle started
+ * running, the nearest thing to the process starting that JavaScript can see.
+ *
+ * Measured here rather than taken as `performance.now()` alone, because React Native's clock
+ * counts from the device booting, not from the app starting.
  */
-const launchMs = Date.now() - performance.now()
+const launchMs = Date.now()
+const launchPerfMs = performance.now()
+const uptimeMs = (): number => performance.now() - launchPerfMs
 
 /**
  * The log directory through expo-file-system's synchronous calls.
@@ -105,7 +110,7 @@ const opened = (async (): Promise<LogWriter> => {
     createLogger({
       sink: writer,
       pseudonyms: new Pseudonyms(salt),
-      uptimeMs: () => performance.now(),
+      uptimeMs,
       minLevel: (category) => (category === 'session' ? 'debug' : 'info'),
     }),
   )
