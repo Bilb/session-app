@@ -211,3 +211,77 @@ Never sampled, rate-limited or level-filtered, flushed at once: `launch`, `foreg
 `start ok|failed reason=…`, `account loaded|none|created`, `memory warning` (iOS: React Native
 raises it nowhere else), `renderer gone` and `child process gone` with Chromium's reason (desktop),
 and `export`. Their absence is then evidence.
+
+## The export
+
+**Header** — a document block at the top of the file, without prefixes; the log lines follow after a
+blank line:
+
+```
+════════════════════════════════════════════════════════════════════════
+  Session logs · exported 2026-10-09 07:41:02 UTC (17:41 local, UTC+10:00)
+════════════════════════════════════════════════════════════════════════
+  App            Session 1.0.0 (123) · commit 833d55d5 · variant testflight
+  Install        testflight
+  Device         iPhone17,1 · iOS 26.1 · 8.0 GB RAM
+  Memory         212 MB used · 1.9 GB available
+  Locale         en-AU · region AU · UTC+10:00
+  Notifications  fast mode · push token registered
+  Permissions    camera granted · photos limited · microphone not asked
+                 notifications granted · local network unknown
+  Storage        database 48.2 MB · attachments 312 MB (limit 1 GB) · free 41.2 GB
+  Config sizes   user_profile 1.2 KB · contacts 18.4 KB · convo_info_volatile 6.1 KB
+                 user_groups 3.3 KB · groups ×4 41.8 KB
+  Network        mainnet · wifi
+  Logs           10 files · 2026-10-07 22:14:03Z → 2026-10-09 07:41:02Z · 19.6 MB
+                 nothing left out
+  Redactions     this run: url 0 · uuid 1 · hex 12 · base64 3 · base32 2 · ip 0 · words 0
+════════════════════════════════════════════════════════════════════════
+```
+
+A field the platform can't answer says `unknown`; a field that doesn't apply (permissions on
+desktop) is left out. The compressed size is not in the header — the header is inside what is
+compressed. Redaction counts are the exporting process's own. The most recent startup block is in the log body, so both moments — the fault
+and the export — are there.
+
+- **Body:** the retained files chosen **newest-backwards** up to the budget, written **oldest first**
+  so the file reads in time order, each preceded by a `── session-…-0.log ──` divider line.
+- **File name, no spaces:** `session-logs-<platform>-<version>-<UTC basic>.log.gz`.
+- Delivered through the existing ports: desktop `files.chooseExportLocation`, mobile the share sheet.
+- First caller: Export Logs on the startup-failure screen.
+
+### Where the header's facts come from
+
+| fact                               | desktop                                                                                                                                                                                                                                                                                                                                                                                | iOS                                                                                                  | Android                                                     |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| install                            | `unknown` (no channel is packaged yet)                                                                                                                                                                                                                                                                                                                                                 | `expo-application` release type: App Store / TestFlight (sandbox receipt) / ad hoc / dev / simulator | `getInstallSourceInfo` installer package; `unknown` if none |
+| variant                            | baked at build: `SESSION_BUILD_VARIANT`, `unknown` if unset                                                                                                                                                                                                                                                                                                                            | same, through config extras                                                                          | same                                                        |
+| permissions                        | —                                                                                                                                                                                                                                                                                                                                                                                      | camera, photos, microphone, notifications; local network `unknown` (iOS has no API to ask)           | camera, photos/media, microphone, notifications             |
+| memory, free storage, network type | node `os`, `statfs`                                                                                                                                                                                                                                                                                                                                                                    | native                                                                                               | native                                                      |
+| database size                      | measured off disk by the platform (`session.db` and its journals, in this network's directory)                                                                                                                                                                                                                                                                                         | same                                                                                                 | same                                                        |
+| config sizes                       | **needs libsession first**: the dumps live in its own `config_dumps` table and `Client` has no call that reports them, so the bridge has nothing to wrap. Proposed: `Client::config_dump_sizes()` → `SELECT type, length(data) FROM config_dumps WHERE pubkey = ?` (plus the group configs), then a bridge capability + fake + contract scenario. Until then the header says `unknown` | same                                                                                                 | same                                                        |
+
+## Compression
+
+Benchmark (2026-10, Apple silicon), 20.0 MiB of synthetic lines in this format (random pseudonyms
+and numbers, which compress _worse_ than real logs):
+
+|                                                              | time         | output   | ratio |
+| ------------------------------------------------------------ | ------------ | -------- | ----- |
+| node zlib (native), level 6                                  | **198 ms**   | 4.46 MiB | 4.5:1 |
+| node zlib (native), level 9                                  | 387 ms       | 4.31 MiB | 4.6:1 |
+| fflate 0.8.2, level 6, V8 JIT                                | 321 ms       | 4.88 MiB | 4.1:1 |
+| fflate 0.8.2, level 6, **V8 `--jitless`**                    | **6,040 ms** | 4.88 MiB | 4.1:1 |
+| **fflate 0.8.2, level 6, Hermes** (iOS simulator, dev build) | **7,482 ms** | 3.30 MiB | 6.1:1 |
+
+Hermes has no JIT, and the measured figure agrees with the jitless stand-in: **7.5 s on the iOS
+simulator** (a dev build, which compiles lazily; a release build's precompiled bytecode is faster, but
+not by the factor of thirty that separates it from native), with the JS thread frozen for all of it.
+The simulator's input was more repetitive, hence its better ratio.
+The whole 20 MiB budget still fits in about 5 MiB compressed, but only just.
+
+So compression belongs to the platform, through the `logs` port's `deliver`, not to
+`packages/logging`. Desktop's main process streams the parts through `zlib`. The phones use
+`apps/mobile/modules/session-logs`: the system zlib on iOS and `GZIPOutputStream` on Android, file to
+file, off the JS thread. Seven and a half seconds of a frozen JS thread behind a share sheet is not
+acceptable, and fflate cannot move off that thread on Hermes, which has no workers.
