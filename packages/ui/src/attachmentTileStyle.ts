@@ -1,4 +1,4 @@
-import { RADII, SPACING } from '@session/theme-tokens'
+import { RADII } from '@session/theme-tokens'
 
 /**
  * Where a tile stops taking the larger corner.
@@ -37,14 +37,6 @@ export const TILE_PRESS_OPACITY = 1
  * element is square, and the tile's own clip then takes its corners off instead of curving them.
  */
 export const TILE_HAIRLINE_WIDTH = 1
-
-/**
- * How far the duration badge sits from the tile's bottom and leading edges.
- *
- * `$2xs`, as a number because `logical()` takes lengths rather than tokens - the inline inset has
- * to be written as a CSS logical property or it does not mirror, which is what that helper is for.
- */
-export const TILE_BADGE_INSET = SPACING['2xs']
 
 /**
  * The sender's placeholder a tile draws under its picture, or null for the glyph.

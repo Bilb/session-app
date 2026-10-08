@@ -1,12 +1,7 @@
 import { memo, type ReactNode } from 'react'
 import { isWeb, XStack, YStack } from 'tamagui'
 
-import type {
-  WithDurationLabel,
-  WithFetchesOnOpen,
-  WithMediaPreview,
-  WithMediaUri,
-} from '@session/basic-types'
+import type { WithFetchesOnOpen, WithMediaPreview, WithMediaUri } from '@session/basic-types'
 import type { ElementId } from '@session/test-ids'
 
 import { ALBUM_SEAM, albumLayout, cellPlace, lastCell } from './albumLayout'
@@ -17,10 +12,7 @@ import { logical } from './logicalEdges'
 import { StateLayer } from './StateLayer'
 import type { WithTestID } from './with'
 
-type AlbumMedia = WithMediaUri & WithMediaPreview & WithFetchesOnOpen & WithTestID
-export type AlbumImage = AlbumMedia & { kind: 'image' }
-export type AlbumVideo = AlbumMedia & { kind: 'video' } & WithDurationLabel
-export type AlbumItem = AlbumImage | AlbumVideo
+export type AlbumItem = WithMediaUri & WithMediaPreview & WithFetchesOnOpen & WithTestID
 
 export type AttachmentAlbumProps = WithTestID & {
   items: readonly AlbumItem[]
@@ -76,10 +68,8 @@ const AlbumTile = memo(function AlbumTile({
     >
       <AttachmentTile
         side={side}
-        kind={item.kind}
         uri={item.uri}
         preview={item.preview}
-        duration={item.kind === 'video' ? item.duration : undefined}
         overflowLabel={overflowLabel}
         testID={item.testID}
       />

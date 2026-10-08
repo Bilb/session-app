@@ -1,15 +1,9 @@
 import { memo, useState } from 'react'
 import { YStack } from 'tamagui'
 
-import type {
-  WithDurationLabel,
-  WithMediaKind,
-  WithMediaPreview,
-  WithMediaUri,
-} from '@session/basic-types'
+import type { WithMediaPreview, WithMediaUri } from '@session/basic-types'
 
 import {
-  TILE_BADGE_INSET,
   TILE_HAIRLINE_WIDTH,
   TILE_SCRIM,
   heldFailure,
@@ -19,14 +13,11 @@ import {
 } from './attachmentTileStyle'
 import { Icon } from './Icon'
 import { Image } from './Image'
-import { logical } from './logicalEdges'
 import { Text } from './Text'
 import type { WithTestID } from './with'
 
 export type AttachmentTileProps = WithMediaUri &
   WithMediaPreview &
-  WithMediaKind &
-  WithDurationLabel &
   WithTestID & {
     /** Always square. The album and the list both size it; it never measures anything itself. */
     side: number
@@ -41,17 +32,9 @@ export type AttachmentTileProps = WithMediaUri &
   }
 
 /**
- * Below this a play mark stops marking the picture and starts covering it.
- *
- * At the list's 40, the small mark is three quarters of the tile. Nothing replaces it there: the
- * row's format label already reads MP4, which is the same fact in the space it fits in.
- */
-const PLAY_MARK_MIN_SIDE = 56
-
-/**
  * A picture that arrived and did not decode: the viewer's "unavailable" look, as a mark.
  *
- * Over the sender's placeholder it sits on the scrim the play mark uses, so it reads against
+ * Over the sender's placeholder it sits on a scrim, so it reads against
  * whatever the placeholder's colours are; on the flat tile the glyph slot draws it instead.
  */
 function FailedMark({ side }: { side: number }) {
@@ -81,56 +64,6 @@ function FailedMark({ side }: { side: number }) {
   )
 }
 
-/** The play mark and the length, which are only true once the file can be played. */
-function VideoAffordances({ side, duration }: { side: number } & WithDurationLabel) {
-  const small = side < 90
-  return (
-    <>
-      {side < PLAY_MARK_MIN_SIDE ? null : (
-        <YStack
-          position="absolute"
-          top={0}
-          bottom={0}
-          left={0}
-          right={0}
-          alignItems="center"
-          justifyContent="center"
-          pointerEvents="none"
-        >
-          <YStack
-            width={small ? 30 : 40}
-            height={small ? 30 : 40}
-            borderRadius="$full"
-            alignItems="center"
-            justifyContent="center"
-            backgroundColor={TILE_SCRIM}
-          >
-            <Icon name="play" size={small ? 'sm' : 'md'} color="$textPrimary" />
-          </YStack>
-        </YStack>
-      )}
-      {duration === undefined ? null : (
-        // At every size, not only the large tile: it fits on a 70 px quarter and it is the one
-        // fact somebody wants before tapping.
-        <YStack
-          position="absolute"
-          bottom={TILE_BADGE_INSET}
-          paddingHorizontal="$2xs"
-          paddingVertical="$3xs"
-          borderRadius="$full"
-          backgroundColor={TILE_SCRIM}
-          pointerEvents="none"
-          {...logical({ insetStart: TILE_BADGE_INSET })}
-        >
-          <Text size="$caption" color="$textPrimary">
-            {duration}
-          </Text>
-        </YStack>
-      )}
-    </>
-  )
-}
-
 /**
  * One attachment, drawn as a rounded square.
  *
@@ -138,10 +71,9 @@ function VideoAffordances({ side, duration }: { side: number } & WithDurationLab
  * filmstrip, which is what the rounded square is for: one shape to build and one to learn, at two
  * radii and any side length.
  *
- * **Nothing is drawn on a tile whose bytes are not here.** No download control, no play glyph and
- * no duration -- the set's own control says what is happening, in the album's corner, and three
- * things promising three different futures on one picture is the state that rule exists to
- * prevent. A video gets its affordances when it can be played.
+ * **Nothing is drawn on a tile whose bytes are not here.** No download control: the set's own
+ * control says what is happening, in the album's corner, and two things promising two futures on
+ * one picture is the state that rule exists to prevent.
  *
  * `testID` addresses **the picture**, not the tile: whether an attachment arrived is a question
  * about the image, and a probe pointed at the tile finds the placeholder under it.
@@ -149,9 +81,7 @@ function VideoAffordances({ side, duration }: { side: number } & WithDurationLab
 export const AttachmentTile = memo(function AttachmentTile({
   side,
   uri,
-  kind,
   preview,
-  duration,
   overflowLabel,
   testID,
 }: AttachmentTileProps) {
@@ -215,7 +145,7 @@ export const AttachmentTile = memo(function AttachmentTile({
           justifyContent="center"
         >
           <Icon
-            name={failed ? 'triangleAlert' : kind === 'video' ? 'video' : 'image'}
+            name={failed ? 'triangleAlert' : 'image'}
             size={side >= 90 ? 'lg' : 'md'}
             color="$textSecondary"
           />
@@ -241,8 +171,6 @@ export const AttachmentTile = memo(function AttachmentTile({
       )}
 
       {failed && placeholder !== null ? <FailedMark side={side} /> : null}
-
-      {here && kind === 'video' ? <VideoAffordances side={side} duration={duration} /> : null}
 
       {here || placeholder !== null ? null : (
         // Only round the flat surface, which needs an edge to be seen against the page; a tile

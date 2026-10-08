@@ -5,13 +5,12 @@ import { FEEDBACK_TRANSITION } from './feedbackTransition'
 import { Icon } from './Icon'
 import type { WithTestID } from './with'
 
-/** Below this a tile has room for the small glyph only, as `VideoAffordances` decides. */
+/** Below this a tile has room for the small glyph only. */
 const LARGE_TILE = 90
 
 /**
  * A cloud over pictures a press would download rather than open, shown while `group` above it is
- * hovered or pressed, which needs `position="relative"`. Drawn like the video badge, on the fixed
- * photo scrim.
+ * hovered or pressed, which needs `position="relative"`. Drawn on the fixed photo scrim.
  */
 export function FetchHint({
   side,

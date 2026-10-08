@@ -1,4 +1,3 @@
-import { mediaKindOf } from '@session/basic-types'
 import { requirePorts } from '@session/app'
 import type { Attachment, Message } from '@session/client'
 import { tr } from '@session/localization'
@@ -11,7 +10,7 @@ import { ELEMENT } from '@session/test-ids'
 import { FileRow, type FileRowState, type FileRowThumbnail } from '@session/ui'
 
 import { fetchOf, type Fetch } from './attachmentFetch'
-import { mayDrawInline } from './autoDownload'
+import { mayResolve } from './autoDownload'
 import { useConversationUi } from './conversationUi'
 import { formatBytes } from './formatBytes'
 import { PENDING_COPY } from './pendingCopy'
@@ -87,10 +86,9 @@ export function AttachmentRow({
           // would spend the data the person was about to be asked about. Left off after a failure
           // too, so a retry hands it over afresh and the image tries again.
           uri:
-            mayDrawInline(attachment, ui.autoDownload) && state !== 'failed'
+            mayResolve(attachment, ui.autoDownload) && state !== 'failed'
               ? requirePorts().media.urlFor(ref)
               : undefined,
-          kind: mediaKindOf(attachment.contentType),
           fetchesOnOpen: state === 'idle' || state === 'failed',
           // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
           // screen by the route a picture does. Null where the platform has no resolver.

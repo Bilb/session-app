@@ -1,4 +1,3 @@
-import { mediaKindOf } from '@session/basic-types'
 import type { ConversationId } from '@session/client'
 import { tr } from '@session/localization'
 import { transferKey, useMessage, useMessageTransfers, useSessionActions } from '@session/state'
@@ -52,7 +51,6 @@ function MessageViewer({
         // Null where the platform has no resolver. The viewer says so rather than drawing a broken
         // picture, which is the one thing it must not do with somebody's photograph.
         uri: viewerUri(target.messageId, attachment),
-        kind: mediaKindOf(attachment.contentType),
       })),
     [viewable, target.messageId],
   )

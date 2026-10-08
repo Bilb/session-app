@@ -1,4 +1,3 @@
-import { mediaKindOf } from '@session/basic-types'
 import { requirePorts } from '@session/app'
 import { useMemo, type ReactNode } from 'react'
 import type { Attachment, AutoDownload, Message } from '@session/client'
@@ -7,7 +6,7 @@ import { ELEMENT } from '@session/test-ids'
 import { AttachmentAlbum, type AlbumItem } from '@session/ui'
 
 import type { Fetch } from './attachmentFetch'
-import { mayDrawInline } from './autoDownload'
+import { mayResolve } from './autoDownload'
 import { viewableAttachments } from './viewableAttachments'
 
 /**
@@ -63,10 +62,9 @@ export function MessageAlbum({
       // no resolver, and this says the person has not agreed to spend the data. Both draw the
       // placeholder, and the set's control is what offers to change it.
       uri:
-        mayDrawInline(attachment, autoDownload) && !failed.has(String(attachment.index))
+        mayResolve(attachment, autoDownload) && !failed.has(String(attachment.index))
           ? requirePorts().media.urlFor({ messageId: message.id, index: attachment.index })
           : undefined,
-      kind: mediaKindOf(attachment.contentType),
       // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
       // screen by the route a picture does. Null where the platform has no resolver.
       preview: attachment.hasPreview

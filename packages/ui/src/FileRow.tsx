@@ -7,7 +7,6 @@ import type {
   WithContentType,
   WithFetchesOnOpen,
   WithFilename,
-  WithMediaKind,
   WithMediaPreview,
   WithMediaUri,
 } from '@session/basic-types'
@@ -44,7 +43,7 @@ export interface FileRowTestIDs {
 }
 
 /** What the lead square shows when the row is for something with a picture behind it. */
-export type FileRowThumbnail = WithMediaUri & WithMediaPreview & WithMediaKind & WithFetchesOnOpen
+export type FileRowThumbnail = WithMediaUri & WithMediaPreview & WithFetchesOnOpen
 
 export type FileRowProps = WithFilename &
   WithContentType &
@@ -199,7 +198,6 @@ export function FileRow({
     ) : (
       <AttachmentTile
         side={FILE_GLYPH_SIDE}
-        kind={thumbnail.kind}
         uri={thumbnail.uri}
         preview={thumbnail.preview}
         testID={testIDs?.thumbnail}
@@ -250,7 +248,7 @@ export function FileRow({
         )}
         {/* Under the lead rather than in the caption line, where it was competing with the size
             for the same run of small grey text. It also gives every row the same two-line lead, so
-            the rows align down the message - and on a thumbnail it is what says "video". */}
+            the rows align down the message. */}
         {format === '' ? null : (
           <Text size="$caption" tone="secondary" weight="semibold" numberOfLines={1}>
             {format}
