@@ -5,6 +5,7 @@ import type {
   AccountInfo,
   AttachmentRef,
   AutoDownload,
+  ConfigSize,
   Conversation,
   ConversationId,
   Deletion,
@@ -383,6 +384,11 @@ export class FakeSessionClient implements SessionClient {
   getAttachmentCacheSize(): Promise<number> {
     this.assertOpen()
     return Promise.resolve(this.account.attachmentCacheSize())
+  }
+
+  getConfigSizes(): Promise<ConfigSize[]> {
+    this.assertOpen()
+    return Promise.resolve(this.account.configSizes())
   }
 
   sendMessage(id: ConversationId, message: OutgoingMessage): Promise<number> {

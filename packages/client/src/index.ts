@@ -20,6 +20,7 @@ export type {
   AttachmentTransfer,
   AutoDownload,
   Command,
+  ConfigSize,
   Conversation,
   ConversationId,
   ConversationKind,

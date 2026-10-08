@@ -1,6 +1,7 @@
 import type {
   AttachmentRef,
   AutoDownload,
+  ConfigSize,
   ConversationId,
   Message,
   SessionClient,
@@ -52,6 +53,11 @@ export interface SessionActions {
    */
   getPreference: (key: string) => Promise<string | undefined>
   setPreference: (key: string, value: string) => Promise<void>
+  /**
+   * Each of the account's configs and its size, for an exported log's header. Empty with no
+   * account; rejects where the bridge cannot answer, which a failed start is.
+   */
+  getConfigSizes: () => Promise<ConfigSize[]>
   /**
    * Stores the account's theme and accent and shows them.
    *
@@ -326,6 +332,10 @@ export function createSessionStore(
       }
       store.setState({ ...emptyState })
       await actions.start()
+    },
+
+    getConfigSizes(): Promise<ConfigSize[]> {
+      return client.getConfigSizes()
     },
 
     async getPreference(key): Promise<string | undefined> {

@@ -26,7 +26,13 @@ export type ExportOutcome = 'exported' | 'cancelled' | 'unavailable' | 'failed'
  * Never throws: a screen offering this is one where something already went wrong, and a second
  * failure should be an outcome it can show rather than another unhandled rejection.
  */
-export async function exportLogs(): Promise<ExportOutcome> {
+/** Where the export can learn what only libsession knows; any of it may be missing. */
+export interface ExportSources {
+  /** Each config and its size, from the store. A failed start rejects, and the row says unknown. */
+  configSizes?: (() => Promise<readonly { name: string; bytes: number }[]>) | undefined
+}
+
+export async function exportLogs(sources: ExportSources = {}): Promise<ExportOutcome> {
   const { logs, diagnostics, build, network } = requirePorts()
   if (logs.deliver === null) return 'unavailable'
   try {
@@ -59,8 +65,8 @@ export async function exportLogs(): Promise<ExportOutcome> {
       utcOffsetMinutes: -new Date(now).getTimezoneOffset(),
       network: network.name,
       storage: { ...storage, attachmentsLimitBytes: null },
-      // libsession keeps the dumps in its own table and has no call that reports their sizes yet.
-      configSizes: null,
+      // Unknown rather than empty where it could not be asked: before an account there are none.
+      configSizes: (await sources.configSizes?.().catch(() => null)) ?? null,
       logs: { plan, ...span },
       redactions: redactions ?? appLog.sweepCounts(),
     }

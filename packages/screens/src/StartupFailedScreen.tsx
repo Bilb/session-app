@@ -69,7 +69,7 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
               testID={ELEMENT.startupFailed.exportLogs}
               onPress={() => {
                 setExporting(true)
-                void exportLogs()
+                void exportLogs({ configSizes: actions.getConfigSizes })
                   .then((outcome) => {
                     // Said, not silent: a second failure on this screen is one more thing for
                     // the person to report, and they need to know the export did not happen.

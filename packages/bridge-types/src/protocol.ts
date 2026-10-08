@@ -3,6 +3,7 @@ import type {
   AttachmentOutcome,
   AttachmentTransfer,
   AutoDownload,
+  ConfigSize,
   Conversation,
   ConversationId,
   Deletion,
@@ -245,6 +246,11 @@ export type Command =
    * shown together. 0 when nothing is cached or there is no cache directory.
    */
   | { type: 'getAttachmentCacheSize' }
+  /**
+   * How large each of the account's configs is, for an exported log's header. Empty before there
+   * is an account: the configs are built from it.
+   */
+  | { type: 'getConfigSizes' }
   // App preferences, stored in libsession's globals table so they sit beside the account
   // instead of in a second store the app would have to keep in step.
   | { type: 'getPref'; key: string }
@@ -311,6 +317,7 @@ export type Result =
   | { type: 'path'; path: string }
   /** Unset only in answer to `getAttachmentCacheLimit`, where it means no limit. */
   | { type: 'byteCount'; bytes?: number }
+  | { type: 'configSizes'; sizes: ConfigSize[] }
 
 export interface Response {
   id: number

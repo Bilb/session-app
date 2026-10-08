@@ -1083,6 +1083,16 @@ struct ClientBridge::Impl {
         }));
     }
 
+    void handle(double id, const GetConfigSizesCommand&) {
+        client->config_sizes(on(id, [this, id](std::vector<client::ConfigSize> measured) {
+            std::vector<ConfigSize> sizes;
+            sizes.reserve(measured.size());
+            for (auto& size : measured)
+                sizes.emplace_back(std::move(size.name), static_cast<double>(size.bytes));
+            respond(id, ConfigSizesResult{std::move(sizes)});
+        }));
+    }
+
     void handle(double id, const GetPrefCommand& cmd) {
         respond(id, PrefResult{client->core.globals.get_text(cmd.key)});
     }

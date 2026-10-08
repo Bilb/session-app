@@ -457,6 +457,26 @@ struct ByteCountResult {
             bytes{std::move(bytes_)} {}
 };
 
+/// One of the account's configs and how large it is: the size of the dump it would write now.
+/// For diagnostics - the header of an exported log - and nothing else.
+struct ConfigSize {
+    /// `user_profile`, `contacts`, `convo_info_volatile`, `user_groups` or `local`.
+    std::string name;
+    double bytes;
+
+    ConfigSize(std::string name_, double bytes_) :
+            name{std::move(name_)}, bytes{std::move(bytes_)} {}
+};
+
+struct ConfigSizesResult {
+    static constexpr std::string_view type_tag = "configSizes";
+
+    std::vector<::session_bridge::ConfigSize> sizes;
+
+    explicit ConfigSizesResult(std::vector<::session_bridge::ConfigSize> sizes_) :
+            sizes{std::move(sizes_)} {}
+};
+
 /// What a Response carries when the command succeeded.
 using Result = std::variant<
         EmptyResult,
@@ -470,7 +490,8 @@ using Result = std::variant<
         PrefResult,
         BoolResult,
         PathResult,
-        ByteCountResult>;
+        ByteCountResult,
+        ConfigSizesResult>;
 
 struct Response {
     double id;
@@ -1198,6 +1219,12 @@ struct GetAttachmentCacheSizeCommand {
     static constexpr std::string_view type_tag = "getAttachmentCacheSize";
 };
 
+/// How large each of the account's configs is, for an exported log's header. Empty before there
+/// is an account: the configs are built from it.
+struct GetConfigSizesCommand {
+    static constexpr std::string_view type_tag = "getConfigSizes";
+};
+
 struct GetPrefCommand {
     static constexpr std::string_view type_tag = "getPref";
 
@@ -1314,6 +1341,7 @@ using Command = std::variant<
         GetAttachmentCacheLimitCommand,
         SetAttachmentCacheLimitCommand,
         GetAttachmentCacheSizeCommand,
+        GetConfigSizesCommand,
         GetPrefCommand,
         SetPrefCommand,
         DeliverTestMessageCommand,

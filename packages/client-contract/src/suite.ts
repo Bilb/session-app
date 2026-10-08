@@ -837,6 +837,19 @@ export function runSessionClientContract(
       expect(await alice.getAttachmentCacheLimit()).toBe(250_000_000)
     })
 
+    it("measures each of the account's configs by name", async () => {
+      const { alice } = await harness.friends()
+      const sizes = await alice.getConfigSizes()
+      expect(sizes.map((size) => size.name)).toEqual([
+        'user_profile',
+        'contacts',
+        'convo_info_volatile',
+        'user_groups',
+        'local',
+      ])
+      for (const size of sizes) expect(size.bytes).toBeGreaterThan(0)
+    })
+
     it('measures an attachment cache with nothing in it as empty', async () => {
       const { alice } = await harness.friends()
       expect(await alice.getAttachmentCacheSize()).toBe(0)
