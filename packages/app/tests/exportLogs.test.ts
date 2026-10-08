@@ -1,0 +1,72 @@
+import type { ExportPart } from '@session/logging'
+import { afterEach, describe, expect, it } from 'vitest'
+
+import { exportLogs } from '#src/exportLogs'
+import { resetLogger } from '#src/log'
+import { resetPorts, setPorts } from '#src/ports'
+import { memoryPorts } from '#src/testPorts'
+
+/** Any size: what the export does with files does not depend on how big they are. */
+const FILE_BYTES = 100
+
+afterEach(() => {
+  resetPorts()
+  resetLogger()
+})
+
+function withLogs(deliver: (name: string, parts: readonly ExportPart[]) => Promise<boolean>) {
+  const base = memoryPorts()
+  setPorts(
+    memoryPorts({
+      build: { version: '1.2.3', commit: 'abc12345', buildNumber: null, variant: 'dev' },
+      logs: {
+        retained: () =>
+          Promise.resolve([
+            { name: 'session-20261008T000000Z-0.log', sizeBytes: FILE_BYTES },
+            { name: 'session-20261009T000000Z-0.log', sizeBytes: FILE_BYTES },
+          ]),
+        span: () =>
+          Promise.resolve({
+            firstLine: '2026-10-08T00:00:00.000Z first',
+            lastLine: '2026-10-09T00:00:09.000Z last',
+          }),
+        deliver,
+      },
+      diagnostics: base.diagnostics,
+    }),
+  )
+}
+
+describe('exportLogs', () => {
+  it('hands the platform a header and every retained file, oldest first', async () => {
+    let delivered: { name: string; parts: readonly ExportPart[] } | null = null
+    withLogs((name, parts) => {
+      delivered = { name, parts }
+      return Promise.resolve(true)
+    })
+    expect(await exportLogs()).toBe('exported')
+    const { name, parts } = delivered as unknown as { name: string; parts: readonly ExportPart[] }
+    expect(name).toMatch(/^session-logs-test-1\.2\.3-\d{8}T\d{6}Z\.log\.gz$/)
+    const header = (parts[0] as { text: string }).text
+    expect(header).toContain('  App            Session 1.2.3 · commit abc12345 · variant dev')
+    expect(header).toContain('2026-10-08 00:00:00Z → 2026-10-09 00:00:09Z')
+    expect(parts.slice(1)).toEqual([
+      { text: '──── session-20261008T000000Z-0.log ────\n' },
+      { file: 'session-20261008T000000Z-0.log' },
+      { text: '──── session-20261009T000000Z-0.log ────\n' },
+      { file: 'session-20261009T000000Z-0.log' },
+    ])
+  })
+
+  it('says when the person cancelled, and when the platform failed', async () => {
+    withLogs(() => Promise.resolve(false))
+    expect(await exportLogs()).toBe('cancelled')
+    withLogs(() => Promise.reject(new Error('disk full')))
+    expect(await exportLogs()).toBe('failed')
+  })
+
+  it('is unavailable where the build cannot export', async () => {
+    setPorts(memoryPorts())
+    expect(await exportLogs()).toBe('unavailable')
+  })
+})

@@ -1,12 +1,19 @@
-import { memoryPorts, setPorts, type NotificationsPort } from '@session/app'
+import {
+  memoryPorts,
+  setPorts,
+  type DiagnosticsSnapshot,
+  type NotificationsPort,
+} from '@session/app'
 import { parseNetworkName } from '@session/basic-types'
 import * as Clipboard from 'expo-clipboard'
 import Constants from 'expo-constants'
+import { Directory, File, Paths } from 'expo-file-system'
 import * as SecureStore from 'expo-secure-store'
 import { Linking, Platform, Share } from 'react-native'
 
 import { flagOverride } from './flagOverrides'
-import { endingRun } from './logs'
+import { endingRun, logDirectory, logWriter } from './logs'
+import { SessionLogs } from './sessionLogs'
 import { restartProcess, terminateProcess } from './processExit'
 
 /**
@@ -42,6 +49,63 @@ function hexToBytes(hex: string): Uint8Array {
     bytes[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16)
   }
   return bytes
+}
+
+/** A `file://` URI as the plain path native code and libsession take. */
+function pathOf(uri: string): string {
+  return decodeURIComponent(uri.replace(/^file:\/\//, ''))
+}
+
+/** The first or last non-empty line of a retained log file. */
+function edgeLine(name: string, which: 'first' | 'last'): string | null {
+  const file = new File(logDirectory, name)
+  if (!file.exists) return null
+  const lines = file
+    .textSync()
+    .split('\n')
+    .filter((line) => line !== '')
+  return (which === 'first' ? lines[0] : lines.at(-1)) ?? null
+}
+
+/** The database and its journals, and the attachment cache, for the network this build runs. */
+function storageBytes(): { databaseBytes: number | null; attachmentsBytes: number | null } {
+  const network = parseNetworkName(process.env['EXPO_PUBLIC_SESSION_NETID'])
+  const root = new Directory(Paths.document, 'session', network)
+  if (!root.exists) return { databaseBytes: null, attachmentsBytes: null }
+  const database = root
+    .list()
+    .filter((entry): entry is File => entry instanceof File && entry.name.startsWith('session.db'))
+  const attachments = new Directory(root, 'attachments')
+  return {
+    databaseBytes:
+      database.length === 0 ? null : database.reduce((sum, file) => sum + file.size, 0),
+    attachmentsBytes: attachments.exists ? attachments.size : null,
+  }
+}
+
+/** Held in a const so the closures below keep its narrowing. */
+const nativeLogs = SessionLogs
+
+async function diagnosticsSnapshot(): Promise<DiagnosticsSnapshot> {
+  const native = await SessionLogs?.diagnostics()
+  return {
+    install: native?.install ?? 'unknown',
+    platform: Platform.OS === 'ios' ? 'iOS' : 'Android',
+    osVersion: String(Platform.Version),
+    model: native?.model ?? 'unknown',
+    locale: Intl.DateTimeFormat().resolvedOptions().locale,
+    memory: {
+      usedBytes: native?.usedBytes ?? null,
+      availableBytes: native?.availableBytes ?? null,
+      totalBytes: native?.totalBytes ?? null,
+    },
+    freeBytes: native?.freeBytes ?? null,
+    networkType: null,
+    // What the notifications port says, which is what the app will actually do.
+    notifications: 'no push service in this build',
+    ...(native === undefined ? {} : { permissions: native.permissions }),
+    ...storageBytes(),
+  }
 }
 
 /**
@@ -128,6 +192,30 @@ const ports = memoryPorts({
      */
     openAppSettings: () => Linking.openSettings(),
   },
+  logs: {
+    retained: async () => {
+      const writer = await logWriter
+      await writer.flush()
+      return writer.files()
+    },
+    span: (first, last) =>
+      Promise.resolve({ firstLine: edgeLine(first, 'first'), lastLine: edgeLine(last, 'last') }),
+    /**
+     * Compressed natively into the cache, then the share sheet with the file. iOS only for now:
+     * Android's sheet takes a file only through a content provider, which this build lacks.
+     */
+    deliver:
+      nativeLogs === null || Platform.OS !== 'ios'
+        ? null
+        : async (name, parts) => {
+            const out = new File(Paths.cache, name)
+            if (out.exists) out.delete()
+            await nativeLogs.gzip(parts, pathOf(logDirectory.uri), pathOf(out.uri))
+            const result = await Share.share({ url: out.uri })
+            return result.action === Share.sharedAction
+          },
+  },
+  diagnostics: { snapshot: diagnosticsSnapshot },
   secureStore: {
     async getDatabaseKey() {
       const stored = await SecureStore.getItemAsync(DATABASE_KEY)

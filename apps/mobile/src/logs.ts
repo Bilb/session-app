@@ -126,6 +126,8 @@ function model(): string {
  * whatever the bridge had to say. A directory that cannot be opened leaves the console as the
  * only place lines go, which is said there.
  */
+export const logDirectory = new Directory(Paths.document, 'logs')
+
 const opened = (async (): Promise<LogWriter> => {
   const writerOptions = {
     launchMs,
@@ -138,7 +140,7 @@ const opened = (async (): Promise<LogWriter> => {
   let writer: LogWriter
   let failure: string | null = null
   try {
-    const dir = new Directory(Paths.document, 'logs')
+    const dir = logDirectory
     if (!dir.exists) dir.create({ intermediates: true })
     const read = readSalt(dir)
     salt = read.salt
@@ -209,6 +211,9 @@ const opened = (async (): Promise<LogWriter> => {
   })
   return writer
 })()
+
+/** The writer, once the directory is open; the export flushes and lists through it. */
+export const logWriter: Promise<LogWriter> = opened
 
 opened.catch((error: unknown) => {
   console.error('[logs] could not open the log directory:', error)

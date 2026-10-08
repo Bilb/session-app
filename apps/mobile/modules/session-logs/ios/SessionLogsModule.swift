@@ -1,0 +1,188 @@
+import AVFoundation
+import ExpoModulesCore
+import Photos
+import UserNotifications
+import zlib
+
+/// The device logs' native half: compression, and the facts the export header needs that
+/// JavaScript cannot read.
+///
+/// Compression is here because twenty megabytes through a JavaScript gzip takes seven and a half
+/// seconds on Hermes with the JS thread frozen; the system zlib, streaming file to file on a
+/// background queue, takes a fraction of a second and freezes nothing.
+public class SessionLogsModule: Module {
+  public func definition() -> ModuleDefinition {
+    Name("SessionLogs")
+
+    /// Writes `parts` in order through one gzip stream into `outPath`, and returns its size.
+    ///
+    /// A part is `["text": ...]`, written as UTF-8, or `["file": name]`, a log file in
+    /// `directory` streamed off disk. Names are checked to be bare log file names, so a part can
+    /// never reach outside the directory.
+    AsyncFunction("gzip") { (parts: [[String: String]], directory: String, outPath: String) throws -> Int in
+      try Gzip.write(parts: parts, directory: URL(fileURLWithPath: directory), to: URL(fileURLWithPath: outPath))
+    }
+
+    AsyncFunction("diagnostics") { () async -> [String: Any?] in
+      await Diagnostics.snapshot()
+    }
+  }
+}
+
+enum Gzip {
+  struct Failure: Error, CustomStringConvertible {
+    let description: String
+  }
+
+  private static let logFile = try! NSRegularExpression(pattern: "^session-\\d{8}T\\d{6}Z-\\d+\\.log$")
+  private static let chunk = 64 * 1024
+
+  static func write(parts: [[String: String]], directory: URL, to out: URL) throws -> Int {
+    FileManager.default.createFile(atPath: out.path, contents: nil)
+    let output = try FileHandle(forWritingTo: out)
+    defer { try? output.close() }
+
+    var stream = z_stream()
+    // 15 + 16: the largest window, with a gzip header and trailer rather than a raw zlib one.
+    guard deflateInit2_(&stream, 6, Z_DEFLATED, 15 + 16, 8, Z_DEFAULT_STRATEGY, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size)) == Z_OK else {
+      throw Failure(description: "deflateInit2 failed")
+    }
+    defer { deflateEnd(&stream) }
+
+    var buffer = [UInt8](repeating: 0, count: chunk)
+
+    func feed(_ data: Data, finish: Bool) throws {
+      var input = [UInt8](data)
+      try input.withUnsafeMutableBufferPointer { inputPointer in
+        stream.next_in = inputPointer.baseAddress
+        stream.avail_in = uInt(inputPointer.count)
+        repeat {
+          let produced: Int = try buffer.withUnsafeMutableBufferPointer { outputPointer in
+            stream.next_out = outputPointer.baseAddress
+            stream.avail_out = uInt(outputPointer.count)
+            let status = deflate(&stream, finish ? Z_FINISH : Z_NO_FLUSH)
+            guard status != Z_STREAM_ERROR else { throw Failure(description: "deflate failed") }
+            return outputPointer.count - Int(stream.avail_out)
+          }
+          if produced > 0 { output.write(Data(buffer[0..<produced])) }
+        } while stream.avail_out == 0
+      }
+    }
+
+    for part in parts {
+      if let text = part["text"] {
+        try feed(Data(text.utf8), finish: false)
+      } else if let name = part["file"] {
+        let range = NSRange(name.startIndex..., in: name)
+        guard logFile.firstMatch(in: name, range: range) != nil else {
+          throw Failure(description: "not a log file name: \(name)")
+        }
+        // A file rotated away since the list was taken is skipped rather than failing the export.
+        guard let input = FileHandle(forReadingAtPath: directory.appendingPathComponent(name).path) else { continue }
+        defer { try? input.close() }
+        while true {
+          let data = input.readData(ofLength: chunk)
+          if data.isEmpty { break }
+          try feed(data, finish: false)
+        }
+      }
+    }
+    try feed(Data(), finish: true)
+    return Int(stream.total_out)
+  }
+}
+
+enum Diagnostics {
+  static func snapshot() async -> [String: Any?] {
+    var sizeInfo = task_vm_info_data_t()
+    var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
+    let used: Int? = withUnsafeMutablePointer(to: &sizeInfo) { pointer in
+      pointer.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+        task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count) == KERN_SUCCESS
+      }
+    } ? Int(sizeInfo.phys_footprint) : nil
+    // Always 0 on the simulator, which has no per-app limit: unknown rather than none.
+    let available = os_proc_available_memory()
+
+    let free = try? URL(fileURLWithPath: NSHomeDirectory())
+      .resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+      .volumeAvailableCapacityForImportantUsage
+
+    return [
+      "model": model(),
+      "install": install(),
+      "usedBytes": used,
+      "availableBytes": available > 0 ? available : nil,
+      "totalBytes": Int(ProcessInfo.processInfo.physicalMemory),
+      "freeBytes": free.map { Int($0) },
+      "permissions": await permissions(),
+    ]
+  }
+
+  /// `iPhone17,1`: the hardware identifier, which is what support can look a device up by.
+  private static func model() -> String {
+    if let simulated = ProcessInfo.processInfo.environment["SIMULATOR_MODEL_IDENTIFIER"] {
+      return "\(simulated) (simulator)"
+    }
+    var info = utsname()
+    uname(&info)
+    return withUnsafeBytes(of: &info.machine) { String(decoding: $0.prefix { $0 != 0 }, as: UTF8.self) }
+  }
+
+  /// Where the build came from, as far as the bundle can tell.
+  private static func install() -> String {
+    #if targetEnvironment(simulator)
+      return "simulator"
+    #else
+      if Bundle.main.path(forResource: "embedded", ofType: "mobileprovision") != nil {
+        return "development or ad hoc"
+      }
+      if Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" {
+        return "testflight"
+      }
+      return "app store"
+    #endif
+  }
+
+  private static func permissions() async -> [[String]] {
+    let notifications = await UNUserNotificationCenter.current().notificationSettings()
+    return [
+      ["camera", describe(AVCaptureDevice.authorizationStatus(for: .video))],
+      ["microphone", describe(AVCaptureDevice.authorizationStatus(for: .audio))],
+      ["photos", describe(PHPhotoLibrary.authorizationStatus(for: .readWrite))],
+      ["notifications", describe(notifications.authorizationStatus)],
+    ]
+  }
+
+  private static func describe(_ status: AVAuthorizationStatus) -> String {
+    switch status {
+    case .authorized: return "granted"
+    case .denied: return "denied"
+    case .restricted: return "restricted"
+    case .notDetermined: return "not asked"
+    @unknown default: return "unknown"
+    }
+  }
+
+  private static func describe(_ status: PHAuthorizationStatus) -> String {
+    switch status {
+    case .authorized: return "granted"
+    case .limited: return "limited"
+    case .denied: return "denied"
+    case .restricted: return "restricted"
+    case .notDetermined: return "not asked"
+    @unknown default: return "unknown"
+    }
+  }
+
+  private static func describe(_ status: UNAuthorizationStatus) -> String {
+    switch status {
+    case .authorized: return "granted"
+    case .provisional: return "provisional"
+    case .ephemeral: return "ephemeral"
+    case .denied: return "denied"
+    case .notDetermined: return "not asked"
+    @unknown default: return "unknown"
+    }
+  }
+}
