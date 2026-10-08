@@ -12,6 +12,19 @@ describe('libsessionLine', () => {
     ).toEqual({ level: 'warn', message: 'Network ID is testnet src=router/router.cpp:459' })
   })
 
+  it('lifts the request tag into the op', () => {
+    expect(
+      libsessionLine(
+        'info',
+        '[d] [+1.000s] [network:info|network/session_network.cpp:963] [Request CoS-0-GZHC] Starting clock resync.\n',
+      ),
+    ).toEqual({
+      level: 'info',
+      message: 'Starting clock resync. src=network/session_network.cpp:963',
+      op: 'CoS-0-GZHC',
+    })
+  })
+
   it('takes the level in the line over the one beside it', () => {
     expect(libsessionLine('info', '[d] [+1.000s] [quic:critical|loop.cpp:1] gone').level).toBe(
       'critical',

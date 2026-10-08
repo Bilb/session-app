@@ -1,30 +1,34 @@
 import { levelWord, type LogLevel } from './level'
 
 /**
- * The fixed-width front of every line, 70 columns, so the eye can skip to column 71:
+ * The fixed-width front of every line, 77 columns, so the eye can skip to column 78:
  *
  * ```
- * 2026-10-08T03:20:09.123Z     +12.345 INFO  [network]        [#41c2e0] path built hops=3
+ * 2026-10-08T03:20:09.123Z     +12.345 INFO  [network]        [CoS-0-GZHC]     clock resync
  * ```
  *
  * Time in UTC with its `Z`, so no reader has to guess a zone; seconds since the process started,
  * which a wall-clock step cannot disturb; the level as a word; the category and the operation in
  * brackets, padded so the message always starts in the same place.
  */
-export const PREFIX_WIDTH = 70
+export const PREFIX_WIDTH = 77
 
 /** `+seconds.mmm`, right-aligned on the decimal point; grows rather than wraps past 11.5 days. */
 const UPTIME_WIDTH = 11
 /** `[session-router]`, the longest category anything declares, exactly fills it. */
 const CATEGORY_WIDTH = 16
-const NO_OP = '[       ]'
+/**
+ * `[CoS-0-GZHC]`: libsession's own request tags reach twelve characters with a sub-request suffix
+ * (`RSC-1-MUE2-0`), and the app's `#41c2e0` fits too. Blank outside an operation.
+ */
+const OP_WIDTH = 16
 
 export interface LinePrefix {
   wallMs: number
   uptimeMs: number
   level: LogLevel
   category: string
-  /** `#41c2e0`, or undefined outside an operation. */
+  /** `#41c2e0`, libsession's `CoS-0-GZHC`, or undefined outside an operation. */
   op?: string | undefined
 }
 
@@ -32,7 +36,7 @@ export function formatPrefix({ wallMs, uptimeMs, level, category, op }: LinePref
   const time = new Date(wallMs).toISOString()
   const uptime = `+${(uptimeMs / 1000).toFixed(3)}`.padStart(UPTIME_WIDTH)
   const bracketed = `[${category}]`.padEnd(CATEGORY_WIDTH)
-  const operation = op === undefined ? NO_OP : `[${op}]`
+  const operation = (op === undefined ? '' : `[${op}]`).padEnd(OP_WIDTH)
   return `${time} ${uptime} ${levelWord(level)} ${bracketed} ${operation}`
 }
 

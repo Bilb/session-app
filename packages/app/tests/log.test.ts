@@ -55,7 +55,7 @@ describe('appLog', () => {
     appLog.info('ui', 'first')
     appLog.marker('lifecycle', 'second')
     const lines = capture()
-    expect(lines.map((line) => line.slice(70))).toEqual(['first', '>>> second'])
+    expect(lines.map((line) => line.slice(77))).toEqual(['first', '>>> second'])
   })
 })
 
@@ -92,7 +92,7 @@ describe('startLogger', () => {
       },
       previousRun: null,
     })
-    const bodies = lines.map((line) => line.slice(70))
+    const bodies = lines.map((line) => line.slice(77))
     expect(bodies[0]).toBe('──── Session 1.2.3 (7) launched ────')
     expect(bodies).toContain('  App          1.2.3 (7) · commit abc12345 · variant dev')
     expect(bodies).toContain("  Log level    libsession's default")
@@ -109,7 +109,7 @@ describe('logStoreMilestones', () => {
     store.set({ account: { haveAccount: false } })
     store.set({ account: { haveAccount: true } })
     store.set({ startupError: 'database is locked' })
-    expect(lines.map((line) => line.slice(70))).toEqual([
+    expect(lines.map((line) => line.slice(77))).toEqual([
       '>>> start ok',
       '>>> account none',
       '>>> account created',

@@ -9,23 +9,23 @@ enforced by the types below and a sweep over every line, not by encryption.
 
 ## The line
 
-Every line starts with a **fixed-width, 70-column prefix**, so the eye can skip straight to column 71:
+Every line starts with a **fixed-width, 77-column prefix**, so the eye can skip straight to column 78:
 
 ```
-2026-10-08T03:20:09.123Z     +12.345 INFO  [network]        [#41c2e0] path built hops=3 ms=812
-2026-10-08T03:20:09.140Z     +12.362 DEBUG [store]          [       ] conversations applied count=14
-2026-10-08T03:20:11.002Z     +14.224 WARN  [session-router] [#41c2e0] hop slow hop=2 ms=1840
-└──────── 24 ───────────┘ └─ 11 ──┘ └ 5 ┘ └───── 16 ─────┘ └── 9 ──┘ message, then key=value
+2026-10-08T03:20:09.123Z     +12.345 INFO  [network]        [#41c2e0]        path built hops=3 ms=812
+2026-10-08T03:20:09.140Z     +12.362 DEBUG [store]                           conversations applied count=14
+2026-10-08T03:20:11.002Z     +14.224 WARN  [session-router] [#41c2e0]        hop slow hop=2 ms=1840
+└──────── 24 ───────────┘ └─ 11 ──┘ └ 5 ┘ └───── 16 ─────┘ └───── 16 ─────┘ message, key=value
 ```
 
-| column        | width             | content                                                                                                                                                                  |
-| ------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| UTC timestamp | 24                | millisecond, with `Z`                                                                                                                                                    |
-| uptime        | 11, right-aligned | `+seconds.mmm` since process start; monotonic, so intervals survive a clock step. Aligned on the decimal point. Past 11.5 days it grows by a column rather than wrapping |
-| level         | 5                 | `TRACE DEBUG INFO  WARN  ERROR CRIT` — a word, never collapsed                                                                                                           |
-| category      | 16                | `[network]` padded after the bracket. The longest known category (`session-router`) fills it exactly; a longer one is kept whole and pushes the line, never truncated    |
-| op            | 9                 | `[#41c2e0]` — the operation id of one send / download / poll / sync, or `[       ]` when none                                                                            |
-| message       | rest              | the event, then `key=value` pairs: **values, not conclusions** (`present=false destroyed=true`, not "group is gone"). Newlines escaped as `\n`                           |
+| column        | width             | content                                                                                                                                                                                                                                                        |
+| ------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| UTC timestamp | 24                | millisecond, with `Z`                                                                                                                                                                                                                                          |
+| uptime        | 11, right-aligned | `+seconds.mmm` since process start; monotonic, so intervals survive a clock step. Aligned on the decimal point. Past 11.5 days it grows by a column rather than wrapping                                                                                       |
+| level         | 5                 | `TRACE DEBUG INFO  WARN  ERROR CRIT` — a word, never collapsed                                                                                                                                                                                                 |
+| category      | 16                | `[network]` padded after the bracket. The longest known category (`session-router`) fills it exactly; a longer one is kept whole and pushes the line, never truncated                                                                                          |
+| op            | 16                | the operation one line belongs to, or blank: the app's own `[#41c2e0]` for a send / download / poll / sync, or libsession's request tag `[CoS-0-GZHC]`, which it puts on every line of a request under both transports and the app moves here from the message |
+| message       | rest              | the event, then `key=value` pairs: **values, not conclusions** (`present=false destroyed=true`, not "group is gone"). Newlines escaped as `\n`                                                                                                                 |
 
 Two sigils, so a value says what kind of thing it is: **`#` is an operation** (random, minted when the
 operation starts), **`~` is a pseudonym** of a real identifier (keyed hash, same input → same
@@ -82,10 +82,10 @@ so they are swept like any other line.
 **One request, end to end** — grep the op id:
 
 ```
-2026-10-09T07:12:30.101Z   +4211.870 INFO  [network]        [#41c2e0] request start method=store dest=snode~3fa9c1 addr=v4 public:22021 ns=0 bytes=1840
-2026-10-09T07:12:30.313Z   +4212.082 WARN  [network]        [#41c2e0] request failed dest=snode~3fa9c1 addr=v4 public:22021 errno=ECONNREFUSED ms=212 attempt=1
-2026-10-09T07:12:30.315Z   +4212.084 INFO  [network]        [#41c2e0] retry dest=snode~8b20de addr=v4 public:22021 attempt=2
-2026-10-09T07:12:30.902Z   +4212.671 INFO  [network]        [#41c2e0] request ok dest=snode~8b20de status=200 ms=587 bytes=212
+2026-10-09T07:12:30.101Z   +4211.870 INFO  [network]        [#41c2e0]        request start method=store dest=snode~3fa9c1 addr=v4 public:22021 ns=0 bytes=1840
+2026-10-09T07:12:30.313Z   +4212.082 WARN  [network]        [#41c2e0]        request failed dest=snode~3fa9c1 addr=v4 public:22021 errno=ECONNREFUSED ms=212 attempt=1
+2026-10-09T07:12:30.315Z   +4212.084 INFO  [network]        [#41c2e0]        retry dest=snode~8b20de addr=v4 public:22021 attempt=2
+2026-10-09T07:12:30.902Z   +4212.671 INFO  [network]        [#41c2e0]        request ok dest=snode~8b20de status=200 ms=587 bytes=212
 ```
 
 `grep '#41c2e0'` gives the whole story; `grep 'snode~3fa9c1'` gives every operation that ever touched
@@ -94,22 +94,22 @@ that node, across ops and across the files of one install (same salt).
 **A path that goes bad on a private network** — the class is what support needs, never the octets:
 
 ```
-... WARN  [quic]           [#9a0e51] connect failed dest=snode~c41b07 addr=v6-mapped private:22021 errno=EHOSTUNREACH ms=3004
+... WARN  [quic]           [#9a0e51]        connect failed dest=snode~c41b07 addr=v6-mapped private:22021 errno=EHOSTUNREACH ms=3004
 ```
 
 **A file download** — the server is Session's own, so its host stays; the file id is a pseudonym, which
 the attachment's own lines carry too:
 
 ```
-... INFO  [attach]         [#d2b6f4] download start url=https://filev2.getsession.org/file/~5d0e11 msg=~77a0c3 bytes=245812
-... INFO  [attach]         [#d2b6f4] download ok ms=1204 path=attachment(~5d0e11)
+... INFO  [attach]         [#d2b6f4]        download start url=https://filev2.getsession.org/file/~5d0e11 msg=~77a0c3 bytes=245812
+... INFO  [attach]         [#d2b6f4]        download ok ms=1204 path=attachment(~5d0e11)
 ```
 
 **A community poll** — the server is not Session's, so its host is a pseudonym, room names too; the
 query is only counted:
 
 ```
-... INFO  [community]      [#0c11e8] poll url=https://~a91f0c/room/~e02d4b/messages/since/~41f0aa?<1> status=200 msgs=3 ms=388
+... INFO  [community]      [#0c11e8]        poll url=https://~a91f0c/room/~e02d4b/messages/since/~41f0aa?<1> status=200 msgs=3 ms=388
 ```
 
 `grep '~a91f0c'` follows one community server across every room and every poll without saying which it
@@ -119,7 +119,7 @@ is.
 can be matched to the line:
 
 ```
-... INFO  [send]           [#5e70b2] send start to=05ab12...cd90 kind=text attempt=1
+... INFO  [send]           [#5e70b2]        send start to=05ab12...cd90 kind=text attempt=1
 ```
 
 ## Files
@@ -140,15 +140,15 @@ can be matched to the line:
 Prefixed like every other line, so a reader skips the prefix and sees a block:
 
 ```
-2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]        [       ] ──── Session 1.0.0 (123) launched ────
-2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]        [       ]   App          1.0.0 (123) · commit 833d55d5-dirty · variant testflight
-2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]        [       ]   Install      testflight
-2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]        [       ]   Device       iPhone17,1 · iOS 26.1
-2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]        [       ]   Locale       en-AU · UTC+10:00
-2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]        [       ]   Network      mainnet
-2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]        [       ]   Flags        none overridden
-2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]        [       ]   Log level    info · network=debug
-2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]        [       ]   Previous run session-20261008T011544Z-0.log · ended cleanly
+2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]                         ──── Session 1.0.0 (123) launched ────
+2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]                           App          1.0.0 (123) · commit 833d55d5-dirty · variant testflight
+2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]                           Install      testflight
+2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]                           Device       iPhone17,1 · iOS 26.1
+2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]                           Locale       en-AU · UTC+10:00
+2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]                           Network      mainnet
+2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]                           Flags        none overridden
+2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]                           Log level    info · network=debug
+2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]                           Previous run session-20261008T011544Z-0.log · ended cleanly
 ```
 
 "Previous run … ended cleanly" comes from the `terminate`/`background` markers: a previous file

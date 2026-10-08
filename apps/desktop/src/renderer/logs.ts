@@ -68,8 +68,8 @@ export async function startLogging(store: SessionStore): Promise<void> {
 }
 
 /** The store's `log` option: every line to the file, and to the console in development. */
-export function storeLog(level: LogLevel, category: string, message: string): void {
-  appLog.log(level, category, message)
+export function storeLog(level: LogLevel, category: string, message: string, op?: string): void {
+  appLog.log(level, category, message, undefined, op)
   if (import.meta.env.DEV) {
     const method = level === 'critical' ? 'error' : level === 'trace' ? 'debug' : level
     console[method](`[${category}] ${message}`)

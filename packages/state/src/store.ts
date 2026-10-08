@@ -198,7 +198,7 @@ export interface SessionStoreOptions {
    * inconvenience, because which console a line reaches is a per-platform question. Each app
    * passes its own; leaving it out is silence.
    */
-  log?: (level: LogLevel, category: string, message: string) => void
+  log?: (level: LogLevel, category: string, message: string, op?: string) => void
   /**
    * How much disk the attachment cache may occupy, in bytes. Left out means no limit, which is
    * libsession's default and is how a cache eats a disk - so every app should pass one, and what
@@ -233,16 +233,26 @@ function appLevel(level: string): LogLevel {
  */
 const LIBSESSION_PREFIX = /^\[[^\]]*\] \[\+[\d.]+s\] \[[^:|\]]+:([a-z]+)\|([^\]]+)\] /
 
+const REQUEST_TAG = /^\[Request ([\w-]+)\] /
+
 /** One of libsession's lines as the app writes it: its real level, and the message alone. */
 export function libsessionLine(
   level: string,
   message: string,
-): { level: LogLevel; message: string } {
+): { level: LogLevel; message: string; op?: string } {
   const trimmed = message.replace(/\s+$/, '')
   const prefix = LIBSESSION_PREFIX.exec(trimmed)
   if (prefix === null) return { level: appLevel(level), message: trimmed }
   const body = trimmed.slice(prefix[0].length)
-  return { level: appLevel(prefix[1] ?? level), message: `${body} src=${prefix[2] ?? ''}` }
+  // libsession tags each request's lines `[Request CoS-0-GZHC]`, under both transports: the
+  // operation id the app's op column exists for.
+  const request = REQUEST_TAG.exec(body)
+  const text = request === null ? body : body.slice(request[0].length)
+  return {
+    level: appLevel(prefix[1] ?? level),
+    message: `${text} src=${prefix[2] ?? ''}`,
+    ...(request?.[1] === undefined ? {} : { op: request[1] }),
+  }
 }
 
 const PAGE = 30
@@ -260,7 +270,7 @@ export function createSessionStore(
     // that ends in `failed` shows up - the state machine reports what happened, never why.
     if (event.type === 'log') {
       const line = libsessionLine(event.level, event.message)
-      log(line.level, event.category, line.message)
+      log(line.level, event.category, line.message, line.op)
       return
     }
     store.setState((state) => applyEvent(state, event))

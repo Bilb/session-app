@@ -152,8 +152,8 @@ export function watchStore(store: SessionStore): void {
 }
 
 /** The store's `log` option: every line to the file, and to the console in development. */
-export function storeLog(level: LogLevel, category: string, message: string): void {
-  appLog.log(level, category, message)
+export function storeLog(level: LogLevel, category: string, message: string, op?: string): void {
+  appLog.log(level, category, message, undefined, op)
   if (__DEV__) {
     const method = level === 'critical' ? 'error' : level === 'trace' ? 'debug' : level
     // Reaches logcat as ReactNativeJS on Android, and the device console on iOS.

@@ -15,14 +15,14 @@ describe('formatPrefix', () => {
         category: 'network',
         op: '#41c2e0',
       }),
-    ).toBe('2026-10-08T03:20:09.123Z     +12.345 INFO  [network]        [#41c2e0]')
+    ).toBe('2026-10-08T03:20:09.123Z     +12.345 INFO  [network]        [#41c2e0]       ')
   })
 
   it('is the same width whatever the level, category, op or uptime', () => {
     const widths = new Set<number>()
     for (const level of LOG_LEVELS) {
       for (const category of ['ui', 'network', 'session-router']) {
-        for (const op of [undefined, '#000000']) {
+        for (const op of [undefined, '#000000', 'RSC-1-MUE2-0']) {
           for (const uptimeMs of [0, 412, 12_345, 4_211_870, 999_999_999]) {
             widths.add(formatPrefix({ wallMs: AT, uptimeMs, level, category, op }).length + 1)
           }

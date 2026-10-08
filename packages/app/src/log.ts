@@ -39,9 +39,9 @@ export function resetLogger(): void {
 }
 
 export const appLog = {
-  log(level: LogLevel, category: string, message: string, fields?: LogFields): void {
+  log(level: LogLevel, category: string, message: string, fields?: LogFields, op?: string): void {
     withLogger((logger) => {
-      logger.log(level, category, message, fields)
+      logger.log(level, category, message, fields, op)
     })
   },
   debug(category: string, message: string, fields?: LogFields): void {
