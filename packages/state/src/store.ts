@@ -225,13 +225,15 @@ function appLevel(level: string): LogLevel {
 }
 
 /**
- * libsession's own prefix: `[2026-10-08 17:55:06] [+0.420s] [core.gbl:info|core/globals.cpp:150] `.
+ * libsession's own prefix: `[2026-10-08 17:55:06] [+0.420s] [core.gbl:info|core/globals.cpp:150] `,
+ * its uptime written `+3m50.208s` past a minute and `+1h2m3.4s` past an hour.
  *
  * The local time and uptime repeat the app's own columns in another zone and from another zero,
  * so they are dropped. The level in it is the one the line was logged at, which the event's own
  * field does not always agree with; the source location is kept, at the end, as `src=`.
  */
-const LIBSESSION_PREFIX = /^\[[^\]]*\] \[\+[\d.]+s\] \[[^:|\]]+:([a-z]+)\|([^\]]+)\] /
+const LIBSESSION_PREFIX =
+  /^\[[^\]]*\] \[\+(?:\d+h)?(?:\d+m)?[\d.]+s\] \[[^:|\]]+:([a-z]+)\|([^\]]+)\] /
 
 const REQUEST_TAG = /^\[Request ([\w-]+)\] /
 

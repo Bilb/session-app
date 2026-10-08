@@ -25,6 +25,17 @@ describe('libsessionLine', () => {
     })
   })
 
+  it('reads the prefix whatever unit its uptime has reached', () => {
+    for (const uptime of ['+0.420s', '+3m50.208s', '+1h2m3.4s']) {
+      expect(
+        libsessionLine(
+          'info',
+          `[2026-10-09 07:37:49] [${uptime}] [quic:warning|udp.cpp:339] Dropped`,
+        ).message,
+      ).toBe('Dropped src=udp.cpp:339')
+    }
+  })
+
   it('takes the level in the line over the one beside it', () => {
     expect(libsessionLine('info', '[d] [+1.000s] [quic:critical|loop.cpp:1] gone').level).toBe(
       'critical',
