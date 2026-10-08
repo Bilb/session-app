@@ -1,7 +1,7 @@
 import { createLogger, Pseudonyms } from '@session/logging'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { appLog, installLogger, logLaunch, logStoreMilestones } from '#src/log'
+import { appLog, installLogger, logStoreMilestones, resetLogger, startLogger } from '#src/log'
 import { resetPorts, setPorts } from '#src/ports'
 import { memoryPorts } from '#src/testPorts'
 
@@ -40,6 +40,7 @@ function fakeStore() {
 
 afterEach(() => {
   resetPorts()
+  resetLogger()
 })
 
 describe('appLog', () => {
@@ -51,15 +52,24 @@ describe('appLog', () => {
   })
 })
 
-describe('logLaunch', () => {
-  it('writes the startup block from the ports, then the launch marker', () => {
+function newLogger(lines: string[]) {
+  return createLogger({
+    sink: { write: (written) => lines.push(...written) },
+    pseudonyms: new Pseudonyms(new Uint8Array(16)),
+    uptimeMs: () => 0,
+  })
+}
+
+describe('startLogger', () => {
+  it('writes the startup block from the ports, then the launch marker, then what was held', () => {
     setPorts(
       memoryPorts({
         build: { version: '1.2.3', commit: 'abc12345', buildNumber: '7', variant: 'dev' },
       }),
     )
-    const lines = capture()
-    logLaunch({
+    const lines: string[] = []
+    appLog.info('session', 'held')
+    startLogger(newLogger(lines), {
       platform: 'iOS',
       osVersion: '26.1',
       model: 'iPhone',
@@ -72,7 +82,7 @@ describe('logLaunch', () => {
     expect(bodies[0]).toBe('──── Session 1.2.3 (7) launched ────')
     expect(bodies).toContain('  App          1.2.3 (7) · commit abc12345 · variant dev')
     expect(bodies).toContain("  Log level    libsession's default")
-    expect(bodies.at(-1)).toBe('>>> launch')
+    expect(bodies.slice(-2)).toEqual(['>>> launch', 'held'])
   })
 })
 

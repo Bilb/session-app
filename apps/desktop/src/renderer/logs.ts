@@ -1,4 +1,4 @@
-import { appLog, installLogger, logLaunch, logStoreMilestones } from '@session/app'
+import { appLog, logStoreMilestones, startLogger } from '@session/app'
 import { createLogger, Pseudonyms, type LogLevel, type LogSink } from '@session/logging'
 import type { SessionStore } from '@session/state'
 
@@ -49,15 +49,13 @@ export async function startLogging(store: SessionStore): Promise<void> {
   const session = await window.sessionDesktop.openLog()
   // Main's uptime when it answered, so both processes' lines share one zero.
   const offsetMs = session.uptimeMs - performance.now()
-  installLogger(
-    createLogger({
-      sink: mainSink(),
-      pseudonyms: new Pseudonyms(hexToBytes(session.saltHex)),
-      uptimeMs: () => performance.now() + offsetMs,
-      minLevel: (category) => (category === 'session' ? 'debug' : 'info'),
-    }),
-  )
-  logLaunch({
+  const logger = createLogger({
+    sink: mainSink(),
+    pseudonyms: new Pseudonyms(hexToBytes(session.saltHex)),
+    uptimeMs: () => performance.now() + offsetMs,
+    minLevel: (category) => (category === 'session' ? 'debug' : 'info'),
+  })
+  startLogger(logger, {
     platform: session.platform,
     osVersion: session.osVersion,
     model: session.model,

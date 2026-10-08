@@ -1,4 +1,4 @@
-import { appLog, installLogger, logLaunch, logStoreMilestones } from '@session/app'
+import { appLog, logStoreMilestones, startLogger } from '@session/app'
 import {
   createLogger,
   LogWriter,
@@ -106,15 +106,13 @@ const opened = (async (): Promise<LogWriter> => {
       console.error('[logs] a write failed:', error)
     },
   })
-  installLogger(
-    createLogger({
-      sink: writer,
-      pseudonyms: new Pseudonyms(salt),
-      uptimeMs,
-      minLevel: (category) => (category === 'session' ? 'debug' : 'info'),
-    }),
-  )
-  logLaunch({
+  const logger = createLogger({
+    sink: writer,
+    pseudonyms: new Pseudonyms(salt),
+    uptimeMs,
+    minLevel: (category) => (category === 'session' ? 'debug' : 'info'),
+  })
+  startLogger(logger, {
     platform: platformName(),
     osVersion: String(Platform.Version),
     model: model(),

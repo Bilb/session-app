@@ -31,6 +31,12 @@ export function installLogger(logger: Logger): void {
   for (const write of held.splice(0)) write(logger)
 }
 
+/** Test seam: forgets the installed logger and anything held, as a fresh process would. */
+export function resetLogger(): void {
+  installed = null
+  held.length = 0
+}
+
 export const appLog = {
   log(level: LogLevel, category: string, message: string, fields?: LogFields): void {
     withLogger((logger) => {
@@ -113,14 +119,16 @@ export interface PlatformFacts {
 }
 
 /**
- * The top of a launch's file: the startup block, then the `launch` marker.
+ * The top of a launch's file: the startup block, then the `launch` marker - and then installs the
+ * logger, so whatever was held while the directory opened follows the block rather than coming
+ * before it.
  *
  * Shared so the three platforms' blocks say the same things in the same order; the ports supply
  * the build, the network and the flags, and the platform the rest.
  */
-export function logLaunch(facts: PlatformFacts): void {
+export function startLogger(logger: Logger, facts: PlatformFacts): void {
   const { build, network } = requirePorts()
-  appLog.block(
+  logger.block(
     'startup',
     startupBlock({
       version: build.version,
@@ -139,5 +147,6 @@ export function logLaunch(facts: PlatformFacts): void {
       previousRun: facts.previousRun,
     }),
   )
-  appLog.marker('lifecycle', 'launch')
+  logger.marker('lifecycle', 'launch')
+  installLogger(logger)
 }

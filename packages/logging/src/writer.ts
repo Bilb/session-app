@@ -80,7 +80,11 @@ export function readPreviousRun(file: string, text: string): PreviousRun {
     .split('\n')
     .filter((line) => line.includes(` ${MARKER} `))
   const last = markers.at(-1)
-  const name = last === undefined ? null : (last.split(` ${MARKER} `)[1]?.split(' ')[0] ?? null)
+  // The name runs to the first key=value pair: `start failed reason=...` is `start failed`.
+  const words = last?.split(` ${MARKER} `)[1]?.split(' ') ?? []
+  const firstPair = words.findIndex((word) => word.includes('='))
+  const nameWords = firstPair === -1 ? words : words.slice(0, firstPair)
+  const name = last === undefined ? null : nameWords.join(' ') || null
   return { file, endedCleanly: name !== null && CLEAN_ENDINGS.includes(name), lastMarker: name }
 }
 

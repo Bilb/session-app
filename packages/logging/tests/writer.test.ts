@@ -104,6 +104,12 @@ describe('LogWriter', () => {
       lastMarker: 'background',
     })
 
+    const failed = readPreviousRun(
+      'f.log',
+      'x >>> launch\nx >>> start failed reason="locked" ms=3\n',
+    )
+    expect(failed.lastMarker).toBe('start failed')
+
     const died = readPreviousRun('f.log', 'x >>> launch\nx >>> foreground\nsomething\n')
     expect(died).toEqual({ file: 'f.log', endedCleanly: false, lastMarker: 'foreground' })
   })
