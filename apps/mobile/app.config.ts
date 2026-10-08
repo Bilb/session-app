@@ -203,8 +203,10 @@ export default ({ config }: ConfigContext): ExpoConfig =>
         {
           // The legacy clients' launch screen: the logo on black, at its size there, in every
           // theme -- nothing is known about the account's theme until after it has gone.
+          // `imageWidth` sizes a square box the logo is fitted into, and the logo is taller than it
+          // is wide, so 64 is what gives legacy's 64-point-tall logo.
           image: './assets/splash-logo.png',
-          imageWidth: 58,
+          imageWidth: 64,
           resizeMode: 'contain',
           backgroundColor: '#000000',
         },
