@@ -126,6 +126,21 @@ const Frame = styled(XStack, {
         hoverStyle: { opacity: 0.7 },
         pressStyle: { opacity: 0.55 },
       },
+      /**
+       * A quiet fill: the nested surface under a plain label, in a rounded rect rather than a pill.
+       *
+       * Legacy iOS's non-primary rounded rect, for a control among content -- an attachment's
+       * Download -- where a bare label does not read as something to press and an outline is louder
+       * than what it sits in. The nested surface steps off both message bubbles in every theme.
+       */
+      tonal: {
+        backgroundColor: '$backgroundNested',
+        borderColor: '$backgroundNested',
+        borderRadius: '$sm',
+        color: '$textPrimary',
+        hoverStyle: { opacity: 0.8 },
+        pressStyle: { opacity: 0.7 },
+      },
       /** Danger text on a transparent ground, filling on hover. The table's destructive row. */
       danger: {
         backgroundColor: 'transparent',
@@ -218,6 +233,7 @@ const PRESSED = {
   ghost: { backgroundColor: '$pressedOverlay' },
   ghostAccent: { backgroundColor: '$pressedOverlay' },
   simple: { opacity: 0.7 },
+  tonal: { opacity: 0.7 },
   danger: { backgroundColor: '$dangerColor', borderColor: '$dangerColor', opacity: 0.82 },
 } as const
 
@@ -244,6 +260,7 @@ const LABEL_TONE = {
   ghost: '$textPrimary',
   ghostAccent: '$primaryColor',
   simple: '$textPrimary',
+  tonal: '$textPrimary',
   danger: '$dangerColor',
 } as const
 
@@ -289,6 +306,11 @@ export interface ButtonProps {
    */
   borderRadius?: ComponentProps<typeof Frame>['borderRadius']
   /**
+   * Overrides how far the touch target reaches past each side, which is otherwise just enough to
+   * reach `MIN_HIT_TARGET`. For a button in a row that offers more, so the whole row takes the tap.
+   */
+  hitSlop?: number | undefined
+  /**
    * Colour the label danger without filling the button.
    *
    * Every destructive action in a modal is drawn this way in the desktop client -- red text beside
@@ -324,6 +346,7 @@ export function Button({
   fill = false,
   paddingHorizontal,
   borderRadius,
+  hitSlop,
   icon,
   accessibilityLabel,
   testID,
@@ -353,7 +376,6 @@ export function Button({
   const pressedLabel =
     destructive && !INVERTS_ON_PRESS.has(variant) ? '$dangerColor' : PRESSED_LABEL[variant]
 
-  const hitSlop = hitSlopFor(size)
   const inert = disabled || loading
 
   return (
@@ -363,7 +385,7 @@ export function Button({
       disabled={inert}
       // Grown outwards rather than drawn larger: the control keeps the size the designs give it and
       // the target reaches the floor. Ignored on the web, where a pointer does not need it.
-      hitSlop={hitSlop}
+      hitSlop={hitSlop ?? hitSlopFor(size)}
       {...(accessibilityLabel === undefined ? {} : { accessibilityLabel })}
       {...(testID === undefined ? {} : { testID })}
     >
