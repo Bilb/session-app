@@ -1,5 +1,6 @@
 import type { NetworkName } from '@session/basic-types'
 import type { AttachmentRef, PixelSize } from '@session/client'
+import type { ExportPart, LogFileInfo } from '@session/logging'
 /**
  * What the app needs from the operating system, named so shared code can ask without
  * knowing which one it is running on.
@@ -235,6 +236,55 @@ export interface FlagsPort {
   override(name: string): string | null
 }
 
+/**
+ * The log files, for the export. Each platform keeps its own - desktop's in the main process, the
+ * phones' in the app's documents - so what the export needs from them is asked for here.
+ *
+ * **Compression is the platform's, not JavaScript's.** Twenty megabytes through fflate on Hermes
+ * takes seven and a half seconds with the JS thread frozen; desktop's main process has zlib, and
+ * the phones a small native module. See the spec's Compression section.
+ */
+export interface LogsPort {
+  /** Everything written so far on disk, then the retained files, oldest first. */
+  retained(): Promise<LogFileInfo[]>
+  /** The first line of one file and the last of another: the window an export covers. */
+  span(first: string, last: string): Promise<{ firstLine: string | null; lastLine: string | null }>
+  /**
+   * Compresses the parts, in order, into one gzip file called `name`, and hands it to the person:
+   * a save dialog on desktop, the share sheet on a phone. False when they cancelled; null where
+   * this build cannot export at all, so a screen leaves the control out.
+   */
+  deliver: ((name: string, parts: readonly ExportPart[]) => Promise<boolean>) | null
+}
+
+/** What the platform can say about itself and its storage when somebody exports their logs. */
+export interface DiagnosticsSnapshot {
+  /**
+   * Where the OS says the app came from - `testflight`, `app store`, the installer package - or
+   * `unknown`.
+   */
+  install: string
+  platform: string
+  osVersion: string
+  model: string
+  locale: string
+  memory: { usedBytes: number | null; availableBytes: number | null; totalBytes: number | null }
+  freeBytes: number | null
+  /** `wifi`, `cellular`, `online`... or null where the platform cannot tell. */
+  networkType: string | null
+  /** Absent where the question does not arise - a desktop has no notification mode. */
+  notifications?: string
+  /** Name to state, in display order; absent where the platform asks for none. */
+  permissions?: ReadonlyArray<readonly [string, string]>
+  /** The database and its journals together, measured off disk. */
+  databaseBytes: number | null
+  attachmentsBytes: number | null
+}
+
+export interface DiagnosticsPort {
+  snapshot(): Promise<DiagnosticsSnapshot>
+}
+
 export interface Ports {
   network: NetworkPort
   flags: FlagsPort
@@ -248,6 +298,8 @@ export interface Ports {
   share: SharePort
   build: BuildPort
   window: WindowPort
+  logs: LogsPort
+  diagnostics: DiagnosticsPort
 }
 
 let current: Ports | null = null

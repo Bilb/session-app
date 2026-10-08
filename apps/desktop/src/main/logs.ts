@@ -2,6 +2,9 @@ import { randomBytes } from 'node:crypto'
 import {
   appendFileSync,
   closeSync,
+  createReadStream,
+  createWriteStream,
+  existsSync,
   fstatSync,
   mkdirSync,
   openSync,
@@ -11,10 +14,14 @@ import {
   renameSync,
   rmSync,
   statSync,
+  statfsSync,
   writeFileSync,
 } from 'node:fs'
-import { arch, release } from 'node:os'
+import { arch, freemem, release, totalmem } from 'node:os'
 import { join } from 'node:path'
+import { Readable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
+import { createGzip } from 'node:zlib'
 
 import electron from 'electron'
 
@@ -30,15 +37,16 @@ import {
   startupBlock,
   LogWriter,
   Pseudonyms,
+  type ExportPart,
   type LogDirectory,
   type Logger,
 } from '@session/logging'
 
-import { networkSettings } from './bridge'
+import { networkSettings, sessionDataDir } from './bridge'
 import { linuxRows, osText } from './platformRows'
 import { isFromAppFrame } from './security'
 
-const { app } = electron
+const { app, dialog, net } = electron
 
 /**
  * When this process started, which names the launch's file. `process.uptime` rather than the
@@ -136,9 +144,95 @@ export interface MainLogs {
   writer: LogWriter
   /** Releases every line held for ordering, for a process about to end. */
   drain: () => void
+  dir: string
 }
 
 let opened: Promise<MainLogs> | null = null
+
+function friendlyPlatform(): string {
+  switch (process.platform) {
+    case 'darwin':
+      return 'macOS'
+    case 'win32':
+      return 'Windows'
+    case 'linux':
+      return 'Linux'
+    default:
+      return process.platform
+  }
+}
+
+/** A retained log file's name, and nothing else: no separators, so no way out of the directory. */
+const LOG_FILE = /^session-\d{8}T\d{6}Z-\d+\.log$/
+/** Parts in one export: a header and two per file is about twenty; anything near this is a bug. */
+const MAX_PARTS = 256
+/** Text the export writes itself - the header and the dividers - per part. */
+const MAX_TEXT_PART = 64 * 1024
+
+/** An export's parts as the renderer sent them, or null when anything in them is out of bounds. */
+function validParts(parts: unknown): ExportPart[] | null {
+  if (!Array.isArray(parts) || parts.length > MAX_PARTS) return null
+  const valid: ExportPart[] = []
+  for (const part of parts as unknown[]) {
+    if (typeof part !== 'object' || part === null) return null
+    const { text, file } = part as { text?: unknown; file?: unknown }
+    if (typeof text === 'string' && text.length <= MAX_TEXT_PART) valid.push({ text })
+    else if (typeof file === 'string' && LOG_FILE.test(file)) valid.push({ file })
+    else return null
+  }
+  return valid
+}
+
+/** The parts, in order, through one gzip stream into `path`; log files are streamed off disk. */
+async function writeGzip(path: string, dir: string, parts: readonly ExportPart[]): Promise<void> {
+  async function* bytes(): AsyncGenerator<Buffer> {
+    for (const part of parts) {
+      if ('text' in part) yield Buffer.from(part.text, 'utf8')
+      else if (existsSync(join(dir, part.file))) {
+        for await (const chunk of createReadStream(join(dir, part.file))) yield chunk as Buffer
+      }
+    }
+  }
+  await pipeline(Readable.from(bytes()), createGzip({ level: 6 }), createWriteStream(path))
+}
+
+/** The first or last line of a file, read from its end rather than whole where that is the last. */
+function edgeLine(path: string, which: 'first' | 'last'): string | null {
+  if (!existsSync(path)) return null
+  const lines = readFileSync(path, 'utf8')
+    .split('\n')
+    .filter((line) => line !== '')
+  return (which === 'first' ? lines[0] : lines.at(-1)) ?? null
+}
+
+/** Bytes under a directory, recursively; null when it is not there. */
+function directoryBytes(path: string): number | null {
+  if (!existsSync(path)) return null
+  let total = 0
+  for (const entry of readdirSync(path, { withFileTypes: true })) {
+    const child = join(path, entry.name)
+    total += entry.isDirectory() ? (directoryBytes(child) ?? 0) : statSync(child).size
+  }
+  return total
+}
+
+/** The database and its journals: `session.db`, `-wal`, `-shm`. Null when there is none. */
+function databaseBytes(dir: string): number | null {
+  if (!existsSync(dir)) return null
+  const files = readdirSync(dir).filter((name) => name.startsWith('session.db'))
+  return files.length === 0
+    ? null
+    : files.reduce((sum, name) => sum + statSync(join(dir, name)).size, 0)
+}
+
+function deviceFacts(): { platform: string; osVersion: string; model: string; locale: string } {
+  return {
+    platform: friendlyPlatform(),
+    osVersion: process.platform === 'linux' ? release() : process.getSystemVersion(),
+    model: arch(),
+    locale: app.getLocale(),
+  }
+}
 
 /** `/etc/os-release`, or null where there is none, which is everywhere but Linux. */
 function readOsRelease(): string | null {
@@ -258,7 +352,7 @@ export function openLogs(): Promise<MainLogs> {
         'the pseudonym salt could not be read and was replaced; earlier files name ids differently',
       )
     }
-    return { logger, writer, drain: () => sink.drain() }
+    return { logger, writer, dir, drain: () => sink.drain() }
   })()
   return opened
 }
@@ -289,7 +383,7 @@ export function logLibsession(level: string, category: string, message: string):
 }
 
 /**
- * The renderer's two log calls, on this window's own `ipc`.
+ * The renderer's log calls, on this window's own `ipc`.
  *
  * `log:open` answers with main's clock. `log:append` takes the renderer's lines as records, which
  * main sweeps, renders and writes in time order with its own, so the thread that draws the app
@@ -303,6 +397,74 @@ export function serveLogs(window: Electron.BrowserWindow, appUrl: string): void 
     if (!isFromAppFrame(event.senderFrame, appUrl)) throw new Error('refused')
     await openLogs()
     return { uptimeMs: process.uptime() * 1000 }
+  })
+
+  ipc.handle('log:retained', async (event) => {
+    if (!isFromAppFrame(event.senderFrame, appUrl)) throw new Error('refused')
+    const { writer } = await openLogs()
+    await writer.flush()
+    return writer.files()
+  })
+
+  ipc.handle('log:span', async (event, first: unknown, last: unknown) => {
+    if (!isFromAppFrame(event.senderFrame, appUrl)) throw new Error('refused')
+    if (typeof first !== 'string' || !LOG_FILE.test(first)) throw new Error('refused')
+    if (typeof last !== 'string' || !LOG_FILE.test(last)) throw new Error('refused')
+    const { dir } = await openLogs()
+    return {
+      firstLine: edgeLine(join(dir, first), 'first'),
+      lastLine: edgeLine(join(dir, last), 'last'),
+    }
+  })
+
+  /**
+   * Asks where, then writes the export there. The dialog is main's rather than the files port's,
+   * so the path never reaches the renderer: it hands over the parts and learns only whether the
+   * person went through with it.
+   */
+  ipc.handle('log:export', async (event, name: unknown, parts: unknown) => {
+    if (!isFromAppFrame(event.senderFrame, appUrl)) throw new Error('refused')
+    const valid = validParts(parts)
+    if (typeof name !== 'string' || !/^[\w.-]{1,128}\.log\.gz$/.test(name) || valid === null) {
+      throw new Error('refused')
+    }
+    const { dir, writer } = await openLogs()
+    await writer.flush()
+    const chosen = await dialog.showSaveDialog(window, {
+      defaultPath: join(app.getPath('downloads'), name),
+    })
+    if (chosen.canceled || chosen.filePath === undefined) return false
+    await writeGzip(chosen.filePath, dir, valid)
+    return true
+  })
+
+  ipc.handle('log:diagnostics', (event) => {
+    if (!isFromAppFrame(event.senderFrame, appUrl)) throw new Error('refused')
+    const data = sessionDataDir()
+    const free = ((): number | null => {
+      try {
+        const stats = statfsSync(app.getPath('userData'))
+        return stats.bavail * stats.bsize
+      } catch {
+        return null
+      }
+    })()
+    return {
+      install: 'unknown',
+      ...deviceFacts(),
+      memory: {
+        // Every process the app runs, not only main: the renderer is most of it.
+        usedBytes: app
+          .getAppMetrics()
+          .reduce((sum, metric) => sum + metric.memory.workingSetSize * 1024, 0),
+        availableBytes: freemem(),
+        totalBytes: totalmem(),
+      },
+      freeBytes: free,
+      networkType: net.isOnline() ? 'online' : 'offline',
+      databaseBytes: databaseBytes(data),
+      attachmentsBytes: directoryBytes(join(data, 'attachments')),
+    }
   })
 
   ipc.on('log:append', (event, records: unknown) => {

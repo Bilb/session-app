@@ -56,5 +56,17 @@ interface Window {
     openLog(): Promise<{ uptimeMs: number }>
     /** Lines as records, for main to sweep, render and write; see `LogRecord`. */
     appendLog(records: unknown[]): void
+    retainedLogs(): Promise<{ name: string; sizeBytes: number }[]>
+    logSpan(
+      first: string,
+      last: string,
+    ): Promise<{ firstLine: string | null; lastLine: string | null }>
+    /** False when the person cancelled the save dialog. */
+    exportLogs(
+      name: string,
+      parts: readonly ({ text: string } | { file: string })[],
+    ): Promise<boolean>
+    /** Main's `DiagnosticsSnapshot`, typed where the port is built: this file imports nothing. */
+    diagnostics(): Promise<unknown>
   }
 }

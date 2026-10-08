@@ -87,6 +87,27 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
         return () => focusHandlers.delete(handler)
       },
     },
+    // No files and no way to export: a screen offering Export Logs reads `deliver` to decide.
+    logs: {
+      retained: () => Promise.resolve([]),
+      span: () => Promise.resolve({ firstLine: null, lastLine: null }),
+      deliver: null,
+    },
+    diagnostics: {
+      snapshot: () =>
+        Promise.resolve({
+          install: 'unknown',
+          platform: 'test',
+          osVersion: 'unknown',
+          model: 'unknown',
+          locale: 'en',
+          memory: { usedBytes: null, availableBytes: null, totalBytes: null },
+          freeBytes: null,
+          networkType: null,
+          databaseBytes: null,
+          attachmentsBytes: null,
+        }),
+    },
     ...overrides,
   }
 }

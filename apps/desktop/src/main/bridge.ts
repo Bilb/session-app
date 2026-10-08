@@ -98,6 +98,17 @@ export function networkSettings(): NetworkSettings {
  *
  * Everything above this file sees frames either way.
  */
+/**
+ * Where this run's database and attachments live: per network, under userData. Also read by the
+ * log export, which measures what is there.
+ */
+export function sessionDataDir(): string {
+  return join(
+    app.getPath('userData'),
+    parseNetworkName(developerSetting('EXPO_PUBLIC_SESSION_NETID')),
+  )
+}
+
 export async function createBridge(): Promise<BridgeTransport & MediaSource> {
   loadDotEnv()
 
@@ -131,7 +142,7 @@ export async function createBridge(): Promise<BridgeTransport & MediaSource> {
   // Per network, so a devnet identity and a mainnet one can both exist and switching back loses
   // neither. libsession derives its own snode cache from the database's directory, which puts
   // that on the right side of the split too.
-  const dir = join(app.getPath('userData'), name)
+  const dir = sessionDataDir()
   mkdirSync(dir, { recursive: true })
 
   const seedNodes =

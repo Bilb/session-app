@@ -1,4 +1,5 @@
 import {
+  emptyCounts,
   networkRows,
   startupBlock,
   type LogFields,
@@ -6,6 +7,7 @@ import {
   type LogLevel,
   type NetworkSettings,
   type PreviousRun,
+  type SweepCounts,
 } from '@session/logging'
 
 import { flagOverrideRows } from './flags'
@@ -65,6 +67,10 @@ export const appLog = {
   },
   critical(category: string, message: string, fields?: LogFields): void {
     appLog.log('critical', category, message, fields)
+  },
+  /** What the sweep has replaced in this process so far; zeros before there is a logger. */
+  sweepCounts(): SweepCounts {
+    return installed?.sweepCounts() ?? emptyCounts()
   },
   /** One of the lines that always fire; see `MARKER` in `@session/logging`. */
   marker(category: string, name: string, fields?: LogFields): void {

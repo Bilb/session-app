@@ -53,4 +53,11 @@ contextBridge.exposeInMainWorld('sessionDesktop', {
   appendLog: (records: unknown[]) => {
     ipcRenderer.send('log:append', records)
   },
+  /** The export's four calls; main asks where to save, so no path ever comes back here. */
+  retainedLogs: (): Promise<unknown> => ipcRenderer.invoke('log:retained'),
+  logSpan: (first: string, last: string): Promise<unknown> =>
+    ipcRenderer.invoke('log:span', first, last),
+  exportLogs: (name: string, parts: unknown): Promise<boolean> =>
+    ipcRenderer.invoke('log:export', name, parts),
+  diagnostics: (): Promise<unknown> => ipcRenderer.invoke('log:diagnostics'),
 })

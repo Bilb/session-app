@@ -2,6 +2,17 @@ export { addressShape, renderAddress, type AddressClass, type AddressFamily } fr
 export { LOG_LEVELS, levelRank, minLevelFromSpec, parseLevel, type LogLevel } from './level'
 export { PREFIX_WIDTH, formatPrefix } from './line'
 export { MAX_SWEPT_CHARS, capForSweep } from './cap'
+export {
+  exportFileName,
+  exportHeader,
+  exportParts,
+  fileDivider,
+  formatBytes,
+  planExport,
+  type ExportFacts,
+  type ExportPart,
+  type ExportPlan,
+} from './export'
 export { libsessionLine } from './libsession'
 export {
   MARKER,
