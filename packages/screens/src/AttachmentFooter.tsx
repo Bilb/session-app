@@ -1,14 +1,6 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import {
-  PressArea,
-  SEGMENTED_TOGGLE_TARGET,
-  SegmentedToggle,
-  Text,
-  toggleRowHeight,
-  XStack,
-  type Segment,
-} from '@session/ui'
+import { Button, buttonHeight, Icon, ROW_TOUCH_TARGET, Text, XStack } from '@session/ui'
 
 import type { AttachmentSet } from './attachmentSet'
 import { sharedCaption } from './attachmentSetCaption'
@@ -16,47 +8,46 @@ import type { AttachmentView } from './attachmentView'
 import { formatBytes } from './formatBytes'
 import { PENDING_COPY } from './pendingCopy'
 
+const ACTION_SIZE = 'sm'
+
 /**
- * Tall enough for a caption and its touch target, and fixed.
+ * The verb's height, the tallest thing on the line, and fixed.
  *
  * A number rather than letting the text set it: the whole point is that the height does not
  * change between states, and a line of copy that wraps in one locale would change it.
  */
-const FOOTER_HEIGHT = 30
+const FOOTER_HEIGHT = buttonHeight(ACTION_SIZE)
 
 /**
  * The row's own box, taller than the line on touch: a slop never reaches past its parent, so the
  * toggle's target is only as tall as the row that holds it. The overhang comes back as margin, so
  * the line still takes 30 and nothing below moves.
  */
-const ROW_HEIGHT = toggleRowHeight(FOOTER_HEIGHT, SEGMENTED_TOGGLE_TARGET)
+const ROW_HEIGHT = Math.max(FOOTER_HEIGHT, ROW_TOUCH_TARGET)
 const ROW_OVERHANG = (ROW_HEIGHT - FOOTER_HEIGHT) / 2
 
-/** Clipped to the row like the toggle's, so the verb's target is the row's full height. */
-const ACTION_SLOP = SEGMENTED_TOGGLE_TARGET / 2
+/** The verb takes the row's full height on touch, like the toggle beside it. */
+const ACTION_SLOP = ROW_OVERHANG
 
 /**
- * Gallery or list, for a set that can be drawn either way.
+ * The other shape, as the one button offers it: the gallery from the list, and the list back.
  *
- * **Not a failure fallback.** Five photographs read perfectly well as five rows - with a name, a
- * size and a control each - and that is a reasonable thing to want without anything having gone
- * wrong. Where the set has a plain file in it there is no choice to offer, and the footer draws
- * no toggle rather than one with one working half.
+ * Only drawn where the set can be a gallery at all, so a list of plain files offers nothing.
  */
-const VIEW_SEGMENTS: readonly [Segment<AttachmentView>, Segment<AttachmentView>] = [
-  {
-    value: 'gallery',
+const SWITCH_TO = {
+  list: {
+    view: 'gallery',
     icon: 'layoutGrid',
     label: PENDING_COPY.attachmentViewGallery,
     testID: ELEMENT.conversation.attachmentViewGallery,
   },
-  {
-    value: 'list',
+  gallery: {
+    view: 'list',
     icon: 'list',
     label: PENDING_COPY.attachmentViewList,
     testID: ELEMENT.conversation.attachmentViewList,
   },
-]
+} as const
 
 function caption(set: AttachmentSet): string {
   const shared = sharedCaption(set)
@@ -117,11 +108,17 @@ export function AttachmentFooter({
       testID={ELEMENT.conversation.attachmentFooter}
     >
       {view === undefined || onView === undefined ? null : (
-        <SegmentedToggle
-          segments={VIEW_SEGMENTS}
-          value={view}
-          onChange={onView}
-          testID={ELEMENT.conversation.attachmentViewToggle}
+        <Button
+          variant="tonal"
+          size={ACTION_SIZE}
+          circular
+          icon={<Icon name={SWITCH_TO[view].icon} size="sm" color="$textPrimary" />}
+          accessibilityLabel={SWITCH_TO[view].label}
+          hitSlop={ACTION_SLOP}
+          onPress={() => {
+            onView(SWITCH_TO[view].view)
+          }}
+          testID={SWITCH_TO[view].testID}
         />
       )}
       <Text
@@ -134,22 +131,16 @@ export function AttachmentFooter({
         {caption(set)}
       </Text>
       {action === null ? null : (
-        <PressArea
-          onPress={onAction}
-          accessibilityLabel={action}
+        <Button
+          variant="tonal"
+          size={ACTION_SIZE}
           hitSlop={ACTION_SLOP}
+          destructive={set.state === 'failed'}
+          onPress={onAction}
           testID={ELEMENT.conversation.attachmentAction}
         >
-          {() => (
-            <Text
-              size="$caption"
-              weight="semibold"
-              color={set.state === 'failed' ? '$dangerColor' : '$accentText'}
-            >
-              {action}
-            </Text>
-          )}
-        </PressArea>
+          {action}
+        </Button>
       )}
     </XStack>
   )

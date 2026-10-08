@@ -46,7 +46,6 @@ export const ELEMENT = {
     attachmentAction: 'message-attachment-action',
     attachmentViewGallery: 'message-attachment-view-gallery',
     attachmentViewList: 'message-attachment-view-list',
-    attachmentViewToggle: 'message-attachment-view-toggle',
     attachmentShowAll: 'message-attachment-show-all',
     attachmentSheet: 'message-attachment-sheet',
     attachmentSheetClose: 'message-attachment-sheet-close',

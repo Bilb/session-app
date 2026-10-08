@@ -35,39 +35,6 @@ describe('the album’s download cloud', () => {
   })
 })
 
-describe('the segmented toggle', () => {
-  const toggle = source('SegmentedToggle.tsx')
-  // Each path on its own, so one cannot answer for the other: the touch branch up to the
-  // pointer path's `return`, and the pointer path's segment button.
-  const whole = toggle.indexOf("SEGMENT_TAPS === 'whole'")
-  const touch = toggle.slice(whole, toggle.indexOf('\n  return (', whole))
-  const pointer = toggle.slice(
-    toggle.indexOf('function SegmentButton'),
-    toggle.indexOf('export function'),
-  )
-
-  it('says on each segment button whether it is the chosen one', () => {
-    // On the button a reader lands on: ARIA defines no `aria-selected` on a button or its face.
-    expect(pointer).toContain('toggled={selected}')
-    expect(toggle).not.toContain('aria-selected')
-    expect(source('PressArea.tsx')).toContain("'aria-pressed': toggled")
-  })
-
-  it('is one switch on touch, addressed by its own id, with no id inside it', () => {
-    // iOS hides an accessible Pressable's children from the tree a test looks ids up in.
-    expect(touch).toMatch(/role="switch"\s+checked=\{selected === 1\}/)
-    expect(touch).toContain('testID={testID}')
-    expect(touch.match(/testID=/g)?.length).toBe(1)
-  })
-
-  it('lights a face from the press the PressArea reports, since the face passes the touch through', () => {
-    for (const path of [touch, pointer]) {
-      expect(path).toMatch(/\{\(pressed\) =>[\s\S]*?<SegmentFace[^>]*pressed=\{pressed\b/)
-    }
-    expect(toggle).toMatch(/<StateLayer[^>]*pressed=\{pressed\}/)
-  })
-})
-
 describe('the three-up’s cloud', () => {
   const album = source('AttachmentAlbum.tsx')
 
