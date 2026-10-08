@@ -1,0 +1,28 @@
+import { describe, expect, it } from 'vitest'
+
+import { libsessionLine } from '#src/store'
+
+describe('libsessionLine', () => {
+  it("drops libsession's own time and uptime, keeps its level, and moves the source to the end", () => {
+    expect(
+      libsessionLine(
+        'warning',
+        '[2026-10-08 17:55:06] [+0.422s] [router:warning|router/router.cpp:459] Network ID is testnet\n',
+      ),
+    ).toEqual({ level: 'warn', message: 'Network ID is testnet src=router/router.cpp:459' })
+  })
+
+  it('takes the level in the line over the one beside it', () => {
+    expect(libsessionLine('info', '[d] [+1.000s] [quic:critical|loop.cpp:1] gone').level).toBe(
+      'critical',
+    )
+  })
+
+  it("passes a line without libsession's prefix through, trimmed", () => {
+    expect(libsessionLine('err', 'plain message\n')).toEqual({
+      level: 'error',
+      message: 'plain message',
+    })
+    expect(libsessionLine('verbose', 'x').level).toBe('info')
+  })
+})

@@ -9,12 +9,13 @@ export interface SweepCounts {
   uuid: number
   hex: number
   base64: number
+  base32: number
   ip: number
   words: number
 }
 
 export function emptyCounts(): SweepCounts {
-  return { url: 0, uuid: 0, hex: 0, base64: 0, ip: 0, words: 0 }
+  return { url: 0, uuid: 0, hex: 0, base64: 0, base32: 0, ip: 0, words: 0 }
 }
 
 const URL_IN_TEXT = /\b[a-z][a-z0-9+.-]*:\/\/[^\s"'<>]+/gi
@@ -23,6 +24,11 @@ const UUID = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/g
 const HEX = /(^|[^0-9a-z])([0-9a-f]{32,})(?![0-9a-z])/gi
 /** Swarm message hashes and ed25519/blinded keys in base64 are 43-44 characters; allow longer. */
 const BASE64 = /(^|[^A-Za-z0-9+/_-])([A-Za-z0-9+/_-]{40,}={0,2})(?![A-Za-z0-9+/_=-])/g
+/**
+ * Session Router and service-node addresses: 52 characters of lowercase z-base32, often with
+ * `.sesh` or `.snode` after. A client's own is its identity on the router network for the run.
+ */
+const BASE32 = /\b([a-z0-9]{50,})(\.(?:sesh|snode|loki))?\b/g
 const IPV4 = /\b(\d{1,3}(?:\.\d{1,3}){3})(?::(\d{1,5}))?\b/g
 const IPV6_BRACKETED = /\[([0-9a-f:.]+)\](?::(\d{1,5}))?/gi
 const IPV6_BARE =
@@ -61,6 +67,10 @@ export function sweep(text: string, pseudonyms: Pseudonyms, counts: SweepCounts)
     if (!/[0-9+/=_-]/.test(value) || !/[A-Z]/.test(value) || !/[a-z]/.test(value)) return match
     counts.base64 += 1
     return `${before}${pseudonyms.of(value)}`
+  })
+  out = out.replace(BASE32, (_match, value: string, suffix: string | undefined) => {
+    counts.base32 += 1
+    return `${pseudonyms.of(value)}${suffix ?? ''}`
   })
   out = out.replace(IPV6_BRACKETED, (match, host: string, port: string | undefined) => {
     if (addressShape(host) === undefined) return match

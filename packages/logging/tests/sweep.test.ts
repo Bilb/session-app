@@ -25,6 +25,15 @@ describe('sweep', () => {
     expect(counts).toMatchObject({ hex: 1, base64: 1, uuid: 1 })
   })
 
+  it('pseudonymises a Session Router address and keeps its suffix', () => {
+    const counts = emptyCounts()
+    const router = 'cjtfkqnwtnuo1hu97fzhxgu3x1xmkakboazkuzh8oiupkcoqx3yo'
+    expect(sweep(`Client started @ ${router}.sesh`, p, counts)).toBe(
+      `Client started @ ${p.of(router)}.sesh`,
+    )
+    expect(counts.base32).toBe(1)
+  })
+
   it('writes addresses as their class, and leaves times of day alone', () => {
     const counts = emptyCounts()
     expect(
