@@ -226,6 +226,9 @@ importers:
       '@session/localization':
         specifier: workspace:*
         version: link:../../packages/localization
+      '@session/logging':
+        specifier: workspace:*
+        version: link:../../packages/logging
       '@session/screens':
         specifier: workspace:*
         version: link:../../packages/screens
@@ -305,6 +308,9 @@ importers:
       '@session/client':
         specifier: workspace:*
         version: link:../../packages/client
+      '@session/logging':
+        specifier: workspace:*
+        version: link:../../packages/logging
       '@session/screens':
         specifier: workspace:*
         version: link:../../packages/screens
@@ -426,6 +432,9 @@ importers:
       '@session/client':
         specifier: workspace:*
         version: link:../client
+      '@session/logging':
+        specifier: workspace:*
+        version: link:../logging
     devDependencies:
       '@session/eslint-config':
         specifier: workspace:*
@@ -631,6 +640,24 @@ importers:
       tsup:
         specifier: 'catalog:'
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.28)(typescript@5.9.3)(yaml@2.9.0)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.0(@types/node@26.4.1)(vite@8.2.2(@types/node@26.4.1)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.0))
+
+  packages/logging:
+    devDependencies:
+      '@session/eslint-config':
+        specifier: workspace:*
+        version: link:../../tooling/eslint-config
+      '@session/typescript-config':
+        specifier: workspace:*
+        version: link:../../tooling/typescript-config
+      eslint:
+        specifier: 'catalog:'
+        version: 10.9.1(jiti@2.7.0)
       typescript:
         specifier: 'catalog:'
         version: 5.9.3

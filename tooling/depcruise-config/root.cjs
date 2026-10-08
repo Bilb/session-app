@@ -43,7 +43,8 @@ module.exports = {
     mayOnlyDependOn('client-contract', ['client', 'basic-types']),
     mayOnlyDependOn('state', ['client', 'basic-types']),
     mayOnlyDependOn('ui', ['theme-tokens', 'test-ids', 'basic-types']),
-    mayOnlyDependOn('app', ['client', 'state', 'basic-types']),
+    mayOnlyDependOn('logging', []),
+    mayOnlyDependOn('app', ['client', 'state', 'basic-types', 'logging']),
     mayOnlyDependOn('bridge-node', ['client', 'client-contract', 'bridge-types']),
     mayOnlyDependOn('bridge-rn', ['bridge-types']),
     mayOnlyDependOn('screens', [
@@ -77,7 +78,7 @@ module.exports = {
         'Shared packages run on Hermes, in a browser and in Node. Wrap platform APIs in @session/ui or a port.',
       severity: 'error',
       from: {
-        path: '^packages/(basic-types|bridge-types|test-ids|theme-tokens|localization|client|client-contract|state|app|screens)/',
+        path: '^packages/(basic-types|bridge-types|test-ids|theme-tokens|localization|logging|client|client-contract|state|app|screens)/',
         pathNot: '\\.(native|web|ios|android)\\.tsx?$',
       },
       to: {
@@ -93,7 +94,7 @@ module.exports = {
         'which is build-time codegen invoked by `pnpm codegen` and never bundled into anything.',
       severity: 'error',
       from: {
-        path: '^packages/(basic-types|bridge-types|test-ids|theme-tokens|localization|client|client-contract|state|app|screens|ui)/',
+        path: '^packages/(basic-types|bridge-types|test-ids|theme-tokens|localization|logging|client|client-contract|state|app|screens|ui)/',
         pathNot: '\\.(test|spec)\\.tsx?$|^packages/[^/]+/scripts/',
       },
       to: { dependencyTypes: ['core'] },
