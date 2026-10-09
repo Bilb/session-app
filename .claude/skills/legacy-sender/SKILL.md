@@ -1,6 +1,6 @@
 ---
 name: legacy-sender
-description: Send real messages and attachments to session-app clients from the legacy Session Desktop, driven by session-playwright. Use to test receiving on real libsession (Android, iOS, desktop) - downloads, previews, the viewer, export - when the fake is not enough.
+description: Send real messages and attachments to session-app clients from the legacy Session Desktop, driven by session-playwright. Use to test receiving on real libsession (Android, iOS, desktop) - downloads, thumbhashes, the viewer, export - when the fake is not enough.
 ---
 
 # Sending from the legacy Session Desktop
@@ -130,7 +130,7 @@ another language. The composer sits under the keyboard there too.
 ## What to check on each client
 
 - every message arrives, with the right number of attachments in the right message
-- a picture with no preview hash shows the placeholder, and the album's cloud
+- a picture sent with no ThumbHash shows the placeholder, and the album's cloud
 - a tap downloads the whole set; the picture then draws and the footer offers Export
 - the viewer opens on a downloaded picture
 - a PDF or a video is a file row with its name, and a video does not open in the viewer

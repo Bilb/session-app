@@ -374,7 +374,7 @@ struct Codec<::session_bridge::Attachment> {
             obj.Set("width", Codec<double>::to(env, *value.width));
         if (value.height)
             obj.Set("height", Codec<double>::to(env, *value.height));
-        obj.Set("hasPreview", Codec<bool>::to(env, value.has_preview));
+        obj.Set("hasThumbhash", Codec<bool>::to(env, value.has_thumbhash));
         obj.Set("hasThumbnail", Codec<bool>::to(env, value.has_thumbnail));
         obj.Set("uploaded", Codec<bool>::to(env, value.uploaded));
         obj.Set("availability", Codec<::session_bridge::AttachmentAvailability>::to(env, value.availability));
@@ -394,7 +394,7 @@ struct Codec<::session_bridge::Attachment> {
                 Codec<bool>::from(obj.Get("voiceMessage"), "Attachment.voiceMessage"),
                 optional<double>(obj.Get("width"), "Attachment.width"),
                 optional<double>(obj.Get("height"), "Attachment.height"),
-                Codec<bool>::from(obj.Get("hasPreview"), "Attachment.hasPreview"),
+                Codec<bool>::from(obj.Get("hasThumbhash"), "Attachment.hasThumbhash"),
                 Codec<bool>::from(obj.Get("hasThumbnail"), "Attachment.hasThumbnail"),
                 Codec<bool>::from(obj.Get("uploaded"), "Attachment.uploaded"),
                 Codec<::session_bridge::AttachmentAvailability>::from(obj.Get("availability"), "Attachment.availability"),

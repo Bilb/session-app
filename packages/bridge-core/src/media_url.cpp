@@ -111,7 +111,7 @@ namespace {
 std::string_view media_url_kind_name(MediaUrlKind kind) {
     switch (kind) {
         case MediaUrlKind::attachment: return "attachment";
-        case MediaUrlKind::preview: return "preview";
+        case MediaUrlKind::thumbhash: return "thumbhash";
         case MediaUrlKind::thumbnail: return "thumbnail";
     }
     return "<INVALID>";
@@ -125,8 +125,8 @@ std::optional<MediaUrl> parse_media_url(std::string_view url) {
     MediaUrlKind kind;
     if (take(rest, "attachment/"))
         kind = MediaUrlKind::attachment;
-    else if (take(rest, "preview/"))
-        kind = MediaUrlKind::preview;
+    else if (take(rest, "thumbhash/"))
+        kind = MediaUrlKind::thumbhash;
     else if (take(rest, "thumbnail/"))
         kind = MediaUrlKind::thumbnail;
     else

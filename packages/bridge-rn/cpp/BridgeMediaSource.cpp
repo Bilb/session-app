@@ -27,16 +27,16 @@ void BridgeMediaSource::fetch_media(
     _bridge->fetch_media(message_id, index, std::move(tracked));
 }
 
-void BridgeMediaSource::fetch_preview(
-        double message_id, double index, ::session_bridge::PreviewHandler cb) {
+void BridgeMediaSource::fetch_thumbhash(
+        double message_id, double index, ::session_bridge::ThumbhashHandler cb) {
     auto tracked = _pending->track(std::move(cb));
     std::shared_lock lock{_mutex};
     if (!_bridge) {
         lock.unlock();
-        tracked(failed<::session_bridge::Preview>("the bridge is closed"));
+        tracked(failed<::session_bridge::Thumbhash>("the bridge is closed"));
         return;
     }
-    _bridge->fetch_preview(message_id, index, std::move(tracked));
+    _bridge->fetch_thumbhash(message_id, index, std::move(tracked));
 }
 
 void BridgeMediaSource::fetch_thumbnail(

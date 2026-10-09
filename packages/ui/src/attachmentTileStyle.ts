@@ -45,11 +45,11 @@ export const TILE_HAIRLINE_WIDTH = 1
  * it holds with the glyph and the hairline. Keyed on the url, so a new one gets its own attempt.
  */
 export function tilePlaceholder(
-  preview: string | null | undefined,
-  failedPreview: string | null,
+  thumbhash: string | null | undefined,
+  failedThumbhash: string | null,
 ): string | null {
-  if (preview === undefined || preview === null) return null
-  return preview === failedPreview ? null : preview
+  if (thumbhash === undefined || thumbhash === null) return null
+  return thumbhash === failedThumbhash ? null : thumbhash
 }
 
 /**

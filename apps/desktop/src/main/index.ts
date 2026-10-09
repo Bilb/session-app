@@ -50,7 +50,7 @@ function refusingBridge(reason: string): Awaited<ReturnType<typeof createBridge>
   return {
     ...createRefusingTransport(reason),
     fetchMedia: refuse,
-    fetchPreview: refuse,
+    fetchThumbhash: refuse,
     fetchThumbnail: refuse,
   }
 }

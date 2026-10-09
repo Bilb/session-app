@@ -73,23 +73,23 @@ static UIImage* _Nullable DecodedImage(CGImageSourceRef source, CGSize pixels, C
     return image;
 }
 
-/// A preview's RGBA, which is not premultiplied - what `kCGImageAlphaLast` describes.
-static UIImage* _Nullable PreviewImage(std::shared_ptr<::session_bridge::Preview> preview) {
+/// A thumbhash's RGBA, which is not premultiplied - what `kCGImageAlphaLast` describes.
+static UIImage* _Nullable ThumbhashImage(std::shared_ptr<::session_bridge::Thumbhash> thumbhash) {
     // Bounded as doubles first: a JavaScript source may answer NaN or 1e12, and casting either
     // to size_t is undefined before the check would run.
     constexpr double max_edge = 16384;
-    const double w = preview->width, h = preview->height;
+    const double w = thumbhash->width, h = thumbhash->height;
     if (!(w > 0 && w <= max_edge && h > 0 && h <= max_edge))
         return nil;
     const auto width = static_cast<size_t>(w);
     const auto height = static_cast<size_t>(h);
-    if (preview->rgba.size() != width * height * 4)
+    if (thumbhash->rgba.size() != width * height * 4)
         return nil;
-    // The provider keeps the preview alive for as long as the image needs its pixels.
-    auto* held = new std::shared_ptr<::session_bridge::Preview>(std::move(preview));
+    // The provider keeps the thumbhash alive for as long as the image needs its pixels.
+    auto* held = new std::shared_ptr<::session_bridge::Thumbhash>(std::move(thumbhash));
     CGDataProviderRef provider = CGDataProviderCreateWithData(
             held, (*held)->rgba.data(), (*held)->rgba.size(), [](void* info, const void*, size_t) {
-                delete static_cast<std::shared_ptr<::session_bridge::Preview>*>(info);
+                delete static_cast<std::shared_ptr<::session_bridge::Thumbhash>*>(info);
             });
     CGColorSpaceRef colours = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
     CGImageRef image = CGImageCreate(
@@ -139,7 +139,7 @@ static UIImage* _Nullable ThumbnailImage(CGImageSourceRef source, CGSize view, C
     return image;
 }
 
-/// Decoded thumbnails and previews. React Native caches only what it decoded itself from an HTTP
+/// Decoded thumbnails and thumbhashes. React Native caches only what it decoded itself from an HTTP
 /// response, so a loader's answers would otherwise decode again on every mount. A URL keeps naming
 /// one picture: libsession never reuses a message id, and a discard calls `forget_media`.
 static const NSUInteger kCacheTotalCostBytes = 48 * 1024 * 1024;
@@ -207,7 +207,7 @@ RCT_EXPORT_MODULE()
     return NO;
 }
 
-/// Concurrent: every block owns what it touches, and a microsecond preview must not wait behind
+/// Concurrent: every block owns what it touches, and a microsecond thumbhash must not wait behind
 /// an album's decodes.
 - (instancetype)init {
     if (self = [super init]) {
@@ -275,7 +275,7 @@ RCT_EXPORT_MODULE()
     }
     // Originals are not kept: only the viewer draws one, and one is most of the cache's budget.
     const bool cacheable = parsed->kind != ::session_bridge::MediaUrlKind::attachment;
-    // A thumbnail's decode depends on the view it fills; a preview's does not.
+    // A thumbnail's decode depends on the view it fills; a thumbhash's does not.
     NSString* key = parsed->kind == ::session_bridge::MediaUrlKind::thumbnail
                             ? [NSString stringWithFormat:@"%@ %.0fx%.0f",
                                                          imageURL.absoluteString,
@@ -297,19 +297,19 @@ RCT_EXPORT_MODULE()
     NSCache<NSString*, UIImage*>* cache = _cache;
     RCTImageLoaderCompletionBlock done = [completionHandler copy];
 
-    if (parsed->kind == ::session_bridge::MediaUrlKind::preview) {
-        source->fetch_preview(parsed->message_id, parsed->index, [=](::session_bridge::Preview answer) {
-            auto preview = std::make_shared<::session_bridge::Preview>(std::move(answer));
+    if (parsed->kind == ::session_bridge::MediaUrlKind::thumbhash) {
+        source->fetch_thumbhash(parsed->message_id, parsed->index, [=](::session_bridge::Thumbhash answer) {
+            auto thumbhash = std::make_shared<::session_bridge::Thumbhash>(std::move(answer));
             dispatch_async(drain, ^{
                 if (cancelled->load())
                     return;
-                if (preview->error) {
-                    Fail(done, imageURL, *preview->error);
+                if (thumbhash->error) {
+                    Fail(done, imageURL, *thumbhash->error);
                     return;
                 }
-                UIImage* image = PreviewImage(preview);
+                UIImage* image = ThumbhashImage(thumbhash);
                 if (!image) {
-                    Fail(done, imageURL, "a preview whose pixels do not match its size");
+                    Fail(done, imageURL, "a thumbhash whose pixels do not match its size");
                     return;
                 }
                 Remember(cache, key, image);

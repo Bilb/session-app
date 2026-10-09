@@ -44,7 +44,7 @@ export type {
 export { BridgeClosedError, SessionClientError } from './errors'
 export type {
   AttachmentMedia,
-  AttachmentPreview,
+  AttachmentThumbhash,
   BridgeTransport,
   MediaSource,
   MessagePage,

@@ -9,7 +9,7 @@ import { friends, type FakeSetup, type FixtureName } from './fixtures'
  * Dimensions are the sender's and are what the placeholder is laid out from, so they are set:
  * without them a transcript jumps as each one lands.
  *
- * `hasPreview` is set so the placeholder is drawn. The fake's preview door answers these with a
+ * `hasThumbhash` is set so the placeholder is drawn. The fake's thumbhash door answers these with a
  * flat colour: what it exercises is the route, not the decoder.
  */
 const SEEDED_PICTURES: Attachment[] = [
@@ -17,7 +17,7 @@ const SEEDED_PICTURES: Attachment[] = [
     index: 0,
     contentType: 'image/jpeg',
     filename: 'harbour.jpg',
-    hasPreview: true,
+    hasThumbhash: true,
     hasThumbnail: false,
     sizeBytes: 2_411_724,
     voiceMessage: false,
@@ -32,7 +32,7 @@ const SEEDED_PICTURES: Attachment[] = [
     index: 1,
     contentType: 'image/png',
     filename: 'ferry.png',
-    hasPreview: true,
+    hasThumbhash: true,
     hasThumbnail: false,
     sizeBytes: 812_004,
     voiceMessage: false,
@@ -55,7 +55,7 @@ const SEEDED_FILES: Attachment[] = [
     index: 0,
     contentType: 'image/jpeg',
     filename: 'receipt.jpg',
-    hasPreview: true,
+    hasThumbhash: true,
     hasThumbnail: false,
     sizeBytes: 96_500,
     voiceMessage: false,
@@ -72,7 +72,7 @@ const SEEDED_FILES: Attachment[] = [
     filename: 'itinerary.pdf',
     sizeBytes: 184_320,
     voiceMessage: false,
-    hasPreview: false,
+    hasThumbhash: false,
     hasThumbnail: false,
     uploaded: true,
     availability: 'absent',
@@ -85,7 +85,7 @@ const SEEDED_FILES: Attachment[] = [
     filename: 'تقرير-الرحلة.pdf',
     sizeBytes: 52_480,
     voiceMessage: false,
-    hasPreview: false,
+    hasThumbhash: false,
     hasThumbnail: false,
     uploaded: true,
     availability: 'absent',
@@ -100,7 +100,7 @@ const SEEDED_FILES: Attachment[] = [
     voiceMessage: false,
     width: 1600,
     height: 1200,
-    hasPreview: true,
+    hasThumbhash: true,
     hasThumbnail: false,
     uploaded: true,
     availability: 'absent',
@@ -124,7 +124,7 @@ const SEEDED_MANY: Attachment[] = Array.from({ length: 13 }, (_, at) => ({
         width: 1200,
         height: 900,
       }),
-  hasPreview: at !== 12,
+  hasThumbhash: at !== 12,
   hasThumbnail: false,
   sizeBytes: 120_000 + at * 4_000,
   voiceMessage: false,
@@ -215,7 +215,7 @@ function showpiece(
     sizeBytes: 180_000 + index * 420_000,
     voiceMessage: false,
     ...(picture ? { width: 1600, height: 1200 } : {}),
-    hasPreview: picture && options.hashed !== false,
+    hasThumbhash: picture && options.hashed !== false,
     hasThumbnail: false,
     uploaded: true,
     availability: options.expired === true ? 'notFound' : 'absent',
@@ -262,7 +262,7 @@ const SEEDED_EXPIRED: Attachment[] = [
     filename: 'boarding-pass.pdf',
     sizeBytes: 64_000,
     voiceMessage: false,
-    hasPreview: false,
+    hasThumbhash: false,
     hasThumbnail: false,
     uploaded: true,
     availability: 'notFound',

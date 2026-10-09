@@ -150,7 +150,7 @@ export interface Attachment {
    * media port like any other rather than riding the frame stream. What it names is the second
    * path on that scheme.
    */
-  hasPreview: boolean
+  hasThumbhash: boolean
   /**
    * Whether libsession holds a thumbnail of this attachment: a square JPEG of the picture, cropped
    * to cover, at most the client's thumbnail edge on a side. Made only of a displayable image whose

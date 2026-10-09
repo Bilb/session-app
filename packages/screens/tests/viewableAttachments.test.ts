@@ -14,7 +14,7 @@ function attachment(index: number, contentType?: string): Attachment {
     index,
     ...(contentType === undefined ? {} : { contentType }),
     voiceMessage: false,
-    hasPreview: false,
+    hasThumbhash: false,
     hasThumbnail: false,
     uploaded: true,
     availability: 'absent',
@@ -102,7 +102,7 @@ describe('what the viewer is handed', () => {
       memoryPorts({
         media: {
           urlFor: ({ messageId, index }) => `media://${String(messageId)}/${String(index)}`,
-          previewUrlFor: () => null,
+          thumbhashUrlFor: () => null,
           thumbnailUrlFor: () => null,
         },
       }),

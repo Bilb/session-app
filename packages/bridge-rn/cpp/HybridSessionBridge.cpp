@@ -345,18 +345,18 @@ std::shared_ptr<Promise<NativeMedia>> HybridSessionBridge::fetchMedia(
             });
 }
 
-std::shared_ptr<Promise<NativePreview>> HybridSessionBridge::fetchPreview(
+std::shared_ptr<Promise<NativeThumbhash>> HybridSessionBridge::fetchThumbhash(
         double messageId, double index) {
     std::shared_ptr<::session_bridge_rn::MediaSource> source = _media;
     if (!source)
-        return Promise<NativePreview>::rejected(_opened ? closed_error() : not_open_error("fetchPreview"));
-    return promise_of<NativePreview, ::session_bridge::Preview>(
-            [&](::session_bridge::PreviewHandler cb) {
-                source->fetch_preview(messageId, index, std::move(cb));
+        return Promise<NativeThumbhash>::rejected(_opened ? closed_error() : not_open_error("fetchThumbhash"));
+    return promise_of<NativeThumbhash, ::session_bridge::Thumbhash>(
+            [&](::session_bridge::ThumbhashHandler cb) {
+                source->fetch_thumbhash(messageId, index, std::move(cb));
             },
-            [](::session_bridge::Preview preview) {
-                return NativePreview{
-                        preview.width, preview.height, buffer_of(std::move(preview.rgba))};
+            [](::session_bridge::Thumbhash thumbhash) {
+                return NativeThumbhash{
+                        thumbhash.width, thumbhash.height, buffer_of(std::move(thumbhash.rgba))};
             });
 }
 
@@ -381,19 +381,19 @@ jsi::Value HybridSessionBridge::serveMediaFrom(
     if (!is_function(0) || !is_function(1) || !is_function(2))
         throw jsi::JSError(
                 runtime,
-                "serveMediaFrom(fetchMedia, fetchPreview, fetchThumbnail) takes three functions");
+                "serveMediaFrom(fetchMedia, fetchThumbhash, fetchThumbnail) takes three functions");
     if (_bridge)
         throw jsi::JSError(runtime, "the bridge is open, and answers the loaders itself");
     if (::session_bridge_rn::media_served_by_another(_served.get()))
         throw jsi::JSError(runtime, "another bridge is serving media; close() it first");
 
     BorrowingReference<jsi::Function> media;
-    BorrowingReference<jsi::Function> preview;
+    BorrowingReference<jsi::Function> thumbhash;
     BorrowingReference<jsi::Function> thumbnail;
     {
         JSICacheReference cache = JSICache::getOrCreateCache(runtime);
         media = cache.makeShared(args[0].getObject(runtime).getFunction(runtime));
-        preview = cache.makeShared(args[1].getObject(runtime).getFunction(runtime));
+        thumbhash = cache.makeShared(args[1].getObject(runtime).getFunction(runtime));
         thumbnail = cache.makeShared(args[2].getObject(runtime).getFunction(runtime));
     }
     std::weak_ptr<Dispatcher> dispatcher = Dispatcher::getRuntimeGlobalDispatcher(runtime);
@@ -414,10 +414,10 @@ jsi::Value HybridSessionBridge::serveMediaFrom(
                             copied_field(r, o, "bytes")};
                 });
     };
-    auto ask_preview = [rt, preview](double id, double index, ::session_bridge::PreviewHandler cb) {
-        ask<::session_bridge::Preview>(
-                *rt, preview, id, index, std::move(cb), [](jsi::Runtime& r, const jsi::Object& o) {
-                    return ::session_bridge::Preview{
+    auto ask_thumbhash = [rt, thumbhash](double id, double index, ::session_bridge::ThumbhashHandler cb) {
+        ask<::session_bridge::Thumbhash>(
+                *rt, thumbhash, id, index, std::move(cb), [](jsi::Runtime& r, const jsi::Object& o) {
+                    return ::session_bridge::Thumbhash{
                             std::nullopt,
                             o.getProperty(r, "width").asNumber(),
                             o.getProperty(r, "height").asNumber(),
@@ -441,7 +441,7 @@ jsi::Value HybridSessionBridge::serveMediaFrom(
     _served = std::make_shared<::session_bridge_rn::JsMediaSource>(
             std::move(on_js),
             std::move(ask_media),
-            std::move(ask_preview),
+            std::move(ask_thumbhash),
             std::move(ask_thumbnail));
     ::session_bridge_rn::set_media_source(_served);
     return jsi::Value::undefined();

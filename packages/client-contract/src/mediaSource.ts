@@ -44,14 +44,14 @@ async function failure(call: () => Promise<unknown>): Promise<unknown> {
 
 const NOWHERE: AttachmentRef = { messageId: 987_654_321, index: 0 }
 
-/** What every source says of a ref that names nothing, the file and its preview alike. */
+/** What every source says of a ref that names nothing, the file and its thumbhash alike. */
 function unknownRefMessage({ messageId, index }: AttachmentRef): string {
   return `attachment ${String(index)} of message ${String(messageId)} does not exist`
 }
 
 /** What every source says of an attachment that exists but was sent with no hash. */
-function noPreviewMessage({ messageId, index }: AttachmentRef): string {
-  return `attachment ${String(index)} of message ${String(messageId)} has no preview`
+function noThumbhashMessage({ messageId, index }: AttachmentRef): string {
+  return `attachment ${String(index)} of message ${String(messageId)} has no thumbhash`
 }
 
 /** What every source says of an attachment whose file is not cached. */
@@ -130,17 +130,17 @@ export function runMediaSourceContract(
   }
 
   describe('media source', () => {
-    it('refuses a ref that names nothing, for the file, its preview and its thumbnail', async () => {
+    it('refuses a ref that names nothing, for the file, its thumbhash and its thumbnail', async () => {
       const { source } = await harness.empty()
       const media = await failure(() => source.fetchMedia(NOWHERE))
-      const preview = await failure(() => source.fetchPreview(NOWHERE))
+      const thumbhash = await failure(() => source.fetchThumbhash(NOWHERE))
       const thumbnail = await failure(() => source.fetchThumbnail(NOWHERE))
       expect(media instanceof Error).toBe(true)
-      expect(preview instanceof Error).toBe(true)
+      expect(thumbhash instanceof Error).toBe(true)
       expect(thumbnail instanceof Error).toBe(true)
-      // One fact, however it is asked for: the preview says no more and no less than the file.
+      // One fact, however it is asked for: the thumbhash says no more and no less than the file.
       expect(messageOf(media)).toBe(unknownRefMessage(NOWHERE))
-      expect(messageOf(preview)).toBe(unknownRefMessage(NOWHERE))
+      expect(messageOf(thumbhash)).toBe(unknownRefMessage(NOWHERE))
       expect(messageOf(thumbnail)).toBe(unknownRefMessage(NOWHERE))
     })
 
@@ -174,20 +174,20 @@ export function runMediaSourceContract(
       expect((await attachmentOf(client, conversationId, picture))?.availability).toBe(before)
     })
 
-    it('answers a preview as width * height RGBA pixels where the sender sent a hash', async () => {
+    it('answers a thumbhash as width * height RGBA pixels where the sender sent a hash', async () => {
       const { source, picture } = await harness.withAttachments()
-      const preview = await source.fetchPreview(picture)
-      expect(preview.width).toBeGreaterThan(0)
-      expect(preview.height).toBeGreaterThan(0)
-      expect(preview.rgba.length).toBe(preview.width * preview.height * 4)
+      const thumbhash = await source.fetchThumbhash(picture)
+      expect(thumbhash.width).toBeGreaterThan(0)
+      expect(thumbhash.height).toBeGreaterThan(0)
+      expect(thumbhash.rgba.length).toBe(thumbhash.width * thumbhash.height * 4)
     })
 
-    it('has no preview where the sender sent no hash', async () => {
+    it('has no thumbhash where the sender sent no hash', async () => {
       const { source, unhashed } = await harness.withAttachments()
       // Exactly this sentence, so a ref that misses the attachment cannot pass on the unknown-ref
       // refusal.
-      expect(messageOf(await failure(() => source.fetchPreview(unhashed)))).toBe(
-        noPreviewMessage(unhashed),
+      expect(messageOf(await failure(() => source.fetchThumbhash(unhashed)))).toBe(
+        noThumbhashMessage(unhashed),
       )
     })
 

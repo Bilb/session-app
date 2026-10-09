@@ -12,7 +12,7 @@ type Serve = (
     messageId: number,
     index: number,
   ) => Promise<{ contentType: string; bytes: ArrayBuffer }>,
-  fetchPreview: (
+  fetchThumbhash: (
     messageId: number,
     index: number,
   ) => Promise<{ width: number; height: number; rgba: ArrayBuffer }>,
@@ -48,19 +48,19 @@ describe('serving the native loaders from JavaScript', () => {
     const within = new Uint8Array([9, 9, 1, 2, 3, 4, 9]).subarray(2, 6)
     const source: MediaSource = {
       fetchMedia: () => Promise.resolve({ contentType: 'image/jpeg', bytes: whole }),
-      fetchPreview: () => Promise.resolve({ width: 1, height: 1, rgba: within }),
+      fetchThumbhash: () => Promise.resolve({ width: 1, height: 1, rgba: within }),
       fetchThumbnail: () => Promise.resolve(within),
     }
     serveNativeMediaFrom(source)
-    const [fetchMedia, fetchPreview, fetchThumbnail] = served(bridges.length - 1)
+    const [fetchMedia, fetchThumbhash, fetchThumbnail] = served(bridges.length - 1)
 
     const media = await fetchMedia(4, 0)
     expect(media.contentType).toBe('image/jpeg')
     expect(media.bytes).toBe(whole.buffer)
 
-    const preview = await fetchPreview(4, 0)
-    expect(preview).toMatchObject({ width: 1, height: 1 })
-    expect([...new Uint8Array(preview.rgba)]).toEqual([1, 2, 3, 4])
+    const thumbhash = await fetchThumbhash(4, 0)
+    expect(thumbhash).toMatchObject({ width: 1, height: 1 })
+    expect([...new Uint8Array(thumbhash.rgba)]).toEqual([1, 2, 3, 4])
 
     expect([...new Uint8Array(await fetchThumbnail(4, 0))]).toEqual([1, 2, 3, 4])
   })
@@ -68,20 +68,20 @@ describe('serving the native loaders from JavaScript', () => {
   it('passes a failure through, so the loader fails the image rather than waiting', async () => {
     const source: MediaSource = {
       fetchMedia: () => Promise.reject(new Error('not a picture')),
-      fetchPreview: () => Promise.reject(new Error('no preview: no hash')),
+      fetchThumbhash: () => Promise.reject(new Error('no thumbhash: no hash')),
       fetchThumbnail: () => Promise.reject(new Error('has no thumbnail')),
     }
     serveNativeMediaFrom(source)
-    const [fetchMedia, fetchPreview, fetchThumbnail] = served(bridges.length - 1)
+    const [fetchMedia, fetchThumbhash, fetchThumbnail] = served(bridges.length - 1)
     await expect(fetchMedia(4, 1)).rejects.toThrow('not a picture')
-    await expect(fetchPreview(4, 1)).rejects.toThrow('no hash')
+    await expect(fetchThumbhash(4, 1)).rejects.toThrow('no hash')
     await expect(fetchThumbnail(4, 1)).rejects.toThrow('has no thumbnail')
   })
 
   it('closes what served before, so two sources never answer at once', () => {
     const source: MediaSource = {
       fetchMedia: () => Promise.reject(new Error('unused')),
-      fetchPreview: () => Promise.reject(new Error('unused')),
+      fetchThumbhash: () => Promise.reject(new Error('unused')),
       fetchThumbnail: () => Promise.reject(new Error('unused')),
     }
     serveNativeMediaFrom(source)
@@ -94,7 +94,7 @@ describe('serving the native loaders from JavaScript', () => {
   it('says to rebuild the dev client when its native side predates serveMediaFrom', () => {
     const source: MediaSource = {
       fetchMedia: () => Promise.reject(new Error('unused')),
-      fetchPreview: () => Promise.reject(new Error('unused')),
+      fetchThumbhash: () => Promise.reject(new Error('unused')),
       fetchThumbnail: () => Promise.reject(new Error('unused')),
     }
     older.value = true

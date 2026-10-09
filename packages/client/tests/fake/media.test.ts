@@ -62,10 +62,10 @@ describe('the fake media source', () => {
 
   it("answers a placeholder decoded from the photograph's real hash", async () => {
     const { alice, ref } = await showcasePhoto()
-    const preview = await createFakeMediaSource(alice, readPhoto).fetchPreview(ref)
+    const thumbhash = await createFakeMediaSource(alice, readPhoto).fetchThumbhash(ref)
     // The photographs are 4:3, decoded at 32x24.
-    expect(preview).toMatchObject({ width: 32, height: 24 })
-    expect(preview.rgba.length).toBe(32 * 24 * 4)
+    expect(thumbhash).toMatchObject({ width: 32, height: 24 })
+    expect(thumbhash.rgba.length).toBe(32 * 24 * 4)
   })
 
   it('serves the dev thumbnail of a picture once it is downloaded, and refuses it before', async () => {

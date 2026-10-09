@@ -27,7 +27,7 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
                 {
                         InstanceMethod<&SessionBridge::Call>("call"),
                         InstanceMethod<&SessionBridge::FetchMedia>("fetchMedia"),
-                        InstanceMethod<&SessionBridge::FetchPreview>("fetchPreview"),
+                        InstanceMethod<&SessionBridge::FetchThumbhash>("fetchThumbhash"),
                         InstanceMethod<&SessionBridge::FetchThumbnail>("fetchThumbnail"),
                         InstanceMethod<&SessionBridge::DatabasesReplaced>("databasesReplaced"),
                         InstanceMethod<&SessionBridge::Close>("close"),
@@ -291,21 +291,21 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
     }
 
     /// A decoded ThumbHash, by the same route and for the same reason as `FetchMedia`.
-    Napi::Value FetchPreview(const Napi::CallbackInfo& info) {
-        return Fetch<session_bridge::Preview>(
+    Napi::Value FetchThumbhash(const Napi::CallbackInfo& info) {
+        return Fetch<session_bridge::Thumbhash>(
                 info,
-                "fetchPreview(messageId, index)",
-                "sessionBridgePreview",
-                [this](double message_id, double index, session_bridge::PreviewHandler cb) {
-                    _bridge->fetch_preview(message_id, index, std::move(cb));
+                "fetchThumbhash(messageId, index)",
+                "sessionBridgeThumbhash",
+                [this](double message_id, double index, session_bridge::ThumbhashHandler cb) {
+                    _bridge->fetch_thumbhash(message_id, index, std::move(cb));
                 },
-                [](Napi::Env env, const session_bridge::Preview& preview) {
-                    auto rgba = Napi::Uint8Array::New(env, preview.rgba.size());
-                    std::memcpy(rgba.Data(), preview.rgba.data(), preview.rgba.size());
+                [](Napi::Env env, const session_bridge::Thumbhash& thumbhash) {
+                    auto rgba = Napi::Uint8Array::New(env, thumbhash.rgba.size());
+                    std::memcpy(rgba.Data(), thumbhash.rgba.data(), thumbhash.rgba.size());
 
                     Napi::Object result = Napi::Object::New(env);
-                    result.Set("width", preview.width);
-                    result.Set("height", preview.height);
+                    result.Set("width", thumbhash.width);
+                    result.Set("height", thumbhash.height);
                     result.Set("rgba", rgba);
                     return result;
                 });

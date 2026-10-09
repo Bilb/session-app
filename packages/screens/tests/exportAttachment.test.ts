@@ -16,7 +16,7 @@ function attachment(index: number, fields: Partial<Attachment> = {}): Attachment
     contentType: 'application/pdf',
     filename: 'itinerary.pdf',
     voiceMessage: false,
-    hasPreview: false,
+    hasThumbhash: false,
     hasThumbnail: false,
     uploaded: true,
     availability: 'cached',

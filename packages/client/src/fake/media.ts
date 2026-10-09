@@ -88,16 +88,16 @@ function hexBytes(hex: string): Uint8Array {
  * The placeholder for an attachment: the real hash of the photograph it is drawn as, decoded, so
  * what is drawn is what a recipient would be sent, limits included.
  */
-export function fakePreviewPixels(client: FakeSessionClient, ref: AttachmentRef): Decoded {
+export function fakeThumbhashPixels(client: FakeSessionClient, ref: AttachmentRef): Decoded {
   // As the shim does, in its words: the hash arrived with the message or there is none.
-  if (client.locate(ref)?.attachment.hasPreview !== true) {
+  if (client.locate(ref)?.attachment.hasThumbhash !== true) {
     throw new Error(
-      `attachment ${String(ref.index)} of message ${String(ref.messageId)} has no preview`,
+      `attachment ${String(ref.index)} of message ${String(ref.messageId)} has no thumbhash`,
     )
   }
   const photo = photoNumber(stillFileName(client, ref) ?? undefined)
   const hash = photo === null ? undefined : PHOTO_THUMBHASHES[Number(photo) - 1]
-  if (hash === undefined) throw new Error('no preview: not a picture')
+  if (hash === undefined) throw new Error('no thumbhash: not a picture')
   // The photographs are 4:3; the hash's own ratio is only approximate (lx/ly, one part in seven).
   return decodeThumbhash(hexBytes(hash), 32, 24)
 }
@@ -110,7 +110,7 @@ function refuseUnknown(client: FakeSessionClient, { messageId, index }: Attachme
 
 /**
  * The bytes behind each media URL on the fake: what the real bridge's `fetchMedia`,
- * `fetchPreview` and `fetchThumbnail` answer. `readPhoto` reads a dev photograph or thumbnail by
+ * `fetchThumbhash` and `fetchThumbnail` answer. `readPhoto` reads a dev photograph or thumbnail by
  * file name, wherever the app keeps them.
  */
 export function createFakeMediaSource(
@@ -133,10 +133,10 @@ export function createFakeMediaSource(
       const contentType = isViewableVideo(declared) ? 'image/jpeg' : declared
       return { contentType, bytes: await readPhoto(photo) }
     },
-    fetchPreview(ref) {
+    fetchThumbhash(ref) {
       return new Promise((resolve) => {
         refuseUnknown(client, ref)
-        resolve(fakePreviewPixels(client, ref))
+        resolve(fakeThumbhashPixels(client, ref))
       })
     },
     async fetchThumbnail(ref) {

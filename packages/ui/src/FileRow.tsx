@@ -7,7 +7,7 @@ import type {
   WithContentType,
   WithFetchesOnOpen,
   WithFilename,
-  WithMediaPreview,
+  WithMediaThumbhash,
   WithMediaUri,
 } from '@session/basic-types'
 import type { ElementId } from '@session/test-ids'
@@ -43,7 +43,7 @@ export interface FileRowTestIDs {
 }
 
 /** What the lead square shows when the row is for something with a picture behind it. */
-export type FileRowThumbnail = WithMediaUri & WithMediaPreview & WithFetchesOnOpen
+export type FileRowThumbnail = WithMediaUri & WithMediaThumbhash & WithFetchesOnOpen
 
 export type FileRowProps = WithFilename &
   WithContentType &
@@ -206,7 +206,7 @@ export function FileRow({
       <AttachmentTile
         side={FILE_GLYPH_SIDE}
         uri={thumbnail.uri}
-        preview={thumbnail.preview}
+        thumbhash={thumbnail.thumbhash}
         testID={testIDs?.thumbnail}
       />
     )

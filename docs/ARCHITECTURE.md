@@ -123,8 +123,8 @@ already running, or starts one. `exportAttachment` writes the file to a destinat
 first if the cache does not hold it, and answers with where it landed: a collision lands at
 `name (1)` unless the caller asked to replace.
 
-The sender's placeholder is an image too, so it comes by the same road: `session-media://preview/`
-answers from `ClientBridge::fetch_preview`, which decodes the ThumbHash on the attachment's row.
+The sender's placeholder is an image too, so it comes by the same road: `session-media://thumbhash/`
+answers from `ClientBridge::fetch_thumbhash`, which decodes the ThumbHash on the attachment's row.
 So does the thumbnail a tile draws: `session-media://thumbnail/` answers from
 `ClientBridge::fetch_thumbnail`, the JPEG libsession made of a cached picture, from its cache only.
 One authority per image rather than one URL with a flag, so a file and its stand-ins cache
@@ -697,7 +697,7 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   canonical form only, because Chromium canonicalises before a handler sees a URL and a native
   loader is handed the one the app built.
 
-  The Nitro bridge has `fetchMedia` and `fetchPreview` as the addon does, returning `ArrayBuffer`s
+  The Nitro bridge has `fetchMedia` and `fetchThumbhash` as the addon does, returning `ArrayBuffer`s
   the client views as `Uint8Array`, so the transport has one shape and a device-side contract run
   can assert bytes. Nothing in the app calls them. The fake answers the same `MediaSource`
   contract through `createFakeMediaSource`. Video is out of scope until a tile has a still on any
@@ -719,7 +719,7 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   bridge, and every fetch holds that lock, so a load in flight never reaches a freed bridge. The loader does not wait on the network: it starts the fetch and
   returns, the answer arrives on Core's loop and is handed to a thread the loader owns, which
   copies the bytes into Fresco's pool. The gate is `servable_image_type`: a video is servable to
-  desktop's `protocol.handle`, but no picture decoder may be handed one. Previews are RGBA handed
+  desktop's `protocol.handle`, but no picture decoder may be handed one. Thumbhashes are RGBA handed
   over as a bitmap rather than encoded; only desktop encodes, because `protocol.handle` answers
   with a body. The fake has no libsession behind it, so `serveMediaFrom` lets JavaScript be the
   source: each load is posted to the JS thread, the only thread that may touch a JavaScript value,
@@ -737,7 +737,7 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   shim's bytes and decodes each frame whole at draw; any other GIF is its first frame, decoded as a
   still. Nothing is written to disk: a URL loader is not behind `NSURLCache`. React Native caches
   only the images it decoded itself from an HTTP response, so the loader keeps its own cache of
-  decoded thumbnails and previews, keyed by URL (and a thumbnail's by the view's pixel size too),
+  decoded thumbnails and thumbhashes, keyed by URL (and a thumbnail's by the view's pixel size too),
   and leaves out originals, which only the viewer draws and which would take most of its budget.
   React Native reports a failed load only to the view's `onError`, so the loader logs each one with
   its URL. The fake
@@ -746,11 +746,11 @@ Append one paragraph per decision. Undocumented decisions are what rot.
 
 - **2026-10-09 - A media URL names one attachment for the life of one database.** libsession
   never hands a message id out twice within a database, so `session-media://attachment/<id>/<n>`
-  and its preview can be cached by URL for as long as that database is open. A discard opens a new
+  and its thumbhash can be cached by URL for as long as that database is open. A discard opens a new
   one numbering from 1 again, after which every URL cached before it names some other message. The
   bridge calls `InitOptions::on_database_replaced` after every discard, the startup sweep's
   included. Mobile empties its loaders' caches there: Fresco's bitmap and encoded memory caches on
-  Android, the loader's cache of decoded thumbnails and previews on iOS. Desktop empties nothing, because Blink caches the
+  Android, the loader's cache of decoded thumbnails and thumbhashes on iOS. Desktop empties nothing, because Blink caches the
   scheme's responses where main cannot reach them; it relies on the process ending instead.
   Settings > Clear data ends the process, and so does the clear offered when the database will
   not open if an account had been loaded, which is where a failed Settings > Clear data lands.

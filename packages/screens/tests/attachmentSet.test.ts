@@ -14,7 +14,7 @@ function attachment(
     contentType: 'image/jpeg',
     ...(sizeBytes === undefined ? {} : { sizeBytes }),
     voiceMessage: false,
-    hasPreview: false,
+    hasThumbhash: false,
     hasThumbnail: false,
     uploaded: true,
     availability,

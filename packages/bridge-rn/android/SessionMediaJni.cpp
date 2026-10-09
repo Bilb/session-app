@@ -16,7 +16,7 @@ namespace {
 
 JavaVM* java_vm = nullptr;
 jmethodID on_media = nullptr;
-jmethodID on_preview = nullptr;
+jmethodID on_thumbhash = nullptr;
 jmethodID on_thumbnail = nullptr;
 jmethodID on_failure = nullptr;
 jclass media_native = nullptr;
@@ -131,31 +131,31 @@ void answer_thumbnail(jobject load, ::session_bridge::Media media) {
 }
 
 /// Larger than any ThumbHash decodes to, and small enough that `width * height * 4` fits a jint.
-constexpr double MAX_PREVIEW_SIDE = 16384;
+constexpr double MAX_THUMBHASH_SIDE = 16384;
 
-void answer_preview(jobject load, ::session_bridge::Preview preview) {
+void answer_thumbhash(jobject load, ::session_bridge::Thumbhash thumbhash) {
     JNIEnv* env = attached_env();
     if (!env)
         return;
     // Checked as doubles: casting NaN or 1e12 to jint is undefined, so no cast may come first.
-    const bool sized = preview.width > 0 && preview.width <= MAX_PREVIEW_SIDE
-                    && preview.height > 0 && preview.height <= MAX_PREVIEW_SIDE;
-    if (preview.error) {
-        fail(env, load, *preview.error);
+    const bool sized = thumbhash.width > 0 && thumbhash.width <= MAX_THUMBHASH_SIDE
+                    && thumbhash.height > 0 && thumbhash.height <= MAX_THUMBHASH_SIDE;
+    if (thumbhash.error) {
+        fail(env, load, *thumbhash.error);
     } else if (!sized) {
-        fail(env, load, "a preview whose size is not a picture's");
+        fail(env, load, "a thumbhash whose size is not a picture's");
     } else {
-        const auto width = static_cast<jint>(preview.width);
-        const auto height = static_cast<jint>(preview.height);
-        if (preview.rgba.size() != static_cast<size_t>(width) * static_cast<size_t>(height) * 4) {
-            fail(env, load, "a preview whose pixels do not match its size");
+        const auto width = static_cast<jint>(thumbhash.width);
+        const auto height = static_cast<jint>(thumbhash.height);
+        if (thumbhash.rgba.size() != static_cast<size_t>(width) * static_cast<size_t>(height) * 4) {
+            fail(env, load, "a thumbhash whose pixels do not match its size");
         } else {
             jlong handle = 0;
-            jobject buffer = lend(env, std::move(preview.rgba), handle);
+            jobject buffer = lend(env, std::move(thumbhash.rgba), handle);
             if (!buffer) {
                 fail(env, load, UNLENDABLE);
             } else {
-                env->CallVoidMethod(load, on_preview, width, height, buffer, handle);
+                env->CallVoidMethod(load, on_thumbhash, width, height, buffer, handle);
                 if (clear_pending(env)) {
                     delete reinterpret_cast<std::vector<std::byte>*>(handle);
                     fail(env, load, REFUSED);
@@ -196,11 +196,11 @@ jint register_media_loader(JavaVM* vm) {
     if (!load)
         return JNI_ERR;
     on_media = env->GetMethodID(load, "onMedia", "(Ljava/nio/ByteBuffer;J)V");
-    on_preview = env->GetMethodID(load, "onPreview", "(IILjava/nio/ByteBuffer;J)V");
+    on_thumbhash = env->GetMethodID(load, "onThumbhash", "(IILjava/nio/ByteBuffer;J)V");
     on_thumbnail = env->GetMethodID(load, "onThumbnail", "(Ljava/nio/ByteBuffer;J)V");
     on_failure = env->GetMethodID(load, "onFailure", "(Ljava/lang/String;)V");
     env->DeleteLocalRef(load);
-    if (!on_media || !on_preview || !on_thumbnail || !on_failure)
+    if (!on_media || !on_thumbhash || !on_thumbnail || !on_failure)
         return JNI_ERR;
     jclass native = env->FindClass("session/bridge/rn/SessionMediaNative");
     if (!native)
@@ -234,9 +234,9 @@ Java_session_bridge_rn_SessionMediaNative_fetch(JNIEnv* env, jclass, jstring url
     }
 
     jobject held = env->NewGlobalRef(load);
-    if (parsed->kind == ::session_bridge::MediaUrlKind::preview)
-        source->fetch_preview(parsed->message_id, parsed->index, [held](auto preview) {
-            answer_preview(held, std::move(preview));
+    if (parsed->kind == ::session_bridge::MediaUrlKind::thumbhash)
+        source->fetch_thumbhash(parsed->message_id, parsed->index, [held](auto thumbhash) {
+            answer_thumbhash(held, std::move(thumbhash));
         });
     else if (parsed->kind == ::session_bridge::MediaUrlKind::thumbnail)
         source->fetch_thumbnail(parsed->message_id, parsed->index, [held](auto media) {

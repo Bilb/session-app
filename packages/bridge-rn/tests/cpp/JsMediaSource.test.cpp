@@ -132,10 +132,10 @@ void answers_that_are_already_there_are_read_on_the_js_thread() {
                     asked_elsewhere++;
                 cb(session_bridge::Media{std::nullopt, "image/jpeg", {std::byte{0xff}}});
             },
-            [&](double, double, session_bridge::PreviewHandler cb) {
+            [&](double, double, session_bridge::ThumbhashHandler cb) {
                 if (std::this_thread::get_id() != js.id())
                     asked_elsewhere++;
-                cb(session_bridge::Preview{std::nullopt, 1, 1, std::vector<std::byte>(4)});
+                cb(session_bridge::Thumbhash{std::nullopt, 1, 1, std::vector<std::byte>(4)});
             },
             [&](double, double, session_bridge::MediaHandler cb) {
                 if (std::this_thread::get_id() != js.id())
@@ -147,7 +147,7 @@ void answers_that_are_already_there_are_read_on_the_js_thread() {
     tally.open(3);
     std::thread loader{[&] {
         source->fetch_media(1, 0, [&](session_bridge::Media m) { tally.record(0, !m.error); });
-        source->fetch_preview(1, 0, [&](session_bridge::Preview p) { tally.record(1, !p.error); });
+        source->fetch_thumbhash(1, 0, [&](session_bridge::Thumbhash p) { tally.record(1, !p.error); });
         source->fetch_thumbnail(1, 0, [&](session_bridge::Media m) { tally.record(2, !m.error); });
     }};
     loader.join();
@@ -160,12 +160,12 @@ void answers_that_are_already_there_are_read_on_the_js_thread() {
     js.run_now([&] { source->close(); });
 }
 
-/// Many loader threads asking for the same picture and its preview at once, answered both at once
+/// Many loader threads asking for the same picture and its thumbhash at once, answered both at once
 /// and later, as a grid scrolled fast asks.
 void concurrent_fetches_of_one_ref_are_each_answered_once() {
     FakeJsThread js;
     std::atomic<int> asked_elsewhere = 0;
-    std::vector<session_bridge::PreviewHandler> later;
+    std::vector<session_bridge::ThumbhashHandler> later;
     auto source = std::make_shared<JsMediaSource>(
             posting_to(js),
             [&](double, double, session_bridge::MediaHandler cb) {
@@ -173,7 +173,7 @@ void concurrent_fetches_of_one_ref_are_each_answered_once() {
                     asked_elsewhere++;
                 cb(session_bridge::Media{std::nullopt, "image/jpeg", {std::byte{1}}});
             },
-            [&](double, double, session_bridge::PreviewHandler cb) {
+            [&](double, double, session_bridge::ThumbhashHandler cb) {
                 if (std::this_thread::get_id() != js.id())
                     asked_elsewhere++;
                 later.push_back(std::move(cb));
@@ -183,9 +183,9 @@ void concurrent_fetches_of_one_ref_are_each_answered_once() {
     constexpr size_t THREADS = 8;
     constexpr size_t EACH = 250;
     Tally media;
-    Tally previews;
+    Tally thumbhashes;
     media.open(THREADS * EACH);
-    previews.open(THREADS * EACH);
+    thumbhashes.open(THREADS * EACH);
     std::vector<std::thread> loaders;
     for (size_t t = 0; t < THREADS; t++)
         loaders.emplace_back([&, t] {
@@ -194,8 +194,8 @@ void concurrent_fetches_of_one_ref_are_each_answered_once() {
                 source->fetch_media(7, 0, [&, at](session_bridge::Media m) {
                     media.record(at, !m.error);
                 });
-                source->fetch_preview(7, 0, [&, at](session_bridge::Preview p) {
-                    previews.record(at, !p.error);
+                source->fetch_thumbhash(7, 0, [&, at](session_bridge::Thumbhash p) {
+                    thumbhashes.record(at, !p.error);
                 });
             }
         });
@@ -204,16 +204,16 @@ void concurrent_fetches_of_one_ref_are_each_answered_once() {
     js.drain();
     js.run_now([&] {
         for (auto& cb : later)
-            cb(session_bridge::Preview{std::nullopt, 1, 1, std::vector<std::byte>(4)});
+            cb(session_bridge::Thumbhash{std::nullopt, 1, 1, std::vector<std::byte>(4)});
         // A second answer to the same call, which a JS promise cannot give but a bug here could.
         for (auto& cb : later)
-            cb(session_bridge::Preview{std::nullopt, 1, 1, std::vector<std::byte>(4)});
+            cb(session_bridge::Thumbhash{std::nullopt, 1, 1, std::vector<std::byte>(4)});
     });
 
     CHECK(asked_elsewhere == 0);
     for (size_t at = 0; at < THREADS * EACH; at++) {
         CHECK(media.answers[at] == 1 && media.ok[at]);
-        CHECK(previews.answers[at] == 1 && previews.ok[at]);
+        CHECK(thumbhashes.answers[at] == 1 && thumbhashes.ok[at]);
     }
     js.run_now([&] { source->close(); });
 }
@@ -234,7 +234,7 @@ void closing_answers_what_is_pending_and_everything_after() {
             [&, probe](double, double, session_bridge::MediaHandler cb) {
                 never.push_back(std::move(cb));
             },
-            [](double, double, session_bridge::PreviewHandler) {},
+            [](double, double, session_bridge::ThumbhashHandler) {},
             [&](double, double, session_bridge::MediaHandler cb) { never.push_back(std::move(cb)); });
     probe.reset();
 
@@ -249,7 +249,7 @@ void closing_answers_what_is_pending_and_everything_after() {
             cb(session_bridge::Media{std::nullopt, "image/jpeg", {std::byte{1}}});
     });
     source->fetch_media(1, 0, [&](session_bridge::Media m) { tally.record(1, !m.error); });
-    source->fetch_preview(1, 0, [&](session_bridge::Preview p) { tally.record(2, !p.error); });
+    source->fetch_thumbhash(1, 0, [&](session_bridge::Thumbhash p) { tally.record(2, !p.error); });
     source->fetch_thumbnail(1, 0, [&](session_bridge::Media m) { tally.record(4, !m.error); });
 
     CHECK(tally.answers[0] == 1 && !tally.ok[0]);
@@ -267,7 +267,7 @@ void a_js_thread_that_has_gone_fails_the_load() {
     auto source = std::make_shared<JsMediaSource>(
             posting_to(js),
             [](double, double, session_bridge::MediaHandler) {},
-            [](double, double, session_bridge::PreviewHandler) {},
+            [](double, double, session_bridge::ThumbhashHandler) {},
             [](double, double, session_bridge::MediaHandler) {});
     js.stop();
     Tally tally;
@@ -283,12 +283,12 @@ void a_job_accepted_and_dropped_is_answered_once_by_close() {
     auto source = std::make_shared<JsMediaSource>(
             [](std::function<void()>) { return true; },
             [](double, double, session_bridge::MediaHandler) {},
-            [](double, double, session_bridge::PreviewHandler) {},
+            [](double, double, session_bridge::ThumbhashHandler) {},
             [](double, double, session_bridge::MediaHandler) {});
     Tally tally;
     tally.open(2);
     source->fetch_media(1, 0, [&](session_bridge::Media m) { tally.record(0, !m.error); });
-    source->fetch_preview(1, 0, [&](session_bridge::Preview p) { tally.record(1, !p.error); });
+    source->fetch_thumbhash(1, 0, [&](session_bridge::Thumbhash p) { tally.record(1, !p.error); });
     CHECK(tally.answers[0] == 0 && tally.answers[1] == 0);
     source->close();
     CHECK(tally.answers[0] == 1 && !tally.ok[0]);
@@ -303,7 +303,7 @@ void the_registry_says_whether_another_source_is_serving() {
         return std::make_shared<JsMediaSource>(
                 [](std::function<void()>) { return true; },
                 [](double, double, session_bridge::MediaHandler) {},
-                [](double, double, session_bridge::PreviewHandler) {},
+                [](double, double, session_bridge::ThumbhashHandler) {},
             [](double, double, session_bridge::MediaHandler) {});
     };
     auto mine = make();

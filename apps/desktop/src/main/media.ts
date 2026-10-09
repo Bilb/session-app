@@ -87,9 +87,9 @@ export function serveMedia(bridge: MediaSource): void {
     if (!target) return new Response(null, { status: 400 })
 
     try {
-      if (target.kind === 'preview') {
-        const preview = await bridge.fetchPreview(target.ref)
-        return new Response(encodePng(preview.width, preview.height, preview.rgba), {
+      if (target.kind === 'thumbhash') {
+        const thumbhash = await bridge.fetchThumbhash(target.ref)
+        return new Response(encodePng(thumbhash.width, thumbhash.height, thumbhash.rgba), {
           status: 200,
           headers: mediaHeaders('image/png'),
         })
@@ -111,9 +111,9 @@ export function serveMedia(bridge: MediaSource): void {
         headers: mediaHeaders(contentType),
       })
     } catch {
-      // A file not downloaded, a missing message, a failed preview or a missing thumbnail is known
-      // from this status alone, so whoever draws the url has to handle the image failing. Not
-      // stored, so the url is asked again once the file is here.
+      // A file not downloaded, a missing message, a failed thumbhash or a missing thumbnail is
+      // known from this status alone, so whoever draws the url has to handle the image failing.
+      // Not stored, so the url is asked again once the file is here.
       // TODO: once sending exists, serve a sender's own attachment from its local copy while it
       // uploads; libsession refuses a file not uploaded yet, so that picture is a 404 here.
       return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } })

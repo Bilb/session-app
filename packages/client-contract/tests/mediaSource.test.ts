@@ -22,17 +22,17 @@ const harness: MediaSourceHarness = {
     const conversationId = sender.sessionId
     const album = recipient.messages(conversationId).find((m) => m.attachments.length > 0)
     const png = album?.attachments.find((a) => a.contentType === 'image/png')
-    if (!album || !png?.hasPreview) throw new Error('fixture did not seed a hashed PNG')
+    if (!album || !png?.hasThumbhash) throw new Error('fixture did not seed a hashed PNG')
     const unhashed = recipient.deliverFrom(sender, 'No hash', world.now(), [
-      { ...png, index: 0, hasPreview: false },
+      { ...png, index: 0, hasThumbhash: false },
       {
         ...png,
         index: 1,
         contentType: 'application/pdf',
         filename: 'paper.pdf',
-        hasPreview: false,
+        hasThumbhash: false,
       },
-      { ...png, index: 2, contentType: 'image/avif', filename: 'scan.avif', hasPreview: false },
+      { ...png, index: 2, contentType: 'image/avif', filename: 'scan.avif', hasThumbhash: false },
     ])
     world.settle()
     return Promise.resolve({

@@ -33,22 +33,26 @@ describe('a tile’s corner', () => {
 })
 
 describe('a tile’s placeholder', () => {
-  it('is the sender’s preview where there is one', () => {
-    expect(tilePlaceholder('session-media://preview/1/0', null)).toBe('session-media://preview/1/0')
+  it('is the sender’s thumbhash where there is one', () => {
+    expect(tilePlaceholder('session-media://thumbhash/1/0', null)).toBe(
+      'session-media://thumbhash/1/0',
+    )
   })
 
-  it('is none without a preview, so the glyph is drawn', () => {
+  it('is none without a thumbhash, so the glyph is drawn', () => {
     expect(tilePlaceholder(undefined, null)).toBeNull()
     expect(tilePlaceholder(null, null)).toBeNull()
   })
 
-  it('is none once that preview failed to load, so the tile is not left blank', () => {
-    expect(tilePlaceholder('session-media://preview/1/0', 'session-media://preview/1/0')).toBeNull()
+  it('is none once that thumbhash failed to load, so the tile is not left blank', () => {
+    expect(
+      tilePlaceholder('session-media://thumbhash/1/0', 'session-media://thumbhash/1/0'),
+    ).toBeNull()
   })
 
-  it('gives a new preview url its own attempt', () => {
-    expect(tilePlaceholder('session-media://preview/2/0', 'session-media://preview/1/0')).toBe(
-      'session-media://preview/2/0',
+  it('gives a new thumbhash url its own attempt', () => {
+    expect(tilePlaceholder('session-media://thumbhash/2/0', 'session-media://thumbhash/1/0')).toBe(
+      'session-media://thumbhash/2/0',
     )
   })
 })

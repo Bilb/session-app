@@ -1,7 +1,7 @@
 import { memo, useState } from 'react'
 import { YStack } from 'tamagui'
 
-import type { WithMediaPreview, WithMediaUri } from '@session/basic-types'
+import type { WithMediaThumbhash, WithMediaUri } from '@session/basic-types'
 
 import {
   TILE_HAIRLINE_WIDTH,
@@ -16,7 +16,7 @@ import { Text } from './Text'
 import type { WithTestID } from './with'
 
 export type AttachmentTileProps = WithMediaUri &
-  WithMediaPreview &
+  WithMediaThumbhash &
   WithTestID & {
     /** Always square. The album and the list both size it; it never measures anything itself. */
     side: number
@@ -50,7 +50,7 @@ export type AttachmentTileProps = WithMediaUri &
 export const AttachmentTile = memo(function AttachmentTile({
   side,
   uri,
-  preview,
+  thumbhash,
   overflowLabel,
   testID,
 }: AttachmentTileProps) {
@@ -63,8 +63,8 @@ export const AttachmentTile = memo(function AttachmentTile({
   const [loadedUri, setLoadedUri] = useState<string | null>(null)
   const drawable = uri !== undefined && uri !== null
   const here = showsPicture(uri, loadedUri)
-  const [failedPreview, setFailedPreview] = useState<string | null>(null)
-  const placeholder = tilePlaceholder(preview, failedPreview)
+  const [failedThumbhash, setFailedThumbhash] = useState<string | null>(null)
+  const placeholder = tilePlaceholder(thumbhash, failedThumbhash)
 
   return (
     <YStack
@@ -90,7 +90,7 @@ export const AttachmentTile = memo(function AttachmentTile({
             height={side}
             borderRadius={radius}
             onError={() => {
-              setFailedPreview(placeholder)
+              setFailedThumbhash(placeholder)
             }}
           />
         </YStack>

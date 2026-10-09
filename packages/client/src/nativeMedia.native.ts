@@ -38,8 +38,8 @@ export function serveNativeMediaFrom(source: MediaSource): void {
       return { contentType: media.contentType, bytes: wholeBuffer(media.bytes) }
     },
     async (messageId, index) => {
-      const preview = await source.fetchPreview({ messageId, index })
-      return { width: preview.width, height: preview.height, rgba: wholeBuffer(preview.rgba) }
+      const thumbhash = await source.fetchThumbhash({ messageId, index })
+      return { width: thumbhash.width, height: thumbhash.height, rgba: wholeBuffer(thumbhash.rgba) }
     },
     async (messageId, index) => wholeBuffer(await source.fetchThumbnail({ messageId, index })),
   )

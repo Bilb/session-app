@@ -196,7 +196,7 @@ export interface AttachmentMedia {
  * Raw pixels rather than an encoded image, because the bridge is not the right place to pick a
  * format. Whatever serves the media scheme hands them to its platform's image pipeline.
  */
-export type AttachmentPreview = PixelSize & { rgba: Uint8Array }
+export type AttachmentThumbhash = PixelSize & { rgba: Uint8Array }
 
 /**
  * What answers a media URL: the addon, the Nitro bridge, or the fake.
@@ -208,7 +208,7 @@ export type AttachmentPreview = PixelSize & { rgba: Uint8Array }
 export interface MediaSource {
   /** From libsession's cache only, never a download: refused while the file is not cached. */
   fetchMedia(ref: AttachmentRef): Promise<AttachmentMedia>
-  fetchPreview(ref: AttachmentRef): Promise<AttachmentPreview>
+  fetchThumbhash(ref: AttachmentRef): Promise<AttachmentThumbhash>
   /**
    * The attachment's thumbnail, a JPEG, from libsession's cache only: never a download. Refused
    * while `Attachment.hasThumbnail` is false.

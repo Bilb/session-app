@@ -98,7 +98,7 @@ internal object SessionMediaNative {
 
 /**
  * Fresco's own order for a decoded sequence, minus every disk-cache producer, so decrypted bytes
- * live only in memory. Keyed by URL, which is why a file, its preview and its thumbnail have
+ * live only in memory. Keyed by URL, which is why a file, its thumbhash and its thumbnail have
  * separate ones, and
  * which keeps naming one picture: libsession never reuses a message id, and a discard calls
  * `forget_media`.
@@ -116,7 +116,7 @@ internal class SessionMediaSequenceFactory : CustomProducerSequenceFactory() {
     if (uri.scheme != SessionMedia.SCHEME) return null
     val decoded =
         when (uri.host) {
-          "preview" -> PreviewProducer()
+          "thumbhash" -> ThumbhashProducer()
           "thumbnail" -> ThumbnailProducer()
           else ->
             producerFactory.newDecodeProducer(
@@ -149,8 +149,8 @@ internal class FetchProducer : Producer<EncodedImage> {
   }
 }
 
-/** A preview arrives as pixels, so it skips the decoder and is handed over as a bitmap. */
-internal class PreviewProducer : Producer<CloseableReference<CloseableImage>> {
+/** A thumbhash arrives as pixels, so it skips the decoder and is handed over as a bitmap. */
+internal class ThumbhashProducer : Producer<CloseableReference<CloseableImage>> {
   override fun produceResults(
       consumer: Consumer<CloseableReference<CloseableImage>>,
       context: ProducerContext,
@@ -248,7 +248,7 @@ private constructor(
   }
 
   @DoNotStrip
-  fun onPreview(width: Int, height: Int, rgba: ByteBuffer, handle: Long) {
+  fun onThumbhash(width: Int, height: Int, rgba: ByteBuffer, handle: Long) {
     DRAIN.execute {
       try {
         val consumer = decoded

@@ -19,7 +19,7 @@ export type WithSentTimestampMs = { sentTimestampMs: number }
 /** Where the bytes are. Absent: not fetched yet. `null`: this platform has no resolver for them. */
 export type WithMediaUri = { uri?: string | null | undefined }
 /** The sender's placeholder, as a url resolved like `uri`, with the same absent/`null` meanings. */
-export type WithMediaPreview = { preview?: string | null | undefined }
+export type WithMediaThumbhash = { thumbhash?: string | null | undefined }
 /** A press on it downloads it rather than opening it, which hovering it says. */
 export type WithFetchesOnOpen = { fetchesOnOpen?: boolean | undefined }
 export type WithFilename = { filename: string }

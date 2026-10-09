@@ -45,8 +45,8 @@ export function MessageAlbum({
         : undefined,
       // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
       // screen by the route a picture does. Null where the platform has no resolver.
-      preview: attachment.hasPreview
-        ? requirePorts().media.previewUrlFor({ messageId: message.id, index: attachment.index })
+      thumbhash: attachment.hasThumbhash
+        ? requirePorts().media.thumbhashUrlFor({ messageId: message.id, index: attachment.index })
         : undefined,
       fetchesOnOpen: fetchable.has(String(attachment.index)),
       testID: ELEMENT.conversation.attachmentImage,

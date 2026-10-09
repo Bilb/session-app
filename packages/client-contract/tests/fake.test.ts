@@ -27,7 +27,7 @@ const ARRIVING_IMAGE: Attachment = {
   voiceMessage: false,
   width: 1200,
   height: 900,
-  hasPreview: false,
+  hasThumbhash: false,
   hasThumbnail: false,
   uploaded: true,
   availability: 'absent',

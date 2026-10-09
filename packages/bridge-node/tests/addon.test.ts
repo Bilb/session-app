@@ -275,7 +275,7 @@ describeAddon('the N-API addon', () => {
     await expect(transport.fetchMedia({ messageId: 424_242, index: 0 })).rejects.toThrow(
       'attachment 0 of message 424242 does not exist',
     )
-    await expect(transport.fetchPreview({ messageId: 424_242, index: 0 })).rejects.toThrow(
+    await expect(transport.fetchThumbhash({ messageId: 424_242, index: 0 })).rejects.toThrow(
       'attachment 0 of message 424242 does not exist',
     )
     transport.close()
@@ -289,11 +289,11 @@ describeAddon('the N-API addon', () => {
     })
 
     const media = transport.fetchMedia({ messageId: 1, index: 0 })
-    const preview = transport.fetchPreview({ messageId: 1, index: 0 })
+    const thumbhash = transport.fetchThumbhash({ messageId: 1, index: 0 })
     transport.close()
 
     await expect(media).rejects.toThrow('the bridge is closed')
-    await expect(preview).rejects.toThrow('the bridge is closed')
+    await expect(thumbhash).rejects.toThrow('the bridge is closed')
   })
 
   it('lets the process exit with a media fetch pending at close', async () => {
@@ -373,7 +373,7 @@ describeEcho('the generated converters', () => {
     voiceMessage: true,
     width: 1600,
     height: 1200,
-    hasPreview: true,
+    hasThumbhash: true,
     hasThumbnail: true,
     uploaded: true,
     availability: 'notFound',
@@ -384,7 +384,7 @@ describeEcho('the generated converters', () => {
   const bareAttachment: Attachment = {
     index: 1,
     voiceMessage: false,
-    hasPreview: false,
+    hasThumbhash: false,
     hasThumbnail: false,
     uploaded: false,
     availability: 'absent',

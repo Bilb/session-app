@@ -9,7 +9,7 @@ const attachment = (index: number, contentType: string): Attachment => ({
   filename: `file-${String(index)}`,
   sizeBytes: 1_000,
   voiceMessage: false,
-  hasPreview: false,
+  hasThumbhash: false,
   hasThumbnail: false,
   uploaded: true,
   availability: 'absent',

@@ -79,17 +79,17 @@ std::optional<PendingAnswers::Handler> PendingAnswers::take(uint64_t id) {
     };
 }
 
-::session_bridge::PreviewHandler PendingAnswers::track(::session_bridge::PreviewHandler cb) {
+::session_bridge::ThumbhashHandler PendingAnswers::track(::session_bridge::ThumbhashHandler cb) {
     uint64_t id = 0;
     {
         std::lock_guard lock{_mutex};
         id = _next++;
         _handlers.emplace(id, std::move(cb));
     }
-    return [self = weak_from_this(), id](::session_bridge::Preview preview) {
+    return [self = weak_from_this(), id](::session_bridge::Thumbhash thumbhash) {
         if (auto pending = self.lock())
             if (auto handler = pending->take(id))
-                std::get<::session_bridge::PreviewHandler>(*handler)(std::move(preview));
+                std::get<::session_bridge::ThumbhashHandler>(*handler)(std::move(thumbhash));
     };
 }
 
@@ -104,8 +104,8 @@ void PendingAnswers::fail_all(const std::string& error) {
         if (auto* media = std::get_if<::session_bridge::MediaHandler>(&handler))
             (*media)(failed<::session_bridge::Media>(error));
         else
-            std::get<::session_bridge::PreviewHandler>(handler)(
-                    failed<::session_bridge::Preview>(error));
+            std::get<::session_bridge::ThumbhashHandler>(handler)(
+                    failed<::session_bridge::Thumbhash>(error));
     }
 }
 

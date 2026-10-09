@@ -143,9 +143,9 @@ describeAddon('addon', () => {
         ...(forges
           ? {}
           : {
-              'answers a preview as width * height RGBA pixels where the sender sent a hash':
+              'answers a thumbhash as width * height RGBA pixels where the sender sent a hash':
                 NEEDS_TEST_COMMANDS,
-              'has no preview where the sender sent no hash': NEEDS_TEST_COMMANDS,
+              'has no thumbhash where the sender sent no hash': NEEDS_TEST_COMMANDS,
               'has no thumbnail of a picture not yet downloaded': NEEDS_TEST_COMMANDS,
               'refuses a picture that is not downloaded, and starts no transfer':
                 NEEDS_TEST_COMMANDS,

@@ -8,7 +8,11 @@
 export interface MediaUrlVector {
   url: string
   /** What it parses to, or null for a URL that must be refused. */
-  parsed: { kind: 'attachment' | 'preview' | 'thumbnail'; messageId: number; index: number } | null
+  parsed: {
+    kind: 'attachment' | 'thumbhash' | 'thumbnail'
+    messageId: number
+    index: number
+  } | null
 }
 
 const S = 'session-media://'
@@ -16,15 +20,15 @@ const S = 'session-media://'
 export const MEDIA_URL_VECTORS: readonly MediaUrlVector[] = [
   { url: `${S}attachment/1/0`, parsed: { kind: 'attachment', messageId: 1, index: 0 } },
   { url: `${S}attachment/42/7`, parsed: { kind: 'attachment', messageId: 42, index: 7 } },
-  { url: `${S}preview/42/0`, parsed: { kind: 'preview', messageId: 42, index: 0 } },
+  { url: `${S}thumbhash/42/0`, parsed: { kind: 'thumbhash', messageId: 42, index: 0 } },
   { url: `${S}thumbnail/42/1`, parsed: { kind: 'thumbnail', messageId: 42, index: 1 } },
   {
     url: `${S}attachment/9007199254740991/0`,
     parsed: { kind: 'attachment', messageId: Number.MAX_SAFE_INTEGER, index: 0 },
   },
   {
-    url: `${S}preview/1/9007199254740991`,
-    parsed: { kind: 'preview', messageId: 1, index: Number.MAX_SAFE_INTEGER },
+    url: `${S}thumbhash/1/9007199254740991`,
+    parsed: { kind: 'thumbhash', messageId: 1, index: Number.MAX_SAFE_INTEGER },
   },
 
   // Another scheme, whatever its shape.

@@ -144,21 +144,21 @@ struct Media {
 
 using MediaHandler = std::function<void(Media)>;
 
-/// The answer to one preview request: a decoded ThumbHash, or why there is none.
+/// The answer to one thumbhash request: a decoded ThumbHash, or why there is none.
 ///
 /// Raw pixels rather than an encoded image, because nothing here is the right place to pick a
 /// format: the only consumer is whatever serves the media scheme on this platform, and it hands
 /// them to that platform's own image pipeline.
 ///
 /// RGBA8, row-major, not alpha-premultiplied, and `width * height * 4` long.
-struct Preview {
+struct Thumbhash {
     std::optional<std::string> error;
     double width = 0;
     double height = 0;
     std::vector<std::byte> rgba;
 };
 
-using PreviewHandler = std::function<void(Preview)>;
+using ThumbhashHandler = std::function<void(Thumbhash)>;
 
 /// One libsession Client behind one ordered frame stream.
 ///
@@ -204,7 +204,7 @@ class ClientBridge {
     /// `cb` runs on whichever thread libsession finished on, which is Core's loop. It must only
     /// hand the bytes on, for the same reason `Sink` must only enqueue.
     ///
-    /// A native image loader calling this or `fetch_preview` is invoked by the OS with no bridge
+    /// A native image loader calling this or `fetch_thumbhash` is invoked by the OS with no bridge
     /// in hand, and must obtain one in a way that cannot race `close()`.
     void fetch_media(double message_id, double index, MediaHandler cb);
 
@@ -219,7 +219,7 @@ class ClientBridge {
     /// fetches a URL caches what came back.
     ///
     /// Reports no progress and touches no network: the bytes it needs arrived with the message.
-    void fetch_preview(double message_id, double index, PreviewHandler cb);
+    void fetch_thumbhash(double message_id, double index, ThumbhashHandler cb);
 
     /// The JPEG thumbnail libsession made of an attachment, as `Media` typed `image/jpeg`.
     ///

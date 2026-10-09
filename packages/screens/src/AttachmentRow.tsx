@@ -88,7 +88,9 @@ export function AttachmentRow({
           fetchesOnOpen: state === 'idle' || state === 'failed',
           // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
           // screen by the route a picture does. Null where the platform has no resolver.
-          preview: attachment.hasPreview ? requirePorts().media.previewUrlFor(ref) : undefined,
+          thumbhash: attachment.hasThumbhash
+            ? requirePorts().media.thumbhashUrlFor(ref)
+            : undefined,
         }
 
   function start(): void {

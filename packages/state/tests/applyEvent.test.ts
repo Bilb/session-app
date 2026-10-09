@@ -504,7 +504,7 @@ describe('attachment transfers', () => {
         {
           index: 0,
           voiceMessage: false,
-          hasPreview: false,
+          hasThumbhash: false,
           hasThumbnail: false,
           uploaded: true,
           availability: 'cached',
@@ -533,7 +533,7 @@ describe('attachment transfers', () => {
         {
           index: 0,
           voiceMessage: false,
-          hasPreview: false,
+          hasThumbhash: false,
           hasThumbnail: false,
           uploaded: true,
           availability: 'absent',

@@ -62,9 +62,9 @@ namespace {
     }
 
     /// The fake says the same sentence; the media source contract holds the two to it.
-    std::string no_preview(int64_t id, size_t at) {
+    std::string no_thumbhash(int64_t id, size_t at) {
         return "attachment " + std::to_string(at) + " of message " + std::to_string(id) +
-               " has no preview";
+               " has no thumbhash";
     }
 
     /// The fake says the same sentence; the media source contract holds the two to it.
@@ -1359,58 +1359,58 @@ void ClientBridge::fetch_media(double message_id, double index, MediaHandler cb)
 ///
 /// A ThumbHash holds at most 7 cycles across the image, so decoding larger costs time without
 /// carrying more detail; whatever draws it scales this up with a linear filter.
-constexpr uint32_t preview_long_edge = 32;
+constexpr uint32_t thumbhash_long_edge = 32;
 
-void ClientBridge::fetch_preview(double message_id, double index, PreviewHandler cb) {
+void ClientBridge::fetch_thumbhash(double message_id, double index, ThumbhashHandler cb) {
     if (!_impl || !_impl->client) {
-        cb(Preview{"the bridge is closed", 0, 0, {}});
+        cb(Thumbhash{"the bridge is closed", 0, 0, {}});
         return;
     }
 
     try {
-        const int64_t id = whole<int64_t>(message_id, "preview.messageId");
-        const auto at = whole<size_t>(index, "preview.index");
+        const int64_t id = whole<int64_t>(message_id, "thumbhash.messageId");
+        const auto at = whole<size_t>(index, "thumbhash.index");
 
         _impl->client->message(
                 id,
                 [id, at, cb = std::move(cb)](
                         session::Expected<std::optional<client::Message>> r) mutable {
                     if (!r) {
-                        cb(Preview{std::string{r.error().message}, 0, 0, {}});
+                        cb(Thumbhash{std::string{r.error().message}, 0, 0, {}});
                         return;
                     }
                     auto& msg = *r;
                     if (!msg || at >= msg->attachments.size()) {
-                        cb(Preview{no_such_attachment(id, at), 0, 0, {}});
+                        cb(Thumbhash{no_such_attachment(id, at), 0, 0, {}});
                         return;
                     }
 
                     const auto& a = msg->attachments[at];
-                    if (!previewable(a)) {
-                        cb(Preview{no_preview(id, at), 0, 0, {}});
+                    if (!thumbhash_decodable(a)) {
+                        cb(Thumbhash{no_thumbhash(id, at), 0, 0, {}});
                         return;
                     }
 
                     // A hash carries no usable record of the source's shape, so the aspect ratio
                     // comes from the attachment's own metadata; without it, square is the only
                     // honest guess.
-                    uint32_t w = preview_long_edge, h = preview_long_edge;
+                    uint32_t w = thumbhash_long_edge, h = thumbhash_long_edge;
                     if (a.width && a.height) {
                         if (*a.width >= *a.height)
-                            h = std::max(1u, preview_long_edge * *a.height / *a.width);
+                            h = std::max(1u, thumbhash_long_edge * *a.height / *a.width);
                         else
-                            w = std::max(1u, preview_long_edge * *a.width / *a.height);
+                            w = std::max(1u, thumbhash_long_edge * *a.width / *a.height);
                     }
 
                     auto img = image::thumbhash::decode(*a.thumbhash, w, h);
-                    cb(Preview{
+                    cb(Thumbhash{
                             std::nullopt,
                             static_cast<double>(img.width),
                             static_cast<double>(img.height),
                             std::move(img.rgba)});
                 });
     } catch (const std::exception& e) {
-        cb(Preview{std::string{e.what()}, 0, 0, {}});
+        cb(Thumbhash{std::string{e.what()}, 0, 0, {}});
     }
 }
 

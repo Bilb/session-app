@@ -295,7 +295,7 @@ struct Attachment {
     /// A flag rather than the pixels: a placeholder is an image, and an image is resolved through the
     /// media port like any other rather than riding the frame stream. What it names is the second
     /// path on that scheme.
-    bool has_preview;
+    bool has_thumbhash;
     /// Whether libsession holds a thumbnail of this attachment: a square JPEG of the picture, cropped
     /// to cover, at most the client's thumbnail edge on a side. Made only of a displayable image whose
     /// bytes are cached, and after them, so it turns true in a later `messages-updated` than the one
@@ -322,8 +322,8 @@ struct Attachment {
     /// depends on the other end volunteering a notification.
     std::optional<double> saved_at_ms;
 
-    Attachment(double index_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<double> size_bytes_, bool voice_message_, std::optional<double> width_, std::optional<double> height_, bool has_preview_, bool has_thumbnail_, bool uploaded_, ::session_bridge::AttachmentAvailability availability_, double fetch_done_bytes_, double fetch_total_bytes_, std::optional<double> saved_at_ms_) :
-            index{std::move(index_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, size_bytes{std::move(size_bytes_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)}, has_preview{std::move(has_preview_)}, has_thumbnail{std::move(has_thumbnail_)}, uploaded{std::move(uploaded_)}, availability{std::move(availability_)}, fetch_done_bytes{std::move(fetch_done_bytes_)}, fetch_total_bytes{std::move(fetch_total_bytes_)}, saved_at_ms{std::move(saved_at_ms_)} {}
+    Attachment(double index_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<double> size_bytes_, bool voice_message_, std::optional<double> width_, std::optional<double> height_, bool has_thumbhash_, bool has_thumbnail_, bool uploaded_, ::session_bridge::AttachmentAvailability availability_, double fetch_done_bytes_, double fetch_total_bytes_, std::optional<double> saved_at_ms_) :
+            index{std::move(index_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, size_bytes{std::move(size_bytes_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)}, has_thumbhash{std::move(has_thumbhash_)}, has_thumbnail{std::move(has_thumbnail_)}, uploaded{std::move(uploaded_)}, availability{std::move(availability_)}, fetch_done_bytes{std::move(fetch_done_bytes_)}, fetch_total_bytes{std::move(fetch_total_bytes_)}, saved_at_ms{std::move(saved_at_ms_)} {}
 };
 
 /// The message a reply points at, resolved one level deep only: a reply to a reply shows its own
@@ -1255,7 +1255,7 @@ struct SetPrefCommand {
 /// A file a forged message says it carries: a pointer to nothing, so it never downloads.
 struct TestAttachment {
     std::string content_type;
-    /// Unset is a sender who sent no ThumbHash, which is what leaves an attachment no preview.
+    /// Unset is a sender who sent no ThumbHash, which is what leaves an attachment no thumbhash.
     std::optional<std::vector<std::byte>> thumbhash;
 
     TestAttachment(std::string content_type_, std::optional<std::vector<std::byte>> thumbhash_) :
