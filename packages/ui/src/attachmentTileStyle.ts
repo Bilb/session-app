@@ -92,3 +92,16 @@ export function heldFailure(
 ): string | null {
   return uri === undefined || uri === null ? null : failedUri
 }
+
+/**
+ * What a button holding a tile is announced as: its own name, then the failed words while the tile
+ * is failed, since a screen reader reads the button's name and not the mark inside it.
+ */
+export function tileButtonName(
+  name: string | undefined,
+  failedLabel: string,
+  failed: boolean,
+): string | undefined {
+  if (!failed) return name
+  return name === undefined ? failedLabel : `${name}, ${failedLabel}`
+}

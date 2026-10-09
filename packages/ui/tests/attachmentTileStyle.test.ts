@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   heldFailure,
   TILE_RADIUS_STEP,
+  tileButtonName,
   tileFace,
   tilePlaceholder,
   tileRadius,
@@ -89,5 +90,19 @@ describe('the failure a tile holds', () => {
     expect(heldFailure(undefined, url)).toBeNull()
     expect(heldFailure(null, url)).toBeNull()
     expect(tileFace(url, null, heldFailure(undefined, url))).toBe('pending')
+  })
+})
+
+describe('the name of a button holding a tile', () => {
+  it('is its own name while the tile is not failed', () => {
+    expect(tileButtonName('photo.jpg', 'Unable to open file', false)).toBe('photo.jpg')
+    expect(tileButtonName(undefined, 'Unable to open file', false)).toBeUndefined()
+  })
+
+  it('says the tile failed, after the name where there is one', () => {
+    expect(tileButtonName('photo.jpg', 'Unable to open file', true)).toBe(
+      'photo.jpg, Unable to open file',
+    )
+    expect(tileButtonName(undefined, 'Unable to open file', true)).toBe('Unable to open file')
   })
 })
