@@ -89,6 +89,8 @@ export function MessageAlbum({
       control={control}
       fetchLabel={tr('download')}
       fetchTestID={ELEMENT.conversation.attachmentFetch}
+      failedLabel={tr('attachmentsErrorOpen')}
+      failedTestID={ELEMENT.conversation.attachmentFailed}
       testID={ELEMENT.conversation.attachment}
     />
   )

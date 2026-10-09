@@ -95,6 +95,7 @@ export function AttachmentRow({
           // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
           // screen by the route a picture does. Null where the platform has no resolver.
           preview: attachment.hasPreview ? requirePorts().media.previewUrlFor(ref) : undefined,
+          failedLabel: tr('attachmentsErrorOpen'),
         }
 
   function start(): void {
@@ -133,6 +134,7 @@ export function AttachmentRow({
         name: ELEMENT.conversation.attachmentName,
         caption: ELEMENT.conversation.attachmentState,
         thumbnail: ELEMENT.conversation.attachmentImage,
+        thumbnailFailed: ELEMENT.conversation.attachmentFailed,
         // The id names what the control currently means rather than where it sits, which is the
         // only thing a test can ask about now that the two verbs share one button.
         action:

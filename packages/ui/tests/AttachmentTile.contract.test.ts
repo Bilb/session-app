@@ -28,3 +28,35 @@ describe('an attachment tile’s picture', () => {
     expect(pictureImage()).not.toMatch(/failed/)
   })
 })
+
+describe('an attachment tile’s failed face', () => {
+  // Pending and failed differ only by a glyph, so without these an e2e test cannot tell them apart
+  // and a screen reader hears nothing.
+  it('names and addresses the mark over a placeholder', () => {
+    const mark = tile.slice(
+      tile.indexOf('function FailedMark'),
+      tile.indexOf('function VideoAffordances'),
+    )
+    expect(mark).toMatch(/role="img"\s+aria-label=\{failedLabel\}\s+testID=\{failedTestID\}/)
+    expect(tile).toMatch(
+      /<FailedMark side=\{side\} failedLabel=\{failedLabel\} failedTestID=\{failedTestID\} \/>/,
+    )
+  })
+
+  it('names and addresses the glyph on a flat tile, only while it is the failed one', () => {
+    expect(tile).toContain(
+      "{...(failed ? { role: 'img', 'aria-label': failedLabel, testID: failedTestID } : {})}",
+    )
+  })
+
+  it('is handed its label and id by the album and the file row', () => {
+    const read = (file: string) => readFileSync(join(import.meta.dirname, '../src', file), 'utf8')
+    const album = read('AttachmentAlbum.tsx')
+    expect(
+      album.match(/failedLabel=\{failedLabel\}\s+failedTestID=\{failedTestID\}/g),
+    ).toHaveLength(3)
+    expect(read('FileRow.tsx')).toMatch(
+      /failedLabel=\{thumbnail\.failedLabel\}\s+failedTestID=\{testIDs\?\.thumbnailFailed\}/,
+    )
+  })
+})
