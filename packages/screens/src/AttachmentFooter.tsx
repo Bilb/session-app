@@ -30,7 +30,15 @@ const FOOTER_HEIGHT = 30
  * the line still takes 30 and nothing below moves.
  */
 const ROW_HEIGHT = toggleRowHeight(FOOTER_HEIGHT, SEGMENTED_TOGGLE_TARGET)
-const ROW_OVERHANG = (ROW_HEIGHT - FOOTER_HEIGHT) / 2
+
+/**
+ * How far the row reaches past its line above and below; zero on the web, where the row is the
+ * line.
+ *
+ * The footer's targets cover the overhang and win over anything drawn under it, so whatever holds
+ * the footer leaves at least this much empty above the line.
+ */
+export const ROW_OVERHANG = (ROW_HEIGHT - FOOTER_HEIGHT) / 2
 
 /** Clipped to the row like the toggle's, so the verb's target is the row's full height. */
 const ACTION_SLOP = SEGMENTED_TOGGLE_TARGET / 2
@@ -112,7 +120,7 @@ export function AttachmentFooter({
       marginVertical={-ROW_OVERHANG}
       alignItems="center"
       gap="$xs"
-      // The overhang lies over the album or list above; only the controls in the row take a touch.
+      // Only the controls take a touch; the rest of the row lets one through to what is under it.
       pointerEvents="box-none"
       testID={ELEMENT.conversation.attachmentFooter}
     >

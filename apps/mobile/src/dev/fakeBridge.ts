@@ -2,12 +2,9 @@ import { serveNativeMediaFrom, type BridgeTransport } from '@session/client'
 import {
   createFakeMediaSource,
   createFakeTransport,
-  driveFakeClock,
-  photoFileNames,
-  pickFakeFixture,
+  startDevFake,
   type FakeDevEnv,
   type FakeSessionClient,
-  unopenable,
 } from '@session/client/fake'
 import { Directory, File, Paths } from 'expo-file-system'
 
@@ -36,12 +33,9 @@ function writingExports(client: FakeSessionClient, photos: ReadonlyMap<string, s
 }
 
 /**
- * The dev photographs, by file name, from the app's own storage.
- *
- * The folder desktop reads, copied onto the device by `pnpm --filter @session/mobile
- * fake-media:push`, since the app cannot read the host's disk. Refuses to start without every one
- * of them and names the commands that fix it: a fake that drew something else would look like it
- * works and hide whether the pictures that would really arrive are drawn right.
+ * The dev photographs, by file name, from the app's own storage: the folder desktop reads, copied
+ * onto the device by `pnpm --filter @session/mobile fake-media:push`, since the app cannot read the
+ * host's disk.
  */
 function pushedPhotos(): Map<string, string> {
   const folder = new Directory(Paths.document, 'fake-media')
@@ -50,13 +44,6 @@ function pushedPhotos(): Map<string, string> {
     for (const entry of folder.list()) {
       if (entry instanceof File) photos.set(entry.name, entry.uri)
     }
-  }
-  const missing = photoFileNames().filter((name) => !photos.has(name))
-  if (missing.length > 0) {
-    throw new Error(
-      `The fake needs its dev photographs on the device, and ${String(missing.length)} are ` +
-        'missing. Run: pnpm fake-media:fetch && pnpm --filter @session/mobile fake-media:push',
-    )
   }
   return photos
 }
@@ -75,12 +62,16 @@ export function createFakeBridge(): BridgeTransport {
     EXPO_PUBLIC_SESSION_NO_ACCOUNT: process.env['EXPO_PUBLIC_SESSION_NO_ACCOUNT'],
     EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS: process.env['EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS'],
     EXPO_PUBLIC_SESSION_FAKE_CROWD_HISTORY: process.env['EXPO_PUBLIC_SESSION_FAKE_CROWD_HISTORY'],
+    EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN: process.env['EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN'],
+    // TODO: a Developer Settings switch that fails the next launch, once that screen exists, so a
+    // build without this variable can reach the failure screen too.
+    EXPO_PUBLIC_SESSION_FAKE_FAILED_START: process.env['EXPO_PUBLIC_SESSION_FAKE_FAILED_START'],
   }
-  const { world, clients } = pickFakeFixture(env)
-  const alice = clients['Alice']
-  if (!alice) throw new Error('the fixture did not produce a client')
-
-  driveFakeClock(world, process.env['EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN'])
+  const { alice, served } = startDevFake(env, {
+    has: (fileName) => photos.has(fileName),
+    where: 'on the device',
+    fix: 'pnpm fake-media:fetch && pnpm --filter @session/mobile fake-media:push',
+  })
 
   writingExports(alice, photos)
   // Through the real loaders: the port is platform.ts's, and only the bytes are the fake's.
@@ -91,18 +82,6 @@ export function createFakeBridge(): BridgeTransport {
       return new Uint8Array(await new File(uri).arrayBuffer())
     }),
   )
-
-  // A database that will not open, as on desktop: the failure screen is otherwise reachable only
-  // with one somebody has already broken. `unopenable` refuses as the real bridge does, with
-  // libsession's own reason, and lets a discard through -- so the screen's Clear Device works here
-  // too.
-  //
-  // TODO: a Developer Settings switch that fails the next launch, once that screen exists, so a
-  // build without this variable can reach it too.
-  const served =
-    process.env['EXPO_PUBLIC_SESSION_FAKE_FAILED_START'] === '1'
-      ? unopenable(alice, 'file is not a database')
-      : alice
 
   return createFakeTransport(served)
 }

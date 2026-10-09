@@ -21,13 +21,15 @@ import { Icon } from './Icon'
 import { Image } from './Image'
 import { logical } from './logicalEdges'
 import { Text } from './Text'
-import type { WithTestID } from './with'
+import type { WithFailedLabel, WithFailedTestID, WithTestID } from './with'
 
 export type AttachmentTileProps = WithMediaUri &
   WithMediaPreview &
   WithMediaKind &
   WithDurationLabel &
-  WithTestID & {
+  WithTestID &
+  WithFailedLabel &
+  WithFailedTestID & {
     /** Always square. The album and the list both size it; it never measures anything itself. */
     side: number
     /**
@@ -54,7 +56,11 @@ const PLAY_MARK_MIN_SIDE = 56
  * Over the sender's placeholder it sits on the scrim the play mark uses, so it reads against
  * whatever the placeholder's colours are; on the flat tile the glyph slot draws it instead.
  */
-function FailedMark({ side }: { side: number }) {
+function FailedMark({
+  side,
+  failedLabel,
+  failedTestID,
+}: { side: number } & WithFailedLabel & WithFailedTestID) {
   const small = side < 90
   return (
     <YStack
@@ -74,6 +80,9 @@ function FailedMark({ side }: { side: number }) {
         alignItems="center"
         justifyContent="center"
         backgroundColor={TILE_SCRIM}
+        role="img"
+        aria-label={failedLabel}
+        testID={failedTestID}
       >
         <Icon name="triangleAlert" size={small ? 'sm' : 'md'} color="$textPrimary" />
       </YStack>
@@ -154,6 +163,8 @@ export const AttachmentTile = memo(function AttachmentTile({
   duration,
   overflowLabel,
   testID,
+  failedLabel,
+  failedTestID,
 }: AttachmentTileProps) {
   const radius = tileRadius(side)
   /**
@@ -213,6 +224,7 @@ export const AttachmentTile = memo(function AttachmentTile({
           right={0}
           alignItems="center"
           justifyContent="center"
+          {...(failed ? { role: 'img', 'aria-label': failedLabel, testID: failedTestID } : {})}
         >
           <Icon
             name={failed ? 'triangleAlert' : kind === 'video' ? 'video' : 'image'}
@@ -240,7 +252,9 @@ export const AttachmentTile = memo(function AttachmentTile({
         </YStack>
       )}
 
-      {failed && placeholder !== null ? <FailedMark side={side} /> : null}
+      {failed && placeholder !== null ? (
+        <FailedMark side={side} failedLabel={failedLabel} failedTestID={failedTestID} />
+      ) : null}
 
       {here && kind === 'video' ? <VideoAffordances side={side} duration={duration} /> : null}
 
