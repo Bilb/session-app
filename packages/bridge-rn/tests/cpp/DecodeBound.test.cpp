@@ -8,6 +8,7 @@
 
 using session_bridge_rn::decode_edge_bound;
 using session_bridge_rn::DECODE_PIXEL_BUDGET;
+using session_bridge_rn::exceeds_whole_decode_ceiling;
 using session_bridge_rn::fits_decode_budget;
 
 namespace {
@@ -68,6 +69,29 @@ void the_largest_screen_fits_and_a_huge_canvas_does_not() {
     CHECK(!fits_decode_budget(-1, 100));
 }
 
+void a_huge_gif_or_png_is_refused() {
+    CHECK(exceeds_whole_decode_ceiling("image/gif", 16384, 16384));
+    CHECK(exceeds_whole_decode_ceiling("image/png", 16384, 16384));
+    CHECK(exceeds_whole_decode_ceiling("image/png", 65535, 2000));
+}
+
+void real_content_is_not() {
+    // A 48 MP camera frame saved as PNG, and a long scrolling screenshot.
+    CHECK(!exceeds_whole_decode_ceiling("image/png", 8064, 6048));
+    CHECK(!exceeds_whole_decode_ceiling("image/png", 1440, 30000));
+    CHECK(!exceeds_whole_decode_ceiling("image/gif", 2752, 2064));
+}
+
+void only_whole_decoders_are_refused() {
+    // ImageIO reduces a JPEG while decoding it, so its size is the decode bound's to handle.
+    CHECK(!exceeds_whole_decode_ceiling("image/jpeg", 16384, 16384));
+}
+
+void an_unknown_size_is_not_refused() {
+    CHECK(!exceeds_whole_decode_ceiling("image/png", 0, 0));
+    CHECK(!exceeds_whole_decode_ceiling("image/gif", 0, 65535));
+}
+
 }  // namespace
 
 int main() {
@@ -76,6 +100,10 @@ int main() {
     nothing_is_upsized();
     an_unknown_size_is_bounded_as_a_square();
     the_largest_screen_fits_and_a_huge_canvas_does_not();
+    a_huge_gif_or_png_is_refused();
+    real_content_is_not();
+    only_whole_decoders_are_refused();
+    an_unknown_size_is_not_refused();
     if (failures == 0)
         std::puts("DecodeBound: all passed");
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;

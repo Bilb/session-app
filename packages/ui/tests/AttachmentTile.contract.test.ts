@@ -59,4 +59,19 @@ describe('an attachment tile’s failed face', () => {
       /failedLabel=\{thumbnail\.failedLabel\}\s+failedTestID=\{testIDs\?\.thumbnailFailed\}/,
     )
   })
+
+  // A named button's contents are not announced, so the mark inside it goes unheard on its own.
+  it('puts its failed words in the name of the button that holds it', () => {
+    const read = (file: string) => readFileSync(join(import.meta.dirname, '../src', file), 'utf8')
+    expect(tile).toMatch(/onFailedChange\?\.\(failed\)/)
+    const album = read('AttachmentAlbum.tsx')
+    expect(album).toContain('onFailedChange={setFailed}')
+    expect(album).toContain('tileButtonName(undefined, failedLabel, failed)')
+    expect(album).toMatch(
+      /role="button"\s+\{\.\.\.\(name === undefined \? \{\} : \{ 'aria-label': name \}\)\}/,
+    )
+    const row = read('FileRow.tsx')
+    expect(row).toContain('onFailedChange={setThumbnailFailed}')
+    expect(row).toContain('tileButtonName(filename, thumbnail.failedLabel, thumbnailFailed)')
+  })
 })

@@ -14,9 +14,9 @@ import { useFirstPaintHeld } from './firstPaintHold'
  * default theme and redrawn in the chosen one. What shows meanwhile is what the platform draws
  * behind the app.
  *
- * TODO: on the desktop that is the window's own background, which knows nothing of the theme; the
- * main process has the bridge before the window and could read the theme for it. On the phones it
- * is the system's root view, until the native splash is held over this with expo-splash-screen.
+ * That is the launch screen: native on the phones, and on the desktop the one written into the
+ * page, each held until this draws. All of them are in the default theme, so an account on a light
+ * theme opens dark, as it does on the legacy desktop and iOS clients.
  */
 export function StoredThemeProvider(props: Omit<UIProviderProps, 'theme' | 'accent'>) {
   const hydrated = useHydrated()
