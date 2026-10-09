@@ -135,27 +135,50 @@ can be matched to the line:
 - **The log never depends on the database or its key.** If the directory can't be written the logger
   falls back to console and says why in the next file that can be.
 
-## The startup block (top of every new file)
+## The startup block (top of every launch)
 
-Prefixed like every other line, so a reader skips the prefix and sees a block:
+Written **without** the line prefix, after an empty line, one item per line:
 
 ```
-2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]                         ──── Session 1.0.0 (123) launched ────
-2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]                           App          1.0.0 (123) · commit 833d55d5-dirty · variant testflight
-2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]                           Install      testflight
-2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]                           Device       iPhone17,1 · iOS 26.1
-2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]                           Locale       en-AU · UTC+10:00
-2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]                           Network      mainnet
-2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]                           Flags        none overridden
-2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]                           Log level    info · network=debug
-2026-10-08T03:20:09.123Z      +0.412 INFO  [startup]                           Previous run session-20261008T011544Z-0.log · ended cleanly
+2026-10-09T07:40:58.002Z      +3.811 INFO  [lifecycle]                       >>> background
+
+── Session 1.0.0 (123) launched 2026-10-09 07:41:02Z
+  Version        1.0.0 (123)
+  Commit         833d55d5
+  libsession     76d93c51
+  Variant        testflight
+  Install        testflight
+  Device         iPhone17,1
+  OS             iOS 26.1
+  Time           en-AU · UTC+10:00
+  Network        mainnet
+  Transport      Session Router (default)
+  Flags          none overridden
+  Log level      info,network=debug
+  Previous run   session-20261009T011544Z-0.log, ended cleanly
+2026-10-09T07:41:02.130Z      +0.412 INFO  [lifecycle]                       >>> launch
 ```
 
-"Previous run … ended cleanly" comes from the `terminate`/`background` markers: a previous file
-whose last marker is neither says the last run died, which is the first thing support asks.
+- **The empty line** sets one launch apart from the last when scrolling, without a rule that would
+  compete with the export's header. `grep -n '^── Session'` lists every launch in a file or an
+  export, and splitting on it cuts a log into runs.
+- **The libsession commit** is stamped at build time from the submodule, like the app's: libsession
+  is the client, so a report has to say which one.
+- **Time** is the locale and the UTC offset together; no time-zone name, no region.
+- **Network and transport** are read where the bridge is opened, not from what the renderer was
+  built with, so a dev run says what it is actually attached to. Seed node and file server follow
+  when they were set.
+- **Platform rows:** Linux adds Distro, Display (Wayland or X11), Desktop and Packaging (AppImage,
+  Flatpak, Snap), and gives the kernel as its OS version. macOS and Windows give their version.
+- **Desktop's main process writes the block**, so it opens the file and is there even when the
+  renderer never loads. The renderer marks its own launch (`>>> launch process=renderer`).
+- **"Previous run … ended cleanly"** comes from the markers: a previous file whose last marker is
+  not a background or a quit says that run died, which is the first thing support asks.
 
 ## Unmissable markers
 
 Never sampled, rate-limited or level-filtered, flushed at once: `launch`, `foreground`,
-`background`, `terminate` (where the platform says), `start ok|failed reason=…`,
-`account loaded|none`, `export`. Their absence is then evidence.
+`background`, `quit` (where the platform says), `start ok|failed reason=…`,
+`account loaded|none|created`, `memory warning` (phones), `renderer gone` and
+`child process gone` with Chromium's reason (desktop), and `export`. Their absence is then
+evidence.
