@@ -581,7 +581,8 @@ struct HistoryReplacedSessionEvent {
 ///
 /// libsession fetches a file once for every download and export of it, but reports to each request
 /// separately and ends each with its own outcome, so one attachment can be downloading and exporting
-/// at once. An export of a file over the cache limit runs a transfer of its own that nothing joins.
+/// at once. An export of a file over libsession's `requested_cache_max_size` runs a transfer of its
+/// own that nothing joins; the bridge leaves that size unset.
 enum class AttachmentTransfer {
     download,
     export_,

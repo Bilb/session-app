@@ -372,9 +372,9 @@ describe('attachment transfers', () => {
   })
 
   it('keeps a download and an export of the same attachment apart', () => {
-    // One file can be downloading and exporting at once, on separate transfers when the cache
-    // will not keep it: keyed only by message and index the reports would overwrite each other
-    // and the bar would jump backwards.
+    // One file can be downloading and exporting at once, on separate transfers if libsession's
+    // `requested_cache_max_size` refuses it: keyed only by message and index the reports would
+    // overwrite each other and the bar would jump backwards.
     const state = replay(
       [
         progress({ transfer: 'download', doneBytes: 1024, totalBytes: 2048 }),
