@@ -52,9 +52,7 @@ static CGSize SourcePixelSize(CGImageSourceRef source) {
                     [gif[(id)kCGImagePropertyGIFCanvasPixelHeight] doubleValue]));
 }
 
-// TODO: this bounds the result, not the decode: ImageIO decodes a GIF or most PNGs whole first
-// (2.6 GB for a 16384x16384 GIF). Long term, libsession serves the loaders only a bounded JPEG or
-// another format ImageIO reduces while decoding, and export keeps the original file.
+// TODO: ImageIO decodes a GIF or most PNGs whole; serve a format it reduces while decoding.
 /// Decodes on the calling queue rather than at first draw, and no larger than the view asks for or
 /// the pixel budget allows: a thumbnail with the file's orientation applied, which is also what
 /// keeps a 12-megapixel photo from being held whole for a tile.
