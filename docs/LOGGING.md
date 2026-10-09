@@ -35,18 +35,19 @@ identifies nothing outside the run.
 
 The logger's structured API takes values of a closed set of types. Free text is allowed only as the
 message, and it passes a backstop sweep. **The raw form of an identifier is unreachable from a log
-call**: the types have no raw accessor a log call accepts, and a lint rule refuses `log(...)`
-arguments built from `.raw`/`.hex`/template strings of one.
+call**: each type holds its input in a private field with no accessor, so a log call can hand one
+over but never reach back through it. Nothing stops a raw string being written into a message;
+that is what the sweep below is for.
 
-| kind                         | renders as                                                                 | examples                                                                                                                                                                                                        |
-| ---------------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **never logged**             | no overload accepts it                                                     | message bodies and drafts, attachment filenames, display names, recovery phrases, seeds, private/config keys, whole UI state, raw URLs                                                                          |
-| **user-visible identifiers** | prefix + 4 + 4, ASCII: `05ab12...cd90`                                     | account IDs, group IDs: the reporter can match either end against what the app shows                                                                                                                            |
-| **internal identifiers**     | pseudonym `~3fa9c1`                                                        | service-node keys, swarm message hashes, request ids, server file IDs, container/install UUIDs. Support needs equality across lines, never the value. Keyed with a random per-install salt kept beside the logs |
-| **network addresses**        | family + class + port: `v4 public:22021`, `v6-mapped private:443`          | never the octets; the device's own address is never logged                                                                                                                                                      |
-| **URLs**                     | scheme, host, path shape — see below                                       |                                                                                                                                                                                                                 |
-| **paths**                    | the semantic name: `config-dump(user_groups)`, `db`, `attachment(~5d0e11)` | never a container UUID or a filename                                                                                                                                                                            |
-| **free**                     | as is                                                                      | counts, sizes, durations, states, namespaces, levels, error codes, config type names, seqnos, UTC offset, locale                                                                                                |
+| kind                         | renders as                                                                 | examples                                                                                                                                                                                           |
+| ---------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **never logged**             | no typed value carries it; in free text, only the sweep stands in the way  | message bodies and drafts, attachment filenames, display names, recovery phrases, seeds, private/config keys, whole UI state, raw URLs                                                             |
+| **user-visible identifiers** | prefix + 4 + 4, ASCII: `05ab12...cd90`                                     | account IDs, group IDs: the reporter can match either end against what the app shows                                                                                                               |
+| **internal identifiers**     | pseudonym `~3fa9c1`                                                        | service-node keys, swarm message hashes, server file IDs, container/install UUIDs. Support needs equality across lines, never the value. Keyed with a random per-install salt kept beside the logs |
+| **network addresses**        | family + class + port: `v4 public:22021`, `v6-mapped private:443`          | never the octets; the device's own address is never logged                                                                                                                                         |
+| **URLs**                     | scheme, host, path shape — see below                                       |                                                                                                                                                                                                    |
+| **paths**                    | the semantic name: `config-dump(user_groups)`, `db`, `attachment(~5d0e11)` | never a container UUID or a filename                                                                                                                                                               |
+| **free**                     | as is                                                                      | counts, sizes, durations, states, namespaces, levels, error codes, config type names, seqnos, UTC offset, locale                                                                                   |
 
 Address classes: `loopback`, `private` (RFC 1918, ULA, link-local), `cgnat` (100.64/10), `public`,
 `unspecified`. Families: `v4`, `v6`, `v6-mapped` (an IPv4 address carried in IPv6).
@@ -163,8 +164,8 @@ Written **without** the line prefix, after an empty line, one item per line:
   Commit         833d55d5
   libsession     76d93c51
   Variant        testflight
-  Install        testflight
-  Device         iPhone17,1
+  Install        unknown
+  Device         iPhone (model unknown)
   OS             iOS 26.1
   Time           en-AU · UTC+10:00
   Network        mainnet
@@ -194,7 +195,7 @@ Written **without** the line prefix, after an empty line, one item per line:
 ## Unmissable markers
 
 Never sampled, rate-limited or level-filtered, flushed at once: `launch`, `foreground`,
-`background`, `quit` (where the platform says), `start ok|failed reason=…`,
+`background`, `quit` (where the platform says), `restart` (desktop), `start ok|failed reason=…`,
 `account loaded|none|created`, `memory warning` (phones), `renderer gone` and
 `child process gone` with Chromium's reason (desktop), and `export`. Their absence is then
 evidence.
