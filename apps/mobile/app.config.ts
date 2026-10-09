@@ -172,18 +172,26 @@ const withPermissionStrings: ConfigPlugins.ConfigPlugin = (config) =>
  * nothing from 10, where MediaStore takes the save. expo-media-library, there for iOS, declares it
  * up to 32 with `requestLegacyExternalStorage`. Wraps the config rather than sitting in `plugins`,
  * so it runs after theirs.
+ *
+ * The entry is written whether or not a plugin declared it: absent, the merged manifest takes
+ * WRITE up to 32 from expo-file-system's library manifest, which only `tools:replace` overrides.
  */
 const withExportStorageAccess: ConfigPlugins.ConfigPlugin = (config) =>
   withAndroidManifest(config, (android) => {
-    const manifest = android.modResults
+    const manifest = AndroidConfig.Manifest.ensureToolsAvailable(android.modResults)
     delete AndroidConfig.Manifest.getMainApplicationOrThrow(manifest).$[
       'android:requestLegacyExternalStorage'
     ]
-    for (const permission of manifest.manifest['uses-permission'] ?? []) {
-      if (permission.$['android:name'] === 'android.permission.WRITE_EXTERNAL_STORAGE') {
-        Object.assign(permission.$, { 'android:maxSdkVersion': '28' })
-      }
+    const capped = {
+      'android:name': 'android.permission.WRITE_EXTERNAL_STORAGE',
+      'android:maxSdkVersion': '28',
+      'tools:replace': 'android:maxSdkVersion',
     }
+    const permissions = (manifest.manifest['uses-permission'] ??= [])
+    const write = permissions.find(({ $ }) => $['android:name'] === capped['android:name'])
+    if (write === undefined) permissions.push({ $: capped })
+    else Object.assign(write.$, capped)
+    android.modResults = manifest
     return android
   })
 
