@@ -12,6 +12,14 @@ export function isViewable(attachment: Attachment): boolean {
 }
 
 /**
+ * Whether a file row leads with a picture rather than a glyph. libsession thumbnails some types
+ * the viewer cannot open (AVIF), and its thumbnail is a JPEG every platform draws.
+ */
+export function leadsWithPicture(attachment: Attachment): boolean {
+  return attachment.hasThumbnail || isViewable(attachment)
+}
+
+/**
  * The attachments on a message that a viewer can show.
  *
  * Wider than `Message.galleryViewable`: a message mixing a picture with a document is a list, and

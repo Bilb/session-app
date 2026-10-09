@@ -1,4 +1,4 @@
-import { isViewableContentType, isViewableVideo } from '@session/basic-types'
+import { isDisplayableImage, isViewableContentType, isViewableVideo } from '@session/basic-types'
 import type { AttachmentRef } from '@session/bridge-types'
 
 import type { MediaSource } from '../types'
@@ -31,15 +31,31 @@ function assignedNumber(filename: string): string {
   return String((hash % PHOTO_COUNT) + 1).padStart(2, '0')
 }
 
+function drawnAs(
+  client: FakeSessionClient,
+  ref: AttachmentRef,
+  admits: (contentType: string | undefined) => boolean,
+): string | null {
+  const attachment = client.locate(ref)?.attachment
+  if (attachment === undefined || !admits(attachment.contentType)) return null
+  const filename = attachment.filename ?? `attachment-${String(ref.messageId)}-${String(ref.index)}`
+  return `unsplash-${photoNumber(filename) ?? assignedNumber(filename)}.jpg`
+}
+
 /**
  * The dev photograph an attachment is drawn as, as `unsplash-NN.jpg`, or null when it is not a
  * picture or a video. A video is drawn as its still, and a photograph is a still.
  */
 export function photoFileName(client: FakeSessionClient, ref: AttachmentRef): string | null {
-  const attachment = client.locate(ref)?.attachment
-  if (attachment === undefined || !isViewableContentType(attachment.contentType)) return null
-  const filename = attachment.filename ?? `attachment-${String(ref.messageId)}-${String(ref.index)}`
-  return `unsplash-${photoNumber(filename) ?? assignedNumber(filename)}.jpg`
+  return drawnAs(client, ref, isViewableContentType)
+}
+
+/**
+ * The dev photograph a thumbnail or placeholder is made from. Wider than `photoFileName`, since
+ * libsession thumbnails types the viewer cannot open (AVIF).
+ */
+function stillFileName(client: FakeSessionClient, ref: AttachmentRef): string | null {
+  return drawnAs(client, ref, (type) => isViewableContentType(type) || isDisplayableImage(type))
 }
 
 /** Every dev photograph's file name, for an app checking at start that it has them all. */
@@ -79,7 +95,7 @@ export function fakePreviewPixels(client: FakeSessionClient, ref: AttachmentRef)
       `attachment ${String(ref.index)} of message ${String(ref.messageId)} has no preview`,
     )
   }
-  const photo = photoNumber(photoFileName(client, ref) ?? undefined)
+  const photo = photoNumber(stillFileName(client, ref) ?? undefined)
   const hash = photo === null ? undefined : PHOTO_THUMBHASHES[Number(photo) - 1]
   if (hash === undefined) throw new Error('no preview: not a picture')
   // The photographs are 4:3; the hash's own ratio is only approximate (lx/ly, one part in seven).
@@ -131,7 +147,7 @@ export function createFakeMediaSource(
           `attachment ${String(ref.index)} of message ${String(ref.messageId)} has no thumbnail`,
         )
       }
-      const photo = photoFileName(client, ref)
+      const photo = stillFileName(client, ref)
       if (photo === null) throw new Error('not a picture')
       return readPhoto(thumbnailFileName(photo))
     },

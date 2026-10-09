@@ -32,6 +32,7 @@ const harness: MediaSourceHarness = {
         filename: 'paper.pdf',
         hasPreview: false,
       },
+      { ...png, index: 2, contentType: 'image/avif', filename: 'scan.avif', hasPreview: false },
     ])
     world.settle()
     return Promise.resolve({
@@ -41,6 +42,7 @@ const harness: MediaSourceHarness = {
       picture: { messageId: album.id, index: png.index },
       unhashed: { messageId: unhashed.id, index: 0 },
       document: { messageId: unhashed.id, index: 1 },
+      avif: { messageId: unhashed.id, index: 2 },
       settle: () => {
         world.settle()
         return Promise.resolve()

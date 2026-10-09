@@ -1,3 +1,4 @@
+import { isViewableImage } from '@session/basic-types'
 import { describe, expect, it } from 'vitest'
 
 import { createFakeMediaSource } from '#src/fake/media'
@@ -46,7 +47,7 @@ describe('the fake media source', () => {
     const { messages } = await alice.getMessages(world.account('Bob').sessionId, { limit: 100 })
     const pictures = messages.flatMap((message) =>
       message.attachments
-        .filter((a) => a.contentType?.startsWith('image/') === true)
+        .filter((a) => isViewableImage(a.contentType))
         .map((a) => ({ messageId: message.id, index: a.index })),
     )
     expect(pictures.length).toBeGreaterThan(0)
@@ -77,5 +78,28 @@ describe('the fake media source', () => {
     world.settle()
     await downloaded
     expect(asText(await source.fetchThumbnail(ref))).toBe('thumbnail-01.jpg')
+  })
+
+  it('serves a thumbnail of every type it says has one, the AVIF the viewer cannot open included', async () => {
+    const { clients, world } = friendsWithAttachments(['Alice', 'Bob'])
+    const alice = clients['Alice']
+    if (!alice) throw new Error('no Alice')
+    const { messages } = await alice.getMessages(world.account('Bob').sessionId, { limit: 100 })
+    const refs = messages.flatMap((message) =>
+      message.attachments.map((a) => ({ messageId: message.id, index: a.index })),
+    )
+    const downloaded = refs.map((ref) => alice.downloadAttachment(ref.messageId, ref.index))
+    world.settle()
+    await Promise.allSettled(downloaded)
+    const thumbnailed = refs.filter((ref) => alice.hasThumbnail(ref))
+    expect(
+      thumbnailed.some((ref) => alice.locate(ref)?.attachment.contentType === 'image/avif'),
+    ).toBe(true)
+    const source = createFakeMediaSource(alice, readPhoto)
+    for (const thumbnail of await Promise.all(
+      thumbnailed.map((ref) => source.fetchThumbnail(ref)),
+    )) {
+      expect(asText(thumbnail)).toMatch(/^thumbnail-\d{2}\.jpg$/)
+    }
   })
 })

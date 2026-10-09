@@ -2,7 +2,12 @@ import { memoryPorts, resetPorts, setPorts } from '@session/app'
 import type { Attachment, Message } from '@session/client'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { isViewable, viewableAttachments, viewerUri } from '#src/viewableAttachments'
+import {
+  isViewable,
+  leadsWithPicture,
+  viewableAttachments,
+  viewerUri,
+} from '#src/viewableAttachments'
 
 function attachment(index: number, contentType?: string): Attachment {
   return {
@@ -66,6 +71,24 @@ describe('which attachments a viewer can show', () => {
     const viewable = viewableAttachments(set)
     expect(viewable.map((a) => a.index)).toEqual([0, 2])
     expect(viewable[1]?.index).toBe(2)
+  })
+})
+
+describe('which file rows lead with a picture', () => {
+  it('leads with the thumbnail of a type the viewer cannot open', () => {
+    const avif = { ...attachment(0, 'image/avif'), hasThumbnail: true }
+    expect(isViewable(avif)).toBe(false)
+    expect(leadsWithPicture(avif)).toBe(true)
+    expect(leadsWithPicture({ ...attachment(0, 'image/pjpeg'), hasThumbnail: true })).toBe(true)
+  })
+
+  it('leads with a viewable picture before its thumbnail exists, for the placeholder', () => {
+    expect(leadsWithPicture(attachment(0, 'image/jpeg'))).toBe(true)
+  })
+
+  it('leads with the glyph where there is no thumbnail and nothing to view', () => {
+    expect(leadsWithPicture(attachment(0, 'image/avif'))).toBe(false)
+    expect(leadsWithPicture(attachment(0, 'application/pdf'))).toBe(false)
   })
 })
 

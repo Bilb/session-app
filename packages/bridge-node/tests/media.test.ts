@@ -83,7 +83,7 @@ describeAddon('addon', () => {
 
       const hash = PHOTO_THUMBHASHES[0]
       if (hash === undefined) throw new Error('the fake has no photo hashes')
-      const body = 'two pictures, one hashed, and a PDF'
+      const body = 'two pictures, one hashed, a PDF and an AVIF'
       const delivered = await recipient.ask({
         type: 'deliverTestMessage',
         senderSeedHex: sender.seed,
@@ -93,6 +93,7 @@ describeAddon('addon', () => {
           { contentType: 'image/png', thumbhash: Buffer.from(hash, 'hex') },
           { contentType: 'image/png' },
           { contentType: 'application/pdf' },
+          { contentType: 'image/avif' },
         ],
       })
       if (delivered.error !== undefined) throw new Error(delivered.error)
@@ -107,6 +108,7 @@ describeAddon('addon', () => {
         picture: { messageId: message.id, index: 0 },
         unhashed: { messageId: message.id, index: 1 },
         document: { messageId: message.id, index: 2 },
+        avif: { messageId: message.id, index: 3 },
         settle: () => Promise.resolve(),
       }
     },
@@ -136,6 +138,8 @@ describeAddon('addon', () => {
         'answers a downloaded picture with a square JPEG thumbnail no larger than the edge':
           OFFLINE_ATTACHMENTS,
         'has no thumbnail of a downloaded PDF': OFFLINE_ATTACHMENTS,
+        'answers a downloaded AVIF with a JPEG thumbnail, though no viewer here opens one':
+          OFFLINE_ATTACHMENTS,
         ...(forges
           ? {}
           : {

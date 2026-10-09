@@ -46,8 +46,9 @@ const SEEDED_PICTURES: Attachment[] = [
 ]
 
 /**
- * One picture and two files, which libsession's rule makes *not* gallery-viewable: a message is
- * only shown as pictures when every attachment is one. This is what draws the file form.
+ * Two pictures and two files, which libsession's rule makes *not* gallery-viewable: a message is
+ * only shown as pictures when every attachment is one. This is what draws the file form. The AVIF
+ * is a row that draws libsession's thumbnail though the viewer cannot open the file.
  */
 const SEEDED_FILES: Attachment[] = [
   {
@@ -85,6 +86,21 @@ const SEEDED_FILES: Attachment[] = [
     sizeBytes: 52_480,
     voiceMessage: false,
     hasPreview: false,
+    hasThumbnail: false,
+    uploaded: true,
+    availability: 'absent',
+    fetchDoneBytes: 0,
+    fetchTotalBytes: 0,
+  },
+  {
+    index: 3,
+    contentType: 'image/avif',
+    filename: 'boarding-gate.avif',
+    sizeBytes: 141_312,
+    voiceMessage: false,
+    width: 1600,
+    height: 1200,
+    hasPreview: true,
     hasThumbnail: false,
     uploaded: true,
     availability: 'absent',

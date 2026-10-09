@@ -13,8 +13,9 @@ import type { TestFns } from './suite'
 
 export interface MediaSourceHarness {
   /**
-   * A source over a client holding two incoming pictures and a PDF, none fetched: one picture sent
-   * with a hash, in a type other than the JPEG every dev photograph is, and one sent without.
+   * A source over a client holding two incoming pictures, an AVIF and a PDF, none fetched: one
+   * picture sent with a hash, in a type other than the JPEG every dev photograph is, and one sent
+   * without.
    */
   withAttachments(): Promise<{
     source: MediaSource
@@ -23,6 +24,8 @@ export interface MediaSourceHarness {
     picture: AttachmentRef
     unhashed: AttachmentRef
     document: AttachmentRef
+    /** libsession thumbnails an AVIF, though no viewer here opens one. */
+    avif: AttachmentRef
     /** Lets whatever is in flight finish: a manual clock, or a real transfer. */
     settle: () => Promise<void>
   }>
@@ -202,6 +205,20 @@ export function runMediaSourceContract(
       expect(size?.width).toBeGreaterThan(0)
       expect(size?.width).toBe(size?.height)
       expect((size?.width ?? Infinity) <= edge).toBe(true)
+    })
+
+    it('answers a downloaded AVIF with a JPEG thumbnail, though no viewer here opens one', async () => {
+      const { source, client, conversationId, avif, settle } = await harness.withAttachments()
+      const downloaded = client.downloadAttachment(avif.messageId, avif.index)
+      await settle()
+      await downloaded
+      expect((await untilThumbnailed(client, conversationId, avif, settle))?.hasThumbnail).toBe(
+        true,
+      )
+
+      const size = jpegSize(await source.fetchThumbnail(avif))
+      expect(size?.width).toBeGreaterThan(0)
+      expect(size?.width).toBe(size?.height)
     })
 
     it('has no thumbnail of a picture not yet downloaded', async () => {

@@ -15,7 +15,7 @@ import { formatBytes } from './formatBytes'
 import { PENDING_COPY } from './pendingCopy'
 import { exportOne } from './exportAttachment'
 import { useExportFeedback } from './useExportFeedback'
-import { isViewable } from './viewableAttachments'
+import { isViewable, leadsWithPicture } from './viewableAttachments'
 
 function caption(
   attachment: Attachment,
@@ -77,9 +77,10 @@ export function AttachmentRow({
   const fetched = fetchOf(attachment, report)
   const state: FileRowState = fetched.state
 
+  const opens = isViewable(attachment)
   // Absent once expired: there is nothing to show and nothing a tap could fetch.
   const thumbnail: FileRowThumbnail | undefined =
-    state === 'unavailable' || !isViewable(attachment)
+    state === 'unavailable' || !leadsWithPicture(attachment)
       ? undefined
       : {
           // The thumbnail libsession made, never the file. Until there is one, the placeholder.
@@ -107,7 +108,7 @@ export function AttachmentRow({
       thumbnail={thumbnail}
       // Opens only a picture that is here, as the legacy clients do; otherwise the tap fetches it.
       onOpen={
-        thumbnail === undefined
+        thumbnail === undefined || !opens
           ? undefined
           : () => {
               if (state === 'ready') ui.openViewer(message.id, attachment.index)
