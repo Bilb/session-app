@@ -25,8 +25,11 @@ function attachment(index: number, fields: Partial<Attachment> = {}): Attachment
   }
 }
 
+// Local time, as the suggested name is.
+const SENT_AT_MS = new Date(2026, 9, 9, 14, 3, 5).getTime()
+
 function message(attachments: Attachment[]): Message {
-  return { id: 7, attachments } as unknown as Message
+  return { id: 7, timestamp: SENT_AT_MS, attachments } as unknown as Message
 }
 
 function installFiles(files: Partial<FilesPort>): FilesPort {
@@ -76,7 +79,7 @@ describe('exporting one attachment', () => {
     expect(write).toHaveBeenCalledWith({ messageId: 7, index: 1 }, '/chosen/b.jpg')
   })
 
-  it('names a nameless attachment by its position', async () => {
+  it('names a nameless attachment by when it was sent and its place in the message', async () => {
     const choose = vi.fn(() => Promise.resolve(null))
     installFiles({ chooseExportLocation: choose })
     const nameless = attachment(1)
@@ -89,7 +92,7 @@ describe('exporting one attachment', () => {
       feedback(),
     )
 
-    expect(choose).toHaveBeenCalledWith('attachment-2', 'application/pdf')
+    expect(choose).toHaveBeenCalledWith('Session_2026-10-09-140305_2.pdf', 'application/pdf')
   })
 
   it('writes nothing, and says nothing, when the person cancels', async () => {

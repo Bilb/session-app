@@ -399,6 +399,13 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   picked folder under a temporary name renamed into place; Photos refuses 3GPP, so that goes to a
   folder.
 
+  A file the sender did not name is suggested as `Session_<yyyy-MM-dd-HHmmss>` in local time from
+  when the message was sent, `_<n>` added for the n-th attachment from the second on, plus the
+  extension its declared type calls for, as legacy Android names one; a named file with no
+  extension gets that extension. Android files by extension, so a sound without one would land in
+  Download, and MediaStore stops numbering a name after about 32 copies, so the suggestion has to
+  differ between messages.
+
   Not a folder picker on Android. The Storage Access Framework hands the write to whichever
   provider was picked, and a provider may refuse a rename, refuse a delete, or advertise a rename
   it then refuses. Against a provider built to do each, a temporary name either failed the export
