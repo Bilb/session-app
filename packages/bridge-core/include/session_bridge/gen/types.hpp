@@ -900,8 +900,10 @@ struct FileServerConfig {
 /// How requests reach the network.
 ///
 /// Session Router is what mainnet and testnet ship, and is the default for both. Onion requests are
-/// the other production path and the only one a devnet has - Session Router refuses a devnet
-/// outright, so devnet defaults to onion requests and cannot be moved off them.
+/// the other production path, and a devnet's default - Session Router refuses a devnet outright, so
+/// a devnet takes onion requests or direct, never Session Router. Direct sends each request
+/// straight to the node it is for, with no path: for development and diagnosis, since a node sees
+/// the address of the device asking.
 ///
 /// Settable so that the transport can be chosen independently of the network: the two paths share
 /// only a ten-method interface, and uploads, downloads, connection status and retry behaviour are
@@ -910,12 +912,13 @@ struct FileServerConfig {
 enum class RouterKind {
     onion_requests,
     session_router,
+    direct,
 };
 
 template <>
 struct EnumTraits<RouterKind> {
     static constexpr std::string_view name = "RouterKind";
-    static constexpr std::array<std::string_view, 2> names{"onion-requests", "session-router"};
+    static constexpr std::array<std::string_view, 3> names{"onion-requests", "session-router", "direct"};
 
     static constexpr std::string_view to_string(RouterKind value) {
         return names[static_cast<std::size_t>(value)];

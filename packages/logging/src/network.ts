@@ -16,7 +16,11 @@ export interface NetworkSettings {
   logSpec: string | undefined
 }
 
-const ROUTER_NAMES = { 'onion-requests': 'onion requests', 'session-router': 'Session Router' }
+const ROUTER_NAMES = {
+  'onion-requests': 'onion requests',
+  'session-router': 'Session Router',
+  direct: 'Direct Router',
+}
 
 /**
  * The startup block's network rows: which network, which transport and whether it was chosen or

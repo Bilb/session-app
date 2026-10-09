@@ -21,6 +21,9 @@ describe('networkRows', () => {
     expect(networkRows({ ...NONE, router: 'onion-requests' }).transport).toBe(
       'onion requests (set)',
     )
+    expect(networkRows({ ...NONE, netid: 'devnet', router: 'direct' }).transport).toBe(
+      'Direct Router (set)',
+    )
   })
 
   it('lists the further settings that were given, and the log spec', () => {

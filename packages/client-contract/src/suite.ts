@@ -520,6 +520,19 @@ export function runSessionClientContract(
       expect(await alice.warmNetworkCache()).toBe(false)
     })
 
+    it('takes onion requests or direct on a devnet, which Session Router has none of', async () => {
+      // With no account yet, attaching only records the choice: nothing goes to the network.
+      const { client } = await harness.newcomer()
+      const devnet = {
+        netid: 'devnet',
+        seedNodes: [
+          { ed25519PubkeyHex: 'a'.repeat(64), ip: '10.0.0.1', httpsPort: 1300, omqPort: 1305 },
+        ],
+      }
+      for (const router of ['onion-requests', 'direct'] as const)
+        expect(await failure(() => client.attachNetwork({ ...devnet, router }))).toBeUndefined()
+    })
+
     it('refuses a network it cannot build, and stays where it was', async () => {
       const { alice } = await harness.friends()
       const before = (await alice.getAccountInfo()).networkAttached
