@@ -1,7 +1,16 @@
 import { requirePorts } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, LAUNCH_MARK_HEIGHT, Modal, Screen, SessionBrand, Text, YStack } from '@session/ui'
+import {
+  BRAND_GREEN,
+  Button,
+  LAUNCH_MARK_HEIGHT,
+  Modal,
+  Screen,
+  SessionBrand,
+  Text,
+  YStack,
+} from '@session/ui'
 import { useEffect, useState } from 'react'
 
 import { LocalizedText } from './LocalizedText'
@@ -74,7 +83,8 @@ export function StartingScreen() {
     // centres it, so the hand-over from one to the other does not move it.
     <Screen testID={ELEMENT.starting.screen} edges={[]}>
       <YStack flex={1} alignItems="center" justifyContent="center" gap="$xl">
-        <SessionBrand size={LAUNCH_MARK_HEIGHT} color="$primaryColor" />
+        {/* The brand green, as the native launch screen draws it, not the theme's accent. */}
+        <SessionBrand size={LAUNCH_MARK_HEIGHT} color={BRAND_GREEN} />
 
         {waited < SAY_SOMETHING_AFTER_MS ? null : (
           <YStack alignItems="center" gap="$xs" maxWidth={280}>

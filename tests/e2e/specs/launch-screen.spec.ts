@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { _electron, expect, test } from '@playwright/test'
 import { ELEMENT } from '@session/test-ids'
-import { DEFAULT_ACCENT, DEFAULT_THEME, getThemeTokens } from '@session/theme-tokens'
+import { BRAND_GREEN, DEFAULT_ACCENT, DEFAULT_THEME, getThemeTokens } from '@session/theme-tokens'
 
 const repoRoot = join(import.meta.dirname, '../../..')
 
@@ -13,14 +13,14 @@ const repoRoot = join(import.meta.dirname, '../../..')
  * mark goes once the app has drawn.
  */
 test('the window opens on the launch screen, which goes once the app draws', async () => {
-  const { backgroundPrimary, primaryColor } = getThemeTokens(DEFAULT_THEME, DEFAULT_ACCENT)
+  const { backgroundPrimary } = getThemeTokens(DEFAULT_THEME, DEFAULT_ACCENT)
 
   // The page as built: the launch screen is in the HTML, so it draws with the first frame rather
   // than when the script arrives -- which is too soon after load for a test to catch it on screen.
   const html = readFileSync(join(repoRoot, 'apps/desktop/out/renderer/index.html'), 'utf8')
   expect(html).toContain('<div id="launch-screen"')
   expect(html).toContain(`background: ${backgroundPrimary}`)
-  expect(html).toContain(`fill="${primaryColor}"`)
+  expect(html).toContain(`fill="${BRAND_GREEN}"`)
 
   const dataDir = mkdtempSync(join(tmpdir(), 'session-launch-screen-'))
   const app = await _electron.launch({

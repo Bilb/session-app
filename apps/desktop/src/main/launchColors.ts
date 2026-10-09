@@ -1,4 +1,4 @@
-import { DEFAULT_ACCENT, DEFAULT_THEME, getThemeTokens } from '@session/theme-tokens'
+import { BRAND_GREEN, DEFAULT_ACCENT, DEFAULT_THEME, getThemeTokens } from '@session/theme-tokens'
 
 /**
  * What the launch screen is drawn in: the default theme, because the account's choice is in
@@ -11,5 +11,6 @@ import { DEFAULT_ACCENT, DEFAULT_THEME, getThemeTokens } from '@session/theme-to
  */
 export function launchColors(): { background: string; mark: string } {
   const tokens = getThemeTokens(DEFAULT_THEME, DEFAULT_ACCENT)
-  return { background: tokens.backgroundPrimary, mark: tokens.primaryColor }
+  // The mark in the brand green, as on the phones' launch screens and the starting screen.
+  return { background: tokens.backgroundPrimary, mark: BRAND_GREEN }
 }
