@@ -23,5 +23,5 @@ export {
 } from './media'
 export { decodeThumbhash } from './thumbhash'
 export { backlog } from './backlog'
-export { driveFakeClock, FAKE_FIXTURES, pickFakeFixture } from './devSetup'
-export type { FakeDevEnv, FakeFixture } from './devSetup'
+export { driveFakeClock, FAKE_FIXTURES, pickFakeFixture, startDevFake } from './devSetup'
+export type { DevFake, DevPhotos, FakeDevEnv, FakeFixture } from './devSetup'

@@ -1,10 +1,15 @@
-import { ExportAccessRefused, requirePorts, type ExportAccess } from '@session/app'
+import {
+  ExportAccessRefused,
+  requirePorts,
+  suggestedExportName,
+  type ExportAccess,
+} from '@session/app'
 import type { Message } from '@session/client'
 import type { SessionActions } from '@session/state'
 
 /** What an export says when it does not land. Nothing is said for a cancel. */
 export interface ExportFeedback {
-  /** The destination needs access the OS will not ask for again. */
+  /** The destination needs access that was refused. */
   accessRefused: (access: ExportAccess) => void
   /** Anything else that stopped it: a refused write, a failed hand-off. */
   failed: () => void
@@ -24,7 +29,12 @@ export async function exportOne(
   feedback: ExportFeedback,
 ): Promise<void> {
   const attachment = message.attachments.find((a) => a.index === index)
-  const suggested = attachment?.filename ?? `attachment-${String(index + 1)}`
+  const suggested = suggestedExportName({
+    filename: attachment?.filename,
+    contentType: attachment?.contentType,
+    sentAtMs: message.timestamp,
+    index,
+  })
   try {
     const destination = await requirePorts().files.chooseExportLocation(
       suggested,

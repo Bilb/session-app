@@ -42,6 +42,11 @@ function unknownRefMessage({ messageId, index }: AttachmentRef): string {
   return `attachment ${String(index)} of message ${String(messageId)} does not exist`
 }
 
+/** What every source says of an attachment that exists but was sent with no hash. */
+function noPreviewMessage({ messageId, index }: AttachmentRef): string {
+  return `attachment ${String(index)} of message ${String(messageId)} has no preview`
+}
+
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
@@ -111,7 +116,11 @@ export function runMediaSourceContract(
 
     it('has no preview where the sender sent no hash', async () => {
       const { source, unhashed } = await harness.withAttachments()
-      expect(await failure(() => source.fetchPreview(unhashed))).toBeDefined()
+      // Exactly this sentence, so a ref that misses the attachment cannot pass on the unknown-ref
+      // refusal.
+      expect(messageOf(await failure(() => source.fetchPreview(unhashed)))).toBe(
+        noPreviewMessage(unhashed),
+      )
     })
   })
 }
