@@ -98,9 +98,14 @@ function transferTicks(bytes: number): number {
   return Math.max(Math.round((bytes / 1_000_000) * TICKS_PER_MEGABYTE), MIN_TRANSFER_TICKS)
 }
 
-/** libsession's rule: has attachments, and every one of them is an image. */
+/**
+ * libsession's rule: has attachments, and every one of them is an image. Its test is a
+ * case-sensitive prefix, so `Image/JPEG` is not an image here, unlike in `isImageContentType`.
+ */
 function galleryViewable(attachments: Attachment[]): boolean {
-  return attachments.length > 0 && attachments.every((a) => isImageContentType(a.contentType))
+  return (
+    attachments.length > 0 && attachments.every((a) => a.contentType?.startsWith('image/') === true)
+  )
 }
 
 function wantedBy(mode: AutoDownload | undefined, attachment: Attachment): boolean {
