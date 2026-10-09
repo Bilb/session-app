@@ -110,14 +110,19 @@ private fun saveToPublicFolder(context: Context, source: File, name: String, col
   if (!folder.isDirectory && !folder.mkdirs()) {
     throw CodedException("ERR_NO_FOLDER", "cannot create $folder", null)
   }
-  val landed = (0 until MAX_ATTEMPTS).map { File(folder, numbered(name, it)) }.firstOrNull { !it.exists() }
-    ?: throw CodedException("ERR_NO_FREE_NAME", "every name up to $MAX_ATTEMPTS is taken", null)
-  val partial = File.createTempFile(".${landed.name}.", ".sessiondl", folder)
-  try {
+  val partial = File.createTempFile(".$name.", ".sessiondl", folder)
+  val landed = try {
     FileInputStream(source).use { input -> partial.outputStream().use { input.copyTo(it) } }
-    if (landed.exists() || !partial.renameTo(landed)) {
-      throw CodedException("ERR_RENAME_REFUSED", "cannot move the copy to $landed", null)
+    // Picked once the copy is whole, so a same-name save that lands meanwhile is numbered past
+    // rather than replaced: `renameTo` replaces whatever holds the name.
+    val free = (0 until MAX_ATTEMPTS).asSequence()
+      .map { File(folder, numbered(name, it)) }
+      .firstOrNull { !it.exists() }
+      ?: throw CodedException("ERR_NO_FREE_NAME", "every name up to $MAX_ATTEMPTS is taken", null)
+    if (!partial.renameTo(free)) {
+      throw CodedException("ERR_RENAME_REFUSED", "cannot move the copy to $free", null)
     }
+    free
   } finally {
     partial.delete()
   }
