@@ -306,6 +306,9 @@ describeAddon('addon', () => {
         'fetches an arriving image unasked once told to fetch images': OFFLINE_ATTACHMENTS,
         'exports beside a file already written rather than over it, unless told to replace':
           OFFLINE_ATTACHMENTS,
+        'fetches an uncached export into the cache, reading as fetching meanwhile':
+          OFFLINE_ATTACHMENTS,
+        'withdraws what was asked of an attachment once it is deleted': OFFLINE_ATTACHMENTS,
       },
     },
   )

@@ -1,8 +1,15 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { backlog } from '#src/fake/backlog'
-import { driveFakeClock, FAKE_TICK_MS, pickFakeFixture } from '#src/fake/devSetup'
+import {
+  driveFakeClock,
+  FAKE_TICK_MS,
+  pickFakeFixture,
+  startDevFake,
+  type DevPhotos,
+} from '#src/fake/devSetup'
 import { photoFileName, photoFileNames } from '#src/fake/media'
+import { noDatabaseOpen } from '#src/fake/unopenable'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -151,5 +158,57 @@ describe('the dev clock', () => {
       /EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN=1O is not a positive whole number/,
     )
     expect(() => driveFakeClock(world, '0.5')).toThrow(/not a positive whole number/)
+  })
+})
+
+describe('starting a dev fake', () => {
+  const allPhotos: DevPhotos = { has: () => true, where: 'in /photos', fix: 'fetch them' }
+
+  // startDevFake starts a clock it does not hand back; a fake timer keeps it out of the worker.
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  it('refuses without every photograph, saying where and what to run', () => {
+    const [first] = photoFileNames()
+    expect(() => startDevFake({}, { ...allPhotos, has: (fileName) => fileName !== first })).toThrow(
+      'The fake needs its dev photographs in /photos, and 1 are missing. Run: fetch them',
+    )
+  })
+
+  it('checks the photographs before anything else', () => {
+    expect(() =>
+      startDevFake(
+        { EXPO_PUBLIC_SESSION_FAKE_FIXTURE: 'showcse' },
+        { ...allPhotos, has: () => false },
+      ),
+    ).toThrow(/30 are missing/)
+  })
+
+  it('opens the world the environment names, as Alice, and serves her', async () => {
+    const { alice, served } = startDevFake(
+      { EXPO_PUBLIC_SESSION_FAKE_FIXTURE: 'backlog' },
+      allPhotos,
+    )
+    expect(served).toBe(alice)
+    expect((await alice.getConversations()).length).toBeGreaterThanOrEqual(7)
+  })
+
+  it('runs the clock at EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN', () => {
+    const { world } = startDevFake({ EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN: '10' }, allPhotos)
+    const before = world.now()
+    vi.advanceTimersByTime(FAKE_TICK_MS)
+    expect(world.now()).toBe(before + FAKE_TICK_MS / 10)
+  })
+
+  it('serves a database that will not open on EXPO_PUBLIC_SESSION_FAKE_FAILED_START=1', async () => {
+    const { alice, served } = startDevFake(
+      { EXPO_PUBLIC_SESSION_FAKE_FAILED_START: '1' },
+      allPhotos,
+    )
+    await expect(served.getConversations()).rejects.toThrow(
+      noDatabaseOpen('file is not a database'),
+    )
+    await expect(alice.getConversations()).resolves.toBeDefined()
   })
 })

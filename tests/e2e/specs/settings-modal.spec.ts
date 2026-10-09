@@ -5,6 +5,8 @@ import { join } from 'node:path'
 import { _electron, expect, test } from '@playwright/test'
 import { ELEMENT } from '@session/test-ids'
 
+import { FAKE_LAUNCH_ENV } from '../harness/fakeEnv'
+
 const repoRoot = join(import.meta.dirname, '../../..')
 
 /**
@@ -36,9 +38,7 @@ test('settings opens over the list, pushes Help, and asks on top of itself', asy
     ],
     env: {
       ...process.env,
-      ELECTRON_RUN_AS_NODE: '',
-      EXPO_PUBLIC_SESSION_FAKE: '1',
-      SESSION_FAKE: '1',
+      ...FAKE_LAUNCH_ENV,
       SESSION_IDENTITY: 'alice',
       SESSION_DATA_DIR: dataDir,
     },

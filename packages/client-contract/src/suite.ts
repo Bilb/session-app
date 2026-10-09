@@ -11,6 +11,7 @@
 
 import {
   ATTACHMENT_NOT_FOUND,
+  FILE_DOWNLOAD_CANCELLED,
   FILE_NOT_FOUND,
   MESSAGE_NOT_FOUND,
   SessionClientError,
@@ -465,6 +466,7 @@ export function runSessionClientContract(
 
       // Removes the newest row, whose id is the one a reusing insert would take next.
       const { messages } = await alice.getMessages(bobId, { includeDeleted: true })
+      expect(messages.map((m) => m.body)).toContain('gone')
       const highest = Math.max(...messages.map((m) => m.id))
       await alice.deleteConversation(bobId)
       await settle()
@@ -690,9 +692,8 @@ export function runSessionClientContract(
       const exports = seen.events.filter(
         (e) => e.type === 'attachment-progress' && e.transfer === 'export',
       )
-      // libsession joins downloads with each other and never joins an export, so the two are
-      // distinguishable even for the same file - which is the only thing that keeps a single
-      // progress indicator from reading two transfers as one.
+      // Reported as an export even on a transfer a download shares, which is what keeps an
+      // indicator of one from reading the other's reports.
       expect(exports.length).toBeGreaterThan(0)
       const terminal = exports.filter(
         (e) => e.type === 'attachment-progress' && e.outcome !== undefined,
@@ -812,6 +813,72 @@ export function runSessionClientContract(
       expect(fetching).toBeGreaterThan(-1)
       expect(terminal).toBeGreaterThan(fetching)
       expect(seen.events.slice(terminal).some((e) => availability(e) === 'cached')).toBe(true)
+      seen.stop()
+    })
+
+    it('fetches an uncached export into the cache, reading as fetching meanwhile', async () => {
+      const { client, conversationId, messageId, index, settle } = await harness.withAttachment()
+      const seen = collect(client)
+      const destination = `/tmp/contract-export-fetch-${String(messageId)}-${String(Date.now())}.bin`
+
+      const exporting = client.exportAttachment(messageId, index, destination)
+      await settle()
+      await exporting
+
+      // The export is the file's transfer, so a tile drawn meanwhile shows its progress rather than
+      // offering a download.
+      const availability = (e: SessionEvent) => announcedAvailability(e, messageId, index)
+      const fetching = seen.events.findIndex((e) => availability(e) === 'fetching')
+      const ended = seen.events.findIndex(
+        (e) =>
+          e.type === 'attachment-progress' && e.transfer === 'export' && e.outcome !== undefined,
+      )
+      expect(fetching).toBeGreaterThan(-1)
+      expect(ended).toBeGreaterThan(fetching)
+
+      const kept = (await client.getMessages(conversationId)).messages
+        .find((m) => m.id === messageId)
+        ?.attachments.find((a) => a.index === index)
+      expect(kept?.availability).toBe('cached')
+
+      const after = seen.events.length
+      const download = client.downloadAttachment(messageId, index)
+      await settle()
+      await download
+      expect(seen.events.slice(after).filter((e) => e.type === 'attachment-progress')).toEqual([])
+      seen.stop()
+    })
+
+    it('withdraws what was asked of an attachment once it is deleted', async () => {
+      const { client, conversationId, messageId, index, settle, receiveImage } =
+        await harness.withAttachment()
+      const image = await receiveImage()
+      const seen = collect(client)
+      const destination = `/tmp/contract-withdrawn-${String(image)}-${String(Date.now())}.bin`
+
+      // Both asked for, and their attachments deleted before anything drives the transfers on:
+      // one with its message, the other with its conversation.
+      const downloading = failure(() => client.downloadAttachment(messageId, index))
+      const exporting = failure(() => client.exportAttachment(image, 0, destination))
+      await client.deleteMessage(messageId, 'here')
+      await client.deleteConversation(conversationId)
+      await settle()
+
+      const code = (error: unknown) => error instanceof SessionClientError && error.code
+      expect(code(await downloading)).toBe(FILE_DOWNLOAD_CANCELLED)
+      expect(code(await exporting)).toBe(FILE_DOWNLOAD_CANCELLED)
+
+      // Each request's last report says so too, rather than a transfer finishing for an
+      // attachment that no longer exists.
+      const ends = seen.events.flatMap((e) =>
+        e.type === 'attachment-progress' && e.outcome !== undefined
+          ? [[e.transfer, e.messageId, e.outcome.ok, e.outcome.error]]
+          : [],
+      )
+      expect(ends).toEqual([
+        ['download', messageId, false, FILE_DOWNLOAD_CANCELLED],
+        ['export', image, false, FILE_DOWNLOAD_CANCELLED],
+      ])
       seen.stop()
     })
 

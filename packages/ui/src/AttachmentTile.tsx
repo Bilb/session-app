@@ -14,11 +14,13 @@ import {
 import { Icon } from './Icon'
 import { Image } from './Image'
 import { Text } from './Text'
-import type { WithTestID } from './with'
+import type { WithFailedLabel, WithFailedTestID, WithTestID } from './with'
 
 export type AttachmentTileProps = WithMediaUri &
   WithMediaPreview &
-  WithTestID & {
+  WithTestID &
+  WithFailedLabel &
+  WithFailedTestID & {
     /** Always square. The album and the list both size it; it never measures anything itself. */
     side: number
     /**
@@ -37,7 +39,11 @@ export type AttachmentTileProps = WithMediaUri &
  * Over the sender's placeholder it sits on a scrim, so it reads against
  * whatever the placeholder's colours are; on the flat tile the glyph slot draws it instead.
  */
-function FailedMark({ side }: { side: number }) {
+function FailedMark({
+  side,
+  failedLabel,
+  failedTestID,
+}: { side: number } & WithFailedLabel & WithFailedTestID) {
   const small = side < 90
   return (
     <YStack
@@ -57,6 +63,9 @@ function FailedMark({ side }: { side: number }) {
         alignItems="center"
         justifyContent="center"
         backgroundColor={TILE_SCRIM}
+        role="img"
+        aria-label={failedLabel}
+        testID={failedTestID}
       >
         <Icon name="triangleAlert" size={small ? 'sm' : 'md'} color="$textPrimary" />
       </YStack>
@@ -84,6 +93,8 @@ export const AttachmentTile = memo(function AttachmentTile({
   preview,
   overflowLabel,
   testID,
+  failedLabel,
+  failedTestID,
 }: AttachmentTileProps) {
   const radius = tileRadius(side)
   /**
@@ -143,6 +154,7 @@ export const AttachmentTile = memo(function AttachmentTile({
           right={0}
           alignItems="center"
           justifyContent="center"
+          {...(failed ? { role: 'img', 'aria-label': failedLabel, testID: failedTestID } : {})}
         >
           <Icon
             name={failed ? 'triangleAlert' : 'image'}
@@ -170,7 +182,9 @@ export const AttachmentTile = memo(function AttachmentTile({
         </YStack>
       )}
 
-      {failed && placeholder !== null ? <FailedMark side={side} /> : null}
+      {failed && placeholder !== null ? (
+        <FailedMark side={side} failedLabel={failedLabel} failedTestID={failedTestID} />
+      ) : null}
 
       {here || placeholder !== null ? null : (
         // Only round the flat surface, which needs an edge to be seen against the page; a tile

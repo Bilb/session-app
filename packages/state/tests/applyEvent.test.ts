@@ -372,8 +372,8 @@ describe('attachment transfers', () => {
   })
 
   it('keeps a download and an export of the same attachment apart', () => {
-    // libsession joins downloads with each other and never joins an export, so both can be
-    // running against one file: keyed only by message and index they would overwrite each other
+    // One file can be downloading and exporting at once, on separate transfers when the cache
+    // will not keep it: keyed only by message and index the reports would overwrite each other
     // and the bar would jump backwards.
     const state = replay(
       [

@@ -46,7 +46,10 @@ export interface MediaViewerProps {
   imageTestID: ElementId
 }
 
-/** Grows a control drawn at `$xl` to Android's 48 target, which clears Apple's 44. Touch only. */
+/**
+ * Grows a control drawn at `$xl` to Android's 48 target, which clears Apple's 44. Touch only, and
+ * only as far as the control's parent: `HEADER_HEIGHT` is what lets the header's two reach it.
+ */
 const CONTROL_SLOP = (SIZE_SCALE['3xl'] - SIZE_SCALE.xl) / 2
 
 function Control({
@@ -92,9 +95,10 @@ function Control({
  * The chrome along the top, as a fixed height.
  *
  * A number because the picture below is measured against it, and a header that took its height
- * from its content would make that measurement a guess. `$xl` control plus the air around it.
+ * from its content would make that measurement a guess. On touch, the 48 a control's slop grows
+ * it to, since a slop is clipped to the row; on the web, `$xl` control plus the air around it.
  */
-const HEADER_HEIGHT = SIZE_SCALE.xl + SPACING.sm
+const HEADER_HEIGHT = isWeb ? SIZE_SCALE.xl + SPACING.sm : SIZE_SCALE['3xl']
 
 /**
  * One picture, full screen, over whatever was on screen.

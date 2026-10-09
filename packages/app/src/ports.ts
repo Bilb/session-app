@@ -41,8 +41,7 @@ export interface FilesPort {
    * `contentType` is the sender's claim, for a platform whose destination depends on the kind of
    * file: mobile sends a picture to the photo library and anything else to a folder.
    *
-   * Rejects with `ExportAccessRefused` when that destination needs access the OS will not ask
-   * for again.
+   * Rejects with `ExportAccessRefused` when that destination needs access that was refused.
    */
   chooseExportLocation(suggestedName: string, contentType?: string): Promise<string | null>
   openPath(path: string): Promise<void>

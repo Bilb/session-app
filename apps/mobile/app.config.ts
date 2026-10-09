@@ -18,9 +18,9 @@ import { withSessionMedia } from '#plugins/withSessionMedia'
  * detect. `import { IOSConfig }` therefore fails at load with "does not provide an export named",
  * while the plain functions beside it import fine. Through `require` they are ordinary properties.
  */
-const { IOSConfig, withXcodeProject } = createRequire(import.meta.url)(
-  '@expo/config-plugins',
-) as typeof ConfigPlugins
+const { AndroidConfig, IOSConfig, withAndroidManifest, withXcodeProject } = createRequire(
+  import.meta.url,
+)('@expo/config-plugins') as typeof ConfigPlugins
 
 /**
  * A file in the generated catalogue, read as text rather than imported from.
@@ -172,6 +172,26 @@ const withPermissionStrings: ConfigPlugins.ConfigPlugin = (config) =>
   })
 
 /**
+ * Android storage access cut to what exporting uses: WRITE_EXTERNAL_STORAGE on 9 and below, and
+ * nothing from 10, where MediaStore takes the save. expo-media-library, there for iOS, declares it
+ * up to 32 with `requestLegacyExternalStorage`. Wraps the config rather than sitting in `plugins`,
+ * so it runs after theirs.
+ */
+const withExportStorageAccess: ConfigPlugins.ConfigPlugin = (config) =>
+  withAndroidManifest(config, (android) => {
+    const manifest = android.modResults
+    delete AndroidConfig.Manifest.getMainApplicationOrThrow(manifest).$[
+      'android:requestLegacyExternalStorage'
+    ]
+    for (const permission of manifest.manifest['uses-permission'] ?? []) {
+      if (permission.$['android:name'] === 'android.permission.WRITE_EXTERNAL_STORAGE') {
+        Object.assign(permission.$, { 'android:maxSdkVersion': '28' })
+      }
+    }
+    return android
+  })
+
+/**
  * What a local build's bundle identifier gets on the end.
  *
  * **`-test` by default, and deliberately so.** An identifier is reserved with Apple by the first
@@ -195,90 +215,93 @@ function bundleId(config: ConfigContext['config']): string {
  */
 export default ({ config }: ConfigContext): ExpoConfig =>
   withSessionMedia(
-    withPermissionStrings({
-      ...config,
-      name: config.name ?? 'Session',
-      slug: config.slug ?? 'session-app',
-      plugins: [
-        ...(config.plugins ?? []),
-        // The camera is the scanner behind the restore screen's QR tab.
-        [
-          'expo-camera',
-          {
-            cameraPermission: englishPermission('NSCameraUsageDescription'),
-            // The plugin adds RECORD_AUDIO to the Android manifest unless told not to, and a
-            // dangerous permission on the store listing wants a reason. The only camera here reads
-            // QR codes.
-            recordAudioAndroid: false,
-          },
+    withExportStorageAccess(
+      withPermissionStrings({
+        ...config,
+        name: config.name ?? 'Session',
+        slug: config.slug ?? 'session-app',
+        plugins: [
+          ...(config.plugins ?? []),
+          // The camera is the scanner behind the restore screen's QR tab.
+          [
+            'expo-camera',
+            {
+              cameraPermission: englishPermission('NSCameraUsageDescription'),
+              // The plugin adds RECORD_AUDIO to the Android manifest unless told not to, and a
+              // dangerous permission on the store listing wants a reason. The only camera here
+              // reads QR codes.
+              recordAudioAndroid: false,
+            },
+          ],
+          // iOS saves an exported picture or video to Photos through this. The plugin's own strings
+          // would replace the catalogue's, and `false` deletes the key from the plist outright. On
+          // Android `modules/media-store` does the saving, and `withExportStorageAccess` trims what
+          // this declares there.
+          [
+            'expo-media-library',
+            {
+              photosPermission: englishPermission('NSPhotoLibraryUsageDescription'),
+              savePhotosPermission: englishPermission('NSPhotoLibraryAddUsageDescription'),
+              // Unset, the plugin declares audio too. Images and video are blocked below.
+              granularPermissions: ['photo', 'video'],
+            },
+          ],
+          // Legacy Android's floor.
+          ['expo-build-properties', { android: { minSdkVersion: 26 } }],
         ],
-        // iOS saves an exported picture or video to Photos through this. The plugin's own strings
-        // would replace the catalogue's, and `false` deletes the key from the plist outright. On
-        // Android it declares WRITE_EXTERNAL_STORAGE, which exporting on 9 and below needs;
-        // `modules/media-store` does the saving there.
-        [
-          'expo-media-library',
-          {
-            photosPermission: englishPermission('NSPhotoLibraryUsageDescription'),
-            savePhotosPermission: englishPermission('NSPhotoLibraryAddUsageDescription'),
-            // Unset, the plugin declares audio too. Images and video are blocked below.
-            granularPermissions: ['photo', 'video'],
-          },
-        ],
-        // Legacy Android's floor.
-        ['expo-build-properties', { android: { minSdkVersion: 26 } }],
-      ],
-      android: {
-        ...config.android,
-        // The media-library plugin declares reading the library, which saving to it never does;
-        // Play asks every app declaring them to justify it.
-        blockedPermissions: [
-          ...(config.android?.blockedPermissions ?? []),
-          'android.permission.READ_MEDIA_IMAGES',
-          'android.permission.READ_MEDIA_VIDEO',
-          'android.permission.READ_MEDIA_VISUAL_USER_SELECTED',
-        ],
-      },
-      ios: {
-        ...config.ios,
-        bundleIdentifier: bundleId(config),
-        entitlements: {
-          ...config.ios?.entitlements,
-          // **Follows the identifier, because it has to.** The access group is the app's own
-          // identifier prefixed by the team, so a `-test` build entitled to the unsuffixed group is
-          // entitled to a group it is not in -- and the keychain refuses it. That surfaces as
-          // expo-secure-store failing to store the database key, which is the app not starting
-          // rather than a warning.
-          'keychain-access-groups': [`$(AppIdentifierPrefix)${bundleId(config)}`],
+        android: {
+          ...config.android,
+          // The media-library plugin declares reading the library, which saving to it never does;
+          // Play asks every app declaring them to justify it. On 9 and below WRITE grants READ.
+          blockedPermissions: [
+            ...(config.android?.blockedPermissions ?? []),
+            'android.permission.READ_MEDIA_IMAGES',
+            'android.permission.READ_MEDIA_VIDEO',
+            'android.permission.READ_MEDIA_VISUAL_USER_SELECTED',
+            'android.permission.READ_EXTERNAL_STORAGE',
+          ],
         },
-        infoPlist: {
-          ...config.ios?.infoPlist,
-          // Every purpose string the plugins above do not write. English only here;
-          // `permissionLocales` puts each of the other languages into its own `.lproj`, keyed off
-          // this same map.
-          ...Object.fromEntries(
-            Object.keys(PERMISSION_STRINGS)
-              .filter((plistKey) => !PLUGIN_WRITTEN_KEYS.has(plistKey))
-              .map((plistKey) => [plistKey, englishPermission(plistKey)]),
-          ),
-          // The service the local-network prompt is triggered by. The client's own name, and not a
-          // service anything offers: browsing for it is what makes iOS ask, which is the whole
-          // reason it is declared. Without this array the usage description above never appears.
-          NSBonjourServices: ['_session_local_network_access_check._tcp'],
-          /**
-           * **What makes iOS offer a per-app language at all**, and what makes the `.lproj` strings
-           * above reachable: a bundle is localized for the languages it declares here.
-           *
-           * Settings shows a Preferred Language row only for a bundle declaring more than one
-           * localization. Nothing sends anybody there -- the picker owns the language -- but iOS
-           * reports whatever is chosen as the app's effective locale, which is what the picker's
-           * *Default* row follows.
-           *
-           * The catalogue's own identifiers. iOS matches them by the usual BCP-47 rules rather than
-           * exactly, so one it does not recognise costs a row in that list and nothing else.
-           */
-          CFBundleLocalizations: shippedLocales(),
+        ios: {
+          ...config.ios,
+          bundleIdentifier: bundleId(config),
+          entitlements: {
+            ...config.ios?.entitlements,
+            // **Follows the identifier, because it has to.** The access group is the app's own
+            // identifier prefixed by the team, so a `-test` build entitled to the unsuffixed group
+            // is entitled to a group it is not in -- and the keychain refuses it. That surfaces as
+            // expo-secure-store failing to store the database key, which is the app not starting
+            // rather than a warning.
+            'keychain-access-groups': [`$(AppIdentifierPrefix)${bundleId(config)}`],
+          },
+          infoPlist: {
+            ...config.ios?.infoPlist,
+            // Every purpose string the plugins above do not write. English only here;
+            // `permissionLocales` puts each of the other languages into its own `.lproj`, keyed off
+            // this same map.
+            ...Object.fromEntries(
+              Object.keys(PERMISSION_STRINGS)
+                .filter((plistKey) => !PLUGIN_WRITTEN_KEYS.has(plistKey))
+                .map((plistKey) => [plistKey, englishPermission(plistKey)]),
+            ),
+            // The service the local-network prompt is triggered by. The client's own name, and not
+            // a service anything offers: browsing for it is what makes iOS ask, which is the whole
+            // reason it is declared. Without this array the usage description above never appears.
+            NSBonjourServices: ['_session_local_network_access_check._tcp'],
+            /**
+             * **What makes iOS offer a per-app language at all**, and what makes the `.lproj`
+             * strings above reachable: a bundle is localized for the languages it declares here.
+             *
+             * Settings shows a Preferred Language row only for a bundle declaring more than one
+             * localization. Nothing sends anybody there -- the picker owns the language -- but iOS
+             * reports whatever is chosen as the app's effective locale, which is what the picker's
+             * *Default* row follows.
+             *
+             * The catalogue's own identifiers. iOS matches them by the usual BCP-47 rules rather
+             * than exactly, so one it does not recognise costs a row in that list and nothing else.
+             */
+            CFBundleLocalizations: shippedLocales(),
+          },
         },
-      },
-    }),
+      }),
+    ),
   )

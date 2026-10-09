@@ -389,11 +389,22 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   Android files by the MIME type the name implies, as legacy Android's `SaveAttachmentTask` does,
   so a name whose type a media collection refuses goes to Download. From Android 10 the row is
   inserted pending and published once the copy is whole: no other app sees a half-written file,
-  MediaStore deletes the row itself if the app dies first, and it numbers a name already taken.
-  On 8 and 9 the same public folders are written directly, under a hidden temporary name renamed
-  once whole, then scanned. Without the grant there is nowhere to write, so any refusal ends the
-  export with the dialog that leads to the settings, as legacy does. iOS copies into the picked
-  folder under a temporary name renamed into place; Photos refuses 3GPP, so that goes to a folder.
+  and MediaStore numbers a name already taken. A row the app dies before publishing expires after
+  a day on 10, where the app sets the expiry and clears it on publish, and after a week on 11 and
+  up, where MediaStore does both; idle maintenance then deletes it. On 8 and 9 the same public
+  folders are written directly, under a hidden temporary name renamed once whole, then scanned,
+  and the scanner's `content://` URI is what is opened afterwards. Without the grant there is
+  nowhere to write, so any refusal ends the export with the dialog that leads to the settings;
+  legacy shows that dialog only once the OS stops asking, and toasts before. iOS copies into the
+  picked folder under a temporary name renamed into place; Photos refuses 3GPP, so that goes to a
+  folder.
+
+  A file the sender did not name is suggested as `Session_<yyyy-MM-dd-HHmmss>` in local time from
+  when the message was sent, `_<n>` added for the n-th attachment from the second on, plus the
+  extension its declared type calls for, as legacy Android names one; a named file with no
+  extension gets that extension. Android files by extension, so a sound without one would land in
+  Download, and MediaStore stops numbering a name after about 32 copies, so the suggestion has to
+  differ between messages.
 
   Not a folder picker on Android. The Storage Access Framework hands the write to whichever
   provider was picked, and a provider may refuse a rename, refuse a delete, or advertise a rename
@@ -667,8 +678,7 @@ Append one paragraph per decision. Undocumented decisions are what rot.
 - **2026-09-28 - Mobile resolves `session-media://` in a native image loader per platform.**
   `MediaPort.urlFor` stays synchronous and the URL stays the request, so the bytes never enter
   JavaScript: the loader recognises the scheme, asks the shim, and hands the platform a decoded
-  image. Android's is a Fresco producer sequence and iOS's an `RCTImageURLLoader`; each has its
-  own entry below when it lands.
+  image. Android's is a Fresco producer sequence and iOS's an `RCTImageURLLoader`.
 
   Rejected for Android: a non-exported `ContentProvider` and a `content://` URL, which is what the
   legacy client does and would serve Glide and Media3 too. Fresco reads a content URI
@@ -714,12 +724,30 @@ Append one paragraph per decision. Undocumented decisions are what rot.
 - **2026-10-01 - iOS draws `session-media://` through an `RCTImageURLLoader`.** Registered
   through `codegenConfig.ios.modulesConformingToProtocol`, which Expo's `RCTAppDependencyProvider`
   hands to React Native. The answer, on Core's loop or the JS thread, is handed to a concurrent
-  queue the loader owns, which runs `servable_image_type`, decodes with ImageIO no larger than
-  the view needs under a `cover` fit, with the file's orientation applied and a GIF as an
-  `RCTAnimatedImage`, and hands React Native a `UIImage` whose bytes are the shim's, held by the
-  `NSData` deallocator rather than copied. Nothing is written to disk: a URL loader is not behind
-  `NSURLCache`. React Native caches only the images it decoded itself from an HTTP response, so
-  the loader keeps its own bounded cache of decoded tiles and previews, keyed by URL, size and
-  scale, and never a viewer-size picture, so paging the viewer cannot evict a screen of tiles. The
-  fake registers itself as the source with `serveMediaFrom` on both platforms, so it
-  draws through the real loaders.
+  queue the loader owns, which runs `servable_image_type` and hands ImageIO the shim's bytes in
+  place, held by an `NSData` deallocator. A still is decoded there into a new bitmap, with
+  the file's orientation applied, no larger than the view needs under a `cover` fit and never past
+  one pixel-area budget, which the overshoot of a long thin picture would otherwise exceed. A GIF
+  of more than one frame whose canvas fits that budget is an `RCTAnimatedImage`, which keeps the
+  shim's bytes and decodes each frame whole at draw; any other GIF is its first frame, decoded as a
+  still. Nothing is written to disk: a URL loader is not behind `NSURLCache`. React Native caches
+  only the images it decoded itself from an HTTP response, so the loader keeps its own cache of
+  decoded stills and previews, keyed by URL, size and scale, and leaves out an animation and any
+  entry over 4 MB, so one full-screen decode cannot evict a screen of tiles. React Native reports a
+  failed load only to the view's `onError`, so the loader logs each one with its URL. The fake
+  registers itself as the source with `serveMediaFrom` on both platforms, so it draws through the
+  real loaders.
+
+- **2026-10-09 - A media URL names one attachment for the life of one database.** libsession
+  never hands a message id out twice within a database, so `session-media://attachment/<id>/<n>`
+  and its preview can be cached by URL for as long as that database is open. A discard opens a new
+  one numbering from 1 again, after which every URL cached before it names some other message. The
+  bridge calls `InitOptions::on_database_replaced` after every discard, the startup sweep's
+  included. Mobile empties its loaders' caches there: Fresco's bitmap and encoded memory caches on
+  Android, the loader's cache of decoded stills and previews on iOS. Desktop empties nothing, because Blink caches the
+  scheme's responses where main cannot reach them; it relies on the process ending instead.
+  Settings > Clear data relaunches, and onboarding's back, the clear offered when the database
+  will not open and the startup sweep all come before any media is drawn. A decode answered just
+  before a mobile reset can still land after it and cache the old picture again, which the same
+  ordering keeps latent. A discard that can follow drawn media in one process needs a per-database
+  epoch in the URL instead.

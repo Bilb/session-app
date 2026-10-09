@@ -111,11 +111,12 @@ struct InitOptions {
     /// nothing and costs nothing, which is why the names are checked before they get here.
     std::vector<LogCategoryLevel> log_categories;
 
-    /// Runs once a discard has replaced the database, on the thread that ran the discard.
+    /// Runs once a discard has replaced the database, the startup sweep's included, on the thread
+    /// that called into the bridge.
     ///
-    /// libsession never hands a message id out twice within one database, but a new database
-    /// numbers from 1 again, so anything kept by message id - a decoded picture behind a
-    /// `session-media://` URL - names a different message afterwards and has to go here.
+    /// A new database numbers messages from 1 again, so a `session-media://` URL cached before it
+    /// names a different message. Mobile empties its image loaders' caches here; desktop leaves
+    /// Blink's to the relaunch after a clear. See docs/ARCHITECTURE.md, 2026-10-09.
     std::function<void()> on_database_replaced;
 };
 

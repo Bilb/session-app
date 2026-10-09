@@ -41,11 +41,11 @@ export type Deletion = 'here' | 'everywhere'
 export type AutoDownload = 'none' | 'image-attachments' | 'all'
 
 /**
- * Which kind of transfer a progress report belongs to.
+ * Which request a progress report belongs to.
  *
- * libsession joins concurrent downloads of one file with each other but never joins an export, so
- * one attachment can have two live transfers at once. Keyed without this they interleave, and a bar
- * jumps backwards.
+ * libsession fetches a file once for every download and export of it, but reports to each request
+ * separately and ends each with its own outcome, so one attachment can be downloading and exporting
+ * at once. An export of a file over the cache limit runs a transfer of its own that nothing joins.
  */
 export type AttachmentTransfer = 'download' | 'export'
 

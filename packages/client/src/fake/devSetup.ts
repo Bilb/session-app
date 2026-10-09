@@ -1,11 +1,16 @@
 import { friendsWithAttachments } from './attachments'
 import { backlog } from './backlog'
+import type { FakeSessionClient } from './FakeSessionClient'
 import { crowd, newcomer, type FakeSetup } from './fixtures'
+import { photoFileNames } from './media'
 import { showcase } from './showcase'
+import type { SessionClient } from '../types'
+import { unopenable } from './unopenable'
 import type { FakeWorld } from './world'
 
 /**
- * Which world an app's dev fake starts in, and how fast its clock runs, from the environment.
+ * How an app's dev fake starts, from the environment: which world, how fast its clock runs, and
+ * whether its database opens.
  *
  * Shared so desktop and mobile start the same worlds from the same variables.
  */
@@ -15,9 +20,9 @@ export const FAKE_FIXTURES = ['friends', 'showcase', 'backlog', 'newcomer', 'cro
 export type FakeFixture = (typeof FAKE_FIXTURES)[number]
 
 /**
- * The variables that choose a dev fake's world, unset as undefined. One name on every platform:
- * desktop hands `process.env` over whole, mobile a record of literal reads, since Expo inlines a
- * variable only where its name is written out.
+ * The variables that start a dev fake, unset as undefined. One name on every platform: desktop
+ * hands `process.env` over whole, mobile a record of literal reads, since Expo inlines a variable
+ * only where its name is written out.
  */
 export interface FakeDevEnv {
   /** One of `FAKE_FIXTURES`. Wins over the two below. */
@@ -28,6 +33,10 @@ export interface FakeDevEnv {
   EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS?: string | undefined
   /** Messages per peer in `crowd`. */
   EXPO_PUBLIC_SESSION_FAKE_CROWD_HISTORY?: string | undefined
+  /** N runs the fake's clock N times slower. See `driveFakeClock`. */
+  EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN?: string | undefined
+  /** `1` serves a database that will not open, for the failure screen. */
+  EXPO_PUBLIC_SESSION_FAKE_FAILED_START?: string | undefined
 }
 
 /**
@@ -111,4 +120,54 @@ export function driveFakeClock(world: FakeWorld, slowdown: string | undefined): 
   return () => {
     timers.clearInterval(ticking)
   }
+}
+
+/** The dev photographs as an app can see them. */
+export interface DevPhotos {
+  has: (fileName: string) => boolean
+  /** Where the app reads them from, as it ends "The fake needs its dev photographs ...". */
+  where: string
+  /** The command that puts them there. */
+  fix: string
+}
+
+/** A started dev fake: Alice is who the app is, `served` is her as the app's transport sees her. */
+export interface DevFake {
+  world: FakeWorld
+  alice: FakeSessionClient
+  served: SessionClient
+}
+
+/**
+ * Starts an app's dev fake: checks the photographs, opens the world the environment names, runs
+ * its clock, and fails the database when asked to.
+ *
+ * Refuses to start without every photograph, before anything opens, rather than draw a stand-in:
+ * a fake that draws something else looks like it works and hides whether the pictures that would
+ * really arrive are drawn right.
+ */
+export function startDevFake(env: FakeDevEnv, photos: DevPhotos): DevFake {
+  const missing = photoFileNames().filter((name) => !photos.has(name))
+  if (missing.length > 0) {
+    throw new Error(
+      `The fake needs its dev photographs ${photos.where}, and ${String(missing.length)} are ` +
+        `missing. Run: ${photos.fix}`,
+    )
+  }
+
+  const { world, clients } = pickFakeFixture(env)
+  const alice = clients['Alice']
+  if (!alice) throw new Error('the fixture did not produce a client')
+
+  driveFakeClock(world, env.EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN)
+
+  // The failure screen is otherwise reachable only with a database somebody has already broken.
+  // `unopenable` refuses with libsession's own reason and lets a discard through, so the screen's
+  // Clear Device works here too.
+  const served =
+    env.EXPO_PUBLIC_SESSION_FAKE_FAILED_START === '1'
+      ? unopenable(alice, 'file is not a database')
+      : alice
+
+  return { world, alice, served }
 }

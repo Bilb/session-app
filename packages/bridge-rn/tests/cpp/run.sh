@@ -37,3 +37,6 @@ run "$out/MediaSource.test"
     "$pkg/../bridge-core/src/media_url.cpp" "$here/media_url.test.cpp" \
     -o "$out/media_url.test"
 run "$out/media_url.test"
+
+"${CXX:-g++}" "${flags[@]}" "$here/DecodeBound.test.cpp" -o "$out/DecodeBound.test"
+run "$out/DecodeBound.test"
