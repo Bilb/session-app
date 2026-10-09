@@ -2,8 +2,16 @@ export { addressShape, renderAddress, type AddressClass, type AddressFamily } fr
 export { LOG_LEVELS, levelRank, parseLevel, type LogLevel } from './level'
 export { PREFIX_WIDTH, formatPrefix } from './line'
 export { MARKER, createLogger, type Logger, type LoggerOptions, type LogSink } from './logger'
+export { networkRows, type NetworkSettings } from './network'
 export { Pseudonyms } from './pseudonym'
-export { startupBlock, utcOffset, versionText, type StartupFacts } from './startup'
+export {
+  LAUNCH_PREFIX,
+  readableUtc,
+  startupBlock,
+  utcOffset,
+  versionText,
+  type StartupFacts,
+} from './startup'
 export { emptyCounts, sweep, type SweepCounts } from './sweep'
 export { renderUrl } from './url'
 export {

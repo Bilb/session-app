@@ -55,15 +55,8 @@ export async function startLogging(store: SessionStore): Promise<void> {
     uptimeMs: () => performance.now() + offsetMs,
     minLevel: (category) => (category === 'session' ? 'debug' : 'info'),
   })
-  startLogger(logger, {
-    platform: session.platform,
-    osVersion: session.osVersion,
-    model: session.model,
-    locale: session.locale,
-    install: 'unknown',
-    network: session.network,
-    previousRun: session.previousRun,
-  })
+  // Main wrote the startup block when it started; this process only marks its own launch.
+  startLogger(logger, null, { process: 'renderer' })
   logStoreMilestones(store)
 }
 

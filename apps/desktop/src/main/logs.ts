@@ -15,14 +15,16 @@ import electron from 'electron'
 
 import {
   createLogger,
+  networkRows,
+  startupBlock,
   LogWriter,
   Pseudonyms,
   type LogDirectory,
   type Logger,
-  type PreviousRun,
 } from '@session/logging'
 
-import { networkSettings, type NetworkSettings } from './bridge'
+import { networkSettings } from './bridge'
+import { linuxRows, osText } from './platformRows'
 import { isFromAppFrame } from './security'
 
 const { app } = electron
@@ -93,17 +95,58 @@ export interface MainLogs {
 
 let opened: Promise<MainLogs> | null = null
 
-function friendlyPlatform(): string {
-  switch (process.platform) {
-    case 'darwin':
-      return 'macOS'
-    case 'win32':
-      return 'Windows'
-    case 'linux':
-      return 'Linux'
-    default:
-      return process.platform
+/** `/etc/os-release`, or null where there is none, which is everywhere but Linux. */
+function readOsRelease(): string | null {
+  try {
+    return readFileSync('/etc/os-release', 'utf8')
+  } catch {
+    return null
   }
+}
+
+/** A flag's variable, named as the renderer names the flag: `disableAnimations=1`. */
+function flagOverrides(flags: Record<string, string>): string[] {
+  return Object.entries(flags).map(([variable, value]) => {
+    const words = variable.replace('EXPO_PUBLIC_SESSION_FLAG_', '').toLowerCase().split('_')
+    const name = words.map((word, i) =>
+      i === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1),
+    )
+    return `${name.join('')}=${value}`
+  })
+}
+
+/**
+ * The startup block, written by main rather than the renderer: main starts first, so the block
+ * opens the file, and it is written even when the renderer never loads - which is when a log is
+ * wanted most.
+ */
+function mainStartupBlock(writer: LogWriter): string[] {
+  const build = __SESSION_BUILD_INFO__
+  const network = networkRows(networkSettings())
+  return startupBlock({
+    launchedAtMs: launchMs,
+    version: build.version,
+    buildNumber: null,
+    commit: build.commit,
+    libsessionCommit: build.libsessionCommit,
+    variant: build.variant || 'unknown',
+    install: 'unknown',
+    model: arch(),
+    os: osText(process.platform, process.getSystemVersion(), release()),
+    platformRows: linuxRows({
+      platform: process.platform,
+      env: process.env,
+      osRelease: readOsRelease(),
+    }),
+    locale: app.getLocale(),
+    utcOffsetMinutes: -new Date().getTimezoneOffset(),
+    network: network.network,
+    transport: network.transport,
+    networkSettings: network.networkSettings,
+    flagOverrides: flagOverrides(build.flags),
+    logSpec: network.logSpec,
+    previousRun: writer.previousRun,
+  })
 }
 
 /** What the renderer needs to write lines main will accept, and the facts only main can read. */
@@ -111,12 +154,6 @@ interface LogSession {
   saltHex: string
   /** Main's uptime as the renderer asked, so both processes write one clock. */
   uptimeMs: number
-  previousRun: PreviousRun | null
-  network: NetworkSettings
-  platform: string
-  osVersion: string
-  model: string
-  locale: string
 }
 
 /**
@@ -150,6 +187,9 @@ export function openLogs(): Promise<MainLogs> {
             },
           }),
     })
+    // After ready, which is when Electron can say the locale; nothing logs before then.
+    await app.whenReady()
+    logger.section(mainStartupBlock(writer))
     logger.marker('lifecycle', 'launch', { process: 'main' })
     return { logger, writer, salt }
   })()
@@ -159,7 +199,7 @@ export function openLogs(): Promise<MainLogs> {
 /**
  * The renderer's two log calls, on this window's own `ipc`.
  *
- * `log:open` hands over the pseudonym salt along with the facts; the renderer is the less trusted
+ * `log:open` hands over the pseudonym salt and main's clock; the renderer is the less trusted
  * of the two processes, but a salt only lets its holder recompute pseudonyms of ids it already
  * has, and the renderer has them all anyway. `log:append` takes finished lines: bounded in count
  * and length, and with any newline escaped so one call cannot forge a line of another.
@@ -169,17 +209,8 @@ export function serveLogs(window: Electron.BrowserWindow, appUrl: string): void 
 
   ipc.handle('log:open', async (event): Promise<LogSession> => {
     if (!isFromAppFrame(event.senderFrame, appUrl)) throw new Error('refused')
-    const { salt, writer } = await openLogs()
-    return {
-      saltHex: Buffer.from(salt).toString('hex'),
-      uptimeMs: process.uptime() * 1000,
-      previousRun: writer.previousRun,
-      network: networkSettings(),
-      platform: friendlyPlatform(),
-      osVersion: process.getSystemVersion(),
-      model: `${arch()} · kernel ${release()}`,
-      locale: app.getLocale(),
-    }
+    const { salt } = await openLogs()
+    return { saltHex: Buffer.from(salt).toString('hex'), uptimeMs: process.uptime() * 1000 }
   })
 
   ipc.on('log:append', (event, lines: unknown, urgent: unknown) => {

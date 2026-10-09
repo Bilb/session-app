@@ -34,10 +34,10 @@ if (existsSync(dotEnv)) process.loadEnvFile(dotEnv)
  * so a stamp means the same on every platform. A submodule counts only if its pointer moved, not
  * for work inside it. Null outside a git checkout, where there is nothing honest to say.
  */
-function commitStamp(): string | null {
+function commitStamp(cwd: string = appDir): string | null {
   const git = (...args: string[]) =>
     execFileSync('git', args, {
-      cwd: appDir,
+      cwd,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     })
@@ -51,6 +51,9 @@ function commitStamp(): string | null {
     return null
   }
 }
+
+/** The libsession submodule, whose commit the logs report beside the app's. */
+const libsessionDir = fileURLToPath(new URL('../../libsession-util/', import.meta.url))
 
 /** This app's own version, which is the one its builds are released as. */
 const version = (
@@ -224,9 +227,26 @@ const DEVELOPER_SETTINGS = [
 // Before anything below is substituted, so a release cannot carry one of them.
 refuseDeveloperSettingsInRelease()
 
+/**
+ * What the main process says about the build in the log's startup block, which it writes: the
+ * same stamps the renderer gets one by one, as one constant. See `buildInfo.d.ts` in main.
+ */
+const mainBuildInfo = {
+  version,
+  commit: commitStamp(),
+  libsessionCommit: commitStamp(libsessionDir),
+  variant: process.env['EXPO_PUBLIC_SESSION_BUILD_VARIANT'] ?? '',
+  flags: Object.fromEntries(
+    Object.entries(process.env).filter(
+      ([key, value]) => key.startsWith(FLAG_PREFIX) && value !== undefined,
+    ),
+  ),
+}
+
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin({ exclude: workspacePackages })],
+    define: { __SESSION_BUILD_INFO__: JSON.stringify(mainBuildInfo) },
   },
   preload: {
     plugins: [externalizeDepsPlugin({ exclude: workspacePackages })],
@@ -282,6 +302,10 @@ export default defineConfig({
       // Read here because the renderer can reach neither git nor its own manifest.
       'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_VERSION': JSON.stringify(version),
       'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_COMMIT': JSON.stringify(commitStamp()),
+      // The libsession the addon is built from: the submodule's own commit, stamped the same way.
+      'import.meta.env.EXPO_PUBLIC_SESSION_LIBSESSION_COMMIT': JSON.stringify(
+        commitStamp(libsessionDir),
+      ),
       // What the build was made as -- `website`, `store`... -- said by whoever assembles it, for
       // the log's startup block. Empty is written as `unknown` rather than guessed at.
       'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_VARIANT': JSON.stringify(

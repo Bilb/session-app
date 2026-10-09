@@ -264,6 +264,26 @@ void app.whenReady().then(async () => {
   })
 })
 
+// A process of ours that died, with Chromium's reason: `oom`, `crashed`, `killed`. Otherwise a
+// renderer that dies and reloads, or a GPU process that restarts, leaves nothing to say it did.
+app.on('render-process-gone', (_event, _contents, details) => {
+  void openLogs().then(({ logger }) => {
+    logger.marker('lifecycle', 'renderer gone', {
+      reason: details.reason,
+      exitCode: details.exitCode,
+    })
+  })
+})
+app.on('child-process-gone', (_event, details) => {
+  void openLogs().then(({ logger }) => {
+    logger.marker('lifecycle', 'child process gone', {
+      type: details.type,
+      reason: details.reason,
+      exitCode: details.exitCode,
+    })
+  })
+})
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })

@@ -43,8 +43,11 @@ export interface Logger {
   critical(category: string, message: string, fields?: LogFields): void
   /** An unmissable line - `launch`, `background`, `start ok` - written whatever the level. */
   marker(category: string, name: string, fields?: LogFields): void
-  /** Lines written as they are, after the prefix: the startup block. Still swept. */
-  block(category: string, lines: readonly string[]): void
+  /**
+   * Lines written as they are, without the prefix: the startup block, which is for people and
+   * reads better without a timestamp on every row. Still swept, and each still one line.
+   */
+  section(lines: readonly string[]): void
   /** A fresh operation id, `#41c2e0`, for every line of one send, poll or download to carry. */
   newOp(): string
   /** How many times the sweep has fired since this logger was made. */
@@ -127,10 +130,10 @@ export function createLogger(options: LoggerOptions): Logger {
     marker: (category, name, fields) => {
       emit('info', [render('info', category, `${MARKER} ${name}`, fields, undefined)], true)
     },
-    block: (category, lines) => {
+    section: (lines) => {
       emit(
         'info',
-        lines.map((line) => render('info', category, line, undefined, undefined)),
+        lines.map((line) => escapeMessage(sweep(line, pseudonyms, counts))),
         true,
       )
     },

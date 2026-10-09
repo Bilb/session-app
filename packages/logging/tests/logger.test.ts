@@ -94,6 +94,13 @@ describe('createLogger', () => {
     expect(sink.urgent).toEqual([false, true])
   })
 
+  it('writes a section without the prefix, swept, and as urgent', () => {
+    const sink = recording()
+    logger(sink).section(['', 'Device  iPhone', `Account ${ACCOUNT}`])
+    expect(sink.lines).toEqual(['', 'Device  iPhone', 'Account 05cd90...cd90'])
+    expect(sink.urgent).toEqual([true])
+  })
+
   it('mints distinct operation ids', () => {
     const log = logger(recording())
     const ops = new Set(Array.from({ length: 100 }, () => log.newOp()))

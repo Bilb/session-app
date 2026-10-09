@@ -92,6 +92,8 @@ export interface NetworkSettings {
 }
 
 export function networkSettings(): NetworkSettings {
+  // The startup block can be written before the bridge is opened, so before it loads `.env`.
+  loadDotEnv()
   return {
     fake: developerSetting('EXPO_PUBLIC_SESSION_FAKE') === '1',
     netid: developerSetting('EXPO_PUBLIC_SESSION_NETID'),

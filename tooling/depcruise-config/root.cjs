@@ -43,7 +43,8 @@ module.exports = {
     mayOnlyDependOn('client-contract', ['client', 'basic-types']),
     mayOnlyDependOn('state', ['client', 'basic-types']),
     mayOnlyDependOn('ui', ['theme-tokens', 'test-ids', 'basic-types']),
-    mayOnlyDependOn('logging', []),
+    // The network parsers, so the startup block names a network the way the apps parse it.
+    mayOnlyDependOn('logging', ['basic-types']),
     mayOnlyDependOn('app', ['client', 'state', 'basic-types', 'logging']),
     mayOnlyDependOn('bridge-node', ['client', 'client-contract', 'bridge-types']),
     mayOnlyDependOn('bridge-rn', ['bridge-types']),

@@ -648,6 +648,10 @@ importers:
         version: 5.0.0(@types/node@26.4.1)(vite@8.2.2(@types/node@26.4.1)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.0))
 
   packages/logging:
+    dependencies:
+      '@session/basic-types':
+        specifier: workspace:*
+        version: link:../basic-types
     devDependencies:
       '@session/eslint-config':
         specifier: workspace:*

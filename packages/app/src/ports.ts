@@ -163,6 +163,11 @@ export interface BuildPort {
    * rather than a guess from the platform: two builds of one platform can be different variants.
    */
   readonly variant: string
+  /**
+   * The libsession commit the build was made with, stamped from the submodule as the commit is;
+   * null outside a git checkout. libsession is the client, so a log has to say which one.
+   */
+  readonly libsessionCommit: string | null
 }
 
 export interface SharePort {

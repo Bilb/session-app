@@ -73,8 +73,13 @@ function readSalt(dir: Directory): Uint8Array {
   return salt
 }
 
-function platformName(): string {
-  return Platform.OS === 'ios' ? 'iOS' : Platform.OS === 'android' ? 'Android' : Platform.OS
+/** `iOS 26.1`, or `Android 16 (API 36)`: Android's version number alone hides the API level. */
+function osName(): string {
+  if (Platform.OS === 'android') {
+    const release = (Platform.constants as { Release?: string }).Release ?? 'unknown'
+    return `Android ${release} (API ${String(Platform.Version)})`
+  }
+  return `${Platform.OS === 'ios' ? 'iOS' : Platform.OS} ${String(Platform.Version)}`
 }
 
 /**
@@ -113,11 +118,12 @@ const opened = (async (): Promise<LogWriter> => {
     minLevel: (category) => (category === 'session' ? 'debug' : 'info'),
   })
   startLogger(logger, {
-    platform: platformName(),
-    osVersion: String(Platform.Version),
+    launchedAtMs: launchMs,
     model: model(),
+    os: osName(),
     locale: Intl.DateTimeFormat().resolvedOptions().locale,
     install: 'unknown',
+    platformRows: [],
     // The same variables, literally named, that store.ts opens the bridge with.
     network: {
       fake: process.env['EXPO_PUBLIC_SESSION_FAKE'] === '1',
@@ -138,6 +144,11 @@ const opened = (async (): Promise<LogWriter> => {
       appLog.marker('lifecycle', 'background')
       void writer.flush()
     }
+  })
+  // The OS is about to start killing things to get memory back; this one may be next, and a log
+  // that ends after this line says why.
+  AppState.addEventListener('memoryWarning', () => {
+    appLog.marker('lifecycle', 'memory warning')
   })
   return writer
 })()

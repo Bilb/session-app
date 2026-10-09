@@ -52,6 +52,7 @@ setPorts(
       commit: import.meta.env.EXPO_PUBLIC_SESSION_BUILD_COMMIT,
       buildNumber: null,
       variant: import.meta.env.EXPO_PUBLIC_SESSION_BUILD_VARIANT || 'unknown',
+      libsessionCommit: import.meta.env.EXPO_PUBLIC_SESSION_LIBSESSION_COMMIT,
     },
     window: {
       // One window, so closing it is quitting, and `window.close()` needs no IPC call to do it.

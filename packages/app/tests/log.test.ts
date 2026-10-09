@@ -1,14 +1,7 @@
 import { createLogger, Pseudonyms } from '@session/logging'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import {
-  appLog,
-  installLogger,
-  logStoreMilestones,
-  networkRows,
-  resetLogger,
-  startLogger,
-} from '#src/log'
+import { appLog, installLogger, logStoreMilestones, resetLogger, startLogger } from '#src/log'
 import { resetPorts, setPorts } from '#src/ports'
 import { memoryPorts } from '#src/testPorts'
 
@@ -71,17 +64,24 @@ describe('startLogger', () => {
   it('writes the startup block from the ports, then the launch marker, then what was held', () => {
     setPorts(
       memoryPorts({
-        build: { version: '1.2.3', commit: 'abc12345', buildNumber: '7', variant: 'dev' },
+        build: {
+          version: '1.2.3',
+          commit: 'abc12345',
+          buildNumber: '7',
+          variant: 'dev',
+          libsessionCommit: '76d93c51',
+        },
       }),
     )
     const lines: string[] = []
     appLog.info('session', 'held')
     startLogger(newLogger(lines), {
-      platform: 'iOS',
-      osVersion: '26.1',
-      model: 'iPhone',
+      launchedAtMs: Date.UTC(2026, 9, 9, 7, 41, 2),
+      model: 'iPhone17,1',
+      os: 'iOS 26.1',
       locale: 'en-AU',
       install: 'unknown',
+      platformRows: [],
       network: {
         fake: false,
         netid: 'testnet',
@@ -92,12 +92,23 @@ describe('startLogger', () => {
       },
       previousRun: null,
     })
-    const bodies = lines.map((line) => line.slice(77))
-    expect(bodies[0]).toBe('──── Session 1.2.3 (7) launched ────')
-    expect(bodies).toContain('  App          1.2.3 (7) · commit abc12345 · variant dev')
-    expect(bodies).toContain("  Log level    libsession's default")
-    expect(bodies).toContain('  Network      testnet · Session Router (default)')
-    expect(bodies.slice(-2)).toEqual(['>>> launch', 'held'])
+    expect(lines.slice(0, 3)).toEqual([
+      '',
+      '── Session 1.2.3 (7) launched 2026-10-09 07:41:02Z',
+      '  Version        1.2.3 (7)',
+    ])
+    expect(lines).toContain('  libsession     76d93c51')
+    expect(lines).toContain('  Network        testnet')
+    expect(lines).toContain('  Transport      Session Router (default)')
+    expect(lines).toContain("  Log level      libsession's default")
+    expect(lines.slice(-2).map((line) => line.slice(77))).toEqual(['>>> launch', 'held'])
+  })
+
+  it('writes only the launch marker where another process wrote the block', () => {
+    setPorts(memoryPorts())
+    const lines: string[] = []
+    startLogger(newLogger(lines), null, { process: 'renderer' })
+    expect(lines.map((line) => line.slice(77))).toEqual(['>>> launch process=renderer'])
   })
 })
 
@@ -115,41 +126,5 @@ describe('logStoreMilestones', () => {
       '>>> account created',
       '>>> start failed reason="database is locked"',
     ])
-  })
-})
-
-describe('networkRows', () => {
-  const none = {
-    fake: false,
-    netid: undefined,
-    router: undefined,
-    devnetSeedUrl: undefined,
-    fileServerUrl: undefined,
-    logSpec: undefined,
-  }
-
-  it("says which transport and whether it was chosen or libsession's default", () => {
-    expect(networkRows(none).network).toBe('mainnet · Session Router (default)')
-    expect(networkRows({ ...none, netid: 'devnet' }).network).toBe(
-      'devnet · onion requests (default)',
-    )
-    expect(networkRows({ ...none, router: 'onion-requests' }).network).toBe(
-      'mainnet · onion requests (set)',
-    )
-  })
-
-  it('lists the further settings that were given, and the log spec', () => {
-    const rows = networkRows({
-      ...none,
-      netid: 'devnet',
-      devnetSeedUrl: 'http://10.0.0.5:22023',
-      logSpec: 'info,network=debug',
-    })
-    expect(rows.networkSettings).toEqual([['Seed node', 'http://10.0.0.5:22023']])
-    expect(rows.logSpec).toBe('info,network=debug')
-  })
-
-  it('names the fake for what it is', () => {
-    expect(networkRows({ ...none, fake: true }).network).toBe('fake (no libsession)')
   })
 })

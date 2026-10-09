@@ -13,10 +13,10 @@ const { execFileSync } = require('node:child_process')
  * Put in the environment before anything is transformed, which is what lets Metro inline it as it
  * does any `EXPO_PUBLIC_` variable. Empty outside a git checkout.
  */
-function commitStamp() {
+function commitStamp(cwd = projectRoot) {
   const git = (...args) =>
     execFileSync('git', args, {
-      cwd: projectRoot,
+      cwd,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     })
@@ -31,6 +31,12 @@ function commitStamp() {
   }
 }
 process.env.EXPO_PUBLIC_SESSION_BUILD_COMMIT = commitStamp()
+// The libsession submodule's commit, stamped the same way: libsession is the client, so a log has to
+// say which one. The native libraries are built from the submodule, so this is the commit they
+// were built from as long as they were rebuilt after it last moved.
+process.env.EXPO_PUBLIC_SESSION_LIBSESSION_COMMIT = commitStamp(
+  path.resolve(workspaceRoot, 'libsession-util'),
+)
 
 const config = getDefaultConfig(projectRoot)
 

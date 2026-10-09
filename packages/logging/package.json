@@ -20,6 +20,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@session/basic-types": "workspace:*"
+  },
   "devDependencies": {
     "@session/eslint-config": "workspace:*",
     "@session/typescript-config": "workspace:*",

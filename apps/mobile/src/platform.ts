@@ -101,6 +101,8 @@ const ports = memoryPorts({
           : String(Constants.expoConfig.android.versionCode),
     // Said by whoever assembles the build, and inlined by Metro like the commit.
     variant: process.env['EXPO_PUBLIC_SESSION_BUILD_VARIANT'] || 'unknown',
+    // Stamped from the submodule by metro.config.js, beside the commit.
+    libsessionCommit: process.env['EXPO_PUBLIC_SESSION_LIBSESSION_COMMIT'] || null,
   },
   share: {
     // The platform's sheet, with the text alone: no title or subject, which iOS would drop and
