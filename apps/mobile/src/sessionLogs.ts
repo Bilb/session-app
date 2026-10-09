@@ -17,6 +17,11 @@ interface NativeDiagnostics {
 interface SessionLogsModule {
   gzip(parts: readonly ExportPart[], directory: string, outPath: string): Promise<number>
   diagnostics(): Promise<NativeDiagnostics>
+  /** Android only: the system asking for memory back, by `onTrimMemory` level. */
+  addListener(
+    event: 'onMemoryPressure',
+    listener: (pressure: { level: string }) => void,
+  ): { remove(): void }
 }
 
 /**

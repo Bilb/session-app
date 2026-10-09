@@ -2,6 +2,8 @@ package org.getsession.sessionlogs
 
 import android.Manifest
 import android.app.ActivityManager
+import android.content.ComponentCallbacks2
+import android.content.res.Configuration
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -19,8 +21,38 @@ import java.util.zip.GZIPOutputStream
 class SessionLogsModule : Module() {
   private val logFile = Regex("^session-\\d{8}T\\d{6}Z-\\d+\\.log$")
 
+  private var memoryCallbacks: ComponentCallbacks2? = null
+
   override fun definition() = ModuleDefinition {
     Name("SessionLogs")
+
+    // The system asking for memory back: React Native's AppState has no memory warning on Android,
+    // so this is how a log learns the app was under pressure before it was killed.
+    Events("onMemoryPressure")
+
+    OnCreate {
+      val context = appContext.reactContext ?: return@OnCreate
+      val callbacks =
+        object : ComponentCallbacks2 {
+          override fun onTrimMemory(level: Int) {
+            trimLevelName(level)?.let { sendEvent("onMemoryPressure", mapOf("level" to it)) }
+          }
+
+          override fun onConfigurationChanged(newConfig: Configuration) = Unit
+
+          @Deprecated("Superseded by onTrimMemory, still delivered on older versions")
+          override fun onLowMemory() {
+            sendEvent("onMemoryPressure", mapOf("level" to "low memory"))
+          }
+        }
+      context.registerComponentCallbacks(callbacks)
+      memoryCallbacks = callbacks
+    }
+
+    OnDestroy {
+      memoryCallbacks?.let { appContext.reactContext?.unregisterComponentCallbacks(it) }
+      memoryCallbacks = null
+    }
 
     // Parts in order through one gzip stream; a part is a text or a log file name in `directory`,
     // checked to be a bare log file name so it cannot reach outside it.
@@ -60,6 +92,19 @@ class SessionLogsModule : Module() {
       )
     }
   }
+
+  // The levels worth a line: the ones that mean the system is short of memory, not the UI hiding.
+  @Suppress("DEPRECATION")
+  private fun trimLevelName(level: Int): String? =
+    when (level) {
+      ComponentCallbacks2.TRIM_MEMORY_RUNNING_MODERATE -> "running moderate"
+      ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW -> "running low"
+      ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL -> "running critical"
+      ComponentCallbacks2.TRIM_MEMORY_BACKGROUND -> "background"
+      ComponentCallbacks2.TRIM_MEMORY_MODERATE -> "moderate"
+      ComponentCallbacks2.TRIM_MEMORY_COMPLETE -> "complete"
+      else -> null
+    }
 
   // The installing package: com.android.vending is the Play Store; null is a sideload or adb.
   private fun install(context: Context): String {

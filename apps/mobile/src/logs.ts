@@ -9,6 +9,7 @@ import {
   minLevelFromSpec,
   Pseudonyms,
   type LogDirectory,
+  type LogFields,
 } from '@session/logging'
 import type { SessionStore } from '@session/state'
 import * as Crypto from 'expo-crypto'
@@ -133,6 +134,27 @@ export function lowPowerRows(lowPowerMode: boolean | null | undefined): [string,
     : [['Low power', lowPowerMode ? 'on' : 'off']]
 }
 
+/**
+ * The OS is about to start killing things to get memory back; this app may be next, and a log that
+ * ends after this line says why. With what the app is using and what the OS will still give it,
+ * where the module can say.
+ */
+function markMemoryWarning(fields: LogFields): void {
+  void (SessionLogs?.diagnostics() ?? Promise.resolve(undefined))
+    .catch(() => undefined)
+    .then((native) => {
+      appLog.marker('lifecycle', 'memory warning', {
+        ...fields,
+        ...(native === undefined
+          ? {}
+          : {
+              used: native.usedBytes === null ? null : roughBytes(native.usedBytes),
+              available: native.availableBytes === null ? null : roughBytes(native.availableBytes),
+            }),
+      })
+    })
+}
+
 /** The database's sizes as a line; see `databaseFields`. */
 function logDatabase(moment: string): void {
   appLog.info('storage', `database ${moment}`, databaseFields(databaseSizes()))
@@ -229,24 +251,15 @@ const opened = (async (): Promise<LogWriter> => {
   })
   // The OS is about to start killing things to get memory back; this one may be next, and a log
   // that ends after this line says why.
+  // iOS says so through AppState; Android through the module, since AppState never fires it there.
   AppState.addEventListener('memoryWarning', () => {
-    // With what the app is using and what the OS will still give it, where the module can say.
-    void (SessionLogs?.diagnostics() ?? Promise.resolve(undefined))
-      .catch(() => undefined)
-      .then((native) => {
-        appLog.marker(
-          'lifecycle',
-          'memory warning',
-          native === undefined
-            ? {}
-            : {
-                used: native.usedBytes === null ? null : roughBytes(native.usedBytes),
-                available:
-                  native.availableBytes === null ? null : roughBytes(native.availableBytes),
-              },
-        )
-      })
+    markMemoryWarning({})
   })
+  if (Platform.OS === 'android') {
+    SessionLogs?.addListener('onMemoryPressure', ({ level }) => {
+      markMemoryWarning({ level })
+    })
+  }
   return writer
 })()
 

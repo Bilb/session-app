@@ -90,7 +90,14 @@ async function diagnosticsSnapshot(): Promise<DiagnosticsSnapshot> {
     networkType: null,
     // What the notifications port says, which is what the app will actually do.
     notifications: 'no push service in this build',
-    ...(native === undefined ? {} : { permissions: native.permissions }),
+    // Capitalised like every other label in the header; the native modules name them in lower case.
+    ...(native === undefined
+      ? {}
+      : {
+          permissions: native.permissions.map(
+            ([name, state]) => [name.charAt(0).toUpperCase() + name.slice(1), state] as const,
+          ),
+        }),
     database: databaseSizes(),
     attachmentsBytes: attachmentsBytes(),
   }
