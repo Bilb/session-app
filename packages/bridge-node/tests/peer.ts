@@ -8,11 +8,6 @@ import { createSessionClient, type BridgeTransport, type SessionClient } from '@
 import { createNodeBridgeTransport, type NodeBridgeTransport } from '#src/index'
 
 /**
- * A client on the real addon, plus a side door for the test-only commands: what the suites that
- * drive the addon with no network build their worlds from.
- */
-
-/**
  * Whether the addon that exists was built with the test commands in it.
  *
  * Read from the CMake cache beside it rather than by asking the addon, because a build without
