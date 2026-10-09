@@ -1,4 +1,5 @@
-// The iOS image loader's decode bound, which the loader itself cannot be run here to check.
+// The iOS image loader's decode bound for originals, which the loader itself cannot be run here to
+// check.
 
 #include "DecodeBound.hpp"
 
@@ -31,33 +32,29 @@ double decoded_area(double bound, double width, double height) {
 }
 
 void a_long_thin_picture_stays_within_the_budget() {
-    // A 720 px tile on a 3x device, and a viewer's longest edge.
-    for (const double view : {720.0, 2796.0, 0.0}) {
-        CHECK(decoded_area(decode_edge_bound(view, 65535, 655), 65535, 655) <= DECODE_PIXEL_BUDGET);
-        CHECK(decoded_area(decode_edge_bound(view, 1000, 100000), 1000, 100000)
-              <= DECODE_PIXEL_BUDGET);
-        CHECK(decoded_area(decode_edge_bound(view, 16384, 16384), 16384, 16384)
-              <= DECODE_PIXEL_BUDGET);
-    }
+    CHECK(decoded_area(decode_edge_bound(65535, 655), 65535, 655) <= DECODE_PIXEL_BUDGET);
+    CHECK(decoded_area(decode_edge_bound(1000, 100000), 1000, 100000) <= DECODE_PIXEL_BUDGET);
+    CHECK(decoded_area(decode_edge_bound(16384, 16384), 16384, 16384) <= DECODE_PIXEL_BUDGET);
 }
 
-void an_ordinary_picture_keeps_its_cover_overshoot() {
-    // A 4:3 photo in a 720 px tile: the shorter edge spans the tile.
-    CHECK(decode_edge_bound(720, 4032, 3024) == 960);
-    // A phone screenshot in the same tile.
-    CHECK(decode_edge_bound(720, 1179, 2556) == 1561);
-    // A 4:3 photo full screen on the largest iPad still decodes larger than the screen.
-    CHECK(decode_edge_bound(2752, 4032, 3024) >= 2752);
+void a_picture_within_the_budget_decodes_at_its_own_size() {
+    // A phone screenshot, and the largest iPad screen.
+    CHECK(decode_edge_bound(1179, 2556) == 2556);
+    CHECK(decode_edge_bound(2752, 2064) == 2752);
+}
+
+void a_12_megapixel_photo_is_reduced_to_the_budget() {
+    const double bound = decode_edge_bound(4032, 3024);
+    CHECK(bound < 4032 && bound >= 2752);
+    CHECK(decoded_area(bound, 4032, 3024) <= DECODE_PIXEL_BUDGET);
 }
 
 void nothing_is_upsized() {
-    CHECK(decode_edge_bound(720, 300, 200) == 300);
-    CHECK(decode_edge_bound(0, 300, 200) == 300);
+    CHECK(decode_edge_bound(300, 200) == 300);
 }
 
 void an_unknown_size_is_bounded_as_a_square() {
-    CHECK(decode_edge_bound(720, 0, 0) == 720);
-    const double square = decode_edge_bound(0, 0, 0);
+    const double square = decode_edge_bound(0, 0);
     CHECK(square > 0 && square * square <= DECODE_PIXEL_BUDGET);
 }
 
@@ -96,7 +93,8 @@ void an_unknown_size_is_not_refused() {
 
 int main() {
     a_long_thin_picture_stays_within_the_budget();
-    an_ordinary_picture_keeps_its_cover_overshoot();
+    a_picture_within_the_budget_decodes_at_its_own_size();
+    a_12_megapixel_photo_is_reduced_to_the_budget();
     nothing_is_upsized();
     an_unknown_size_is_bounded_as_a_square();
     the_largest_screen_fits_and_a_huge_canvas_does_not();

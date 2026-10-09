@@ -46,7 +46,8 @@ export function Image({
       source={{ uri }}
       resizeMode={fit}
       // Fresco only downsamples towards a target size, and `session-media://` is not one of the
-      // local schemes react-native sizes by default: without this a thumbnail decodes at 2048 px.
+      // local schemes react-native sizes by default: without this the viewer's original decodes at
+      // 2048 px. A thumbnail ignores it: the loader decodes one whole.
       resizeMethod="resize"
       style={{ width, height, borderRadius }}
       onLoad={onLoad}
