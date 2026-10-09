@@ -14,10 +14,12 @@ import { useFirstPaintHeld } from './firstPaintHold'
  * default theme and redrawn in the chosen one. What shows meanwhile is what the platform draws
  * behind the app.
  *
- * On the phones that is the native launch screen, which the mobile app holds until this draws.
+ * That is the launch screen: native on the phones, and on the desktop the one written into the
+ * page, each held until this draws. All of them are in the default theme.
  *
- * TODO: on the desktop it is the window's own background, which knows nothing of the theme; the
- * main process has the bridge before the window and could read the theme for it.
+ * TODO: an account on a light theme still opens dark. On the desktop the main process has the
+ * bridge before the window and could read the theme for it, at the cost of sending its own
+ * commands on a stream it otherwise only relays.
  */
 export function StoredThemeProvider(props: Omit<UIProviderProps, 'theme' | 'accent'>) {
   const hydrated = useHydrated()
