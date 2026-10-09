@@ -14,7 +14,7 @@ import { createBridge } from './bridge'
 import { editMenuItems } from './editMenu'
 import { serveFiles } from './files'
 import { launchColors } from './launchColors'
-import { openLogs, serveLogs } from './logs'
+import { logLibsession, openLogs, serveLogs } from './logs'
 import { registerMediaScheme, serveMedia, stopServingMedia } from './media'
 import {
   acceptsCopy,
@@ -206,7 +206,13 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
     port = port1
 
     // A frame is a plain object built by the addon; structured clone carries it to the renderer.
+    // libsession's log lines are the exception: written here, where they arrive, rather than sent
+    // to the renderer to be swept and back again to be written.
     open.setSink((frame) => {
+      if (frame.type === 'event' && frame.event.type === 'log') {
+        logLibsession(frame.event.level, frame.event.category, frame.event.message)
+        return
+      }
       files.observe(frame)
       port?.postMessage(frame)
     })

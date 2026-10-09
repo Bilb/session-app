@@ -3,6 +3,24 @@ import type { Pseudonyms } from './pseudonym'
 import { renderUrl } from './url'
 
 /**
+ * How a typed value is taken apart to cross from the desktop renderer to main, which renders it.
+ *
+ * A symbol private to this module, so the raw form stays out of reach of every log call: only
+ * `toWire` can take a value apart, and `fromWire` puts it back together.
+ */
+const TO_WIRE = Symbol('toWire')
+
+/** A typed value as plain data. Holds the raw input, so it only ever travels to the logger. */
+export type WireRedacted =
+  | { redacted: 'visible'; raw: string }
+  | { redacted: 'internal'; raw: string; kind?: string }
+  | { redacted: 'address'; host: string; port?: number }
+  | { redacted: 'url'; raw: string }
+
+/** A field value as plain data, the form a `LogRecord` carries. */
+export type WireValue = string | number | boolean | null | WireRedacted
+
+/**
  * A value that knows how it may be written down, and keeps what it may not.
  *
  * **The raw form is unreachable from here on.** Each subclass holds its input in a private field
@@ -13,6 +31,8 @@ import { renderUrl } from './url'
  */
 export abstract class Redacted {
   abstract render(pseudonyms: Pseudonyms): string
+  /** Its plain form, for the desktop renderer to hand to main, which renders it: see `TO_WIRE`. */
+  abstract [TO_WIRE](): WireRedacted
 }
 
 /** An id the person can see in the app, so a reader can match either end against a screenshot. */
@@ -24,6 +44,9 @@ class UserVisibleId extends Redacted {
   }
   render(pseudonyms: Pseudonyms): string {
     return shortenVisible(this.#raw) ?? pseudonyms.of(this.#raw)
+  }
+  [TO_WIRE](): WireRedacted {
+    return { redacted: 'visible', raw: this.#raw }
   }
 }
 
@@ -40,6 +63,11 @@ class InternalId extends Redacted {
     const pseudonym = pseudonyms.of(this.#raw)
     return this.#kind === undefined ? pseudonym : `${this.#kind}${pseudonym}`
   }
+  [TO_WIRE](): WireRedacted {
+    return this.#kind === undefined
+      ? { redacted: 'internal', raw: this.#raw }
+      : { redacted: 'internal', raw: this.#raw, kind: this.#kind }
+  }
 }
 
 class NetAddress extends Redacted {
@@ -53,6 +81,11 @@ class NetAddress extends Redacted {
   render(): string {
     return renderAddress(this.#host, this.#port)
   }
+  [TO_WIRE](): WireRedacted {
+    return this.#port === undefined
+      ? { redacted: 'address', host: this.#host }
+      : { redacted: 'address', host: this.#host, port: this.#port }
+  }
 }
 
 class LogUrl extends Redacted {
@@ -63,6 +96,9 @@ class LogUrl extends Redacted {
   }
   render(pseudonyms: Pseudonyms): string {
     return renderUrl(this.#raw, pseudonyms) ?? `url${pseudonyms.of(this.#raw)}`
+  }
+  [TO_WIRE](): WireRedacted {
+    return { redacted: 'url', raw: this.#raw }
   }
 }
 
@@ -115,3 +151,44 @@ export function url(raw: string): Redacted {
 export type LogValue = string | number | boolean | null | undefined | Redacted
 
 export type LogFields = Readonly<Record<string, LogValue>>
+
+/** A field value as plain data; `undefined` is left out, which is how it would be written. */
+export function toWire(value: LogValue): WireValue | undefined {
+  if (value instanceof Redacted) return value[TO_WIRE]()
+  return value
+}
+
+const isString = (value: unknown): value is string => typeof value === 'string'
+
+/**
+ * A field value back from plain data, or undefined for anything that is not one.
+ *
+ * Its input comes from the desktop renderer, the less trusted process, so nothing is assumed: an
+ * object that is not exactly a typed value is refused rather than written.
+ */
+export function fromWire(value: unknown): LogValue | undefined {
+  if (value === null || isString(value) || typeof value === 'boolean') return value
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined
+  if (typeof value !== 'object') return undefined
+  const wire = value as Partial<Record<string, unknown>>
+  switch (wire['redacted']) {
+    case 'visible':
+      return isString(wire['raw']) ? accountId(wire['raw']) : undefined
+    case 'internal':
+      if (!isString(wire['raw'])) return undefined
+      return isString(wire['kind'])
+        ? internalId(wire['raw'], wire['kind'])
+        : internalId(wire['raw'])
+    case 'address': {
+      if (!isString(wire['host'])) return undefined
+      const port = wire['port']
+      return typeof port === 'number' && Number.isInteger(port)
+        ? address(wire['host'], port)
+        : address(wire['host'])
+    }
+    case 'url':
+      return isString(wire['raw']) ? url(wire['raw']) : undefined
+    default:
+      return undefined
+  }
+}

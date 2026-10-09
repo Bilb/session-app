@@ -1,59 +1,51 @@
 import { appLog, logStoreMilestones, startLogger } from '@session/app'
-import { createLogger, Pseudonyms, type LogLevel, type LogSink } from '@session/logging'
+import { createForwardingLogger, type LogLevel, type LogRecord } from '@session/logging'
 import type { SessionStore } from '@session/state'
 
-/** How long the renderer holds lines before handing them to main, unless one is urgent. */
+/**
+ * How long the renderer holds records before handing them to main, unless one is urgent. Main
+ * holds its own lines a little longer than this (`RENDERER_HOLD_MS` in main's logs.ts) so that
+ * the two come out in order.
+ */
 const BATCH_MS = 500
 
 /**
- * Lines on their way to main, which owns the files.
+ * Records on their way to main, which sweeps, renders and writes them.
  *
- * Batched because each send is an IPC message; main buffers again before it writes, so this only
- * has to keep the message count down. An urgent line goes at once with whatever is waiting.
+ * Batched because each send is an IPC message. An urgent record goes at once with whatever is
+ * waiting.
  */
-function mainSink(): LogSink {
-  let pending: string[] = []
+function sendToMain(): (record: LogRecord, urgent: boolean) => void {
+  let pending: LogRecord[] = []
   let timer: ReturnType<typeof setTimeout> | null = null
-  const send = (urgent: boolean): void => {
+  const send = (): void => {
     if (timer !== null) clearTimeout(timer)
     timer = null
-    const lines = pending
+    const records = pending
     pending = []
-    if (lines.length > 0) window.sessionDesktop.appendLog(lines, urgent)
+    if (records.length > 0) window.sessionDesktop.appendLog(records)
   }
   // A closing window takes whatever is waiting with it otherwise.
-  window.addEventListener('pagehide', () => {
-    send(true)
-  })
-  return {
-    write: (lines, urgent) => {
-      pending.push(...lines)
-      if (urgent) send(true)
-      else
-        timer ??= setTimeout(() => {
-          send(false)
-        }, BATCH_MS)
-    },
+  window.addEventListener('pagehide', send)
+  return (record, urgent) => {
+    pending.push(record)
+    if (urgent) send()
+    else timer ??= setTimeout(send, BATCH_MS)
   }
-}
-
-function hexToBytes(hex: string): Uint8Array {
-  return Uint8Array.from(hex.match(/../g) ?? [], (pair) => Number.parseInt(pair, 16))
 }
 
 /**
- * The renderer's logger: lines rendered here, with main's salt and main's clock, and written by
- * main. The store's lines go to it, and to the console too outside a packaged build.
+ * The renderer's logger: lines go to main as they are logged, and main sweeps, renders and writes
+ * them, so the thread that draws the app does none of that work. The store's lines go to it, and
+ * to the console too outside a packaged build.
  */
 export async function startLogging(store: SessionStore): Promise<void> {
   const session = await window.sessionDesktop.openLog()
   // Main's uptime when it answered, so both processes' lines share one zero.
   const offsetMs = session.uptimeMs - performance.now()
-  const logger = createLogger({
-    sink: mainSink(),
-    pseudonyms: new Pseudonyms(hexToBytes(session.saltHex)),
+  const logger = createForwardingLogger({
+    send: sendToMain(),
     uptimeMs: () => performance.now() + offsetMs,
-    minLevel: (category) => (category === 'session' ? 'debug' : 'info'),
   })
   // Main wrote the startup block when it started; this process only marks its own launch.
   startLogger(logger, null, { process: 'renderer' })

@@ -15,7 +15,10 @@ import electron from 'electron'
 
 import {
   createLogger,
+  libsessionLine,
   networkRows,
+  orderedSink,
+  parseRecord,
   startupBlock,
   LogWriter,
   Pseudonyms,
@@ -35,10 +38,13 @@ const { app } = electron
  */
 const launchMs = Date.now() - process.uptime() * 1000
 
-/** Lines in one `appendLog` call; the renderer batches, and a batch past this is a bug. */
-const MAX_LINES_PER_CALL = 2000
-/** One line's length; a line past it is cut, with a note, rather than refused. */
-const MAX_LINE_LENGTH = 16_384
+/** Records in one `appendLog` call; the renderer batches, and a batch past this is a bug. */
+const MAX_RECORDS_PER_CALL = 2000
+/**
+ * How long main holds a line for the renderer's from the same moment: longer than the renderer's
+ * own batching (`BATCH_MS` in renderer/logs.ts, 500 ms) plus the trip, so the file reads in order.
+ */
+const RENDERER_HOLD_MS = 1000
 const SALT_BYTES = 16
 const SALT_FILE = '.salt'
 
@@ -90,7 +96,6 @@ function readSalt(dir: string): Uint8Array {
 export interface MainLogs {
   logger: Logger
   writer: LogWriter
-  salt: Uint8Array
 }
 
 let opened: Promise<MainLogs> | null = null
@@ -149,9 +154,8 @@ function mainStartupBlock(writer: LogWriter): string[] {
   })
 }
 
-/** What the renderer needs to write lines main will accept, and the facts only main can read. */
+/** What the renderer needs to time its lines; main sweeps and writes them, so that is all. */
 interface LogSession {
-  saltHex: string
   /** Main's uptime as the renderer asked, so both processes write one clock. */
   uptimeMs: number
 }
@@ -175,8 +179,10 @@ export function openLogs(): Promise<MainLogs> {
       },
     })
     const logger = createLogger({
-      sink: writer,
+      sink: orderedSink(writer, { holdMs: RENDERER_HOLD_MS }),
       pseudonyms: new Pseudonyms(salt),
+      // The store's own lines are its account of a start, which is worth keeping at debug.
+      minLevel: (category) => (category === 'session' ? 'debug' : 'info'),
       now: () => Date.now(),
       uptimeMs: () => process.uptime() * 1000,
       ...(app.isPackaged
@@ -191,41 +197,45 @@ export function openLogs(): Promise<MainLogs> {
     await app.whenReady()
     logger.section(mainStartupBlock(writer))
     logger.marker('lifecycle', 'launch', { process: 'main' })
-    return { logger, writer, salt }
+    return { logger, writer }
   })()
   return opened
 }
 
 /**
+ * One of libsession's lines, written here where the addon delivers it rather than sent to the
+ * renderer and back: it starts in this process, and the renderer has nothing to add to it.
+ */
+export function logLibsession(level: string, category: string, message: string): void {
+  void openLogs().then(({ logger }) => {
+    const line = libsessionLine(level, message)
+    logger.log(line.level, category, line.message, undefined, line.op)
+  })
+}
+
+/**
  * The renderer's two log calls, on this window's own `ipc`.
  *
- * `log:open` hands over the pseudonym salt and main's clock; the renderer is the less trusted
- * of the two processes, but a salt only lets its holder recompute pseudonyms of ids it already
- * has, and the renderer has them all anyway. `log:append` takes finished lines: bounded in count
- * and length, and with any newline escaped so one call cannot forge a line of another.
+ * `log:open` answers with main's clock. `log:append` takes the renderer's lines as records, which
+ * main sweeps, renders and writes in time order with its own, so the thread that draws the app
+ * never runs the sweep and never holds the pseudonym key. A record is checked field by field on
+ * the way in: the renderer is the less trusted of the two processes.
  */
 export function serveLogs(window: Electron.BrowserWindow, appUrl: string): void {
   const { ipc } = window.webContents
 
   ipc.handle('log:open', async (event): Promise<LogSession> => {
     if (!isFromAppFrame(event.senderFrame, appUrl)) throw new Error('refused')
-    const { salt } = await openLogs()
-    return { saltHex: Buffer.from(salt).toString('hex'), uptimeMs: process.uptime() * 1000 }
+    await openLogs()
+    return { uptimeMs: process.uptime() * 1000 }
   })
 
-  ipc.on('log:append', (event, lines: unknown, urgent: unknown) => {
+  ipc.on('log:append', (event, records: unknown) => {
     if (!isFromAppFrame(event.senderFrame, appUrl)) return
-    if (!Array.isArray(lines) || lines.length > MAX_LINES_PER_CALL) return
-    const accepted = lines
-      .filter((line): line is string => typeof line === 'string')
-      .map((line) =>
-        (line.length > MAX_LINE_LENGTH ? `${line.slice(0, MAX_LINE_LENGTH)} [cut]` : line).replace(
-          /\r?\n/g,
-          '\\n',
-        ),
-      )
-    void openLogs().then(({ writer }) => {
-      writer.write(accepted, urgent === true)
+    if (!Array.isArray(records) || records.length > MAX_RECORDS_PER_CALL) return
+    const accepted = records.map(parseRecord).filter((record) => record !== null)
+    void openLogs().then(({ logger }) => {
+      for (const record of accepted) logger.record(record)
     })
   })
 }

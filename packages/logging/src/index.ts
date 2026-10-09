@@ -1,7 +1,20 @@
 export { addressShape, renderAddress, type AddressClass, type AddressFamily } from './address'
 export { LOG_LEVELS, levelRank, parseLevel, type LogLevel } from './level'
 export { PREFIX_WIDTH, formatPrefix } from './line'
-export { MARKER, createLogger, type Logger, type LoggerOptions, type LogSink } from './logger'
+export { MAX_SWEPT_CHARS, capForSweep } from './cap'
+export { libsessionLine } from './libsession'
+export {
+  MARKER,
+  createForwardingLogger,
+  createLogger,
+  parseRecord,
+  type ForwardingLoggerOptions,
+  type LogRecord,
+  type Logger,
+  type LoggerOptions,
+  type LogSink,
+} from './logger'
+export { orderedSink, type OrderedSinkOptions } from './ordered'
 export { networkRows, type NetworkSettings } from './network'
 export { Pseudonyms } from './pseudonym'
 export {
@@ -22,6 +35,8 @@ export {
   url,
   type LogFields,
   type LogValue,
+  type WireRedacted,
+  type WireValue,
 } from './values'
 export {
   BUDGET_BYTES,

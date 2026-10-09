@@ -1,6 +1,7 @@
 import { appLog, logStoreMilestones, startLogger } from '@session/app'
 import {
   createLogger,
+  libsessionLine,
   LogWriter,
   Pseudonyms,
   type LogDirectory,
@@ -170,4 +171,10 @@ export function storeLog(level: LogLevel, category: string, message: string, op?
     // Reaches logcat as ReactNativeJS on Android, and the device console on iOS.
     console[method](`[${category}] ${message}`)
   }
+}
+
+/** The store's `libsessionLog` option: libsession's line, read, then written like the app's own. */
+export function libsessionLog(level: string, category: string, message: string): void {
+  const line = libsessionLine(level, message)
+  storeLog(line.level, category, line.message, line.op)
 }

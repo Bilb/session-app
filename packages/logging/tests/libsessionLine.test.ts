@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { libsessionLine } from '#src/store'
+import { libsessionLine } from '#src/libsession'
 
 describe('libsessionLine', () => {
   it("drops libsession's own time and uptime, keeps its level, and moves the source to the end", () => {

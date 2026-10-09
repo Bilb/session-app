@@ -77,6 +77,11 @@ reaching the file before this rule); IPv4/IPv6 literals; runs of 13+ words of 3â
 and Cyrillic; a phrase in another script is a known gap). libsession's lines are free text from C++,
 so they are swept like any other line.
 
+**A message is cut to 4,096 characters before it is swept**, since the sweep's cost grows with the
+text and nothing written for a person runs that long. Where the cut falls inside a run of
+non-space characters the whole run goes, so it can never leave part of a key too short for the sweep
+to recognise; the line ends `[cut N chars]`.
+
 ## Following things through a log
 
 **One request, end to end** â€” grep the op id:
@@ -132,6 +137,14 @@ can be matched to the line:
   ~20 MiB and deletes the oldest whole file. Nothing is truncated mid-file.
 - Writes buffered, flushed at least every 2 s and on background / window close. Unmissable markers
   flush at once.
+- **On the desktop, main sweeps and writes every line.** libsession's are logged in main, where the
+  addon delivers them, rather than sent to the renderer and back. The renderer's own lines go to
+  main as records (level, category, message, typed fields, time) every 500 ms, so the thread that
+  draws the app never runs the sweep and never holds the pseudonym key. Main holds each line for a
+  second and writes them in the order they were logged, so the two processes' lines interleave by
+  time; a marker or error goes at once.
+- **On the phones, everything is swept on the JS thread**, libsession's lines included, until native
+  redaction (M349) can take them before they reach it.
 - **The log never depends on the database or its key.** If the directory can't be written the logger
   falls back to console and says why in the next file that can be.
 

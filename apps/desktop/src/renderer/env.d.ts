@@ -52,9 +52,9 @@ interface Window {
     setLocale(locale: string): void
     /** Ends this process and starts the app again in a fresh one. */
     restart(): void
-    /** The salt and facts the renderer's logger needs; see `LogSession` in main's `logs.ts`. */
-    openLog(): Promise<{ saltHex: string; uptimeMs: number }>
-    /** Finished lines, for main to write; `urgent` asks for them on disk now. */
-    appendLog(lines: string[], urgent: boolean): void
+    /** Main's clock, which times the renderer's lines; see `LogSession` in main's logs.ts. */
+    openLog(): Promise<{ uptimeMs: number }>
+    /** Lines as records, for main to sweep, render and write; see `LogRecord`. */
+    appendLog(records: unknown[]): void
   }
 }

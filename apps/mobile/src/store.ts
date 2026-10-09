@@ -14,7 +14,7 @@ import {
 import { createSessionStore } from '@session/state'
 import { Platform } from 'react-native'
 
-import { storeLog, watchStore } from './logs'
+import { libsessionLog, storeLog, watchStore } from './logs'
 import { resolveDatabaseKey, sessionPaths } from './storage'
 
 /**
@@ -127,6 +127,7 @@ export const storePromise = openTransportOrRefusal().then((transport) => {
   const store = createSessionStore(createSessionClient(transport), {
     attachmentCacheLimitBytes: ATTACHMENT_CACHE_LIMIT_BYTES,
     log: storeLog,
+    libsessionLog,
   })
   watchStore(store)
   return store

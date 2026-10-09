@@ -88,7 +88,8 @@ export function readPreviousRun(file: string, text: string): PreviousRun {
   return { file, endedCleanly: name !== null && CLEAN_ENDINGS.includes(name), lastMarker: name }
 }
 
-interface TimerHost {
+/** The timers every runtime has, declared here since this package loads no DOM or node types. */
+export interface TimerHost {
   setTimeout(handler: () => void, ms: number): unknown
   clearTimeout(handle: unknown): void
 }

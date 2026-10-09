@@ -46,11 +46,11 @@ contextBridge.exposeInMainWorld('sessionDesktop', {
     ipcRenderer.send('restart')
   },
   /**
-   * The log: one call to learn the pseudonym salt and what main knows about the machine, and one
-   * to hand over finished lines. Main owns the files; the page only ever appends.
+   * The log: one call to learn main's clock, and one to hand over lines as records, which main
+   * sweeps and writes. Main owns the files and the pseudonym key; the page only ever appends.
    */
   openLog: (): Promise<unknown> => ipcRenderer.invoke('log:open'),
-  appendLog: (lines: string[], urgent: boolean) => {
-    ipcRenderer.send('log:append', lines, urgent)
+  appendLog: (records: unknown[]) => {
+    ipcRenderer.send('log:append', records)
   },
 })
