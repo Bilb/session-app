@@ -308,6 +308,8 @@ describeAddon('addon', () => {
           OFFLINE_ATTACHMENTS,
         'fetches an uncached export into the cache, reading as fetching meanwhile':
           OFFLINE_ATTACHMENTS,
+        'joins an export to a running download': OFFLINE_ATTACHMENTS,
+        'joins a download to a running export': OFFLINE_ATTACHMENTS,
         'withdraws what was asked of an attachment once it is deleted': OFFLINE_ATTACHMENTS,
       },
     },
