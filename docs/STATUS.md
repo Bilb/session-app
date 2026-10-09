@@ -19,6 +19,8 @@ a time, via the `port-feature` skill.
   and nothing else, so `SendState::uploading` is a state nothing here can reach.
 - **A video is a file row.** It downloads and exports, but nothing draws a frame of it:
   libsession has no still for one, and its `gallery_viewable` admits only images.
+- **Pictures with a video draw as a list**, where legacy draws them as one grid. The follow-up is
+  widening libsession's `gallery_viewable` to video once a still exists.
 - **The media viewer is one picture at a time.** It pages through a message's pictures and
   nothing more: no zoom, no video playback, no swipe to dismiss, no filmstrip.
 - **Returning to a conversation starts at the newest page.** A window is dropped when its screen
