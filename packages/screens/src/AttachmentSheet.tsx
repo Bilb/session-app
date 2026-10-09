@@ -2,10 +2,10 @@ import type { Attachment, ConversationId, Message } from '@session/client'
 import { tr } from '@session/localization'
 import { useMessage } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
-import { fileRowHeight, List, Sheet, useFontScale } from '@session/ui'
+import { fileRowHeight, List, Sheet, useFontScale, YStack } from '@session/ui'
 import { useCallback, useRef, type ReactNode } from 'react'
 
-import { AttachmentFooter } from './AttachmentFooter'
+import { AttachmentFooter, ROW_OVERHANG } from './AttachmentFooter'
 import { AttachmentRow } from './AttachmentRow'
 import { useAttachmentSet } from './useAttachmentSet'
 
@@ -13,7 +13,12 @@ const attachmentKey = (attachment: Attachment): string => String(attachment.inde
 
 function SheetFooter({ message }: { message: Message }) {
   const { set, act } = useAttachmentSet(message)
-  return <AttachmentFooter set={set} onAction={act} />
+  // Inside the sheet's footer, so the overhang lies over this padding and not over the rows.
+  return (
+    <YStack paddingTop={ROW_OVERHANG}>
+      <AttachmentFooter set={set} onAction={act} />
+    </YStack>
+  )
 }
 
 function MessageSheet({
