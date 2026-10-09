@@ -32,4 +32,16 @@ describe('the attachment footer', () => {
   it('lets a touch on the overhang through to what is drawn under it', () => {
     expect(row).toContain('pointerEvents="box-none"')
   })
+
+  // RN takes a touch in a parent's overflow, and the footer is the later sibling, so a tile, a row
+  // or "Show all" left under the overhang would hand its tap to the footer's Download.
+  it('has nothing drawn under its overhang in a message', () => {
+    const message = readFileSync(join(import.meta.dirname, '../src/MessageAttachments.tsx'), 'utf8')
+    expect(message).toMatch(/<YStack gap=\{SPACE_SCALE\['3xs'\] \+ ROW_OVERHANG\}/)
+  })
+
+  it('has nothing drawn under its overhang in the sheet', () => {
+    const sheet = readFileSync(join(import.meta.dirname, '../src/AttachmentSheet.tsx'), 'utf8')
+    expect(sheet).toMatch(/<YStack paddingTop=\{ROW_OVERHANG\}>\s*<AttachmentFooter /)
+  })
 })
