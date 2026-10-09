@@ -2,7 +2,6 @@ import { capForSweep } from './cap'
 import { LOG_LEVELS, levelRank, type LogLevel } from './level'
 import { escapeMessage, formatPair, formatPrefix } from './line'
 import type { Pseudonyms } from './pseudonym'
-import { hmacSha256, toHex, utf8 } from './sha256'
 import { emptyCounts, sweep, type SweepCounts } from './sweep'
 import { fromWire, Redacted, toWire, type LogFields, type LogValue, type WireValue } from './values'
 
@@ -67,8 +66,6 @@ export interface Logger {
    * reads better without a timestamp on every row. Still swept, and each still one line.
    */
   section(lines: readonly string[]): void
-  /** A fresh operation id, `#41c2e0`, for every line of one send, poll or download to carry. */
-  newOp(): string
   /** How many times the sweep has fired since this logger was made. */
   sweepCounts(): SweepCounts
   /** A line another process logged, written as of when it was logged there. */
@@ -87,17 +84,11 @@ function isUrgent(level: LogLevel, kind: LogRecord['kind']): boolean {
   return kind !== undefined || levelRank(level) >= levelRank('error')
 }
 
-/** `#41c2e0`: unique enough within a run, and never derived from anything worth hiding. */
-function opId(nowMs: number, count: number): string {
-  return `#${toHex(hmacSha256(utf8(String(nowMs)), utf8(`op:${String(count)}`))).slice(0, 6)}`
-}
-
 export function createLogger(options: LoggerOptions): Logger {
   const { sink, pseudonyms, uptimeMs } = options
   const now = options.now ?? ((): number => Date.now())
   const minLevel = options.minLevel ?? ((): LogLevel => 'info')
   const counts = emptyCounts()
-  let ops = 0
 
   function render(
     record: Omit<LogRecord, 'fields' | 'kind'>,
@@ -182,10 +173,6 @@ export function createLogger(options: LoggerOptions): Logger {
         wallMs,
       )
     },
-    newOp: () => {
-      ops += 1
-      return opId(now(), ops)
-    },
     sweepCounts: () => ({ ...counts }),
     record: (record) => {
       const fields =
@@ -218,7 +205,6 @@ export interface ForwardingLoggerOptions {
 export function createForwardingLogger(options: ForwardingLoggerOptions): Logger {
   const { send, uptimeMs } = options
   const now = options.now ?? ((): number => Date.now())
-  let ops = 0
 
   function forward(
     level: LogLevel,
@@ -285,10 +271,6 @@ export function createForwardingLogger(options: ForwardingLoggerOptions): Logger
     },
     section: (lines) => {
       for (const line of lines) forward('info', '', line, undefined, undefined, 'section')
-    },
-    newOp: () => {
-      ops += 1
-      return opId(now(), ops)
     },
     /** Counted where the lines are swept, which is not here. */
     sweepCounts: () => emptyCounts(),

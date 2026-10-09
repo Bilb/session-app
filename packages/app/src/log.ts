@@ -45,6 +45,9 @@ export const appLog = {
       logger.log(level, category, message, fields, op)
     })
   },
+  trace(category: string, message: string, fields?: LogFields): void {
+    appLog.log('trace', category, message, fields)
+  },
   debug(category: string, message: string, fields?: LogFields): void {
     appLog.log('debug', category, message, fields)
   },
@@ -56,6 +59,9 @@ export const appLog = {
   },
   error(category: string, message: string, fields?: LogFields): void {
     appLog.log('error', category, message, fields)
+  },
+  critical(category: string, message: string, fields?: LogFields): void {
+    appLog.log('critical', category, message, fields)
   },
   /** One of the lines that always fire; see `MARKER` in `@session/logging`. */
   marker(category: string, name: string, fields?: LogFields): void {

@@ -13,9 +13,9 @@ describe('formatPrefix', () => {
         uptimeMs: 12_345,
         level: 'info',
         category: 'network',
-        op: '#41c2e0',
+        op: 'CoS-0-I7C3',
       }),
-    ).toBe('2026-10-08T03:20:09.123Z     +12.345 INFO  [network]        [#41c2e0]       ')
+    ).toBe('2026-10-08T03:20:09.123Z     +12.345 INFO  [network]        [CoS-0-I7C3]    ')
   })
 
   it('is the same width whatever the level, category, op or uptime', () => {

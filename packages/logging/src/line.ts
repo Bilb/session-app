@@ -18,8 +18,8 @@ const UPTIME_WIDTH = 11
 /** `[session-router]`, the longest category anything declares, exactly fills it. */
 const CATEGORY_WIDTH = 16
 /**
- * `[CoS-0-GZHC]`: libsession's own request tags reach twelve characters with a sub-request suffix
- * (`RSC-1-MUE2-0`), and the app's `#41c2e0` fits too. Blank outside an operation.
+ * `[CoS-0-GZHC]`: libsession's request ids reach twelve characters with a sub-request suffix
+ * (`RSC-1-MUE2-0`), and fourteen with the brackets. Blank outside a request.
  */
 const OP_WIDTH = 16
 
@@ -28,7 +28,7 @@ export interface LinePrefix {
   uptimeMs: number
   level: LogLevel
   category: string
-  /** `#41c2e0`, libsession's `CoS-0-GZHC`, or undefined outside an operation. */
+  /** libsession's request id, `CoS-0-GZHC`, or undefined outside a request. */
   op?: string | undefined
 }
 

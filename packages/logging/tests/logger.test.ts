@@ -107,18 +107,11 @@ describe('createLogger', () => {
     expect(sink.urgent).toEqual([true])
   })
 
-  it('mints distinct operation ids', () => {
-    const log = logger(recording())
-    const ops = new Set(Array.from({ length: 100 }, () => log.newOp()))
-    expect(ops.size).toBe(100)
-    for (const op of ops) expect(op).toMatch(/^#[0-9a-f]{6}$/)
-  })
-
-  it('carries an op id in its column', () => {
+  it('carries a request id in its column', () => {
     const sink = recording()
     const log = logger(sink)
-    log.log('info', 'network', 'request ok', { status: 200 }, '#41c2e0')
-    expect(sink.lines[0]).toContain('[network]        [#41c2e0]        request ok status=200')
+    log.log('info', 'network', 'request ok', { status: 200 }, 'CoS-0-I7C3')
+    expect(sink.lines[0]).toContain('[network]        [CoS-0-I7C3]     request ok status=200')
   })
 })
 

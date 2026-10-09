@@ -16,6 +16,7 @@ const PUBLIC_HOSTS: ReadonlySet<string> = new Set([
   'seed3.getsession.org',
   'filev2.getsession.org',
   'push.getsession.org',
+  // libsession's testnet file server: `TESTNET_CONFIG` in network/backends/session_file_server.cpp.
   'superduperfiles.oxen.io',
 ])
 
