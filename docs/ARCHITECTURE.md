@@ -123,8 +123,10 @@ first if the cache does not hold it, and answers with where it landed: a collisi
 
 The sender's placeholder is an image too, so it comes by the same road: `session-media://preview/`
 answers from `ClientBridge::fetch_preview`, which decodes the ThumbHash on the attachment's row.
-Two authorities rather than one URL with a flag, so a file and its stand-in cache separately, and
-nothing decodes an image in JavaScript on either platform. The sender's content type is a claim,
+So does the thumbnail a tile draws: `session-media://thumbnail/` answers from
+`ClientBridge::fetch_thumbnail`, the JPEG libsession made of a cached picture, from its cache only.
+One authority per image rather than one URL with a flag, so a file and its stand-ins cache
+separately, and nothing decodes an image in JavaScript on either platform. The sender's content type is a claim,
 so desktop serves an attachment only when that type is on the viewable list and the leading bytes
 are the same family, and every response carries a `sandbox` CSP: a file opened as a document gets
 no script and no origin.
@@ -746,7 +748,7 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   one numbering from 1 again, after which every URL cached before it names some other message. The
   bridge calls `InitOptions::on_database_replaced` after every discard, the startup sweep's
   included. Mobile empties its loaders' caches there: Fresco's bitmap and encoded memory caches on
-  Android, the loader's cache of decoded stills and previews on iOS. Desktop empties nothing, because Blink caches the
+  Android, the loader's cache of decoded thumbnails and previews on iOS. Desktop empties nothing, because Blink caches the
   scheme's responses where main cannot reach them; it relies on the process ending instead.
   Settings > Clear data ends the process, and so does the clear offered when the database will
   not open if an account had been loaded, which is where a failed Settings > Clear data lands.
@@ -754,3 +756,22 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   drawn. A decode answered just before a mobile reset can still land after it and cache the old
   picture again, which the same ordering keeps latent. A discard that can follow drawn media in one process needs a per-database
   epoch in the URL instead.
+
+- **2026-10-09 - A tile draws libsession's thumbnail; only the viewer draws the file.**
+  libsession makes a square JPEG of each displayable picture it caches - cropped to cover, EXIF
+  orientation applied, first frame of an animation, alpha on a checkerboard, quality 90 - on a
+  worker, and reports it as `Attachment.hasThumbnail` in a later `messages-updated`. Its side is
+  the client's thumbnail edge, which each app opens the bridge with as `ALBUM_WIDTH` times its
+  display density and `setThumbnailEdge` can store over, clamped to 64-1024 so a decoded one stays
+  within 4 MiB. It lives in the original's cache entry and is evicted with it. Generating it there
+  rather than in each loader gives every platform the same picture from one decoder, libvips under
+  libsession's own loader whitelist, and leaves the loaders two paths: a thumbnail, checked to be a
+  JPEG and decoded whole with no view-size bound, cached by URL on iOS and outside Fresco's
+  downsampling on Android; and the viewer's original, which keeps the pixel budget, the GIF/PNG
+  refusal, animation and Fresco's downsampling. Drawing never starts a download: a tile's URL used
+  to be the original's, and resolving it fetched the file, which under `image-attachments` or
+  `all` spent data on any older message that scrolled past. Now a file arrives only by
+  libsession's own rule when its message does, or when somebody taps. A tile has no failed face: a thumbnail exists only of
+  a picture that decoded, so one that does not load was evicted under it and the placeholder is
+  the truth. The fake serves thumbnails `pnpm fake-media:fetch` makes of its dev photographs at
+  720 px.
