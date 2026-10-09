@@ -917,16 +917,17 @@ export function runSessionClientContract(
       const seen = collect(client)
       const destination = `/tmp/contract-withdrawn-${String(image)}-${String(Date.now())}.bin`
 
-      // Both asked for, and their attachments deleted before anything drives the transfers on:
-      // one with its message, the other with its conversation.
+      // Each asked for, and its attachment deleted before anything drives the transfer on: one
+      // with its message, settled before the other goes with its conversation.
+      const code = (error: unknown) => error instanceof SessionClientError && error.code
       const downloading = failure(() => client.downloadAttachment(messageId, index))
-      const exporting = failure(() => client.exportAttachment(image, 0, destination))
       await client.deleteMessage(messageId, 'here')
+      await settle()
+      expect(code(await downloading)).toBe(FILE_DOWNLOAD_CANCELLED)
+
+      const exporting = failure(() => client.exportAttachment(image, 0, destination))
       await client.deleteConversation(conversationId)
       await settle()
-
-      const code = (error: unknown) => error instanceof SessionClientError && error.code
-      expect(code(await downloading)).toBe(FILE_DOWNLOAD_CANCELLED)
       expect(code(await exporting)).toBe(FILE_DOWNLOAD_CANCELLED)
 
       // Each request's last report says so too, rather than a transfer finishing for an
