@@ -97,6 +97,9 @@ export function suggestedExportName({
   const bare = tooLong ? '' : bareFileName(filename).replace(/^\.+/, '')
   const extension = extensionForType(contentType)
   const suffix = extension === null ? '' : `.${extension}`
-  if (bare === '') return fallbackStem(sentAtMs, index) + suffix
-  return HAS_EXTENSION.test(bare) ? bare : bare + suffix
+  const named = HAS_EXTENSION.test(bare) ? bare : bare + suffix
+  if (bare === '' || named.length > MAX_SUGGESTED_NAME_CHARS) {
+    return fallbackStem(sentAtMs, index) + suffix
+  }
+  return named
 }

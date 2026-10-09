@@ -13,6 +13,7 @@ import { isCrowdinLocale, setLocale } from '@session/localization'
 import { createBridge } from './bridge'
 import { editMenuItems } from './editMenu'
 import { serveFiles } from './files'
+import { launchColors } from './launchColors'
 import { registerMediaScheme, serveMedia, stopServingMedia } from './media'
 import {
   acceptsCopy,
@@ -101,6 +102,9 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
     // headless display, and a window that never shows has no layout, which makes every element
     // in it invisible to a test.
     show: true,
+    // Electron's default is white, which is what showed until the page drew: a flash on every
+    // launch, in a default theme that is black.
+    backgroundColor: launchColors().background,
     webPreferences: {
       ...hardenedWebPreferences({ packaged: app.isPackaged }),
       // CommonJS, because a sandboxed preload cannot be an ES module; it is built that way in

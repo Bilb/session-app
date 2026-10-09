@@ -176,18 +176,26 @@ const withPermissionStrings: ConfigPlugins.ConfigPlugin = (config) =>
  * nothing from 10, where MediaStore takes the save. expo-media-library, there for iOS, declares it
  * up to 32 with `requestLegacyExternalStorage`. Wraps the config rather than sitting in `plugins`,
  * so it runs after theirs.
+ *
+ * The entry is written whether or not a plugin declared it: absent, the merged manifest takes
+ * WRITE up to 32 from expo-file-system's library manifest, which only `tools:replace` overrides.
  */
 const withExportStorageAccess: ConfigPlugins.ConfigPlugin = (config) =>
   withAndroidManifest(config, (android) => {
-    const manifest = android.modResults
+    const manifest = AndroidConfig.Manifest.ensureToolsAvailable(android.modResults)
     delete AndroidConfig.Manifest.getMainApplicationOrThrow(manifest).$[
       'android:requestLegacyExternalStorage'
     ]
-    for (const permission of manifest.manifest['uses-permission'] ?? []) {
-      if (permission.$['android:name'] === 'android.permission.WRITE_EXTERNAL_STORAGE') {
-        Object.assign(permission.$, { 'android:maxSdkVersion': '28' })
-      }
+    const capped = {
+      'android:name': 'android.permission.WRITE_EXTERNAL_STORAGE',
+      'android:maxSdkVersion': '28',
+      'tools:replace': 'android:maxSdkVersion',
     }
+    const permissions = (manifest.manifest['uses-permission'] ??= [])
+    const write = permissions.find(({ $ }) => $['android:name'] === capped['android:name'])
+    if (write === undefined) permissions.push({ $: capped })
+    else Object.assign(write.$, capped)
+    android.modResults = manifest
     return android
   })
 
@@ -248,6 +256,20 @@ export default ({ config }: ConfigContext): ExpoConfig =>
           ],
           // Legacy Android's floor.
           ['expo-build-properties', { android: { minSdkVersion: 26 } }],
+          [
+            'expo-splash-screen',
+            {
+              // The legacy clients' launch screen: the logo on black, at its size there, in every
+              // theme -- nothing is known about the account's theme until after it has gone.
+              // `imageWidth` sizes a square box the logo is fitted into, and the logo is taller
+              // than it is wide, so 64 is what gives legacy's 64-point-tall logo.
+              image: './assets/splash-logo.png',
+              imageWidth: 64,
+              resizeMode: 'contain',
+              // The default theme's background; tests/splashColours.test.ts keeps the two equal.
+              backgroundColor: '#000000',
+            },
+          ],
         ],
         android: {
           ...config.android,

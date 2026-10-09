@@ -17,6 +17,15 @@ type ClassicThemeScale = {
 
 type OceanThemeScale = ClassicThemeScale & { COLOR7: string }
 
+/**
+ * Session's brand green: the logo's colour, and getsession.org's primary. Not the apps' green
+ * accent (`COLORS.PRIMARY.green`, `#31F196`), which the legacy clients theme with, while every one
+ * of them draws the logo in this - iOS's launch logo, the desktop app icon, Android's large logo -
+ * and the site uses it for the logo and its buttons alike. Not themed: a brand colour is the same
+ * in every theme.
+ */
+export const BRAND_GREEN = '#00F782'
+
 export const COLORS = {
   PRIMARY: {
     green: '#31F196',
