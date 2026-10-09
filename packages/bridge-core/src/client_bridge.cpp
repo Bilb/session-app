@@ -1084,11 +1084,14 @@ struct ClientBridge::Impl {
     }
 
     void handle(double id, const GetConfigSizesCommand&) {
-        client->config_sizes(on(id, [this, id](std::vector<client::ConfigSize> measured) {
+        client->config_sizes(on(id, [this, id](std::unordered_map<std::string, int> measured) {
             std::vector<ConfigSize> sizes;
             sizes.reserve(measured.size());
-            for (auto& size : measured)
-                sizes.emplace_back(std::move(size.name), static_cast<double>(size.bytes));
+            for (auto& [name, bytes] : measured)
+                sizes.emplace_back(name, static_cast<double>(bytes));
+            // By name, since the map has no order and an export should list them the same way
+            // every time.
+            std::ranges::sort(sizes, {}, &ConfigSize::name);
             respond(id, ConfigSizesResult{std::move(sizes)});
         }));
     }

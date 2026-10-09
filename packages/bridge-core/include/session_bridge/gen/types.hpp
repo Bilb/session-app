@@ -1219,8 +1219,8 @@ struct GetAttachmentCacheSizeCommand {
     static constexpr std::string_view type_tag = "getAttachmentCacheSize";
 };
 
-/// How large each of the account's configs is, for an exported log's header. Empty before there
-/// is an account: the configs are built from it.
+/// How large each of the account's configs is, for an exported log's header, listed by name.
+/// Empty before there is an account: the configs are built from it.
 struct GetConfigSizesCommand {
     static constexpr std::string_view type_tag = "getConfigSizes";
 };

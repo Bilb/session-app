@@ -247,8 +247,8 @@ export type Command =
    */
   | { type: 'getAttachmentCacheSize' }
   /**
-   * How large each of the account's configs is, for an exported log's header. Empty before there
-   * is an account: the configs are built from it.
+   * How large each of the account's configs is, for an exported log's header, listed by name.
+   * Empty before there is an account: the configs are built from it.
    */
   | { type: 'getConfigSizes' }
   // App preferences, stored in libsession's globals table so they sit beside the account

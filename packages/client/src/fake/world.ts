@@ -647,12 +647,13 @@ export class FakeAccount {
   configSizes(): ConfigSize[] {
     if (!this.haveAccount) return []
     const conversations = this.conversations.size
+    // By name, as the bridge lists them.
     return [
-      { name: 'user_profile', bytes: 180 + this.displayName.length },
       { name: 'contacts', bytes: 120 + 140 * conversations },
       { name: 'convo_info_volatile', bytes: 110 + 70 * conversations },
-      { name: 'user_groups', bytes: 110 },
       { name: 'local', bytes: 90 },
+      { name: 'user_groups', bytes: 110 },
+      { name: 'user_profile', bytes: 180 + this.displayName.length },
     ]
   }
 
