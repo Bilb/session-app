@@ -450,7 +450,12 @@ export function serveLogs(window: Electron.BrowserWindow, appUrl: string): void 
     } catch (error) {
       // Not Node's message, which names the path - and the renderer logs whatever it is given,
       // which the sweep cannot recognise as a path. The code says what went wrong.
-      rmSync(chosen.filePath, { force: true })
+      try {
+        rmSync(chosen.filePath, { force: true })
+      } catch {
+        // Locked, or not ours to delete: left, rather than its error - which names the path -
+        // crossing in place of this one.
+      }
       const code = (error as { code?: unknown }).code
       // The original as the cause, which stays in this process: across IPC only the message goes.
       throw new Error(
