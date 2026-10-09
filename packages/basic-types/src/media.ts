@@ -25,8 +25,24 @@ function essence(contentType: string | undefined): string | undefined {
   return contentType?.split(';')[0]?.replace(ASCII_EDGE_SPACE, '').toLowerCase()
 }
 
-export function isImageContentType(contentType: string | undefined): boolean {
-  return essence(contentType)?.startsWith('image/') === true
+/**
+ * libsession's `image::is_displayable_image`: what it shows as a gallery, what `image-attachments`
+ * fetches unasked, and what it makes a thumbnail of. Its list and its comparison, which folds ASCII
+ * case and nothing else: no parameters, no space trimmed.
+ */
+const DISPLAYABLE_IMAGE: ReadonlySet<string> = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/pjpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/avif',
+])
+
+export function isDisplayableImage(contentType: string | undefined): boolean {
+  if (contentType === undefined) return false
+  return DISPLAYABLE_IMAGE.has(contentType.replace(/[A-Z]/g, (c) => c.toLowerCase()))
 }
 
 export function isViewableImage(contentType: string | undefined): boolean {

@@ -1,4 +1,4 @@
-import { isImageContentType } from '@session/basic-types'
+import { isDisplayableImage } from '@session/basic-types'
 import type { Attachment, AutoDownload } from '@session/client'
 
 /**
@@ -22,8 +22,8 @@ import type { Attachment, AutoDownload } from '@session/client'
  */
 function mayFetchUnasked(attachment: Attachment, setting?: AutoDownload): boolean {
   if (setting === 'all') return true
-  // The prefix, not the viewable whitelist: this mirrors what libsession itself fetches unasked.
-  if (setting === 'image-attachments') return isImageContentType(attachment.contentType)
+  // libsession's list, not the viewable one: this mirrors what libsession itself fetches unasked.
+  if (setting === 'image-attachments') return isDisplayableImage(attachment.contentType)
   return false
 }
 

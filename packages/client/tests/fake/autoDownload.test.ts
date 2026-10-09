@@ -33,7 +33,8 @@ describe("the fake's auto-download", () => {
     expect(fetchedUnasked('all', 'video/mp4')).toBe(true)
   })
 
-  it("leaves a mixed-case image type alone, as libsession's case-sensitive prefix does", () => {
-    expect(fetchedUnasked('image-attachments', 'Image/JPEG')).toBe(false)
+  it("follows libsession's case-insensitive whitelist rather than the image/ prefix", () => {
+    expect(fetchedUnasked('image-attachments', 'Image/JPEG')).toBe(true)
+    expect(fetchedUnasked('image-attachments', 'image/svg+xml')).toBe(false)
   })
 })

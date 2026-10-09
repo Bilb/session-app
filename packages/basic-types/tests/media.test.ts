@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  isImageContentType,
+  isDisplayableImage,
   isViewableContentType,
   isViewableImage,
   isViewableVideo,
@@ -12,8 +12,6 @@ describe('which content types are viewable', () => {
   it('draws the common bitmaps and refuses svg', () => {
     expect(isViewableImage('image/png')).toBe(true)
     expect(isViewableImage('image/svg+xml')).toBe(false)
-    // Still an image, so it is not a file row's generic glyph, only not drawn inline.
-    expect(isImageContentType('image/svg+xml')).toBe(true)
   })
 
   it('accepts the unregistered image/jpg that senders send', () => {
@@ -23,7 +21,6 @@ describe('which content types are viewable', () => {
   it('ignores parameters and case', () => {
     expect(isViewableImage('Image/JPEG; charset=binary')).toBe(true)
     expect(isViewableVideo('VIDEO/MP4;codecs="avc1"')).toBe(true)
-    expect(isImageContentType(' IMAGE/HEIC')).toBe(true)
     expect(isViewableImage('\t\r\n\f\v image/png \v\f\n\r\t')).toBe(true)
   })
 
@@ -37,6 +34,27 @@ describe('which content types are viewable', () => {
     expect(isViewableContentType(undefined)).toBe(false)
     expect(isViewableContentType('application/octet-stream')).toBe(false)
     expect(isViewableContentType('video/quicktime')).toBe(false)
+  })
+})
+
+describe('which content types libsession calls displayable', () => {
+  it('is its whitelist, in any ASCII case', () => {
+    expect(isDisplayableImage('IMAGE/Jpeg')).toBe(true)
+    expect(isDisplayableImage('image/pjpeg')).toBe(true)
+    expect(isDisplayableImage('image/avif')).toBe(true)
+  })
+
+  it('refuses a picture outside it, and a prefix match', () => {
+    expect(isDisplayableImage('image/svg+xml')).toBe(false)
+    expect(isDisplayableImage('image/heic')).toBe(false)
+    expect(isDisplayableImage('image/bmp')).toBe(false)
+    expect(isDisplayableImage('image/pngx')).toBe(false)
+    expect(isDisplayableImage(undefined)).toBe(false)
+  })
+
+  it('compares the whole string, as libsession does: no parameters, no space', () => {
+    expect(isDisplayableImage('image/jpeg; charset=binary')).toBe(false)
+    expect(isDisplayableImage(' image/png')).toBe(false)
   })
 })
 

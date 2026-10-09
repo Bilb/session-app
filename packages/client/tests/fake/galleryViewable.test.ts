@@ -32,7 +32,12 @@ describe("the fake's galleryViewable", () => {
     expect(deliver('image/jpeg', 'video/mp4').galleryViewable).toBe(false)
   })
 
-  it("refuses a mixed-case image type, as libsession's case-sensitive prefix does", () => {
-    expect(deliver('Image/JPEG').galleryViewable).toBe(false)
+  it("admits a mixed-case type, as libsession's case-insensitive whitelist does", () => {
+    expect(deliver('Image/JPEG').galleryViewable).toBe(true)
+  })
+
+  it('refuses an image type outside the whitelist', () => {
+    expect(deliver('image/jpeg', 'image/svg+xml').galleryViewable).toBe(false)
+    expect(deliver('image/heic').galleryViewable).toBe(false)
   })
 })

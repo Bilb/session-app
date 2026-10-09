@@ -20,8 +20,9 @@ function attachment(
 }
 
 describe('what drawing may fetch unasked', () => {
-  it('follows libsession’s image rule, which is a prefix rather than the viewable list', () => {
-    expect(mayResolve(attachment('image/svg+xml'), 'image-attachments')).toBe(true)
+  it('follows libsession’s displayable list rather than the viewable one', () => {
+    expect(mayResolve(attachment('image/avif'), 'image-attachments')).toBe(true)
+    expect(mayResolve(attachment('image/svg+xml'), 'image-attachments')).toBe(false)
     expect(mayResolve(attachment('video/mp4'), 'image-attachments')).toBe(false)
   })
 
