@@ -1,7 +1,7 @@
 /**
  * What every media source must do: the addon, the Nitro bridge and the fake answer a media URL
  * through it, so a picture drawn on the fake predicts one drawn on libsession. Only the fake can
- * produce an incoming attachment offline, so only the fake runs the scenarios that need one.
+ * serve an incoming attachment's bytes offline, so only the fake runs the scenarios that fetch one.
  */
 
 import type { Attachment, AttachmentRef, MediaSource, SessionClient } from '@session/client'
