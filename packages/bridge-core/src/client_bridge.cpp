@@ -68,6 +68,12 @@ namespace {
     }
 
     /// The fake says the same sentence; the media source contract holds the two to it.
+    std::string not_downloaded(int64_t id, size_t at) {
+        return "attachment " + std::to_string(at) + " of message " + std::to_string(id) +
+               " is not downloaded";
+    }
+
+    /// The fake says the same sentence; the media source contract holds the two to it.
     std::string no_thumbnail(int64_t id, size_t at) {
         return "attachment " + std::to_string(at) + " of message " + std::to_string(id) +
                " has no thumbnail";
@@ -1309,6 +1315,8 @@ void ClientBridge::fetch_media(double message_id, double index, MediaHandler cb)
                 return cb(Media{std::string{msg.error().message}, {}, {}});
             if (!*msg || at >= (*msg)->attachments.size())
                 return cb(Media{no_such_attachment(id, at), {}, {}});
+            if (!*bytes && bytes->error().code == client::err::not_cached)
+                return cb(Media{not_downloaded(id, at), {}, {}});
             if (!*bytes)
                 return cb(Media{std::string{bytes->error().message}, {}, {}});
             // The sender's claim, and the only description there is. Whoever renders it is
@@ -1332,10 +1340,9 @@ void ClientBridge::fetch_media(double message_id, double index, MediaHandler cb)
                     if (join->bytes)
                         join->settle();
                 });
-        _impl->client->attachment_data(
+        _impl->client->attachment_data_cached(
                 join->id,
                 join->at,
-                _impl->report(AttachmentTransfer::download),
                 [join](session::Expected<std::vector<std::byte>> r) mutable {
                     std::lock_guard l{join->lock};
                     join->bytes.emplace(std::move(r));

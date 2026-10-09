@@ -131,8 +131,8 @@ describeAddon('addon', () => {
     { describe, it, expect },
     {
       unsupported: {
-        'answers a picture with its bytes and the type they were sent as': OFFLINE_ATTACHMENTS,
-        'reports a picture as cached once its bytes have been served': OFFLINE_ATTACHMENTS,
+        'answers a downloaded picture with its bytes and the type they were sent as':
+          OFFLINE_ATTACHMENTS,
         'answers a downloaded picture with a square JPEG thumbnail no larger than the edge':
           OFFLINE_ATTACHMENTS,
         'has no thumbnail of a downloaded PDF': OFFLINE_ATTACHMENTS,
@@ -143,6 +143,8 @@ describeAddon('addon', () => {
                 NEEDS_TEST_COMMANDS,
               'has no preview where the sender sent no hash': NEEDS_TEST_COMMANDS,
               'has no thumbnail of a picture not yet downloaded': NEEDS_TEST_COMMANDS,
+              'refuses a picture that is not downloaded, and starts no transfer':
+                NEEDS_TEST_COMMANDS,
             }),
       },
     },

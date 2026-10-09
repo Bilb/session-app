@@ -78,9 +78,8 @@ function mediaHeaders(contentType: string): Record<string, string> {
  * Serves the scheme from the bridge, in the main process, where the addon already is.
  *
  * Bytes never touch the frame stream and never cross as a message: Chromium fetches them for the
- * element that asked, decodes off the main thread, and caches the result itself. A transfer that
- * has to happen still reports progress as `attachment-progress` events, so the row draws the same
- * bar it would for a tap.
+ * element that asked, decodes off the main thread, and caches the result itself. Every kind is
+ * served from libsession's cache only, so drawing a URL never downloads anything.
  */
 export function serveMedia(bridge: MediaSource): void {
   protocol.handle(MEDIA_SCHEME, async (request) => {
@@ -112,10 +111,9 @@ export function serveMedia(bridge: MediaSource): void {
         headers: mediaHeaders(contentType),
       })
     } catch {
-      // Only a failure after a transfer started is on the frame stream too. A verdict, a missing
-      // message, a failed preview or a missing thumbnail is known from this status alone, so
-      // whoever draws the url has to handle the image failing. Not stored, so the url is asked
-      // again after a retry.
+      // A file not downloaded, a missing message, a failed preview or a missing thumbnail is known
+      // from this status alone, so whoever draws the url has to handle the image failing. Not
+      // stored, so the url is asked again once the file is here.
       // TODO: once sending exists, serve a sender's own attachment from its local copy while it
       // uploads; libsession refuses a file not uploaded yet, so that picture is a 404 here.
       return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } })

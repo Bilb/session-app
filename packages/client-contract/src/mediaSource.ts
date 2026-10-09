@@ -1,7 +1,10 @@
 /**
  * What every media source must do: the addon, the Nitro bridge and the fake answer a media URL
  * through it, so a picture drawn on the fake predicts one drawn on libsession. Only the fake can
- * serve an incoming attachment's bytes offline, so only the fake runs the scenarios that fetch one.
+ * download an incoming attachment offline, so only the fake runs the scenarios that need one.
+ *
+ * A source answers from libsession's cache only: nothing drawn on screen may spend data, so the
+ * one way bytes arrive is a download somebody asked for.
  */
 
 import type { Attachment, AttachmentRef, MediaSource, SessionClient } from '@session/client'
@@ -46,6 +49,11 @@ function unknownRefMessage({ messageId, index }: AttachmentRef): string {
 /** What every source says of an attachment that exists but was sent with no hash. */
 function noPreviewMessage({ messageId, index }: AttachmentRef): string {
   return `attachment ${String(index)} of message ${String(messageId)} has no preview`
+}
+
+/** What every source says of an attachment whose file is not cached. */
+function notDownloadedMessage({ messageId, index }: AttachmentRef): string {
+  return `attachment ${String(index)} of message ${String(messageId)} is not downloaded`
 }
 
 /** What every source says of an attachment libsession holds no thumbnail of. */
@@ -133,11 +141,12 @@ export function runMediaSourceContract(
       expect(messageOf(thumbnail)).toBe(unknownRefMessage(NOWHERE))
     })
 
-    it('answers a picture with its bytes and the type they were sent as', async () => {
+    it('answers a downloaded picture with its bytes and the type they were sent as', async () => {
       const { source, client, conversationId, picture, settle } = await harness.withAttachments()
-      const answer = source.fetchMedia(picture)
+      const downloaded = client.downloadAttachment(picture.messageId, picture.index)
       await settle()
-      const media = await answer
+      await downloaded
+      const media = await source.fetchMedia(picture)
       expect(media.bytes instanceof Uint8Array).toBe(true)
       expect(media.bytes.length).toBeGreaterThan(0)
       const declared = (await attachmentOf(client, conversationId, picture))?.contentType
@@ -145,13 +154,21 @@ export function runMediaSourceContract(
       expect(media.contentType).toBe(declared)
     })
 
-    it('reports a picture as cached once its bytes have been served', async () => {
+    it('refuses a picture that is not downloaded, and starts no transfer', async () => {
       const { source, client, conversationId, picture, settle } = await harness.withAttachments()
-      const answer = source.fetchMedia(picture)
+      // As it was, whatever that is: the addon's forged pointers carry no url and read unreadable.
+      const before = (await attachmentOf(client, conversationId, picture))?.availability
+      const reports: unknown[] = []
+      const stop = client.onEvent((event) => {
+        if (event.type === 'attachment-progress') reports.push(event)
+      })
+      const refused = await failure(() => source.fetchMedia(picture))
       await settle()
-      await answer
-      const attachment = await attachmentOf(client, conversationId, picture)
-      expect(attachment?.availability).toBe('cached')
+      stop()
+      expect(messageOf(refused)).toBe(notDownloadedMessage(picture))
+      expect(reports).toEqual([])
+      expect(before === 'cached').toBe(false)
+      expect((await attachmentOf(client, conversationId, picture))?.availability).toBe(before)
     })
 
     it('answers a preview as width * height RGBA pixels where the sender sent a hash', async () => {
@@ -173,9 +190,9 @@ export function runMediaSourceContract(
 
     it('answers a downloaded picture with a square JPEG thumbnail no larger than the edge', async () => {
       const { source, client, conversationId, picture, settle } = await harness.withAttachments()
-      const fetched = source.fetchMedia(picture)
+      const downloaded = client.downloadAttachment(picture.messageId, picture.index)
       await settle()
-      await fetched
+      await downloaded
       expect((await untilThumbnailed(client, conversationId, picture, settle))?.hasThumbnail).toBe(
         true,
       )

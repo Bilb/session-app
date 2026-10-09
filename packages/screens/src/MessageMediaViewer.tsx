@@ -34,8 +34,8 @@ function MessageViewer({
   const feedback = useExportFeedback()
   const message = useMessage(conversationId, target.messageId)
   const transfers = useMessageTransfers(target.messageId)
-  // Only what is here, as the legacy clients' galleries: the url is the request, so an item that
-  // is not would start a download nobody asked for, and paging stops at what has arrived.
+  // Only what is here, as the legacy clients' galleries: the file is served from the cache only,
+  // so an item that is not here could not be drawn, and paging stops at what has arrived.
   const viewable = useMemo(
     () =>
       message === undefined

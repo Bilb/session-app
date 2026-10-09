@@ -197,9 +197,9 @@ class ClientBridge {
     /// payload that no event can contradict anyway. So this answers its own caller, and what
     /// reaches a renderer is a URL its platform resolves natively rather than a frame.
     ///
-    /// Progress still goes to the sink, as `attachment-progress` with `transfer: "download"`, so
-    /// a picture loading draws the same bar as a tap does and a row that mounts halfway through
-    /// reads the same state. A file already cached reports nothing and answers at once.
+    /// **From the cache only, never the network**: nothing drawn on screen spends data. A file
+    /// libsession does not hold is refused with "attachment <i> of message <id> is not
+    /// downloaded", the sentence the fake says too; `downloadAttachment` is how it gets here.
     ///
     /// `cb` runs on whichever thread libsession finished on, which is Core's loop. It must only
     /// hand the bytes on, for the same reason `Sink` must only enqueue.

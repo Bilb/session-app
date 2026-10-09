@@ -21,20 +21,22 @@ async function showcasePhoto() {
 }
 
 describe('the fake media source', () => {
-  it('answers a picture only once its transfer has finished, so its placeholder shows meanwhile', async () => {
+  it('refuses a picture that is not downloaded, and downloads nothing', async () => {
     const { alice, world, ref } = await showcasePhoto()
-    let answered = false
-    const media = createFakeMediaSource(alice, readPhoto)
-      .fetchMedia(ref)
-      .then((m) => {
-        answered = true
-        return m
-      })
-    await Promise.resolve()
-    expect(answered).toBe(false)
+    await expect(createFakeMediaSource(alice, readPhoto).fetchMedia(ref)).rejects.toThrow(
+      `attachment ${String(ref.index)} of message ${String(ref.messageId)} is not downloaded`,
+    )
     world.settle()
-    expect(asText((await media).bytes)).toBe('unsplash-01.jpg')
-    expect(alice.isCached(ref)).toBe(true)
+    expect(alice.isCached(ref)).toBe(false)
+  })
+
+  it('answers a picture once it is downloaded', async () => {
+    const { alice, world, ref } = await showcasePhoto()
+    const downloaded = alice.downloadAttachment(ref.messageId, ref.index)
+    world.settle()
+    await downloaded
+    const media = await createFakeMediaSource(alice, readPhoto).fetchMedia(ref)
+    expect(asText(media.bytes)).toBe('unsplash-01.jpg')
   })
 
   it('serves every picture as a real photograph, whatever its name', async () => {
@@ -49,9 +51,10 @@ describe('the fake media source', () => {
     )
     expect(pictures.length).toBeGreaterThan(0)
     const source = createFakeMediaSource(alice, readPhoto)
-    const served = pictures.map((ref) => source.fetchMedia(ref))
+    const downloaded = pictures.map((ref) => alice.downloadAttachment(ref.messageId, ref.index))
     world.settle()
-    for (const media of await Promise.all(served)) {
+    await Promise.all(downloaded)
+    for (const media of await Promise.all(pictures.map((ref) => source.fetchMedia(ref)))) {
       expect(asText(media.bytes)).toMatch(/^unsplash-\d{2}\.jpg$/)
     }
   })
@@ -70,9 +73,9 @@ describe('the fake media source', () => {
     await expect(source.fetchThumbnail(ref)).rejects.toThrow(
       `attachment ${String(ref.index)} of message ${String(ref.messageId)} has no thumbnail`,
     )
-    const fetched = source.fetchMedia(ref)
+    const downloaded = alice.downloadAttachment(ref.messageId, ref.index)
     world.settle()
-    await fetched
+    await downloaded
     expect(asText(await source.fetchThumbnail(ref))).toBe('thumbnail-01.jpg')
   })
 })

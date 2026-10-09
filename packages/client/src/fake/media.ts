@@ -104,9 +104,12 @@ export function createFakeMediaSource(
   return {
     async fetchMedia(ref) {
       refuseUnknown(client, ref)
-      // Serving the scheme is a fetch: the real bridge fills the cache and announces the change,
-      // so bytes handed back without it would leave the picture reported as one nobody has.
-      await client.downloadAttachment(ref.messageId, ref.index)
+      // As the shim does, in its words: from the cache only, so nothing drawn spends data.
+      if (!client.isCached(ref)) {
+        throw new Error(
+          `attachment ${String(ref.index)} of message ${String(ref.messageId)} is not downloaded`,
+        )
+      }
       const photo = photoFileName(client, ref)
       const declared = client.locate(ref)?.attachment.contentType
       if (photo === null || declared === undefined) throw new Error('not a picture')

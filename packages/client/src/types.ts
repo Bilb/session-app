@@ -206,6 +206,7 @@ export type AttachmentPreview = PixelSize & { rgba: Uint8Array }
  * behind a payload nothing can contradict. Progress still arrives as events.
  */
 export interface MediaSource {
+  /** From libsession's cache only, never a download: refused while the file is not cached. */
   fetchMedia(ref: AttachmentRef): Promise<AttachmentMedia>
   fetchPreview(ref: AttachmentRef): Promise<AttachmentPreview>
   /**

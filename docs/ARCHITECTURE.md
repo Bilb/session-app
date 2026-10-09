@@ -115,7 +115,9 @@ its poll ticker and exposes no one-shot entry point. Both are open questions in 
 Attachment metadata, transfer progress and the per-conversation auto-download setting cross;
 bytes do not. They leave by a second channel instead: `session-media://attachment/<id>/<index>`,
 resolved natively by each platform straight out of `ClientBridge::fetch_media`, so a picture never
-passes through JavaScript and never rides this stream. Whether the bytes are here is the
+passes through JavaScript and never rides this stream. It answers from libsession's cache only:
+nothing drawn on screen downloads, so a file arrives by libsession's own rule as its message does,
+or by a tap. Whether the bytes are here is the
 attachment's `availability` on the page. `downloadAttachment` reads the cache, joins a fetch
 already running, or starts one. `exportAttachment` writes the file to a destination, fetching it
 first if the cache does not hold it, and answers with where it landed: a collision lands at
@@ -770,8 +772,10 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   downsampling on Android; and the viewer's original, which keeps the pixel budget, the GIF/PNG
   refusal, animation and Fresco's downsampling. Drawing never starts a download: a tile's URL used
   to be the original's, and resolving it fetched the file, which under `image-attachments` or
-  `all` spent data on any older message that scrolled past. Now a file arrives only by
-  libsession's own rule when its message does, or when somebody taps. A tile has no failed face: a thumbnail exists only of
+  `all` spent data on any older message that scrolled past. Now every URL is served from the cache
+  only (`attachment_data_cached`, refused as "is not downloaded"), and a file arrives only by
+  libsession's own rule when its message does, or when somebody taps. A viewer whose file was
+  evicted just before it loaded draws its unavailable state rather than downloading again. A tile has no failed face: a thumbnail exists only of
   a picture that decoded, so one that does not load was evicted under it and the placeholder is
   the truth. The fake serves thumbnails `pnpm fake-media:fetch` makes of its dev photographs at
   720 px.
