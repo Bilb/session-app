@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# Copies the dev photographs into the dev client's own storage, where the fake reads them: an
+# Copies the dev photographs and their thumbnails into the dev client's own storage, where the fake reads them: an
 # Android device or emulator over adb, or a booted iOS simulator.
 #
 # Usage: push-fake-media.sh [--android|--ios] [folder]. Without a flag it pushes to whichever of
@@ -21,8 +21,10 @@ esac
 
 src="${1:-${SESSION_FAKE_MEDIA_DIR:-$HOME/.cache/session-app/dev-media}}"
 count=$( (ls "$src"/unsplash-*.jpg 2>/dev/null || true) | wc -l | tr -d " ")
-if [ "$count" -ne 30 ]; then
-    echo "expected 30 dev photographs in $src, found $count. Run: pnpm fake-media:fetch" >&2
+thumbnails=$( (ls "$src"/thumbnail-*.jpg 2>/dev/null || true) | wc -l | tr -d " ")
+if [ "$count" -ne 30 ] || [ "$thumbnails" -ne 30 ]; then
+    echo "expected 30 dev photographs and 30 thumbnails in $src, found $count and $thumbnails." \
+        "Run: pnpm fake-media:fetch" >&2
     exit 1
 fi
 
@@ -74,9 +76,9 @@ push_android() {
     local staging=/data/local/tmp/session-fake-media
     "$adb" shell rm -rf "$staging"
     "$adb" shell mkdir -p "$staging"
-    "$adb" push "$src"/unsplash-*.jpg "$staging/" >/dev/null
+    "$adb" push "$src"/unsplash-*.jpg "$src"/thumbnail-*.jpg "$staging/" >/dev/null
     "$adb" shell run-as "$package" mkdir -p files/fake-media
-    "$adb" shell run-as "$package" sh -c "'cp $staging/unsplash-*.jpg files/fake-media/'"
+    "$adb" shell run-as "$package" sh -c "'cp $staging/*.jpg files/fake-media/'"
     "$adb" shell rm -rf "$staging"
 }
 
@@ -107,8 +109,8 @@ push_ios() {
         exit 1
     fi
     mkdir -p "$container/Documents/fake-media"
-    cp "$src"/unsplash-*.jpg "$container/Documents/fake-media/"
+    cp "$src"/unsplash-*.jpg "$src"/thumbnail-*.jpg "$container/Documents/fake-media/"
 }
 
 "push_$target"
-echo "pushed $count photographs from $src to $target; restart the app to pick them up"
+echo "pushed $count photographs and their thumbnails from $src to $target; restart the app to pick them up"

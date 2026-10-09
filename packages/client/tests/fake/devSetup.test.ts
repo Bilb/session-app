@@ -187,7 +187,7 @@ describe('starting a dev fake', () => {
 
   it('refuses without the thumbnails made of them, which an older fetch did not write', () => {
     expect(() =>
-      startDevFake({}, { ...allPhotos, has: (fileName) => !fileName.endsWith('.thumb.jpg') }),
+      startDevFake({}, { ...allPhotos, has: (fileName) => !fileName.startsWith('thumbnail-') }),
     ).toThrow(/30 are missing/)
   })
 

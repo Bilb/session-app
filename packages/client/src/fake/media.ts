@@ -51,11 +51,12 @@ export function photoFileNames(): string[] {
 }
 
 /**
- * The thumbnail `pnpm fake-media:fetch` makes of a dev photograph, `unsplash-07.thumb.jpg` for
- * `unsplash-07.jpg`: what libsession would make of it at the fake's edge.
+ * The thumbnail `pnpm fake-media:fetch` makes of a dev photograph, `thumbnail-07.jpg` for
+ * `unsplash-07.jpg`: what libsession would make of it at the fake's edge. Outside the
+ * `unsplash-*.jpg` glob, which counts the photographs.
  */
-export function thumbnailFileName(photo: string): string {
-  return photo.replace(/\.jpg$/, '.thumb.jpg')
+function thumbnailFileName(photo: string): string {
+  return photo.replace(/^unsplash-/, 'thumbnail-')
 }
 
 /** Every dev thumbnail's file name, checked at start beside the photographs. */

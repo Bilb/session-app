@@ -73,6 +73,6 @@ describe('the fake media source', () => {
     const fetched = source.fetchMedia(ref)
     world.settle()
     await fetched
-    expect(asText(await source.fetchThumbnail(ref))).toBe('unsplash-01.thumb.jpg')
+    expect(asText(await source.fetchThumbnail(ref))).toBe('thumbnail-01.jpg')
   })
 })

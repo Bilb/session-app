@@ -38,6 +38,7 @@ catalog:
   expo-router: ~57.0.18
   expo-secure-store: ~57.0.1
   expo-splash-screen: ~57.0.8
+  jpeg-js: 0.4.4
   knip: 6.34.0
   nitrogen: 0.37.1
   node-addon-api: 8.9.2
