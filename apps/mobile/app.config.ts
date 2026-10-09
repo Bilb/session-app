@@ -208,6 +208,7 @@ export default ({ config }: ConfigContext): ExpoConfig =>
           image: './assets/splash-logo.png',
           imageWidth: 64,
           resizeMode: 'contain',
+          // The default theme's background; tests/splashColours.test.ts keeps the two equal.
           backgroundColor: '#000000',
         },
       ],
