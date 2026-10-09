@@ -48,6 +48,18 @@ async function launch() {
   });
   const window = await app.firstWindow();
   await window.waitForLoadState('domcontentloaded');
+  // A `devprod` instance docks DevTools over the window, and opens them only after the load.
+  await app.evaluate(({ BrowserWindow }) => {
+    for (const w of BrowserWindow.getAllWindows()) {
+      w.webContents.on('devtools-opened', () => w.webContents.closeDevTools());
+      w.webContents.closeDevTools();
+    }
+  });
+  // An account over a week old gets a Donate appeal some time after launch, over the composer.
+  // Its close button has no test id; Escape closes the top modal.
+  await window.addLocatorHandler(window.getByTestId('cta-heading'), () =>
+    window.keyboard.press('Escape'),
+  );
   return { app, window };
 }
 
