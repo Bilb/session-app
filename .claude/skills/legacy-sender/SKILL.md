@@ -100,6 +100,13 @@ someone approves them - then send from the legacy side.
   dialog some time after launch, for its first few launches, covering the composer. Its close
   button has no test id; `launch` registers a locator handler that presses Escape whenever
   `cta-heading` shows, which Playwright runs before the next action.
+- **The driver waits 15 s before closing.** A message stays in the legacy app's persisted send
+  queue until its sync copy is stored, after the sent tick. Closing sooner makes the next launch
+  store it again, under a new hash with the same sent timestamp, and libsession keeps both: legacy
+  messages carry no message id, and it de-duplicates only by hash and message id. The run's last
+  message then shows twice on whichever client received it. The legacy app's log
+  (`~/.config/Session-production-devprod<instance>/logs/app.log`) ends a clean run with
+  `data.shutdown: … 0 jobs outstanding`.
 - **Nothing evaluates in the page.** `window.evaluate` returns `null` for a string, even
   `'1 + 1'`, and fails with `result is not a function` for a function. Go through main instead:
   `app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.executeJavaScript('…'))`.
