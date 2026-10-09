@@ -63,7 +63,7 @@ export async function exportLogs(): Promise<ExportOutcome> {
       // libsession keeps the dumps in its own table and has no call that reports their sizes yet.
       configSizes: null,
       logs: { plan, ...span },
-      redactions: appLog.sweepCounts(),
+      redactions: device.redactions ?? appLog.sweepCounts(),
     }
 
     const name = exportFileName(device.platform, build.version, now)

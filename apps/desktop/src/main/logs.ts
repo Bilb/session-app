@@ -449,8 +449,9 @@ export function serveLogs(window: Electron.BrowserWindow, appUrl: string): void 
     return true
   })
 
-  ipc.handle('log:diagnostics', (event) => {
+  ipc.handle('log:diagnostics', async (event) => {
     if (!isFromAppFrame(event.senderFrame, appUrl)) throw new Error('refused')
+    const { logger } = await openLogs()
     const data = sessionDataDir()
     const free = ((): number | null => {
       try {
@@ -484,6 +485,8 @@ export function serveLogs(window: Electron.BrowserWindow, appUrl: string): void 
       networkType: net.isOnline() ? 'online' : 'offline',
       database: databaseSizes(data),
       attachmentsBytes: directoryBytes(join(data, 'attachments')),
+      // Main sweeps every line on the desktop, the renderer's included, so the counts are here.
+      redactions: logger.sweepCounts(),
     }
   })
 

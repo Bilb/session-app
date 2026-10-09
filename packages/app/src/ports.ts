@@ -1,6 +1,6 @@
 import type { NetworkName } from '@session/basic-types'
 import type { AttachmentRef, PixelSize } from '@session/client'
-import type { DatabaseSizes, ExportPart, LogFileInfo } from '@session/logging'
+import type { DatabaseSizes, ExportPart, LogFileInfo, SweepCounts } from '@session/logging'
 /**
  * What the app needs from the operating system, named so shared code can ask without
  * knowing which one it is running on.
@@ -285,6 +285,11 @@ export interface DiagnosticsSnapshot {
   /** The database and its journals, measured off disk; null where there is no database. */
   database: DatabaseSizes | null
   attachmentsBytes: number | null
+  /**
+   * What the sweep has replaced, where another process does the sweeping: the desktop's main,
+   * which sweeps the renderer's lines and libsession's. Absent where this process sweeps its own.
+   */
+  redactions?: SweepCounts
 }
 
 export interface DiagnosticsPort {

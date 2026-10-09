@@ -1,4 +1,4 @@
-import type { ExportPart } from '@session/logging'
+import { emptyCounts, type ExportPart, type SweepCounts } from '@session/logging'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { exportLogs } from '#src/exportLogs'
@@ -14,7 +14,10 @@ afterEach(() => {
   resetLogger()
 })
 
-function withLogs(deliver: (name: string, parts: readonly ExportPart[]) => Promise<boolean>) {
+function withLogs(
+  deliver: (name: string, parts: readonly ExportPart[]) => Promise<boolean>,
+  redactions?: SweepCounts,
+) {
   const base = memoryPorts()
   setPorts(
     memoryPorts({
@@ -38,7 +41,12 @@ function withLogs(deliver: (name: string, parts: readonly ExportPart[]) => Promi
           }),
         deliver,
       },
-      diagnostics: base.diagnostics,
+      diagnostics:
+        redactions === undefined
+          ? base.diagnostics
+          : {
+              snapshot: async () => ({ ...(await base.diagnostics.snapshot()), redactions }),
+            },
     }),
   )
 }
@@ -62,6 +70,20 @@ describe('exportLogs', () => {
       { file: 'session-20261008T000000Z-0.log' },
       { file: 'session-20261009T000000Z-0.log' },
     ])
+  })
+
+  it("reports the sweep's counts from where the lines were swept, when that is elsewhere", async () => {
+    let header = ''
+    withLogs(
+      (_name, parts) => {
+        header = (parts[0] as { text: string }).text
+        return Promise.resolve(true)
+      },
+      { ...emptyCounts(), hex: 12, url: 3 },
+    )
+    await exportLogs()
+    expect(header).toMatch(/^\s+hex\s+12$/m)
+    expect(header).toMatch(/^\s+url\s+3$/m)
   })
 
   it('says when the person cancelled, and when the platform failed', async () => {
