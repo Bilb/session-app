@@ -1,4 +1,5 @@
 import { requirePorts } from '@session/app'
+import { ALBUM_WIDTH } from '@session/basic-types'
 import { useMemo, type ReactNode } from 'react'
 import type { Attachment, AutoDownload, Message } from '@session/client'
 import { tr } from '@session/localization'
@@ -8,15 +9,6 @@ import { AttachmentAlbum, type AlbumItem } from '@session/ui'
 import type { Fetch } from './attachmentFetch'
 import { mayResolve } from './autoDownload'
 import { viewableAttachments } from './viewableAttachments'
-
-/**
- * As wide as a bubble is allowed to be.
- *
- * A number here and not a constant shared with the bubble, because the bubble's own width is a
- * percentage of the pane and nothing measures it yet. When something does, this takes it as a
- * prop - the album has never been the thing that decides how wide a message is.
- */
-export const ALBUM_WIDTH = 240
 
 /**
  * One message's pictures, as an album.

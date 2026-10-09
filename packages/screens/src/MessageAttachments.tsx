@@ -1,3 +1,4 @@
+import { ALBUM_WIDTH } from '@session/basic-types'
 import type { Message } from '@session/client'
 import { SPACE_SCALE, YStack } from '@session/ui'
 
@@ -6,7 +7,7 @@ import { AttachmentList, LIST_MAX_ROWS } from './AttachmentList'
 import { AttachmentPill } from './AttachmentPill'
 import { attachmentView, canChooseView } from './attachmentView'
 import { useConversationUi } from './conversationUi'
-import { ALBUM_WIDTH, MessageAlbum } from './MessageAlbum'
+import { MessageAlbum } from './MessageAlbum'
 import { useAttachmentSet } from './useAttachmentSet'
 import { useViewChoice } from './viewChoices'
 

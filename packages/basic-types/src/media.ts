@@ -63,3 +63,14 @@ export function isViewableContentType(contentType: string | undefined): boolean 
 export function mediaKindOf(contentType: string | undefined): MediaKind {
   return isViewableVideo(contentType) ? 'video' : 'image'
 }
+
+/**
+ * How wide a message's attachments are drawn, in density-independent pixels: as wide as a bubble
+ * is allowed to be. Here rather than with the screens because each app also asks libsession for
+ * thumbnails this wide, times its display density, before anything is drawn.
+ *
+ * A number and not a constant shared with the bubble, because the bubble's own width is a
+ * percentage of the pane and nothing measures it yet. When something does, the album takes it as
+ * a prop - the album has never been the thing that decides how wide a message is.
+ */
+export const ALBUM_WIDTH = 240
