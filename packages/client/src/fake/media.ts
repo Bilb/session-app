@@ -59,8 +59,12 @@ function hexBytes(hex: string): Uint8Array {
  * what is drawn is what a recipient would be sent, limits included.
  */
 export function fakePreviewPixels(client: FakeSessionClient, ref: AttachmentRef): Decoded {
-  // As the shim does: the hash arrived with the message or there is none.
-  if (client.locate(ref)?.attachment.hasPreview !== true) throw new Error('no preview: no hash')
+  // As the shim does, in its words: the hash arrived with the message or there is none.
+  if (client.locate(ref)?.attachment.hasPreview !== true) {
+    throw new Error(
+      `attachment ${String(ref.index)} of message ${String(ref.messageId)} has no preview`,
+    )
+  }
   const photo = photoNumber(photoFileName(client, ref) ?? undefined)
   const hash = photo === null ? undefined : PHOTO_THUMBHASHES[Number(photo) - 1]
   if (hash === undefined) throw new Error('no preview: not a picture')

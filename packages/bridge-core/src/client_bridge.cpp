@@ -60,6 +60,12 @@ namespace {
         return not_found("attachment", std::to_string(at) + " of message " + std::to_string(id));
     }
 
+    /// The fake says the same sentence; the media source contract holds the two to it.
+    std::string no_preview(int64_t id, size_t at) {
+        return "attachment " + std::to_string(at) + " of message " + std::to_string(id) +
+               " has no preview";
+    }
+
     /// A number from JavaScript as a whole number of type T, or an error naming the field.
     ///
     /// Every numeric field crosses as a double, and `static_cast` to an integer type is undefined
@@ -1335,7 +1341,7 @@ void ClientBridge::fetch_preview(double message_id, double index, PreviewHandler
 
                     const auto& a = msg->attachments[at];
                     if (!previewable(a)) {
-                        cb(Preview{"no preview", 0, 0, {}});
+                        cb(Preview{no_preview(id, at), 0, 0, {}});
                         return;
                     }
 

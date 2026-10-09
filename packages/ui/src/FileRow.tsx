@@ -33,6 +33,7 @@ import { StateLayer } from './StateLayer'
 import { Text } from './Text'
 import { useFontScale } from './useFontScale'
 import { tileRadius } from './attachmentTileStyle'
+import type { WithFailedLabel } from './with'
 
 export interface FileRowTestIDs {
   row?: ElementId | undefined
@@ -41,10 +42,15 @@ export interface FileRowTestIDs {
   action?: ElementId | undefined
   /** Addresses the picture inside the thumbnail, so a test can ask whether it arrived. */
   thumbnail?: ElementId | undefined
+  thumbnailFailed?: ElementId | undefined
 }
 
 /** What the lead square shows when the row is for something with a picture behind it. */
-export type FileRowThumbnail = WithMediaUri & WithMediaPreview & WithMediaKind & WithFetchesOnOpen
+export type FileRowThumbnail = WithMediaUri &
+  WithMediaPreview &
+  WithMediaKind &
+  WithFetchesOnOpen &
+  WithFailedLabel
 
 export type FileRowProps = WithFilename &
   WithContentType &
@@ -203,6 +209,8 @@ export function FileRow({
         uri={thumbnail.uri}
         preview={thumbnail.preview}
         testID={testIDs?.thumbnail}
+        failedLabel={thumbnail.failedLabel}
+        failedTestID={testIDs?.thumbnailFailed}
       />
     )
 
