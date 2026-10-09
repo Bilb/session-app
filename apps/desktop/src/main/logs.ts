@@ -29,6 +29,7 @@ import { flagOverrideRows } from '@session/app/flags'
 import {
   consoleDirectory,
   createLogger,
+  databaseFields,
   libsessionLine,
   minLevelFromSpec,
   networkRows,
@@ -37,6 +38,7 @@ import {
   startupBlock,
   LogWriter,
   Pseudonyms,
+  type DatabaseSizes,
   type ExportPart,
   type LogDirectory,
   type Logger,
@@ -199,9 +201,10 @@ async function writeGzip(path: string, dir: string, parts: readonly ExportPart[]
 /** The first or last line of a file, read from its end rather than whole where that is the last. */
 function edgeLine(path: string, which: 'first' | 'last'): string | null {
   if (!existsSync(path)) return null
+  // Prefixed lines only: the startup block is written without one, and has no time to give.
   const lines = readFileSync(path, 'utf8')
     .split('\n')
-    .filter((line) => line !== '')
+    .filter((line) => /^\d{4}-\d{2}-\d{2}T/.test(line))
   return (which === 'first' ? lines[0] : lines.at(-1)) ?? null
 }
 
@@ -216,22 +219,30 @@ function directoryBytes(path: string): number | null {
   return total
 }
 
-/** The database and its journals: `session.db`, `-wal`, `-shm`. Null when there is none. */
-function databaseBytes(dir: string): number | null {
-  if (!existsSync(dir)) return null
-  const files = readdirSync(dir).filter((name) => name.startsWith('session.db'))
-  return files.length === 0
-    ? null
-    : files.reduce((sum, name) => sum + statSync(join(dir, name)).size, 0)
+/** A file's size, or null where it is not there. */
+function sizeOf(path: string): number | null {
+  return existsSync(path) ? statSync(path).size : null
 }
 
-function deviceFacts(): { platform: string; osVersion: string; model: string; locale: string } {
+/** The database and its journals, `session.db`, `-wal`, `-shm`; null when there is no database. */
+function databaseSizes(dir: string): DatabaseSizes | null {
+  const databaseBytes = sizeOf(join(dir, 'session.db'))
+  if (databaseBytes === null) return null
   return {
-    platform: friendlyPlatform(),
-    osVersion: process.platform === 'linux' ? release() : process.getSystemVersion(),
-    model: arch(),
-    locale: app.getLocale(),
+    databaseBytes,
+    walBytes: sizeOf(join(dir, 'session.db-wal')),
+    shmBytes: sizeOf(join(dir, 'session.db-shm')),
   }
+}
+
+/**
+ * A line with the database's sizes, at the moments legacy iOS logged them: when it opens and on
+ * the way out. Between the two, a WAL that keeps growing is a checkpoint that is not happening.
+ */
+export function logDatabase(moment: string): void {
+  void openLogs().then(({ logger }) => {
+    logger.info('storage', `database ${moment}`, databaseFields(databaseSizes(sessionDataDir())))
+  })
 }
 
 /** `/etc/os-release`, or null where there is none, which is everywhere but Linux. */
@@ -451,7 +462,16 @@ export function serveLogs(window: Electron.BrowserWindow, appUrl: string): void 
     })()
     return {
       install: 'unknown',
-      ...deviceFacts(),
+      platform: friendlyPlatform(),
+      os: osText(process.platform, process.getSystemVersion(), release()),
+      model: arch(),
+      locale: app.getLocale(),
+      platformRows: linuxRows({
+        platform: process.platform,
+        env: process.env,
+        osRelease: readOsRelease(),
+        packaged: app.isPackaged,
+      }),
       memory: {
         // Every process the app runs, not only main: the renderer is most of it.
         usedBytes: app
@@ -462,7 +482,7 @@ export function serveLogs(window: Electron.BrowserWindow, appUrl: string): void 
       },
       freeBytes: free,
       networkType: net.isOnline() ? 'online' : 'offline',
-      databaseBytes: databaseBytes(data),
+      database: databaseSizes(data),
       attachmentsBytes: directoryBytes(join(data, 'attachments')),
     }
   })

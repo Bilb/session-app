@@ -3,12 +3,16 @@ export { LOG_LEVELS, levelRank, minLevelFromSpec, parseLevel, type LogLevel } fr
 export { PREFIX_WIDTH, formatPrefix } from './line'
 export { MAX_SWEPT_CHARS, capForSweep } from './cap'
 export {
+  continuationLine,
+  databaseFields,
   exportFileName,
   exportHeader,
   exportParts,
-  fileDivider,
   formatBytes,
   planExport,
+  roughBytes,
+  sizeBucket,
+  type DatabaseSizes,
   type ExportFacts,
   type ExportPart,
   type ExportPlan,

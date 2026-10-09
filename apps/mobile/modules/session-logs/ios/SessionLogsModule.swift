@@ -115,6 +115,7 @@ enum Diagnostics {
       "availableBytes": available > 0 ? available : nil,
       "totalBytes": Int(ProcessInfo.processInfo.physicalMemory),
       "freeBytes": free.map { Int($0) },
+      "lowPowerMode": ProcessInfo.processInfo.isLowPowerModeEnabled,
       "permissions": await permissions(),
     ]
   }

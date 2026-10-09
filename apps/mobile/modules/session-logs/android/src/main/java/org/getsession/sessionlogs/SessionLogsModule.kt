@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Debug
+import android.os.PowerManager
 import android.os.StatFs
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -54,6 +55,7 @@ class SessionLogsModule : Module() {
         "availableBytes" to memory.availMem,
         "totalBytes" to memory.totalMem,
         "freeBytes" to StatFs(context.filesDir.path).availableBytes,
+        "lowPowerMode" to (context.getSystemService(Context.POWER_SERVICE) as PowerManager).isPowerSaveMode,
         "permissions" to permissions(context),
       )
     }

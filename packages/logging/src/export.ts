@@ -1,5 +1,6 @@
 import { utcOffset, versionText } from './startup'
 import type { SweepCounts } from './sweep'
+import type { LogFields } from './values'
 import { basicUtc, BUDGET_BYTES, type LogFileInfo } from './writer'
 
 /**
@@ -59,6 +60,54 @@ export function formatBytes(bytes: number): string {
   return `${value >= 100 ? value.toFixed(0) : value.toFixed(1)} ${units[unit] ?? ''}`
 }
 
+/**
+ * Bytes to two significant figures: `48 MB`, `1.2 kB`, `310 MB`.
+ *
+ * For what could fingerprint a device or describe an account - free space, database and cache
+ * sizes - where the exact figure would link two exports and the rough one is all support needs.
+ */
+export function roughBytes(bytes: number): string {
+  if (bytes < 1000) return formatBytes(bytes)
+  const units = ['kB', 'MB', 'GB', 'TB']
+  let value = bytes / 1000
+  let unit = 0
+  while (value >= 1000 && unit < units.length - 1) {
+    value /= 1000
+    unit += 1
+  }
+  const rounded = Number(value.toPrecision(2))
+  return `${rounded >= 10 ? rounded.toFixed(0) : rounded.toFixed(1)} ${units[unit] ?? ''}`
+}
+
+/**
+ * A config's size as a bucket rather than a number: a contacts config's exact size is close to a
+ * count of somebody's contacts, and support only needs to see that one has grown unexpectedly.
+ */
+export function sizeBucket(bytes: number): string {
+  if (bytes < 2_000) return 'small'
+  if (bytes < 20_000) return 'medium'
+  if (bytes < 200_000) return 'large'
+  return 'very large'
+}
+
+/** The database's three files, which together say whether checkpointing is keeping up. */
+export interface DatabaseSizes {
+  databaseBytes: number
+  walBytes: number | null
+  shmBytes: number | null
+}
+
+/**
+ * The fields of a database line - `database open db="48 MB" wal=1204224 shm=32768` - logged when
+ * the database opens and when the app goes to the background, as legacy iOS did. The journals are
+ * exact, because a WAL that keeps growing between lines is a checkpoint that is not happening; the
+ * database itself is rough, like everything that describes how much somebody has.
+ */
+export function databaseFields(sizes: DatabaseSizes | null): LogFields {
+  if (sizes === null) return { db: 'none' }
+  return { db: roughBytes(sizes.databaseBytes), wal: sizes.walBytes, shm: sizes.shmBytes }
+}
+
 /** What is known at export time. Null is "the platform cannot say"; absent is "does not apply". */
 export interface ExportFacts {
   exportedAtMs: number
@@ -66,26 +115,30 @@ export interface ExportFacts {
   version: string
   buildNumber: string | null
   commit: string | null
+  libsessionCommit: string | null
   variant: string
   install: string
-  platform: string
-  osVersion: string
   model: string
+  /** `iOS 26.1`, `macOS 15.1`, `Linux 6.8.0-45-generic`. */
+  os: string
   locale: string
+  /** Rows only some platforms have: Linux's distro and display server, a phone's low power mode. */
+  platformRows: ReadonlyArray<readonly [string, string]>
   network: string
   networkType: string | null
-  memory: { usedBytes: number | null; availableBytes: number | null; totalBytes: number | null }
+  /** Total only where the device does not imply it, which is the desktop. */
+  memory: { usedBytes: number | null; availableBytes: number | null; totalBytes?: number }
   notifications?: string
   /** Permission name to state, in the order they should be listed. */
   permissions?: ReadonlyArray<readonly [string, string]>
   storage: {
-    databaseBytes: number | null
+    database: DatabaseSizes | null
     attachmentsBytes: number | null
     attachmentsLimitBytes: number | null
     freeBytes: number | null
   }
-  /** Per config type; null until libsession can report them. */
-  configSizes: ReadonlyArray<{ type: string; bytes: number }> | null
+  /** Each config and its size; null until libsession reports them. */
+  configSizes: ReadonlyArray<{ name: string; bytes: number }> | null
   logs: {
     plan: ExportPlan
     firstLine: string | null
@@ -95,31 +148,23 @@ export interface ExportFacts {
   redactions: SweepCounts
 }
 
-const RULE = '═'.repeat(72)
+/** Full width, so the header is unmistakably the top of an export and not a launch. */
+const RULE = '='.repeat(100)
 const LABEL_WIDTH = 15
-/** Wrap a row's items onto continuation lines past this width, so the block stays readable. */
-const ROW_WIDTH = 96
+const NESTED_WIDTH = 15
 
-function rows(label: string, items: readonly string[]): string[] {
-  const lines: string[] = []
-  let current = ''
-  for (const item of items) {
-    const next = current === '' ? item : `${current} · ${item}`
-    if (current !== '' && LABEL_WIDTH + 2 + next.length > ROW_WIDTH) {
-      lines.push(current)
-      current = item
-    } else {
-      current = next
-    }
-  }
-  if (current !== '') lines.push(current)
-  return lines.map((line, index) => `  ${(index === 0 ? label : '').padEnd(LABEL_WIDTH)}${line}`)
+function row(label: string, value: string): string {
+  return `  ${label.padEnd(LABEL_WIDTH)}${value}`
 }
 
-const unknown = (value: number | null, format: (value: number) => string): string =>
-  value === null ? 'unknown' : format(value)
+/** A heading row and its items, each on its own line beneath it. */
+function group(label: string, items: ReadonlyArray<readonly [string, string]>): string[] {
+  return [`  ${label}`, ...items.map(([name, value]) => `    ${name.padEnd(NESTED_WIDTH)}${value}`)]
+}
 
-/** The UTC timestamp a line starts with, or null for a line that has none. */
+const rough = (value: number | null): string => (value === null ? 'unknown' : roughBytes(value))
+
+/** The UTC timestamp a log line starts with, readable, or null for a line that has none. */
 function lineTime(line: string | null): string | null {
   const match = line === null ? null : /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})/.exec(line)
   return match === null ? null : `${match[1] ?? ''} ${match[2] ?? ''}Z`
@@ -132,91 +177,106 @@ function localTime(ms: number, offsetMinutes: number): string {
 /**
  * The block at the top of an export, for people: support reads it before anything else.
  *
- * Follows legacy iOS's summary, which was the part of those reports nobody had to decode, and
- * adds what triage has asked for since - database and config sizes, the install source, what was
- * left out, and how often the redaction sweep had to step in.
+ * Wrapped in full-width rules so it cannot be mistaken for a launch, whose block opens with only an
+ * empty line. One item per line, with lists nested under their heading, because a row of
+ * separated values is hard to read. Follows legacy iOS's summary and adds what support has asked
+ * for since: the libsession commit, the database's journals, config sizes as buckets, what was left
+ * out, and how often the sweep had to step in.
  */
 export function exportHeader(facts: ExportFacts): string[] {
   const at = new Date(facts.exportedAtMs).toISOString()
   const { plan } = facts.logs
   const { storage, memory } = facts
-  const redactions = Object.entries(facts.redactions).map(
-    ([kind, count]) => `${kind} ${String(count)}`,
-  )
-  const omitted =
-    plan.omitted.length === 0
-      ? 'nothing left out'
-      : `${String(plan.omitted.length)} older files left out (${formatBytes(
-          plan.omitted.reduce((sum, file) => sum + file.sizeBytes, 0),
-        )})`
+  const version = versionText(facts.version, facts.buildNumber)
+  const omittedBytes = plan.omitted.reduce((sum, file) => sum + file.sizeBytes, 0)
+  const redactions = Object.entries(facts.redactions).filter(([, count]) => count > 0)
+  const database = storage.database
 
   return [
     RULE,
-    `  Session logs · exported ${at.slice(0, 10)} ${at.slice(11, 19)} UTC ` +
+    `Session logs exported ${at.slice(0, 10)} ${at.slice(11, 19)}Z ` +
       `(${localTime(facts.exportedAtMs, facts.utcOffsetMinutes)} local, ${utcOffset(facts.utcOffsetMinutes)})`,
     RULE,
-    ...rows('App', [
-      `Session ${versionText(facts.version, facts.buildNumber)}`,
-      `commit ${facts.commit ?? 'unknown'}`,
-      `variant ${facts.variant}`,
+    row('Version', version),
+    row('Commit', facts.commit ?? 'unknown'),
+    row('libsession', facts.libsessionCommit ?? 'unknown'),
+    row('Variant', facts.variant),
+    row('Install', facts.install),
+    row('Device', facts.model),
+    row('OS', facts.os),
+    ...facts.platformRows.map(([label, value]) => row(label, value)),
+    row('Time', `${facts.locale} · ${utcOffset(facts.utcOffsetMinutes)}`),
+    row('Network', facts.network),
+    row('Connection', facts.networkType ?? 'unknown'),
+    ...group('Memory', [
+      ['Used', rough(memory.usedBytes)],
+      ['Available', rough(memory.availableBytes)],
+      ...(memory.totalBytes === undefined
+        ? []
+        : [['Total', roughBytes(memory.totalBytes)] as const]),
     ]),
-    ...rows('Install', [facts.install]),
-    ...rows('Device', [
-      facts.model,
-      `${facts.platform} ${facts.osVersion}`,
-      ...(memory.totalBytes === null ? [] : [`${formatBytes(memory.totalBytes)} RAM`]),
+    ...(facts.notifications === undefined ? [] : [row('Notifications', facts.notifications)]),
+    ...(facts.permissions === undefined ? [] : group('Permissions', facts.permissions)),
+    ...group('Storage', [
+      ['Database', database === null ? 'unknown' : roughBytes(database.databaseBytes)],
+      ...(database === null
+        ? []
+        : [['WAL', rough(database.walBytes)] as const, ['SHM', rough(database.shmBytes)] as const]),
+      [
+        'Attachments',
+        rough(storage.attachmentsBytes) +
+          (storage.attachmentsLimitBytes === null
+            ? ''
+            : ` (limit ${roughBytes(storage.attachmentsLimitBytes)})`),
+      ],
+      ['Free', rough(storage.freeBytes)],
     ]),
-    ...rows('Memory', [
-      `${unknown(memory.usedBytes, formatBytes)} used`,
-      `${unknown(memory.availableBytes, formatBytes)} available`,
-    ]),
-    ...rows('Locale', [facts.locale, utcOffset(facts.utcOffsetMinutes)]),
-    ...(facts.notifications === undefined ? [] : rows('Notifications', [facts.notifications])),
-    ...(facts.permissions === undefined
-      ? []
-      : rows(
-          'Permissions',
-          facts.permissions.map(([name, state]) => `${name} ${state}`),
+    ...(facts.configSizes === null
+      ? [row('Config sizes', 'unknown (libsession does not report them yet)')]
+      : group(
+          'Config sizes',
+          facts.configSizes.map(({ name, bytes }) => [name, sizeBucket(bytes)] as const),
         )),
-    ...rows('Storage', [
-      `database ${unknown(storage.databaseBytes, formatBytes)}`,
-      `attachments ${unknown(storage.attachmentsBytes, formatBytes)}` +
-        (storage.attachmentsLimitBytes === null
-          ? ''
-          : ` (limit ${formatBytes(storage.attachmentsLimitBytes)})`),
-      `free ${unknown(storage.freeBytes, formatBytes)}`,
+    ...group('Logs', [
+      ['Files', String(plan.included.length)],
+      ['From', lineTime(facts.logs.firstLine) ?? 'unknown'],
+      ['To', lineTime(facts.logs.lastLine) ?? 'unknown'],
+      ['Size', roughBytes(plan.bytes)],
+      [
+        'Left out',
+        plan.omitted.length === 0
+          ? 'nothing'
+          : `${String(plan.omitted.length)} older files (${roughBytes(omittedBytes)})`,
+      ],
     ]),
-    ...rows(
-      'Config sizes',
-      facts.configSizes === null
-        ? ['unknown (libsession does not report them yet)']
-        : facts.configSizes.map(({ type, bytes }) => `${type} ${formatBytes(bytes)}`),
-    ),
-    ...rows('Network', [facts.network, facts.networkType ?? 'connection unknown']),
-    ...rows('Logs', [
-      plan.included.length === 1 ? '1 file' : `${String(plan.included.length)} files`,
-      `${lineTime(facts.logs.firstLine) ?? '?'} → ${lineTime(facts.logs.lastLine) ?? '?'}`,
-      `${formatBytes(plan.bytes)}`,
-      omitted,
-    ]),
-    ...rows('Redactions', [`this run: ${redactions.join(' · ')}`]),
+    ...(redactions.length === 0
+      ? [row('Redactions', 'none this run')]
+      : group(
+          'Redactions (this run)',
+          redactions.map(([kind, count]) => [kind, String(count)] as const),
+        )),
     RULE,
     '',
   ]
 }
 
-/** The line before each file's contents, so a reader can see where one run's file starts. */
-export function fileDivider(name: string): string {
-  return `──── ${name} ────`
+/**
+ * The line before a file that continues a launch past a rotation. A launch's first file needs
+ * none: it opens with its own startup block, which is what a reader splits on.
+ */
+export function continuationLine(name: string): string | null {
+  return /-0\.log$/.test(name) ? null : `── continued in ${name}`
 }
 
-/** Header, then each file behind its divider: what the platform compresses, in order. */
+/** Header, then each file, oldest first: what the platform compresses, in order. */
 export function exportParts(header: readonly string[], plan: ExportPlan): ExportPart[] {
   return [
     { text: `${header.join('\n')}\n` },
-    ...plan.included.flatMap((file): ExportPart[] => [
-      { text: `${fileDivider(file.name)}\n` },
-      { file: file.name },
-    ]),
+    ...plan.included.flatMap((file): ExportPart[] => {
+      const continued = continuationLine(file.name)
+      return continued === null
+        ? [{ file: file.name }]
+        : [{ text: `${continued}\n` }, { file: file.name }]
+    }),
   ]
 }

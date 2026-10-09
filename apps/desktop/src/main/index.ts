@@ -14,7 +14,7 @@ import { createBridge } from './bridge'
 import { editMenuItems } from './editMenu'
 import { serveFiles } from './files'
 import { launchColors } from './launchColors'
-import { finishLogs, logLibsession, openLogs, serveLogs } from './logs'
+import { finishLogs, logDatabase, logLibsession, openLogs, serveLogs } from './logs'
 import { registerMediaScheme, serveMedia, stopServingMedia } from './media'
 import {
   acceptsCopy,
@@ -83,6 +83,7 @@ async function requireBridge(): Promise<NonNullable<typeof bridge>> {
       })
       return refusingBridge(reason)
     })
+    logDatabase('open')
     // With the bridge rather than with a window: `protocol.handle` installs one handler for the
     // whole session, and the scheme has to outlive a window for the same reason the bridge does.
     serveMedia(bridge)
@@ -308,6 +309,7 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   // Urgent, so it reaches the disk without waiting for a flush; `will-quit` below writes whatever
   // follows it.
+  logDatabase('at quit')
   void openLogs().then(({ logger }) => {
     logger.marker('lifecycle', 'quit')
   })

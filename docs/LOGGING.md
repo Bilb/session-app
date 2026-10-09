@@ -214,52 +214,84 @@ and `export`. Their absence is then evidence.
 
 ## The export
 
-**Header** — a document block at the top of the file, without prefixes; the log lines follow after a
-blank line:
+**Header**: a document block at the top of the file, wrapped in full-width `=` rules so it can't
+be mistaken for a launch, one item per line, with lists nested under their heading:
 
 ```
-════════════════════════════════════════════════════════════════════════
-  Session logs · exported 2026-10-09 07:41:02 UTC (17:41 local, UTC+10:00)
-════════════════════════════════════════════════════════════════════════
-  App            Session 1.0.0 (123) · commit 833d55d5 · variant testflight
+====================================================================================================
+Session logs exported 2026-10-09 07:41:02Z (17:41 local, UTC+10:00)
+====================================================================================================
+  Version        1.0.0 (123)
+  Commit         833d55d5
+  libsession     76d93c51
+  Variant        testflight
   Install        testflight
-  Device         iPhone17,1 · iOS 26.1 · 8.0 GB RAM
-  Memory         212 MB used · 1.9 GB available
-  Locale         en-AU · region AU · UTC+10:00
-  Notifications  fast mode · push token registered
-  Permissions    camera granted · photos limited · microphone not asked
-                 notifications granted · local network unknown
-  Storage        database 48.2 MB · attachments 312 MB (limit 1 GB) · free 41.2 GB
-  Config sizes   user_profile 1.2 KB · contacts 18.4 KB · convo_info_volatile 6.1 KB
-                 user_groups 3.3 KB · groups ×4 41.8 KB
-  Network        mainnet · wifi
-  Logs           10 files · 2026-10-07 22:14:03Z → 2026-10-09 07:41:02Z · 19.6 MB
-                 nothing left out
-  Redactions     this run: url 0 · uuid 1 · hex 12 · base64 3 · base32 2 · ip 0 · words 0
-════════════════════════════════════════════════════════════════════════
+  Device         iPhone17,1
+  OS             iOS 26.1
+  Low power      off
+  Time           en-AU · UTC+10:00
+  Network        mainnet
+  Connection     wifi
+  Memory
+    Used           210 MB
+    Available      1.9 GB
+  Notifications  fast mode, push token registered
+  Permissions
+    Camera         granted
+    Microphone     not asked
+  Storage
+    Database       48 MB
+    WAL            1.2 MB
+    SHM            33 kB
+    Attachments    310 MB (limit 1.0 GB)
+    Free           41 GB
+  Config sizes
+    user_profile   small
+    contacts       medium
+  Logs
+    Files          10
+    From           2026-10-07 22:14:03Z
+    To             2026-10-09 07:41:02Z
+    Size           20 MB
+    Left out       nothing
+  Redactions (this run)
+    hex            12
+    base64         3
+====================================================================================================
 ```
 
-A field the platform can't answer says `unknown`; a field that doesn't apply (permissions on
-desktop) is left out. The compressed size is not in the header — the header is inside what is
-compressed. Redaction counts are the exporting process's own. The most recent startup block is in the log body, so both moments — the fault
-and the export — are there.
-
-- **Body:** the retained files chosen **newest-backwards** up to the budget, written **oldest first**
-  so the file reads in time order, each preceded by a `── session-…-0.log ──` divider line.
+- **Rounded to two significant figures** wherever an exact figure could link two exports or describe
+  an account: memory, free space, database and attachment sizes.
+- **Config sizes are buckets** (small under 2 kB, medium under 20 kB, large under 200 kB, then very
+  large): a contacts config's exact size is close to a count of somebody's contacts.
+- **WAL and SHM** sit under the database because a WAL that keeps growing is a checkpoint that is not
+  happening. The same three sizes are also logged as a line when the database opens and when the
+  app goes to the background (desktop: on quit), with the journals exact.
+- **Total memory** appears only on desktop; on a phone the model says it.
+- A field the platform can't answer says `unknown`; one that doesn't apply (permissions on desktop)
+  is left out. The compressed size isn't in the header, since the header is inside what is
+  compressed. Redaction counts are the exporting process's own.
+- **Body:** the retained files chosen **newest-backwards** up to the budget and written **oldest
+  first**, so the file reads in time order. Each launch opens with its own startup block; a file that
+  continues a launch after rotation is preceded by `── continued in session-…-1.log`.
 - **File name, no spaces:** `session-logs-<platform>-<version>-<UTC basic>.log.gz`.
-- Delivered through the existing ports: desktop `files.chooseExportLocation`, mobile the share sheet.
+- Delivered by the platform: desktop's main process asks where to save, the phones share it through
+  the share sheet.
 - First caller: Export Logs on the startup-failure screen.
 
 ### Where the header's facts come from
 
-| fact                               | desktop                                                                                                                                                                                                                                                                                                                                                                                | iOS                                                                                                  | Android                                                     |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| install                            | `unknown` (no channel is packaged yet)                                                                                                                                                                                                                                                                                                                                                 | `expo-application` release type: App Store / TestFlight (sandbox receipt) / ad hoc / dev / simulator | `getInstallSourceInfo` installer package; `unknown` if none |
-| variant                            | baked at build: `SESSION_BUILD_VARIANT`, `unknown` if unset                                                                                                                                                                                                                                                                                                                            | same, through config extras                                                                          | same                                                        |
-| permissions                        | —                                                                                                                                                                                                                                                                                                                                                                                      | camera, photos, microphone, notifications; local network `unknown` (iOS has no API to ask)           | camera, photos/media, microphone, notifications             |
-| memory, free storage, network type | node `os`, `statfs`                                                                                                                                                                                                                                                                                                                                                                    | native                                                                                               | native                                                      |
-| database size                      | measured off disk by the platform (`session.db` and its journals, in this network's directory)                                                                                                                                                                                                                                                                                         | same                                                                                                 | same                                                        |
-| config sizes                       | **needs libsession first**: the dumps live in its own `config_dumps` table and `Client` has no call that reports them, so the bridge has nothing to wrap. Proposed: `Client::config_dump_sizes()` → `SELECT type, length(data) FROM config_dumps WHERE pubkey = ?` (plus the group configs), then a bridge capability + fake + contract scenario. Until then the header says `unknown` | same                                                                                                 | same                                                        |
+- **Install:** iOS reads it in `modules/session-logs`: simulator, TestFlight (sandbox receipt),
+  development or ad hoc (embedded provisioning profile), otherwise App Store. Android gives the
+  installing package. Desktop says `unknown`.
+- **Variant:** baked in at build time from `EXPO_PUBLIC_SESSION_BUILD_VARIANT`; `unknown` when unset.
+- **Device, OS, memory, low power, permissions:** the phones read them natively in
+  `modules/session-logs`. Desktop's main process uses Electron and node's `os`; on Linux it adds the
+  distro, display server, desktop and packaging.
+- **Free space, database, attachments:** measured off disk by each platform, in the network's own
+  data directory.
+- **Config sizes:** need libsession's `Client::config_sizes()`; until the bridge carries it, the
+  header says `unknown`.
 
 ## Compression
 

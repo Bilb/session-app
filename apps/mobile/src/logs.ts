@@ -2,7 +2,9 @@ import { appLog, logStoreMilestones, startLogger, storeLogger } from '@session/a
 import {
   consoleDirectory,
   createLogger,
+  databaseFields,
   libsessionLine,
+  roughBytes,
   LogWriter,
   minLevelFromSpec,
   Pseudonyms,
@@ -15,6 +17,7 @@ import { AppState, Platform } from 'react-native'
 
 import { flagVariables } from './flagOverrides'
 import { SessionLogs } from './sessionLogs'
+import { databaseSizes } from './storageSizes'
 
 const SALT_FILE = '.salt'
 const SALT_BYTES = 16
@@ -100,7 +103,7 @@ function readSalt(dir: Directory): { salt: Uint8Array; replaced: boolean } {
 }
 
 /** `iOS 26.1`, or `Android 16 (API 36)`: Android's version number alone hides the API level. */
-function osName(): string {
+export function osName(): string {
   if (Platform.OS === 'android') {
     const release = (Platform.constants as { Release?: string }).Release ?? 'unknown'
     return `Android ${release} (API ${String(Platform.Version)})`
@@ -118,6 +121,21 @@ function fallbackModel(): string {
     return [constants.Manufacturer, constants.Model].filter(Boolean).join(' ') || 'unknown'
   }
   return `${Platform.OS === 'ios' && Platform.isPad ? 'iPad' : 'iPhone'} (model unknown)`
+}
+
+/**
+ * A phone's low power mode as a startup and export row; none where the native module could not
+ * say. Low power slows background work and the network, which is a question support asks.
+ */
+export function lowPowerRows(lowPowerMode: boolean | null | undefined): [string, string][] {
+  return lowPowerMode === null || lowPowerMode === undefined
+    ? []
+    : [['Low power', lowPowerMode ? 'on' : 'off']]
+}
+
+/** The database's sizes as a line; see `databaseFields`. */
+function logDatabase(moment: string): void {
+  appLog.info('storage', `database ${moment}`, databaseFields(databaseSizes()))
 }
 
 /**
@@ -174,7 +192,7 @@ const opened = (async (): Promise<LogWriter> => {
     os: osName(),
     locale: Intl.DateTimeFormat().resolvedOptions().locale,
     install: native?.install ?? 'unknown',
-    platformRows: [],
+    platformRows: lowPowerRows(native?.lowPowerMode),
     // The same variables, literally named, that store.ts opens the bridge with.
     network: {
       fake: process.env['EXPO_PUBLIC_SESSION_FAKE'] === '1',
@@ -205,13 +223,29 @@ const opened = (async (): Promise<LogWriter> => {
     if (state === 'active') appLog.marker('lifecycle', 'foreground')
     if (state === 'background') {
       appLog.marker('lifecycle', 'background')
+      logDatabase('at background')
       void writer.flush()
     }
   })
   // The OS is about to start killing things to get memory back; this one may be next, and a log
   // that ends after this line says why.
   AppState.addEventListener('memoryWarning', () => {
-    appLog.marker('lifecycle', 'memory warning')
+    // With what the app is using and what the OS will still give it, where the module can say.
+    void (SessionLogs?.diagnostics() ?? Promise.resolve(undefined))
+      .catch(() => undefined)
+      .then((native) => {
+        appLog.marker(
+          'lifecycle',
+          'memory warning',
+          native === undefined
+            ? {}
+            : {
+                used: native.usedBytes === null ? null : roughBytes(native.usedBytes),
+                available:
+                  native.availableBytes === null ? null : roughBytes(native.availableBytes),
+              },
+        )
+      })
   })
   return writer
 })()
@@ -241,6 +275,7 @@ export function endingRun(
 /** The store's milestones as markers, once there is a store. */
 export function watchStore(store: SessionStore): void {
   logStoreMilestones(store)
+  logDatabase('open')
 }
 
 /**

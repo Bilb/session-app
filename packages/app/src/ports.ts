@@ -1,6 +1,6 @@
 import type { NetworkName } from '@session/basic-types'
 import type { AttachmentRef, PixelSize } from '@session/client'
-import type { ExportPart, LogFileInfo } from '@session/logging'
+import type { DatabaseSizes, ExportPart, LogFileInfo } from '@session/logging'
 /**
  * What the app needs from the operating system, named so shared code can ask without
  * knowing which one it is running on.
@@ -265,11 +265,16 @@ export interface DiagnosticsSnapshot {
    * `unknown`.
    */
   install: string
+  /** `iOS`, `Android`, `macOS`, `Linux`, `Windows`: what the export's file name says. */
   platform: string
-  osVersion: string
+  /** `iOS 26.1`, `Android 16 (API 36)`, `macOS 15.1`, `Linux 6.8.0-45-generic`. */
+  os: string
   model: string
   locale: string
-  memory: { usedBytes: number | null; availableBytes: number | null; totalBytes: number | null }
+  /** Rows only this platform has: Linux's distro and display server, a phone's low power mode. */
+  platformRows: ReadonlyArray<readonly [string, string]>
+  /** Total only where the model does not imply it, which is the desktop. */
+  memory: { usedBytes: number | null; availableBytes: number | null; totalBytes?: number }
   freeBytes: number | null
   /** `wifi`, `cellular`, `online`... or null where the platform cannot tell. */
   networkType: string | null
@@ -277,8 +282,8 @@ export interface DiagnosticsSnapshot {
   notifications?: string
   /** Name to state, in display order; absent where the platform asks for none. */
   permissions?: ReadonlyArray<readonly [string, string]>
-  /** The database and its journals together, measured off disk. */
-  databaseBytes: number | null
+  /** The database and its journals, measured off disk; null where there is no database. */
+  database: DatabaseSizes | null
   attachmentsBytes: number | null
 }
 

@@ -18,7 +18,13 @@ function withLogs(deliver: (name: string, parts: readonly ExportPart[]) => Promi
   const base = memoryPorts()
   setPorts(
     memoryPorts({
-      build: { version: '1.2.3', commit: 'abc12345', buildNumber: null, variant: 'dev' },
+      build: {
+        version: '1.2.3',
+        commit: 'abc12345',
+        buildNumber: null,
+        variant: 'dev',
+        libsessionCommit: '76d93c51',
+      },
       logs: {
         retained: () =>
           Promise.resolve([
@@ -48,12 +54,12 @@ describe('exportLogs', () => {
     const { name, parts } = delivered as unknown as { name: string; parts: readonly ExportPart[] }
     expect(name).toMatch(/^session-logs-test-1\.2\.3-\d{8}T\d{6}Z\.log\.gz$/)
     const header = (parts[0] as { text: string }).text
-    expect(header).toContain('  App            Session 1.2.3 · commit abc12345 · variant dev')
-    expect(header).toContain('2026-10-08 00:00:00Z → 2026-10-09 00:00:09Z')
+    expect(header).toContain('  Commit         abc12345')
+    expect(header).toContain('  libsession     76d93c51')
+    expect(header).toContain('    From           2026-10-08 00:00:00Z')
+    expect(header).toContain('    To             2026-10-09 00:00:09Z')
     expect(parts.slice(1)).toEqual([
-      { text: '──── session-20261008T000000Z-0.log ────\n' },
       { file: 'session-20261008T000000Z-0.log' },
-      { text: '──── session-20261009T000000Z-0.log ────\n' },
       { file: 'session-20261009T000000Z-0.log' },
     ])
   })

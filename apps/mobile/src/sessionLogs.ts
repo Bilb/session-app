@@ -9,6 +9,8 @@ interface NativeDiagnostics {
   availableBytes: number | null
   totalBytes: number | null
   freeBytes: number | null
+  /** Null where the platform could not say. */
+  lowPowerMode: boolean | null
   permissions: [string, string][]
 }
 

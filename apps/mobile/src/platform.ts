@@ -8,12 +8,13 @@ import { parseNetworkName } from '@session/basic-types'
 import * as Clipboard from 'expo-clipboard'
 import Constants from 'expo-constants'
 import * as Sharing from 'expo-sharing'
-import { Directory, File, Paths } from 'expo-file-system'
+import { File, Paths } from 'expo-file-system'
 import * as SecureStore from 'expo-secure-store'
 import { Linking, Platform, Share } from 'react-native'
 
 import { flagOverride } from './flagOverrides'
-import { endingRun, logDirectory, logWriter } from './logs'
+import { endingRun, logDirectory, logWriter, lowPowerRows, osName } from './logs'
+import { attachmentsBytes, databaseSizes } from './storageSizes'
 import { SessionLogs } from './sessionLogs'
 import { restartProcess, terminateProcess } from './processExit'
 
@@ -57,31 +58,15 @@ function pathOf(uri: string): string {
   return decodeURIComponent(uri.replace(/^file:\/\//, ''))
 }
 
-/** The first or last non-empty line of a retained log file. */
+/** The first or last prefixed line of a retained log file; the startup block has no time. */
 function edgeLine(name: string, which: 'first' | 'last'): string | null {
   const file = new File(logDirectory, name)
   if (!file.exists) return null
   const lines = file
     .textSync()
     .split('\n')
-    .filter((line) => line !== '')
+    .filter((line) => /^\d{4}-\d{2}-\d{2}T/.test(line))
   return (which === 'first' ? lines[0] : lines.at(-1)) ?? null
-}
-
-/** The database and its journals, and the attachment cache, for the network this build runs. */
-function storageBytes(): { databaseBytes: number | null; attachmentsBytes: number | null } {
-  const network = parseNetworkName(process.env['EXPO_PUBLIC_SESSION_NETID'])
-  const root = new Directory(Paths.document, 'session', network)
-  if (!root.exists) return { databaseBytes: null, attachmentsBytes: null }
-  const database = root
-    .list()
-    .filter((entry): entry is File => entry instanceof File && entry.name.startsWith('session.db'))
-  const attachments = new Directory(root, 'attachments')
-  return {
-    databaseBytes:
-      database.length === 0 ? null : database.reduce((sum, file) => sum + file.size, 0),
-    attachmentsBytes: attachments.exists ? attachments.size : null,
-  }
 }
 
 /** Held in a const so the closures below keep its narrowing. */
@@ -92,20 +77,22 @@ async function diagnosticsSnapshot(): Promise<DiagnosticsSnapshot> {
   return {
     install: native?.install ?? 'unknown',
     platform: Platform.OS === 'ios' ? 'iOS' : 'Android',
-    osVersion: String(Platform.Version),
+    os: osName(),
     model: native?.model ?? 'unknown',
     locale: Intl.DateTimeFormat().resolvedOptions().locale,
+    platformRows: lowPowerRows(native?.lowPowerMode),
+    // No total: the model says how much memory the phone has.
     memory: {
       usedBytes: native?.usedBytes ?? null,
       availableBytes: native?.availableBytes ?? null,
-      totalBytes: native?.totalBytes ?? null,
     },
     freeBytes: native?.freeBytes ?? null,
     networkType: null,
     // What the notifications port says, which is what the app will actually do.
     notifications: 'no push service in this build',
     ...(native === undefined ? {} : { permissions: native.permissions }),
-    ...storageBytes(),
+    database: databaseSizes(),
+    attachmentsBytes: attachmentsBytes(),
   }
 }
 
