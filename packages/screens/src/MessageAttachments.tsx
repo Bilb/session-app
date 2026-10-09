@@ -50,6 +50,7 @@ export function MessageAttachments({ message }: { message: Message }) {
       ) : (
         <AttachmentList
           message={message}
+          onAccent={message.outgoing}
           onShowAll={
             overflows
               ? () => {
@@ -61,6 +62,7 @@ export function MessageAttachments({ message }: { message: Message }) {
       )}
       <AttachmentFooter
         set={set}
+        onAccent={message.outgoing}
         onAction={act}
         view={canChooseView(message) ? view : undefined}
         onView={(chosen) => {

@@ -23,10 +23,10 @@ import {
   fileRowControl,
   fileRowTone,
   type FileRowState,
-  type FileRowTone,
 } from './fileRowState'
 import { FetchHint } from './FetchHint'
 import { Icon } from './Icon'
+import { inkFor } from './ink'
 import { ProgressRing } from './ProgressRing'
 import { StateLayer } from './StateLayer'
 import { Text } from './Text'
@@ -67,14 +67,12 @@ export type FileRowProps = WithFilename &
     actionLabel?: string | undefined
     onAction?: (() => void) | undefined
     testIDs?: FileRowTestIDs | undefined
+    /**
+     * Drawn on an accent fill, a bubble you sent, so its text and glyphs take `$onAccent`. The
+     * lead square and the thumbnail keep their own fill either way.
+     */
+    onAccent?: boolean | undefined
   }
-
-/** An icon has no `tone`, so it takes the colour the Text tone of the same name draws in. */
-const TONE_COLOR = {
-  primary: '$textPrimary',
-  secondary: '$textSecondary',
-  danger: '$dangerColor',
-} as const satisfies Record<FileRowTone, string>
 
 /**
  * The caption is the app's copy, so its words order by their own script rather than by the
@@ -101,12 +99,14 @@ function Trailing({
   actionLabel,
   onAction,
   testID,
+  onAccent,
 }: {
   state: FileRowState
   progress?: number | undefined
   actionLabel?: string | undefined
   onAction?: (() => void) | undefined
   testID?: ElementId | undefined
+  onAccent: boolean
 }) {
   const control = fileRowControl(state)
 
@@ -127,7 +127,12 @@ function Trailing({
     // TODO: make this a cancel once libsession and the bridge can stop a transfer.
     return (
       <YStack {...square}>
-        <ProgressRing progress={progress ?? 0} size={RING_SIDE} thickness={RING_THICKNESS} />
+        <ProgressRing
+          progress={progress ?? 0}
+          size={RING_SIDE}
+          thickness={RING_THICKNESS}
+          color={onAccent ? '$onAccent' : '$primaryColor'}
+        />
       </YStack>
     )
   }
@@ -148,7 +153,7 @@ function Trailing({
       }}
     >
       <StateLayer group="control" tone="ink" borderRadius="$full" />
-      <Icon name={control} size="sm" color={TONE_COLOR[fileRowTone(state).control]} />
+      <Icon name={control} size="sm" {...inkFor(fileRowTone(state).control, onAccent)} />
     </YStack>
   )
 }
@@ -177,12 +182,14 @@ export function FileRow({
   actionLabel,
   onAction,
   testIDs,
+  onAccent = false,
 }: FileRowProps) {
   const { head, tail } = splitFilename(filename)
   const format = fileFormat(filename)
   // On the name and the caption together, so the two share an edge.
   const direction = { direction: nameDirection(filename) }
   const tone = fileRowTone(state)
+  const nameInk = inkFor(tone.name, onAccent)
   const fontScale = useFontScale()
 
   const lead =
@@ -254,7 +261,12 @@ export function FileRow({
             for the same run of small grey text. It also gives every row the same two-line lead, so
             the rows align down the message. */}
         {format === '' ? null : (
-          <Text size="$caption" tone="secondary" weight="semibold" numberOfLines={1}>
+          <Text
+            size="$caption"
+            {...inkFor('secondary', onAccent)}
+            weight="semibold"
+            numberOfLines={1}
+          >
             {format}
           </Text>
         )}
@@ -270,7 +282,7 @@ export function FileRow({
           <Text
             size="$body"
             weight="semibold"
-            tone={tone.name}
+            {...nameInk}
             numberOfLines={1}
             ellipsizeMode="tail"
             flexShrink={1}
@@ -278,7 +290,7 @@ export function FileRow({
           >
             {head}
           </Text>
-          <Text size="$body" weight="semibold" tone={tone.name} numberOfLines={1} flexShrink={0}>
+          <Text size="$body" weight="semibold" {...nameInk} numberOfLines={1} flexShrink={0}>
             {tail}
           </Text>
         </XStack>
@@ -286,7 +298,7 @@ export function FileRow({
             own alignment of a line of text. */}
         <Text
           size="$caption"
-          tone={tone.caption}
+          {...inkFor(tone.caption, onAccent)}
           numberOfLines={1}
           alignSelf="flex-start"
           maxWidth="100%"
@@ -303,6 +315,7 @@ export function FileRow({
         actionLabel={actionLabel}
         onAction={onAction}
         testID={testIDs?.action}
+        onAccent={onAccent}
       />
     </XStack>
   )

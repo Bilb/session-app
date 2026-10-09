@@ -60,9 +60,12 @@ function actionLabel(state: FileRowState): string {
 export function AttachmentRow({
   message,
   attachment,
+  onAccent,
 }: {
   message: Message
   attachment: Attachment
+  /** Drawn on a bubble you sent; absent in the sheet, which draws its rows on the page. */
+  onAccent?: boolean | undefined
 }) {
   const actions = useSessionActions()
   const feedback = useExportFeedback()
@@ -127,6 +130,7 @@ export function AttachmentRow({
       progress={fetched.totalBytes > 0 ? fetched.doneBytes / fetched.totalBytes : undefined}
       actionLabel={offersAction ? actionLabel(state) : undefined}
       onAction={offersAction ? act : undefined}
+      onAccent={onAccent}
       testIDs={{
         row: ELEMENT.conversation.attachment,
         name: ELEMENT.conversation.attachmentName,

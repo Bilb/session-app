@@ -1,6 +1,6 @@
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, buttonHeight, Icon, ROW_TOUCH_TARGET, Text, XStack } from '@session/ui'
+import { Button, buttonHeight, Icon, inkFor, ROW_TOUCH_TARGET, Text, XStack } from '@session/ui'
 
 import type { AttachmentSet } from './attachmentSet'
 import { sharedCaption } from './attachmentSetCaption'
@@ -97,9 +97,12 @@ export function AttachmentFooter({
   onAction,
   view,
   onView,
+  onAccent = false,
 }: {
   set: AttachmentSet
   onAction: () => void
+  /** Drawn on a bubble you sent rather than on the page; the buttons keep their own fill. */
+  onAccent?: boolean | undefined
   /** The shape being drawn. Absent where the reader has no choice about it. */
   view?: AttachmentView | undefined
   onView?: ((view: AttachmentView) => void) | undefined
@@ -131,7 +134,7 @@ export function AttachmentFooter({
       )}
       <Text
         size="$caption"
-        color="$textSecondary"
+        {...inkFor('secondary', onAccent)}
         flex={1}
         numberOfLines={1}
         testID={ELEMENT.conversation.attachmentState}

@@ -32,4 +32,22 @@ describe('a file row', () => {
     // The caption is the app's copy: under an Arabic name, "52.5 kB" would read "kB 52.5".
     expect(row).toContain("unicodeBidi: 'plaintext'")
   })
+
+  it('draws every text and glyph that sits on the bubble in its ink for the fill', () => {
+    // On a bubble you sent, a page role is the accent's own colour or near it: 1.5:1 at best.
+    expect(row).not.toMatch(/tone=\{?["']?(secondary|tone\.)/)
+    expect(row).not.toContain('$textSecondary')
+    expect(row.match(/\{\.\.\.nameInk\}/g)).toHaveLength(2)
+    expect(row).toContain('const nameInk = inkFor(tone.name, onAccent)')
+    expect(row).toContain('{...inkFor(tone.caption, onAccent)}')
+    expect(row).toContain("{...inkFor('secondary', onAccent)}")
+    expect(row).toContain('{...inkFor(fileRowTone(state).control, onAccent)}')
+    expect(row).toContain("color={onAccent ? '$onAccent' : '$primaryColor'}")
+  })
+
+  it('leaves the lead square on its own fill alone', () => {
+    expect(row).toMatch(
+      /backgroundColor="\$backgroundTertiary"\s*>\s*<Icon name=\{fileGlyph\(filename, contentType\)\} size="sm" color="\$textPrimary" \/>/,
+    )
+  })
 })
