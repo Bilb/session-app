@@ -133,8 +133,8 @@ async function revealDelivered(delivery: Delivery, landed: string | null): Promi
       // it opens the app that holds it.
       await Linking.openURL(delivery.to === 'photos' ? 'photos-redirect://' : 'shareddocuments://')
     } else if (landed?.startsWith('content://') === true) {
-      // A file:// URL is refused to other apps on Android 7 and up, so a save on 9 and below,
-      // which the scanner files later, opens nothing.
+      // A file:// URL is refused to other apps on Android 7 and up; a save on 9 and below lands
+      // as one only when the scanner did not answer.
       await Linking.openURL(landed)
     }
   } catch {

@@ -15,11 +15,14 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.io.File
 import java.io.FileInputStream
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 private const val MAX_ATTEMPTS = 1000
 private const val DAY_MS = 24 * 60 * 60 * 1000L
+private const val SCAN_TIMEOUT_MS = 5_000L
 
 /** Where a saved file is filed, chosen by the MIME type its name implies, as legacy Android does. */
 private enum class Collection(val directory: String) {
@@ -101,11 +104,26 @@ private fun saveToMediaStore(context: Context, source: File, name: String, colle
 }
 
 /**
+ * The scanner's `content://` URI for a file it has just filed, which another app may open where
+ * a `file://` one is refused; null if it does not answer in time.
+ *
+ * The listener runs on a binder thread, and may never run: `connect()` ignores whether the bind
+ * succeeded and `scanFile` swallows a `RemoteException`.
+ */
+private suspend fun scanned(context: Context, file: File): Uri? {
+  val answer = CompletableDeferred<Uri?>()
+  MediaScannerConnection.scanFile(context, arrayOf(file.path), arrayOf(mimeTypeOf(file.name))) { _, uri ->
+    answer.complete(uri)
+  }
+  return withTimeoutOrNull(SCAN_TIMEOUT_MS) { answer.await() }
+}
+
+/**
  * Android 9 and below, which needs the storage grant: the public folder directly, under a
  * temporary name renamed once whole, so a copy that dies leaves nothing that looks complete.
  */
 @Suppress("DEPRECATION")
-private fun saveToPublicFolder(context: Context, source: File, name: String, collection: Collection): String {
+private suspend fun saveToPublicFolder(context: Context, source: File, name: String, collection: Collection): String {
   val folder = Environment.getExternalStoragePublicDirectory(collection.directory)
   if (!folder.isDirectory && !folder.mkdirs()) {
     throw CodedException("ERR_NO_FOLDER", "cannot create $folder", null)
@@ -126,8 +144,7 @@ private fun saveToPublicFolder(context: Context, source: File, name: String, col
   } finally {
     partial.delete()
   }
-  MediaScannerConnection.scanFile(context, arrayOf(landed.path), arrayOf(mimeTypeOf(landed.name)), null)
-  return Uri.fromFile(landed).toString()
+  return (scanned(context, landed) ?: Uri.fromFile(landed)).toString()
 }
 
 class MediaStoreModule : Module() {

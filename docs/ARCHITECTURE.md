@@ -392,10 +392,11 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   and MediaStore numbers a name already taken. A row the app dies before publishing expires after
   a day on 10, where the app sets the expiry and clears it on publish, and after a week on 11 and
   up, where MediaStore does both; idle maintenance then deletes it. On 8 and 9 the same public
-  folders are written directly, under a hidden temporary name renamed once whole, then scanned.
-  Without the grant there is nowhere to write, so any refusal ends the export with the dialog that
-  leads to the settings, as legacy does. iOS copies into the picked folder under a temporary name
-  renamed into place; Photos refuses 3GPP, so that goes to a folder.
+  folders are written directly, under a hidden temporary name renamed once whole, then scanned,
+  and the scanner's `content://` URI is what is opened afterwards. Without the grant there is
+  nowhere to write, so any refusal ends the export with the dialog that leads to the settings, as
+  legacy does. iOS copies into the picked folder under a temporary name renamed into place; Photos
+  refuses 3GPP, so that goes to a folder.
 
   Not a folder picker on Android. The Storage Access Framework hands the write to whichever
   provider was picked, and a provider may refuse a rename, refuse a delete, or advertise a rename
