@@ -1,5 +1,6 @@
 import { appLog, logStoreMilestones, startLogger } from '@session/app'
 import {
+  consoleDirectory,
   createLogger,
   libsessionLine,
   LogWriter,
@@ -103,15 +104,31 @@ function model(): string {
  * only place lines go, which is said there.
  */
 const opened = (async (): Promise<LogWriter> => {
-  const dir = new Directory(Paths.document, 'logs')
-  if (!dir.exists) dir.create({ intermediates: true })
-  const salt = readSalt(dir)
-  const writer = await LogWriter.open(expoDirectory(dir), {
+  const writerOptions = {
     launchMs,
-    onError: (error) => {
+    onError: (error: unknown) => {
       console.error('[logs] a write failed:', error)
     },
-  })
+  }
+  let salt: Uint8Array
+  let writer: LogWriter
+  let failure: string | null = null
+  try {
+    const dir = new Directory(Paths.document, 'logs')
+    if (!dir.exists) dir.create({ intermediates: true })
+    salt = readSalt(dir)
+    writer = await LogWriter.open(expoDirectory(dir), writerOptions)
+  } catch (error) {
+    // Not thrown on: the held lines would wait for a logger that never comes.
+    failure = error instanceof Error ? error.message : String(error)
+    salt = Crypto.getRandomBytes(SALT_BYTES)
+    writer = await LogWriter.open(
+      consoleDirectory((text) => {
+        console.log(text)
+      }),
+      writerOptions,
+    )
+  }
   const logger = createLogger({
     sink: writer,
     pseudonyms: new Pseudonyms(salt),
@@ -136,6 +153,11 @@ const opened = (async (): Promise<LogWriter> => {
     },
     previousRun: writer.previousRun,
   })
+  if (failure !== null) {
+    logger.error('logs', 'the log directory could not be opened; lines go to the console', {
+      reason: failure,
+    })
+  }
 
   // Backgrounding is the last thing a suspended app is told, so its marker is what lets the next
   // launch say whether this one ended or died; the flush is what gets it onto disk in time.

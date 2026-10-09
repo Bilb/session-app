@@ -13,6 +13,7 @@ import {
   parseRouterKind,
 } from '@session/basic-types'
 import type { BridgeTransport } from '@session/client'
+import type { NetworkSettings } from '@session/logging'
 
 import type { MediaSource } from './media'
 
@@ -78,19 +79,7 @@ function developerSetting(name: string): string | undefined {
   return app.isPackaged ? undefined : process.env[name]
 }
 
-/**
- * The network settings this run's bridge is opened with, for the log's startup block. The same
- * shape as `NetworkSettings` in `@session/app`, which main cannot import: it carries React.
- */
-export interface NetworkSettings {
-  fake: boolean
-  netid: string | undefined
-  router: string | undefined
-  devnetSeedUrl: string | undefined
-  fileServerUrl: string | undefined
-  logSpec: string | undefined
-}
-
+/** The network settings this run's bridge is opened with, for the log's startup block. */
 export function networkSettings(): NetworkSettings {
   // The startup block can be written before the bridge is opened, so before it loads `.env`.
   loadDotEnv()

@@ -166,8 +166,17 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
   // whatever the cleared account left in its memory. See `restart` on the window port.
   ipc.on('restart', (event) => {
     if (!isFromAppFrame(event.senderFrame, appUrl)) return
-    app.relaunch()
-    app.exit(0)
+    // `app.exit` skips `before-quit`, so the run is marked as ending here, and written out before
+    // the process goes: otherwise the next launch reports a run that did not end cleanly.
+    void openLogs()
+      .then(async ({ logger, writer }) => {
+        logger.marker('lifecycle', 'restart')
+        await writer.flush()
+      })
+      .finally(() => {
+        app.relaunch()
+        app.exit(0)
+      })
   })
 
   // The menu below is drawn here, so it follows the language the person chose in the app.

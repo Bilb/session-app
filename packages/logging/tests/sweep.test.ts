@@ -58,6 +58,44 @@ describe('sweep', () => {
     expect(counts.words).toBe(1)
   })
 
+  describe('in every form the bridge or a person writes one', () => {
+    const words = [
+      'abbey',
+      'ablaze',
+      'abort',
+      'absorb',
+      'abyss',
+      'aces',
+      'aching',
+      'acidic',
+      'acoustic',
+      'across',
+      'actress',
+      'acumen',
+      'adapt',
+    ]
+    it.each([
+      ['comma-joined, as an array of words prints', words.join(',')],
+      ['as JSON', JSON.stringify(words)],
+      ['quoted and comma-spaced', words.map((w) => `'${w}'`).join(', ')],
+      ['one per line', words.join('\n')],
+      ['one per line, already escaped', words.join('\\n')],
+    ])('%s', (_form, written) => {
+      const out = sweep(`phrase=${written} end`, p, emptyCounts())
+      for (const word of words) expect(out).not.toContain(word)
+    })
+  })
+
+  it("takes out phrases in the word lists' longest words and Lojban's apostrophes", () => {
+    // Portuguese reaches 16 letters; one long word mid-phrase used to split the run in two.
+    const portuguese =
+      'abacate abaixo abalar abater abduzir abelha aberto abismo abotoar abranger abreviar ' +
+      'desmagnetizar abrigar'
+    expect(sweep(portuguese, p, emptyCounts())).toBe('<13 words>')
+    const lojban = "backi bacru badna badri bajra bakfu bakni bakri baktu balji balni balre ba'u"
+    expect(sweep(lojban, p, emptyCounts())).toBe('<13 words>')
+  })
+
   it('leaves ordinary sentences, versions and numbers alone', () => {
     const counts = emptyCounts()
     const text = 'path built hops=3 ms=812 version 1.0.0 took 1234567 bytes'

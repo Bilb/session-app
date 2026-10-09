@@ -13,6 +13,22 @@ export interface LogDirectory {
   read(name: string): Promise<string>
 }
 
+/**
+ * Where lines go when the log directory cannot be opened: the console, which is the only place
+ * left to say anything. Keeps nothing, so a run in this state exports no files.
+ */
+export function consoleDirectory(print: (text: string) => void): LogDirectory {
+  return {
+    list: () => Promise.resolve([]),
+    append: (_name, text) => {
+      print(text.replace(/\n$/, ''))
+      return Promise.resolve()
+    },
+    remove: () => Promise.resolve(),
+    read: () => Promise.resolve(''),
+  }
+}
+
 export interface LogFileInfo {
   name: string
   sizeBytes: number
@@ -72,7 +88,7 @@ export interface PreviousRun {
   lastMarker: string | null
 }
 
-const CLEAN_ENDINGS = ['background', 'terminate', 'quit']
+const CLEAN_ENDINGS = ['background', 'restart', 'quit']
 
 export function readPreviousRun(file: string, text: string): PreviousRun {
   const markers = text
@@ -226,14 +242,25 @@ export class LogWriter implements LogSink {
     else existing.sizeBytes += bytes
   }
 
-  /** Deletes whole files, oldest first, until `incoming` more bytes fit in the budget. */
+  /**
+   * Deletes whole files, oldest first, until `incoming` more bytes fit in the budget.
+   *
+   * A file that will not delete - held open on Windows, a delete the platform refuses - is reported
+   * and then no longer counted, rather than tried again before every write: retried, it threw
+   * before every append, and nothing more was written for the rest of the run. Over budget is the
+   * better failure. The next launch lists the directory afresh and tries it again.
+   */
   async #prune(incoming: number): Promise<void> {
     const current = this.currentFile
     let total = this.#files.reduce((sum, file) => sum + file.sizeBytes, 0) + incoming
     while (total > this.#budgetBytes) {
       const oldest = this.#files[0]
       if (oldest === undefined || oldest.name === current) return
-      await this.#dir.remove(oldest.name)
+      try {
+        await this.#dir.remove(oldest.name)
+      } catch (error) {
+        this.#onError(error)
+      }
       this.#files.shift()
       total -= oldest.sizeBytes
     }

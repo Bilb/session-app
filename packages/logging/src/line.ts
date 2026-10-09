@@ -32,11 +32,23 @@ export interface LinePrefix {
   op?: string | undefined
 }
 
+/** The longest category or op written; anything past it is cut. */
+const TOKEN_MAX = 32
+
+/**
+ * A category or op as the prefix may carry it: the characters an identifier is made of, and no
+ * other. The prefix is not swept and not escaped, so this is what stops either from breaking a
+ * line in two or carrying a key - whatever process it came from.
+ */
+export function prefixToken(value: string): string {
+  return value.slice(0, TOKEN_MAX).replace(/[^\w.#-]/g, '_')
+}
+
 export function formatPrefix({ wallMs, uptimeMs, level, category, op }: LinePrefix): string {
   const time = new Date(wallMs).toISOString()
   const uptime = `+${(uptimeMs / 1000).toFixed(3)}`.padStart(UPTIME_WIDTH)
-  const bracketed = `[${category}]`.padEnd(CATEGORY_WIDTH)
-  const operation = (op === undefined ? '' : `[${op}]`).padEnd(OP_WIDTH)
+  const bracketed = `[${prefixToken(category)}]`.padEnd(CATEGORY_WIDTH)
+  const operation = (op === undefined ? '' : `[${prefixToken(op)}]`).padEnd(OP_WIDTH)
   return `${time} ${uptime} ${levelWord(level)} ${bracketed} ${operation}`
 }
 

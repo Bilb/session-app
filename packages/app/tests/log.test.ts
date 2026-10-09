@@ -1,5 +1,5 @@
 import { createLogger, Pseudonyms } from '@session/logging'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { appLog, installLogger, logStoreMilestones, resetLogger, startLogger } from '#src/log'
 import { resetPorts, setPorts } from '#src/ports'
@@ -49,6 +49,26 @@ describe('appLog', () => {
     appLog.marker('lifecycle', 'second')
     const lines = capture()
     expect(lines.map((line) => line.slice(77))).toEqual(['first', '>>> second'])
+  })
+
+  it('times a held line by when it was logged, not by when the logger arrived', () => {
+    vi.useFakeTimers({ now: Date.UTC(2026, 9, 9, 7, 0, 0) })
+    try {
+      appLog.error('session', 'start failed')
+      vi.setSystemTime(Date.UTC(2026, 9, 9, 7, 0, 3))
+      const lines: string[] = []
+      installLogger(
+        createLogger({
+          sink: { write: (written) => lines.push(...written) },
+          pseudonyms: new Pseudonyms(new Uint8Array(16)),
+          uptimeMs: () => 5_000,
+        }),
+      )
+      // Logged three seconds before the logger, at 5 s of uptime, arrived: so at 2 s.
+      expect(lines[0]).toMatch(/^2026-10-09T07:00:00\.000Z\s+\+2\.000 ERROR/)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

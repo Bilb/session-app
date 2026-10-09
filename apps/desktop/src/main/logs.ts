@@ -14,6 +14,7 @@ import { join } from 'node:path'
 import electron from 'electron'
 
 import {
+  consoleDirectory,
   createLogger,
   libsessionLine,
   networkRows,
@@ -169,15 +170,31 @@ interface LogSession {
  */
 export function openLogs(): Promise<MainLogs> {
   opened ??= (async (): Promise<MainLogs> => {
-    const dir = join(app.getPath('userData'), 'logs')
-    mkdirSync(dir, { recursive: true })
-    const salt = readSalt(dir)
-    const writer = await LogWriter.open(fsDirectory(dir), {
+    const writerOptions = {
       launchMs,
-      onError: (error) => {
+      onError: (error: unknown) => {
         console.error('[logs] a write failed:', error)
       },
-    })
+    }
+    const dir = join(app.getPath('userData'), 'logs')
+    let salt: Uint8Array
+    let writer: LogWriter
+    let failure: string | null = null
+    try {
+      mkdirSync(dir, { recursive: true })
+      salt = readSalt(dir)
+      writer = await LogWriter.open(fsDirectory(dir), writerOptions)
+    } catch (error) {
+      // Not thrown on: every caller would reject, and nothing would be written anywhere.
+      failure = error instanceof Error ? error.message : String(error)
+      salt = Uint8Array.from(randomBytes(SALT_BYTES))
+      writer = await LogWriter.open(
+        consoleDirectory((text) => {
+          console.log(text)
+        }),
+        writerOptions,
+      )
+    }
     const logger = createLogger({
       sink: orderedSink(writer, { holdMs: RENDERER_HOLD_MS }),
       pseudonyms: new Pseudonyms(salt),
@@ -197,6 +214,11 @@ export function openLogs(): Promise<MainLogs> {
     await app.whenReady()
     logger.section(mainStartupBlock(writer))
     logger.marker('lifecycle', 'launch', { process: 'main' })
+    if (failure !== null) {
+      logger.error('logs', 'the log directory could not be opened; lines go to the console', {
+        reason: failure,
+      })
+    }
     return { logger, writer }
   })()
   return opened
@@ -235,7 +257,14 @@ export function serveLogs(window: Electron.BrowserWindow, appUrl: string): void 
     if (!Array.isArray(records) || records.length > MAX_RECORDS_PER_CALL) return
     const accepted = records.map(parseRecord).filter((record) => record !== null)
     void openLogs().then(({ logger }) => {
-      for (const record of accepted) logger.record(record)
+      for (const record of accepted) {
+        // Each on its own, so a record that still manages to throw costs only itself.
+        try {
+          logger.record(record)
+        } catch {
+          // Nothing to tell: the renderer sent something no line could be made of.
+        }
+      }
     })
   })
 }

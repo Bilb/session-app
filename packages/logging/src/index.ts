@@ -11,6 +11,7 @@ export {
   type ForwardingLoggerOptions,
   type LogRecord,
   type Logger,
+  type TimedLogger,
   type LoggerOptions,
   type LogSink,
 } from './logger'
@@ -44,6 +45,7 @@ export {
   LogWriter,
   MAX_FILE_BYTES,
   basicUtc,
+  consoleDirectory,
   logFileName,
   readPreviousRun,
   sortLogFiles,

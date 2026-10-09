@@ -195,9 +195,21 @@ describe('parseRecord', () => {
     ['not an object', 'hello'],
     ['no time', { ...valid, wallMs: undefined }],
     ['a time that is not a number', { ...valid, wallMs: 'now' }],
+    ['a time no Date can hold', { ...valid, wallMs: 9e15 }],
+    ['a negative uptime', { ...valid, uptimeMs: -1 }],
     ['an unknown level', { ...valid, level: 'loud' }],
     ['a message that is not a string', { ...valid, message: 42 }],
     ['an unknown kind', { ...valid, kind: 'banner' }],
+    ['an unprefixed line, which only the writing process may write', { ...valid, kind: 'section' }],
+    ['a category with a newline in it', { ...valid, category: 'ui]\n2026-01-01T00:00:00Z' }],
+    ['a category with a key in it', { ...valid, category: `ui ${'ab'.repeat(32)}` }],
+    [
+      'more fields than any line logs',
+      {
+        ...valid,
+        fields: Object.fromEntries(Array.from({ length: 33 }, (_, i) => [`f${String(i)}`, i])),
+      },
+    ],
   ])('refuses %s', (_name, record) => {
     expect(parseRecord(record)).toBeNull()
   })
@@ -208,5 +220,19 @@ describe('parseRecord', () => {
       fields: { ok: 3, forged: { redacted: 'visible', raw: 7 }, also: { toString: 'x' } },
     })
     expect(parsed?.fields).toEqual({ ok: 3 })
+  })
+
+  it('drops a field key or an op that is not a name, and keeps the line', () => {
+    const parsed = parseRecord({
+      ...valid,
+      op: 'CoS-0-GZHC\n[forged]',
+      fields: { ok: 1, 'two words': 2, 'a\nb': 3 },
+    })
+    expect(parsed?.op).toBeUndefined()
+    expect(parsed?.fields).toEqual({ ok: 1 })
+  })
+
+  it('keeps a marker, which the renderer writes for its launch and the store', () => {
+    expect(parseRecord({ ...valid, kind: 'marker' })?.kind).toBe('marker')
   })
 })

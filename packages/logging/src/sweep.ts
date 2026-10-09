@@ -34,10 +34,23 @@ const IPV6_BRACKETED = /\[([0-9a-f:.]+)\](?::(\d{1,5}))?/gi
 const IPV6_BARE =
   /(^|[^\w:.])((?:[0-9a-f]{0,4}:){2,7}(?:[0-9a-f]{1,4}|\d+\.\d+\.\d+\.\d+)?)(?![\w:])/gi
 /**
- * Thirteen or more words in a row is the shape of a recovery phrase, and nothing a log line says
- * on purpose. Latin and Cyrillic letters; a phrase in another script is the gap this leaves.
+ * One word of a recovery phrase: 3 to 16 letters, the range libsession's word lists span
+ * (Portuguese and Dutch reach 16), with Lojban's apostrophe. Latin and Cyrillic; a phrase in
+ * another script - Japanese, Chinese - is the gap this leaves.
  */
-const WORD_RUN = /(?:[A-Za-zÀ-ɏЀ-ӿ]{3,12} +){12,}[A-Za-zÀ-ɏЀ-ӿ]{3,12}/g
+const PHRASE_WORD = "[A-Za-zÀ-ɏЀ-ӿ']{3,16}"
+/**
+ * What can come between the words as a phrase is written: spaces, as typed; a comma, as the
+ * bridge's array of words prints; quotes and brackets, as it serialises; a newline, raw or
+ * already escaped.
+ */
+const PHRASE_GAP = '(?:[\\s,;"[\\]]|\\\\n)+'
+/**
+ * Thirteen or more words in a row is the shape of a recovery phrase, and nothing a log line says
+ * on purpose.
+ */
+const WORD_RUN = new RegExp(`(?:${PHRASE_WORD}${PHRASE_GAP}){12,}${PHRASE_WORD}`, 'g')
+const ONE_WORD = new RegExp(PHRASE_WORD, 'g')
 
 /**
  * The backstop: anything in free text that has the shape of something that must not be written.
@@ -91,7 +104,7 @@ export function sweep(text: string, pseudonyms: Pseudonyms, counts: SweepCounts)
   })
   out = out.replace(WORD_RUN, (match) => {
     counts.words += 1
-    return `<${String(match.split(/ +/).length)} words>`
+    return `<${String(match.match(ONE_WORD)?.length ?? 0)} words>`
   })
   return out
 }

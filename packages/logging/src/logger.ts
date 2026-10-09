@@ -70,6 +70,17 @@ export interface Logger {
   sweepCounts(): SweepCounts
   /** A line another process logged, written as of when it was logged there. */
   record(record: LogRecord): void
+  /**
+   * Lines logged earlier than they are handed over - held while the log directory opened - timed
+   * by when they were logged, `wallMs`, rather than by when they arrive.
+   */
+  at(wallMs: number): TimedLogger
+}
+
+/** `log` and `marker`, as of a time already past. */
+export interface TimedLogger {
+  log(level: LogLevel, category: string, message: string, fields?: LogFields, op?: string): void
+  marker(category: string, name: string, fields?: LogFields): void
 }
 
 function renderValue(value: LogValue, pseudonyms: Pseudonyms, counts: SweepCounts): string {
@@ -121,6 +132,30 @@ export function createLogger(options: LoggerOptions): Logger {
     emit(level, [line], isUrgent(level, kind), wallMs)
   }
 
+  /** Uptime as it was at `wallMs`, from how long ago that was. */
+  const uptimeAt = (wallMs: number): number => uptimeMs() - (now() - wallMs)
+
+  function at(wallMs: number): TimedLogger {
+    return {
+      log: (level, category, message, fields, op) => {
+        write({ wallMs, uptimeMs: uptimeAt(wallMs), level, category, message, op }, fields)
+      },
+      marker: (category, name, fields) => {
+        write(
+          {
+            wallMs,
+            uptimeMs: uptimeAt(wallMs),
+            level: 'info',
+            category,
+            message: `${MARKER} ${name}`,
+            kind: 'marker',
+          },
+          fields,
+        )
+      },
+    }
+  }
+
   function log(
     level: LogLevel,
     category: string,
@@ -128,7 +163,7 @@ export function createLogger(options: LoggerOptions): Logger {
     fields?: LogFields,
     op?: string,
   ): void {
-    write({ wallMs: now(), uptimeMs: uptimeMs(), level, category, message, op }, fields)
+    at(now()).log(level, category, message, fields, op)
   }
 
   return {
@@ -152,18 +187,9 @@ export function createLogger(options: LoggerOptions): Logger {
       log('critical', category, message, fields)
     },
     marker: (category, name, fields) => {
-      write(
-        {
-          wallMs: now(),
-          uptimeMs: uptimeMs(),
-          level: 'info',
-          category,
-          message: `${MARKER} ${name}`,
-          kind: 'marker',
-        },
-        fields,
-      )
+      at(now()).marker(category, name, fields)
     },
+    at,
     section: (lines) => {
       const wallMs = now()
       emit(
@@ -213,6 +239,7 @@ export function createForwardingLogger(options: ForwardingLoggerOptions): Logger
     fields: LogFields | undefined,
     op: string | undefined,
     kind: LogRecord['kind'],
+    wallMs: number = now(),
   ): void {
     const wire =
       fields === undefined
@@ -224,8 +251,8 @@ export function createForwardingLogger(options: ForwardingLoggerOptions): Logger
             }),
           )
     const record: LogRecord = {
-      wallMs: now(),
-      uptimeMs: uptimeMs(),
+      wallMs,
+      uptimeMs: uptimeMs() - (now() - wallMs),
       level,
       category,
       message,
@@ -269,8 +296,20 @@ export function createForwardingLogger(options: ForwardingLoggerOptions): Logger
     marker: (category, name, fields) => {
       forward('info', category, `${MARKER} ${name}`, fields, undefined, 'marker')
     },
+    at: (wallMs) => ({
+      log: (level, category, message, fields, op) => {
+        forward(level, category, message, fields, op, undefined, wallMs)
+      },
+      marker: (category, name, fields) => {
+        forward('info', category, `${MARKER} ${name}`, fields, undefined, 'marker', wallMs)
+      },
+    }),
+    /**
+     * Written prefixed, as ordinary lines: only the process that owns the files writes unprefixed
+     * ones, and the one receiving these will not take them.
+     */
     section: (lines) => {
-      for (const line of lines) forward('info', '', line, undefined, undefined, 'section')
+      for (const line of lines) forward('info', 'section', line, undefined, undefined, undefined)
     },
     /** Counted where the lines are swept, which is not here. */
     sweepCounts: () => emptyCounts(),
@@ -284,37 +323,54 @@ const isString = (value: unknown): value is string => typeof value === 'string'
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value)
 
+/** The furthest a `Date` reaches either side of 1970; past it, rendering the time throws. */
+const MAX_DATE_MS = 8.64e15
+/** A category is an identifier: `session`, `quic-transport`, `core.gbl`. */
+const CATEGORY = /^[\w.-]{1,32}$/
+/** An op is a request id: `CoS-0-GZHC-1`. */
+const OP = /^[\w#.-]{1,32}$/
+/** A field's key is a name: `ms`, `attempt`, `process`. */
+const FIELD_KEY = /^[A-Za-z_]\w{0,31}$/
+/** More fields than any line logs; past this a record is refused rather than written in part. */
+const MAX_FIELDS = 32
+
 /**
  * A record from another process, or null where it is not one.
  *
- * Its source is the desktop renderer, the less trusted process, so every field is checked rather
- * than assumed; a field value that is not one is dropped, and the rest of the line kept.
+ * Its source is the desktop renderer, the less trusted process, so every part is checked rather
+ * than assumed. A record is refused for anything that would let it write more than one ordinary
+ * line: a category that is not an identifier, a time no `Date` can hold, too many fields, or an
+ * unprefixed line - only the process that owns the files writes those. An op or field that is not
+ * one is dropped, and the rest of the line kept. A marker is allowed: the renderer marks its own
+ * launch and the store's milestones.
  */
 export function parseRecord(value: unknown): LogRecord | null {
   if (typeof value !== 'object' || value === null) return null
   const raw = value as Partial<Record<string, unknown>>
   const { wallMs, uptimeMs, level, category, message, op, kind, fields } = raw
-  if (!isFiniteNumber(wallMs) || !isFiniteNumber(uptimeMs)) return null
+  if (!isFiniteNumber(wallMs) || Math.abs(wallMs) > MAX_DATE_MS) return null
+  if (!isFiniteNumber(uptimeMs) || uptimeMs < 0 || uptimeMs > MAX_DATE_MS) return null
   if (!LOG_LEVELS.some((known) => known === level)) return null
-  if (!isString(category) || !isString(message)) return null
-  if (op !== undefined && !isString(op)) return null
-  if (kind !== undefined && kind !== 'marker' && kind !== 'section') return null
+  if (!isString(category) || !CATEGORY.test(category) || !isString(message)) return null
+  if (kind !== undefined && kind !== 'marker') return null
   let wire: Record<string, WireValue> | undefined
   if (fields !== undefined) {
     if (typeof fields !== 'object' || fields === null) return null
+    const entries = Object.entries(fields)
+    if (entries.length > MAX_FIELDS) return null
     wire = {}
-    for (const [key, field] of Object.entries(fields)) {
-      if (fromWire(field) !== undefined) wire[key] = field as WireValue
+    for (const [key, field] of entries) {
+      if (FIELD_KEY.test(key) && fromWire(field) !== undefined) wire[key] = field as WireValue
     }
   }
   return {
     wallMs,
     uptimeMs,
     level: level as LogLevel,
-    category: capForSweep(category, 64),
+    category,
     message,
     ...(wire === undefined ? {} : { fields: wire }),
-    ...(op === undefined ? {} : { op: capForSweep(op, 64) }),
+    ...(isString(op) && OP.test(op) ? { op } : {}),
     ...(kind === undefined ? {} : { kind }),
   }
 }

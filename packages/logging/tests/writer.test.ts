@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { LogWriter, basicUtc, logFileName, readPreviousRun, sortLogFiles } from '#src/writer'
+import {
+  consoleDirectory,
+  LogWriter,
+  basicUtc,
+  logFileName,
+  readPreviousRun,
+  sortLogFiles,
+} from '#src/writer'
 
 import { memoryDirectory } from './helpers'
 
@@ -76,6 +83,28 @@ describe('LogWriter', () => {
     expect([...dir.files.keys()]).toEqual(['session-20261002T000000Z-0.log', writer.currentFile])
   })
 
+  it('keeps writing when an old file will not delete, and says so', async () => {
+    const dir = memoryDirectory({
+      'session-20261001T000000Z-0.log': 'x'.repeat(10),
+      'session-20261002T000000Z-0.log': 'y'.repeat(10),
+    })
+    dir.remove = () => Promise.reject(new Error('EBUSY'))
+    const errors: unknown[] = []
+    const writer = await LogWriter.open(dir, {
+      launchMs: LAUNCH,
+      budgetBytes: 25,
+      timers: noTimers,
+      onError: (error) => errors.push(error),
+    })
+    writer.write(['first'], false)
+    await writer.flush()
+    writer.write(['second'], false)
+    await writer.flush()
+    expect(dir.files.get(writer.currentFile)).toBe('first\nsecond\n')
+    // Reported once, not before every write.
+    expect(errors).toHaveLength(1)
+  })
+
   it('never deletes the file it is writing', async () => {
     const dir = memoryDirectory()
     const writer = await LogWriter.open(dir, { launchMs: LAUNCH, budgetBytes: 4, timers: noTimers })
@@ -112,6 +141,9 @@ describe('LogWriter', () => {
 
     const died = readPreviousRun('f.log', 'x >>> launch\nx >>> foreground\nsomething\n')
     expect(died).toEqual({ file: 'f.log', endedCleanly: false, lastMarker: 'foreground' })
+    // A desktop restart skips the quit marker, and writes its own.
+    const restarted = readPreviousRun('f.log', 'x >>> launch\nx >>> restart\n')
+    expect(restarted).toEqual({ file: 'f.log', endedCleanly: true, lastMarker: 'restart' })
   })
 
   it('keeps writing after a failed append, and reports it', async () => {
@@ -138,5 +170,22 @@ describe('LogWriter', () => {
     await writer.flush()
     expect(errors).toHaveLength(1)
     expect(dir.files.get(writer.currentFile)).toBe('kept\n')
+  })
+})
+
+describe('consoleDirectory', () => {
+  it('prints each write, keeps nothing, and lets a writer run on it', async () => {
+    const printed: string[] = []
+    const writer = await LogWriter.open(
+      consoleDirectory((text) => printed.push(text)),
+      {
+        launchMs: LAUNCH,
+        timers: noTimers,
+      },
+    )
+    writer.write(['one', 'two'], true)
+    await writer.flush()
+    expect(printed).toEqual(['one\ntwo'])
+    expect(writer.files()).toEqual([{ name: writer.currentFile, sizeBytes: 'one\ntwo\n'.length }])
   })
 })

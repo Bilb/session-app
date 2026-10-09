@@ -41,8 +41,11 @@ export function resetLogger(): void {
 
 export const appLog = {
   log(level: LogLevel, category: string, message: string, fields?: LogFields, op?: string): void {
+    // Timed now, not when the logger takes it: a line held while the directory opened would
+    // otherwise carry the moment it opened.
+    const wallMs = Date.now()
     withLogger((logger) => {
-      logger.log(level, category, message, fields, op)
+      logger.at(wallMs).log(level, category, message, fields, op)
     })
   },
   trace(category: string, message: string, fields?: LogFields): void {
@@ -65,8 +68,9 @@ export const appLog = {
   },
   /** One of the lines that always fire; see `MARKER` in `@session/logging`. */
   marker(category: string, name: string, fields?: LogFields): void {
+    const wallMs = Date.now()
     withLogger((logger) => {
-      logger.marker(category, name, fields)
+      logger.at(wallMs).marker(category, name, fields)
     })
   },
 }

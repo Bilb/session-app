@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { PREFIX_WIDTH, escapeMessage, formatPair, formatPrefix } from '#src/line'
+import { PREFIX_WIDTH, escapeMessage, formatPair, formatPrefix, prefixToken } from '#src/line'
 import { LOG_LEVELS } from '#src/level'
 
 const AT = Date.UTC(2026, 9, 8, 3, 20, 9, 123)
@@ -50,5 +50,17 @@ describe('formatPair', () => {
     expect(formatPair('ms', '812')).toBe('ms=812')
     expect(formatPair('reason', 'timed out')).toBe('reason="timed out"')
     expect(formatPair('empty', '')).toBe('empty=""')
+  })
+})
+
+describe('prefixToken', () => {
+  it('keeps what an identifier is made of', () => {
+    expect(prefixToken('quic-transport')).toBe('quic-transport')
+    expect(prefixToken('CoS-0-GZHC-1')).toBe('CoS-0-GZHC-1')
+  })
+
+  it('can neither break a line nor carry a key whole', () => {
+    expect(prefixToken('ui]\nforged')).toBe('ui__forged')
+    expect(prefixToken('ab'.repeat(32))).toHaveLength(32)
   })
 })
