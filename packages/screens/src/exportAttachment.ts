@@ -4,7 +4,7 @@ import type { SessionActions } from '@session/state'
 
 /** What an export says when it does not land. Nothing is said for a cancel. */
 export interface ExportFeedback {
-  /** The destination needs access the OS will not ask for again. */
+  /** The destination needs access that was refused. */
   accessRefused: (access: ExportAccess) => void
   /** Anything else that stopped it: a refused write, a failed hand-off. */
   failed: () => void

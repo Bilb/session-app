@@ -76,8 +76,8 @@ export function mayExportTo(destination: unknown): boolean {
 
 /**
  * Android 9 and below save through the filesystem, which takes the storage grant. Any refusal
- * stops the export with the dialog that leads to the settings, as legacy Android does; there is
- * nowhere else to put the file without the grant.
+ * stops the export with the dialog that leads to the settings: there is nowhere else to put the
+ * file without the grant.
  */
 async function requireStorageGrant(): Promise<void> {
   const answer = await PermissionsAndroid.request(

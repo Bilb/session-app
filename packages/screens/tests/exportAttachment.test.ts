@@ -144,7 +144,7 @@ describe('exporting one attachment', () => {
     expect(said.failed).toHaveBeenCalledOnce()
   })
 
-  it('explains a refused access the OS will not ask for again, and writes nothing', async () => {
+  it('explains a refused access, and writes nothing', async () => {
     installFiles({
       chooseExportLocation: () => Promise.reject(new ExportAccessRefused('storage')),
     })
