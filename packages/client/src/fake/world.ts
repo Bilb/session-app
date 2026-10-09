@@ -14,7 +14,6 @@
  * the two cannot drift apart quietly.
  */
 
-import { isImageContentType } from '@session/basic-types'
 import {
   ATTACHMENT_NOT_FOUND,
   FILE_DOWNLOAD_CANCELLED,
@@ -100,14 +99,19 @@ function transferTicks(bytes: number): number {
   return Math.max(Math.round((bytes / 1_000_000) * TICKS_PER_MEGABYTE), MIN_TRANSFER_TICKS)
 }
 
+/** libsession's image test: a case-sensitive prefix, so `Image/JPEG` is not one here. */
+function libsessionImage(contentType: string | undefined): boolean {
+  return contentType?.startsWith('image/') === true
+}
+
 /** libsession's rule: has attachments, and every one of them is an image. */
 function galleryViewable(attachments: Attachment[]): boolean {
-  return attachments.length > 0 && attachments.every((a) => isImageContentType(a.contentType))
+  return attachments.length > 0 && attachments.every((a) => libsessionImage(a.contentType))
 }
 
 function wantedBy(mode: AutoDownload | undefined, attachment: Attachment): boolean {
   if (mode === 'all') return true
-  if (mode === 'image-attachments') return isImageContentType(attachment.contentType)
+  if (mode === 'image-attachments') return libsessionImage(attachment.contentType)
   return false
 }
 
