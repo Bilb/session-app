@@ -6,12 +6,9 @@ import { join } from 'node:path'
 import type { AttachmentRef, BridgeTransport } from '@session/client'
 import {
   createFakeTransport,
-  driveFakeClock,
   fakePreviewPixels,
   photoFileName,
-  photoFileNames,
-  pickFakeFixture,
-  unopenable,
+  startDevFake,
 } from '@session/client/fake'
 
 import type { MediaSource } from '../media'
@@ -27,21 +24,6 @@ const MEDIA_DIR =
   process.env['SESSION_FAKE_MEDIA_DIR'] ?? join(homedir(), '.cache', 'session-app', 'dev-media')
 
 /**
- * Refuses to start without every photograph, naming the command that fetches them.
- *
- * Loud rather than a stand-in, because a fake that draws something else looks like it works and
- * hides whether the pictures that would really arrive are drawn right.
- */
-function requirePhotos(): void {
-  const missing = photoFileNames().filter((name) => !existsSync(join(MEDIA_DIR, name)))
-  if (missing.length === 0) return
-  throw new Error(
-    `The fake needs its dev photographs in ${MEDIA_DIR}, and ${String(missing.length)} are ` +
-      `missing. Run: pnpm fake-media:fetch`,
-  )
-}
-
-/**
  * The bridge, backed by the fake.
  *
  * This is a dev entry and lives here so the boundary rules can say so: production code
@@ -49,23 +31,11 @@ function requirePhotos(): void {
  * shipped bundle.
  */
 export function createFakeBridge(): BridgeTransport & MediaSource {
-  // Before anything else, so nothing opens halfway.
-  requirePhotos()
-
-  const { world, clients } = pickFakeFixture(process.env)
-  const alice = clients['Alice']
-  if (!alice) throw new Error('the fixture did not produce a client')
-
-  driveFakeClock(world, process.env['EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN'])
-
-  // A database that will not open, which is otherwise only reachable with one somebody has already
-  // broken. The failure screen is the one screen nobody sees by accident, so there has to be a way
-  // to open it on purpose. `unopenable` refuses as the real bridge does, with libsession's own
-  // reason, and lets a discard through -- so the screen's Clear Device works here too.
-  const served =
-    process.env['EXPO_PUBLIC_SESSION_FAKE_FAILED_START'] === '1'
-      ? unopenable(alice, 'file is not a database')
-      : alice
+  const { alice, served } = startDevFake(process.env, {
+    has: (fileName) => existsSync(join(MEDIA_DIR, fileName)),
+    where: `in ${MEDIA_DIR}`,
+    fix: 'pnpm fake-media:fetch',
+  })
 
   return {
     ...createFakeTransport(served),

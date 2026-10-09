@@ -40,8 +40,8 @@ function AccessActions({ modals, id }: { modals: Modals; id: string }) {
 }
 
 /**
- * Says why an export cannot go where it should, once the OS has stopped asking: the access can
- * now only be granted from the app's page in the system settings, which this offers to open.
+ * Says why an export cannot go where it should: the access it needs was refused, and the app's
+ * page in the system settings, which this offers to open, can grant it.
  */
 function explainAccessRefused(modals: Modals, access: ExportAccess): void {
   const id = modals.present({
@@ -62,7 +62,7 @@ function explainAccessRefused(modals: Modals, access: ExportAccess): void {
   })
 }
 
-/** `exportOne`'s feedback: an alert for a refusal only the settings can undo, else a toast. */
+/** `exportOne`'s feedback: an alert for a refused access, else a toast. */
 export function useExportFeedback(): ExportFeedback {
   const modals = useModals()
   const toasts = useToast()
