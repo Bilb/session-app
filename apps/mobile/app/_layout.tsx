@@ -1,6 +1,7 @@
 import {
   ModalHost,
   registerStoredAppearance,
+  StartingScreen,
   StoredThemeProvider,
   ToastLayer,
   useFirstPaintHeld,
@@ -11,10 +12,8 @@ import {
   DirectionRoot,
   FONT_ASSETS,
   ModalStackProvider,
-  Text,
   ToastProvider,
   UIProvider,
-  YStack,
 } from '@session/ui'
 import { useFonts } from 'expo-font'
 import { Slot } from 'expo-router'
@@ -26,6 +25,7 @@ import { mobileBackdropBlur } from '../src/backdrop'
 import { mobileGlass } from '../src/glass'
 import { MobileCameraProvider } from '../src/camera'
 import { MobileNavProvider } from '../src/nav'
+import { HideSplashOnMount } from '../src/splash'
 import { storePromise } from '../src/store'
 
 /**
@@ -70,22 +70,21 @@ export default function RootLayout() {
       <SafeAreaProvider>
         {store === null ? (
           // Held as the provider holds, on the same budget from launch: a placeholder drawn in the
-          // default theme now would be redrawn in the account's a moment later.
+          // default theme now would be redrawn in the account's a moment later. The starting
+          // screen rather than anything of its own, so a slow start fades from the splash to the
+          // same mark in the same place whichever of the two it reaches.
           held ? null : (
             <UIProvider backdropBlur={mobileBackdropBlur} glass={mobileGlass}>
-              <YStack
-                flex={1}
-                alignItems="center"
-                justifyContent="center"
-                backgroundColor="$backgroundPrimary"
-              >
-                <Text tone="secondary">Starting…</Text>
-              </YStack>
+              <ModalStackProvider>
+                <StartingScreen />
+              </ModalStackProvider>
+              <HideSplashOnMount />
             </UIProvider>
           )
         ) : (
           <SessionStoreProvider store={store}>
             <StoredThemeProvider backdropBlur={mobileBackdropBlur} glass={mobileGlass}>
+              <HideSplashOnMount />
               <MobileNavProvider>
                 <MobileCameraProvider>
                   <DirectionRoot rtl={rtl}>

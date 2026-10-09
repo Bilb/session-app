@@ -1,7 +1,16 @@
 import { requirePorts } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Modal, Screen, SessionBrand, Text, YStack } from '@session/ui'
+import {
+  BRAND_GREEN,
+  Button,
+  LAUNCH_MARK_HEIGHT,
+  Modal,
+  Screen,
+  SessionBrand,
+  Text,
+  YStack,
+} from '@session/ui'
 import { useEffect, useState } from 'react'
 
 import { LocalizedText } from './LocalizedText'
@@ -50,8 +59,6 @@ const SAY_SO_IN_A_DIALOG_AFTER_MS = 30_000
  * same colour by a different route -- `DEFAULT_THEME` -- which is worth knowing before someone
  * wonders why this screen ignores a theme setting.
  */
-/** The launch mark's own size, which is artwork rather than a control. */
-const BRAND_SIZE = 64
 
 export function StartingScreen() {
   const [waited, setWaited] = useState(0)
@@ -72,9 +79,12 @@ export function StartingScreen() {
   }, [])
 
   return (
-    <Screen testID={ELEMENT.starting.screen}>
+    // No safe-area edges: the mark is centred on the whole screen, as the native launch screen
+    // centres it, so the hand-over from one to the other does not move it.
+    <Screen testID={ELEMENT.starting.screen} edges={[]}>
       <YStack flex={1} alignItems="center" justifyContent="center" gap="$xl">
-        <SessionBrand size={BRAND_SIZE} color="$primaryColor" />
+        {/* The brand green, as the native launch screen draws it, not the theme's accent. */}
+        <SessionBrand size={LAUNCH_MARK_HEIGHT} color={BRAND_GREEN} />
 
         {waited < SAY_SOMETHING_AFTER_MS ? null : (
           <YStack alignItems="center" gap="$xs" maxWidth={280}>
