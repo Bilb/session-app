@@ -746,8 +746,9 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   included. Mobile empties its loaders' caches there: Fresco's bitmap and encoded memory caches on
   Android, the loader's cache of decoded stills and previews on iOS. Desktop empties nothing, because Blink caches the
   scheme's responses where main cannot reach them; it relies on the process ending instead.
-  Settings > Clear data relaunches, and onboarding's back, the clear offered when the database
-  will not open and the startup sweep all come before any media is drawn. A decode answered just
-  before a mobile reset can still land after it and cache the old picture again, which the same
-  ordering keeps latent. A discard that can follow drawn media in one process needs a per-database
+  Settings > Clear data ends the process, and so does the clear offered when the database will
+  not open if an account had been loaded, which is where a failed Settings > Clear data lands.
+  Onboarding's back, that clear at launch and the startup sweep all come before any media is
+  drawn. A decode answered just before a mobile reset can still land after it and cache the old
+  picture again, which the same ordering keeps latent. A discard that can follow drawn media in one process needs a per-database
   epoch in the URL instead.
