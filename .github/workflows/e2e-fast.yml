@@ -29,13 +29,13 @@ jobs:
       # CDN is only asked when the table of photographs changes. Saved straight after the fetch:
       # actions/cache's own post step saves only when the whole job is green.
       - id: dev-media
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: ~/.cache/session-app/dev-media
           key: dev-media-${{ hashFiles('packages/client/scripts/fetchFakeMedia.ts') }}
       - run: pnpm fake-media:fetch
       - if: steps.dev-media.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: ~/.cache/session-app/dev-media
           key: ${{ steps.dev-media.outputs.cache-primary-key }}
