@@ -17,6 +17,7 @@ namespace {
 JavaVM* java_vm = nullptr;
 jmethodID on_media = nullptr;
 jmethodID on_preview = nullptr;
+jmethodID on_thumbnail = nullptr;
 jmethodID on_failure = nullptr;
 jclass media_native = nullptr;
 pthread_key_t detach_on_exit;
@@ -103,6 +104,32 @@ void answer_media(jobject load, ::session_bridge::Media media) {
     env->DeleteGlobalRef(load);
 }
 
+/// Decoded as it is, so only ever a JPEG: libsession makes nothing else, and caps its side at 1024.
+void answer_thumbnail(jobject load, ::session_bridge::Media media) {
+    JNIEnv* env = attached_env();
+    if (!env)
+        return;
+    if (media.error) {
+        fail(env, load, *media.error);
+    } else if (::session_bridge::servable_image_type("image/jpeg", media.bytes) == "image/jpeg") {
+        jlong handle = 0;
+        jobject buffer = lend(env, std::move(media.bytes), handle);
+        if (!buffer) {
+            fail(env, load, UNLENDABLE);
+        } else {
+            env->CallVoidMethod(load, on_thumbnail, buffer, handle);
+            if (clear_pending(env)) {
+                delete reinterpret_cast<std::vector<std::byte>*>(handle);
+                fail(env, load, REFUSED);
+            }
+            env->DeleteLocalRef(buffer);
+        }
+    } else {
+        fail(env, load, "a thumbnail that is not a JPEG");
+    }
+    env->DeleteGlobalRef(load);
+}
+
 /// Larger than any ThumbHash decodes to, and small enough that `width * height * 4` fits a jint.
 constexpr double MAX_PREVIEW_SIDE = 16384;
 
@@ -170,9 +197,10 @@ jint register_media_loader(JavaVM* vm) {
         return JNI_ERR;
     on_media = env->GetMethodID(load, "onMedia", "(Ljava/nio/ByteBuffer;J)V");
     on_preview = env->GetMethodID(load, "onPreview", "(IILjava/nio/ByteBuffer;J)V");
+    on_thumbnail = env->GetMethodID(load, "onThumbnail", "(Ljava/nio/ByteBuffer;J)V");
     on_failure = env->GetMethodID(load, "onFailure", "(Ljava/lang/String;)V");
     env->DeleteLocalRef(load);
-    if (!on_media || !on_preview || !on_failure)
+    if (!on_media || !on_preview || !on_thumbnail || !on_failure)
         return JNI_ERR;
     jclass native = env->FindClass("session/bridge/rn/SessionMediaNative");
     if (!native)
@@ -209,6 +237,10 @@ Java_session_bridge_rn_SessionMediaNative_fetch(JNIEnv* env, jclass, jstring url
     if (parsed->kind == ::session_bridge::MediaUrlKind::preview)
         source->fetch_preview(parsed->message_id, parsed->index, [held](auto preview) {
             answer_preview(held, std::move(preview));
+        });
+    else if (parsed->kind == ::session_bridge::MediaUrlKind::thumbnail)
+        source->fetch_thumbnail(parsed->message_id, parsed->index, [held](auto media) {
+            answer_thumbnail(held, std::move(media));
         });
     else
         source->fetch_media(parsed->message_id, parsed->index, [held](auto media) {

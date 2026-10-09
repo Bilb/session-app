@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Log
 import com.facebook.imagepipeline.bitmaps.SimpleBitmapReleaser
 import com.facebook.cache.common.CacheKey
@@ -33,7 +34,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Draws `session-media://` URLs: the image loader behind `MediaPort.urlFor` on Android.
+ * Draws `session-media://` URLs: the image loader behind the `MediaPort` URLs on Android.
  *
  * The URL is the request. Fresco asks for it, C++ parses it and asks whichever source is serving -
  * the open bridge, or the fake through `serveMediaFrom` - and the bytes come back here without
@@ -96,7 +97,8 @@ internal object SessionMediaNative {
 
 /**
  * Fresco's own order for a decoded sequence, minus every disk-cache producer, so decrypted bytes
- * live only in memory. Keyed by URL, which is why a file and its preview have separate ones, and
+ * live only in memory. Keyed by URL, which is why a file, its preview and its thumbnail have
+ * separate ones, and
  * which keeps naming one picture: libsession never reuses a message id, and a discard calls
  * `forget_media`.
  */
@@ -112,12 +114,15 @@ internal class SessionMediaSequenceFactory : CustomProducerSequenceFactory() {
     val uri = imageRequest.sourceUri
     if (uri.scheme != SessionMedia.SCHEME) return null
     val decoded =
-        if (uri.host == "preview") PreviewProducer()
-        else
+        when (uri.host) {
+          "preview" -> PreviewProducer()
+          "thumbnail" -> ThumbnailProducer()
+          else ->
             producerFactory.newDecodeProducer(
                 ProducerFactory.newAddImageTransformMetaDataProducer(
                     producerFactory.newEncodedCacheKeyMultiplexProducer(
                         producerFactory.newEncodedMemoryCacheProducer(FetchProducer()))))
+        }
     return producerFactory.newBitmapMemoryCacheGetProducer(
         producerFactory.newBackgroundThreadHandoffProducer(
             producerFactory.newBitmapMemoryCacheKeyMultiplexProducer(
@@ -145,6 +150,19 @@ internal class FetchProducer : Producer<EncodedImage> {
 
 /** A preview arrives as pixels, so it skips the decoder and is handed over as a bitmap. */
 internal class PreviewProducer : Producer<CloseableReference<CloseableImage>> {
+  override fun produceResults(
+      consumer: Consumer<CloseableReference<CloseableImage>>,
+      context: ProducerContext,
+  ) {
+    start(context, SessionMediaLoad.decoded(consumer, context.imageRequest.sourceUri.toString()))
+  }
+}
+
+/**
+ * A thumbnail is decoded here, whole, rather than by Fresco's decoder, which would downsample it
+ * to the view: it is libsession's JPEG of at most 1024 px a side, already the size a tile wants.
+ */
+internal class ThumbnailProducer : Producer<CloseableReference<CloseableImage>> {
   override fun produceResults(
       consumer: Consumer<CloseableReference<CloseableImage>>,
       context: ProducerContext,
@@ -230,6 +248,37 @@ private constructor(
           colours[at] = (a shl 24) or (r shl 16) or (g shl 8) or b
         }
         val bitmap = Bitmap.createBitmap(colours, width, height, Bitmap.Config.ARGB_8888)
+        val image: CloseableReference<CloseableImage> =
+            CloseableReference.of(
+                CloseableStaticBitmap.of(
+                    bitmap,
+                    SimpleBitmapReleaser.getInstance(),
+                    ImmutableQualityInfo.FULL_QUALITY,
+                    0))
+        try {
+          consumer.onNewResult(image, BaseConsumer.IS_LAST)
+        } finally {
+          CloseableReference.closeSafely(image)
+        }
+      } catch (error: Throwable) {
+        failWith(error)
+      } finally {
+        SessionMediaNative.release(handle)
+      }
+    }
+  }
+
+  @DoNotStrip
+  fun onThumbnail(jpeg: ByteBuffer, handle: Long) {
+    DRAIN.execute {
+      try {
+        val consumer = decoded
+        if (!settle() || consumer == null) return@execute
+        val bytes = ByteArray(jpeg.remaining())
+        jpeg.get(bytes)
+        val bitmap =
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                ?: throw RuntimeException("the thumbnail did not decode")
         val image: CloseableReference<CloseableImage> =
             CloseableReference.of(
                 CloseableStaticBitmap.of(
