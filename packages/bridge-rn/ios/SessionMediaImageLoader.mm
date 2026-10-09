@@ -292,6 +292,12 @@ RCT_EXPORT_MODULE()
                     return;
                 }
                 const CGSize pixels = SourcePixelSize(imageSource);
+                if (::session_bridge_rn::exceeds_whole_decode_ceiling(
+                            *type, pixels.width, pixels.height)) {
+                    CFRelease(imageSource);
+                    Fail(done, imageURL, "a GIF or PNG too large to decode whole");
+                    return;
+                }
                 // `RCTAnimatedImage` decodes every frame at full canvas size, at draw, so only an
                 // animation within the budget is one; anything else is its first frame, bounded.
                 const bool animated = *type == "image/gif"

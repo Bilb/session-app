@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string_view>
 
 // How large the iOS image loader lets ImageIO decode a picture. Kept free of CoreGraphics so the
 // host tests can hold it.
@@ -36,6 +37,18 @@ inline double decode_edge_bound(double longest, double width, double height) {
     if (longest > 0)
         bound = std::min(bound, std::ceil(longest * aspect));
     return bound;
+}
+
+/// The largest GIF or PNG area the loader hands ImageIO, which decodes both whole before it
+/// thumbnails: twice a 48 MP camera frame saved as PNG, and 400 MB at 4 bytes a pixel.
+inline constexpr double WHOLE_DECODE_PIXEL_CEILING = 100'000'000.0;
+
+/// Whether a picture of `type` whose header says `width` by `height` is too large to decode, given
+/// that ImageIO holds a GIF or PNG at full size first. An unknown size refuses nothing.
+inline bool exceeds_whole_decode_ceiling(std::string_view type, double width, double height) {
+    if (type != "image/gif" && type != "image/png")
+        return false;
+    return width > 0 && height > 0 && width * height > WHOLE_DECODE_PIXEL_CEILING;
 }
 
 }  // namespace session_bridge_rn
