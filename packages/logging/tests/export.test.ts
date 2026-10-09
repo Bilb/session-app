@@ -135,6 +135,19 @@ describe('sizeBucket', () => {
 })
 
 describe('exportHeader', () => {
+  it('keeps a long name apart from its value, and the group aligned', () => {
+    const header = exportHeader(
+      facts({
+        configSizes: [
+          { name: 'contacts', bytes: 300 },
+          { name: 'convo_info_volatile', bytes: 300 },
+        ],
+      }),
+    )
+    expect(header).toContain('    contacts             small')
+    expect(header).toContain('    convo_info_volatile  small')
+  })
+
   it('is wrapped in full-width rules with one item per line', () => {
     const header = exportHeader(facts())
     expect(header[0]).toBe('='.repeat(100))

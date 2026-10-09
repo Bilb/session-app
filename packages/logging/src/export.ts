@@ -186,9 +186,14 @@ function row(label: string, value: string): string {
   return `  ${label.padEnd(LABEL_WIDTH)}${value}`
 }
 
-/** A heading row and its items, each on its own line beneath it. */
+/**
+ * A heading row and its items, each on its own line beneath it. The values line up within the
+ * group, a column further out where a name is longer than the usual width - a config's name,
+ * `convo_info_volatile` - rather than running into its value.
+ */
 function group(label: string, items: ReadonlyArray<readonly [string, string]>): string[] {
-  return [`  ${label}`, ...items.map(([name, value]) => `    ${name.padEnd(NESTED_WIDTH)}${value}`)]
+  const width = Math.max(NESTED_WIDTH, ...items.map(([name]) => name.length + 2))
+  return [`  ${label}`, ...items.map(([name, value]) => `    ${name.padEnd(width)}${value}`)]
 }
 
 const rough = (value: number | null): string => (value === null ? 'unknown' : roughBytes(value))
