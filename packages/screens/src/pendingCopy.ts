@@ -26,8 +26,8 @@ export const PENDING_COPY = {
    */
   attachmentCount: (count: number): string =>
     count === 1 ? '1 attachment' : `${String(count)} attachments`,
-  attachmentViewGallery: 'Gallery',
-  attachmentViewList: 'List',
+  attachmentViewGallery: 'Show as gallery',
+  attachmentViewList: 'Show as list',
   /**
    * Writing a file we already hold out to a folder somebody chose.
    *
