@@ -180,6 +180,21 @@ opened.catch((error: unknown) => {
   console.error('[logs] could not open the log directory:', error)
 })
 
+/**
+ * Marks the run as ending, writes out what is waiting, then ends it: Quit and Restart end the
+ * process at once, and without this the next launch reports a run that did not end cleanly.
+ */
+export function endingRun(
+  marker: 'quit' | 'restart',
+  end: (() => void) | null,
+): (() => void) | null {
+  if (end === null) return null
+  return () => {
+    appLog.marker('lifecycle', marker)
+    void opened.then((writer) => writer.flush()).finally(end)
+  }
+}
+
 /** The store's milestones as markers, once there is a store. */
 export function watchStore(store: SessionStore): void {
   logStoreMilestones(store)

@@ -149,8 +149,8 @@ can be matched to the line:
   time; a marker or error goes at once.
 - **On the phones, everything is swept on the JS thread**, libsession's lines included, until native
   redaction (M349) can take them before they reach it.
-- **The log never depends on the database or its key.** If the directory can't be written the logger
-  falls back to console and says why in the next file that can be.
+- **The log never depends on the database or its key.** If the directory can't be opened, the
+  logger writes to the console instead and says why there.
 
 ## The startup block (top of every launch)
 
@@ -195,7 +195,7 @@ Written **without** the line prefix, after an empty line, one item per line:
 ## Unmissable markers
 
 Never sampled, rate-limited or level-filtered, flushed at once: `launch`, `foreground`,
-`background`, `quit` (where the platform says), `restart` (desktop), `start ok|failed reason=…`,
+`background`, `quit` (where the platform says, and Quit on a phone), `restart`, `start ok|failed reason=…`,
 `account loaded|none|created`, `memory warning` (phones), `renderer gone` and
 `child process gone` with Chromium's reason (desktop), and `export`. Their absence is then
 evidence.

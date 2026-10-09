@@ -6,6 +6,7 @@ import * as SecureStore from 'expo-secure-store'
 import { Linking, Platform, Share } from 'react-native'
 
 import { flagOverride } from './flagOverrides'
+import { endingRun } from './logs'
 import { restartProcess, terminateProcess } from './processExit'
 
 /**
@@ -143,7 +144,7 @@ setPorts({
   ...ports,
   window: {
     ...ports.window,
-    close: terminateProcess,
-    restart: restartProcess,
+    close: endingRun('quit', terminateProcess),
+    restart: endingRun('restart', restartProcess),
   },
 })
