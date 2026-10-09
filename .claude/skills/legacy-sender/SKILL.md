@@ -104,9 +104,8 @@ someone approves them - then send from the legacy side.
   queue until its sync copy is stored, after the sent tick. Closing sooner makes the next launch
   store it again, under a new hash with the same sent timestamp, and libsession keeps both: legacy
   messages carry no message id, and it de-duplicates only by hash and message id. The run's last
-  message then shows twice on whichever client received it. The legacy app's log
-  (`~/.config/Session-production-devprod<instance>/logs/app.log`) ends a clean run with
-  `data.shutdown: … 0 jobs outstanding`.
+  message then shows twice on whichever client received it. A clean run is one whose next launch
+  sends nothing; the shutdown log's `0 jobs outstanding` counts SQL calls, not this queue.
 - **Nothing evaluates in the page.** `window.evaluate` returns `null` for a string, even
   `'1 + 1'`, and fails with `result is not a function` for a function. Go through main instead:
   `app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.executeJavaScript('…'))`.
