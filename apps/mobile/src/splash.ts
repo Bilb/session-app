@@ -1,9 +1,14 @@
+import { DURATION } from '@session/theme-tokens'
 import * as SplashScreen from 'expo-splash-screen'
 import { useEffect } from 'react'
 
 // From module load, which is before the first frame: the native launch screen stays up until the
 // app has something to draw rather than giving way to an empty root view.
 void SplashScreen.preventAutoHideAsync()
+
+// Faded off rather than cut, as on the desktop. `fade` is iOS's; Android's exit is a crossfade
+// already, and takes its length from `duration` too.
+SplashScreen.setOptions({ fade: true, duration: DURATION.launchFade })
 
 /**
  * Takes the launch screen down when it mounts.

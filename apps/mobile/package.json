@@ -27,6 +27,7 @@
     "@session/client": "workspace:*",
     "@session/screens": "workspace:*",
     "@session/state": "workspace:*",
+    "@session/theme-tokens": "workspace:*",
     "@session/ui": "workspace:*",
     "expo": "catalog:",
     "expo-blur": "catalog:",

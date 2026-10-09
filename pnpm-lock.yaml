@@ -311,6 +311,9 @@ importers:
       '@session/state':
         specifier: workspace:*
         version: link:../../packages/state
+      '@session/theme-tokens':
+        specifier: workspace:*
+        version: link:../../packages/theme-tokens
       '@session/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -8467,9 +8470,7 @@ snapshots:
       metro-runtime: 0.84.6
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/metro-config@0.87.1(@babel/core@7.29.7)':
     dependencies:
