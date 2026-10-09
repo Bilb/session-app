@@ -4,8 +4,8 @@
 #include <cmath>
 #include <string_view>
 
-// How large the iOS image loader lets ImageIO decode an original, which only the viewer draws. Kept
-// free of CoreGraphics so the host tests can hold it.
+// How large the iOS image loader lets ImageIO decode an original, which only the viewer draws, and a
+// thumbnail. Kept free of CoreGraphics so the host tests can hold it.
 namespace session_bridge_rn {
 
 /// A decode's ceiling in pixels: the largest iPad screen, 2752x2064, fits whole, and at 4 bytes a
@@ -39,6 +39,19 @@ inline bool exceeds_whole_decode_ceiling(std::string_view type, double width, do
     if (type != "image/gif" && type != "image/png")
         return false;
     return width > 0 && height > 0 && width * height > WHOLE_DECODE_PIXEL_CEILING;
+}
+
+/// The longest edge to decode a `width` by `height` thumbnail at, to fill a `view_width` by
+/// `view_height` pixel box under a `cover` fit, or zero to decode it whole. Reduced only when the
+/// view needs half of it or less, as Android's power-of-two `inSampleSize` is.
+inline double thumbnail_decode_edge(
+        double width, double height, double view_width, double view_height) {
+    if (!(width > 0 && height > 0 && view_width > 0 && view_height > 0))
+        return 0;
+    const double cover = std::max(view_width / width, view_height / height);
+    if (cover > 0.5)
+        return 0;
+    return std::ceil(cover * std::max(width, height));
 }
 
 }  // namespace session_bridge_rn

@@ -1,5 +1,5 @@
-// The iOS image loader's decode bound for originals, which the loader itself cannot be run here to
-// check.
+// The iOS image loader's decode bounds for originals and thumbnails, which the loader itself cannot
+// be run here to check.
 
 #include "DecodeBound.hpp"
 
@@ -11,6 +11,7 @@ using session_bridge_rn::decode_edge_bound;
 using session_bridge_rn::DECODE_PIXEL_BUDGET;
 using session_bridge_rn::exceeds_whole_decode_ceiling;
 using session_bridge_rn::fits_decode_budget;
+using session_bridge_rn::thumbnail_decode_edge;
 
 namespace {
 
@@ -89,6 +90,28 @@ void an_unknown_size_is_not_refused() {
     CHECK(!exceeds_whole_decode_ceiling("image/gif", 0, 65535));
 }
 
+void a_file_row_glyph_decodes_a_thumbnail_at_its_own_size() {
+    // A 40 pt glyph at 3x, from a 720 px thumbnail.
+    CHECK(thumbnail_decode_edge(720, 720, 120, 120) == 120);
+}
+
+void a_tile_near_the_thumbnail_size_decodes_it_whole() {
+    CHECK(thumbnail_decode_edge(720, 720, 720, 720) == 0);
+    CHECK(thumbnail_decode_edge(720, 720, 400, 400) == 0);
+    // Smaller than the view: never upsized.
+    CHECK(thumbnail_decode_edge(240, 240, 720, 720) == 0);
+}
+
+void a_cover_fit_takes_the_view_edge_that_needs_more() {
+    // A wide tile still has to cover its full width from a square thumbnail.
+    CHECK(thumbnail_decode_edge(1024, 1024, 300, 100) == 300);
+}
+
+void an_unknown_view_decodes_the_thumbnail_whole() {
+    CHECK(thumbnail_decode_edge(720, 720, 0, 0) == 0);
+    CHECK(thumbnail_decode_edge(0, 0, 120, 120) == 0);
+}
+
 }  // namespace
 
 int main() {
@@ -102,6 +125,10 @@ int main() {
     real_content_is_not();
     only_whole_decoders_are_refused();
     an_unknown_size_is_not_refused();
+    a_file_row_glyph_decodes_a_thumbnail_at_its_own_size();
+    a_tile_near_the_thumbnail_size_decodes_it_whole();
+    a_cover_fit_takes_the_view_edge_that_needs_more();
+    an_unknown_view_decodes_the_thumbnail_whole();
     if (failures == 0)
         std::puts("DecodeBound: all passed");
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;

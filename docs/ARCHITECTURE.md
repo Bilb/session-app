@@ -768,9 +768,11 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   within 4 MiB. It lives in the original's cache entry and is evicted with it. Generating it there
   rather than in each loader gives every platform the same picture from one decoder, libvips under
   libsession's own loader whitelist, and leaves the loaders two paths: a thumbnail, checked to be a
-  JPEG and decoded whole with no view-size bound, cached by URL on iOS and outside Fresco's
-  downsampling on Android; and the viewer's original, which keeps the pixel budget, the GIF/PNG
-  refusal, animation and Fresco's downsampling. Drawing never starts a download: a tile's URL used
+  JPEG, decoded whole for a tile and reduced while decoding only where the view needs half of it or
+  less, as a file row's glyph does (`inSampleSize` from Fresco's resize options on Android, on a
+  small pool of its own; ImageIO's maximum pixel size on iOS), cached by URL and view size; and the
+  viewer's original, which keeps the pixel budget, the GIF/PNG refusal, animation and Fresco's
+  downsampling. Drawing never starts a download: a tile's URL used
   to be the original's, and resolving it fetched the file, which under `image-attachments` or
   `all` spent data on any older message that scrolled past. Now every URL is served from the cache
   only (`attachment_data_cached`, refused as "is not downloaded"), and a file arrives only by

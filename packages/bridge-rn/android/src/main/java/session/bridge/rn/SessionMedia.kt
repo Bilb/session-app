@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
 import com.facebook.imagepipeline.bitmaps.SimpleBitmapReleaser
+import com.facebook.imagepipeline.common.ResizeOptions
 import com.facebook.cache.common.CacheKey
 import com.facebook.common.internal.Predicate
 import com.facebook.common.memory.PooledByteBuffer
@@ -159,24 +160,38 @@ internal class PreviewProducer : Producer<CloseableReference<CloseableImage>> {
 }
 
 /**
- * A thumbnail is decoded here, whole, rather than by Fresco's decoder, which would downsample it
- * to the view: it is libsession's JPEG of at most 1024 px a side, already the size a tile wants.
+ * A thumbnail is decoded here rather than by Fresco's decoder, reduced only by a power of two that
+ * still covers the view: a tile wants about all of libsession's JPEG, a file row's glyph far less.
  */
 internal class ThumbnailProducer : Producer<CloseableReference<CloseableImage>> {
   override fun produceResults(
       consumer: Consumer<CloseableReference<CloseableImage>>,
       context: ProducerContext,
   ) {
-    start(context, SessionMediaLoad.decoded(consumer, context.imageRequest.sourceUri.toString()))
+    val request = context.imageRequest
+    start(
+        context,
+        SessionMediaLoad.thumbnail(consumer, request.sourceUri.toString(), request.resizeOptions))
   }
+}
+
+/**
+ * The largest power of two `inSampleSize` can reduce a [width] by [height] picture by and still
+ * cover [view] on both edges, which is what a `cover` fit draws. 1 when the view is not known.
+ */
+internal fun coveringSampleSize(width: Int, height: Int, view: ResizeOptions?): Int {
+  if (view == null || view.width <= 0 || view.height <= 0) return 1
+  var sample = 1
+  while (width / (sample * 2) >= view.width && height / (sample * 2) >= view.height) sample *= 2
+  return sample
 }
 
 /**
  * One load in flight: what the C++ answers call, on Core's loop or the JS thread.
  *
- * Every method only hands off to [DRAIN], the one thread that copies bytes and calls Fresco, so a
- * source's thread is never held. Settles exactly once, whether by an answer or by cancellation;
- * native memory is released however it settles.
+ * Every method only hands off to [DRAIN], the one thread that copies bytes and calls Fresco, or to
+ * [THUMBNAILS], so a source's thread is never held. Settles exactly once, whether by an answer or
+ * by cancellation; native memory is released however it settles.
  */
 @DoNotStrip
 internal class SessionMediaLoad
@@ -185,6 +200,7 @@ private constructor(
     private val decoded: Consumer<CloseableReference<CloseableImage>>?,
     private val context: ProducerContext?,
     private val url: String,
+    private val view: ResizeOptions? = null,
 ) {
   private val settled = AtomicBoolean(false)
 
@@ -270,14 +286,20 @@ private constructor(
 
   @DoNotStrip
   fun onThumbnail(jpeg: ByteBuffer, handle: Long) {
-    DRAIN.execute {
+    THUMBNAILS.execute {
       try {
         val consumer = decoded
         if (!settle() || consumer == null) return@execute
         val bytes = ByteArray(jpeg.remaining())
         jpeg.get(bytes)
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        val options =
+            BitmapFactory.Options().apply {
+              inSampleSize = coveringSampleSize(bounds.outWidth, bounds.outHeight, view)
+            }
         val bitmap =
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
                 ?: throw RuntimeException("the thumbnail did not decode")
         val image: CloseableReference<CloseableImage> =
             CloseableReference.of(
@@ -308,10 +330,20 @@ private constructor(
     private const val TAG = "SessionMedia"
     private val DRAIN = Executors.newSingleThreadExecutor { Thread(it, "session-media") }
 
+    /** Off [DRAIN], so an album's tiles decode side by side and never behind a viewer's copy. */
+    private val THUMBNAILS =
+        Executors.newFixedThreadPool(3) { Thread(it, "session-media-thumbnail") }
+
     fun encoded(consumer: Consumer<EncodedImage>, context: ProducerContext, url: String) =
         SessionMediaLoad(consumer, null, context, url)
 
     fun decoded(consumer: Consumer<CloseableReference<CloseableImage>>, url: String) =
         SessionMediaLoad(null, consumer, null, url)
+
+    fun thumbnail(
+        consumer: Consumer<CloseableReference<CloseableImage>>,
+        url: String,
+        view: ResizeOptions?,
+    ) = SessionMediaLoad(null, consumer, null, url, view)
   }
 }
