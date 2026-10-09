@@ -24,14 +24,19 @@ class JsMediaSource final : public MediaSource, public std::enable_shared_from_t
     using AskPreview = std::function<void(
             double message_id, double index, ::session_bridge::PreviewHandler cb)>;
 
-    JsMediaSource(OnJs on_js, AskMedia ask_media, AskPreview ask_preview) :
+    /// A thumbnail is asked like a file: JPEG bytes, typed `image/jpeg`.
+    JsMediaSource(
+            OnJs on_js, AskMedia ask_media, AskPreview ask_preview, AskMedia ask_thumbnail) :
             _on_js{std::move(on_js)},
             _ask_media{std::move(ask_media)},
-            _ask_preview{std::move(ask_preview)} {}
+            _ask_preview{std::move(ask_preview)},
+            _ask_thumbnail{std::move(ask_thumbnail)} {}
 
     void fetch_media(double message_id, double index, ::session_bridge::MediaHandler cb) override;
     void fetch_preview(
             double message_id, double index, ::session_bridge::PreviewHandler cb) override;
+    void fetch_thumbnail(
+            double message_id, double index, ::session_bridge::MediaHandler cb) override;
 
     /// **On the JS thread**, so the functions holding JavaScript values are released there. Answers
     /// everything pending, and every call after.
@@ -41,6 +46,7 @@ class JsMediaSource final : public MediaSource, public std::enable_shared_from_t
     OnJs _on_js;
     AskMedia _ask_media;
     AskPreview _ask_preview;
+    AskMedia _ask_thumbnail;
     std::atomic<bool> _closed = false;
     std::shared_ptr<PendingAnswers> _pending = std::make_shared<PendingAnswers>();
 };

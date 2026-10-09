@@ -41,6 +41,7 @@ export function serveNativeMediaFrom(source: MediaSource): void {
       const preview = await source.fetchPreview({ messageId, index })
       return { width: preview.width, height: preview.height, rgba: wholeBuffer(preview.rgba) }
     },
+    async (messageId, index) => wholeBuffer(await source.fetchThumbnail({ messageId, index })),
   )
   serving = bridge
 }

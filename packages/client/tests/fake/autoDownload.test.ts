@@ -10,6 +10,7 @@ const attachment = (contentType: string): Attachment => ({
   sizeBytes: 1_000,
   voiceMessage: false,
   hasPreview: false,
+  hasThumbnail: false,
   uploaded: true,
   availability: 'absent',
   fetchDoneBytes: 0,

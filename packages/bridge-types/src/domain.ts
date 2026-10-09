@@ -152,6 +152,15 @@ export interface Attachment {
    */
   hasPreview: boolean
   /**
+   * Whether libsession holds a thumbnail of this attachment: a square JPEG of the picture, cropped
+   * to cover, at most the client's thumbnail edge on a side. Made only of a displayable image whose
+   * bytes are cached, and after them, so it turns true in a later `messages-updated` than the one
+   * reporting `cached`; false again once the cache evicts the file, which takes the thumbnail too.
+   *
+   * What a tile draws, through the media scheme's `thumbnail` path; a viewer draws the file.
+   */
+  hasThumbnail: boolean
+  /**
    * On the file server: an outgoing attachment's upload finished, and always true for an incoming
    * one. Deliberately not "the bytes are here" - libsession records no local path, because the
    * application chose it and a stored copy would go stale the moment the file moved.

@@ -136,13 +136,19 @@ void answers_that_are_already_there_are_read_on_the_js_thread() {
                 if (std::this_thread::get_id() != js.id())
                     asked_elsewhere++;
                 cb(session_bridge::Preview{std::nullopt, 1, 1, std::vector<std::byte>(4)});
+            },
+            [&](double, double, session_bridge::MediaHandler cb) {
+                if (std::this_thread::get_id() != js.id())
+                    asked_elsewhere++;
+                cb(session_bridge::Media{std::nullopt, "image/jpeg", {std::byte{0xd8}}});
             });
 
     Tally tally;
-    tally.open(2);
+    tally.open(3);
     std::thread loader{[&] {
         source->fetch_media(1, 0, [&](session_bridge::Media m) { tally.record(0, !m.error); });
         source->fetch_preview(1, 0, [&](session_bridge::Preview p) { tally.record(1, !p.error); });
+        source->fetch_thumbnail(1, 0, [&](session_bridge::Media m) { tally.record(2, !m.error); });
     }};
     loader.join();
     js.drain();
@@ -150,6 +156,7 @@ void answers_that_are_already_there_are_read_on_the_js_thread() {
     CHECK(asked_elsewhere == 0);
     CHECK(tally.answers[0] == 1 && tally.ok[0]);
     CHECK(tally.answers[1] == 1 && tally.ok[1]);
+    CHECK(tally.answers[2] == 1 && tally.ok[2]);
     js.run_now([&] { source->close(); });
 }
 
@@ -170,7 +177,8 @@ void concurrent_fetches_of_one_ref_are_each_answered_once() {
                 if (std::this_thread::get_id() != js.id())
                     asked_elsewhere++;
                 later.push_back(std::move(cb));
-            });
+            },
+            [](double, double, session_bridge::MediaHandler) {});
 
     constexpr size_t THREADS = 8;
     constexpr size_t EACH = 250;
@@ -226,11 +234,13 @@ void closing_answers_what_is_pending_and_everything_after() {
             [&, probe](double, double, session_bridge::MediaHandler cb) {
                 never.push_back(std::move(cb));
             },
-            [](double, double, session_bridge::PreviewHandler) {});
+            [](double, double, session_bridge::PreviewHandler) {},
+            [&](double, double, session_bridge::MediaHandler cb) { never.push_back(std::move(cb)); });
     probe.reset();
 
     Tally tally;
-    tally.open(3);
+    tally.open(5);
+    source->fetch_thumbnail(1, 0, [&](session_bridge::Media m) { tally.record(3, !m.error); });
     source->fetch_media(1, 0, [&](session_bridge::Media m) { tally.record(0, !m.error); });
     js.drain();
     js.run_now([&] { source->close(); });
@@ -240,10 +250,13 @@ void closing_answers_what_is_pending_and_everything_after() {
     });
     source->fetch_media(1, 0, [&](session_bridge::Media m) { tally.record(1, !m.error); });
     source->fetch_preview(1, 0, [&](session_bridge::Preview p) { tally.record(2, !p.error); });
+    source->fetch_thumbnail(1, 0, [&](session_bridge::Media m) { tally.record(4, !m.error); });
 
     CHECK(tally.answers[0] == 1 && !tally.ok[0]);
     CHECK(tally.answers[1] == 1 && !tally.ok[1]);
     CHECK(tally.answers[2] == 1 && !tally.ok[2]);
+    CHECK(tally.answers[3] == 1 && !tally.ok[3]);
+    CHECK(tally.answers[4] == 1 && !tally.ok[4]);
     // What held JavaScript values was released on the JS thread, by close().
     CHECK(released_on_js);
 }
@@ -254,7 +267,8 @@ void a_js_thread_that_has_gone_fails_the_load() {
     auto source = std::make_shared<JsMediaSource>(
             posting_to(js),
             [](double, double, session_bridge::MediaHandler) {},
-            [](double, double, session_bridge::PreviewHandler) {});
+            [](double, double, session_bridge::PreviewHandler) {},
+            [](double, double, session_bridge::MediaHandler) {});
     js.stop();
     Tally tally;
     tally.open(1);
@@ -269,7 +283,8 @@ void a_job_accepted_and_dropped_is_answered_once_by_close() {
     auto source = std::make_shared<JsMediaSource>(
             [](std::function<void()>) { return true; },
             [](double, double, session_bridge::MediaHandler) {},
-            [](double, double, session_bridge::PreviewHandler) {});
+            [](double, double, session_bridge::PreviewHandler) {},
+            [](double, double, session_bridge::MediaHandler) {});
     Tally tally;
     tally.open(2);
     source->fetch_media(1, 0, [&](session_bridge::Media m) { tally.record(0, !m.error); });
@@ -288,7 +303,8 @@ void the_registry_says_whether_another_source_is_serving() {
         return std::make_shared<JsMediaSource>(
                 [](std::function<void()>) { return true; },
                 [](double, double, session_bridge::MediaHandler) {},
-                [](double, double, session_bridge::PreviewHandler) {});
+                [](double, double, session_bridge::PreviewHandler) {},
+            [](double, double, session_bridge::MediaHandler) {});
     };
     auto mine = make();
     auto other = make();

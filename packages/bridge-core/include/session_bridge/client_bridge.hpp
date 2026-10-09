@@ -103,6 +103,10 @@ struct InitOptions {
     /// one, and `close()` takes its logger back off again.
     std::string log_level;
 
+    /// The side of the square thumbnails libsession makes, in device pixels, or unset for
+    /// libsession's own default. A default only: a value stored by `setThumbnailEdge` wins.
+    std::optional<double> thumbnail_edge_px;
+
     /// Per-category overrides, applied after `log_level` has been given to every category.
     ///
     /// A single level is unusable: `quic` and `session-router` produce thousands of lines a second
@@ -216,6 +220,12 @@ class ClientBridge {
     ///
     /// Reports no progress and touches no network: the bytes it needs arrived with the message.
     void fetch_preview(double message_id, double index, PreviewHandler cb);
+
+    /// The JPEG thumbnail libsession made of an attachment, as `Media` typed `image/jpeg`.
+    ///
+    /// From libsession's cache only: never a download, and so no progress. Answers its own caller
+    /// for the same reason `fetch_media` does.
+    void fetch_thumbnail(double message_id, double index, MediaHandler cb);
 
     /// Stops delivering frames and destroys the Client, which joins Core's loop. Idempotent, and
     /// implied by the destructor. Handlers for calls still in flight are dropped rather than

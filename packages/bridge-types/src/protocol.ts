@@ -252,6 +252,13 @@ export type Command =
    * shown together. 0 when nothing is cached or there is no cache directory.
    */
   | { type: 'getAttachmentCacheSize' }
+  | { type: 'getThumbnailEdge' }
+  /**
+   * The side of the thumbnails made from now on, in device pixels, kept on this device. libsession
+   * clamps it to 64 to 1024. Unset forgets the stored value, which puts the edge back to what the
+   * app opened the bridge with. Thumbnails already made keep the size they were made at.
+   */
+  | { type: 'setThumbnailEdge'; edgePx?: number }
   // App preferences, stored in libsession's globals table so they sit beside the account
   // instead of in a second store the app would have to keep in step.
   | { type: 'getPref'; key: string }
@@ -324,6 +331,8 @@ export type Result =
   | { type: 'path'; path: string }
   /** Unset only in answer to `getAttachmentCacheLimit`, where it means no limit. */
   | { type: 'byteCount'; bytes?: number }
+  /** A thumbnail's side in device pixels, as libsession clamped it. */
+  | { type: 'edge'; edgePx: number }
 
 export interface Response {
   id: number

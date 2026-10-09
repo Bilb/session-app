@@ -162,6 +162,13 @@ export interface SessionClient {
   setAttachmentCacheLimit(limitBytes?: number): Promise<void>
   /** How much disk the cached attachments occupy now, measured as the limit is. */
   getAttachmentCacheSize(): Promise<number>
+  /**
+   * The side of the square thumbnails libsession makes, in device pixels, clamped to 64 to 1024.
+   * Kept on this device, and undefined forgets it, back to the edge the bridge was opened with.
+   * Thumbnails already made keep the size they were made at.
+   */
+  getThumbnailEdge(): Promise<number>
+  setThumbnailEdge(edgePx?: number): Promise<void>
 
   getPref(key: string): Promise<string | undefined>
   setPref(key: string, value: string): Promise<void>
@@ -201,4 +208,9 @@ export type AttachmentPreview = PixelSize & { rgba: Uint8Array }
 export interface MediaSource {
   fetchMedia(ref: AttachmentRef): Promise<AttachmentMedia>
   fetchPreview(ref: AttachmentRef): Promise<AttachmentPreview>
+  /**
+   * The attachment's thumbnail, a JPEG, from libsession's cache only: never a download. Refused
+   * while `Attachment.hasThumbnail` is false.
+   */
+  fetchThumbnail(ref: AttachmentRef): Promise<Uint8Array>
 }

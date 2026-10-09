@@ -54,10 +54,28 @@ void JsMediaSource::fetch_preview(
         tracked(failed<::session_bridge::Preview>(NO_JS));
 }
 
+void JsMediaSource::fetch_thumbnail(
+        double message_id, double index, ::session_bridge::MediaHandler cb) {
+    auto tracked = _pending->track(std::move(cb));
+    if (_closed) {
+        tracked(failed<::session_bridge::Media>(CLOSED));
+        return;
+    }
+    auto job = [self = shared_from_this(), message_id, index, tracked]() mutable {
+        if (self->_closed || !self->_ask_thumbnail)
+            tracked(failed<::session_bridge::Media>(CLOSED));
+        else
+            self->_ask_thumbnail(message_id, index, std::move(tracked));
+    };
+    if (!_on_js(std::move(job)))
+        tracked(failed<::session_bridge::Media>(NO_JS));
+}
+
 void JsMediaSource::close() {
     _closed = true;
     _ask_media = nullptr;
     _ask_preview = nullptr;
+    _ask_thumbnail = nullptr;
     _pending->fail_all(CLOSED);
 }
 

@@ -15,6 +15,7 @@ function attachment(
     ...(sizeBytes === undefined ? {} : { sizeBytes }),
     voiceMessage: false,
     hasPreview: false,
+    hasThumbnail: false,
     uploaded: true,
     availability,
     fetchDoneBytes: 0,

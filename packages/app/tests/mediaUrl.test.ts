@@ -9,7 +9,7 @@ import { mediaUrl, parseMediaUrl } from '#src/mediaUrl'
  */
 describe('a media url', () => {
   it('parses back exactly what the app builds', () => {
-    for (const kind of ['attachment', 'preview'] as const) {
+    for (const kind of ['attachment', 'preview', 'thumbnail'] as const) {
       for (const ref of [
         { messageId: 1, index: 0 },
         { messageId: 42, index: 7 },

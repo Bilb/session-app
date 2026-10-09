@@ -39,8 +39,8 @@ void parses_every_url_as_the_table_says() {
         }
         if (!parsed)
             continue;
-        const bool preview = parsed->kind == session_bridge::MediaUrlKind::preview;
-        if (preview != vector.preview || parsed->message_id != vector.message_id
+        if (session_bridge::media_url_kind_name(parsed->kind) != vector.kind
+            || parsed->message_id != vector.message_id
             || parsed->index != vector.index)
             failed("parse_media_url", vector.url, "parsed to the wrong ref");
     }

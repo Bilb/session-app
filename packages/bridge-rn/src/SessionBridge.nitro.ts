@@ -56,5 +56,7 @@ export interface SessionBridge extends HybridObject<{ ios: 'c++'; android: 'c++'
    */
   fetchMedia(messageId: number, index: number): Promise<NativeMedia>
   fetchPreview(messageId: number, index: number): Promise<NativePreview>
+  /** The thumbnail's JPEG bytes. */
+  fetchThumbnail(messageId: number, index: number): Promise<ArrayBuffer>
   close(): void
 }

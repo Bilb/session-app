@@ -63,4 +63,16 @@ describe('the fake media source', () => {
     expect(preview).toMatchObject({ width: 32, height: 24 })
     expect(preview.rgba.length).toBe(32 * 24 * 4)
   })
+
+  it('serves the dev thumbnail of a picture once it is downloaded, and refuses it before', async () => {
+    const { alice, world, ref } = await showcasePhoto()
+    const source = createFakeMediaSource(alice, readPhoto)
+    await expect(source.fetchThumbnail(ref)).rejects.toThrow(
+      `attachment ${String(ref.index)} of message ${String(ref.messageId)} has no thumbnail`,
+    )
+    const fetched = source.fetchMedia(ref)
+    world.settle()
+    await fetched
+    expect(asText(await source.fetchThumbnail(ref))).toBe('unsplash-01.thumb.jpg')
+  })
 })

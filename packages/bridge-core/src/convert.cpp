@@ -101,6 +101,7 @@ Attachment to_bridge(::session::client::Attachment&& from) {
             number(from.width),
             number(from.height),
             previewable(from),
+            from.has_thumbnail,
             from.uploaded,
             availability(from.availability),
             static_cast<double>(from.fetch_done),

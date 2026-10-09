@@ -24,6 +24,8 @@ export type SessionBridge = Spec & {
   serveMediaFrom(
     fetchMedia: (messageId: number, index: number) => Promise<ServedMedia>,
     fetchPreview: (messageId: number, index: number) => Promise<ServedPreview>,
+    /** A JPEG, as the loaders check before decoding. */
+    fetchThumbnail: (messageId: number, index: number) => Promise<ArrayBuffer>,
   ): void
 }
 

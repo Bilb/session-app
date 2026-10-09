@@ -10,6 +10,7 @@ function attachment(overrides: Partial<Attachment> = {}): Attachment {
     contentType: 'image/jpeg',
     voiceMessage: false,
     hasPreview: false,
+    hasThumbnail: false,
     uploaded: true,
     availability: 'absent',
     fetchDoneBytes: 0,

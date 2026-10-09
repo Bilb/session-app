@@ -25,6 +25,7 @@ namespace margelo::nitro::session::bridge::rn { struct NativePreview; }
 #include "NativeMedia.hpp"
 #include <NitroModules/Promise.hpp>
 #include "NativePreview.hpp"
+#include <NitroModules/ArrayBuffer.hpp>
 
 namespace margelo::nitro::session::bridge::rn {
 
@@ -61,6 +62,7 @@ namespace margelo::nitro::session::bridge::rn {
       virtual void call(::session_bridge::Request request) = 0;
       virtual std::shared_ptr<Promise<NativeMedia>> fetchMedia(double messageId, double index) = 0;
       virtual std::shared_ptr<Promise<NativePreview>> fetchPreview(double messageId, double index) = 0;
+      virtual std::shared_ptr<Promise<std::shared_ptr<ArrayBuffer>>> fetchThumbnail(double messageId, double index) = 0;
       virtual void close() = 0;
 
     protected:

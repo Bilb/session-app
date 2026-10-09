@@ -10,6 +10,7 @@ function attachment(index: number, contentType?: string): Attachment {
     ...(contentType === undefined ? {} : { contentType }),
     voiceMessage: false,
     hasPreview: false,
+    hasThumbnail: false,
     uploaded: true,
     availability: 'absent',
     fetchDoneBytes: 0,

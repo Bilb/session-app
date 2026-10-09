@@ -296,6 +296,13 @@ struct Attachment {
     /// media port like any other rather than riding the frame stream. What it names is the second
     /// path on that scheme.
     bool has_preview;
+    /// Whether libsession holds a thumbnail of this attachment: a square JPEG of the picture, cropped
+    /// to cover, at most the client's thumbnail edge on a side. Made only of a displayable image whose
+    /// bytes are cached, and after them, so it turns true in a later `messages-updated` than the one
+    /// reporting `cached`; false again once the cache evicts the file, which takes the thumbnail too.
+    ///
+    /// What a tile draws, through the media scheme's `thumbnail` path; a viewer draws the file.
+    bool has_thumbnail;
     /// On the file server: an outgoing attachment's upload finished, and always true for an incoming
     /// one. Deliberately not "the bytes are here" - libsession records no local path, because the
     /// application chose it and a stored copy would go stale the moment the file moved.
@@ -315,8 +322,8 @@ struct Attachment {
     /// depends on the other end volunteering a notification.
     std::optional<double> saved_at_ms;
 
-    Attachment(double index_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<double> size_bytes_, bool voice_message_, std::optional<double> width_, std::optional<double> height_, bool has_preview_, bool uploaded_, ::session_bridge::AttachmentAvailability availability_, double fetch_done_bytes_, double fetch_total_bytes_, std::optional<double> saved_at_ms_) :
-            index{std::move(index_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, size_bytes{std::move(size_bytes_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)}, has_preview{std::move(has_preview_)}, uploaded{std::move(uploaded_)}, availability{std::move(availability_)}, fetch_done_bytes{std::move(fetch_done_bytes_)}, fetch_total_bytes{std::move(fetch_total_bytes_)}, saved_at_ms{std::move(saved_at_ms_)} {}
+    Attachment(double index_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<double> size_bytes_, bool voice_message_, std::optional<double> width_, std::optional<double> height_, bool has_preview_, bool has_thumbnail_, bool uploaded_, ::session_bridge::AttachmentAvailability availability_, double fetch_done_bytes_, double fetch_total_bytes_, std::optional<double> saved_at_ms_) :
+            index{std::move(index_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, size_bytes{std::move(size_bytes_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)}, has_preview{std::move(has_preview_)}, has_thumbnail{std::move(has_thumbnail_)}, uploaded{std::move(uploaded_)}, availability{std::move(availability_)}, fetch_done_bytes{std::move(fetch_done_bytes_)}, fetch_total_bytes{std::move(fetch_total_bytes_)}, saved_at_ms{std::move(saved_at_ms_)} {}
 };
 
 /// The message a reply points at, resolved one level deep only: a reply to a reply shows its own
@@ -457,6 +464,16 @@ struct ByteCountResult {
             bytes{std::move(bytes_)} {}
 };
 
+/// A thumbnail's side in device pixels, as libsession clamped it.
+struct EdgeResult {
+    static constexpr std::string_view type_tag = "edge";
+
+    double edge_px;
+
+    explicit EdgeResult(double edge_px_) :
+            edge_px{std::move(edge_px_)} {}
+};
+
 /// What a Response carries when the command succeeded.
 using Result = std::variant<
         EmptyResult,
@@ -470,7 +487,8 @@ using Result = std::variant<
         PrefResult,
         BoolResult,
         PathResult,
-        ByteCountResult>;
+        ByteCountResult,
+        EdgeResult>;
 
 struct Response {
     double id;
@@ -1199,6 +1217,22 @@ struct GetAttachmentCacheSizeCommand {
     static constexpr std::string_view type_tag = "getAttachmentCacheSize";
 };
 
+struct GetThumbnailEdgeCommand {
+    static constexpr std::string_view type_tag = "getThumbnailEdge";
+};
+
+/// The side of the thumbnails made from now on, in device pixels, kept on this device. libsession
+/// clamps it to 64 to 1024. Unset forgets the stored value, which puts the edge back to what the
+/// app opened the bridge with. Thumbnails already made keep the size they were made at.
+struct SetThumbnailEdgeCommand {
+    static constexpr std::string_view type_tag = "setThumbnailEdge";
+
+    std::optional<double> edge_px;
+
+    explicit SetThumbnailEdgeCommand(std::optional<double> edge_px_) :
+            edge_px{std::move(edge_px_)} {}
+};
+
 struct GetPrefCommand {
     static constexpr std::string_view type_tag = "getPref";
 
@@ -1326,6 +1360,8 @@ using Command = std::variant<
         GetAttachmentCacheLimitCommand,
         SetAttachmentCacheLimitCommand,
         GetAttachmentCacheSizeCommand,
+        GetThumbnailEdgeCommand,
+        SetThumbnailEdgeCommand,
         GetPrefCommand,
         SetPrefCommand,
         DeliverTestMessageCommand,

@@ -3,6 +3,7 @@
 #include <session/client.hpp>
 #include <session/client/conversation.hpp>
 #include <session/client/conversation_id.hpp>
+#include <session/client/error_codes.hpp>
 #include <session/core/devices.hpp>
 #include <session/image/thumbhash.hpp>
 #include <session/logging.hpp>
@@ -64,6 +65,12 @@ namespace {
     std::string no_preview(int64_t id, size_t at) {
         return "attachment " + std::to_string(at) + " of message " + std::to_string(id) +
                " has no preview";
+    }
+
+    /// The fake says the same sentence; the media source contract holds the two to it.
+    std::string no_thumbnail(int64_t id, size_t at) {
+        return "attachment " + std::to_string(at) + " of message " + std::to_string(id) +
+               " has no thumbnail";
     }
 
     /// A number from JavaScript as a whole number of type T, or an error naming the field.
@@ -365,19 +372,26 @@ struct ClientBridge::Impl {
                 // picture yet, so there is nothing a report would feed.
         };
 
-        // The key options are types rather than values, so which one is used has to be a branch
+        // The options are types rather than values, so which ones are used has to be a branch
         // rather than an argument. Only one of these ever runs, which is what makes moving the
         // callbacks in each of them safe.
         auto path = shared_if_in_memory(options.db_path);
+        auto make = [&](auto&&... opts) {
+            return std::make_unique<client::Client>(
+                    path, std::move(cbs), std::forward<decltype(opts)>(opts)...);
+        };
+        auto with_edge = [&](auto&&... opts) {
+            if (options.thumbnail_edge_px)
+                return make(
+                        client::default_thumbnail_edge{
+                                whole<uint32_t>(*options.thumbnail_edge_px, "thumbnailEdgePx")},
+                        std::forward<decltype(opts)>(opts)...);
+            return make(std::forward<decltype(opts)>(opts)...);
+        };
         auto open = [&](auto&&... key) {
             if (options.defer_account)
-                return std::make_unique<client::Client>(
-                        path,
-                        std::move(cbs),
-                        core::defer_account{},
-                        std::forward<decltype(key)>(key)...);
-            return std::make_unique<client::Client>(
-                    path, std::move(cbs), std::forward<decltype(key)>(key)...);
+                return with_edge(core::defer_account{}, std::forward<decltype(key)>(key)...);
+            return with_edge(std::forward<decltype(key)>(key)...);
         };
 
         if (options.raw_key)
@@ -1096,6 +1110,19 @@ struct ClientBridge::Impl {
         }));
     }
 
+    void handle(double id, const GetThumbnailEdgeCommand&) {
+        client->thumbnail_edge(on(id, [this, id](uint32_t edge) {
+            respond(id, EdgeResult{static_cast<double>(edge)});
+        }));
+    }
+
+    void handle(double id, const SetThumbnailEdgeCommand& cmd) {
+        std::optional<uint32_t> edge_px;
+        if (cmd.edge_px)
+            edge_px = whole<uint32_t>(*cmd.edge_px, "setThumbnailEdge.edgePx");
+        client->set_thumbnail_edge(edge_px, on(id, [this, id] { ok(id); }));
+    }
+
     void handle(double id, const GetPrefCommand& cmd) {
         respond(id, PrefResult{client->core.globals.get_text(cmd.key)});
     }
@@ -1377,6 +1404,40 @@ void ClientBridge::fetch_preview(double message_id, double index, PreviewHandler
                 });
     } catch (const std::exception& e) {
         cb(Preview{std::string{e.what()}, 0, 0, {}});
+    }
+}
+
+void ClientBridge::fetch_thumbnail(double message_id, double index, MediaHandler cb) {
+    if (!_impl || !_impl->client) {
+        cb(Media{"the bridge is closed", {}, {}});
+        return;
+    }
+
+    try {
+        const int64_t id = whole<int64_t>(message_id, "thumbnail.messageId");
+        const auto at = whole<size_t>(index, "thumbnail.index");
+
+        _impl->client->attachment_thumbnail(
+                id,
+                at,
+                [id, at, cb = std::move(cb)](session::Expected<std::vector<std::byte>> r) mutable {
+                    if (r) {
+                        cb(Media{std::nullopt, "image/jpeg", *std::move(r)});
+                        return;
+                    }
+                    // The sentences the fake says too, so a refusal reads the same on both.
+                    const auto code = r.error().code;
+                    if (code == client::err::no_thumbnail)
+                        cb(Media{no_thumbnail(id, at), {}, {}});
+                    else if (
+                            code == client::err::message_not_found ||
+                            code == client::err::attachment_not_found)
+                        cb(Media{no_such_attachment(id, at), {}, {}});
+                    else
+                        cb(Media{std::string{r.error().message}, {}, {}});
+                });
+    } catch (const std::exception& e) {
+        cb(Media{std::string{e.what()}, {}, {}});
     }
 }
 

@@ -16,6 +16,7 @@ const bridge = vi.hoisted(() => ({
   call: vi.fn(),
   fetchMedia: vi.fn(),
   fetchPreview: vi.fn(),
+  fetchThumbnail: vi.fn(),
   close: vi.fn(),
 }))
 
@@ -83,6 +84,12 @@ describe('the JSI transport', () => {
     const preview = await transport.fetchPreview({ messageId: 4, index: 1 })
     expect(preview).toMatchObject({ width: 2, height: 3 })
     expect(preview.rgba.buffer).toBe(rgba)
+
+    const jpeg = Uint8Array.from([0xff, 0xd8, 0xff]).buffer
+    bridge.fetchThumbnail.mockResolvedValueOnce(jpeg)
+    const thumbnail = await transport.fetchThumbnail({ messageId: 4, index: 1 })
+    expect(bridge.fetchThumbnail).toHaveBeenLastCalledWith(4, 1)
+    expect(thumbnail.buffer).toBe(jpeg)
   })
 
   it('refuses media once closed rather than asking a closed bridge', async () => {
@@ -91,6 +98,7 @@ describe('the JSI transport', () => {
     bridge.fetchMedia.mockClear()
     await expect(transport.fetchMedia({ messageId: 4, index: 0 })).rejects.toThrow('closed')
     await expect(transport.fetchPreview({ messageId: 4, index: 0 })).rejects.toThrow('closed')
+    await expect(transport.fetchThumbnail({ messageId: 4, index: 0 })).rejects.toThrow('closed')
     expect(bridge.fetchMedia).not.toHaveBeenCalled()
   })
 })

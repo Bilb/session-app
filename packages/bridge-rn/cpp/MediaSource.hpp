@@ -27,6 +27,8 @@ class MediaSource {
             double message_id, double index, ::session_bridge::MediaHandler cb) = 0;
     virtual void fetch_preview(
             double message_id, double index, ::session_bridge::PreviewHandler cb) = 0;
+    virtual void fetch_thumbnail(
+            double message_id, double index, ::session_bridge::MediaHandler cb) = 0;
 };
 
 /// The source the loaders use, or null to fail every load. Takes the place of the one before.
@@ -79,6 +81,8 @@ class BridgeMediaSource final : public MediaSource {
     void fetch_media(double message_id, double index, ::session_bridge::MediaHandler cb) override;
     void fetch_preview(
             double message_id, double index, ::session_bridge::PreviewHandler cb) override;
+    void fetch_thumbnail(
+            double message_id, double index, ::session_bridge::MediaHandler cb) override;
 
     /// Refuses every call from here on, waiting out any call still starting. **Before** the
     /// `ClientBridge` is destroyed, which is what makes the pointer safe to use under the lock.

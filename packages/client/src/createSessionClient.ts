@@ -317,6 +317,15 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       return resultOf(response, 'byteCount').bytes ?? 0
     },
 
+    async getThumbnailEdge(): Promise<number> {
+      const response = await call({ type: 'getThumbnailEdge' })
+      return resultOf(response, 'edge').edgePx
+    },
+
+    async setThumbnailEdge(edgePx): Promise<void> {
+      await call({ type: 'setThumbnailEdge', ...(edgePx === undefined ? {} : { edgePx }) })
+    },
+
     async getPref(key): Promise<string | undefined> {
       const response = await call({ type: 'getPref', key })
       return resultOf(response, 'pref').value

@@ -12,6 +12,7 @@ function attachment(
     contentType,
     voiceMessage: false,
     hasPreview: false,
+    hasThumbnail: false,
     uploaded: true,
     availability,
     fetchDoneBytes: 0,

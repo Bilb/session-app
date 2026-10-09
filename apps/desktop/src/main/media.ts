@@ -96,6 +96,14 @@ export function serveMedia(bridge: MediaSource): void {
         })
       }
 
+      if (target.kind === 'thumbnail') {
+        const jpeg = await bridge.fetchThumbnail(target.ref)
+        if (servableContentType('image/jpeg', jpeg) !== 'image/jpeg') {
+          return new Response(null, { status: 415 })
+        }
+        return new Response(jpeg, { status: 200, headers: mediaHeaders('image/jpeg') })
+      }
+
       const media = await bridge.fetchMedia(target.ref)
       const contentType = servableContentType(media.contentType, media.bytes)
       if (contentType === null) return new Response(null, { status: 415 })
@@ -105,8 +113,9 @@ export function serveMedia(bridge: MediaSource): void {
       })
     } catch {
       // Only a failure after a transfer started is on the frame stream too. A verdict, a missing
-      // message or a failed preview is known from this status alone, so whoever draws the url
-      // has to handle the image failing. Not stored, so the url is asked again after a retry.
+      // message, a failed preview or a missing thumbnail is known from this status alone, so
+      // whoever draws the url has to handle the image failing. Not stored, so the url is asked
+      // again after a retry.
       // TODO: once sending exists, serve a sender's own attachment from its local copy while it
       // uploads; libsession refuses a file not uploaded yet, so that picture is a 404 here.
       return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } })

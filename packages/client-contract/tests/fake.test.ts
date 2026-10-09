@@ -28,6 +28,7 @@ const ARRIVING_IMAGE: Attachment = {
   width: 1200,
   height: 900,
   hasPreview: false,
+  hasThumbnail: false,
   uploaded: true,
   availability: 'absent',
   fetchDoneBytes: 0,

@@ -8,7 +8,7 @@
 export interface MediaUrlVector {
   url: string
   /** What it parses to, or null for a URL that must be refused. */
-  parsed: { kind: 'attachment' | 'preview'; messageId: number; index: number } | null
+  parsed: { kind: 'attachment' | 'preview' | 'thumbnail'; messageId: number; index: number } | null
 }
 
 const S = 'session-media://'
@@ -17,6 +17,7 @@ export const MEDIA_URL_VECTORS: readonly MediaUrlVector[] = [
   { url: `${S}attachment/1/0`, parsed: { kind: 'attachment', messageId: 1, index: 0 } },
   { url: `${S}attachment/42/7`, parsed: { kind: 'attachment', messageId: 42, index: 7 } },
   { url: `${S}preview/42/0`, parsed: { kind: 'preview', messageId: 42, index: 0 } },
+  { url: `${S}thumbnail/42/1`, parsed: { kind: 'thumbnail', messageId: 42, index: 1 } },
   {
     url: `${S}attachment/9007199254740991/0`,
     parsed: { kind: 'attachment', messageId: Number.MAX_SAFE_INTEGER, index: 0 },
@@ -36,7 +37,9 @@ export const MEDIA_URL_VECTORS: readonly MediaUrlVector[] = [
   { url: `${S}Attachment/42/1`, parsed: null },
 
   // An authority it does not serve, or one with more in it than the word.
-  { url: `${S}thumbnail/42/1`, parsed: null },
+  { url: `${S}thumbnails/42/1`, parsed: null },
+  { url: `${S}Thumbnail/42/1`, parsed: null },
+  { url: `${S}thumbnail:80/42/1`, parsed: null },
   { url: `${S}42/1`, parsed: null },
   { url: `${S}attachment:80/42/1`, parsed: null },
   { url: `${S}user@attachment/42/1`, parsed: null },

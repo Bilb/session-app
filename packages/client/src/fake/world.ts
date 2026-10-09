@@ -105,6 +105,17 @@ function galleryViewable(attachments: Attachment[]): boolean {
   return attachments.length > 0 && attachments.every((a) => isDisplayableImage(a.contentType))
 }
 
+/** libsession's bounds on a thumbnail's side: 1024² at 4 bytes a pixel is 4 MiB decoded. */
+const THUMBNAIL_EDGE_MIN_PX = 64
+const THUMBNAIL_EDGE_MAX_PX = 1024
+/** The side `pnpm fake-media:fetch` makes the dev thumbnails at, so what is served is this size. */
+const FAKE_THUMBNAIL_EDGE_PX = 720
+
+/** libsession makes one of every displayable picture it caches, and drops it on eviction. */
+function thumbnailed(cached: boolean, contentType: string | undefined): boolean {
+  return cached && isDisplayableImage(contentType)
+}
+
 function wantedBy(mode: AutoDownload | undefined, attachment: Attachment): boolean {
   if (mode === 'all') return true
   if (mode === 'image-attachments') return isDisplayableImage(attachment.contentType)
@@ -224,6 +235,7 @@ export class FakeAccount {
   /** Paths exported to, so a repeat can collide the way a file on disk would. */
   private readonly exported = new Set<string>()
   private cacheLimitBytes: number | undefined
+  private storedThumbnailEdgePx: number | undefined
 
   constructor(options: FakeAccountOptions) {
     this.displayName = options.displayName
@@ -613,6 +625,10 @@ export class FakeAccount {
     return this.cached.has(keyOf(ref))
   }
 
+  hasThumbnail(ref: AttachmentRef): boolean {
+    return thumbnailed(this.isCached(ref), this.locate(ref)?.attachment.contentType)
+  }
+
   /**
    * Emits messages with their attachments' availability stamped on.
    *
@@ -662,6 +678,7 @@ export class FakeAccount {
         return {
           ...attachment,
           availability,
+          hasThumbnail: thumbnailed(availability === 'cached', attachment.contentType),
           fetchDoneBytes: running?.doneBytes ?? 0,
           fetchTotalBytes: running?.totalBytes ?? 0,
         }
@@ -690,6 +707,18 @@ export class FakeAccount {
       }
     }
     return usageBytes
+  }
+
+  thumbnailEdge(): number {
+    return this.storedThumbnailEdgePx ?? FAKE_THUMBNAIL_EDGE_PX
+  }
+
+  /** Remembered and clamped as libsession clamps it; the dev thumbnails stay the size they are. */
+  setThumbnailEdge(edgePx?: number): void {
+    this.storedThumbnailEdgePx =
+      edgePx === undefined
+        ? undefined
+        : Math.min(Math.max(edgePx, THUMBNAIL_EDGE_MIN_PX), THUMBNAIL_EDGE_MAX_PX)
   }
 
   setAutoDownload(id: ConversationId, mode: AutoDownload): void {

@@ -33,6 +33,7 @@ interface NativeBridge {
   call(request: Request): void
   fetchMedia(messageId: number, index: number): Promise<AttachmentMedia>
   fetchPreview(messageId: number, index: number): Promise<AttachmentPreview>
+  fetchThumbnail(messageId: number, index: number): Promise<Uint8Array>
   close(): void
 }
 
@@ -109,6 +110,11 @@ export function createNodeBridgeTransport(options: NodeBridgeOptions): NodeBridg
     fetchPreview({ messageId, index }: AttachmentRef): Promise<AttachmentPreview> {
       if (closed) return Promise.reject(new Error('the bridge is closed'))
       return bridge.fetchPreview(messageId, index)
+    },
+
+    fetchThumbnail({ messageId, index }: AttachmentRef): Promise<Uint8Array> {
+      if (closed) return Promise.reject(new Error('the bridge is closed'))
+      return bridge.fetchThumbnail(messageId, index)
     },
 
     setSink(onFrame: (frame: Frame) => void): void {

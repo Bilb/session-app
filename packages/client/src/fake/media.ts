@@ -50,6 +50,19 @@ export function photoFileNames(): string[] {
   )
 }
 
+/**
+ * The thumbnail `pnpm fake-media:fetch` makes of a dev photograph, `unsplash-07.thumb.jpg` for
+ * `unsplash-07.jpg`: what libsession would make of it at the fake's edge.
+ */
+export function thumbnailFileName(photo: string): string {
+  return photo.replace(/\.jpg$/, '.thumb.jpg')
+}
+
+/** Every dev thumbnail's file name, checked at start beside the photographs. */
+export function thumbnailFileNames(): string[] {
+  return photoFileNames().map(thumbnailFileName)
+}
+
 function hexBytes(hex: string): Uint8Array {
   return Uint8Array.from(hex.match(/../g)?.map((b) => parseInt(b, 16)) ?? [])
 }
@@ -79,9 +92,9 @@ function refuseUnknown(client: FakeSessionClient, { messageId, index }: Attachme
 }
 
 /**
- * The bytes behind each media URL on the fake: what the real bridge's `fetchMedia` and
- * `fetchPreview` answer. `readPhoto` reads a dev photograph by file name, wherever the app keeps
- * them.
+ * The bytes behind each media URL on the fake: what the real bridge's `fetchMedia`,
+ * `fetchPreview` and `fetchThumbnail` answer. `readPhoto` reads a dev photograph or thumbnail by
+ * file name, wherever the app keeps them.
  */
 export function createFakeMediaSource(
   client: FakeSessionClient,
@@ -105,6 +118,18 @@ export function createFakeMediaSource(
         refuseUnknown(client, ref)
         resolve(fakePreviewPixels(client, ref))
       })
+    },
+    async fetchThumbnail(ref) {
+      refuseUnknown(client, ref)
+      // As the shim does, in its words.
+      if (!client.hasThumbnail(ref)) {
+        throw new Error(
+          `attachment ${String(ref.index)} of message ${String(ref.messageId)} has no thumbnail`,
+        )
+      }
+      const photo = photoFileName(client, ref)
+      if (photo === null) throw new Error('not a picture')
+      return readPhoto(thumbnailFileName(photo))
     },
   }
 }

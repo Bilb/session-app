@@ -182,6 +182,12 @@ describe('starting a dev fake', () => {
         { EXPO_PUBLIC_SESSION_FAKE_FIXTURE: 'showcse' },
         { ...allPhotos, has: () => false },
       ),
+    ).toThrow(/60 are missing/)
+  })
+
+  it('refuses without the thumbnails made of them, which an older fetch did not write', () => {
+    expect(() =>
+      startDevFake({}, { ...allPhotos, has: (fileName) => !fileName.endsWith('.thumb.jpg') }),
     ).toThrow(/30 are missing/)
   })
 
