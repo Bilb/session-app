@@ -4,6 +4,7 @@
 
 #import <ImageIO/ImageIO.h>
 #import <UIKit/UIKit.h>
+#import <os/log.h>
 
 #include "DecodeBound.hpp"
 #include "MediaSource.hpp"
@@ -24,6 +25,14 @@ static NSError* SessionMediaError(const std::string& message) {
                            userInfo:@{
                                NSLocalizedDescriptionKey : [NSString stringWithUTF8String:message.c_str()]
                            }];
+}
+
+/// React Native reports a failed load to the view's `onError` and nowhere else, so this is the
+/// only trace of why.
+static void Fail(RCTImageLoaderCompletionBlock done, NSURL* url, const std::string& message) {
+    static os_log_t channel = os_log_create("org.getsession", "SessionMedia");
+    os_log(channel, "%{public}@ did not load: %{public}s", url.absoluteString, message.c_str());
+    done(SessionMediaError(message), nil);
 }
 
 /// The source's stored pixel size from its header, or zero when it does not say. A GIF's frames
@@ -163,8 +172,8 @@ RCT_EXPORT_MODULE()
         _cache = [NSCache new];
         _cache.name = @"session-media";
         _cache.totalCostLimit = kCacheTotalCostBytes;
-        // Emptied when React Native's own image cache is: under memory pressure, and on the way
-        // to the background.
+        // Emptied when React Native's own image cache is: under memory pressure, and on resigning
+        // active, which Control Center, a system alert or the app switcher also cause.
         NSNotificationCenter* centre = NSNotificationCenter.defaultCenter;
         [centre addObserver:_cache
                    selector:@selector(removeAllObjects)
@@ -213,7 +222,7 @@ RCT_EXPORT_MODULE()
                                                   (RCTImageLoaderCompletionBlock)completionHandler {
     const auto parsed = ::session_bridge::parse_media_url(imageURL.absoluteString.UTF8String);
     if (!parsed) {
-        completionHandler(SessionMediaError("not a media URL"), nil);
+        Fail(completionHandler, imageURL, "not a media URL");
         return nil;
     }
     NSString* key = CacheKey(imageURL, size, scale);
@@ -223,7 +232,7 @@ RCT_EXPORT_MODULE()
     }
     auto source = ::session_bridge_rn::media_source();
     if (!source) {
-        completionHandler(SessionMediaError("nothing is serving media"), nil);
+        Fail(completionHandler, imageURL, "nothing is serving media");
         return nil;
     }
 
@@ -239,14 +248,16 @@ RCT_EXPORT_MODULE()
                 if (cancelled->load())
                     return;
                 if (preview->error) {
-                    done(SessionMediaError(*preview->error), nil);
+                    Fail(done, imageURL, *preview->error);
                     return;
                 }
                 UIImage* image = PreviewImage(preview);
-                if (image)
-                    Remember(cache, key, image);
-                done(image ? nil : SessionMediaError("a preview whose pixels do not match its size"),
-                     image);
+                if (!image) {
+                    Fail(done, imageURL, "a preview whose pixels do not match its size");
+                    return;
+                }
+                Remember(cache, key, image);
+                done(nil, image);
             });
         });
     } else {
@@ -256,14 +267,13 @@ RCT_EXPORT_MODULE()
                 if (cancelled->load())
                     return;
                 if (media->error) {
-                    done(SessionMediaError(*media->error), nil);
+                    Fail(done, imageURL, *media->error);
                     return;
                 }
                 const auto type =
-                        ::session_bridge::servable_content_type(media->content_type, media->bytes);
-                // Images only: a video has no decoder here, and `ftyp` bytes may be HEIF.
-                if (!type || !type->starts_with("image/")) {
-                    done(SessionMediaError("not a picture the decoder may be handed"), nil);
+                        ::session_bridge::servable_image_type(media->content_type, media->bytes);
+                if (!type) {
+                    Fail(done, imageURL, "not a picture the decoder may be handed");
                     return;
                 }
                 // Not copied: the deallocator holds `media` for as long as ImageIO holds the data.
@@ -272,26 +282,31 @@ RCT_EXPORT_MODULE()
                                                        deallocator:^(void*, NSUInteger) {
                                                            (void)media;
                                                        }];
-                CGImageSourceRef source =
+                CGImageSourceRef imageSource =
                         CGImageSourceCreateWithData((__bridge CFDataRef)data, nullptr);
-                if (!source) {
-                    done(SessionMediaError("the picture did not decode"), nil);
+                if (!imageSource) {
+                    Fail(done, imageURL, "the picture did not decode");
                     return;
                 }
-                const CGSize pixels = SourcePixelSize(source);
+                const CGSize pixels = SourcePixelSize(imageSource);
                 // `RCTAnimatedImage` decodes every frame at full canvas size, at draw, so only an
                 // animation within the budget is one; anything else is its first frame, bounded.
-                const bool animated = *type == "image/gif" && CGImageSourceGetCount(source) > 1 &&
-                                      ::session_bridge_rn::fits_decode_budget(
+                const bool animated = *type == "image/gif"
+                                      && CGImageSourceGetCount(imageSource) > 1
+                                      && ::session_bridge_rn::fits_decode_budget(
                                               pixels.width, pixels.height);
                 UIImage* image = animated ? [[RCTAnimatedImage alloc] initWithData:data scale:scale]
-                                          : DecodedImage(source, pixels, size, scale);
-                CFRelease(source);
+                                          : DecodedImage(imageSource, pixels, size, scale);
+                CFRelease(imageSource);
+                if (!image) {
+                    Fail(done, imageURL, "the picture did not decode");
+                    return;
+                }
                 // An animated image holds its source and the file's bytes, which its poster frame
                 // does not measure, so only stills are kept.
-                if (image && !animated)
+                if (!animated)
                     Remember(cache, key, image);
-                done(image ? nil : SessionMediaError("the picture did not decode"), image);
+                done(nil, image);
             });
         });
     }

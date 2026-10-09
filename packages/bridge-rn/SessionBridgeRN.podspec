@@ -13,10 +13,10 @@ Pod::Spec.new do |s|
   s.platforms    = { :ios => "15.1" }
   s.source       = { :path => "." }
 
-  # Only the HybridObject. The shim itself is a CMake project on every platform - cmake-js for
-  # the addon, the Android Gradle plugin for Android, and the iOS build script here - because
-  # CocoaPods compiles only what lives inside the pod directory and drops a glob that reaches
-  # out of it without saying so.
+  # The HybridObject and the image loader. The shim itself is a CMake project on every platform -
+  # cmake-js for the addon, the Android Gradle plugin for Android, and the iOS build script here -
+  # because CocoaPods compiles only what lives inside the pod directory and drops a glob that
+  # reaches out of it without saying so.
   s.source_files = "cpp/**/*.{hpp,cpp}", "ios/*.{h,mm}"
 
   # libsession, and the shim built against it. Both produced by

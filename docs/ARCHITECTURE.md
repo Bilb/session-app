@@ -714,12 +714,16 @@ Append one paragraph per decision. Undocumented decisions are what rot.
 - **2026-10-01 - iOS draws `session-media://` through an `RCTImageURLLoader`.** Registered
   through `codegenConfig.ios.modulesConformingToProtocol`, which Expo's `RCTAppDependencyProvider`
   hands to React Native. The answer, on Core's loop or the JS thread, is handed to a concurrent
-  queue the loader owns, which runs `servable_image_type`, decodes with ImageIO no larger than
-  the view needs under a `cover` fit, with the file's orientation applied and a GIF as an
-  `RCTAnimatedImage`, and hands React Native a `UIImage` whose bytes are the shim's, held by the
-  `NSData` deallocator rather than copied. Nothing is written to disk: a URL loader is not behind
-  `NSURLCache`. React Native caches only the images it decoded itself from an HTTP response, so
-  the loader keeps its own bounded cache of decoded tiles and previews, keyed by URL, size and
-  scale, and never a viewer-size picture, so paging the viewer cannot evict a screen of tiles. The
-  fake registers itself as the source with `serveMediaFrom` on both platforms, so it
-  draws through the real loaders.
+  queue the loader owns, which runs `servable_image_type` and hands ImageIO the shim's bytes in
+  place, held by an `NSData` deallocator. A still is decoded there into a new bitmap, with
+  the file's orientation applied, no larger than the view needs under a `cover` fit and never past
+  one pixel-area budget, which the overshoot of a long thin picture would otherwise exceed. A GIF
+  of more than one frame whose canvas fits that budget is an `RCTAnimatedImage`, which keeps the
+  shim's bytes and decodes each frame whole at draw; any other GIF is its first frame, decoded as a
+  still. Nothing is written to disk: a URL loader is not behind `NSURLCache`. React Native caches
+  only the images it decoded itself from an HTTP response, so the loader keeps its own cache of
+  decoded stills and previews, keyed by URL, size and scale, and leaves out an animation and any
+  entry over 4 MB, so one full-screen decode cannot evict a screen of tiles. React Native reports a
+  failed load only to the view's `onError`, so the loader logs each one with its URL. The fake
+  registers itself as the source with `serveMediaFrom` on both platforms, so it draws through the
+  real loaders.
