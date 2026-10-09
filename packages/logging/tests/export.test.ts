@@ -105,11 +105,32 @@ describe('roughBytes', () => {
 })
 
 describe('sizeBucket', () => {
-  it('names a size rather than giving it', () => {
-    expect(sizeBucket(1_200)).toBe('small')
-    expect(sizeBucket(18_400)).toBe('medium')
-    expect(sizeBucket(120_000)).toBe('large')
-    expect(sizeBucket(900_000)).toBe('very large')
+  it("draws contacts' lines where a change starts to cost, and where it goes multipart", () => {
+    expect(sizeBucket('contacts', 19_999)).toBe('small')
+    expect(sizeBucket('contacts', 20_000)).toBe('medium')
+    // A dump this size compresses past the storage server's 76.8 kB message limit.
+    expect(sizeBucket('contacts', 128_000)).toBe('large')
+    expect(sizeBucket('contacts', 512_000)).toBe('very large')
+  })
+
+  it('draws them lower for what changes on every read', () => {
+    expect(sizeBucket('convo_info_volatile', 20_000)).toBe('medium')
+    expect(sizeBucket('convo_info_volatile', 40_000)).toBe('large')
+    expect(sizeBucket('convo_info_volatile', 128_000)).toBe('very large')
+  })
+
+  it('draws them by count for groups, every one of which is a swarm to poll', () => {
+    // ~215 bytes a group: 10, 50 and 200 of them.
+    expect(sizeBucket('user_groups', 215 * 9)).toBe('small')
+    expect(sizeBucket('user_groups', 215 * 10)).toBe('medium')
+    expect(sizeBucket('user_groups', 215 * 51)).toBe('large')
+    expect(sizeBucket('user_groups', 215 * 205)).toBe('very large')
+  })
+
+  it('treats any growth of a fixed-size config as worth seeing', () => {
+    expect(sizeBucket('user_profile', 300)).toBe('small')
+    expect(sizeBucket('local', 9_000)).toBe('large')
+    expect(sizeBucket('a_config_added_later', 300)).toBe('small')
   })
 })
 
@@ -156,7 +177,7 @@ describe('exportHeader', () => {
     const header = exportHeader(
       facts({
         configSizes: [
-          { name: 'contacts', bytes: 18_400 },
+          { name: 'contacts', bytes: 78_000 },
           { name: 'local', bytes: 90 },
         ],
       }),

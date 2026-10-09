@@ -79,14 +79,43 @@ export function roughBytes(bytes: number): string {
   return `${rounded >= 10 ? rounded.toFixed(0) : rounded.toFixed(1)} ${units[unit] ?? ''}`
 }
 
+/** Where a config's dump moves from one bucket to the next, in bytes: medium, large, very large. */
+type BucketLines = readonly [number, number, number]
+
 /**
- * A config's size as a bucket rather than a number: a contacts config's exact size is close to a
- * count of somebody's contacts, and support only needs to see that one has grown unexpectedly.
+ * Each config's lines, drawn by what makes it cost the app. Measured with optimised libsession on
+ * an M-series Mac; a slow phone is several times slower.
+ *
+ * Every change regenerates, pushes and stores the whole config, and the account's other devices
+ * merge it whole - so cost grows with size. A push past the storage server's 76.8 kB message
+ * limit once compressed, which a dump reaches at about 128 kB, goes as a multipart message.
  */
-export function sizeBucket(bytes: number): string {
-  if (bytes < 2_000) return 'small'
-  if (bytes < 20_000) return 'medium'
-  if (bytes < 200_000) return 'large'
+const BUCKET_LINES: Readonly<Record<string, BucketLines>> = {
+  // About 160-220 bytes a contact. Under 20 kB (~100) a change costs a fraction of a millisecond;
+  // a regular account stays under 128 kB, one message; past it every change goes multipart, and
+  // past 512 kB half a megabyte is uploaded and over 20 ms spent merging a change.
+  contacts: [20_000, 128_000, 512_000],
+  // Moves on every read, so its cost is that of a contacts change made far more often: a quarter
+  // of contacts' lines. About 60-100 bytes a conversation.
+  convo_info_volatile: [5_000, 32_000, 128_000],
+  // About 215 bytes a group, and every group is a swarm to poll - every 3-30 s in the legacy
+  // clients - so it costs by count long before it costs by size: ~10, ~50 and ~200 groups.
+  user_groups: [2_000, 10_500, 42_000],
+}
+
+/** Profile and device settings: a few hundred bytes whatever the account, so any growth is news. */
+const FIXED_SIZE_LINES: BucketLines = [2_000, 8_000, 32_000]
+
+/**
+ * A config's size (its dump, in bytes) as how much it is likely to cost the app: small, no cost
+ * worth seeing; medium, a regular account's; large, a likely cost; very large, almost certainly
+ * one. Not the number, which is close to a count of somebody's contacts or groups.
+ */
+export function sizeBucket(name: string, bytes: number): string {
+  const [medium, large, veryLarge] = BUCKET_LINES[name] ?? FIXED_SIZE_LINES
+  if (bytes < medium) return 'small'
+  if (bytes < large) return 'medium'
+  if (bytes < veryLarge) return 'large'
   return 'very large'
 }
 
@@ -235,7 +264,7 @@ export function exportHeader(facts: ExportFacts): string[] {
       ? [row('Config sizes', 'unknown (libsession does not report them yet)')]
       : group(
           'Config sizes',
-          facts.configSizes.map(({ name, bytes }) => [name, sizeBucket(bytes)] as const),
+          facts.configSizes.map(({ name, bytes }) => [name, sizeBucket(name, bytes)] as const),
         )),
     ...group('Logs', [
       ['Files', String(plan.included.length)],

@@ -262,8 +262,13 @@ Session logs exported 2026-10-09 07:41:02Z (17:41 local, UTC+10:00)
 
 - **Rounded to two significant figures** wherever an exact figure could link two exports or describe
   an account: memory, free space, database and attachment sizes.
-- **Config sizes are buckets** (small under 2 kB, medium under 20 kB, large under 200 kB, then very
-  large): a contacts config's exact size is close to a count of somebody's contacts.
+- **Config sizes are buckets of likely cost**: small (no cost worth seeing), medium (a regular
+  account's), large (a likely cost), very large (almost certainly one), each config with lines of
+  its own by what makes it cost. Every change regenerates, pushes, stores and merges a whole config,
+  and past about 128 kB a push goes multipart; the conversation-state config changes on every read,
+  so its lines are a quarter of contacts'; every group is a swarm to poll, so groups are bucketed by
+  count (~10, ~50, ~200). `BUCKET_LINES` in `packages/logging/src/export.ts` has the measurements.
+  A bucket rather than a number because an exact size is close to a count of somebody's contacts.
 - **WAL and SHM** sit under the database because a WAL that keeps growing is a checkpoint that is not
   happening. The same three sizes are also logged as a line when the database opens and when the
   app goes to the background (desktop: on quit), with the journals exact.
