@@ -342,14 +342,14 @@ export class FakeSessionClient implements SessionClient {
     return this.account.exportAttachment({ messageId, index }, destination, options?.replace)
   }
 
-  /**
-   * Fake-only: finds an attachment in memory, where paging every conversation would miss old ones.
-   */
   /** Whether libsession would hold a thumbnail of this attachment: `Attachment.hasThumbnail`. */
   hasThumbnail(ref: AttachmentRef): boolean {
     return this.account.hasThumbnail(ref)
   }
 
+  /**
+   * Fake-only: finds an attachment in memory, where paging every conversation would miss old ones.
+   */
   locate(ref: AttachmentRef): LocatedAttachment | undefined {
     return this.account.locate(ref)
   }

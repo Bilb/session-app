@@ -34,7 +34,7 @@ export function MessageAlbum({
     .filter((attachment) => ['idle', 'failed'].includes(fetchFor(attachment).state))
     .map((attachment) => String(attachment.index))
     .join()
-  // Memoised so the album's memoised tiles keep their items until the message or setting changes.
+  // Memoised so the album's memoised tiles keep their items until the message changes.
   const items = useMemo((): AlbumItem[] => {
     const fetchable = new Set(fetchableKey.split(','))
     return viewable.map((attachment) => ({

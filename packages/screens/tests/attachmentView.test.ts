@@ -58,9 +58,9 @@ describe('which shape a message takes', () => {
     expect(attachmentView(set)).toBe('list')
   })
 
-  it('draws a list for a picture no tile here can draw, whatever libsession says', () => {
-    // libsession's rule takes any `image/`, HEIC included.
-    const set = message([attachment(0, 'image/jpeg'), attachment(1, 'image/heic')], true)
+  it('draws a list for a picture the viewer here cannot open, whatever libsession says', () => {
+    // libsession's whitelist takes AVIF.
+    const set = message([attachment(0, 'image/jpeg'), attachment(1, 'image/avif')], true)
     expect(attachmentView(set)).toBe('list')
   })
 })

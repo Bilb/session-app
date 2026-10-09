@@ -730,17 +730,17 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   hands to React Native. The answer, on Core's loop or the JS thread, is handed to a concurrent
   queue the loader owns, which runs `servable_image_type` and hands ImageIO the shim's bytes in
   place, held by an `NSData` deallocator. A still is decoded there into a new bitmap, with the
-  file's orientation applied; the result is no larger than the view needs under a `cover` fit and
-  never past one pixel-area budget, which the overshoot of a long thin picture would otherwise
-  exceed. That bounds the result, not the decode: ImageIO holds a GIF or PNG whole before reducing
-  it, so one whose header area is past a 100 MP ceiling is refused and draws as failed. A GIF
+  file's orientation applied, and never past one pixel-area budget, whatever the view. That bounds
+  the result, not the decode: ImageIO holds a GIF or PNG whole before reducing it, so one whose
+  header area is past a 100 MP ceiling is refused and draws as failed. A GIF
   of more than one frame whose canvas fits that budget is an `RCTAnimatedImage`, which keeps the
   shim's bytes and decodes each frame whole at draw; any other GIF is its first frame, decoded as a
   still. Nothing is written to disk: a URL loader is not behind `NSURLCache`. React Native caches
   only the images it decoded itself from an HTTP response, so the loader keeps its own cache of
-  decoded stills and previews, keyed by URL, size and scale, and leaves out an animation and any
-  entry over 4 MB, so one full-screen decode cannot evict a screen of tiles. React Native reports a
-  failed load only to the view's `onError`, so the loader logs each one with its URL. The fake
+  decoded thumbnails and previews, keyed by URL (and a thumbnail's by the view's pixel size too),
+  and leaves out originals, which only the viewer draws and which would take most of its budget.
+  React Native reports a failed load only to the view's `onError`, so the loader logs each one with
+  its URL. The fake
   registers itself as the source with `serveMediaFrom` on both platforms, so it draws through the
   real loaders.
 

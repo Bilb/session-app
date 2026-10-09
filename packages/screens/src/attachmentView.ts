@@ -8,8 +8,9 @@ export type AttachmentView = 'gallery' | 'list'
  * Whether the reader gets to choose the shape.
  *
  * A plain file makes the gallery impossible, not unwanted. libsession says which messages can be
- * a gallery, and its rule takes any `image/`, so each one must also be a picture a tile here can
- * draw. The list can hold any set, which is why this asks about the gallery.
+ * a gallery, and its whitelist takes AVIF and `image/pjpeg`, which the viewer here cannot open, so
+ * each one must also be viewable. The list can hold any set, which is why this asks about the
+ * gallery.
  */
 export function canChooseView(message: Message): boolean {
   // TODO: draw a video as a tile once libsession has a still for it and galleryViewable admits it.
