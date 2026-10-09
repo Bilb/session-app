@@ -97,6 +97,11 @@ export const DURATION = {
   progressBar: 500,
   fadein: 1000,
   modalToInbox: 100,
+  /**
+   * The launch screen fading off the app once it has drawn, on every platform. Short: it softens
+   * the cut without making a ready app wait to be seen.
+   */
+  launchFade: 180,
 } as const
 
 // Desktop-specific layout constants - not applicable in React Native.

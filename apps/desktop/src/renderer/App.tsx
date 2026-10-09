@@ -20,6 +20,7 @@ import { ModalStackProvider, Text, ToastProvider, YStack } from '@session/ui'
 import { useEffect, useState } from 'react'
 import { MemoryRouter, Route, Routes, useLocation, useParams } from 'react-router'
 
+import { RemoveLaunchScreenOnMount } from './launchScreen'
 import { DesktopNavProvider } from './nav'
 import { store } from './store'
 
@@ -51,6 +52,7 @@ export function App() {
   return (
     <SessionStoreProvider store={store}>
       <StoredThemeProvider>
+        <RemoveLaunchScreenOnMount />
         <MemoryRouter>
           <DesktopNavProvider>
             <ModalStackProvider>
