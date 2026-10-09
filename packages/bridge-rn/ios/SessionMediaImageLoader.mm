@@ -5,13 +5,13 @@
 #import <ImageIO/ImageIO.h>
 #import <UIKit/UIKit.h>
 
+#include "DecodeBound.hpp"
 #include "MediaSource.hpp"
 
 #include <session_bridge/media_url.hpp>
 
 #include <algorithm>
 #include <atomic>
-#include <cmath>
 #include <memory>
 #include <string>
 #include <utility>
@@ -26,46 +26,39 @@ static NSError* SessionMediaError(const std::string& message) {
                            }];
 }
 
-/// The source's stored pixel size from its header, or zero when it does not say.
+/// The source's stored pixel size from its header, or zero when it does not say. A GIF's frames
+/// are drawn onto its canvas, so for a GIF the larger of the two on each edge.
 static CGSize SourcePixelSize(CGImageSourceRef source) {
-    NSDictionary* properties =
+    NSDictionary* frame =
             (__bridge_transfer NSDictionary*)CGImageSourceCopyPropertiesAtIndex(source, 0, nullptr);
+    NSDictionary* container =
+            (__bridge_transfer NSDictionary*)CGImageSourceCopyProperties(source, nullptr);
+    NSDictionary* gif = container[(id)kCGImagePropertyGIFDictionary];
     return CGSizeMake(
-            [properties[(id)kCGImagePropertyPixelWidth] doubleValue],
-            [properties[(id)kCGImagePropertyPixelHeight] doubleValue]);
+            std::max(
+                    [frame[(id)kCGImagePropertyPixelWidth] doubleValue],
+                    [gif[(id)kCGImagePropertyGIFCanvasPixelWidth] doubleValue]),
+            std::max(
+                    [frame[(id)kCGImagePropertyPixelHeight] doubleValue],
+                    [gif[(id)kCGImagePropertyGIFCanvasPixelHeight] doubleValue]));
 }
 
-/// The longest edge a decode may have for a view of `longest` device pixels.
-///
-/// The fit never reaches a loader (Fabric asks with stretch for every request), so this assumes
-/// `cover`: the picture's shorter edge spans the view, and its longer edge overshoots by the aspect
-/// ratio. Never past the file's own size, so nothing is upsized.
-static CGFloat ThumbnailBound(CGFloat longest, CGSize pixels) {
-    if (pixels.width <= 0 || pixels.height <= 0)
-        return longest;
-    const CGFloat aspect = std::max(pixels.width / pixels.height, pixels.height / pixels.width);
-    return std::min(std::ceil(longest * aspect), std::max(pixels.width, pixels.height));
-}
-
-/// Decodes on the calling queue rather than at first draw, and no larger than the view asks for:
-/// a thumbnail with the file's orientation applied, which is also what keeps a 12-megapixel photo
-/// from being held whole for a tile.
-static UIImage* _Nullable DecodedImage(NSData* data, CGSize size, CGFloat scale) {
-    CGImageSourceRef source = CGImageSourceCreateWithData((__bridge CFDataRef)data, nullptr);
-    if (!source)
-        return nil;
-    NSMutableDictionary* options = [@{
+/// Decodes on the calling queue rather than at first draw, and no larger than the view asks for or
+/// the pixel budget allows: a thumbnail with the file's orientation applied, which is also what
+/// keeps a 12-megapixel photo from being held whole for a tile.
+static UIImage* _Nullable DecodedImage(
+        CGImageSourceRef source, CGSize pixels, CGSize size, CGFloat scale) {
+    const CGFloat longest = std::max(size.width, size.height) * std::max<CGFloat>(scale, 1);
+    const CGFloat bound =
+            ::session_bridge_rn::decode_edge_bound(longest, pixels.width, pixels.height);
+    NSDictionary* options = @{
         (id)kCGImageSourceCreateThumbnailFromImageAlways : @YES,
         (id)kCGImageSourceCreateThumbnailWithTransform : @YES,
         (id)kCGImageSourceShouldCacheImmediately : @YES,
-    } mutableCopy];
-    const CGFloat longest = std::max(size.width, size.height) * std::max<CGFloat>(scale, 1);
-    if (longest > 0)
-        options[(id)kCGImageSourceThumbnailMaxPixelSize] =
-                @(ThumbnailBound(longest, SourcePixelSize(source)));
+        (id)kCGImageSourceThumbnailMaxPixelSize : @(bound),
+    };
     CGImageRef decoded =
             CGImageSourceCreateThumbnailAtIndex(source, 0, (__bridge CFDictionaryRef)options);
-    CFRelease(source);
     if (!decoded)
         return nil;
     UIImage* image = [UIImage imageWithCGImage:decoded scale:std::max<CGFloat>(scale, 1)
@@ -279,11 +272,21 @@ RCT_EXPORT_MODULE()
                                                        deallocator:^(void*, NSUInteger) {
                                                            (void)media;
                                                        }];
-                // A GIF is React Native's own animated type, every frame at full size as its GIF
-                // decoder does: `RCTUIImageViewAnimated` steps through them, a UIImage is frame 0.
-                const bool animated = *type == "image/gif";
+                CGImageSourceRef source =
+                        CGImageSourceCreateWithData((__bridge CFDataRef)data, nullptr);
+                if (!source) {
+                    done(SessionMediaError("the picture did not decode"), nil);
+                    return;
+                }
+                const CGSize pixels = SourcePixelSize(source);
+                // `RCTAnimatedImage` decodes every frame at full canvas size, at draw, so only an
+                // animation within the budget is one; anything else is its first frame, bounded.
+                const bool animated = *type == "image/gif" && CGImageSourceGetCount(source) > 1 &&
+                                      ::session_bridge_rn::fits_decode_budget(
+                                              pixels.width, pixels.height);
                 UIImage* image = animated ? [[RCTAnimatedImage alloc] initWithData:data scale:scale]
-                                          : DecodedImage(data, size, scale);
+                                          : DecodedImage(source, pixels, size, scale);
+                CFRelease(source);
                 // An animated image holds its source and the file's bytes, which its poster frame
                 // does not measure, so only stills are kept.
                 if (image && !animated)
