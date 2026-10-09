@@ -2,7 +2,17 @@ import { exportLogs, requirePorts } from '@session/app'
 import { tr } from '@session/localization'
 import { useSessionActions, useStartupClearable } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Icon, Screen, Text, useModals, XStack, YStack, type Modals } from '@session/ui'
+import {
+  Button,
+  Icon,
+  Screen,
+  Text,
+  useModals,
+  useToast,
+  XStack,
+  YStack,
+  type Modals,
+} from '@session/ui'
 import { useState } from 'react'
 
 import { LocalizedText } from './LocalizedText'
@@ -34,6 +44,7 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
   const canExport = requirePorts().logs.deliver !== null
   const clearable = useStartupClearable()
   const [exporting, setExporting] = useState(false)
+  const toasts = useToast()
 
   return (
     <Screen padded testID={ELEMENT.startupFailed.screen}>
@@ -57,9 +68,16 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
               testID={ELEMENT.startupFailed.exportLogs}
               onPress={() => {
                 setExporting(true)
-                void exportLogs().finally(() => {
-                  setExporting(false)
-                })
+                void exportLogs()
+                  .then((outcome) => {
+                    // Said, not silent: a second failure on this screen is one more thing for
+                    // the person to report, and they need to know the export did not happen.
+                    if (outcome === 'failed')
+                      toasts.show(tr('errorUnknown'), { id: 'export-failed' })
+                  })
+                  .finally(() => {
+                    setExporting(false)
+                  })
               }}
             />
           ) : null}

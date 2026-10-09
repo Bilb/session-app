@@ -58,19 +58,25 @@ class SessionLogsModule : Module() {
     // checked to be a bare log file name so it cannot reach outside it.
     AsyncFunction("gzip") { parts: List<Map<String, String>>, directory: String, outPath: String ->
       val out = File(outPath)
-      GZIPOutputStream(FileOutputStream(out), 64 * 1024).use { gzip ->
-        for (part in parts) {
-          val text = part["text"]
-          val name = part["file"]
-          if (text != null) {
-            gzip.write(text.toByteArray(Charsets.UTF_8))
-          } else if (name != null) {
-            require(logFile.matches(name)) { "not a log file name: $name" }
-            // A file rotated away since the list was taken is skipped rather than failing.
-            val file = File(directory, name)
-            if (file.exists()) file.inputStream().use { it.copyTo(gzip, 64 * 1024) }
+      try {
+        GZIPOutputStream(FileOutputStream(out), 64 * 1024).use { gzip ->
+          for (part in parts) {
+            val text = part["text"]
+            val name = part["file"]
+            if (text != null) {
+              gzip.write(text.toByteArray(Charsets.UTF_8))
+            } else if (name != null) {
+              require(logFile.matches(name)) { "not a log file name: $name" }
+              // A file rotated away since the list was taken is skipped rather than failing.
+              val file = File(directory, name)
+              if (file.exists()) file.inputStream().use { it.copyTo(gzip, 64 * 1024) }
+            }
           }
         }
+      } catch (error: Exception) {
+        // A half-written export is no use to anybody, and it would sit in the cache.
+        out.delete()
+        throw error
       }
       out.length().toInt()
     }

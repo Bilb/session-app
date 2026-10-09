@@ -20,7 +20,14 @@ public class SessionLogsModule: Module {
     /// `directory` streamed off disk. Names are checked to be bare log file names, so a part can
     /// never reach outside the directory.
     AsyncFunction("gzip") { (parts: [[String: String]], directory: String, outPath: String) throws -> Int in
-      try Gzip.write(parts: parts, directory: URL(fileURLWithPath: directory), to: URL(fileURLWithPath: outPath))
+      let out = URL(fileURLWithPath: outPath)
+      do {
+        return try Gzip.write(parts: parts, directory: URL(fileURLWithPath: directory), to: out)
+      } catch {
+        // A half-written export is no use to anybody, and it would sit in the cache.
+        try? FileManager.default.removeItem(at: out)
+        throw error
+      }
     }
 
     AsyncFunction("diagnostics") { () async -> [String: Any?] in
@@ -64,7 +71,10 @@ enum Gzip {
             guard status != Z_STREAM_ERROR else { throw Failure(description: "deflate failed") }
             return outputPointer.count - Int(stream.avail_out)
           }
-          if produced > 0 { output.write(Data(buffer[0..<produced])) }
+          // The throwing forms: the older `write(_:)` and `readData(ofLength:)` raise an
+          // Objective-C exception on a full disk, which Swift cannot catch - and a full disk is a
+          // likely reason to be exporting from the startup-failure screen at all.
+          if produced > 0 { try output.write(contentsOf: buffer[0..<produced]) }
         } while stream.avail_out == 0
       }
     }
@@ -81,8 +91,7 @@ enum Gzip {
         guard let input = FileHandle(forReadingAtPath: directory.appendingPathComponent(name).path) else { continue }
         defer { try? input.close() }
         while true {
-          let data = input.readData(ofLength: chunk)
-          if data.isEmpty { break }
+          guard let data = try input.read(upToCount: chunk), !data.isEmpty else { break }
           try feed(data, finish: false)
         }
       }

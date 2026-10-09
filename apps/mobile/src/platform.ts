@@ -8,7 +8,7 @@ import { parseNetworkName } from '@session/basic-types'
 import * as Clipboard from 'expo-clipboard'
 import Constants from 'expo-constants'
 import * as Sharing from 'expo-sharing'
-import { File, Paths } from 'expo-file-system'
+import { Directory, File, Paths } from 'expo-file-system'
 import * as SecureStore from 'expo-secure-store'
 import { Linking, Platform, Share } from 'react-native'
 
@@ -16,6 +16,9 @@ import { flagOverride } from './flagOverrides'
 import { endingRun, logDirectory, logWriter, lowPowerRows, osName } from './logs'
 import { attachmentsBytes, databaseSizes } from './storageSizes'
 import { SessionLogs } from './sessionLogs'
+
+/** What `exportFileName` names an export, so an earlier one in the cache can be found. */
+const EXPORT_FILE = /^session-logs-[a-z0-9.-]+\.log\.gz$/
 import { restartProcess, terminateProcess } from './processExit'
 
 /**
@@ -73,7 +76,11 @@ function edgeLine(name: string, which: 'first' | 'last'): string | null {
 const nativeLogs = SessionLogs
 
 async function diagnosticsSnapshot(): Promise<DiagnosticsSnapshot> {
-  const native = await SessionLogs?.diagnostics()
+  // A native failure is unknown rows in the header, not a failed export: Android's throws when
+  // there is no context, and the header is the least of what the export is for.
+  const native = await (SessionLogs?.diagnostics() ?? Promise.resolve(undefined)).catch(
+    () => undefined,
+  )
   return {
     install: native?.install ?? 'unknown',
     platform: Platform.OS === 'ios' ? 'iOS' : 'Android',
@@ -206,8 +213,12 @@ const ports = memoryPorts({
       nativeLogs === null
         ? null
         : async (name, parts) => {
+            // Earlier exports go first. Not deleted once shared: on Android the app it was shared
+            // to may still be reading it after the sheet closes. So one is kept, not every one.
+            for (const entry of new Directory(Paths.cache).list()) {
+              if (entry instanceof File && EXPORT_FILE.test(entry.name)) entry.delete()
+            }
             const out = new File(Paths.cache, name)
-            if (out.exists) out.delete()
             await nativeLogs.gzip(parts, pathOf(logDirectory.uri), pathOf(out.uri))
             await Sharing.shareAsync(out.uri, {
               mimeType: 'application/gzip',

@@ -198,7 +198,7 @@ async function writeGzip(path: string, dir: string, parts: readonly ExportPart[]
   await pipeline(Readable.from(bytes()), createGzip({ level: 6 }), createWriteStream(path))
 }
 
-/** The first or last line of a file, read from its end rather than whole where that is the last. */
+/** The first or last timed line of a file, read whole: a file closes at 2 MiB, so that is cheap. */
 function edgeLine(path: string, which: 'first' | 'last'): string | null {
   if (!existsSync(path)) return null
   // Prefixed lines only: the startup block is written without one, and has no time to give.
@@ -445,7 +445,19 @@ export function serveLogs(window: Electron.BrowserWindow, appUrl: string): void 
       defaultPath: join(app.getPath('downloads'), name),
     })
     if (chosen.canceled || chosen.filePath === undefined) return false
-    await writeGzip(chosen.filePath, dir, valid)
+    try {
+      await writeGzip(chosen.filePath, dir, valid)
+    } catch (error) {
+      // Not Node's message, which names the path - and the renderer logs whatever it is given,
+      // which the sweep cannot recognise as a path. The code says what went wrong.
+      rmSync(chosen.filePath, { force: true })
+      const code = (error as { code?: unknown }).code
+      // The original as the cause, which stays in this process: across IPC only the message goes.
+      throw new Error(
+        `the export could not be written${typeof code === 'string' ? `: ${code}` : ''}`,
+        { cause: error },
+      )
+    }
     return true
   })
 

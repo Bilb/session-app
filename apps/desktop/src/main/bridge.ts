@@ -94,11 +94,6 @@ export function networkSettings(): NetworkSettings {
 }
 
 /**
- * Opens the bridge the renderer talks to.
- *
- * Everything above this file sees frames either way.
- */
-/**
  * Where this run's database and attachments live: per network, under userData. Also read by the
  * log export, which measures what is there.
  */
@@ -109,6 +104,11 @@ export function sessionDataDir(): string {
   )
 }
 
+/**
+ * Opens the bridge the renderer talks to.
+ *
+ * Everything above this file sees frames either way.
+ */
 export async function createBridge(): Promise<BridgeTransport & MediaSource> {
   loadDotEnv()
 
