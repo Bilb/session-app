@@ -17,61 +17,14 @@ function pictureImage(): string {
 }
 
 describe('an attachment tile’s picture', () => {
-  it('reports both that it landed and that it failed', () => {
-    const image = pictureImage()
-    expect(image).toContain('onLoad=')
-    expect(image).toContain('onError=')
+  it('reports that it landed', () => {
+    expect(pictureImage()).toContain('onLoad=')
   })
 
-  it('keeps its url when it fails, so a retry is a new attempt and not a withheld one', () => {
-    expect(tile).toMatch(/setFailedUri\(uri\)/)
-    expect(pictureImage()).not.toMatch(/failed/)
-  })
-})
-
-describe('an attachment tile’s failed face', () => {
-  // Pending and failed differ only by a glyph, so without these an e2e test cannot tell them apart
-  // and a screen reader hears nothing.
-  it('names and addresses the mark over a placeholder', () => {
-    const mark = tile.slice(
-      tile.indexOf('function FailedMark'),
-      tile.indexOf('function VideoAffordances'),
-    )
-    expect(mark).toMatch(/role="img"\s+aria-label=\{failedLabel\}\s+testID=\{failedTestID\}/)
-    expect(tile).toMatch(
-      /<FailedMark side=\{side\} failedLabel=\{failedLabel\} failedTestID=\{failedTestID\} \/>/,
-    )
-  })
-
-  it('names and addresses the glyph on a flat tile, only while it is the failed one', () => {
-    expect(tile).toContain(
-      "{...(failed ? { role: 'img', 'aria-label': failedLabel, testID: failedTestID } : {})}",
-    )
-  })
-
-  it('is handed its label and id by the album and the file row', () => {
-    const read = (file: string) => readFileSync(join(import.meta.dirname, '../src', file), 'utf8')
-    const album = read('AttachmentAlbum.tsx')
-    expect(
-      album.match(/failedLabel=\{failedLabel\}\s+failedTestID=\{failedTestID\}/g),
-    ).toHaveLength(3)
-    expect(read('FileRow.tsx')).toMatch(
-      /failedLabel=\{thumbnail\.failedLabel\}\s+failedTestID=\{testIDs\?\.thumbnailFailed\}/,
-    )
-  })
-
-  // A named button's contents are not announced, so the mark inside it goes unheard on its own.
-  it('puts its failed words in the name of the button that holds it', () => {
-    const read = (file: string) => readFileSync(join(import.meta.dirname, '../src', file), 'utf8')
-    expect(tile).toMatch(/onFailedChange\?\.\(failed\)/)
-    const album = read('AttachmentAlbum.tsx')
-    expect(album).toContain('onFailedChange={setFailed}')
-    expect(album).toContain('tileButtonName(undefined, failedLabel, failed)')
-    expect(album).toMatch(
-      /role="button"\s+\{\.\.\.\(name === undefined \? \{\} : \{ 'aria-label': name \}\)\}/,
-    )
-    const row = read('FileRow.tsx')
-    expect(row).toContain('onFailedChange={setThumbnailFailed}')
-    expect(row).toContain('tileButtonName(filename, thumbnail.failedLabel, thumbnailFailed)')
+  // A thumbnail is made only of a picture that decoded, so one that does not load was evicted
+  // under the tile: drawn as failed, a picture that is fine would read as broken.
+  it('never wears a failed face: a picture that does not load leaves the placeholder', () => {
+    expect(pictureImage()).not.toContain('onError=')
+    expect(tile).not.toContain('triangleAlert')
   })
 })

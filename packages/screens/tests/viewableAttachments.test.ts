@@ -80,6 +80,7 @@ describe('what the viewer is handed', () => {
         media: {
           urlFor: ({ messageId, index }) => `media://${String(messageId)}/${String(index)}`,
           previewUrlFor: () => null,
+          thumbnailUrlFor: () => null,
         },
       }),
     )

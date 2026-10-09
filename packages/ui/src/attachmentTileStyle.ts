@@ -52,48 +52,11 @@ export function tilePlaceholder(
   return preview === failedPreview ? null : preview
 }
 
-/** What a tile is showing for its url. */
-export type TileFace = 'pending' | 'picture' | 'failed'
-
 /**
- * Which face a tile wears over its placeholder, from what the image has reported for `uri`.
- *
- * Keyed on the url, so a new one starts over hidden rather than inheriting the last one's load or
- * failure.
+ * Whether a tile shows its picture rather than its placeholder: once the image has reported in for
+ * this very url. Keyed on the url, so a new one starts hidden rather than inheriting the last one's
+ * load. A url that never loads leaves the placeholder, which is what a tile without one draws too.
  */
-export function tileFace(
-  uri: string | null | undefined,
-  loadedUri: string | null,
-  failedUri: string | null,
-): TileFace {
-  if (uri === undefined || uri === null) return 'pending'
-  if (uri === loadedUri) return 'picture'
-  return uri === failedUri ? 'failed' : 'pending'
-}
-
-/**
- * The failure a tile still holds against its url.
- *
- * Forgotten while the url is withheld: a native loader's fetch is the download, so its failure is
- * a transfer's, and the retry hands back the very same url. Held on, that retry would wear
- * `failed` until it landed.
- */
-export function heldFailure(
-  uri: string | null | undefined,
-  failedUri: string | null,
-): string | null {
-  return uri === undefined || uri === null ? null : failedUri
-}
-
-/**
- * What a button holding a tile is announced as: its own name, then the failed words while the tile
- * is failed, since a screen reader reads the button's name and not the mark inside it.
- */
-export function tileButtonName(
-  name: string | undefined,
-  failedLabel: string,
-  failed: boolean,
-): string | undefined {
-  if (!failed) return name
-  return name === undefined ? failedLabel : `${name}, ${failedLabel}`
+export function showsPicture(uri: string | null | undefined, loadedUri: string | null): boolean {
+  return uri !== undefined && uri !== null && uri === loadedUri
 }

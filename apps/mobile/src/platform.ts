@@ -35,6 +35,7 @@ const DATABASE_KEY = 'session2.database-key'
 const MEDIA: MediaPort = {
   urlFor: (ref) => mediaUrl('attachment', ref),
   previewUrlFor: (ref) => mediaUrl('preview', ref),
+  thumbnailUrlFor: (ref) => mediaUrl('thumbnail', ref),
 }
 
 // Hex rather than base64: the keychain stores strings, and hex needs no polyfill on either

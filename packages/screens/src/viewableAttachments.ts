@@ -5,7 +5,7 @@ import type { Attachment, Message } from '@session/client'
 /**
  * A whitelist rather than a prefix: `image/svg+xml`, `image/heic` and `image/tiff` are pictures no
  * renderer here draws reliably, and desktop refuses to serve anything outside the list. A video is
- * a file: it has no still to draw until libsession exposes one.
+ * a file: libsession makes no thumbnail of one.
  */
 export function isViewable(attachment: Attachment): boolean {
   return isViewableImage(attachment.contentType)
@@ -25,7 +25,12 @@ export function viewableAttachments(message: Message): Attachment[] {
   return message.attachments.filter(isViewable)
 }
 
-/** What the viewer is handed to draw `attachment`, or null where the platform has no resolver. */
+/**
+ * What the viewer is handed to draw `attachment`, or null where the platform has no resolver: the
+ * file itself, never the thumbnail a tile draws.
+ */
 export function viewerUri(messageId: number, attachment: Attachment): string | null {
+  // TODO: a picture larger than the screen may need a rendition at screen size rather than the
+  // whole file decoded and reduced; export must keep writing out the raw content either way.
   return requirePorts().media.urlFor({ messageId, index: attachment.index })
 }

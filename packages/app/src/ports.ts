@@ -74,6 +74,12 @@ export interface MediaPort {
    * when `Attachment.hasPreview` says there is one.
    */
   previewUrlFor(ref: AttachmentRef): string | null
+  /**
+   * The square JPEG libsession made of a picture it holds, which is what a tile draws: a viewer
+   * draws `urlFor`. Never a download, so only worth asking for when `Attachment.hasThumbnail`
+   * says there is one.
+   */
+  thumbnailUrlFor(ref: AttachmentRef): string | null
 }
 
 export interface MediaProbePort {

@@ -30,6 +30,7 @@ setPorts(
     media: {
       urlFor: (ref) => mediaUrl('attachment', ref),
       previewUrlFor: (ref) => mediaUrl('preview', ref),
+      thumbnailUrlFor: (ref) => mediaUrl('thumbnail', ref),
     },
     // The same variable and the same parser the main process uses, inlined at build time.
     network: {

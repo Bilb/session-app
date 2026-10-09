@@ -33,7 +33,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
       revealInFolder: () => Promise.resolve(),
     },
     // No resolver in a test process, so callers draw the file form rather than a broken picture.
-    media: { urlFor: () => null, previewUrlFor: () => null },
+    media: { urlFor: () => null, previewUrlFor: () => null, thumbnailUrlFor: () => null },
     mediaProbe: {
       imageSize: () => Promise.resolve(null),
     },

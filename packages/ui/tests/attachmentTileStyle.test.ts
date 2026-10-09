@@ -2,10 +2,8 @@ import { RADII } from '@session/theme-tokens'
 import { describe, expect, it } from 'vitest'
 
 import {
-  heldFailure,
+  showsPicture,
   TILE_RADIUS_STEP,
-  tileButtonName,
-  tileFace,
   tilePlaceholder,
   tileRadius,
 } from '#src/attachmentTileStyle'
@@ -55,54 +53,20 @@ describe('a tile’s placeholder', () => {
   })
 })
 
-describe('a tile’s face', () => {
-  const url = 'session-media://attachment/1/0'
+describe('whether a tile shows its picture', () => {
+  const url = 'session-media://thumbnail/1/0'
 
-  it('is pending with no url, and until the picture reports in', () => {
-    expect(tileFace(undefined, null, null)).toBe('pending')
-    expect(tileFace(null, null, null)).toBe('pending')
-    expect(tileFace(url, null, null)).toBe('pending')
+  it('does not with no url, and not until the picture reports in', () => {
+    expect(showsPicture(undefined, null)).toBe(false)
+    expect(showsPicture(null, null)).toBe(false)
+    expect(showsPicture(url, null)).toBe(false)
   })
 
-  it('is the picture once it loaded', () => {
-    expect(tileFace(url, url, null)).toBe('picture')
+  it('does once it loaded', () => {
+    expect(showsPicture(url, url)).toBe(true)
   })
 
-  it('is failed once the picture could not be decoded, so it does not read as still downloading', () => {
-    expect(tileFace(url, null, url)).toBe('failed')
-  })
-
-  it('starts over for a new url rather than inheriting the last one’s load or failure', () => {
-    const next = 'session-media://attachment/2/0'
-    expect(tileFace(next, url, null)).toBe('pending')
-    expect(tileFace(next, null, url)).toBe('pending')
-  })
-})
-
-describe('the failure a tile holds', () => {
-  const url = 'session-media://attachment/1/0'
-
-  it('holds it while the url is still handed over', () => {
-    expect(heldFailure(url, url)).toBe(url)
-  })
-
-  it('forgets it once the url is withheld, so the retry of the same url starts over hidden', () => {
-    expect(heldFailure(undefined, url)).toBeNull()
-    expect(heldFailure(null, url)).toBeNull()
-    expect(tileFace(url, null, heldFailure(undefined, url))).toBe('pending')
-  })
-})
-
-describe('the name of a button holding a tile', () => {
-  it('is its own name while the tile is not failed', () => {
-    expect(tileButtonName('photo.jpg', 'Unable to open file', false)).toBe('photo.jpg')
-    expect(tileButtonName(undefined, 'Unable to open file', false)).toBeUndefined()
-  })
-
-  it('says the tile failed, after the name where there is one', () => {
-    expect(tileButtonName('photo.jpg', 'Unable to open file', true)).toBe(
-      'photo.jpg, Unable to open file',
-    )
-    expect(tileButtonName(undefined, 'Unable to open file', true)).toBe('Unable to open file')
+  it('starts over for a new url rather than inheriting the last one’s load', () => {
+    expect(showsPicture('session-media://thumbnail/2/0', url)).toBe(false)
   })
 })

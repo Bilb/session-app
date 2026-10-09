@@ -163,7 +163,6 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
   const ui = useMemo(
     (): ConversationUi => ({
       conversationId,
-      autoDownload,
       requestAutoDownloadPrompt: () => {
         if (autoDownload === undefined) setPrompting(true)
       },

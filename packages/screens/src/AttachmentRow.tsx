@@ -10,7 +10,6 @@ import { ELEMENT } from '@session/test-ids'
 import { FileRow, type FileRowState, type FileRowThumbnail } from '@session/ui'
 
 import { fetchOf, type Fetch } from './attachmentFetch'
-import { mayResolve } from './autoDownload'
 import { useConversationUi } from './conversationUi'
 import { formatBytes } from './formatBytes'
 import { PENDING_COPY } from './pendingCopy'
@@ -78,25 +77,17 @@ export function AttachmentRow({
   const fetched = fetchOf(attachment, report)
   const state: FileRowState = fetched.state
 
-  // A picture fetches itself as it draws: the url *is* the request, and the same call reads the
-  // cache, joins a transfer already running, or starts one. Absent once expired, where asking
-  // would only fail.
+  // Absent once expired: there is nothing to show and nothing a tap could fetch.
   const thumbnail: FileRowThumbnail | undefined =
     state === 'unavailable' || !isViewable(attachment)
       ? undefined
       : {
-          // Left off where this is not ours to fetch: a url is the request, so handing one over
-          // would spend the data the person was about to be asked about. Left off after a failure
-          // too, so a retry hands it over afresh and the image tries again.
-          uri:
-            mayResolve(attachment, ui.autoDownload) && state !== 'failed'
-              ? requirePorts().media.urlFor(ref)
-              : undefined,
+          // The thumbnail libsession made, never the file. Until there is one, the placeholder.
+          uri: attachment.hasThumbnail ? requirePorts().media.thumbnailUrlFor(ref) : undefined,
           fetchesOnOpen: state === 'idle' || state === 'failed',
           // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
           // screen by the route a picture does. Null where the platform has no resolver.
           preview: attachment.hasPreview ? requirePorts().media.previewUrlFor(ref) : undefined,
-          failedLabel: tr('attachmentsErrorOpen'),
         }
 
   function start(): void {
@@ -136,7 +127,6 @@ export function AttachmentRow({
         name: ELEMENT.conversation.attachmentName,
         caption: ELEMENT.conversation.attachmentState,
         thumbnail: ELEMENT.conversation.attachmentImage,
-        thumbnailFailed: ELEMENT.conversation.attachmentFailed,
         // The id names what the control currently means rather than where it sits, which is the
         // only thing a test can ask about now that the two verbs share one button.
         action:

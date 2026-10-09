@@ -1,4 +1,4 @@
-import type { AutoDownload, ConversationId } from '@session/client'
+import type { ConversationId } from '@session/client'
 import { createContext, useContext } from 'react'
 
 import type { ViewChoices } from './viewChoices'
@@ -11,8 +11,6 @@ import type { ViewChoices } from './viewChoices'
  */
 export interface ConversationUi {
   conversationId: ConversationId
-  /** What this conversation fetches unasked. Undefined means nobody has been asked. */
-  autoDownload: AutoDownload | undefined
   /** Puts the question to the reader the first time anything is fetched, and never again. */
   requestAutoDownloadPrompt: () => void
   /** The shape the reader chose for each message's attachments, where they chose one. */
