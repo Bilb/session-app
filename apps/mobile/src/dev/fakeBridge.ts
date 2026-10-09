@@ -59,7 +59,7 @@ function pushedPhotos(): Map<string, string> {
  */
 export function createFakeBridge(): BridgeTransport {
   const photos = pushedPhotos()
-  const env: FakeDevEnv = {
+  const env: Required<FakeDevEnv> = {
     EXPO_PUBLIC_SESSION_FAKE_FIXTURE: process.env['EXPO_PUBLIC_SESSION_FAKE_FIXTURE'],
     EXPO_PUBLIC_SESSION_NO_ACCOUNT: process.env['EXPO_PUBLIC_SESSION_NO_ACCOUNT'],
     EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS: process.env['EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS'],

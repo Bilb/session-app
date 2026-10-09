@@ -11,9 +11,12 @@ import {
   type MediaSourceHarness,
   type MediaUrlVector,
 } from '@session/client-contract'
+import { PHOTO_THUMBHASHES } from '@session/client/fake'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { createNodeBridgeTransport, type NodeBridgeTransport } from '#src/index'
+import { createNodeBridgeTransport } from '#src/index'
+
+import { builtForTesting, openPeer } from './peer'
 
 /**
  * The shim's media rules and the addon's media source, against the vectors and the contract the
@@ -51,12 +54,16 @@ describeAddon('the shim media rules', () => {
 })
 
 const OFFLINE_ATTACHMENTS =
-  'needs an incoming attachment and a file server to fetch it from; the harness forges bodies only'
+  'needs a file server to fetch an incoming attachment from; the harness forges pointers only'
+
+const NEEDS_TEST_COMMANDS = 'needs the test commands: build:native:testing'
+
+const forges = builtForTesting()
 
 describeAddon('addon', () => {
   let root: string
   let sequence = 0
-  const open: NodeBridgeTransport[] = []
+  const open: { close: () => void }[] = []
 
   beforeAll(async () => {
     root = await mkdtemp(join(tmpdir(), 'session-media-'))
@@ -68,10 +75,38 @@ describeAddon('addon', () => {
   })
 
   const harness: MediaSourceHarness = {
-    withAttachments() {
-      return Promise.reject(
-        new Error('the offline addon harness cannot produce an incoming attachment'),
-      )
+    async withAttachments() {
+      sequence += 1
+      const recipient = await openPeer(join(root, `recipient-${String(sequence)}`))
+      const sender = await openPeer(join(root, `sender-${String(sequence)}`))
+      open.push(recipient.client, sender.client)
+
+      const hash = PHOTO_THUMBHASHES[0]
+      if (hash === undefined) throw new Error('the fake has no photo hashes')
+      const body = 'two pictures, one hashed'
+      const delivered = await recipient.ask({
+        type: 'deliverTestMessage',
+        senderSeedHex: sender.seed,
+        body,
+        timestamp: Date.now(),
+        attachments: [
+          { contentType: 'image/png', thumbhash: Buffer.from(hash, 'hex') },
+          { contentType: 'image/png' },
+        ],
+      })
+      if (delivered.error !== undefined) throw new Error(delivered.error)
+
+      const page = await recipient.client.getMessages(sender.sessionId, { limit: 10 })
+      const message = page.messages.find((m) => m.body === body)
+      if (!message) throw new Error('the forged message did not arrive')
+      return {
+        source: recipient.transport,
+        client: recipient.client,
+        conversationId: sender.sessionId,
+        picture: { messageId: message.id, index: 0 },
+        unhashed: { messageId: message.id, index: 1 },
+        settle: () => Promise.resolve(),
+      }
     },
 
     async empty() {
@@ -96,9 +131,13 @@ describeAddon('addon', () => {
       unsupported: {
         'answers a picture with its bytes and the type they were sent as': OFFLINE_ATTACHMENTS,
         'reports a picture as cached once its bytes have been served': OFFLINE_ATTACHMENTS,
-        'answers a preview as width * height RGBA pixels where the sender sent a hash':
-          OFFLINE_ATTACHMENTS,
-        'has no preview where the sender sent no hash': OFFLINE_ATTACHMENTS,
+        ...(forges
+          ? {}
+          : {
+              'answers a preview as width * height RGBA pixels where the sender sent a hash':
+                NEEDS_TEST_COMMANDS,
+              'has no preview where the sender sent no hash': NEEDS_TEST_COMMANDS,
+            }),
       },
     },
   )

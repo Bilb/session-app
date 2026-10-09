@@ -15,6 +15,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./config": "./src/config.ts",
+    "./brandMark": "./src/brandMark.ts",
     "./themes": "./src/themes.ts"
   },
   "scripts": {
