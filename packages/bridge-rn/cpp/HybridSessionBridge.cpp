@@ -256,6 +256,9 @@ void HybridSessionBridge::init(const SessionBridgeOptions& options) {
         || std::dynamic_pointer_cast<::session_bridge_rn::JsMediaSource>(
                 ::session_bridge_rn::media_source()))
         throw std::runtime_error{"media is being served from JavaScript; close() first"};
+    // React Native destroys a reloaded runtime, and the bridge it holds, before the next one runs.
+    if (::session_bridge_rn::media_served_by_another(nullptr))
+        throw std::runtime_error{"another bridge is serving media; close() it first"};
     // libsession publishes the state it already has while the Client is constructed, so a sink
     // installed afterwards has missed the first frames. Refused rather than allowed to lose them.
     if (!_sink)
@@ -311,8 +314,6 @@ void HybridSessionBridge::init(const SessionBridgeOptions& options) {
                 });
             });
     _media = std::make_shared<::session_bridge_rn::BridgeMediaSource>(*_bridge);
-    // Replaces any other bridge's: after a reload the old instance closes only from its
-    // destructor, which can run after this, and its close() clears only a source it still owns.
     ::session_bridge_rn::set_media_source(_media);
     _opened = true;
 }
