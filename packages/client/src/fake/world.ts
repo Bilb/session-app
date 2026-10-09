@@ -446,13 +446,15 @@ export class FakeAccount {
 
   /**
    * Empties a message in place, as libsession does: the row stays, so a gap can be drawn where it
-   * was, and its body and its attachments' rows go.
+   * was, and its body and its attachments' rows go. Its scope only widens: a delete "here" after
+   * one "everywhere" leaves it deleted everywhere.
    */
   deleteMessage(messageId: number, scope: Deletion): void {
     for (const [id, state] of this.conversations) {
-      if (!state.messages.some((m) => m.id === messageId)) continue
+      const message = state.messages.find((m) => m.id === messageId)
+      if (!message) continue
       this.updateMessage(id, messageId, {
-        deleted: scope,
+        deleted: message.deleted === 'everywhere' ? 'everywhere' : scope,
         body: '',
         attachments: [],
         galleryViewable: false,
