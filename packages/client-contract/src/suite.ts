@@ -988,6 +988,21 @@ export function runSessionClientContract(
       expect(await alice.getAttachmentCacheLimit()).toBe(250_000_000)
     })
 
+    it('clamps the thumbnail edge it keeps, and forgets it when unset', async () => {
+      const { alice } = await harness.friends()
+      const opened = await alice.getThumbnailEdge()
+
+      await alice.setThumbnailEdge(300)
+      expect(await alice.getThumbnailEdge()).toBe(300)
+      await alice.setThumbnailEdge(4096)
+      expect(await alice.getThumbnailEdge()).toBe(1024)
+      await alice.setThumbnailEdge(1)
+      expect(await alice.getThumbnailEdge()).toBe(64)
+
+      await alice.setThumbnailEdge(undefined)
+      expect(await alice.getThumbnailEdge()).toBe(opened)
+    })
+
     it('measures an attachment cache with nothing in it as empty', async () => {
       const { alice } = await harness.friends()
       expect(await alice.getAttachmentCacheSize()).toBe(0)

@@ -10,8 +10,8 @@ import type { TestFns } from './suite'
 
 export interface MediaSourceHarness {
   /**
-   * A source over a client holding two incoming pictures, neither fetched: one sent with a hash,
-   * in a type other than the JPEG every dev photograph is, and one sent without a hash.
+   * A source over a client holding two incoming pictures and a PDF, none fetched: one picture sent
+   * with a hash, in a type other than the JPEG every dev photograph is, and one sent without.
    */
   withAttachments(): Promise<{
     source: MediaSource
@@ -19,6 +19,7 @@ export interface MediaSourceHarness {
     conversationId: string
     picture: AttachmentRef
     unhashed: AttachmentRef
+    document: AttachmentRef
     /** Lets whatever is in flight finish: a manual clock, or a real transfer. */
     settle: () => Promise<void>
   }>
@@ -45,6 +46,50 @@ function unknownRefMessage({ messageId, index }: AttachmentRef): string {
 /** What every source says of an attachment that exists but was sent with no hash. */
 function noPreviewMessage({ messageId, index }: AttachmentRef): string {
   return `attachment ${String(index)} of message ${String(messageId)} has no preview`
+}
+
+/** What every source says of an attachment libsession holds no thumbnail of. */
+function noThumbnailMessage({ messageId, index }: AttachmentRef): string {
+  return `attachment ${String(index)} of message ${String(messageId)} has no thumbnail`
+}
+
+/** Start-of-frame markers, which carry a JPEG's size; C4, C8 and CC share the range and are not. */
+const START_OF_FRAME = new Set([
+  0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf,
+])
+
+/** A JPEG's size from its frame header, or null when these bytes are not a JPEG that has one. */
+function jpegSize(bytes: Uint8Array): { width: number; height: number } | null {
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return null
+  let at = 2
+  while (at + 9 < bytes.length) {
+    if (bytes[at] !== 0xff) return null
+    const marker = bytes[at + 1] ?? 0
+    const length = ((bytes[at + 2] ?? 0) << 8) | (bytes[at + 3] ?? 0)
+    if (START_OF_FRAME.has(marker)) {
+      const height = ((bytes[at + 5] ?? 0) << 8) | (bytes[at + 6] ?? 0)
+      const width = ((bytes[at + 7] ?? 0) << 8) | (bytes[at + 8] ?? 0)
+      return { width, height }
+    }
+    at += 2 + length
+  }
+  return null
+}
+
+/** libsession makes a thumbnail after the bytes are cached, on a worker of its own. */
+async function untilThumbnailed(
+  client: SessionClient,
+  conversationId: string,
+  ref: AttachmentRef,
+  settle: () => Promise<void>,
+): Promise<Attachment | undefined> {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    await settle()
+    const attachment = await attachmentOf(client, conversationId, ref)
+    if (attachment?.hasThumbnail === true) return attachment
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+  return attachmentOf(client, conversationId, ref)
 }
 
 function messageOf(error: unknown): string {
@@ -74,15 +119,18 @@ export function runMediaSourceContract(
   }
 
   describe('media source', () => {
-    it('refuses a ref that names nothing, for the file and for its preview', async () => {
+    it('refuses a ref that names nothing, for the file, its preview and its thumbnail', async () => {
       const { source } = await harness.empty()
       const media = await failure(() => source.fetchMedia(NOWHERE))
       const preview = await failure(() => source.fetchPreview(NOWHERE))
+      const thumbnail = await failure(() => source.fetchThumbnail(NOWHERE))
       expect(media instanceof Error).toBe(true)
       expect(preview instanceof Error).toBe(true)
+      expect(thumbnail instanceof Error).toBe(true)
       // One fact, however it is asked for: the preview says no more and no less than the file.
       expect(messageOf(media)).toBe(unknownRefMessage(NOWHERE))
       expect(messageOf(preview)).toBe(unknownRefMessage(NOWHERE))
+      expect(messageOf(thumbnail)).toBe(unknownRefMessage(NOWHERE))
     })
 
     it('answers a picture with its bytes and the type they were sent as', async () => {
@@ -120,6 +168,43 @@ export function runMediaSourceContract(
       // refusal.
       expect(messageOf(await failure(() => source.fetchPreview(unhashed)))).toBe(
         noPreviewMessage(unhashed),
+      )
+    })
+
+    it('answers a downloaded picture with a square JPEG thumbnail no larger than the edge', async () => {
+      const { source, client, conversationId, picture, settle } = await harness.withAttachments()
+      const fetched = source.fetchMedia(picture)
+      await settle()
+      await fetched
+      expect((await untilThumbnailed(client, conversationId, picture, settle))?.hasThumbnail).toBe(
+        true,
+      )
+
+      const size = jpegSize(await source.fetchThumbnail(picture))
+      const edge = await client.getThumbnailEdge()
+      expect(size?.width).toBeGreaterThan(0)
+      expect(size?.width).toBe(size?.height)
+      expect((size?.width ?? Infinity) <= edge).toBe(true)
+    })
+
+    it('has no thumbnail of a picture not yet downloaded', async () => {
+      const { source, client, conversationId, picture } = await harness.withAttachments()
+      expect((await attachmentOf(client, conversationId, picture))?.hasThumbnail).toBe(false)
+      expect(messageOf(await failure(() => source.fetchThumbnail(picture)))).toBe(
+        noThumbnailMessage(picture),
+      )
+    })
+
+    it('has no thumbnail of a downloaded PDF', async () => {
+      const { source, client, conversationId, document, settle } = await harness.withAttachments()
+      const downloaded = client.downloadAttachment(document.messageId, document.index)
+      await settle()
+      await downloaded
+      const attachment = await attachmentOf(client, conversationId, document)
+      expect(attachment?.availability).toBe('cached')
+      expect(attachment?.hasThumbnail).toBe(false)
+      expect(messageOf(await failure(() => source.fetchThumbnail(document)))).toBe(
+        noThumbnailMessage(document),
       )
     })
   })

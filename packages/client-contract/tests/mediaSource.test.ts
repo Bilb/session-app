@@ -1,9 +1,14 @@
 import { createFakeMediaSource, friendsWithAttachments, solo } from '@session/client/fake'
+import jpeg from 'jpeg-js'
 import { describe, expect, it } from 'vitest'
 
 import { runMediaSourceContract, type MediaSourceHarness } from '#src/index'
 
-const JPEG = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46])
+// A real one, small, since a thumbnail is checked by its frame header.
+const JPEG = jpeg.encode(
+  { width: 16, height: 16, data: new Uint8Array(16 * 16 * 4).fill(0x80) },
+  90,
+).data
 
 const readPhoto = (): Promise<Uint8Array> => Promise.resolve(JPEG)
 
@@ -20,6 +25,13 @@ const harness: MediaSourceHarness = {
     if (!album || !png?.hasPreview) throw new Error('fixture did not seed a hashed PNG')
     const unhashed = recipient.deliverFrom(sender, 'No hash', world.now(), [
       { ...png, index: 0, hasPreview: false },
+      {
+        ...png,
+        index: 1,
+        contentType: 'application/pdf',
+        filename: 'paper.pdf',
+        hasPreview: false,
+      },
     ])
     world.settle()
     return Promise.resolve({
@@ -28,6 +40,7 @@ const harness: MediaSourceHarness = {
       conversationId,
       picture: { messageId: album.id, index: png.index },
       unhashed: { messageId: unhashed.id, index: 0 },
+      document: { messageId: unhashed.id, index: 1 },
       settle: () => {
         world.settle()
         return Promise.resolve()
