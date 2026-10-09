@@ -52,9 +52,7 @@ static CGSize SourcePixelSize(CGImageSourceRef source) {
                     [gif[(id)kCGImagePropertyGIFCanvasPixelHeight] doubleValue]));
 }
 
-// TODO: this bounds the result, not the decode: ImageIO decodes a GIF or most PNGs whole first
-// (2.6 GB for a 16384x16384 GIF). Long term, libsession serves the loaders only a bounded JPEG or
-// another format ImageIO reduces while decoding, and export keeps the original file.
+// TODO: ImageIO decodes a GIF or most PNGs whole; serve a format it reduces while decoding.
 /// Decodes on the calling queue rather than at first draw, and no larger than the view asks for or
 /// the pixel budget allows: a thumbnail with the file's orientation applied, which is also what
 /// keeps a 12-megapixel photo from being held whole for a tile.
@@ -296,6 +294,12 @@ RCT_EXPORT_MODULE()
                     return;
                 }
                 const CGSize pixels = SourcePixelSize(imageSource);
+                if (::session_bridge_rn::exceeds_whole_decode_ceiling(
+                            *type, pixels.width, pixels.height)) {
+                    CFRelease(imageSource);
+                    Fail(done, imageURL, "a GIF or PNG too large to decode whole");
+                    return;
+                }
                 // `RCTAnimatedImage` decodes every frame at full canvas size, at draw, so only an
                 // animation within the budget is one; anything else is its first frame, bounded.
                 const bool animated = *type == "image/gif"

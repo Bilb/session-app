@@ -97,6 +97,14 @@ describe('the name an export is suggested under', () => {
     ).toBe('Session_2026-10-09-140305.pdf')
   })
 
+  it('replaces a name the extension its type calls for would take past the limit', () => {
+    const named = (filename: string) =>
+      suggestedExportName({ filename, contentType: 'audio/mpeg', sentAtMs, index: 0 })
+    const fits = 'x'.repeat(MAX_SUGGESTED_NAME_CHARS - '.mp3'.length)
+    expect(named(fits)).toBe(`${fits}.mp3`)
+    expect(named(`${fits}x`)).toBe('Session_2026-10-09-140305.mp3')
+  })
+
   it('adds the extension the type calls for to a bare name that has none', () => {
     const named = (filename: string, contentType: string) =>
       suggestedExportName({ filename, contentType, sentAtMs, index: 0 })

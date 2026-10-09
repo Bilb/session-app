@@ -1,4 +1,4 @@
-import { memo, type ReactNode } from 'react'
+import { memo, useState, type ReactNode } from 'react'
 import { isWeb, XStack, YStack } from 'tamagui'
 
 import type { WithFetchesOnOpen, WithMediaPreview, WithMediaUri } from '@session/basic-types'
@@ -7,7 +7,7 @@ import type { ElementId } from '@session/test-ids'
 import { ALBUM_SEAM, albumLayout, cellPlace, lastCell } from './albumLayout'
 import { AttachmentTile } from './AttachmentTile'
 import { FetchHint } from './FetchHint'
-import { tileRadius } from './attachmentTileStyle'
+import { tileButtonName, tileRadius } from './attachmentTileStyle'
 import { logical } from './logicalEdges'
 import { StateLayer } from './StateLayer'
 import type { WithFailedLabel, WithFailedTestID, WithTestID } from './with'
@@ -57,13 +57,16 @@ const AlbumTile = memo(function AlbumTile({
     overflowLabel?: string | undefined
     onOpen: (at: number) => void
   }) {
+  const [failed, setFailed] = useState(false)
   if (item === undefined) return null
   // A tile that would fetch is the whole set's, so it dims with the album, and at rest on touch
   // under the album's cloud. One that is here opens its own picture, so it answers on its own.
   const fetches = item.fetchesOnOpen === true
+  const name = tileButtonName(undefined, failedLabel, failed)
   return (
     <YStack
       role="button"
+      {...(name === undefined ? {} : { 'aria-label': name })}
       position="relative"
       cursor="pointer"
       onPress={() => {
@@ -79,6 +82,7 @@ const AlbumTile = memo(function AlbumTile({
         testID={item.testID}
         failedLabel={failedLabel}
         failedTestID={failedTestID}
+        onFailedChange={setFailed}
       />
       <StateLayer
         group={fetches ? 'album' : 'tile'}

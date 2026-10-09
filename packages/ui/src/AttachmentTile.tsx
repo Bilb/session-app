@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { YStack } from 'tamagui'
 
 import type { WithMediaPreview, WithMediaUri } from '@session/basic-types'
@@ -31,6 +31,11 @@ export type AttachmentTileProps = WithMediaUri &
      * basic-types.
      */
     overflowLabel?: string | undefined
+    /**
+     * Told whenever the tile starts or stops wearing its failed face, so a button holding it can
+     * say so in its own name: a named button's contents are not announced on their own.
+     */
+    onFailedChange?: ((failed: boolean) => void) | undefined
   }
 
 /**
@@ -95,6 +100,7 @@ export const AttachmentTile = memo(function AttachmentTile({
   testID,
   failedLabel,
   failedTestID,
+  onFailedChange,
 }: AttachmentTileProps) {
   const radius = tileRadius(side)
   /**
@@ -116,6 +122,9 @@ export const AttachmentTile = memo(function AttachmentTile({
   const failed = face === 'failed'
   const [failedPreview, setFailedPreview] = useState<string | null>(null)
   const placeholder = tilePlaceholder(preview, failedPreview)
+  useEffect(() => {
+    onFailedChange?.(failed)
+  }, [failed, onFailedChange])
 
   return (
     <YStack

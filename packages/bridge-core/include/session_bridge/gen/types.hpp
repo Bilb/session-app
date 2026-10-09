@@ -581,7 +581,8 @@ struct HistoryReplacedSessionEvent {
 ///
 /// libsession fetches a file once for every download and export of it, but reports to each request
 /// separately and ends each with its own outcome, so one attachment can be downloading and exporting
-/// at once. An export of a file over the cache limit runs a transfer of its own that nothing joins.
+/// at once. An export of a file over libsession's `requested_cache_max_size` runs a transfer of its
+/// own that nothing joins; the bridge leaves that size unset.
 enum class AttachmentTransfer {
     download,
     export_,
@@ -1217,6 +1218,16 @@ struct SetPrefCommand {
             key{std::move(key_)}, value{std::move(value_)} {}
 };
 
+/// A file a forged message says it carries: a pointer to nothing, so it never downloads.
+struct TestAttachment {
+    std::string content_type;
+    /// Unset is a sender who sent no ThumbHash, which is what leaves an attachment no preview.
+    std::optional<std::vector<std::byte>> thumbhash;
+
+    TestAttachment(std::string content_type_, std::optional<std::vector<std::byte>> thumbhash_) :
+            content_type{std::move(content_type_)}, thumbhash{std::move(thumbhash_)} {}
+};
+
 /// Builds, encrypts and delivers a v1 DM as if it had arrived from the swarm. The sender is
 /// whoever holds `senderSeedHex`, a 32-byte account seed; the recipient is always the client
 /// the command is sent to, since that is the only account it can decrypt for.
@@ -1226,9 +1237,10 @@ struct DeliverTestMessageCommand {
     std::string sender_seed_hex;
     std::string body;
     double timestamp;
+    std::optional<std::vector<::session_bridge::TestAttachment>> attachments;
 
-    DeliverTestMessageCommand(std::string sender_seed_hex_, std::string body_, double timestamp_) :
-            sender_seed_hex{std::move(sender_seed_hex_)}, body{std::move(body_)}, timestamp{std::move(timestamp_)} {}
+    DeliverTestMessageCommand(std::string sender_seed_hex_, std::string body_, double timestamp_, std::optional<std::vector<::session_bridge::TestAttachment>> attachments_) :
+            sender_seed_hex{std::move(sender_seed_hex_)}, body{std::move(body_)}, timestamp{std::move(timestamp_)}, attachments{std::move(attachments_)} {}
 };
 
 /// This client's own account seed, so the harness can forge messages from it to another.

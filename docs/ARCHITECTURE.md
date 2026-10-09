@@ -725,9 +725,11 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   through `codegenConfig.ios.modulesConformingToProtocol`, which Expo's `RCTAppDependencyProvider`
   hands to React Native. The answer, on Core's loop or the JS thread, is handed to a concurrent
   queue the loader owns, which runs `servable_image_type` and hands ImageIO the shim's bytes in
-  place, held by an `NSData` deallocator. A still is decoded there into a new bitmap, with
-  the file's orientation applied, no larger than the view needs under a `cover` fit and never past
-  one pixel-area budget, which the overshoot of a long thin picture would otherwise exceed. A GIF
+  place, held by an `NSData` deallocator. A still is decoded there into a new bitmap, with the
+  file's orientation applied; the result is no larger than the view needs under a `cover` fit and
+  never past one pixel-area budget, which the overshoot of a long thin picture would otherwise
+  exceed. That bounds the result, not the decode: ImageIO holds a GIF or PNG whole before reducing
+  it, so one whose header area is past a 100 MP ceiling is refused and draws as failed. A GIF
   of more than one frame whose canvas fits that budget is an `RCTAnimatedImage`, which keeps the
   shim's bytes and decodes each frame whole at draw; any other GIF is its first frame, decoded as a
   still. Nothing is written to disk: a URL loader is not behind `NSURLCache`. React Native caches
@@ -746,8 +748,9 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   included. Mobile empties its loaders' caches there: Fresco's bitmap and encoded memory caches on
   Android, the loader's cache of decoded stills and previews on iOS. Desktop empties nothing, because Blink caches the
   scheme's responses where main cannot reach them; it relies on the process ending instead.
-  Settings > Clear data relaunches, and onboarding's back, the clear offered when the database
-  will not open and the startup sweep all come before any media is drawn. A decode answered just
-  before a mobile reset can still land after it and cache the old picture again, which the same
-  ordering keeps latent. A discard that can follow drawn media in one process needs a per-database
+  Settings > Clear data ends the process, and so does the clear offered when the database will
+  not open if an account had been loaded, which is where a failed Settings > Clear data lands.
+  Onboarding's back, that clear at launch and the startup sweep all come before any media is
+  drawn. A decode answered just before a mobile reset can still land after it and cache the old
+  picture again, which the same ordering keeps latent. A discard that can follow drawn media in one process needs a per-database
   epoch in the URL instead.

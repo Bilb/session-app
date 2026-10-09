@@ -1129,7 +1129,17 @@ struct ClientBridge::Impl {
 
         SessionProtos::Content content;
         content.set_sigtimestamp(static_cast<uint64_t>(timestamp));
-        content.mutable_datamessage()->set_body(cmd.body);
+        auto* data = content.mutable_datamessage();
+        data->set_body(cmd.body);
+        if (cmd.attachments)
+            for (const auto& a : *cmd.attachments) {
+                auto* ptr = data->add_attachments();
+                // Required by the schema, and read only by clients that predate `url`.
+                ptr->set_id(0);
+                ptr->set_contenttype(a.content_type);
+                if (a.thumbhash)
+                    ptr->set_thumbhash(a.thumbhash->data(), a.thumbhash->size());
+            }
         auto plaintext = content.SerializeAsString();
 
         b33 recipient;

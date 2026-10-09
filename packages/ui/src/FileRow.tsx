@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { isWeb, XStack, YStack } from 'tamagui'
 
 import { SPACING } from '@session/theme-tokens'
@@ -31,7 +32,7 @@ import { ProgressRing } from './ProgressRing'
 import { StateLayer } from './StateLayer'
 import { Text } from './Text'
 import { useFontScale } from './useFontScale'
-import { tileRadius } from './attachmentTileStyle'
+import { tileButtonName, tileRadius } from './attachmentTileStyle'
 import type { WithFailedLabel } from './with'
 
 export interface FileRowTestIDs {
@@ -191,6 +192,7 @@ export function FileRow({
   const tone = fileRowTone(state)
   const nameInk = inkFor(tone.name, onAccent)
   const fontScale = useFontScale()
+  const [thumbnailFailed, setThumbnailFailed] = useState(false)
 
   const lead =
     thumbnail === undefined ? (
@@ -212,6 +214,7 @@ export function FileRow({
         testID={testIDs?.thumbnail}
         failedLabel={thumbnail.failedLabel}
         failedTestID={testIDs?.thumbnailFailed}
+        onFailedChange={setThumbnailFailed}
       />
     )
 
@@ -240,7 +243,11 @@ export function FileRow({
         ) : (
           <YStack
             role="button"
-            aria-label={filename}
+            aria-label={
+              thumbnail === undefined
+                ? filename
+                : tileButtonName(filename, thumbnail.failedLabel, thumbnailFailed)
+            }
             position="relative"
             group="tile"
             cursor="pointer"
