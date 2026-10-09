@@ -14,6 +14,7 @@
     "@playwright/test": "catalog:",
     "@session/eslint-config": "workspace:*",
     "@session/test-ids": "workspace:*",
+    "@session/theme-tokens": "workspace:*",
     "@session/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "eslint": "catalog:",
