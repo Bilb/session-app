@@ -14,7 +14,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import { runnerImport } from 'vite'
 
-import type { SESSION_BRAND } from '@session/ui/brandMark'
+import type { LAUNCH_MARK_HEIGHT, SESSION_BRAND } from '@session/ui/brandMark'
 
 import type { launchColors } from './src/main/launchColors'
 import { contentSecurityPolicy } from './src/main/security'
@@ -81,9 +81,6 @@ function contentSecurityPolicyPlugin() {
   }
 }
 
-/** The launch mark's height: `StartingScreen`'s, which takes over from it on a slow start. */
-const LAUNCH_MARK_SIZE = 64
-
 /**
  * The launch screen: the brand mark, centred on the default theme, written into the page so that
  * it draws with the page's first frame rather than once the app's script has loaded.
@@ -101,15 +98,20 @@ async function launchScreenHtml(): Promise<string> {
   const inline = { configFile: false as const, root: appDir, logLevel: 'silent' as const }
   const [colors, brand] = await Promise.all([
     runnerImport<{ launchColors: typeof launchColors }>('./src/main/launchColors.ts', inline),
-    runnerImport<{ SESSION_BRAND: typeof SESSION_BRAND }>('@session/ui/brandMark', inline),
+    runnerImport<{
+      SESSION_BRAND: typeof SESSION_BRAND
+      LAUNCH_MARK_HEIGHT: typeof LAUNCH_MARK_HEIGHT
+    }>('@session/ui/brandMark', inline),
   ])
   const { background, mark } = colors.module.launchColors()
   const { width, height, path } = brand.module.SESSION_BRAND
-  const markWidth = (LAUNCH_MARK_SIZE * width) / height
+  // `StartingScreen`'s height, which takes over from this on a slow start.
+  const markHeight = brand.module.LAUNCH_MARK_HEIGHT
+  const markWidth = (markHeight * width) / height
   return [
     `<div id="launch-screen" style="position: fixed; inset: 0; z-index: 1; display: flex;`,
     ` align-items: center; justify-content: center; background: ${background}">`,
-    `<svg width="${markWidth}" height="${LAUNCH_MARK_SIZE}" viewBox="0 0 ${width} ${height}"`,
+    `<svg width="${markWidth}" height="${markHeight}" viewBox="0 0 ${width} ${height}"`,
     ` fill="${mark}" aria-hidden="true"><path d="${path}" /></svg></div>`,
   ].join('')
 }
