@@ -211,11 +211,13 @@ export function exportHeader(facts: ExportFacts): string[] {
       ['Free', rough(storage.freeBytes)],
     ]),
     ...(facts.configSizes === null
-      ? [row('Config sizes', 'unknown (libsession does not report them yet)')]
-      : group(
-          'Config sizes',
-          facts.configSizes.map(({ name, bytes }) => [name, sizeBucket(name, bytes)] as const),
-        )),
+      ? [row('Config sizes', 'unknown (could not be read)')]
+      : facts.configSizes.length === 0
+        ? [row('Config sizes', 'none (no account yet)')]
+        : group(
+            'Config sizes',
+            facts.configSizes.map(({ name, bytes }) => [name, sizeBucket(name, bytes)] as const),
+          )),
     ...group('Logs', [
       ['Files', String(plan.included.length)],
       ['From', lineTime(facts.logs.firstLine) ?? 'unknown'],

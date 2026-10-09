@@ -88,6 +88,24 @@ describe('exportLogs', () => {
     expect(header).toMatch(/^\s+url\s+3$/m)
   })
 
+  it("asks the store for config sizes, and says unknown when it can't answer", async () => {
+    let header = ''
+    const deliver = (_name: string, parts: readonly ExportPart[]) => {
+      header = (parts[0] as { text: string }).text
+      return Promise.resolve(true)
+    }
+    withLogs(deliver)
+    await exportLogs({ configSizes: () => Promise.resolve([{ name: 'contacts', bytes: 300 }]) })
+    expect(header).toMatch(/^ {4}contacts +small$/m)
+
+    withLogs(deliver)
+    // A failed start: the bridge never opened the database, so the call rejects.
+    expect(await exportLogs({ configSizes: () => Promise.reject(new Error('no database')) })).toBe(
+      'exported',
+    )
+    expect(header).toContain('  Config sizes   unknown (could not be read)')
+  })
+
   it('says when the person cancelled, and when the platform failed', async () => {
     withLogs(() => Promise.resolve(false))
     expect(await exportLogs()).toBe('cancelled')

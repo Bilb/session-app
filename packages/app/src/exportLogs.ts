@@ -16,6 +16,12 @@ function reason(error: unknown): string {
 
 export type ExportOutcome = 'exported' | 'cancelled' | 'unavailable' | 'failed'
 
+/** Where the export can learn what only libsession knows; any of it may be missing. */
+export interface ExportSources {
+  /** Each config and its size, from the store. A failed start rejects, and the row says unknown. */
+  configSizes?: (() => Promise<readonly { name: string; bytes: number }[]>) | undefined
+}
+
 /**
  * Everything the app has logged, as one compressed file handed to the person.
  *
@@ -26,12 +32,6 @@ export type ExportOutcome = 'exported' | 'cancelled' | 'unavailable' | 'failed'
  * Never throws: a screen offering this is one where something already went wrong, and a second
  * failure should be an outcome it can show rather than another unhandled rejection.
  */
-/** Where the export can learn what only libsession knows; any of it may be missing. */
-export interface ExportSources {
-  /** Each config and its size, from the store. A failed start rejects, and the row says unknown. */
-  configSizes?: (() => Promise<readonly { name: string; bytes: number }[]>) | undefined
-}
-
 export async function exportLogs(sources: ExportSources = {}): Promise<ExportOutcome> {
   const { logs, diagnostics, build, network } = requirePorts()
   if (logs.deliver === null) return 'unavailable'

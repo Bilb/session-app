@@ -190,6 +190,15 @@ describe('exportHeader', () => {
     expect(header.some((line) => line.includes('Total'))).toBe(false)
   })
 
+  it('says why there are no config sizes: unread, or no account to measure', () => {
+    expect(exportHeader(facts({ configSizes: null }))).toContain(
+      '  Config sizes   unknown (could not be read)',
+    )
+    expect(exportHeader(facts({ configSizes: [] }))).toContain(
+      '  Config sizes   none (no account yet)',
+    )
+  })
+
   it('gives config sizes as buckets', () => {
     const header = exportHeader(
       facts({

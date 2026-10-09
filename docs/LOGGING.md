@@ -326,8 +326,9 @@ Session logs exported 2026-10-09 07:41:02Z (17:41 local, UTC+10:00)
   distro, display server, desktop and packaging.
 - **Free space, database, attachments:** measured off disk by each platform, in the network's own
   data directory.
-- **Config sizes:** need libsession's `Client::config_sizes()`; until the bridge carries it, the
-  header says `unknown`.
+- **Config sizes:** libsession's `Client::config_sizes()`, through the bridge. The header says
+  `unknown (could not be read)` where the call fails - a start that never opened the database - and
+  `none (no account yet)` before there is an account, which has no configs to measure.
 
 ## Compression
 
