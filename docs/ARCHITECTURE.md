@@ -667,8 +667,7 @@ Append one paragraph per decision. Undocumented decisions are what rot.
 - **2026-09-28 - Mobile resolves `session-media://` in a native image loader per platform.**
   `MediaPort.urlFor` stays synchronous and the URL stays the request, so the bytes never enter
   JavaScript: the loader recognises the scheme, asks the shim, and hands the platform a decoded
-  image. Android's is a Fresco producer sequence and iOS's an `RCTImageURLLoader`; each has its
-  own entry below when it lands.
+  image. Android's is a Fresco producer sequence and iOS's an `RCTImageURLLoader`.
 
   Rejected for Android: a non-exported `ContentProvider` and a `content://` URL, which is what the
   legacy client does and would serve Glide and Media3 too. Fresco reads a content URI
