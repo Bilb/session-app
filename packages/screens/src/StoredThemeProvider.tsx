@@ -15,11 +15,8 @@ import { useFirstPaintHeld } from './firstPaintHold'
  * behind the app.
  *
  * That is the launch screen: native on the phones, and on the desktop the one written into the
- * page, each held until this draws. All of them are in the default theme.
- *
- * TODO: an account on a light theme still opens dark. On the desktop the main process has the
- * bridge before the window and could read the theme for it, at the cost of sending its own
- * commands on a stream it otherwise only relays.
+ * page, each held until this draws. All of them are in the default theme, so an account on a light
+ * theme opens dark, as it does on the legacy desktop and iOS clients.
  */
 export function StoredThemeProvider(props: Omit<UIProviderProps, 'theme' | 'accent'>) {
   const hydrated = useHydrated()
