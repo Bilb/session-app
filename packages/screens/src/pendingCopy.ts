@@ -3,7 +3,7 @@
  *
  * Every other word a person reads comes from `@session/localization`, and
  * `tests/copy.contract.test.ts` enforces that across every screen. These do not: the attachment
- * cache section, the set's own count, the gallery/list toggle, the export verb and the
+ * cache section, the set's own count, the gallery/list switch, the export verb and the
  * auto-download prompt's choice need them and the Crowdin set has nothing that fits, so they ship
  * as English in every locale until the keys land.
  *

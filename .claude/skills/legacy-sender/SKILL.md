@@ -133,7 +133,7 @@ another language. The composer sits under the keyboard there too.
 - a picture with no preview hash shows the placeholder, and the album's cloud
 - a tap downloads the whole set; the picture then draws and the footer offers Export
 - the viewer opens on a downloaded picture
-- a PDF is a file row with its name; a video downloads to a still
+- a PDF or a video is a file row with its name, and a video does not open in the viewer
 
 Compare counts against the legacy side's own view of what it sent before calling anything a
 receiving bug: a wrong batch looks identical on every client.

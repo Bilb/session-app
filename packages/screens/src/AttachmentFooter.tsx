@@ -19,14 +19,14 @@ const ACTION_SIZE = 'sm'
 const FOOTER_HEIGHT = buttonHeight(ACTION_SIZE)
 
 /**
- * The row's own box, taller than the line on touch: a slop never reaches past its parent, so the
- * toggle's target is only as tall as the row that holds it. The overhang comes back as margin, so
- * the line still takes 30 and nothing below moves.
+ * The row's own box, taller than the line on touch: a slop never reaches past its parent, so a
+ * button's target is only as tall as the row that holds it. The overhang comes back as margin, so
+ * the line still takes FOOTER_HEIGHT and nothing below moves.
  */
 const ROW_HEIGHT = Math.max(FOOTER_HEIGHT, ROW_TOUCH_TARGET)
 const ROW_OVERHANG = (ROW_HEIGHT - FOOTER_HEIGHT) / 2
 
-/** The verb takes the row's full height on touch, like the toggle beside it. */
+/** Each button takes the row's full height on touch. */
 const ACTION_SLOP = ROW_OVERHANG
 
 /**

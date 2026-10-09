@@ -283,7 +283,10 @@ export interface ButtonProps {
   onPress?: () => void
   variant?: keyof typeof LABEL_TONE
   size?: 'xs' | 'sm' | 'md' | 'lg'
-  /** For an icon on its own: equal width and height, so the full radius is a circle. */
+  /**
+   * For an icon on its own: equal width and height, so a full radius draws a circle and `tonal`'s
+   * rounded rect a rounded square.
+   */
   circular?: boolean
   /** Takes an equal share of the row it is in. What a dialog's actions do. */
   fill?: boolean

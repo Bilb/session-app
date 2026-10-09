@@ -17,6 +17,8 @@ a time, via the `port-feature` skill.
   (desktop to a chosen path, mobile where the legacy clients put it), and the per-conversation
   auto-download setting. `sendMessage` still takes a body
   and nothing else, so `SendState::uploading` is a state nothing here can reach.
+- **A video is a file row.** It downloads and exports, but nothing draws a frame of it:
+  libsession has no still for one, and its `gallery_viewable` admits only images.
 - **The media viewer is one picture at a time.** It pages through a message's pictures and
   nothing more: no zoom, no video playback, no swipe to dismiss, no filmstrip.
 - **Returning to a conversation starts at the newest page.** A window is dropped when its screen
@@ -57,7 +59,7 @@ a time, via the `port-feature` skill.
   offers today. They should be generated locally from whatever can produce one rather than fetched
   as a second file from the server, and that needs an image decoder wherever it happens.
 - **Attachment strings have no catalogue key.** The cache section's heading and labels, a set's
-  count, the gallery/list toggle, Export with its two states, and the viewer's Previous have
+  count, the gallery/list switch, Export with its two states, and the viewer's Previous have
   nothing in the Crowdin set that fits, so they sit in `packages/screens/src/pendingCopy.ts` and
   ship as English in every locale - the count with English plurals. Each is named for the token it
   is destined for; `copy.contract.test.ts` pins the list so another cannot join quietly. They want
