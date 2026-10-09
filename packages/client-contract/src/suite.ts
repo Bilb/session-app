@@ -466,6 +466,7 @@ export function runSessionClientContract(
 
       // Removes the newest row, whose id is the one a reusing insert would take next.
       const { messages } = await alice.getMessages(bobId, { includeDeleted: true })
+      expect(messages.map((m) => m.body)).toContain('gone')
       const highest = Math.max(...messages.map((m) => m.id))
       await alice.deleteConversation(bobId)
       await settle()
