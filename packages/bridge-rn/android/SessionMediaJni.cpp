@@ -104,7 +104,7 @@ void answer_media(jobject load, ::session_bridge::Media media) {
     env->DeleteGlobalRef(load);
 }
 
-/// Decoded as it is, so only ever a JPEG: libsession makes nothing else, and caps its side at 1024.
+/// Only ever a JPEG: libsession makes nothing else, and caps its side at 1024.
 void answer_thumbnail(jobject load, ::session_bridge::Media media) {
     JNIEnv* env = attached_env();
     if (!env)

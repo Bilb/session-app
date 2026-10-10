@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 /**
  * A tile draws libsession's thumbnail and the viewer draws the file, read from the source because
  * nothing in the unit tier renders a tile. A tile handed the file would decode a full photograph
- * for a few hundred pixels, which is what the loaders no longer bound.
+ * for a few hundred pixels.
  */
 describe('which picture each place draws', () => {
   const read = (file: string) => readFileSync(join(import.meta.dirname, '../src', file), 'utf8')

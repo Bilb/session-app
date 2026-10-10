@@ -9,8 +9,8 @@ import { friends, type FakeSetup, type FixtureName } from './fixtures'
  * Dimensions are the sender's and are what the placeholder is laid out from, so they are set:
  * without them a transcript jumps as each one lands.
  *
- * `hasThumbhash` is set so the placeholder is drawn. The fake's thumbhash door answers these with a
- * flat colour: what it exercises is the route, not the decoder.
+ * `hasThumbhash` is set so the placeholder is drawn. The fake's thumbhash door answers these with
+ * the real hash of the dev photograph each is drawn as.
  */
 const SEEDED_PICTURES: Attachment[] = [
   {

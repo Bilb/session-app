@@ -16,7 +16,9 @@ export type WithEnvelopePayload = { envelopePayload: Uint8Array }
 export type WithSenderEd25519Seed = { senderEd25519Seed: Uint8Array }
 export type WithSentTimestampMs = { sentTimestampMs: number }
 
-/** Where the bytes are. Absent: not fetched yet. `null`: this platform has no resolver for them. */
+/**
+ * Where the bytes are. Absent: nothing to draw yet. `null`: this platform has no resolver for them.
+ */
 export type WithMediaUri = { uri?: string | null | undefined }
 /** The sender's placeholder, as a url resolved like `uri`, with the same absent/`null` meanings. */
 export type WithMediaThumbhash = { thumbhash?: string | null | undefined }
