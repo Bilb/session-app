@@ -109,6 +109,27 @@ const harness: ContractHarness = {
     })
   },
 
+  receivesAttachments() {
+    const { world, clients } = friends(['Alice', 'Bob'])
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const bob = world.account('Bob')
+    return Promise.resolve({
+      async receive(contentTypes: readonly string[]) {
+        const attachments = contentTypes.map((contentType, index): Attachment => ({
+          ...ARRIVING_IMAGE,
+          index,
+          contentType,
+        }))
+        const { id } = world.account('Alice').deliverFrom(bob, '', world.now(), attachments)
+        const page = await alice.getMessages(bob.sessionId, { limit: 1 })
+        const message = page.messages.find((m) => m.id === id)
+        if (!message) throw new Error('the delivered message is not the newest')
+        return message
+      },
+    })
+  },
+
   restart(client: SessionClient) {
     if (!(client instanceof FakeSessionClient)) {
       throw new Error('the fake harness can only restart a fake client')

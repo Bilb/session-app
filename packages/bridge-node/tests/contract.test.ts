@@ -144,6 +144,30 @@ describeAddon('addon', () => {
       )
     },
 
+    async receivesAttachments() {
+      const { alice, bob } = await pair()
+      await alice.ask({ type: 'approveTestContact', sessionId: bob.sessionId })
+      let sent = 0
+      return {
+        async receive(contentTypes: readonly string[]) {
+          sent += 1
+          const body = `attachments ${String(sent)}`
+          const delivered = await alice.ask({
+            type: 'deliverTestMessage',
+            senderSeedHex: bob.seed,
+            body,
+            timestamp: Date.now() + sent,
+            attachments: contentTypes.map((contentType) => ({ contentType })),
+          })
+          if (delivered.error !== undefined) throw new Error(delivered.error)
+          const page = await alice.client.getMessages(bob.sessionId, { limit: 5 })
+          const message = page.messages.find((m) => m.body === body)
+          if (!message) throw new Error('the forged message did not arrive')
+          return message
+        },
+      }
+    },
+
     async unopenable() {
       sequence += 1
       // A database libsession wrote, opened again under a different key: the real way one stops
