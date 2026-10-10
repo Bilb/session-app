@@ -150,9 +150,11 @@ export async function createBridge(): Promise<BridgeTransport & MediaSource> {
     // only way to exercise a transport we ship on a network that has it.
     ...(router === undefined ? {} : { router }),
     deviceType: 'desktop',
-    // The renderer's devicePixelRatio, as main can read it. The primary display's, since there is
-    // no window yet; a stored edge (setThumbnailEdge) wins over this at every open.
-    thumbnailEdgePx: Math.round(ALBUM_WIDTH * screen.getPrimaryDisplay().scaleFactor),
+    // The densest connected display's, since thumbnails are never remade: one made too small stays
+    // soft, one made too large only costs memory. A stored edge (setThumbnailEdge) wins over this.
+    thumbnailEdgePx: Math.round(
+      ALBUM_WIDTH * Math.max(...screen.getAllDisplays().map((display) => display.scaleFactor)),
+    ),
     // Off unless asked for: it is chatty at anything below warn, and the reason to turn it up is
     // always a specific failure. `warn,network=debug` is what a diagnosis looks like - a flat
     // `debug` buries it under quic and the router.

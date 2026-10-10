@@ -296,6 +296,41 @@ describeAddon('the N-API addon', () => {
     await expect(thumbhash).rejects.toThrow('the bridge is closed')
   })
 
+  it('opens at the thumbnail edge it is given, until a stored edge is set and unset', async () => {
+    // The addon reads this by a hand-typed key: misspelt, it compiles and opens at the default.
+    const transport = createNodeBridgeTransport({
+      dbPath: join(dir, 'thumbnail-edge.db'),
+      cacheDir: join(dir, 'cache'),
+      rawKey: new Uint8Array(32).fill(5),
+      deferAccount: true,
+      thumbnailEdgePx: 300,
+    })
+    let id = 0
+    const ask = (command: Request['command']) => {
+      const request = { id: ++id, command }
+      const answered = new Promise<Frame>((resolve) => {
+        transport.setSink((frame) => {
+          if (frame.type === 'response' && frame.response.id === request.id) resolve(frame)
+        })
+      })
+      transport.send(request)
+      return answered
+    }
+    const edge = async () => {
+      const frame = await ask({ type: 'getThumbnailEdge' })
+      if (frame.type !== 'response' || frame.response.result?.type !== 'edge')
+        throw new Error(`no edge: ${frame.type === 'response' ? String(frame.response.error) : ''}`)
+      return frame.response.result.edgePx
+    }
+
+    expect(await edge()).toBe(300)
+    await ask({ type: 'setThumbnailEdge', edgePx: 500 })
+    expect(await edge()).toBe(500)
+    await ask({ type: 'setThumbnailEdge' })
+    expect(await edge()).toBe(300)
+    transport.close()
+  })
+
   it('lets the process exit with a media fetch pending at close', async () => {
     // A thread-safe function still referenced keeps the event loop alive, which in a worker
     // means a test run that never ends; a child process makes that a timeout here instead.
