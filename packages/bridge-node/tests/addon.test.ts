@@ -296,39 +296,62 @@ describeAddon('the N-API addon', () => {
     await expect(thumbhash).rejects.toThrow('the bridge is closed')
   })
 
-  it('opens at the thumbnail edge it is given, until a stored edge is set and unset', async () => {
-    // The addon reads this by a hand-typed key: misspelt, it compiles and opens at the default.
-    const transport = createNodeBridgeTransport({
-      dbPath: join(dir, 'thumbnail-edge.db'),
-      cacheDir: join(dir, 'cache'),
-      rawKey: new Uint8Array(32).fill(5),
-      deferAccount: true,
-      thumbnailEdgePx: 300,
-    })
-    let id = 0
-    const ask = (command: Request['command']) => {
-      const request = { id: ++id, command }
-      const answered = new Promise<Frame>((resolve) => {
-        transport.setSink((frame) => {
-          if (frame.type === 'response' && frame.response.id === request.id) resolve(frame)
-        })
+  it('opens at the thumbnail edge it is given, unless an edge is stored, across reopens', async () => {
+    const open = (thumbnailEdgePx: number) => {
+      // The addon reads this by a hand-typed key: misspelt, it compiles and opens at the default.
+      const transport = createNodeBridgeTransport({
+        dbPath: join(dir, 'thumbnail-edge.db'),
+        cacheDir: join(dir, 'cache'),
+        rawKey: new Uint8Array(32).fill(5),
+        deferAccount: true,
+        thumbnailEdgePx,
       })
-      transport.send(request)
-      return answered
-    }
-    const edge = async () => {
-      const frame = await ask({ type: 'getThumbnailEdge' })
-      if (frame.type !== 'response' || frame.response.result?.type !== 'edge')
-        throw new Error(`no edge: ${frame.type === 'response' ? String(frame.response.error) : ''}`)
-      return frame.response.result.edgePx
+      let id = 0
+      const ask = (command: Request['command']) => {
+        const request = { id: ++id, command }
+        const answered = new Promise<Frame>((resolve) => {
+          transport.setSink((frame) => {
+            if (frame.type === 'response' && frame.response.id === request.id) resolve(frame)
+          })
+        })
+        transport.send(request)
+        return answered
+      }
+      return {
+        edge: async () => {
+          const frame = await ask({ type: 'getThumbnailEdge' })
+          if (frame.type !== 'response' || frame.response.result?.type !== 'edge')
+            throw new Error(
+              `no edge: ${frame.type === 'response' ? String(frame.response.error) : ''}`,
+            )
+          return frame.response.result.edgePx
+        },
+        setEdge: (edgePx: number) => ask({ type: 'setThumbnailEdge', edgePx }),
+        unsetEdge: () => ask({ type: 'setThumbnailEdge' }),
+        close: () => transport.close(),
+      }
     }
 
-    expect(await edge()).toBe(300)
-    await ask({ type: 'setThumbnailEdge', edgePx: 500 })
-    expect(await edge()).toBe(500)
-    await ask({ type: 'setThumbnailEdge' })
-    expect(await edge()).toBe(300)
-    transport.close()
+    const first = open(300)
+    expect(await first.edge()).toBe(300)
+    await first.setEdge(500)
+    expect(await first.edge()).toBe(500)
+    first.close()
+
+    // The app passes its display's edge at every launch; that must not discard the user's choice.
+    const second = open(300)
+    expect(await second.edge()).toBe(500)
+    await second.unsetEdge()
+    expect(await second.edge()).toBe(300)
+    second.close()
+
+    const third = open(300)
+    expect(await third.edge()).toBe(300)
+    third.close()
+
+    const fourth = open(400)
+    expect(await fourth.edge()).toBe(400)
+    fourth.close()
   })
 
   it('lets the process exit with a media fetch pending at close', async () => {
