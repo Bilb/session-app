@@ -43,7 +43,7 @@ inline bool exceeds_whole_decode_ceiling(std::string_view type, double width, do
 
 /// The longest edge to decode a `width` by `height` thumbnail at, to fill a `view_width` by
 /// `view_height` pixel box under a `cover` fit, or zero to decode it whole. Reduced only when the
-/// view needs half of it or less, as Android's power-of-two `inSampleSize` is.
+/// view needs half of it or less: a tile wants about all of it, and decodes whole.
 inline double thumbnail_decode_edge(
         double width, double height, double view_width, double view_height) {
     if (!(width > 0 && height > 0 && view_width > 0 && view_height > 0))
