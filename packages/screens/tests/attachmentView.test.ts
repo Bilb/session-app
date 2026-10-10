@@ -1,3 +1,4 @@
+import { isDisplayableImage } from '@session/basic-types'
 import type { Attachment, Message } from '@session/client'
 import { describe, expect, it } from 'vitest'
 
@@ -17,11 +18,11 @@ function attachment(index: number, contentType?: string): Attachment {
   }
 }
 
-/** libsession's rule by default: has attachments, and every one is an `image/`. */
+/** libsession's rule by default: has attachments, and every one is a displayable image type. */
 function message(
   attachments: Attachment[],
   galleryViewable = attachments.length > 0 &&
-    attachments.every((a) => a.contentType?.startsWith('image/') === true),
+    attachments.every((a) => isDisplayableImage(a.contentType)),
 ): Message {
   return { attachments, galleryViewable } as unknown as Message
 }

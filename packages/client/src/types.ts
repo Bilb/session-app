@@ -203,7 +203,7 @@ export type AttachmentThumbhash = PixelSize & { rgba: Uint8Array }
  *
  * Beside the transport rather than on it, because the frame stream carries state and its ordering
  * is what makes a display bindable: a multi-megabyte file on it would stall every state frame
- * behind a payload nothing can contradict. Progress still arrives as events.
+ * behind a payload nothing can contradict.
  */
 export interface MediaSource {
   /** From libsession's cache only, never a download: refused while the file is not cached. */

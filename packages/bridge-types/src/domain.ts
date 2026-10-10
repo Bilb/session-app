@@ -256,7 +256,8 @@ export interface Message {
   attachments: Attachment[]
   /**
    * libsession's answer to whether this message's attachments could be shown as pictures rather
-   * than listed as files: "has attachments, and every one is `image/*`". It does not say whether
+   * than listed as files: "has attachments, and every one is a type libsession displays as an
+   * image" (JPEG, PNG, WebP, GIF, AVIF, `image/pjpeg`, case-insensitive). It does not say whether
    * this client can draw them, which is the screens' decision to make.
    */
   galleryViewable: boolean

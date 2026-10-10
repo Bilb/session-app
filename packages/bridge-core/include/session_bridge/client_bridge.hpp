@@ -204,8 +204,8 @@ class ClientBridge {
     /// `cb` runs on whichever thread libsession finished on, which is Core's loop. It must only
     /// hand the bytes on, for the same reason `Sink` must only enqueue.
     ///
-    /// A native image loader calling this or `fetch_thumbhash` is invoked by the OS with no bridge
-    /// in hand, and must obtain one in a way that cannot race `close()`.
+    /// A native image loader calling this, `fetch_thumbhash` or `fetch_thumbnail` is invoked by the
+    /// OS with no bridge in hand, and must obtain one in a way that cannot race `close()`.
     void fetch_media(double message_id, double index, MediaHandler cb);
 
     /// A blurred stand-in for an attachment, decoded from the ThumbHash its sender supplied.

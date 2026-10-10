@@ -382,7 +382,8 @@ struct Message {
     std::optional<::session_bridge::SendState> sync_state;
     std::vector<::session_bridge::Attachment> attachments;
     /// libsession's answer to whether this message's attachments could be shown as pictures rather
-    /// than listed as files: "has attachments, and every one is `image/*`". It does not say whether
+    /// than listed as files: "has attachments, and every one is a type libsession displays as an
+    /// image" (JPEG, PNG, WebP, GIF, AVIF, `image/pjpeg`, case-insensitive). It does not say whether
     /// this client can draw them, which is the screens' decision to make.
     bool gallery_viewable;
     std::optional<::session_bridge::Reply> reply_to;
@@ -1255,7 +1256,7 @@ struct SetPrefCommand {
 /// A file a forged message says it carries: a pointer to nothing, so it never downloads.
 struct TestAttachment {
     std::string content_type;
-    /// Unset is a sender who sent no ThumbHash, which is what leaves an attachment no thumbhash.
+    /// Unset is a sender who sent no ThumbHash, which is what leaves `hasThumbhash` false.
     std::optional<std::vector<std::byte>> thumbhash;
 
     TestAttachment(std::string content_type_, std::optional<std::vector<std::byte>> thumbhash_) :

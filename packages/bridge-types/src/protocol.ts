@@ -30,7 +30,7 @@ type SecretBytes = Uint8Array
 /** A file a forged message says it carries: a pointer to nothing, so it never downloads. */
 export interface TestAttachment {
   contentType: string
-  /** Unset is a sender who sent no ThumbHash, which is what leaves an attachment no thumbhash. */
+  /** Unset is a sender who sent no ThumbHash, which is what leaves `hasThumbhash` false. */
   thumbhash?: Uint8Array
 }
 
