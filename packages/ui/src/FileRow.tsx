@@ -56,13 +56,18 @@ export type FileRowProps = WithFilename &
      */
     thumbnail?: FileRowThumbnail | undefined
     /** Opens what the lead square shows. Absent where there is nothing to open. A press on the
-     * rest of the row is `onAction`'s. */
+     * rest of the row is `onPress`'s. */
     onOpen?: (() => void) | undefined
+    /** A press on the row outside the lead square and the control. Absent where it does nothing. */
+    onPress?: (() => void) | undefined
+    /** Already worded, for what a screen reader says a press on the row does. */
+    pressLabel?: string | undefined
     state: FileRowState
     /** How far along, 0 to 1. Absent until the server has said how big the file is. */
     progress?: number | undefined
     /** Already worded, for what a screen reader announces the trailing control as. */
     actionLabel?: string | undefined
+    /** The trailing control's press, which need not be the row's. */
     onAction?: (() => void) | undefined
     testIDs?: FileRowTestIDs | undefined
     /**
@@ -83,6 +88,15 @@ const CAPTION_BIDI = isWeb ? ({ unicodeBidi: 'plaintext' } as const) : undefined
  */
 const RING_SIDE = 28
 const RING_THICKNESS = 3
+
+/**
+ * Says what a press on the row does, after its name. ARIA's only hint is `aria-description`, which
+ * react-native does not read; tamagui hands each its own.
+ */
+function rowHint(label: string | undefined) {
+  if (label === undefined) return {}
+  return isWeb ? { 'aria-description': label } : { accessibilityHint: label }
+}
 
 /**
  * The one control, always in the same place and always the same size.
@@ -145,7 +159,7 @@ function Trailing({
       {...(actionLabel === undefined ? {} : { 'aria-label': actionLabel })}
       testID={testID}
       onPress={(event) => {
-        // The row answers a press with the same action; this one is already it.
+        // The control's verb is its own, and the row's press may be another.
         event.stopPropagation()
         onAction?.()
       }}
@@ -174,6 +188,8 @@ export function FileRow({
   contentType,
   thumbnail,
   onOpen,
+  onPress,
+  pressLabel,
   caption,
   state,
   progress,
@@ -218,11 +234,18 @@ export function FileRow({
       paddingVertical="$xs"
       position="relative"
       testID={testIDs?.row}
-      {...(onAction === undefined
+      {...(onPress === undefined
         ? {}
-        : { group: 'row' as const, cursor: 'pointer', onPress: onAction })}
+        : {
+            group: 'row' as const,
+            cursor: 'pointer',
+            role: 'button' as const,
+            'aria-label': filename,
+            ...rowHint(pressLabel),
+            onPress,
+          })}
     >
-      {onAction === undefined ? null : (
+      {onPress === undefined ? null : (
         <StateLayer group="row" tone="ink" borderRadius="$sm" bleed={SPACING.xs} />
       )}
       <YStack

@@ -21,6 +21,8 @@ export interface ISessionApp {
   /** Whether the control says it is disabled, which is what a reader announces. */
   isDisabled(id: ElementId): Promise<boolean>
   tap(id: ElementId): Promise<void>
+  /** Taps the `at`th carrying this id, from 0 in the order they appear: one row of a list. */
+  tapAt(id: ElementId, at: number): Promise<void>
   type(id: ElementId, text: string): Promise<void>
   readText(id: ElementId): Promise<string>
   /** Every occurrence, in the order they appear - a transcript, a conversation list. */

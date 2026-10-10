@@ -10,6 +10,7 @@ import { ELEMENT } from '@session/test-ids'
 import { FileRow, type FileRowState, type FileRowThumbnail } from '@session/ui'
 
 import { fetchOf, type Fetch } from './attachmentFetch'
+import { controlVerb, rowVerb, type AttachmentVerb } from './attachmentPress'
 import { useConversationUi } from './conversationUi'
 import { formatBytes } from './formatBytes'
 import { PENDING_COPY } from './pendingCopy'
@@ -38,15 +39,18 @@ function caption(
   return attachment.sizeBytes === undefined ? '' : formatBytes(attachment.sizeBytes)
 }
 
-/**
- * What a screen reader announces the one control as. The glyph is what everyone else reads.
- *
- * Two verbs, and the state settles which with no further rule: Download moves bytes from the
- * network into the cache, Export writes a file we already hold out to a folder somebody chose.
- */
-function actionLabel(state: FileRowState): string {
-  if (state === 'failed') return tr('retry')
-  return state === 'ready' ? PENDING_COPY.export : tr('download')
+/** What a screen reader announces a press as. The glyph is what everyone else reads. */
+function verbLabel(verb: AttachmentVerb): string {
+  switch (verb) {
+    case 'download':
+      return tr('download')
+    case 'retry':
+      return tr('retry')
+    case 'export':
+      return PENDING_COPY.export
+    case 'open':
+      return tr('open')
+  }
 }
 
 /**
@@ -99,22 +103,28 @@ export function AttachmentRow({
     void actions.downloadAttachment(ref).catch(() => undefined)
   }
 
-  const act =
-    state === 'ready' ? () => void exportOne(message, attachment.index, actions, feedback) : start
-  const offersAction = state !== 'unavailable' && state !== 'fetching'
+  const perform: Record<AttachmentVerb, () => void> = {
+    download: start,
+    retry: start,
+    export: () => void exportOne(message, attachment.index, actions, feedback),
+    open: () => {
+      ui.openViewer(message.id, attachment.index)
+    },
+  }
+  const control = controlVerb(state)
+  const press = rowVerb(state, opens)
 
   return (
     <FileRow
       filename={attachment.filename ?? tr('attachment')}
       contentType={attachment.contentType}
       thumbnail={thumbnail}
-      // Opens only a picture that is here, as the legacy clients do; otherwise the tap fetches it.
+      // Held while fetching, when it does nothing, so the tile is not remounted as the state moves.
       onOpen={
         thumbnail === undefined || !opens
           ? undefined
           : () => {
-              if (state === 'ready') ui.openViewer(message.id, attachment.index)
-              else if (state === 'idle' || state === 'failed') start()
+              if (press !== null) perform[press]()
             }
       }
       caption={caption(attachment, state, fetched, exporting?.state)}
@@ -122,8 +132,10 @@ export function AttachmentRow({
       // Absent while the server has not said how big the file is, which is what the first report
       // of every transfer means: an empty ring rather than a full one.
       progress={fetched.totalBytes > 0 ? fetched.doneBytes / fetched.totalBytes : undefined}
-      actionLabel={offersAction ? actionLabel(state) : undefined}
-      onAction={offersAction ? act : undefined}
+      onPress={press === null ? undefined : perform[press]}
+      pressLabel={press === null ? undefined : verbLabel(press)}
+      actionLabel={control === null ? undefined : verbLabel(control)}
+      onAction={control === null ? undefined : perform[control]}
       onAccent={onAccent}
       testIDs={{
         row: ELEMENT.conversation.attachment,
@@ -133,7 +145,7 @@ export function AttachmentRow({
         // The id names what the control currently means rather than where it sits, which is the
         // only thing a test can ask about now that the two verbs share one button.
         action:
-          state === 'ready'
+          control === 'export'
             ? ELEMENT.conversation.attachmentExport
             : ELEMENT.conversation.attachmentDownload,
       }}

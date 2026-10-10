@@ -138,6 +138,10 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser,
     await this.locator(id).first().click()
   }
 
+  async tapAt(id: ElementId, at: number): Promise<void> {
+    await this.locator(id).nth(at).click()
+  }
+
   async type(id: ElementId, text: string): Promise<void> {
     await this.locator(id).first().fill(text)
   }

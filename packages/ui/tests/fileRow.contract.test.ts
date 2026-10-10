@@ -9,6 +9,9 @@ import { describe, expect, it } from 'vitest'
  */
 describe('a file row', () => {
   const row = readFileSync(join(import.meta.dirname, '../src/FileRow.tsx'), 'utf8')
+  // Everything the row carries when it takes a press is in the one spread `onPress` switches on.
+  const rowPress =
+    /\{\.\.\.\(onPress === undefined\s*\?\s*\{\}\s*:\s*\{([\s\S]*?)\}\)\}/.exec(row)?.[1] ?? ''
 
   it('holds the lead at the height fileRowHeight counts, with the padding it counts', () => {
     // `getItemLayout` places rows by that constant, so a row that measured differently would
@@ -43,6 +46,25 @@ describe('a file row', () => {
     expect(row).toContain("{...inkFor('secondary', onAccent)}")
     expect(row).toContain('{...inkFor(fileRowTone(state).control, onAccent)}')
     expect(row).toContain("color={onAccent ? '$onAccent' : '$primaryColor'}")
+  })
+
+  it('takes a press on the row apart from a press on its control', () => {
+    // A picture's row opens it while its control exports it, so the two cannot share a handler.
+    expect(rowPress).toContain('onPress,')
+    expect(rowPress).not.toContain('onAction')
+    expect(row).toMatch(/event\.stopPropagation\(\)\s*onAction\?\.\(\)/)
+    expect(row).toMatch(/event\.stopPropagation\(\)\s*onOpen\(\)/)
+  })
+
+  it('names the row by the file and hints what its press does', () => {
+    expect(rowPress).toContain("role: 'button' as const")
+    expect(rowPress).toContain("'aria-label': filename")
+    expect(rowPress).toContain('...rowHint(pressLabel)')
+    expect(row).toContain("isWeb ? { 'aria-description': label } : { accessibilityHint: label }")
+  })
+
+  it('draws the row’s hover only where the row takes a press', () => {
+    expect(row).toMatch(/\{onPress === undefined \? null : \(\s*<StateLayer group="row"/)
   })
 
   it('leaves the lead square on its own fill alone', () => {
