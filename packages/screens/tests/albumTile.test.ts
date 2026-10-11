@@ -45,6 +45,13 @@ describe('an album', () => {
     expect(album).toContain("fetchLabel={setState === 'failed' ? tr('retry') : tr('download')}")
   })
 
+  it('holds a tile still while a transfer reports, the open callback included', () => {
+    // A new callback per report would re-render every memoised tile with it.
+    expect(album).toContain('onOpen={openAt}')
+    expect(album).toMatch(/const openAt = useCallback\([\s\S]*?\[viewable\],\s*\)/)
+    expect(album).toContain('latestOnOpen.current = onOpen')
+  })
+
   it('keeps the test id on the picture, for load probes', () => {
     expect(album).toContain('testID: ELEMENT.conversation.attachmentImage')
   })

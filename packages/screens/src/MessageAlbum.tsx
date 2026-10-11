@@ -1,6 +1,6 @@
 import { requirePorts } from '@session/app'
 import { ALBUM_WIDTH } from '@session/basic-types'
-import { useMemo, type ReactNode } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import type { Attachment, Message } from '@session/client'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
@@ -71,16 +71,27 @@ export function MessageAlbum({
     })
   }, [viewable, message.id, statesKey, locale])
 
+  // The caller's `onOpen` is new on every transfer report; read through a ref, the album's memoised
+  // tiles get one callback until the message changes.
+  const latestOnOpen = useRef(onOpen)
+  useLayoutEffect(() => {
+    latestOnOpen.current = onOpen
+  })
+  const openAt = useCallback(
+    (at: number) => {
+      const attachment = viewable[at]
+      if (attachment !== undefined) latestOnOpen.current(attachment.index)
+    },
+    [viewable],
+  )
+
   return (
     <AttachmentAlbum
       items={items}
       width={ALBUM_WIDTH}
       overflowLabel={(count) => tr('andMore', { count })}
       overflowName={PENDING_COPY.attachmentNameAndMore}
-      onOpen={(at) => {
-        const attachment = viewable[at]
-        if (attachment !== undefined) onOpen(attachment.index)
-      }}
+      onOpen={openAt}
       control={control}
       fetchLabel={setState === 'failed' ? tr('retry') : tr('download')}
       fetchTestID={ELEMENT.conversation.attachmentFetch}
