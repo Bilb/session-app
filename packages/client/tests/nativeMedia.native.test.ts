@@ -23,14 +23,18 @@ const bridges = vi.hoisted(
   () => [] as { serveMediaFrom: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn> }[],
 )
 
-const older = vi.hoisted(() => ({ value: false }))
+/** A dev client's native side: current, from before thumbnails, or from before serving media. */
+type NativeEra = 'current' | 'noThumbnails' | 'noServing'
+
+const native = vi.hoisted<{ era: NativeEra }>(() => ({ era: 'current' }))
 
 vi.mock('@session/bridge-rn', () => ({
   createSessionBridge: () => {
-    if (older.value) return { close: vi.fn() }
+    if (native.era === 'noServing') return { close: vi.fn() }
     const bridge = { serveMediaFrom: vi.fn(), close: vi.fn() }
+    if (native.era === 'noThumbnails') return bridge
     bridges.push(bridge)
-    return bridge
+    return { ...bridge, fetchThumbnail: vi.fn() }
   },
 }))
 
@@ -91,19 +95,22 @@ describe('serving the native loaders from JavaScript', () => {
     expect(bridges.at(-1)?.close).not.toHaveBeenCalled()
   })
 
-  it('says to rebuild the dev client when its native side predates serveMediaFrom', () => {
+  it.each([
+    ['serving media', 'noServing'],
+    ['thumbnails', 'noThumbnails'],
+  ] as const)('says to rebuild the dev client when its native side predates %s', (_, era) => {
     const source: MediaSource = {
       fetchMedia: () => Promise.reject(new Error('unused')),
       fetchThumbhash: () => Promise.reject(new Error('unused')),
       fetchThumbnail: () => Promise.reject(new Error('unused')),
     }
-    older.value = true
+    native.era = era
     try {
       expect(() => {
         serveNativeMediaFrom(source)
       }).toThrow('pnpm android')
     } finally {
-      older.value = false
+      native.era = 'current'
     }
   })
 })
