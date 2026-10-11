@@ -38,6 +38,7 @@ export function MessageAttachments({ message }: { message: Message }) {
           message={message}
           onAccent={message.outgoing}
           fetchFor={fetchFor}
+          setState={set.state}
           // Opens only a picture that is here, as the legacy clients do. A tile is the whole set's,
           // so tapping one that is not fetches every attachment the album stands for.
           onOpen={(index) => {

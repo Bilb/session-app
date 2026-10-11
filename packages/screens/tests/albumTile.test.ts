@@ -41,6 +41,10 @@ describe('an album', () => {
     expect(album).toMatch(/\}, \[viewable, message\.id, statesKey, locale\]\)/)
   })
 
+  it('says the set’s verb on its cloud, Retry where the footer says Retry', () => {
+    expect(album).toContain("fetchLabel={setState === 'failed' ? tr('retry') : tr('download')}")
+  })
+
   it('keeps the test id on the picture, for load probes', () => {
     expect(album).toContain('testID: ELEMENT.conversation.attachmentImage')
   })

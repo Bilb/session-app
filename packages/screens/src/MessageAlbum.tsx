@@ -7,6 +7,7 @@ import { ELEMENT } from '@session/test-ids'
 import { AttachmentAlbum, type AlbumItem } from '@session/ui'
 
 import type { Fetch, FetchState } from './attachmentFetch'
+import type { AttachmentSetState } from './attachmentSet'
 import { rowVerb, verbLabel } from './attachmentPress'
 import { albumTileName } from './albumTileName'
 import { PENDING_COPY } from './pendingCopy'
@@ -24,6 +25,7 @@ export function MessageAlbum({
   onOpen,
   control,
   fetchFor,
+  setState,
   onAccent,
 }: {
   message: Message
@@ -32,6 +34,8 @@ export function MessageAlbum({
   /** The set's own control, drawn over the box the layout names. */
   control?: ReactNode | undefined
   fetchFor: (attachment: Attachment) => Fetch
+  /** The whole set's state, whose verb the cloud says, as the footer does. */
+  setState: AttachmentSetState
   /** Drawn on a bubble you sent. */
   onAccent: boolean
 }) {
@@ -78,7 +82,7 @@ export function MessageAlbum({
         if (attachment !== undefined) onOpen(attachment.index)
       }}
       control={control}
-      fetchLabel={tr('download')}
+      fetchLabel={setState === 'failed' ? tr('retry') : tr('download')}
       fetchTestID={ELEMENT.conversation.attachmentFetch}
       tileTestID={ELEMENT.conversation.attachmentTile}
       onAccent={onAccent}
