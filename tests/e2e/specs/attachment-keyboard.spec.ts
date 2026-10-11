@@ -121,3 +121,32 @@ test('names each album tile and says what a press on it does @desktop @medium-ri
     await app.close()
   }
 })
+
+test('reaches a set’s footer with Tab, switches its view with Enter and downloads with Space @desktop @medium-risk', async () => {
+  const app = await DesktopApp.launch('alice')
+
+  try {
+    await openFirstConversation(app)
+    await app.waitForVisible(ELEMENT.conversation.attachmentViewList)
+
+    const toList = await tabTo(
+      app,
+      (stop) => stop.testID === ELEMENT.conversation.attachmentViewList,
+    )
+    expect(toList).toMatchObject({ role: 'button', name: 'Show as list' })
+    expect(toList.outlineWidth).not.toBe('0px')
+    await app.screenshot('a11y-footer-focus-desktop')
+
+    await app.pressKey('Enter')
+    await app.waitForVisible(ELEMENT.conversation.attachmentViewGallery)
+    // The same button, offering the other shape, so focus stays on it.
+    expect((await app.focused())?.testID).toBe(ELEMENT.conversation.attachmentViewGallery)
+
+    const action = await tabTo(app, (stop) => stop.testID === ELEMENT.conversation.attachmentAction)
+    expect(action.role).toBe('button')
+    await app.pressKey(' ')
+    await app.waitForVisible(ELEMENT.conversation.autoDownloadPrompt)
+  } finally {
+    await app.close()
+  }
+})

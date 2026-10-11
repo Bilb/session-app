@@ -37,8 +37,10 @@ describe('attachments on a bubble you sent', () => {
     const footer = read('AttachmentFooter.tsx')
     expect(footer).toContain("{...inkFor('secondary', onAccent)}")
     expect(footer).not.toContain('color="$textSecondary"')
+    // A Button reads `onAccent` for its focus ring alone, which falls on the bubble round it.
+    // Up to the line that closes the Button's own tag, past any element inside a prop.
     for (const button of footer.split('<Button').slice(1))
-      expect(button.slice(0, button.indexOf('/>'))).not.toContain('onAccent')
+      expect(button.slice(0, button.search(/\n\s*\/?>\n/))).toContain('onAccent={onAccent}')
   })
 
   it('are not on the accent in the sheet, which draws them on the page', () => {

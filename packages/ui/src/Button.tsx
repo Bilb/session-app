@@ -1,15 +1,15 @@
 import type { ComponentProps, ReactNode } from 'react'
-import { Spinner, styled, XStack } from 'tamagui'
+import { isWeb, Spinner, styled, XStack } from 'tamagui'
 
 import { INHERITED_LABEL } from './labelColor'
 import { hitSlopFor } from './buttonHitTarget'
+import type { FocusRingShape } from './keyboardPress'
 import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import { PressArea } from './PressArea'
 import { Text } from './Text'
 
 const Frame = styled(XStack, {
   name: 'Button',
-  role: 'button',
   alignItems: 'center',
   justifyContent: 'center',
   gap: '$xs',
@@ -278,6 +278,15 @@ const PRESSED_LABEL: Partial<Record<keyof typeof LABEL_TONE, string>> = {
   danger: '$onDanger',
 }
 
+/** On the web the `PressArea` round the frame is the button; a second role inside it is noise. */
+const FRAME_ROLE = isWeb ? {} : ({ role: 'button' } as const)
+
+/** Outside the frame, so the ring reads against a fill in the ring's own colour. */
+const RING_OFFSET = 2
+
+/** A cell shares its edges with what holds it, which would clip a ring drawn outside it. */
+const CELL_RING_OFFSET = -2
+
 export interface ButtonProps {
   children?: ReactNode
   onPress?: () => void
@@ -321,6 +330,11 @@ export interface ButtonProps {
    * because it is the one that looks like a primary action.
    */
   destructive?: boolean
+  /**
+   * Drawn on an accent fill, a bubble you sent. Only the web focus ring reads it, since the
+   * ring falls on the fill round the button.
+   */
+  onAccent?: boolean | undefined
   disabled?: boolean
   loading?: boolean
   icon?: ReactNode
@@ -350,6 +364,7 @@ export function Button({
   paddingHorizontal,
   borderRadius,
   hitSlop,
+  onAccent = false,
   icon,
   accessibilityLabel,
   testID,
@@ -381,9 +396,15 @@ export function Button({
 
   const inert = disabled || loading
 
+  const ring: FocusRingShape =
+    borderRadius === undefined
+      ? { onAccent, offset: RING_OFFSET, radius: variant === 'tonal' ? '$sm' : '$full' }
+      : { onAccent, offset: CELL_RING_OFFSET, radius: 0 }
+
   return (
     <PressArea
       fill={fill}
+      ring={ring}
       {...(inert || onPress === undefined ? {} : { onPress })}
       disabled={inert}
       // Grown outwards rather than drawn larger: the control keeps the size the designs give it and
@@ -395,6 +416,7 @@ export function Button({
       {(pressed) => (
         <Frame
           {...(fill ? { flex: 1 } : {})}
+          {...FRAME_ROLE}
           variant={variant}
           size={size}
           circular={circular}

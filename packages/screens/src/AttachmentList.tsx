@@ -30,7 +30,11 @@ function ShowAll({
   onAccent: boolean
 }) {
   return (
-    <PressArea onPress={onPress} testID={ELEMENT.conversation.attachmentShowAll}>
+    <PressArea
+      onPress={onPress}
+      ring={{ onAccent, offset: 2, radius: '$sm' }}
+      testID={ELEMENT.conversation.attachmentShowAll}
+    >
       {() => (
         <XStack alignItems="center" gap="$xs" paddingVertical="$xs">
           <Text size="$label" weight="semibold" {...inkFor('link', onAccent)} flex={1}>

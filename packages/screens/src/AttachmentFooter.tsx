@@ -126,6 +126,7 @@ export function AttachmentFooter({
           icon={<Icon name={SWITCH_TO[view].icon} size="sm" color="$textPrimary" />}
           accessibilityLabel={SWITCH_TO[view].label}
           hitSlop={ACTION_SLOP}
+          onAccent={onAccent}
           onPress={() => {
             onView(SWITCH_TO[view].view)
           }}
@@ -147,6 +148,7 @@ export function AttachmentFooter({
           size={ACTION_SIZE}
           hitSlop={ACTION_SLOP}
           destructive={set.state === 'failed'}
+          onAccent={onAccent}
           onPress={onAction}
           testID={ELEMENT.conversation.attachmentAction}
         >

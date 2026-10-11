@@ -23,6 +23,12 @@ export function pressOnKey(onPress: () => void): (event: PressKeyEvent) => void 
   }
 }
 
+export interface FocusRingShape {
+  onAccent: boolean
+  offset: number
+  radius: number | '$sm' | '$full'
+}
+
 /**
  * The ring a keyboard user follows, in the accent: the colour the theme gives tamagui's focus
  * aliases and a focused Input's border. On an accent fill, a bubble you sent, it would vanish.
@@ -30,15 +36,7 @@ export function pressOnKey(onPress: () => void): (event: PressKeyEvent) => void 
  * The radius rounds the ring to the shape the control draws, and is set only while focused so
  * nothing changes for a view that is never focused.
  */
-export function focusRing({
-  onAccent,
-  offset,
-  radius,
-}: {
-  onAccent: boolean
-  offset: number
-  radius: number | '$sm' | '$full'
-}) {
+export function focusRing({ onAccent, offset, radius }: FocusRingShape) {
   return {
     outlineWidth: 2,
     outlineStyle: 'solid',
