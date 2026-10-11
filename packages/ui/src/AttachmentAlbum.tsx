@@ -8,11 +8,25 @@ import { ALBUM_SEAM, albumLayout, cellPlace, lastCell } from './albumLayout'
 import { AttachmentTile } from './AttachmentTile'
 import { FetchHint } from './FetchHint'
 import { tileRadius } from './attachmentTileStyle'
+import { focusRing, keyboardPress } from './keyboardPress'
 import { logical } from './logicalEdges'
+import { pressHint } from './pressHint'
 import { StateLayer } from './StateLayer'
 import type { WithTestID } from './with'
 
-export type AlbumItem = WithMediaUri & WithMediaThumbhash & WithFetchesOnOpen & WithTestID
+export type AlbumItem = WithMediaUri &
+  WithMediaThumbhash &
+  WithFetchesOnOpen &
+  WithTestID & {
+    /** Already worded: what a screen reader announces the tile as. */
+    label: string
+    /**
+     * Already worded: what a press on the tile does, said after its name. Absent while the press
+     * does nothing for this tile, which also takes it out of the tab order and announces it as a
+     * picture rather than a button.
+     */
+    hint?: string | undefined
+  }
 
 export type AttachmentAlbumProps = WithTestID & {
   items: readonly AlbumItem[]
@@ -20,6 +34,11 @@ export type AttachmentAlbumProps = WithTestID & {
   width: number
   /** Already worded, because `@session/ui` cannot reach the catalogue. */
   overflowLabel: (count: number) => string
+  /**
+   * Already worded: what the tile drawn under the overflow is announced as, from its own label.
+   * The overflow covers its picture, so its name has to say what the overflow says.
+   */
+  overflowName: (label: string, count: number) => string
   onOpen: (at: number) => void
   /**
    * The set's own badge, drawn in the album's corner.
@@ -31,6 +50,11 @@ export type AttachmentAlbumProps = WithTestID & {
   /** Already worded; what the cloud that fetches the set is announced as. */
   fetchLabel: string
   fetchTestID: ElementId
+  /**
+   * Drawn on an accent fill, a bubble you sent. Only the focus ring reads it: the ring falls in the
+   * seams and round the edge, on the fill, where the accent would not show.
+   */
+  onAccent?: boolean | undefined
 }
 
 /**
@@ -42,7 +66,9 @@ const AlbumTile = memo(function AlbumTile({
   at,
   side,
   overflowLabel,
+  name,
   onOpen,
+  onAccent,
 }: {
   /** Absent only where the layout and the items disagree, which draws nothing. */
   item: AlbumItem | undefined
@@ -50,20 +76,34 @@ const AlbumTile = memo(function AlbumTile({
   side: number
   /** Only on the tile that carries the overflow. */
   overflowLabel?: string | undefined
+  /** What the tile is announced as, which is the item's label but on the overflow's tile. */
+  name: string
   onOpen: (at: number) => void
+  onAccent: boolean
 }) {
   if (item === undefined) return null
   // A tile that would fetch is the whole set's, so it dims with the album, and at rest on touch
   // under the album's cloud. One that is here opens its own picture, so it answers on its own.
   const fetches = item.fetchesOnOpen === true
+  const press = () => {
+    onOpen(at)
+  }
   return (
     <YStack
-      role="button"
+      role={item.hint === undefined ? 'img' : 'button'}
+      aria-label={name}
+      {...pressHint(item.hint)}
+      {...keyboardPress(
+        item.hint === undefined ? undefined : press,
+        // Inside the seam rather than over the tile, whose own layers would paint over the ring.
+        focusRing({ onAccent, offset: 0, radius: tileRadius(side) }),
+      )}
+      // tamagui makes a native view an accessibility element only for this, and a tile has
+      // nothing nested that VoiceOver would then lose.
+      {...(isWeb ? {} : { tabIndex: 0 })}
       position="relative"
       cursor="pointer"
-      onPress={() => {
-        onOpen(at)
-      }}
+      onPress={press}
       {...(fetches ? {} : { group: 'tile' as const })}
     >
       <AttachmentTile
@@ -95,10 +135,12 @@ export function AttachmentAlbum({
   items,
   width,
   overflowLabel,
+  overflowName,
   onOpen,
   control,
   fetchLabel,
   fetchTestID,
+  onAccent = false,
   testID,
 }: AttachmentAlbumProps) {
   const layout = albumLayout(items.length, width)
@@ -106,6 +148,10 @@ export function AttachmentAlbum({
 
   const overflowAt = layout.overflow > 0 ? last?.at : undefined
   const overflowText = overflowAt === undefined ? undefined : overflowLabel(layout.overflow)
+  const nameOf = (at: number) => {
+    const label = items[at]?.label ?? ''
+    return at === overflowAt ? overflowName(label, layout.overflow) : label
+  }
   // One cloud for the message: a press on any tile fetches the whole set, so no tile is its own.
   const fetchAt = items.findIndex((item) => item.fetchesOnOpen === true)
   const fetchesOnOpen = fetchAt !== -1
@@ -138,7 +184,9 @@ export function AttachmentAlbum({
               at={cell.at}
               side={cell.side}
               overflowLabel={cell.at === overflowAt ? overflowText : undefined}
+              name={nameOf(cell.at)}
               onOpen={onOpen}
+              onAccent={onAccent}
             />
           ))}
         </XStack>
@@ -158,7 +206,9 @@ export function AttachmentAlbum({
             at={layout.lead.at}
             side={layout.lead.side}
             overflowLabel={layout.lead.at === overflowAt ? overflowText : undefined}
+            name={nameOf(layout.lead.at)}
             onOpen={onOpen}
+            onAccent={onAccent}
           />
           {layout.rows.length === 0 ? null : beside}
         </XStack>

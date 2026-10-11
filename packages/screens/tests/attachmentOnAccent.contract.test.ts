@@ -16,6 +16,11 @@ describe('attachments on a bubble you sent', () => {
       /<AttachmentList\s+message=\{message\}\s+onAccent=\{message\.outgoing\}/,
     )
     expect(message).toMatch(/<AttachmentFooter\s+set=\{set\}\s+onAccent=\{message\.outgoing\}/)
+    expect(message).toMatch(/<MessageAlbum\s+message=\{message\}\s+onAccent=\{message\.outgoing\}/)
+  })
+
+  it('hand it to the album, whose focus ring falls on the fill', () => {
+    expect(read('MessageAlbum.tsx')).toMatch(/<AttachmentAlbum[\s\S]*onAccent=\{onAccent\}/)
   })
 
   it('hand it to every row and to "Show all"', () => {

@@ -150,6 +150,7 @@ describe('screen copy', () => {
       'exporting',
       'exportFailed',
       'previous',
+      'attachmentImagePosition',
       'autoDownloadAllFiles',
       'autoDownloadImagesOnly',
     ])

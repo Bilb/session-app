@@ -36,6 +36,7 @@ export function MessageAttachments({ message }: { message: Message }) {
       {view === 'gallery' ? (
         <MessageAlbum
           message={message}
+          onAccent={message.outgoing}
           fetchFor={fetchFor}
           // Opens only a picture that is here, as the legacy clients do. A tile is the whole set's,
           // so tapping one that is not fetches every attachment the album stands for.

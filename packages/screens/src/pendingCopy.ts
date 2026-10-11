@@ -40,6 +40,12 @@ export const PENDING_COPY = {
   exporting: 'Exporting',
   exportFailed: 'Export failed',
   previous: 'Previous',
+  /**
+   * An album's picture with no filename, by its place among the album's pictures. Counts in
+   * English only, as `attachmentCount` does.
+   */
+  attachmentImagePosition: (position: number, count: number): string =>
+    `Image ${String(position)} of ${String(count)}`,
   /** The auto-download prompt's two answers to what Yes fetches. */
   autoDownloadAllFiles: 'All files',
   autoDownloadImagesOnly: 'Images only',

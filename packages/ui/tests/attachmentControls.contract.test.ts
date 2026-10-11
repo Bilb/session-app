@@ -3,6 +3,9 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+import { ALBUM_SEAM } from '#src/albumLayout'
+import { focusRing } from '#src/keyboardPress'
+
 /**
  * What a test and a screen reader can ask of the attachment controls, held by reading the source.
  *
@@ -48,5 +51,42 @@ describe('the three-up’s cloud', () => {
 
   it('sits over the tile that fetches', () => {
     expect(album).toContain('cellPlace(layout, fetchAt)')
+  })
+})
+
+describe('an album tile', () => {
+  const album = source('AttachmentAlbum.tsx')
+  const tile = album.slice(album.indexOf('const AlbumTile'), album.indexOf('export function'))
+
+  it('is named for a screen reader, and is a button only while its press does something', () => {
+    expect(tile).toContain('aria-label={name}')
+    expect(tile).toContain("role={item.hint === undefined ? 'img' : 'button'}")
+    expect(tile).toContain('{...pressHint(item.hint)}')
+  })
+
+  it('takes a tab stop only while its press does something', () => {
+    expect(tile).toMatch(/keyboardPress\(\s*item\.hint === undefined \? undefined : press,/)
+  })
+
+  it('keeps its press on touch in every state, as before it had a name', () => {
+    expect(tile).toContain('onPress={press}')
+  })
+
+  it('is an accessibility element on iOS, so VoiceOver reads its name', () => {
+    expect(tile).toContain('isWeb ? {} : { tabIndex: 0 }')
+  })
+
+  it('rings itself in the seam, in the fill’s focus colour, where its own layers cannot cover it', () => {
+    expect(tile).toContain('focusRing({ onAccent, offset: 0, radius: tileRadius(side) })')
+    expect(album.match(/onAccent=\{onAccent\}/g)).toHaveLength(2)
+    // Wider than the seam, the ring would reach the next tile, which paints over it.
+    expect(focusRing({ onAccent: false, offset: 0, radius: 0 }).outlineWidth).toBeLessThanOrEqual(
+      ALBUM_SEAM,
+    )
+  })
+
+  it('names the tile under the overflow by what the overflow says, on whichever tile it is', () => {
+    expect(album).toContain('at === overflowAt ? overflowName(label, layout.overflow) : label')
+    expect(album.match(/name=\{nameOf\((cell\.at|layout\.lead\.at)\)\}/g)).toHaveLength(2)
   })
 })

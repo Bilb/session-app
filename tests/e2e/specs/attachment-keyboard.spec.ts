@@ -3,7 +3,7 @@ import { ELEMENT } from '@session/test-ids'
 
 import { downloadFromRow, openFirstConversation } from '../harness/attachments'
 import { DesktopApp } from '../harness/DesktopApp'
-import { SEEDED_LIST } from '../harness/fixtures'
+import { SEEDED_ALBUM, SEEDED_LIST } from '../harness/fixtures'
 import type { FocusedElement } from '../harness/KeyboardProbe'
 
 /** Far more stops than the seeded conversation has, so a walk that never wraps fails here. */
@@ -88,6 +88,30 @@ test('reaches a picture’s row, its thumbnail and its control with Tab, and ope
     await expect
       .poll(async () => app.isVisible(ELEMENT.conversation.mediaViewer), { timeout: 5_000 })
       .toBe(false)
+  } finally {
+    await app.close()
+  }
+})
+
+test('names each album tile and says what a press on it does @desktop @medium-risk', async () => {
+  const app = await DesktopApp.launch('alice')
+
+  try {
+    await openFirstConversation(app)
+    // The album is the conversation's first attachment, and nothing in it is here yet.
+    await app.waitForVisible(ELEMENT.conversation.attachment)
+    const tree = await app.ariaSnapshot(ELEMENT.conversation.attachment)
+    for (const name of SEEDED_ALBUM) expect(tree).toContain(`button "${name}"`)
+
+    const stops = await tabStops(app)
+    const isTile = (stop: FocusedElement) =>
+      stop.name !== null && (SEEDED_ALBUM as readonly string[]).includes(stop.name)
+    const tiles = stops.filter(isTile)
+    expect(tiles.map((tile) => tile.name)).toEqual([...SEEDED_ALBUM])
+    for (const tile of tiles) expect(tile).toMatchObject({ role: 'button', hint: 'Download' })
+
+    expect((await tabTo(app, isTile)).outlineWidth).not.toBe('0px')
+    await app.screenshot('a11y-album-tile-focus-desktop')
   } finally {
     await app.close()
   }
