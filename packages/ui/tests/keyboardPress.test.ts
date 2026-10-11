@@ -50,8 +50,8 @@ describe('a key on a focused pressable stack', () => {
     expect(onPress).not.toHaveBeenCalled()
   })
 
-  it('does not press a row for a key meant for a control nested in it', () => {
-    // The key bubbles to the row's handler with the control as its target.
+  it('does not press a stack for a key meant for a control nested in it', () => {
+    // The key bubbles to the outer handler with the control as its target.
     const onPress = vi.fn()
     pressOnKey(onPress)(key('Enter', { target: {} }))
     expect(onPress).not.toHaveBeenCalled()

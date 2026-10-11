@@ -43,9 +43,10 @@ async function tabTo(
  * Launched directly rather than through `sessionTest`, because focus and keys are a keyboard
  * probe's and `ISessionApp` has none.
  */
-test('reaches a picture’s row, its thumbnail and its control with Tab, and opens it with Enter @desktop @medium-risk', async () => {
+test('reaches a picture’s thumbnail and its control with Tab, never its row, and opens it with Enter @desktop @medium-risk', async () => {
   const app = await DesktopApp.launch('alice')
   const picture = SEEDED_LIST[0]
+  const document = SEEDED_LIST[1]
 
   try {
     await openFirstConversation(app)
@@ -53,40 +54,38 @@ test('reaches a picture’s row, its thumbnail and its control with Tab, and ope
     expect(await app.count(ELEMENT.conversation.attachmentLead)).toBeGreaterThan(0)
     await downloadFromRow(app, picture)
 
-    const stops = await tabStops(app)
-    const row = stops.findIndex(
-      (stop) => stop.testID === ELEMENT.conversation.attachment && stop.name === picture,
-    )
-    expect(row, JSON.stringify(stops, null, 2)).toBeGreaterThanOrEqual(0)
+    // The row is no button: one would hold the thumbnail's and the control's, which ARIA flattens.
+    const tree = await app.ariaSnapshot(ELEMENT.conversation.screen)
+    expect(tree.split(`button "${picture}"`), tree).toHaveLength(2)
+    expect(tree).not.toContain(`button "${document}"`)
 
-    // The walk is a loop, so the stops after the row may be at its start.
-    const after = (step: number) => stops[(row + step) % stops.length]
-    expect(stops[row]).toMatchObject({ role: 'button', hint: 'Open' })
-    // The thumbnail does what the row does, and says so.
-    expect(after(1)).toMatchObject({
-      testID: ELEMENT.conversation.attachmentLead,
-      role: 'button',
-      name: picture,
-      hint: 'Open',
-    })
-    expect(after(2)).toMatchObject({
+    const stops = await tabStops(app)
+    expect(stops.filter((stop) => stop.testID === ELEMENT.conversation.attachment)).toHaveLength(0)
+    const lead = stops.findIndex(
+      (stop) => stop.testID === ELEMENT.conversation.attachmentLead && stop.name === picture,
+    )
+    expect(lead, JSON.stringify(stops, null, 2)).toBeGreaterThanOrEqual(0)
+
+    // The walk is a loop, so the stop after the thumbnail may be at its start.
+    expect(stops[lead]).toMatchObject({ role: 'button', hint: 'Open' })
+    expect(stops[(lead + 1) % stops.length]).toMatchObject({
       testID: ELEMENT.conversation.attachmentExport,
       role: 'button',
       name: 'Export',
     })
 
-    // Only rows that take a press are stops: a document's row and control, never its caption.
+    // Only parts that take a press are stops, never a caption.
     expect(
       stops.filter((stop) => stop.testID === ELEMENT.conversation.attachmentState),
     ).toHaveLength(0)
 
-    const focusedRow = await tabTo(
+    const focusedLead = await tabTo(
       app,
-      (stop) => stop.testID === ELEMENT.conversation.attachment && stop.name === picture,
+      (stop) => stop.testID === ELEMENT.conversation.attachmentLead && stop.name === picture,
     )
     // Reached by the keyboard, so the ring is drawn.
-    expect(focusedRow.outlineWidth).not.toBe('0px')
-    await app.screenshot('a11y-row-focus-desktop')
+    expect(focusedLead.outlineWidth).not.toBe('0px')
+    await app.screenshot('a11y-lead-focus-desktop')
 
     await app.pressKey('Enter')
     await app.waitForVisible(ELEMENT.conversation.mediaViewer)
@@ -159,7 +158,6 @@ test('reaches a set’s footer with Tab, switches its view with Enter and downlo
 
 test('keeps focus on the control and the tile whose Enter starts a download @desktop @medium-risk', async () => {
   const app = await DesktopApp.launch('alice')
-  const document = SEEDED_LIST[1]
   const tile = SEEDED_ALBUM[0]
 
   try {
@@ -167,11 +165,9 @@ test('keeps focus on the control and the tile whose Enter starts a download @des
     // Answers the auto-download prompt, which takes focus on a conversation's first download.
     await downloadFromRow(app, SEEDED_LIST[0])
 
-    await tabTo(
-      app,
-      (stop) => stop.testID === ELEMENT.conversation.attachment && stop.name === document,
-    )
-    // A document's row has no lead square to stop on, so its control is next.
+    // The picture's control, the one Export, then the control of the document below it, whose
+    // row has no lead square to stop on.
+    await tabTo(app, (stop) => stop.testID === ELEMENT.conversation.attachmentExport)
     await app.pressKey('Tab')
     expect(await app.focused()).toMatchObject({
       testID: ELEMENT.conversation.attachmentDownload,

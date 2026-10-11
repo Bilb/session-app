@@ -114,7 +114,7 @@ export function AttachmentRow({
               if (press !== null) perform[press]()
             }
       }
-      // The lead square does what the row does, so it says what the row says.
+      // The lead square does what the row does and says so: the row is no stop on the web.
       openLabel={pressLabel}
       caption={caption(attachment, state, fetched, exporting?.state)}
       state={state}

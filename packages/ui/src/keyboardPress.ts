@@ -11,7 +11,7 @@ export interface PressKeyEvent {
 
 /**
  * Presses on Enter or Space, as a `<button>` does, and only when the focused element is this one:
- * keys bubble, and a control nested in a pressable row must not press the row as well.
+ * keys bubble, so a stack holding another that takes keys would press for its key too.
  */
 export function pressOnKey(onPress: () => void): (event: PressKeyEvent) => void {
   return (event) => {

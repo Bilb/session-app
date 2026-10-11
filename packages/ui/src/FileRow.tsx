@@ -67,9 +67,14 @@ export type FileRowProps = WithFilename &
      * that press does nothing, which leaves the square out of the tab order unless it is fetching.
      */
     openLabel?: string | undefined
-    /** A press on the row outside the lead square and the control. Absent where it does nothing. */
+    /**
+     * A press on the row outside the lead square and the control. Absent where it does nothing.
+     *
+     * On the web it is the pointer's alone, so the lead square or the control must offer the same
+     * verb to the keyboard.
+     */
     onPress?: (() => void) | undefined
-    /** Already worded, for what a screen reader says a press on the row does. */
+    /** Already worded, for what a screen reader says a press on the row does. Native only. */
     pressLabel?: string | undefined
     state: FileRowState
     /** How far along, 0 to 1. Absent until the server has said how big the file is. */
@@ -101,8 +106,24 @@ const CAPTION_BIDI = isWeb ? ({ unicodeBidi: 'plaintext' } as const) : undefined
 const RING_SIDE = 28
 const RING_THICKNESS = 3
 
-/** Outside the row, whose edges the lead square and the control sit on, so no two rings meet. */
-const ROW_RING_OFFSET = 2
+/**
+ * The row as a button, on native alone. On the web it would be a button holding the lead square's
+ * and the control's, whose children ARIA makes presentational.
+ */
+function nativeRowButton({
+  filename,
+  pressLabel,
+  pressable,
+  held,
+}: WithFilename & { pressLabel: string | undefined; pressable: boolean; held: boolean }) {
+  if (isWeb) return {}
+  return {
+    ...(pressable || held ? { role: 'button', 'aria-label': filename } : {}),
+    ...(pressable ? pressHint(pressLabel) : {}),
+    // Set in every state: Android keeps a disabled state that is dropped rather than cleared.
+    'aria-disabled': !pressable && held,
+  } as const
+}
 
 /**
  * The one control, always in the same place and always the same size.
@@ -223,10 +244,9 @@ export function FileRow({
   const tone = fileRowTone(state)
   const nameInk = inkFor(tone.name, onAccent)
   const fontScale = useFontScale()
-  // While fetching, the row and its lead square stay disabled buttons rather than losing their
-  // stops, which would drop focus on them to the page.
+  // While fetching, the lead square stays a disabled button rather than losing its stop, which
+  // would drop focus on it to the page.
   const held = state === 'fetching'
-  const rowRing = focusRing({ onAccent, offset: ROW_RING_OFFSET, radius: '$sm' })
   const leadRing = focusRing({ onAccent, offset: 0, radius: tileRadius(FILE_GLYPH_SIDE) })
   const leadHeld = openLabel === undefined && held
 
@@ -260,18 +280,8 @@ export function FileRow({
       // A group in every state: tamagui remounts a view that gains or drops one, dropping focus.
       group="row"
       testID={testIDs?.row}
-      {...(onPress === undefined
-        ? {}
-        : {
-            cursor: 'pointer',
-            role: 'button' as const,
-            'aria-label': filename,
-            ...pressHint(pressLabel),
-            ...keyboardPress(onPress, rowRing),
-            onPress,
-          })}
-      {...(onPress === undefined && held ? heldButton(filename, rowRing) : {})}
-      aria-disabled={onPress === undefined && held}
+      {...(onPress === undefined ? {} : { cursor: 'pointer', onPress })}
+      {...nativeRowButton({ filename, pressLabel, pressable: onPress !== undefined, held })}
     >
       {onPress === undefined ? null : (
         <StateLayer group="row" tone="ink" borderRadius="$sm" bleed={SPACING.xs} />
