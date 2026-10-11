@@ -9,6 +9,7 @@ import { AttachmentAlbum, type AlbumItem } from '@session/ui'
 import type { Fetch, FetchState } from './attachmentFetch'
 import { rowVerb, verbLabel } from './attachmentPress'
 import { albumTileName } from './albumTileName'
+import { PENDING_COPY } from './pendingCopy'
 import { useLocale } from './useLocale'
 import { viewableAttachments } from './viewableAttachments'
 
@@ -70,7 +71,7 @@ export function MessageAlbum({
       items={items}
       width={ALBUM_WIDTH}
       overflowLabel={(count) => tr('andMore', { count })}
-      overflowName={(label, count) => `${label}, ${tr('andMore', { count })}`}
+      overflowName={PENDING_COPY.attachmentNameAndMore}
       onOpen={(at) => {
         const attachment = viewable[at]
         if (attachment !== undefined) onOpen(attachment.index)

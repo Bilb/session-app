@@ -46,6 +46,12 @@ export const PENDING_COPY = {
    */
   attachmentImagePosition: (position: number, count: number): string =>
     `Image ${String(position)} of ${String(count)}`,
+  /**
+   * What a screen reader calls the tile under "+N": its own name and the count it stands for. One
+   * string, so each locale orders and punctuates both parts itself; `andMore` is only the "+N".
+   */
+  attachmentNameAndMore: (name: string, count: number): string =>
+    `${name}, and ${String(count)} more`,
   /** The auto-download prompt's two answers to what Yes fetches. */
   autoDownloadAllFiles: 'All files',
   autoDownloadImagesOnly: 'Images only',

@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { tr } from '@session/localization'
 import { describe, expect, it } from 'vitest'
 
 import { albumTileName } from '#src/albumTileName'
@@ -32,11 +31,9 @@ describe('an album', () => {
     expect(album).toContain('hint: verb === null ? undefined : verbLabel(verb)')
   })
 
-  it('names the tile under "+N" by the overflow too, with the catalogue’s own wording of it', () => {
-    expect(album).toContain(
-      "overflowName={(label, count) => `${label}, ${tr('andMore', { count })}`}",
-    )
-    expect(tr('andMore', { count: 3 })).toBe('+3')
+  it('names the tile under "+N" by the overflow too, in one string a locale can reorder', () => {
+    expect(album).toContain('overflowName={PENDING_COPY.attachmentNameAndMore}')
+    expect(PENDING_COPY.attachmentNameAndMore('harbour.jpg', 3)).toBe('harbour.jpg, and 3 more')
   })
 
   it('recomputes the names when the language changes, which the memo would otherwise hold', () => {
