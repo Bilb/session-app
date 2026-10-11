@@ -4,13 +4,18 @@ import { describe, expect, it } from 'vitest'
 
 import { runMediaSourceContract, type MediaSourceHarness } from '#src/index'
 
-// A real one, small, since a thumbnail is checked by its frame header.
-const JPEG = jpeg.encode(
-  { width: 16, height: 16, data: new Uint8Array(16 * 16 * 4).fill(0x80) },
-  90,
-).data
+function grey(width: number, height: number): Uint8Array {
+  return jpeg.encode({ width, height, data: new Uint8Array(width * height * 4).fill(0x80) }, 90)
+    .data
+}
 
-const readPhoto = (): Promise<Uint8Array> => Promise.resolve(JPEG)
+// Real JPEGs, since a thumbnail is checked by its frame header. The original is neither square nor
+// within the largest thumbnail edge, 1024, so a thumbnail served from it fails both shape checks.
+const ORIGINAL = grey(1280, 960)
+const THUMBNAIL = grey(32, 32)
+
+const readPhoto = (fileName: string): Promise<Uint8Array> =>
+  Promise.resolve(fileName.startsWith('thumbnail-') ? THUMBNAIL : ORIGINAL)
 
 const harness: MediaSourceHarness = {
   withAttachments() {
