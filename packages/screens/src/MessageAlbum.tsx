@@ -78,6 +78,7 @@ export function MessageAlbum({
       control={control}
       fetchLabel={tr('download')}
       fetchTestID={ELEMENT.conversation.attachmentFetch}
+      tileTestID={ELEMENT.conversation.attachmentTile}
       onAccent={onAccent}
       testID={ELEMENT.conversation.attachment}
     />

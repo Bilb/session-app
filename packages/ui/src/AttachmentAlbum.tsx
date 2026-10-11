@@ -50,6 +50,8 @@ export type AttachmentAlbumProps = WithTestID & {
   /** Already worded; what the cloud that fetches the set is announced as. */
   fetchLabel: string
   fetchTestID: ElementId
+  /** On every tile, which is what a test taps; an item's own `testID` is its picture's. */
+  tileTestID: ElementId
   /**
    * Drawn on an accent fill, a bubble you sent. Only the focus ring reads it: the ring falls in the
    * seams and round the edge, on the fill, where the accent would not show.
@@ -69,7 +71,8 @@ const AlbumTile = memo(function AlbumTile({
   name,
   onOpen,
   onAccent,
-}: {
+  testID,
+}: WithTestID & {
   /** Absent only where the layout and the items disagree, which draws nothing. */
   item: AlbumItem | undefined
   at: number
@@ -98,9 +101,10 @@ const AlbumTile = memo(function AlbumTile({
         // Inside the seam rather than over the tile, whose own layers would paint over the ring.
         focusRing({ onAccent, offset: 0, radius: tileRadius(side) }),
       )}
-      // tamagui makes a native view an accessibility element only for this, and a tile has
-      // nothing nested that VoiceOver would then lose.
+      // tamagui makes a native view an accessibility element only for this. On iOS that hides
+      // what is nested, the picture's test id included, so the tile carries its own.
       {...(isWeb ? {} : { tabIndex: 0 })}
+      testID={testID}
       position="relative"
       cursor="pointer"
       onPress={press}
@@ -140,6 +144,7 @@ export function AttachmentAlbum({
   control,
   fetchLabel,
   fetchTestID,
+  tileTestID,
   onAccent = false,
   testID,
 }: AttachmentAlbumProps) {
@@ -187,6 +192,7 @@ export function AttachmentAlbum({
               name={nameOf(cell.at)}
               onOpen={onOpen}
               onAccent={onAccent}
+              testID={tileTestID}
             />
           ))}
         </XStack>
@@ -209,6 +215,7 @@ export function AttachmentAlbum({
             name={nameOf(layout.lead.at)}
             onOpen={onOpen}
             onAccent={onAccent}
+            testID={tileTestID}
           />
           {layout.rows.length === 0 ? null : beside}
         </XStack>

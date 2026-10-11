@@ -44,7 +44,12 @@ describe('an album', () => {
     expect(album).toMatch(/\}, \[viewable, message\.id, statesKey, locale\]\)/)
   })
 
-  it('keeps the test id on the picture', () => {
+  it('keeps the test id on the picture, for load probes', () => {
     expect(album).toContain('testID: ELEMENT.conversation.attachmentImage')
+  })
+
+  // On iOS a tile is one accessibility element, which hides the picture's id inside it.
+  it('gives the tile its own id, which is what a test taps', () => {
+    expect(album).toContain('tileTestID={ELEMENT.conversation.attachmentTile}')
   })
 })

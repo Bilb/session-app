@@ -108,7 +108,12 @@ test('names each album tile and says what a press on it does @desktop @medium-ri
       stop.name !== null && (SEEDED_ALBUM as readonly string[]).includes(stop.name)
     const tiles = stops.filter(isTile)
     expect(tiles.map((tile) => tile.name)).toEqual([...SEEDED_ALBUM])
-    for (const tile of tiles) expect(tile).toMatchObject({ role: 'button', hint: 'Download' })
+    for (const tile of tiles)
+      expect(tile).toMatchObject({
+        testID: ELEMENT.conversation.attachmentTile,
+        role: 'button',
+        hint: 'Download',
+      })
 
     expect((await tabTo(app, isTile)).outlineWidth).not.toBe('0px')
     await app.screenshot('a11y-album-tile-focus-desktop')

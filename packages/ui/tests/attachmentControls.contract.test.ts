@@ -76,6 +76,11 @@ describe('an album tile', () => {
     expect(tile).toContain('isWeb ? {} : { tabIndex: 0 }')
   })
 
+  it('carries its own test id, since on iOS it hides the picture’s', () => {
+    expect(tile).toContain('testID={testID}')
+    expect(album.match(/testID=\{tileTestID\}/g)).toHaveLength(2)
+  })
+
   it('rings itself in the seam, in the fill’s focus colour, where its own layers cannot cover it', () => {
     expect(tile).toContain('focusRing({ onAccent, offset: 0, radius: tileRadius(side) })')
     expect(album.match(/onAccent=\{onAccent\}/g)).toHaveLength(2)

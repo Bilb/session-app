@@ -34,6 +34,7 @@ export const ELEMENT = {
     messageState: 'message-state',
     messageRetry: 'message-retry',
     attachment: 'message-attachment',
+    attachmentTile: 'message-attachment-tile',
     attachmentImage: 'message-attachment-image',
     attachmentName: 'message-attachment-name',
     attachmentState: 'message-attachment-state',
