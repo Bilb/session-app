@@ -27,7 +27,7 @@ import {
 import { FetchHint } from './FetchHint'
 import { Icon } from './Icon'
 import { inkFor } from './ink'
-import { focusRing, keyboardPress } from './keyboardPress'
+import { focusRing, heldButton, keyboardPress } from './keyboardPress'
 import { pressHint } from './pressHint'
 import { ProgressRing } from './ProgressRing'
 import { StateLayer } from './StateLayer'
@@ -64,7 +64,7 @@ export type FileRowProps = WithFilename &
     onOpen?: (() => void) | undefined
     /**
      * Already worded, for what a screen reader says a press on the lead square does. Absent while
-     * that press does nothing, which also leaves the square out of the tab order.
+     * that press does nothing, which leaves the square out of the tab order unless it is fetching.
      */
     openLabel?: string | undefined
     /** A press on the row outside the lead square and the control. Absent where it does nothing. */
@@ -74,7 +74,10 @@ export type FileRowProps = WithFilename &
     state: FileRowState
     /** How far along, 0 to 1. Absent until the server has said how big the file is. */
     progress?: number | undefined
-    /** Already worded, for what a screen reader announces the trailing control as. */
+    /**
+     * Already worded, for what a screen reader announces the trailing control as, the progress ring
+     * included.
+     */
     actionLabel?: string | undefined
     /** The trailing control's press, which need not be the row's. */
     onAction?: (() => void) | undefined
@@ -136,40 +139,50 @@ function Trailing({
 
   if (control === null) return <YStack {...square} />
 
-  if (control === 'progress') {
-    // Not a button: the bridge has no cancel, so a ring somebody could press would be a control
-    // that does nothing. It reports, the way the album's pill does, and the caption has the counts.
-    // TODO: make this a cancel once libsession and the bridge can stop a transfer.
-    return (
-      <YStack {...square}>
+  const ring = focusRing({ onAccent, offset: 0, radius: '$full' })
+  // While a transfer runs, a disabled button showing progress, since the bridge has no cancel. The
+  // same element as the Download that started it, so focus stays put. The caption has the counts.
+  // TODO: make this a cancel once libsession and the bridge can stop a transfer.
+  const held = control === 'progress'
+
+  return (
+    <YStack
+      {...square}
+      position="relative"
+      group="control"
+      testID={testID}
+      {...(held
+        ? heldButton(actionLabel, ring)
+        : {
+            role: 'button' as const,
+            cursor: 'pointer',
+            ...(actionLabel === undefined ? {} : { 'aria-label': actionLabel }),
+            ...keyboardPress(onAction, ring),
+          })}
+      aria-disabled={held}
+      onPress={
+        held
+          ? undefined
+          : (event) => {
+              // The control's verb is its own, and the row's press may be another.
+              event.stopPropagation()
+              onAction?.()
+            }
+      }
+    >
+      {held ? (
         <ProgressRing
           progress={progress ?? 0}
           size={RING_SIDE}
           thickness={RING_THICKNESS}
           color={onAccent ? '$onAccent' : '$primaryColor'}
         />
-      </YStack>
-    )
-  }
-
-  return (
-    <YStack
-      {...square}
-      role="button"
-      position="relative"
-      group="control"
-      cursor="pointer"
-      {...(actionLabel === undefined ? {} : { 'aria-label': actionLabel })}
-      {...keyboardPress(onAction, focusRing({ onAccent, offset: 0, radius: '$full' }))}
-      testID={testID}
-      onPress={(event) => {
-        // The control's verb is its own, and the row's press may be another.
-        event.stopPropagation()
-        onAction?.()
-      }}
-    >
-      <StateLayer group="control" tone="ink" borderRadius="$full" />
-      <Icon name={control} size="sm" {...inkFor(fileRowTone(state).control, onAccent)} />
+      ) : (
+        <>
+          <StateLayer group="control" tone="ink" borderRadius="$full" />
+          <Icon name={control} size="sm" {...inkFor(fileRowTone(state).control, onAccent)} />
+        </>
+      )}
     </YStack>
   )
 }
@@ -210,6 +223,12 @@ export function FileRow({
   const tone = fileRowTone(state)
   const nameInk = inkFor(tone.name, onAccent)
   const fontScale = useFontScale()
+  // While fetching, the row and its lead square stay disabled buttons rather than losing their
+  // stops, which would drop focus on them to the page.
+  const held = state === 'fetching'
+  const rowRing = focusRing({ onAccent, offset: ROW_RING_OFFSET, radius: '$sm' })
+  const leadRing = focusRing({ onAccent, offset: 0, radius: tileRadius(FILE_GLYPH_SIDE) })
+  const leadHeld = openLabel === undefined && held
 
   const lead =
     thumbnail === undefined ? (
@@ -238,21 +257,21 @@ export function FileRow({
       gap={FILE_ROW_GAP}
       paddingVertical="$xs"
       position="relative"
+      // A group in every state: tamagui remounts a view that gains or drops one, dropping focus.
+      group="row"
       testID={testIDs?.row}
       {...(onPress === undefined
         ? {}
         : {
-            group: 'row' as const,
             cursor: 'pointer',
             role: 'button' as const,
             'aria-label': filename,
             ...pressHint(pressLabel),
-            ...keyboardPress(
-              onPress,
-              focusRing({ onAccent, offset: ROW_RING_OFFSET, radius: '$sm' }),
-            ),
+            ...keyboardPress(onPress, rowRing),
             onPress,
           })}
+      {...(onPress === undefined && held ? heldButton(filename, rowRing) : {})}
+      aria-disabled={onPress === undefined && held}
     >
       {onPress === undefined ? null : (
         <StateLayer group="row" tone="ink" borderRadius="$sm" bleed={SPACING.xs} />
@@ -273,20 +292,23 @@ export function FileRow({
                   role: 'button' as const,
                   'aria-label': filename,
                   ...pressHint(openLabel),
-                  ...keyboardPress(
-                    onOpen,
-                    focusRing({ onAccent, offset: 0, radius: tileRadius(FILE_GLYPH_SIDE) }),
-                  ),
+                  ...keyboardPress(onOpen, leadRing),
                 })}
+            {...(leadHeld ? heldButton(filename, leadRing) : {})}
+            aria-disabled={leadHeld}
             position="relative"
             group="tile"
             cursor="pointer"
             testID={testIDs?.lead}
-            onPress={(event) => {
-              // Opening the picture is not the row's download or export.
-              event.stopPropagation()
-              onOpen()
-            }}
+            onPress={
+              leadHeld
+                ? undefined
+                : (event) => {
+                    // Opening the picture is not the row's download or export.
+                    event.stopPropagation()
+                    onOpen()
+                  }
+            }
           >
             {lead}
             <StateLayer group="tile" tone="scrim" borderRadius={tileRadius(FILE_GLYPH_SIDE)} />

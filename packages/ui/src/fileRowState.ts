@@ -48,8 +48,8 @@ export function fileRowHeight(fontScale: number): number {
  * What the row's one control offers, which follows from the state with no further rule.
  *
  * `null` where there is nothing to offer: an unavailable file cannot be fetched, and a running
- * transfer cannot be stopped because the bridge has no cancel. `'progress'` is the ring, which is
- * the one thing here that is not a button.
+ * transfer cannot be stopped because the bridge has no cancel. `'progress'` is the ring, drawn in
+ * a disabled button.
  */
 export function fileRowControl(state: FileRowState): IconName | 'progress' | null {
   switch (state) {

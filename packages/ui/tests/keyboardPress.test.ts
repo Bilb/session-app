@@ -3,7 +3,13 @@ import { join } from 'node:path'
 
 import { describe, expect, it, vi } from 'vitest'
 
-import { focusRing, keyboardPress, pressOnKey, type PressKeyEvent } from '#src/keyboardPress'
+import {
+  focusRing,
+  heldButton,
+  keyboardPress,
+  pressOnKey,
+  type PressKeyEvent,
+} from '#src/keyboardPress'
 import { pressHint } from '#src/pressHint'
 
 const element = {}
@@ -74,6 +80,29 @@ describe('what a stack spreads to take the keyboard', () => {
   it('is nothing on native, where a tab index makes an iOS row a single element', () => {
     const source = readFileSync(join(import.meta.dirname, '../src/keyboardPress.ts'), 'utf8')
     expect(source).toContain('if (!isWeb || onPress === undefined) return {}')
+  })
+})
+
+describe('a button held while a transfer runs', () => {
+  const ring = focusRing({ onAccent: false, offset: 0, radius: '$sm' })
+
+  it('stays a named tab stop, so focus on it is not dropped to the page', () => {
+    expect(heldButton('Downloading', ring)).toMatchObject({
+      role: 'button',
+      'aria-label': 'Downloading',
+      tabIndex: 0,
+      focusVisibleStyle: ring,
+    })
+  })
+
+  it('leaves the disabled state to its caller, who must clear it as well as set it', () => {
+    // Android keeps a disabled state whose prop is dropped rather than set to false.
+    expect(heldButton('Downloading', ring)).not.toHaveProperty('aria-disabled')
+  })
+
+  it('takes no key, since it presses nothing', () => {
+    expect(heldButton(undefined, ring)).not.toHaveProperty('onKeyDown')
+    expect(heldButton(undefined, ring)).not.toHaveProperty('aria-label')
   })
 })
 

@@ -60,3 +60,17 @@ export function keyboardPress(
   if (!isWeb || onPress === undefined) return {}
   return { tabIndex: 0, onKeyDown: pressOnKey(onPress), focusVisibleStyle: ring }
 }
+
+/**
+ * A button that is still a tab stop, for a control that cannot act while a transfer runs: a
+ * focused element that stops being focusable sends focus to the page. The caller sets
+ * `aria-disabled` in every state, since Android keeps a disabled state that is dropped rather than
+ * cleared.
+ */
+export function heldButton(name: string | undefined, ring: ReturnType<typeof focusRing>) {
+  return {
+    role: 'button',
+    ...(name === undefined ? {} : { 'aria-label': name }),
+    ...(isWeb ? { tabIndex: 0, focusVisibleStyle: ring } : {}),
+  } as const
+}

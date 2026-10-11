@@ -8,7 +8,7 @@ import { ALBUM_SEAM, albumLayout, cellPlace, lastCell } from './albumLayout'
 import { AttachmentTile } from './AttachmentTile'
 import { FetchHint } from './FetchHint'
 import { tileRadius } from './attachmentTileStyle'
-import { focusRing, keyboardPress } from './keyboardPress'
+import { focusRing, heldButton, keyboardPress } from './keyboardPress'
 import { logical } from './logicalEdges'
 import { pressHint } from './pressHint'
 import { StateLayer } from './StateLayer'
@@ -26,6 +26,11 @@ export type AlbumItem = WithMediaUri &
      * picture rather than a button.
      */
     hint?: string | undefined
+    /**
+     * A transfer is running for it. The tile stays a button, disabled and still a tab stop, so
+     * focus on the tile whose press started the transfer stays put.
+     */
+    transferring?: boolean | undefined
   }
 
 export type AttachmentAlbumProps = WithTestID & {
@@ -88,27 +93,32 @@ const AlbumTile = memo(function AlbumTile({
   // A tile that would fetch is the whole set's, so it dims with the album, and at rest on touch
   // under the album's cloud. One that is here opens its own picture, so it answers on its own.
   const fetches = item.fetchesOnOpen === true
+  const held = item.transferring === true
   const press = () => {
     onOpen(at)
   }
+  // Inside the seam rather than over the tile, whose own layers would paint over the ring.
+  const ring = focusRing({ onAccent, offset: 0, radius: tileRadius(side) })
   return (
     <YStack
-      role={item.hint === undefined ? 'img' : 'button'}
-      aria-label={name}
+      {...(held
+        ? heldButton(name, ring)
+        : {
+            role: item.hint === undefined ? ('img' as const) : ('button' as const),
+            'aria-label': name,
+          })}
       {...pressHint(item.hint)}
-      {...keyboardPress(
-        item.hint === undefined ? undefined : press,
-        // Inside the seam rather than over the tile, whose own layers would paint over the ring.
-        focusRing({ onAccent, offset: 0, radius: tileRadius(side) }),
-      )}
+      {...keyboardPress(held || item.hint === undefined ? undefined : press, ring)}
+      aria-disabled={held}
       // tamagui makes a native view an accessibility element only for this. On iOS that hides
       // what is nested, the picture's test id included, so the tile carries its own.
       {...(isWeb ? {} : { tabIndex: 0 })}
       testID={testID}
       position="relative"
       cursor="pointer"
-      onPress={press}
-      {...(fetches ? {} : { group: 'tile' as const })}
+      onPress={held ? undefined : press}
+      // A group in every state: tamagui remounts a view that gains or drops one, dropping focus.
+      group="tile"
     >
       <AttachmentTile
         side={side}

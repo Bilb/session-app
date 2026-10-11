@@ -156,3 +156,42 @@ test('reaches a set’s footer with Tab, switches its view with Enter and downlo
     await app.close()
   }
 })
+
+test('keeps focus on the control and the tile whose Enter starts a download @desktop @medium-risk', async () => {
+  const app = await DesktopApp.launch('alice')
+  const document = SEEDED_LIST[1]
+  const tile = SEEDED_ALBUM[0]
+
+  try {
+    await openFirstConversation(app)
+    // Answers the auto-download prompt, which takes focus on a conversation's first download.
+    await downloadFromRow(app, SEEDED_LIST[0])
+
+    await tabTo(
+      app,
+      (stop) => stop.testID === ELEMENT.conversation.attachment && stop.name === document,
+    )
+    // A document's row has no lead square to stop on, so its control is next.
+    await app.pressKey('Tab')
+    expect(await app.focused()).toMatchObject({
+      testID: ELEMENT.conversation.attachmentDownload,
+      name: 'Download',
+    })
+    await app.pressKey('Enter')
+    // Held as a disabled button while it fetches, then the same element offers Export.
+    await expect
+      .poll(async () => app.focused(), { timeout: 10_000 })
+      .toMatchObject({ testID: ELEMENT.conversation.attachmentExport, name: 'Export' })
+
+    await tabTo(
+      app,
+      (stop) => stop.testID === ELEMENT.conversation.attachmentTile && stop.name === tile,
+    )
+    await app.pressKey('Enter')
+    await expect
+      .poll(async () => app.focused(), { timeout: 10_000 })
+      .toMatchObject({ testID: ELEMENT.conversation.attachmentTile, name: tile, hint: 'Open' })
+  } finally {
+    await app.close()
+  }
+})

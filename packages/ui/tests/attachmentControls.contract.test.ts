@@ -59,17 +59,30 @@ describe('an album tile', () => {
   const tile = album.slice(album.indexOf('const AlbumTile'), album.indexOf('export function'))
 
   it('is named for a screen reader, and is a button only while its press does something', () => {
-    expect(tile).toContain('aria-label={name}')
-    expect(tile).toContain("role={item.hint === undefined ? 'img' : 'button'}")
+    expect(tile).toContain("'aria-label': name")
+    expect(tile).toContain("role: item.hint === undefined ? ('img' as const) : ('button' as const)")
     expect(tile).toContain('{...pressHint(item.hint)}')
   })
 
-  it('takes a tab stop only while its press does something', () => {
-    expect(tile).toMatch(/keyboardPress\(\s*item\.hint === undefined \? undefined : press,/)
+  it('takes a tab stop and keys while its press does something', () => {
+    expect(tile).toContain(
+      'keyboardPress(held || item.hint === undefined ? undefined : press, ring)',
+    )
   })
 
-  it('keeps its press on touch in every state, as before it had a name', () => {
-    expect(tile).toContain('onPress={press}')
+  it('stays a disabled button with its tab stop while it transfers, so focus on it stays', () => {
+    expect(tile).toMatch(/\{\.\.\.\(held\s*\?\s*heldButton\(name, ring\)\s*:\s*\{\s*role:/)
+    // Set in every state: Android keeps a disabled state that is dropped rather than cleared.
+    expect(tile).toContain('aria-disabled={held}')
+  })
+
+  it('is a hover group in every state, since tamagui remounts a view whose group comes or goes', () => {
+    expect(tile).toMatch(/\n\s*group="tile"\n/)
+    expect(tile).not.toContain("group: 'tile'")
+  })
+
+  it('keeps its press on touch in every state but a running transfer', () => {
+    expect(tile).toContain('onPress={held ? undefined : press}')
   })
 
   it('is an accessibility element on iOS, so VoiceOver reads its name', () => {
@@ -82,7 +95,9 @@ describe('an album tile', () => {
   })
 
   it('rings itself in the seam, in the fill’s focus colour, where its own layers cannot cover it', () => {
-    expect(tile).toContain('focusRing({ onAccent, offset: 0, radius: tileRadius(side) })')
+    expect(tile).toContain(
+      'const ring = focusRing({ onAccent, offset: 0, radius: tileRadius(side) })',
+    )
     expect(album.match(/onAccent=\{onAccent\}/g)).toHaveLength(2)
     // Wider than the seam, the ring would reach the next tile, which paints over it.
     expect(focusRing({ onAccent: false, offset: 0, radius: 0 }).outlineWidth).toBeLessThanOrEqual(

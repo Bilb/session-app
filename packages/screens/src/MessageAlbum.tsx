@@ -62,6 +62,7 @@ export function MessageAlbum({
         testID: ELEMENT.conversation.attachmentImage,
         label: albumTileName(attachment.filename, at, viewable.length),
         hint: verb === null ? undefined : verbLabel(verb),
+        transferring: state === 'fetching',
       }
     })
   }, [viewable, message.id, statesKey, locale])

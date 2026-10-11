@@ -123,7 +123,9 @@ export function AttachmentRow({
       progress={fetched.totalBytes > 0 ? fetched.doneBytes / fetched.totalBytes : undefined}
       onPress={press === null ? undefined : perform[press]}
       pressLabel={pressLabel}
-      actionLabel={control === null ? undefined : verbLabel(control)}
+      actionLabel={
+        state === 'fetching' ? tr('downloading') : control === null ? undefined : verbLabel(control)
+      }
       onAction={control === null ? undefined : perform[control]}
       onAccent={onAccent}
       testIDs={{

@@ -65,7 +65,9 @@ describe('an attachment row', () => {
     expect(row).toContain('const pressLabel = press === null ? undefined : verbLabel(press)')
     expect(row).toContain('pressLabel={pressLabel}')
     expect(row).toContain('onAction={control === null ? undefined : perform[control]}')
-    expect(row).toContain('actionLabel={control === null ? undefined : verbLabel(control)}')
+    expect(row).toMatch(
+      /actionLabel=\{\s*state === 'fetching' \? tr\('downloading'\) : control === null \? undefined : verbLabel\(control\)\s*\}/,
+    )
   })
 
   it('opens the viewer, and exports from the control', () => {

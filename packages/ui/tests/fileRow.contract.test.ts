@@ -71,18 +71,34 @@ describe('a file row', () => {
 
   it('gives the row, its lead square and its control each a tab stop, in that order', () => {
     // Document order is tab order: the row wraps the square, and the control comes after both.
-    expect(rowPress).toMatch(/\.\.\.keyboardPress\(\s*onPress,/)
-    expect(leadPress).toMatch(/\.\.\.keyboardPress\(\s*onOpen,/)
-    expect(control).toMatch(/\{\.\.\.keyboardPress\(onAction,/)
-    expect(row.indexOf('...keyboardPress(\n              onPress')).toBeLessThan(
-      row.indexOf('...keyboardPress(\n                    onOpen'),
-    )
+    expect(rowPress).toContain('...keyboardPress(onPress, rowRing)')
+    expect(leadPress).toContain('...keyboardPress(onOpen, leadRing)')
+    expect(control).toContain('...keyboardPress(onAction, ring)')
+    expect(row.indexOf('keyboardPress(onPress')).toBeLessThan(row.indexOf('keyboardPress(onOpen'))
     expect(row.indexOf('{lead}')).toBeLessThan(row.indexOf('<Trailing'))
   })
 
-  it('takes no tab stop for a progress ring or an absent control, which press nothing', () => {
-    expect(control.indexOf('keyboardPress')).toBeGreaterThan(control.indexOf("'progress'"))
+  it('takes no tab stop for an absent control, which presses nothing', () => {
     expect(control.indexOf('keyboardPress')).toBeGreaterThan(control.indexOf('control === null'))
+  })
+
+  it('keeps the row, the square and the control disabled stops while fetching, so focus stays', () => {
+    // One element in every state: swapping the focused one for another drops focus to the page.
+    expect(row).toContain("const held = state === 'fetching'")
+    expect(row).toContain(
+      '{...(onPress === undefined && held ? heldButton(filename, rowRing) : {})}',
+    )
+    expect(row).toContain('{...(leadHeld ? heldButton(filename, leadRing) : {})}')
+    expect(control).toContain("const held = control === 'progress'")
+    expect(control).toContain('? heldButton(actionLabel, ring)')
+    // Set in every state: Android keeps a disabled state that is dropped rather than cleared.
+    expect(control).toContain('aria-disabled={held}')
+    expect(row).toContain('aria-disabled={onPress === undefined && held}')
+    expect(row).toContain('aria-disabled={leadHeld}')
+    expect(control.match(/<YStack\b/g)).toHaveLength(2)
+    // tamagui remounts a view whose group comes or goes, so the row's is unconditional.
+    expect(rowPress).not.toContain('group')
+    expect(row).toMatch(/position="relative"\s*\/\/[^\n]*\n\s*group="row"/)
   })
 
   it('names the lead square and hints its press only while the press does something', () => {
@@ -96,10 +112,8 @@ describe('a file row', () => {
   })
 
   it('rings each focused part in the fill’s focus colour, the row clear of the parts it holds', () => {
-    expect(rowPress).toContain("focusRing({ onAccent, offset: ROW_RING_OFFSET, radius: '$sm' })")
-    expect(leadPress).toContain(
-      'focusRing({ onAccent, offset: 0, radius: tileRadius(FILE_GLYPH_SIDE) })',
-    )
+    expect(row).toContain("focusRing({ onAccent, offset: ROW_RING_OFFSET, radius: '$sm' })")
+    expect(row).toContain('focusRing({ onAccent, offset: 0, radius: tileRadius(FILE_GLYPH_SIDE) })')
     expect(control).toContain("focusRing({ onAccent, offset: 0, radius: '$full' })")
   })
 
