@@ -1,10 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+import { tr } from '@session/localization'
 import type { FileRowState } from '@session/ui'
 import { describe, expect, it } from 'vitest'
 
-import { controlVerb, rowVerb } from '#src/attachmentPress'
+import { controlVerb, rowVerb, verbLabel } from '#src/attachmentPress'
+import { PENDING_COPY } from '#src/pendingCopy'
 
 const STATES: FileRowState[] = ['idle', 'fetching', 'ready', 'failed', 'unavailable']
 
@@ -43,6 +45,15 @@ describe('what a press on an attachment row does', () => {
   })
 })
 
+describe('what a screen reader says a press does', () => {
+  it('takes each verb’s word from the catalogue, and Export from the pending copy', () => {
+    expect(verbLabel('open')).toBe(tr('open'))
+    expect(verbLabel('download')).toBe(tr('download'))
+    expect(verbLabel('retry')).toBe(tr('retry'))
+    expect(verbLabel('export')).toBe(PENDING_COPY.export)
+  })
+})
+
 /** The wiring, read from the source because nothing in the unit tier renders a row. */
 describe('an attachment row', () => {
   const row = readFileSync(join(import.meta.dirname, '../src/AttachmentRow.tsx'), 'utf8')
@@ -51,18 +62,19 @@ describe('an attachment row', () => {
     expect(row).toContain('const press = rowVerb(state, opens)')
     expect(row).toContain('const control = controlVerb(state)')
     expect(row).toContain('onPress={press === null ? undefined : perform[press]}')
-    expect(row).toContain('pressLabel={press === null ? undefined : verbLabel(press)}')
+    expect(row).toContain('const pressLabel = press === null ? undefined : verbLabel(press)')
+    expect(row).toContain('pressLabel={pressLabel}')
     expect(row).toContain('onAction={control === null ? undefined : perform[control]}')
     expect(row).toContain('actionLabel={control === null ? undefined : verbLabel(control)}')
   })
 
-  it('opens the viewer with the catalogue’s Open, and exports from the control', () => {
-    expect(row).toMatch(/case 'open':\s*return tr\('open'\)/)
+  it('opens the viewer, and exports from the control', () => {
     expect(row).toMatch(/open: \(\) => \{\s*ui\.openViewer\(message\.id, attachment\.index\)/)
     expect(row).toMatch(/control === 'export'\s*\?\s*ELEMENT\.conversation\.attachmentExport/)
   })
 
-  it('makes the lead square do what the row does', () => {
+  it('makes the lead square do what the row does, and say what the row says', () => {
     expect(row).toContain('if (press !== null) perform[press]()')
+    expect(row).toContain('openLabel={pressLabel}')
   })
 })

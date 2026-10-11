@@ -12,6 +12,13 @@ describe('a file row', () => {
   // Everything the row carries when it takes a press is in the one spread `onPress` switches on.
   const rowPress =
     /\{\.\.\.\(onPress === undefined\s*\?\s*\{\}\s*:\s*\{([\s\S]*?)\}\)\}/.exec(row)?.[1] ?? ''
+  // The same for the lead square, whose spread `openLabel` switches on.
+  const leadPress =
+    /\{\.\.\.\(openLabel === undefined\s*\?\s*\{\}\s*:\s*\{([\s\S]*?)\}\)\}/.exec(row)?.[1] ?? ''
+  const control = row.slice(
+    row.indexOf('function Trailing('),
+    row.indexOf('export function FileRow('),
+  )
 
   it('holds the lead at the height fileRowHeight counts, with the padding it counts', () => {
     // `getItemLayout` places rows by that constant, so a row that measured differently would
@@ -59,8 +66,37 @@ describe('a file row', () => {
   it('names the row by the file and hints what its press does', () => {
     expect(rowPress).toContain("role: 'button' as const")
     expect(rowPress).toContain("'aria-label': filename")
-    expect(rowPress).toContain('...rowHint(pressLabel)')
-    expect(row).toContain("isWeb ? { 'aria-description': label } : { accessibilityHint: label }")
+    expect(rowPress).toContain('...pressHint(pressLabel)')
+  })
+
+  it('gives the row, its lead square and its control each a tab stop, in that order', () => {
+    // Document order is tab order: the row wraps the square, and the control comes after both.
+    expect(rowPress).toMatch(/\.\.\.keyboardPress\(\s*onPress,/)
+    expect(leadPress).toMatch(/\.\.\.keyboardPress\(\s*onOpen,/)
+    expect(control).toMatch(/\{\.\.\.keyboardPress\(onAction,/)
+    expect(row.indexOf('...keyboardPress(\n              onPress')).toBeLessThan(
+      row.indexOf('...keyboardPress(\n                    onOpen'),
+    )
+    expect(row.indexOf('{lead}')).toBeLessThan(row.indexOf('<Trailing'))
+  })
+
+  it('takes no tab stop for a progress ring or an absent control, which press nothing', () => {
+    expect(control.indexOf('keyboardPress')).toBeGreaterThan(control.indexOf("'progress'"))
+    expect(control.indexOf('keyboardPress')).toBeGreaterThan(control.indexOf('control === null'))
+  })
+
+  it('names the lead square and hints its press only while the press does something', () => {
+    expect(leadPress).toContain("role: 'button' as const")
+    expect(leadPress).toContain("'aria-label': filename")
+    expect(leadPress).toContain('...pressHint(openLabel)')
+  })
+
+  it('rings each focused part in the fill’s focus colour, the row clear of the parts it holds', () => {
+    expect(rowPress).toContain("focusRing({ onAccent, offset: ROW_RING_OFFSET, radius: '$sm' })")
+    expect(leadPress).toContain(
+      'focusRing({ onAccent, offset: 0, radius: tileRadius(FILE_GLYPH_SIDE) })',
+    )
+    expect(control).toContain("focusRing({ onAccent, offset: 0, radius: '$full' })")
   })
 
   it('draws the row’s hover only where the row takes a press', () => {

@@ -27,6 +27,8 @@ import {
 import { FetchHint } from './FetchHint'
 import { Icon } from './Icon'
 import { inkFor } from './ink'
+import { focusRing, keyboardPress } from './keyboardPress'
+import { pressHint } from './pressHint'
 import { ProgressRing } from './ProgressRing'
 import { StateLayer } from './StateLayer'
 import { Text } from './Text'
@@ -58,6 +60,11 @@ export type FileRowProps = WithFilename &
     /** Opens what the lead square shows. Absent where there is nothing to open. A press on the
      * rest of the row is `onPress`'s. */
     onOpen?: (() => void) | undefined
+    /**
+     * Already worded, for what a screen reader says a press on the lead square does. Absent while
+     * that press does nothing, which also leaves the square out of the tab order.
+     */
+    openLabel?: string | undefined
     /** A press on the row outside the lead square and the control. Absent where it does nothing. */
     onPress?: (() => void) | undefined
     /** Already worded, for what a screen reader says a press on the row does. */
@@ -89,14 +96,8 @@ const CAPTION_BIDI = isWeb ? ({ unicodeBidi: 'plaintext' } as const) : undefined
 const RING_SIDE = 28
 const RING_THICKNESS = 3
 
-/**
- * Says what a press on the row does, after its name. ARIA's only hint is `aria-description`, which
- * react-native does not read; tamagui hands each its own.
- */
-function rowHint(label: string | undefined) {
-  if (label === undefined) return {}
-  return isWeb ? { 'aria-description': label } : { accessibilityHint: label }
-}
+/** Outside the row, whose edges the lead square and the control sit on, so no two rings meet. */
+const ROW_RING_OFFSET = 2
 
 /**
  * The one control, always in the same place and always the same size.
@@ -157,6 +158,7 @@ function Trailing({
       group="control"
       cursor="pointer"
       {...(actionLabel === undefined ? {} : { 'aria-label': actionLabel })}
+      {...keyboardPress(onAction, focusRing({ onAccent, offset: 0, radius: '$full' }))}
       testID={testID}
       onPress={(event) => {
         // The control's verb is its own, and the row's press may be another.
@@ -188,6 +190,7 @@ export function FileRow({
   contentType,
   thumbnail,
   onOpen,
+  openLabel,
   onPress,
   pressLabel,
   caption,
@@ -241,7 +244,11 @@ export function FileRow({
             cursor: 'pointer',
             role: 'button' as const,
             'aria-label': filename,
-            ...rowHint(pressLabel),
+            ...pressHint(pressLabel),
+            ...keyboardPress(
+              onPress,
+              focusRing({ onAccent, offset: ROW_RING_OFFSET, radius: '$sm' }),
+            ),
             onPress,
           })}
     >
@@ -258,8 +265,17 @@ export function FileRow({
           lead
         ) : (
           <YStack
-            role="button"
-            aria-label={filename}
+            {...(openLabel === undefined
+              ? {}
+              : {
+                  role: 'button' as const,
+                  'aria-label': filename,
+                  ...pressHint(openLabel),
+                  ...keyboardPress(
+                    onOpen,
+                    focusRing({ onAccent, offset: 0, radius: tileRadius(FILE_GLYPH_SIDE) }),
+                  ),
+                })}
             position="relative"
             group="tile"
             cursor="pointer"

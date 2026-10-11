@@ -1,0 +1,110 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
+import { describe, expect, it, vi } from 'vitest'
+
+import { focusRing, keyboardPress, pressOnKey, type PressKeyEvent } from '#src/keyboardPress'
+import { pressHint } from '#src/pressHint'
+
+const element = {}
+
+function key(name: string, overrides: Partial<PressKeyEvent> = {}): PressKeyEvent {
+  return {
+    key: name,
+    repeat: false,
+    target: element,
+    currentTarget: element,
+    preventDefault: vi.fn(),
+    ...overrides,
+  }
+}
+
+describe('a key on a focused pressable stack', () => {
+  it('presses on Enter and on Space, as a button does', () => {
+    const onPress = vi.fn()
+    const handle = pressOnKey(onPress)
+    handle(key('Enter'))
+    handle(key(' '))
+    expect(onPress).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps Space from scrolling what the control sits in', () => {
+    const space = key(' ')
+    pressOnKey(vi.fn())(space)
+    expect(space.preventDefault).toHaveBeenCalled()
+  })
+
+  it('ignores every other key, and leaves it to the page', () => {
+    const onPress = vi.fn()
+    for (const name of ['a', 'Tab', 'Escape', 'ArrowDown', 'Spacebar']) {
+      const event = key(name)
+      pressOnKey(onPress)(event)
+      expect(event.preventDefault).not.toHaveBeenCalled()
+    }
+    expect(onPress).not.toHaveBeenCalled()
+  })
+
+  it('does not press a row for a key meant for a control nested in it', () => {
+    // The key bubbles to the row's handler with the control as its target.
+    const onPress = vi.fn()
+    pressOnKey(onPress)(key('Enter', { target: {} }))
+    expect(onPress).not.toHaveBeenCalled()
+  })
+
+  it('presses once for a held key, not once per repeat', () => {
+    const onPress = vi.fn()
+    pressOnKey(onPress)(key('Enter', { repeat: true }))
+    expect(onPress).not.toHaveBeenCalled()
+  })
+})
+
+describe('what a stack spreads to take the keyboard', () => {
+  const ring = focusRing({ onAccent: false, offset: 0, radius: '$sm' })
+
+  it('is nothing where the stack takes no press, so it is no tab stop', () => {
+    expect(keyboardPress(undefined, ring)).toEqual({})
+  })
+
+  it('is a tab stop with a key handler and a ring shown only to the keyboard', () => {
+    const props = keyboardPress(vi.fn(), ring)
+    expect(props).toMatchObject({ tabIndex: 0, focusVisibleStyle: ring })
+    expect(props).toHaveProperty('onKeyDown')
+  })
+
+  it('is nothing on native, where a tab index makes an iOS row a single element', () => {
+    const source = readFileSync(join(import.meta.dirname, '../src/keyboardPress.ts'), 'utf8')
+    expect(source).toContain('if (!isWeb || onPress === undefined) return {}')
+  })
+})
+
+describe('the focus ring', () => {
+  it('is the colour the theme gives focus', () => {
+    const theme = readFileSync(join(import.meta.dirname, '../src/themes.ts'), 'utf8')
+    expect(theme).toContain('outlineColor: tokens.primaryColor')
+  })
+
+  it('is the theme’s focus colour on the page', () => {
+    expect(focusRing({ onAccent: false, offset: 2, radius: '$sm' })).toMatchObject({
+      outlineColor: '$primaryColor',
+      outlineOffset: 2,
+      outlineWidth: 2,
+      outlineStyle: 'solid',
+    })
+  })
+
+  it('is the on-accent colour on an accent fill, where the accent would be the fill itself', () => {
+    expect(focusRing({ onAccent: true, offset: 0, radius: '$full' }).outlineColor).toBe('$onAccent')
+  })
+})
+
+describe('a press hint', () => {
+  it('is ARIA’s description on the web and is absent with nothing to say', () => {
+    expect(pressHint('Open')).toEqual({ 'aria-description': 'Open' })
+    expect(pressHint(undefined)).toEqual({})
+  })
+
+  it('is react-native’s hint on native', () => {
+    const source = readFileSync(join(import.meta.dirname, '../src/pressHint.ts'), 'utf8')
+    expect(source).toContain("isWeb ? { 'aria-description': label } : { accessibilityHint: label }")
+  })
+})

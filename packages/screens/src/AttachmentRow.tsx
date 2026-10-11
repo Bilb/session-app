@@ -10,7 +10,7 @@ import { ELEMENT } from '@session/test-ids'
 import { FileRow, type FileRowState, type FileRowThumbnail } from '@session/ui'
 
 import { fetchOf, type Fetch } from './attachmentFetch'
-import { controlVerb, rowVerb, type AttachmentVerb } from './attachmentPress'
+import { controlVerb, rowVerb, verbLabel, type AttachmentVerb } from './attachmentPress'
 import { useConversationUi } from './conversationUi'
 import { formatBytes } from './formatBytes'
 import { PENDING_COPY } from './pendingCopy'
@@ -37,20 +37,6 @@ function caption(
   if (exporting === 'running') return PENDING_COPY.exporting
   if (exporting === 'failed') return PENDING_COPY.exportFailed
   return attachment.sizeBytes === undefined ? '' : formatBytes(attachment.sizeBytes)
-}
-
-/** What a screen reader announces a press as. The glyph is what everyone else reads. */
-function verbLabel(verb: AttachmentVerb): string {
-  switch (verb) {
-    case 'download':
-      return tr('download')
-    case 'retry':
-      return tr('retry')
-    case 'export':
-      return PENDING_COPY.export
-    case 'open':
-      return tr('open')
-  }
 }
 
 /**
@@ -113,6 +99,7 @@ export function AttachmentRow({
   }
   const control = controlVerb(state)
   const press = rowVerb(state, opens)
+  const pressLabel = press === null ? undefined : verbLabel(press)
 
   return (
     <FileRow
@@ -127,13 +114,15 @@ export function AttachmentRow({
               if (press !== null) perform[press]()
             }
       }
+      // The lead square does what the row does, so it says what the row says.
+      openLabel={pressLabel}
       caption={caption(attachment, state, fetched, exporting?.state)}
       state={state}
       // Absent while the server has not said how big the file is, which is what the first report
       // of every transfer means: an empty ring rather than a full one.
       progress={fetched.totalBytes > 0 ? fetched.doneBytes / fetched.totalBytes : undefined}
       onPress={press === null ? undefined : perform[press]}
-      pressLabel={press === null ? undefined : verbLabel(press)}
+      pressLabel={pressLabel}
       actionLabel={control === null ? undefined : verbLabel(control)}
       onAction={control === null ? undefined : perform[control]}
       onAccent={onAccent}

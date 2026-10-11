@@ -1,4 +1,7 @@
+import { tr } from '@session/localization'
 import type { FileRowState } from '@session/ui'
+
+import { PENDING_COPY } from './pendingCopy'
 
 /**
  * What a press on one attachment row does.
@@ -29,4 +32,18 @@ export function controlVerb(state: FileRowState): AttachmentVerb | null {
  */
 export function rowVerb(state: FileRowState, viewable: boolean): AttachmentVerb | null {
   return viewable && state === 'ready' ? 'open' : controlVerb(state)
+}
+
+/** What a screen reader announces a press as. The glyph is what everyone else reads. */
+export function verbLabel(verb: AttachmentVerb): string {
+  switch (verb) {
+    case 'download':
+      return tr('download')
+    case 'retry':
+      return tr('retry')
+    case 'export':
+      return PENDING_COPY.export
+    case 'open':
+      return tr('open')
+  }
 }
