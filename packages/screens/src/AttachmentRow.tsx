@@ -130,6 +130,7 @@ export function AttachmentRow({
         row: ELEMENT.conversation.attachment,
         name: ELEMENT.conversation.attachmentName,
         caption: ELEMENT.conversation.attachmentState,
+        lead: ELEMENT.conversation.attachmentLead,
         thumbnail: ELEMENT.conversation.attachmentImage,
         // The id names what the control currently means rather than where it sits, which is the
         // only thing a test can ask about now that the two verbs share one button.

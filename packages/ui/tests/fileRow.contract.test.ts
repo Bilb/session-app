@@ -91,6 +91,10 @@ describe('a file row', () => {
     expect(leadPress).toContain('...pressHint(openLabel)')
   })
 
+  it('gives the lead square an id of its own, which it carries before any picture is in it', () => {
+    expect(row).toMatch(/group="tile"\s+cursor="pointer"\s+testID=\{testIDs\?\.lead\}/)
+  })
+
   it('rings each focused part in the fill’s focus colour, the row clear of the parts it holds', () => {
     expect(rowPress).toContain("focusRing({ onAccent, offset: ROW_RING_OFFSET, radius: '$sm' })")
     expect(leadPress).toContain(

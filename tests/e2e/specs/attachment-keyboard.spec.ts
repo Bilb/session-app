@@ -49,6 +49,8 @@ test('reaches a picture’s row, its thumbnail and its control with Tab, and ope
 
   try {
     await openFirstConversation(app)
+    // Addressable before there is a thumbnail in it, while its press downloads.
+    expect(await app.count(ELEMENT.conversation.attachmentLead)).toBeGreaterThan(0)
     await downloadFromRow(app, picture)
 
     const stops = await tabStops(app)
@@ -61,8 +63,12 @@ test('reaches a picture’s row, its thumbnail and its control with Tab, and ope
     const after = (step: number) => stops[(row + step) % stops.length]
     expect(stops[row]).toMatchObject({ role: 'button', hint: 'Open' })
     // The thumbnail does what the row does, and says so.
-    expect(after(1)).toMatchObject({ role: 'button', name: picture, hint: 'Open' })
-    expect(after(1)?.containsTestIDs).toContain(ELEMENT.conversation.attachmentImage)
+    expect(after(1)).toMatchObject({
+      testID: ELEMENT.conversation.attachmentLead,
+      role: 'button',
+      name: picture,
+      hint: 'Open',
+    })
     expect(after(2)).toMatchObject({
       testID: ELEMENT.conversation.attachmentExport,
       role: 'button',

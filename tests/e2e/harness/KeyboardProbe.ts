@@ -8,8 +8,6 @@ export interface FocusedElement {
   name: string | null
   /** What a press does, said after the name: ARIA's description. */
   hint: string | null
-  /** Every test id inside it, which is how a control with no id of its own is told apart. */
-  containsTestIDs: string[]
   /** The outline it is drawn with, as computed: `0px` where no focus ring shows. */
   outlineWidth: string
 }

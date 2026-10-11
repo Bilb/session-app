@@ -40,6 +40,8 @@ export interface FileRowTestIDs {
   name?: ElementId | undefined
   caption?: ElementId | undefined
   action?: ElementId | undefined
+  /** The lead square where it takes a press, which is what a test taps in every state. */
+  lead?: ElementId | undefined
   /** Addresses the picture inside the thumbnail, so a test can ask whether it arrived. */
   thumbnail?: ElementId | undefined
 }
@@ -279,6 +281,7 @@ export function FileRow({
             position="relative"
             group="tile"
             cursor="pointer"
+            testID={testIDs?.lead}
             onPress={(event) => {
               // Opening the picture is not the row's download or export.
               event.stopPropagation()

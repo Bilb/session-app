@@ -63,7 +63,6 @@ interface LaidOutNode {
 /** What `focused`'s page-side body reads of an element. */
 interface FocusNode {
   getAttribute(name: string): string | null
-  querySelectorAll(selector: string): ArrayLike<FocusNode>
 }
 
 interface FocusGlobals {
@@ -328,10 +327,6 @@ export class DesktopApp
         role: node.getAttribute('role'),
         name: node.getAttribute('aria-label'),
         hint: node.getAttribute('aria-description'),
-        containsTestIDs: Array.from(node.querySelectorAll('[data-testid]')).flatMap((inner) => {
-          const id = inner.getAttribute('data-testid')
-          return id === null ? [] : [id]
-        }),
         outlineWidth: page.getComputedStyle(node).outlineWidth,
       }
     })
