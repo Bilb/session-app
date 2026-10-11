@@ -1162,7 +1162,8 @@ struct DownloadAttachmentCommand {
 };
 
 /// Write an attachment out to a path the person chose, fetching it first if the cache does not
-/// hold it. Reads the cache but never fills it, so this is not a way to pre-fetch.
+/// hold it. Reads the cache first and fills it as the file arrives, within the cache's size limit,
+/// as `downloadAttachment` does.
 struct ExportAttachmentCommand {
     static constexpr std::string_view type_tag = "exportAttachment";
 
