@@ -1063,6 +1063,17 @@ export function runSessionClientContract(
       expect(await alice.getThumbnailEdge()).toBe(opened)
     })
 
+    it('refuses a thumbnail edge past what the bridge carries and keeps the one it had', async () => {
+      const { alice } = await harness.friends()
+      await alice.setThumbnailEdge(300)
+
+      const error = await failure(() => alice.setThumbnailEdge(2 ** 32))
+      expect(error instanceof Error ? error.message : error).toContain(
+        'setThumbnailEdge.edgePx must be a whole number this bridge can carry',
+      )
+      expect(await alice.getThumbnailEdge()).toBe(300)
+    })
+
     it('measures an attachment cache with nothing in it as empty', async () => {
       const { alice } = await harness.friends()
       expect(await alice.getAttachmentCacheSize()).toBe(0)

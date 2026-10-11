@@ -402,7 +402,11 @@ export class FakeSessionClient implements SessionClient {
 
   setThumbnailEdge(edgePx?: number): Promise<void> {
     this.assertOpen()
-    if (edgePx !== undefined && !(Number.isInteger(edgePx) && edgePx >= 0)) {
+    // The shim carries it as a uint32.
+    if (
+      edgePx !== undefined &&
+      !(Number.isInteger(edgePx) && edgePx >= 0 && edgePx <= 0xffffffff)
+    ) {
       return Promise.reject(
         new SessionClientError(
           'setThumbnailEdge.edgePx must be a whole number this bridge can carry',
