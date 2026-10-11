@@ -115,6 +115,8 @@ export const AttachmentTile = memo(function AttachmentTile({
             width={side}
             height={side}
             borderRadius={radius}
+            // Fresco's JPEG sample rounding undershoots the view by up to 4/3, which reads as soft.
+            resizeMultiplier={4 / 3}
             onLoad={() => {
               setLoadedUri(uri)
             }}
