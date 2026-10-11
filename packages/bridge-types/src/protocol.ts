@@ -27,11 +27,8 @@ import type { FileServerConfig, RouterKind, SeedNode } from './sessionBridgeOpti
  */
 type SecretBytes = Uint8Array
 
-/**
- * A file a forged message says it carries: a pointer to nothing, so it never downloads.
- *
- * Not exported: only the request below names it, and the generator reads it from this file.
- */
+/** A file a forged message says it carries: a pointer to nothing, so it never downloads. */
+// Not exported: only the request below names it, and the generator reads it from this file.
 interface TestAttachment {
   contentType: string
   /** Unset is a sender who sent no ThumbHash, which is what leaves an attachment no preview. */
