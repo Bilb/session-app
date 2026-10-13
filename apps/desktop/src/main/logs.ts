@@ -25,12 +25,14 @@ import {
   consoleDirectory,
   createLogger,
   databaseFields,
+  isExportName,
   libsessionLine,
   minLevelFromSpec,
   networkRows,
   orderedSink,
   parseRecord,
   startupBlock,
+  LOG_FILE_NAME,
   LogWriter,
   Pseudonyms,
   type DatabaseSizes,
@@ -160,8 +162,6 @@ function friendlyPlatform(): string {
   }
 }
 
-/** A retained log file's name, and nothing else: no separators, so no way out of the directory. */
-const LOG_FILE = /^session-\d{8}T\d{6}Z-\d+\.log$/
 /** Parts in one export: a header and two per file is about twenty; anything near this is a bug. */
 const MAX_PARTS = 256
 /** Text the export writes itself - the header and the dividers - per part. */
@@ -175,7 +175,7 @@ function validParts(parts: unknown): ExportPart[] | null {
     if (typeof part !== 'object' || part === null) return null
     const { text, file } = part as { text?: unknown; file?: unknown }
     if (typeof text === 'string' && text.length <= MAX_TEXT_PART) valid.push({ text })
-    else if (typeof file === 'string' && LOG_FILE.test(file)) valid.push({ file })
+    else if (typeof file === 'string' && LOG_FILE_NAME.test(file)) valid.push({ file })
     else return null
   }
   return valid
@@ -376,6 +376,9 @@ export function logLibsession(level: string, category: string, message: string):
   })
 }
 
+/** Longer than any name `exportFileName` makes, and short enough for every filesystem. */
+const MAX_EXPORT_NAME = 128
+
 /**
  * The renderer's log calls, on this window's own `ipc`.
  *
@@ -402,8 +405,8 @@ export function serveLogs(window: Electron.BrowserWindow, appUrl: string): void 
 
   ipc.handle('log:span', async (event, first: unknown, last: unknown) => {
     if (!isFromAppFrame(event.senderFrame, appUrl)) throw new Error('refused')
-    if (typeof first !== 'string' || !LOG_FILE.test(first)) throw new Error('refused')
-    if (typeof last !== 'string' || !LOG_FILE.test(last)) throw new Error('refused')
+    if (typeof first !== 'string' || !LOG_FILE_NAME.test(first)) throw new Error('refused')
+    if (typeof last !== 'string' || !LOG_FILE_NAME.test(last)) throw new Error('refused')
     const { dir } = await openLogs()
     return {
       firstLine: edgeLine(join(dir, first), 'first'),
@@ -419,7 +422,12 @@ export function serveLogs(window: Electron.BrowserWindow, appUrl: string): void 
   ipc.handle('log:export', async (event, name: unknown, parts: unknown) => {
     if (!isFromAppFrame(event.senderFrame, appUrl)) throw new Error('refused')
     const valid = validParts(parts)
-    if (typeof name !== 'string' || !/^[\w.-]{1,128}\.log\.gz$/.test(name) || valid === null) {
+    if (
+      typeof name !== 'string' ||
+      name.length > MAX_EXPORT_NAME ||
+      !isExportName(name) ||
+      valid === null
+    ) {
       throw new Error('refused')
     }
     const { dir, writer } = await openLogs()

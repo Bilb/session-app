@@ -12,10 +12,18 @@ import { basicUtc, BUDGET_BYTES, type LogFileInfo } from './writer'
  */
 export type ExportPart = { text: string } | { file: string }
 
+/** What `exportFileName` makes: the platform and version reduced to `[a-z0-9.-]`, then the time. */
+const EXPORT_NAME = /^session-logs-[a-z0-9.-]+-\d{8}T\d{6}Z\.log\.gz$/
+
 /** `session-logs-ios-1.0.0-20261009T074102Z.log.gz`: no spaces, nothing a filesystem refuses. */
 export function exportFileName(platform: string, version: string, nowMs: number): string {
   const safe = (text: string): string => text.toLowerCase().replace(/[^a-z0-9.]+/g, '-')
   return `session-logs-${safe(platform)}-${safe(version)}-${basicUtc(nowMs)}.log.gz`
+}
+
+/** Whether a name is one `exportFileName` made, so an earlier export can be found and swept. */
+export function isExportName(name: string): boolean {
+  return EXPORT_NAME.test(name)
 }
 
 export interface ExportPlan {

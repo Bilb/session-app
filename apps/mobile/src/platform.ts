@@ -5,6 +5,7 @@ import {
   type NotificationsPort,
 } from '@session/app'
 import { parseNetworkName } from '@session/basic-types'
+import { isExportName } from '@session/logging'
 import * as Clipboard from 'expo-clipboard'
 import Constants from 'expo-constants'
 import * as Sharing from 'expo-sharing'
@@ -14,12 +15,9 @@ import { Linking, Platform, Share } from 'react-native'
 
 import { flagOverride } from './flagOverrides'
 import { endingRun, logDirectory, logWriter, lowPowerRows, osName } from './logs'
-import { attachmentsBytes, databaseSizes } from './storageSizes'
-import { SessionLogs } from './sessionLogs'
-
-/** What `exportFileName` names an export, so an earlier one in the cache can be found. */
-const EXPORT_FILE = /^session-logs-[a-z0-9.-]+\.log\.gz$/
 import { restartProcess, terminateProcess } from './processExit'
+import { SessionLogs } from './sessionLogs'
+import { attachmentsBytes, databaseSizes } from './storageSizes'
 
 /**
  * Whose servers fast mode would use, which is what the onboarding screen has to name.
@@ -216,7 +214,7 @@ const ports = memoryPorts({
             // Earlier exports go first. Not deleted once shared: on Android the app it was shared
             // to may still be reading it after the sheet closes. So one is kept, not every one.
             for (const entry of new Directory(Paths.cache).list()) {
-              if (entry instanceof File && EXPORT_FILE.test(entry.name)) entry.delete()
+              if (entry instanceof File && isExportName(entry.name)) entry.delete()
             }
             const out = new File(Paths.cache, name)
             await nativeLogs.gzip(parts, pathOf(logDirectory.uri), pathOf(out.uri))

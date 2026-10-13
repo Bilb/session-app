@@ -5,6 +5,7 @@ import {
   exportFileName,
   exportHeader,
   exportParts,
+  isExportName,
   planExport,
   sizeBucket,
   type ExportFacts,
@@ -24,6 +25,18 @@ describe('exportFileName', () => {
       'session-logs-macos-15-1.0.0-beta-20261009T074102Z.log.gz',
     )
   })
+
+  it('makes names that isExportName recognises, so an earlier export can be swept', () => {
+    expect(isExportName(exportFileName('iOS', '1.0.0', AT))).toBe(true)
+    expect(isExportName(exportFileName('Android', '1.2.3 (45)', AT))).toBe(true)
+    expect(isExportName(exportFileName('unknown', '0.0.0', AT))).toBe(true)
+  })
+
+  it('recognises nothing else', () => {
+    expect(isExportName('session-20261009T074102Z-0.log')).toBe(false)
+    expect(isExportName('session-logs-ios-1.0.0-20261009T074102Z.log.gz.tmp')).toBe(false)
+    expect(isExportName('photo.jpg')).toBe(false)
+  })
 })
 
 describe('planExport', () => {
@@ -42,6 +55,18 @@ describe('planExport', () => {
 
   it('includes everything that fits', () => {
     expect(planExport(files, 100).omitted).toEqual([])
+  })
+
+  it('includes a file that exactly meets the budget', () => {
+    const plan = planExport(files, 30)
+    expect(plan.included.map((f) => f.name)).toEqual(['a', 'b', 'c'])
+    expect(plan.omitted).toEqual([])
+    expect(plan.bytes).toBe(30)
+    expect(planExport(files, 29).omitted.map((f) => f.name)).toEqual(['a'])
+  })
+
+  it('plans nothing when there are no files', () => {
+    expect(planExport([], 100)).toEqual({ included: [], omitted: [], bytes: 0 })
   })
 })
 
@@ -194,6 +219,30 @@ describe('exportHeader', () => {
       '    Left out       nothing',
     ])
     expect(header).toContain('    hex            12')
+  })
+
+  it('says how many older files were left out, and how much they came to', () => {
+    const plan = planExport(
+      [
+        file('session-20261005T000000Z-0.log', 1_500_000),
+        file('session-20261006T000000Z-0.log', 1_500_000),
+        file('session-20261007T221403Z-0.log', 2_000_000),
+      ],
+      2_000_000,
+    )
+    const header = exportHeader(facts({ logs: { plan, firstLine: null, lastLine: null } }))
+    expect(header).toContain('    Files          1')
+    expect(header).toContain('    Left out       2 older files (3.0 MB)')
+    expect(header).toContain('    From           unknown')
+  })
+
+  it('heads an export with no files', () => {
+    const header = exportHeader(
+      facts({ logs: { plan: planExport([]), firstLine: null, lastLine: null } }),
+    )
+    expect(header).toContain('    Files          0')
+    expect(header).toContain('    Size           0 B')
+    expect(header).toContain('    Left out       nothing')
   })
 
   it('leaves out what does not apply and says unknown for what cannot be read', () => {

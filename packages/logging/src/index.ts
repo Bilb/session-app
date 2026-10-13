@@ -8,6 +8,7 @@ export {
   exportFileName,
   exportHeader,
   exportParts,
+  isExportName,
   planExport,
   sizeBucket,
   type DatabaseSizes,
@@ -55,6 +56,7 @@ export {
 export {
   BUDGET_BYTES,
   FLUSH_MS,
+  LOG_FILE_NAME,
   LogWriter,
   MAX_FILE_BYTES,
   basicUtc,

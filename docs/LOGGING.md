@@ -284,7 +284,8 @@ Session logs exported 2026-10-09 07:41:02Z (17:41 local, UTC+10:00)
 - **Body:** the retained files chosen **newest-backwards** up to the budget and written **oldest
   first**, so the file reads in time order. Each launch opens with its own startup block; a file that
   continues a launch after rotation is preceded by `── continued in session-…-1.log`.
-- **File name, no spaces:** `session-logs-<platform>-<version>-<UTC basic>.log.gz`.
+- **File name, no spaces:** `session-logs-<platform>-<version>-<UTC basic>.log.gz`. `isExportName`
+  recognises one, so the phones can sweep earlier exports out of the cache before writing the next.
 - Delivered by the platform: desktop's main process asks where to save, the phones share it through
   the share sheet.
 - **Desktop never writes to the chosen path until the export is whole.** It writes to

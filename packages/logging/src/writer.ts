@@ -46,7 +46,13 @@ export const BUDGET_BYTES = 20 * 1024 * 1024
 /** Lines reach the disk at least this often, so a crash loses seconds rather than a session. */
 export const FLUSH_MS = 2000
 
-const NAME = /^session-(\d{8}T\d{6}Z)-(\d+)\.log$/
+/**
+ * A log file's name: its launch in UTC, then its part. Also what keeps a name an export is given
+ * inside the log directory, so the desktop's main process and both native modules check names
+ * against this one pattern; `packages/app/tests/logFileName.contract.test.ts` holds the native
+ * modules' copies to it.
+ */
+export const LOG_FILE_NAME = /^session-(\d{8}T\d{6}Z)-(\d+)\.log$/
 
 /** `20261008T032009Z`: UTC, no separators, so a file name never carries a colon or a space. */
 export function basicUtc(ms: number): string {
@@ -63,11 +69,11 @@ export function logFileName(launchMs: number, index: number): string {
 /** Oldest first, by launch then by part: `-10` sorts after `-9`, which a string sort gets wrong. */
 export function sortLogFiles<T extends { name: string }>(files: readonly T[]): T[] {
   const key = (name: string): [string, number] => {
-    const match = NAME.exec(name)
+    const match = LOG_FILE_NAME.exec(name)
     return [match?.[1] ?? '', Number(match?.[2] ?? 0)]
   }
   return files
-    .filter((file) => NAME.test(file.name))
+    .filter((file) => LOG_FILE_NAME.test(file.name))
     .sort((a, b) => {
       const [launchA, partA] = key(a.name)
       const [launchB, partB] = key(b.name)
