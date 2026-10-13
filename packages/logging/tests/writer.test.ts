@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { utf8 } from '#src/sha256'
 import {
   consoleDirectory,
   LogWriter,
@@ -144,6 +145,58 @@ describe('LogWriter', () => {
     // A desktop restart skips the quit marker, and writes its own.
     const restarted = readPreviousRun('f.log', 'x >>> launch\nx >>> restart\n')
     expect(restarted).toEqual({ file: 'f.log', endedCleanly: true, lastMarker: 'restart' })
+  })
+
+  it('reads only the end of the previous file where the directory can, whole lines only', async () => {
+    const name = 'session-20261001T000000Z-0.log'
+    // Two-byte characters, so the last 16 KiB starts inside one; the line it starts in names a
+    // marker that must not be taken for the last one.
+    const text =
+      `x INFO [lifecycle] >>> launch\n${'é'.repeat(9_000)}ab x >>> quit\n` +
+      `x INFO [lifecycle] >>> foreground\n${'ü'.repeat(3_000)}\n`
+    const bytes = utf8(text)
+    const read: string[] = []
+    const dir = {
+      ...memoryDirectory(),
+      list: () => Promise.resolve([{ name, sizeBytes: bytes.length }]),
+      read: () => Promise.reject(new Error('read whole')),
+      readTail: (file: string, tailBytes: number) => {
+        read.push(`${file} ${String(tailBytes)}`)
+        return Promise.resolve(bytes.slice(Math.max(0, bytes.length - tailBytes)))
+      },
+    }
+    const writer = await LogWriter.open(dir, { launchMs: LAUNCH, timers: noTimers })
+    expect(read).toEqual([`${name} 16384`])
+    expect(writer.previousRun).toEqual({
+      file: name,
+      endedCleanly: false,
+      lastMarker: 'foreground',
+    })
+  })
+
+  it('drops the line a tail began inside, even when it is the only marker', async () => {
+    const name = 'session-20261001T000000Z-0.log'
+    const bytes = utf8(`${'é'.repeat(9_000)}a x >>> quit\n`)
+    const dir = {
+      ...memoryDirectory(),
+      list: () => Promise.resolve([{ name, sizeBytes: bytes.length }]),
+      readTail: (_file: string, tailBytes: number) =>
+        Promise.resolve(bytes.slice(bytes.length - tailBytes)),
+    }
+    const writer = await LogWriter.open(dir, { launchMs: LAUNCH, timers: noTimers })
+    expect(writer.previousRun?.lastMarker).toBeNull()
+  })
+
+  it('reads a file shorter than the tail whole, first line included', async () => {
+    const name = 'session-20261001T000000Z-0.log'
+    const bytes = utf8('x é >>> background\n')
+    const dir = {
+      ...memoryDirectory(),
+      list: () => Promise.resolve([{ name, sizeBytes: bytes.length }]),
+      readTail: () => Promise.resolve(bytes),
+    }
+    const writer = await LogWriter.open(dir, { launchMs: LAUNCH, timers: noTimers })
+    expect(writer.previousRun?.lastMarker).toBe('background')
   })
 
   it('keeps writing after a failed append, and reports it', async () => {

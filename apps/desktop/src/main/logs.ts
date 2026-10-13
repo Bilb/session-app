@@ -1,8 +1,12 @@
 import { randomBytes } from 'node:crypto'
 import {
   appendFileSync,
+  closeSync,
+  fstatSync,
   mkdirSync,
+  openSync,
   readFileSync,
+  readSync,
   readdirSync,
   rmSync,
   statSync,
@@ -71,6 +75,17 @@ function fsDirectory(dir: string): LogDirectory {
       return Promise.resolve()
     },
     read: (name) => Promise.resolve(readFileSync(join(dir, name), 'utf8')),
+    readTail: (name, bytes) => {
+      const fd = openSync(join(dir, name), 'r')
+      try {
+        const sizeBytes = fstatSync(fd).size
+        const tail = new Uint8Array(Math.min(bytes, sizeBytes))
+        readSync(fd, tail, 0, tail.length, sizeBytes - tail.length)
+        return Promise.resolve(tail)
+      } finally {
+        closeSync(fd)
+      }
+    },
   }
 }
 

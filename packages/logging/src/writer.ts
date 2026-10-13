@@ -11,6 +11,11 @@ export interface LogDirectory {
   append(name: string, text: string): Promise<void>
   remove(name: string): Promise<void>
   read(name: string): Promise<string>
+  /**
+   * The last `bytes` of a file, or the whole of a shorter one, as stored. Where a directory has
+   * no way to read from an offset it leaves this out, and the file is read whole.
+   */
+  readTail?(name: string, bytes: number): Promise<Uint8Array>
 }
 
 /**
@@ -90,9 +95,12 @@ export interface PreviousRun {
 
 const CLEAN_ENDINGS = ['background', 'restart', 'quit']
 
+/** How much of the end of the previous run's file is read for its last marker. */
+const PREVIOUS_RUN_TAIL_BYTES = 16 * 1024
+
 export function readPreviousRun(file: string, text: string): PreviousRun {
   const markers = text
-    .slice(-16_384)
+    .slice(-PREVIOUS_RUN_TAIL_BYTES)
     .split('\n')
     .filter((line) => line.includes(` ${MARKER} `))
   const last = markers.at(-1)
@@ -102,6 +110,36 @@ export function readPreviousRun(file: string, text: string): PreviousRun {
   const nameWords = firstPair === -1 ? words : words.slice(0, firstPair)
   const name = last === undefined ? null : nameWords.join(' ') || null
   return { file, endedCleanly: name !== null && CLEAN_ENDINGS.includes(name), lastMarker: name }
+}
+
+/** The most bytes handed to `String.fromCharCode` at once, well inside any engine's limit. */
+const ASCII_CHUNK = 4096
+
+/**
+ * Bytes as text, one character each. Only a marker's name is read from this, and the names are
+ * ASCII, so anything outside ASCII elsewhere coming out garbled costs nothing - and it needs no
+ * `TextDecoder`, which not every engine the phones run has.
+ */
+function asciiText(bytes: Uint8Array): string {
+  let text = ''
+  for (let start = 0; start < bytes.length; start += ASCII_CHUNK) {
+    text += String.fromCharCode(...bytes.subarray(start, start + ASCII_CHUNK))
+  }
+  return text
+}
+
+/**
+ * The end of a file, as whole lines: only the end where the directory can read from an offset, so
+ * a launch reads 16 KiB of the previous run rather than up to a whole file of it. A tail that
+ * starts partway into the file starts partway into a line, so that line goes.
+ */
+async function readEnd(dir: LogDirectory, file: LogFileInfo): Promise<string> {
+  if (dir.readTail === undefined) return dir.read(file.name)
+  const bytes = await dir.readTail(file.name, PREVIOUS_RUN_TAIL_BYTES)
+  const text = asciiText(bytes)
+  if (bytes.length >= file.sizeBytes) return text
+  const lineEnd = text.indexOf('\n')
+  return lineEnd === -1 ? '' : text.slice(lineEnd + 1)
 }
 
 /** The timers every runtime has, declared here since this package loads no DOM or node types. */
@@ -170,7 +208,7 @@ export class LogWriter implements LogSink {
     const files = sortLogFiles(await dir.list())
     const newest = files.at(-1)
     const previousRun =
-      newest === undefined ? null : readPreviousRun(newest.name, await dir.read(newest.name))
+      newest === undefined ? null : readPreviousRun(newest.name, await readEnd(dir, newest))
     return new LogWriter(dir, files, previousRun, options)
   }
 

@@ -10,7 +10,7 @@ import {
 } from '@session/logging'
 import type { SessionStore } from '@session/state'
 import * as Crypto from 'expo-crypto'
-import { Directory, File, Paths } from 'expo-file-system'
+import { Directory, File, FileMode, Paths } from 'expo-file-system'
 import { AppState, Platform } from 'react-native'
 
 const SALT_FILE = '.salt'
@@ -54,6 +54,17 @@ function expoDirectory(dir: Directory): LogDirectory {
       return Promise.resolve()
     },
     read: (name) => new File(dir, name).text(),
+    readTail: (name, bytes) => {
+      const handle = new File(dir, name).open(FileMode.ReadOnly)
+      try {
+        const sizeBytes = handle.size ?? 0
+        const length = Math.min(bytes, sizeBytes)
+        handle.offset = sizeBytes - length
+        return Promise.resolve(handle.readBytes(length))
+      } finally {
+        handle.close()
+      }
+    },
   }
 }
 
