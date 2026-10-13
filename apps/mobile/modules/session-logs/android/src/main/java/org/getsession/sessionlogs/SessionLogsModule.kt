@@ -1,10 +1,13 @@
 package org.getsession.sessionlogs
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.ActivityManager
+import android.app.ApplicationExitInfo
 import android.content.ComponentCallbacks2
 import android.content.res.Configuration
 import android.content.Context
+import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Debug
@@ -19,19 +22,25 @@ import java.util.zip.GZIPOutputStream
 // The device logs' native half: compression off the JS thread, and the facts the export header
 // needs that JavaScript cannot read. See the iOS module for why compression is here.
 class SessionLogsModule : Module() {
+  // The writer's LOG_FILE_NAME in @session/logging, without its groups;
+  // packages/app/tests/logFileName.contract.test.ts reads this line and fails when the two differ.
   private val logFile = Regex("^session-\\d{8}T\\d{6}Z-\\d+\\.log$")
 
   private var memoryCallbacks: ComponentCallbacks2? = null
+  // The context the callbacks were registered on, kept so they are unregistered from that same
+  // one: the React context can be gone by the time the module is destroyed.
+  private var memoryContext: Context? = null
 
   override fun definition() = ModuleDefinition {
     Name("SessionLogs")
 
     // The system asking for memory back: React Native's AppState has no memory warning on Android,
-    // so this is how a log learns the app was under pressure before it was killed.
+    // so this is how a log learns the app was under pressure before it was killed. Only Android 13
+    // and below send the levels that mean pressure; see `trimLevelName`.
     Events("onMemoryPressure")
 
     OnCreate {
-      val context = appContext.reactContext ?: return@OnCreate
+      val context = appContext.reactContext?.applicationContext ?: return@OnCreate
       val callbacks =
         object : ComponentCallbacks2 {
           override fun onTrimMemory(level: Int) {
@@ -47,29 +56,36 @@ class SessionLogsModule : Module() {
         }
       context.registerComponentCallbacks(callbacks)
       memoryCallbacks = callbacks
+      memoryContext = context
     }
 
     OnDestroy {
-      memoryCallbacks?.let { appContext.reactContext?.unregisterComponentCallbacks(it) }
+      memoryCallbacks?.let { memoryContext?.unregisterComponentCallbacks(it) }
       memoryCallbacks = null
+      memoryContext = null
     }
 
     // Parts in order through one gzip stream; a part is a text or a log file name in `directory`,
-    // checked to be a bare log file name so it cannot reach outside it.
+    // checked to be a bare log file name so it cannot reach outside it. On a background pool rather
+    // than the queue every module's async calls share, which would wait behind the whole deflate.
     AsyncFunction("gzip") { parts: List<Map<String, String>>, directory: String, outPath: String ->
       val out = File(outPath)
       try {
-        GZIPOutputStream(FileOutputStream(out), 64 * 1024).use { gzip ->
-          for (part in parts) {
-            val text = part["text"]
-            val name = part["file"]
-            if (text != null) {
-              gzip.write(text.toByteArray(Charsets.UTF_8))
-            } else if (name != null) {
-              require(logFile.matches(name)) { "not a log file name: $name" }
-              // A file rotated away since the list was taken is skipped rather than failing.
-              val file = File(directory, name)
-              if (file.exists()) file.inputStream().use { it.copyTo(gzip, 64 * 1024) }
+        // Two `use`s: GZIPOutputStream writes its header in the constructor, which can throw with
+        // the file already open.
+        FileOutputStream(out).use { file ->
+          GZIPOutputStream(file, 64 * 1024).use { gzip ->
+            for (part in parts) {
+              val text = part["text"]
+              val name = part["file"]
+              if (text != null) {
+                gzip.write(text.toByteArray(Charsets.UTF_8))
+              } else if (name != null) {
+                require(logFile.matches(name)) { "not a log file name: $name" }
+                // A file rotated away since the list was taken is skipped rather than failing.
+                val log = File(directory, name)
+                if (log.exists()) log.inputStream().use { it.copyTo(gzip, 64 * 1024) }
+              }
             }
           }
         }
@@ -79,8 +95,9 @@ class SessionLogsModule : Module() {
         throw error
       }
       out.length().toInt()
-    }
+    }.runOnQueue(appContext.backgroundCoroutineScope)
 
+    // Off the shared queue too: `Debug.getMemoryInfo` walks the process's memory maps.
     AsyncFunction("diagnostics") {
       val context = appContext.reactContext ?: throw IllegalStateException("no context")
       val activity = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
@@ -96,23 +113,69 @@ class SessionLogsModule : Module() {
         "lowPowerMode" to (context.getSystemService(Context.POWER_SERVICE) as PowerManager).isPowerSaveMode,
         "permissions" to permissions(context),
       )
-    }
+    }.runOnQueue(appContext.backgroundCoroutineScope)
+
+    // How the system says the previous process ended, for the startup block's Previous run row:
+    // the answer the memory marker cannot give from Android 14, which no longer sends the levels
+    // that mean pressure. Null below Android 11, which keeps no record.
+    AsyncFunction("previousExit") { previousExit() }.runOnQueue(appContext.backgroundCoroutineScope)
   }
 
-  // The levels worth a line: the ones that mean the system is short of memory, not the UI hiding.
+  // The levels worth a line: the ones that mean the system is short of memory. Not BACKGROUND,
+  // which means only that the process went onto the cached list, as it does every time the person
+  // leaves the app. Android 14 and later send none of these, only UI_HIDDEN and BACKGROUND.
   @Suppress("DEPRECATION")
   private fun trimLevelName(level: Int): String? =
     when (level) {
       ComponentCallbacks2.TRIM_MEMORY_RUNNING_MODERATE -> "running moderate"
       ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW -> "running low"
       ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL -> "running critical"
-      ComponentCallbacks2.TRIM_MEMORY_BACKGROUND -> "background"
       ComponentCallbacks2.TRIM_MEMORY_MODERATE -> "moderate"
       ComponentCallbacks2.TRIM_MEMORY_COMPLETE -> "complete"
       else -> null
     }
 
-  // The installing package: com.android.vending is the Play Store; null is a sideload or adb.
+  // The most recent exit the system recorded for this package, which at launch is the previous
+  // process's: this one has not exited yet.
+  private fun previousExit(): Map<String, Any?>? {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
+    val context = appContext.reactContext ?: return null
+    val activity = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+    val exit =
+      activity.getHistoricalProcessExitReasons(context.packageName, 0, 1).firstOrNull()
+        ?: return null
+    return mapOf(
+      "reason" to exitReasonName(exit.reason),
+      "description" to exit.description,
+      "timestampMs" to exit.timestamp,
+    )
+  }
+
+  // Constants, inlined at compile time, so naming the newer ones costs nothing on older versions.
+  @SuppressLint("InlinedApi")
+  private fun exitReasonName(reason: Int): String =
+    when (reason) {
+      ApplicationExitInfo.REASON_EXIT_SELF -> "exited itself"
+      ApplicationExitInfo.REASON_SIGNALED -> "signalled"
+      ApplicationExitInfo.REASON_LOW_MEMORY -> "low memory"
+      ApplicationExitInfo.REASON_CRASH -> "crash"
+      ApplicationExitInfo.REASON_CRASH_NATIVE -> "native crash"
+      ApplicationExitInfo.REASON_ANR -> "ANR"
+      ApplicationExitInfo.REASON_INITIALIZATION_FAILURE -> "initialisation failure"
+      ApplicationExitInfo.REASON_PERMISSION_CHANGE -> "permission change"
+      ApplicationExitInfo.REASON_EXCESSIVE_RESOURCE_USAGE -> "excessive resource usage"
+      ApplicationExitInfo.REASON_USER_REQUESTED -> "user requested"
+      ApplicationExitInfo.REASON_USER_STOPPED -> "user stopped"
+      ApplicationExitInfo.REASON_DEPENDENCY_DIED -> "dependency died"
+      ApplicationExitInfo.REASON_OTHER -> "other"
+      ApplicationExitInfo.REASON_FREEZER -> "frozen"
+      ApplicationExitInfo.REASON_PACKAGE_STATE_CHANGE -> "package state change"
+      ApplicationExitInfo.REASON_PACKAGE_UPDATED -> "app updated"
+      else -> "unknown ($reason)"
+    }
+
+  // The installing package, by name where it is a store people know: null is a sideload or adb,
+  // since those install with no installer.
   private fun install(context: Context): String {
     val installer =
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -121,14 +184,36 @@ class SessionLogsModule : Module() {
         @Suppress("DEPRECATION")
         context.packageManager.getInstallerPackageName(context.packageName)
       }
-    return installer ?: "unknown"
+    return when {
+      installer == null -> "sideload or adb"
+      installer == "com.android.vending" -> "Play Store"
+      installer.startsWith("org.fdroid.") -> "F-Droid"
+      else -> installer
+    }
   }
 
-  // Granted or not: Android cannot tell "never asked" from "denied" without an activity.
+  private fun packageInfo(context: Context): PackageInfo =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      context.packageManager.getPackageInfo(
+        context.packageName,
+        PackageManager.PackageInfoFlags.of(PackageManager.GET_PERMISSIONS.toLong()),
+      )
+    } else {
+      @Suppress("DEPRECATION")
+      context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_PERMISSIONS)
+    }
+
+  // Granted or not: Android cannot tell "never asked" from "denied" without an activity. One the
+  // manifest does not request is always refused, so it says so rather than "not granted", which
+  // would read as the person having refused it.
   private fun permissions(context: Context): List<List<String>> {
+    val declared = packageInfo(context).requestedPermissions?.toSet() ?: emptySet()
     fun state(permission: String) =
-      if (context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) "granted"
-      else "not granted"
+      when {
+        permission !in declared -> "not declared"
+        context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED -> "granted"
+        else -> "not granted"
+      }
     val photos =
       if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_IMAGES
       else Manifest.permission.READ_EXTERNAL_STORAGE
