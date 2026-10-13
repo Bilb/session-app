@@ -1,10 +1,10 @@
 import { appLog, logStoreMilestones, startLogger, storeLogger } from '@session/app'
+import { roughBytes } from '@session/basic-types'
 import {
   consoleDirectory,
   createLogger,
   databaseFields,
   libsessionLine,
-  roughBytes,
   LogWriter,
   minLevelFromSpec,
   Pseudonyms,

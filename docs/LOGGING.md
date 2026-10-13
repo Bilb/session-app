@@ -260,8 +260,11 @@ Session logs exported 2026-10-09 07:41:02Z (17:41 local, UTC+10:00)
 ====================================================================================================
 ```
 
-- **Rounded to two significant figures** wherever an exact figure could link two exports or describe
-  an account: memory, free space, database and attachment sizes.
+- **Rounded to two significant figures** for memory, free space, database and attachment sizes:
+  support needs the size, not the byte. Rounding coarsens these figures; it does not anonymise them.
+  A 48 MB database still reads `48 MB` in every export made that week, and with the locale and the
+  other rows it can still link two exports from one device. Rounding happens before the unit is
+  chosen, so 999,999 bytes reads `1.0 MB`, never `1000 kB`.
 - **Config sizes are buckets of likely cost**: small (no cost worth seeing), medium (a regular
   account's), large (a likely cost), very large (almost certainly one), each config with lines of
   its own by what makes it cost. Every change regenerates, pushes, stores and merges a whole config,
@@ -275,7 +278,9 @@ Session logs exported 2026-10-09 07:41:02Z (17:41 local, UTC+10:00)
 - **Total memory** appears only on desktop; on a phone the model says it.
 - A field the platform can't answer says `unknown`; one that doesn't apply (permissions on desktop)
   is left out. The compressed size isn't in the header, since the header is inside what is
-  compressed. Redaction counts are the exporting process's own.
+  compressed.
+- **Redaction counts** are those of the process that swept the lines: on a phone, the one process;
+  on desktop, main, which sweeps the renderer's lines and libsession's as well as its own.
 - **Body:** the retained files chosen **newest-backwards** up to the budget and written **oldest
   first**, so the file reads in time order. Each launch opens with its own startup block; a file that
   continues a launch after rotation is preceded by `── continued in session-…-1.log`.

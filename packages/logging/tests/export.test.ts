@@ -5,9 +5,7 @@ import {
   exportFileName,
   exportHeader,
   exportParts,
-  formatBytes,
   planExport,
-  roughBytes,
   sizeBucket,
   type ExportFacts,
 } from '#src/export'
@@ -44,15 +42,6 @@ describe('planExport', () => {
 
   it('includes everything that fits', () => {
     expect(planExport(files, 100).omitted).toEqual([])
-  })
-})
-
-describe('formatBytes', () => {
-  it('uses decimal units', () => {
-    expect(formatBytes(0)).toBe('0 B')
-    expect(formatBytes(1_234)).toBe('1.2 kB')
-    expect(formatBytes(48_200_000)).toBe('48.2 MB')
-    expect(formatBytes(312_000_000)).toBe('312 MB')
   })
 })
 
@@ -93,16 +82,6 @@ function facts(overrides: Partial<ExportFacts> = {}): ExportFacts {
     ...overrides,
   }
 }
-
-describe('roughBytes', () => {
-  it('keeps two significant figures', () => {
-    expect(roughBytes(48_234_496)).toBe('48 MB')
-    expect(roughBytes(1_234)).toBe('1.2 kB')
-    expect(roughBytes(312_400_000)).toBe('310 MB')
-    expect(roughBytes(41_234_000_000)).toBe('41 GB')
-    expect(roughBytes(512)).toBe('512 B')
-  })
-})
 
 describe('sizeBucket', () => {
   it("draws contacts' lines where a change starts to cost, and where it goes multipart", () => {

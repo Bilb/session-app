@@ -1,3 +1,5 @@
+import { roughBytes } from '@session/basic-types'
+
 import { utcOffset, versionText } from './startup'
 import type { SweepCounts } from './sweep'
 import type { LogFields } from './values'
@@ -45,38 +47,6 @@ export function planExport(
     omitted: files.slice(0, files.length - included.length),
     bytes,
   }
-}
-
-/** `48.2 MB`, `312 kB`, `0 B`: decimal units, as the OS's own storage screens use. */
-export function formatBytes(bytes: number): string {
-  if (bytes < 1000) return `${String(bytes)} B`
-  const units = ['kB', 'MB', 'GB', 'TB']
-  let value = bytes / 1000
-  let unit = 0
-  while (value >= 1000 && unit < units.length - 1) {
-    value /= 1000
-    unit += 1
-  }
-  return `${value >= 100 ? value.toFixed(0) : value.toFixed(1)} ${units[unit] ?? ''}`
-}
-
-/**
- * Bytes to two significant figures: `48 MB`, `1.2 kB`, `310 MB`.
- *
- * For what could fingerprint a device or describe an account - free space, database and cache
- * sizes - where the exact figure would link two exports and the rough one is all support needs.
- */
-export function roughBytes(bytes: number): string {
-  if (bytes < 1000) return formatBytes(bytes)
-  const units = ['kB', 'MB', 'GB', 'TB']
-  let value = bytes / 1000
-  let unit = 0
-  while (value >= 1000 && unit < units.length - 1) {
-    value /= 1000
-    unit += 1
-  }
-  const rounded = Number(value.toPrecision(2))
-  return `${rounded >= 10 ? rounded.toFixed(0) : rounded.toFixed(1)} ${units[unit] ?? ''}`
 }
 
 /** Where a config's dump moves from one bucket to the next, in bytes: medium, large, very large. */
