@@ -1,37 +1,23 @@
 import { appLog, logStoreMilestones, startLogger } from '@session/app'
-import { createForwardingLogger, type LogLevel, type LogRecord } from '@session/logging'
+import { createForwardingLogger, type LogLevel } from '@session/logging'
 import type { SessionStore } from '@session/state'
 
-/**
- * How long the renderer holds records before handing them to main, unless one is urgent. Main
- * holds its own lines a little longer than this (`RENDERER_HOLD_MS` in main's logs.ts) so that
- * the two come out in order.
- */
-const BATCH_MS = 500
+import { recordQueue } from './recordQueue'
 
 /**
- * Records on their way to main, which sweeps, renders and writes them.
- *
- * Batched because each send is an IPC message. An urgent record goes at once with whatever is
- * waiting.
+ * Records on their way to main, sent at the end of the task that logged them. Main holds its own
+ * lines a moment (`RENDERER_HOLD_MS` in main's logs.ts) so that the two come out in order.
  */
-function sendToMain(): (record: LogRecord, urgent: boolean) => void {
-  let pending: LogRecord[] = []
-  let timer: ReturnType<typeof setTimeout> | null = null
-  const send = (): void => {
-    if (timer !== null) clearTimeout(timer)
-    timer = null
-    const records = pending
-    pending = []
-    if (records.length > 0) window.sessionDesktop.appendLog(records)
-  }
-  // A closing window takes whatever is waiting with it otherwise.
-  window.addEventListener('pagehide', send)
-  return (record, urgent) => {
-    pending.push(record)
-    if (urgent) send()
-    else timer ??= setTimeout(send, BATCH_MS)
-  }
+const toMain = recordQueue((records) => {
+  window.sessionDesktop.appendLog(records)
+})
+
+/**
+ * Hands main every record logged so far, ahead of a message that ends the process: both travel on
+ * this frame's one channel, so main takes the records first.
+ */
+export function flushLogRecords(): void {
+  toMain.flush()
 }
 
 /**
@@ -44,7 +30,7 @@ export async function startLogging(store: SessionStore): Promise<void> {
   // Main's uptime when it answered, so both processes' lines share one zero.
   const offsetMs = session.uptimeMs - performance.now()
   const logger = createForwardingLogger({
-    send: sendToMain(),
+    send: toMain.send,
     uptimeMs: () => performance.now() + offsetMs,
   })
   // Main wrote the startup block when it started; this process only marks its own launch.

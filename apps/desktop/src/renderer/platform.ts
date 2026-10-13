@@ -3,6 +3,7 @@ import { parseNetworkName } from '@session/basic-types'
 import { getLocale, subscribeLocale } from '@session/localization'
 
 import { mediaUrl } from '../shared/mediaUrl'
+import { flushLogRecords } from './logs'
 
 const memory = memoryPorts()
 
@@ -60,6 +61,7 @@ setPorts(
         window.close()
       },
       restart: () => {
+        flushLogRecords()
         window.sessionDesktop.restart()
       },
       isFocused: () => document.hasFocus(),

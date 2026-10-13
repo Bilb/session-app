@@ -143,10 +143,13 @@ can be matched to the line:
   flush at once.
 - **On the desktop, main sweeps and writes every line.** libsession's are logged in main, where the
   addon delivers them, rather than sent to the renderer and back. The renderer's own lines go to
-  main as records (level, category, message, typed fields, time) every 500 ms, so the thread that
-  draws the app never runs the sweep and never holds the pseudonym key. Main holds each line for a
-  second and writes them in the order they were logged, so the two processes' lines interleave by
-  time; a marker or error goes at once.
+  main as records (level, category, message, typed fields, time) at the end of the task that logged
+  them, so the thread that draws the app never runs the sweep and never holds the pseudonym key,
+  and nothing waits in the renderer for a closing window or a restart to lose. Main holds each line
+  for a second and writes them in the order they were logged, so the two processes' lines
+  interleave by time; a marker or error goes at once. Quitting waits (up to half a second, after
+  the windows close) for every line still held, libsession's last ones included, to reach the
+  disk.
 - **On the phones, everything is swept on the JS thread**, libsession's lines included, until native
   redaction (M349) can take them before they reach it.
 - **The log never depends on the database or its key.** If the directory can't be opened, the

@@ -10,25 +10,31 @@ interface Held {
 
 export interface OrderedSinkOptions {
   /**
-   * How long a line waits for one logged earlier to arrive. Longer than the slowest source's own
-   * batching, or that source's lines are still written late.
+   * How long a line waits for one logged earlier to arrive. Longer than the slowest source takes
+   * to deliver a line, or that source's lines are written out of order.
    */
   holdMs: number
   now?: () => number
   timers?: TimerHost
 }
 
+/** A sink that holds lines to put them in order, and can be told to let them all go. */
+interface OrderedSink extends LogSink {
+  /** Releases everything held, now, for a process about to end. */
+  drain(): void
+}
+
 /**
  * A sink in front of another that writes lines in the order they were logged, not the order they
- * arrived: the desktop main process writes its own lines and the renderer's, and the renderer's
- * come in batches.
+ * arrived. The desktop main process writes lines from two sources, its own and the renderer
+ * process's, and those from the renderer reach main a moment after they were logged.
  *
  * Each line is held for `holdMs` and then released with everything logged before it. An urgent
  * line releases everything at once, since what it is urgent about is reaching the disk; a line
  * from the slow source that arrives after that is written after it, which only ever affects the
  * moment around a marker or an error.
  */
-export function orderedSink(inner: LogSink, options: OrderedSinkOptions): LogSink {
+export function orderedSink(inner: LogSink, options: OrderedSinkOptions): OrderedSink {
   const { holdMs } = options
   const now = options.now ?? ((): number => Date.now())
   let held: Held[] = []
@@ -59,17 +65,21 @@ export function orderedSink(inner: LogSink, options: OrderedSinkOptions): LogSin
     }, holdMs)
   }
 
+  function releaseAll(urgent: boolean): void {
+    if (timer !== null) timers.clearTimeout(timer)
+    timer = null
+    release(Number.POSITIVE_INFINITY, urgent)
+  }
+
   return {
     write(lines, urgent, wallMs) {
       seq += 1
       held.push({ wallMs, seq, lines })
-      if (urgent) {
-        if (timer !== null) timers.clearTimeout(timer)
-        timer = null
-        release(Number.POSITIVE_INFINITY, true)
-      } else {
-        schedule()
-      }
+      if (urgent) releaseAll(true)
+      else schedule()
+    },
+    drain() {
+      releaseAll(false)
     },
   }
 }

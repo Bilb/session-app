@@ -44,11 +44,12 @@ const { app } = electron
  */
 const launchMs = Date.now() - process.uptime() * 1000
 
-/** Records in one `appendLog` call; the renderer batches, and a batch past this is a bug. */
+/** Records in one `appendLog` call: the renderer sends one task's lines, and more is a bug. */
 const MAX_RECORDS_PER_CALL = 2000
 /**
- * How long main holds a line for the renderer's from the same moment: longer than the renderer's
- * own batching (`BATCH_MS` in renderer/logs.ts, 500 ms) plus the trip, so the file reads in order.
+ * How long main holds a line for the renderer's from the same moment: far longer than the trip,
+ * since the renderer sends at the end of the task that logged (see renderer/logs.ts), so the file
+ * reads in order even when either process is busy.
  */
 const RENDERER_HOLD_MS = 1000
 const SALT_BYTES = 16
@@ -113,6 +114,8 @@ function readSalt(dir: string): Uint8Array {
 export interface MainLogs {
   logger: Logger
   writer: LogWriter
+  /** Releases every line held for ordering, for a process about to end. */
+  drain: () => void
 }
 
 let opened: Promise<MainLogs> | null = null
@@ -211,8 +214,9 @@ export function openLogs(): Promise<MainLogs> {
         writerOptions,
       )
     }
+    const sink = orderedSink(writer, { holdMs: RENDERER_HOLD_MS })
     const logger = createLogger({
-      sink: orderedSink(writer, { holdMs: RENDERER_HOLD_MS }),
+      sink,
       pseudonyms: new Pseudonyms(salt),
       // The spec the bridge is opened with, so what libsession is asked to emit is also kept.
       minLevel: minLevelFromSpec(networkSettings().logSpec),
@@ -235,9 +239,23 @@ export function openLogs(): Promise<MainLogs> {
         reason: failure,
       })
     }
-    return { logger, writer }
+    return { logger, writer, drain: () => sink.drain() }
   })()
   return opened
+}
+
+/**
+ * Everything logged so far, on disk, for a process about to end. One turn of the event loop
+ * first, so what libsession said while it closed and what the renderer sent before its window
+ * went, both already queued, are logged before the hold is let go.
+ */
+export async function finishLogs(): Promise<void> {
+  await new Promise<void>((resolve) => {
+    setImmediate(resolve)
+  })
+  const { drain, writer } = await openLogs()
+  drain()
+  await writer.flush()
 }
 
 /**

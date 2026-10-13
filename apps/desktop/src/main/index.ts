@@ -14,7 +14,7 @@ import { createBridge } from './bridge'
 import { editMenuItems } from './editMenu'
 import { serveFiles } from './files'
 import { launchColors } from './launchColors'
-import { logLibsession, openLogs, serveLogs } from './logs'
+import { finishLogs, logLibsession, openLogs, serveLogs } from './logs'
 import { registerMediaScheme, serveMedia, stopServingMedia } from './media'
 import {
   acceptsCopy,
@@ -167,7 +167,8 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
   ipc.on('restart', (event) => {
     if (!isFromAppFrame(event.senderFrame, appUrl)) return
     // `app.exit` skips `before-quit`, so the run is marked as ending here, and written out before
-    // the process goes: otherwise the next launch reports a run that did not end cleanly.
+    // the process goes: otherwise the next launch reports a run that did not end cleanly. The
+    // renderer hands over its last records first, on this same channel, so they come before it.
     void openLogs()
       .then(async ({ logger, writer }) => {
         logger.marker('lifecycle', 'restart')
@@ -305,11 +306,33 @@ app.on('window-all-closed', () => {
 
 // The bridge outlives every window, so it is closed here rather than with one of them.
 app.on('before-quit', () => {
-  // Written synchronously by the writer, so it lands before the process is gone.
+  // Urgent, so it reaches the disk without waiting for a flush; `will-quit` below writes whatever
+  // follows it.
   void openLogs().then(({ logger }) => {
     logger.marker('lifecycle', 'quit')
   })
   stopServingMedia()
   bridge?.close()
   bridge = null
+})
+
+/** The longest quitting waits for the log, so a write that never finishes cannot keep it open. */
+const QUIT_LOG_CAP_MS = 500
+let logFinished = false
+
+// After the windows have closed, with every line logged on the way out - by libsession closing,
+// by the renderer before its window went - held for ordering or waiting for a flush. Quitting
+// waits for them to reach the disk, once, and then exits.
+app.on('will-quit', (event) => {
+  if (logFinished) return
+  logFinished = true
+  event.preventDefault()
+  const cap = new Promise<void>((resolve) => {
+    setTimeout(resolve, QUIT_LOG_CAP_MS)
+  })
+  void Promise.race([finishLogs(), cap])
+    .catch(() => undefined)
+    .finally(() => {
+      app.exit(0)
+    })
 })

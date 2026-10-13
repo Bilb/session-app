@@ -76,3 +76,24 @@ describe('orderedSink', () => {
     expect(inner.urgent).toEqual([true])
   })
 })
+
+describe('orderedSink.drain', () => {
+  it('releases everything held, in order, without waiting for the hold', () => {
+    const inner = recording()
+    const timers = manualTimers()
+    const sink = orderedSink(inner, { holdMs: 1000, now: () => 0, timers })
+    sink.write(['main at 9.6s'], false, 9_600)
+    sink.write(['renderer at 9.2s'], false, 9_200)
+    sink.drain()
+    expect(inner.lines).toEqual(['renderer at 9.2s', 'main at 9.6s'])
+    // Nothing is left for the timer to release twice.
+    timers.fire()
+    expect(inner.lines).toEqual(['renderer at 9.2s', 'main at 9.6s'])
+  })
+
+  it('writes nothing when nothing is held', () => {
+    const inner = recording()
+    orderedSink(inner, { holdMs: 1000, now: () => 0, timers: manualTimers() }).drain()
+    expect(inner.urgent).toEqual([])
+  })
+})
