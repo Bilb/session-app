@@ -30,11 +30,17 @@ function osReleaseField(text: string, field: string): string | null {
 /**
  * Linux's extra rows: distro, display server, desktop and packaging. Each says `unknown` rather
  * than guessing; on any other platform there are none.
+ *
+ * Packaging is `dev` for a run that was never packaged. A packaged one says which of AppImage,
+ * Flatpak and Snap it runs under, since each sets a variable of its own; a .deb, an .rpm and a
+ * tarball set none, so they say `unknown`.
  */
 export function linuxRows(input: {
   platform: NodeJS.Platform
   env: Readonly<Record<string, string | undefined>>
   osRelease: string | null
+  /** Electron's `app.isPackaged`. */
+  packaged: boolean
 }): [string, string][] {
   if (input.platform !== 'linux') return []
   const { env, osRelease } = input
@@ -45,8 +51,9 @@ export function linuxRows(input: {
       : env['XDG_SESSION_TYPE'] === 'x11' || env['DISPLAY'] !== undefined
         ? 'X11'
         : 'unknown'
-  const packaging =
-    env['APPIMAGE'] !== undefined
+  const packaging = !input.packaged
+    ? 'dev'
+    : env['APPIMAGE'] !== undefined
       ? 'AppImage'
       : env['FLATPAK_ID'] !== undefined
         ? 'Flatpak'

@@ -14,7 +14,7 @@ describe('osText', () => {
 
 describe('linuxRows', () => {
   it('has nothing to add off Linux', () => {
-    expect(linuxRows({ platform: 'darwin', env: {}, osRelease: null })).toEqual([])
+    expect(linuxRows({ platform: 'darwin', env: {}, osRelease: null, packaged: true })).toEqual([])
   })
 
   it('reads the distro, display server, desktop and packaging', () => {
@@ -23,6 +23,7 @@ describe('linuxRows', () => {
         platform: 'linux',
         env: { XDG_SESSION_TYPE: 'wayland', XDG_CURRENT_DESKTOP: 'GNOME', APPIMAGE: '/a.AppImage' },
         osRelease: UBUNTU,
+        packaged: true,
       }),
     ).toEqual([
       ['Distro', 'Ubuntu 24.04.1 LTS'],
@@ -33,15 +34,22 @@ describe('linuxRows', () => {
   })
 
   it('says unknown rather than guessing', () => {
-    expect(linuxRows({ platform: 'linux', env: {}, osRelease: null })).toEqual([
+    expect(linuxRows({ platform: 'linux', env: {}, osRelease: null, packaged: true })).toEqual([
       ['Distro', 'unknown'],
       ['Display', 'unknown'],
       ['Desktop', 'unknown'],
       ['Packaging', 'unknown'],
     ])
-    expect(linuxRows({ platform: 'linux', env: { DISPLAY: ':0' }, osRelease: '' })[1]).toEqual([
-      'Display',
-      'X11',
+    expect(
+      linuxRows({ platform: 'linux', env: { DISPLAY: ':0' }, osRelease: '', packaged: true })[1],
+    ).toEqual(['Display', 'X11'])
+  })
+
+  it('says a run that was never packaged is a dev run', () => {
+    const env = { APPIMAGE: '/a.AppImage' }
+    expect(linuxRows({ platform: 'linux', env, osRelease: null, packaged: false })[3]).toEqual([
+      'Packaging',
+      'dev',
     ])
   })
 })

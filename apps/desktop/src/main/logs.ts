@@ -162,6 +162,7 @@ function mainStartupBlock(writer: LogWriter): string[] {
       platform: process.platform,
       env: process.env,
       osRelease: readOsRelease(),
+      packaged: app.isPackaged,
     }),
     locale: app.getLocale(),
     utcOffsetMinutes: -new Date().getTimezoneOffset(),

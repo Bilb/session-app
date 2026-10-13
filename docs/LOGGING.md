@@ -194,7 +194,8 @@ Written **without** the line prefix, after an empty line, one item per line:
   and above, and at a more verbose level where the spec names one for it or as its bare level, so
   `warn,network=debug` quiets libsession's other categories without dropping the app's own lines.
 - **Platform rows:** Linux adds Distro, Display (Wayland or X11), Desktop and Packaging (AppImage,
-  Flatpak, Snap), and gives the kernel as its OS version. macOS and Windows give their version.
+  Flatpak, Snap, or `dev` for a run that was never packaged; a .deb, an .rpm and a tarball say
+  `unknown`), and gives the kernel as its OS version. macOS and Windows give their version.
 - **Desktop's main process writes the block**, so it opens the file and is there even when the
   renderer never loads. The renderer marks its own launch (`>>> launch process=renderer`).
 - **"Previous run … ended cleanly"** comes from the markers: a previous file whose last marker is
