@@ -133,7 +133,9 @@ can be matched to the line:
 
 ## Files
 
-- `logs/` under app-private storage (desktop `userData/logs`; mobile documents/`logs`).
+- `logs/` under app-private storage, never backed up: desktop `userData/logs`; mobile the storage
+  module's `logs` root (`<app group>/logs` on iOS, `filesDir/logs` on Android). See
+  `docs/STORAGE.md`.
 - **Names, no spaces:** `session-<UTC basic>-<n>.log`, e.g. `session-20261008T032009Z-0.log`.
 - **A new file at every launch**, so "the previous run" is a file and a crash's run is never mixed
   into the next one.

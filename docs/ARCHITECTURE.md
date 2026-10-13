@@ -28,6 +28,10 @@ apps/mobile · apps/desktop ── route files, OS ports, boot order. Adapters, 
 Colour and type live in `@session/theme-tokens` and are derived from a few authored knobs rather
 than listed per theme; `docs/THEMING.md` is the map for that.
 
+Nothing the apps store leaves the device: every file lives under a root that is protected and
+excluded from backup, and on mobile only `src/storage/` may reach the file system.
+`docs/STORAGE.md` has the roots, the platform mechanisms and what enforces them.
+
 Who may import whom is in `tooling/depcruise-config/root.cjs` and enforced by
 `pnpm boundaries`. The short version: `ui` imports no sibling but tokens and ids; `screens`
 imports ui, state, app, client and localization; nothing imports an app.
