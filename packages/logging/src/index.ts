@@ -47,6 +47,7 @@ export {
   startupBlock,
   utcOffset,
   versionText,
+  type PreviousExit,
   type StartupFacts,
 } from './startup'
 export { emptyCounts, sweep, type SweepCounts } from './sweep'

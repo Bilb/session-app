@@ -111,13 +111,20 @@ function readSalt(dir: Directory): { salt: Uint8Array; replaced: boolean } {
   return { salt, replaced }
 }
 
-/** `iOS 26.1`, or `Android 16 (API 36)`: Android's version number alone hides the API level. */
-export function osName(): string {
+/**
+ * `iOS 26.1`, or `Android 16 (API 36)`: Android's version number alone hides the API level. An
+ * iPad build running on a Mac says `macOS (iPad app)`, since it is the Mac's OS that runs it; there
+ * is no Catalyst build, so that is the only way this app reaches one.
+ */
+export function osName(iOSAppOnMac: boolean): string {
   if (Platform.OS === 'android') {
     const release = (Platform.constants as { Release?: string }).Release ?? 'unknown'
     return `Android ${release} (API ${String(Platform.Version)})`
   }
-  return `${Platform.OS === 'ios' ? 'iOS' : Platform.OS} ${String(Platform.Version)}`
+  if (Platform.OS === 'ios') {
+    return `${iOSAppOnMac ? 'macOS (iPad app)' : 'iOS'} ${String(Platform.Version)}`
+  }
+  return `${Platform.OS} ${String(Platform.Version)}`
 }
 
 /**
@@ -216,13 +223,16 @@ const opened = (async (): Promise<LogWriter> => {
     // The spec store.ts opens the bridge with, so what libsession is asked to emit is also kept.
     minLevel: minLevelFromSpec(process.env['EXPO_PUBLIC_SESSION_LOG']),
   })
-  // The hardware identifier and install source, which only native code can read. A failure here
-  // costs the block two facts, never the logger.
-  const native = await SessionLogs?.diagnostics().catch(() => undefined)
+  // The hardware identifier and install source, and on Android how the previous process ended,
+  // which only native code can read. A failure here costs the block those facts, never the logger.
+  const [native, previousExit] = await Promise.all([
+    SessionLogs?.diagnostics().catch(() => undefined),
+    SessionLogs?.previousExit?.().catch(() => null),
+  ])
   startLogger(logger, {
     launchedAtMs: launchMs,
     model: native?.model ?? fallbackModel(),
-    os: osName(),
+    os: osName(native?.iOSAppOnMac === true),
     locale: Intl.DateTimeFormat().resolvedOptions().locale,
     install: native?.install ?? 'unknown',
     platformRows: lowPowerRows(native?.lowPowerMode),
@@ -237,6 +247,7 @@ const opened = (async (): Promise<LogWriter> => {
     },
     flagVariables: flagVariables(),
     previousRun: writer.previousRun,
+    previousExit,
   })
   if (failure !== null) {
     logger.error('logs', 'the log directory could not be opened; lines go to the console', {

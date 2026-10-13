@@ -1,7 +1,19 @@
 import type { Rows } from '@session/basic-types'
 
 import type { BuildFacts, DeviceFacts } from './facts'
-import type { PreviousRun } from './writer'
+import { basicUtc, LOG_FILE_NAME, type PreviousRun } from './writer'
+
+/**
+ * How the OS says the previous process ended, where it keeps a record: Android 11 and later,
+ * through `ActivityManager.getHistoricalProcessExitReasons`.
+ */
+export interface PreviousExit {
+  /** `low memory`, `crash`, `ANR`, `user requested`... */
+  reason: string
+  /** The system's own words, where it gave any. */
+  description: string | null
+  timestampMs: number
+}
 
 /** What a launch says about itself before anything else, so every file opens with its context. */
 export interface StartupFacts extends BuildFacts, DeviceFacts {
@@ -21,6 +33,11 @@ export interface StartupFacts extends BuildFacts, DeviceFacts {
   /** The libsession log spec in force, as written: `info,network=debug`. */
   logSpec: string
   previousRun: PreviousRun | null
+  /**
+   * Null where the OS has no record of the previous process; absent where it keeps none at all:
+   * iOS and the desktop.
+   */
+  previousExit?: PreviousExit | null | undefined
 }
 
 /** `UTC+10:00`, `UTC-03:30`, `UTC+00:00`. */
@@ -50,12 +67,26 @@ export function versionText(version: string, buildNumber: string | null): string
   return buildNumber === null ? version : `${version} (${buildNumber})`
 }
 
-function previousRunText(previous: PreviousRun | null): string {
+/**
+ * The OS's record of how the previous run ended, where it belongs to that run: a record older than
+ * the previous file's launch is of a process before it, whose own file has since been pruned.
+ */
+function exitText(exit: PreviousExit | null | undefined, previous: PreviousRun): string {
+  if (exit === null || exit === undefined) return ''
+  const launch = LOG_FILE_NAME.exec(previous.file)?.[1]
+  if (launch === undefined || basicUtc(exit.timestampMs) < launch) return ''
+  return `, exit: ${exit.reason}${exit.description === null ? '' : ` (${exit.description})`}`
+}
+
+function previousRunText(
+  previous: PreviousRun | null,
+  exit: PreviousExit | null | undefined,
+): string {
   if (previous === null) return 'none - first run with logs'
   const ending = previous.endedCleanly
     ? 'ended cleanly'
     : `did not end cleanly (last marker: ${previous.lastMarker ?? 'none'})`
-  return `${previous.file}, ${ending}`
+  return `${previous.file}, ${ending}${exitText(exit, previous)}`
 }
 
 /** `2026-10-09 07:41:02Z`: readable, and still unambiguous about its zone. */
@@ -102,6 +133,6 @@ export function startupBlock(facts: StartupFacts): string[] {
       facts.flagOverrides.length === 0 ? 'none overridden' : facts.flagOverrides.join(', '),
     ),
     row('Log level', facts.logSpec),
-    row('Previous run', previousRunText(facts.previousRun)),
+    row('Previous run', previousRunText(facts.previousRun, facts.previousExit)),
   ]
 }

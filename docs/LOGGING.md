@@ -203,14 +203,27 @@ Written **without** the line prefix, after an empty line, one item per line:
   renderer never loads. The renderer marks its own launch (`>>> launch process=renderer`).
 - **"Previous run … ended cleanly"** comes from the markers: a previous file whose last marker is
   not a background or a quit says that run died, which is the first thing support asks.
+- **On Android 11 and later the row adds the system's own record** of how the previous process
+  ended, from `ActivityManager.getHistoricalProcessExitReasons`: `…, exit: low memory`, `crash`,
+  `ANR`, `user requested`, `app updated`, with the system's description in brackets where it gives
+  one. A record older than the previous file's launch belongs to an earlier process and is left out.
+  This is the answer the memory marker cannot give from Android 14 (below).
+- **An iPad build running on a Mac** says `macOS (iPad app) <version>` in the OS row, here and in
+  the export. There is no Catalyst build, so that is the only way the app runs on a Mac.
 
 ## Unmissable markers
 
 Never sampled, rate-limited or level-filtered, flushed at once: `launch`, `foreground`,
 `background`, `quit` (where the platform says, and Quit on a phone), `restart`,
-`start ok|failed reason=…`, `account loaded|none|created`, `memory warning` (iOS: React Native
-raises it nowhere else), `renderer gone` and `child process gone` with Chromium's reason (desktop),
-and `export`. Their absence is then evidence.
+`start ok|failed reason=…`, `account loaded|none|created`, `memory warning`, `renderer gone` and
+`child process gone` with Chromium's reason (desktop), and `export`. Their absence is then evidence.
+
+`memory warning` comes from iOS's memory warning, and on Android from `onTrimMemory` at the levels
+that mean the system is short of memory (`running moderate|low|critical`, `moderate`, `complete`)
+or `onLowMemory`. **Only Android 13 and below send those levels**: Android 14 and later send only
+`UI_HIDDEN` and `BACKGROUND`, and `BACKGROUND` is left out because it fires every time the app goes
+to the background. On Android 14 and later the Previous run row's exit reason says what the marker
+would have.
 
 ## The export
 
@@ -301,11 +314,15 @@ Session logs exported 2026-10-09 07:41:02Z (17:41 local, UTC+10:00)
 ### Where the header's facts come from
 
 - **Install:** iOS reads it in `modules/session-logs`: simulator, TestFlight (sandbox receipt),
-  development or ad hoc (embedded provisioning profile), otherwise App Store. Android gives the
-  installing package. Desktop says `unknown`.
+  development or ad hoc (embedded provisioning profile), otherwise App Store. Android names the
+  installing package: `Play Store`, `F-Droid` for any `org.fdroid.*`, `sideload or adb` where there
+  is no installer, otherwise the package name. The Variant row is the authoritative signal for our
+  own F-Droid build. Desktop says `unknown`.
 - **Variant:** baked in at build time from `EXPO_PUBLIC_SESSION_BUILD_VARIANT`; `unknown` when unset.
 - **Device, OS, memory, low power, permissions:** the phones read them natively in
-  `modules/session-logs`. Desktop's main process uses Electron and node's `os`; on Linux it adds the
+  `modules/session-logs`. Android cannot tell "never asked" from "denied" without an activity, so a
+  permission reads `granted` or `not granted`, and `not declared` where the manifest does not
+  request it, which the system always refuses. Desktop's main process uses Electron and node's `os`; on Linux it adds the
   distro, display server, desktop and packaging.
 - **Free space, database, attachments:** measured off disk by each platform, in the network's own
   data directory.
@@ -334,5 +351,6 @@ The whole 20 MiB budget still fits in about 5 MiB compressed, but only just.
 So compression belongs to the platform, through the `logs` port's `deliver`, not to
 `packages/logging`. Desktop's main process streams the parts through `zlib`. The phones use
 `apps/mobile/modules/session-logs`: the system zlib on iOS and `GZIPOutputStream` on Android, file to
-file, off the JS thread. Seven and a half seconds of a frozen JS thread behind a share sheet is not
+file, off the JS thread. Both run it on a background queue rather than the one Expo modules share,
+which would otherwise wait behind the whole deflate. Seven and a half seconds of a frozen JS thread behind a share sheet is not
 acceptable, and fflate cannot move off that thread on Hermes, which has no workers.

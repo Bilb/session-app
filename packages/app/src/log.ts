@@ -128,7 +128,8 @@ export function logStoreMilestones(store: {
 }
 
 /** What only the platform can say about itself, for the startup block. */
-export interface PlatformFacts extends DeviceFacts, Pick<StartupFacts, 'previousRun'> {
+export interface PlatformFacts
+  extends DeviceFacts, Pick<StartupFacts, 'previousRun' | 'previousExit'> {
   /** When this process started, as the platform measures it. */
   launchedAtMs: number
   /** The network settings the bridge was opened with, as this platform read them. */

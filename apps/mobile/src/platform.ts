@@ -66,7 +66,7 @@ async function diagnosticsSnapshot(): Promise<DiagnosticsSnapshot> {
   return {
     install: native?.install ?? 'unknown',
     platform: Platform.OS === 'ios' ? 'iOS' : 'Android',
-    os: osName(),
+    os: osName(native?.iOSAppOnMac === true),
     model: native?.model ?? 'unknown',
     locale: Intl.DateTimeFormat().resolvedOptions().locale,
     platformRows: lowPowerRows(native?.lowPowerMode),
