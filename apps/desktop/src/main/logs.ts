@@ -47,6 +47,7 @@ import { networkSettings, sessionDataDir } from './bridge'
 import { writeGzip } from './logExport'
 import { linuxRows, osText } from './platformRows'
 import { isFromAppFrame } from './security'
+import { backupRow, excludeUserData, userDataExclusion } from './userData'
 
 const { app, dialog, net } = electron
 
@@ -259,7 +260,7 @@ function readOsRelease(): string | null {
  * opens the file, and it is written even when the renderer never loads - which is when a log is
  * wanted most.
  */
-function mainStartupBlock(writer: LogWriter): string[] {
+function mainStartupBlock(writer: LogWriter, backupFailure: string | null): string[] {
   const build = __SESSION_BUILD_INFO__
   const network = networkRows(networkSettings())
   return startupBlock({
@@ -272,12 +273,15 @@ function mainStartupBlock(writer: LogWriter): string[] {
     install: 'unknown',
     model: arch(),
     os: osText(process.platform, process.getSystemVersion(), release()),
-    platformRows: linuxRows({
-      platform: process.platform,
-      env: process.env,
-      osRelease: readOsRelease(),
-      packaged: app.isPackaged,
-    }),
+    platformRows: [
+      ...linuxRows({
+        platform: process.platform,
+        env: process.env,
+        osRelease: readOsRelease(),
+        packaged: app.isPackaged,
+      }),
+      backupRow(userDataExclusion(), backupFailure),
+    ],
     locale: app.getLocale(),
     utcOffsetMinutes: -new Date().getTimezoneOffset(),
     network: network.network,
@@ -350,11 +354,17 @@ export function openLogs(): Promise<MainLogs> {
     })
     // After ready, which is when Electron can say the locale; nothing logs before then.
     await app.whenReady()
-    logger.section(mainStartupBlock(writer))
+    const backupFailure = await excludeUserData()
+    logger.section(mainStartupBlock(writer, backupFailure))
     logger.marker('lifecycle', 'launch', { process: 'main' })
     if (failure !== null) {
       logger.error('logs', 'the log directory could not be opened; lines go to the console', {
         reason: failure,
+      })
+    }
+    if (backupFailure !== null) {
+      logger.warn('storage', 'the data directory could not be excluded from backup', {
+        reason: backupFailure,
       })
     }
     if (saltReplaced) {

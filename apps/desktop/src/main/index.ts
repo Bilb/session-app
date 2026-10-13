@@ -25,6 +25,7 @@ import {
   isFromAppFrame,
   refuseNewContents,
 } from './security'
+import { excludeUserData, placeUserData } from './userData'
 
 /**
  * What the app calls itself, which decides where its data lives.
@@ -39,6 +40,9 @@ import {
  * decides on branding, not a name anyone chose.
  */
 app.setName('session-app')
+// Where the name has put it, moved and kept out of backups. See userData.ts.
+placeUserData()
+void excludeUserData()
 
 // As early as the data directory is known, so the launch marker is the first line of the run.
 void openLogs()
