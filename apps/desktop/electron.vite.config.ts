@@ -54,6 +54,32 @@ function commitStamp(cwd: string = appDir): string | null {
 
 /** The libsession submodule, whose commit the logs report beside the app's. */
 const libsessionDir = fileURLToPath(new URL('../../libsession-util/', import.meta.url))
+const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
+
+/**
+ * The libsession commit, stamped like the app's.
+ *
+ * From the submodule's own checkout where there is one, since that is what was built, and mid-bump
+ * it can differ from the commit the app pins. A submodule never checked out is an empty directory
+ * inside the app's checkout, where git answers with the app's own commit, so there the stamp is
+ * the commit the app pins instead. `metro.config.js` stamps the phones' the same way.
+ */
+function libsessionStamp(): string | null {
+  if (existsSync(new URL('../../libsession-util/.git', import.meta.url))) {
+    return commitStamp(libsessionDir)
+  }
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD:libsession-util'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+      .trim()
+      .slice(0, 8)
+  } catch {
+    return null
+  }
+}
 
 /** This app's own version, which is the one its builds are released as. */
 const version = (
@@ -234,8 +260,14 @@ refuseDeveloperSettingsInRelease()
 const mainBuildInfo = {
   version,
   commit: commitStamp(),
-  libsessionCommit: commitStamp(libsessionDir),
+  libsessionCommit: libsessionStamp(),
+  // What the build was made as -- `website`, `store`... -- said by whoever assembles it, for the
+  // log's startup block. Empty is written as `unknown` rather than guessed at.
   variant: process.env['EXPO_PUBLIC_SESSION_BUILD_VARIANT'] ?? '',
+  // Every flag variable present at build time. Collected by prefix rather than listed, so adding a
+  // flag needs no change here -- which is the reason the flag table derives `EXPO_PUBLIC_` on every
+  // platform rather than only on the one that needs it. A flag whose name does not start with this
+  // is not collected, and a flag that is not collected reads as its default with nothing said.
   flags: Object.fromEntries(
     Object.entries(process.env).filter(
       ([key, value]) => key.startsWith(FLAG_PREFIX) && value !== undefined,
@@ -286,31 +318,16 @@ export default defineConfig({
       'import.meta.env.EXPO_PUBLIC_SESSION_FAKE': JSON.stringify(
         process.env['EXPO_PUBLIC_SESSION_FAKE'] ?? '',
       ),
-      // Every flag variable present at build time, as one object. Collected by prefix rather than
-      // listed, so adding a flag needs no change here -- which is the reason the flag table derives
-      // `EXPO_PUBLIC_` on every platform rather than only on the one that needs it. A flag whose
-      // name does not start with this is not collected, and a flag that is not collected reads as
-      // its default with nothing said.
-      'import.meta.env.EXPO_PUBLIC_SESSION_FLAGS': JSON.stringify(
-        Object.fromEntries(
-          Object.entries(process.env).filter(
-            ([key, value]) => key.startsWith(FLAG_PREFIX) && value !== undefined,
-          ),
-        ),
-      ),
-      // Which build this is, for the settings stamp and anything that has to name its binary.
-      // Read here because the renderer can reach neither git nor its own manifest.
-      'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_VERSION': JSON.stringify(version),
-      'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_COMMIT': JSON.stringify(commitStamp()),
-      // The libsession the addon is built from: the submodule's own commit, stamped the same way.
+      // The flags, and which build this is, for the settings stamp and anything that has to name
+      // its binary: the stamps main's startup block writes, since the renderer can reach neither
+      // git, nor its own manifest, nor an environment.
+      'import.meta.env.EXPO_PUBLIC_SESSION_FLAGS': JSON.stringify(mainBuildInfo.flags),
+      'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_VERSION': JSON.stringify(mainBuildInfo.version),
+      'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_COMMIT': JSON.stringify(mainBuildInfo.commit),
       'import.meta.env.EXPO_PUBLIC_SESSION_LIBSESSION_COMMIT': JSON.stringify(
-        commitStamp(libsessionDir),
+        mainBuildInfo.libsessionCommit,
       ),
-      // What the build was made as -- `website`, `store`... -- said by whoever assembles it, for
-      // the log's startup block. Empty is written as `unknown` rather than guessed at.
-      'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_VARIANT': JSON.stringify(
-        process.env['EXPO_PUBLIC_SESSION_BUILD_VARIANT'] ?? '',
-      ),
+      'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_VARIANT': JSON.stringify(mainBuildInfo.variant),
       // react-native-web reads these; without them the bundle throws on first render.
       global: 'globalThis',
       __DEV__: JSON.stringify(process.env['NODE_ENV'] !== 'production'),

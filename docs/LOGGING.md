@@ -183,7 +183,8 @@ Written **without** the line prefix, after an empty line, one item per line:
   compete with the export's header. `grep -n '^── Session'` lists every launch in a file or an
   export, and splitting on it cuts a log into runs.
 - **The libsession commit** is stamped at build time from the submodule, like the app's: libsession
-  is the client, so a report has to say which one.
+  is the client, so a report has to say which one. Where the submodule was never checked out (a
+  JS-only CI build), it is the commit the app pins.
 - **Time** is the locale and the UTC offset together; no time-zone name, no region.
 - **Network and transport** are read where the bridge is opened, not from what the renderer was
   built with, so a dev run says what it is actually attached to. Seed node and file server follow

@@ -5,6 +5,7 @@ const projectRoot = __dirname
 const workspaceRoot = path.resolve(projectRoot, '../..')
 
 const { execFileSync } = require('node:child_process')
+const { existsSync } = require('node:fs')
 
 /**
  * The commit this bundle is made from, as the desktop config stamps it -- the two are kept
@@ -30,13 +31,37 @@ function commitStamp(cwd = projectRoot) {
     return ''
   }
 }
+
+/**
+ * The libsession commit, stamped like the app's, as `libsessionStamp` in
+ * `apps/desktop/electron.vite.config.ts` does it.
+ *
+ * From the submodule's own checkout where there is one, since that is what was built, and mid-bump
+ * it can differ from the commit the app pins. A submodule never checked out is an empty directory
+ * inside the app's checkout, where git answers with the app's own commit, so there the stamp is
+ * the commit the app pins instead.
+ */
+function libsessionStamp() {
+  const libsessionDir = path.resolve(workspaceRoot, 'libsession-util')
+  if (existsSync(path.join(libsessionDir, '.git'))) return commitStamp(libsessionDir)
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD:libsession-util'], {
+      cwd: workspaceRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+      .trim()
+      .slice(0, 8)
+  } catch {
+    return ''
+  }
+}
+
 process.env.EXPO_PUBLIC_SESSION_BUILD_COMMIT = commitStamp()
-// The libsession submodule's commit, stamped the same way: libsession is the client, so a log has to
-// say which one. The native libraries are built from the submodule, so this is the commit they
-// were built from as long as they were rebuilt after it last moved.
-process.env.EXPO_PUBLIC_SESSION_LIBSESSION_COMMIT = commitStamp(
-  path.resolve(workspaceRoot, 'libsession-util'),
-)
+// libsession is the client, so a log has to say which one. The native libraries are built from the
+// submodule, so this is the commit they were built from as long as they were rebuilt after it last
+// moved.
+process.env.EXPO_PUBLIC_SESSION_LIBSESSION_COMMIT = libsessionStamp()
 
 const config = getDefaultConfig(projectRoot)
 
