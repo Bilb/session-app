@@ -1,34 +1,18 @@
+import type { Rows } from '@session/basic-types'
+
+import type { BuildFacts, DeviceFacts } from './facts'
 import type { PreviousRun } from './writer'
 
 /** What a launch says about itself before anything else, so every file opens with its context. */
-export interface StartupFacts {
+export interface StartupFacts extends BuildFacts, DeviceFacts {
   launchedAtMs: number
-  version: string
-  buildNumber: string | null
-  commit: string | null
-  /** The libsession commit the build was made with: libsession is the client, so it matters. */
-  libsessionCommit: string | null
-  /** What the build was made as - `store`, `testflight`, `website`... - or `unknown`. */
-  variant: string
-  /** Where the platform says it was installed from, or `unknown`. */
-  install: string
-  /** `iPhone17,1`, `Google Pixel 9`, `arm64`. */
-  model: string
-  /** `iOS 26.1`, `Android 16`, `macOS 15.1`. */
-  os: string
-  locale: string
   utcOffsetMinutes: number
   /** `testnet`, `mainnet`, `fake (no libsession)`. */
   network: string
   /** `Session Router (default)`, or null where there is no transport - the fake. */
   transport: string | null
   /** Further network settings this run was started with, label then value; empty when none. */
-  networkSettings: ReadonlyArray<readonly [string, string]>
-  /**
-   * Rows only some platforms have, label then value: a Linux desktop's distro and display server,
-   * a phone's low power mode.
-   */
-  platformRows: ReadonlyArray<readonly [string, string]>
+  networkSettings: Rows
   /**
    * `name=value` for each flag this build's environment sets, as written, then any flag variable
    * that names no flag: see `flagOverrideRows` in `@session/app`.

@@ -2,7 +2,6 @@ import { randomBytes } from 'node:crypto'
 import {
   appendFileSync,
   closeSync,
-  existsSync,
   fstatSync,
   mkdirSync,
   openSync,
@@ -15,6 +14,7 @@ import {
   statfsSync,
   writeFileSync,
 } from 'node:fs'
+import { opendir, stat } from 'node:fs/promises'
 import { arch, freemem, release, totalmem } from 'node:os'
 import { join } from 'node:path'
 
@@ -37,6 +37,7 @@ import {
   LogWriter,
   Pseudonyms,
   type DatabaseSizes,
+  type DiagnosticsSnapshot,
   type ExportPart,
   type LogDirectory,
   type Logger,
@@ -191,20 +192,36 @@ function validParts(parts: unknown): ExportPart[] | null {
   return valid
 }
 
-/** Bytes under a directory, recursively; null when it is not there. */
-function directoryBytes(path: string): number | null {
-  if (!existsSync(path)) return null
-  let total = 0
-  for (const entry of readdirSync(path, { withFileTypes: true })) {
-    const child = join(path, entry.name)
-    total += entry.isDirectory() ? (directoryBytes(child) ?? 0) : statSync(child).size
+/**
+ * Bytes under a directory, recursively, or null where it cannot be listed. Asynchronous because
+ * an attachment store can hold thousands of files, and this runs on the process every window's
+ * IPC goes through. A file or folder that goes between the listing and its measurement - libsession
+ * removes attachments on its own thread - counts as nothing; a link is not followed.
+ */
+async function directoryBytes(path: string): Promise<number | null> {
+  try {
+    let total = 0
+    for await (const entry of await opendir(path)) {
+      const child = join(path, entry.name)
+      if (entry.isDirectory()) {
+        total += (await directoryBytes(child)) ?? 0
+      } else if (entry.isFile()) {
+        total += (await stat(child).catch(() => null))?.size ?? 0
+      }
+    }
+    return total
+  } catch {
+    return null
   }
-  return total
 }
 
-/** A file's size, or null where it is not there. */
+/** A file's size, or null where it is not there or cannot be read. */
 function sizeOf(path: string): number | null {
-  return existsSync(path) ? statSync(path).size : null
+  try {
+    return statSync(path).size
+  } catch {
+    return null
+  }
 }
 
 /** The database and its journals, `session.db`, `-wal`, `-shm`; null when there is no database. */
@@ -376,6 +393,15 @@ export function logLibsession(level: string, category: string, message: string):
   })
 }
 
+/** A figure for the export's header, or null where reading it threw. */
+function probe<T>(read: () => T): T | null {
+  try {
+    return read()
+  } catch {
+    return null
+  }
+}
+
 /** Longer than any name `exportFileName` makes, and short enough for every filesystem. */
 const MAX_EXPORT_NAME = 128
 
@@ -448,42 +474,46 @@ export function serveLogs(window: Electron.BrowserWindow, appUrl: string): void 
     return true
   })
 
-  ipc.handle('log:diagnostics', async (event) => {
+  /**
+   * Every figure read on its own and null where it throws, so a header row the platform could not
+   * fill reads `unknown` rather than failing the export it heads.
+   */
+  ipc.handle('log:diagnostics', async (event): Promise<DiagnosticsSnapshot> => {
     if (!isFromAppFrame(event.senderFrame, appUrl)) throw new Error('refused')
     const { logger } = await openLogs()
-    const data = sessionDataDir()
-    const free = ((): number | null => {
-      try {
-        const stats = statfsSync(app.getPath('userData'))
-        return stats.bavail * stats.bsize
-      } catch {
-        return null
-      }
-    })()
+    const data = probe(sessionDataDir)
     return {
       install: 'unknown',
       platform: friendlyPlatform(),
-      os: osText(process.platform, process.getSystemVersion(), release()),
-      model: arch(),
-      locale: app.getLocale(),
-      platformRows: linuxRows({
-        platform: process.platform,
-        env: process.env,
-        osRelease: readOsRelease(),
-        packaged: app.isPackaged,
-      }),
+      os: probe(() => osText(process.platform, process.getSystemVersion(), release())) ?? 'unknown',
+      model: probe(arch) ?? 'unknown',
+      locale: probe(() => app.getLocale()) ?? 'unknown',
+      platformRows:
+        probe(() =>
+          linuxRows({
+            platform: process.platform,
+            env: process.env,
+            osRelease: readOsRelease(),
+            packaged: app.isPackaged,
+          }),
+        ) ?? [],
       memory: {
         // Every process the app runs, not only main: the renderer is most of it.
-        usedBytes: app
-          .getAppMetrics()
-          .reduce((sum, metric) => sum + metric.memory.workingSetSize * 1024, 0),
-        availableBytes: freemem(),
-        totalBytes: totalmem(),
+        usedBytes: probe(() =>
+          app.getAppMetrics().reduce((sum, metric) => sum + metric.memory.workingSetSize * 1024, 0),
+        ),
+        availableBytes: probe(freemem),
+        totalBytes: probe(totalmem) ?? undefined,
       },
-      freeBytes: free,
-      networkType: net.isOnline() ? 'online' : 'offline',
-      database: databaseSizes(data),
-      attachmentsBytes: directoryBytes(join(data, 'attachments')),
+      networkType: probe(() => (net.isOnline() ? 'online' : 'offline')),
+      storage: {
+        database: data === null ? null : databaseSizes(data),
+        attachmentsBytes: data === null ? null : await directoryBytes(join(data, 'attachments')),
+        freeBytes: probe(() => {
+          const stats = statfsSync(app.getPath('userData'))
+          return stats.bavail * stats.bsize
+        }),
+      },
       // Main sweeps every line on the desktop, the renderer's included, so the counts are here.
       redactions: logger.sweepCounts(),
     }

@@ -1,3 +1,5 @@
+import { unknownDiagnostics } from '@session/logging'
+
 import type { Ports } from './ports'
 
 /**
@@ -94,20 +96,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
       deliver: null,
     },
     diagnostics: {
-      snapshot: () =>
-        Promise.resolve({
-          install: 'unknown',
-          platform: 'test',
-          os: 'unknown',
-          model: 'unknown',
-          locale: 'en',
-          platformRows: [],
-          memory: { usedBytes: null, availableBytes: null },
-          freeBytes: null,
-          networkType: null,
-          database: null,
-          attachmentsBytes: null,
-        }),
+      snapshot: () => Promise.resolve({ ...unknownDiagnostics(), platform: 'test', locale: 'en' }),
     },
     ...overrides,
   }

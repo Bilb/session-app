@@ -16,7 +16,6 @@ export type { FlagName } from './flags'
 export type {
   BuildPort,
   DiagnosticsPort,
-  DiagnosticsSnapshot,
   LogsPort,
   ClipboardPort,
   FilesPort,

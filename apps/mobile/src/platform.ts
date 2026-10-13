@@ -1,11 +1,6 @@
-import {
-  memoryPorts,
-  setPorts,
-  type DiagnosticsSnapshot,
-  type NotificationsPort,
-} from '@session/app'
+import { memoryPorts, setPorts, type NotificationsPort } from '@session/app'
 import { parseNetworkName } from '@session/basic-types'
-import { isExportName, logSpan } from '@session/logging'
+import { isExportName, logSpan, type DiagnosticsSnapshot } from '@session/logging'
 import * as Clipboard from 'expo-clipboard'
 import Constants from 'expo-constants'
 import * as Sharing from 'expo-sharing'
@@ -80,7 +75,6 @@ async function diagnosticsSnapshot(): Promise<DiagnosticsSnapshot> {
       usedBytes: native?.usedBytes ?? null,
       availableBytes: native?.availableBytes ?? null,
     },
-    freeBytes: native?.freeBytes ?? null,
     networkType: null,
     // What the notifications port says, which is what the app will actually do.
     notifications: 'no push service in this build',
@@ -92,8 +86,11 @@ async function diagnosticsSnapshot(): Promise<DiagnosticsSnapshot> {
             ([name, state]) => [name.charAt(0).toUpperCase() + name.slice(1), state] as const,
           ),
         }),
-    database: databaseSizes(),
-    attachmentsBytes: attachmentsBytes(),
+    storage: {
+      database: databaseSizes(),
+      attachmentsBytes: attachmentsBytes(),
+      freeBytes: native?.freeBytes ?? null,
+    },
   }
 }
 

@@ -1,4 +1,4 @@
-import { memoryPorts, setPorts, type DiagnosticsSnapshot } from '@session/app'
+import { memoryPorts, setPorts } from '@session/app'
 import { parseNetworkName } from '@session/basic-types'
 import { getLocale, subscribeLocale } from '@session/localization'
 
@@ -33,10 +33,8 @@ setPorts(
       span: (first, last) => window.sessionDesktop.logSpan(first, last),
       deliver: (name, parts) => window.sessionDesktop.exportLogs(name, parts),
     },
-    diagnostics: {
-      // Built by main from what only it can read; this file cannot import main's types.
-      snapshot: () => window.sessionDesktop.diagnostics() as Promise<DiagnosticsSnapshot>,
-    },
+    // Built by main from what only it can read.
+    diagnostics: { snapshot: () => window.sessionDesktop.diagnostics() },
     // The scheme the main process registered and serves from the addon - see main/media.ts.
     media: {
       urlFor: (ref) => mediaUrl('attachment', ref),

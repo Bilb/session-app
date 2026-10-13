@@ -11,14 +11,27 @@ function sessionRoot(): Directory {
   )
 }
 
-/** A file's size, or null where it is not there. */
+/**
+ * A figure read off disk, or null where reading it threw: these feed the export's header and the
+ * database lines, and a figure that could not be read must not cost either of them.
+ */
+function probe<T>(read: () => T): T | null {
+  try {
+    return read()
+  } catch {
+    return null
+  }
+}
+
+/** A file's size, or null where it is not there or cannot be read. */
 function sizeOf(file: File): number | null {
-  return file.exists ? file.size : null
+  return probe(() => (file.exists ? file.size : null))
 }
 
 /** The database and its journals, `session.db`, `-wal`, `-shm`; null when there is no database. */
 export function databaseSizes(): DatabaseSizes | null {
-  const root = sessionRoot()
+  const root = probe(sessionRoot)
+  if (root === null) return null
   const databaseBytes = sizeOf(new File(root, 'session.db'))
   if (databaseBytes === null) return null
   return {
@@ -30,6 +43,8 @@ export function databaseSizes(): DatabaseSizes | null {
 
 /** The attachment cache's size on disk, or null where there is none yet. */
 export function attachmentsBytes(): number | null {
-  const attachments = new Directory(sessionRoot(), 'attachments')
-  return attachments.exists ? attachments.size : null
+  return probe(() => {
+    const attachments = new Directory(sessionRoot(), 'attachments')
+    return attachments.exists ? attachments.size : null
+  })
 }

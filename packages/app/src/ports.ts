@@ -1,6 +1,6 @@
 import type { NetworkName, WithSpan } from '@session/basic-types'
 import type { AttachmentRef, PixelSize } from '@session/client'
-import type { DatabaseSizes, ExportPart, LogFileInfo, SweepCounts } from '@session/logging'
+import type { BuildFacts, DiagnosticsSnapshot, ExportPart, LogFileInfo } from '@session/logging'
 /**
  * What the app needs from the operating system, named so shared code can ask without
  * knowing which one it is running on.
@@ -145,31 +145,8 @@ export interface LinkingPort {
  * -- it would have to contain the hash of the commit it is in. Wanted by the settings stamp, and by
  * any log that has to say which binary produced it.
  */
-export interface BuildPort {
-  readonly version: string
-  /**
-   * Eight characters, with `-dirty` when the tree had changes on top. Null where the build was not
-   * made from a git checkout, rather than a hash it cannot vouch for.
-   */
-  readonly commit: string | null
-  /**
-   * The store build number the phones show after the version -- iOS's `CFBundleVersion`, Android's
-   * `versionCode`. Null where there is none, which is the desktop, and a phone whose configuration
-   * does not set one.
-   */
-  readonly buildNumber: string | null
-  /**
-   * What the build was made as -- `store`, `testflight`, `website`, `fdroid`, `dev` -- said by
-   * whoever assembled it through `EXPO_PUBLIC_SESSION_BUILD_VARIANT`. `unknown` when nobody did,
-   * rather than a guess from the platform: two builds of one platform can be different variants.
-   */
-  readonly variant: string
-  /**
-   * The libsession commit the build was made with, stamped from the submodule as the commit is;
-   * null outside a git checkout. libsession is the client, so a log has to say which one.
-   */
-  readonly libsessionCommit: string | null
-}
+/** What the build says about itself; see `BuildFacts` in `@session/logging`. */
+export type BuildPort = Readonly<BuildFacts>
 
 export interface SharePort {
   /**
@@ -256,40 +233,6 @@ export interface LogsPort {
    * out.
    */
   deliver: ((name: string, parts: readonly ExportPart[]) => Promise<boolean>) | null
-}
-
-/** What the platform can say about itself and its storage when somebody exports their logs. */
-export interface DiagnosticsSnapshot {
-  /**
-   * Where the OS says the app came from - `testflight`, `app store`, the installer package - or
-   * `unknown`.
-   */
-  install: string
-  /** `iOS`, `Android`, `macOS`, `Linux`, `Windows`: what the export's file name says. */
-  platform: string
-  /** `iOS 26.1`, `Android 16 (API 36)`, `macOS 15.1`, `Linux 6.8.0-45-generic`. */
-  os: string
-  model: string
-  locale: string
-  /** Rows only this platform has: Linux's distro and display server, a phone's low power mode. */
-  platformRows: ReadonlyArray<readonly [string, string]>
-  /** Total only where the model does not imply it, which is the desktop. */
-  memory: { usedBytes: number | null; availableBytes: number | null; totalBytes?: number }
-  freeBytes: number | null
-  /** `wifi`, `cellular`, `online`... or null where the platform cannot tell. */
-  networkType: string | null
-  /** Absent where the question does not arise - a desktop has no notification mode. */
-  notifications?: string
-  /** Name to state, in display order; absent where the platform asks for none. */
-  permissions?: ReadonlyArray<readonly [string, string]>
-  /** The database and its journals, measured off disk; null where there is no database. */
-  database: DatabaseSizes | null
-  attachmentsBytes: number | null
-  /**
-   * What the sweep has replaced, where another process does the sweeping: the desktop's main,
-   * which sweeps the renderer's lines and libsession's. Absent where this process sweeps its own.
-   */
-  redactions?: SweepCounts
 }
 
 export interface DiagnosticsPort {

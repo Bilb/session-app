@@ -277,8 +277,9 @@ Session logs exported 2026-10-09 07:41:02Z (17:41 local, UTC+10:00)
   app goes to the background (desktop: on quit), with the journals exact.
 - **Total memory** appears only on desktop; on a phone the model says it.
 - A field the platform can't answer says `unknown`; one that doesn't apply (permissions on desktop)
-  is left out. The compressed size isn't in the header, since the header is inside what is
-  compressed.
+  is left out. A platform that can't describe itself at all costs the header its rows, never the
+  export: every row reads `unknown` and the files still go. The compressed size isn't in the
+  header, since the header is inside what is compressed.
 - **Redaction counts** are those of the process that swept the lines: on a phone, the one process;
   on desktop, main, which sweeps the renderer's lines and libsession's as well as its own.
 - **From and To** come from the first timed line of the oldest file and the last of the newest.

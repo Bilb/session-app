@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { exportLogs } from '#src/exportLogs'
 import { resetLogger } from '#src/log'
-import { resetPorts, setPorts } from '#src/ports'
+import { resetPorts, setPorts, type Ports } from '#src/ports'
 import { memoryPorts } from '#src/testPorts'
 
 /** Any size: what the export does with files does not depend on how big they are. */
@@ -17,6 +17,7 @@ afterEach(() => {
 function withLogs(
   deliver: (name: string, parts: readonly ExportPart[]) => Promise<boolean>,
   redactions?: SweepCounts,
+  diagnostics?: Ports['diagnostics'],
 ) {
   const base = memoryPorts()
   setPorts(
@@ -42,11 +43,12 @@ function withLogs(
         deliver,
       },
       diagnostics:
-        redactions === undefined
+        diagnostics ??
+        (redactions === undefined
           ? base.diagnostics
           : {
               snapshot: async () => ({ ...(await base.diagnostics.snapshot()), redactions }),
-            },
+            }),
     }),
   )
 }
@@ -91,6 +93,26 @@ describe('exportLogs', () => {
     expect(await exportLogs()).toBe('cancelled')
     withLogs(() => Promise.reject(new Error('disk full')))
     expect(await exportLogs()).toBe('failed')
+  })
+
+  it('exports the files with unknown rows when the platform cannot describe itself', async () => {
+    let delivered: { name: string; parts: readonly ExportPart[] } | null = null
+    withLogs(
+      (name, parts) => {
+        delivered = { name, parts }
+        return Promise.resolve(true)
+      },
+      undefined,
+      // Any platform's snapshot can fail: one unreadable file under the attachments is enough.
+      { snapshot: () => Promise.reject(new Error('ENOENT: no such file or directory')) },
+    )
+    expect(await exportLogs()).toBe('exported')
+    const { name, parts } = delivered as unknown as { name: string; parts: readonly ExportPart[] }
+    expect(name).toMatch(/^session-logs-unknown-1\.2\.3-/)
+    const header = (parts[0] as { text: string }).text
+    expect(header).toContain('  Device         unknown')
+    expect(header).toContain('    Attachments    unknown')
+    expect(parts).toHaveLength(3)
   })
 
   it('is unavailable where the build cannot export', async () => {

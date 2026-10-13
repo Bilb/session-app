@@ -1,17 +1,16 @@
-import type { ExportPart } from '@session/logging'
+import type { Rows } from '@session/basic-types'
+import type { DeviceFacts, ExportPart } from '@session/logging'
 import { requireOptionalNativeModule } from 'expo'
 
 /** What `modules/session-logs` reports; nulls where the platform cannot say. */
-interface NativeDiagnostics {
-  model: string
-  install: string
+interface NativeDiagnostics extends Pick<DeviceFacts, 'model' | 'install'> {
   usedBytes: number | null
   availableBytes: number | null
   totalBytes: number | null
   freeBytes: number | null
   /** Null where the platform could not say. */
   lowPowerMode: boolean | null
-  permissions: [string, string][]
+  permissions: Rows
 }
 
 interface SessionLogsModule {

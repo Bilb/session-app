@@ -2,11 +2,12 @@ import {
   emptyCounts,
   networkRows,
   startupBlock,
+  type DeviceFacts,
   type LogFields,
   type Logger,
   type LogLevel,
   type NetworkSettings,
-  type PreviousRun,
+  type StartupFacts,
   type SweepCounts,
 } from '@session/logging'
 
@@ -127,23 +128,13 @@ export function logStoreMilestones(store: {
 }
 
 /** What only the platform can say about itself, for the startup block. */
-export interface PlatformFacts {
+export interface PlatformFacts extends DeviceFacts, Pick<StartupFacts, 'previousRun'> {
   /** When this process started, as the platform measures it. */
   launchedAtMs: number
-  /** `iPhone17,1`, `Google Pixel 9`. */
-  model: string
-  /** `iOS 26.1`, `Android 16 (API 36)`. */
-  os: string
-  locale: string
-  /** Where the OS says the app came from, or `unknown`. */
-  install: string
-  /** Rows only this platform has: a phone's low power mode. */
-  platformRows: ReadonlyArray<readonly [string, string]>
   /** The network settings the bridge was opened with, as this platform read them. */
   network: NetworkSettings
   /** Every `EXPO_PUBLIC_SESSION_FLAG_` variable the build was made with; see `flagOverrideRows`. */
   flagVariables: Readonly<Record<string, string | undefined>>
-  previousRun: PreviousRun | null
 }
 
 /**
@@ -165,24 +156,11 @@ export function startLogger(
     const network = networkRows(facts.network)
     logger.section(
       startupBlock({
-        launchedAtMs: facts.launchedAtMs,
-        version: build.version,
-        buildNumber: build.buildNumber,
-        commit: build.commit,
-        libsessionCommit: build.libsessionCommit,
-        variant: build.variant,
-        install: facts.install,
-        model: facts.model,
-        os: facts.os,
-        locale: facts.locale,
+        ...build,
+        ...facts,
         utcOffsetMinutes: -new Date().getTimezoneOffset(),
-        network: network.network,
-        transport: network.transport,
-        networkSettings: network.networkSettings,
-        platformRows: facts.platformRows,
+        ...network,
         flagOverrides: flagOverrideRows(facts.flagVariables),
-        logSpec: network.logSpec,
-        previousRun: facts.previousRun,
       }),
     )
   }

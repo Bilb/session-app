@@ -3,11 +3,16 @@ import {
   exportHeader,
   exportParts,
   planExport,
+  unknownDiagnostics,
   type ExportFacts,
 } from '@session/logging'
 
 import { appLog } from './log'
 import { requirePorts } from './ports'
+
+function reason(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
 
 export type ExportOutcome = 'exported' | 'cancelled' | 'unavailable' | 'failed'
 
@@ -26,47 +31,41 @@ export async function exportLogs(): Promise<ExportOutcome> {
   if (logs.deliver === null) return 'unavailable'
   try {
     appLog.marker('export', 'export')
-    const [files, device] = await Promise.all([logs.retained(), diagnostics.snapshot()])
+    // The header's facts are the least of what the export is for: a platform that cannot give
+    // them costs the header rows, never the files.
+    const [files, snapshot] = await Promise.all([
+      logs.retained(),
+      diagnostics.snapshot().catch((error: unknown) => {
+        appLog.warn('export', 'diagnostics failed; the header says unknown', {
+          reason: reason(error),
+        })
+        return unknownDiagnostics()
+      }),
+    ])
     const plan = planExport(files)
     const first = plan.included[0]
     const last = plan.included.at(-1)
     const span =
       first === undefined || last === undefined
         ? { firstLine: null, lastLine: null }
-        : await logs.span(first.name, last.name)
+        : await logs.span(first.name, last.name).catch(() => ({ firstLine: null, lastLine: null }))
     const now = Date.now()
+    const { platform, redactions, storage, ...device } = snapshot
 
     const facts: ExportFacts = {
+      ...build,
+      ...device,
       exportedAtMs: now,
       utcOffsetMinutes: -new Date(now).getTimezoneOffset(),
-      version: build.version,
-      buildNumber: build.buildNumber,
-      commit: build.commit,
-      libsessionCommit: build.libsessionCommit,
-      variant: build.variant,
-      install: device.install,
-      model: device.model,
-      os: device.os,
-      locale: device.locale,
-      platformRows: device.platformRows,
       network: network.name,
-      networkType: device.networkType,
-      memory: device.memory,
-      ...(device.notifications === undefined ? {} : { notifications: device.notifications }),
-      ...(device.permissions === undefined ? {} : { permissions: device.permissions }),
-      storage: {
-        database: device.database,
-        attachmentsBytes: device.attachmentsBytes,
-        attachmentsLimitBytes: null,
-        freeBytes: device.freeBytes,
-      },
+      storage: { ...storage, attachmentsLimitBytes: null },
       // libsession keeps the dumps in its own table and has no call that reports their sizes yet.
       configSizes: null,
       logs: { plan, ...span },
-      redactions: device.redactions ?? appLog.sweepCounts(),
+      redactions: redactions ?? appLog.sweepCounts(),
     }
 
-    const name = exportFileName(device.platform, build.version, now)
+    const name = exportFileName(platform, build.version, now)
     const delivered = await logs.deliver(name, exportParts(exportHeader(facts), plan))
     appLog.info('export', delivered ? 'export delivered' : 'export cancelled', {
       files: plan.included.length,
@@ -74,9 +73,7 @@ export async function exportLogs(): Promise<ExportOutcome> {
     })
     return delivered ? 'exported' : 'cancelled'
   } catch (error) {
-    appLog.error('export', 'export failed', {
-      reason: error instanceof Error ? error.message : String(error),
-    })
+    appLog.error('export', 'export failed', { reason: reason(error) })
     return 'failed'
   }
 }

@@ -11,11 +11,20 @@ export {
   isExportName,
   planExport,
   sizeBucket,
-  type DatabaseSizes,
   type ExportFacts,
   type ExportPart,
   type ExportPlan,
 } from './export'
+export {
+  unknownDiagnostics,
+  type BuildFacts,
+  type DatabaseSizes,
+  type DeviceFacts,
+  type DeviceState,
+  type DiagnosticsSnapshot,
+  type MemoryFacts,
+  type StorageFacts,
+} from './facts'
 export { libsessionLine } from './libsession'
 export {
   MARKER,

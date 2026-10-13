@@ -1,5 +1,6 @@
-import { roughBytes } from '@session/basic-types'
+import { roughBytes, type Rows, type WithSpan } from '@session/basic-types'
 
+import type { BuildFacts, DatabaseSizes, DeviceFacts, DeviceState, StorageFacts } from './facts'
 import { utcOffset, versionText } from './startup'
 import type { SweepCounts } from './sweep'
 import type { LogFields } from './values'
@@ -97,13 +98,6 @@ export function sizeBucket(name: string, bytes: number): string {
   return 'very large'
 }
 
-/** The database's three files, which together say whether checkpointing is keeping up. */
-export interface DatabaseSizes {
-  databaseBytes: number
-  walBytes: number | null
-  shmBytes: number | null
-}
-
 /**
  * The fields of a database line - `database open db="48 MB" wal=1204224 shm=32768` - logged when
  * the database opens and when the app goes to the background, as legacy iOS did. The journals are
@@ -116,41 +110,14 @@ export function databaseFields(sizes: DatabaseSizes | null): LogFields {
 }
 
 /** What is known at export time. Null is "the platform cannot say"; absent is "does not apply". */
-export interface ExportFacts {
+export interface ExportFacts extends BuildFacts, DeviceFacts, DeviceState {
   exportedAtMs: number
   utcOffsetMinutes: number
-  version: string
-  buildNumber: string | null
-  commit: string | null
-  libsessionCommit: string | null
-  variant: string
-  install: string
-  model: string
-  /** `iOS 26.1`, `macOS 15.1`, `Linux 6.8.0-45-generic`. */
-  os: string
-  locale: string
-  /** Rows only some platforms have: Linux's distro and display server, a phone's low power mode. */
-  platformRows: ReadonlyArray<readonly [string, string]>
   network: string
-  networkType: string | null
-  /** Total only where the device does not imply it, which is the desktop. */
-  memory: { usedBytes: number | null; availableBytes: number | null; totalBytes?: number }
-  notifications?: string
-  /** Permission name to state, in the order they should be listed. */
-  permissions?: ReadonlyArray<readonly [string, string]>
-  storage: {
-    database: DatabaseSizes | null
-    attachmentsBytes: number | null
-    attachmentsLimitBytes: number | null
-    freeBytes: number | null
-  }
+  storage: StorageFacts & { attachmentsLimitBytes: number | null }
   /** Each config and its size; null until libsession reports them. */
   configSizes: ReadonlyArray<{ name: string; bytes: number }> | null
-  logs: {
-    plan: ExportPlan
-    firstLine: string | null
-    lastLine: string | null
-  }
+  logs: WithSpan & { plan: ExportPlan }
   /** What the sweep replaced in this run, before the export. */
   redactions: SweepCounts
 }
@@ -169,7 +136,7 @@ function row(label: string, value: string): string {
  * group, a column further out where a name is longer than the usual width - a config's name,
  * `convo_info_volatile` - rather than running into its value.
  */
-function group(label: string, items: ReadonlyArray<readonly [string, string]>): string[] {
+function group(label: string, items: Rows): string[] {
   const width = Math.max(NESTED_WIDTH, ...items.map(([name]) => name.length + 2))
   return [`  ${label}`, ...items.map(([name, value]) => `    ${name.padEnd(width)}${value}`)]
 }
