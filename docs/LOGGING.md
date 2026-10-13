@@ -73,9 +73,9 @@ redacted form and counted (the counts go in the export header): URLs; UUIDs; hex
 more** (a 66-hex prefixed key becomes its user-visible form, anything else a pseudonym); base64 runs
 of 40+ with mixed case; **lowercase base32 runs of 50+, keeping a `.sesh`/`.snode` suffix** (Session
 Router and service-node addresses — a real testnet run showed the client's own router address
-reaching the file before this rule); IPv4/IPv6 literals; runs of 13+ words of 3–12 letters (Latin
-and Cyrillic; a phrase in another script is a known gap). libsession's lines are free text from C++,
-so they are swept like any other line.
+reaching the file before this rule); IPv4/IPv6 literals; runs of 13+ words of 3–16 letters, the
+range libsession's word lists span (Latin and Cyrillic; a phrase in another script is a known gap).
+libsession's lines are free text from C++, so they are swept like any other line.
 
 **A message is cut to 4,096 characters before it is swept**, since the sweep's cost grows with the
 text and nothing written for a person runs that long. Where the cut falls inside a run of
@@ -207,7 +207,7 @@ Written **without** the line prefix, after an empty line, one item per line:
 ## Unmissable markers
 
 Never sampled, rate-limited or level-filtered, flushed at once: `launch`, `foreground`,
-`background`, `quit` (where the platform says, and Quit on a phone), `restart`, `start ok|failed reason=…`,
-`account loaded|none|created`, `memory warning` (phones), `renderer gone` and
-`child process gone` with Chromium's reason (desktop), and `export`. Their absence is then
-evidence.
+`background`, `quit` (where the platform says, and Quit on a phone), `restart`,
+`start ok|failed reason=…`, `account loaded|none|created`, `memory warning` (iOS: React Native
+raises it nowhere else), `renderer gone` and `child process gone` with Chromium's reason (desktop),
+and `export`. Their absence is then evidence.
