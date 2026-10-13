@@ -112,6 +112,17 @@ module.exports = {
       to: { path: '^node_modules/expo($|[-/])', dependencyTypes: ['npm', 'npm-dev'] },
     },
     {
+      name: 'mobile-files-go-through-storage',
+      comment:
+        'apps/mobile reaches the file system only through src/storage/, which hands out the ' +
+        'roots: directories under data protection class C and excluded from backup. A path made ' +
+        'from expo-file-system anywhere else can land in Documents, which iCloud backs up. See ' +
+        'docs/STORAGE.md.',
+      severity: 'error',
+      from: { path: '^apps/mobile/', pathNot: '^apps/mobile/src/storage/' },
+      to: { path: '^node_modules/expo-file-system($|/)', dependencyTypes: ['npm', 'npm-dev'] },
+    },
+    {
       name: 'ui-owns-tamagui',
       comment:
         'Only packages/ui may import tamagui. Everyone else imports the wrapper from @session/ui.',

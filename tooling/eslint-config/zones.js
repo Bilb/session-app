@@ -79,8 +79,31 @@ export const uiZone = restrict([
   NO_BRIDGE_NODE,
 ])
 
-/** apps/mobile - Expo and react-native are its own; electron and the node addon are not. */
-export const mobileAppZone = restrict([NO_DEEP, NO_ELECTRON, NO_ROUTER, NO_BRIDGE_NODE])
+const NO_FILE_SYSTEM = {
+  group: ['expo-file-system', 'expo-file-system/*'],
+  message:
+    "Use the roots from src/storage/: they are the app's only directories that are protected " +
+    'and never backed up. See docs/STORAGE.md.',
+}
+
+/**
+ * apps/mobile - Expo and react-native are its own; electron and the node addon are not, and the
+ * file system is reached only through `src/storage/`.
+ */
+export const mobileAppZone = restrict([
+  NO_DEEP,
+  NO_ELECTRON,
+  NO_ROUTER,
+  NO_BRIDGE_NODE,
+  NO_FILE_SYSTEM,
+])
+
+/**
+ * apps/mobile/src/storage - the mobile zone less the file-system rule, which it exists to
+ * honour. A whole zone rather than an exemption, because a later `no-restricted-imports` replaces
+ * an earlier one instead of merging with it.
+ */
+export const mobileStorageZone = restrict([NO_DEEP, NO_ELECTRON, NO_ROUTER, NO_BRIDGE_NODE])
 
 /** The desktop renderer: DOM + react-router, but never electron or the addon directly. */
 export const desktopRendererZone = restrict([
