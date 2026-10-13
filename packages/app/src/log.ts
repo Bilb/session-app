@@ -8,7 +8,7 @@ import {
   type PreviousRun,
 } from '@session/logging'
 
-import { FLAGS, envVarFor, flag, type FlagName } from './flags'
+import { flagOverrideRows } from './flags'
 import { requirePorts } from './ports'
 
 /**
@@ -75,14 +75,6 @@ export const appLog = {
   },
 }
 
-/** `name=value` for every flag this build's environment overrides, for the startup block. */
-export function overriddenFlags(): string[] {
-  const { flags } = requirePorts()
-  return (Object.keys(FLAGS) as FlagName[]).flatMap((name) =>
-    flags.override(envVarFor(name)) === null ? [] : [`${name}=${String(flag(name))}`],
-  )
-}
-
 /** The two things about the store's state that the markers follow. */
 interface Milestones {
   startupError: string | null
@@ -126,6 +118,8 @@ export interface PlatformFacts {
   platformRows: ReadonlyArray<readonly [string, string]>
   /** The network settings the bridge was opened with, as this platform read them. */
   network: NetworkSettings
+  /** Every `EXPO_PUBLIC_SESSION_FLAG_` variable the build was made with; see `flagOverrideRows`. */
+  flagVariables: Readonly<Record<string, string | undefined>>
   previousRun: PreviousRun | null
 }
 
@@ -163,7 +157,7 @@ export function startLogger(
         transport: network.transport,
         networkSettings: network.networkSettings,
         platformRows: facts.platformRows,
-        flagOverrides: overriddenFlags(),
+        flagOverrides: flagOverrideRows(facts.flagVariables),
         logSpec: network.logSpec,
         previousRun: facts.previousRun,
       }),

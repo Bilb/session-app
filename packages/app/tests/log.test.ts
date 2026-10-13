@@ -110,6 +110,7 @@ describe('startLogger', () => {
         fileServerUrl: undefined,
         logSpec: '',
       },
+      flagVariables: { EXPO_PUBLIC_SESSION_FLAG_DEBUG_MODE: '1', EXPO_PUBLIC_SESSION_FLAG_X: 'y' },
       previousRun: null,
     })
     expect(lines.slice(0, 3)).toEqual([
@@ -121,6 +122,9 @@ describe('startLogger', () => {
     expect(lines).toContain('  Network        testnet')
     expect(lines).toContain('  Transport      Session Router (default)')
     expect(lines).toContain("  Log level      libsession's default")
+    expect(lines).toContain(
+      '  Flags          debugMode=1, EXPO_PUBLIC_SESSION_FLAG_X=y (no such flag)',
+    )
     expect(lines.slice(-2).map((line) => line.slice(PREFIX_WIDTH))).toEqual(['>>> launch', 'held'])
   })
 

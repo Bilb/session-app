@@ -13,7 +13,8 @@
   },
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./flags": "./src/flags.ts"
   },
   "scripts": {
     "lint": "eslint .",

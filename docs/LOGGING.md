@@ -189,6 +189,9 @@ Written **without** the line prefix, after an empty line, one item per line:
 - **Network and transport** are read where the bridge is opened, not from what the renderer was
   built with, so a dev run says what it is actually attached to. Seed node and file server follow
   when they were set.
+- **Flags** names each flag the build's environment sets, with its value as written
+  (`debugMode=ture` reads as the default, and the row shows why), then any
+  `EXPO_PUBLIC_SESSION_FLAG_` variable that names no flag, so a misspelling shows too.
 - **Log level** is `EXPO_PUBLIC_SESSION_LOG` as written, the one spec that sets both what
   libsession emits and what the file keeps. It only adds detail: every category is kept at `info`
   and above, and at a more verbose level where the spec names one for it or as its bare level, so

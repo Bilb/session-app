@@ -17,6 +17,7 @@ import { join } from 'node:path'
 
 import electron from 'electron'
 
+import { flagOverrideRows } from '@session/app/flags'
 import {
   consoleDirectory,
   createLogger,
@@ -129,17 +130,6 @@ function readOsRelease(): string | null {
   }
 }
 
-/** A flag's variable, named as the renderer names the flag: `disableAnimations=1`. */
-function flagOverrides(flags: Record<string, string>): string[] {
-  return Object.entries(flags).map(([variable, value]) => {
-    const words = variable.replace('EXPO_PUBLIC_SESSION_FLAG_', '').toLowerCase().split('_')
-    const name = words.map((word, i) =>
-      i === 0 ? word : word.charAt(0).toUpperCase() + word.slice(1),
-    )
-    return `${name.join('')}=${value}`
-  })
-}
-
 /**
  * The startup block, written by main rather than the renderer: main starts first, so the block
  * opens the file, and it is written even when the renderer never loads - which is when a log is
@@ -169,7 +159,7 @@ function mainStartupBlock(writer: LogWriter): string[] {
     network: network.network,
     transport: network.transport,
     networkSettings: network.networkSettings,
-    flagOverrides: flagOverrides(build.flags),
+    flagOverrides: flagOverrideRows(build.flags),
     logSpec: network.logSpec,
     previousRun: writer.previousRun,
   })

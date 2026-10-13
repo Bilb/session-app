@@ -58,6 +58,13 @@ function libsessionStamp() {
 }
 
 process.env.EXPO_PUBLIC_SESSION_BUILD_COMMIT = commitStamp()
+// Every flag variable, as one, so the startup block can name one the flag table does not have:
+// Metro inlines only the names `src/flagOverrides.ts` spells out.
+process.env.EXPO_PUBLIC_SESSION_FLAGS = JSON.stringify(
+  Object.fromEntries(
+    Object.entries(process.env).filter(([key]) => key.startsWith('EXPO_PUBLIC_SESSION_FLAG_')),
+  ),
+)
 // libsession is the client, so a log has to say which one. The native libraries are built from the
 // submodule, so this is the commit they were built from as long as they were rebuilt after it last
 // moved.

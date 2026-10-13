@@ -14,6 +14,8 @@ import * as Crypto from 'expo-crypto'
 import { Directory, File, FileMode, Paths } from 'expo-file-system'
 import { AppState, Platform } from 'react-native'
 
+import { flagVariables } from './flagOverrides'
+
 const SALT_FILE = '.salt'
 const SALT_BYTES = 16
 
@@ -164,6 +166,7 @@ const opened = (async (): Promise<LogWriter> => {
       fileServerUrl: process.env['EXPO_PUBLIC_SESSION_FILE_SERVER_URL'],
       logSpec: process.env['EXPO_PUBLIC_SESSION_LOG'],
     },
+    flagVariables: flagVariables(),
     previousRun: writer.previousRun,
   })
   if (failure !== null) {

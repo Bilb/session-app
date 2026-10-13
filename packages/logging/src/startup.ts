@@ -29,7 +29,10 @@ export interface StartupFacts {
    * a phone's low power mode.
    */
   platformRows: ReadonlyArray<readonly [string, string]>
-  /** `NAME=value` for each flag overridden in this build's environment. */
+  /**
+   * `name=value` for each flag this build's environment sets, as written, then any flag variable
+   * that names no flag: see `flagOverrideRows` in `@session/app`.
+   */
   flagOverrides: readonly string[]
   /** The libsession log spec in force, as written: `info,network=debug`. */
   logSpec: string
