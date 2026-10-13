@@ -13,9 +13,9 @@ import os
 /// them: an iCloud or computer backup would carry them off the device, and legacy keeps them on it.
 ///
 /// A new file inherits its directory's class, so protecting the roots covers what is created in
-/// them. A file *moved* in does not: since iOS 26 it keeps the class of where it was created, which
-/// is why `protect` exists for single files and why the temporary directory, where such files
-/// start, gets class C too.
+/// them. A file *moved or copied* in does not: since iOS 26 it keeps the class of where it was
+/// created, which is why `protect` exists for single files and why the temporary directory, where
+/// such files start, gets class C too.
 enum ProtectedRoots {
   struct Paths: Sendable {
     /// libsession's root; each network gets a directory inside it.

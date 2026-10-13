@@ -21,6 +21,7 @@ import { databaseSizes } from './storageSizes'
 import {
   checkRoots,
   File,
+  moveInto,
   FileMode,
   logsRoot,
   rootsProblem,
@@ -114,7 +115,7 @@ function readSalt(dir: Directory): { salt: Uint8Array; replaced: boolean } {
   if (written.exists) written.delete()
   written.create()
   written.write([...salt].map((byte) => byte.toString(16).padStart(2, '0')).join(''))
-  written.moveSync(file, { overwrite: true })
+  moveInto(written, file, { overwrite: true })
   return { salt, replaced }
 }
 

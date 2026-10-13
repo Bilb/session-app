@@ -30,10 +30,21 @@ delegate registers its subscribers, before JavaScript runs. A build without the 
 entitlement falls back to Application Support with the same attributes, and says so in the startup
 block.
 
-A new file inherits its directory's class. A **moved** file does not: since iOS 26 it keeps the
-class of wherever it was created. So the database files are protected again after libsession opens
-them, as legacy does, and anything that writes elsewhere and moves into a root has to call
-`protect` on the result.
+A new file inherits its directory's class. A **moved or copied** file does not: since iOS 26 it
+keeps the class of the directory it was first written in, and the temporary directory, where such
+files usually start, defaults to `complete`, which a locked phone cannot open. Legacy hit this with
+its extension's files and fixed it by protecting each one again where it landed. Here:
+
+- **Everything the app writes today is created where it stays.** libsession's renames (`.part` to
+  final, its snode and router caches) stay within one directory, and expo-file-system does not write
+  through a temporary file.
+- **A move goes through `moveInto`**, which protects the file again where it lands. The storage
+  module's `File` and `Directory` types leave out expo-file-system's `move` and `copy`, so nothing
+  else can move a file in; a copy, when something needs one, gets a `copyInto` beside it.
+- **The database files are protected again after libsession opens them**, as legacy does: SQLite
+  creates the -wal and -shm when it needs them.
+- **A notification extension, or anything else native that writes outside a root and moves the
+  result in, has to call `protect` on it**, as legacy's extension does.
 
 **Android.** The manifest keeps the roots out: `allowBackup="false"`, and backup rules
 (`fullBackupContent` and `dataExtractionRules`, for cloud backup **and** device-to-device transfer,

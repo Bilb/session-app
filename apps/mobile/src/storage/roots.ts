@@ -7,11 +7,12 @@
  */
 import type { NetworkName } from '@session/basic-types'
 import { requireOptionalNativeModule } from 'expo'
-import { Directory, Paths } from 'expo-file-system'
+import { Directory as ExpoDirectory, File as ExpoFile, Paths } from 'expo-file-system'
 
 import {
   databaseFiles,
   fileUri,
+  plainPath,
   libsessionPaths,
   ROOT_NAMES,
   rootIsProtected,
@@ -22,7 +23,32 @@ import {
   type StorageRootPaths,
 } from './layout'
 
-export { Directory, File, FileMode } from 'expo-file-system'
+export { FileMode } from 'expo-file-system'
+
+/**
+ * expo-file-system's move and copy, which the app reaches only through `moveInto`.
+ *
+ * Since iOS 26 a file moved or copied into a directory keeps the protection class of the directory
+ * it was first written in, rather than taking its new one's. A file that started in the temporary
+ * directory can arrive as `complete`, which a locked phone cannot open, so every move into a root
+ * has to protect the file again where it lands. Leaving these out of the types below is what makes
+ * that the only way to do it; a copy, when something needs one, gets a `copyInto` beside it.
+ */
+type Relocation = 'copy' | 'copySync' | 'move' | 'moveSync'
+
+/** A file, without the moves and copies that would skip re-protecting it. */
+export type File = Omit<ExpoFile, Relocation>
+
+/** A directory, without its moves and copies, and listing files of the same kind. */
+export type Directory = Omit<ExpoDirectory, Relocation | 'createFile' | 'list'> & {
+  list(): (File | Directory)[]
+}
+
+// The same classes at run time; only what the app can call on them is narrowed.
+export const File = ExpoFile as unknown as new (...uris: (string | File | Directory)[]) => File
+const Directory = ExpoDirectory as unknown as new (
+  ...uris: (string | File | Directory)[]
+) => Directory
 
 interface StorageRootsModule {
   readonly roots: StorageRootPaths
@@ -50,6 +76,28 @@ if (rootsProblem !== null) console.error(`[storage] ${rootsProblem}`)
 
 const roots: StorageRootPaths =
   native?.roots ?? unprotectedRoots(Paths.document.uri, Paths.cache.uri)
+
+/**
+ * Moves a file into `destination`, a file or a directory in one of the roots, and protects it again
+ * where it lands. See `Relocation` for why the move alone is not enough.
+ */
+export function moveInto(
+  file: File,
+  destination: File | Directory,
+  options?: { overwrite?: boolean },
+): File {
+  ;(file as unknown as ExpoFile).moveSync(
+    destination as unknown as ExpoFile | ExpoDirectory,
+    options,
+  )
+  reprotect(file.uri)
+  return file
+}
+
+/** Both attributes on one file; nothing without the native module, which also means no roots. */
+function reprotect(uri: string): void {
+  native?.protect(plainPath(uri))
+}
 
 /** One root, or a directory inside one, created if it is not there. */
 function directory(path: string): Directory {
