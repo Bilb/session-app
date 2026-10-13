@@ -58,13 +58,14 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
         </YStack>
 
         <YStack gap="$sm" width="100%" maxWidth={348}>
-          {/* What the explanation above asks for. Locked while the export runs, which on a phone
-              includes the share sheet being open. Left out where the build cannot export. */}
+          {/* What the explanation above asks for. A spinner, and inert, while the export runs:
+              seconds of native compression on a phone, then the share sheet. Left out where the
+              build cannot export. */}
           {canExport ? (
             <TextButton
               label={['helpReportABugExportLogs']}
               variant="outline"
-              disabled={exporting}
+              loading={exporting}
               testID={ELEMENT.startupFailed.exportLogs}
               onPress={() => {
                 setExporting(true)
