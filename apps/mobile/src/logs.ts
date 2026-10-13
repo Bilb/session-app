@@ -13,12 +13,19 @@ import {
 } from '@session/logging'
 import type { SessionStore } from '@session/state'
 import * as Crypto from 'expo-crypto'
-import { Directory, File, FileMode, Paths } from 'expo-file-system'
 import { AppState, Platform } from 'react-native'
 
 import { flagVariables } from './flagOverrides'
 import { SessionLogs } from './sessionLogs'
 import { databaseSizes } from './storageSizes'
+import {
+  checkRoots,
+  File,
+  FileMode,
+  logsRoot,
+  rootsProblem,
+  type Directory,
+} from './storage/roots'
 
 const SALT_FILE = '.salt'
 const SALT_BYTES = 16
@@ -175,17 +182,20 @@ function logDatabase(moment: string): void {
   appLog.info('storage', `database ${moment}`, databaseFields(databaseSizes()))
 }
 
+/** The storage module's `logs` root, which the logs create when they open. */
+export const logDirectory: Directory = logsRoot
+
+/** The log directory as the writer and the export read it. */
+export const logFiles = expoDirectory(logDirectory)
+
 /**
- * The logs: documents/`logs`, a new file for this launch, and the lifecycle markers.
+ * The logs: the storage module's `logs` root, a new file for this launch, and the lifecycle
+ * markers.
  *
  * Opened at import, before the bridge, so the first line of a run is the app starting rather than
  * whatever the bridge had to say. A directory that cannot be opened leaves the console as the
  * only place lines go, which is said there.
  */
-export const logDirectory = new Directory(Paths.document, 'logs')
-
-/** The log directory as the writer and the export read it. */
-export const logFiles = expoDirectory(logDirectory)
 
 const opened = (async (): Promise<LogWriter> => {
   const writerOptions = {
@@ -216,6 +226,8 @@ const opened = (async (): Promise<LogWriter> => {
       writerOptions,
     )
   }
+  // A row of the startup block, so read before the block is written.
+  const storage = checkRoots()
   const logger = createLogger({
     sink: writer,
     pseudonyms: new Pseudonyms(salt),
@@ -235,7 +247,7 @@ const opened = (async (): Promise<LogWriter> => {
     os: osName(native?.iOSAppOnMac === true),
     locale: Intl.DateTimeFormat().resolvedOptions().locale,
     install: native?.install ?? 'unknown',
-    platformRows: lowPowerRows(native?.lowPowerMode),
+    platformRows: [...lowPowerRows(native?.lowPowerMode), storage.row],
     // The same variables, literally named, that store.ts opens the bridge with.
     network: {
       fake: process.env['EXPO_PUBLIC_SESSION_FAKE'] === '1',
@@ -254,6 +266,8 @@ const opened = (async (): Promise<LogWriter> => {
       reason: failure,
     })
   }
+  if (rootsProblem !== null) logger.error('storage', rootsProblem)
+  for (const warning of storage.warnings) logger.warn('storage', warning)
   if (saltReplaced) {
     logger.warn(
       'logs',

@@ -4,8 +4,6 @@ import { isExportName, logSpan, type DiagnosticsSnapshot } from '@session/loggin
 import * as Clipboard from 'expo-clipboard'
 import Constants from 'expo-constants'
 import * as Sharing from 'expo-sharing'
-import { Directory, File, Paths } from 'expo-file-system'
-import * as SecureStore from 'expo-secure-store'
 import { Linking, Platform, Share } from 'react-native'
 
 import { flagOverride } from './flagOverrides'
@@ -13,6 +11,8 @@ import { endingRun, logDirectory, logFiles, logWriter, lowPowerRows, osName } fr
 import { restartProcess, terminateProcess } from './processExit'
 import { SessionLogs } from './sessionLogs'
 import { attachmentsBytes, databaseSizes } from './storageSizes'
+import { readDatabaseKey, writeDatabaseKey } from './storage/databaseKey'
+import { exportsDirectory, File } from './storage/roots'
 
 /**
  * Whose servers fast mode would use, which is what the onboarding screen has to name.
@@ -32,8 +32,6 @@ const PUSH_SERVICE: NotificationsPort['pushService'] = ((): NotificationsPort['p
   const named = process.env['EXPO_PUBLIC_SESSION_PUSH_SERVICE']
   return named === 'huawei' || named === 'google' ? named : 'google'
 })()
-
-const DATABASE_KEY = 'session2.database-key'
 
 // Hex rather than base64: the keychain stores strings, and hex needs no polyfill on either
 // platform's JavaScript engine.
@@ -186,9 +184,10 @@ const ports = memoryPorts({
     },
     span: (first, last) => logSpan(logFiles, first, last),
     /**
-     * Compressed natively into the cache, then shared, as the legacy clients do, rather than saved
-     * through a picker. expo-sharing because Android's sheet takes a file only through a content
-     * provider, which it brings; on iOS it is the same activity sheet React Native's own opens.
+     * Compressed natively into the storage module's exports directory, then shared, as the legacy
+     * clients do, rather than saved through a picker. expo-sharing because Android's sheet takes a
+     * file only through a content provider, which it brings; on iOS it is the same activity sheet
+     * React Native's own opens.
      *
      * The sheet does not say whether anything was sent, so a closed sheet counts as delivered.
      */
@@ -198,10 +197,11 @@ const ports = memoryPorts({
         : async (name, parts) => {
             // Earlier exports go first. Not deleted once shared: on Android the app it was shared
             // to may still be reading it after the sheet closes. So one is kept, not every one.
-            for (const entry of new Directory(Paths.cache).list()) {
+            const exports = exportsDirectory()
+            for (const entry of exports.list()) {
               if (entry instanceof File && isExportName(entry.name)) entry.delete()
             }
-            const out = new File(Paths.cache, name)
+            const out = new File(exports, name)
             await nativeLogs.gzip(parts, pathOf(logDirectory.uri), pathOf(out.uri))
             await Sharing.shareAsync(out.uri, {
               mimeType: 'application/gzip',
@@ -211,15 +211,14 @@ const ports = memoryPorts({
           },
   },
   diagnostics: { snapshot: diagnosticsSnapshot },
+  // The same keychain item store.ts opens the database with, so there is one key.
   secureStore: {
     async getDatabaseKey() {
-      const stored = await SecureStore.getItemAsync(DATABASE_KEY)
+      const stored = await readDatabaseKey()
       if (stored === null) return null
       return hexToBytes(stored)
     },
-    async setDatabaseKey(key) {
-      await SecureStore.setItemAsync(DATABASE_KEY, bytesToHex(key))
-    },
+    setDatabaseKey: (key) => writeDatabaseKey(bytesToHex(key)),
   },
 })
 
