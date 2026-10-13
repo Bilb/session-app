@@ -75,6 +75,23 @@ export const appLog = {
   },
 }
 
+/**
+ * The store's `log` option: every line to the file, and to the console as well where `echo` is
+ * set, a development build. The console's four levels take the six: `critical` as an error, and
+ * `trace` as debug.
+ */
+export function storeLogger(
+  echo: boolean,
+): (level: LogLevel, category: string, message: string, op?: string) => void {
+  return (level, category, message, op) => {
+    appLog.log(level, category, message, undefined, op)
+    if (echo) {
+      const method = level === 'critical' ? 'error' : level === 'trace' ? 'debug' : level
+      console[method](`[${category}] ${message}`)
+    }
+  }
+}
+
 /** The two things about the store's state that the markers follow. */
 interface Milestones {
   startupError: string | null

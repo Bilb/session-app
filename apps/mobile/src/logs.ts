@@ -1,4 +1,4 @@
-import { appLog, logStoreMilestones, startLogger } from '@session/app'
+import { appLog, logStoreMilestones, startLogger, storeLogger } from '@session/app'
 import {
   consoleDirectory,
   createLogger,
@@ -7,7 +7,6 @@ import {
   minLevelFromSpec,
   Pseudonyms,
   type LogDirectory,
-  type LogLevel,
 } from '@session/logging'
 import type { SessionStore } from '@session/state'
 import * as Crypto from 'expo-crypto'
@@ -235,15 +234,11 @@ export function watchStore(store: SessionStore): void {
   logStoreMilestones(store)
 }
 
-/** The store's `log` option: every line to the file, and to the console in development. */
-export function storeLog(level: LogLevel, category: string, message: string, op?: string): void {
-  appLog.log(level, category, message, undefined, op)
-  if (__DEV__) {
-    const method = level === 'critical' ? 'error' : level === 'trace' ? 'debug' : level
-    // Reaches logcat as ReactNativeJS on Android, and the device console on iOS.
-    console[method](`[${category}] ${message}`)
-  }
-}
+/**
+ * The store's `log` option: every line to the file, and in development to the console, which
+ * reaches logcat as ReactNativeJS on Android and the device console on iOS.
+ */
+export const storeLog = storeLogger(__DEV__)
 
 /** The store's `libsessionLog` option: libsession's line, read, then written like the app's own. */
 export function libsessionLog(level: string, category: string, message: string): void {

@@ -1,5 +1,5 @@
-import { appLog, logStoreMilestones, startLogger } from '@session/app'
-import { createForwardingLogger, type LogLevel } from '@session/logging'
+import { logStoreMilestones, startLogger, storeLogger } from '@session/app'
+import { createForwardingLogger } from '@session/logging'
 import type { SessionStore } from '@session/state'
 
 import { recordQueue } from './recordQueue'
@@ -38,11 +38,8 @@ export async function startLogging(store: SessionStore): Promise<void> {
   logStoreMilestones(store)
 }
 
-/** The store's `log` option: every line to the file, and to the console in development. */
-export function storeLog(level: LogLevel, category: string, message: string, op?: string): void {
-  appLog.log(level, category, message, undefined, op)
-  if (import.meta.env.DEV) {
-    const method = level === 'critical' ? 'error' : level === 'trace' ? 'debug' : level
-    console[method](`[${category}] ${message}`)
-  }
-}
+/**
+ * The store's `log` option: every line to the file, and under the dev server to DevTools as well,
+ * beside the renderer's own errors. Main echoes the lines it writes to its terminal.
+ */
+export const storeLog = storeLogger(import.meta.env.DEV)

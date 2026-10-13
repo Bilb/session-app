@@ -1,7 +1,14 @@
 import { createLogger, PREFIX_WIDTH, Pseudonyms } from '@session/logging'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { appLog, installLogger, logStoreMilestones, resetLogger, startLogger } from '#src/log'
+import {
+  appLog,
+  installLogger,
+  logStoreMilestones,
+  resetLogger,
+  startLogger,
+  storeLogger,
+} from '#src/log'
 import { resetPorts, setPorts } from '#src/ports'
 import { memoryPorts } from '#src/testPorts'
 
@@ -150,5 +157,26 @@ describe('logStoreMilestones', () => {
       '>>> account created',
       '>>> start failed reason="database is locked"',
     ])
+  })
+})
+
+describe('storeLogger', () => {
+  it('writes every line, and echoes it to the console only when asked', () => {
+    const lines = capture()
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const debug = vi.spyOn(console, 'debug').mockImplementation(() => undefined)
+    try {
+      storeLogger(false)('critical', 'session', 'quiet', 'CoS-0-A')
+      expect(error).not.toHaveBeenCalled()
+      storeLogger(true)('critical', 'session', 'loud')
+      storeLogger(true)('trace', 'session', 'fine')
+      expect(error).toHaveBeenCalledWith('[session] loud')
+      expect(debug).toHaveBeenCalledWith('[session] fine')
+      expect(lines.map((line) => line.slice(PREFIX_WIDTH))).toEqual(['quiet', 'loud'])
+      expect(lines[0]).toContain('[CoS-0-A]')
+    } finally {
+      error.mockRestore()
+      debug.mockRestore()
+    }
   })
 })
