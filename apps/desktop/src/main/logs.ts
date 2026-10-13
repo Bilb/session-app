@@ -21,6 +21,7 @@ import {
   consoleDirectory,
   createLogger,
   libsessionLine,
+  minLevelFromSpec,
   networkRows,
   orderedSink,
   parseRecord,
@@ -213,8 +214,8 @@ export function openLogs(): Promise<MainLogs> {
     const logger = createLogger({
       sink: orderedSink(writer, { holdMs: RENDERER_HOLD_MS }),
       pseudonyms: new Pseudonyms(salt),
-      // The store's own lines are its account of a start, which is worth keeping at debug.
-      minLevel: (category) => (category === 'session' ? 'debug' : 'info'),
+      // The spec the bridge is opened with, so what libsession is asked to emit is also kept.
+      minLevel: minLevelFromSpec(networkSettings().logSpec),
       now: () => Date.now(),
       uptimeMs: () => process.uptime() * 1000,
       ...(app.isPackaged

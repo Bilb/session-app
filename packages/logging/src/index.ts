@@ -1,5 +1,5 @@
 export { addressShape, renderAddress, type AddressClass, type AddressFamily } from './address'
-export { LOG_LEVELS, levelRank, parseLevel, type LogLevel } from './level'
+export { LOG_LEVELS, levelRank, minLevelFromSpec, parseLevel, type LogLevel } from './level'
 export { PREFIX_WIDTH, formatPrefix } from './line'
 export { MAX_SWEPT_CHARS, capForSweep } from './cap'
 export { libsessionLine } from './libsession'

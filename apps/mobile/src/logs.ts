@@ -4,6 +4,7 @@ import {
   createLogger,
   libsessionLine,
   LogWriter,
+  minLevelFromSpec,
   Pseudonyms,
   type LogDirectory,
   type LogLevel,
@@ -144,7 +145,8 @@ const opened = (async (): Promise<LogWriter> => {
     sink: writer,
     pseudonyms: new Pseudonyms(salt),
     uptimeMs,
-    minLevel: (category) => (category === 'session' ? 'debug' : 'info'),
+    // The spec store.ts opens the bridge with, so what libsession is asked to emit is also kept.
+    minLevel: minLevelFromSpec(process.env['EXPO_PUBLIC_SESSION_LOG']),
   })
   startLogger(logger, {
     launchedAtMs: launchMs,

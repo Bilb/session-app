@@ -185,6 +185,10 @@ Written **without** the line prefix, after an empty line, one item per line:
 - **Network and transport** are read where the bridge is opened, not from what the renderer was
   built with, so a dev run says what it is actually attached to. Seed node and file server follow
   when they were set.
+- **Log level** is `EXPO_PUBLIC_SESSION_LOG` as written, the one spec that sets both what
+  libsession emits and what the file keeps. It only adds detail: every category is kept at `info`
+  and above, and at a more verbose level where the spec names one for it or as its bare level, so
+  `warn,network=debug` quiets libsession's other categories without dropping the app's own lines.
 - **Platform rows:** Linux adds Distro, Display (Wayland or X11), Desktop and Packaging (AppImage,
   Flatpak, Snap), and gives the kernel as its OS version. macOS and Windows give their version.
 - **Desktop's main process writes the block**, so it opens the file and is there even when the
