@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { PREFIX_WIDTH } from '#src/line'
 import {
   createForwardingLogger,
   createLogger,
@@ -42,7 +43,7 @@ describe('createLogger', () => {
     const sink = recording()
     logger(sink).info('network', 'path built', { hops: 3, ms: 812 })
     expect(sink.lines).toEqual([
-      '2026-10-08T03:20:09.123Z     +12.345 INFO  [network]                         path built hops=3 ms=812',
+      '2026-10-08T03:20:09.123Z     +12.345 INFO  [network]                           path built hops=3 ms=812',
     ])
   })
 
@@ -55,7 +56,7 @@ describe('createLogger', () => {
       addr: address('144.76.164.202', 22021),
       at: url('https://filev2.getsession.org/file/abcdefghijklmnopqrstuvwxyz'),
     })
-    expect(sink.lines[0]?.slice(77)).toBe(
+    expect(sink.lines[0]?.slice(PREFIX_WIDTH)).toBe(
       `send start to=05cd90...cd90 dest=snode${p.of('node-ed25519-key')} addr="v4 public:22021" ` +
         `at=https://filev2.getsession.org/file/${p.of('abcdefghijklmnopqrstuvwxyz')}`,
     )
@@ -88,7 +89,7 @@ describe('createLogger', () => {
       minLevel: () => 'critical',
     })
     log.marker('lifecycle', 'background')
-    expect(sink.lines[0]).toContain('[lifecycle]                       >>> background')
+    expect(sink.lines[0]).toContain('[lifecycle]                         >>> background')
     expect(sink.urgent).toEqual([true])
   })
 
@@ -111,7 +112,7 @@ describe('createLogger', () => {
     const sink = recording()
     const log = logger(sink)
     log.log('info', 'network', 'request ok', { status: 200 }, 'CoS-0-I7C3')
-    expect(sink.lines[0]).toContain('[network]        [CoS-0-I7C3]     request ok status=200')
+    expect(sink.lines[0]).toContain('[network]          [CoS-0-I7C3]     request ok status=200')
   })
 })
 

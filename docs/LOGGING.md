@@ -9,13 +9,13 @@ enforced by the types below and a sweep over every line, not by encryption.
 
 ## The line
 
-Every line starts with a **fixed-width, 77-column prefix**, so the eye can skip straight to column 78:
+Every line starts with a **fixed-width, 79-column prefix**, so the eye can skip straight to column 80:
 
 ```
-2026-10-09T00:18:07.718Z      +0.928 INFO  [network]        [CoS-0-I7C3]     Starting clock resync. src=network/session_network.cpp:963
-2026-10-09T00:18:07.720Z      +0.930 INFO  [session]                         no account on this device yet
-2026-10-09T00:18:09.201Z      +2.411 INFO  [session-router] [CoS-0-I7C3-2]   No tunnel to ~e2b47d, initiating new tunnel. src=routing/session_router_router.cpp:610
-└──────── 24 ───────────┘ └─ 11 ──┘ └ 5 ┘ └───── 16 ─────┘ └───── 16 ─────┘ message, key=value
+2026-10-09T00:18:07.718Z      +0.928 INFO  [network]          [CoS-0-I7C3]     Starting clock resync. src=network/session_network.cpp:963
+2026-10-09T00:18:07.720Z      +0.930 INFO  [session]                           no account on this device yet
+2026-10-09T00:18:09.201Z      +2.411 INFO  [session-router]   [CoS-0-I7C3-2]   No tunnel to ~e2b47d, initiating new tunnel. src=routing/session_router_router.cpp:610
+└──────── 24 ───────────┘ └─ 11 ──┘ └ 5 ┘ └────── 18 ──────┘ └───── 16 ─────┘ message, key=value
 ```
 
 | column        | width             | content                                                                                                                                                                                                                                                                  |
@@ -23,7 +23,7 @@ Every line starts with a **fixed-width, 77-column prefix**, so the eye can skip 
 | UTC timestamp | 24                | millisecond, with `Z`                                                                                                                                                                                                                                                    |
 | uptime        | 11, right-aligned | `+seconds.mmm` since process start; monotonic, so intervals survive a clock step. Aligned on the decimal point. Past 11.5 days it grows by a column rather than wrapping                                                                                                 |
 | level         | 5                 | `TRACE DEBUG INFO  WARN  ERROR CRIT` — a word, never collapsed                                                                                                                                                                                                           |
-| category      | 16                | `[network]` padded after the bracket. The longest known category (`session-router`) fills it exactly; a longer one is kept whole and pushes the line, never truncated                                                                                                    |
+| category      | 18                | `[network]` padded after the bracket. Up to 16 characters fit whole; a longer one is cut to its first 15 and `…` (`[onion-request-r…]`), so the columns after it never move whatever names libsession or its dependencies add. Grep a cut one by its start               |
 | op            | 16                | the request one line belongs to, or blank: libsession's request id `[CoS-0-I7C3]`, which it puts on every line of a request under every transport and the app moves here from the message. A request's own sub-requests add `-0`, `-1`, …, so the bare id finds them all |
 | message       | rest              | the event, then `key=value` pairs: **values, not conclusions** (`present=false destroyed=true`, not "group is gone"). Newlines escaped as `\n`                                                                                                                           |
 
@@ -65,8 +65,8 @@ URLs keep their shape and lose what identifies:
   there;
 - **fragment**: dropped.
 
-One ellipsis form everywhere, ASCII `...` (legacy iOS writes `...`, Android `…`; not `..`, which
-legacy iOS rewrites to `.`).
+One ellipsis form in a shortened identifier, ASCII `...` (legacy iOS writes `...`, Android `…`; not
+`..`, which legacy iOS rewrites to `.`).
 
 **Backstop sweep** over every rendered line, before it is written; each match replaced by its
 redacted form and counted (the counts go in the export header): URLs; UUIDs; hex runs of **32 or
@@ -88,11 +88,11 @@ to recognise; the line ends `[cut N chars]`.
 a sub-request of its own:
 
 ```
-2026-10-09T00:18:07.718Z      +0.928 INFO  [network]        [CoS-0-I7C3]     Starting clock resync. src=network/session_network.cpp:963
-2026-10-09T00:18:08.720Z      +1.930 INFO  [network]        [CoS-0-I7C3-0]   Launching clock resync request to ~3c741c src=network/session_network.cpp:990
-2026-10-09T00:18:09.203Z      +2.413 INFO  [session-router] [CoS-0-I7C3-0]   No tunnel to ~3c741c, initiating new tunnel. src=routing/session_router_router.cpp:610
-2026-10-09T00:18:09.862Z      +3.072 INFO  [session-router] [CoS-0-I7C3-0]   Tunnel to remote ~3c741c established. src=routing/session_router_router.cpp:1315
-2026-10-09T00:18:09.862Z      +3.072 INFO  [quic-transport] [CoS-0-I7C3-0]   No connection to ~3c741c, initiating new connection. src=transport/quic_transport.cpp:272
+2026-10-09T00:18:07.718Z      +0.928 INFO  [network]          [CoS-0-I7C3]     Starting clock resync. src=network/session_network.cpp:963
+2026-10-09T00:18:08.720Z      +1.930 INFO  [network]          [CoS-0-I7C3-0]   Launching clock resync request to ~3c741c src=network/session_network.cpp:990
+2026-10-09T00:18:09.203Z      +2.413 INFO  [session-router]   [CoS-0-I7C3-0]   No tunnel to ~3c741c, initiating new tunnel. src=routing/session_router_router.cpp:610
+2026-10-09T00:18:09.862Z      +3.072 INFO  [session-router]   [CoS-0-I7C3-0]   Tunnel to remote ~3c741c established. src=routing/session_router_router.cpp:1315
+2026-10-09T00:18:09.862Z      +3.072 INFO  [quic-transport]   [CoS-0-I7C3-0]   No connection to ~3c741c, initiating new connection. src=transport/quic_transport.cpp:272
 ```
 
 `grep 'CoS-0-I7C3'` gives the resync and all three of its requests; `grep 'CoS-0-I7C3-0'` one of
@@ -103,22 +103,22 @@ rotate every 20 minutes, so a hop says little, and it is what reading a path fai
 **A path that goes bad on a private network** — the class is what support needs, never the octets:
 
 ```
-... WARN  [quic]                            connect failed dest=snode~c41b07 addr=v6-mapped private:22021 errno=EHOSTUNREACH ms=3004
+... WARN  [quic]                              connect failed dest=snode~c41b07 addr=v6-mapped private:22021 errno=EHOSTUNREACH ms=3004
 ```
 
 **A file download** — the server is Session's own, so its host stays; the file id is a pseudonym, which
 the attachment's own lines carry too:
 
 ```
-... INFO  [attach]                          download start url=https://filev2.getsession.org/file/~5d0e11 msg=~77a0c3 bytes=245812
-... INFO  [attach]                          download ok ms=1204 path=attachment(~5d0e11)
+... INFO  [attach]                            download start url=https://filev2.getsession.org/file/~5d0e11 msg=~77a0c3 bytes=245812
+... INFO  [attach]                            download ok ms=1204 path=attachment(~5d0e11)
 ```
 
 **A community poll** — the server is not Session's, so its host is a pseudonym, room names too; the
 query is only counted:
 
 ```
-... INFO  [community]                       poll url=https://~a91f0c/room/~e02d4b/messages/since/~41f0aa?<1> status=200 msgs=3 ms=388
+... INFO  [community]                         poll url=https://~a91f0c/room/~e02d4b/messages/since/~41f0aa?<1> status=200 msgs=3 ms=388
 ```
 
 `grep '~a91f0c'` follows one community server across every room and every poll without saying which it
@@ -128,7 +128,7 @@ is.
 can be matched to the line:
 
 ```
-... INFO  [send]                            send start to=05ab12...cd90 kind=text attempt=1
+... INFO  [send]                              send start to=05ab12...cd90 kind=text attempt=1
 ```
 
 ## Files
@@ -157,7 +157,7 @@ can be matched to the line:
 Written **without** the line prefix, after an empty line, one item per line:
 
 ```
-2026-10-09T07:40:58.002Z      +3.811 INFO  [lifecycle]                       >>> background
+2026-10-09T07:40:58.002Z      +3.811 INFO  [lifecycle]                         >>> background
 
 ── Session 1.0.0 (123) launched 2026-10-09 07:41:02Z
   Version        1.0.0 (123)
@@ -173,7 +173,7 @@ Written **without** the line prefix, after an empty line, one item per line:
   Flags          none overridden
   Log level      info,network=debug
   Previous run   session-20261009T011544Z-0.log, ended cleanly
-2026-10-09T07:41:02.130Z      +0.412 INFO  [lifecycle]                       >>> launch
+2026-10-09T07:41:02.130Z      +0.412 INFO  [lifecycle]                         >>> launch
 ```
 
 - **The empty line** sets one launch apart from the last when scrolling, without a rule that would

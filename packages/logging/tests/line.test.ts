@@ -15,13 +15,13 @@ describe('formatPrefix', () => {
         category: 'network',
         op: 'CoS-0-I7C3',
       }),
-    ).toBe('2026-10-08T03:20:09.123Z     +12.345 INFO  [network]        [CoS-0-I7C3]    ')
+    ).toBe('2026-10-08T03:20:09.123Z     +12.345 INFO  [network]          [CoS-0-I7C3]    ')
   })
 
   it('is the same width whatever the level, category, op or uptime', () => {
     const widths = new Set<number>()
     for (const level of LOG_LEVELS) {
-      for (const category of ['ui', 'network', 'session-router']) {
+      for (const category of ['ui', 'network', 'session-router', 'onion-request-router']) {
         for (const op of [undefined, '#000000', 'RSC-1-MUE2-0']) {
           for (const uptimeMs of [0, 412, 12_345, 4_211_870, 999_999_999]) {
             widths.add(formatPrefix({ wallMs: AT, uptimeMs, level, category, op }).length + 1)
@@ -32,10 +32,26 @@ describe('formatPrefix', () => {
     expect([...widths]).toEqual([PREFIX_WIDTH])
   })
 
-  it('keeps a long category whole rather than cutting it', () => {
-    expect(
-      formatPrefix({ wallMs: AT, uptimeMs: 0, level: 'info', category: 'a-very-long-category' }),
-    ).toContain('[a-very-long-category]')
+  it('fits a category of sixteen characters whole', () => {
+    const prefix = formatPrefix({
+      wallMs: AT,
+      uptimeMs: 0,
+      level: 'info',
+      category: 'sixteen-chars-ok',
+    })
+    expect(prefix).toContain(' [sixteen-chars-ok] ')
+    expect(prefix.length + 1).toBe(PREFIX_WIDTH)
+  })
+
+  it('cuts a longer category to fifteen characters and an ellipsis, in the same width', () => {
+    const prefix = formatPrefix({
+      wallMs: AT,
+      uptimeMs: 0,
+      level: 'info',
+      category: 'onion-request-router',
+    })
+    expect(prefix).toContain(' [onion-request-r\u2026] ')
+    expect(prefix.length + 1).toBe(PREFIX_WIDTH)
   })
 })
 

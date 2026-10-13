@@ -1,4 +1,4 @@
-import { createLogger, Pseudonyms } from '@session/logging'
+import { createLogger, PREFIX_WIDTH, Pseudonyms } from '@session/logging'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { appLog, installLogger, logStoreMilestones, resetLogger, startLogger } from '#src/log'
@@ -48,7 +48,7 @@ describe('appLog', () => {
     appLog.info('ui', 'first')
     appLog.marker('lifecycle', 'second')
     const lines = capture()
-    expect(lines.map((line) => line.slice(77))).toEqual(['first', '>>> second'])
+    expect(lines.map((line) => line.slice(PREFIX_WIDTH))).toEqual(['first', '>>> second'])
   })
 
   it('times a held line by when it was logged, not by when the logger arrived', () => {
@@ -121,14 +121,14 @@ describe('startLogger', () => {
     expect(lines).toContain('  Network        testnet')
     expect(lines).toContain('  Transport      Session Router (default)')
     expect(lines).toContain("  Log level      libsession's default")
-    expect(lines.slice(-2).map((line) => line.slice(77))).toEqual(['>>> launch', 'held'])
+    expect(lines.slice(-2).map((line) => line.slice(PREFIX_WIDTH))).toEqual(['>>> launch', 'held'])
   })
 
   it('writes only the launch marker where another process wrote the block', () => {
     setPorts(memoryPorts())
     const lines: string[] = []
     startLogger(newLogger(lines), null, { process: 'renderer' })
-    expect(lines.map((line) => line.slice(77))).toEqual(['>>> launch process=renderer'])
+    expect(lines.map((line) => line.slice(PREFIX_WIDTH))).toEqual(['>>> launch process=renderer'])
   })
 })
 
@@ -140,7 +140,7 @@ describe('logStoreMilestones', () => {
     store.set({ account: { haveAccount: false } })
     store.set({ account: { haveAccount: true } })
     store.set({ startupError: 'database is locked' })
-    expect(lines.map((line) => line.slice(77))).toEqual([
+    expect(lines.map((line) => line.slice(PREFIX_WIDTH))).toEqual([
       '>>> start ok',
       '>>> account none',
       '>>> account created',
