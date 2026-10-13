@@ -50,6 +50,12 @@ class UserVisibleId extends Redacted {
   }
 }
 
+/**
+ * What an internal id's kind may be: a short lowercase word, `snode`, `file`. It is written as it
+ * is, before the pseudonym and unswept, so anything that could carry a key is not one.
+ */
+const KIND = /^[a-z][a-z0-9-]{0,15}$/
+
 /** An id nobody is shown, so only its equality with others matters. */
 class InternalId extends Redacted {
   readonly #raw: string
@@ -125,10 +131,11 @@ export function accountId(raw: string): Redacted {
 
 /**
  * An identifier nobody is shown in full - a service node key, a message hash, a file id, a
- * request id - written as a pseudonym, `~3fa9c1de`, or `snode~3fa9c1de` with a kind.
+ * request id - written as a pseudonym, `~3fa9c1de`, or `snode~3fa9c1de` with a kind. A kind that
+ * is not a short lowercase word is left off, since it would be written unswept.
  */
 export function internalId(raw: string, kind?: string): Redacted {
-  return new InternalId(raw, kind)
+  return new InternalId(raw, kind !== undefined && KIND.test(kind) ? kind : undefined)
 }
 
 /** An IP address, written as its family and class: `v4 public:22021`. */
@@ -161,10 +168,22 @@ export function toWire(value: LogValue): WireValue | undefined {
 const isString = (value: unknown): value is string => typeof value === 'string'
 
 /**
+ * The longest id or host taken from another process, well past any the app logs. A longer one is
+ * not an id, and would be hashed and remembered whole.
+ */
+const MAX_WIRE_ID_CHARS = 256
+/** The longest URL taken from another process: longer than any the app requests. */
+const MAX_WIRE_URL_CHARS = 2048
+
+const isBoundedString = (value: unknown, maxChars: number): value is string =>
+  isString(value) && value.length <= maxChars
+
+/**
  * A field value back from plain data, or undefined for anything that is not one.
  *
  * Its input comes from the desktop renderer, the less trusted process, so nothing is assumed: an
- * object that is not exactly a typed value is refused rather than written.
+ * object that is not exactly a typed value is refused rather than written, and so is one whose id
+ * is too long to be one or whose kind is not a short word.
  */
 export function fromWire(value: unknown): LogValue | undefined {
   if (value === null || isString(value) || typeof value === 'boolean') return value
@@ -173,21 +192,22 @@ export function fromWire(value: unknown): LogValue | undefined {
   const wire = value as Partial<Record<string, unknown>>
   switch (wire['redacted']) {
     case 'visible':
-      return isString(wire['raw']) ? accountId(wire['raw']) : undefined
-    case 'internal':
-      if (!isString(wire['raw'])) return undefined
-      return isString(wire['kind'])
-        ? internalId(wire['raw'], wire['kind'])
-        : internalId(wire['raw'])
+      return isBoundedString(wire['raw'], MAX_WIRE_ID_CHARS) ? accountId(wire['raw']) : undefined
+    case 'internal': {
+      const { raw, kind } = wire
+      if (!isBoundedString(raw, MAX_WIRE_ID_CHARS)) return undefined
+      if (kind === undefined) return internalId(raw)
+      return isString(kind) && KIND.test(kind) ? internalId(raw, kind) : undefined
+    }
     case 'address': {
-      if (!isString(wire['host'])) return undefined
+      if (!isBoundedString(wire['host'], MAX_WIRE_ID_CHARS)) return undefined
       const port = wire['port']
       return typeof port === 'number' && Number.isInteger(port)
         ? address(wire['host'], port)
         : address(wire['host'])
     }
     case 'url':
-      return isString(wire['raw']) ? url(wire['raw']) : undefined
+      return isBoundedString(wire['raw'], MAX_WIRE_URL_CHARS) ? url(wire['raw']) : undefined
     default:
       return undefined
   }
