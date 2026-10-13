@@ -287,6 +287,11 @@ Session logs exported 2026-10-09 07:41:02Z (17:41 local, UTC+10:00)
 - **File name, no spaces:** `session-logs-<platform>-<version>-<UTC basic>.log.gz`.
 - Delivered by the platform: desktop's main process asks where to save, the phones share it through
   the share sheet.
+- **Desktop never writes to the chosen path until the export is whole.** It writes to
+  `<chosen>.sessiondl` beside it (`.sessiondl1`, `.sessiondl2`… when that name is taken, as
+  libsession does for downloads), opened so that no existing file is ever written over, then
+  renames it onto the chosen path. A failed export removes the partial and leaves whatever was at
+  the chosen path as it was. The path never reaches the renderer, not even in an error.
 - First caller: Export Logs on the startup-failure screen.
 
 ### Where the header's facts come from

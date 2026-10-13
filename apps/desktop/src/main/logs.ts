@@ -2,8 +2,6 @@ import { randomBytes } from 'node:crypto'
 import {
   appendFileSync,
   closeSync,
-  createReadStream,
-  createWriteStream,
   existsSync,
   fstatSync,
   mkdirSync,
@@ -19,9 +17,6 @@ import {
 } from 'node:fs'
 import { arch, freemem, release, totalmem } from 'node:os'
 import { join } from 'node:path'
-import { Readable } from 'node:stream'
-import { pipeline } from 'node:stream/promises'
-import { createGzip } from 'node:zlib'
 
 import electron from 'electron'
 
@@ -45,6 +40,7 @@ import {
 } from '@session/logging'
 
 import { networkSettings, sessionDataDir } from './bridge'
+import { writeGzip } from './logExport'
 import { linuxRows, osText } from './platformRows'
 import { isFromAppFrame } from './security'
 
@@ -183,19 +179,6 @@ function validParts(parts: unknown): ExportPart[] | null {
     else return null
   }
   return valid
-}
-
-/** The parts, in order, through one gzip stream into `path`; log files are streamed off disk. */
-async function writeGzip(path: string, dir: string, parts: readonly ExportPart[]): Promise<void> {
-  async function* bytes(): AsyncGenerator<Buffer> {
-    for (const part of parts) {
-      if ('text' in part) yield Buffer.from(part.text, 'utf8')
-      else if (existsSync(join(dir, part.file))) {
-        for await (const chunk of createReadStream(join(dir, part.file))) yield chunk as Buffer
-      }
-    }
-  }
-  await pipeline(Readable.from(bytes()), createGzip({ level: 6 }), createWriteStream(path))
 }
 
 /** The first or last timed line of a file, read whole: a file closes at 2 MiB, so that is cheap. */
@@ -450,12 +433,6 @@ export function serveLogs(window: Electron.BrowserWindow, appUrl: string): void 
     } catch (error) {
       // Not Node's message, which names the path - and the renderer logs whatever it is given,
       // which the sweep cannot recognise as a path. The code says what went wrong.
-      try {
-        rmSync(chosen.filePath, { force: true })
-      } catch {
-        // Locked, or not ours to delete: left, rather than its error - which names the path -
-        // crossing in place of this one.
-      }
       const code = (error as { code?: unknown }).code
       // The original as the cause, which stays in this process: across IPC only the message goes.
       throw new Error(
