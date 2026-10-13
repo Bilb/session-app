@@ -73,20 +73,30 @@ function expoDirectory(dir: Directory): LogDirectory {
 
 /**
  * The pseudonym key, made on first use and kept beside the logs but never exported with them.
- * See `readSalt` in the desktop's main process for why it is not in the keychain.
+ * See `readSalt` in the desktop's main process for why it is not in the keychain, why it is
+ * written under another name and moved into place, and what `replaced` is for.
  */
-function readSalt(dir: Directory): Uint8Array {
+function readSalt(dir: Directory): { salt: Uint8Array; replaced: boolean } {
   const file = new File(dir, SALT_FILE)
-  if (file.exists) {
-    const hex = file.textSync().trim()
-    if (/^[0-9a-f]{32,}$/.test(hex)) {
-      return Uint8Array.from(hex.match(/../g) ?? [], (pair) => Number.parseInt(pair, 16))
+  const replaced = file.exists
+  if (replaced) {
+    try {
+      const hex = file.textSync().trim()
+      if (/^[0-9a-f]{32,}$/.test(hex)) {
+        const salt = Uint8Array.from(hex.match(/../g) ?? [], (pair) => Number.parseInt(pair, 16))
+        return { salt, replaced: false }
+      }
+    } catch {
+      // Unreadable, so replaced below like a malformed one.
     }
   }
   const salt = Crypto.getRandomBytes(SALT_BYTES)
-  if (!file.exists) file.create()
-  file.write([...salt].map((byte) => byte.toString(16).padStart(2, '0')).join(''))
-  return salt
+  const written = new File(dir, `${SALT_FILE}.tmp`)
+  if (written.exists) written.delete()
+  written.create()
+  written.write([...salt].map((byte) => byte.toString(16).padStart(2, '0')).join(''))
+  written.moveSync(file, { overwrite: true })
+  return { salt, replaced }
 }
 
 /** `iOS 26.1`, or `Android 16 (API 36)`: Android's version number alone hides the API level. */
@@ -125,12 +135,15 @@ const opened = (async (): Promise<LogWriter> => {
     },
   }
   let salt: Uint8Array
+  let saltReplaced = false
   let writer: LogWriter
   let failure: string | null = null
   try {
     const dir = new Directory(Paths.document, 'logs')
     if (!dir.exists) dir.create({ intermediates: true })
-    salt = readSalt(dir)
+    const read = readSalt(dir)
+    salt = read.salt
+    saltReplaced = read.replaced
     writer = await LogWriter.open(expoDirectory(dir), writerOptions)
   } catch (error) {
     // Not thrown on: the held lines would wait for a logger that never comes.
@@ -173,6 +186,12 @@ const opened = (async (): Promise<LogWriter> => {
     logger.error('logs', 'the log directory could not be opened; lines go to the console', {
       reason: failure,
     })
+  }
+  if (saltReplaced) {
+    logger.warn(
+      'logs',
+      'the pseudonym salt could not be read and was replaced; earlier files name ids differently',
+    )
   }
 
   // Backgrounding is the last thing a suspended app is told, so its marker is what lets the next

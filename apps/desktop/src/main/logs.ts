@@ -8,6 +8,7 @@ import {
   readFileSync,
   readSync,
   readdirSync,
+  renameSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -65,9 +66,17 @@ const SALT_FILE = '.salt'
  */
 function fsDirectory(dir: string): LogDirectory {
   return {
+    // An entry that cannot be read - a dangling link, a file another instance removed a moment
+    // ago - is left out: failing the listing would leave the whole run on the console.
     list: () =>
       Promise.resolve(
-        readdirSync(dir).map((name) => ({ name, sizeBytes: statSync(join(dir, name)).size })),
+        readdirSync(dir).flatMap((name) => {
+          try {
+            return [{ name, sizeBytes: statSync(join(dir, name)).size }]
+          } catch {
+            return []
+          }
+        }),
       ),
     append: (name, text) => {
       appendFileSync(join(dir, name), text, 'utf8')
@@ -98,18 +107,28 @@ function fsDirectory(dir: string): LogDirectory {
  * Beside them rather than in the keychain because the logs must never depend on the database or
  * its key, and never inside them: an export carries the files and not this, so nobody holding one
  * can hash a guessed id to find it.
+ *
+ * Written under another name and renamed into place, so a crash mid-write cannot leave a salt
+ * that has to be thrown away. One that cannot be read is replaced all the same, and `replaced`
+ * says so: every pseudonym in the files before it stops matching, which a reader has to be told.
  */
-function readSalt(dir: string): Uint8Array {
+function readSalt(dir: string): { salt: Uint8Array; replaced: boolean } {
   const path = join(dir, SALT_FILE)
+  let replaced = true
   try {
     const hex = readFileSync(path, 'utf8').trim()
-    if (/^[0-9a-f]{32,}$/.test(hex)) return Uint8Array.from(Buffer.from(hex, 'hex'))
-  } catch {
-    // Not there yet: made below.
+    if (/^[0-9a-f]{32,}$/.test(hex)) {
+      return { salt: Uint8Array.from(Buffer.from(hex, 'hex')), replaced: false }
+    }
+  } catch (error) {
+    // Not there yet is the first launch, not a replacement.
+    replaced = (error as NodeJS.ErrnoException).code !== 'ENOENT'
   }
   const salt = randomBytes(SALT_BYTES)
-  writeFileSync(path, salt.toString('hex'), { mode: 0o600 })
-  return Uint8Array.from(salt)
+  const written = `${path}.tmp`
+  writeFileSync(written, salt.toString('hex'), { mode: 0o600 })
+  renameSync(written, path)
+  return { salt: Uint8Array.from(salt), replaced }
 }
 
 export interface MainLogs {
@@ -188,11 +207,14 @@ export function openLogs(): Promise<MainLogs> {
     }
     const dir = join(app.getPath('userData'), 'logs')
     let salt: Uint8Array
+    let saltReplaced = false
     let writer: LogWriter
     let failure: string | null = null
     try {
       mkdirSync(dir, { recursive: true })
-      salt = readSalt(dir)
+      const read = readSalt(dir)
+      salt = read.salt
+      saltReplaced = read.replaced
       writer = await LogWriter.open(fsDirectory(dir), writerOptions)
     } catch (error) {
       // Not thrown on: every caller would reject, and nothing would be written anywhere.
@@ -229,6 +251,12 @@ export function openLogs(): Promise<MainLogs> {
       logger.error('logs', 'the log directory could not be opened; lines go to the console', {
         reason: failure,
       })
+    }
+    if (saltReplaced) {
+      logger.warn(
+        'logs',
+        'the pseudonym salt could not be read and was replaced; earlier files name ids differently',
+      )
     }
     return { logger, writer, drain: () => sink.drain() }
   })()
