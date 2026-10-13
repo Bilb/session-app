@@ -6,6 +6,7 @@ import {
   LogWriter,
   basicUtc,
   logFileName,
+  logSpan,
   readPreviousRun,
   sortLogFiles,
 } from '#src/writer'
@@ -223,6 +224,56 @@ describe('LogWriter', () => {
     await writer.flush()
     expect(errors).toHaveLength(1)
     expect(dir.files.get(writer.currentFile)).toBe('kept\n')
+  })
+})
+
+describe('logSpan', () => {
+  const NAME = 'session-20261001T000000Z-0.log'
+  const block = '\n── Session 1.0.0 launched 2026-10-01 00:00:00Z\n  Version        1.0.0\n'
+  const timed = (n: number) => `2026-10-01T00:00:${String(n).padStart(2, '0')}.000Z      +0.000 x`
+
+  /** A directory that serves one file by its ends only, and records how much it was asked for. */
+  function endsOnly(text: string) {
+    const bytes = utf8(text)
+    const asked: string[] = []
+    return {
+      asked,
+      dir: {
+        ...memoryDirectory(),
+        read: () => Promise.reject(new Error('read whole')),
+        readHead: (_file: string, headBytes: number) => {
+          asked.push(`head ${String(headBytes)}`)
+          return Promise.resolve(bytes.slice(0, headBytes))
+        },
+        readTail: (_file: string, tailBytes: number) => {
+          asked.push(`tail ${String(tailBytes)}`)
+          return Promise.resolve(bytes.slice(Math.max(0, bytes.length - tailBytes)))
+        },
+      },
+    }
+  }
+
+  it('reads only the ends of a large file, past its startup block', async () => {
+    const lines = Array.from({ length: 2_000 }, (_, n) => timed(n % 60))
+    const { dir, asked } = endsOnly(`${block}${lines.join('\n')}\n`)
+    expect(await logSpan(dir, NAME, NAME)).toEqual({
+      firstLine: timed(0),
+      lastLine: timed(1_999 % 60),
+    })
+    expect(asked).toEqual(['head 16384', 'tail 16384'])
+  })
+
+  it('never returns the line a read cut through', async () => {
+    const long = `${timed(1)} ${'x'.repeat(20_000)}`
+    const { dir } = endsOnly(`${long}\n${timed(2)}\n`)
+    expect(await logSpan(dir, NAME, NAME)).toEqual({ firstLine: null, lastLine: timed(2) })
+  })
+
+  it('reads a directory without offsets whole, and gives nulls for a missing file', async () => {
+    const dir = memoryDirectory({ [NAME]: `${block}${timed(3)}\n${timed(4)}\n` })
+    expect(await logSpan(dir, NAME, NAME)).toEqual({ firstLine: timed(3), lastLine: timed(4) })
+    const gone = { ...dir, read: () => Promise.reject(new Error('ENOENT')) }
+    expect(await logSpan(gone, NAME, NAME)).toEqual({ firstLine: null, lastLine: null })
   })
 })
 

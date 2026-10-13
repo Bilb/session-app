@@ -27,6 +27,7 @@ import {
   databaseFields,
   isExportName,
   libsessionLine,
+  logSpan,
   minLevelFromSpec,
   networkRows,
   orderedSink,
@@ -106,6 +107,15 @@ function fsDirectory(dir: string): LogDirectory {
         closeSync(fd)
       }
     },
+    readHead: (name, bytes) => {
+      const fd = openSync(join(dir, name), 'r')
+      try {
+        const head = new Uint8Array(bytes)
+        return Promise.resolve(head.subarray(0, readSync(fd, head, 0, bytes, 0)))
+      } finally {
+        closeSync(fd)
+      }
+    },
   }
 }
 
@@ -179,16 +189,6 @@ function validParts(parts: unknown): ExportPart[] | null {
     else return null
   }
   return valid
-}
-
-/** The first or last timed line of a file, read whole: a file closes at 2 MiB, so that is cheap. */
-function edgeLine(path: string, which: 'first' | 'last'): string | null {
-  if (!existsSync(path)) return null
-  // Prefixed lines only: the startup block is written without one, and has no time to give.
-  const lines = readFileSync(path, 'utf8')
-    .split('\n')
-    .filter((line) => /^\d{4}-\d{2}-\d{2}T/.test(line))
-  return (which === 'first' ? lines[0] : lines.at(-1)) ?? null
 }
 
 /** Bytes under a directory, recursively; null when it is not there. */
@@ -408,10 +408,7 @@ export function serveLogs(window: Electron.BrowserWindow, appUrl: string): void 
     if (typeof first !== 'string' || !LOG_FILE_NAME.test(first)) throw new Error('refused')
     if (typeof last !== 'string' || !LOG_FILE_NAME.test(last)) throw new Error('refused')
     const { dir } = await openLogs()
-    return {
-      firstLine: edgeLine(join(dir, first), 'first'),
-      lastLine: edgeLine(join(dir, last), 'last'),
-    }
+    return logSpan(fsDirectory(dir), first, last)
   })
 
   /**

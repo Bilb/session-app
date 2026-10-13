@@ -1,4 +1,4 @@
-import type { NetworkName } from '@session/basic-types'
+import type { NetworkName, WithSpan } from '@session/basic-types'
 import type { AttachmentRef, PixelSize } from '@session/client'
 import type { DatabaseSizes, ExportPart, LogFileInfo, SweepCounts } from '@session/logging'
 /**
@@ -248,7 +248,7 @@ export interface LogsPort {
   /** Everything written so far on disk, then the retained files, oldest first. */
   retained(): Promise<LogFileInfo[]>
   /** The first line of one file and the last of another: the window an export covers. */
-  span(first: string, last: string): Promise<{ firstLine: string | null; lastLine: string | null }>
+  span(first: string, last: string): Promise<WithSpan>
   /**
    * Compresses the parts, in order, into one gzip file called `name`, and hands it to the person:
    * a save dialog on desktop, the share sheet on a phone. False when they cancelled, where the

@@ -31,3 +31,6 @@ export type WithContentType = { contentType?: string | undefined }
 export type WithCaption = { caption: string }
 /** A video's length, already worded as mm:ss. */
 export type WithDurationLabel = { duration?: string | undefined }
+
+/** The first and last timed lines of a stretch of log; null where there is no such line to read. */
+export type WithSpan = { firstLine: string | null; lastLine: string | null }

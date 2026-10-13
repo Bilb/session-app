@@ -1,3 +1,5 @@
+import type { WithSpan } from '@session/basic-types'
+
 import type { LogSink } from './logger'
 import { MARKER } from './logger'
 
@@ -16,6 +18,8 @@ export interface LogDirectory {
    * no way to read from an offset it leaves this out, and the file is read whole.
    */
   readTail?(name: string, bytes: number): Promise<Uint8Array>
+  /** The first `bytes` of a file, or the whole of a shorter one; left out like `readTail`. */
+  readHead?(name: string, bytes: number): Promise<Uint8Array>
 }
 
 /**
@@ -146,6 +150,51 @@ async function readEnd(dir: LogDirectory, file: LogFileInfo): Promise<string> {
   if (bytes.length >= file.sizeBytes) return text
   const lineEnd = text.indexOf('\n')
   return lineEnd === -1 ? '' : text.slice(lineEnd + 1)
+}
+
+/**
+ * How much of each end of a file the span reads: a launch's file opens with its startup block,
+ * about a kilobyte, so this is past it by hundreds of lines, and the read costs nothing however
+ * large the file has grown. A line longer than this at either end leaves that end unknown.
+ */
+const SPAN_READ_BYTES = 16 * 1024
+
+/** A line with the prefix: the startup block is written without one, and has no time to give. */
+const TIMED_LINE = /^\d{4}-\d{2}-\d{2}T/
+
+/**
+ * One end of a file, as whole lines: where the read stopped short of the file, the line it cut
+ * through - the last of a head, the first of a tail - goes. Empty for a file that cannot be read,
+ * which is a file rotated away since it was listed.
+ */
+async function readEdge(dir: LogDirectory, name: string, end: 'head' | 'tail'): Promise<string[]> {
+  try {
+    const bytes = await (end === 'head'
+      ? dir.readHead?.(name, SPAN_READ_BYTES)
+      : dir.readTail?.(name, SPAN_READ_BYTES))
+    if (bytes === undefined) return (await dir.read(name)).split('\n')
+    const lines = asciiText(bytes).split('\n')
+    if (bytes.length < SPAN_READ_BYTES) return lines
+    return end === 'head' ? lines.slice(0, -1) : lines.slice(1)
+  } catch {
+    return []
+  }
+}
+
+/**
+ * The first timed line of one file and the last of another: the window an export covers. Only the
+ * ends are read, where the directory can read from an offset. The lines are read for their time
+ * alone, so `asciiText`'s garbling of anything else costs nothing.
+ */
+export async function logSpan(dir: LogDirectory, first: string, last: string): Promise<WithSpan> {
+  const [head, tail] = await Promise.all([
+    readEdge(dir, first, 'head'),
+    readEdge(dir, last, 'tail'),
+  ])
+  return {
+    firstLine: head.find((line) => TIMED_LINE.test(line)) ?? null,
+    lastLine: tail.filter((line) => TIMED_LINE.test(line)).at(-1) ?? null,
+  }
 }
 
 /** The timers every runtime has, declared here since this package loads no DOM or node types. */

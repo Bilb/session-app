@@ -62,6 +62,7 @@ export {
   basicUtc,
   consoleDirectory,
   logFileName,
+  logSpan,
   readPreviousRun,
   sortLogFiles,
   utf8Length,

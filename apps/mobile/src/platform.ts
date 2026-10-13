@@ -5,7 +5,7 @@ import {
   type NotificationsPort,
 } from '@session/app'
 import { parseNetworkName } from '@session/basic-types'
-import { isExportName } from '@session/logging'
+import { isExportName, logSpan } from '@session/logging'
 import * as Clipboard from 'expo-clipboard'
 import Constants from 'expo-constants'
 import * as Sharing from 'expo-sharing'
@@ -14,7 +14,7 @@ import * as SecureStore from 'expo-secure-store'
 import { Linking, Platform, Share } from 'react-native'
 
 import { flagOverride } from './flagOverrides'
-import { endingRun, logDirectory, logWriter, lowPowerRows, osName } from './logs'
+import { endingRun, logDirectory, logFiles, logWriter, lowPowerRows, osName } from './logs'
 import { restartProcess, terminateProcess } from './processExit'
 import { SessionLogs } from './sessionLogs'
 import { attachmentsBytes, databaseSizes } from './storageSizes'
@@ -57,17 +57,6 @@ function hexToBytes(hex: string): Uint8Array {
 /** A `file://` URI as the plain path native code and libsession take. */
 function pathOf(uri: string): string {
   return decodeURIComponent(uri.replace(/^file:\/\//, ''))
-}
-
-/** The first or last prefixed line of a retained log file; the startup block has no time. */
-function edgeLine(name: string, which: 'first' | 'last'): string | null {
-  const file = new File(logDirectory, name)
-  if (!file.exists) return null
-  const lines = file
-    .textSync()
-    .split('\n')
-    .filter((line) => /^\d{4}-\d{2}-\d{2}T/.test(line))
-  return (which === 'first' ? lines[0] : lines.at(-1)) ?? null
 }
 
 /** Held in a const so the closures below keep its narrowing. */
@@ -198,8 +187,7 @@ const ports = memoryPorts({
       await writer.flush()
       return writer.files()
     },
-    span: (first, last) =>
-      Promise.resolve({ firstLine: edgeLine(first, 'first'), lastLine: edgeLine(last, 'last') }),
+    span: (first, last) => logSpan(logFiles, first, last),
     /**
      * Compressed natively into the cache, then shared, as the legacy clients do, rather than saved
      * through a picker. expo-sharing because Android's sheet takes a file only through a content

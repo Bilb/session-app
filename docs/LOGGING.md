@@ -281,6 +281,8 @@ Session logs exported 2026-10-09 07:41:02Z (17:41 local, UTC+10:00)
   compressed.
 - **Redaction counts** are those of the process that swept the lines: on a phone, the one process;
   on desktop, main, which sweeps the renderer's lines and libsession's as well as its own.
+- **From and To** come from the first timed line of the oldest file and the last of the newest.
+  Only the first and last 16 KiB of each are read.
 - **Body:** the retained files chosen **newest-backwards** up to the budget and written **oldest
   first**, so the file reads in time order. Each launch opens with its own startup block; a file that
   continues a launch after rotation is preceded by `── continued in session-…-1.log`.

@@ -72,6 +72,14 @@ function expoDirectory(dir: Directory): LogDirectory {
         handle.close()
       }
     },
+    readHead: (name, bytes) => {
+      const handle = new File(dir, name).open(FileMode.ReadOnly)
+      try {
+        return Promise.resolve(handle.readBytes(Math.min(bytes, handle.size ?? 0)))
+      } finally {
+        handle.close()
+      }
+    },
   }
 }
 
@@ -169,6 +177,9 @@ function logDatabase(moment: string): void {
  */
 export const logDirectory = new Directory(Paths.document, 'logs')
 
+/** The log directory as the writer and the export read it. */
+export const logFiles = expoDirectory(logDirectory)
+
 const opened = (async (): Promise<LogWriter> => {
   const writerOptions = {
     launchMs,
@@ -186,7 +197,7 @@ const opened = (async (): Promise<LogWriter> => {
     const read = readSalt(dir)
     salt = read.salt
     saltReplaced = read.replaced
-    writer = await LogWriter.open(expoDirectory(dir), writerOptions)
+    writer = await LogWriter.open(logFiles, writerOptions)
   } catch (error) {
     // Not thrown on: the held lines would wait for a logger that never comes.
     failure = error instanceof Error ? error.message : String(error)
