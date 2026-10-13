@@ -1,3 +1,4 @@
+import { MAX_SWEPT_CHARS, capForSweep } from './cap'
 import type { LogLevel } from './level'
 
 /** spdlog's level names, which libsession's lines carry, onto the app's. */
@@ -31,12 +32,23 @@ const LIBSESSION_PREFIX =
 
 const REQUEST_TAG = /^\[Request ([\w-]+)\] /
 
-/** One of libsession's lines as the app writes it: its real level, and the message alone. */
+/**
+ * Left under the sweep's cap for the ` src=` that follows the message, so the logger's own cap
+ * never has to cut it off.
+ */
+const SOURCE_ROOM_CHARS = 256
+
+/**
+ * One of libsession's lines as the app writes it: its real level, and the message alone.
+ *
+ * Capped before any pattern reads it: it can carry text from the network, and a pattern's cost
+ * on a long run of the wrong characters grows faster than the run.
+ */
 export function libsessionLine(
   level: string,
   message: string,
 ): { level: LogLevel; message: string; op?: string } {
-  const trimmed = message.replace(/\s+$/, '')
+  const trimmed = capForSweep(message.trimEnd(), MAX_SWEPT_CHARS - SOURCE_ROOM_CHARS)
   const prefix = LIBSESSION_PREFIX.exec(trimmed)
   if (prefix === null) return { level: appLevel(level), message: trimmed }
   const body = trimmed.slice(prefix[0].length)

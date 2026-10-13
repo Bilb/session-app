@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { MAX_SWEPT_CHARS } from '#src/cap'
 import { libsessionLine } from '#src/libsession'
 
 describe('libsessionLine', () => {
@@ -48,5 +49,26 @@ describe('libsessionLine', () => {
       message: 'plain message',
     })
     expect(libsessionLine('verbose', 'x').level).toBe('info')
+  })
+})
+
+describe('libsessionLine on a long message', () => {
+  it('reads one with a long run of whitespace in linear time', () => {
+    const started = Date.now()
+    const line = libsessionLine(
+      'info',
+      `[d] [+1.000s] [network:info|network/a.cpp:1] body${' '.repeat(200_000)}x${' '.repeat(200_000)}`,
+    )
+    expect(Date.now() - started).toBeLessThan(500)
+    expect(line.message).toMatch(/^body \[cut \d+ chars\] src=network\/a\.cpp:1$/)
+  })
+
+  it('caps the message before the source, so the source is never what is cut', () => {
+    const line = libsessionLine(
+      'info',
+      `[d] [+1.000s] [network:info|network/a.cpp:1] ${'word '.repeat(2_000)}`,
+    )
+    expect(line.message.length).toBeLessThanOrEqual(MAX_SWEPT_CHARS)
+    expect(line.message).toMatch(/\[cut \d+ chars\] src=network\/a\.cpp:1$/)
   })
 })
