@@ -57,6 +57,7 @@
   },
   "devDependencies": {
     "@expo/config-plugins": "catalog:",
+    "@session/build-stamp": "workspace:*",
     "@session/eslint-config": "workspace:*",
     "@session/typescript-config": "workspace:*",
     "@tamagui/babel-plugin": "catalog:",

@@ -6,13 +6,14 @@
  * @tamagui/vite-plugin is deliberately absent: it peers on vite 8 and electron-vite is on
  * 7. It is an optimising compiler rather than a requirement, so the app runs without it.
  */
-import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import react from '@vitejs/plugin-react'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import { runnerImport } from 'vite'
+
+import { commitStamp, libsessionStamp } from '@session/build-stamp'
 
 import type { LAUNCH_MARK_HEIGHT, SESSION_BRAND } from '@session/ui/brandMark'
 
@@ -27,59 +28,7 @@ const appDir = fileURLToPath(new URL('.', import.meta.url))
 const dotEnv = fileURLToPath(new URL('../../.env', import.meta.url))
 if (existsSync(dotEnv)) process.loadEnvFile(dotEnv)
 
-/**
- * The commit this build is made from: eight characters, and `-dirty` over uncommitted changes.
- *
- * `apps/mobile/metro.config.js` computes the same stamp for the phones; the two are kept identical
- * so a stamp means the same on every platform. A submodule counts only if its pointer moved, not
- * for work inside it. Null outside a git checkout, where there is nothing honest to say.
- */
-function commitStamp(cwd: string = appDir): string | null {
-  const git = (...args: string[]) =>
-    execFileSync('git', args, {
-      cwd,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    })
-  try {
-    const commit = git('rev-parse', 'HEAD').trim().slice(0, 8)
-    const dirty =
-      git('status', '--porcelain', '--untracked-files=no', '--ignore-submodules=dirty').trim() !==
-      ''
-    return dirty ? `${commit}-dirty` : commit
-  } catch {
-    return null
-  }
-}
-
-/** The libsession submodule, whose commit the logs report beside the app's. */
-const libsessionDir = fileURLToPath(new URL('../../libsession-util/', import.meta.url))
 const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
-
-/**
- * The libsession commit, stamped like the app's.
- *
- * From the submodule's own checkout where there is one, since that is what was built, and mid-bump
- * it can differ from the commit the app pins. A submodule never checked out is an empty directory
- * inside the app's checkout, where git answers with the app's own commit, so there the stamp is
- * the commit the app pins instead. `metro.config.js` stamps the phones' the same way.
- */
-function libsessionStamp(): string | null {
-  if (existsSync(new URL('../../libsession-util/.git', import.meta.url))) {
-    return commitStamp(libsessionDir)
-  }
-  try {
-    return execFileSync('git', ['rev-parse', 'HEAD:libsession-util'], {
-      cwd: repoRoot,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    })
-      .trim()
-      .slice(0, 8)
-  } catch {
-    return null
-  }
-}
 
 /** This app's own version, which is the one its builds are released as. */
 const version = (
@@ -259,8 +208,8 @@ refuseDeveloperSettingsInRelease()
  */
 const mainBuildInfo = {
   version,
-  commit: commitStamp(),
-  libsessionCommit: libsessionStamp(),
+  commit: commitStamp(appDir),
+  libsessionCommit: libsessionStamp(repoRoot),
   // What the build was made as -- `website`, `store`... -- said by whoever assembles it, for the
   // log's startup block. Empty is written as `unknown` rather than guessed at.
   variant: process.env['EXPO_PUBLIC_SESSION_BUILD_VARIANT'] ?? '',
