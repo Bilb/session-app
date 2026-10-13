@@ -86,10 +86,11 @@ function renderHost(authority: string, pseudonyms: Pseudonyms): string {
 /**
  * A URL with its shape kept and what identifies taken out.
  *
- * `https://~a91f0c/room/~e02d4b/messages/since/~41f0aa?<1>`: the scheme as is; the host in clear
- * only if it is Session's own; on Session's hosts the id-like path segments become pseudonyms, and
- * elsewhere every segment does but the API's own words; a query is replaced by how many
- * parameters it had, because a community link's public key travels there; a fragment is dropped.
+ * `https://~a91f0c1d/room/~e02d4baf/messages/since/~41f0aade?<1>`: the scheme as is; the host in
+ * clear only if it is Session's own; on Session's hosts the id-like path segments become
+ * pseudonyms, and elsewhere every segment does but the API's own words; a query is replaced by how
+ * many parameters it had, because a community link's public key travels there; a fragment is
+ * dropped.
  * Credentials before the host are dropped without a trace.
  *
  * Undefined when the text is not a URL, so a caller can fall back to treating it as free text.

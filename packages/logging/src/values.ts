@@ -125,7 +125,7 @@ export function accountId(raw: string): Redacted {
 
 /**
  * An identifier nobody is shown in full - a service node key, a message hash, a file id, a
- * request id - written as a pseudonym, `~3fa9c1`, or `snode~3fa9c1` with a kind.
+ * request id - written as a pseudonym, `~3fa9c1de`, or `snode~3fa9c1de` with a kind.
  */
 export function internalId(raw: string, kind?: string): Redacted {
   return new InternalId(raw, kind)

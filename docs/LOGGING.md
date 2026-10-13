@@ -14,7 +14,7 @@ Every line starts with a **fixed-width, 79-column prefix**, so the eye can skip 
 ```
 2026-10-09T00:18:07.718Z      +0.928 INFO  [network]          [CoS-0-I7C3]     Starting clock resync. src=network/session_network.cpp:963
 2026-10-09T00:18:07.720Z      +0.930 INFO  [session]                           no account on this device yet
-2026-10-09T00:18:09.201Z      +2.411 INFO  [session-router]   [CoS-0-I7C3-2]   No tunnel to ~e2b47d, initiating new tunnel. src=routing/session_router_router.cpp:610
+2026-10-09T00:18:09.201Z      +2.411 INFO  [session-router]   [CoS-0-I7C3-2]   No tunnel to ~e2b47d22, initiating new tunnel. src=routing/session_router_router.cpp:610
 └──────── 24 ───────────┘ └─ 11 ──┘ └ 5 ┘ └────── 18 ──────┘ └───── 16 ─────┘ message, key=value
 ```
 
@@ -39,15 +39,15 @@ call**: each type holds its input in a private field with no accessor, so a log 
 over but never reach back through it. Nothing stops a raw string being written into a message;
 that is what the sweep below is for.
 
-| kind                         | renders as                                                                 | examples                                                                                                                                                                                           |
-| ---------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **never logged**             | no typed value carries it; in free text, only the sweep stands in the way  | message bodies and drafts, attachment filenames, display names, recovery phrases, seeds, private/config keys, whole UI state, raw URLs                                                             |
-| **user-visible identifiers** | prefix + 4 + 4, ASCII: `05ab12...cd90`                                     | account IDs, group IDs: the reporter can match either end against what the app shows                                                                                                               |
-| **internal identifiers**     | pseudonym `~3fa9c1`                                                        | service-node keys, swarm message hashes, server file IDs, container/install UUIDs. Support needs equality across lines, never the value. Keyed with a random per-install salt kept beside the logs |
-| **network addresses**        | family + class + port: `v4 public:22021`, `v6-mapped private:443`          | never the octets; the device's own address is never logged                                                                                                                                         |
-| **URLs**                     | scheme, host, path shape — see below                                       |                                                                                                                                                                                                    |
-| **paths**                    | the semantic name: `config-dump(user_groups)`, `db`, `attachment(~5d0e11)` | never a container UUID or a filename                                                                                                                                                               |
-| **free**                     | as is                                                                      | counts, sizes, durations, states, namespaces, levels, error codes, config type names, seqnos, UTC offset, locale                                                                                   |
+| kind                         | renders as                                                                   | examples                                                                                                                                                                                           |
+| ---------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **never logged**             | no typed value carries it; in free text, only the sweep stands in the way    | message bodies and drafts, attachment filenames, display names, recovery phrases, seeds, private/config keys, whole UI state, raw URLs                                                             |
+| **user-visible identifiers** | prefix + 4 + 4, ASCII: `05ab12...cd90`                                       | account IDs, group IDs: the reporter can match either end against what the app shows                                                                                                               |
+| **internal identifiers**     | pseudonym `~3fa9c1de`                                                        | service-node keys, swarm message hashes, server file IDs, container/install UUIDs. Support needs equality across lines, never the value. Keyed with a random per-install salt kept beside the logs |
+| **network addresses**        | family + class + port: `v4 public:22021`, `v6-mapped private:443`            | never the octets; the device's own address is never logged                                                                                                                                         |
+| **URLs**                     | scheme, host, path shape — see below                                         |                                                                                                                                                                                                    |
+| **paths**                    | the semantic name: `config-dump(user_groups)`, `db`, `attachment(~5d0e116f)` | never a container UUID or a filename                                                                                                                                                               |
+| **free**                     | as is                                                                        | counts, sizes, durations, states, namespaces, levels, error codes, config type names, seqnos, UTC offset, locale                                                                                   |
 
 Address classes: `loopback`, `private` (RFC 1918, ULA, link-local), `cgnat` (100.64/10), `public`,
 `unspecified`. Families: `v4`, `v6`, `v6-mapped` (an IPv4 address carried in IPv6).
@@ -65,8 +65,8 @@ URLs keep their shape and lose what identifies:
   there;
 - **fragment**: dropped.
 
-One ellipsis form in a shortened identifier, ASCII `...` (legacy iOS writes `...`, Android `…`; not
-`..`, which legacy iOS rewrites to `.`).
+One ellipsis form in a shortened identifier, ASCII `...` (legacy iOS writes `...`, Android `…`;
+not `..`, which legacy iOS rewrites to `.`).
 
 **Backstop sweep** over every rendered line, before it is written; each match replaced by its
 redacted form and counted (the counts go in the export header): URLs; UUIDs; hex runs of **32 or
@@ -89,40 +89,40 @@ a sub-request of its own:
 
 ```
 2026-10-09T00:18:07.718Z      +0.928 INFO  [network]          [CoS-0-I7C3]     Starting clock resync. src=network/session_network.cpp:963
-2026-10-09T00:18:08.720Z      +1.930 INFO  [network]          [CoS-0-I7C3-0]   Launching clock resync request to ~3c741c src=network/session_network.cpp:990
-2026-10-09T00:18:09.203Z      +2.413 INFO  [session-router]   [CoS-0-I7C3-0]   No tunnel to ~3c741c, initiating new tunnel. src=routing/session_router_router.cpp:610
-2026-10-09T00:18:09.862Z      +3.072 INFO  [session-router]   [CoS-0-I7C3-0]   Tunnel to remote ~3c741c established. src=routing/session_router_router.cpp:1315
-2026-10-09T00:18:09.862Z      +3.072 INFO  [quic-transport]   [CoS-0-I7C3-0]   No connection to ~3c741c, initiating new connection. src=transport/quic_transport.cpp:272
+2026-10-09T00:18:08.720Z      +1.930 INFO  [network]          [CoS-0-I7C3-0]   Launching clock resync request to ~3c741c13 src=network/session_network.cpp:990
+2026-10-09T00:18:09.203Z      +2.413 INFO  [session-router]   [CoS-0-I7C3-0]   No tunnel to ~3c741c13, initiating new tunnel. src=routing/session_router_router.cpp:610
+2026-10-09T00:18:09.862Z      +3.072 INFO  [session-router]   [CoS-0-I7C3-0]   Tunnel to remote ~3c741c13 established. src=routing/session_router_router.cpp:1315
+2026-10-09T00:18:09.862Z      +3.072 INFO  [quic-transport]   [CoS-0-I7C3-0]   No connection to ~3c741c13, initiating new connection. src=transport/quic_transport.cpp:272
 ```
 
 `grep 'CoS-0-I7C3'` gives the resync and all three of its requests; `grep 'CoS-0-I7C3-0'` one of
-them; `grep '~3c741c'` every line that ever named that node, across requests and across the files of
-one install (same salt). Path hops are written as Session Router writes them, `55fxy4hj`: paths
+them; `grep '~3c741c13'` every line that ever named that node, across requests and across the files
+of one install (same salt). Path hops are written as Session Router writes them, `55fxy4hj`: paths
 rotate every 20 minutes, so a hop says little, and it is what reading a path failure needs.
 
 **A path that goes bad on a private network** — the class is what support needs, never the octets:
 
 ```
-... WARN  [quic]                              connect failed dest=snode~c41b07 addr=v6-mapped private:22021 errno=EHOSTUNREACH ms=3004
+... WARN  [quic]                              connect failed dest=snode~c41b0707 addr=v6-mapped private:22021 errno=EHOSTUNREACH ms=3004
 ```
 
 **A file download** — the server is Session's own, so its host stays; the file id is a pseudonym, which
 the attachment's own lines carry too:
 
 ```
-... INFO  [attach]                            download start url=https://filev2.getsession.org/file/~5d0e11 msg=~77a0c3 bytes=245812
-... INFO  [attach]                            download ok ms=1204 path=attachment(~5d0e11)
+... INFO  [attach]                            download start url=https://filev2.getsession.org/file/~5d0e116f msg=~77a0c357 bytes=245812
+... INFO  [attach]                            download ok ms=1204 path=attachment(~5d0e116f)
 ```
 
 **A community poll** — the server is not Session's, so its host is a pseudonym, room names too; the
 query is only counted:
 
 ```
-... INFO  [community]                         poll url=https://~a91f0c/room/~e02d4b/messages/since/~41f0aa?<1> status=200 msgs=3 ms=388
+... INFO  [community]                         poll url=https://~a91f0c1d/room/~e02d4baf/messages/since/~41f0aade?<1> status=200 msgs=3 ms=388
 ```
 
-`grep '~a91f0c'` follows one community server across every room and every poll without saying which it
-is.
+`grep '~a91f0c1d'` follows one community server across every room and every poll without saying
+which it is.
 
 **An account, as the reporter sees it** — user-visible ids keep both ends, so a screenshot of the app
 can be matched to the line:
