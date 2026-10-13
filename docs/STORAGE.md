@@ -46,6 +46,13 @@ its extension's files and fixed it by protecting each one again where it landed.
 - **A notification extension, or anything else native that writes outside a root and moves the
   result in, has to call `protect` on it**, as legacy's extension does.
 
+**Temporary files.** Nothing stages files of its own today, so there is no temporary directory of
+the app's own. The first thing that does -- the notification extension, or attachment sending --
+should make one the way legacy does: a directory per launch inside `NSTemporaryDirectory()`, created
+under class C, with the previous launches' directories deleted shortly after start
+(`SessionFileManager.clearOldTemporaryDirectories` in legacy's `FileManagerType.swift`). Files staged
+there still go into a root through `moveInto`.
+
 **Android.** The manifest keeps the roots out: `allowBackup="false"`, and backup rules
 (`fullBackupContent` and `dataExtractionRules`, for cloud backup **and** device-to-device transfer,
 which `allowBackup` alone does not stop) that exclude every domain. The data and logs are in
