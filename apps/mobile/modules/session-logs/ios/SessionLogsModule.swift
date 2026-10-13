@@ -19,6 +19,9 @@ public class SessionLogsModule: Module {
     /// A part is `["text": ...]`, written as UTF-8, or `["file": name]`, a log file in
     /// `directory` streamed off disk. Names are checked to be bare log file names, so a part can
     /// never reach outside the directory.
+    ///
+    /// On a global queue rather than the serial one every module's async calls share, which would
+    /// otherwise wait behind the whole deflate.
     AsyncFunction("gzip") { (parts: [[String: String]], directory: String, outPath: String) throws -> Int in
       let out = URL(fileURLWithPath: outPath)
       do {
@@ -28,7 +31,7 @@ public class SessionLogsModule: Module {
         try? FileManager.default.removeItem(at: out)
         throw error
       }
-    }
+    }.runOnQueue(DispatchQueue.global(qos: .utility))
 
     AsyncFunction("diagnostics") { () async -> [String: Any?] in
       await Diagnostics.snapshot()
@@ -41,7 +44,9 @@ enum Gzip {
     let description: String
   }
 
-  private static let logFile = try! NSRegularExpression(pattern: "^session-\\d{8}T\\d{6}Z-\\d+\\.log$")
+  /// The writer's `LOG_FILE_NAME` in `@session/logging`, without its groups;
+  /// `packages/app/tests/logFileName.contract.test.ts` reads this line and fails when they differ.
+  private static let logFile = "^session-\\d{8}T\\d{6}Z-\\d+\\.log$"
   private static let chunk = 64 * 1024
 
   static func write(parts: [[String: String]], directory: URL, to out: URL) throws -> Int {
@@ -83,8 +88,7 @@ enum Gzip {
       if let text = part["text"] {
         try feed(Data(text.utf8), finish: false)
       } else if let name = part["file"] {
-        let range = NSRange(name.startIndex..., in: name)
-        guard logFile.firstMatch(in: name, range: range) != nil else {
+        guard name.range(of: logFile, options: .regularExpression) != nil else {
           throw Failure(description: "not a log file name: \(name)")
         }
         // A file rotated away since the list was taken is skipped rather than failing the export.
@@ -125,6 +129,8 @@ enum Diagnostics {
       "totalBytes": Int(ProcessInfo.processInfo.physicalMemory),
       "freeBytes": free.map { Int($0) },
       "lowPowerMode": ProcessInfo.processInfo.isLowPowerModeEnabled,
+      // An iPad build on a Mac ("Designed for iPad"), where the OS row has to say macOS.
+      "iOSAppOnMac": ProcessInfo.processInfo.isiOSAppOnMac,
       "permissions": await permissions(),
     ]
   }
