@@ -94,6 +94,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
       retained: () => Promise.resolve([]),
       span: () => Promise.resolve({ firstLine: null, lastLine: null }),
       deliver: null,
+      deliversBy: 'saveDialog',
     },
     diagnostics: {
       snapshot: () => Promise.resolve({ ...unknownDiagnostics(), platform: 'test', locale: 'en' }),

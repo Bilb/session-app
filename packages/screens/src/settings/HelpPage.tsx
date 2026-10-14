@@ -1,4 +1,4 @@
-import { URLS } from '@session/app'
+import { requirePorts, URLS } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import {
@@ -42,7 +42,12 @@ export function HelpPage() {
         <SettingsGroup>
           <SettingsRow
             label={tr('helpReportABug')}
-            subtitle={tr('helpReportABugExportLogsSaveToDesktopDescription')}
+            // The copy says what the button does: saves a file on desktop, shares one on a phone.
+            subtitle={tr(
+              requirePorts().logs.deliversBy === 'saveDialog'
+                ? 'helpReportABugExportLogsSaveToDesktopDescription'
+                : 'helpReportABugExportLogsDescription',
+            )}
             trailing={
               <Button
                 variant="outline"

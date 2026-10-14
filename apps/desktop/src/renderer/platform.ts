@@ -32,6 +32,7 @@ setPorts(
       retained: () => window.sessionDesktop.retainedLogs(),
       span: (first, last) => window.sessionDesktop.logSpan(first, last),
       deliver: (name, parts) => window.sessionDesktop.exportLogs(name, parts),
+      deliversBy: 'saveDialog',
     },
     // Built by main from what only it can read.
     diagnostics: { snapshot: () => window.sessionDesktop.diagnostics() },

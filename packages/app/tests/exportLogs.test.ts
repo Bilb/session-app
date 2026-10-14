@@ -41,6 +41,7 @@ function withLogs(
             lastLine: '2026-10-09T00:00:09.000Z last',
           }),
         deliver,
+        deliversBy: 'saveDialog',
       },
       diagnostics:
         diagnostics ??
