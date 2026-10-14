@@ -54,7 +54,7 @@
       "dependsOn": ["^build", "^codegen"]
     },
     "test": {
-      "dependsOn": ["^codegen"],
+      "dependsOn": ["^codegen", "^build"],
       "outputs": ["coverage/**"]
     },
     "test:e2e:fast": {
