@@ -91,12 +91,13 @@ module.exports = {
       name: 'shared-has-no-node-builtins',
       comment:
         'Shared packages run on three platforms, and two of them have no node. Tests are exempt ' +
-        "because they only ever run under vitest, and so is a package's scripts/ directory, " +
-        'which is build-time codegen invoked by `pnpm codegen` and never bundled into anything.',
+        "because they only ever run under vitest -- a package's tests/ directory, helpers beside " +
+        "the tests included -- and so is a package's scripts/ directory, which is build-time " +
+        'codegen invoked by `pnpm codegen` and never bundled into anything.',
       severity: 'error',
       from: {
         path: '^packages/(basic-types|bridge-types|test-ids|theme-tokens|localization|logging|client|client-contract|state|app|screens|ui)/',
-        pathNot: '\\.(test|spec)\\.tsx?$|^packages/[^/]+/scripts/',
+        pathNot: '\\.(test|spec)\\.tsx?$|^packages/[^/]+/(scripts|tests)/',
       },
       to: { dependencyTypes: ['core'] },
     },
