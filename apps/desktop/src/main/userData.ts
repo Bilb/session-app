@@ -50,7 +50,7 @@ export function userDataPlacement(input: {
 export function backupRow(exclusion: BackupExclusion): [string, string] {
   switch (exclusion) {
     case 'time-machine':
-      return ['Backup', 'Time Machine exclusion asked at launch; the answer is a storage line)']
+      return ['Backup', 'Time Machine exclusion asked at launch; the answer is a storage line']
     case 'local-appdata':
       return ['Backup', 'Local AppData, not roaming']
     case 'none':

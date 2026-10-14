@@ -43,7 +43,7 @@ describe('backupRow', () => {
   it('says what is asked for, leaving the answer from Time Machine to a line of its own', () => {
     expect(backupRow('time-machine')).toEqual([
       'Backup',
-      'excluded from Time Machine (asked at launch; the answer is logged)',
+      'Time Machine exclusion asked at launch; the answer is a storage line',
     ])
     expect(backupRow('local-appdata')).toEqual(['Backup', 'Local AppData, not roaming'])
     expect(backupRow('none')).toEqual(['Backup', 'no exclusion on this platform'])
