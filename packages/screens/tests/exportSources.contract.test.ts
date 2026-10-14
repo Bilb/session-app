@@ -41,7 +41,7 @@ function calls(source: ts.SourceFile, name: string): boolean {
  * contracts are: what matters is the call, and the compiler already knows its shape.
  */
 describe('exporting logs', () => {
-  it('passes the store’s config sizes to every export it starts', () => {
+  it('passes the store’s config sizes and cache limit to every export it starts', () => {
     const source = parse('useExportLogs.ts')
     const exportCalls: ts.CallExpression[] = []
     const visit = (node: ts.Node): void => {
@@ -67,6 +67,13 @@ describe('exporting logs', () => {
           property.name.text === 'configSizes',
       )
       expect(configSizes?.getText(source)).toBe('configSizes: actions.getConfigSizes')
+      const attachmentsLimit = (sources as ts.ObjectLiteralExpression).properties.find(
+        (property) =>
+          ts.isPropertyAssignment(property) &&
+          ts.isIdentifier(property.name) &&
+          property.name.text === 'attachmentsLimit',
+      )
+      expect(attachmentsLimit?.getText(source)).toContain('actions.getCacheSettings()')
     }
   })
 

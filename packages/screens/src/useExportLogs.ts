@@ -14,7 +14,8 @@ export interface LogExport {
 }
 
 /**
- * Exports the logs with the store's config sizes, and says when it failed.
+ * Exports the logs with the store's config sizes and attachment cache limit, and says when it
+ * failed.
  *
  * Every Export Logs button goes through here, so each passes the config sizes -- without them the
  * header says `unknown`, which is also what a failed start honestly reports, and a button that
@@ -31,7 +32,10 @@ export function useExportLogs(): LogExport {
     exporting,
     start: () => {
       setExporting(true)
-      void exportLogs({ configSizes: actions.getConfigSizes })
+      void exportLogs({
+        configSizes: actions.getConfigSizes,
+        attachmentsLimit: () => actions.getCacheSettings().then((cache) => cache.limitBytes),
+      })
         .then((outcome) => {
           if (outcome === 'failed') toasts.show(tr('errorUnknown'), { id: 'export-failed' })
         })
