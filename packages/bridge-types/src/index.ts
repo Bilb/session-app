@@ -27,6 +27,7 @@ export type {
   AttachmentRef,
   AttachmentTransfer,
   AutoDownload,
+  ConfigSize,
   Conversation,
   ConversationId,
   ConversationKind,

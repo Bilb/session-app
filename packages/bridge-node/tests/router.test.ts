@@ -19,8 +19,11 @@ import { createNodeBridgeTransport } from '#src/index'
  */
 const enabled = process.env['SESSION_ROUTER_PROBE'] === '1'
 
-/** libsession logs the choice once the network is configured; the message ends with a newline. */
-const ROUTE = /route requests using ([^\n]+)/
+/**
+ * libsession logs the choice once the network is configured; the message ends with a newline.
+ * Direct reads "route requests directly", so it is matched by that word.
+ */
+const ROUTE = /route requests (?:using ([^\n]+)|(directly))/
 
 async function routerFor(netid: 'mainnet' | 'testnet', router?: RouterKind): Promise<string> {
   const dir = mkdtempSync(join(tmpdir(), 'session-router-'))
@@ -44,7 +47,12 @@ async function routerFor(netid: 'mainnet' | 'testnet', router?: RouterKind): Pro
 
   try {
     for (let i = 0; i < 40; i++) {
-      const hit = lines.map((line) => ROUTE.exec(line)?.[1]).find(Boolean)
+      const hit = lines
+        .map((line) => {
+          const match = ROUTE.exec(line)
+          return match?.[1] ?? match?.[2]
+        })
+        .find(Boolean)
       if (hit !== undefined) return hit.trim()
       await new Promise((resolve) => setTimeout(resolve, 100))
     }
@@ -63,5 +71,10 @@ describe.skipIf(!enabled)('the routing choice libsession made', () => {
   it('takes onion requests when asked, on a network that ships Session Router', async () => {
     expect(await routerFor('mainnet', 'onion-requests')).toBe('Onion Requests')
     expect(await routerFor('testnet', 'onion-requests')).toBe('Onion Requests')
+  }, 60_000)
+
+  it('sends requests straight to their node when asked for direct', async () => {
+    expect(await routerFor('mainnet', 'direct')).toBe('directly')
+    expect(await routerFor('testnet', 'direct')).toBe('directly')
   }, 60_000)
 })

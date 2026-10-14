@@ -1,3 +1,4 @@
+import { formatBytes } from '@session/basic-types'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { PressArea, SegmentedToggle, Text, XStack, type Segment } from '@session/ui'
@@ -5,7 +6,6 @@ import { PressArea, SegmentedToggle, Text, XStack, type Segment } from '@session
 import type { AttachmentSet } from './attachmentSet'
 import { sharedCaption } from './attachmentSetCaption'
 import type { AttachmentView } from './attachmentView'
-import { formatBytes } from './formatBytes'
 import { PENDING_COPY } from './pendingCopy'
 
 /**

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { memoryPorts, resetPorts, setPorts } from '#src/index'
-import { FLAGS, envVarFor, flag, flagSnapshot } from '#src/flags'
+import { FLAGS, envVarFor, flag, flagOverrideRows, flagSnapshot } from '#src/flags'
 import type { FlagName } from '#src/flags'
 
 /** Installs ports whose only override is the one under test. */
@@ -56,5 +56,39 @@ describe('feature flags', () => {
     expect(Object.keys(snapshot).sort()).toEqual(Object.keys(FLAGS).sort())
     expect(snapshot.recoveryPhraseLong).toBe(true)
     expect(snapshot.recoveryPhraseLanguage).toBe(FLAGS.recoveryPhraseLanguage)
+  })
+})
+
+describe('flagOverrideRows', () => {
+  it('names each flag set, with its value as written, in the order of the table', () => {
+    expect(
+      flagOverrideRows({
+        EXPO_PUBLIC_SESSION_FLAG_DEBUG_MODE: 'ture',
+        EXPO_PUBLIC_SESSION_FLAG_RECOVERY_PHRASE_LONG: '1',
+        PATH: '/usr/bin',
+      }),
+    ).toEqual(['recoveryPhraseLong=1', 'debugMode=ture'])
+  })
+
+  it('names a variable with the prefix that is no flag, so a misspelling shows', () => {
+    expect(
+      flagOverrideRows({
+        EXPO_PUBLIC_SESSION_FLAG_DISABLE_ANIMATOINS: '1',
+        EXPO_PUBLIC_SESSION_FLAG_DISABLE_ANIMATIONS: '0',
+      }),
+    ).toEqual([
+      'disableAnimations=0',
+      'EXPO_PUBLIC_SESSION_FLAG_DISABLE_ANIMATOINS=1 (no such flag)',
+    ])
+  })
+
+  it('leaves out what is unset or empty', () => {
+    expect(
+      flagOverrideRows({
+        EXPO_PUBLIC_SESSION_FLAG_DEBUG_MODE: '',
+        EXPO_PUBLIC_SESSION_FLAG_RECOVERY_PHRASE_LONG: undefined,
+        EXPO_PUBLIC_SESSION_FLAG_NOT_A_FLAG: '',
+      }),
+    ).toEqual([])
   })
 })

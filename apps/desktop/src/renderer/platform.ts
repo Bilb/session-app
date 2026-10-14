@@ -3,6 +3,7 @@ import { parseNetworkName } from '@session/basic-types'
 import { getLocale, subscribeLocale } from '@session/localization'
 
 import { mediaUrl } from '../shared/mediaUrl'
+import { flushLogRecords } from './logs'
 
 const memory = memoryPorts()
 
@@ -26,6 +27,14 @@ setPorts(
         await window.sessionDesktop.revealInFolder(path)
       },
     },
+    // Main owns the files, compresses with zlib, and asks where to save; see main/logs.ts.
+    logs: {
+      retained: () => window.sessionDesktop.retainedLogs(),
+      span: (first, last) => window.sessionDesktop.logSpan(first, last),
+      deliver: (name, parts) => window.sessionDesktop.exportLogs(name, parts),
+    },
+    // Built by main from what only it can read.
+    diagnostics: { snapshot: () => window.sessionDesktop.diagnostics() },
     // The scheme the main process registered and serves from the addon - see main/media.ts.
     media: {
       urlFor: (ref) => mediaUrl('attachment', ref),
@@ -51,6 +60,8 @@ setPorts(
       version: import.meta.env.EXPO_PUBLIC_SESSION_BUILD_VERSION,
       commit: import.meta.env.EXPO_PUBLIC_SESSION_BUILD_COMMIT,
       buildNumber: null,
+      variant: import.meta.env.EXPO_PUBLIC_SESSION_BUILD_VARIANT || 'unknown',
+      libsessionCommit: import.meta.env.EXPO_PUBLIC_SESSION_LIBSESSION_COMMIT,
     },
     window: {
       // One window, so closing it is quitting, and `window.close()` needs no IPC call to do it.
@@ -58,6 +69,7 @@ setPorts(
         window.close()
       },
       restart: () => {
+        flushLogRecords()
         window.sessionDesktop.restart()
       },
       isFocused: () => document.hasFocus(),

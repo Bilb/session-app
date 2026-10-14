@@ -14,7 +14,9 @@ import {
 import { createSessionStore } from '@session/state'
 import { Platform } from 'react-native'
 
-import { resolveDatabaseKey, sessionPaths } from './storage'
+import { libsessionLog, storeLog, watchStore } from './logs'
+import { resolveDatabaseKey } from './storage/databaseKey'
+import { protectDatabase, sessionPaths } from './storage/roots'
 
 /**
  * `fetch` with a deadline, because Hermes has no `AbortSignal.timeout` and a seed node that
@@ -64,7 +66,7 @@ async function openTransport(): Promise<BridgeTransport> {
   const logs = parseLogSpec(process.env['EXPO_PUBLIC_SESSION_LOG'])
 
   const { createNativeBridgeTransport, discoverSeedNodes } = await import('@session/client')
-  const paths = await sessionPaths(name)
+  const paths = sessionPaths(name)
 
   const seedNodes =
     devnet === undefined
@@ -74,7 +76,7 @@ async function openTransport(): Promise<BridgeTransport> {
           variable: 'EXPO_PUBLIC_SESSION_DEVNET_SEED_URL',
         })
 
-  return createNativeBridgeTransport({
+  const transport = createNativeBridgeTransport({
     ...paths,
     rawKeyHex: await resolveDatabaseKey(),
     // Onboarding has to be asked. Without this libsession creates an account as the database
@@ -99,6 +101,11 @@ async function openTransport(): Promise<BridgeTransport> {
       ? {}
       : { logCategories: logs.categories }),
   })
+  // The bridge opens the database as it is made, so the files are there by now.
+  for (const failure of protectDatabase(paths.dbPath)) {
+    storeLog('warn', 'storage', `could not protect ${failure}`)
+  }
+  return transport
 }
 
 /**
@@ -117,17 +124,17 @@ async function openTransportOrRefusal(): Promise<BridgeTransport> {
     return await openTransport()
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error)
-    console.error(`[session] the bridge could not start: ${reason}`)
+    storeLog('error', 'session', `the bridge could not start: ${reason}`)
     return createRefusingTransport(reason)
   }
 }
 
-export const storePromise = openTransportOrRefusal().then((transport) =>
-  createSessionStore(createSessionClient(transport), {
+export const storePromise = openTransportOrRefusal().then((transport) => {
+  const store = createSessionStore(createSessionClient(transport), {
     attachmentCacheLimitBytes: ATTACHMENT_CACHE_LIMIT_BYTES,
-    // Reaches logcat as ReactNativeJS on Android, and the device console on iOS.
-    log: (level, line) => {
-      console[level](line)
-    },
-  }),
-)
+    log: storeLog,
+    libsessionLog,
+  })
+  watchStore(store)
+  return store
+})

@@ -2,6 +2,7 @@ import { createSessionClient } from '@session/client'
 import { createSessionStore } from '@session/state'
 
 import './platform'
+import { startLogging, storeLog } from './logs'
 import { createPortTransport } from './portTransport'
 
 /**
@@ -19,9 +20,11 @@ const ATTACHMENT_CACHE_LIMIT_BYTES = 5_000_000_000
 
 export const store = createSessionStore(client, {
   attachmentCacheLimitBytes: ATTACHMENT_CACHE_LIMIT_BYTES,
-  // The renderer's console, which reaches the terminal when Electron is run with
-  // --enable-logging and the DevTools console otherwise.
-  log: (level, line) => {
-    console[level](line)
-  },
+  // To the log files main keeps, and to the console in development, which reaches the terminal
+  // when Electron is run with --enable-logging and the DevTools console otherwise.
+  log: storeLog,
+})
+
+void startLogging(store).catch((error: unknown) => {
+  console.error('[logs] could not start logging:', error)
 })

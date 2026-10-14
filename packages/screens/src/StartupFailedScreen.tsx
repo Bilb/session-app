@@ -1,8 +1,18 @@
-import { requirePorts } from '@session/app'
+import { exportLogs, requirePorts } from '@session/app'
 import { tr } from '@session/localization'
 import { useSessionActions, useStartupClearable } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Icon, Screen, Text, useModals, XStack, YStack, type Modals } from '@session/ui'
+import {
+  Button,
+  Icon,
+  Screen,
+  Text,
+  useModals,
+  useToast,
+  XStack,
+  YStack,
+  type Modals,
+} from '@session/ui'
 import { useState } from 'react'
 
 import { LocalizedText } from './LocalizedText'
@@ -31,7 +41,10 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
   const actions = useSessionActions()
   const modals = useModals()
   const close = requirePorts().window.close
+  const canExport = requirePorts().logs.deliver !== null
   const clearable = useStartupClearable()
+  const [exporting, setExporting] = useState(false)
+  const toasts = useToast()
 
   return (
     <Screen padded testID={ELEMENT.startupFailed.screen}>
@@ -45,15 +58,30 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
         </YStack>
 
         <YStack gap="$sm" width="100%" maxWidth={348}>
-          {/* TODO: hook up once the app keeps logs. The explanation asks for them, and nothing
-              here lets somebody hand them over yet. Drawn disabled meanwhile, so the screen is
-              looked at in its final layout. */}
-          <TextButton
-            label={['helpReportABugExportLogs']}
-            variant="outline"
-            disabled
-            testID={ELEMENT.startupFailed.exportLogs}
-          />
+          {/* What the explanation above asks for. A spinner, and inert, while the export runs:
+              seconds of native compression on a phone, then the share sheet. Left out where the
+              build cannot export. */}
+          {canExport ? (
+            <TextButton
+              label={['helpReportABugExportLogs']}
+              variant="outline"
+              loading={exporting}
+              testID={ELEMENT.startupFailed.exportLogs}
+              onPress={() => {
+                setExporting(true)
+                void exportLogs({ configSizes: actions.getConfigSizes })
+                  .then((outcome) => {
+                    // Said, not silent: a second failure on this screen is one more thing for
+                    // the person to report, and they need to know the export did not happen.
+                    if (outcome === 'failed')
+                      toasts.show(tr('errorUnknown'), { id: 'export-failed' })
+                  })
+                  .finally(() => {
+                    setExporting(false)
+                  })
+              }}
+            />
+          ) : null}
           {/* Not where there is no bridge to clear with: a Clear that is known to fail is a
               destructive-looking button that does nothing. */}
           {clearable ? (
