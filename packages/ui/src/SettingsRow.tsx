@@ -73,75 +73,107 @@ export function SettingsRow({
   const tone = disabled ? '$textDisabled' : destructive ? '$dangerColor' : '$textPrimary'
   // `accentText`, not the accent: as a glyph the accent is too faint on a light ground.
   const iconTone = accentIcon && !disabled ? '$accentText' : tone
+  const content = { label, icon, subtitle, trailing, disabled, inert, tone, iconTone }
 
+  // A static row is not a control: as a disabled press area it would be announced as a dimmed
+  // button with a live one inside it, and its trailing control counted as disabled with it.
+  if (onPress === undefined && !disabled) {
+    return (
+      <YStack testID={testID}>
+        <RowContent {...content} pressed={false} />
+      </YStack>
+    )
+  }
   return (
-    <PressArea
-      {...(onPress === undefined || disabled ? {} : { onPress })}
-      disabled={inert}
-      testID={testID}
-    >
-      {(pressed) => (
-        // Its own frame, so the state overlays step from the row's surface rather than the page.
-        <YStack backgroundColor="$backgroundSecondary">
-          <XStack
-            minHeight={ROW_MIN_HEIGHT}
-            alignItems="center"
-            gap="$sm"
-            // The side padding matches the separators' inset, so a line starts where content does.
-            // Less vertically because a line's own leading adds to it.
-            paddingHorizontal="$md"
-            paddingVertical="$sm"
-            {...(inert
-              ? {}
-              : {
-                  cursor: 'pointer',
-                  hoverStyle: { backgroundColor: '$hoverOverlay' },
-                  pressStyle: { backgroundColor: '$pressedOverlay' },
-                  // Native: without this a frame with a `pressStyle` claims the touch from
-                  // `PressArea` and the row never fires. Pressable rows only: it takes the subtree
-                  // with it, and on a static row the trailing control is what gets pressed.
-                  ...PRESS_PASSTHROUGH,
-                  ...(pressed ? { backgroundColor: '$pressedOverlay' } : {}),
-                })}
-          >
-            {icon === undefined ? null : (
-              <YStack width={ICON_COLUMN} alignItems="center">
-                {typeof icon === 'string' ? (
-                  <Icon name={icon} size="lg" color={iconTone} />
-                ) : isValidElement(icon) ? (
-                  icon
-                ) : (
-                  // A mark fills its box where a lucide glyph has a margin: a rung smaller.
-                  <Mark mark={icon} color={iconTone} />
-                )}
-              </YStack>
-            )}
-
-            <YStack flex={1} gap="$3xs">
-              <Text size="$bodyLarge" weight="bold" color={tone}>
-                {label}
-              </Text>
-              {subtitle === undefined ? null : (
-                // Unmuted. Label size so it reads as the name's
-                // explanation rather than as a second line of body text.
-                <Text size="$label" color={disabled ? '$textDisabled' : '$textPrimary'}>
-                  {subtitle}
-                </Text>
-              )}
-            </YStack>
-
-            {trailing === undefined ? null : (
-              // More room than icon-to-label, so wrapped label text does not run into the control.
-              <YStack
-                {...logical({ paddingStart: SPACE_SCALE.xs, paddingEnd: SPACE_SCALE['2xs'] })}
-              >
-                {trailing}
-              </YStack>
-            )}
-          </XStack>
-        </YStack>
-      )}
+    <PressArea {...(disabled ? {} : { onPress })} disabled={inert} testID={testID}>
+      {(pressed) => <RowContent {...content} pressed={pressed} />}
     </PressArea>
+  )
+}
+
+interface RowContentProps {
+  label: string
+  icon?: SettingsRowProps['icon'] | undefined
+  subtitle?: string | undefined
+  trailing?: ReactNode | undefined
+  disabled: boolean
+  /** Not pressable, whether static or disabled: no hover, press or pointer. */
+  inert: boolean
+  pressed: boolean
+  tone: string
+  iconTone: string
+}
+
+/** What a row draws, pressable or not. */
+function RowContent({
+  label,
+  icon,
+  subtitle,
+  trailing,
+  disabled,
+  inert,
+  pressed,
+  tone,
+  iconTone,
+}: RowContentProps) {
+  return (
+    // Its own frame, so the state overlays step from the row's surface rather than the page.
+    <YStack backgroundColor="$backgroundSecondary">
+      <XStack
+        minHeight={ROW_MIN_HEIGHT}
+        alignItems="center"
+        gap="$sm"
+        // The side padding matches the separators' inset, so a line starts where content does.
+        // Less vertically because a line's own leading adds to it.
+        paddingHorizontal="$md"
+        paddingVertical="$sm"
+        {...(inert
+          ? {}
+          : {
+              cursor: 'pointer',
+              hoverStyle: { backgroundColor: '$hoverOverlay' },
+              pressStyle: { backgroundColor: '$pressedOverlay' },
+              // Native: without this a frame with a `pressStyle` claims the touch from
+              // `PressArea` and the row never fires. Pressable rows only: it takes the subtree
+              // with it, and on a static row the trailing control is what gets pressed.
+              ...PRESS_PASSTHROUGH,
+              ...(pressed ? { backgroundColor: '$pressedOverlay' } : {}),
+            })}
+      >
+        {icon === undefined ? null : (
+          <YStack width={ICON_COLUMN} alignItems="center">
+            {typeof icon === 'string' ? (
+              <Icon name={icon} size="lg" color={iconTone} />
+            ) : isValidElement(icon) ? (
+              icon
+            ) : (
+              // A mark fills its box where a lucide glyph has a margin: a rung smaller.
+              <Mark mark={icon} color={iconTone} />
+            )}
+          </YStack>
+        )}
+
+        <YStack flex={1} gap="$3xs">
+          <Text size="$bodyLarge" weight="bold" color={tone}>
+            {label}
+          </Text>
+          {subtitle === undefined ? null : (
+            // Unmuted. Label size so it reads as the name's
+            // explanation rather than as a second line of body text.
+            <Text size="$label" color={disabled ? '$textDisabled' : '$textPrimary'}>
+              {subtitle}
+            </Text>
+          )}
+        </YStack>
+
+        {trailing === undefined ? null : (
+          // More room than icon-to-label, so wrapped label text does not run into the control.
+          <YStack {...logical({ paddingStart: SPACE_SCALE.xs, paddingEnd: SPACE_SCALE['2xs'] })}>
+            {trailing}
+          </YStack>
+        )}
+      </XStack>
+    </YStack>
   )
 }
 
