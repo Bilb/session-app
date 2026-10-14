@@ -127,3 +127,18 @@ describe('every Button variant', () => {
     expect(mismatched).toEqual([])
   })
 })
+
+describe('a loading Button', () => {
+  it('keeps its size: the content stays laid out, hidden, and the spinner is drawn over it', () => {
+    // The icon and the label are both concealed rather than swapped out, so neither the width
+    // nor the height changes when an export or a save starts and the layout around it holds still.
+    expect(source).toMatch(/<Concealed when=\{loading\}>\{icon\}<\/Concealed>/)
+    expect(source).toMatch(/<Concealed when=\{loading\}>\s*\{typeof children === 'string'/)
+    expect(source).toMatch(/opacity=\{0\}/)
+    // Over the content and centred, not beside it.
+    expect(source).toMatch(
+      /position="absolute"[\s\S]{0,200}alignItems="center"[\s\S]{0,80}justifyContent="center"[\s\S]{0,80}<Spinner/,
+    )
+    expect(source).not.toMatch(/\{loading \? <Spinner[^}]*\/> : icon\}/)
+  })
+})

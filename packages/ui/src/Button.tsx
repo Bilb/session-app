@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactNode } from 'react'
-import { Spinner, styled, XStack } from 'tamagui'
+import { Spinner, styled, XStack, YStack } from 'tamagui'
 
 import { INHERITED_LABEL } from './labelColor'
 import { hitSlopFor } from './buttonHitTarget'
@@ -312,6 +312,15 @@ export interface ButtonProps {
   testID?: string
 }
 
+/**
+ * Its children invisible but still laid out, while `when`. Nothing wraps them otherwise, so a
+ * button at rest is exactly what it was.
+ */
+function Concealed({ when, children }: { when: boolean; children: ReactNode }) {
+  if (children === undefined || children === null) return null
+  return when ? <YStack opacity={0}>{children}</YStack> : <>{children}</>
+}
+
 export function Button({
   children,
   onPress,
@@ -369,6 +378,9 @@ export function Button({
     >
       {(pressed) => (
         <Frame
+          // The loading spinner's containing block: on the web a stack is static, and the
+          // spinner's absolute offsets would otherwise resolve against the page.
+          position="relative"
           {...(fill ? { flex: 1 } : {})}
           variant={variant}
           size={size}
@@ -380,20 +392,39 @@ export function Button({
           {...PRESS_PASSTHROUGH}
           {...(pressed && !inert ? PRESSED[variant] : {})}
         >
-          {loading ? <Spinner size="small" color={nativeLabel} /> : icon}
-          {typeof children === 'string' ? (
-            <Text
-              size={size === 'xs' || size === 'sm' ? '$label' : '$body'}
-              // Bold, which is what the desktop client's button is: `font-weight: 700` unless a
-              // caller says otherwise, and none of the onboarding callers do.
-              weight="bold"
-              color={INHERITED_LABEL ?? (pressed && !inert ? pressedLabel : nativeLabel)}
+          {/* Loading hides the content but keeps its room, so the button keeps its size and
+              nothing around it moves; the spinner is drawn over it, centred. Hidden rather than
+              removed, so a screen reader still names the button while it is busy. */}
+          <Concealed when={loading}>{icon}</Concealed>
+          <Concealed when={loading}>
+            {typeof children === 'string' ? (
+              <Text
+                size={size === 'xs' || size === 'sm' ? '$label' : '$body'}
+                // Bold, which is what the desktop client's button is: `font-weight: 700` unless a
+                // caller says otherwise, and none of the onboarding callers do.
+                weight="bold"
+                color={INHERITED_LABEL ?? (pressed && !inert ? pressedLabel : nativeLabel)}
+              >
+                {children}
+              </Text>
+            ) : (
+              children
+            )}
+          </Concealed>
+          {loading ? (
+            <YStack
+              position="absolute"
+              top={0}
+              bottom={0}
+              left={0}
+              right={0}
+              alignItems="center"
+              justifyContent="center"
+              pointerEvents="none"
             >
-              {children}
-            </Text>
-          ) : (
-            children
-          )}
+              <Spinner size="small" color={nativeLabel} />
+            </YStack>
+          ) : null}
         </Frame>
       )}
     </PressArea>
