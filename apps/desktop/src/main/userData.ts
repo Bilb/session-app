@@ -76,6 +76,30 @@ export function placeUserData(): void {
 }
 
 /**
+ * How long `tmutil` is given. Generous, because nothing waits on it and it has been measured at
+ * eleven seconds when it succeeds; killed sooner, it would report a failure at every launch on
+ * exactly that machine.
+ */
+const TMUTIL_TIMEOUT_MS = 60_000
+
+/** An error's code, never its message: Node's messages name the path, which is the home folder. */
+function errorCode(error: unknown): string {
+  const code = (error as { code?: unknown }).code
+  return typeof code === 'string' || typeof code === 'number' ? String(code) : 'unknown'
+}
+
+/** Why `tmutil` failed, from its exit rather than Node's message, which names the path. */
+export function tmutilFailure(error: {
+  killed?: boolean
+  signal?: string | null
+  code?: unknown
+}): string {
+  if (error.killed === true) return `tmutil timed out after ${TMUTIL_TIMEOUT_MS / 1000} s`
+  if (typeof error.signal === 'string') return `tmutil was ended by ${error.signal}`
+  return `tmutil exited with ${errorCode(error)}`
+}
+
+/**
  * Asks Time Machine to skip `userData` on macOS; resolves to why it could not, or null.
  *
  * `tmutil addexclusion` without `-p` sets the sticky exclusion: an extended attribute on the
@@ -93,12 +117,17 @@ export function excludeUserData(): Promise<string | null> {
     try {
       mkdirSync(userData, { recursive: true })
     } catch (error) {
-      resolve(error instanceof Error ? error.message : String(error))
+      resolve(`the data directory could not be created: ${errorCode(error)}`)
       return
     }
-    execFile('/usr/bin/tmutil', ['addexclusion', userData], { timeout: 10_000 }, (error) => {
-      resolve(error === null ? null : error.message.trim())
-    })
+    execFile(
+      '/usr/bin/tmutil',
+      ['addexclusion', userData],
+      { timeout: TMUTIL_TIMEOUT_MS },
+      (error) => {
+        resolve(error === null ? null : tmutilFailure(error))
+      },
+    )
   })
   return excluded
 }
