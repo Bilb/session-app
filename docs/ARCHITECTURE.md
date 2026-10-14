@@ -591,7 +591,7 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   characters, and the wrong one fails as a decryption error part-way through an upload.
 
 - **2026-09-11 - Each network gets its own database directory.** `userData/<netid>/` on desktop,
-  `documentDirectory/session/<netid>/` on mobile, so a devnet identity and a mainnet one coexist
+  the storage module's `data` root on mobile (`<root>/<netid>/`; see `docs/STORAGE.md`), so a devnet identity and a mainnet one coexist
   and switching back loses neither. libsession derives its snode cache from the database's
   directory, which puts a cache of nodes that do not exist on the other network on the right side
   of the split.

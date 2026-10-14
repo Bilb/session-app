@@ -7,7 +7,7 @@
  */
 import type { NetworkName } from '@session/basic-types'
 import { requireOptionalNativeModule } from 'expo'
-import { Directory as ExpoDirectory, File as ExpoFile, Paths } from 'expo-file-system'
+import { Directory as ExpoDirectory, File as ExpoFile } from 'expo-file-system'
 
 import {
   databaseFiles,
@@ -17,7 +17,6 @@ import {
   ROOT_NAMES,
   rootIsProtected,
   storageRow,
-  unprotectedRoots,
   type RootReport,
   type RootState,
   type StorageRootPaths,
@@ -62,20 +61,23 @@ interface StorageRootsModule {
   inspect(path: string): RootState
 }
 
-/** Null in a dev client built before the module existed. */
-const native = requireOptionalNativeModule<StorageRootsModule>('StorageRoots')
+/**
+ * Every build carries the module. One without it is a dev client older than the module, which
+ * would otherwise run with its data in Documents, unprotected and backed up -- so it stops here and
+ * says to rebuild, rather than carrying a second layout to fall back on.
+ */
+const native = ((): StorageRootsModule => {
+  const loaded = requireOptionalNativeModule<StorageRootsModule>('StorageRoots')
+  if (loaded === null) {
+    throw new Error(
+      'the storage-roots native module is missing from this build; rebuild the dev client ' +
+        '(pnpm ios / pnpm android) and reinstall it',
+    )
+  }
+  return loaded
+})()
 
-/** Why the roots are not the protected ones, or null. Said in the log once it is open. */
-export const rootsProblem: string | null =
-  native === null
-    ? 'the storage-roots module is not in this build, so data is in Documents, unprotected and ' +
-      'backed up; rebuild the dev client'
-    : null
-
-if (rootsProblem !== null) console.error(`[storage] ${rootsProblem}`)
-
-const roots: StorageRootPaths =
-  native?.roots ?? unprotectedRoots(Paths.document.uri, Paths.cache.uri)
+const roots: StorageRootPaths = native.roots
 
 /**
  * Moves a file into `destination`, a file or a directory in one of the roots, and protects it again
@@ -94,9 +96,9 @@ export function moveInto(
   return file
 }
 
-/** Both attributes on one file; nothing without the native module, which also means no roots. */
+/** Both attributes on one file. */
 function reprotect(uri: string): void {
-  native?.protect(plainPath(uri))
+  native.protect(plainPath(uri))
 }
 
 /** One root, or a directory inside one, created if it is not there. */
@@ -147,7 +149,6 @@ export function sessionPaths(network: NetworkName): { dbPath: string; cacheDir: 
  * attributes after every open for the same reason.
  */
 export function protectDatabase(dbPath: string): string[] {
-  if (native === null) return []
   const failures: string[] = []
   for (const path of databaseFiles(dbPath)) {
     try {
@@ -165,8 +166,6 @@ export function protectDatabase(dbPath: string): string[] {
  * left until the next launch.
  */
 export function checkRoots(): { row: readonly [string, string]; warnings: string[] } {
-  if (native === null)
-    return { row: ['Storage', 'Documents, unprotected and backed up'], warnings: [] }
   const reports = ROOT_NAMES.map((name): RootReport => {
     try {
       return [name, native.inspect(roots[name])]

@@ -18,15 +18,7 @@ import { AppState, Platform } from 'react-native'
 import { flagVariables } from './flagOverrides'
 import { SessionLogs } from './sessionLogs'
 import { databaseSizes } from './storageSizes'
-import {
-  checkRoots,
-  File,
-  moveInto,
-  FileMode,
-  logsRoot,
-  rootsProblem,
-  type Directory,
-} from './storage/roots'
+import { checkRoots, File, moveInto, FileMode, logsRoot, type Directory } from './storage/roots'
 
 const SALT_FILE = '.salt'
 const SALT_BYTES = 16
@@ -267,7 +259,6 @@ const opened = (async (): Promise<LogWriter> => {
       reason: failure,
     })
   }
-  if (rootsProblem !== null) logger.error('storage', rootsProblem)
   for (const warning of storage.warnings) logger.warn('storage', warning)
   if (saltReplaced) {
     logger.warn(

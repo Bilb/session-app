@@ -84,8 +84,9 @@ enum ProtectedRoots {
         failures.append("\(root.path): \(error.localizedDescription)")
       }
     }
-    // Attachments are downloaded through it before they reach the data root. Never backed up
-    // anyway, so the exclusion only matches what legacy sets.
+    // Class C here so a file staged in it and then moved into a root arrives readable while the
+    // phone is locked: since iOS 26 a moved file keeps the class it was created with. Never backed
+    // up anyway, so the exclusion only matches what legacy sets.
     do {
       try protect(URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true))
     } catch {

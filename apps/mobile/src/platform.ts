@@ -12,6 +12,7 @@ import { restartProcess, terminateProcess } from './processExit'
 import { SessionLogs } from './sessionLogs'
 import { attachmentsBytes, databaseSizes } from './storageSizes'
 import { readDatabaseKey, writeDatabaseKey } from './storage/databaseKey'
+import { plainPath } from './storage/layout'
 import { exportsDirectory, File } from './storage/roots'
 
 /**
@@ -45,11 +46,6 @@ function hexToBytes(hex: string): Uint8Array {
     bytes[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16)
   }
   return bytes
-}
-
-/** A `file://` URI as the plain path native code and libsession take. */
-function pathOf(uri: string): string {
-  return decodeURIComponent(uri.replace(/^file:\/\//, ''))
 }
 
 /** Held in a const so the closures below keep its narrowing. */
@@ -202,7 +198,7 @@ const ports = memoryPorts({
               if (entry instanceof File && isExportName(entry.name)) entry.delete()
             }
             const out = new File(exports, name)
-            await nativeLogs.gzip(parts, pathOf(logDirectory.uri), pathOf(out.uri))
+            await nativeLogs.gzip(parts, plainPath(logDirectory.uri), plainPath(out.uri))
             await Sharing.shareAsync(out.uri, {
               mimeType: 'application/gzip',
               UTI: 'org.gnu.gnu-zip-archive',

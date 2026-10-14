@@ -29,14 +29,17 @@ export interface RootState {
   excludedFromBackup: boolean
 }
 
-/** The `file://` form expo-file-system takes. */
+/**
+ * The `file://` form expo-file-system takes, each path segment percent-encoded whole so that a `?`
+ * or `#` in a name stays part of the path. `plainPath` is its exact inverse.
+ */
 export function fileUri(path: string): string {
-  return `file://${encodeURI(path)}`
+  return `file://${path.split('/').map(encodeURIComponent).join('/')}`
 }
 
-/** The plain path libsession and the native module take. */
+/** The plain path libsession and the native modules take, from a `file://` URI of either origin. */
 export function plainPath(uri: string): string {
-  return decodeURI(uri.replace(/^file:\/\//, ''))
+  return decodeURIComponent(uri.replace(/^file:\/\//, ''))
 }
 
 /**
@@ -58,20 +61,6 @@ export function libsessionPaths(
 /** The database and the two files SQLite keeps beside it in WAL mode. */
 export function databaseFiles(dbPath: string): string[] {
   return [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]
-}
-
-/**
- * Where everything was before the roots existed, from expo-file-system's documents and cache
- * directories: for a dev client built without the native module, which can then still run.
- * Documents is backed up, which is why reaching this is logged as an error.
- */
-export function unprotectedRoots(documentUri: string, cacheUri: string): StorageRootPaths {
-  const documents = plainPath(documentUri).replace(/\/$/, '')
-  return {
-    data: `${documents}/session`,
-    logs: `${documents}/logs`,
-    exports: `${plainPath(cacheUri).replace(/\/$/, '')}/exports`,
-  }
 }
 
 /**

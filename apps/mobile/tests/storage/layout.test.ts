@@ -7,7 +7,6 @@ import {
   plainPath,
   rootIsProtected,
   storageRow,
-  unprotectedRoots,
 } from '#src/storage/layout'
 
 const GROUP = '/private/var/mobile/Containers/Shared/AppGroup/0B1C/session'
@@ -35,12 +34,14 @@ describe('the storage layout', () => {
     expect(plainPath(fileUri(path))).toBe(path)
   })
 
-  it('falls back to the unprotected layout without the native module', () => {
-    expect(unprotectedRoots('file:///app/Documents/', 'file:///app/Library/Caches/')).toEqual({
-      data: '/app/Documents/session',
-      logs: '/app/Documents/logs',
-      exports: '/app/Library/Caches/exports',
-    })
+  it('keeps a ? or # in a name as part of the path, both ways', () => {
+    const path = '/tmp/what? #1/100% done'
+    expect(fileUri(path)).toBe('file:///tmp/what%3F%20%231/100%25%20done')
+    expect(plainPath(fileUri(path))).toBe(path)
+  })
+
+  it('reads a URI expo-file-system encoded', () => {
+    expect(plainPath('file:///tmp/My%20Logs/a%3Fb')).toBe('/tmp/My Logs/a?b')
   })
 })
 
