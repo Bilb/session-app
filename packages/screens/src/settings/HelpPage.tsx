@@ -11,6 +11,7 @@ import {
   YStack,
 } from '@session/ui'
 
+import { useExportLogs } from '../useExportLogs'
 import { confirmLink } from './confirmLink'
 
 /**
@@ -32,18 +33,26 @@ const LINKS = [
 /** Help: report a bug, and four links. A child screen; the settings modal supplies the chrome. */
 export function HelpPage() {
   const modals = useModals()
+  const logs = useExportLogs()
 
   return (
     <YStack padding="$md" gap="$lg">
       <YStack>
         <SettingsSection label={tr('logs')} />
         <SettingsGroup>
-          {/* Disabled: the app keeps no log file, as libsession's lines go only to a console. */}
           <SettingsRow
             label={tr('helpReportABug')}
             subtitle={tr('helpReportABugExportLogsSaveToDesktopDescription')}
             trailing={
-              <Button variant="outline" size="sm" disabled testID={ELEMENT.help.exportLogs}>
+              <Button
+                variant="outline"
+                size="sm"
+                // Disabled only in a build that cannot export at all.
+                disabled={!logs.canExport}
+                loading={logs.exporting}
+                onPress={logs.start}
+                testID={ELEMENT.help.exportLogs}
+              >
                 {tr('helpReportABugExportLogs')}
               </Button>
             }
