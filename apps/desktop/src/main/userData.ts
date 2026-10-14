@@ -43,12 +43,14 @@ export function userDataPlacement(input: {
   }
 }
 
-/** The startup block's row: what was done, or why it could not be. */
-export function backupRow(exclusion: BackupExclusion, failure: string | null): [string, string] {
-  if (failure !== null) return ['Backup', `not excluded: ${failure}`]
+/**
+ * The startup block's row: what is asked for. Time Machine's answer comes later, as a line of its
+ * own: `tmutil` can take seconds, and the block is not held for it.
+ */
+export function backupRow(exclusion: BackupExclusion): [string, string] {
   switch (exclusion) {
     case 'time-machine':
-      return ['Backup', 'excluded from Time Machine']
+      return ['Backup', 'excluded from Time Machine (asked at launch; the answer is logged)']
     case 'local-appdata':
       return ['Backup', 'Local AppData, not roaming']
     case 'none':

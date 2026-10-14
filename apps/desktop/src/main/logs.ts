@@ -260,7 +260,7 @@ function readOsRelease(): string | null {
  * opens the file, and it is written even when the renderer never loads - which is when a log is
  * wanted most.
  */
-function mainStartupBlock(writer: LogWriter, backupFailure: string | null): string[] {
+function mainStartupBlock(writer: LogWriter): string[] {
   const build = __SESSION_BUILD_INFO__
   const network = networkRows(networkSettings())
   return startupBlock({
@@ -280,7 +280,7 @@ function mainStartupBlock(writer: LogWriter, backupFailure: string | null): stri
         osRelease: readOsRelease(),
         packaged: app.isPackaged,
       }),
-      backupRow(userDataExclusion(), backupFailure),
+      backupRow(userDataExclusion()),
     ],
     locale: app.getLocale(),
     utcOffsetMinutes: -new Date().getTimezoneOffset(),
@@ -354,17 +354,23 @@ export function openLogs(): Promise<MainLogs> {
     })
     // After ready, which is when Electron can say the locale; nothing logs before then.
     await app.whenReady()
-    const backupFailure = await excludeUserData()
-    logger.section(mainStartupBlock(writer, backupFailure))
+    logger.section(mainStartupBlock(writer))
     logger.marker('lifecycle', 'launch', { process: 'main' })
     if (failure !== null) {
       logger.error('logs', 'the log directory could not be opened; lines go to the console', {
         reason: failure,
       })
     }
-    if (backupFailure !== null) {
-      logger.warn('storage', 'the data directory could not be excluded from backup', {
-        reason: backupFailure,
+    // Not awaited: `tmutil` can take ten seconds, and until the log is open every line from both
+    // processes waits -- a failed start's among them, which is what an export is for.
+    if (userDataExclusion() === 'time-machine') {
+      void excludeUserData().then((backupFailure) => {
+        if (backupFailure === null)
+          logger.info('storage', 'data directory excluded from Time Machine')
+        else
+          logger.warn('storage', 'the data directory could not be excluded from backup', {
+            reason: backupFailure,
+          })
       })
     }
     if (saltReplaced) {

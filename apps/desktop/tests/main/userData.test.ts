@@ -40,13 +40,12 @@ describe('userDataPlacement', () => {
 })
 
 describe('backupRow', () => {
-  it('says what was done, or why it was not', () => {
-    expect(backupRow('time-machine', null)).toEqual(['Backup', 'excluded from Time Machine'])
-    expect(backupRow('local-appdata', null)).toEqual(['Backup', 'Local AppData, not roaming'])
-    expect(backupRow('none', null)).toEqual(['Backup', 'no exclusion on this platform'])
-    expect(backupRow('time-machine', 'tmutil: not found')).toEqual([
+  it('says what is asked for, leaving the answer from Time Machine to a line of its own', () => {
+    expect(backupRow('time-machine')).toEqual([
       'Backup',
-      'not excluded: tmutil: not found',
+      'excluded from Time Machine (asked at launch; the answer is logged)',
     ])
+    expect(backupRow('local-appdata')).toEqual(['Backup', 'Local AppData, not roaming'])
+    expect(backupRow('none')).toEqual(['Backup', 'no exclusion on this platform'])
   })
 })

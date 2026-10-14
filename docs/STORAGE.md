@@ -82,4 +82,5 @@ Everything is under Electron's `userData`.
 - **Windows:** under Local AppData rather than Roaming, which a roaming profile syncs.
 - **Linux:** unchanged. There is no standard backup to opt out of.
 
-The startup block's `Backup` row says which applied, or why it could not.
+The startup block's `Backup` row says which applies. On macOS the answer from `tmutil` is a line
+of its own, logged when it comes back: it can take seconds, and the log is not held for it.
