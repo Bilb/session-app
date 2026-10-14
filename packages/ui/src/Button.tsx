@@ -5,6 +5,7 @@ import { INHERITED_LABEL } from './labelColor'
 import { hitSlopFor } from './buttonHitTarget'
 import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import { PressArea } from './PressArea'
+import { Concealed } from './Concealed'
 import { Text } from './Text'
 
 const Frame = styled(XStack, {
@@ -312,15 +313,6 @@ export interface ButtonProps {
   testID?: string
 }
 
-/**
- * Its children invisible but still laid out, while `when`. Nothing wraps them otherwise, so a
- * button at rest is exactly what it was.
- */
-function Concealed({ when, children }: { when: boolean; children: ReactNode }) {
-  if (children === undefined || children === null) return null
-  return when ? <YStack opacity={0}>{children}</YStack> : <>{children}</>
-}
-
 export function Button({
   children,
   onPress,
@@ -364,6 +356,13 @@ export function Button({
 
   const hitSlop = hitSlopFor(size)
   const inert = disabled || loading
+  /**
+   * The name a screen reader gives the button. While loading the label is hidden, and Android
+   * drops a fully transparent child from the accessibility tree, so the label's text is passed
+   * as the button's own name -- which every platform announces whatever the child's opacity.
+   */
+  const name =
+    accessibilityLabel ?? (loading && typeof children === 'string' ? children : undefined)
 
   return (
     <PressArea
@@ -373,7 +372,8 @@ export function Button({
       // Grown outwards rather than drawn larger: the control keeps the size the designs give it and
       // the target reaches the floor. Ignored on the web, where a pointer does not need it.
       hitSlop={hitSlop}
-      {...(accessibilityLabel === undefined ? {} : { accessibilityLabel })}
+      {...(name === undefined ? {} : { accessibilityLabel: name })}
+      busy={loading}
       {...(testID === undefined ? {} : { testID })}
     >
       {(pressed) => (
@@ -393,8 +393,8 @@ export function Button({
           {...(pressed && !inert ? PRESSED[variant] : {})}
         >
           {/* Loading hides the content but keeps its room, so the button keeps its size and
-              nothing around it moves; the spinner is drawn over it, centred. Hidden rather than
-              removed, so a screen reader still names the button while it is busy. */}
+              nothing around it moves; the spinner is drawn over it, centred. The button's
+              accessible name is set above, since Android does not read a transparent child. */}
           <Concealed when={loading}>{icon}</Concealed>
           <Concealed when={loading}>
             {typeof children === 'string' ? (

@@ -134,11 +134,23 @@ describe('a loading Button', () => {
     // nor the height changes when an export or a save starts and the layout around it holds still.
     expect(source).toMatch(/<Concealed when=\{loading\}>\{icon\}<\/Concealed>/)
     expect(source).toMatch(/<Concealed when=\{loading\}>\s*\{typeof children === 'string'/)
-    expect(source).toMatch(/opacity=\{0\}/)
+    expect(readFileSync(join(import.meta.dirname, '../src/Concealed.tsx'), 'utf8')).toMatch(
+      /opacity=\{0\}/,
+    )
     // Over the content and centred, not beside it.
     expect(source).toMatch(
       /position="absolute"[\s\S]{0,200}alignItems="center"[\s\S]{0,80}justifyContent="center"[\s\S]{0,80}<Spinner/,
     )
     expect(source).not.toMatch(/\{loading \? <Spinner[^}]*\/> : icon\}/)
+  })
+})
+
+describe('a loading Button, to a screen reader', () => {
+  it('keeps its name on the control, since Android does not read a transparent label', () => {
+    expect(source).toMatch(
+      /accessibilityLabel \?\? \(loading && typeof children === 'string' \? children : undefined\)/,
+    )
+    expect(source).toMatch(/accessibilityLabel: name/)
+    expect(source).toMatch(/busy=\{loading\}/)
   })
 })
