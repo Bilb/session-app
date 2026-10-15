@@ -32,6 +32,7 @@ export type IconName =
   | 'fileAudio'
   | 'fileCode'
   | 'fileImage'
+  | 'filePlus'
   | 'fileSpreadsheet'
   | 'fileText'
   | 'fileVideo'
