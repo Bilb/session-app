@@ -8,6 +8,7 @@ import {
   fileLeadHeight,
   fileRowControl,
   fileRowHeight,
+  fileRowMarker,
   fileRowTone,
 } from '#src/fileRowState'
 import { SPACING } from '@session/theme-tokens'
@@ -33,6 +34,20 @@ describe('a file row’s one control', () => {
 
   it('is a retry and only a retry after a failure', () => {
     expect(fileRowControl('failed')).toBe('rotateCw')
+  })
+
+  it('offers nothing on a file of a set being sent, and marks it instead', () => {
+    // Nothing stops an upload or sends one file of a set early, so there is no verb to draw.
+    expect(fileRowControl('queued')).toBeNull()
+    expect(fileRowControl('uploaded')).toBeNull()
+    expect(fileRowMarker('queued')).toBe('clock')
+    expect(fileRowMarker('uploaded')).toBe('check')
+  })
+
+  it('marks nothing where there is a control', () => {
+    for (const state of ['idle', 'fetching', 'ready', 'failed', 'unavailable'] as const) {
+      expect(fileRowMarker(state), state).toBeNull()
+    }
   })
 })
 

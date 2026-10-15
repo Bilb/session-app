@@ -22,6 +22,8 @@ export function controlVerb(state: FileRowState): AttachmentVerb | null {
       return 'export'
     case 'fetching':
     case 'unavailable':
+    case 'queued':
+    case 'uploaded':
       return null
   }
 }

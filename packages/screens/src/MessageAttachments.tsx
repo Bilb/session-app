@@ -8,6 +8,7 @@ import { AttachmentPill } from './AttachmentPill'
 import { attachmentView, canChooseView } from './attachmentView'
 import { useConversationUi } from './conversationUi'
 import { MessageAlbum } from './MessageAlbum'
+import { useAttachmentFooter } from './useAttachmentFooter'
 import { useAttachmentSet } from './useAttachmentSet'
 import { useViewChoice } from './viewChoices'
 
@@ -19,7 +20,9 @@ import { useViewChoice } from './viewChoices'
  */
 export function MessageAttachments({ message }: { message: Message }) {
   const ui = useConversationUi()
-  const { set, fetchFor, act, downloadMissing } = useAttachmentSet(message)
+  const attachmentSet = useAttachmentSet(message)
+  const { set, fetchFor, downloadMissing } = attachmentSet
+  const footer = useAttachmentFooter(message, attachmentSet)
   const view = attachmentView(message, useViewChoice(ui.views, message.id))
   const overflows = view === 'list' && message.attachments.length > LIST_MAX_ROWS
 
@@ -65,7 +68,8 @@ export function MessageAttachments({ message }: { message: Message }) {
       <AttachmentFooter
         set={set}
         onAccent={message.outgoing}
-        onAction={act}
+        onAction={footer.onAction}
+        sending={footer.sending}
         view={canChooseView(message) ? view : undefined}
         onView={(chosen) => {
           ui.views.choose(message.id, chosen)

@@ -41,6 +41,8 @@ export interface ListProps<T> {
   fitsContent?: boolean
   /** Around the rows, inside the scroller. */
   paddingHorizontal?: keyof typeof SPACING
+  /** The row to open on. Only with `itemHeight`, which is what places it before it is drawn. */
+  initialScrollIndex?: number | undefined
 }
 
 const FILLS = { flex: 1 } as const
@@ -58,6 +60,7 @@ export function List<T>({
   onEndReached,
   fitsContent = false,
   paddingHorizontal,
+  initialScrollIndex,
 }: ListProps<T>) {
   const renderRow = useCallback(
     ({ item, index }: { item: T; index: number }) => renderItem(item, index),
@@ -89,6 +92,9 @@ export function List<T>({
       renderItem={renderRow}
       keyExtractor={keyExtractor}
       {...(itemHeight === undefined ? {} : { getItemLayout })}
+      {...(itemHeight === undefined || initialScrollIndex === undefined
+        ? {}
+        : { initialScrollIndex })}
       {...(empty === undefined ? {} : { ListEmptyComponent: empty })}
       {...(header === undefined ? {} : { ListHeaderComponent: header })}
       {...(inverted === undefined ? {} : { inverted })}

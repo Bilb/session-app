@@ -65,6 +65,15 @@ export const PENDING_COPY = {
   /** Over the staged tray: how many of the message's allowance are used. */
   attachmentsStagedCount: (count: number, max: number): string =>
     `${String(count)} / ${String(max)}`,
+  /** A file of a message being sent, waiting for the ones before it to upload. */
+  attachmentQueued: 'Queued',
+  /** A file of a failed message that was never tried, since the one before it failed. */
+  attachmentNotSent: 'Not sent',
+  /** A sending set's footer. Counts in English only, as `attachmentCount` does. */
+  attachmentsUploaded: (uploaded: number, count: number): string =>
+    `${String(uploaded)} of ${String(count)} uploaded`,
+  /** Beside Show All when a file it hides failed. */
+  attachmentsFailedCount: (count: number): string => `${String(count)} failed`,
   /** Under the drop overlay's title, which is `attachmentsAdd`. */
   attachmentsDropHint: (max: number): string =>
     `Up to ${String(max)} files of any type, each under 10MB`,

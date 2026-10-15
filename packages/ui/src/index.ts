@@ -137,6 +137,7 @@ export {
   FILE_ROW_CONTROL,
   FILE_ROW_GAP,
   fileRowControl,
+  fileRowMarker,
   fileRowHeight,
   fileRowTone,
 } from './fileRowState'

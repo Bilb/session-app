@@ -98,16 +98,25 @@ export function AttachmentFooter({
   view,
   onView,
   onAccent = false,
+  sending,
 }: {
   set: AttachmentSet
   onAction: () => void
+  /**
+   * Set while our message's files are still uploading or failed to: the line is then about the
+   * upload, and its one verb is the message's retry.
+   *
+   * That Retry is not drawn destructive: the danger colour on the tonal fill is 3.3 to 4.1:1 in
+   * the four themes. The caption and the message's own state already say it failed.
+   */
+  sending?: { caption: string; retryable: boolean } | undefined
   /** Drawn on a bubble you sent rather than on the page; the buttons keep their own fill. */
   onAccent?: boolean | undefined
   /** The shape being drawn. Absent where the reader has no choice about it. */
   view?: AttachmentView | undefined
   onView?: ((view: AttachmentView) => void) | undefined
 }) {
-  const action = verb(set)
+  const action = sending === undefined ? verb(set) : sending.retryable ? tr('retry') : null
   return (
     <XStack
       height={ROW_HEIGHT}
@@ -140,14 +149,14 @@ export function AttachmentFooter({
         numberOfLines={1}
         testID={ELEMENT.conversation.attachmentState}
       >
-        {caption(set)}
+        {sending === undefined ? caption(set) : sending.caption}
       </Text>
       {action === null ? null : (
         <Button
           variant="tonal"
           size={ACTION_SIZE}
           hitSlop={ACTION_SLOP}
-          destructive={set.state === 'failed'}
+          destructive={sending === undefined && set.state === 'failed'}
           onAccent={onAccent}
           onPress={onAction}
           testID={ELEMENT.conversation.attachmentAction}

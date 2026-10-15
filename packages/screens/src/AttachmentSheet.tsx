@@ -7,16 +7,18 @@ import { useCallback, useRef, type ReactNode } from 'react'
 
 import { AttachmentFooter, ROW_OVERHANG } from './AttachmentFooter'
 import { AttachmentRow } from './AttachmentRow'
+import { firstFailedPosition } from './uploadState'
+import { useAttachmentFooter } from './useAttachmentFooter'
 import { useAttachmentSet } from './useAttachmentSet'
 
 const attachmentKey = (attachment: Attachment): string => String(attachment.index)
 
 function SheetFooter({ message }: { message: Message }) {
-  const { set, act } = useAttachmentSet(message)
+  const { set, onAction, sending } = useAttachmentFooter(message, useAttachmentSet(message))
   // Inside the sheet's footer, so the overhang lies over this padding and not over the rows.
   return (
     <YStack paddingTop={ROW_OVERHANG}>
-      <AttachmentFooter set={set} onAction={act} />
+      <AttachmentFooter set={set} onAction={onAction} sending={sending} />
     </YStack>
   )
 }
@@ -68,6 +70,8 @@ function MessageSheet({
             itemHeight={rowHeight}
             fitsContent
             paddingHorizontal="md"
+            // Opened from a set whose upload failed, on the file that failed: it can be the 31st.
+            initialScrollIndex={firstFailedPosition(message)}
           />
         )}
       </Sheet>
