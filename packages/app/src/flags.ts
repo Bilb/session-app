@@ -86,6 +86,15 @@ export const FLAGS = {
    * debugging one.
    */
   debugMode: false,
+
+  /**
+   * The composer's way in for attachments: the + button, the staged tray and dropping files on a
+   * conversation.
+   *
+   * Off, because the bridge cannot send an attachment yet: `sendMessage` takes a body and a reply.
+   * With this on, files can be staged and removed, and Send waits until the bridge can carry them.
+   */
+  attachmentSending: false,
 } as const
 
 export type FlagName = keyof typeof FLAGS

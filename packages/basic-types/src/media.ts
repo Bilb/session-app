@@ -74,3 +74,14 @@ export function mediaKindOf(contentType: string | undefined): MediaKind {
  * a prop - the album has never been the thing that decides how wide a message is.
  */
 export const ALBUM_WIDTH = 240
+
+/**
+ * The largest file the default file server takes, in bytes before encryption.
+ *
+ * libsession's `session_file_server` limit, and the one every legacy client checks at staging.
+ * libsession does not refuse a larger file at send time: the upload fails instead.
+ */
+export const MAX_ATTACHMENT_BYTES = 10_000_000
+
+/** How many attachments one message may carry. The legacy clients' limit; libsession sets none. */
+export const MAX_ATTACHMENTS_PER_MESSAGE = 32

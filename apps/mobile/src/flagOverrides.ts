@@ -28,6 +28,8 @@ const OVERRIDES: Record<string, string | undefined> = {
   EXPO_PUBLIC_SESSION_FLAG_DISABLE_ANIMATIONS:
     process.env.EXPO_PUBLIC_SESSION_FLAG_DISABLE_ANIMATIONS,
   EXPO_PUBLIC_SESSION_FLAG_DEBUG_MODE: process.env.EXPO_PUBLIC_SESSION_FLAG_DEBUG_MODE,
+  EXPO_PUBLIC_SESSION_FLAG_ATTACHMENT_SENDING:
+    process.env.EXPO_PUBLIC_SESSION_FLAG_ATTACHMENT_SENDING,
 }
 
 /** What the flags port hands back: the override, or nothing set. */
