@@ -254,6 +254,17 @@ export default ({ config }: ConfigContext): ExpoConfig =>
               granularPermissions: ['photo', 'video'],
             },
           ],
+          // The photo library half of +. iOS's picker runs out of process and needs no library
+          // access to pick, but the plugin writes the purpose strings, so they are the catalogue's.
+          // There is no camera or microphone behind + yet, so neither is declared through it.
+          [
+            'expo-image-picker',
+            {
+              photosPermission: englishPermission('NSPhotoLibraryUsageDescription'),
+              cameraPermission: false,
+              microphonePermission: false,
+            },
+          ],
           // Legacy Android's floor.
           ['expo-build-properties', { android: { minSdkVersion: 26 } }],
           [

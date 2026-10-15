@@ -8,6 +8,7 @@ import { Linking, Platform, Share } from 'react-native'
 
 import { exportFiles, sweepStagedExports } from './files'
 import { flagOverride } from './flagOverrides'
+import { pickers } from './pickers'
 import { restartProcess, terminateProcess } from './processExit'
 
 /**
@@ -146,7 +147,7 @@ sweepStagedExports()
 setPorts({
   ...ports,
   // The pickers stay the memory ones until the composer can attach.
-  files: { ...ports.files, ...exportFiles },
+  files: { ...ports.files, ...pickers, ...exportFiles },
   window: {
     ...ports.window,
     close: terminateProcess,

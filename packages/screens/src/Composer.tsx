@@ -98,10 +98,13 @@ export function Composer({
   }
 
   function pick(which: 'files' | 'images'): void {
-    setMenuOpen(false)
     const { files } = requirePorts()
     const picking = which === 'images' ? files.pickImages({ multiple: true }) : files.pickFiles()
-    void picking.then(staging.add)
+    // Closed once the picker is done rather than before it opens: iOS presents the picker over the
+    // menu's modal, and one presented while that modal is still dismissing never appears.
+    void picking.then(staging.add).finally(() => {
+      setMenuOpen(false)
+    })
   }
 
   function attach(): void {
