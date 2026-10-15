@@ -602,6 +602,55 @@ export class FakeAccount {
     return message.id
   }
 
+  /**
+   * A message of ours caught partway through sending its files, for a fixture to show.
+   *
+   * The protocol cannot send an attachment yet, so `send` never makes one; this is the only way a
+   * set being uploaded reaches a screen. The first `uploaded` files are on the file server.
+   */
+  seedSending(
+    id: ConversationId,
+    body: string,
+    attachments: Attachment[],
+    sendState: SendState,
+    uploaded: number,
+  ): Message {
+    const now = this.world?.now() ?? Date.now()
+    return this.addMessage(id, {
+      id: nextId(),
+      conversationId: id,
+      author: this.sessionId,
+      timestamp: now,
+      body,
+      outgoing: true,
+      sendState,
+      attachments: attachments.map((attachment, index) => ({
+        ...attachment,
+        uploaded: index < uploaded,
+      })),
+      galleryViewable: galleryViewable(attachments),
+      syncState: 'pending',
+    })
+  }
+
+  /**
+   * libsession's `retry_send`: from `failed` or `interrupted` only, uploading what has no URL yet
+   * and keeping what has. The fake's uploads cannot fail, so a resume always finishes.
+   */
+  resumeSend(messageId: number): boolean {
+    for (const [id, state] of this.conversations) {
+      const message = state.messages.find((m) => m.id === messageId)
+      if (message === undefined) continue
+      if (message.sendState !== 'failed' && message.sendState !== 'interrupted') return false
+      this.updateMessage(id, messageId, {
+        sendState: 'sent',
+        attachments: message.attachments.map((attachment) => ({ ...attachment, uploaded: true })),
+      })
+      return true
+    }
+    return false
+  }
+
   // -- Attachments ---------------------------------------------------------------------------
 
   /** The attachment and the conversation it hangs off, or undefined if there is no such pair. */
