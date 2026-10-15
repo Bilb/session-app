@@ -17,17 +17,24 @@ export interface StagingRefusal {
 export interface Staging {
   files: PickedFile[]
   refused: StagingRefusal
-  /** Everything picked that was not staged, refused or already there, for its copy to go. */
+  /**
+   * Picks that will not be staged and are copies of their own, for the copy to go. Never a pick
+   * whose path is already staged: that path is the staged file's.
+   */
   unused: PickedFile[]
 }
 
-/**
- * Whether two picks are one file. By path, and on mobile by name and size too: both pickers copy
- * each choice to a fresh path, so the same photo picked twice never shares one.
- */
-function sameFile(a: PickedFile, b: PickedFile): boolean {
+export interface StagingOptions {
+  /**
+   * Whether every pick is a fresh copy, as on mobile, where the same photo picked twice never
+   * shares a path. Only then do a name and size say two picks are one file.
+   */
+  picksAreCopies: boolean
+}
+
+function sameFile(a: PickedFile, b: PickedFile, { picksAreCopies }: StagingOptions): boolean {
   if (a.path === b.path) return true
-  return a.size !== undefined && a.size === b.size && a.name === b.name
+  return picksAreCopies && a.size !== undefined && a.size === b.size && a.name === b.name
 }
 
 /**
@@ -38,15 +45,20 @@ function sameFile(a: PickedFile, b: PickedFile): boolean {
  * whose size the platform did not report is let through, since there is nothing to check it
  * against; the upload is what refuses it then.
  */
-export function stage(staged: readonly PickedFile[], picked: readonly PickedFile[]): Staging {
+export function stage(
+  staged: readonly PickedFile[],
+  picked: readonly PickedFile[],
+  options: StagingOptions,
+): Staging {
   const files = [...staged]
   const tooLarge: PickedFile[] = []
   const unused: PickedFile[] = []
   let overLimit = 0
 
   for (const file of picked) {
-    if (files.some((already) => sameFile(already, file))) {
-      unused.push(file)
+    const already = files.find((staged) => sameFile(staged, file, options))
+    if (already !== undefined) {
+      if (already.path !== file.path) unused.push(file)
       continue
     }
     if (file.size !== undefined && encryptedAttachmentSize(file.size) > MAX_ATTACHMENT_BYTES) {

@@ -41,6 +41,7 @@ function Notices({ staging }: { staging: StagingState }) {
       {unreadable === 0 ? null : (
         <ComposerNotice
           message={tr('attachmentsErrorLoad')}
+          announceKey={staging.refusal}
           dismissLabel={tr('close')}
           onDismiss={() => {
             staging.dismiss('unreadable')
@@ -53,6 +54,7 @@ function Notices({ staging }: { staging: StagingState }) {
         <ComposerNotice
           message={tr('attachmentsErrorSize')}
           detail={tooLargeDetail(tooLarge)}
+          announceKey={staging.refusal}
           dismissLabel={tr('close')}
           onDismiss={() => {
             staging.dismiss('tooLarge')
@@ -65,6 +67,7 @@ function Notices({ staging }: { staging: StagingState }) {
         <ComposerNotice
           message={PENDING_COPY.attachmentsErrorLimit(MAX_ATTACHMENTS_PER_MESSAGE)}
           detail={PENDING_COPY.attachmentsNotAdded(overLimit)}
+          announceKey={staging.refusal}
           dismissLabel={tr('close')}
           onDismiss={() => {
             staging.dismiss('overLimit')
@@ -114,13 +117,20 @@ export function Composer({
     if (picking.current) return
     picking.current = true
     const { files } = requirePorts()
-    const chosen = which === 'images' ? files.pickImages({ multiple: true }) : files.pickFiles()
+    const limit = MAX_ATTACHMENTS_PER_MESSAGE - staging.files.length
+    const chosen =
+      which === 'images' ? files.pickImages({ multiple: true, limit }) : files.pickFiles()
     // Closed once the picker is done rather than before it opens: iOS presents the picker over the
     // menu's modal, and one presented while that modal is still dismissing never appears.
     void chosen
-      .then(staging.add, () => {
-        staging.refuseUnreadable(1)
-      })
+      .then(
+        (picked) => {
+          staging.add(picked)
+        },
+        () => {
+          staging.add([], 1)
+        },
+      )
       .finally(() => {
         picking.current = false
         setMenuOpen(false)
@@ -150,6 +160,8 @@ export function Composer({
           testID={ELEMENT.conversation.stagedTray}
           clearTestID={ELEMENT.conversation.stagedClear}
           addTestID={ELEMENT.conversation.stagedAdd}
+          previousTestID={ELEMENT.conversation.stagedPrevious}
+          nextTestID={ELEMENT.conversation.stagedNext}
         >
           {staging.files.map((file, index) => (
             <StagedTile

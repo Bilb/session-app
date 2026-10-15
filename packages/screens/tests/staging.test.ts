@@ -2,7 +2,11 @@ import type { PickedFile } from '@session/app'
 import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
 import { describe, expect, it } from 'vitest'
 
-import { isFull, stage, unstage } from '#src/staging'
+import { isFull, stage as stageWith, unstage } from '#src/staging'
+
+const DESKTOP = { picksAreCopies: false }
+const MOBILE = { picksAreCopies: true }
+const stage = (staged: PickedFile[], picked: PickedFile[]) => stageWith(staged, picked, DESKTOP)
 
 function file(name: string, size?: number): PickedFile {
   return { path: `/picked/${name}`, name, ...(size === undefined ? {} : { size }) }
@@ -58,19 +62,27 @@ describe('staging attachments', () => {
     expect(refused).toMatchObject({ overLimit: 0 })
   })
 
-  it('skips a file already staged rather than refusing it', () => {
+  it('skips a file already staged rather than refusing it, and keeps its file', () => {
     const a = file('a.jpg', 10)
-    const { files: staged, refused } = stage([a], [a, file('b.jpg', 10)])
+    const { files: staged, refused, unused } = stage([a], [a, file('b.jpg', 10)])
     expect(staged.map((f) => f.name)).toEqual(['a.jpg', 'b.jpg'])
     expect(refused).toEqual({ tooLarge: [], overLimit: 0, unreadable: 0 })
+    // The same path is the staged file's own: handing it back to be deleted would delete that.
+    expect(unused).toEqual([])
   })
 
   it('knows the same photo picked twice on mobile, where every pick is a fresh copy', () => {
     const first = { path: '/cache/ImagePicker/A.jpg', name: 'IMG_1.jpg', size: 2_000 }
     const again = { path: '/cache/ImagePicker/B.jpg', name: 'IMG_1.jpg', size: 2_000 }
-    const { files: staged, unused } = stage([first], [again])
+    const { files: staged, unused } = stageWith([first], [again], MOBILE)
     expect(staged).toEqual([first])
     expect(unused).toEqual([again])
+  })
+
+  it('keeps two files of one name and size on desktop, where each is its own path', () => {
+    const one = { ...file('scan.pdf', 500), path: '/home/a/scan.pdf' }
+    const other = { ...file('scan.pdf', 500), path: '/home/b/scan.pdf' }
+    expect(stage([one], [other]).files).toEqual([one, other])
   })
 
   it('hands back every pick it did not stage, so its copy can go', () => {

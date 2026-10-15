@@ -650,13 +650,19 @@ export class FakeAccount {
       const message = state.messages.find((m) => m.id === messageId)
       if (message === undefined) continue
       if (message.sendState !== 'failed' && message.sendState !== 'interrupted') return false
-      for (const attachment of message.attachments)
-        this.cached.add(keyOf({ messageId, index: attachment.index }))
-      this.updateMessage(id, messageId, {
-        sendState: 'sent',
-        syncState: 'sent',
-        attachments: message.attachments.map((attachment) => ({ ...attachment, uploaded: true })),
-      })
+      const finish = () => {
+        for (const attachment of message.attachments)
+          this.cached.add(keyOf({ messageId, index: attachment.index }))
+        this.updateMessage(id, messageId, {
+          sendState: 'sent',
+          syncState: 'sent',
+          attachments: message.attachments.map((attachment) => ({ ...attachment, uploaded: true })),
+        })
+      }
+      // Uploading first, as libsession goes back to it while any file is not up yet.
+      this.updateMessage(id, messageId, { sendState: 'uploading', syncState: 'uploading' })
+      if (this.world) this.world.schedule(1, finish)
+      else finish()
       return true
     }
     return false

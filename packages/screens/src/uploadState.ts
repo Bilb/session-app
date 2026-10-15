@@ -60,7 +60,7 @@ export function uploadStateOf(message: Message, index: number): UploadState {
 export interface UploadSummary {
   uploaded: number
   count: number
-  /** Whether Retry is worth offering. `unsendable` is a missing file, which a retry re-reads. */
+  /** Whether Retry is worth offering. `unsendable` is a missing file: every retry fails on it. */
   retryable: boolean
 }
 

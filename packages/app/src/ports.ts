@@ -39,7 +39,8 @@ export interface PickedFile {
 
 export interface FilesPort {
   pickFiles(options?: { multiple?: boolean }): Promise<PickedFile[]>
-  pickImages(options?: { multiple?: boolean }): Promise<PickedFile[]>
+  /** `limit` is how many more the message can take, which a picker that can stop at it does. */
+  pickImages(options?: { multiple?: boolean; limit?: number | undefined }): Promise<PickedFile[]>
   /**
    * The files behind what was dropped on the window, as `DropZone` handed them over.
    *
@@ -48,8 +49,16 @@ export interface FilesPort {
    */
   droppedFiles(items: readonly unknown[]): Promise<PickedFile[]>
   /**
-   * Lets go of a pick that will not be sent. A mobile picker copies what it hands back into the
-   * cache, and the copy is the app's to delete; a desktop pick is the person's own file and stays.
+   * Whether each pick is a copy the app made, which a fresh path for the same file says nothing
+   * against. True on mobile; on desktop a pick is the person's own file at its own path.
+   */
+  picksAreCopies: boolean
+  /**
+   * Lets go of a pick that will not be sent: deletes the app's copy, where it made one.
+   *
+   * Never for a file a message has been given. libsession reads it only when its upload's turn
+   * comes, maybe in a later run after a retry, so it has to stay until the message is sent,
+   * unsendable or deleted.
    */
   discardPicked(file: PickedFile): void
   /**

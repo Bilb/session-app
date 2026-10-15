@@ -32,6 +32,8 @@ export interface StagedTrayProps {
   testID: string
   clearTestID: string
   addTestID: string
+  previousTestID: string
+  nextTestID: string
 }
 
 interface RailExtent {
@@ -58,6 +60,8 @@ export function StagedTray({
   testID,
   clearTestID,
   addTestID,
+  previousTestID,
+  nextTestID,
 }: StagedTrayProps) {
   const rail = useRef<ElementRef<typeof ScrollView>>(null)
   const [extent, setExtent] = useState<RailExtent>({ offset: 0, visible: 0, content: 0 })
@@ -141,6 +145,7 @@ export function StagedTray({
               circular
               icon={<Icon name={backChevron()} size="sm" color="$textPrimary" />}
               accessibilityLabel={previousLabel}
+              testID={previousTestID}
               onPress={() => {
                 page(-1)
               }}
@@ -161,6 +166,7 @@ export function StagedTray({
               circular
               icon={<Icon name={forwardChevron()} size="sm" color="$textPrimary" />}
               accessibilityLabel={nextLabel}
+              testID={nextTestID}
               onPress={() => {
                 page(1)
               }}

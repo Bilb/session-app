@@ -107,15 +107,17 @@ export function StagedTile({
       borderWidth={TILE_HAIRLINE_WIDTH}
       borderColor="$separatorColor"
       position="relative"
-      role="group"
-      aria-label={label}
       testID={testID}
     >
-      {previewUrl === undefined ? (
-        <DocumentFace name={name} contentType={contentType} sizeLabel={sizeLabel} />
-      ) : (
-        <Image uri={previewUrl} width={STAGED_TILE_SIDE} height={STAGED_TILE_SIDE} fit="cover" />
-      )}
+      {/* Beside the remove button rather than around it: a native screen reader reads a labelled
+          container as one element, and would swallow the button inside. */}
+      <YStack flex={1} role="img" aria-label={label}>
+        {previewUrl === undefined ? (
+          <DocumentFace name={name} contentType={contentType} sizeLabel={sizeLabel} />
+        ) : (
+          <Image uri={previewUrl} width={STAGED_TILE_SIDE} height={STAGED_TILE_SIDE} fit="cover" />
+        )}
+      </YStack>
       <YStack position="absolute" top={0} {...logical({ insetEnd: 0 })}>
         <PressArea onPress={onRemove} accessibilityLabel={removeLabel} testID={removeTestID}>
           {() => (

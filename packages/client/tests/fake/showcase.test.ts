@@ -51,9 +51,13 @@ describe('showcase', () => {
     if (failed === undefined || missing === undefined) throw new Error('fixture is missing a send')
 
     expect(await alice.retrySend(failed.id)).toBe(true)
-    // A missing file is re-read by every retry, so libsession refuses one from `unsendable`.
+    // A missing file fails every retry the same way, so libsession refuses one from `unsendable`.
     expect(await alice.retrySend(missing.id)).toBe(false)
 
+    const resuming = (await alice.getMessages(bob, { limit: 100 })).messages
+    expect(resuming.find((m) => m.id === failed.id)?.sendState).toBe('uploading')
+
+    world.settle()
     const after = (await alice.getMessages(bob, { limit: 100 })).messages
     const resumed = after.find((m) => m.id === failed.id)
     expect(resumed?.sendState).toBe('sent')

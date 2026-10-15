@@ -1,12 +1,10 @@
-import { hexColorToRGB } from '@session/theme-tokens'
 import { YStack } from 'tamagui'
 
 import { Icon } from './Icon'
 import { Text } from './Text'
-import { useTokenColor } from './useTokenColor'
 
 /** How much of the page shows through: enough to see it is still the conversation. */
-const PAGE_SCRIM_OPACITY = 0.9
+const PAGE_OPACITY = 0.9
 
 /** The accent's share of the tint. Text on it is checked against the result, not the accent. */
 const ACCENT_TINT_OPACITY = 0.14
@@ -20,6 +18,22 @@ export interface DropOverlayProps {
   testID?: string | undefined
 }
 
+/** A layer filling its parent, for stacking token colours by opacity instead of mixing them. */
+function Fill({ color, opacity, radius }: { color: string; opacity: number; radius?: string }) {
+  return (
+    <YStack
+      position="absolute"
+      top={0}
+      right={0}
+      bottom={0}
+      left={0}
+      backgroundColor={color}
+      opacity={opacity}
+      {...(radius === undefined ? {} : { borderRadius: radius })}
+    />
+  )
+}
+
 /**
  * What a conversation becomes while files are held over it.
  *
@@ -29,26 +43,21 @@ export interface DropOverlayProps {
  * against the tint, so the edge would vanish exactly where it is the only edge there is.
  */
 export function DropOverlay({ title, hint, testID }: DropOverlayProps) {
-  const page = hexColorToRGB(useTokenColor('$backgroundPrimary'))
-  const accent = hexColorToRGB(useTokenColor('$primaryColor'))
   return (
-    <YStack
-      flex={1}
-      padding="$md"
-      backgroundColor={`rgba(${page}, ${String(PAGE_SCRIM_OPACITY)})`}
-      testID={testID}
-    >
+    <YStack flex={1} padding="$md" position="relative" testID={testID}>
+      <Fill color="$backgroundPrimary" opacity={PAGE_OPACITY} />
       <YStack
         flex={1}
+        position="relative"
         borderWidth={2}
         borderStyle="dashed"
         borderColor="$accentText"
         borderRadius="$xl"
-        backgroundColor={`rgba(${accent}, ${String(ACCENT_TINT_OPACITY)})`}
         alignItems="center"
         justifyContent="center"
         gap="$md"
       >
+        <Fill color="$primaryColor" opacity={ACCENT_TINT_OPACITY} radius="$xl" />
         <YStack
           width={DISC}
           height={DISC}

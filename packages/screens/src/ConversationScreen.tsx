@@ -217,13 +217,11 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
         <DropZone
           enabled={attaching}
           onActive={setDropping}
-          onDrop={(items) => {
+          onDrop={(items, skipped) => {
             void requirePorts()
               .files.droppedFiles(items)
               .then((files) => {
-                staging.add(files)
-                if (files.length < items.length)
-                  staging.refuseUnreadable(items.length - files.length)
+                staging.add(files, skipped + items.length - files.length)
               })
           }}
           overlay={

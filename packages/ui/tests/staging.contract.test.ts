@@ -9,7 +9,9 @@ const source = (file: string) => readFileSync(join(import.meta.dirname, '../src'
 describe('the staged tray', () => {
   it('names each tile and says which file its remove button takes out', () => {
     const tile = source('StagedTile.tsx')
-    expect(tile).toMatch(/role="group"\s+aria-label=\{label\}/)
+    // On the face beside the button, not on the tile around it, which would swallow the button.
+    expect(tile).toMatch(/<YStack flex=\{1\} role="img" aria-label=\{label\}>/)
+    expect(tile).not.toContain('role="group"')
     expect(tile).toContain('accessibilityLabel={removeLabel}')
   })
 
@@ -26,9 +28,10 @@ describe('the staged tray', () => {
 describe('a composer notice', () => {
   const notice = source('ComposerNotice.tsx')
 
-  it('is announced on every platform', () => {
+  it('is announced on every platform, once per refusal', () => {
     expect(notice).toContain('role="alert"')
     expect(notice).toContain('AccessibilityInfo.announceForAccessibility')
+    expect(notice).toMatch(/\}, \[announceKey\]\)/)
   })
 
   it('keeps its words off the danger colour, which fails 4.5:1 on the composer in dark themes', () => {

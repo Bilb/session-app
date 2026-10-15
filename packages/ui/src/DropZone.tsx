@@ -5,6 +5,23 @@ import type { DropZoneProps } from './DropZone.types'
 
 export type { DropZoneProps }
 
+/** The dropped files that are files, and how many were folders. */
+function droppedFiles(transfer: DataTransfer | null): { files: File[]; folders: number } {
+  if (transfer === null) return { files: [], folders: 0 }
+  const items = Array.from(transfer.items).filter((item) => item.kind === 'file')
+  const files: File[] = []
+  let folders = 0
+  for (const item of items) {
+    if (item.webkitGetAsEntry()?.isDirectory === true) {
+      folders += 1
+      continue
+    }
+    const file = item.getAsFile()
+    if (file !== null) files.push(file)
+  }
+  return { files, folders }
+}
+
 function carriesFiles(event: DragEvent): boolean {
   return event.dataTransfer?.types.includes('Files') ?? false
 }
@@ -50,7 +67,8 @@ export function DropZone({ enabled, onActive, onDrop, children, overlay }: DropZ
       event.preventDefault()
       depth = 0
       handlers.current.onActive(false)
-      handlers.current.onDrop(Array.from(event.dataTransfer?.files ?? []))
+      const { files, folders } = droppedFiles(event.dataTransfer)
+      handlers.current.onDrop(files, folders)
     }
 
     element.addEventListener('dragenter', enter)

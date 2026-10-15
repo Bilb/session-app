@@ -36,7 +36,7 @@ export function toPickedFiles(items: readonly unknown[]): PickedFile[] {
         path,
         name: file.name,
         size: file.size,
-        ...(file.type === '' ? {} : { contentType: file.type }),
+        contentType: file.type === '' ? undefined : file.type,
       },
     ]
   })

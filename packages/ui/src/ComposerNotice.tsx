@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { AccessibilityInfo } from 'react-native'
 import { isWeb, XStack, YStack } from 'tamagui'
 
@@ -10,6 +10,8 @@ export interface ComposerNoticeProps {
   message: string
   /** What it was about: a file's name and size, or how many were left out. */
   detail?: string | undefined
+  /** Changes with each refusal, so a second identical one is announced again. */
+  announceKey: number
   onDismiss: () => void
   dismissLabel: string
   testID: string
@@ -25,17 +27,20 @@ export interface ComposerNoticeProps {
 export function ComposerNotice({
   message,
   detail,
+  announceKey,
   onDismiss,
   dismissLabel,
   testID,
   dismissTestID,
 }: ComposerNoticeProps) {
+  const spoken = [message, detail].filter(Boolean).join('. ')
+  const latest = useRef(spoken)
+  latest.current = spoken
   // `role="alert"` is announced on the web; neither mobile screen reader announces a view that
-  // merely appears, and a refused file otherwise just is not in the tray.
+  // merely appears. Keyed on the refusal, not the words: the same file refused twice is two.
   useEffect(() => {
-    if (!isWeb)
-      AccessibilityInfo.announceForAccessibility([message, detail].filter(Boolean).join('. '))
-  }, [message, detail])
+    if (!isWeb) AccessibilityInfo.announceForAccessibility(latest.current)
+  }, [announceKey])
 
   return (
     <XStack
