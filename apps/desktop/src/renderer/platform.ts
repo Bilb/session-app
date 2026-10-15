@@ -4,6 +4,8 @@ import { getLocale, subscribeLocale } from '@session/localization'
 
 import { mediaUrl } from '@session/app/mediaUrl'
 
+import { chooseFiles, toPickedFiles } from './pickedFiles'
+
 const memory = memoryPorts()
 
 /**
@@ -17,9 +19,11 @@ const memory = memoryPorts()
 setPorts(
   memoryPorts({
     files: {
-      // Attaching is not a thing the composer can do yet, so the pickers stay the memory ones
-      // rather than becoming two dialogs nothing opens.
       ...memory.files,
+      pickFiles: async (options) => toPickedFiles(await chooseFiles(options ?? {})),
+      pickImages: async (options) =>
+        toPickedFiles(await chooseFiles({ ...options, accept: 'image/*' })),
+      droppedFiles: (items) => Promise.resolve(toPickedFiles(items)),
       chooseExportLocation: (suggestedName) =>
         window.sessionDesktop.chooseExportLocation(suggestedName),
       revealInFolder: async (path) => {
