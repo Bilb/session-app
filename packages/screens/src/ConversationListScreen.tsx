@@ -1,23 +1,36 @@
 import { routes, useNav } from '@session/app'
 import type { Conversation } from '@session/client'
 import { useConversations, useUnreadRequestCount } from '@session/state'
-import { tr } from '@session/localization'
+import { formatConversationTime, tr, type ConversationTimeOptions } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Avatar, Icon, List, Screen, Separator, Text, XStack, YStack } from '@session/ui'
+import { Avatar, Icon, List, logical, Screen, Separator, Text, XStack, YStack } from '@session/ui'
 
 import { NetworkOverlay } from './NetworkOverlay'
+import { conversationRowState, type UnreadBadge, type UnreadTone } from './conversationRowState'
 import { conversationTitle } from './conversationTitle'
 import { useOpenSettings } from './settings/SettingsRootPage'
+import { SYSTEM_LOCALE, useLocaleChoice } from './useLocale'
 
 /**
  * The height of one row, which the list needs in order to place a scrollbar without measuring.
  *
- * It is `$1.5` of padding top and bottom either side of a 40px avatar - the tallest thing in the
- * row - and both text lines are `numberOfLines={1}`, so nothing here can wrap and change it. A row
- * that grew a second line would need this changed with it; `ConversationRow` is the only place
- * that could, which is why the constant lives beside it.
+ * The design's 72: a 48 avatar - the tallest thing in the row - with 12 above and below. Both text
+ * lines are `numberOfLines={1}`, so nothing here can wrap and change it; `ConversationRow` is the
+ * only place that could, which is why the constant lives beside it.
  */
-const ROW_HEIGHT = 60
+const ROW_HEIGHT_PX = 72
+const AVATAR_SIZE_PX = 48
+/** Each line is this tall whatever it holds, so a row with a pill lines up with one without. */
+const LINE_HEIGHT_PX = 20
+/** The kind glyph's disc, and the pill a count sits in: both the line's height or under it. */
+const KIND_DISC_PX = 18
+const PILL_HEIGHT_PX = LINE_HEIGHT_PX
+/** Takes no width, so a row's contents sit in the same place unread or not. */
+const STRIP_WIDTH_PX = 4
+/** The accent dot on the marked-unread envelope. */
+const MARKED_DOT_PX = 8
+/** The least room between the end of the name's icons and the time. */
+const TIME_GAP_MIN_PX = 8
 
 /**
  * The conversation list.
@@ -31,6 +44,10 @@ export function ConversationListScreen() {
   const unreadRequests = useUnreadRequestCount()
   const nav = useNav()
   const openSettings = useOpenSettings()
+  const localeChoice = useLocaleChoice()
+  // Following the system leaves the locale to the runtime, which knows the device's region as well
+  // as its language; a language picked here says nothing about region, so it is passed as it is.
+  const timeLocale = localeChoice === SYSTEM_LOCALE ? undefined : localeChoice
 
   return (
     <Screen testID={ELEMENT.conversationList.screen}>
@@ -109,12 +126,13 @@ export function ConversationListScreen() {
 
       <List
         data={conversations}
-        itemHeight={ROW_HEIGHT}
+        itemHeight={ROW_HEIGHT_PX}
         keyExtractor={(conversation) => conversation.id}
         renderItem={(conversation, index) => (
           <ConversationRow
             conversation={conversation}
             index={index}
+            timeLocale={timeLocale}
             onPress={() => nav.push(routes.conversation(conversation.id))}
           />
         )}
@@ -130,68 +148,194 @@ export function ConversationListScreen() {
   )
 }
 
+const STRIP_COLOR: Record<UnreadTone, '$primaryColor' | '$textDisabled'> = {
+  notify: '$primaryColor',
+  // Grey, because the conversation is not going to alert: unread, but held quiet by a mute.
+  quiet: '$textDisabled',
+}
+
+const PILL_COLORS: Record<
+  UnreadTone,
+  { ground: '$primaryColor' | '$backgroundNested'; text: '$onAccent' | '$textPrimary' }
+> = {
+  notify: { ground: '$primaryColor', text: '$onAccent' },
+  quiet: { ground: '$backgroundNested', text: '$textPrimary' },
+}
+
+// TODO: pass the reader's own clock and date layout once the appearance settings exist to choose
+// them; until then every row takes the system's.
+const TIME_FORMATS: ConversationTimeOptions = { timeFormat: 'system', dateFormat: 'system' }
+
+function UnreadBadgeView({ badge }: { badge: UnreadBadge }) {
+  if (badge.kind === 'markedUnread')
+    return (
+      // The envelope is the height of the count it replaces, so the line does not move.
+      <XStack
+        width={PILL_HEIGHT_PX}
+        height={PILL_HEIGHT_PX}
+        position="relative"
+        testID={ELEMENT.conversationList.rowMarkedUnread}
+      >
+        <Icon name="mail" size="md" color="$textPrimary" />
+        <XStack
+          position="absolute"
+          top={0}
+          width={MARKED_DOT_PX}
+          height={MARKED_DOT_PX}
+          borderRadius="$full"
+          backgroundColor="$primaryColor"
+          {...logical({ insetEnd: 0 })}
+        />
+      </XStack>
+    )
+
+  const colors = PILL_COLORS[badge.tone]
+  return (
+    <XStack
+      backgroundColor={colors.ground}
+      borderRadius="$full"
+      paddingHorizontal="$xs"
+      minWidth={PILL_HEIGHT_PX}
+      height={PILL_HEIGHT_PX}
+      alignItems="center"
+      justifyContent="center"
+      testID={ELEMENT.conversationList.rowUnreadBadge}
+    >
+      <Text size="$caption" weight="bold" color={colors.text}>
+        {badge.label}
+      </Text>
+    </XStack>
+  )
+}
+
 function ConversationRow({
   conversation,
   index,
+  timeLocale,
   onPress,
 }: {
   conversation: Conversation
   index: number
+  timeLocale: string | undefined
   onPress: () => void
 }) {
   const title = conversationTitle(conversation)
+  const nowMs = Date.now()
+  const row = conversationRowState(conversation, nowMs)
+  const time =
+    conversation.lastActivity > 0
+      ? formatConversationTime(conversation.lastActivity, nowMs, {
+          ...TIME_FORMATS,
+          locale: timeLocale,
+        })
+      : null
 
   return (
     <XStack
-      height={ROW_HEIGHT}
+      height={ROW_HEIGHT_PX}
       paddingHorizontal="$md"
-      gap="$md"
+      gap="$sm"
       alignItems="center"
+      position="relative"
       hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
       pressStyle={{ backgroundColor: '$backgroundTertiary' }}
       cursor="pointer"
       onPress={onPress}
       testID={ELEMENT.conversationList.row(index)}
     >
-      <Avatar id={conversation.id} name={title} />
+      {row.strip === null ? null : (
+        <XStack
+          position="absolute"
+          top={0}
+          bottom={0}
+          width={STRIP_WIDTH_PX}
+          backgroundColor={STRIP_COLOR[row.strip]}
+          testID={ELEMENT.conversationList.rowUnreadStrip}
+          {...logical({ insetStart: 0 })}
+        />
+      )}
+
+      {/* TODO: draw a group as its first two members stacked, with Avatar's `members`, once the
+          bridge carries a group's member list. */}
+      <Avatar id={conversation.id} name={title} size={AVATAR_SIZE_PX} />
 
       <YStack flex={1} gap="$2xs">
-        <Text
-          size="$body"
-          weight={conversation.unreadCount > 0 ? 'bold' : 'regular'}
-          numberOfLines={1}
-          testID={ELEMENT.conversationList.rowName}
-        >
-          {title}
-        </Text>
-        {conversation.snippet === undefined ? null : (
+        <XStack height={LINE_HEIGHT_PX} alignItems="center" gap="$2xs">
+          {row.kindGlyph === null ? null : (
+            <XStack
+              width={KIND_DISC_PX}
+              height={KIND_DISC_PX}
+              borderRadius="$full"
+              backgroundColor="$textPrimary"
+              alignItems="center"
+              justifyContent="center"
+            >
+              <Icon name={row.kindGlyph} size="xs" color="$backgroundPrimary" />
+            </XStack>
+          )}
+          {/* The name is the only thing on the line that gives way, so the icons after it never
+              compress. */}
           <Text
-            size="$label"
-            tone="secondary"
+            size="$bodyLarge"
+            weight={row.emphasised ? 'bold' : 'semibold'}
             numberOfLines={1}
-            testID={ELEMENT.conversationList.rowSnippet}
+            flexShrink={1}
+            testID={ELEMENT.conversationList.rowName}
           >
-            {conversation.snippet}
+            {title}
           </Text>
-        )}
-      </YStack>
-
-      {conversation.unreadCount > 0 ? (
-        <XStack
-          backgroundColor="$primaryColor"
-          borderRadius="$full"
-          paddingHorizontal="$xs"
-          minWidth={20}
-          height={20}
-          alignItems="center"
-          justifyContent="center"
-          testID={ELEMENT.conversationList.rowUnreadBadge}
-        >
-          <Text size="$caption" weight="bold" color="$onAccent">
-            {conversation.unreadCount}
-          </Text>
+          {/* TODO: show the Pro badge after the name once the bridge carries a contact's Pro
+              status. */}
+          {row.pinned ? (
+            <Icon
+              name="pin"
+              size="sm"
+              color="$textSecondary"
+              testID={ELEMENT.conversationList.rowPinned}
+            />
+          ) : null}
+          {row.muted ? (
+            <Icon
+              name="volumeX"
+              size="sm"
+              color="$textSecondary"
+              testID={ELEMENT.conversationList.rowMuted}
+            />
+          ) : null}
+          <XStack flexGrow={1} minWidth={TIME_GAP_MIN_PX} />
+          {time === null ? null : (
+            <Text
+              size="$label"
+              tone={row.emphasised ? 'primary' : 'secondary'}
+              numberOfLines={1}
+              testID={ELEMENT.conversationList.rowTime}
+            >
+              {time}
+            </Text>
+          )}
         </XStack>
-      ) : null}
+
+        <XStack height={LINE_HEIGHT_PX} alignItems="center" gap="$2xs">
+          {/* TODO: prefix the snippet with "You:" or the sender, and word an attachment-only
+              message, once the bridge carries the snippet's author and attachment fields. */}
+          {conversation.snippet === undefined ? (
+            <XStack flex={1} />
+          ) : (
+            <Text
+              size="$body"
+              tone={row.emphasised ? 'primary' : 'secondary'}
+              numberOfLines={1}
+              flex={1}
+              testID={ELEMENT.conversationList.rowSnippet}
+            >
+              {conversation.snippet}
+            </Text>
+          )}
+          {/* TODO: show the last message's sent, sending, read or failed icon here on a read row
+              once the conversation data carries that message's send and sync state. */}
+          {row.badge === null ? null : <UnreadBadgeView badge={row.badge} />}
+        </XStack>
+      </YStack>
     </XStack>
   )
 }
