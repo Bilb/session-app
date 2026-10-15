@@ -616,20 +616,28 @@ export class FakeAccount {
     uploaded: number,
   ): Message {
     const now = this.world?.now() ?? Date.now()
+    const messageId = nextId()
+    // As libsession leaves them: an uploaded file is in the cache, kept there by the upload, and
+    // one that is not up yet has no size, which is the uploaded pointer's to report.
+    const seeded = attachments.map((attachment, index) => {
+      if (index < uploaded) {
+        this.cached.add(keyOf({ messageId, index: attachment.index }))
+        return { ...attachment, uploaded: true }
+      }
+      const { sizeBytes: _unknownYet, ...rest } = attachment
+      return { ...rest, uploaded: false }
+    })
     return this.addMessage(id, {
-      id: nextId(),
+      id: messageId,
       conversationId: id,
       author: this.sessionId,
       timestamp: now,
       body,
       outgoing: true,
       sendState,
-      attachments: attachments.map((attachment, index) => ({
-        ...attachment,
-        uploaded: index < uploaded,
-      })),
-      galleryViewable: galleryViewable(attachments),
-      syncState: 'pending',
+      attachments: seeded,
+      galleryViewable: galleryViewable(seeded),
+      syncState: sendState,
     })
   }
 
@@ -642,8 +650,11 @@ export class FakeAccount {
       const message = state.messages.find((m) => m.id === messageId)
       if (message === undefined) continue
       if (message.sendState !== 'failed' && message.sendState !== 'interrupted') return false
+      for (const attachment of message.attachments)
+        this.cached.add(keyOf({ messageId, index: attachment.index }))
       this.updateMessage(id, messageId, {
         sendState: 'sent',
+        syncState: 'sent',
         attachments: message.attachments.map((attachment) => ({ ...attachment, uploaded: true })),
       })
       return true

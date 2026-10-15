@@ -19,7 +19,7 @@ describe('staging attachments', () => {
       [file('b.pdf', 10), file('c.mp4', 10), file('d.m4a', 10)],
     )
     expect(staged.map((f) => f.name)).toEqual(['a.jpg', 'b.pdf', 'c.mp4', 'd.m4a'])
-    expect(refused).toEqual({ tooLarge: [], overLimit: 0 })
+    expect(refused).toEqual({ tooLarge: [], overLimit: 0, unreadable: 0 })
   })
 
   it('refuses a file over the file server limit and keeps the rest', () => {
@@ -29,8 +29,12 @@ describe('staging attachments', () => {
     expect(refused.tooLarge).toEqual([big])
   })
 
-  it('takes a file of exactly the limit', () => {
-    expect(stage([], [file('edge.bin', MAX_ATTACHMENT_BYTES)]).files).toHaveLength(1)
+  it('measures a file by what it uploads as, which padding takes over the limit first', () => {
+    expect(stage([], [file('fits.bin', 9_956_278)]).files).toHaveLength(1)
+    expect(stage([], [file('pads-over.bin', 9_956_279)]).refused.tooLarge).toHaveLength(1)
+    expect(
+      stage([], [file('exactly-10mb.bin', MAX_ATTACHMENT_BYTES)]).refused.tooLarge,
+    ).toHaveLength(1)
   })
 
   it('lets through a file whose size the platform did not report', () => {
@@ -58,7 +62,21 @@ describe('staging attachments', () => {
     const a = file('a.jpg', 10)
     const { files: staged, refused } = stage([a], [a, file('b.jpg', 10)])
     expect(staged.map((f) => f.name)).toEqual(['a.jpg', 'b.jpg'])
-    expect(refused).toEqual({ tooLarge: [], overLimit: 0 })
+    expect(refused).toEqual({ tooLarge: [], overLimit: 0, unreadable: 0 })
+  })
+
+  it('knows the same photo picked twice on mobile, where every pick is a fresh copy', () => {
+    const first = { path: '/cache/ImagePicker/A.jpg', name: 'IMG_1.jpg', size: 2_000 }
+    const again = { path: '/cache/ImagePicker/B.jpg', name: 'IMG_1.jpg', size: 2_000 }
+    const { files: staged, unused } = stage([first], [again])
+    expect(staged).toEqual([first])
+    expect(unused).toEqual([again])
+  })
+
+  it('hands back every pick it did not stage, so its copy can go', () => {
+    const big = file('big.mov', MAX_ATTACHMENT_BYTES)
+    const { unused } = stage(files(32), [big, file('extra.jpg', 10)])
+    expect(unused.map((f) => f.name)).toEqual(['big.mov', 'extra.jpg'])
   })
 
   it('removes one file by its path', () => {

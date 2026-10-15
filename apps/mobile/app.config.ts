@@ -254,14 +254,14 @@ export default ({ config }: ConfigContext): ExpoConfig =>
               granularPermissions: ['photo', 'video'],
             },
           ],
-          // The photo library half of +. iOS's picker runs out of process and needs no library
-          // access to pick, but the plugin writes the purpose strings, so they are the catalogue's.
-          // There is no camera or microphone behind + yet, so neither is declared through it.
+          // The photo library half of +. Its purpose strings are the catalogue's. `false` does not
+          // mean "not declared here": the plugin blocks that permission for every module, and the
+          // restore screen's QR scanner needs CAMERA. RECORD_AUDIO is blocked, as expo-camera's is.
           [
             'expo-image-picker',
             {
               photosPermission: englishPermission('NSPhotoLibraryUsageDescription'),
-              cameraPermission: false,
+              cameraPermission: englishPermission('NSCameraUsageDescription'),
               microphonePermission: false,
             },
           ],

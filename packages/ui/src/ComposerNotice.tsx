@@ -1,4 +1,6 @@
-import { XStack, YStack } from 'tamagui'
+import { useEffect } from 'react'
+import { AccessibilityInfo } from 'react-native'
+import { isWeb, XStack, YStack } from 'tamagui'
 
 import { Button } from './Button'
 import { Icon } from './Icon'
@@ -28,6 +30,13 @@ export function ComposerNotice({
   testID,
   dismissTestID,
 }: ComposerNoticeProps) {
+  // `role="alert"` is announced on the web; neither mobile screen reader announces a view that
+  // merely appears, and a refused file otherwise just is not in the tray.
+  useEffect(() => {
+    if (!isWeb)
+      AccessibilityInfo.announceForAccessibility([message, detail].filter(Boolean).join('. '))
+  }, [message, detail])
+
   return (
     <XStack
       role="alert"

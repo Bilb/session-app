@@ -160,6 +160,7 @@ describe('screen copy', () => {
       'attachmentsUploaded',
       'attachmentsFailedCount',
       'attachmentsDropHint',
+      'attachmentRemove',
       'autoDownloadAllFiles',
       'autoDownloadImagesOnly',
     ])

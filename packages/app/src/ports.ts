@@ -28,8 +28,8 @@ export interface PickedFile {
   /** A real filesystem path: libsession takes paths, not blobs. */
   path: string
   name: string
-  contentType?: string
-  size?: number
+  contentType?: string | undefined
+  size?: number | undefined
   /**
    * A URL the platform can draw the file from, where it is a picture. Nothing for anything else:
    * a video has no still yet, so it stages as a document.
@@ -47,6 +47,11 @@ export interface FilesPort {
    * not on disk -- a picture dragged out of a browser -- has no path and is left out.
    */
   droppedFiles(items: readonly unknown[]): Promise<PickedFile[]>
+  /**
+   * Lets go of a pick that will not be sent. A mobile picker copies what it hands back into the
+   * cache, and the copy is the app's to delete; a desktop pick is the person's own file and stays.
+   */
+  discardPicked(file: PickedFile): void
   /**
    * Where to export a file to; null when the person cancelled.
    *

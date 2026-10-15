@@ -75,8 +75,10 @@ export const PENDING_COPY = {
   /** Beside Show All when a file it hides failed. */
   attachmentsFailedCount: (count: number): string => `${String(count)} failed`,
   /** Under the drop overlay's title, which is `attachmentsAdd`. */
-  attachmentsDropHint: (max: number): string =>
-    `Up to ${String(max)} files of any type, each under 10MB`,
+  attachmentsDropHint: (max: number, size: string): string =>
+    `Up to ${String(max)} files of any type, each under ${size}`,
+  /** A staged tile's remove button, which has to say which file. */
+  attachmentRemove: (name: string): string => `Remove ${name}`,
   /** The auto-download prompt's two answers to what Yes fetches. */
   autoDownloadAllFiles: 'All files',
   autoDownloadImagesOnly: 'Images only',

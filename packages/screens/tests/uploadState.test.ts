@@ -1,7 +1,13 @@
 import type { Attachment, Message } from '@session/client'
 import { describe, expect, it } from 'vitest'
 
-import { failsPast, isUploadPhase, uploadStateOf, uploadSummary } from '#src/uploadState'
+import {
+  failsPast,
+  isUploadPhase,
+  uploadStateOf,
+  uploadSummary,
+  whileSending,
+} from '#src/uploadState'
 
 function attachment(index: number, uploaded: boolean): Attachment {
   return {
@@ -97,5 +103,19 @@ describe('the set’s line', () => {
   it('says when the failure is behind Show All', () => {
     expect(failsPast(sending('failed', 32, 30), 5)).toBe(true)
     expect(failsPast(sending('failed', 32, 2), 5)).toBe(false)
+  })
+})
+
+describe('an album of ours while it sends', () => {
+  it('opens what is here and offers nothing for what is not', () => {
+    const ready = { state: 'ready', doneBytes: 0, totalBytes: 0 } as const
+    expect(whileSending(ready)).toBe(ready)
+    for (const state of ['idle', 'failed', 'fetching'] as const) {
+      expect(whileSending({ state, doneBytes: 5, totalBytes: 10 }), state).toEqual({
+        state: 'unavailable',
+        doneBytes: 0,
+        totalBytes: 0,
+      })
+    }
   })
 })

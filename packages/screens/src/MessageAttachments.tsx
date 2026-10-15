@@ -1,5 +1,5 @@
 import { ALBUM_WIDTH } from '@session/basic-types'
-import type { Message } from '@session/client'
+import type { Attachment, Message } from '@session/client'
 import { SPACE_SCALE, YStack } from '@session/ui'
 
 import { AttachmentFooter, ROW_OVERHANG } from './AttachmentFooter'
@@ -8,6 +8,7 @@ import { AttachmentPill } from './AttachmentPill'
 import { attachmentView, canChooseView } from './attachmentView'
 import { useConversationUi } from './conversationUi'
 import { MessageAlbum } from './MessageAlbum'
+import { isUploadPhase, whileSending } from './uploadState'
 import { useAttachmentFooter } from './useAttachmentFooter'
 import { useAttachmentSet } from './useAttachmentSet'
 import { useViewChoice } from './viewChoices'
@@ -25,6 +26,10 @@ export function MessageAttachments({ message }: { message: Message }) {
   const footer = useAttachmentFooter(message, attachmentSet)
   const view = attachmentView(message, useViewChoice(ui.views, message.id))
   const overflows = view === 'list' && message.attachments.length > LIST_MAX_ROWS
+  const sending = isUploadPhase(message)
+  const albumFetch = sending
+    ? (attachment: Attachment) => whileSending(fetchFor(attachment))
+    : fetchFor
 
   // Once rather than per shape: a message with nothing attached would otherwise draw an empty
   // album, because "every attachment can be shown" is true of no attachments at all.
@@ -40,17 +45,18 @@ export function MessageAttachments({ message }: { message: Message }) {
         <MessageAlbum
           message={message}
           onAccent={message.outgoing}
-          fetchFor={fetchFor}
+          fetchFor={albumFetch}
           setState={set.state}
           // Opens only a picture that is here, as the legacy clients do. A tile is the whole set's,
           // so tapping one that is not fetches every attachment the album stands for.
           onOpen={(index) => {
             const tapped = message.attachments.find((a) => a.index === index)
-            if (tapped !== undefined && fetchFor(tapped).state === 'ready')
+            if (tapped !== undefined && albumFetch(tapped).state === 'ready')
               ui.openViewer(message.id, index)
-            else downloadMissing()
+            else if (!sending) downloadMissing()
           }}
-          control={<AttachmentPill set={set} />}
+          // The pill is the download's: while sending, the footer's count says the same.
+          control={sending ? undefined : <AttachmentPill set={set} />}
         />
       ) : (
         <AttachmentList

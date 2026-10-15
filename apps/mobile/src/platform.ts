@@ -146,7 +146,6 @@ sweepStagedExports()
 
 setPorts({
   ...ports,
-  // The pickers stay the memory ones until the composer can attach.
   files: { ...ports.files, ...pickers, ...exportFiles },
   window: {
     ...ports.window,

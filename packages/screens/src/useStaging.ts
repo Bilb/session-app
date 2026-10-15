@@ -1,15 +1,22 @@
-import type { PickedFile } from '@session/app'
+import { requirePorts, type PickedFile } from '@session/app'
 import { useCallback, useRef, useState } from 'react'
 
 import { stage, unstage, type StagingRefusal } from './staging'
 
-const NOTHING_REFUSED: StagingRefusal = { tooLarge: [], overLimit: 0 }
+function discard(files: readonly PickedFile[]): void {
+  const { files: port } = requirePorts()
+  for (const file of files) port.discardPicked(file)
+}
+
+const NOTHING_REFUSED: StagingRefusal = { tooLarge: [], overLimit: 0, unreadable: 0 }
 
 export interface StagingState {
   files: PickedFile[]
   /** What the last pick or drop left out. Replaced by the next one, so it is always current. */
   refused: StagingRefusal
   add: (picked: readonly PickedFile[]) => void
+  /** Records that `count` items given to the composer could not be read. */
+  refuseUnreadable: (count: number) => void
   remove: (path: string) => void
   clear: () => void
   dismiss: (kind: keyof StagingRefusal) => void
@@ -30,23 +37,30 @@ export function useStaging(): StagingState {
     latest.current = next.files
     setFiles(next.files)
     setRefused(next.refused)
+    discard(next.unused)
   }, [])
 
   return {
     files,
     refused,
     add,
+    // Merged rather than replacing: a drop can bring readable files and refusals together.
+    refuseUnreadable: (count) => {
+      setRefused((current) => ({ ...current, unreadable: count }))
+    },
     remove: (path) => {
-      setFiles((current) => unstage(current, path))
+      discard(latest.current.filter((file) => file.path === path))
+      latest.current = unstage(latest.current, path)
+      setFiles(latest.current)
     },
     clear: () => {
+      discard(latest.current)
+      latest.current = []
       setFiles([])
       setRefused(NOTHING_REFUSED)
     },
     dismiss: (kind) => {
-      setRefused((current) =>
-        kind === 'tooLarge' ? { ...current, tooLarge: [] } : { ...current, overLimit: 0 },
-      )
+      setRefused((current) => ({ ...current, [kind]: NOTHING_REFUSED[kind] }))
     },
   }
 }

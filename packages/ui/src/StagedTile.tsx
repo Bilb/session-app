@@ -28,7 +28,10 @@ export interface StagedTileProps {
    * file that is not a picture.
    */
   previewUrl?: string | undefined
+  /** What a screen reader calls the tile: its name, and its size where known. */
+  label: string
   onRemove: () => void
+  /** Names the file, since every tile has one and "Remove" six times says nothing. */
   removeLabel: string
   testID: string
   removeTestID: string
@@ -87,6 +90,7 @@ export function StagedTile({
   contentType,
   sizeLabel,
   previewUrl,
+  label,
   onRemove,
   removeLabel,
   testID,
@@ -103,6 +107,8 @@ export function StagedTile({
       borderWidth={TILE_HAIRLINE_WIDTH}
       borderColor="$separatorColor"
       position="relative"
+      role="group"
+      aria-label={label}
       testID={testID}
     >
       {previewUrl === undefined ? (

@@ -1,16 +1,33 @@
 import type { PickedFile } from '@session/app'
-import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
+import {
+  encryptedAttachmentSize,
+  MAX_ATTACHMENT_BYTES,
+  MAX_ATTACHMENTS_PER_MESSAGE,
+} from '@session/basic-types'
 
 /** What a pick or a drop left out, and why. */
 export interface StagingRefusal {
   tooLarge: PickedFile[]
   /** How many were left out because the message was full. */
   overLimit: number
+  /** How many could not be read at all: a drop with no file on disk, or a picker that failed. */
+  unreadable: number
 }
 
 export interface Staging {
   files: PickedFile[]
   refused: StagingRefusal
+  /** Everything picked that was not staged, refused or already there, for its copy to go. */
+  unused: PickedFile[]
+}
+
+/**
+ * Whether two picks are one file. By path, and on mobile by name and size too: both pickers copy
+ * each choice to a fresh path, so the same photo picked twice never shares one.
+ */
+function sameFile(a: PickedFile, b: PickedFile): boolean {
+  if (a.path === b.path) return true
+  return a.size !== undefined && a.size === b.size && a.name === b.name
 }
 
 /**
@@ -23,25 +40,29 @@ export interface Staging {
  */
 export function stage(staged: readonly PickedFile[], picked: readonly PickedFile[]): Staging {
   const files = [...staged]
-  const seen = new Set(staged.map((file) => file.path))
   const tooLarge: PickedFile[] = []
+  const unused: PickedFile[] = []
   let overLimit = 0
 
   for (const file of picked) {
-    if (seen.has(file.path)) continue
-    if (file.size !== undefined && file.size > MAX_ATTACHMENT_BYTES) {
+    if (files.some((already) => sameFile(already, file))) {
+      unused.push(file)
+      continue
+    }
+    if (file.size !== undefined && encryptedAttachmentSize(file.size) > MAX_ATTACHMENT_BYTES) {
       tooLarge.push(file)
+      unused.push(file)
       continue
     }
     if (files.length >= MAX_ATTACHMENTS_PER_MESSAGE) {
       overLimit += 1
+      unused.push(file)
       continue
     }
-    seen.add(file.path)
     files.push(file)
   }
 
-  return { files, refused: { tooLarge, overLimit } }
+  return { files, refused: { tooLarge, overLimit, unreadable: 0 }, unused }
 }
 
 export function unstage(staged: readonly PickedFile[], path: string): PickedFile[] {

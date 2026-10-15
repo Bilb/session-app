@@ -17,7 +17,7 @@ const ROW_STATE: Record<UploadState, FileRowState> = {
   uploading: 'fetching',
   queued: 'queued',
   failed: 'failed',
-  notSent: 'queued',
+  notSent: 'unsent',
 }
 
 function caption(attachment: Attachment, state: UploadState): string {

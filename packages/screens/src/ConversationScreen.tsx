@@ -1,5 +1,5 @@
 import { flag, requirePorts } from '@session/app'
-import { MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
+import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
 import type { ConversationId, Message } from '@session/client'
 import { useConversation, useMessage, useMessages, useSessionActions } from '@session/state'
 import { tr } from '@session/localization'
@@ -19,6 +19,7 @@ import { memo, useMemo, useState } from 'react'
 
 import { AttachmentSheet } from './AttachmentSheet'
 import { Composer } from './Composer'
+import { formatBytes } from './formatBytes'
 import { PENDING_COPY } from './pendingCopy'
 import { isUploadPhase } from './uploadState'
 import { useStaging } from './useStaging'
@@ -217,13 +218,22 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
           enabled={attaching}
           onActive={setDropping}
           onDrop={(items) => {
-            void requirePorts().files.droppedFiles(items).then(staging.add)
+            void requirePorts()
+              .files.droppedFiles(items)
+              .then((files) => {
+                staging.add(files)
+                if (files.length < items.length)
+                  staging.refuseUnreadable(items.length - files.length)
+              })
           }}
           overlay={
             dropping ? (
               <DropOverlay
                 title={tr('attachmentsAdd')}
-                hint={PENDING_COPY.attachmentsDropHint(MAX_ATTACHMENTS_PER_MESSAGE)}
+                hint={PENDING_COPY.attachmentsDropHint(
+                  MAX_ATTACHMENTS_PER_MESSAGE,
+                  formatBytes(MAX_ATTACHMENT_BYTES),
+                )}
                 testID={ELEMENT.conversation.dropOverlay}
               />
             ) : undefined

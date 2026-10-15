@@ -21,6 +21,8 @@ export type FileRowState =
   | 'queued'
   /** A file of a message being sent that is on the file server while the rest are not. */
   | 'uploaded'
+  /** A file of a message that stopped sending before reaching it. Nothing is waiting on it. */
+  | 'unsent'
 
 /**
  * The square the glyph sits in. The list's thumbnail is the same size, so the two columns line up.
@@ -75,6 +77,7 @@ export function fileRowControl(state: FileRowState): IconName | 'progress' | nul
     case 'unavailable':
     case 'queued':
     case 'uploaded':
+    case 'unsent':
       return null
   }
 }

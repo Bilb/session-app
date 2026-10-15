@@ -1,5 +1,7 @@
 import type { Message } from '@session/client'
 
+import type { Fetch } from './attachmentFetch'
+
 /**
  * Where one file of a message being sent has got to.
  *
@@ -83,4 +85,14 @@ export function firstFailedPosition(message: Message): number | undefined {
     (attachment) => uploadStateOf(message, attachment.index) === 'failed',
   )
   return position < 0 ? undefined : position
+}
+
+/**
+ * A file of ours as an album draws it while the set is sending: here, or quiet.
+ *
+ * Never a download: a file of ours that is not cached has no URL until it uploads, so fetching it
+ * fails, and asking which files this conversation should fetch is not a question about our own.
+ */
+export function whileSending(fetch: Fetch): Fetch {
+  return fetch.state === 'ready' ? fetch : { state: 'unavailable', doneBytes: 0, totalBytes: 0 }
 }

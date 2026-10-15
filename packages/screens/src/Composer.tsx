@@ -13,7 +13,7 @@ import {
   XStack,
   YStack,
 } from '@session/ui'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { AttachMenu } from './AttachMenu'
 import { formatBytes } from './formatBytes'
@@ -35,9 +35,20 @@ function tooLargeDetail(files: readonly PickedFile[]): string | undefined {
 }
 
 function Notices({ staging }: { staging: StagingState }) {
-  const { tooLarge, overLimit } = staging.refused
+  const { tooLarge, overLimit, unreadable } = staging.refused
   return (
     <>
+      {unreadable === 0 ? null : (
+        <ComposerNotice
+          message={tr('attachmentsErrorLoad')}
+          dismissLabel={tr('close')}
+          onDismiss={() => {
+            staging.dismiss('unreadable')
+          }}
+          testID={ELEMENT.conversation.composerNotice('unreadable')}
+          dismissTestID={ELEMENT.conversation.composerNoticeDismiss('unreadable')}
+        />
+      )}
       {tooLarge.length === 0 ? null : (
         <ComposerNotice
           message={tr('attachmentsErrorSize')}
@@ -82,6 +93,7 @@ export function Composer({
 }) {
   const [draft, setDraft] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
+  const picking = useRef(false)
   const full = isFull(staging.files)
   // TODO: send the staged files with the body once `sendMessage` can carry attachments. Until
   // then a message with files staged waits, rather than going out without them.
@@ -98,13 +110,21 @@ export function Composer({
   }
 
   function pick(which: 'files' | 'images'): void {
+    // One picker at a time: a second press while one is up is refused by the system picker.
+    if (picking.current) return
+    picking.current = true
     const { files } = requirePorts()
-    const picking = which === 'images' ? files.pickImages({ multiple: true }) : files.pickFiles()
+    const chosen = which === 'images' ? files.pickImages({ multiple: true }) : files.pickFiles()
     // Closed once the picker is done rather than before it opens: iOS presents the picker over the
     // menu's modal, and one presented while that modal is still dismissing never appears.
-    void picking.then(staging.add).finally(() => {
-      setMenuOpen(false)
-    })
+    void chosen
+      .then(staging.add, () => {
+        staging.refuseUnreadable(1)
+      })
+      .finally(() => {
+        picking.current = false
+        setMenuOpen(false)
+      })
   }
 
   function attach(): void {
@@ -138,7 +158,8 @@ export function Composer({
               contentType={file.contentType}
               sizeLabel={sizeOf(file)}
               previewUrl={file.previewUrl}
-              removeLabel={tr('remove')}
+              label={[file.name, sizeOf(file)].filter(Boolean).join(', ')}
+              removeLabel={PENDING_COPY.attachmentRemove(file.name)}
               onRemove={() => {
                 staging.remove(file.path)
               }}

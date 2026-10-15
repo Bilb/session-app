@@ -44,8 +44,9 @@ describe('a file row’s one control', () => {
     expect(fileRowMarker('uploaded')).toBe('check')
   })
 
-  it('marks nothing where there is a control', () => {
-    for (const state of ['idle', 'fetching', 'ready', 'failed', 'unavailable'] as const) {
+  it('marks nothing where there is a control, or where nothing is coming', () => {
+    // A clock on a file that will never send would read as waiting its turn.
+    for (const state of ['idle', 'fetching', 'ready', 'failed', 'unavailable', 'unsent'] as const) {
       expect(fileRowMarker(state), state).toBeNull()
     }
   })

@@ -5,6 +5,7 @@ import { ScrollView, XStack, YStack } from 'tamagui'
 import { backChevron, forwardChevron } from './backChevron'
 import { Button } from './Button'
 import { Icon } from './Icon'
+import { isLayoutRtl } from './layoutDirection'
 import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
 import { STAGED_TILE_SIDE, TRAY_SCROLL_BUTTONS } from './stagingMetrics'
@@ -65,7 +66,9 @@ export function StagedTray({
 
   function page(direction: 1 | -1): void {
     const x = Math.max(0, extent.offset + direction * extent.visible * PAGE_FRACTION)
-    rail.current?.scrollTo({ x, animated: true })
+    // Chromium counts a right-to-left scroller's offset down from 0, and react-native-web passes
+    // it through as it is.
+    rail.current?.scrollTo({ x: isLayoutRtl() ? -x : x, animated: true })
   }
 
   return (
@@ -87,7 +90,7 @@ export function StagedTray({
           onScroll={(event) => {
             const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent
             setExtent({
-              offset: contentOffset.x,
+              offset: Math.abs(contentOffset.x),
               visible: layoutMeasurement.width,
               content: contentSize.width,
             })
