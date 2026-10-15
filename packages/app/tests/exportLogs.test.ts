@@ -41,6 +41,7 @@ function withLogs(
             lastLine: '2026-10-09T00:00:09.000Z last',
           }),
         deliver,
+        deliversBy: 'saveDialog',
       },
       diagnostics:
         diagnostics ??
@@ -104,6 +105,28 @@ describe('exportLogs', () => {
       'exported',
     )
     expect(header).toContain('  Config sizes   unknown (could not be read)')
+  })
+
+  it("asks the store for the attachment cache's limit, and leaves it out when it can't answer", async () => {
+    let header = ''
+    const deliver = (_name: string, parts: readonly ExportPart[]) => {
+      header = (parts[0] as { text: string }).text
+      return Promise.resolve(true)
+    }
+    withLogs(deliver)
+    await exportLogs({ attachmentsLimit: () => Promise.resolve(1_000_000_000) })
+    expect(header).toMatch(/^ {4}Attachments .*\(limit 1\.0 GB\)$/m)
+
+    // No limit set, and a failed start whose store cannot answer: the row says no limit at all.
+    for (const attachmentsLimit of [
+      () => Promise.resolve(undefined),
+      () => Promise.reject(new Error('no database')),
+    ]) {
+      withLogs(deliver)
+      expect(await exportLogs({ attachmentsLimit })).toBe('exported')
+      expect(header).toMatch(/^ {4}Attachments /m)
+      expect(header).not.toContain('(limit')
+    }
   })
 
   it('says when the person cancelled, and when the platform failed', async () => {

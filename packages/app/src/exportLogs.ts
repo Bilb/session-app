@@ -20,6 +20,11 @@ export type ExportOutcome = 'exported' | 'cancelled' | 'unavailable' | 'failed'
 export interface ExportSources {
   /** Each config and its size, from the store. A failed start rejects, and the row says unknown. */
   configSizes?: (() => Promise<readonly { name: string; bytes: number }[]>) | undefined
+  /**
+   * The attachment cache's limit, from the store: undefined where there is none. A failed start
+   * rejects, and the header leaves the limit out.
+   */
+  attachmentsLimit?: (() => Promise<number | undefined>) | undefined
 }
 
 /**
@@ -64,7 +69,10 @@ export async function exportLogs(sources: ExportSources = {}): Promise<ExportOut
       exportedAtMs: now,
       utcOffsetMinutes: -new Date(now).getTimezoneOffset(),
       network: network.name,
-      storage: { ...storage, attachmentsLimitBytes: null },
+      storage: {
+        ...storage,
+        attachmentsLimitBytes: (await sources.attachmentsLimit?.().catch(() => null)) ?? null,
+      },
       // Unknown rather than empty where it could not be asked: before an account there are none.
       configSizes: (await sources.configSizes?.().catch(() => null)) ?? null,
       logs: { plan, ...span },

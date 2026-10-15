@@ -205,6 +205,7 @@ const ports = memoryPorts({
             })
             return true
           },
+    deliversBy: 'shareSheet',
   },
   diagnostics: { snapshot: diagnosticsSnapshot },
   // The same keychain item store.ts opens the database with, so there is one key.

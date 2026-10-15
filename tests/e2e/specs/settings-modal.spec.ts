@@ -1,6 +1,7 @@
-import { mkdtempSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { gunzipSync } from 'node:zlib'
 
 import { _electron, expect, test } from '@playwright/test'
 import { ELEMENT } from '@session/test-ids'
@@ -24,7 +25,7 @@ interface PageGlobals {
  * The two stacks interacting inside the platform's modal, which only an e2e run can see. One pass
  * rather than four specs because each step needs the state the last one left.
  */
-test('settings opens over the list, pushes Help, and asks on top of itself', async () => {
+test('settings opens over the list, pushes Help, exports logs from it, and asks on top of itself', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'session-settings-modal-'))
   const app = await _electron.launch({
     args: [
@@ -67,6 +68,19 @@ test('settings opens over the list, pushes Help, and asks on top of itself', asy
 
     await page.getByTestId(ELEMENT.settings.row('help')).first().click()
     await expect(page.getByTestId(ELEMENT.help.link('faq')).first()).toBeVisible()
+
+    // Help's Export Logs writes the same export the startup-failure screen does, from a running
+    // app. The save dialog is answered here, as a person would.
+    const exported = join(dataDir, 'exported.log.gz')
+    await app.evaluate(({ dialog }, path) => {
+      dialog.showSaveDialog = () => Promise.resolve({ canceled: false, filePath: path })
+    }, exported)
+    await page.getByTestId(ELEMENT.help.exportLogs).first().click()
+    await expect.poll(() => existsSync(exported), { timeout: 10_000 }).toBe(true)
+    await expect(page.getByTestId(ELEMENT.help.exportLogs).first()).toBeEnabled()
+    const text = gunzipSync(readFileSync(exported)).toString('utf8')
+    expect(text).toMatch(/^=+\nSession logs exported /)
+    expect(text).toContain('>>> export')
     // The root stays mounted but hidden: out of sight, out of the Tab order (`visibility`, which
     // Playwright reads as hidden where it would count `opacity: 0` as visible), and out of the
     // accessibility tree (`aria-hidden`).

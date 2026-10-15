@@ -233,6 +233,11 @@ export interface LogsPort {
    * out.
    */
   deliver: ((name: string, parts: readonly ExportPart[]) => Promise<boolean>) | null
+  /**
+   * How `deliver` hands the file over, which is what a screen's copy has to describe: saved
+   * somewhere the person chooses, or passed to another app through the share sheet.
+   */
+  deliversBy: 'saveDialog' | 'shareSheet'
 }
 
 export interface DiagnosticsPort {

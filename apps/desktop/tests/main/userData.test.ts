@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { backupRow, userDataPlacement } from '#src/main/userData'
+import { backupRow, tmutilFailure, userDataPlacement } from '#src/main/userData'
 
 const HOME = 'C:\\Users\\alice'
 
@@ -40,13 +40,28 @@ describe('userDataPlacement', () => {
 })
 
 describe('backupRow', () => {
-  it('says what was done, or why it was not', () => {
-    expect(backupRow('time-machine', null)).toEqual(['Backup', 'excluded from Time Machine'])
-    expect(backupRow('local-appdata', null)).toEqual(['Backup', 'Local AppData, not roaming'])
-    expect(backupRow('none', null)).toEqual(['Backup', 'no exclusion on this platform'])
-    expect(backupRow('time-machine', 'tmutil: not found')).toEqual([
+  it('says what is asked for, leaving the answer from Time Machine to a line of its own', () => {
+    expect(backupRow('time-machine')).toEqual([
       'Backup',
-      'not excluded: tmutil: not found',
+      'Time Machine exclusion asked at launch; the answer is a storage line',
     ])
+    expect(backupRow('local-appdata')).toEqual(['Backup', 'Local AppData, not roaming'])
+    expect(backupRow('none')).toEqual(['Backup', 'no exclusion on this platform'])
+  })
+})
+
+describe('tmutilFailure', () => {
+  it('says why from the exit, never from a message that names the home folder', () => {
+    const message =
+      'Command failed: /usr/bin/tmutil addexclusion /Users/someone/Library/Application Support'
+    expect(tmutilFailure({ killed: true, signal: 'SIGTERM', code: null })).toBe(
+      'tmutil timed out after 60 s',
+    )
+    expect(tmutilFailure({ killed: false, signal: 'SIGKILL', code: null })).toBe(
+      'tmutil was ended by SIGKILL',
+    )
+    const exited = Object.assign(new Error(message), { killed: false, signal: null, code: 1 })
+    expect(tmutilFailure(exited)).toBe('tmutil exited with 1')
+    expect(tmutilFailure(exited)).not.toContain('/Users/')
   })
 })

@@ -14,6 +14,8 @@ export interface PressAreaProps {
   /** Takes an equal share of the row it is in, so a dialog's actions can share their width. */
   fill?: boolean
   accessibilityLabel?: string
+  /** Announced as busy, for a control whose action is running. */
+  busy?: boolean
   testID?: string
   /**
    * The control, told whether it is currently pressed.
