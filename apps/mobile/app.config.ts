@@ -382,7 +382,8 @@ export default ({ config }: ConfigContext): ExpoConfig =>
         'android.permission.READ_MEDIA_VIDEO',
         'android.permission.READ_MEDIA_VISUAL_USER_SELECTED',
         'android.permission.READ_EXTERNAL_STORAGE',
-        // Without it the system photo picker zeroes a photo's GPS before handing it over.
+        // Without it the system photo picker zeroes a photo's GPS before handing it over. Not
+        // where there is none: the document picker it falls back to keeps it.
         'android.permission.ACCESS_MEDIA_LOCATION',
       ],
     },
