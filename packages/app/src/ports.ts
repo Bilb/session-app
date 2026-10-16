@@ -1,5 +1,6 @@
-import type { NetworkName } from '@session/basic-types'
+import type { NetworkName, WithSpan } from '@session/basic-types'
 import type { AttachmentRef, PixelSize } from '@session/client'
+import type { BuildFacts, DiagnosticsSnapshot, ExportPart, LogFileInfo } from '@session/logging'
 /**
  * What the app needs from the operating system, named so shared code can ask without
  * knowing which one it is running on.
@@ -157,20 +158,8 @@ export interface LinkingPort {
  * -- it would have to contain the hash of the commit it is in. Wanted by the settings stamp, and by
  * any log that has to say which binary produced it.
  */
-export interface BuildPort {
-  readonly version: string
-  /**
-   * Eight characters, with `-dirty` when the tree had changes on top. Null where the build was not
-   * made from a git checkout, rather than a hash it cannot vouch for.
-   */
-  readonly commit: string | null
-  /**
-   * The store build number the phones show after the version -- iOS's `CFBundleVersion`, Android's
-   * `versionCode`. Null where there is none, which is the desktop, and a phone whose configuration
-   * does not set one.
-   */
-  readonly buildNumber: string | null
-}
+/** What the build says about itself; see `BuildFacts` in `@session/logging`. */
+export type BuildPort = Readonly<BuildFacts>
 
 export interface SharePort {
   /**
@@ -237,6 +226,37 @@ export interface FlagsPort {
   override(name: string): string | null
 }
 
+/**
+ * The log files, for the export. Each platform keeps its own - desktop's in the main process, the
+ * phones' in the app's documents - so what the export needs from them is asked for here.
+ *
+ * **Compression is the platform's, not JavaScript's.** Twenty megabytes through fflate on Hermes
+ * takes seven and a half seconds with the JS thread frozen; desktop's main process has zlib, and
+ * the phones a small native module. See the spec's Compression section.
+ */
+export interface LogsPort {
+  /** Everything written so far on disk, then the retained files, oldest first. */
+  retained(): Promise<LogFileInfo[]>
+  /** The first line of one file and the last of another: the window an export covers. */
+  span(first: string, last: string): Promise<WithSpan>
+  /**
+   * Compresses the parts, in order, into one gzip file called `name`, and hands it to the person:
+   * a save dialog on desktop, the share sheet on a phone. False when they cancelled, where the
+   * platform can tell; null where this build cannot export at all, so a screen leaves the control
+   * out.
+   */
+  deliver: ((name: string, parts: readonly ExportPart[]) => Promise<boolean>) | null
+  /**
+   * How `deliver` hands the file over, which is what a screen's copy has to describe: saved
+   * somewhere the person chooses, or passed to another app through the share sheet.
+   */
+  deliversBy: 'saveDialog' | 'shareSheet'
+}
+
+export interface DiagnosticsPort {
+  snapshot(): Promise<DiagnosticsSnapshot>
+}
+
 export interface Ports {
   network: NetworkPort
   flags: FlagsPort
@@ -250,6 +270,8 @@ export interface Ports {
   share: SharePort
   build: BuildPort
   window: WindowPort
+  logs: LogsPort
+  diagnostics: DiagnosticsPort
 }
 
 let current: Ports | null = null

@@ -28,6 +28,10 @@ apps/mobile · apps/desktop ── route files, OS ports, boot order. Adapters, 
 Colour and type live in `@session/theme-tokens` and are derived from a few authored knobs rather
 than listed per theme; `docs/THEMING.md` is the map for that.
 
+Nothing the apps store leaves the device: every file lives under a root that is protected and
+excluded from backup, and on mobile only `src/storage/` may reach the file system.
+`docs/STORAGE.md` has the roots, the platform mechanisms and what enforces them.
+
 Who may import whom is in `tooling/depcruise-config/root.cjs` and enforced by
 `pnpm boundaries`. The short version: `ui` imports no sibling but tokens and ids; `screens`
 imports ui, state, app, client and localization; nothing imports an app.
@@ -627,7 +631,7 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   characters, and the wrong one fails as a decryption error part-way through an upload.
 
 - **2026-09-11 - Each network gets its own database directory.** `userData/<netid>/` on desktop,
-  `documentDirectory/session/<netid>/` on mobile, so a devnet identity and a mainnet one coexist
+  the storage module's `data` root on mobile (`<root>/<netid>/`; see `docs/STORAGE.md`), so a devnet identity and a mainnet one coexist
   and switching back loses neither. libsession derives its snode cache from the database's
   directory, which puts a cache of nodes that do not exist on the other network on the right side
   of the split.

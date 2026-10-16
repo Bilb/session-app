@@ -1,3 +1,4 @@
+import { formatBytes } from '@session/basic-types'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import {
@@ -13,7 +14,6 @@ import {
 import type { AttachmentSet } from './attachmentSet'
 import { sharedCaption } from './attachmentSetCaption'
 import type { AttachmentView } from './attachmentView'
-import { formatBytes } from './formatBytes'
 import { PENDING_COPY } from './pendingCopy'
 
 /**

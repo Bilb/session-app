@@ -1,14 +1,21 @@
 import { memoryPorts, setPorts, type MediaPort, type NotificationsPort } from '@session/app'
 import { mediaUrl } from '@session/app/mediaUrl'
 import { parseNetworkName } from '@session/basic-types'
+import { isExportName, logSpan, type DiagnosticsSnapshot } from '@session/logging'
 import * as Clipboard from 'expo-clipboard'
 import Constants from 'expo-constants'
-import * as SecureStore from 'expo-secure-store'
+import * as Sharing from 'expo-sharing'
 import { Linking, Platform, Share } from 'react-native'
 
 import { exportFiles, sweepStagedExports } from './files'
 import { flagOverride } from './flagOverrides'
+import { endingRun, logDirectory, logFiles, logWriter, lowPowerRows, osName } from './logs'
 import { restartProcess, terminateProcess } from './processExit'
+import { SessionLogs } from './sessionLogs'
+import { attachmentsBytes, databaseSizes } from './storageSizes'
+import { readDatabaseKey, writeDatabaseKey } from './storage/databaseKey'
+import { plainPath } from './storage/layout'
+import { exportsDirectory, File } from './storage/roots'
 
 /**
  * Whose servers fast mode would use, which is what the onboarding screen has to name.
@@ -29,8 +36,6 @@ const PUSH_SERVICE: NotificationsPort['pushService'] = ((): NotificationsPort['p
   return named === 'huawei' || named === 'google' ? named : 'google'
 })()
 
-const DATABASE_KEY = 'session2.database-key'
-
 /** The scheme, which a native image loader resolves on each platform: Fresco's, and React's. */
 const MEDIA: MediaPort = {
   urlFor: (ref) => mediaUrl('attachment', ref),
@@ -49,6 +54,46 @@ function hexToBytes(hex: string): Uint8Array {
     bytes[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16)
   }
   return bytes
+}
+
+/** Held in a const so the closures below keep its narrowing. */
+const nativeLogs = SessionLogs
+
+async function diagnosticsSnapshot(): Promise<DiagnosticsSnapshot> {
+  // A native failure is unknown rows in the header, not a failed export: Android's throws when
+  // there is no context, and the header is the least of what the export is for.
+  const native = await (SessionLogs?.diagnostics() ?? Promise.resolve(undefined)).catch(
+    () => undefined,
+  )
+  return {
+    install: native?.install ?? 'unknown',
+    platform: Platform.OS === 'ios' ? 'iOS' : 'Android',
+    os: osName(native?.iOSAppOnMac === true),
+    model: native?.model ?? 'unknown',
+    locale: Intl.DateTimeFormat().resolvedOptions().locale,
+    platformRows: lowPowerRows(native?.lowPowerMode),
+    // No total: the model says how much memory the phone has.
+    memory: {
+      usedBytes: native?.usedBytes ?? null,
+      availableBytes: native?.availableBytes ?? null,
+    },
+    networkType: null,
+    // What the notifications port says, which is what the app will actually do.
+    notifications: 'no push service in this build',
+    // Capitalised like every other label in the header; the native modules name them in lower case.
+    ...(native === undefined
+      ? {}
+      : {
+          permissions: native.permissions.map(
+            ([name, state]) => [name.charAt(0).toUpperCase() + name.slice(1), state] as const,
+          ),
+        }),
+    storage: {
+      database: databaseSizes(),
+      attachmentsBytes: attachmentsBytes(),
+      freeBytes: native?.freeBytes ?? null,
+    },
+  }
 }
 
 /**
@@ -104,6 +149,10 @@ const ports = memoryPorts({
         : Constants.expoConfig?.android?.versionCode === undefined
           ? null
           : String(Constants.expoConfig.android.versionCode),
+    // Said by whoever assembles the build, and inlined by Metro like the commit.
+    variant: process.env['EXPO_PUBLIC_SESSION_BUILD_VARIANT'] || 'unknown',
+    // Stamped from the submodule by metro.config.js, beside the commit.
+    libsessionCommit: process.env['EXPO_PUBLIC_SESSION_LIBSESSION_COMMIT'] || null,
   },
   share: {
     // The platform's sheet, with the text alone: no title or subject, which iOS would drop and
@@ -128,15 +177,50 @@ const ports = memoryPorts({
      */
     openAppSettings: () => Linking.openSettings(),
   },
+  logs: {
+    retained: async () => {
+      const writer = await logWriter
+      await writer.flush()
+      return writer.files()
+    },
+    span: (first, last) => logSpan(logFiles, first, last),
+    /**
+     * Compressed natively into the storage module's exports directory, then shared, as the legacy
+     * clients do, rather than saved through a picker. expo-sharing because Android's sheet takes a
+     * file only through a content provider, which it brings; on iOS it is the same activity sheet
+     * React Native's own opens.
+     *
+     * The sheet does not say whether anything was sent, so a closed sheet counts as delivered.
+     */
+    deliver:
+      nativeLogs === null
+        ? null
+        : async (name, parts) => {
+            // Earlier exports go first. Not deleted once shared: on Android the app it was shared
+            // to may still be reading it after the sheet closes. So one is kept, not every one.
+            const exports = exportsDirectory()
+            for (const entry of exports.list()) {
+              if (entry instanceof File && isExportName(entry.name)) entry.delete()
+            }
+            const out = new File(exports, name)
+            await nativeLogs.gzip(parts, plainPath(logDirectory.uri), plainPath(out.uri))
+            await Sharing.shareAsync(out.uri, {
+              mimeType: 'application/gzip',
+              UTI: 'org.gnu.gnu-zip-archive',
+            })
+            return true
+          },
+    deliversBy: 'shareSheet',
+  },
+  diagnostics: { snapshot: diagnosticsSnapshot },
+  // The same keychain item store.ts opens the database with, so there is one key.
   secureStore: {
     async getDatabaseKey() {
-      const stored = await SecureStore.getItemAsync(DATABASE_KEY)
+      const stored = await readDatabaseKey()
       if (stored === null) return null
       return hexToBytes(stored)
     },
-    async setDatabaseKey(key) {
-      await SecureStore.setItemAsync(DATABASE_KEY, bytesToHex(key))
-    },
+    setDatabaseKey: (key) => writeDatabaseKey(bytesToHex(key)),
   },
 })
 
@@ -148,7 +232,7 @@ setPorts({
   files: { ...ports.files, ...exportFiles },
   window: {
     ...ports.window,
-    close: terminateProcess,
-    restart: restartProcess,
+    close: endingRun('quit', terminateProcess),
+    restart: endingRun('restart', restartProcess),
   },
 })

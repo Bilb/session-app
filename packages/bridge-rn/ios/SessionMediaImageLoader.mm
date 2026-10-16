@@ -164,6 +164,8 @@ RCT_EXPORT_MODULE()
     return NO;
 }
 
+// TODO: admit decodes by their summed peak estimated from the header (whole for a GIF or PNG),
+// refusing one that os_proc_available_memory() less that sum and a margin cannot hold.
 /// Concurrent: every block owns what it touches, and a microsecond preview must not wait behind
 /// an album's decodes.
 - (instancetype)init {

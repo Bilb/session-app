@@ -1,0 +1,10 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["StorageRootsModule"],
+    "appDelegateSubscribers": ["StorageRootsAppDelegateSubscriber"]
+  },
+  "android": {
+    "modules": ["org.getsession.storageroots.StorageRootsModule"]
+  }
+}
