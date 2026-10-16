@@ -26,6 +26,24 @@ libsession and every dependency. Every later clone on the same libsession takes 
 machine-wide cache in seconds - see `packages/bridge-rn/ios/README.md`, including
 `SESSION_LIBSESSION_IOS_KEEP_BUILD=1` for incremental rebuilds while changing libsession.
 
+### Building without taking over the machine
+
+Lower the priority rather than the core count, so the build still uses every core nobody else
+wants:
+
+```sh
+taskpolicy -d throttle nice -n 19 pnpm --filter @session/bridge-rn build:libsession:ios
+taskpolicy -d throttle nice -n 19 xcodebuild …
+```
+
+`nice` lowers CPU priority and `-d throttle` lowers disk priority; children inherit both.
+
+**Never `taskpolicy -b`.** It confines the build to the efficiency cores, 4 of 14 on an M4 Pro:
+a libsession `all` build took 69 minutes under it, where `both` takes about 4 under `nice`.
+
+To cap the cores outright, `JOBS=6` limits libsession's build, `CMAKE_BUILD_PARALLEL_LEVEL=6` the
+shim's, and `-jobs 6` xcodebuild's.
+
 ## Simulators
 
 ```sh
