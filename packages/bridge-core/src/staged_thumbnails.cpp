@@ -133,8 +133,8 @@ struct StagedThumbnails::State {
     bool watching = false;
     uint64_t next_id = 0;
     uint64_t next_job = 0;
-    // Replaced when a decode is given up on; `generation` tells the jobs of the one replaced
-    // apart, so they never take what the fresh one should.
+    // Replaced when a decode is given up on. `generation` keeps a job of a replaced worker from
+    // taking a key, whether or not `Worker::stop` dropped it.
     std::shared_ptr<Worker> worker = std::make_shared<Worker>();
     uint64_t generation = 0;
     // Keys in the order asked, one per job posted. A key whose entry was cancelled away is
