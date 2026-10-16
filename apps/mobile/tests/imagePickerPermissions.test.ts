@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest'
 // Loaded by URL so the type check stays out of app.config.ts, which Expo runs under its own rules.
 const configModule = new URL('../app.config.ts', import.meta.url).href
 const { default: appConfig } = (await import(configModule)) as {
-  default: (context: { config: Record<string, unknown> }) => { plugins?: unknown[] }
+  default: (context: { config: Record<string, unknown> }) => {
+    plugins?: unknown[]
+    android?: { blockedPermissions?: string[] }
+  }
 }
 
 /**
@@ -26,5 +29,12 @@ describe('the image picker plugin', () => {
   it('leaves the camera to the modules that declare it, with the catalogue’s purpose string', () => {
     expect(options?.['cameraPermission']).not.toBe(false)
     expect(typeof options?.['cameraPermission']).toBe('string')
+  })
+})
+
+describe('picked photos', () => {
+  it('reach the app with their location removed by the system picker', () => {
+    const config = appConfig({ config: { name: 'Session', slug: 'session' } })
+    expect(config.android?.blockedPermissions).toContain('android.permission.ACCESS_MEDIA_LOCATION')
   })
 })
