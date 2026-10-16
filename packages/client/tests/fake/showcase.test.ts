@@ -82,6 +82,6 @@ describe('showcase', () => {
 
     expect(await alice.retrySend(allUp.id)).toBe(true)
     const resuming = (await alice.getMessages(bob, { limit: 100 })).messages
-    expect(resuming.find((m) => m.id === allUp.id)?.sendState).toBe('sending')
+    expect(resuming.find((m) => m.id === allUp.id)?.sendState).toBe('pending')
   })
 })

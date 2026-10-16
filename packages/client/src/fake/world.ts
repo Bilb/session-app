@@ -667,11 +667,18 @@ export class FakeAccount {
             ...(sizeBytes === undefined ? {} : { sizeBytes }),
           }
         })
-        this.updateMessage(id, messageId, { sendState: 'sent', syncState: 'sent', attachments })
+        this.updateMessage(id, messageId, {
+          sendState: 'sent',
+          ...(message.syncState === undefined ? {} : { syncState: 'sent' }),
+          attachments,
+        })
       }
-      // As libsession: back to uploading while a file is not up yet, else straight to the send.
-      const resumed = message.attachments.every((a) => a.uploaded) ? 'sending' : 'uploading'
-      this.updateMessage(id, messageId, { sendState: resumed, syncState: resumed })
+      // As libsession: back to uploading while a file is not up yet, else queued for the send.
+      const resumed = message.attachments.every((a) => a.uploaded) ? 'pending' : 'uploading'
+      this.updateMessage(id, messageId, {
+        sendState: resumed,
+        ...(message.syncState === undefined ? {} : { syncState: resumed }),
+      })
       if (this.world) this.world.schedule(1, finish)
       else finish()
       return true
