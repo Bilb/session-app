@@ -206,6 +206,7 @@ describe('what a row square or an album tile draws', () => {
           thumbhashUrlFor: () => null,
           thumbnailUrlFor: ({ messageId, index }) =>
             `thumb://${String(messageId)}/${String(index)}`,
+          renditionUrlFor: () => null,
         },
       }),
     )
