@@ -322,6 +322,37 @@ void closing_waits_only_so_long_for_a_decode() {
     }
 }
 
+void closing_waits_for_a_handler_running_on_another_thread() {
+    enum class By { worker, watchdog, cancel };
+    for (const By by : {By::worker, By::watchdog, By::cancel}) {
+        auto release = std::make_shared<std::atomic<bool>>(by == By::worker);
+        StagedThumbnails staged{
+                [release](const std::string&, uint32_t) {
+                    while (!*release)
+                        std::this_thread::sleep_for(1ms);
+                    return Media{std::nullopt, "image/jpeg", {std::byte{0xFF}}};
+                },
+                {.stuck_after = by == By::watchdog ? 50ms : 60s, .settle_at_close = 0ms}};
+        std::atomic<bool> entered = false, returned = false;
+        auto cancel = staged.request("/a.jpg", 240, [&](Media) {
+            entered = true;
+            std::this_thread::sleep_for(200ms);
+            returned = true;
+        });
+        std::thread canceller;
+        if (by == By::cancel)
+            canceller = std::thread{[&] { cancel(); }};
+        wait_for([&] { return entered.load(); });
+        staged.close();
+        check(returned, by == By::worker     ? "close returned during a handler on the worker"
+                        : by == By::watchdog ? "close returned during a handler on the watchdog"
+                                             : "close returned during a cancel's handler");
+        if (canceller.joinable())
+            canceller.join();
+        *release = true;
+    }
+}
+
 void a_handler_may_close() {
     auto stub = std::make_shared<Stub>();
     stub->release = true;
@@ -406,6 +437,7 @@ int main() {
     a_stuck_decode_is_given_up_on_and_the_rest_go_on();
     a_throwing_handler_leaves_the_rest_of_its_batch_answered();
     closing_waits_only_so_long_for_a_decode();
+    closing_waits_for_a_handler_running_on_another_thread();
     a_handler_may_close();
     a_deferred_request_is_withdrawn_whenever_the_cancel_comes();
     the_reader_refuses_what_is_not_a_regular_file();
