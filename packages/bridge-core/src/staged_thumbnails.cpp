@@ -164,6 +164,15 @@ struct StagedThumbnails::State {
         changed.notify_all();
     }
 
+    // A try for each, so a handler that throws, or a copy that cannot be made, skips only its own.
+    static void answer_each(std::vector<Waiter>& waiting, Media media) {
+        for (size_t i = 0; i < waiting.size(); i++)
+            try {
+                waiting[i].cb(i + 1 == waiting.size() ? std::move(media) : media);
+            } catch (...) {
+            }
+    }
+
     // Under the lock: one job for the key at the back of `queue`, on the current worker.
     bool post_one(const std::shared_ptr<State>& self) {
         return worker->post([self, generation = generation] { run_one(self, generation); });
@@ -205,10 +214,7 @@ struct StagedThumbnails::State {
             return;
         auto waiting = std::move(found->second.waiting);
         state->pending.erase(found);
-        state->answer_unlocked(guard, [&] {
-            for (size_t i = 0; i < waiting.size(); i++)
-                waiting[i].cb(i + 1 == waiting.size() ? std::move(media) : media);
-        });
+        state->answer_unlocked(guard, [&] { answer_each(waiting, std::move(media)); });
     }
 
     // On a thread of its own while the object is open: gives up on a decode past `stuck_after`.
@@ -253,10 +259,8 @@ struct StagedThumbnails::State {
                 }
 
             state->answer_unlocked(guard, [&] {
-                for (auto& waiter : stuck)
-                    waiter.cb(Media{"the file could not be read", {}, {}});
-                for (auto& waiter : refused)
-                    waiter.cb(Media{"the thumbnail could not be started", {}, {}});
+                answer_each(stuck, Media{"the file could not be read", {}, {}});
+                answer_each(refused, Media{"the thumbnail could not be started", {}, {}});
             });
         }
     }

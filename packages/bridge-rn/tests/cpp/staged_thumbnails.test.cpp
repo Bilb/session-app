@@ -260,6 +260,32 @@ void a_stuck_decode_is_given_up_on_and_the_rest_go_on() {
     check(stuck.size() == 1, "a decode given up on was answered again when it ended");
 }
 
+void a_throwing_handler_leaves_the_rest_of_its_batch_answered() {
+    for (const bool stuck : {false, true}) {
+        auto release = std::make_shared<std::atomic<bool>>(false);
+        auto started = std::make_shared<std::atomic<bool>>(false);
+        StagedThumbnails staged{
+                [release, started](const std::string&, uint32_t) {
+                    *started = true;
+                    while (!*release)
+                        std::this_thread::sleep_for(1ms);
+                    return Media{std::nullopt, "image/jpeg", {std::byte{0xFF}}};
+                },
+                {.stuck_after = stuck ? 50ms : 60s, .settle_at_close = 0ms}};
+        Answers rest;
+        staged.request("/a.jpg", 240, [](Media) { throw 42; });
+        staged.request("/a.jpg", 240, rest.handler());
+        staged.request("/a.jpg", 240, rest.handler());
+        wait_for([&] { return started->load(); });
+        if (!stuck)
+            *release = true;
+        wait_for([&] { return rest.size() == 2; });
+        check(rest.size() == 2, stuck ? "a throwing handler cut short a batch given up on"
+                                      : "a throwing handler cut short a batch decoded");
+        *release = true;
+    }
+}
+
 void closing_waits_only_so_long_for_a_decode() {
     for (const bool ends : {true, false}) {
         auto release = std::make_shared<std::atomic<bool>>(false);
@@ -378,6 +404,7 @@ int main() {
     each_edge_is_its_own_decode();
     a_decode_that_throws_is_answered_and_forgotten();
     a_stuck_decode_is_given_up_on_and_the_rest_go_on();
+    a_throwing_handler_leaves_the_rest_of_its_batch_answered();
     closing_waits_only_so_long_for_a_decode();
     a_handler_may_close();
     a_deferred_request_is_withdrawn_whenever_the_cancel_comes();
