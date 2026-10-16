@@ -6,18 +6,17 @@ import { describe, expect, it } from 'vitest'
 /**
  * A tile draws libsession's thumbnail and the viewer draws the file, read from the source because
  * nothing in the unit tier renders a tile. A tile handed the file would decode a full photograph
- * for a few hundred pixels.
+ * for a few hundred pixels, so it does only where libsession made no thumbnail: see `leadUri`.
  */
 describe('which picture each place draws', () => {
   const read = (file: string) => readFileSync(join(import.meta.dirname, '../src', file), 'utf8')
 
-  it('draws the thumbnail in the album and the list, and only once there is one', () => {
-    for (const file of ['MessageAlbum.tsx', 'AttachmentRow.tsx']) {
+  it('draws the lead through leadUri in the album and the list, never the file directly', () => {
+    for (const file of ['MessageAlbum.tsx', 'AttachmentRow.tsx', 'SendingRow.tsx']) {
       const source = read(file)
-      expect(source, file).toMatch(
-        /attachment\.hasThumbnail\s*\?\s*requirePorts\(\)\.media\.thumbnailUrlFor\(/,
-      )
+      expect(source, file).toMatch(/uri: leadUri\(message\.id, attachment, /)
       expect(source, file).not.toContain('media.urlFor(')
+      expect(source, file).not.toContain('media.thumbnailUrlFor(')
     }
   })
 
@@ -37,6 +36,12 @@ describe('which picture each place draws', () => {
     expect(read('MessageAlbum.tsx')).toContain('rowVerb(state, viewerFit(attachment))')
     expect(read('MessageAttachments.tsx')).toMatch(
       /if \(fit === 'opens'\) ui\.openViewer\(message\.id, index\)\s*else if \(fit === 'exports' && !sending\)\s+void exportOne\(/,
+    )
+  })
+
+  it('prefers the thumbnail and falls back to the file only once it is here', () => {
+    expect(read('viewableAttachments.ts')).toMatch(
+      /if \(attachment\.hasThumbnail\) return requirePorts\(\)\.media\.thumbnailUrlFor\(ref\)\n\s*if \(state === 'ready' && isViewable\(attachment\)\) return requirePorts\(\)\.media\.urlFor\(ref\)/,
     )
   })
 })

@@ -1,5 +1,5 @@
 import { bareFileName, MAX_SUGGESTED_NAME_CHARS } from '@session/app/exportFileName'
-import { utf8Encode } from '@session/basic-types'
+import { contentTypeEssence, utf8Encode } from '@session/basic-types'
 
 /**
  * The rules that decide where an exported attachment may be written, with no expo in them.
@@ -44,20 +44,16 @@ const PHOTO_LIBRARY_TYPES: Readonly<Record<string, string>> = {
 /** MediaStore files these, and iOS Photos refuses them with PHPhotosErrorDomain 3302. */
 const REFUSED_BY_IOS_PHOTOS: ReadonlySet<string> = new Set(['video/3gpp'])
 
-function essenceOf(contentType: string | undefined): string | undefined {
-  return contentType?.split(';')[0]?.trim().toLowerCase()
-}
-
 /** The extension to file this under in the photo library, or null when it does not go there. */
 export function photoLibraryExtension(contentType: string | undefined): string | null {
-  const essence = essenceOf(contentType)
+  const essence = contentTypeEssence(contentType)
   return (essence === undefined ? undefined : PHOTO_LIBRARY_TYPES[essence]) ?? null
 }
 
 /** Whether this platform's photo library takes the type. */
 export function photoLibraryTakes(contentType: string | undefined, os: 'ios' | 'android'): boolean {
   if (photoLibraryExtension(contentType) === null) return false
-  return os === 'android' || !REFUSED_BY_IOS_PHOTOS.has(essenceOf(contentType) ?? '')
+  return os === 'android' || !REFUSED_BY_IOS_PHOTOS.has(contentTypeEssence(contentType) ?? '')
 }
 
 /**
@@ -67,7 +63,7 @@ export function photoLibraryTakes(contentType: string | undefined, os: 'ios' | '
 export function isMediaStoreMedia(contentType: string | undefined): boolean {
   return (
     photoLibraryTakes(contentType, 'android') ||
-    (essenceOf(contentType)?.startsWith('audio/') ?? false)
+    (contentTypeEssence(contentType)?.startsWith('audio/') ?? false)
   )
 }
 

@@ -12,7 +12,7 @@ import { rowVerb, verbLabel } from './attachmentPress'
 import { albumTileName } from './albumTileName'
 import { PENDING_COPY } from './pendingCopy'
 import { useLocale } from './useLocale'
-import { isViewable, viewerFit } from './viewableAttachments'
+import { isViewable, leadUri, viewerFit } from './viewableAttachments'
 
 /**
  * One message's pictures, as an album.
@@ -52,11 +52,7 @@ export function MessageAlbum({
       // A tile does what its row would: see `MessageAttachments`' `onOpen`.
       const verb = rowVerb(state, viewerFit(attachment))
       return {
-        // The thumbnail, never the file: a tile is a few hundred pixels, and the viewer draws the
-        // file. Until libsession has made one, the placeholder or the flat tile.
-        uri: attachment.hasThumbnail
-          ? requirePorts().media.thumbnailUrlFor({ messageId: message.id, index: attachment.index })
-          : undefined,
+        uri: leadUri(message.id, attachment, state),
         // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
         // screen by the route a picture does. Null where the platform has no resolver.
         thumbhash: attachment.hasThumbhash

@@ -1,12 +1,31 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  ALBUM_WIDTH,
+  contentTypeEssence,
   isDisplayableImage,
   isViewableContentType,
   isViewableImage,
   isViewableVideo,
   mediaKindOf,
+  thumbnailEdgePxFor,
 } from '#src/media'
+
+describe('the essence of a declared content type', () => {
+  it('drops parameters, folds case and trims ASCII space', () => {
+    expect(contentTypeEssence('Image/JPEG; charset=binary')).toBe('image/jpeg')
+    expect(contentTypeEssence(' video/MP4 ;codecs="avc1"')).toBe('video/mp4')
+    expect(contentTypeEssence('image/png')).toBe('image/png')
+  })
+
+  it('leaves Unicode space alone, as the shim does', () => {
+    expect(contentTypeEssence('\u00a0image/png')).toBe('\u00a0image/png')
+  })
+
+  it('has no essence for an absent type', () => {
+    expect(contentTypeEssence(undefined)).toBeUndefined()
+  })
+})
 
 describe('which content types are viewable', () => {
   it('draws the common bitmaps and refuses svg', () => {
@@ -62,5 +81,15 @@ describe('a viewable type’s kind', () => {
   it('is video only for a viewable video', () => {
     expect(mediaKindOf('video/webm')).toBe('video')
     expect(mediaKindOf('image/gif')).toBe('image')
+  })
+})
+
+describe('the edge thumbnails are made at', () => {
+  it('follows the densest display', () => {
+    expect(thumbnailEdgePxFor([1, 2, 1.5])).toBe(ALBUM_WIDTH * 2)
+  })
+
+  it('makes them at 1x with no display connected', () => {
+    expect(thumbnailEdgePxFor([])).toBe(ALBUM_WIDTH)
   })
 })

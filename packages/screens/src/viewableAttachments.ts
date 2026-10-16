@@ -3,6 +3,8 @@ import { requirePorts } from '@session/app'
 import type { Attachment, Message } from '@session/client'
 import type { MediaViewerItem } from '@session/ui'
 
+import type { FetchState } from './attachmentFetch'
+
 /**
  * A whitelist rather than a prefix: `image/svg+xml`, `image/heic` and `image/tiff` are pictures no
  * renderer here draws reliably, and desktop refuses to serve anything outside the list. A video is
@@ -30,11 +32,27 @@ export function opensInViewer(attachment: Attachment): boolean {
 }
 
 /**
- * Whether a file row leads with a picture rather than a glyph. libsession thumbnails some types
- * the viewer cannot open (AVIF), and its thumbnail is a JPEG every platform draws.
+ * Whether a file row leads with a picture rather than a glyph: anything libsession thumbnailed,
+ * which includes types the viewer cannot open, and anything the viewer can.
  */
 export function leadsWithPicture(attachment: Attachment): boolean {
   return attachment.hasThumbnail || isViewable(attachment)
+}
+
+/**
+ * What a row square or an album tile draws: libsession's thumbnail, else the file once it is here
+ * and viewable, else nothing and the placeholder stays. libsession makes no thumbnail of every
+ * viewable type (BMP), and a picture that never gets one would otherwise never be drawn.
+ */
+export function leadUri(
+  messageId: number,
+  attachment: Attachment,
+  state: FetchState,
+): string | null | undefined {
+  const ref = { messageId, index: attachment.index }
+  if (attachment.hasThumbnail) return requirePorts().media.thumbnailUrlFor(ref)
+  if (state === 'ready' && isViewable(attachment)) return requirePorts().media.urlFor(ref)
+  return undefined
 }
 
 /**

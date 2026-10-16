@@ -18,7 +18,7 @@ import { exportOne } from './exportAttachment'
 import { SendingRow } from './SendingRow'
 import { isUploadPhase } from './uploadState'
 import { useExportFeedback } from './useExportFeedback'
-import { leadsWithPicture, viewerFit } from './viewableAttachments'
+import { leadUri, leadsWithPicture, viewerFit } from './viewableAttachments'
 
 function caption(
   attachment: Attachment,
@@ -79,8 +79,7 @@ function SettledRow({ message, attachment, onAccent }: RowProps) {
     state === 'unavailable' || !leadsWithPicture(attachment)
       ? undefined
       : {
-          // The thumbnail libsession made, never the file. Until there is one, the placeholder.
-          uri: attachment.hasThumbnail ? requirePorts().media.thumbnailUrlFor(ref) : undefined,
+          uri: leadUri(message.id, attachment, state),
           fetchesOnOpen: state === 'idle' || state === 'failed',
           // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
           // screen by the route a picture does. Null where the platform has no resolver.

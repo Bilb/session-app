@@ -6,9 +6,10 @@ import { useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { FileRow, type FileRowState, type FileRowThumbnail } from '@session/ui'
 
+import { fetchOf } from './attachmentFetch'
 import { PENDING_COPY } from './pendingCopy'
 import { uploadStateOf, type UploadState } from './uploadState'
-import { leadsWithPicture } from './viewableAttachments'
+import { leadUri, leadsWithPicture } from './viewableAttachments'
 
 const ROW_STATE: Record<UploadState, FileRowState> = {
   uploaded: 'uploaded',
@@ -56,7 +57,7 @@ export function SendingRow({
   // libsession keeps a thumbnail of what we send, so a picture leads with it here too.
   const thumbnail: FileRowThumbnail | undefined = leadsWithPicture(attachment)
     ? {
-        uri: attachment.hasThumbnail ? requirePorts().media.thumbnailUrlFor(ref) : undefined,
+        uri: leadUri(message.id, attachment, fetchOf(attachment).state),
         fetchesOnOpen: false,
         thumbhash: attachment.hasThumbhash ? requirePorts().media.thumbhashUrlFor(ref) : undefined,
       }

@@ -6,12 +6,12 @@ import { fileURLToPath } from 'node:url'
 import electron from 'electron'
 
 import {
-  ALBUM_WIDTH,
   netidForTransport,
   parseDevnetConfig,
   parseNetworkName,
   parseLogSpec,
   parseRouterKind,
+  thumbnailEdgePxFor,
 } from '@session/basic-types'
 import type { BridgeTransport, MediaSource } from '@session/client'
 import type { NetworkSettings } from '@session/logging'
@@ -178,8 +178,8 @@ export async function createBridge(): Promise<BridgeTransport & MediaSource> {
     deviceType: 'desktop',
     // The densest connected display's, since thumbnails are never remade: one made too small stays
     // soft, one made too large only costs memory. A stored edge (setThumbnailEdge) wins over this.
-    thumbnailEdgePx: Math.round(
-      ALBUM_WIDTH * Math.max(...screen.getAllDisplays().map((display) => display.scaleFactor)),
+    thumbnailEdgePx: thumbnailEdgePxFor(
+      screen.getAllDisplays().map((display) => display.scaleFactor),
     ),
     // Off unless asked for: it is chatty at anything below warn, and the reason to turn it up is
     // always a specific failure. `warn,network=debug` is what a diagnosis looks like - a flat

@@ -1,3 +1,5 @@
+import { contentTypeEssence } from '@session/basic-types'
+
 import type { IconName } from './Icon.types'
 
 /** A suffix longer than this is not an extension, whatever the last dot suggests. */
@@ -101,6 +103,6 @@ const BY_FAMILY: Readonly<Record<string, IconName>> = {
  */
 export function fileGlyph(name: string, contentType?: string): IconName {
   const ext = parts(name).ext.slice(1).toLowerCase()
-  const family = contentType?.split('/')[0]?.toLowerCase()
+  const family = contentTypeEssence(contentType)?.split('/')[0]
   return BY_EXTENSION.get(ext) ?? (family === undefined ? undefined : BY_FAMILY[family]) ?? 'file'
 }
