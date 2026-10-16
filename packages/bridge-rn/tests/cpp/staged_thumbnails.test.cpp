@@ -17,6 +17,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <set>
 #include <string>
 #include <thread>
 #include <vector>
@@ -286,7 +287,8 @@ void closing_waits_only_so_long_for_a_decode_given_up_on() {
             ender.join();
             check(took >= 40ms && took < 280ms, "close did not wait for a decode given up on");
         } else {
-            check(took >= 280ms && took < 1s, "close did not keep to its bound for a decode given up on");
+            check(took >= 280ms && took < 1s,
+                  "close did not keep to its bound for a decode given up on");
             *release = true;
         }
     }
@@ -316,6 +318,89 @@ void a_throwing_handler_leaves_the_rest_of_its_batch_answered() {
                                       : "a throwing handler cut short a batch decoded");
         *release = true;
     }
+}
+
+// A decode that never ends for a path under /stuck until that path is let go.
+struct StuckMount : std::enable_shared_from_this<StuckMount> {
+    std::mutex lock;
+    std::set<std::string> released;
+    std::atomic<int> started = 0;
+
+    StagedThumbnails::Make make() {
+        return [self = shared_from_this()](const std::string& path, uint32_t) {
+            self->started++;
+            while (path.starts_with("/stuck") && !self->is_released(path))
+                std::this_thread::sleep_for(1ms);
+            return Media{std::nullopt, "image/jpeg", {std::byte{0xFF}}};
+        };
+    }
+
+    bool is_released(const std::string& path) {
+        std::lock_guard guard{lock};
+        return released.contains(path);
+    }
+
+    void release(const std::string& path) {
+        std::lock_guard guard{lock};
+        released.insert(path);
+    }
+
+    void release_all() {
+        for (const std::string path : {"/stuck.jpg", "/stuck0", "/stuck1", "/stuck2", "/stuck3"})
+            release(path);
+    }
+};
+
+void a_path_given_up_on_is_refused_at_once() {
+    auto mount = std::make_shared<StuckMount>();
+    StagedThumbnails staged{mount->make(), {.stuck_after = 50ms, .settle_at_close = 0ms}};
+    Answers first, queued;
+    staged.request("/stuck.jpg", 240, first.handler());
+    staged.request("/stuck.jpg", 720, queued.handler());
+    wait_for([&] { return first.size() == 1 && queued.size() == 1; });
+    check(queued.size() == 1 && queued.errors[0] == "the file could not be read",
+          "another edge of a path given up on was not refused with it");
+
+    Answers again;
+    staged.request("/stuck.jpg", 240, again.handler());
+    check(again.size() == 1 && again.errors[0] == "the file could not be read",
+          "a path given up on was not refused at once");
+    std::this_thread::sleep_for(20ms);
+    check(mount->started == 1, "a path given up on was decoded again");
+    mount->release_all();
+}
+
+void past_the_cap_on_decodes_given_up_on_requests_fail_at_once() {
+    constexpr size_t cap = StagedThumbnails::MAX_ABANDONED_DECODES;
+    static_assert(cap <= 4, "StuckMount lets go of four paths");
+    auto mount = std::make_shared<StuckMount>();
+    StagedThumbnails staged{mount->make(), {.stuck_after = 50ms, .settle_at_close = 0ms}};
+    Answers stuck, behind;
+    for (size_t i = 0; i < cap; i++)
+        staged.request("/stuck" + std::to_string(i), 240, stuck.handler());
+    staged.request("/fine-behind.jpg", 240, behind.handler());
+    wait_for([&] { return stuck.size() == cap && behind.size() == 1; });
+    check(behind.size() == 1 && behind.errors[0] == "the thumbnail could not be started",
+          "a request queued behind the cap was decoded");
+
+    Answers refused;
+    staged.request("/fine.jpg", 240, refused.handler());
+    check(refused.size() == 1 && refused.errors[0] == "the thumbnail could not be started",
+          "a request past the cap was not refused at once");
+    check(mount->started == static_cast<int>(cap), "a decode started past the cap");
+
+    mount->release("/stuck0");
+    bool decoded = false;
+    for (int i = 0; i < 5000 && !decoded; i++) {
+        Answers after;
+        staged.request("/fine.jpg", 240, after.handler());
+        wait_for([&] { return after.size() == 1; });
+        decoded = after.size() == 1 && !after.errors[0];
+        if (!decoded)
+            std::this_thread::sleep_for(1ms);
+    }
+    check(decoded, "a request once a stuck decode ended was refused");
+    mount->release_all();
 }
 
 void closing_waits_only_so_long_for_a_decode() {
@@ -469,6 +554,8 @@ int main() {
     a_stuck_decode_is_given_up_on_and_the_rest_go_on();
     closing_waits_only_so_long_for_a_decode_given_up_on();
     a_throwing_handler_leaves_the_rest_of_its_batch_answered();
+    a_path_given_up_on_is_refused_at_once();
+    past_the_cap_on_decodes_given_up_on_requests_fail_at_once();
     closing_waits_only_so_long_for_a_decode();
     closing_waits_for_a_handler_running_on_another_thread();
     a_handler_may_close();

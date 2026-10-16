@@ -9,6 +9,7 @@
 #include <system_error>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 #ifdef _WIN32
@@ -117,6 +118,7 @@ struct StagedThumbnails::State {
     };
     struct Running {
         std::string key;
+        std::string path;
         uint64_t job;
         std::chrono::steady_clock::time_point since;
     };
@@ -144,6 +146,8 @@ struct StagedThumbnails::State {
     std::optional<Running> running;
     // Given up on and still inside `make`, which `close` waits out as it does `running`.
     size_t abandoned_decodes = 0;
+    // Refused from then on: another decode of one would likely hold another thread for good.
+    std::unordered_set<std::string> given_up_paths;
     // Threads running handlers, which `close` waits out unless it is one of them.
     std::vector<std::thread::id> answering;
 
@@ -194,7 +198,7 @@ struct StagedThumbnails::State {
         const std::string path = found->second.path;
         const uint32_t edge = found->second.edge;
         const uint64_t job = state->next_job++;
-        state->running = Running{key, job, std::chrono::steady_clock::now()};
+        state->running = Running{key, path, job, std::chrono::steady_clock::now()};
         state->changed.notify_all();
         guard.unlock();
 
@@ -243,23 +247,42 @@ struct StagedThumbnails::State {
                 stuck = std::move(found->second.waiting);
                 state->pending.erase(found);
             }
+            state->given_up_paths.insert(state->running->path);
             state->running.reset();
             state->abandoned_decodes++;
             state->changed.notify_all();
 
-            // The stuck thread is left where it is; the keys still queued go to a fresh one.
+            // The stuck thread is left where it is; the keys still queued go to a fresh one,
+            // unless they would only be stuck too.
             state->worker->stop();
             state->worker = std::make_shared<Worker>();
             state->generation++;
+            const bool held_up = state->abandoned_decodes >= MAX_ABANDONED_DECODES;
             std::vector<Waiter> refused;
+            const auto refuse = [&](const std::string& key, std::vector<Waiter>& into) {
+                if (auto found = state->pending.find(key); found != state->pending.end()) {
+                    for (auto& waiter : found->second.waiting)
+                        into.push_back(std::move(waiter));
+                    state->pending.erase(found);
+                }
+            };
+            std::deque<std::string> queued;
+            queued.swap(state->queue);
+            for (auto& key : queued) {
+                auto found = state->pending.find(key);
+                if (found == state->pending.end())
+                    continue;
+                if (state->given_up_paths.contains(found->second.path))
+                    refuse(key, stuck);
+                else if (held_up)
+                    refuse(key, refused);
+                else
+                    state->queue.push_back(std::move(key));
+            }
             for (size_t i = 0; i < state->queue.size(); i++)
                 if (!state->post_one(state)) {
                     for (auto& key : state->queue)
-                        if (auto found = state->pending.find(key); found != state->pending.end()) {
-                            for (auto& waiter : found->second.waiting)
-                                refused.push_back(std::move(waiter));
-                            state->pending.erase(found);
-                        }
+                        refuse(key, refused);
                     state->queue.clear();
                     break;
                 }
@@ -296,6 +319,15 @@ StagedThumbnails::Cancel StagedThumbnails::request(
         } catch (const std::system_error&) {
             // Without a watchdog a stuck decode holds up later ones, which is all it costs.
         }
+    }
+
+    const bool unreadable = _state->given_up_paths.contains(path);
+    if (unreadable || _state->abandoned_decodes >= MAX_ABANDONED_DECODES) {
+        guard.unlock();
+        cb(Media{unreadable ? "the file could not be read" : "the thumbnail could not be started",
+                 {},
+                 {}});
+        return [] {};
     }
 
     const uint64_t id = _state->next_id++;
