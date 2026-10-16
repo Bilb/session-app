@@ -50,9 +50,10 @@ export function refusalNotices({
 
 /**
  * Every notice as one thing to say: announced one by one, each would cut off the one before it.
+ * A line apiece, since the copy carries its own punctuation, in its own language.
  */
 export function refusalAnnouncement(notices: readonly RefusalNotice[]): string {
   return notices
     .flatMap(({ message, detail }) => (detail === undefined ? [message] : [message, detail]))
-    .join('. ')
+    .join('\n')
 }

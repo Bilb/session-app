@@ -19,9 +19,15 @@ describe('what the composer says about a refusal', () => {
   it('says every notice of one pick in one announcement, so none cuts another off', () => {
     const notices = refusalNotices({ tooLarge: [big], overLimit: 3, unreadable: 0 })
     const said = refusalAnnouncement(notices)
-    expect(said.startsWith(`${tr('attachmentsErrorSize')}. drone.mov · `)).toBe(true)
-    expect(said.endsWith(`. ${PENDING_COPY.attachmentsNotAdded(3)}`)).toBe(true)
-    expect(said).toContain(PENDING_COPY.attachmentsErrorLimit(32))
+    const lines = said.split('\n')
+    expect(lines[0]).toBe(tr('attachmentsErrorSize'))
+    expect(lines[1]?.startsWith('drone.mov · ')).toBe(true)
+    // The copy's own stops, never one of ours added after them.
+    expect(lines.slice(2)).toEqual([
+      PENDING_COPY.attachmentsErrorLimit(32),
+      PENDING_COPY.attachmentsNotAdded(3),
+    ])
+    expect(said).not.toContain('..')
   })
 
   it('says nothing when nothing was refused', () => {

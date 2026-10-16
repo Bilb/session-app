@@ -26,6 +26,8 @@ const VISUALLY_HIDDEN = { clipPath: 'inset(50%)', whiteSpace: 'nowrap' } as cons
 export function Announcement({ text, announceKey }: AnnouncementProps) {
   const [said, setSaid] = useState({ key: announceKey, text })
   if (said.key !== announceKey) setSaid({ key: announceKey, text })
+  // Every notice gone: a reader browsing the page must not find their words still there.
+  else if (text === '' && said.text !== '') setSaid({ key: announceKey, text })
 
   // Neither mobile screen reader announces a view that merely appears.
   useEffect(() => {
