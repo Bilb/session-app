@@ -79,7 +79,30 @@ describe('the composer staging', () => {
     staging.add([picked('photo.jpg', 'session-media://picked/new')])
     expect(released).toEqual(['session-media://picked/old'])
     expect(discarded).toEqual([])
-    expect(staging.handOff().map((file) => file.previewUrl)).toEqual(['session-media://picked/new'])
+    staging.handOff([picked('photo.jpg', 'session-media://picked/new')])
+    expect(released).toEqual(['session-media://picked/old', 'session-media://picked/new'])
+    expect(discarded).toEqual([])
+  })
+
+  it('hands over only what a message was sent with, and keeps what was staged since', () => {
+    const staging = mount()
+    staging.add([picked('a.jpg'), picked('b.jpg')])
+    staging.handOff([picked('a.jpg')])
+    expect(hook.writes).toContainEqual([picked('b.jpg')])
+    expect(discarded).toEqual([])
+  })
+
+  it('keeps a refused send staged and says so', () => {
+    const staging = mount()
+    staging.add([picked('a.jpg')])
+    staging.refuseSend()
+    expect(hook.writes).toContainEqual({
+      tooLarge: [],
+      overLimit: 0,
+      unreadable: 0,
+      sendRefused: true,
+    })
+    expect(discarded).toEqual([])
   })
 
   it('lets go of what a picker hands back after the conversation closed', () => {
@@ -96,14 +119,29 @@ describe('the composer staging', () => {
     await staging.take(Promise.reject(new Error('allowPreview')), 3)
     await staging.take(Promise.reject(new Error('picker')))
     const refusals = hook.writes.filter((value) => typeof value === 'object')
-    expect(refusals).toContainEqual({ tooLarge: [], overLimit: 0, unreadable: 3 })
-    expect(refusals).toContainEqual({ tooLarge: [], overLimit: 0, unreadable: 1 })
+    expect(refusals).toContainEqual({
+      tooLarge: [],
+      overLimit: 0,
+      unreadable: 3,
+      sendRefused: false,
+    })
+    expect(refusals).toContainEqual({
+      tooLarge: [],
+      overLimit: 0,
+      unreadable: 1,
+      sendRefused: false,
+    })
   })
 
   it('counts what a drop could not hand back as unreadable', async () => {
     const staging = mount()
     await staging.take(Promise.resolve([picked('a.jpg')]), 3)
-    expect(hook.writes).toContainEqual({ tooLarge: [], overLimit: 0, unreadable: 2 })
+    expect(hook.writes).toContainEqual({
+      tooLarge: [],
+      overLimit: 0,
+      unreadable: 2,
+      sendRefused: false,
+    })
   })
 
   it('is how both a pick and a drop are staged', () => {

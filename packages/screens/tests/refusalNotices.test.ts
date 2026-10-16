@@ -12,12 +12,30 @@ const big = { path: '/picked/drone.mov', name: 'drone.mov', size: MAX_ATTACHMENT
 
 describe('what the composer says about a refusal', () => {
   it('stacks a notice for each thing a pick left out', () => {
-    const notices = refusalNotices({ tooLarge: [big], overLimit: 3, unreadable: 1 })
+    const notices = refusalNotices({
+      tooLarge: [big],
+      overLimit: 3,
+      unreadable: 1,
+      sendRefused: false,
+    })
     expect(notices.map((n) => n.kind)).toEqual(['unreadable', 'tooLarge', 'overLimit'])
   })
 
+  it('says a refused send failed, above anything else', () => {
+    const notices = refusalNotices({ tooLarge: [], overLimit: 0, unreadable: 1, sendRefused: true })
+    expect(notices.map((n) => [n.id, n.message])).toEqual([
+      ['send', tr('attachmentsErrorSending')],
+      ['unreadable', tr('attachmentsErrorLoad')],
+    ])
+  })
+
   it('says every notice of one pick in one announcement, so none cuts another off', () => {
-    const notices = refusalNotices({ tooLarge: [big], overLimit: 3, unreadable: 0 })
+    const notices = refusalNotices({
+      tooLarge: [big],
+      overLimit: 3,
+      unreadable: 0,
+      sendRefused: false,
+    })
     const said = refusalAnnouncement(notices)
     const lines = said.split('\n')
     expect(lines[0]).toBe(`${tr('attachmentsErrorSize')}.`)
@@ -32,9 +50,11 @@ describe('what the composer says about a refusal', () => {
   })
 
   it('says nothing when nothing was refused', () => {
-    expect(refusalAnnouncement(refusalNotices({ tooLarge: [], overLimit: 0, unreadable: 0 }))).toBe(
-      '',
-    )
+    expect(
+      refusalAnnouncement(
+        refusalNotices({ tooLarge: [], overLimit: 0, unreadable: 0, sendRefused: false }),
+      ),
+    ).toBe('')
   })
 
   it('is said by the composer once, for every notice it stacks', () => {

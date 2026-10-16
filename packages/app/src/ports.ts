@@ -62,9 +62,8 @@ export interface FilesPort {
   /**
    * Lets go of a pick that will not be sent: deletes the app's copy, where it made one.
    *
-   * Never for a file a message has been given. libsession reads it only when its upload's turn
-   * comes, maybe in a later run after a retry, so it has to stay until the message is sent,
-   * unsendable or deleted.
+   * Never for a file a message has been given: a copy is then libsession's, handed over with
+   * `takeFile`, and the person's own file is not the app's to delete.
    */
   discardPicked(file: PickedFile): void
   /**

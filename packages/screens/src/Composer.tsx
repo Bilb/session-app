@@ -1,4 +1,4 @@
-import { requirePorts } from '@session/app'
+import { requirePorts, type PickedFile } from '@session/app'
 import { MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
@@ -50,24 +50,42 @@ export function Composer({
   onSend,
 }: {
   staging: StagingState
-  onSend: (body: string) => void
+  /** Rejects when libsession refused the message, which it then has not stored. */
+  onSend: (body: string, files: readonly PickedFile[]) => Promise<void>
 }) {
   const [draft, setDraft] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [sending, setSending] = useState(false)
   const picking = useRef(false)
   const full = isFull(staging.files)
-  // TODO: send the staged files with the body once `sendMessage` can carry attachments. Until
-  // then a message with files staged waits, rather than going out without them.
-  const holding = staging.files.length > 0
-  const sendable = draft.trim().length > 0 && !holding
+  const sendable = !sending && (draft.trim().length > 0 || staging.files.length > 0)
 
   function send(): void {
     const body = draft.trim()
-    if (body.length === 0 || holding) return
-    // Cleared straight away: libsession stores the row before the promise settles, so the
-    // message appears on its own and there is nothing to put back if this fails.
-    setDraft('')
-    onSend(body)
+    const files = staging.files
+    if (!sendable) return
+    if (files.length === 0) {
+      // Cleared straight away: libsession stores the row before the promise settles, so the
+      // message appears on its own and there is nothing to put back if this fails.
+      setDraft('')
+      onSend(body, files).catch(() => undefined)
+      return
+    }
+    // Held until libsession answers, since a refusal leaves both here to try again.
+    setSending(true)
+    onSend(body, files)
+      .then(
+        () => {
+          setDraft((typed) => (typed.trim() === body ? '' : typed))
+          staging.handOff(files)
+        },
+        () => {
+          staging.refuseSend()
+        },
+      )
+      .finally(() => {
+        setSending(false)
+      })
   }
 
   function pick(which: 'files' | 'images'): void {
@@ -101,9 +119,12 @@ export function Composer({
             MAX_ATTACHMENTS_PER_MESSAGE,
           )}
           clearLabel={tr('clear')}
-          onClear={staging.clear}
+          // While a send is out, its files are the message's: neither cleared nor removed.
+          onClear={() => {
+            if (!sending) staging.clear()
+          }}
           addLabel={tr('attachmentsAdd')}
-          onAdd={full ? undefined : attach}
+          onAdd={full || sending ? undefined : attach}
           previousLabel={PENDING_COPY.previous}
           nextLabel={tr('next')}
           testID={ELEMENT.conversation.stagedTray}
@@ -122,7 +143,7 @@ export function Composer({
               label={[file.name, sizeOf(file)].filter(Boolean).join(', ')}
               removeLabel={PENDING_COPY.attachmentRemove(file.name)}
               onRemove={() => {
-                staging.remove(file.path)
+                if (!sending) staging.remove(file.path)
               }}
               testID={ELEMENT.conversation.stagedTile(index)}
               removeTestID={ELEMENT.conversation.stagedRemove(index)}
@@ -136,7 +157,7 @@ export function Composer({
           variant="tonal"
           size="md"
           circular
-          disabled={full}
+          disabled={full || sending}
           icon={<Icon name="plus" size="md" color="$textPrimary" />}
           accessibilityLabel={tr('attachmentsAdd')}
           onPress={attach}

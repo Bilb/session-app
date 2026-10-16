@@ -1,18 +1,21 @@
 import type { FilesPort, PickedFile } from '@session/app'
 import {
-  encryptedAttachmentSize,
+  fitsAttachmentLimit,
   formatBytes,
-  MAX_ATTACHMENT_BYTES,
   MAX_ATTACHMENTS_PER_MESSAGE,
+  type WithDecodesHeic,
 } from '@session/basic-types'
+import type { OutgoingAttachment } from '@session/client'
 
-/** What a pick or a drop left out, and why. */
+/** What the composer turned away: what a pick or a drop left out, or a send. */
 export interface StagingRefusal {
   tooLarge: PickedFile[]
   /** How many were left out because the message was full. */
   overLimit: number
   /** How many could not be read at all: a drop with no file on disk, or a picker that failed. */
   unreadable: number
+  /** Whether libsession refused the last send, whose files are still staged. */
+  sendRefused: boolean
 }
 
 export interface Staging {
@@ -30,7 +33,7 @@ export interface Staging {
   replaced: PickedFile[]
 }
 
-export interface StagingOptions {
+export interface StagingOptions extends WithDecodesHeic {
   /**
    * Whether every pick is a fresh copy, as on mobile, where the same photo picked twice never
    * shares a path. Only then do a name and size say two picks are one file.
@@ -38,7 +41,11 @@ export interface StagingOptions {
   picksAreCopies: boolean
 }
 
-function sameFile(a: PickedFile, b: PickedFile, { picksAreCopies }: StagingOptions): boolean {
+function sameFile(
+  a: PickedFile,
+  b: PickedFile,
+  { picksAreCopies }: Pick<StagingOptions, 'picksAreCopies'>,
+): boolean {
   if (a.path === b.path) return true
   return picksAreCopies && a.size !== undefined && a.size === b.size && a.name === b.name
 }
@@ -48,9 +55,8 @@ function sameFile(a: PickedFile, b: PickedFile, { picksAreCopies }: StagingOptio
  *
  * In the order given, so the tray and the message read in the order somebody chose. A file already
  * staged is not refused: choosing it twice is not a mistake worth a notice. One picked again at
- * its path replaces the staged entry, so a file edited since is drawn as it is now. A file
- * whose size the platform did not report is let through, since there is nothing to check it
- * against; the upload is what refuses it then.
+ * its path replaces the staged entry, so a file edited since is drawn as it is now. What may be
+ * staged at all is `fitsAttachmentLimit`'s to say.
  */
 export function stage(
   staged: readonly PickedFile[],
@@ -66,8 +72,7 @@ export function stage(
   for (const file of picked) {
     const at = files.findIndex((staged) => sameFile(staged, file, options))
     const already = files[at]
-    const fits =
-      file.size === undefined || encryptedAttachmentSize(file.size) <= MAX_ATTACHMENT_BYTES
+    const fits = fitsAttachmentLimit(file, options)
     if (already !== undefined && already.path !== file.path) {
       unused.push(file)
       continue
@@ -94,7 +99,12 @@ export function stage(
     files.push(file)
   }
 
-  return { files, refused: { tooLarge, overLimit, unreadable: 0 }, unused, replaced }
+  return {
+    files,
+    refused: { tooLarge, overLimit, unreadable: 0, sendRefused: false },
+    unused,
+    replaced,
+  }
 }
 
 export function sizeOf(file: PickedFile): string | undefined {
@@ -107,6 +117,20 @@ export function unstage(staged: readonly PickedFile[], path: string): PickedFile
 
 export function isFull(staged: readonly PickedFile[]): boolean {
   return staged.length >= MAX_ATTACHMENTS_PER_MESSAGE
+}
+
+/** What a send hands libsession for a staged pick: a copy the app made is given to it outright. */
+export function outgoingAttachment(
+  file: PickedFile,
+  { picksAreCopies }: Pick<StagingOptions, 'picksAreCopies'>,
+): OutgoingAttachment {
+  return {
+    path: file.path,
+    // A mobile copy's own name is prefixed to keep it apart from the others.
+    filename: file.name,
+    ...(file.contentType === undefined ? {} : { contentType: file.contentType }),
+    ...(picksAreCopies ? { takeFile: true } : {}),
+  }
 }
 
 /**

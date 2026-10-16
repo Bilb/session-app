@@ -7,13 +7,18 @@ function discard(files: readonly PickedFile[]): void {
   letGo(requirePorts().files, files, { sent: false })
 }
 
-const NOTHING_REFUSED: StagingRefusal = { tooLarge: [], overLimit: 0, unreadable: 0 }
+const NOTHING_REFUSED: StagingRefusal = {
+  tooLarge: [],
+  overLimit: 0,
+  unreadable: 0,
+  sendRefused: false,
+}
 
 export interface StagingState {
   files: PickedFile[]
-  /** What the last pick or drop left out. Replaced by the next one, so it is always current. */
+  /** What the last pick, drop or send turned away. The next replaces it, so it is current. */
   refused: StagingRefusal
-  /** Bumped by every pick or drop that refused something, so a repeat is announced again. */
+  /** Bumped by every pick, drop or send refused, so a repeat is announced again. */
   refusal: number
   /** What a pick or drop gave, and how many items it could not read at all. */
   add: (picked: readonly PickedFile[], unreadable?: number) => void
@@ -26,10 +31,12 @@ export interface StagingState {
   /** Empties the tray, deleting what it holds. Not for a send: the message needs the files. */
   clear: () => void
   /**
-   * Empties the tray and keeps the files, which a message being sent now owns, but not their
-   * previews.
+   * Takes what a message was sent with out of the tray, keeping the files, which the message now
+   * owns, but not their previews. Anything staged since stays.
    */
-  handOff: () => PickedFile[]
+  handOff: (sent: readonly PickedFile[]) => void
+  /** Says a send was refused; its files stay staged for another try. */
+  refuseSend: () => void
   dismiss: (kind: keyof StagingRefusal) => void
 }
 
@@ -64,9 +71,8 @@ export function useStaging(): StagingState {
       discard(picked)
       return
     }
-    const next = stage(latest.current, picked, {
-      picksAreCopies: requirePorts().files.picksAreCopies,
-    })
+    const { picksAreCopies, decodesHeic } = requirePorts().files
+    const next = stage(latest.current, picked, { picksAreCopies, decodesHeic })
     latest.current = next.files
     setFiles(next.files)
     setRefused({ ...next.refused, unreadable })
@@ -107,13 +113,20 @@ export function useStaging(): StagingState {
       setFiles([])
       setRefused(NOTHING_REFUSED)
     },
-    handOff: () => {
-      const handed = latest.current
-      letGo(requirePorts().files, handed, { sent: true })
-      latest.current = []
-      setFiles([])
+    handOff: (sent) => {
+      const handed = new Set(sent.map((file) => file.path))
+      letGo(
+        requirePorts().files,
+        latest.current.filter((file) => handed.has(file.path)),
+        { sent: true },
+      )
+      latest.current = latest.current.filter((file) => !handed.has(file.path))
+      setFiles(latest.current)
       setRefused(NOTHING_REFUSED)
-      return handed
+    },
+    refuseSend: () => {
+      setRefused({ ...NOTHING_REFUSED, sendRefused: true })
+      setRefusal((count) => count + 1)
     },
     dismiss: (kind) => {
       setRefused((current) => ({ ...current, [kind]: NOTHING_REFUSED[kind] }))

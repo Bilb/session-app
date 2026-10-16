@@ -8,7 +8,7 @@ import { sizeOf, type StagingRefusal } from './staging'
 export interface RefusalNotice {
   kind: keyof StagingRefusal
   /** The suffix of its test ids. */
-  id: 'unreadable' | 'size' | 'limit'
+  id: 'unreadable' | 'size' | 'limit' | 'send'
   message: string
   detail?: string | undefined
 }
@@ -22,13 +22,16 @@ function tooLargeDetail(files: readonly PickedFile[]): string | undefined {
   return files.length === 1 ? named : PENDING_COPY.attachmentNameAndMore(named, files.length - 1)
 }
 
-/** A notice for each thing the last pick or drop left out, in the order they stack. */
+/** A notice for each thing the last pick, drop or send turned away, in the order they stack. */
 export function refusalNotices({
   tooLarge,
   overLimit,
   unreadable,
+  sendRefused,
 }: StagingRefusal): RefusalNotice[] {
   const notices: RefusalNotice[] = []
+  if (sendRefused)
+    notices.push({ kind: 'sendRefused', id: 'send', message: tr('attachmentsErrorSending') })
   if (unreadable > 0)
     notices.push({ kind: 'unreadable', id: 'unreadable', message: tr('attachmentsErrorLoad') })
   if (tooLarge.length > 0)

@@ -384,6 +384,19 @@ Every shared file is checked two or three ways per run, with no synthetic profil
 
 Append one paragraph per decision. Undocumented decisions are what rot.
 
+- **2026-10-16 - A send names its files by path, and libsession reads them.** No bytes cross
+  for a send either: `sendMessage` carries each staged pick's path, the name it was picked under
+  and its declared type, and libsession stores the message `uploading`, reads each file when its
+  upload comes up, and refuses on the spot a path that is not a readable, non-empty file. A
+  mobile pick is the app's own copy, so it goes with `takeFile` and becomes libsession's: moved
+  into its storage and deleted when the message no longer needs it. A desktop pick is the
+  person's own file, so it never does. Desktop main admits a send only for paths the preload
+  resolved from a `File` picked or dropped in that window, counted per pick and released as the
+  tray lets go, and strips `takeFile` whatever the page said: libsession reads whatever path it
+  is given, so without that a page script could send any file this user can read. Staging
+  refuses a file past the file server's limit unless it is a picture this build re-encodes, which
+  libsession shrinks until it fits; HEIC counts only on iOS and macOS, where ImageIO decodes it.
+
 - **2026-10-08 - Mobile exports go where the legacy clients put them.** libsession writes the
   export into the app's cache, the files port admits only that staged path, and the staged file
   is then handed on:

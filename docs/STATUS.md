@@ -13,10 +13,11 @@ a time, via the `port-feature` skill.
 
 - **Push.** `setPushToken` and `handlePushPayload` are in the protocol and the shim answers both
   with an error naming itself.
-- **Sending an attachment.** Receiving one works: metadata, a download with progress, exporting
-  (desktop to a chosen path, mobile where the legacy clients put it), and the per-conversation
-  auto-download setting. `sendMessage` still takes a body
-  and nothing else, so `SendState::uploading` is a state nothing here can reach.
+- **An upload shows no progress of its own.** A sending message counts its files as each reaches
+  the file server; the bytes of the one under way are not followed, because `sendMessage` gives
+  libsession no upload handler.
+- **No "send as a file".** A picture libsession decodes always goes re-encoded; nothing offers
+  sending one as it is.
 - **A video is a file row.** It downloads and exports, but nothing draws a frame of it:
   libsession makes no thumbnail of one, and its `gallery_viewable` admits only images.
 - **A GIF tile shows a still.** libsession's thumbnail is the first frame; only the viewer animates.

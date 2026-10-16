@@ -24,6 +24,7 @@ import { memo, useMemo, useState } from 'react'
 import { AttachmentSheet } from './AttachmentSheet'
 import { Composer } from './Composer'
 import { PENDING_COPY } from './pendingCopy'
+import { outgoingAttachment } from './staging'
 import { isUploadPhase } from './uploadState'
 import { useStaging } from './useStaging'
 import { createViewChoices } from './viewChoices'
@@ -257,8 +258,12 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
 
           <Composer
             staging={staging}
-            onSend={(body) => {
-              void actions.send(conversationId, body)
+            onSend={(body, files) => {
+              const { picksAreCopies } = requirePorts().files
+              return actions.send(conversationId, {
+                body,
+                attachments: files.map((file) => outgoingAttachment(file, { picksAreCopies })),
+              })
             }}
           />
         </DropZone>

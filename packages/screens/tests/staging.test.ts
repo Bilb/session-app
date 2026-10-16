@@ -2,10 +2,10 @@ import type { PickedFile } from '@session/app'
 import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
 import { describe, expect, it } from 'vitest'
 
-import { isFull, letGo, stage as stageWith, unstage } from '#src/staging'
+import { isFull, letGo, outgoingAttachment, stage as stageWith, unstage } from '#src/staging'
 
-const DESKTOP = { picksAreCopies: false }
-const MOBILE = { picksAreCopies: true }
+const DESKTOP = { picksAreCopies: false, decodesHeic: false }
+const MOBILE = { picksAreCopies: true, decodesHeic: false }
 const stage = (staged: PickedFile[], picked: PickedFile[]) => stageWith(staged, picked, DESKTOP)
 
 function file(name: string, size?: number): PickedFile {
@@ -23,7 +23,7 @@ describe('staging attachments', () => {
       [file('b.pdf', 10), file('c.mp4', 10), file('d.m4a', 10)],
     )
     expect(staged.map((f) => f.name)).toEqual(['a.jpg', 'b.pdf', 'c.mp4', 'd.m4a'])
-    expect(refused).toEqual({ tooLarge: [], overLimit: 0, unreadable: 0 })
+    expect(refused).toEqual({ tooLarge: [], overLimit: 0, unreadable: 0, sendRefused: false })
   })
 
   it('refuses a file over the file server limit and keeps the rest', () => {
@@ -39,6 +39,15 @@ describe('staging attachments', () => {
     expect(
       stage([], [file('exactly-10mb.bin', MAX_ATTACHMENT_BYTES)]).refused.tooLarge,
     ).toHaveLength(1)
+  })
+
+  it('stages a picture of any size that libsession shrinks to fit, but not one it cannot', () => {
+    const huge = MAX_ATTACHMENT_BYTES * 4
+    const photo = { ...file('pano.jpg', huge), contentType: 'image/jpeg' }
+    const heic = { ...file('pano.heic', huge), contentType: 'image/heic' }
+    expect(stage([], [photo]).files).toEqual([photo])
+    expect(stage([], [heic]).refused.tooLarge).toEqual([heic])
+    expect(stageWith([], [heic], { ...DESKTOP, decodesHeic: true }).files).toEqual([heic])
   })
 
   it('lets through a file whose size the platform did not report', () => {
@@ -66,7 +75,7 @@ describe('staging attachments', () => {
     const a = file('a.jpg', 10)
     const { files: staged, refused, unused } = stage([a], [a, file('b.jpg', 10)])
     expect(staged.map((f) => f.name)).toEqual(['a.jpg', 'b.jpg'])
-    expect(refused).toEqual({ tooLarge: [], overLimit: 0, unreadable: 0 })
+    expect(refused).toEqual({ tooLarge: [], overLimit: 0, unreadable: 0, sendRefused: false })
     // The same path is the staged file's own: handing it back to be deleted would delete that.
     expect(unused).toEqual([])
   })
@@ -148,5 +157,22 @@ describe('letting go of staged picks', () => {
     letGo(p, [file('a.jpg')], { sent: true })
     expect(p.released).toEqual(['/picked/a.jpg'])
     expect(p.discarded).toEqual([])
+  })
+})
+
+describe('what a send hands libsession', () => {
+  const pick = { ...file('1f3a-harbour.jpg', 10), name: 'harbour.jpg', contentType: 'image/jpeg' }
+
+  it('names each file as it was picked, not as it is stored', () => {
+    expect(outgoingAttachment(pick, DESKTOP)).toEqual({
+      path: '/picked/1f3a-harbour.jpg',
+      filename: 'harbour.jpg',
+      contentType: 'image/jpeg',
+    })
+  })
+
+  it('gives libsession a copy the app made, and never the person’s own file', () => {
+    expect(outgoingAttachment(pick, MOBILE).takeFile).toBe(true)
+    expect(outgoingAttachment(pick, DESKTOP)).not.toHaveProperty('takeFile')
   })
 })
