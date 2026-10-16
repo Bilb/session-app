@@ -27,19 +27,25 @@ function isFile(item: unknown): item is File {
   return typeof File !== 'undefined' && item instanceof File
 }
 
+/** A pick that left the tray: its grants, to draw it and to send it, go with it. */
+export function releasePreview(file: PickedFile): void {
+  if (file.previewUrl !== undefined) void window.sessionDesktop.revokePreview(file.previewUrl)
+  void window.sessionDesktop.releaseSend(file.path)
+}
+
 async function toPickedFile(file: File, preview: boolean): Promise<PickedFile | null> {
   const path = window.sessionDesktop.pathForFile(file)
   if (path === '' || !(await window.sessionDesktop.allowSend(file))) return null
   const contentType = file.type === '' ? undefined : file.type
-  return {
-    path,
-    name: file.name,
-    size: file.size,
-    contentType,
-    previewUrl:
+  try {
+    const previewUrl =
       preview && isDisplayableImage(contentType)
         ? ((await window.sessionDesktop.allowPreview(file)) ?? undefined)
-        : undefined,
+        : undefined
+    return { path, name: file.name, size: file.size, contentType, previewUrl }
+  } catch (error) {
+    void window.sessionDesktop.releaseSend(path)
+    throw error
   }
 }
 
@@ -51,14 +57,17 @@ async function toPickedFile(file: File, preview: boolean): Promise<PickedFile | 
  */
 export async function toPickedFiles(items: readonly unknown[]): Promise<PickedFile[]> {
   const files = items.filter(isFile)
-  const picked = await Promise.all(
+  const settled = await Promise.allSettled(
     files.map((file, at) => toPickedFile(file, at < MAX_ATTACHMENTS_PER_MESSAGE)),
   )
-  return picked.filter((file) => file !== null)
-}
-
-/** A pick that left the tray: its grants, to draw it and to send it, go with it. */
-export function releasePreview(file: PickedFile): void {
-  if (file.previewUrl !== undefined) void window.sessionDesktop.revokePreview(file.previewUrl)
-  void window.sessionDesktop.releaseSend(file.path)
+  const picked = settled.flatMap((result) =>
+    result.status === 'fulfilled' && result.value !== null ? [result.value] : [],
+  )
+  const failed = settled.find((result) => result.status === 'rejected')
+  if (failed !== undefined) {
+    // Staging gets none of a pick that failed, so nothing else would let these go.
+    for (const file of picked) releasePreview(file)
+    throw failed.reason
+  }
+  return picked
 }
