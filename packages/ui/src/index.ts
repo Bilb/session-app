@@ -76,6 +76,11 @@ export { UIProvider } from './UIProvider'
 export type { UIProviderProps } from './UIProvider'
 export type { BackdropBlur, BackdropBlurProps } from './backdropBlur'
 export type { Glass, GlassProps } from './glass'
+export {
+  useTopBarControlsPadding,
+  useWindowControlsInset,
+  WindowControlsInsetProvider,
+} from './windowControls'
 
 export { config, tokens } from './config'
 // The numbers behind the named scales, for a raw style that tamagui does not resolve.

@@ -8,6 +8,7 @@ import { Avatar, Icon, List, Screen, Separator, Text, XStack, YStack } from '@se
 import { NetworkOverlay } from './NetworkOverlay'
 import { conversationTitle } from './conversationTitle'
 import { useOpenSettings } from './settings/SettingsRootPage'
+import { useTopBarLeading } from './shell/pane'
 
 /**
  * The height of one row, which the list needs in order to place a scrollbar without measuring.
@@ -27,6 +28,7 @@ const ROW_HEIGHT = 60
  * AdaptiveShell's business, not its own.
  */
 export function ConversationListScreen() {
+  const topBarLeading = useTopBarLeading()
   const conversations = useConversations()
   const unreadRequests = useUnreadRequestCount()
   const nav = useNav()
@@ -39,6 +41,7 @@ export function ConversationListScreen() {
         paddingVertical="$sm"
         alignItems="center"
         justifyContent="space-between"
+        {...topBarLeading}
       >
         <NetworkOverlay>
           <Text size="$title" weight="bold">

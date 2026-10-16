@@ -7,6 +7,7 @@ import { Avatar, Button, List, Screen, Separator, Text, XStack, YStack } from '@
 
 import { BackButton } from './BackButton'
 import { conversationTitle } from './conversationTitle'
+import { useTopBarLeading } from './shell/pane'
 
 /**
  * One row's height, for the same reason the conversation list has one: it lets the list place a
@@ -26,12 +27,19 @@ const ROW_HEIGHT = 60
  * on a fresh account.
  */
 export function RequestsScreen() {
+  const topBarLeading = useTopBarLeading()
   const requests = useRequests()
   const nav = useNav()
 
   return (
     <Screen testID={ELEMENT.requests.screen}>
-      <XStack paddingHorizontal="$md" paddingVertical="$sm" alignItems="center" gap="$sm">
+      <XStack
+        paddingHorizontal="$md"
+        paddingVertical="$sm"
+        alignItems="center"
+        gap="$sm"
+        {...topBarLeading}
+      >
         <BackButton testID={ELEMENT.requests.back} />
         <Text size="$title" weight="bold">
           {tr('sessionMessageRequests')}

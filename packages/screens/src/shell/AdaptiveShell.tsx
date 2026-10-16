@@ -1,6 +1,9 @@
 import { logical, useMedia, useTokenColor, XStack, YStack } from '@session/ui'
 import type { ReactNode } from 'react'
 
+import { PaneProvider } from './pane'
+import { DETAIL_PANE, LIST_PANE, SOLE_PANE } from './panes'
+
 /**
  * One list, one detail, and the decision about how many of them fit.
  *
@@ -34,16 +37,18 @@ export function AdaptiveShell({
           // leaves the two panes touching.
           {...logical({ borderEndWidth: 1, borderEndColor: rule })}
         >
-          {list}
+          <PaneProvider value={LIST_PANE}>{list}</PaneProvider>
         </YStack>
-        <YStack flex={1}>{hasDetail ? detail : placeholder}</YStack>
+        <YStack flex={1}>
+          <PaneProvider value={DETAIL_PANE}>{hasDetail ? detail : placeholder}</PaneProvider>
+        </YStack>
       </XStack>
     )
   }
 
   return (
     <YStack flex={1} backgroundColor="$backgroundPrimary">
-      {hasDetail ? detail : list}
+      <PaneProvider value={SOLE_PANE}>{hasDetail ? detail : list}</PaneProvider>
     </YStack>
   )
 }

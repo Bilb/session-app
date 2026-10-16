@@ -5,6 +5,7 @@ import { ELEMENT } from '@session/test-ids'
 import { Button, Input, Screen, Text, XStack, YStack } from '@session/ui'
 
 import { BackButton } from './BackButton'
+import { useTopBarLeading } from './shell/pane'
 import { useState } from 'react'
 
 /**
@@ -18,6 +19,7 @@ import { useState } from 'react'
  * this screen could invent.
  */
 export function NewConversationScreen() {
+  const topBarLeading = useTopBarLeading()
   const actions = useSessionActions()
   const nav = useNav()
   const [accountId, setAccountId] = useState('')
@@ -47,7 +49,7 @@ export function NewConversationScreen() {
         {/* The way out. Pushed rather than replaced onto the list, so back is where it came from;
             on a two-pane window that is the placeholder, which is still the right answer - the
             list never left. */}
-        <XStack alignItems="center" gap="$sm">
+        <XStack alignItems="center" gap="$sm" {...topBarLeading}>
           <BackButton testID={ELEMENT.newConversation.back} />
           <Text size="$title" weight="bold">
             {tr('conversationsNew')}

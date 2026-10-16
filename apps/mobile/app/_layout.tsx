@@ -14,6 +14,7 @@ import {
   ModalStackProvider,
   ToastProvider,
   UIProvider,
+  WindowControlsInsetProvider,
 } from '@session/ui'
 import { useFonts } from 'expo-font'
 import { KeyboardProvider } from 'react-native-keyboard-controller'
@@ -27,6 +28,7 @@ import { MobileNavProvider } from '../src/nav'
 import { MobileShell } from '../src/shell'
 import { HideSplashOnMount } from '../src/splash'
 import { storePromise } from '../src/store'
+import { useNativeWindowControlsInset } from '../src/windowControls'
 
 /**
  * The app shell.
@@ -46,6 +48,7 @@ export default function RootLayout() {
 
   const [store, setStore] = useState<SessionStore | null>(null)
   const held = useFirstPaintHeld(false)
+  const windowControlsInset = useNativeWindowControlsInset()
 
   useEffect(() => {
     let live = true
@@ -94,7 +97,9 @@ export default function RootLayout() {
                           subscribes with `useLocale` instead. */}
                       <ToastProvider>
                         <ModalHost>
-                          <MobileShell />
+                          <WindowControlsInsetProvider value={windowControlsInset}>
+                            <MobileShell />
+                          </WindowControlsInsetProvider>
                         </ModalHost>
                         <ToastLayer />
                       </ToastProvider>
