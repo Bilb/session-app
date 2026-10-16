@@ -21,8 +21,10 @@ xcodebuild -workspace Session.xcworkspace -scheme Session -configuration Debug \
 The signing flags are not decoration - see [traps.md](traps.md). `CODE_SIGNING_ALLOWED=NO` is the
 obvious thing to pass for a simulator and it breaks the keychain.
 
-The first `build:libsession:ios` takes a long time: it cross-compiles libsession and every
-dependency. After that it is incremental and quick.
+The first `build:libsession:ios` on a given libsession takes a long time: it cross-compiles
+libsession and every dependency. Every later clone on the same libsession takes it from the
+machine-wide cache in seconds - see `packages/bridge-rn/ios/README.md`, including
+`SESSION_LIBSESSION_IOS_KEEP_BUILD=1` for incremental rebuilds while changing libsession.
 
 ## Simulators
 
