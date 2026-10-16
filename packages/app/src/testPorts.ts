@@ -31,6 +31,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
       droppedFiles: () => Promise.resolve([]),
       picksAreCopies: false,
       discardPicked: () => undefined,
+      releasePreview: () => undefined,
       chooseExportLocation: () => Promise.resolve(null),
       openPath: () => Promise.resolve(),
       revealInFolder: () => Promise.resolve(),

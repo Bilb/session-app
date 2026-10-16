@@ -57,7 +57,7 @@ export async function toPickedFiles(items: readonly unknown[]): Promise<PickedFi
   return picked.filter((file) => file !== null)
 }
 
-/** A pick the composer let go of: its preview's grant goes with it. */
-export function discardPicked(file: PickedFile): void {
+/** A pick that left the tray: its preview's grant goes with it. */
+export function releasePreview(file: PickedFile): void {
   if (file.previewUrl !== undefined) void window.sessionDesktop.revokePreview(file.previewUrl)
 }

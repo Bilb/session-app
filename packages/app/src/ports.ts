@@ -62,6 +62,12 @@ export interface FilesPort {
    */
   discardPicked(file: PickedFile): void
   /**
+   * Lets go of what drew a pick in the tray, for every pick that leaves it, sent or not. Desktop
+   * grants each preview to the page, and a grant held for a file nobody draws pushes out one in
+   * use.
+   */
+  releasePreview(file: PickedFile): void
+  /**
    * Where to export a file to; null when the person cancelled.
    *
    * `contentType` is the sender's claim, for a platform whose destination depends on the kind of

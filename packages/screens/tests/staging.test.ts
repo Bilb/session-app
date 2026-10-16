@@ -2,7 +2,7 @@ import type { PickedFile } from '@session/app'
 import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
 import { describe, expect, it } from 'vitest'
 
-import { isFull, stage as stageWith, unstage } from '#src/staging'
+import { isFull, letGo, stage as stageWith, unstage } from '#src/staging'
 
 const DESKTOP = { picksAreCopies: false }
 const MOBILE = { picksAreCopies: true }
@@ -94,5 +94,32 @@ describe('staging attachments', () => {
   it('removes one file by its path', () => {
     const staged = stage([], [file('a.jpg', 1), file('b.jpg', 1)]).files
     expect(unstage(staged, '/picked/a.jpg').map((f) => f.name)).toEqual(['b.jpg'])
+  })
+})
+
+describe('letting go of staged picks', () => {
+  function port() {
+    const released: string[] = []
+    const discarded: string[] = []
+    return {
+      released,
+      discarded,
+      releasePreview: (f: PickedFile) => released.push(f.path),
+      discardPicked: (f: PickedFile) => discarded.push(f.path),
+    }
+  }
+
+  it('releases the preview and deletes the copy of a pick that will not be sent', () => {
+    const p = port()
+    letGo(p, [file('a.jpg'), file('b.jpg')], { sent: false })
+    expect(p.released).toEqual(['/picked/a.jpg', '/picked/b.jpg'])
+    expect(p.discarded).toEqual(['/picked/a.jpg', '/picked/b.jpg'])
+  })
+
+  it('releases the preview of a sent pick and keeps its file for the upload', () => {
+    const p = port()
+    letGo(p, [file('a.jpg')], { sent: true })
+    expect(p.released).toEqual(['/picked/a.jpg'])
+    expect(p.discarded).toEqual([])
   })
 })

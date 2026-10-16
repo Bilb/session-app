@@ -54,7 +54,12 @@ async function picked(
  */
 export const pickers: Pick<
   FilesPort,
-  'pickFiles' | 'pickImages' | 'droppedFiles' | 'picksAreCopies' | 'discardPicked'
+  | 'pickFiles'
+  | 'pickImages'
+  | 'droppedFiles'
+  | 'picksAreCopies'
+  | 'discardPicked'
+  | 'releasePreview'
 > = {
   picksAreCopies: true,
   pickFiles: async () => {
@@ -85,6 +90,8 @@ export const pickers: Pick<
   },
   // Nothing is dropped on a phone or a tablet: `DropZone` there takes no drop.
   droppedFiles: () => Promise.resolve([]),
+  // A tile draws the copy by its path, which grants nothing.
+  releasePreview: () => undefined,
   discardPicked: (file) => {
     // Only our own copies: a path anywhere else is not one this app made.
     if (!file.path.startsWith(STAGED_ROOT)) return

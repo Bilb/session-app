@@ -1,11 +1,10 @@
 import { requirePorts, type PickedFile } from '@session/app'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { stage, unstage, type StagingRefusal } from './staging'
+import { letGo, stage, unstage, type StagingRefusal } from './staging'
 
 function discard(files: readonly PickedFile[]): void {
-  const { files: port } = requirePorts()
-  for (const file of files) port.discardPicked(file)
+  letGo(requirePorts().files, files, { sent: false })
 }
 
 const NOTHING_REFUSED: StagingRefusal = { tooLarge: [], overLimit: 0, unreadable: 0 }
@@ -21,7 +20,10 @@ export interface StagingState {
   remove: (path: string) => void
   /** Empties the tray, deleting what it holds. Not for a send: the message needs the files. */
   clear: () => void
-  /** Empties the tray and keeps the files, which a message being sent now owns. */
+  /**
+   * Empties the tray and keeps the files, which a message being sent now owns, but not their
+   * previews.
+   */
   handOff: () => PickedFile[]
   dismiss: (kind: keyof StagingRefusal) => void
 }
@@ -80,6 +82,7 @@ export function useStaging(): StagingState {
     },
     handOff: () => {
       const handed = latest.current
+      letGo(requirePorts().files, handed, { sent: true })
       latest.current = []
       setFiles([])
       setRefused(NOTHING_REFUSED)

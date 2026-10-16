@@ -1,4 +1,4 @@
-import type { PickedFile } from '@session/app'
+import type { FilesPort, PickedFile } from '@session/app'
 import {
   encryptedAttachmentSize,
   MAX_ATTACHMENT_BYTES,
@@ -83,4 +83,19 @@ export function unstage(staged: readonly PickedFile[], path: string): PickedFile
 
 export function isFull(staged: readonly PickedFile[]): boolean {
   return staged.length >= MAX_ATTACHMENTS_PER_MESSAGE
+}
+
+/**
+ * Lets go of picks leaving the tray: every one's preview, and, unless a message being sent took
+ * them, the copy the app made.
+ */
+export function letGo(
+  port: Pick<FilesPort, 'discardPicked' | 'releasePreview'>,
+  files: readonly PickedFile[],
+  { sent }: { sent: boolean },
+): void {
+  for (const file of files) {
+    port.releasePreview(file)
+    if (!sent) port.discardPicked(file)
+  }
 }
