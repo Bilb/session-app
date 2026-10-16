@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { lastSegment } from '#src/pickedPaths'
+import { keepAll, lastSegment } from '#src/pickedPaths'
 import { fileUri, plainPath } from '#src/storage/layout'
 
 describe('a picked file’s path', () => {
@@ -17,5 +17,18 @@ describe('a picked file’s path', () => {
 
   it('names the file by its last segment when the picker gave no name', () => {
     expect(lastSegment('file:///tmp/ImagePicker/IMG%200001.jpeg')).toBe('IMG 0001.jpeg')
+  })
+
+  it('keeps every pick or none, discarding the copies made before one failed', () => {
+    const discarded: string[] = []
+    const keep = (name: string) => {
+      if (name === 'c') throw new Error('move failed')
+      return { path: `/staged/${name}`, name }
+    }
+    expect(() => keepAll(['a', 'b', 'c', 'd'], keep, (path) => discarded.push(path))).toThrow(
+      'move failed',
+    )
+    expect(discarded).toEqual(['/staged/a', '/staged/b'])
+    expect(keepAll(['a', 'b'], keep, (path) => discarded.push(path))).toHaveLength(2)
   })
 })

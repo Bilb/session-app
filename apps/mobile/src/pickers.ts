@@ -7,16 +7,11 @@ import {
   UIImagePickerPreferredAssetRepresentationMode,
 } from 'expo-image-picker'
 
-import { lastSegment } from './pickedPaths'
+import { keepAll, lastSegment } from './pickedPaths'
 import { discardStaged, keepPicked } from './storage/staging'
 
-async function picked(
-  copy: string,
-  name: string,
-  contentType?: string,
-  size?: number,
-): Promise<PickedFile> {
-  const path = await keepPicked(copy, lastSegment(copy))
+function picked(copy: string, name: string, contentType?: string, size?: number): PickedFile {
+  const path = keepPicked(copy, lastSegment(copy))
   return {
     path,
     name,
@@ -49,8 +44,10 @@ export const pickers: Pick<
   pickFiles: async () => {
     const result = await getDocumentAsync({ multiple: true, copyToCacheDirectory: true })
     if (result.canceled) return []
-    return Promise.all(
-      result.assets.map((asset) => picked(asset.uri, asset.name, asset.mimeType, asset.size)),
+    return keepAll(
+      result.assets,
+      (asset) => picked(asset.uri, asset.name, asset.mimeType, asset.size),
+      discardStaged,
     )
   },
   pickImages: async (options) => {
@@ -66,10 +63,11 @@ export const pickers: Pick<
       preferredAssetRepresentationMode: UIImagePickerPreferredAssetRepresentationMode.Compatible,
     })
     if (result.canceled) return []
-    return Promise.all(
-      result.assets.map((asset) =>
+    return keepAll(
+      result.assets,
+      (asset) =>
         picked(asset.uri, asset.fileName ?? lastSegment(asset.uri), asset.mimeType, asset.fileSize),
-      ),
+      discardStaged,
     )
   },
   // Nothing is dropped on a phone or a tablet: `DropZone` there takes no drop.

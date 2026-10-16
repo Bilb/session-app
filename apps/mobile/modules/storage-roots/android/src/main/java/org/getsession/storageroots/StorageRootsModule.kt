@@ -31,6 +31,8 @@ class StorageRootsModule : Module() {
       File(context.filesDir, "session"),
       File(context.filesDir, "logs"),
       File(context.cacheDir, "exports"),
+      // Not the cache: the OS may clear it before libsession reads the file to upload it.
+      File(context.filesDir, "staged"),
     )
   }
 
@@ -61,8 +63,13 @@ class StorageRootsModule : Module() {
     OnCreate { ensureRoots() }
 
     Constant("roots") {
-      val (data, logs, exports) = roots()
-      mapOf("data" to data.path, "logs" to logs.path, "exports" to exports.path)
+      val (data, logs, exports, staged) = roots()
+      mapOf(
+        "data" to data.path,
+        "logs" to logs.path,
+        "exports" to exports.path,
+        "staged" to staged.path,
+      )
     }
 
     Constant("location") { "filesDir" }

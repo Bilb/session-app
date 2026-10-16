@@ -1,29 +1,35 @@
 import { randomUUID } from 'expo-crypto'
-import { Directory, File, Paths } from 'expo-file-system'
+import { plainPath } from './layout'
+import { File, moveInto, removeIfPresent, stagedDirectory } from './roots'
 
-import { fileUri, plainPath } from './layout'
+const stagedRoot = (): string => plainPath(stagedDirectory().uri).replace(/\/+$/, '') + '/'
 
-/**
- * Where staged copies live: under documents, not the cache the pickers write to, because the OS
- * may empty a cache and libsession reads a file only when its upload's turn comes.
- */
-const STAGED = new Directory(Paths.document, 'staged-attachments')
-const STAGED_ROOT = plainPath(STAGED.uri).replace(/\/+$/, '') + '/'
-
-/** Moves a picker's copy into the staged folder under a name of its own; returns its path. */
-export async function keepPicked(uri: string, name: string): Promise<string> {
-  if (!STAGED.exists) STAGED.create({ intermediates: true, idempotent: true })
-  const target = new File(STAGED, `${randomUUID()}-${name}`)
-  await new File(uri).move(target)
+/** Moves a picker's copy into the staged root under a name of its own; returns its path. */
+export function keepPicked(uri: string, name: string): string {
+  const target = new File(stagedDirectory(), `${randomUUID()}-${name}`)
+  moveInto(new File(uri), target)
   return plainPath(target.uri)
 }
 
 /** Deletes a staged copy. Only our own: a path anywhere else is not one this app made. */
 export function discardStaged(path: string): void {
-  if (!path.startsWith(STAGED_ROOT)) return
+  if (!path.startsWith(stagedRoot())) return
   try {
-    new File(fileUri(path)).delete()
+    removeIfPresent(path)
   } catch {
     // Already gone.
+  }
+}
+
+/**
+ * Deletes every staged copy a previous run left behind: a run killed with files in the tray
+ * leaves them, and nothing else would.
+ */
+// TODO: once messages with attachments are sent, keep what a message not yet uploaded holds.
+export function sweepStaged(): void {
+  try {
+    removeIfPresent(plainPath(stagedDirectory().uri))
+  } catch {
+    // Nothing to sweep is the common case.
   }
 }

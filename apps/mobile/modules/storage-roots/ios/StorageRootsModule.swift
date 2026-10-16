@@ -9,7 +9,10 @@ public class StorageRootsModule: Module {
     /// `file://` form expo-file-system wants.
     Constant("roots") { () -> [String: String] in
       let paths = ProtectedRoots.paths
-      return ["data": paths.data.path, "logs": paths.logs.path, "exports": paths.exports.path]
+      return [
+        "data": paths.data.path, "logs": paths.logs.path, "exports": paths.exports.path,
+        "staged": paths.staged.path,
+      ]
     }
 
     /// Where the roots are, for the startup block.
