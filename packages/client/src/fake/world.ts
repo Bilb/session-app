@@ -639,6 +639,8 @@ export class FakeAccount {
       voiceMessage: false,
       hasThumbhash: false,
       hasThumbnail: false,
+      hasRendition: false,
+      originalFile: false,
       uploaded: false,
       availability: 'absent',
       fetchDoneBytes: 0,
