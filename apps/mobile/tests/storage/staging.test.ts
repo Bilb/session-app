@@ -7,13 +7,15 @@ const entries = ['a.jpg', 'b.mov'].map((name) => ({
     deleted.push(name)
   },
 }))
-const root = { uri: 'file:///roots/staged/', list: () => entries, delete: vi.fn() }
+let list = () => entries
+const root = { uri: 'file:///roots/staged/', list: () => list(), delete: vi.fn() }
+const removeIfPresent = vi.fn()
 
 vi.mock('expo-crypto', () => ({ randomUUID: () => 'id' }))
 vi.mock('#src/storage/roots', () => ({
   File: class {},
   moveInto: vi.fn(),
-  removeIfPresent: vi.fn(),
+  removeIfPresent,
   stagedDirectory: () => root,
 }))
 
@@ -24,5 +26,15 @@ describe('the launch sweep of staged picks', () => {
     sweepStaged()
     expect(deleted).toEqual(['a.jpg', 'b.mov'])
     expect(root.delete).not.toHaveBeenCalled()
+    expect(removeIfPresent).not.toHaveBeenCalled()
+  })
+
+  it('lets the app start when the root cannot be read', () => {
+    list = () => {
+      throw new Error('unreadable')
+    }
+    expect(() => {
+      sweepStaged()
+    }).not.toThrow()
   })
 })
