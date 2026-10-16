@@ -46,6 +46,7 @@
 #include "convert.hpp"
 #include "session_bridge/media_url.hpp"
 #include "session_bridge/staged_thumbnails.hpp"
+#include "session_bridge/utf8_path.hpp"
 #include "mark_downloaded.hpp"
 
 namespace session_bridge {
@@ -1062,7 +1063,7 @@ struct ClientBridge::Impl {
             // is never set: nothing offers sending a picture as it is.
             for (auto& a : *cmd.attachments) {
                 client::OutgoingAttachment out;
-                out.path = std::filesystem::path{std::move(a.path)};
+                out.path = utf8_path(a.path);
                 out.content_type = std::move(a.content_type);
                 out.filename = std::move(a.filename);
                 out.take_file = a.take_file.value_or(false);
@@ -1121,13 +1122,13 @@ struct ClientBridge::Impl {
         client->save_attachment(
                 message_id,
                 index,
-                std::filesystem::path{cmd.destination},
+                utf8_path(cmd.destination),
                 report(AttachmentTransfer::export_),
                 on(id,
                    [this, id](std::filesystem::path saved_to) {
                        // Before the answer, which is what the app reveals the file on.
                        mark_downloaded(saved_to);
-                       respond(id, PathResult{saved_to.string()});
+                       respond(id, PathResult{utf8_string(saved_to)});
                    }),
                 cmd.notify_sender,
                 cmd.replace);
@@ -1148,7 +1149,7 @@ struct ClientBridge::Impl {
     }
 
     void handle(double id, const GetCacheDirCommand&) {
-        respond(id, PathResult{options.cache_dir.string()});
+        respond(id, PathResult{utf8_string(options.cache_dir)});
     }
 
     void handle(double id, const GetAttachmentCacheLimitCommand&) {
