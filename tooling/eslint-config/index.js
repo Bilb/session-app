@@ -8,12 +8,21 @@ import {
   desktopMainZone,
   desktopRendererZone,
   mobileAppZone,
+  mobileStorageZone,
   sharedZone,
   uiZone,
   universalZone,
 } from './zones.js'
 
-export { desktopMainZone, desktopRendererZone, mobileAppZone, sharedZone, uiZone, universalZone }
+export {
+  desktopMainZone,
+  desktopRendererZone,
+  mobileAppZone,
+  mobileStorageZone,
+  sharedZone,
+  uiZone,
+  universalZone,
+}
 
 /**
  * The repo-wide base, plus this package's zone.

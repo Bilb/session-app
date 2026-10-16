@@ -4,6 +4,7 @@
 
 #include <session_bridge/media_url.hpp>
 
+#include <oxen/log.hpp>
 #include <pthread.h>
 
 #include <climits>
@@ -13,6 +14,8 @@
 #include <vector>
 
 namespace {
+
+auto cat = oxen::log::Cat("media");
 
 JavaVM* java_vm = nullptr;
 jmethodID on_media = nullptr;
@@ -40,6 +43,30 @@ bool clear_pending(JNIEnv* env) {
         return false;
     env->ExceptionClear();
     return true;
+}
+
+/// The pending exception's `toString()`, clearing it; empty when none was pending.
+std::string take_pending(JNIEnv* env) {
+    jthrowable thrown = env->ExceptionOccurred();
+    if (!thrown)
+        return {};
+    env->ExceptionClear();
+    std::string text = "an exception";
+    jclass type = env->GetObjectClass(thrown);
+    jmethodID to_string = env->GetMethodID(type, "toString", "()Ljava/lang/String;");
+    auto described = to_string ? static_cast<jstring>(env->CallObjectMethod(thrown, to_string))
+                               : nullptr;
+    if (described) {
+        if (const char* chars = env->GetStringUTFChars(described, nullptr)) {
+            text = chars;
+            env->ReleaseStringUTFChars(described, chars);
+        }
+        env->DeleteLocalRef(described);
+    }
+    clear_pending(env);
+    env->DeleteLocalRef(type);
+    env->DeleteLocalRef(thrown);
+    return text;
 }
 
 void fail(JNIEnv* env, jobject load, const std::string& message) {
@@ -166,10 +193,12 @@ void forget_pictures() {
     static jmethodID forget = env->GetStaticMethodID(media_native, "forgetPictures", "()V");
     if (!forget) {
         clear_pending(env);
+        oxen::log::error(cat, "No forgetPictures: a discard leaves pictures cached");
         return;
     }
     env->CallStaticVoidMethod(media_native, forget);
-    clear_pending(env);
+    if (auto thrown = take_pending(env); !thrown.empty())
+        oxen::log::warning(cat, "forgetPictures threw, so pictures may stay cached: {}", thrown);
 }
 
 }  // namespace

@@ -31,6 +31,7 @@ export function PressArea({
   role = 'button',
   checked,
   ring = PAGE_RING,
+  busy = false,
   testID,
   children,
 }: PressAreaProps) {
@@ -46,6 +47,7 @@ export function PressArea({
       onPress={press}
       {...keyboardPress(press, focusRing(ring))}
       aria-label={accessibilityLabel}
+      aria-busy={busy}
       testID={testID}
     >
       {children(false)}

@@ -29,6 +29,7 @@ import {
   type AttachmentRef,
   type AttachmentTransfer,
   type AutoDownload,
+  type ConfigSize,
   type Conversation,
   type ConversationId,
   type Deletion,
@@ -692,6 +693,24 @@ export class FakeAccount {
 
   setAttachmentCacheLimit(limitBytes?: number): void {
     this.cacheLimitBytes = limitBytes
+  }
+
+  /**
+   * libsession's five configs and a size for each, growing with what they hold. Not their real
+   * sizes - the fake keeps no dumps - but in the same order, under the same names, and empty before
+   * there is an account, which is what a caller can rely on.
+   */
+  configSizes(): ConfigSize[] {
+    if (!this.haveAccount) return []
+    const conversations = this.conversations.size
+    // By name, as the bridge lists them.
+    return [
+      { name: 'contacts', bytes: 120 + 140 * conversations },
+      { name: 'convo_info_volatile', bytes: 110 + 70 * conversations },
+      { name: 'local', bytes: 90 },
+      { name: 'user_groups', bytes: 110 },
+      { name: 'user_profile', bytes: 180 + this.displayName.length },
+    ]
   }
 
   /** What libsession would count: the encrypted size of every cached file. */

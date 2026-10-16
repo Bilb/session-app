@@ -13,6 +13,7 @@ import type {
   AccountInfo,
   AttachmentRef,
   AutoDownload,
+  ConfigSize,
   Conversation,
   ConversationId,
   Deletion,
@@ -169,6 +170,8 @@ export interface SessionClient {
    */
   getThumbnailEdge(): Promise<number>
   setThumbnailEdge(edgePx?: number): Promise<void>
+  /** Each config and the size of its dump, for an exported log's header; empty with no account. */
+  getConfigSizes(): Promise<ConfigSize[]>
 
   getPref(key: string): Promise<string | undefined>
   setPref(key: string, value: string): Promise<void>

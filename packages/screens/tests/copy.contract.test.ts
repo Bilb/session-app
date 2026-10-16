@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
 
+import { parseSource } from './support/source'
+
 /**
  * Every word a person reads comes from the catalogue.
  *
@@ -54,13 +56,7 @@ function screenFiles(from: string): string[] {
 
 /** Every rendered literal in one file, as `path:line text`. */
 function literalsIn(path: string): string[] {
-  const source = ts.createSourceFile(
-    path,
-    readFileSync(path, 'utf8'),
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TSX,
-  )
+  const source = parseSource(path)
   const found: string[] = []
 
   const report = (node: ts.Node, text: string) => {

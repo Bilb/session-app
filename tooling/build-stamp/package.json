@@ -1,0 +1,26 @@
+{
+  "name": "@session/build-stamp",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The commit stamps a build carries, the app's and libsession's, computed the same way by every app's bundler config",
+  "main": "src/index.cjs",
+  "types": "src/index.d.cts",
+  "imports": {
+    "#src/*": [
+      "./src/*.cjs"
+    ]
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@session/eslint-config": "workspace:*",
+    "@session/typescript-config": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -6,13 +6,9 @@ import {
   type FakeDevEnv,
   type FakeSessionClient,
 } from '@session/client/fake'
-import { Directory, File, Paths } from 'expo-file-system'
 
+import { pushedPhotos, readPushedPhoto, writeFakeExport } from '../storage/devMedia'
 import { fakeExportSource } from './fakeMedia'
-
-function fileUrl(path: string): string {
-  return `file://${path.split('/').map(encodeURIComponent).join('/')}`
-}
 
 /**
  * The fake's export, plus the file it stands for.
@@ -24,28 +20,9 @@ function writingExports(client: FakeSessionClient, photos: ReadonlyMap<string, s
   const exportAttachment = client.exportAttachment.bind(client)
   client.exportAttachment = async (messageId, index, destination, options) => {
     const landed = await exportAttachment(messageId, index, destination, options)
-    const source = fakeExportSource(client, { messageId, index }, photos)
-    const target = new File(fileUrl(landed))
-    if ('photo' in source) new File(source.photo).copySync(target)
-    else target.write(source.text)
+    writeFakeExport(landed, fakeExportSource(client, { messageId, index }, photos))
     return landed
   }
-}
-
-/**
- * The dev photographs, by file name, from the app's own storage: the folder desktop reads, copied
- * onto the device by `pnpm --filter @session/mobile fake-media:push`, since the app cannot read the
- * host's disk.
- */
-function pushedPhotos(): Map<string, string> {
-  const folder = new Directory(Paths.document, 'fake-media')
-  const photos = new Map<string, string>()
-  if (folder.exists) {
-    for (const entry of folder.list()) {
-      if (entry instanceof File) photos.set(entry.name, entry.uri)
-    }
-  }
-  return photos
 }
 
 /**
@@ -79,7 +56,7 @@ export function createFakeBridge(): BridgeTransport {
     createFakeMediaSource(alice, async (photo) => {
       const uri = photos.get(photo)
       if (uri === undefined) throw new Error(`no dev photograph ${photo}`)
-      return new Uint8Array(await new File(uri).arrayBuffer())
+      return readPushedPhoto(uri)
     }),
   )
 

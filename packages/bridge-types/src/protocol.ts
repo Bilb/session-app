@@ -3,6 +3,7 @@ import type {
   AttachmentOutcome,
   AttachmentTransfer,
   AutoDownload,
+  ConfigSize,
   Conversation,
   ConversationId,
   Deletion,
@@ -261,6 +262,11 @@ export type Command =
    * app opened the bridge with. Thumbnails already made keep the size they were made at.
    */
   | { type: 'setThumbnailEdge'; edgePx?: number }
+  /**
+   * How large each of the account's configs is, for an exported log's header, listed by name.
+   * Empty before there is an account: the configs are built from it.
+   */
+  | { type: 'getConfigSizes' }
   // App preferences, stored in libsession's globals table so they sit beside the account
   // instead of in a second store the app would have to keep in step.
   | { type: 'getPref'; key: string }
@@ -335,6 +341,7 @@ export type Result =
   | { type: 'byteCount'; bytes?: number }
   /** A thumbnail's side in device pixels, as libsession clamped it. */
   | { type: 'edge'; edgePx: number }
+  | { type: 'configSizes'; sizes: ConfigSize[] }
 
 export interface Response {
   id: number

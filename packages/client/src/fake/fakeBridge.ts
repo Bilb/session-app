@@ -233,6 +233,10 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     await client.setThumbnailEdge(cmd.edgePx)
     return empty
   },
+  getConfigSizes: async (client) => ({
+    type: 'configSizes',
+    sizes: await client.getConfigSizes(),
+  }),
 
   getPref: async (client, cmd) => {
     const value = await client.getPref(cmd.key)

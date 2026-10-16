@@ -28,6 +28,7 @@
     "@session/bridge-types": "workspace:*",
     "@session/client": "workspace:*",
     "@session/localization": "workspace:*",
+    "@session/logging": "workspace:*",
     "@session/screens": "workspace:*",
     "@session/state": "workspace:*",
     "@session/theme-tokens": "workspace:*",
@@ -40,6 +41,7 @@
   },
   "devDependencies": {
     "@session/client-contract": "workspace:*",
+    "@session/build-stamp": "workspace:*",
     "@session/eslint-config": "workspace:*",
     "@session/typescript-config": "workspace:*",
     "@types/node": "catalog:",

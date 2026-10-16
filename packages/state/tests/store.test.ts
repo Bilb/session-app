@@ -3,6 +3,7 @@ import {
   createRefusingTransport,
   createSessionClient,
   SessionClientError,
+  type Frame,
   type MessagePage,
   type SessionClient,
 } from '@session/client'
@@ -300,6 +301,35 @@ describe('the store', () => {
     const { store, bob } = fixture
     const before = store.getState()
     store.actions.forgetHistory(bob)
+    expect(store.getState()).toBe(before)
+  })
+})
+
+describe("libsession's log lines", () => {
+  it('hands them on as libsession sent them, and keeps them out of state', () => {
+    const transport: { deliver?: (frame: Frame) => void } = {}
+    const client = createSessionClient({
+      send: () => undefined,
+      setSink: (sink) => {
+        transport.deliver = sink
+      },
+      close: () => undefined,
+    })
+    const received: [string, string, string][] = []
+    const store = createSessionStore(client, {
+      libsessionLog: (level, category, message) => {
+        received.push([level, category, message])
+      },
+    })
+    const before = store.getState()
+
+    const message = '[d] [+1.000s] [network:info|network/x.cpp:1] Starting clock resync.\n'
+    transport.deliver?.({
+      type: 'event',
+      event: { type: 'log', level: 'info', category: 'network', message },
+    })
+
+    expect(received).toEqual([['info', 'network', message]])
     expect(store.getState()).toBe(before)
   })
 })

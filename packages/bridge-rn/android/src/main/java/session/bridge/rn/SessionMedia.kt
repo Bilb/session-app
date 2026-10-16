@@ -87,7 +87,8 @@ internal object SessionMediaNative {
   @DoNotStrip
   fun forgetPictures() {
     if (!ImagePipelineFactory.hasBeenInitialized()) return
-    val ours = Predicate<CacheKey> { it.uriString.startsWith("${SessionMedia.SCHEME}:") }
+    // An animated frame's key has a null uriString, and a throw here stops removeAll part-way.
+    val ours = Predicate<CacheKey> { it.uriString?.startsWith("${SessionMedia.SCHEME}:") == true }
     val pipeline = ImagePipelineFactory.getInstance()
     pipeline.bitmapMemoryCache.removeAll(ours)
     pipeline.encodedMemoryCache.removeAll(ours)
