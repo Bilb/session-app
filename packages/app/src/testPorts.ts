@@ -1,3 +1,5 @@
+import { unknownDiagnostics } from '@session/logging'
+
 import type { Ports } from './ports'
 
 /**
@@ -69,7 +71,13 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
     // Null, not a no-op, for the same reason as `openAppSettings`: a screen reads it to decide
     // whether to offer Share at all. The phones install their own.
     share: { shareText: null },
-    build: { version: '0.0.0', commit: null, buildNumber: null },
+    build: {
+      version: '0.0.0',
+      commit: null,
+      buildNumber: null,
+      variant: 'unknown',
+      libsessionCommit: null,
+    },
     window: {
       // Null, not a no-op: nothing in a test or on a phone can close the app, and a screen asks
       // this port whether to offer the door at all -- see `WindowPort` in `./ports`.
@@ -80,6 +88,16 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
         focusHandlers.add(handler)
         return () => focusHandlers.delete(handler)
       },
+    },
+    // No files and no way to export: a screen offering Export Logs reads `deliver` to decide.
+    logs: {
+      retained: () => Promise.resolve([]),
+      span: () => Promise.resolve({ firstLine: null, lastLine: null }),
+      deliver: null,
+      deliversBy: 'saveDialog',
+    },
+    diagnostics: {
+      snapshot: () => Promise.resolve({ ...unknownDiagnostics(), platform: 'test', locale: 'en' }),
     },
     ...overrides,
   }

@@ -25,6 +25,8 @@ export interface PressAreaProps {
    * choice drawn as buttons; not the transient press `children` is told about.
    */
   toggled?: boolean
+  /** Announced as busy, for a control whose action is running. */
+  busy?: boolean
   testID?: string
   /**
    * The control, told whether it is currently pressed.

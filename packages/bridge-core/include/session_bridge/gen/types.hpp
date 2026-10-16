@@ -457,6 +457,26 @@ struct ByteCountResult {
             bytes{std::move(bytes_)} {}
 };
 
+/// One of the account's configs and how large it is: the size of the dump it would write now.
+/// For diagnostics - the header of an exported log - and nothing else.
+struct ConfigSize {
+    /// `user_profile`, `contacts`, `convo_info_volatile`, `user_groups` or `local`.
+    std::string name;
+    double bytes;
+
+    ConfigSize(std::string name_, double bytes_) :
+            name{std::move(name_)}, bytes{std::move(bytes_)} {}
+};
+
+struct ConfigSizesResult {
+    static constexpr std::string_view type_tag = "configSizes";
+
+    std::vector<::session_bridge::ConfigSize> sizes;
+
+    explicit ConfigSizesResult(std::vector<::session_bridge::ConfigSize> sizes_) :
+            sizes{std::move(sizes_)} {}
+};
+
 /// What a Response carries when the command succeeded.
 using Result = std::variant<
         EmptyResult,
@@ -470,7 +490,8 @@ using Result = std::variant<
         PrefResult,
         BoolResult,
         PathResult,
-        ByteCountResult>;
+        ByteCountResult,
+        ConfigSizesResult>;
 
 struct Response {
     double id;
@@ -879,8 +900,10 @@ struct FileServerConfig {
 /// How requests reach the network.
 ///
 /// Session Router is what mainnet and testnet ship, and is the default for both. Onion requests are
-/// the other production path and the only one a devnet has - Session Router refuses a devnet
-/// outright, so devnet defaults to onion requests and cannot be moved off them.
+/// the other production path, and a devnet's default - Session Router refuses a devnet outright, so
+/// a devnet takes onion requests or direct, never Session Router. Direct sends each request
+/// straight to the node it is for, with no path: for development and diagnosis, since a node sees
+/// the address of the device asking.
 ///
 /// Settable so that the transport can be chosen independently of the network: the two paths share
 /// only a ten-method interface, and uploads, downloads, connection status and retry behaviour are
@@ -889,12 +912,13 @@ struct FileServerConfig {
 enum class RouterKind {
     onion_requests,
     session_router,
+    direct,
 };
 
 template <>
 struct EnumTraits<RouterKind> {
     static constexpr std::string_view name = "RouterKind";
-    static constexpr std::array<std::string_view, 2> names{"onion-requests", "session-router"};
+    static constexpr std::array<std::string_view, 3> names{"onion-requests", "session-router", "direct"};
 
     static constexpr std::string_view to_string(RouterKind value) {
         return names[static_cast<std::size_t>(value)];
@@ -1198,6 +1222,12 @@ struct GetAttachmentCacheSizeCommand {
     static constexpr std::string_view type_tag = "getAttachmentCacheSize";
 };
 
+/// How large each of the account's configs is, for an exported log's header, listed by name.
+/// Empty before there is an account: the configs are built from it.
+struct GetConfigSizesCommand {
+    static constexpr std::string_view type_tag = "getConfigSizes";
+};
+
 struct GetPrefCommand {
     static constexpr std::string_view type_tag = "getPref";
 
@@ -1325,6 +1355,7 @@ using Command = std::variant<
         GetAttachmentCacheLimitCommand,
         SetAttachmentCacheLimitCommand,
         GetAttachmentCacheSizeCommand,
+        GetConfigSizesCommand,
         GetPrefCommand,
         SetPrefCommand,
         DeliverTestMessageCommand,

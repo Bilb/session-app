@@ -640,6 +640,46 @@ struct JSIConverter<::session_bridge::ByteCountResult> final {
 };
 
 template <>
+struct JSIConverter<::session_bridge::ConfigSize> final {
+    static inline ::session_bridge::ConfigSize fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+        jsi::Object obj = arg.asObject(runtime);
+        return ::session_bridge::ConfigSize(
+                JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "name"))),
+                JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "bytes"))));
+    }
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::ConfigSize& arg) {
+        jsi::Object obj(runtime);
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "name"), JSIConverter<std::string>::toJSI(runtime, arg.name));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "bytes"), JSIConverter<double>::toJSI(runtime, arg.bytes));
+        return obj;
+    }
+    static inline bool canConvert(jsi::Runtime&, const jsi::Value& value) {
+        return value.isObject();
+    }
+};
+
+template <>
+struct JSIConverter<::session_bridge::ConfigSizesResult> final {
+    static inline ::session_bridge::ConfigSizesResult fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+        jsi::Object obj = arg.asObject(runtime);
+        return ::session_bridge::ConfigSizesResult(
+                JSIConverter<std::vector<::session_bridge::ConfigSize>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "sizes"))));
+    }
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::ConfigSizesResult& arg) {
+        jsi::Object obj(runtime);
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::ConfigSizesResult::type_tag));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "sizes"), JSIConverter<std::vector<::session_bridge::ConfigSize>>::toJSI(runtime, arg.sizes));
+        return obj;
+    }
+    static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
+        if (!value.isObject())
+            return false;
+        jsi::Value type = value.getObject(runtime).getProperty(runtime, PropNameIDCache::get(runtime, "type"));
+        return type.isString() && type.getString(runtime).utf8(runtime) == ::session_bridge::ConfigSizesResult::type_tag;
+    }
+};
+
+template <>
 struct JSIConverter<::session_bridge::Result> final {
     static inline ::session_bridge::Result fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
         jsi::Object obj = arg.asObject(runtime);
@@ -668,6 +708,8 @@ struct JSIConverter<::session_bridge::Result> final {
             return JSIConverter<::session_bridge::PathResult>::fromJSI(runtime, arg);
         if (tag == "byteCount")
             return JSIConverter<::session_bridge::ByteCountResult>::fromJSI(runtime, arg);
+        if (tag == "configSizes")
+            return JSIConverter<::session_bridge::ConfigSizesResult>::fromJSI(runtime, arg);
         throw std::invalid_argument("Result: unknown type \"" + tag + "\"");
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::Result& arg) {
@@ -684,7 +726,7 @@ struct JSIConverter<::session_bridge::Result> final {
         if (!type.isString())
             return false;
         std::string tag = type.getString(runtime).utf8(runtime);
-        return tag == "empty" || tag == "accountInfo" || tag == "mnemonic" || tag == "conversationList" || tag == "conversation" || tag == "messageList" || tag == "messageId" || tag == "hex" || tag == "pref" || tag == "bool" || tag == "path" || tag == "byteCount";
+        return tag == "empty" || tag == "accountInfo" || tag == "mnemonic" || tag == "conversationList" || tag == "conversation" || tag == "messageList" || tag == "messageId" || tag == "hex" || tag == "pref" || tag == "bool" || tag == "path" || tag == "byteCount" || tag == "configSizes";
     }
 };
 
@@ -1986,6 +2028,25 @@ struct JSIConverter<::session_bridge::GetAttachmentCacheSizeCommand> final {
 };
 
 template <>
+struct JSIConverter<::session_bridge::GetConfigSizesCommand> final {
+    static inline ::session_bridge::GetConfigSizesCommand fromJSI(jsi::Runtime&, const jsi::Value&) {
+        return ::session_bridge::GetConfigSizesCommand{};
+    }
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::GetConfigSizesCommand& arg) {
+        (void)arg;
+        jsi::Object obj(runtime);
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::GetConfigSizesCommand::type_tag));
+        return obj;
+    }
+    static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
+        if (!value.isObject())
+            return false;
+        jsi::Value type = value.getObject(runtime).getProperty(runtime, PropNameIDCache::get(runtime, "type"));
+        return type.isString() && type.getString(runtime).utf8(runtime) == ::session_bridge::GetConfigSizesCommand::type_tag;
+    }
+};
+
+template <>
 struct JSIConverter<::session_bridge::GetPrefCommand> final {
     static inline ::session_bridge::GetPrefCommand fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
         jsi::Object obj = arg.asObject(runtime);
@@ -2215,6 +2276,8 @@ struct JSIConverter<::session_bridge::Command> final {
             return JSIConverter<::session_bridge::SetAttachmentCacheLimitCommand>::fromJSI(runtime, arg);
         if (tag == "getAttachmentCacheSize")
             return JSIConverter<::session_bridge::GetAttachmentCacheSizeCommand>::fromJSI(runtime, arg);
+        if (tag == "getConfigSizes")
+            return JSIConverter<::session_bridge::GetConfigSizesCommand>::fromJSI(runtime, arg);
         if (tag == "getPref")
             return JSIConverter<::session_bridge::GetPrefCommand>::fromJSI(runtime, arg);
         if (tag == "setPref")
@@ -2243,7 +2306,7 @@ struct JSIConverter<::session_bridge::Command> final {
         if (!type.isString())
             return false;
         std::string tag = type.getString(runtime).utf8(runtime);
-        return tag == "getAccountInfo" || tag == "createAccount" || tag == "restoreAccountFromWords" || tag == "checkRecoveryPhrase" || tag == "restoreAccountFromSeed" || tag == "discardAccount" || tag == "keepAccount" || tag == "getSeedMnemonic" || tag == "setDisplayName" || tag == "attachNetwork" || tag == "warmNetworkCache" || tag == "setPollInterval" || tag == "pollOnce" || tag == "setPushToken" || tag == "handlePushPayload" || tag == "getConversations" || tag == "getMessageRequests" || tag == "getConversation" || tag == "openDm" || tag == "markRead" || tag == "setBlocked" || tag == "setNickname" || tag == "setPriority" || tag == "approveConversation" || tag == "deleteConversation" || tag == "getMessages" || tag == "sendMessage" || tag == "retrySend" || tag == "deleteMessage" || tag == "downloadAttachment" || tag == "exportAttachment" || tag == "setAutoDownload" || tag == "getCacheDir" || tag == "getAttachmentCacheLimit" || tag == "setAttachmentCacheLimit" || tag == "getAttachmentCacheSize" || tag == "getPref" || tag == "setPref" || tag == "deliverTestMessage" || tag == "getTestAccountSeed" || tag == "approveTestContact" || tag == "echoTestFrame";
+        return tag == "getAccountInfo" || tag == "createAccount" || tag == "restoreAccountFromWords" || tag == "checkRecoveryPhrase" || tag == "restoreAccountFromSeed" || tag == "discardAccount" || tag == "keepAccount" || tag == "getSeedMnemonic" || tag == "setDisplayName" || tag == "attachNetwork" || tag == "warmNetworkCache" || tag == "setPollInterval" || tag == "pollOnce" || tag == "setPushToken" || tag == "handlePushPayload" || tag == "getConversations" || tag == "getMessageRequests" || tag == "getConversation" || tag == "openDm" || tag == "markRead" || tag == "setBlocked" || tag == "setNickname" || tag == "setPriority" || tag == "approveConversation" || tag == "deleteConversation" || tag == "getMessages" || tag == "sendMessage" || tag == "retrySend" || tag == "deleteMessage" || tag == "downloadAttachment" || tag == "exportAttachment" || tag == "setAutoDownload" || tag == "getCacheDir" || tag == "getAttachmentCacheLimit" || tag == "setAttachmentCacheLimit" || tag == "getAttachmentCacheSize" || tag == "getConfigSizes" || tag == "getPref" || tag == "setPref" || tag == "deliverTestMessage" || tag == "getTestAccountSeed" || tag == "approveTestContact" || tag == "echoTestFrame";
     }
 };
 

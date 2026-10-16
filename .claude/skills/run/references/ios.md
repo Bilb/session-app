@@ -167,13 +167,15 @@ The predicate is essential. Without it the output is thousands of lines from `st
 ## The app's own storage
 
 ```sh
-C=$(xcrun simctl get_app_container "$UDID" org.getsession.session2 data)
-ls -la "$C/Documents/session/"
+G=$(xcrun simctl get_app_container "$UDID" org.getsession.session2 groups | cut -f2)
+ls -la "$G/session/"*/
 ```
 
-`session.db` with its `-shm` and `-wal` is the proof that the bridge carried a command down and an
-answer back. `Documents/session` holding only `attachments` means the transport was built and
-`init` never completed - read the LogBox.
+The data lives in the app-group container, not Documents (see `docs/STORAGE.md`): `groups` prints
+`group.<bundle id>` and its path, one per line. `session.db` with its `-shm` and `-wal`, in the
+network's directory, is the proof that the bridge carried a command down and an answer back. A
+network directory holding only `attachments` means the transport was built and `init` never
+completed - read the LogBox. The logs are in `$G/logs/`.
 
 ## Resetting state
 

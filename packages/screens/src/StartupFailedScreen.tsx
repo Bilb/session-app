@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { LocalizedText } from './LocalizedText'
 import { TextButton } from './TextButton'
 import { useCopyWithToast } from './useCopyWithToast'
+import { useExportLogs } from './useExportLogs'
 
 interface StartupFailedScreenProps {
   /** libsession's own words: the only thing on the screen that says which failure it was. */
@@ -31,6 +32,7 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
   const actions = useSessionActions()
   const modals = useModals()
   const close = requirePorts().window.close
+  const logs = useExportLogs()
   const clearable = useStartupClearable()
 
   return (
@@ -49,15 +51,18 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
         </YStack>
 
         <YStack gap="$sm" width="100%" maxWidth={348}>
-          {/* TODO: hook up once the app keeps logs. The explanation asks for them, and nothing
-              here lets somebody hand them over yet. Drawn disabled meanwhile, so the screen is
-              looked at in its final layout. */}
-          <TextButton
-            label={['helpReportABugExportLogs']}
-            variant="outline"
-            disabled
-            testID={ELEMENT.startupFailed.exportLogs}
-          />
+          {/* What the explanation above asks for. A spinner, and inert, while the export runs:
+              seconds of native compression on a phone, then the share sheet. Left out where the
+              build cannot export. */}
+          {logs.canExport ? (
+            <TextButton
+              label={['helpReportABugExportLogs']}
+              variant="outline"
+              loading={logs.exporting}
+              testID={ELEMENT.startupFailed.exportLogs}
+              onPress={logs.start}
+            />
+          ) : null}
           {/* Not where there is no bridge to clear with: a Clear that is known to fail is a
               destructive-looking button that does nothing. */}
           {clearable ? (

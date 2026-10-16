@@ -44,7 +44,9 @@ import type { FileServerConfig, RouterKind } from '@session/bridge-types'
  * nothing better to do with a typo than the documented default.
  */
 export function parseRouterKind(value: string | undefined): RouterKind | undefined {
-  return value === 'onion-requests' || value === 'session-router' ? value : undefined
+  return value === 'onion-requests' || value === 'session-router' || value === 'direct'
+    ? value
+    : undefined
 }
 
 /** What a devnet build needs told beyond its name, none of which has a sensible default. */
