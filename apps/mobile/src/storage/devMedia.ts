@@ -1,5 +1,6 @@
 import { Directory, File, Paths } from 'expo-file-system'
 
+import type { ExportSource } from '../dev/fakeMedia'
 import { fileUri } from './layout'
 
 /**
@@ -43,10 +44,7 @@ export function readStagedHead(
 }
 
 /** Writes what the fake exported at `path`: a copy of a dev photograph, or the bytes it made. */
-export function writeFakeExport(
-  path: string,
-  source: { photo: string } | { text: Uint8Array },
-): void {
+export function writeFakeExport(path: string, source: ExportSource): void {
   const target = new File(fileUri(path))
   if ('photo' in source) new File(source.photo).copySync(target)
   else target.write(source.text)

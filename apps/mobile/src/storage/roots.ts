@@ -1,5 +1,6 @@
 /**
- * **The only file in the mobile app that reaches the file system.** Every directory the app
+ * **The only file in the mobile app that reaches the file system**, but for the dev builds'
+ * `devMedia.ts`, which reads what `fake-media:push` copies into Documents. Every directory the app
  * writes into is one of the roots handed out here, which the native `storage-roots` module creates
  * under data protection class C and excludes from backup. A file written anywhere else --
  * Documents, which iCloud backs up -- would escape both, so dependency-cruiser and ESLint refuse
