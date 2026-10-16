@@ -12,7 +12,7 @@ import { rowVerb, verbLabel } from './attachmentPress'
 import { albumTileName } from './albumTileName'
 import { PENDING_COPY } from './pendingCopy'
 import { useLocale } from './useLocale'
-import { isViewable, opensInViewer } from './viewableAttachments'
+import { isViewable, viewerFit } from './viewableAttachments'
 
 /**
  * One message's pictures, as an album.
@@ -50,7 +50,7 @@ export function MessageAlbum({
     return viewable.map((attachment, at) => {
       const state = states[at] ?? 'idle'
       // A tile does what its row would: see `MessageAttachments`' `onOpen`.
-      const verb = rowVerb(state, opensInViewer(attachment))
+      const verb = rowVerb(state, viewerFit(attachment))
       return {
         // The thumbnail, never the file: a tile is a few hundred pixels, and the viewer draws the
         // file. Until libsession has made one, the placeholder or the flat tile.

@@ -28,7 +28,7 @@ describe('an album', () => {
   it('hints what a tap on the tile does in its own state, in the row’s words', () => {
     // Open once here, or Export for an original file; Download or Retry before; nothing while
     // fetching or gone, as a row.
-    expect(album).toContain('const verb = rowVerb(state, opensInViewer(attachment))')
+    expect(album).toContain('const verb = rowVerb(state, viewerFit(attachment))')
     expect(album).toContain('hint: verb === null ? undefined : verbLabel(verb)')
   })
 

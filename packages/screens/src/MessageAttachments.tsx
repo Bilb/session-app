@@ -14,7 +14,7 @@ import { isUploadPhase, whileSending } from './uploadState'
 import { useAttachmentFooter } from './useAttachmentFooter'
 import { useAttachmentSet } from './useAttachmentSet'
 import { useExportFeedback } from './useExportFeedback'
-import { opensInViewer } from './viewableAttachments'
+import { viewerFit } from './viewableAttachments'
 import { useViewChoice } from './viewChoices'
 
 /**
@@ -59,8 +59,10 @@ export function MessageAttachments({ message }: { message: Message }) {
           onOpen={(index) => {
             const tapped = message.attachments.find((a) => a.index === index)
             if (tapped !== undefined && albumFetch(tapped).state === 'ready') {
-              if (opensInViewer(tapped)) ui.openViewer(message.id, index)
-              else if (!sending) void exportOne(message, index, actions, feedback)
+              const fit = viewerFit(tapped)
+              if (fit === 'opens') ui.openViewer(message.id, index)
+              else if (fit === 'exports' && !sending)
+                void exportOne(message, index, actions, feedback)
             } else if (!sending) downloadMissing()
           }}
           // The pill is the download's: while sending, the footer's count says the same.

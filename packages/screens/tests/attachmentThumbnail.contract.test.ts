@@ -32,10 +32,10 @@ describe('which picture each place draws', () => {
   })
 
   it('opens in the viewer only what is not an original file, in a row and in a tile', () => {
-    expect(read('AttachmentRow.tsx')).toContain('const opens = opensInViewer(attachment)')
-    expect(read('MessageAlbum.tsx')).toContain('rowVerb(state, opensInViewer(attachment))')
+    expect(read('AttachmentRow.tsx')).toContain('const fit = viewerFit(attachment)')
+    expect(read('MessageAlbum.tsx')).toContain('rowVerb(state, viewerFit(attachment))')
     expect(read('MessageAttachments.tsx')).toMatch(
-      /if \(opensInViewer\(tapped\)\) ui\.openViewer\(message\.id, index\)\s*else if \(!sending\) void exportOne\(/,
+      /if \(fit === 'opens'\) ui\.openViewer\(message\.id, index\)\s*else if \(fit === 'exports' && !sending\)\s+void exportOne\(/,
     )
   })
 })

@@ -1,4 +1,4 @@
-import { isViewableImage } from '@session/basic-types'
+import { isDisplayableImage, isViewableImage } from '@session/basic-types'
 import { requirePorts } from '@session/app'
 import type { Attachment, Message } from '@session/client'
 import type { MediaViewerItem } from '@session/ui'
@@ -13,12 +13,20 @@ export function isViewable(attachment: Attachment): boolean {
 }
 
 /**
- * Whether the viewer opens it: a viewable picture, or one libsession made a rendition of (AVIF,
- * HEIC where it decodes), unless its sender sent it as the original file, metadata and all, which
- * is only ever exported.
+ * What the viewer makes of it: it opens a viewable picture, or one libsession made a rendition of
+ * (AVIF). A picture libsession will make one of but has not yet awaits it, so its tap does not
+ * export first and open later. One its sender sent as the original file, metadata and all, exports.
  */
+export type ViewerFit = 'opens' | 'awaitsRendition' | 'exports'
+
+export function viewerFit(attachment: Attachment): ViewerFit {
+  if (attachment.originalFile) return 'exports'
+  if (isViewable(attachment) || attachment.hasRendition) return 'opens'
+  return isDisplayableImage(attachment.contentType) ? 'awaitsRendition' : 'exports'
+}
+
 export function opensInViewer(attachment: Attachment): boolean {
-  return (isViewable(attachment) || attachment.hasRendition) && !attachment.originalFile
+  return viewerFit(attachment) === 'opens'
 }
 
 /**

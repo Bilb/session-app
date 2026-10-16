@@ -6,6 +6,7 @@ import {
   isViewable,
   leadsWithPicture,
   opensInViewer,
+  viewerFit,
   viewableAttachments,
   viewerItem,
 } from '#src/viewableAttachments'
@@ -106,6 +107,17 @@ describe('a picture of a type nothing here draws', () => {
     expect(opensInViewer(avif)).toBe(false)
     expect(opensInViewer({ ...avif, hasRendition: true })).toBe(true)
     expect(viewableAttachments(message([{ ...avif, hasRendition: true }]))).toHaveLength(1)
+  })
+
+  it('awaits the rendition libsession makes of it, rather than exporting until then', () => {
+    expect(viewerFit(attachment(0, 'image/avif'))).toBe('awaitsRendition')
+    expect(viewerFit({ ...attachment(0, 'image/avif'), hasRendition: true })).toBe('opens')
+    expect(viewerFit({ ...attachment(0, 'image/avif'), originalFile: true })).toBe('exports')
+  })
+
+  it('exports a picture libsession makes no rendition of', () => {
+    expect(viewerFit(attachment(0, 'image/heic'))).toBe('exports')
+    expect(viewerFit(attachment(0, 'image/tiff'))).toBe('exports')
   })
 })
 
