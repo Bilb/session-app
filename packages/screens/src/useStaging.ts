@@ -41,17 +41,24 @@ export function useStaging(): StagingState {
   // A picker resolves after the render that opened it, so it stages onto what is there by then.
   const latest = useRef(files)
   latest.current = files
+  // A picker can resolve after the conversation closed, when nothing is left to stage onto.
+  const mounted = useRef(true)
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
       discard(latest.current)
-    },
-    [],
-  )
+    }
+  }, [])
 
   const add = useCallback((picked: readonly PickedFile[], unreadable = 0) => {
     // A cancelled picker hands back nothing, which is not a pick that should clear a notice.
     if (picked.length === 0 && unreadable === 0) return
+    if (!mounted.current) {
+      discard(picked)
+      return
+    }
     const next = stage(latest.current, picked, {
       picksAreCopies: requirePorts().files.picksAreCopies,
     })

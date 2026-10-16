@@ -78,4 +78,13 @@ describe('the composer staging', () => {
     expect(discarded).toEqual([])
     expect(staging.handOff().map((file) => file.previewUrl)).toEqual(['session-media://picked/new'])
   })
+
+  it('lets go of what a picker hands back after the conversation closed', () => {
+    const staging = mount()
+    unmount()
+    staging.add([picked('late.jpg', 'session-media://picked/late')], 1)
+    expect(hook.writes).toEqual([])
+    expect(released).toEqual(['session-media://picked/late'])
+    expect(discarded).toEqual(['/home/a/late.jpg'])
+  })
 })
