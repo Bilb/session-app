@@ -56,10 +56,10 @@ export function Composer({
 }) {
   const [draft, setDraft] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
-  const [sending, setSending] = useState(false)
   const picking = useRef(false)
   const outgoing = useRef<string | null>(null)
   const full = isFull(staging.files)
+  const { sending } = staging
   const sendable = !sending && (draft.trim().length > 0 || staging.files.length > 0)
 
   function send(): void {
@@ -68,20 +68,16 @@ export function Composer({
     const files = staging.files
     outgoing.current = sent
     // Held until libsession answers, since a refusal leaves both here to try again.
-    setSending(true)
-    onSend(sent.trim(), files)
-      .then(
-        () => {
-          setDraft((typed) => draftAfterSend(typed, outgoing.current))
-          staging.handOff(files)
-        },
-        () => {
-          staging.refuseSend(files.length > 0 ? 'files' : 'text')
-        },
-      )
-      .finally(() => {
-        setSending(false)
-      })
+    staging.beginSend()
+    onSend(sent.trim(), files).then(
+      () => {
+        setDraft((typed) => draftAfterSend(typed, outgoing.current))
+        staging.handOff(files)
+      },
+      () => {
+        staging.refuseSend(files.length > 0 ? 'files' : 'text')
+      },
+    )
   }
 
   function pick(which: 'files' | 'images'): void {

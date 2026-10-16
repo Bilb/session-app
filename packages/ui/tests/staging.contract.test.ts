@@ -90,6 +90,18 @@ describe('a composer notice', () => {
   })
 })
 
+describe('a drop zone that is not accepting', () => {
+  const zone = source('DropZone.tsx')
+
+  it('draws no overlay, shows a no-entry cursor and takes nothing dropped', () => {
+    expect(zone).toContain(
+      'if (depth === 1 && handlers.current.accepting) handlers.current.onActive(true)',
+    )
+    expect(zone).toContain("dropEffect = handlers.current.accepting ? 'copy' : 'none'")
+    expect(zone).toMatch(/if \(!handlers\.current\.accepting\) return\s+const \{ files, folders \}/)
+  })
+})
+
 describe('the drop overlay', () => {
   it('outlines in the accent text, which keeps 3:1 on its tint in the light themes', () => {
     expect(source('DropOverlay.tsx')).toContain('borderColor="$accentText"')

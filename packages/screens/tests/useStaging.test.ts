@@ -172,6 +172,11 @@ describe('the composer staging', () => {
     })
   })
 
+  it('refuses a drop while a send is out, as the tray does', () => {
+    const screen = readFileSync(join(import.meta.dirname, '../src/ConversationScreen.tsx'), 'utf8')
+    expect(screen).toMatch(/<DropZone\s+(\/\/[^\n]*\s+)?accepting=\{!staging\.sending\}/)
+  })
+
   it('is how both a pick and a drop are staged', () => {
     const source = (file: string) => readFileSync(join(import.meta.dirname, '../src', file), 'utf8')
     expect(source('Composer.tsx')).toContain('staging.take(chosen)')

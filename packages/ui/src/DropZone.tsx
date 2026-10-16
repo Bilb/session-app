@@ -33,11 +33,11 @@ function carriesFiles(event: DragEvent): boolean {
  * crosses, each just after the enter of the next one. A flag would flicker the overlay off and on
  * across every bubble in the transcript.
  */
-export function DropZone({ onActive, onDrop, children, overlay }: DropZoneProps) {
+export function DropZone({ accepting, onActive, onDrop, children, overlay }: DropZoneProps) {
   const zone = useRef<ElementRef<typeof YStack>>(null)
   // Read through refs so the listeners are bound once, not once per render of the screen.
-  const handlers = useRef({ onActive, onDrop })
-  handlers.current = { onActive, onDrop }
+  const handlers = useRef({ accepting, onActive, onDrop })
+  handlers.current = { accepting, onActive, onDrop }
 
   useEffect(() => {
     // tamagui hands back the DOM node on the web.
@@ -49,13 +49,14 @@ export function DropZone({ onActive, onDrop, children, overlay }: DropZoneProps)
       if (!carriesFiles(event)) return
       event.preventDefault()
       depth += 1
-      if (depth === 1) handlers.current.onActive(true)
+      if (depth === 1 && handlers.current.accepting) handlers.current.onActive(true)
     }
     const over = (event: DragEvent) => {
       if (!carriesFiles(event)) return
       // Without this the browser refuses the drop and opens the file in place of the app.
       event.preventDefault()
-      if (event.dataTransfer !== null) event.dataTransfer.dropEffect = 'copy'
+      if (event.dataTransfer !== null)
+        event.dataTransfer.dropEffect = handlers.current.accepting ? 'copy' : 'none'
     }
     const leave = (event: DragEvent) => {
       if (!carriesFiles(event)) return
@@ -67,6 +68,7 @@ export function DropZone({ onActive, onDrop, children, overlay }: DropZoneProps)
       event.preventDefault()
       depth = 0
       handlers.current.onActive(false)
+      if (!handlers.current.accepting) return
       const { files, folders } = droppedFiles(event.dataTransfer)
       handlers.current.onDrop(files, folders)
     }

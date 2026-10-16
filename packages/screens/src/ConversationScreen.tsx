@@ -219,6 +219,8 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
         <Separator borderColor="$bordersColor" />
 
         <DropZone
+          // Refused while a send is out, as the tray's + is: the tray is the message's until then.
+          accepting={!staging.sending}
           onActive={setDropping}
           onDrop={(items, skipped) => {
             void staging.take(requirePorts().files.droppedFiles(items), skipped + items.length)

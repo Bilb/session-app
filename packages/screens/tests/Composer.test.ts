@@ -142,6 +142,20 @@ describe('the composer while a send is out', () => {
     expect(render().staging.files).toEqual([])
   })
 
+  it('holds the staging as sending until libsession answers, either way', async () => {
+    for (const settle of ['resolve', 'reject'] as const) {
+      const answer = deferred()
+      onSend = vi.fn(() => answer.promise)
+      type('hi')
+      press(ELEMENT.conversation.sendButton)
+      expect(render().staging.sending).toBe(true)
+      answer[settle](new Error('refused'))
+      await answer.promise.catch(() => undefined)
+      await Promise.resolve()
+      expect(render().staging.sending).toBe(false)
+    }
+  })
+
   it('disables removing and clearing what it is sending', () => {
     onSend = vi.fn(() => deferred().promise)
     render().staging.add([photo])

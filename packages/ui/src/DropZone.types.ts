@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 
 export interface DropZoneProps {
+  /** False, held files are refused: no overlay, a no-entry cursor, and the drop is not taken. */
+  accepting: boolean
   /** Whether files are being held over the zone, for the screen to draw its overlay. */
   onActive: (active: boolean) => void
   /**

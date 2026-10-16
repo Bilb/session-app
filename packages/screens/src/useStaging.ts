@@ -20,6 +20,9 @@ export interface StagingState {
   refused: StagingRefusal
   /** Bumped by every pick, drop or send refused, so a repeat is announced again. */
   refusal: number
+  /** From `beginSend` until `handOff` or `refuseSend`: the tray is the message's, and locked. */
+  sending: boolean
+  beginSend: () => void
   /** What a pick or drop gave, and how many items it could not read at all. */
   add: (picked: readonly PickedFile[], unreadable?: number) => void
   /**
@@ -50,6 +53,7 @@ export function useStaging(): StagingState {
   const [files, setFiles] = useState<PickedFile[]>([])
   const [refused, setRefused] = useState<StagingRefusal>(NOTHING_REFUSED)
   const [refusal, setRefusal] = useState(0)
+  const [sending, setSending] = useState(false)
   // A picker resolves after the render that opened it, so it stages onto what is there by then.
   const latest = useRef(files)
   latest.current = files
@@ -100,6 +104,10 @@ export function useStaging(): StagingState {
     files,
     refused,
     refusal,
+    sending,
+    beginSend: () => {
+      setSending(true)
+    },
     add,
     take,
     remove: (path) => {
@@ -125,11 +133,13 @@ export function useStaging(): StagingState {
       latest.current = latest.current.filter((file) => !handed.has(file))
       setFiles(latest.current)
       setRefused(NOTHING_REFUSED)
+      setSending(false)
     },
     refuseSend: (what) => {
       if (!mounted.current) return
       setRefused({ ...NOTHING_REFUSED, sendRefused: what })
       setRefusal((count) => count + 1)
+      setSending(false)
     },
     dismiss: (kind) => {
       setRefused((current) => ({ ...current, [kind]: NOTHING_REFUSED[kind] }))
