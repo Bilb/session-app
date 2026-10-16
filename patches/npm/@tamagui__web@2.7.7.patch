@@ -38,6 +38,20 @@ index e6ac652e9335e82a1bd411ccd1c5fab54cad8072..16b1393ae9a7d6aba3287a3c42562459
    }
    var hasPressEvents = events === null || events === void 0 ? void 0 : events.onPress;
    var gh = (0, import_native.getGestureHandler)();
+diff --git a/dist/cjs/helpers/getSplitStyles.native.js b/dist/cjs/helpers/getSplitStyles.native.js
+index e359b6d7cc6198b33bcd7721caff27b8eb758d82..1526784316fb04f80a29143c03a223039b95bea9 100644
+--- a/dist/cjs/helpers/getSplitStyles.native.js
++++ b/dist/cjs/helpers/getSplitStyles.native.js
+@@ -93,6 +93,9 @@ function isValidStyleKey(key, validStyles, accept) {
+ function shouldSkipNativeHoverProp(key, isMedia) {
+   var _getPlatformDriver;
+   if ((_getPlatformDriver = (0, import_constants.getPlatformDriver)()) === null || _getPlatformDriver === void 0 ? void 0 : _getPlatformDriver.pseudo) return false;
++  // Session patch: iPadOS, and the Mac's iPad apps, deliver a mouse or trackpad as pointer
++  // events, so hover styles apply there as on the web.
++  if (import_constants.isIos) return false;
+   if (key === "hoverStyle") return true;
+   if (isMedia === "group") return (0, import_getGroupPropParts.getGroupPropParts)(key.slice(1)).pseudo === "hover";
+   return false;
 diff --git a/dist/esm/createComponent.native.js b/dist/esm/createComponent.native.js
 index 10f06bd4f0d72e55014711c7eb2f3646508ea7f6..7953b849e733e6336c6a61a5b2f65d431813651f 100644
 --- a/dist/esm/createComponent.native.js
@@ -86,3 +100,23 @@ index bc07b3f4214807c8cba259edeb29c004af57557c..e8c0410a759e39c071728a6e249d6f3b
    }
    var hasPressEvents = events === null || events === void 0 ? void 0 : events.onPress;
    var gh = getGestureHandler();
+diff --git a/dist/esm/helpers/getSplitStyles.native.js b/dist/esm/helpers/getSplitStyles.native.js
+index 108c0e7cbf0db823f78c8c0fe88307f4a73fdadf..5117d4eb2e6fe74a8447c0b2db899951c31088c4 100644
+--- a/dist/esm/helpers/getSplitStyles.native.js
++++ b/dist/esm/helpers/getSplitStyles.native.js
+@@ -1,4 +1,4 @@
+-import { getPlatformDriver, isAndroid, isClient, isWeb, supportsDynamicColorIOS } from "@tamagui/constants";
++import { getPlatformDriver, isAndroid, isClient, isIos, isWeb, supportsDynamicColorIOS } from "@tamagui/constants";
+ import { StyleObjectIdentifier, StyleObjectProperty, StyleObjectPseudo, stylePropsText, stylePropsTransform, tokenCategories, validPseudoKeys, validStyles } from "@tamagui/helpers";
+ import React from "react";
+ import { getConfig, getFont, getSetting } from "../config.native.js";
+@@ -45,6 +45,9 @@ function isValidStyleKey(key, validStyles, accept) {
+ function shouldSkipNativeHoverProp(key, isMedia) {
+   var _getPlatformDriver;
+   if ((_getPlatformDriver = getPlatformDriver()) === null || _getPlatformDriver === void 0 ? void 0 : _getPlatformDriver.pseudo) return false;
++  // Session patch: iPadOS, and the Mac's iPad apps, deliver a mouse or trackpad as pointer
++  // events, so hover styles apply there as on the web.
++  if (isIos) return false;
+   if (key === "hoverStyle") return true;
+   if (isMedia === "group") return getGroupPropParts(key.slice(1)).pseudo === "hover";
+   return false;
