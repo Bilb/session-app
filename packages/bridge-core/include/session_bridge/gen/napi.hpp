@@ -596,6 +596,39 @@ struct Codec<::session_bridge::ByteCountResult> {
 };
 
 template <>
+struct Codec<::session_bridge::ConfigSize> {
+    static constexpr std::string_view name = "ConfigSize";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::ConfigSize& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("name", Codec<std::string>::to(env, value.name));
+        obj.Set("bytes", Codec<double>::to(env, value.bytes));
+        return obj;
+    }
+    static ::session_bridge::ConfigSize from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::ConfigSize(
+                Codec<std::string>::from(obj.Get("name"), "ConfigSize.name"),
+                Codec<double>::from(obj.Get("bytes"), "ConfigSize.bytes"));
+    }
+};
+
+template <>
+struct Codec<::session_bridge::ConfigSizesResult> {
+    static constexpr std::string_view name = "ConfigSizesResult";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::ConfigSizesResult& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::ConfigSizesResult::type_tag.data(), ::session_bridge::ConfigSizesResult::type_tag.size()));
+        obj.Set("sizes", Codec<std::vector<::session_bridge::ConfigSize>>::to(env, value.sizes));
+        return obj;
+    }
+    static ::session_bridge::ConfigSizesResult from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::ConfigSizesResult(
+                Codec<std::vector<::session_bridge::ConfigSize>>::from(obj.Get("sizes"), "ConfigSizesResult.sizes"));
+    }
+};
+
+template <>
 struct Codec<::session_bridge::Result> {
     static constexpr std::string_view name = "Result";
     static Napi::Value to(Napi::Env env, const ::session_bridge::Result& value) {
@@ -632,6 +665,8 @@ struct Codec<::session_bridge::Result> {
             return Codec<::session_bridge::PathResult>::from(value, where);
         if (tag == "byteCount")
             return Codec<::session_bridge::ByteCountResult>::from(value, where);
+        if (tag == "configSizes")
+            return Codec<::session_bridge::ConfigSizesResult>::from(value, where);
         throw std::invalid_argument(std::string{where} + ": unknown type \"" + tag + "\"");
     }
 };
@@ -1673,6 +1708,21 @@ struct Codec<::session_bridge::GetAttachmentCacheSizeCommand> {
 };
 
 template <>
+struct Codec<::session_bridge::GetConfigSizesCommand> {
+    static constexpr std::string_view name = "GetConfigSizesCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::GetConfigSizesCommand& value) {
+        (void)value;
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::GetConfigSizesCommand::type_tag.data(), ::session_bridge::GetConfigSizesCommand::type_tag.size()));
+        return obj;
+    }
+    static ::session_bridge::GetConfigSizesCommand from(const Napi::Value& value, std::string_view where) {
+        object(value, where);
+        return ::session_bridge::GetConfigSizesCommand{};
+    }
+};
+
+template <>
 struct Codec<::session_bridge::GetPrefCommand> {
     static constexpr std::string_view name = "GetPrefCommand";
     static Napi::Value to(Napi::Env env, const ::session_bridge::GetPrefCommand& value) {
@@ -1858,6 +1908,8 @@ struct Codec<::session_bridge::Command> {
             return Codec<::session_bridge::SetAttachmentCacheLimitCommand>::from(value, where);
         if (tag == "getAttachmentCacheSize")
             return Codec<::session_bridge::GetAttachmentCacheSizeCommand>::from(value, where);
+        if (tag == "getConfigSizes")
+            return Codec<::session_bridge::GetConfigSizesCommand>::from(value, where);
         if (tag == "getPref")
             return Codec<::session_bridge::GetPrefCommand>::from(value, where);
         if (tag == "setPref")

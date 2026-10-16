@@ -102,7 +102,7 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
                     options.Get("router").As<Napi::String>().Utf8Value());
             if (!kind)
                 throw Napi::TypeError::New(
-                        env, "router must be onion-requests or session-router");
+                        env, "router must be onion-requests, session-router or direct");
             init.network.router = *kind;
         }
         if (options.Has("deviceType") && !options.Get("deviceType").IsUndefined())

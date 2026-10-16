@@ -14,7 +14,8 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./exportFileName": "./src/exportFileName.ts"
+    "./exportFileName": "./src/exportFileName.ts",
+    "./flags": "./src/flags.ts"
   },
   "scripts": {
     "lint": "eslint .",
@@ -38,6 +39,7 @@
   },
   "dependencies": {
     "@session/basic-types": "workspace:*",
-    "@session/client": "workspace:*"
+    "@session/client": "workspace:*",
+    "@session/logging": "workspace:*"
   }
 }

@@ -30,6 +30,27 @@ const OVERRIDES: Record<string, string | undefined> = {
   EXPO_PUBLIC_SESSION_FLAG_DEBUG_MODE: process.env.EXPO_PUBLIC_SESSION_FLAG_DEBUG_MODE,
 }
 
+/**
+ * Every flag variable the bundle was made with, for the startup block's Flags row: the ones above,
+ * and any other carrying the prefix, so a misspelt one can be named. metro.config.js collects
+ * those into one variable, since no name here could spell them out in advance.
+ */
+export function flagVariables(): Record<string, string | undefined> {
+  let collected: unknown = null
+  try {
+    collected = JSON.parse(process.env.EXPO_PUBLIC_SESSION_FLAGS ?? '{}')
+  } catch {
+    // Not written by metro.config.js: the literal names above are all there is.
+  }
+  const strings =
+    typeof collected === 'object' && collected !== null
+      ? Object.entries(collected).filter(
+          (entry): entry is [string, string] => typeof entry[1] === 'string',
+        )
+      : []
+  return { ...Object.fromEntries(strings), ...OVERRIDES }
+}
+
 /** What the flags port hands back: the override, or nothing set. */
 export function flagOverride(name: string): string | null {
   return OVERRIDES[name] ?? null

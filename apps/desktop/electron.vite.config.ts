@@ -6,13 +6,14 @@
  * @tamagui/vite-plugin is deliberately absent: it peers on vite 8 and electron-vite is on
  * 7. It is an optimising compiler rather than a requirement, so the app runs without it.
  */
-import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import react from '@vitejs/plugin-react'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import { runnerImport } from 'vite'
+
+import { commitStamp, libsessionStamp } from '@session/build-stamp'
 
 import type { LAUNCH_MARK_HEIGHT, SESSION_BRAND } from '@session/ui/brandMark'
 
@@ -27,30 +28,7 @@ const appDir = fileURLToPath(new URL('.', import.meta.url))
 const dotEnv = fileURLToPath(new URL('../../.env', import.meta.url))
 if (existsSync(dotEnv)) process.loadEnvFile(dotEnv)
 
-/**
- * The commit this build is made from: eight characters, and `-dirty` over uncommitted changes.
- *
- * `apps/mobile/metro.config.js` computes the same stamp for the phones; the two are kept identical
- * so a stamp means the same on every platform. A submodule counts only if its pointer moved, not
- * for work inside it. Null outside a git checkout, where there is nothing honest to say.
- */
-function commitStamp(): string | null {
-  const git = (...args: string[]) =>
-    execFileSync('git', args, {
-      cwd: appDir,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    })
-  try {
-    const commit = git('rev-parse', 'HEAD').trim().slice(0, 8)
-    const dirty =
-      git('status', '--porcelain', '--untracked-files=no', '--ignore-submodules=dirty').trim() !==
-      ''
-    return dirty ? `${commit}-dirty` : commit
-  } catch {
-    return null
-  }
-}
+const repoRoot = fileURLToPath(new URL('../../', import.meta.url))
 
 /** This app's own version, which is the one its builds are released as. */
 const version = (
@@ -169,6 +147,7 @@ const workspacePackages = [
   '@session/bridge-types',
   '@session/client',
   '@session/localization',
+  '@session/logging',
   '@session/state',
   '@session/theme-tokens',
 ]
@@ -223,9 +202,32 @@ const DEVELOPER_SETTINGS = [
 // Before anything below is substituted, so a release cannot carry one of them.
 refuseDeveloperSettingsInRelease()
 
+/**
+ * What the main process says about the build in the log's startup block, which it writes: the
+ * same stamps the renderer gets one by one, as one constant. See `buildInfo.d.ts` in main.
+ */
+const mainBuildInfo = {
+  version,
+  commit: commitStamp(appDir),
+  libsessionCommit: libsessionStamp(repoRoot),
+  // What the build was made as -- `website`, `store`... -- said by whoever assembles it, for the
+  // log's startup block. Empty is written as `unknown` rather than guessed at.
+  variant: process.env['EXPO_PUBLIC_SESSION_BUILD_VARIANT'] ?? '',
+  // Every flag variable present at build time. Collected by prefix rather than listed, so adding a
+  // flag needs no change here -- which is the reason the flag table derives `EXPO_PUBLIC_` on every
+  // platform rather than only on the one that needs it. A flag whose name does not start with this
+  // is not collected, and a flag that is not collected reads as its default with nothing said.
+  flags: Object.fromEntries(
+    Object.entries(process.env).filter(
+      ([key, value]) => key.startsWith(FLAG_PREFIX) && value !== undefined,
+    ),
+  ),
+}
+
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin({ exclude: workspacePackages })],
+    define: { __SESSION_BUILD_INFO__: JSON.stringify(mainBuildInfo) },
   },
   preload: {
     plugins: [externalizeDepsPlugin({ exclude: workspacePackages })],
@@ -265,22 +267,16 @@ export default defineConfig({
       'import.meta.env.EXPO_PUBLIC_SESSION_FAKE': JSON.stringify(
         process.env['EXPO_PUBLIC_SESSION_FAKE'] ?? '',
       ),
-      // Every flag variable present at build time, as one object. Collected by prefix rather than
-      // listed, so adding a flag needs no change here -- which is the reason the flag table derives
-      // `EXPO_PUBLIC_` on every platform rather than only on the one that needs it. A flag whose
-      // name does not start with this is not collected, and a flag that is not collected reads as
-      // its default with nothing said.
-      'import.meta.env.EXPO_PUBLIC_SESSION_FLAGS': JSON.stringify(
-        Object.fromEntries(
-          Object.entries(process.env).filter(
-            ([key, value]) => key.startsWith(FLAG_PREFIX) && value !== undefined,
-          ),
-        ),
+      // The flags, and which build this is, for the settings stamp and anything that has to name
+      // its binary: the stamps main's startup block writes, since the renderer can reach neither
+      // git, nor its own manifest, nor an environment.
+      'import.meta.env.EXPO_PUBLIC_SESSION_FLAGS': JSON.stringify(mainBuildInfo.flags),
+      'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_VERSION': JSON.stringify(mainBuildInfo.version),
+      'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_COMMIT': JSON.stringify(mainBuildInfo.commit),
+      'import.meta.env.EXPO_PUBLIC_SESSION_LIBSESSION_COMMIT': JSON.stringify(
+        mainBuildInfo.libsessionCommit,
       ),
-      // Which build this is, for the settings stamp and anything that has to name its binary.
-      // Read here because the renderer can reach neither git nor its own manifest.
-      'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_VERSION': JSON.stringify(version),
-      'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_COMMIT': JSON.stringify(commitStamp()),
+      'import.meta.env.EXPO_PUBLIC_SESSION_BUILD_VARIANT': JSON.stringify(mainBuildInfo.variant),
       // react-native-web reads these; without them the bundle throws on first render.
       global: 'globalThis',
       __DEV__: JSON.stringify(process.env['NODE_ENV'] !== 'production'),

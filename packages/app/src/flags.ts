@@ -90,6 +90,9 @@ export const FLAGS = {
 
 export type FlagName = keyof typeof FLAGS
 
+/** What every flag's variable starts with; see `envVarFor`. */
+const FLAG_VARIABLE_PREFIX = 'EXPO_PUBLIC_SESSION_FLAG_'
+
 /**
  * The environment variable a flag reads, derived rather than listed.
  *
@@ -104,7 +107,36 @@ export type FlagName = keyof typeof FLAGS
  */
 export function envVarFor(flag: FlagName): string {
   const screamed = flag.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toUpperCase()
-  return `EXPO_PUBLIC_SESSION_FLAG_${screamed}`
+  return `${FLAG_VARIABLE_PREFIX}${screamed}`
+}
+
+/**
+ * The startup block's Flags row, from the flag variables a build was made or started with.
+ *
+ * `name=value` for each flag set, in the table's order, with the value as it was written rather
+ * than what it means: a bisect wants to see `debugMode=ture`, which reads as the default. Then any
+ * variable carrying the prefix that names no flag, under its own name, so a misspelt one shows
+ * rather than passing for nothing set. An empty one is left out: it reads as the default, as an
+ * unset one does.
+ *
+ * Pure, and reads no port: the desktop main process writes this row, and has no ports.
+ */
+export function flagOverrideRows(
+  variables: Readonly<Record<string, string | undefined>>,
+): string[] {
+  const set = (value: string | undefined): value is string => value !== undefined && value !== ''
+  const names = Object.keys(FLAGS) as FlagName[]
+  const known = new Set(names.map(envVarFor))
+  const flags = names.flatMap((name) => {
+    const value = variables[envVarFor(name)]
+    return set(value) ? [`${name}=${value}`] : []
+  })
+  const unknown = Object.entries(variables).flatMap(([variable, value]) =>
+    variable.startsWith(FLAG_VARIABLE_PREFIX) && !known.has(variable) && set(value)
+      ? [`${variable}=${value} (no such flag)`]
+      : [],
+  )
+  return [...flags, ...unknown.sort()]
 }
 
 /**

@@ -12,6 +12,7 @@
 import type {
   AccountInfo,
   AutoDownload,
+  ConfigSize,
   Conversation,
   ConversationId,
   Deletion,
@@ -160,6 +161,8 @@ export interface SessionClient {
   setAttachmentCacheLimit(limitBytes?: number): Promise<void>
   /** How much disk the cached attachments occupy now, measured as the limit is. */
   getAttachmentCacheSize(): Promise<number>
+  /** Each config and the size of its dump, for an exported log's header; empty with no account. */
+  getConfigSizes(): Promise<ConfigSize[]>
 
   getPref(key: string): Promise<string | undefined>
   setPref(key: string, value: string): Promise<void>

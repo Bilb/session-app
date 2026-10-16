@@ -1,6 +1,5 @@
 import { ExportAccessRefused, type FilesPort } from '@session/app'
 import * as Crypto from 'expo-crypto'
-import { Directory, File, Paths } from 'expo-file-system'
 import { Asset, requestPermissionsAsync } from 'expo-media-library'
 import { Linking, PermissionsAndroid, Platform } from 'react-native'
 
@@ -15,6 +14,15 @@ import {
   StagedExports,
 } from './exportPaths'
 import { saveToMediaStore } from './mediaStore'
+import { fileUri, plainPath } from './storage/layout'
+import {
+  copyOut,
+  exportsSubdirectory,
+  File,
+  pickDirectory,
+  removeIfPresent,
+  type Directory,
+} from './storage/roots'
 
 /**
  * Where an export goes once libsession has written it, which is where the legacy clients put it:
@@ -24,25 +32,14 @@ import { saveToMediaStore } from './mediaStore'
 type Delivery =
   { to: 'mediaStore'; media: boolean } | { to: 'photos' } | { to: 'folder'; folder: Directory }
 
-// libsession takes filesystem paths and expo-file-system takes URLs, as in storage.ts.
-const cacheRoot = Paths.cache.uri.replace(/^file:\/\//, '').replace(/\/+$/, '')
-const EXPORT_ROOT = `${cacheRoot}/session-exports`
+// A directory of its own, so that the log export's clean-up of the root never reaches one.
+const EXPORT_ROOT = plainPath(exportsSubdirectory('attachments').uri).replace(/\/+$/, '')
 
 const staged = new StagedExports<Delivery>(EXPORT_ROOT)
 
-// Per segment, because a sender's name may hold `#` or `%`, which a URL would read as syntax.
-/** The path behind a `file://` URL, which is what a native module opens. */
-function pathOf(file: File): string {
-  return decodeURIComponent(file.uri.replace(/^file:\/\//, ''))
-}
-
-function fileUrl(path: string): string {
-  return `file://${path.split('/').map(encodeURIComponent).join('/')}`
-}
-
 function removeStaging(token: string): void {
   try {
-    new Directory(fileUrl(`${EXPORT_ROOT}/${token}`)).delete()
+    removeIfPresent(`${EXPORT_ROOT}/${token}`)
   } catch {
     // Already gone, or never made; the sweep at the next launch has the same job.
   }
@@ -56,8 +53,7 @@ function removeStaging(token: string): void {
  */
 export function sweepStagedExports(): void {
   try {
-    const root = new Directory(fileUrl(EXPORT_ROOT))
-    if (root.exists) root.delete()
+    removeIfPresent(EXPORT_ROOT)
   } catch {
     // Nothing to sweep is the common case.
   }
@@ -97,15 +93,6 @@ async function photosWritable(): Promise<boolean> {
   return false
 }
 
-async function pickFolder(): Promise<Directory | null> {
-  try {
-    return await Directory.pickDirectoryAsync()
-  } catch {
-    // The picker rejects on cancel, which is the one answer this port has for "nothing chosen".
-    return null
-  }
-}
-
 async function chooseDelivery(contentType: string | undefined): Promise<Delivery | null> {
   if (Platform.OS === 'android') {
     if (Number(Platform.Version) < 29) await requireStorageGrant()
@@ -113,7 +100,7 @@ async function chooseDelivery(contentType: string | undefined): Promise<Delivery
   }
   // A refusal the OS will ask about again sends the picture to a folder, as any other file.
   if (photoLibraryTakes(contentType, 'ios') && (await photosWritable())) return { to: 'photos' }
-  const folder = await pickFolder()
+  const folder = await pickDirectory()
   return folder === null ? null : { to: 'folder', folder }
 }
 
@@ -171,7 +158,7 @@ async function copyThenRename(staged: File, folder: Directory): Promise<void> {
   const name = staged.name
   await inFolderUnderFreeName(folder, name, partName, async (candidate) => {
     staged.rename(candidate)
-    await staged.copy(folder)
+    await copyOut(staged, folder)
   })
   const part = new File(folder, staged.name)
   try {
@@ -192,7 +179,7 @@ async function copyThenRename(staged: File, folder: Directory): Promise<void> {
 async function deliver(file: File, delivery: Delivery): Promise<string | null> {
   if (delivery.to === 'mediaStore') {
     if (saveToMediaStore === null) throw new Error('MediaStore is Android only')
-    return saveToMediaStore(pathOf(file), file.name, delivery.media)
+    return saveToMediaStore(plainPath(file.uri), file.name, delivery.media)
   }
   if (delivery.to === 'photos') return (await Asset.create(file.uri)).id
   await copyThenRename(file, delivery.folder)
@@ -210,7 +197,7 @@ export const exportFiles: Pick<FilesPort, 'chooseExportLocation' | 'revealInFold
     const delivery = await chooseDelivery(contentType)
     if (delivery === null) return null
     const token = Crypto.randomUUID()
-    new Directory(fileUrl(`${EXPORT_ROOT}/${token}`)).create({ intermediates: true })
+    exportsSubdirectory(`attachments/${token}`)
     staged.stage(token, delivery)
     return stagedPath(EXPORT_ROOT, token, exportFileName(suggestedName, contentType))
   },
@@ -221,7 +208,7 @@ export const exportFiles: Pick<FilesPort, 'chooseExportLocation' | 'revealInFold
     const { token, delivery } = written
     let landed: string | null
     try {
-      landed = await deliver(new File(fileUrl(path)), delivery)
+      landed = await deliver(new File(fileUri(path)), delivery)
     } finally {
       removeStaging(token)
     }
