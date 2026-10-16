@@ -12,6 +12,7 @@
   },
   "devDependencies": {
     "@playwright/test": "catalog:",
+    "@session/app": "workspace:*",
     "@session/eslint-config": "workspace:*",
     "@session/test-ids": "workspace:*",
     "@session/theme-tokens": "workspace:*",

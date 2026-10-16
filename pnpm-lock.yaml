@@ -889,6 +889,9 @@ importers:
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.62.1
+      '@session/app':
+        specifier: workspace:*
+        version: link:../../packages/app
       '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config

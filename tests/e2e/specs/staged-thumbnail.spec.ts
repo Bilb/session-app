@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { _electron, expect, test } from '@playwright/test'
+import { stagedThumbnailUrl } from '@session/app/mediaUrl'
 import { ELEMENT } from '@session/test-ids'
 
 import { FAKE_LAUNCH_ENV } from '../harness/fakeEnv'
@@ -104,18 +105,27 @@ test('draws a picked file by its staged thumbnail, and nothing that was not pick
       )
     expect(await draw(url ?? '')).toBeGreaterThan(0)
 
-    // A picture beside it, there and decodable, that nobody picked, named by its path.
-    const beside = `session-media://staged/${encodeURIComponent(join(folder, 'unsplash-08.jpg'))}`
-    expect(await draw(beside)).toBe(0)
+    // What main answers a url with, asked from main, where no cache of the page's stands between.
+    const status = (at: string) =>
+      app.evaluate(async ({ net }, target) => (await net.fetch(target)).status, at)
 
-    // Picked again, a file is a new url; one taken back draws nothing more.
+    // A picture beside it, there and decodable, that nobody picked, named by its path: a well
+    // formed url, which main refuses for naming a path rather than for its shape.
+    const beside = stagedThumbnailUrl(join(folder, 'unsplash-08.jpg'))
+    expect(beside).not.toBeNull()
+    expect(await status(beside ?? '')).toBe(403)
+    expect(await draw(beside ?? '')).toBe(0)
+
+    // Picked again, a file is a new url; one drawn and then taken back is refused from then on.
     const again = await allow()
     expect(again).not.toBe(url)
+    expect(await draw(again ?? '')).toBeGreaterThan(0)
+    expect(await status(again ?? '')).toBe(200)
     await page.evaluate((at) => {
       const { sessionDesktop } = globalThis as unknown as PageGlobals
       return sessionDesktop.revokePreview(at)
     }, again ?? '')
-    expect(await draw(again ?? '')).toBe(0)
+    expect(await status(again ?? '')).toBe(403)
   } finally {
     await app.close()
   }
