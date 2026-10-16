@@ -18,7 +18,8 @@ set -euo pipefail
 # of build tree, and nothing on an Apple silicon machine will ever load it.
 #
 # `simulator` is the debug loop's fast path, and `device` its opposite; both leave an artefact with
-# one slice in it, so what they are for is a rebuild, not a first build.
+# one slice in it, so what they are for is a rebuild with SESSION_LIBSESSION_IOS_KEEP_BUILD=1, not a
+# first build.
 #
 # **If you are here writing the release or archive scripts:** there are none yet, and an archive
 # wants `device` rather than the default -- a simulator slice in a shipped binary is dead weight
@@ -42,6 +43,25 @@ case "${1:-both}" in
     *) echo "usage: $0 [both|simulator|device|all]" >&2; exit 1 ;;
 esac
 
+# Which slices libsession builds, named as its own build directories are.
+slices=""
+for arch in $archs; do
+    case "$platform" in
+        iphoneos) ;;
+        *) slices="$slices sim-$arch" ;;
+    esac
+done
+case "$platform" in
+    iphonesimulator) ;;
+    *) case " $archs " in *" arm64 "*) slices="$slices ios-arm64" ;; esac ;;
+esac
+
+# **The hash is the honest half of BUILT.json**; the commit alone is not. The nested submodules are
+# routinely carrying uncommitted patches -- the `StaticBuild.cmake` ones are, right now -- and a
+# commit says nothing about them. It is the legacy client's own check
+# (`Scripts/build_libSession_util.sh`): every tracked path across every submodule, hashed by
+# content from the working tree, so an uncommitted edit changes it. Tests, docs and markdown are
+# left out because they cannot affect what gets linked.
 source_hash=$( \
     ( cd "$libsession" && git ls-files --recurse-submodules ) \
     | grep -vE '/(tests?|docs?|examples?)/|\.md$|/(\.DS_Store|\.gitignore)$' \
@@ -50,35 +70,47 @@ source_hash=$( \
     | awk '{print $1}' | sort | md5 -q \
 )
 
-# Shared by every clone on this machine: libsession's build tree is ~9GB, the part the app links ~1.5GB.
-cache_root="${SESSION_LIBSESSION_IOS_CACHE:-$HOME/Library/Caches/session-app/libsession-ios}"
-xcode_build="$(xcodebuild -version | awk '/Build version/ {print $3}')"
-built="$cache_root/$source_hash-${1:-both}-${IPHONEOS_DEPLOYMENT_TARGET:-default}-$xcode_build"
-
-if [ -d "$built" ]; then
-    touch "$built"
-    echo "libsession from cache: $built"
-else
+build_libsession() {
     ( cd "$libsession" && env ARCHS="$archs" PLATFORM_NAME="$platform" CONFIGURATION=Debug \
         ./utils/ios.sh "" true true true false )
-    tree="$libsession/build-ios"
+}
 
-    # Renamed into place whole, so a concurrent build never reads half an entry.
-    incoming="$cache_root/.incoming-$$"
-    trap 'rm -rf "$incoming"' EXIT
-    mkdir -p "$incoming"
-    cp -cR "$tree/libsession-util.xcframework" "$incoming/"
-    for slice_dir in "$tree"/sim-* "$tree"/ios-*; do
-        [ -f "$slice_dir/libsession-util.a" ] || continue
-        mkdir -p "$incoming/${slice_dir##*/}"
-        ( cd "$slice_dir" \
-            && find libsession-util.a static-deps external/session-sqlite \( -name '*.a' -o -path 'static-deps/include/*' \) \
-            | cpio -pdm --quiet "$incoming/${slice_dir##*/}" )
-    done
-    [ -e "$built" ] || mv "$incoming" "$built"
+tree="$libsession/build-ios"
+if [ "${SESSION_LIBSESSION_IOS_KEEP_BUILD:-0}" = 1 ]; then
+    # Bypasses the cache: while changing libsession, every edit would be an entry of its own.
+    build_libsession
+    built="$tree"
+else
+    # Shared by every clone on this machine. Bump v1 whenever what an entry holds changes.
+    cache_root="${SESSION_LIBSESSION_IOS_CACHE:-$HOME/Library/Caches/session-app}/libsession-ios"
+    xcode_build="$(xcodebuild -version | awk '/Build version/ {print $3}')"
+    built="$cache_root/v1-$source_hash-${platform:-both}-${archs// /+}-${IPHONEOS_DEPLOYMENT_TARGET:-default}-$xcode_build"
 
-    [ "${SESSION_LIBSESSION_IOS_KEEP_BUILD:-0}" = 1 ] || rm -rf "$tree"
-    ls -1t "$cache_root" | tail -n +6 | while read -r stale; do rm -rf "${cache_root:?}/$stale"; done
+    if [ -d "$built" ]; then
+        touch "$built"
+        echo "libsession from cache: $built"
+    else
+        build_libsession
+
+        # Renamed into place whole, so a concurrent build never reads half an entry.
+        incoming="$cache_root/.incoming-$$"
+        trap 'rm -rf "$incoming"' EXIT
+        mkdir -p "$incoming"
+        cp -cR "$tree/libsession-util.xcframework" "$incoming/"
+        for slice in $slices; do
+            mkdir -p "$incoming/$slice"
+            ( cd "$tree/$slice" \
+                && find libsession-util.a static-deps external/session-sqlite \( -name '*.a' -o -path 'static-deps/include/*' \) \
+                | cpio -pdm --quiet "$incoming/$slice" )
+        done
+        [ -e "$built" ] || mv "$incoming" "$built"
+        # A concurrent build's mv lands inside the entry rather than failing.
+        rm -rf "${built:?}/${incoming##*/}"
+
+        rm -rf "$tree"
+        ls -1td "$cache_root"/v*-* | tail -n +6 | while read -r stale; do rm -rf "$stale"; done
+        find "$cache_root" -maxdepth 1 -name '.incoming-*' -mtime +1 -exec rm -rf {} +
+    fi
 fi
 
 framework="$built/libsession-util.xcframework"
@@ -95,19 +127,6 @@ echo "xcframework in place: packages/bridge-rn/ios/libsession-util.xcframework"
 # packages/bridge-core is dropped in silence, and the first sign of it is our own ClientBridge
 # symbols missing at link time. So bridge-core is a CMake project here exactly as it is for the
 # Node addon and for Android, and the pod vendors what it produces.
-
-# Which slices libsession just built, named as its own build directories are.
-slices=""
-for arch in $archs; do
-    case "$platform" in
-        iphoneos) ;;
-        *) slices="$slices sim-$arch" ;;
-    esac
-done
-case "$platform" in
-    iphonesimulator) ;;
-    *) case " $archs " in *" arm64 "*) slices="$slices ios-arm64" ;; esac ;;
-esac
 
 # Read from the podspec rather than written down twice: the shim and the pod that vendors it have
 # to agree on the floor, and the podspec is the one the build actually enforces.
@@ -209,13 +228,6 @@ rm -rf "$here/../ios/lib"
 # discoverable by listing the directories -- so a build that is quietly a rebuild of one slice
 # against a submodule that has since moved looks exactly like a complete one. This is what to read
 # when something links and then behaves like an older libsession.
-#
-# **The hash is the honest half of that**; the commit alone is not. The nested submodules are
-# routinely carrying uncommitted patches -- the `StaticBuild.cmake` ones are, right now -- and a
-# commit says nothing about them. It is the legacy client's own check
-# (`Scripts/build_libSession_util.sh`): every tracked path across every submodule, hashed by
-# content from the working tree, so an uncommitted edit changes it. Tests, docs and markdown are
-# left out because they cannot affect what gets linked.
 cat > "$here/../ios/BUILT.json" <<MANIFEST
 {
   "slices": [$(for slice in $slices; do printf '"%s",' "$slice"; done | sed 's/,$//')],
