@@ -62,15 +62,7 @@ function DocumentFace({
 }: Pick<StagedTileProps, 'name' | 'contentType' | 'sizeLabel'>) {
   const format = fileFormat(name)
   return (
-    // In the name's direction, so the name and its size share an edge, as in a file row.
-    <YStack
-      flex={1}
-      padding="$xs"
-      paddingTop="$sm"
-      gap="$2xs"
-      style={{ direction: nameDirection(name) }}
-      aria-hidden
-    >
+    <YStack flex={1} padding="$xs" paddingTop="$sm" gap="$2xs" aria-hidden>
       <XStack alignItems="center" gap="$2xs">
         <Icon name={fileGlyph(name, contentType)} size="sm" color="$textPrimary" />
         {format === '' ? null : (
@@ -80,12 +72,16 @@ function DocumentFace({
         )}
       </XStack>
       <YStack flex={1} />
-      <FileName name={name} size="$label" />
-      {sizeLabel === undefined ? null : (
-        <Text size="$caption" color="$textSecondary" numberOfLines={1}>
-          {sizeLabel}
-        </Text>
-      )}
+      {/* The name and its size in the name's direction, so they share an edge, as in a file row.
+          The glyph keeps the layout's, clear of the remove button. */}
+      <YStack gap="$2xs" style={{ direction: nameDirection(name) }}>
+        <FileName name={name} size="$label" />
+        {sizeLabel === undefined ? null : (
+          <Text size="$caption" color="$textSecondary" numberOfLines={1}>
+            {sizeLabel}
+          </Text>
+        )}
+      </YStack>
     </YStack>
   )
 }

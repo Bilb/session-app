@@ -22,13 +22,17 @@ describe('the staged tray', () => {
     expect(tile).toContain('const NATIVE_ELEMENT = isWeb ? {} : { accessible: true }')
     expect(tile).not.toContain('tabIndex')
     // Hidden under the label, so the name's two runs are not read as two words.
-    expect(tile).toMatch(/style=\{\{ direction: nameDirection\(name\) \}\}\s+aria-hidden\s*>/)
+    expect(tile).toContain(
+      '<YStack flex={1} padding="$xs" paddingTop="$sm" gap="$2xs" aria-hidden>',
+    )
     // The picture has no text to hide, and hiding it would take its test id with it on Android.
     expect(tile).toMatch(/opacity=\{shown \? 1 : 0\}\s*>/)
   })
 
-  it('lines the name and its size up on the edge the name starts from', () => {
-    expect(source('StagedTile.tsx')).toContain('style={{ direction: nameDirection(name) }}')
+  it('lines the name and its size up on the edge the name starts from, and only those', () => {
+    expect(source('StagedTile.tsx')).toMatch(
+      /<YStack gap="\$2xs" style=\{\{ direction: nameDirection\(name\) \}\}>\s+<FileName/,
+    )
   })
 
   it('keeps the document face under its thumbnail', () => {
