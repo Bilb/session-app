@@ -376,7 +376,7 @@ export function Button({
       busy={loading}
       {...(testID === undefined ? {} : { testID })}
     >
-      {(pressed) => (
+      {(pressed, hovered) => (
         <Frame
           // The loading spinner's containing block: on the web a stack is static, and the
           // spinner's absolute offsets would otherwise resolve against the page.
@@ -390,6 +390,8 @@ export function Button({
           {...(borderRadius === undefined ? {} : { borderRadius })}
           disabled={inert}
           {...PRESS_PASSTHROUGH}
+          // The variant's own `hoverStyle`, applied from the wrapper's hover: see `PressArea`.
+          {...(hovered && !pressed && !inert ? { forceStyle: 'hover' as const } : {})}
           {...(pressed && !inert ? PRESSED[variant] : {})}
         >
           {/* Loading hides the content but keeps its room, so the button keeps its size and
@@ -403,7 +405,10 @@ export function Button({
                 // Bold, which is what the desktop client's button is: `font-weight: 700` unless a
                 // caller says otherwise, and none of the onboarding callers do.
                 weight="bold"
-                color={INHERITED_LABEL ?? (pressed && !inert ? pressedLabel : nativeLabel)}
+                color={
+                  INHERITED_LABEL ??
+                  ((pressed || hovered) && !inert ? (pressedLabel ?? nativeLabel) : nativeLabel)
+                }
               >
                 {children}
               </Text>

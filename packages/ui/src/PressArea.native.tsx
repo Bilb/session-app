@@ -1,4 +1,5 @@
-import { Pressable } from 'react-native'
+import { useState } from 'react'
+import { Pressable, type PointerEvent } from 'react-native'
 
 import type { PressAreaProps } from './PressArea.types'
 
@@ -29,6 +30,8 @@ export function PressArea({
   testID,
   children,
 }: PressAreaProps) {
+  const [hovered, setHovered] = useState(false)
+
   return (
     <Pressable
       // The zero basis spelled out: under `flex: 1` alone each label's width leaks into the split,
@@ -42,8 +45,13 @@ export function PressArea({
       // Stated whole: passing a state replaces the one Pressable derives from `disabled`.
       accessibilityState={{ disabled, busy }}
       testID={testID}
+      // A finger reports pointer events too, and it does not hover.
+      onPointerEnter={(e: PointerEvent) => {
+        if (e.nativeEvent.pointerType !== 'touch') setHovered(true)
+      }}
+      onPointerLeave={() => setHovered(false)}
     >
-      {({ pressed }) => children(pressed)}
+      {({ pressed }) => children(pressed, hovered && !disabled)}
     </Pressable>
   )
 }
