@@ -34,6 +34,7 @@ interface NativeBridge {
   fetchMedia(messageId: number, index: number): Promise<AttachmentMedia>
   fetchThumbhash(messageId: number, index: number): Promise<AttachmentThumbhash>
   fetchThumbnail(messageId: number, index: number): Promise<Uint8Array>
+  fetchRendition(messageId: number, index: number): Promise<AttachmentMedia>
   fetchStagedThumbnail(path: string): Promise<Uint8Array>
   close(): void
 }
@@ -116,6 +117,11 @@ export function createNodeBridgeTransport(options: NodeBridgeOptions): NodeBridg
     fetchThumbnail({ messageId, index }: AttachmentRef): Promise<Uint8Array> {
       if (closed) return Promise.reject(new Error('the bridge is closed'))
       return bridge.fetchThumbnail(messageId, index)
+    },
+
+    fetchRendition({ messageId, index }: AttachmentRef): Promise<AttachmentMedia> {
+      if (closed) return Promise.reject(new Error('the bridge is closed'))
+      return bridge.fetchRendition(messageId, index)
     },
 
     fetchStagedThumbnail(path: string): Promise<Uint8Array> {

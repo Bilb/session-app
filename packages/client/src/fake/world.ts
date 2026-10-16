@@ -135,6 +135,11 @@ function thumbnailed(cached: boolean, contentType: string | undefined): boolean 
   return cached && isDisplayableImage(contentType)
 }
 
+/** Made after the thumbnail, and never of a file sent as its original, which is only exported. */
+function rendered(cached: boolean, attachment: Attachment): boolean {
+  return thumbnailed(cached, attachment.contentType) && !attachment.originalFile
+}
+
 function wantedBy(mode: AutoDownload | undefined, attachment: Attachment): boolean {
   if (mode === 'all') return true
   if (mode === 'image-attachments') return isDisplayableImage(attachment.contentType)
@@ -806,6 +811,11 @@ export class FakeAccount {
     return thumbnailed(this.isCached(ref), this.locate(ref)?.attachment.contentType)
   }
 
+  hasRendition(ref: AttachmentRef): boolean {
+    const attachment = this.locate(ref)?.attachment
+    return attachment !== undefined && rendered(this.isCached(ref), attachment)
+  }
+
   /**
    * Emits messages with their attachments' availability stamped on.
    *
@@ -856,6 +866,7 @@ export class FakeAccount {
           ...attachment,
           availability,
           hasThumbnail: thumbnailed(availability === 'cached', attachment.contentType),
+          hasRendition: rendered(availability === 'cached', attachment),
           fetchDoneBytes: running?.doneBytes ?? 0,
           fetchTotalBytes: running?.totalBytes ?? 0,
         }

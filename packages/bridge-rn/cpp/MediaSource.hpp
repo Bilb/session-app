@@ -29,6 +29,8 @@ class MediaSource {
             double message_id, double index, ::session_bridge::ThumbhashHandler cb) = 0;
     virtual void fetch_thumbnail(
             double message_id, double index, ::session_bridge::MediaHandler cb) = 0;
+    virtual void fetch_rendition(
+            double message_id, double index, ::session_bridge::MediaHandler cb) = 0;
     /// Returns a cancel, which answers `cb` with "cancelled" unless it has been answered.
     virtual std::function<void()> fetch_staged_thumbnail(
             std::string path, ::session_bridge::MediaHandler cb) = 0;
@@ -85,6 +87,8 @@ class BridgeMediaSource final : public MediaSource {
     void fetch_thumbhash(
             double message_id, double index, ::session_bridge::ThumbhashHandler cb) override;
     void fetch_thumbnail(
+            double message_id, double index, ::session_bridge::MediaHandler cb) override;
+    void fetch_rendition(
             double message_id, double index, ::session_bridge::MediaHandler cb) override;
     std::function<void()> fetch_staged_thumbnail(
             std::string path, ::session_bridge::MediaHandler cb) override;

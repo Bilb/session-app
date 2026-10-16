@@ -372,6 +372,8 @@ struct JSIConverter<::session_bridge::Attachment> final {
                 ::session_bridge::optional_from_jsi<double>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "height"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "hasThumbhash"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "hasThumbnail"))),
+                JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "hasRendition"))),
+                JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "originalFile"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "uploaded"))),
                 JSIConverter<::session_bridge::AttachmentAvailability>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "availability"))),
                 JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "fetchDoneBytes"))),
@@ -394,6 +396,8 @@ struct JSIConverter<::session_bridge::Attachment> final {
             obj.setProperty(runtime, PropNameIDCache::get(runtime, "height"), JSIConverter<double>::toJSI(runtime, *arg.height));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "hasThumbhash"), JSIConverter<bool>::toJSI(runtime, arg.has_thumbhash));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "hasThumbnail"), JSIConverter<bool>::toJSI(runtime, arg.has_thumbnail));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "hasRendition"), JSIConverter<bool>::toJSI(runtime, arg.has_rendition));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "originalFile"), JSIConverter<bool>::toJSI(runtime, arg.original_file));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "uploaded"), JSIConverter<bool>::toJSI(runtime, arg.uploaded));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "availability"), JSIConverter<::session_bridge::AttachmentAvailability>::toJSI(runtime, arg.availability));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "fetchDoneBytes"), JSIConverter<double>::toJSI(runtime, arg.fetch_done_bytes));
@@ -2191,13 +2195,16 @@ struct JSIConverter<::session_bridge::TestAttachment> final {
         jsi::Object obj = arg.asObject(runtime);
         return ::session_bridge::TestAttachment(
                 JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "contentType"))),
-                ::session_bridge::optional_from_jsi<std::vector<std::byte>>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "thumbhash"))));
+                ::session_bridge::optional_from_jsi<std::vector<std::byte>>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "thumbhash"))),
+                ::session_bridge::optional_from_jsi<bool>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "originalFile"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::TestAttachment& arg) {
         jsi::Object obj(runtime);
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "contentType"), JSIConverter<std::string>::toJSI(runtime, arg.content_type));
         if (arg.thumbhash)
             obj.setProperty(runtime, PropNameIDCache::get(runtime, "thumbhash"), JSIConverter<std::vector<std::byte>>::toJSI(runtime, *arg.thumbhash));
+        if (arg.original_file)
+            obj.setProperty(runtime, PropNameIDCache::get(runtime, "originalFile"), JSIConverter<bool>::toJSI(runtime, *arg.original_file));
         return obj;
     }
     static inline bool canConvert(jsi::Runtime&, const jsi::Value& value) {

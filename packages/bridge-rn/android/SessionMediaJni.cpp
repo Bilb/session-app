@@ -149,6 +149,20 @@ void answer_thumbnail(jobject load, ::session_bridge::Media media) {
     env->DeleteGlobalRef(load);
 }
 
+/// Typed by its bytes rather than by whoever answered: a JPEG or a WebP, animated or not.
+void answer_rendition(jobject load, ::session_bridge::Media media) {
+    JNIEnv* env = attached_env();
+    if (!env)
+        return;
+    if (media.error)
+        fail(env, load, *media.error);
+    else if (::session_bridge::rendition_content_type(media.bytes))
+        hand_over(env, load, std::move(media.bytes));
+    else
+        fail(env, load, "a rendition that is not a JPEG or WebP");
+    env->DeleteGlobalRef(load);
+}
+
 /// Larger than any ThumbHash decodes to, and small enough that `width * height * 4` fits a jint.
 constexpr double MAX_THUMBHASH_SIDE = 16384;
 
@@ -261,6 +275,10 @@ Java_session_bridge_rn_SessionMediaNative_fetch(JNIEnv* env, jclass, jstring url
     else if (parsed->kind == ::session_bridge::MediaUrlKind::thumbnail)
         source->fetch_thumbnail(parsed->message_id, parsed->index, [held](auto media) {
             answer_thumbnail(held, std::move(media));
+        });
+    else if (parsed->kind == ::session_bridge::MediaUrlKind::rendition)
+        source->fetch_rendition(parsed->message_id, parsed->index, [held](auto media) {
+            answer_rendition(held, std::move(media));
         });
     else if (parsed->kind == ::session_bridge::MediaUrlKind::staged)
         return reinterpret_cast<jlong>(new std::function<void()>{source->fetch_staged_thumbnail(

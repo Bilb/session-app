@@ -221,6 +221,11 @@ export interface MediaSource {
    */
   fetchThumbnail(ref: AttachmentRef): Promise<Uint8Array>
   /**
+   * The attachment's rendition, from libsession's cache only: never a download. Typed by what the
+   * bytes are, `image/jpeg` or `image/webp`. Refused while `Attachment.hasRendition` is false.
+   */
+  fetchRendition(ref: AttachmentRef): Promise<AttachmentMedia>
+  /**
    * libsession's thumbnail of a local file staged to send, a JPEG at the edge it will make the sent
    * file's at. Refused for a path `isStagedPath` refuses, a file that cannot be read, and anything
    * that is not a picture.

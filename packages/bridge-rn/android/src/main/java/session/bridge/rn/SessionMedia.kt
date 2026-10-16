@@ -111,7 +111,7 @@ internal object SessionMediaNative {
  * towards the request's resize target: a file row's glyph decodes a fraction of the JPEG a tile
  * does. Its JPEG sample can land up to 4/3 below that target, so a tile asks for 4/3 its view.
  *
- * Keyed by URL, which is why a file, its thumbhash and its thumbnail have separate ones, and which
+ * Keyed by URL, which is why a file and each image made of it have separate ones, and which
  * keeps naming one picture: libsession never reuses a message id, and a discard calls
  * `forget_media`.
  */

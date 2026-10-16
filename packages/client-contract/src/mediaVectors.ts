@@ -12,7 +12,7 @@ export interface MediaUrlVector {
 }
 
 interface ParsedAttachmentVector {
-  kind: 'attachment' | 'thumbhash' | 'thumbnail'
+  kind: 'attachment' | 'thumbhash' | 'thumbnail' | 'rendition'
   messageId: number
   index: number
 }
@@ -30,6 +30,7 @@ export const MEDIA_URL_VECTORS: readonly MediaUrlVector[] = [
   { url: `${S}attachment/42/7`, parsed: { kind: 'attachment', messageId: 42, index: 7 } },
   { url: `${S}thumbhash/42/0`, parsed: { kind: 'thumbhash', messageId: 42, index: 0 } },
   { url: `${S}thumbnail/42/1`, parsed: { kind: 'thumbnail', messageId: 42, index: 1 } },
+  { url: `${S}rendition/42/3`, parsed: { kind: 'rendition', messageId: 42, index: 3 } },
   {
     url: `${S}attachment/9007199254740991/0`,
     parsed: { kind: 'attachment', messageId: Number.MAX_SAFE_INTEGER, index: 0 },
@@ -51,6 +52,9 @@ export const MEDIA_URL_VECTORS: readonly MediaUrlVector[] = [
   // An authority it does not serve, or one with more in it than the word.
   { url: `${S}thumbnails/42/1`, parsed: null },
   { url: `${S}Thumbnail/42/1`, parsed: null },
+  { url: `${S}renditions/42/1`, parsed: null },
+  { url: `${S}Rendition/42/1`, parsed: null },
+  { url: `${S}rendition/0/1`, parsed: null },
   { url: `${S}thumbnail:80/42/1`, parsed: null },
   { url: `${S}42/1`, parsed: null },
   { url: `${S}attachment:80/42/1`, parsed: null },

@@ -29,6 +29,7 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
                         InstanceMethod<&SessionBridge::FetchMedia>("fetchMedia"),
                         InstanceMethod<&SessionBridge::FetchThumbhash>("fetchThumbhash"),
                         InstanceMethod<&SessionBridge::FetchThumbnail>("fetchThumbnail"),
+                        InstanceMethod<&SessionBridge::FetchRendition>("fetchRendition"),
                         InstanceMethod<&SessionBridge::FetchStagedThumbnail>(
                                 "fetchStagedThumbnail"),
                         InstanceMethod<&SessionBridge::DatabasesReplaced>("databasesReplaced"),
@@ -340,6 +341,27 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
                     auto bytes = Napi::Uint8Array::New(env, media.bytes.size());
                     std::memcpy(bytes.Data(), media.bytes.data(), media.bytes.size());
                     return bytes;
+                });
+    }
+
+    /// `fetchRendition(messageId, index) -> Promise<{ contentType, bytes }>`, by the same route,
+    /// typed by what the bytes are.
+    Napi::Value FetchRendition(const Napi::CallbackInfo& info) {
+        return Fetch<session_bridge::Media>(
+                info,
+                ref_of("fetchRendition(messageId, index)"),
+                "sessionBridgeRendition",
+                [this](Ref ref, session_bridge::MediaHandler cb) {
+                    _bridge->fetch_rendition(ref.message_id, ref.index, std::move(cb));
+                },
+                [](Napi::Env env, const session_bridge::Media& media) {
+                    auto bytes = Napi::Uint8Array::New(env, media.bytes.size());
+                    std::memcpy(bytes.Data(), media.bytes.data(), media.bytes.size());
+
+                    Napi::Object result = Napi::Object::New(env);
+                    result.Set("contentType", media.content_type);
+                    result.Set("bytes", bytes);
+                    return result;
                 });
     }
 

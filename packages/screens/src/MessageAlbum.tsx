@@ -12,7 +12,7 @@ import { rowVerb, verbLabel } from './attachmentPress'
 import { albumTileName } from './albumTileName'
 import { PENDING_COPY } from './pendingCopy'
 import { useLocale } from './useLocale'
-import { viewableAttachments } from './viewableAttachments'
+import { isViewable, opensInViewer } from './viewableAttachments'
 
 /**
  * One message's pictures, as an album.
@@ -39,7 +39,8 @@ export function MessageAlbum({
   /** Drawn on a bubble you sent. */
   onAccent: boolean
 }) {
-  const viewable = useMemo(() => viewableAttachments(message), [message])
+  // Every picture, those sent as original files included: they draw a tile and export on a tap.
+  const viewable = useMemo(() => message.attachments.filter(isViewable), [message])
   // The labels are the catalogue's, which a memo would otherwise hold in the last language.
   const locale = useLocale()
   const statesKey = viewable.map((attachment) => fetchFor(attachment).state).join()
@@ -48,9 +49,8 @@ export function MessageAlbum({
     const states = statesKey.split(',') as FetchState[]
     return viewable.map((attachment, at) => {
       const state = states[at] ?? 'idle'
-      // A tile is always a picture the viewer shows, and does what such a row does: see
-      // `MessageAttachments`' `onOpen`.
-      const verb = rowVerb(state, true)
+      // A tile does what its row would: see `MessageAttachments`' `onOpen`.
+      const verb = rowVerb(state, opensInViewer(attachment))
       return {
         // The thumbnail, never the file: a tile is a few hundred pixels, and the viewer draws the
         // file. Until libsession has made one, the placeholder or the flat tile.

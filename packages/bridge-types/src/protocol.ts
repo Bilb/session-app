@@ -35,6 +35,8 @@ interface TestAttachment {
   contentType: string
   /** Unset is a sender who sent no ThumbHash, which is what leaves `hasThumbhash` false. */
   thumbhash?: Uint8Array
+  /** Sent as the sender's original file, which is what leaves `originalFile` true. */
+  originalFile?: boolean
 }
 
 /**

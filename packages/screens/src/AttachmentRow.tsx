@@ -18,7 +18,7 @@ import { exportOne } from './exportAttachment'
 import { SendingRow } from './SendingRow'
 import { isUploadPhase } from './uploadState'
 import { useExportFeedback } from './useExportFeedback'
-import { isViewable, leadsWithPicture } from './viewableAttachments'
+import { leadsWithPicture, opensInViewer } from './viewableAttachments'
 
 function caption(
   attachment: Attachment,
@@ -72,7 +72,7 @@ function SettledRow({ message, attachment, onAccent }: RowProps) {
   const fetched = fetchOf(attachment, report)
   const state: FileRowState = fetched.state
 
-  const opens = isViewable(attachment)
+  const opens = opensInViewer(attachment)
   // Absent once expired: there is nothing to show and nothing a tap could fetch.
   const thumbnail: FileRowThumbnail | undefined =
     state === 'unavailable' || !leadsWithPicture(attachment)

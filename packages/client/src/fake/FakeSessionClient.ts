@@ -348,6 +348,11 @@ export class FakeSessionClient implements SessionClient {
     return this.account.hasThumbnail(ref)
   }
 
+  /** Whether libsession would hold a rendition of this attachment: `Attachment.hasRendition`. */
+  hasRendition(ref: AttachmentRef): boolean {
+    return this.account.hasRendition(ref)
+  }
+
   /**
    * Fake-only: finds an attachment in memory, where paging every conversation would miss old ones.
    */

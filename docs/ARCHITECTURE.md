@@ -131,7 +131,8 @@ The sender's placeholder is an image too, so it comes by the same road: `session
 answers from `ClientBridge::fetch_thumbhash`, which decodes the ThumbHash on the attachment's row.
 So does the thumbnail a tile draws: `session-media://thumbnail/` answers from
 `ClientBridge::fetch_thumbnail`, the JPEG libsession made of a cached picture, from its cache only.
-One authority per image rather than one URL with a flag, so a file and its stand-ins cache
+And the copy the viewer draws: `session-media://rendition/` answers from
+`ClientBridge::fetch_rendition`, typed by its bytes as a JPEG or a WebP. One authority per image rather than one URL with a flag, so a file and its stand-ins cache
 separately, and nothing decodes an image in JavaScript on either platform. The sender's content type is a claim,
 so desktop serves an attachment only when that type is on the viewable list and the leading bytes
 are the same family, and every response carries a `sandbox` CSP: a file opened as a document gets
@@ -396,6 +397,22 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   is given, so without that a page script could send any file this user can read. Staging
   refuses a file past the file server's limit unless it is a picture this build re-encodes, which
   libsession shrinks until it fits; HEIC counts only on iOS and macOS, where ImageIO decodes it.
+
+- **2026-10-16 - The viewer draws libsession's rendition; an original file is only exported.**
+  libsession makes a rendition of each displayable picture it caches, after its thumbnail: the
+  whole picture as a JPEG, or a WebP when it has transparency or moves, at most 2048 px and with
+  no metadata, reported as `Attachment.hasRendition`. The viewer draws it once there is one and the
+  file until then; export always writes the file. It is served like a thumbnail, from the cache
+  only, under its own `rendition` authority, and typed by its bytes because libsession says only
+  that it is one of the two. Neither mobile loader caches one, as neither caches an original. An
+  animation's rendition is an animated WebP, so Android links Fresco's animated WebP decoder,
+  which the Expo template leaves out, and iOS reads the WebP's own frame timing, which
+  `RCTAnimatedImage` would otherwise take as a GIF's and play once at ten frames a second.
+
+  A picture its sender sent as the original file, metadata included, is `Attachment.originalFile`:
+  never opened in the viewer, left out of its paging, and exported as a plain file rather than to
+  Photos, though its row and its album tile still draw its thumbnail. libsession makes it no
+  rendition.
 
 - **2026-10-08 - Mobile exports go where the legacy clients put them.** libsession writes the
   export into the app's cache, the files port admits only that staged path, and the staged file

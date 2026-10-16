@@ -1,4 +1,9 @@
-import { withMainApplication, type ConfigPlugin } from '@expo/config-plugins'
+import {
+  withGradleProperties,
+  withMainApplication,
+  type AndroidConfig,
+  type ConfigPlugin,
+} from '@expo/config-plugins'
 
 const CALL = 'PackageList(this)'
 const CONFIGURED = 'SessionMedia.packageConfig'
@@ -22,11 +27,30 @@ export function mainApplicationServingMedia(contents: string, language: string):
     .replace(/^(package .*)$/m, '$1\n\nimport session.bridge.rn.SessionMedia')
 }
 
+const ANIMATED_WEBP = 'expo.webp.animated'
+
+/**
+ * The template's Gradle properties with Fresco's animated WebP decoder linked in: libsession's
+ * rendition of an animation is an animated WebP, which the template leaves out for its size.
+ */
+export function propertiesDecodingAnimatedWebP(
+  properties: AndroidConfig.Properties.PropertiesItem[],
+): AndroidConfig.Properties.PropertiesItem[] {
+  const kept = properties.filter((item) => item.type !== 'property' || item.key !== ANIMATED_WEBP)
+  return [...kept, { type: 'property', key: ANIMATED_WEBP, value: 'true' }]
+}
+
 export const withSessionMedia: ConfigPlugin = (config) =>
-  withMainApplication(config, (android) => {
-    android.modResults.contents = mainApplicationServingMedia(
-      android.modResults.contents,
-      android.modResults.language,
-    )
-    return android
-  })
+  withGradleProperties(
+    withMainApplication(config, (android) => {
+      android.modResults.contents = mainApplicationServingMedia(
+        android.modResults.contents,
+        android.modResults.language,
+      )
+      return android
+    }),
+    (gradle) => {
+      gradle.modResults = propertiesDecodingAnimatedWebP(gradle.modResults)
+      return gradle
+    },
+  )

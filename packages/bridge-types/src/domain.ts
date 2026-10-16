@@ -96,6 +96,16 @@ export const MESSAGE_NOT_FOUND: AttachmentError = 'message.not_found'
 export const ATTACHMENT_NOT_FOUND: AttachmentError = 'attachment.not_found'
 /** The file is no longer at the path it was attached from. Reported on an upload, never a fetch. */
 export const ATTACHMENT_FILE_MISSING: AttachmentError = 'attachment.file_missing'
+/**
+ * A picture too large for the file server even re-encoded at libsession's smallest sendable edge.
+ * Reported on an upload, and leaves the message `unsendable`: a retry would fail the same way.
+ */
+export const ATTACHMENT_TOO_LARGE: AttachmentError = 'attachment.too_large'
+/**
+ * A picture that could not be read or re-encoded for sending. Reported on an upload, and leaves
+ * the message `failed`, since a retry reads the file again.
+ */
+export const ATTACHMENT_UNREADABLE: AttachmentError = 'attachment.unreadable'
 /** The file server does not hold it. The sender's to repair by sending it again. */
 export const FILE_NOT_FOUND: AttachmentError = 'file.not_found'
 /** It arrived but could not be turned back into the file it claims to be. Not worth retrying. */
@@ -160,6 +170,19 @@ export interface Attachment {
    * What a tile draws, through the media scheme's `thumbnail` path; a viewer draws the file.
    */
   hasThumbnail: boolean
+  /**
+   * Whether libsession holds a rendition of this attachment: the whole picture as a JPEG or WebP
+   * (animated WebP for an animation), at most 2048 px on a side and stripped of metadata. Made
+   * after the thumbnail and kept, evicted and reported exactly as `hasThumbnail` is.
+   *
+   * What a viewer draws, through the media scheme's `rendition` path; export still writes the file.
+   */
+  hasRendition: boolean
+  /**
+   * The sender sent the file exactly as it was, metadata included. Offered only as a file to
+   * export, never opened in the viewer, though its thumbnail is still drawn.
+   */
+  originalFile: boolean
   /**
    * On the file server: an outgoing attachment's upload finished, and always true for an incoming
    * one. Deliberately not "the bytes are here" - libsession records no local path, because the

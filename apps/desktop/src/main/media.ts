@@ -93,7 +93,10 @@ export function serveMedia(bridge: MediaSource, previews: PreviewGrants): void {
         return new Response(jpeg, { status: 200, headers: mediaHeaders('image/jpeg') })
       }
 
-      const media = await bridge.fetchMedia(target.ref)
+      const media =
+        target.kind === 'rendition'
+          ? await bridge.fetchRendition(target.ref)
+          : await bridge.fetchMedia(target.ref)
       const contentType = servableContentType(media.contentType, media.bytes)
       if (contentType === null) return new Response(null, { status: 415 })
       return new Response(media.bytes, {
@@ -101,7 +104,7 @@ export function serveMedia(bridge: MediaSource, previews: PreviewGrants): void {
         headers: mediaHeaders(contentType),
       })
     } catch {
-      // A file not downloaded, a missing message, a failed thumbhash or a missing thumbnail is
+      // A file not downloaded, a missing message, a failed thumbhash or a missing derived image is
       // known from this status alone, so whoever draws the url has to handle the image failing.
       // Not stored, so the url is asked again once the file is here.
       // TODO: once sending exists, serve a sender's own attachment from its local copy while it

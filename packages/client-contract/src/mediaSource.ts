@@ -13,9 +13,9 @@ import type { TestFns } from './suite'
 
 export interface MediaSourceHarness {
   /**
-   * A source over a client holding two incoming pictures, an AVIF and a PDF, none fetched: one
-   * picture sent with a hash, in a type other than the JPEG every dev photograph is, and one sent
-   * without.
+   * A source over a client holding two incoming pictures, an AVIF, a PDF and a picture sent as the
+   * original file, none fetched: one picture sent with a hash, in a type other than the JPEG every
+   * dev photograph is, and one sent without.
    */
   withAttachments(): Promise<{
     source: MediaSource
@@ -26,6 +26,8 @@ export interface MediaSourceHarness {
     document: AttachmentRef
     /** libsession thumbnails an AVIF, though no viewer here opens one. */
     avif: AttachmentRef
+    /** A PNG its sender sent as the original file, which is only ever exported. */
+    original: AttachmentRef
     /** Lets whatever is in flight finish: a manual clock, or a real transfer. */
     settle: () => Promise<void>
   }>
@@ -81,6 +83,14 @@ function noThumbnailMessage({ messageId, index }: AttachmentRef): string {
   return `attachment ${String(index)} of message ${String(messageId)} has no thumbnail`
 }
 
+/** What every source says of an attachment libsession holds no rendition of. */
+function noRenditionMessage({ messageId, index }: AttachmentRef): string {
+  return `attachment ${String(index)} of message ${String(messageId)} has no rendition`
+}
+
+/** The box libsession fits a rendition in when no edge has been set. */
+const RENDITION_EDGE_PX = 2048
+
 /** Start-of-frame markers, which carry a JPEG's size; C4, C8 and CC share the range and are not. */
 const START_OF_FRAME = new Set([
   0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf,
@@ -104,8 +114,9 @@ function jpegSize(bytes: Uint8Array): { width: number; height: number } | null {
   return null
 }
 
-/** libsession makes a thumbnail after the bytes are cached, on a worker of its own. */
-async function untilThumbnailed(
+/** libsession makes a thumbnail, then a rendition, after the bytes are cached, on a worker. */
+async function until(
+  made: 'hasThumbnail' | 'hasRendition',
   client: SessionClient,
   conversationId: string,
   ref: AttachmentRef,
@@ -114,10 +125,19 @@ async function untilThumbnailed(
   for (let attempt = 0; attempt < 100; attempt += 1) {
     await settle()
     const attachment = await attachmentOf(client, conversationId, ref)
-    if (attachment?.hasThumbnail === true) return attachment
+    if (attachment?.[made] === true) return attachment
     await new Promise((resolve) => setTimeout(resolve, 50))
   }
   return attachmentOf(client, conversationId, ref)
+}
+
+function untilThumbnailed(
+  client: SessionClient,
+  conversationId: string,
+  ref: AttachmentRef,
+  settle: () => Promise<void>,
+): Promise<Attachment | undefined> {
+  return until('hasThumbnail', client, conversationId, ref, settle)
 }
 
 function messageOf(error: unknown): string {
@@ -147,18 +167,19 @@ export function runMediaSourceContract(
   }
 
   describe('media source', () => {
-    it('refuses a ref that names nothing, for the file, its thumbhash and its thumbnail', async () => {
+    it('refuses a ref that names nothing, for the file and every image made of it', async () => {
       const { source } = await harness.empty()
-      const media = await failure(() => source.fetchMedia(NOWHERE))
-      const thumbhash = await failure(() => source.fetchThumbhash(NOWHERE))
-      const thumbnail = await failure(() => source.fetchThumbnail(NOWHERE))
-      expect(media instanceof Error).toBe(true)
-      expect(thumbhash instanceof Error).toBe(true)
-      expect(thumbnail instanceof Error).toBe(true)
+      const refusals = [
+        await failure(() => source.fetchMedia(NOWHERE)),
+        await failure(() => source.fetchThumbhash(NOWHERE)),
+        await failure(() => source.fetchThumbnail(NOWHERE)),
+        await failure(() => source.fetchRendition(NOWHERE)),
+      ]
       // One fact, however it is asked for: the thumbhash says no more and no less than the file.
-      expect(messageOf(media)).toBe(unknownRefMessage(NOWHERE))
-      expect(messageOf(thumbhash)).toBe(unknownRefMessage(NOWHERE))
-      expect(messageOf(thumbnail)).toBe(unknownRefMessage(NOWHERE))
+      for (const refusal of refusals) {
+        expect(refusal instanceof Error).toBe(true)
+        expect(messageOf(refusal)).toBe(unknownRefMessage(NOWHERE))
+      }
     })
 
     it('answers a downloaded picture with its bytes and the type they were sent as', async () => {
@@ -246,6 +267,54 @@ export function runMediaSourceContract(
       )
     })
 
+    it('answers a downloaded picture with a JPEG or WebP rendition within the edge', async () => {
+      const { source, client, conversationId, picture, settle } = await harness.withAttachments()
+      const downloaded = client.downloadAttachment(picture.messageId, picture.index)
+      await settle()
+      await downloaded
+      expect(
+        (await until('hasRendition', client, conversationId, picture, settle))?.hasRendition,
+      ).toBe(true)
+
+      const rendition = await source.fetchRendition(picture)
+      expect(['image/jpeg', 'image/webp']).toContain(rendition.contentType)
+      if (rendition.contentType === 'image/jpeg') {
+        const size = jpegSize(rendition.bytes)
+        expect(size?.width).toBeGreaterThan(0)
+        const longest = Math.max(size?.width ?? Infinity, size?.height ?? Infinity)
+        expect(longest <= RENDITION_EDGE_PX).toBe(true)
+      } else {
+        expect(String.fromCharCode(...rendition.bytes.subarray(8, 12))).toBe('WEBP')
+      }
+    })
+
+    it('has no rendition of a picture not yet downloaded', async () => {
+      const { source, client, conversationId, picture } = await harness.withAttachments()
+      expect((await attachmentOf(client, conversationId, picture))?.hasRendition).toBe(false)
+      expect(messageOf(await failure(() => source.fetchRendition(picture)))).toBe(
+        noRenditionMessage(picture),
+      )
+    })
+
+    it('marks a picture its sender sent as the original file', async () => {
+      const { client, conversationId, picture, original } = await harness.withAttachments()
+      expect((await attachmentOf(client, conversationId, original))?.originalFile).toBe(true)
+      expect((await attachmentOf(client, conversationId, picture))?.originalFile).toBe(false)
+    })
+
+    it('thumbnails a downloaded original file but makes no rendition of it', async () => {
+      const { source, client, conversationId, original, settle } = await harness.withAttachments()
+      const downloaded = client.downloadAttachment(original.messageId, original.index)
+      await settle()
+      await downloaded
+      const attachment = await untilThumbnailed(client, conversationId, original, settle)
+      expect(attachment?.hasThumbnail).toBe(true)
+      expect(attachment?.hasRendition).toBe(false)
+      expect(messageOf(await failure(() => source.fetchRendition(original)))).toBe(
+        noRenditionMessage(original),
+      )
+    })
+
     it('answers a staged picture with a square JPEG thumbnail no larger than the edge', async () => {
       const { source, client, jpeg } = await harness.staged()
       const size = jpegSize(await source.fetchStagedThumbnail(jpeg))
@@ -304,7 +373,7 @@ export function runMediaSourceContract(
       }
     })
 
-    it('has no thumbnail of a downloaded PDF', async () => {
+    it('has no thumbnail or rendition of a downloaded PDF', async () => {
       const { source, client, conversationId, document, settle } = await harness.withAttachments()
       const downloaded = client.downloadAttachment(document.messageId, document.index)
       await settle()
@@ -312,8 +381,12 @@ export function runMediaSourceContract(
       const attachment = await attachmentOf(client, conversationId, document)
       expect(attachment?.availability).toBe('cached')
       expect(attachment?.hasThumbnail).toBe(false)
+      expect(attachment?.hasRendition).toBe(false)
       expect(messageOf(await failure(() => source.fetchThumbnail(document)))).toBe(
         noThumbnailMessage(document),
+      )
+      expect(messageOf(await failure(() => source.fetchRendition(document)))).toBe(
+        noRenditionMessage(document),
       )
     })
   })
