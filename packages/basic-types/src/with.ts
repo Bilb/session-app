@@ -29,9 +29,6 @@ export type WithFilename = { filename: string }
 export type WithContentType = { contentType?: string | undefined }
 /** Already worded, for a package that cannot reach the catalogue. */
 export type WithCaption = { caption: string }
-/** A video's length, already worded as mm:ss. */
-export type WithDurationLabel = { duration?: string | undefined }
-
 /** Label then value, in the order a person reads them: a startup block's or an export's rows. */
 export type Rows = ReadonlyArray<readonly [string, string]>
 /** The first and last timed lines of a stretch of log; null where there is no such line to read. */
