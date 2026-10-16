@@ -1,15 +1,5 @@
-import { ConversationListScreen, useLocale } from '@session/screens'
-import { Text, useMedia, YStack } from '@session/ui'
-
-// TODO: a stand-in until the empty detail pane gets legacy Desktop's no-selection state.
-// Replace this whole component with that screen, not just its words.
-function Placeholder() {
-  return (
-    <YStack flex={1} alignItems="center" justifyContent="center">
-      <Text tone="secondary">Choose a conversation</Text>
-    </YStack>
-  )
-}
+import { ConversationListScreen, NoSelectionPane, useLocale } from '@session/screens'
+import { useMedia } from '@session/ui'
 
 /**
  * The list on a phone, where it is the whole screen. On a tablet the shell keeps the list beside
@@ -20,5 +10,5 @@ function Placeholder() {
 export default function IndexRoute() {
   useLocale()
   const media = useMedia()
-  return media.gtSm ? <Placeholder /> : <ConversationListScreen />
+  return media.gtSm ? <NoSelectionPane /> : <ConversationListScreen />
 }

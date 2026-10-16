@@ -7,6 +7,7 @@ import { StartingScreen } from '../StartingScreen'
 import { StartupFailedScreen } from '../StartupFailedScreen'
 import { usePersistedLocale } from '../usePersistedLocale'
 import { AdaptiveShell } from './AdaptiveShell'
+import { NoSelectionPane } from './NoSelectionPane'
 
 /**
  * Everything the app draws once its store exists: the startup failure, the launch screen,
@@ -17,16 +18,7 @@ import { AdaptiveShell } from './AdaptiveShell'
  * pane or two that becomes is `AdaptiveShell`'s decision, so a phone, a tablet and the desktop
  * window all go through here.
  */
-export function SessionShell({
-  detail,
-  hasDetail,
-  placeholder,
-}: {
-  detail: ReactNode
-  hasDetail: boolean
-  /** The second pane, before anything is open in it. */
-  placeholder: ReactNode
-}) {
+export function SessionShell({ detail, hasDetail }: { detail: ReactNode; hasDetail: boolean }) {
   const hydrated = useHydrated()
   const startupError = useStartupError()
   const account = useAccount()
@@ -54,7 +46,7 @@ export function SessionShell({
       // conversation: requests and settings are detail routes too, and keying this on the
       // conversation alone left them rendering the placeholder instead of the screen.
       hasDetail={hasDetail}
-      placeholder={placeholder}
+      placeholder={<NoSelectionPane />}
     />
   )
 }

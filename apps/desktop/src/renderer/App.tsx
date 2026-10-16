@@ -11,7 +11,7 @@ import {
   useTextDirection,
 } from '@session/screens'
 import { SessionStoreProvider } from '@session/state'
-import { ModalStackProvider, Text, ToastProvider, YStack } from '@session/ui'
+import { ModalStackProvider, ToastProvider } from '@session/ui'
 import { useEffect } from 'react'
 import { MemoryRouter, Route, Routes, useLocation, useParams } from 'react-router'
 
@@ -65,16 +65,6 @@ export function App() {
   )
 }
 
-// TODO: a stand-in until the empty detail pane gets legacy Desktop's no-selection state.
-// Replace this whole component with that screen, not just its words.
-function Placeholder() {
-  return (
-    <YStack flex={1} alignItems="center" justifyContent="center">
-      <Text tone="secondary">Choose a conversation</Text>
-    </YStack>
-  )
-}
-
 function Shell() {
   const location = useLocation()
   return (
@@ -88,7 +78,6 @@ function Shell() {
         </Routes>
       }
       hasDetail={location.pathname !== '/'}
-      placeholder={<Placeholder />}
     />
   )
 }
