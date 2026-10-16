@@ -20,12 +20,13 @@ describe('what the composer says about a refusal', () => {
     const notices = refusalNotices({ tooLarge: [big], overLimit: 3, unreadable: 0 })
     const said = refusalAnnouncement(notices)
     const lines = said.split('\n')
-    expect(lines[0]).toBe(tr('attachmentsErrorSize'))
+    expect(lines[0]).toBe(`${tr('attachmentsErrorSize')}.`)
     expect(lines[1]?.startsWith('drone.mov · ')).toBe(true)
-    // The copy's own stops, never one of ours added after them.
+    expect(lines[1]?.endsWith('.')).toBe(true)
+    // A stop where the copy has none, and never a second one after its own.
     expect(lines.slice(2)).toEqual([
       PENDING_COPY.attachmentsErrorLimit(32),
-      PENDING_COPY.attachmentsNotAdded(3),
+      `${PENDING_COPY.attachmentsNotAdded(3)}.`,
     ])
     expect(said).not.toContain('..')
   })

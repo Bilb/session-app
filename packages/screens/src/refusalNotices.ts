@@ -48,12 +48,16 @@ export function refusalNotices({
   return notices
 }
 
+/** A screen reader pauses at a sentence's end, not at a line break, which it reads as a space. */
+const SENTENCE_END = /\p{Terminal_Punctuation}$/u
+
 /**
  * Every notice as one thing to say: announced one by one, each would cut off the one before it.
- * A line apiece, since the copy carries its own punctuation, in its own language.
+ * A line apiece, stopped where the copy does not stop itself.
  */
 export function refusalAnnouncement(notices: readonly RefusalNotice[]): string {
   return notices
     .flatMap(({ message, detail }) => (detail === undefined ? [message] : [message, detail]))
+    .map((line) => (SENTENCE_END.test(line) ? line : `${line}.`))
     .join('\n')
 }

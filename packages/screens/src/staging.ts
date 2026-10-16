@@ -23,7 +23,10 @@ export interface Staging {
    * whose path is already staged: that path is the staged file's.
    */
   unused: PickedFile[]
-  /** Staged entries a re-pick of their path replaced: their previews go, and their files stay. */
+  /**
+   * Staged entries a re-pick of their path replaced, or removed once it grew past the limit:
+   * their previews go, and their files stay.
+   */
   replaced: PickedFile[]
 }
 
