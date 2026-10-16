@@ -3,8 +3,9 @@ import { RADII } from '@session/theme-tokens'
 import { useState } from 'react'
 import { XStack, YStack } from 'tamagui'
 
-import { fileFormat, fileGlyph, splitFilename } from './attachmentFile'
+import { fileFormat, fileGlyph } from './attachmentFile'
 import { TILE_HAIRLINE_WIDTH, TILE_SCRIM } from './attachmentTileStyle'
+import { FileName } from './FileName'
 import { Icon } from './Icon'
 import { Image } from './Image'
 import { logical } from './logicalEdges'
@@ -45,7 +46,7 @@ export interface StagedTileProps {
 /**
  * The document face: what a staged file is when there is no picture of it.
  *
- * The same glyph, format and two-run name a file row draws, so the tray and the message the tray
+ * The same glyph, format and name a file row draws, so the tray and the message the tray
  * becomes read as the same files.
  */
 function DocumentFace({
@@ -53,7 +54,6 @@ function DocumentFace({
   contentType,
   sizeLabel,
 }: Pick<StagedTileProps, 'name' | 'contentType' | 'sizeLabel'>) {
-  const { head, tail } = splitFilename(name)
   const format = fileFormat(name)
   return (
     <YStack flex={1} padding="$xs" paddingTop="$sm" gap="$2xs">
@@ -66,14 +66,7 @@ function DocumentFace({
         )}
       </XStack>
       <YStack flex={1} />
-      <XStack minWidth={0}>
-        <Text size="$label" weight="semibold" numberOfLines={1} flexShrink={1}>
-          {head}
-        </Text>
-        <Text size="$label" weight="semibold" numberOfLines={1} flexShrink={0}>
-          {tail}
-        </Text>
-      </XStack>
+      <FileName name={name} size="$label" />
       {sizeLabel === undefined ? null : (
         <Text size="$caption" color="$textSecondary" numberOfLines={1}>
           {sizeLabel}
