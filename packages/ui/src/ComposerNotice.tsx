@@ -1,3 +1,4 @@
+import type { ElementId } from '@session/test-ids'
 import { useEffect, useRef } from 'react'
 import { AccessibilityInfo } from 'react-native'
 import { isWeb, XStack, YStack } from 'tamagui'
@@ -14,8 +15,8 @@ export interface ComposerNoticeProps {
   announceKey: number
   onDismiss: () => void
   dismissLabel: string
-  testID: string
-  dismissTestID: string
+  testID: ElementId
+  dismissTestID: ElementId
 }
 
 /**
