@@ -11,9 +11,10 @@ import java.io.FileNotFoundException
 /**
  * The directories the app stores anything in.
  *
- * **`filesDir` for the data, the logs and staged picks**, not `noBackupFilesDir`: expo-file-system
- * lets JS write only inside `filesDir` and `cacheDir` (expo-modules-core's `FilePermissionService`),
- * and the logs, the staged picks and the database's directory are written from JS. What keeps them out of backups is the manifest:
+ * **`filesDir` for the data, the logs and staged picks**, not `noBackupFilesDir`:
+ * expo-file-system lets JS write only inside `filesDir` and `cacheDir` (expo-modules-core's
+ * `FilePermissionService`), and all three are written from JS. What keeps them out of backups is
+ * the manifest:
  * `allowBackup="false"`, and rules that exclude every domain from both Auto Backup and
  * device-to-device transfer. So `inspect` reads the app's own backup flag rather than trusting the
  * location, and a manifest that lost it shows up in the startup block. Exports are in `cacheDir`,
