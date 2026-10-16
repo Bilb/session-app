@@ -39,7 +39,12 @@ const TIME_GAP_MIN_PX = 8
  * in a tablet's left pane and in the desktop window. Which of those it is showing in is
  * AdaptiveShell's business, not its own.
  */
-export function ConversationListScreen() {
+export function ConversationListScreen({
+  openConversationId,
+}: {
+  /** The conversation showing beside the list, where one is: its row is drawn selected. */
+  openConversationId?: string | undefined
+}) {
   const conversations = useConversations()
   const unreadRequests = useUnreadRequestCount()
   const nav = useNav()
@@ -133,6 +138,7 @@ export function ConversationListScreen() {
             conversation={conversation}
             index={index}
             timeLocale={timeLocale}
+            open={conversation.id === openConversationId}
             onPress={() => nav.push(routes.conversation(conversation.id))}
           />
         )}
@@ -212,11 +218,13 @@ function ConversationRow({
   conversation,
   index,
   timeLocale,
+  open,
   onPress,
 }: {
   conversation: Conversation
   index: number
   timeLocale: string | undefined
+  open: boolean
   onPress: () => void
 }) {
   const title = conversationTitle(conversation)
@@ -237,10 +245,12 @@ function ConversationRow({
       gap="$sm"
       alignItems="center"
       position="relative"
-      hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
+      {...(open ? { backgroundColor: '$backgroundTertiary' } : {})}
+      hoverStyle={{ backgroundColor: open ? '$backgroundTertiary' : '$backgroundSecondary' }}
       pressStyle={{ backgroundColor: '$backgroundTertiary' }}
       cursor="pointer"
       onPress={onPress}
+      aria-selected={open}
       testID={ELEMENT.conversationList.row(index)}
     >
       {row.strip === null ? null : (
@@ -265,6 +275,7 @@ function ConversationRow({
             <XStack
               width={KIND_DISC_PX}
               height={KIND_DISC_PX}
+              flexShrink={0}
               borderRadius="$full"
               backgroundColor="$textPrimary"
               alignItems="center"
@@ -273,41 +284,49 @@ function ConversationRow({
               <Icon name={row.kindGlyph} size="xs" color="$backgroundPrimary" />
             </XStack>
           )}
-          {/* The name is the only thing on the line that gives way, so the icons after it never
-              compress. */}
+          {/* The name is the only thing on the line that gives way: the time matters most, then the
+              icons, so both are held at their size and the name truncates first. Every item says
+              so explicitly, because the web's flexbox shrinks items by default where native does
+              not. `minWidth={0}` is what lets the name shrink below its text at all. */}
           <Text
             size="$bodyLarge"
             weight={row.emphasised ? 'bold' : 'semibold'}
             numberOfLines={1}
             flexShrink={1}
+            minWidth={0}
             testID={ELEMENT.conversationList.rowName}
           >
             {title}
           </Text>
           {/* TODO: show the Pro badge after the name once the bridge carries a contact's Pro
               status. */}
-          {row.pinned ? (
-            <Icon
-              name="pin"
-              size="sm"
-              color="$textSecondary"
-              testID={ELEMENT.conversationList.rowPinned}
-            />
+          {row.pinned || row.muted ? (
+            <XStack flexShrink={0} alignItems="center" gap="$2xs">
+              {row.pinned ? (
+                <Icon
+                  name="pin"
+                  size="sm"
+                  color="$textSecondary"
+                  testID={ELEMENT.conversationList.rowPinned}
+                />
+              ) : null}
+              {row.muted ? (
+                <Icon
+                  name="volumeX"
+                  size="sm"
+                  color="$textSecondary"
+                  testID={ELEMENT.conversationList.rowMuted}
+                />
+              ) : null}
+            </XStack>
           ) : null}
-          {row.muted ? (
-            <Icon
-              name="volumeX"
-              size="sm"
-              color="$textSecondary"
-              testID={ELEMENT.conversationList.rowMuted}
-            />
-          ) : null}
-          <XStack flexGrow={1} minWidth={TIME_GAP_MIN_PX} />
+          <XStack flexGrow={1} flexShrink={0} minWidth={TIME_GAP_MIN_PX} />
           {time === null ? null : (
             <Text
               size="$label"
               tone={row.emphasised ? 'primary' : 'secondary'}
               numberOfLines={1}
+              flexShrink={0}
               testID={ELEMENT.conversationList.rowTime}
             >
               {time}
@@ -326,6 +345,7 @@ function ConversationRow({
               tone={row.emphasised ? 'primary' : 'secondary'}
               numberOfLines={1}
               flex={1}
+              minWidth={0}
               testID={ELEMENT.conversationList.rowSnippet}
             >
               {conversation.snippet}
@@ -333,7 +353,11 @@ function ConversationRow({
           )}
           {/* TODO: show the last message's sent, sending, read or failed icon here on a read row
               once the conversation data carries that message's send and sync state. */}
-          {row.badge === null ? null : <UnreadBadgeView badge={row.badge} />}
+          {row.badge === null ? null : (
+            <XStack flexShrink={0}>
+              <UnreadBadgeView badge={row.badge} />
+            </XStack>
+          )}
         </XStack>
       </YStack>
     </XStack>

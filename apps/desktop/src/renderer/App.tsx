@@ -70,6 +70,12 @@ export function App() {
   )
 }
 
+/** The conversation the detail pane is showing, read off the route for the list to mark. */
+function openConversationId(pathname: string): string | undefined {
+  const match = /^\/c\/([^/]+)$/.exec(pathname)
+  return match?.[1] === undefined ? undefined : decodeURIComponent(match[1])
+}
+
 function Shell() {
   const hydrated = useHydrated()
   const startupError = useStartupError()
@@ -93,7 +99,7 @@ function Shell() {
 
   return (
     <AdaptiveShell
-      list={<ConversationListScreen />}
+      list={<ConversationListScreen openConversationId={openConversationId(location.pathname)} />}
       detail={
         <Routes>
           <Route path="" element={null} />
