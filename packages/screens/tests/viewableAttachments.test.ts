@@ -7,7 +7,7 @@ import {
   leadsWithPicture,
   opensInViewer,
   viewableAttachments,
-  viewerUri,
+  viewerItem,
 } from '#src/viewableAttachments'
 
 function attachment(index: number, contentType?: string): Attachment {
@@ -86,6 +86,10 @@ describe('a picture sent as the original file', () => {
     expect(opensInViewer(attachment(0, 'image/jpeg'))).toBe(true)
   })
 
+  it('stays closed to a rendition of an original, which libsession does not make anyway', () => {
+    expect(opensInViewer({ ...original, hasRendition: true })).toBe(false)
+  })
+
   it('is left out of the viewer, so paging cannot reach it', () => {
     const set = message([attachment(0, 'image/jpeg'), original, attachment(2, 'image/png')])
     expect(viewableAttachments(set).map((a) => a.index)).toEqual([0, 2])
@@ -93,6 +97,15 @@ describe('a picture sent as the original file', () => {
 
   it('still leads its row with a picture, for its thumbnail', () => {
     expect(leadsWithPicture({ ...original, hasThumbnail: true })).toBe(true)
+  })
+})
+
+describe('a picture of a type nothing here draws', () => {
+  it('opens in the viewer once libsession has a rendition of it', () => {
+    const avif = attachment(0, 'image/avif')
+    expect(opensInViewer(avif)).toBe(false)
+    expect(opensInViewer({ ...avif, hasRendition: true })).toBe(true)
+    expect(viewableAttachments(message([{ ...avif, hasRendition: true }]))).toHaveLength(1)
   })
 })
 
@@ -135,13 +148,22 @@ describe('what the viewer is handed', () => {
 
   it('hands a picture its url until libsession has made a rendition of it', () => {
     serving()
-    expect(viewerUri(7, attachment(2, 'image/png'))).toBe('media://7/2')
+    expect(viewerItem(7, attachment(2, 'image/png'))).toEqual({ uri: 'media://7/2' })
   })
 
   it('hands a picture its rendition once there is one', () => {
     serving()
-    expect(viewerUri(7, { ...attachment(2, 'image/png'), hasRendition: true })).toBe(
-      'rendition://7/2',
-    )
+    expect(viewerItem(7, { ...attachment(2, 'image/png'), hasRendition: true })).toEqual({
+      uri: 'rendition://7/2',
+      fallbackUri: 'media://7/2',
+    })
+  })
+
+  it('has no file to fall back on for a rendition of a type nothing here draws', () => {
+    serving()
+    expect(viewerItem(7, { ...attachment(2, 'image/avif'), hasRendition: true })).toEqual({
+      uri: 'rendition://7/2',
+      fallbackUri: undefined,
+    })
   })
 })

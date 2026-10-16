@@ -1,6 +1,7 @@
 import { isViewableImage } from '@session/basic-types'
 import { requirePorts } from '@session/app'
 import type { Attachment, Message } from '@session/client'
+import type { MediaViewerItem } from '@session/ui'
 
 /**
  * A whitelist rather than a prefix: `image/svg+xml`, `image/heic` and `image/tiff` are pictures no
@@ -12,11 +13,12 @@ export function isViewable(attachment: Attachment): boolean {
 }
 
 /**
- * Whether the viewer opens it: a viewable picture, unless its sender sent it as the original file,
- * metadata and all, which is only ever exported.
+ * Whether the viewer opens it: a viewable picture, or one libsession made a rendition of (AVIF,
+ * HEIC where it decodes), unless its sender sent it as the original file, metadata and all, which
+ * is only ever exported.
  */
 export function opensInViewer(attachment: Attachment): boolean {
-  return isViewable(attachment) && !attachment.originalFile
+  return (isViewable(attachment) || attachment.hasRendition) && !attachment.originalFile
 }
 
 /**
@@ -42,12 +44,17 @@ export function viewableAttachments(message: Message): Attachment[] {
 }
 
 /**
- * What the viewer is handed to draw `attachment`, or null where the platform has no resolver:
+ * What the viewer is handed to draw `attachment`, a url null where the platform has no resolver:
  * libsession's rendition once it has made one, else the file, never the thumbnail a tile draws.
+ * The file stands behind a rendition that fails to load, where its own type is one we draw.
  * Export writes the file whichever is drawn.
  */
-export function viewerUri(messageId: number, attachment: Attachment): string | null {
+export function viewerItem(messageId: number, attachment: Attachment): MediaViewerItem {
   const ref = { messageId, index: attachment.index }
   const { media } = requirePorts()
-  return attachment.hasRendition ? media.renditionUrlFor(ref) : media.urlFor(ref)
+  if (!attachment.hasRendition) return { uri: media.urlFor(ref) }
+  return {
+    uri: media.renditionUrlFor(ref),
+    fallbackUri: isViewable(attachment) ? media.urlFor(ref) : undefined,
+  }
 }

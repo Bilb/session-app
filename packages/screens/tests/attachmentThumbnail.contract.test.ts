@@ -22,8 +22,12 @@ describe('which picture each place draws', () => {
   })
 
   it('draws the rendition in the viewer once there is one, else the file', () => {
-    expect(read('viewableAttachments.ts')).toMatch(
-      /attachment\.hasRendition\s*\?\s*media\.renditionUrlFor\(ref\)\s*:\s*media\.urlFor\(ref\)/,
+    expect(read('viewableAttachments.ts')).toContain(
+      'if (!attachment.hasRendition) return { uri: media.urlFor(ref) }',
+    )
+    expect(read('viewableAttachments.ts')).toContain('uri: media.renditionUrlFor(ref),')
+    expect(read('MessageMediaViewer.tsx')).toContain(
+      'viewable.map((attachment) => viewerItem(target.messageId, attachment))',
     )
   })
 
