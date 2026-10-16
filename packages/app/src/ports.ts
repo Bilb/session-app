@@ -55,6 +55,11 @@ export interface FilesPort {
    */
   picksAreCopies: boolean
   /**
+   * Whether libsession here decodes HEIC, and so shrinks one too large to send as it is: only
+   * Apple's ImageIO does, on iOS and macOS.
+   */
+  decodesHeic: boolean
+  /**
    * Lets go of a pick that will not be sent: deletes the app's copy, where it made one.
    *
    * Never for a file a message has been given. libsession reads it only when its upload's turn
