@@ -12,15 +12,17 @@ describe('a file row', () => {
   // Everything the row carries when it takes a press is in the one spread `onPress` switches on.
   const rowPress =
     /\{\.\.\.\(onPress === undefined\s*\?\s*\{\}\s*:\s*\{([\s\S]*?)\}\)\}/.exec(row)?.[1] ?? ''
-  // The same for the lead square, whose spread `openLabel` switches on.
+  // The same for the lead square, whose spread `openLabel` and the platform switch on.
   const leadPress =
-    /\{\.\.\.\(openLabel === undefined\s*\?\s*\{\}\s*:\s*\{([\s\S]*?)\}\)\}/.exec(row)?.[1] ?? ''
+    /\{\.\.\.\(openLabel === undefined \|\| !isWeb\s*\?\s*\{\}\s*:\s*\{([\s\S]*?)\}\)\}/.exec(
+      row,
+    )?.[1] ?? ''
   const control = row.slice(
     row.indexOf('function Trailing('),
     row.indexOf('export function FileRow('),
   )
   const nativeButton = row.slice(
-    row.indexOf('function nativeRowButton('),
+    row.indexOf('function nativeRowElement('),
     row.indexOf('function Trailing('),
   )
   // The row's own stack, up to the first thing it holds.
@@ -72,14 +74,18 @@ describe('a file row', () => {
 
   it('is no button on the web, where it would hold the lead square’s and the control’s', () => {
     // ARIA makes a button's children presentational, so a screen reader may skip both.
-    expect(rowStack).toContain(
-      '{...nativeRowButton({ filename, pressLabel, pressable: onPress !== undefined, held })}',
-    )
+    expect(rowStack).toContain('{...nativeRowElement({')
     expect(nativeButton.indexOf('if (isWeb) return {}')).toBeGreaterThan(-1)
     expect(nativeButton.indexOf('if (isWeb) return {}')).toBeLessThan(
       nativeButton.indexOf("role: 'button'"),
     )
-    for (const prop of ['role', 'aria-label', 'aria-description', 'pressHint', 'aria-disabled'])
+    for (const prop of [
+      "role: '",
+      "'aria-label'",
+      'aria-description',
+      'pressHint(',
+      'aria-disabled',
+    ])
       expect(rowStack).not.toContain(prop)
   })
 
@@ -96,12 +102,40 @@ describe('a file row', () => {
     expect(row).not.toContain('rowRing')
   })
 
-  it('stays a button on native, named by the file and hinting what its press does', () => {
-    // iOS does not make it an accessibility element and Android does not focus it.
-    expect(nativeButton).toContain(
-      "...(pressable || held ? { role: 'button', 'aria-label': filename } : {})",
-    )
+  it('is the one accessibility element on native, named by the file and its caption', () => {
+    // iOS hides whatever an accessibility element holds, so the row speaks for the whole of it.
+    expect(nativeButton).toContain('accessible: true')
+    expect(nativeButton).toContain("...(pressable || held ? { role: 'button' } : {})")
+    expect(nativeButton).toContain("'aria-label': name")
     expect(nativeButton).toContain('...(pressable ? pressHint(pressLabel) : {})')
+    expect(rowStack).toContain('name: fileRowAccessibleName(filename, format, caption)')
+  })
+
+  it('offers the lead square’s and the control’s verbs as the row’s actions on native', () => {
+    expect(nativeButton).toContain('accessibilityActions: actions.map(')
+    expect(nativeButton).toMatch(
+      /onAccessibilityAction:[\s\S]*actions\.find\(\(action\) => action\.name === event\.nativeEvent\.actionName\)\?\.run\(\)/,
+    )
+    expect(row).toMatch(/fileRowActions\(\{\s*onPress,\s*pressLabel,\s*onOpen,\s*openLabel,/)
+    // A held or absent control presses nothing, so it is no action either.
+    expect(row).toContain(
+      "onAction: control === null || control === 'progress' ? undefined : onAction",
+    )
+  })
+
+  it('gives the lead square and the control no role of their own on native', () => {
+    // A button inside the row's element would be hidden on iOS, or read twice on Android.
+    expect(row).toContain('{...(openLabel === undefined || !isWeb')
+    expect(row).toContain('{...(leadHeld && isWeb ? heldButton(filename, leadRing) : {})}')
+    expect(control).toMatch(/\{\.\.\.\(!isWeb\s*\?\s*\{\}\s*:\s*held/)
+    expect(control.indexOf('!isWeb')).toBeLessThan(control.indexOf("role: 'button'"))
+  })
+
+  it('keeps every part addressable by id, which the row being one element does not change', () => {
+    for (const id of ['row', 'name', 'caption', 'lead', 'thumbnail'])
+      expect(row).toContain(`testID={testIDs?.${id}}`)
+    expect(row).toContain('testID={testIDs?.action}')
+    expect(control).toContain('testID={testID}')
   })
 
   it('gives its lead square and its control each a tab stop, in that order', () => {
@@ -118,13 +152,13 @@ describe('a file row', () => {
   it('keeps the square and the control disabled stops while fetching, so focus stays', () => {
     // One element in every state: swapping the focused one for another drops focus to the page.
     expect(row).toContain("const held = state === 'fetching'")
-    expect(row).toContain('{...(leadHeld ? heldButton(filename, leadRing) : {})}')
+    expect(row).toContain('{...(leadHeld && isWeb ? heldButton(filename, leadRing) : {})}')
     expect(control).toContain("const held = control === 'progress'")
     expect(control).toContain('? heldButton(actionLabel, ring)')
     // Set in every state: Android keeps a disabled state that is dropped rather than cleared.
-    expect(control).toContain('aria-disabled={held}')
+    expect(control).toContain("{...(isWeb ? { 'aria-disabled': held } : {})}")
     expect(nativeButton).toContain("'aria-disabled': !pressable && held")
-    expect(row).toContain('aria-disabled={leadHeld}')
+    expect(row).toContain("{...(isWeb ? { 'aria-disabled': leadHeld } : {})}")
     expect(control.match(/<YStack\b/g)).toHaveLength(2)
     // tamagui remounts a view whose group comes or goes, so the row's is unconditional.
     expect(rowPress).not.toContain('group')

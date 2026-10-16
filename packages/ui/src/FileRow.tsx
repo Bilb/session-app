@@ -14,6 +14,7 @@ import type { ElementId } from '@session/test-ids'
 
 import { AttachmentTile } from './AttachmentTile'
 import { fileFormat, fileGlyph, nameDirection, splitFilename } from './attachmentFile'
+import { fileRowAccessibleName, fileRowActions, type FileRowAction } from './fileRowAccessibility'
 import {
   FILE_GLYPH_SIDE,
   FILE_LEAD_WIDTH,
@@ -107,21 +108,35 @@ const RING_SIDE = 28
 const RING_THICKNESS = 3
 
 /**
- * The row as a button, on native alone. On the web it would be a button holding the lead square's
- * and the control's, whose children ARIA makes presentational.
+ * The row as the one accessibility element, on native alone: iOS hides whatever an element holds,
+ * so the lead square's and the control's verbs are its actions. On the web it would be a button
+ * holding theirs, whose children ARIA makes presentational.
  */
-function nativeRowButton({
-  filename,
+function nativeRowElement({
+  name,
+  actions,
   pressLabel,
   pressable,
   held,
-}: WithFilename & { pressLabel: string | undefined; pressable: boolean; held: boolean }) {
+}: {
+  name: string
+  actions: FileRowAction[]
+  pressLabel: string | undefined
+  pressable: boolean
+  held: boolean
+}) {
   if (isWeb) return {}
   return {
-    ...(pressable || held ? { role: 'button', 'aria-label': filename } : {}),
+    accessible: true,
+    ...(pressable || held ? { role: 'button' } : {}),
+    'aria-label': name,
     ...(pressable ? pressHint(pressLabel) : {}),
     // Set in every state: Android keeps a disabled state that is dropped rather than cleared.
     'aria-disabled': !pressable && held,
+    accessibilityActions: actions.map(({ name: action, label }) => ({ name: action, label })),
+    onAccessibilityAction: (event: { nativeEvent: { actionName: string } }) => {
+      actions.find((action) => action.name === event.nativeEvent.actionName)?.run()
+    },
   } as const
 }
 
@@ -172,15 +187,17 @@ function Trailing({
       position="relative"
       group="control"
       testID={testID}
-      {...(held
-        ? heldButton(actionLabel, ring)
-        : {
-            role: 'button' as const,
-            cursor: 'pointer',
-            ...(actionLabel === undefined ? {} : { 'aria-label': actionLabel }),
-            ...keyboardPress(onAction, ring),
-          })}
-      aria-disabled={held}
+      {...(held ? {} : { cursor: 'pointer' as const })}
+      {...(!isWeb
+        ? {}
+        : held
+          ? heldButton(actionLabel, ring)
+          : {
+              role: 'button' as const,
+              ...(actionLabel === undefined ? {} : { 'aria-label': actionLabel }),
+              ...keyboardPress(onAction, ring),
+            })}
+      {...(isWeb ? { 'aria-disabled': held } : {})}
       onPress={
         held
           ? undefined
@@ -249,6 +266,15 @@ export function FileRow({
   const held = state === 'fetching'
   const leadRing = focusRing({ onAccent, offset: 0, radius: tileRadius(FILE_GLYPH_SIDE) })
   const leadHeld = openLabel === undefined && held
+  const control = fileRowControl(state)
+  const actions = fileRowActions({
+    onPress,
+    pressLabel,
+    onOpen,
+    openLabel,
+    onAction: control === null || control === 'progress' ? undefined : onAction,
+    actionLabel,
+  })
 
   const lead =
     thumbnail === undefined ? (
@@ -281,7 +307,13 @@ export function FileRow({
       group="row"
       testID={testIDs?.row}
       {...(onPress === undefined ? {} : { cursor: 'pointer', onPress })}
-      {...nativeRowButton({ filename, pressLabel, pressable: onPress !== undefined, held })}
+      {...nativeRowElement({
+        name: fileRowAccessibleName(filename, format, caption),
+        actions,
+        pressLabel,
+        pressable: onPress !== undefined,
+        held,
+      })}
     >
       {onPress === undefined ? null : (
         <StateLayer group="row" tone="ink" borderRadius="$sm" bleed={SPACING.xs} />
@@ -296,7 +328,8 @@ export function FileRow({
           lead
         ) : (
           <YStack
-            {...(openLabel === undefined
+            // On native the row carries this press as an action; see `nativeRowElement`.
+            {...(openLabel === undefined || !isWeb
               ? {}
               : {
                   role: 'button' as const,
@@ -304,8 +337,8 @@ export function FileRow({
                   ...pressHint(openLabel),
                   ...keyboardPress(onOpen, leadRing),
                 })}
-            {...(leadHeld ? heldButton(filename, leadRing) : {})}
-            aria-disabled={leadHeld}
+            {...(leadHeld && isWeb ? heldButton(filename, leadRing) : {})}
+            {...(isWeb ? { 'aria-disabled': leadHeld } : {})}
             position="relative"
             group="tile"
             cursor="pointer"
