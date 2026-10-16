@@ -223,6 +223,8 @@ export class FakeAccount {
   private world: FakeWorld | undefined
   /** Attachments whose bytes are in the cache, by `keyOf`. */
   private readonly cached = new Set<string>()
+  /** The sizes `seedSending` held back from files not up yet, which their upload reports. */
+  private readonly unreportedSizes = new Map<string, number>()
   /**
    * Transfers in flight, by `keyOf`, so a second request for a file joins its transfer rather than
    * starting another - a download and an export alike, as libsession keys both by the file.
@@ -625,7 +627,9 @@ export class FakeAccount {
         this.cached.add(keyOf({ messageId, index: attachment.index }))
         return { ...attachment, uploaded: true }
       }
-      const { sizeBytes: _unknownYet, ...rest } = attachment
+      const { sizeBytes, ...rest } = attachment
+      if (sizeBytes !== undefined)
+        this.unreportedSizes.set(keyOf({ messageId, index: attachment.index }), sizeBytes)
       return { ...rest, uploaded: false }
     })
     return this.addMessage(id, {
@@ -652,16 +656,22 @@ export class FakeAccount {
       if (message === undefined) continue
       if (message.sendState !== 'failed' && message.sendState !== 'interrupted') return false
       const finish = () => {
-        for (const attachment of message.attachments)
-          this.cached.add(keyOf({ messageId, index: attachment.index }))
-        this.updateMessage(id, messageId, {
-          sendState: 'sent',
-          syncState: 'sent',
-          attachments: message.attachments.map((attachment) => ({ ...attachment, uploaded: true })),
+        const attachments = message.attachments.map((attachment) => {
+          const key = keyOf({ messageId, index: attachment.index })
+          this.cached.add(key)
+          const sizeBytes = this.unreportedSizes.get(key)
+          this.unreportedSizes.delete(key)
+          return {
+            ...attachment,
+            uploaded: true,
+            ...(sizeBytes === undefined ? {} : { sizeBytes }),
+          }
         })
+        this.updateMessage(id, messageId, { sendState: 'sent', syncState: 'sent', attachments })
       }
-      // Uploading first, as libsession goes back to it while any file is not up yet.
-      this.updateMessage(id, messageId, { sendState: 'uploading', syncState: 'uploading' })
+      // As libsession: back to uploading while a file is not up yet, else straight to the send.
+      const resumed = message.attachments.every((a) => a.uploaded) ? 'sending' : 'uploading'
+      this.updateMessage(id, messageId, { sendState: resumed, syncState: resumed })
       if (this.world) this.world.schedule(1, finish)
       else finish()
       return true

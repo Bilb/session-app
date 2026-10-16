@@ -62,5 +62,26 @@ describe('showcase', () => {
     const resumed = after.find((m) => m.id === failed.id)
     expect(resumed?.sendState).toBe('sent')
     expect(resumed?.attachments.every((a) => a.uploaded)).toBe(true)
+    // Each file not up before the retry reports its size once its upload does.
+    expect(resumed?.attachments.every((a) => a.sizeBytes !== undefined)).toBe(true)
+  })
+
+  it('sends a failed message whose files are all up without uploading again', async () => {
+    const { world, clients } = showcase()
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const bob = world.account('Bob').sessionId
+    const files = (await alice.getMessages(bob, { limit: 100 })).messages.find(
+      (m) => m.body === 'File 31 of 32 failed',
+    )?.attachments
+    if (files === undefined) throw new Error('fixture is missing a send')
+    const allUp = world
+      .account('Alice')
+      .seedSending(bob, 'Every file up, the send failed', files, 'failed', files.length)
+    world.settle()
+
+    expect(await alice.retrySend(allUp.id)).toBe(true)
+    const resuming = (await alice.getMessages(bob, { limit: 100 })).messages
+    expect(resuming.find((m) => m.id === allUp.id)?.sendState).toBe('sending')
   })
 })
