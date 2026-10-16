@@ -1,12 +1,13 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, symlink, truncate, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { crc32, deflateSync } from 'node:zlib'
 
 import {
+  MAX_STAGED_READ_BYTES,
   MEDIA_URL_VECTORS,
   runMediaSourceContract,
   SERVABLE_VECTORS,
@@ -120,8 +121,12 @@ describeAddon('addon', () => {
       png: join(dir, 'scan.png'),
       document: join(dir, 'paper.pdf'),
       missing: join(dir, 'gone.jpg'),
+      oversized: join(dir, 'panorama.jpg'),
     }
     await writeFile(files.jpeg, grey(1280, 960))
+    // Sparse: a real JPEG's head, and past the largest staged file read in length alone.
+    await writeFile(files.oversized, grey(64, 48))
+    await truncate(files.oversized, MAX_STAGED_READ_BYTES + 1)
     await writeFile(files.png, greyPng(300, 200))
     await writeFile(files.document, '%PDF-1.7\n')
     const fifo = join(dir, 'fifo.jpg')

@@ -1,3 +1,9 @@
+/**
+ * The largest staged file a thumbnail is made of; the shim's `MAX_STAGED_READ_BYTES`, which the
+ * media source contract holds the fake to. A message carries at most 10 MB.
+ */
+export const MAX_STAGED_READ_BYTES = 64 * 1024 * 1024
+
 /** The longest staged path served, in UTF-8 bytes: Linux's `PATH_MAX`. */
 const MAX_STAGED_PATH_BYTES = 4096
 

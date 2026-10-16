@@ -635,6 +635,9 @@ importers:
 
   packages/client-contract:
     dependencies:
+      '@session/basic-types':
+        specifier: workspace:*
+        version: link:../basic-types
       '@session/client':
         specifier: workspace:*
         version: link:../client

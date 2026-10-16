@@ -1,8 +1,13 @@
-import { createFakeMediaSource, friendsWithAttachments, solo } from '@session/client/fake'
+import {
+  createFakeMediaSource,
+  friendsWithAttachments,
+  solo,
+  type StagedHead,
+} from '@session/client/fake'
 import jpeg from 'jpeg-js'
 import { describe, expect, it } from 'vitest'
 
-import { runMediaSourceContract, type MediaSourceHarness } from '#src/index'
+import { MAX_STAGED_READ_BYTES, runMediaSourceContract, type MediaSourceHarness } from '#src/index'
 
 function grey(width: number, height: number): Uint8Array {
   return jpeg.encode({ width, height, data: new Uint8Array(width * height * 4).fill(0x80) }, 90)
@@ -29,11 +34,17 @@ const STAGED: ReadonlyMap<string, Uint8Array> = new Map([
 // There, but what the desktop and mobile readers refuse on opening.
 const NOT_REGULAR = ['/home/alice/Pictures', '/home/alice/Pictures/fifo.jpg']
 
-const readStaged = (path: string, count: number): Promise<Uint8Array> => {
+// A picture past the largest staged file read, by its size alone, as a sparse file would be.
+const OVERSIZED = '/home/alice/Pictures/panorama.jpg'
+
+const readStaged = (path: string, count: number): Promise<StagedHead> => {
+  if (path === OVERSIZED) {
+    return Promise.resolve({ head: ORIGINAL.subarray(0, count), size: MAX_STAGED_READ_BYTES + 1 })
+  }
   const bytes = STAGED.get(path)
   return bytes === undefined
     ? Promise.reject(new Error('ENOENT'))
-    : Promise.resolve(bytes.subarray(0, count))
+    : Promise.resolve({ head: bytes.subarray(0, count), size: bytes.length })
 }
 
 const harness: MediaSourceHarness = {
@@ -93,6 +104,7 @@ const harness: MediaSourceHarness = {
       png,
       document,
       missing: '/home/alice/Pictures/gone.jpg',
+      oversized: OVERSIZED,
       notRegular: NOT_REGULAR,
     })
   },

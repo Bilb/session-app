@@ -90,7 +90,8 @@ export function createFakeBridge(): BridgeTransport {
         if (!file.exists) return Promise.reject(new Error('not a regular file'))
         const handle = file.open()
         try {
-          return Promise.resolve(handle.readBytes(Math.min(count, handle.size ?? count)))
+          const size = handle.size ?? file.size
+          return Promise.resolve({ head: handle.readBytes(Math.min(count, size)), size })
         } finally {
           handle.close()
         }

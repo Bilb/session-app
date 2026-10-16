@@ -1,14 +1,14 @@
 import { isViewableImage } from '@session/basic-types'
 import { describe, expect, it } from 'vitest'
 
-import { createFakeMediaSource } from '#src/fake/media'
+import { createFakeMediaSource, type StagedHead } from '#src/fake/media'
 import { friendsWithAttachments, showcase } from '#src/fake/index'
 
 // The photo names are ASCII, so a byte per character stands in for a file's bytes.
 const readPhoto = (name: string): Promise<Uint8Array> =>
   Promise.resolve(Uint8Array.from(name, (c) => c.charCodeAt(0)))
 const asText = (bytes: Uint8Array): string => String.fromCharCode(...bytes)
-const readStaged = (): Promise<Uint8Array> => Promise.reject(new Error('ENOENT'))
+const readStaged = (): Promise<StagedHead> => Promise.reject(new Error('ENOENT'))
 
 async function showcasePhoto() {
   const { world, clients } = showcase()
@@ -108,7 +108,8 @@ describe('the fake media source', () => {
 
   it('draws a staged dev photograph as its own thumbnail, and any other picture as one', async () => {
     const { alice } = await showcasePhoto()
-    const jpeg = (): Promise<Uint8Array> => Promise.resolve(Uint8Array.of(0xff, 0xd8, 0xff, 0xe0))
+    const head = Uint8Array.of(0xff, 0xd8, 0xff, 0xe0)
+    const jpeg = (): Promise<StagedHead> => Promise.resolve({ head, size: head.length })
     const source = createFakeMediaSource(alice, readPhoto, jpeg)
     expect(asText(await source.fetchStagedThumbnail('/home/a/unsplash-07.jpg'))).toBe(
       'thumbnail-07.jpg',

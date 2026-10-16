@@ -33,7 +33,8 @@ export interface MediaSourceHarness {
   empty(): Promise<{ source: MediaSource }>
   /**
    * A source over a client with no messages, and the absolute paths of files staged to send: a
-   * JPEG neither square nor within the largest thumbnail edge, a PNG, a PDF, and one not there.
+   * JPEG neither square nor within the largest thumbnail edge, a PNG, a PDF, one not there, and a
+   * JPEG larger than `MAX_STAGED_READ_BYTES`.
    * `notRegular` are there but not regular files: a directory, and where the platform has them, a
    * FIFO nobody writes to and a link to a device, any of which would block a reader that waited.
    */
@@ -44,6 +45,7 @@ export interface MediaSourceHarness {
     png: string
     document: string
     missing: string
+    oversized: string
     notRegular: readonly string[]
   }>
 }
@@ -264,6 +266,13 @@ export function runMediaSourceContract(
         'the file is not a picture',
       )
       expect(messageOf(await failure(() => source.fetchStagedThumbnail(missing)))).toBe(
+        'the file could not be read',
+      )
+    })
+
+    it('refuses a staged file larger than any it reads', async () => {
+      const { source, oversized } = await harness.staged()
+      expect(messageOf(await failure(() => source.fetchStagedThumbnail(oversized)))).toBe(
         'the file could not be read',
       )
     })
