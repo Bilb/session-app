@@ -35,21 +35,24 @@ static void Fail(RCTImageLoaderCompletionBlock done, NSURL* url, const std::stri
     done(SessionMediaError(message), nil);
 }
 
-/// The source's stored pixel size from its header, or zero when it does not say. A GIF's frames
-/// are drawn onto its canvas, so for a GIF the larger of the two on each edge.
+/// The source's stored pixel size from its header, or zero when it does not say. The frames of a
+/// GIF or an animated WebP are drawn onto its canvas, so for those the larger on each edge.
 static CGSize SourcePixelSize(CGImageSourceRef source) {
     NSDictionary* frame =
             (__bridge_transfer NSDictionary*)CGImageSourceCopyPropertiesAtIndex(source, 0, nullptr);
     NSDictionary* container =
             (__bridge_transfer NSDictionary*)CGImageSourceCopyProperties(source, nullptr);
     NSDictionary* gif = container[(id)kCGImagePropertyGIFDictionary];
+    NSDictionary* webp = container[(id)kCGImagePropertyWebPDictionary];
     return CGSizeMake(
             std::max(
-                    [frame[(id)kCGImagePropertyPixelWidth] doubleValue],
-                    [gif[(id)kCGImagePropertyGIFCanvasPixelWidth] doubleValue]),
+                    {[frame[(id)kCGImagePropertyPixelWidth] doubleValue],
+                     [gif[(id)kCGImagePropertyGIFCanvasPixelWidth] doubleValue],
+                     [webp[(id)kCGImagePropertyWebPCanvasPixelWidth] doubleValue]}),
             std::max(
-                    [frame[(id)kCGImagePropertyPixelHeight] doubleValue],
-                    [gif[(id)kCGImagePropertyGIFCanvasPixelHeight] doubleValue]));
+                    {[frame[(id)kCGImagePropertyPixelHeight] doubleValue],
+                     [gif[(id)kCGImagePropertyGIFCanvasPixelHeight] doubleValue],
+                     [webp[(id)kCGImagePropertyWebPCanvasPixelHeight] doubleValue]}));
 }
 
 // TODO: ImageIO decodes a GIF or most PNGs whole; serve a format it reduces while decoding.

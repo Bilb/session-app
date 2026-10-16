@@ -115,6 +115,7 @@ internal object SessionMediaNative {
  * keeps naming one picture: libsession never reuses a message id, and a discard calls
  * `forget_media`.
  */
+// TODO: Fresco decodes animated GIF and WebP frames at canvas size, unbudgeted, unlike iOS.
 internal class SessionMediaSequenceFactory : CustomProducerSequenceFactory() {
   override fun getCustomDecodedImageSequence(
       imageRequest: ImageRequest,
