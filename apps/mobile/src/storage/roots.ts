@@ -114,7 +114,10 @@ function directory(path: string): Directory {
  */
 export const logsRoot: Directory = new Directory(fileUri(roots.logs))
 
-/** Where exports are staged for the share sheet, created if missing. */
+/**
+ * Where exports are staged for the share sheet, created if missing. A log export deletes only its
+ * own top-level files here; an attachment's export, under `attachments/`, may still be in flight.
+ */
 export function exportsDirectory(): Directory {
   return directory(roots.exports)
 }
