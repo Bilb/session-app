@@ -214,8 +214,9 @@ static void FinishThumbnail(
         double delay = [webp[(id)kCGImagePropertyWebPUnclampedDelayTime] doubleValue];
         if (delay <= 0)
             delay = [webp[(id)kCGImagePropertyWebPDelayTime] doubleValue];
-        // Browsers draw a frame with no delay, or one under 20 ms, for 100 ms.
-        [durations addObject:@(delay < 0.02 ? 0.1 : delay)];
+        // Browsers draw a frame of 10 ms or less for 100 ms; 0.011 as RCTAnimatedImage, since
+        // ImageIO's float delays read 10 ms back as just over 0.01.
+        [durations addObject:@(delay < 0.011 ? 0.1 : delay)];
     }
     CFRelease(source);
     _durations = durations;
