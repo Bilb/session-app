@@ -1,7 +1,8 @@
 import { ConversationListScreen, useLocale } from '@session/screens'
 import { Text, useMedia, YStack } from '@session/ui'
 
-// TODO: take this from the catalogue once it has a "choose a conversation" key; it has none yet.
+// TODO: a stand-in until the empty detail pane gets legacy Desktop's no-selection state.
+// Replace this whole component with that screen, not just its words.
 function Placeholder() {
   return (
     <YStack flex={1} alignItems="center" justifyContent="center">
