@@ -14,11 +14,9 @@ import { Image } from './Image'
 import { SafeArea } from './SafeArea'
 import { Text } from './Text'
 import { useWindowSize } from './useWindowSize'
+import { drawnUri, type MediaViewerItem } from './viewerItem'
 
-export type MediaViewerItem = {
-  /** Null where this platform has no resolver for the bytes, which is a state, not a failure. */
-  uri: string | null
-}
+export type { MediaViewerItem }
 
 export interface MediaViewerProps {
   open: boolean
@@ -143,10 +141,11 @@ export function MediaViewer({
   const current = items[index]
   // By url, so paging to another picture is not drawn as failed, and one that is fetched again
   // under a new url is tried again.
-  const [failedUri, setFailedUri] = useState<string | null>(null)
-  const failed = current?.uri != null && current.uri === failedUri
+  const [failedUris, setFailedUris] = useState<readonly string[]>([])
+  const drawn = current === undefined ? null : drawnUri(current, failedUris)
+  const failed = current?.uri != null && drawn === null
   const close = (): void => {
-    setFailedUri(null)
+    setFailedUris([])
     onClose()
   }
 
@@ -184,7 +183,7 @@ export function MediaViewer({
                 setBox({ width: measured.width, height: measured.height })
               }}
             >
-              {current === undefined || current.uri === null || failed ? (
+              {drawn === null ? (
                 <Text size="$body" color="$textSecondary">
                   {failed ? failedLabel : unavailableLabel}
                 </Text>
@@ -194,13 +193,13 @@ export function MediaViewer({
                 // because this is somebody being shown their own picture - a crop here would be
                 // hiding part of the thing they opened.
                 <Image
-                  uri={current.uri}
+                  uri={drawn}
                   width={box.width}
                   height={box.height}
                   fit="contain"
                   testID={imageTestID}
                   onError={() => {
-                    setFailedUri(current.uri)
+                    setFailedUris((was) => [...was, drawn])
                   }}
                 />
               )}
