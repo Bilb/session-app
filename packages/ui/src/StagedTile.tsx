@@ -1,7 +1,7 @@
 import type { ElementId } from '@session/test-ids'
 import { RADII } from '@session/theme-tokens'
 import { useState } from 'react'
-import { XStack, YStack } from 'tamagui'
+import { isWeb, XStack, YStack } from 'tamagui'
 
 import { fileFormat, fileGlyph } from './attachmentFile'
 import { TILE_HAIRLINE_WIDTH, TILE_SCRIM } from './attachmentTileStyle'
@@ -19,6 +19,12 @@ const REMOVE_DISC = 22
 
 /** The corner a remove press takes: the app's touch floor, drawn or not. */
 const REMOVE_TARGET = 44
+
+/**
+ * React Native makes a view with a role no accessibility element, so without this VoiceOver and
+ * TalkBack read the face's texts one by one and never its label.
+ */
+const NATIVE_ELEMENT = isWeb ? {} : { accessible: true }
 
 export interface StagedTileProps {
   name: string
@@ -56,7 +62,7 @@ function DocumentFace({
 }: Pick<StagedTileProps, 'name' | 'contentType' | 'sizeLabel'>) {
   const format = fileFormat(name)
   return (
-    <YStack flex={1} padding="$xs" paddingTop="$sm" gap="$2xs">
+    <YStack flex={1} padding="$xs" paddingTop="$sm" gap="$2xs" aria-hidden>
       <XStack alignItems="center" gap="$2xs">
         <Icon name={fileGlyph(name, contentType)} size="sm" color="$textPrimary" />
         {format === '' ? null : (
@@ -112,11 +118,19 @@ export function StagedTile({
     >
       {/* Beside the remove button rather than around it: a native screen reader reads a labelled
           container as one element, and would swallow the button inside. */}
-      <YStack flex={1} role="img" aria-label={label}>
+      <YStack flex={1} role="img" aria-label={label} {...NATIVE_ELEMENT}>
         <DocumentFace name={name} contentType={contentType} sizeLabel={sizeLabel} />
         {preview === undefined ? null : (
           // Over the face, hidden until it loads: a picture still decoding shows the face.
-          <YStack position="absolute" top={0} bottom={0} left={0} right={0} opacity={shown ? 1 : 0}>
+          <YStack
+            position="absolute"
+            top={0}
+            bottom={0}
+            left={0}
+            right={0}
+            opacity={shown ? 1 : 0}
+            aria-hidden
+          >
             <Image
               uri={preview}
               width={STAGED_TILE_SIDE}

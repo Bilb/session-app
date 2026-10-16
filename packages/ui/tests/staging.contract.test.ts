@@ -10,9 +10,22 @@ describe('the staged tray', () => {
   it('names each tile and says which file its remove button takes out', () => {
     const tile = source('StagedTile.tsx')
     // On the face beside the button, not on the tile around it, which would swallow the button.
-    expect(tile).toMatch(/<YStack flex=\{1\} role="img" aria-label=\{label\}>/)
+    expect(tile).toMatch(
+      /<YStack flex=\{1\} role="img" aria-label=\{label\} \{\.\.\.NATIVE_ELEMENT\}>/,
+    )
     expect(tile).not.toContain('role="group"')
     expect(tile).toContain('accessibilityLabel={removeLabel}')
+  })
+
+  it('is one element to a native screen reader, read by its label alone', () => {
+    const tile = source('StagedTile.tsx')
+    expect(tile).toContain('const NATIVE_ELEMENT = isWeb ? {} : { accessible: true }')
+    expect(tile).not.toContain('tabIndex')
+    // Hidden under the label, so the name's two runs are not read as two words.
+    expect(tile).toMatch(
+      /<YStack flex=\{1\} padding="\$xs" paddingTop="\$sm" gap="\$2xs" aria-hidden>/,
+    )
+    expect(tile).toMatch(/opacity=\{shown \? 1 : 0\}\s+aria-hidden\s*>/)
   })
 
   it('keeps the document face under its thumbnail', () => {
