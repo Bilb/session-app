@@ -189,41 +189,34 @@ static void FinishThumbnail(
     done(nil, image);
 }
 
-/// An animated WebP or PNG, which `RCTAnimatedImage` reads as a GIF: without these it plays once,
-/// every frame a tenth of a second, since ImageIO keeps their timing under their own dictionaries.
-@interface SessionAnimatedImage : RCTAnimatedImage
-- (instancetype)initWithData:(NSData*)data scale:(CGFloat)scale png:(BOOL)png;
+/// An animated WebP, which `RCTAnimatedImage` reads as a GIF: without these it plays once, every
+/// frame a tenth of a second, since ImageIO keeps a WebP's timing under its own dictionary.
+@interface SessionAnimatedWebP : RCTAnimatedImage
 @end
 
-@implementation SessionAnimatedImage {
+@implementation SessionAnimatedWebP {
     NSUInteger _loops;
     NSArray<NSNumber*>* _durations;
 }
 
-- (instancetype)initWithData:(NSData*)data scale:(CGFloat)scale png:(BOOL)png {
+- (instancetype)initWithData:(NSData*)data scale:(CGFloat)scale {
     if (!(self = [super initWithData:data scale:scale]))
         return nil;
     CGImageSourceRef source = CGImageSourceCreateWithData((__bridge CFDataRef)data, nullptr);
     if (!source)
         return nil;
-    const CFStringRef dictionary =
-            png ? kCGImagePropertyPNGDictionary : kCGImagePropertyWebPDictionary;
-    const CFStringRef loopCount =
-            png ? kCGImagePropertyAPNGLoopCount : kCGImagePropertyWebPLoopCount;
-    const CFStringRef unclamped =
-            png ? kCGImagePropertyAPNGUnclampedDelayTime : kCGImagePropertyWebPUnclampedDelayTime;
-    const CFStringRef clamped = png ? kCGImagePropertyAPNGDelayTime : kCGImagePropertyWebPDelayTime;
     NSDictionary* container =
             (__bridge_transfer NSDictionary*)CGImageSourceCopyProperties(source, nullptr);
-    _loops = [container[(__bridge id)dictionary][(__bridge id)loopCount] unsignedIntegerValue];
+    _loops = [container[(id)kCGImagePropertyWebPDictionary][(id)kCGImagePropertyWebPLoopCount]
+            unsignedIntegerValue];
     NSMutableArray<NSNumber*>* durations = [NSMutableArray array];
     for (size_t i = 0, count = CGImageSourceGetCount(source); i < count; i++) {
         NSDictionary* frame = (__bridge_transfer NSDictionary*)CGImageSourceCopyPropertiesAtIndex(
                 source, i, nullptr);
-        NSDictionary* timing = frame[(__bridge id)dictionary];
-        double delay = [timing[(__bridge id)unclamped] doubleValue];
+        NSDictionary* webp = frame[(id)kCGImagePropertyWebPDictionary];
+        double delay = [webp[(id)kCGImagePropertyWebPUnclampedDelayTime] doubleValue];
         if (delay <= 0)
-            delay = [timing[(__bridge id)clamped] doubleValue];
+            delay = [webp[(id)kCGImagePropertyWebPDelayTime] doubleValue];
         // Browsers draw a frame of 10 ms or less for 100 ms; 0.011 as WebKit and SDWebImage, since
         // ImageIO's float delays read 10 ms back as just over 0.01.
         [durations addObject:@(delay < 0.011 ? 0.1 : delay)];
@@ -243,8 +236,8 @@ static void FinishThumbnail(
 
 @end
 
-/// Answers `done` with an original or a rendition decoded, as `type`: a GIF, animated WebP or
-/// animated PNG within the budget animates, and anything else is its first frame, bounded.
+/// Answers `done` with an original or a rendition decoded, as `type`: a GIF or animated WebP
+/// within the budget animates, and anything else is its first frame, bounded.
 static void FinishPicture(
         std::shared_ptr<::session_bridge::Media> media,
         const std::string& type,
@@ -269,19 +262,15 @@ static void FinishPicture(
         return;
     }
     // `RCTAnimatedImage` decodes every frame at full canvas size, at draw, so only an animation
-    // within the budget is one. An APNG is served as `image/png`, as its bytes sniff.
-    const bool animated = (type == "image/gif" || type == "image/webp" || type == "image/png")
+    // within the budget is one.
+    const bool animated = (type == "image/gif" || type == "image/webp")
                           && CGImageSourceGetCount(imageSource) > 1
                           && ::session_bridge_rn::fits_decode_budget(pixels.width, pixels.height);
-    UIImage* image = nil;
-    if (!animated)
-        image = DecodedImage(imageSource, pixels, scale);
-    else if (type == "image/gif")
-        image = [[RCTAnimatedImage alloc] initWithData:data scale:scale];
-    else
-        image = [[SessionAnimatedImage alloc] initWithData:data
-                                                     scale:scale
-                                                       png:type == "image/png"];
+    UIImage* image = !animated              ? DecodedImage(imageSource, pixels, scale)
+                     : type == "image/webp" ? [[SessionAnimatedWebP alloc] initWithData:data
+                                                                                  scale:scale]
+                                            : [[RCTAnimatedImage alloc] initWithData:data
+                                                                               scale:scale];
     CFRelease(imageSource);
     if (!image) {
         Fail(done, url, "the picture did not decode");
