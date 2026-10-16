@@ -22,10 +22,13 @@ describe('the staged tray', () => {
     expect(tile).toContain('const NATIVE_ELEMENT = isWeb ? {} : { accessible: true }')
     expect(tile).not.toContain('tabIndex')
     // Hidden under the label, so the name's two runs are not read as two words.
-    expect(tile).toMatch(
-      /<YStack flex=\{1\} padding="\$xs" paddingTop="\$sm" gap="\$2xs" aria-hidden>/,
-    )
-    expect(tile).toMatch(/opacity=\{shown \? 1 : 0\}\s+aria-hidden\s*>/)
+    expect(tile).toMatch(/style=\{\{ direction: nameDirection\(name\) \}\}\s+aria-hidden\s*>/)
+    // The picture has no text to hide, and hiding it would take its test id with it on Android.
+    expect(tile).toMatch(/opacity=\{shown \? 1 : 0\}\s*>/)
+  })
+
+  it('lines the name and its size up on the edge the name starts from', () => {
+    expect(source('StagedTile.tsx')).toContain('style={{ direction: nameDirection(name) }}')
   })
 
   it('keeps the document face under its thumbnail', () => {
@@ -61,6 +64,12 @@ describe('a composer notice', () => {
     )
     // A live region whose words do not change is not announced again, so the web remounts it.
     expect(announcement).toMatch(/key=\{said\.key\}\s+role="alert"/)
+  })
+
+  it('lets go of its words once every notice is gone, so a reader browsing finds none', () => {
+    expect(announcement).toContain(
+      "else if (text === '' && said.text !== '') setSaid({ key: announceKey, text })",
+    )
   })
 
   it('keeps its words off the danger colour, which fails 4.5:1 on the composer in dark themes', () => {
