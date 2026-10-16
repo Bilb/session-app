@@ -168,10 +168,12 @@ export function StagedTile({
                 alignItems="center"
                 justifyContent="center"
               >
+                {/* Dimmed: the disabled role suits the theme's surfaces, not a scrim. */}
                 <Icon
                   name="x"
                   size="xs"
-                  color={removeDisabled ? '$textDisabled' : '$surfaceInverted'}
+                  color="$surfaceInverted"
+                  opacity={removeDisabled ? 0.35 : 1}
                 />
               </YStack>
             </YStack>

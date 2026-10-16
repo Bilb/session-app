@@ -45,7 +45,8 @@ describe('the staged tray', () => {
     expect(source('StagedTray.tsx')).toMatch(/disabled=\{clearDisabled\}\s+onPress=\{onClear\}/)
     const tile = source('StagedTile.tsx')
     expect(tile).toMatch(/onPress=\{onRemove\}\s+disabled=\{removeDisabled\}/)
-    expect(tile).toContain("color={removeDisabled ? '$textDisabled' : '$surfaceInverted'}")
+    expect(tile).toMatch(/color="\$surfaceInverted"\s+opacity=\{removeDisabled \? 0\.35 : 1\}/)
+    expect(tile).not.toContain('$textDisabled')
   })
 
   it('pages a right-to-left rail the way Chromium counts it', () => {
