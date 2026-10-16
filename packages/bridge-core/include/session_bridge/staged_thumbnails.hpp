@@ -37,8 +37,8 @@ class StagedThumbnails {
         /// a fresh thread takes the rest, so one file on a mount that stopped answering cannot
         /// hold up every later pick. Its thread is left to finish, its answer dropped.
         std::chrono::milliseconds stuck_after = std::chrono::seconds{30};
-        /// How long `close` waits for a decode under way, which uses libraries whose statics
-        /// `exit` destroys. Bounded, so a stuck one cannot hold up a quit.
+        /// How long `close` waits for the decodes under way, given up on or not, which use
+        /// libraries whose statics `exit` destroys. Bounded, so a stuck one cannot hold up a quit.
         std::chrono::milliseconds settle_at_close = std::chrono::seconds{2};
     };
 

@@ -142,6 +142,8 @@ struct StagedThumbnails::State {
     std::deque<std::string> queue;
     std::unordered_map<std::string, Pending> pending;
     std::optional<Running> running;
+    // Given up on and still inside `make`, which `close` waits out as it does `running`.
+    size_t abandoned_decodes = 0;
     // Threads running handlers, which `close` waits out unless it is one of them.
     std::vector<std::thread::id> answering;
 
@@ -205,8 +207,11 @@ struct StagedThumbnails::State {
 
         guard.lock();
         // Given up on by the watchdog, which has answered its requests already.
-        if (!state->running || state->running->job != job)
+        if (!state->running || state->running->job != job) {
+            state->abandoned_decodes--;
+            state->changed.notify_all();
             return;
+        }
         state->running.reset();
         state->changed.notify_all();
         found = state->pending.find(key);
@@ -239,6 +244,7 @@ struct StagedThumbnails::State {
                 state->pending.erase(found);
             }
             state->running.reset();
+            state->abandoned_decodes++;
             state->changed.notify_all();
 
             // The stuck thread is left where it is; the keys still queued go to a fresh one.
@@ -350,8 +356,9 @@ void StagedThumbnails::close() {
     _state->changed.wait(guard, [&] {
         return std::ranges::all_of(_state->answering, [&](auto id) { return id == me; });
     });
-    _state->changed.wait_for(
-            guard, _state->timing.settle_at_close, [&] { return !_state->running; });
+    _state->changed.wait_for(guard, _state->timing.settle_at_close, [&] {
+        return !_state->running && _state->abandoned_decodes == 0;
+    });
     worker = _state->worker;
     guard.unlock();
     worker->stop();

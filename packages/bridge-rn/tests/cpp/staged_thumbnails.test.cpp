@@ -260,6 +260,38 @@ void a_stuck_decode_is_given_up_on_and_the_rest_go_on() {
     check(stuck.size() == 1, "a decode given up on was answered again when it ended");
 }
 
+void closing_waits_only_so_long_for_a_decode_given_up_on() {
+    for (const bool ends : {true, false}) {
+        auto release = std::make_shared<std::atomic<bool>>(false);
+        StagedThumbnails staged{
+                [release](const std::string&, uint32_t) {
+                    while (!*release)
+                        std::this_thread::sleep_for(1ms);
+                    return Media{std::nullopt, "image/jpeg", {std::byte{0xFF}}};
+                },
+                {.stuck_after = 50ms, .settle_at_close = 300ms}};
+        Answers answers;
+        staged.request("/a.jpg", 240, answers.handler());
+        wait_for([&] { return answers.size() == 1; });
+        std::thread ender;
+        if (ends)
+            ender = std::thread{[release] {
+                std::this_thread::sleep_for(50ms);
+                *release = true;
+            }};
+        const auto before = std::chrono::steady_clock::now();
+        staged.close();
+        const auto took = std::chrono::steady_clock::now() - before;
+        if (ends) {
+            ender.join();
+            check(took >= 40ms && took < 280ms, "close did not wait for a decode given up on");
+        } else {
+            check(took >= 280ms && took < 1s, "close did not keep to its bound for a decode given up on");
+            *release = true;
+        }
+    }
+}
+
 void a_throwing_handler_leaves_the_rest_of_its_batch_answered() {
     for (const bool stuck : {false, true}) {
         auto release = std::make_shared<std::atomic<bool>>(false);
@@ -435,6 +467,7 @@ int main() {
     each_edge_is_its_own_decode();
     a_decode_that_throws_is_answered_and_forgotten();
     a_stuck_decode_is_given_up_on_and_the_rest_go_on();
+    closing_waits_only_so_long_for_a_decode_given_up_on();
     a_throwing_handler_leaves_the_rest_of_its_batch_answered();
     closing_waits_only_so_long_for_a_decode();
     closing_waits_for_a_handler_running_on_another_thread();
