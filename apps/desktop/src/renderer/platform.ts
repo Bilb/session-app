@@ -4,7 +4,7 @@ import { getLocale, subscribeLocale } from '@session/localization'
 
 import { mediaUrl } from '@session/app/mediaUrl'
 
-import { chooseFiles, toPickedFiles } from './pickedFiles'
+import { chooseFiles, discardPicked, toPickedFiles } from './pickedFiles'
 
 const memory = memoryPorts()
 
@@ -24,6 +24,7 @@ setPorts(
       pickImages: async (options) =>
         toPickedFiles(await chooseFiles({ ...options, accept: 'image/*' })),
       droppedFiles: (items) => toPickedFiles(items),
+      discardPicked,
       chooseExportLocation: (suggestedName) =>
         window.sessionDesktop.chooseExportLocation(suggestedName),
       revealInFolder: async (path) => {

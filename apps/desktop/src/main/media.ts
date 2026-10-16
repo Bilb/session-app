@@ -57,25 +57,24 @@ function mediaHeaders(contentType: string): Record<string, string> {
  */
 export function serveMedia(bridge: MediaSource, previews: PreviewGrants): void {
   protocol.handle(MEDIA_SCHEME, async (request) => {
-    const target = parseMediaUrl(request.url)
-    if (!target) return new Response(null, { status: 400 })
-
-    if (target.kind === 'staged') {
-      if (!previews.allows(target.path)) return new Response(null, { status: 403 })
+    if (previews.names(request.url)) {
+      const path = previews.pathFor(request.url)
+      if (path === null) return new Response(null, { status: 403 })
       try {
-        const jpeg = await bridge.fetchStagedThumbnail(target.path)
+        const jpeg = await bridge.fetchStagedThumbnail(path)
         if (servableContentType('image/jpeg', jpeg) !== 'image/jpeg') {
           return new Response(null, { status: 415 })
         }
-        // The person's own file, which can change under the same path between two picks.
-        return new Response(jpeg, {
-          status: 200,
-          headers: { ...mediaHeaders('image/jpeg'), 'cache-control': 'no-store' },
-        })
+        return new Response(jpeg, { status: 200, headers: mediaHeaders('image/jpeg') })
       } catch {
         return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } })
       }
     }
+
+    const target = parseMediaUrl(request.url)
+    if (!target) return new Response(null, { status: 400 })
+    // A path the page names itself is never opened here: a picked file is drawn by its grant.
+    if (target.kind === 'staged') return new Response(null, { status: 403 })
 
     try {
       if (target.kind === 'thumbhash') {

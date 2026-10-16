@@ -1,5 +1,5 @@
 import type { PickedFile } from '@session/app'
-import { isDisplayableImage } from '@session/basic-types'
+import { isDisplayableImage, MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
 
 /**
  * The page's own file chooser, rather than a dialog in main.
@@ -27,7 +27,7 @@ function isFile(item: unknown): item is File {
   return typeof File !== 'undefined' && item instanceof File
 }
 
-async function toPickedFile(file: File): Promise<PickedFile | null> {
+async function toPickedFile(file: File, preview: boolean): Promise<PickedFile | null> {
   const path = window.sessionDesktop.pathForFile(file)
   if (path === '') return null
   const contentType = file.type === '' ? undefined : file.type
@@ -36,14 +36,28 @@ async function toPickedFile(file: File): Promise<PickedFile | null> {
     name: file.name,
     size: file.size,
     contentType,
-    previewUrl: isDisplayableImage(contentType)
-      ? ((await window.sessionDesktop.allowPreview(file)) ?? undefined)
-      : undefined,
+    previewUrl:
+      preview && isDisplayableImage(contentType)
+        ? ((await window.sessionDesktop.allowPreview(file)) ?? undefined)
+        : undefined,
   }
 }
 
-/** What the composer stages. A file with no path on disk cannot be sent, so it is left out. */
+/**
+ * What the composer stages. A file with no path on disk cannot be sent, so it is left out.
+ *
+ * Previews only for as many as one message takes: staging keeps no more from a single pick, and a
+ * grant past that would only push out one the tray still draws.
+ */
 export async function toPickedFiles(items: readonly unknown[]): Promise<PickedFile[]> {
-  const picked = await Promise.all(items.filter(isFile).map(toPickedFile))
+  const files = items.filter(isFile)
+  const picked = await Promise.all(
+    files.map((file, at) => toPickedFile(file, at < MAX_ATTACHMENTS_PER_MESSAGE)),
+  )
   return picked.filter((file) => file !== null)
+}
+
+/** A pick the composer let go of: its preview's grant goes with it. */
+export function discardPicked(file: PickedFile): void {
+  if (file.previewUrl !== undefined) void window.sessionDesktop.revokePreview(file.previewUrl)
 }

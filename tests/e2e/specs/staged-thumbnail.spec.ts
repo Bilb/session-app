@@ -9,8 +9,14 @@ import { FAKE_LAUNCH_ENV } from '../harness/fakeEnv'
 
 const repoRoot = join(import.meta.dirname, '../../..')
 
-/** Enough of a JPEG for the bridge's sniff: the fake answers with that photograph's thumbnail. */
-const JPEG_HEAD = Uint8Array.of(0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46)
+/**
+ * An 8x8 JPEG, whole, so the spec holds against libsession's decoder as well as the fake, which
+ * answers a dev photograph's name with that photograph's thumbnail.
+ */
+const JPEG = Buffer.from(
+  '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAgDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDiqKKK8A/Wz//Z',
+  'base64',
+)
 
 /** What the page code below reaches, since the specs compile without the DOM library. */
 interface PageGlobals {
@@ -20,13 +26,17 @@ interface PageGlobals {
     body: { append(node: unknown): void }
   }
   Image: new () => { onload: () => void; onerror: () => void; src: string; naturalWidth: number }
-  sessionDesktop: { allowPreview(file: unknown): Promise<string | null> }
+  sessionDesktop: {
+    allowPreview(file: unknown): Promise<string | null>
+    revokePreview(url: string): Promise<void>
+  }
 }
 
 /**
- * A picked file's staged thumbnail, end to end: the preload grants the `File`, main serves the url
- * Chromium canonicalised, and an `<img>` draws it. A folder name outside ASCII, since that is what
- * Chromium's escaping and both parsers have to agree on; a path nobody granted is refused.
+ * A picked file's staged thumbnail, end to end: the preload grants the `File`, main opens the path
+ * behind the grant, and an `<img>` draws it. A folder name outside ASCII, since that path crosses
+ * the preload, main and the bridge. A path the page names itself, and a grant taken back, are
+ * refused.
  *
  * Through the page's own file input rather than the composer, so it holds whatever the
  * `attachmentSending` flag the build was made with.
@@ -36,8 +46,8 @@ test('draws a picked file by its staged thumbnail, and nothing that was not pick
   const folder = join(dataDir, 'été 日本 #1')
   mkdirSync(folder)
   const photo = join(folder, 'unsplash-07.jpg')
-  writeFileSync(photo, JPEG_HEAD)
-  writeFileSync(join(folder, 'unsplash-08.jpg'), JPEG_HEAD)
+  writeFileSync(photo, JPEG)
+  writeFileSync(join(folder, 'unsplash-08.jpg'), JPEG)
 
   const app = await _electron.launch({
     args: [
@@ -67,12 +77,14 @@ test('draws a picked file by its staged thumbnail, and nothing that was not pick
     })
     await page.setInputFiles('#staged-thumbnail-probe', photo)
 
-    const url = await page.evaluate(async () => {
-      const { document, sessionDesktop } = globalThis as unknown as PageGlobals
-      const file = document.getElementById('staged-thumbnail-probe')?.files?.[0]
-      return file === undefined ? null : sessionDesktop.allowPreview(file)
-    })
-    expect(url).toMatch(/^session-media:\/\/staged\/%2F.*unsplash-07\.jpg$/)
+    const allow = () =>
+      page.evaluate(async () => {
+        const { document, sessionDesktop } = globalThis as unknown as PageGlobals
+        const file = document.getElementById('staged-thumbnail-probe')?.files?.[0]
+        return file === undefined ? null : sessionDesktop.allowPreview(file)
+      })
+    const url = await allow()
+    expect(url).toMatch(/^session-media:\/\/picked\/[0-9a-f]{32}$/)
 
     const draw = (src: string) =>
       page.evaluate(
@@ -91,8 +103,19 @@ test('draws a picked file by its staged thumbnail, and nothing that was not pick
         src,
       )
     expect(await draw(url ?? '')).toBeGreaterThan(0)
-    // A picture beside it, there and decodable, that nobody picked.
-    expect(await draw((url ?? '').replace('unsplash-07', 'unsplash-08'))).toBe(0)
+
+    // A picture beside it, there and decodable, that nobody picked, named by its path.
+    const beside = `session-media://staged/${encodeURIComponent(join(folder, 'unsplash-08.jpg'))}`
+    expect(await draw(beside)).toBe(0)
+
+    // Picked again, a file is a new url; one taken back draws nothing more.
+    const again = await allow()
+    expect(again).not.toBe(url)
+    await page.evaluate((at) => {
+      const { sessionDesktop } = globalThis as unknown as PageGlobals
+      return sessionDesktop.revokePreview(at)
+    }, again ?? '')
+    expect(await draw(again ?? '')).toBe(0)
   } finally {
     await app.close()
   }

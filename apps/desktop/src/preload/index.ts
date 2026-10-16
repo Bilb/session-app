@@ -49,6 +49,8 @@ contextBridge.exposeInMainWorld('sessionDesktop', {
    */
   allowPreview: (file: File): Promise<string | null> =>
     ipcRenderer.invoke('files:allow-preview', webUtils.getPathForFile(file)),
+  /** Takes back a url `allowPreview` gave, once the composer lets go of the file. */
+  revokePreview: (url: string): Promise<void> => ipcRenderer.invoke('files:revoke-preview', url),
   copyText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard-write-text', text),
   setLocale: (locale: string) => {
     ipcRenderer.send('locale', locale)
