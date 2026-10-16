@@ -1,3 +1,4 @@
+import type { ElementId } from '@session/test-ids'
 import { YStack } from 'tamagui'
 
 import { Icon } from './Icon'
@@ -15,7 +16,7 @@ const DISC = 72
 export interface DropOverlayProps {
   title: string
   hint: string
-  testID?: string | undefined
+  testID?: ElementId | undefined
 }
 
 /** A layer filling its parent, for stacking token colours by opacity instead of mixing them. */

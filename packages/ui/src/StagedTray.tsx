@@ -1,3 +1,4 @@
+import type { ElementId } from '@session/test-ids'
 import { RADII } from '@session/theme-tokens'
 import { useRef, useState, type ElementRef, type ReactNode } from 'react'
 import { ScrollView, XStack, YStack } from 'tamagui'
@@ -29,11 +30,11 @@ export interface StagedTrayProps {
   nextLabel: string
   /** The tiles, in order. */
   children: ReactNode
-  testID: string
-  clearTestID: string
-  addTestID: string
-  previousTestID: string
-  nextTestID: string
+  testID: ElementId
+  clearTestID: ElementId
+  addTestID: ElementId
+  previousTestID: ElementId
+  nextTestID: ElementId
 }
 
 interface RailExtent {

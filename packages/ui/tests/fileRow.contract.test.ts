@@ -54,7 +54,7 @@ describe('a file row', () => {
     // On a bubble you sent, a page role is the accent's own colour or near it: 1.5:1 at best.
     expect(row).not.toMatch(/tone=\{?["']?(secondary|tone\.)/)
     expect(row).not.toContain('$textSecondary')
-    expect(row.match(/\{\.\.\.nameInk\}/g)).toHaveLength(2)
+    expect(row).toContain('<FileName name={filename} size="$body" ink={nameInk}')
     expect(row).toContain('const nameInk = inkFor(tone.name, onAccent)')
     expect(row).toContain('{...inkFor(tone.caption, onAccent)}')
     expect(row).toContain("{...inkFor('secondary', onAccent)}")

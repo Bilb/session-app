@@ -1,8 +1,9 @@
-import { requirePorts, type PickedFile } from '@session/app'
-import { formatBytes, MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
+import { requirePorts } from '@session/app'
+import { MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import {
+  Announcement,
   ATTACH_OPENS_MENU,
   Button,
   ComposerNotice,
@@ -17,64 +18,28 @@ import { useRef, useState } from 'react'
 
 import { AttachMenu } from './AttachMenu'
 import { PENDING_COPY } from './pendingCopy'
-import { isFull } from './staging'
+import { refusalAnnouncement, refusalNotices } from './refusalNotices'
+import { isFull, sizeOf } from './staging'
 import type { StagingState } from './useStaging'
 
-function sizeOf(file: PickedFile): string | undefined {
-  return file.size === undefined ? undefined : formatBytes(file.size)
-}
-
-/** The first refused file by name and size, and how many more there were. */
-function tooLargeDetail(files: readonly PickedFile[]): string | undefined {
-  const [first] = files
-  if (first === undefined) return undefined
-  const size = sizeOf(first)
-  const named = size === undefined ? first.name : `${first.name} · ${size}`
-  return files.length === 1 ? named : PENDING_COPY.attachmentNameAndMore(named, files.length - 1)
-}
-
 function Notices({ staging }: { staging: StagingState }) {
-  const { tooLarge, overLimit, unreadable } = staging.refused
+  const notices = refusalNotices(staging.refused)
   return (
     <>
-      {unreadable === 0 ? null : (
+      <Announcement text={refusalAnnouncement(notices)} announceKey={staging.refusal} />
+      {notices.map(({ kind, id, message, detail }) => (
         <ComposerNotice
-          message={tr('attachmentsErrorLoad')}
-          announceKey={staging.refusal}
+          key={kind}
+          message={message}
+          detail={detail}
           dismissLabel={tr('close')}
           onDismiss={() => {
-            staging.dismiss('unreadable')
+            staging.dismiss(kind)
           }}
-          testID={ELEMENT.conversation.composerNotice('unreadable')}
-          dismissTestID={ELEMENT.conversation.composerNoticeDismiss('unreadable')}
+          testID={ELEMENT.conversation.composerNotice(id)}
+          dismissTestID={ELEMENT.conversation.composerNoticeDismiss(id)}
         />
-      )}
-      {tooLarge.length === 0 ? null : (
-        <ComposerNotice
-          message={tr('attachmentsErrorSize')}
-          detail={tooLargeDetail(tooLarge)}
-          announceKey={staging.refusal}
-          dismissLabel={tr('close')}
-          onDismiss={() => {
-            staging.dismiss('tooLarge')
-          }}
-          testID={ELEMENT.conversation.composerNotice('size')}
-          dismissTestID={ELEMENT.conversation.composerNoticeDismiss('size')}
-        />
-      )}
-      {overLimit === 0 ? null : (
-        <ComposerNotice
-          message={PENDING_COPY.attachmentsErrorLimit(MAX_ATTACHMENTS_PER_MESSAGE)}
-          detail={PENDING_COPY.attachmentsNotAdded(overLimit)}
-          announceKey={staging.refusal}
-          dismissLabel={tr('close')}
-          onDismiss={() => {
-            staging.dismiss('overLimit')
-          }}
-          testID={ELEMENT.conversation.composerNotice('limit')}
-          dismissTestID={ELEMENT.conversation.composerNoticeDismiss('limit')}
-        />
-      )}
+      ))}
     </>
   )
 }
@@ -121,19 +86,10 @@ export function Composer({
       which === 'images' ? files.pickImages({ multiple: true, limit }) : files.pickFiles()
     // Closed once the picker is done rather than before it opens: iOS presents the picker over the
     // menu's modal, and one presented while that modal is still dismissing never appears.
-    void chosen
-      .then(
-        (picked) => {
-          staging.add(picked)
-        },
-        () => {
-          staging.add([], 1)
-        },
-      )
-      .finally(() => {
-        picking.current = false
-        setMenuOpen(false)
-      })
+    void staging.take(chosen).finally(() => {
+      picking.current = false
+      setMenuOpen(false)
+    })
   }
 
   function attach(): void {

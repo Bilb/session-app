@@ -71,6 +71,20 @@ describe('staging attachments', () => {
     expect(unused).toEqual([])
   })
 
+  it('draws a file picked again at its path as it is now, letting go of the old preview', () => {
+    const before = { ...file('photo.jpg', 10), previewUrl: 'session-media://picked/old' }
+    const edited = { ...file('photo.jpg', 12), previewUrl: 'session-media://picked/new' }
+    const { files: staged, unused, replaced } = stage([before, file('b.jpg', 1)], [edited])
+    expect(staged.map((f) => f.previewUrl ?? f.name)).toEqual([
+      'session-media://picked/new',
+      'b.jpg',
+    ])
+    expect(staged[0]?.size).toBe(12)
+    expect(replaced).toEqual([before])
+    // Its path is the staged file's: the old entry goes without its file.
+    expect(unused).toEqual([])
+  })
+
   it('knows the same photo picked twice on mobile, where every pick is a fresh copy', () => {
     const first = { path: '/cache/ImagePicker/A.jpg', name: 'IMG_1.jpg', size: 2_000 }
     const again = { path: '/cache/ImagePicker/B.jpg', name: 'IMG_1.jpg', size: 2_000 }

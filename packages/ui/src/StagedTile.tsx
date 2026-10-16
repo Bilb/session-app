@@ -1,10 +1,11 @@
 import type { ElementId } from '@session/test-ids'
 import { RADII } from '@session/theme-tokens'
 import { useState } from 'react'
-import { XStack, YStack } from 'tamagui'
+import { isWeb, XStack, YStack } from 'tamagui'
 
-import { fileFormat, fileGlyph, splitFilename } from './attachmentFile'
+import { fileFormat, fileGlyph } from './attachmentFile'
 import { TILE_HAIRLINE_WIDTH, TILE_SCRIM } from './attachmentTileStyle'
+import { FileName } from './FileName'
 import { Icon } from './Icon'
 import { Image } from './Image'
 import { logical } from './logicalEdges'
@@ -18,6 +19,12 @@ const REMOVE_DISC = 22
 
 /** The corner a remove press takes: the app's touch floor, drawn or not. */
 const REMOVE_TARGET = 44
+
+/**
+ * React Native makes a view with a role no accessibility element, so without this VoiceOver and
+ * TalkBack read the face's texts one by one and never its label.
+ */
+const NATIVE_ELEMENT = isWeb ? {} : { accessible: true }
 
 export interface StagedTileProps {
   name: string
@@ -45,7 +52,7 @@ export interface StagedTileProps {
 /**
  * The document face: what a staged file is when there is no picture of it.
  *
- * The same glyph, format and two-run name a file row draws, so the tray and the message the tray
+ * The same glyph, format and name a file row draws, so the tray and the message the tray
  * becomes read as the same files.
  */
 function DocumentFace({
@@ -53,10 +60,9 @@ function DocumentFace({
   contentType,
   sizeLabel,
 }: Pick<StagedTileProps, 'name' | 'contentType' | 'sizeLabel'>) {
-  const { head, tail } = splitFilename(name)
   const format = fileFormat(name)
   return (
-    <YStack flex={1} padding="$xs" paddingTop="$sm" gap="$2xs">
+    <YStack flex={1} padding="$xs" paddingTop="$sm" gap="$2xs" aria-hidden>
       <XStack alignItems="center" gap="$2xs">
         <Icon name={fileGlyph(name, contentType)} size="sm" color="$textPrimary" />
         {format === '' ? null : (
@@ -66,14 +72,7 @@ function DocumentFace({
         )}
       </XStack>
       <YStack flex={1} />
-      <XStack minWidth={0}>
-        <Text size="$label" weight="semibold" numberOfLines={1} flexShrink={1}>
-          {head}
-        </Text>
-        <Text size="$label" weight="semibold" numberOfLines={1} flexShrink={0}>
-          {tail}
-        </Text>
-      </XStack>
+      <FileName name={name} size="$label" />
       {sizeLabel === undefined ? null : (
         <Text size="$caption" color="$textSecondary" numberOfLines={1}>
           {sizeLabel}
@@ -119,11 +118,19 @@ export function StagedTile({
     >
       {/* Beside the remove button rather than around it: a native screen reader reads a labelled
           container as one element, and would swallow the button inside. */}
-      <YStack flex={1} role="img" aria-label={label}>
+      <YStack flex={1} role="img" aria-label={label} {...NATIVE_ELEMENT}>
         <DocumentFace name={name} contentType={contentType} sizeLabel={sizeLabel} />
         {preview === undefined ? null : (
           // Over the face, hidden until it loads: a picture still decoding shows the face.
-          <YStack position="absolute" top={0} bottom={0} left={0} right={0} opacity={shown ? 1 : 0}>
+          <YStack
+            position="absolute"
+            top={0}
+            bottom={0}
+            left={0}
+            right={0}
+            opacity={shown ? 1 : 0}
+            aria-hidden
+          >
             <Image
               uri={preview}
               width={STAGED_TILE_SIDE}

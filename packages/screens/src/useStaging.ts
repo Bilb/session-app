@@ -17,6 +17,11 @@ export interface StagingState {
   refusal: number
   /** What a pick or drop gave, and how many items it could not read at all. */
   add: (picked: readonly PickedFile[], unreadable?: number) => void
+  /**
+   * Stages what a picker or a drop resolves to. `asked` is how many items it was given, where
+   * known: any it did not hand back could not be read, and a failure could read none of them.
+   */
+  take: (chosen: Promise<readonly PickedFile[]>, asked?: number) => Promise<void>
   remove: (path: string) => void
   /** Empties the tray, deleting what it holds. Not for a send: the message needs the files. */
   clear: () => void
@@ -41,17 +46,24 @@ export function useStaging(): StagingState {
   // A picker resolves after the render that opened it, so it stages onto what is there by then.
   const latest = useRef(files)
   latest.current = files
+  // A picker can resolve after the conversation closed, when nothing is left to stage onto.
+  const mounted = useRef(true)
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
       discard(latest.current)
-    },
-    [],
-  )
+    }
+  }, [])
 
   const add = useCallback((picked: readonly PickedFile[], unreadable = 0) => {
     // A cancelled picker hands back nothing, which is not a pick that should clear a notice.
     if (picked.length === 0 && unreadable === 0) return
+    if (!mounted.current) {
+      discard(picked)
+      return
+    }
     const next = stage(latest.current, picked, {
       picksAreCopies: requirePorts().files.picksAreCopies,
     })
@@ -62,13 +74,28 @@ export function useStaging(): StagingState {
       next.refused.tooLarge.length > 0 || next.refused.overLimit > 0 || unreadable > 0
     if (anyRefused) setRefusal((count) => count + 1)
     discard(next.unused)
+    for (const file of next.replaced) requirePorts().files.releasePreview(file)
   }, [])
+
+  const take = useCallback(
+    (chosen: Promise<readonly PickedFile[]>, asked?: number) =>
+      chosen.then(
+        (picked) => {
+          add(picked, asked === undefined ? 0 : asked - picked.length)
+        },
+        () => {
+          add([], asked ?? 1)
+        },
+      ),
+    [add],
+  )
 
   return {
     files,
     refused,
     refusal,
     add,
+    take,
     remove: (path) => {
       discard(latest.current.filter((file) => file.path === path))
       latest.current = unstage(latest.current, path)

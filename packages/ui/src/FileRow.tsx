@@ -13,7 +13,7 @@ import type {
 import type { ElementId } from '@session/test-ids'
 
 import { AttachmentTile } from './AttachmentTile'
-import { fileFormat, fileGlyph, nameDirection, splitFilename } from './attachmentFile'
+import { fileFormat, fileGlyph, nameDirection } from './attachmentFile'
 import {
   FILE_GLYPH_SIDE,
   FILE_LEAD_WIDTH,
@@ -26,6 +26,7 @@ import {
   type FileRowState,
 } from './fileRowState'
 import { FetchHint } from './FetchHint'
+import { FileName } from './FileName'
 import { Icon } from './Icon'
 import { inkFor } from './ink'
 import { focusRing, heldButton, keyboardPress } from './keyboardPress'
@@ -247,7 +248,6 @@ export function FileRow({
   testIDs,
   onAccent = false,
 }: FileRowProps) {
-  const { head, tail } = splitFilename(filename)
   const format = fileFormat(filename)
   // On the name and the caption together, so the two share an edge.
   const direction = { direction: nameDirection(filename) }
@@ -353,27 +353,7 @@ export function FileRow({
       </YStack>
 
       <YStack flex={1} minWidth={0} gap="$3xs" style={direction}>
-        {/* Two runs: the head gives up whatever width the row is short of and the tail cannot,
-            so a long name loses its middle instead of its extension. See `splitFilename`.
-
-            The id and the label are on the pair, never on a run: split between two elements the
-            name stops being one string, and both a screen reader and a test then read half. */}
-        <XStack minWidth={0} aria-label={filename} testID={testIDs?.name}>
-          <Text
-            size="$body"
-            weight="semibold"
-            {...nameInk}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            flexShrink={1}
-            minWidth={0}
-          >
-            {head}
-          </Text>
-          <Text size="$body" weight="semibold" {...nameInk} numberOfLines={1} flexShrink={0}>
-            {tail}
-          </Text>
-        </XStack>
+        <FileName name={filename} size="$body" ink={nameInk} testID={testIDs?.name} />
         {/* Sized to its words, so the column's direction places it rather than each platform's
             own alignment of a line of text. */}
         <Text

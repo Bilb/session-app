@@ -221,11 +221,7 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
           enabled={attaching}
           onActive={setDropping}
           onDrop={(items, skipped) => {
-            void requirePorts()
-              .files.droppedFiles(items)
-              .then((files) => {
-                staging.add(files, skipped + items.length - files.length)
-              })
+            void staging.take(requirePorts().files.droppedFiles(items), skipped + items.length)
           }}
           overlay={
             dropping ? (
