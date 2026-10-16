@@ -213,6 +213,8 @@ struct StagedThumbnails::State {
         // Given up on by the watchdog, which has answered its requests already.
         if (!state->running || state->running->job != job) {
             state->abandoned_decodes--;
+            // It answered, so whatever held it up has let go: the path may be asked for again.
+            state->given_up_paths.erase(path);
             state->changed.notify_all();
             return;
         }
@@ -314,7 +316,16 @@ StagedThumbnails::Cancel StagedThumbnails::request(
     }
     if (!_state->watching) {
         try {
-            std::thread{[state = _state] { State::watch(state); }}.detach();
+            std::thread{[state = _state] {
+                try {
+                    State::watch(state);
+                } catch (...) {
+                    // Out of memory mid give-up: no watchdog until the next request starts one,
+                    // rather than terminating the app.
+                    std::lock_guard guard{state->lock};
+                    state->watching = false;
+                }
+            }}.detach();
             _state->watching = true;
         } catch (const std::system_error&) {
             // Without a watchdog a stuck decode holds up later ones, which is all it costs.

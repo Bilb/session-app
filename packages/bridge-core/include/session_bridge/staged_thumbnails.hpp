@@ -36,7 +36,7 @@ class StagedThumbnails {
         /// A decode running longer is given up on: its requests are answered with a failure and
         /// a fresh thread takes the rest, so one file on a mount that stopped answering cannot
         /// hold up every later pick. Its thread is left to finish, its answer dropped, and its
-        /// path is refused from then on.
+        /// path is refused until it ends.
         std::chrono::milliseconds stuck_after = std::chrono::seconds{30};
         /// How long `close` waits for the decodes under way, given up on or not, which use
         /// libraries whose statics `exit` destroys. Bounded, so a stuck one cannot hold up a quit.

@@ -368,6 +368,18 @@ void a_path_given_up_on_is_refused_at_once() {
     std::this_thread::sleep_for(20ms);
     check(mount->started == 1, "a path given up on was decoded again");
     mount->release_all();
+
+    // Once the stuck decode returns, the mount answers again and so does the path.
+    bool decoded = false;
+    for (int i = 0; i < 200 && !decoded; i++) {
+        Answers later;
+        staged.request("/stuck.jpg", 240, later.handler());
+        wait_for([&] { return later.size() == 1; });
+        decoded = later.size() == 1 && !later.errors[0].has_value();
+        if (!decoded)
+            std::this_thread::sleep_for(10ms);
+    }
+    check(decoded, "a path stayed refused after its stuck decode returned");
 }
 
 void past_the_cap_on_decodes_given_up_on_requests_fail_at_once() {
