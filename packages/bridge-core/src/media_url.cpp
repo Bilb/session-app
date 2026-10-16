@@ -200,7 +200,9 @@ bool is_staged_path(std::string_view path) {
     if (path.empty() || path.size() > MAX_STAGED_PATH_BYTES ||
         path.find('\0') != std::string_view::npos || !valid_utf8(path))
         return false;
-    const bool posix = path.starts_with('/') && !path.starts_with("//");
+    // Either slash separates on Windows, so `/\host` is as much a share as `\\host`.
+    const auto separator = [](char c) { return c == '/' || c == '\\'; };
+    const bool posix = path[0] == '/' && !(path.size() >= 2 && separator(path[1]));
     const bool drive = path.size() >= 3 &&
                        ((path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z')) &&
                        path[1] == ':' && (path[2] == '\\' || path[2] == '/');

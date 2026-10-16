@@ -62,7 +62,8 @@ export function fromUtf8(bytes: readonly number[]): string | null {
 export function isStagedPath(path: string): boolean {
   const bytes = utf8Bytes(path)
   if (bytes === null || bytes.length > MAX_STAGED_PATH_BYTES || path.includes('\0')) return false
-  const posix = path.startsWith('/') && !path.startsWith('//')
+  // Either slash separates on Windows, so `/\host` is as much a share as `\\host`.
+  const posix = path.startsWith('/') && !/^.[\\/]/.test(path)
   const drive = /^[A-Za-z]:[\\/]/.test(path)
   if (!posix && !drive) return false
   return path.split(/[\\/]/).every((part) => part !== '.' && part !== '..')

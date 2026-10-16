@@ -125,6 +125,8 @@ export const MEDIA_URL_VECTORS: readonly MediaUrlVector[] = [
   },
   { url: `${STAGED}C%3A%2Fx.png`, parsed: { kind: 'staged', path: 'C:/x.png' } },
   { url: `${STAGED}%2Fa~b_c-d.e`, parsed: { kind: 'staged', path: '/a~b_c-d.e' } },
+  { url: `${STAGED}%2F100%25.jpg`, parsed: { kind: 'staged', path: '/100%.jpg' } },
+  { url: `${STAGED}c%3A%5Cx.png`, parsed: { kind: 'staged', path: 'c:\\x.png' } },
 
   // One spelling per path: lowercase hex, an escaped unreserved byte, a raw reserved one.
   { url: `${STAGED}%2fhome%2Fa.jpg`, parsed: null },
@@ -145,6 +147,10 @@ export const MEDIA_URL_VECTORS: readonly MediaUrlVector[] = [
   { url: `${STAGED}%5C%5Cserver%5Cshare%5Ca.jpg`, parsed: null },
   { url: `${STAGED}%5C%5C%3F%5CC%3A%5Ca.jpg`, parsed: null },
   { url: `${STAGED}%2F%2Fhost%2Fa.jpg`, parsed: null },
+  // Either slash separates on Windows, in any pairing.
+  { url: `${STAGED}%2F%5Chost%5Cshare%5Ca.jpg`, parsed: null },
+  { url: `${STAGED}%2F%5C%3F%5CC%3A%5Ca.jpg`, parsed: null },
+  { url: `${STAGED}%5C%2Fhost%2Fa.jpg`, parsed: null },
   { url: `${STAGED}%5Ca.jpg`, parsed: null },
   { url: `${STAGED}C%3Ax.png`, parsed: null },
   { url: `${STAGED}%2Fa%2F..%2Fb.jpg`, parsed: null },
