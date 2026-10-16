@@ -133,6 +133,9 @@ struct StagedThumbnails::State {
     std::condition_variable changed;
     bool open = true;
     bool watching = false;
+    // The watchdog failed partway through a give-up, leaving the queue in no state to trust:
+    // everything is refused from then on.
+    bool broken = false;
     uint64_t next_id = 0;
     uint64_t next_job = 0;
     // Replaced when a decode is given up on. `generation` keeps a job of a replaced worker from
@@ -146,7 +149,7 @@ struct StagedThumbnails::State {
     std::optional<Running> running;
     // Given up on and still inside `make`, which `close` waits out as it does `running`.
     size_t abandoned_decodes = 0;
-    // Refused from then on: another decode of one would likely hold another thread for good.
+    // Refused until its decode returns: another would likely hold another thread for good.
     std::unordered_set<std::string> given_up_paths;
     // Threads running handlers, which `close` waits out unless it is one of them.
     std::vector<std::thread::id> answering;
@@ -320,10 +323,19 @@ StagedThumbnails::Cancel StagedThumbnails::request(
                 try {
                     State::watch(state);
                 } catch (...) {
-                    // Out of memory mid give-up: no watchdog until the next request starts one,
-                    // rather than terminating the app.
-                    std::lock_guard guard{state->lock};
-                    state->watching = false;
+                    // Out of memory mid give-up: refuse from here on rather than end the app.
+                    std::unique_lock guard{state->lock};
+                    state->broken = true;
+                    auto stranded = std::move(state->pending);
+                    state->pending.clear();
+                    state->queue.clear();
+                    if (state->open)
+                        state->answer_unlocked(guard, [&] {
+                            for (auto& [key, entry] : stranded)
+                                State::answer_each(
+                                        entry.waiting,
+                                        Media{"the thumbnail could not be started", {}, {}});
+                        });
                 }
             }}.detach();
             _state->watching = true;
@@ -333,7 +345,7 @@ StagedThumbnails::Cancel StagedThumbnails::request(
     }
 
     const bool unreadable = _state->given_up_paths.contains(path);
-    if (unreadable || _state->abandoned_decodes >= MAX_ABANDONED_DECODES) {
+    if (unreadable || _state->broken || _state->abandoned_decodes >= MAX_ABANDONED_DECODES) {
         guard.unlock();
         cb(Media{unreadable ? "the file could not be read" : "the thumbnail could not be started",
                  {},
