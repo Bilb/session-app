@@ -23,6 +23,7 @@ export interface StagedTrayProps {
   countLabel: string
   clearLabel: string
   onClear: () => void
+  clearDisabled?: boolean | undefined
   addLabel: string
   /** Absent when the message is full, which takes the add tile away rather than greying it. */
   onAdd?: (() => void) | undefined
@@ -53,6 +54,7 @@ export function StagedTray({
   countLabel,
   clearLabel,
   onClear,
+  clearDisabled = false,
   addLabel,
   onAdd,
   previousLabel,
@@ -82,7 +84,13 @@ export function StagedTray({
         <Text size="$label" color="$textSecondary">
           {countLabel}
         </Text>
-        <Button variant="ghost" size="xs" onPress={onClear} testID={clearTestID}>
+        <Button
+          variant="ghost"
+          size="xs"
+          disabled={clearDisabled}
+          onPress={onClear}
+          testID={clearTestID}
+        >
           {clearLabel}
         </Button>
       </XStack>

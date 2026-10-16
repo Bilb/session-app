@@ -41,6 +41,7 @@ export interface StagedTileProps {
   /** What a screen reader calls the tile: its name, and its size where known. */
   label: string
   onRemove: () => void
+  removeDisabled?: boolean | undefined
   /** Names the file, since every tile has one and "Remove" six times says nothing. */
   removeLabel: string
   testID: ElementId
@@ -100,6 +101,7 @@ export function StagedTile({
   previewUrl,
   label,
   onRemove,
+  removeDisabled = false,
   removeLabel,
   testID,
   removeTestID,
@@ -145,7 +147,12 @@ export function StagedTile({
         )}
       </YStack>
       <YStack position="absolute" top={0} {...logical({ insetEnd: 0 })}>
-        <PressArea onPress={onRemove} accessibilityLabel={removeLabel} testID={removeTestID}>
+        <PressArea
+          onPress={onRemove}
+          disabled={removeDisabled}
+          accessibilityLabel={removeLabel}
+          testID={removeTestID}
+        >
           {() => (
             <YStack
               width={REMOVE_TARGET}
@@ -161,7 +168,11 @@ export function StagedTile({
                 alignItems="center"
                 justifyContent="center"
               >
-                <Icon name="x" size="xs" color="$surfaceInverted" />
+                <Icon
+                  name="x"
+                  size="xs"
+                  color={removeDisabled ? '$textDisabled' : '$surfaceInverted'}
+                />
               </YStack>
             </YStack>
           )}

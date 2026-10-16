@@ -41,6 +41,13 @@ describe('the staged tray', () => {
     expect(tile).toContain('opacity={shown ? 1 : 0}')
   })
 
+  it('says Clear and each remove button are disabled when they are, and draws them so', () => {
+    expect(source('StagedTray.tsx')).toMatch(/disabled=\{clearDisabled\}\s+onPress=\{onClear\}/)
+    const tile = source('StagedTile.tsx')
+    expect(tile).toMatch(/onPress=\{onRemove\}\s+disabled=\{removeDisabled\}/)
+    expect(tile).toContain("color={removeDisabled ? '$textDisabled' : '$surfaceInverted'}")
+  })
+
   it('pages a right-to-left rail the way Chromium counts it', () => {
     const tray = source('StagedTray.tsx')
     expect(tray).toContain('offset: Math.abs(contentOffset.x)')
