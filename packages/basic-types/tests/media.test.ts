@@ -1,12 +1,29 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  contentTypeEssence,
   isDisplayableImage,
   isViewableContentType,
   isViewableImage,
   isViewableVideo,
   mediaKindOf,
 } from '#src/media'
+
+describe('the essence of a declared content type', () => {
+  it('drops parameters, folds case and trims ASCII space', () => {
+    expect(contentTypeEssence('Image/JPEG; charset=binary')).toBe('image/jpeg')
+    expect(contentTypeEssence(' video/MP4 ;codecs="avc1"')).toBe('video/mp4')
+    expect(contentTypeEssence('image/png')).toBe('image/png')
+  })
+
+  it('leaves Unicode space alone, as the shim does', () => {
+    expect(contentTypeEssence('\u00a0image/png')).toBe('\u00a0image/png')
+  })
+
+  it('has no essence for an absent type', () => {
+    expect(contentTypeEssence(undefined)).toBeUndefined()
+  })
+})
 
 describe('which content types are viewable', () => {
   it('draws the common bitmaps and refuses svg', () => {

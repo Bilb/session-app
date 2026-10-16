@@ -16,7 +16,7 @@ import { useConversationUi } from './conversationUi'
 import { PENDING_COPY } from './pendingCopy'
 import { exportOne } from './exportAttachment'
 import { useExportFeedback } from './useExportFeedback'
-import { isViewable, leadsWithPicture } from './viewableAttachments'
+import { isViewable, leadUri, leadsWithPicture } from './viewableAttachments'
 
 function caption(
   attachment: Attachment,
@@ -73,8 +73,7 @@ export function AttachmentRow({
     state === 'unavailable' || !leadsWithPicture(attachment)
       ? undefined
       : {
-          // The thumbnail libsession made, never the file. Until there is one, the placeholder.
-          uri: attachment.hasThumbnail ? requirePorts().media.thumbnailUrlFor(ref) : undefined,
+          uri: leadUri(message.id, attachment, state),
           fetchesOnOpen: state === 'idle' || state === 'failed',
           // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
           // screen by the route a picture does. Null where the platform has no resolver.

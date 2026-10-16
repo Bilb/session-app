@@ -21,7 +21,7 @@ const VIEWABLE_VIDEO: ReadonlySet<string> = new Set(['video/mp4', 'video/webm', 
 const ASCII_EDGE_SPACE = /^[ \t\r\n\f\v]+|[ \t\r\n\f\v]+$/g
 
 /** `Image/JPEG; charset=binary` → `image/jpeg`: a declared type is compared by its essence only. */
-function essence(contentType: string | undefined): string | undefined {
+export function contentTypeEssence(contentType: string | undefined): string | undefined {
   return contentType?.split(';')[0]?.replace(ASCII_EDGE_SPACE, '').toLowerCase()
 }
 
@@ -46,12 +46,12 @@ export function isDisplayableImage(contentType: string | undefined): boolean {
 }
 
 export function isViewableImage(contentType: string | undefined): boolean {
-  const type = essence(contentType)
+  const type = contentTypeEssence(contentType)
   return type !== undefined && VIEWABLE_IMAGE.has(type)
 }
 
 export function isViewableVideo(contentType: string | undefined): boolean {
-  const type = essence(contentType)
+  const type = contentTypeEssence(contentType)
   return type !== undefined && VIEWABLE_VIDEO.has(type)
 }
 
