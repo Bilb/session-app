@@ -23,6 +23,8 @@ export interface Staging {
    * whose path is already staged: that path is the staged file's.
    */
   unused: PickedFile[]
+  /** Staged entries a re-pick of their path replaced: their previews go, and their files stay. */
+  replaced: PickedFile[]
 }
 
 export interface StagingOptions {
@@ -42,7 +44,8 @@ function sameFile(a: PickedFile, b: PickedFile, { picksAreCopies }: StagingOptio
  * Adds what was picked or dropped to what is already staged, refusing what cannot be sent.
  *
  * In the order given, so the tray and the message read in the order somebody chose. A file already
- * staged is skipped rather than refused: choosing it twice is not a mistake worth a notice. A file
+ * staged is not refused: choosing it twice is not a mistake worth a notice. One picked again at
+ * its path replaces the staged entry, so a file edited since is drawn as it is now. A file
  * whose size the platform did not report is let through, since there is nothing to check it
  * against; the upload is what refuses it then.
  */
@@ -54,12 +57,17 @@ export function stage(
   const files = [...staged]
   const tooLarge: PickedFile[] = []
   const unused: PickedFile[] = []
+  const replaced: PickedFile[] = []
   let overLimit = 0
 
   for (const file of picked) {
-    const already = files.find((staged) => sameFile(staged, file, options))
+    const at = files.findIndex((staged) => sameFile(staged, file, options))
+    const already = files[at]
     if (already !== undefined) {
-      if (already.path !== file.path) unused.push(file)
+      if (already.path === file.path) {
+        files[at] = file
+        replaced.push(already)
+      } else unused.push(file)
       continue
     }
     if (file.size !== undefined && encryptedAttachmentSize(file.size) > MAX_ATTACHMENT_BYTES) {
@@ -75,7 +83,7 @@ export function stage(
     files.push(file)
   }
 
-  return { files, refused: { tooLarge, overLimit, unreadable: 0 }, unused }
+  return { files, refused: { tooLarge, overLimit, unreadable: 0 }, unused, replaced }
 }
 
 export function sizeOf(file: PickedFile): string | undefined {

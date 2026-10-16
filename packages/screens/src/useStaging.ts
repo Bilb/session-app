@@ -62,6 +62,7 @@ export function useStaging(): StagingState {
       next.refused.tooLarge.length > 0 || next.refused.overLimit > 0 || unreadable > 0
     if (anyRefused) setRefusal((count) => count + 1)
     discard(next.unused)
+    for (const file of next.replaced) requirePorts().files.releasePreview(file)
   }, [])
 
   return {
