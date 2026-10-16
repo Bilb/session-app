@@ -16,7 +16,6 @@ import {
   UIProvider,
 } from '@session/ui'
 import { useFonts } from 'expo-font'
-import { Slot } from 'expo-router'
 import { KeyboardProvider } from 'react-native-keyboard-controller'
 import { useEffect, useState } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
@@ -25,6 +24,7 @@ import { mobileBackdropBlur } from '../src/backdrop'
 import { mobileGlass } from '../src/glass'
 import { MobileCameraProvider } from '../src/camera'
 import { MobileNavProvider } from '../src/nav'
+import { MobileShell } from '../src/shell'
 import { HideSplashOnMount } from '../src/splash'
 import { storePromise } from '../src/store'
 
@@ -94,7 +94,7 @@ export default function RootLayout() {
                           subscribes with `useLocale` instead. */}
                       <ToastProvider>
                         <ModalHost>
-                          <Slot />
+                          <MobileShell />
                         </ModalHost>
                         <ToastLayer />
                       </ToastProvider>

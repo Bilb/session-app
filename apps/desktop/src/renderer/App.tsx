@@ -1,23 +1,18 @@
 import {
-  AdaptiveShell,
-  ConversationListScreen,
   ConversationScreen,
   ModalHost,
   NewConversationScreen,
-  OnboardingFlow,
-  StartingScreen,
-  StartupFailedScreen,
   RequestsScreen,
+  SessionShell,
   ToastLayer,
   registerStoredAppearance,
   StoredThemeProvider,
   useLocale,
-  usePersistedLocale,
   useTextDirection,
 } from '@session/screens'
-import { SessionStoreProvider, useAccount, useHydrated, useStartupError } from '@session/state'
+import { SessionStoreProvider } from '@session/state'
 import { ModalStackProvider, Text, ToastProvider, YStack } from '@session/ui'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { MemoryRouter, Route, Routes, useLocation, useParams } from 'react-router'
 
 import { RemoveLaunchScreenOnMount } from './launchScreen'
@@ -70,30 +65,19 @@ export function App() {
   )
 }
 
-function Shell() {
-  const hydrated = useHydrated()
-  const startupError = useStartupError()
-  const account = useAccount()
-  const location = useLocation()
-  const [onboarding, setOnboarding] = useState(false)
-  // Here rather than at the root, which creates the store provider and so cannot read from it.
-  usePersistedLocale()
-
-  // Asked before `hydrated`, because both are false when a start has failed and only one of them
-  // says so. The other order leaves the launch screen up over a failure that is already known.
-  if (startupError !== null) return <StartupFailedScreen error={startupError} />
-  if (!hydrated) return <StartingScreen />
-
-  // Onboarding takes the whole window rather than a pane: there is no list to sit beside it,
-  // and there will not be one until it has minted an identity.
-  // `|| onboarding` because an account appearing is not the same as onboarding being over: a
-  // restore mints one the moment the phrase is accepted and still has a wait to sit through.
-  if (account?.haveAccount !== true || onboarding)
-    return <OnboardingFlow onRunningChange={setOnboarding} />
-
+// TODO: take this from the catalogue once it has a "choose a conversation" key; it has none yet.
+function Placeholder() {
   return (
-    <AdaptiveShell
-      list={<ConversationListScreen />}
+    <YStack flex={1} alignItems="center" justifyContent="center">
+      <Text tone="secondary">Choose a conversation</Text>
+    </YStack>
+  )
+}
+
+function Shell() {
+  const location = useLocation()
+  return (
+    <SessionShell
       detail={
         <Routes>
           <Route path="" element={null} />
@@ -102,11 +86,8 @@ function Shell() {
           <Route path="requests" element={<RequestsScreen />} />
         </Routes>
       }
-      // Any route but the list has something to show in the detail pane, not just a
-      // conversation: requests and settings are detail routes too, and keying this on the
-      // conversation alone left them rendering the placeholder instead of the screen.
       hasDetail={location.pathname !== '/'}
-      placeholder={<Placeholder label="Choose a conversation" />}
+      placeholder={<Placeholder />}
     />
   )
 }
@@ -119,12 +100,4 @@ function ConversationRoute() {
   const { id } = useParams<{ id: string }>()
   if (id === undefined) return null
   return <ConversationScreen conversationId={decodeURIComponent(id)} />
-}
-
-function Placeholder({ label }: { label: string }) {
-  return (
-    <YStack flex={1} alignItems="center" justifyContent="center">
-      <Text tone="secondary">{label}</Text>
-    </YStack>
-  )
 }
