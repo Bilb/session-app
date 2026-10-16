@@ -20,6 +20,7 @@
     "react-native-safe-area-context",
     "react-native-screens"
   ],
+  "ignoreBinaries": ["mkfifo"],
   "ignore": [
     "**/*.native.ts",
     "**/*.native.tsx",

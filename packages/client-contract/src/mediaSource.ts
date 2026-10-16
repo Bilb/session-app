@@ -34,6 +34,8 @@ export interface MediaSourceHarness {
   /**
    * A source over a client with no messages, and the absolute paths of files staged to send: a
    * JPEG neither square nor within the largest thumbnail edge, a PNG, a PDF, and one not there.
+   * `notRegular` are there but not regular files: a directory, and where the platform has them, a
+   * FIFO nobody writes to and a link to a device, any of which would block a reader that waited.
    */
   staged(): Promise<{
     source: MediaSource
@@ -42,6 +44,7 @@ export interface MediaSourceHarness {
     png: string
     document: string
     missing: string
+    notRegular: readonly string[]
   }>
 }
 
@@ -265,6 +268,16 @@ export function runMediaSourceContract(
       )
     })
 
+    it('refuses what is there but is not a regular file, without waiting on it', async () => {
+      const { source, notRegular } = await harness.staged()
+      expect(notRegular.length).toBeGreaterThan(0)
+      for (const path of notRegular) {
+        expect(messageOf(await failure(() => source.fetchStagedThumbnail(path)))).toBe(
+          'the file could not be read',
+        )
+      }
+    })
+
     it('refuses a staged path that is relative, climbs out or reaches across a network', async () => {
       const { source, jpeg } = await harness.staged()
       for (const path of [
@@ -272,6 +285,7 @@ export function runMediaSourceContract(
         `${jpeg}/../photo.jpg`,
         '//host/share/photo.jpg',
         '\\\\host\\share\\photo.jpg',
+        '/\\host\\share\\photo.jpg',
         `${jpeg}\0`,
         '',
       ]) {

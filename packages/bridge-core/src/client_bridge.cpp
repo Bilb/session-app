@@ -37,6 +37,7 @@
 #include <mutex>
 #include <optional>
 #include <ranges>
+#include <span>
 #include <stdexcept>
 #include <utility>
 #include <variant>
@@ -44,7 +45,7 @@
 
 #include "convert.hpp"
 #include "session_bridge/media_url.hpp"
-#include "session_bridge/worker.hpp"
+#include "session_bridge/staged_thumbnails.hpp"
 #include "mark_downloaded.hpp"
 
 namespace session_bridge {
@@ -299,6 +300,32 @@ namespace {
 
 }  // namespace
 
+namespace {
+
+    // A message carries at most 10 MB, so nothing staged to send is near this; a file past it is
+    // refused before it is read whole.
+    constexpr size_t MAX_STAGED_READ_BYTES = 64 * 1024 * 1024;
+
+    // None of these sentences names the file: the loaders log what they are refused.
+    Media make_staged(const std::string& path, uint32_t edge) {
+        try {
+            auto bytes = read_staged_file(path, MAX_STAGED_READ_BYTES);
+            if (!bytes)
+                return Media{"the file could not be read", {}, {}};
+            auto held = std::make_shared<std::vector<std::byte>>(*std::move(bytes));
+            image::Source source{std::span<const std::byte>{*held}, held};
+            auto jpeg = image::thumbnail(source, edge);
+            if (!jpeg)
+                return Media{"the file is not a picture", {}, {}};
+            return Media{std::nullopt, "image/jpeg", *std::move(jpeg)};
+        } catch (const std::exception&) {
+            // Probed as a picture, then failed to decode, or ran out of memory doing it.
+            return Media{"the file is not a picture", {}, {}};
+        }
+    }
+
+}  // namespace
+
 struct ClientBridge::Impl {
     Sink sink;
     std::unique_ptr<client::Client> client;
@@ -313,9 +340,9 @@ struct ClientBridge::Impl {
     /// joins the loop the callback is running on, so dropping it from there deadlocks. Whatever
     /// drops it runs on another thread -- an attach, a discard, or `close`.
     std::unique_ptr<session::network::Network> warm;
-    /// Where staged thumbnails are made. Shared, so a callback on Core's loop can post to it
+    /// Where staged thumbnails are made. Shared, so a callback on Core's loop can reach it
     /// without reaching back through `this`.
-    std::shared_ptr<Worker> worker = std::make_shared<Worker>();
+    std::shared_ptr<StagedThumbnails> staged = std::make_shared<StagedThumbnails>(make_staged);
 
     explicit Impl(Sink s, InitOptions o) : sink{std::move(s)}, options{std::move(o)} {}
 
@@ -1297,8 +1324,8 @@ void ClientBridge::close() {
     // returns, no warm answer can still be in flight.
     _impl->warm.reset();
     _impl->client.reset();
-    // After the client, whose loop is what posts here: nothing can queue a job once it is joined.
-    _impl->worker->stop();
+    // Returns at once, so a decode stuck on a mount that stopped answering cannot hold up a quit.
+    _impl->staged->close();
     _impl.reset();
 }
 
@@ -1457,55 +1484,54 @@ void ClientBridge::fetch_thumbnail(double message_id, double index, MediaHandler
     }
 }
 
-void ClientBridge::fetch_staged_thumbnail(std::string path, MediaHandler cb) {
+std::function<void()> ClientBridge::fetch_staged_thumbnail(std::string path, MediaHandler cb) {
     if (!_impl || !_impl->client) {
         cb(Media{"the bridge is closed", {}, {}});
-        return;
+        return [] {};
     }
     if (!is_staged_path(path)) {
         cb(Media{"not an absolute path", {}, {}});
-        return;
+        return [] {};
     }
+
+    // The edge arrives on Core's loop, so a cancel can come before the request it withdraws.
+    struct Withdrawal {
+        std::mutex lock;
+        bool withdrawn = false;
+        StagedThumbnails::Cancel cancel;
+    };
+    auto withdrawal = std::make_shared<Withdrawal>();
 
     // The edge libsession will make this file's thumbnail at once it is sent, so the tile and the
     // message it becomes draw the same picture.
-    _impl->client->thumbnail_edge([worker = _impl->worker,
+    _impl->client->thumbnail_edge([staged = _impl->staged,
+                                   withdrawal,
                                    path = std::move(path),
                                    cb = std::move(cb)](session::Expected<uint32_t> edge) mutable {
         if (!edge) {
             cb(Media{std::string{edge.error().message}, {}, {}});
             return;
         }
-        worker->post([path = std::move(path), edge = *edge, cb = std::move(cb)] {
-            // From UTF-8 explicitly: a narrow string is the ANSI code page on Windows.
-            const std::filesystem::path file{
-                    std::u8string{reinterpret_cast<const char8_t*>(path.data()), path.size()}};
-            std::error_code ec;
-            // A FIFO or a device would block the worker, and `close` with it.
-            if (!std::filesystem::is_regular_file(file, ec) || ec) {
-                cb(Media{"the file could not be read", {}, {}});
-                return;
-            }
-            std::optional<image::Source> source;
-            try {
-                source.emplace(file);
-            } catch (const std::exception&) {
-                cb(Media{"the file could not be read", {}, {}});
-                return;
-            }
-            std::optional<std::vector<std::byte>> jpeg;
-            try {
-                jpeg = image::thumbnail(*source, edge);
-            } catch (const std::exception&) {
-                // Probed as a picture, then failed to decode: nothing anyone can draw.
-            }
-            if (!jpeg) {
-                cb(Media{"the file is not a picture", {}, {}});
-                return;
-            }
-            cb(Media{std::nullopt, "image/jpeg", *std::move(jpeg)});
-        });
+        std::lock_guard guard{withdrawal->lock};
+        if (withdrawal->withdrawn) {
+            cb(Media{"cancelled", {}, {}});
+            return;
+        }
+        withdrawal->cancel = staged->request(std::move(path), *edge, std::move(cb));
     });
+
+    return [withdrawal] {
+        StagedThumbnails::Cancel cancel;
+        {
+            std::lock_guard guard{withdrawal->lock};
+            if (withdrawal->withdrawn)
+                return;
+            withdrawal->withdrawn = true;
+            cancel = std::move(withdrawal->cancel);
+        }
+        if (cancel)
+            cancel();
+    };
 }
 
 void ClientBridge::call(Request request) {

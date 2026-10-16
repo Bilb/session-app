@@ -43,7 +43,9 @@ class JsMediaSource final : public MediaSource, public std::enable_shared_from_t
             double message_id, double index, ::session_bridge::ThumbhashHandler cb) override;
     void fetch_thumbnail(
             double message_id, double index, ::session_bridge::MediaHandler cb) override;
-    void fetch_staged_thumbnail(std::string path, ::session_bridge::MediaHandler cb) override;
+    /// A JavaScript source cannot withdraw a request, so the cancel does nothing.
+    std::function<void()> fetch_staged_thumbnail(
+            std::string path, ::session_bridge::MediaHandler cb) override;
 
     /// **On the JS thread**, so the functions holding JavaScript values are released there. Answers
     /// everything pending, and every call after.

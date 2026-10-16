@@ -8,6 +8,8 @@
 
 #include <climits>
 #include <cstddef>
+#include <functional>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -203,23 +205,23 @@ jint register_media_loader(JavaVM* vm) {
 
 }  // namespace session_bridge_rn
 
-extern "C" JNIEXPORT void JNICALL
+extern "C" JNIEXPORT jlong JNICALL
 Java_session_bridge_rn_SessionMediaNative_fetch(JNIEnv* env, jclass, jstring url, jobject load) {
     const char* chars = env->GetStringUTFChars(url, nullptr);
     if (!chars)
-        return;  // OutOfMemoryError is pending and is thrown from fetch().
+        return 0;  // OutOfMemoryError is pending and is thrown from fetch().
     const std::string text{chars};
     env->ReleaseStringUTFChars(url, chars);
 
     const auto parsed = ::session_bridge::parse_media_url(text);
     if (!parsed) {
         fail(env, load, "not a media URL");
-        return;
+        return 0;
     }
     auto source = ::session_bridge_rn::media_source();
     if (!source) {
         fail(env, load, "nothing is serving media");
-        return;
+        return 0;
     }
 
     jobject held = env->NewGlobalRef(load);
@@ -232,13 +234,24 @@ Java_session_bridge_rn_SessionMediaNative_fetch(JNIEnv* env, jclass, jstring url
             answer_thumbnail(held, std::move(media));
         });
     else if (parsed->kind == ::session_bridge::MediaUrlKind::staged)
-        source->fetch_staged_thumbnail(parsed->path, [held](auto media) {
-            answer_thumbnail(held, std::move(media));
-        });
+        return reinterpret_cast<jlong>(new std::function<void()>{source->fetch_staged_thumbnail(
+                parsed->path, [held](auto media) { answer_thumbnail(held, std::move(media)); })});
     else
         source->fetch_media(parsed->message_id, parsed->index, [held](auto media) {
             answer_media(held, std::move(media));
         });
+    return 0;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_session_bridge_rn_SessionMediaNative_withdraw(JNIEnv*, jclass, jlong handle) {
+    std::unique_ptr<std::function<void()>> withdraw{reinterpret_cast<std::function<void()>*>(handle)};
+    (*withdraw)();
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_session_bridge_rn_SessionMediaNative_forget(JNIEnv*, jclass, jlong handle) {
+    delete reinterpret_cast<std::function<void()>*>(handle);
 }
 
 extern "C" JNIEXPORT void JNICALL

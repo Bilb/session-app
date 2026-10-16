@@ -26,9 +26,14 @@ const STAGED: ReadonlyMap<string, Uint8Array> = new Map([
   ['/home/alice/Documents/paper.pdf', PDF],
 ])
 
-const readStaged = (path: string): Promise<Uint8Array> => {
+// There, but what the desktop and mobile readers refuse on opening.
+const NOT_REGULAR = ['/home/alice/Pictures', '/home/alice/Pictures/fifo.jpg']
+
+const readStaged = (path: string, count: number): Promise<Uint8Array> => {
   const bytes = STAGED.get(path)
-  return bytes === undefined ? Promise.reject(new Error('ENOENT')) : Promise.resolve(bytes)
+  return bytes === undefined
+    ? Promise.reject(new Error('ENOENT'))
+    : Promise.resolve(bytes.subarray(0, count))
 }
 
 const harness: MediaSourceHarness = {
@@ -88,6 +93,7 @@ const harness: MediaSourceHarness = {
       png,
       document,
       missing: '/home/alice/Pictures/gone.jpg',
+      notRegular: NOT_REGULAR,
     })
   },
 }

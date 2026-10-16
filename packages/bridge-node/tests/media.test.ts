@@ -1,5 +1,6 @@
+import { execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -123,7 +124,11 @@ describeAddon('addon', () => {
     await writeFile(files.jpeg, grey(1280, 960))
     await writeFile(files.png, greyPng(300, 200))
     await writeFile(files.document, '%PDF-1.7\n')
-    return { peer, files }
+    const fifo = join(dir, 'fifo.jpg')
+    const device = join(dir, 'zero.jpg')
+    execFileSync('mkfifo', [fifo])
+    await symlink('/dev/zero', device)
+    return { peer, files: { ...files, notRegular: [dir, fifo, device] } }
   }
 
   const harness: MediaSourceHarness = {

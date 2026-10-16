@@ -1,5 +1,5 @@
-import { existsSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
+import { constants, existsSync } from 'node:fs'
+import { open, readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
@@ -17,6 +17,22 @@ const MEDIA_DIR =
   process.env['SESSION_FAKE_MEDIA_DIR'] ?? join(homedir(), '.cache', 'session-app', 'dev-media')
 
 /**
+ * The first `count` bytes of a regular file, as the shim reads one: opened without blocking, so a
+ * FIFO cannot stall the main process, and refused unless the opened file is a regular one.
+ */
+async function readHead(path: string, count: number): Promise<Uint8Array> {
+  const file = await open(path, constants.O_RDONLY | constants.O_NONBLOCK)
+  try {
+    if (!(await file.stat()).isFile()) throw new Error('not a regular file')
+    const head = new Uint8Array(count)
+    const { bytesRead } = await file.read(head, 0, count, 0)
+    return head.subarray(0, bytesRead)
+  } finally {
+    await file.close()
+  }
+}
+
+/**
  * The bridge, backed by the fake.
  *
  * This is a dev entry and lives here so the boundary rules can say so: production code
@@ -32,10 +48,6 @@ export function createFakeBridge(): BridgeTransport & MediaSource {
 
   return {
     ...createFakeTransport(served),
-    ...createFakeMediaSource(
-      alice,
-      (photo) => readFile(join(MEDIA_DIR, photo)),
-      (path) => readFile(path),
-    ),
+    ...createFakeMediaSource(alice, (photo) => readFile(join(MEDIA_DIR, photo)), readHead),
   }
 }

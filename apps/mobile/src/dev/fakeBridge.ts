@@ -83,7 +83,18 @@ export function createFakeBridge(): BridgeTransport {
         if (uri === undefined) throw new Error(`no dev photograph ${photo}`)
         return new Uint8Array(await new File(uri).arrayBuffer())
       },
-      async (path) => new Uint8Array(await new File(fileUrl(path)).arrayBuffer()),
+      // A picker's copy in the app's own folder is the only thing staged here, so `exists`, false
+      // for anything but a file, is the shim's regular-file check.
+      (path, count) => {
+        const file = new File(fileUrl(path))
+        if (!file.exists) return Promise.reject(new Error('not a regular file'))
+        const handle = file.open()
+        try {
+          return Promise.resolve(handle.readBytes(Math.min(count, handle.size ?? count)))
+        } finally {
+          handle.close()
+        }
+      },
     ),
   )
 

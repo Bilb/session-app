@@ -31,6 +31,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.Channels
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Draws `session-media://` URLs: the image loader behind the `MediaPort` URLs on Android.
@@ -76,8 +77,17 @@ internal object SessionMediaNative {
     System.loadLibrary("SessionBridgeRN")
   }
 
-  /** Returns at once; the answer arrives on `load` from whichever thread the source answers on. */
-  @JvmStatic external fun fetch(url: String, load: SessionMediaLoad)
+  /**
+   * Returns at once; the answer arrives on `load` from whichever thread the source answers on.
+   * Returns a handle to withdraw the request by, or 0 for a kind that cannot be withdrawn.
+   */
+  @JvmStatic external fun fetch(url: String, load: SessionMediaLoad): Long
+
+  /** Withdraws the request behind a handle `fetch` returned, and frees the handle. */
+  @JvmStatic external fun withdraw(handle: Long)
+
+  /** Frees a handle `fetch` returned without withdrawing anything. */
+  @JvmStatic external fun forget(handle: Long)
 
   /** Frees the memory a direct buffer handed to `load` points into. */
   @JvmStatic external fun release(handle: Long)
@@ -137,7 +147,7 @@ private fun start(context: ProducerContext, load: SessionMediaLoad) {
           load.cancel()
         }
       })
-  SessionMediaNative.fetch(context.imageRequest.sourceUri.toString(), load)
+  load.hold(SessionMediaNative.fetch(context.imageRequest.sourceUri.toString(), load))
 }
 
 internal class FetchProducer : Producer<EncodedImage> {
@@ -173,11 +183,33 @@ private constructor(
     private val url: String,
 ) {
   private val settled = AtomicBoolean(false)
+  private val cancelled = AtomicBoolean(false)
+  // The native handle `fetch` returned: 0 until it is held, LET_GO once it is withdrawn or freed.
+  private val withdrawal = AtomicLong(0)
 
   private fun settle(): Boolean = settled.compareAndSet(false, true)
 
+  /** Takes the handle `fetch` returned, which may come after this has already settled. */
+  fun hold(handle: Long) {
+    if (handle == 0L) return
+    if (!withdrawal.compareAndSet(0, handle)) {
+      if (cancelled.get()) SessionMediaNative.withdraw(handle) else SessionMediaNative.forget(handle)
+    } else if (settled.get()) {
+      letGo()
+    }
+  }
+
+  private fun letGo() {
+    val handle = withdrawal.getAndSet(LET_GO)
+    if (handle == 0L || handle == LET_GO) return
+    if (cancelled.get()) SessionMediaNative.withdraw(handle) else SessionMediaNative.forget(handle)
+  }
+
   fun cancel() {
-    if (settle()) (encoded ?: decoded)?.onCancellation()
+    if (!settle()) return
+    cancelled.set(true)
+    letGo()
+    (encoded ?: decoded)?.onCancellation()
   }
 
   private fun failWith(error: Throwable) {
@@ -189,6 +221,7 @@ private constructor(
 
   @DoNotStrip
   fun onMedia(bytes: ByteBuffer, handle: Long) {
+    letGo()
     DRAIN.execute {
       try {
         val consumer = encoded
@@ -219,6 +252,7 @@ private constructor(
 
   @DoNotStrip
   fun onThumbhash(width: Int, height: Int, rgba: ByteBuffer, handle: Long) {
+    letGo()
     DRAIN.execute {
       try {
         val consumer = decoded
@@ -256,11 +290,13 @@ private constructor(
 
   @DoNotStrip
   fun onFailure(message: String) {
+    letGo()
     DRAIN.execute { if (settle()) failWith(RuntimeException(message)) }
   }
 
   companion object {
     private const val TAG = "SessionMedia"
+    private const val LET_GO = -1L
     private val DRAIN = Executors.newSingleThreadExecutor { Thread(it, "session-media") }
 
     fun encoded(consumer: Consumer<EncodedImage>, context: ProducerContext, url: String) =

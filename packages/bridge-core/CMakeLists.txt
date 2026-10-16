@@ -79,6 +79,7 @@ add_library(session-bridge-core STATIC
     src/convert.cpp
     src/mark_downloaded.cpp
     src/media_url.cpp
+    src/staged_thumbnails.cpp
     src/worker.cpp)
 
 target_include_directories(session-bridge-core
