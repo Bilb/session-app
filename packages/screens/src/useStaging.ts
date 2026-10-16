@@ -32,7 +32,7 @@ export interface StagingState {
   clear: () => void
   /**
    * Takes what a message was sent with out of the tray, keeping the files, which the message now
-   * owns, but not their previews. Anything staged since stays.
+   * owns, but not their previews. Anything staged since stays, a re-pick of a sent path included.
    */
   handOff: (sent: readonly PickedFile[]) => void
   /** Says a send was refused; its files stay staged for another try. */
@@ -114,17 +114,20 @@ export function useStaging(): StagingState {
       setRefused(NOTHING_REFUSED)
     },
     handOff: (sent) => {
-      const handed = new Set(sent.map((file) => file.path))
+      // The unmount already let go of everything staged, these included.
+      if (!mounted.current) return
+      const handed = new Set(sent)
       letGo(
         requirePorts().files,
-        latest.current.filter((file) => handed.has(file.path)),
+        latest.current.filter((file) => handed.has(file)),
         { sent: true },
       )
-      latest.current = latest.current.filter((file) => !handed.has(file.path))
+      latest.current = latest.current.filter((file) => !handed.has(file))
       setFiles(latest.current)
       setRefused(NOTHING_REFUSED)
     },
     refuseSend: () => {
+      if (!mounted.current) return
       setRefused({ ...NOTHING_REFUSED, sendRefused: true })
       setRefusal((count) => count + 1)
     },
