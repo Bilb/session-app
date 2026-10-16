@@ -594,6 +594,28 @@ export function runSessionClientContract(
       expect(await flags()).toEqual([true, false])
     })
 
+    it('serves a file it took for a send before it is up, and only one it took', async () => {
+      const { alice, bobId, writeFile } = await harness.friends()
+      const taken = await writeFile('taken.txt', 2_000)
+      const lent = await writeFile('lent.txt', 2_000)
+      const seen = collect(alice)
+
+      const messageId = await alice.sendMessage(bobId, {
+        body: '',
+        attachments: [
+          { path: taken, filename: 'taken.txt', takeFile: true },
+          { path: lent, filename: 'lent.txt' },
+        ],
+      })
+
+      const added = messagesOf(seen.events, 'messages-added').find((m) => m.id === messageId)
+      expect(added?.attachments.map((a) => [a.uploaded, a.availability])).toEqual([
+        [false, 'cached'],
+        [false, 'absent'],
+      ])
+      seen.stop()
+    })
+
     it('refuses a send whose file is missing or empty, storing nothing', async () => {
       const { alice, bobId, writeFile } = await harness.friends()
       const empty = await writeFile('empty.bin', 0)

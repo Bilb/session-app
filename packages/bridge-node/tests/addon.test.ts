@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -341,6 +341,20 @@ describeAddon('the N-API addon', () => {
       for (let round = 0; round < 100 && existsSync(copy); round += 1)
         await new Promise((resolve) => setTimeout(resolve, 20))
       expect(existsSync(copy)).toBe(false)
+
+      // Taking through a link would delete a file the caller never named.
+      const target = join(dir, 'linked-target.jpg')
+      const link = join(dir, 'staged-link.jpg')
+      await writeFile(target, Buffer.alloc(1_000, 0xcd))
+      await symlink(target, link)
+      const refusedLink = await ask(34, {
+        type: 'sendMessage',
+        conversationId,
+        body: 'linked',
+        attachments: [{ path: link, takeFile: true }],
+      })
+      expect(refusedLink.type === 'response' && refusedLink.response.error).toMatch(/symbolic link/)
+      expect(existsSync(target)).toBe(true)
     } finally {
       transport.close()
     }

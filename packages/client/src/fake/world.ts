@@ -248,6 +248,11 @@ export class FakeAccount {
   private world: FakeWorld | undefined
   /** Attachments whose bytes are in the cache, by `keyOf`. */
   private readonly cached = new Set<string>()
+  /**
+   * Files a send took and has not uploaded yet, by `keyOf`: served from libsession's outgoing
+   * folder until then, but not in the cache, so neither counted in its size nor thumbnailed.
+   */
+  private readonly taken = new Set<string>()
   /** The sizes `seedSending` held back from files not up yet, which their upload reports. */
   private readonly unreportedSizes = new Map<string, number>()
   /**
@@ -671,6 +676,9 @@ export class FakeAccount {
         ? {}
         : { replyTo: { author: this.sessionId, timestamp: now, messageId: replyTo } }),
     }
+    outgoing.forEach((file, index) => {
+      if (file.takeFile === true) this.taken.add(keyOf({ messageId: message.id, index }))
+    })
     this.addMessage(id, message)
     for (const file of outgoing) if (file.takeFile === true) this.world?.removeFile(file.path)
     if (uploading) this.uploadNext(id, message.id, sizes)
@@ -702,6 +710,7 @@ export class FakeAccount {
       }
       // As libsession: what we sent is kept in the cache, and its size is known once it is up.
       this.cached.add(keyOf({ messageId, index: attachment.index }))
+      this.taken.delete(keyOf({ messageId, index: attachment.index }))
       const sizeBytes = sizes[at]
       const attachments = message.attachments.map((a, index) =>
         index === at
@@ -812,17 +821,24 @@ export class FakeAccount {
     return false
   }
 
+  /** Whether a taken file is still served: libsession drops it once its send is unsendable. */
+  private takenServed(key: string, sendState: SendState | undefined): boolean {
+    return this.taken.has(key) && sendState !== 'unsendable'
+  }
+
+  /** Whether the bytes can be had without a transfer: from the cache, or as a taken file. */
   isCached(ref: AttachmentRef): boolean {
-    return this.cached.has(keyOf(ref))
+    const key = keyOf(ref)
+    return this.cached.has(key) || this.takenServed(key, this.locate(ref)?.message.sendState)
   }
 
   hasThumbnail(ref: AttachmentRef): boolean {
-    return thumbnailed(this.isCached(ref), this.locate(ref)?.attachment.contentType)
+    return thumbnailed(this.cached.has(keyOf(ref)), this.locate(ref)?.attachment.contentType)
   }
 
   hasRendition(ref: AttachmentRef): boolean {
     const attachment = this.locate(ref)?.attachment
-    return attachment !== undefined && rendered(this.isCached(ref), attachment)
+    return attachment !== undefined && rendered(this.cached.has(keyOf(ref)), attachment)
   }
 
   /**
@@ -868,14 +884,14 @@ export class FakeAccount {
         const running = this.transfers.get(key)?.progress
         const availability: AttachmentAvailability = running
           ? 'fetching'
-          : this.cached.has(key)
+          : this.cached.has(key) || this.takenServed(key, message.sendState)
             ? 'cached'
             : (this.verdicts.get(key) ?? 'absent')
         return {
           ...attachment,
           availability,
-          hasThumbnail: thumbnailed(availability === 'cached', attachment.contentType),
-          hasRendition: rendered(availability === 'cached', attachment),
+          hasThumbnail: thumbnailed(this.cached.has(key), attachment.contentType),
+          hasRendition: rendered(this.cached.has(key), attachment),
           fetchDoneBytes: running?.doneBytes ?? 0,
           fetchTotalBytes: running?.totalBytes ?? 0,
         }
@@ -915,7 +931,7 @@ export class FakeAccount {
     for (const { messages } of this.conversations.values()) {
       for (const message of messages) {
         for (const attachment of message.attachments) {
-          if (this.isCached({ messageId: message.id, index: attachment.index })) {
+          if (this.cached.has(keyOf({ messageId: message.id, index: attachment.index }))) {
             usageBytes += encryptedSize(attachment.sizeBytes ?? 0)
           }
         }
@@ -951,7 +967,7 @@ export class FakeAccount {
    */
   downloadAttachment(ref: AttachmentRef): Promise<void> {
     if (!this.locate(ref)) return refuseMissing(ref, this.hasMessage(ref.messageId))
-    if (this.cached.has(keyOf(ref))) return Promise.resolve()
+    if (this.isCached(ref)) return Promise.resolve()
     return this.consume(ref, 'download')
   }
 
@@ -965,7 +981,7 @@ export class FakeAccount {
   exportAttachment(ref: AttachmentRef, destination: string, replace = false): Promise<string> {
     if (!this.locate(ref)) return refuseMissing(ref, this.hasMessage(ref.messageId))
 
-    const fetched = this.cached.has(keyOf(ref)) ? Promise.resolve() : this.consume(ref, 'export')
+    const fetched = this.isCached(ref) ? Promise.resolve() : this.consume(ref, 'export')
     return fetched.then(() => {
       const found = this.locate(ref)
       if (found) {
