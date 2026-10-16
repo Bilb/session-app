@@ -19,13 +19,13 @@ export interface Staging {
   files: PickedFile[]
   refused: StagingRefusal
   /**
-   * Picks that will not be staged and are copies of their own, for the copy to go. Never a pick
-   * whose path is already staged: that path is the staged file's.
+   * Picks that will not be staged, for their copy to go. A pick at a staged path is here only
+   * when it is refused, its staged entry with it.
    */
   unused: PickedFile[]
   /**
    * Staged entries a re-pick of their path replaced, or removed once it grew past the limit:
-   * their previews go, and their files stay.
+   * their previews go. A replaced one's file stays; a removed one's goes with the pick in `unused`.
    */
   replaced: PickedFile[]
 }
