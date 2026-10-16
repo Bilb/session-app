@@ -51,7 +51,7 @@ export function uploadStateOf(message: Message, index: number): UploadState {
     case 'failed':
     case 'interrupted':
       return current ? 'failed' : 'notSent'
-    // A file of it is missing, and nothing says which: no row is singled out.
+    // A file of it is missing or too large, and nothing says which: no row is singled out.
     default:
       return 'notSent'
   }
@@ -60,7 +60,10 @@ export function uploadStateOf(message: Message, index: number): UploadState {
 export interface UploadSummary {
   uploaded: number
   count: number
-  /** Whether Retry is worth offering. `unsendable` is a missing file: every retry fails on it. */
+  /**
+   * Whether Retry is worth offering. `unsendable` is a file gone or too large to send, which every
+   * retry fails on.
+   */
   retryable: boolean
 }
 
