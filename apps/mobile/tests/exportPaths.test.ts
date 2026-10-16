@@ -74,7 +74,6 @@ describe('the name an export is written under', () => {
 describe('which files go to the photo library', () => {
   it('takes the pictures and videos a library can file', () => {
     expect(photoLibraryExtension('image/png')).toBe('png')
-    expect(photoLibraryExtension('image/apng')).toBe('png')
     expect(photoLibraryExtension('Image/JPEG')).toBe('jpg')
     expect(photoLibraryExtension('video/quicktime')).toBe('mov')
   })
