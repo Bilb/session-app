@@ -126,6 +126,13 @@ function received(sent: readonly Attachment[]): Attachment[] {
   }))
 }
 
+/** What `send` was given for one file, kept for that file's turn to upload. */
+interface Upload {
+  path: string
+  taken: boolean
+  sizeBytes: number | undefined
+}
+
 /** libsession's bounds on a thumbnail's side: 1024² at 4 bytes a pixel is 4 MiB decoded. */
 const THUMBNAIL_EDGE_MIN_PX = 64
 const THUMBNAIL_EDGE_MAX_PX = 1024
@@ -636,6 +643,11 @@ export class FakeAccount {
       if (sizeBytes === 0) throw new SessionClientError(`send_message: attachment ${path} is empty`)
       return sizeBytes
     })
+    const uploads = outgoing.map((file, index): Upload => ({
+      path: file.path,
+      taken: file.takeFile === true,
+      sizeBytes: sizes[index],
+    }))
     const now = this.world?.now() ?? Date.now()
     const uploading = outgoing.length > 0
     const attachments = outgoing.map((file, index): Attachment => {
@@ -681,17 +693,16 @@ export class FakeAccount {
     })
     this.addMessage(id, message)
     for (const file of outgoing) if (file.takeFile === true) this.world?.removeFile(file.path)
-    if (uploading) this.uploadNext(id, message.id, sizes)
+    if (uploading) this.uploadNext(id, message.id, uploads)
     else this.world?.scheduleSend(this, id, message)
     return message.id
   }
 
-  /** Uploads the first file not up yet, a step from now, then the next, then sends. */
-  private uploadNext(
-    id: ConversationId,
-    messageId: number,
-    sizes: readonly (number | undefined)[],
-  ): void {
+  /**
+   * Uploads the first file not up yet, a step from now, then the next, then sends. A lent file
+   * gone by its turn leaves the message unsendable, as libsession does.
+   */
+  private uploadNext(id: ConversationId, messageId: number, uploads: readonly Upload[]): void {
     const world = this.world
     if (world === undefined) return
     world.schedule(1, () => {
@@ -708,17 +719,26 @@ export class FakeAccount {
         world.scheduleSend(this, id, { ...message, sendState: 'pending' })
         return
       }
+      const upload = uploads[at]
+      if (upload === undefined) return
+      if (!upload.taken && world.fileSize(upload.path) === null) {
+        this.updateMessage(id, messageId, {
+          sendState: 'unsendable',
+          ...(message.syncState === undefined ? {} : { syncState: 'unsendable' }),
+        })
+        return
+      }
       // As libsession: what we sent is kept in the cache, and its size is known once it is up.
       this.cached.add(keyOf({ messageId, index: attachment.index }))
       this.taken.delete(keyOf({ messageId, index: attachment.index }))
-      const sizeBytes = sizes[at]
+      const { sizeBytes } = upload
       const attachments = message.attachments.map((a, index) =>
         index === at
           ? { ...a, uploaded: true, ...(sizeBytes === undefined ? {} : { sizeBytes }) }
           : a,
       )
       this.updateMessage(id, messageId, { attachments })
-      this.uploadNext(id, messageId, sizes)
+      this.uploadNext(id, messageId, uploads)
     })
   }
 
