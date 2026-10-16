@@ -18,15 +18,11 @@ Intel Mac running the simulator; it is another 1.6GB of build tree and nothing o
 machine will ever load it, so it is a release's business rather than the default.
 
 libsession's outputs are cached per machine in `~/Library/Caches/session-app/libsession-ios`,
-keyed by the source hash below and the slice mode, so every clone on the same libsession builds it
-once. The ~9GB build tree is deleted afterwards and the xcframework here is an APFS clone of the
-cached one, so a checkout costs no space for either. The five most recently used entries are kept.
-
-| variable                              | effect                                                                               |
-| ------------------------------------- | ------------------------------------------------------------------------------------ |
-| `SESSION_LIBSESSION_IOS_KEEP_BUILD=1` | keep `libsession-util/build-ios`, for incremental rebuilds while changing libsession |
-| `SESSION_LIBSESSION_IOS_CACHE`        | cache directory; keep it on the same volume as the clones                            |
-| `SESSION_LIBSESSION_IOS_CACHE_KEEP`   | entries kept, default 5                                                              |
+keyed by the source hash below and the slice mode, and the five most recently used are kept. A
+clone on a cached libsession skips its build. The ~9GB build tree is deleted afterwards, unless
+`SESSION_LIBSESSION_IOS_KEEP_BUILD=1` for incremental rebuilds while changing libsession, and the
+xcframework here is an APFS clone of the cached one. `SESSION_LIBSESSION_IOS_CACHE` moves the
+cache; keep it on the same volume as the clones.
 
 The shim is an xcframework rather than a directory of archives because `vendored_libraries` has
 no per-SDK form: a directory of `.a` files is a directory for exactly one slice, and the two have
