@@ -130,7 +130,7 @@ function RowContent({
         {...(inert
           ? {}
           : {
-              cursor: 'pointer',
+              '$platform-web': { cursor: 'pointer' },
               hoverStyle: { backgroundColor: '$hoverOverlay' },
               pressStyle: { backgroundColor: '$pressedOverlay' },
               // Native: without this a frame with a `pressStyle` claims the touch from

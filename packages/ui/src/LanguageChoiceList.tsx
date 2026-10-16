@@ -100,7 +100,7 @@ export function LanguageChoiceList({
                   height={ROW_HEIGHT}
                   paddingHorizontal="$sm"
                   borderRadius="$sm"
-                  cursor="pointer"
+                  $platform-web={{ cursor: 'pointer' }}
                   backgroundColor={selected ? '$backgroundTertiary' : 'transparent'}
                   pressStyle={{ backgroundColor: '$backgroundTertiary' }}
                   onPress={() => {

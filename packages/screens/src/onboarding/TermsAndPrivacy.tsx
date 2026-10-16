@@ -102,7 +102,7 @@ export function TermsAndPrivacy() {
               <XStack
                 role="button"
                 alignItems="center"
-                cursor="pointer"
+                $platform-web={{ cursor: 'pointer' }}
                 testID={link.testID}
                 onPress={() => {
                   setOpen(false)

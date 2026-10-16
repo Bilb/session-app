@@ -81,7 +81,7 @@ function RequestRow({
       alignItems="center"
       hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
       pressStyle={{ backgroundColor: '$backgroundTertiary' }}
-      cursor="pointer"
+      $platform-web={{ cursor: 'pointer' }}
       onPress={onPress}
       testID={ELEMENT.requests.row(index)}
     >

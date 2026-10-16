@@ -16,7 +16,7 @@ const Frame = styled(XStack, {
   gap: '$xs',
   borderRadius: '$full',
   borderWidth: 1,
-  cursor: 'pointer',
+  '$platform-web': { cursor: 'pointer' },
   // A label is not text you select; dragging across a control should do nothing. The desktop
   // client sets the same thing on its button for the same reason.
   userSelect: 'none',

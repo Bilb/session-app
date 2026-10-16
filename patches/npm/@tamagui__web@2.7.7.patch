@@ -1,0 +1,88 @@
+diff --git a/dist/cjs/createComponent.native.js b/dist/cjs/createComponent.native.js
+index 12e4d302c525312b6d214388d28610cd8a7971e1..82451e6c24dcef0e78625f1f1f2c3f98416ff9fe 100644
+--- a/dist/cjs/createComponent.native.js
++++ b/dist/cjs/createComponent.native.js
+@@ -750,7 +750,7 @@ If you meant to do this, you can disable this warning - either change untilMeasu
+     var attachPress = Boolean(hasDynamicGroupChildren || runtimePressStyle || onPress || onPressOut || onPressIn || onMouseDown || onMouseUp || onLongPress || onClick || (pseudos === null || pseudos === void 0 ? void 0 : pseudos.focusVisibleStyle));
+     var runtimeHoverStyle = !disabled && noClass && (pseudos === null || pseudos === void 0 ? void 0 : pseudos.hoverStyle);
+     var needsHoverState = Boolean(hasDynamicGroupChildren || runtimeHoverStyle && !platformPseudo);
+-    var attachHover = (import_constants.isWeb || import_constants.isNativeDesktop) && !!(hasDynamicGroupChildren || needsHoverState || onMouseEnter || onMouseLeave);
++    var attachHover = (import_constants.isWeb || import_constants.isNativeDesktop || require("react-native").Platform.OS === "ios") && !!(hasDynamicGroupChildren || needsHoverState || onMouseEnter || onMouseLeave);
+     var shouldAttach = !disabled && !props.asChild && Boolean(attachFocus || attachPress || attachHover || runtimePressStyle || runtimeHoverStyle || runtimeFocusStyle);
+     var needsPressState = Boolean(hasDynamicGroupChildren || runtimePressStyle);
+     if (process.env.NODE_ENV === "development" && time) time`events-setup`;
+diff --git a/dist/cjs/eventHandling.native.js b/dist/cjs/eventHandling.native.js
+index e6ac652e9335e82a1bd411ccd1c5fab54cad8072..16b1393ae9a7d6aba3287a3c42562459e670c330 100644
+--- a/dist/cjs/eventHandling.native.js
++++ b/dist/cjs/eventHandling.native.js
+@@ -85,6 +85,22 @@ function useEvents(events, viewProps, stateRef, staticConfig, isHOC, isInsideNat
+         viewProps["onMouseLeave"] = events.onMouseLeave;
+       }
+     }
++    if (require("react-native").Platform.OS === "ios") {
++      // Session patch: iPadOS, and the Mac's iPad apps, report a mouse or trackpad as pointer
++      // events, never mouse events. A touch is not a hover.
++      if (events.onMouseEnter) {
++        var onEnter = events.onMouseEnter;
++        viewProps["onPointerEnter"] = function (e) {
++          if (e.nativeEvent.pointerType !== "touch") onEnter(e);
++        };
++      }
++      if (events.onMouseLeave) {
++        var onLeave = events.onMouseLeave;
++        viewProps["onPointerLeave"] = function (e) {
++          if (e.nativeEvent.pointerType !== "touch") onLeave(e);
++        };
++      }
++    }
+   }
+   var hasPressEvents = events === null || events === void 0 ? void 0 : events.onPress;
+   var gh = (0, import_native.getGestureHandler)();
+diff --git a/dist/esm/createComponent.native.js b/dist/esm/createComponent.native.js
+index 10f06bd4f0d72e55014711c7eb2f3646508ea7f6..7953b849e733e6336c6a61a5b2f65d431813651f 100644
+--- a/dist/esm/createComponent.native.js
++++ b/dist/esm/createComponent.native.js
+@@ -1,6 +1,7 @@
+ import { jsx } from "react/jsx-runtime";
+ import { composeRefs } from "@tamagui/compose-refs";
+ import { getPlatformDriver, isAndroid, isClient, isNativeDesktop, isServer, isWeb, useIsomorphicLayoutEffect } from "@tamagui/constants";
++import { Platform } from "react-native";
+ import { NativeMenuContext } from "@tamagui/native";
+ import { composeEventHandlers } from "@tamagui/helpers";
+ import { isEqualShallow } from "@tamagui/is-equal-shallow";
+@@ -712,7 +713,7 @@ If you meant to do this, you can disable this warning - either change untilMeasu
+     var attachPress = Boolean(hasDynamicGroupChildren || runtimePressStyle || onPress || onPressOut || onPressIn || onMouseDown || onMouseUp || onLongPress || onClick || (pseudos === null || pseudos === void 0 ? void 0 : pseudos.focusVisibleStyle));
+     var runtimeHoverStyle = !disabled && noClass && (pseudos === null || pseudos === void 0 ? void 0 : pseudos.hoverStyle);
+     var needsHoverState = Boolean(hasDynamicGroupChildren || runtimeHoverStyle && !platformPseudo);
+-    var attachHover = (isWeb || isNativeDesktop) && !!(hasDynamicGroupChildren || needsHoverState || onMouseEnter || onMouseLeave);
++    var attachHover = (isWeb || isNativeDesktop || Platform.OS === "ios") && !!(hasDynamicGroupChildren || needsHoverState || onMouseEnter || onMouseLeave);
+     var shouldAttach = !disabled && !props.asChild && Boolean(attachFocus || attachPress || attachHover || runtimePressStyle || runtimeHoverStyle || runtimeFocusStyle);
+     var needsPressState = Boolean(hasDynamicGroupChildren || runtimePressStyle);
+     if (process.env.NODE_ENV === "development" && time) time`events-setup`;
+diff --git a/dist/esm/eventHandling.native.js b/dist/esm/eventHandling.native.js
+index bc07b3f4214807c8cba259edeb29c004af57557c..e8c0410a759e39c071728a6e249d6f3b04feb124 100644
+--- a/dist/esm/eventHandling.native.js
++++ b/dist/esm/eventHandling.native.js
+@@ -43,6 +43,22 @@ function useEvents(events, viewProps, stateRef, staticConfig, isHOC, isInsideNat
+         viewProps["onMouseLeave"] = events.onMouseLeave;
+       }
+     }
++    if (Platform.OS === "ios") {
++      // Session patch: iPadOS, and the Mac's iPad apps, report a mouse or trackpad as pointer
++      // events, never mouse events. A touch is not a hover.
++      if (events.onMouseEnter) {
++        var onEnter = events.onMouseEnter;
++        viewProps["onPointerEnter"] = function (e) {
++          if (e.nativeEvent.pointerType !== "touch") onEnter(e);
++        };
++      }
++      if (events.onMouseLeave) {
++        var onLeave = events.onMouseLeave;
++        viewProps["onPointerLeave"] = function (e) {
++          if (e.nativeEvent.pointerType !== "touch") onLeave(e);
++        };
++      }
++    }
+   }
+   var hasPressEvents = events === null || events === void 0 ? void 0 : events.onPress;
+   var gh = getGestureHandler();

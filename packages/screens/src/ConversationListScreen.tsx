@@ -71,7 +71,7 @@ export function ConversationListScreen() {
             height={44}
             alignItems="center"
             justifyContent="center"
-            cursor="pointer"
+            $platform-web={{ cursor: 'pointer' }}
             hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
             pressStyle={{ backgroundColor: '$backgroundTertiary' }}
             borderRadius="$full"
@@ -92,7 +92,7 @@ export function ConversationListScreen() {
             height={44}
             alignItems="center"
             justifyContent="center"
-            cursor="pointer"
+            $platform-web={{ cursor: 'pointer' }}
             hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
             pressStyle={{ backgroundColor: '$backgroundTertiary' }}
             borderRadius="$full"
@@ -149,7 +149,7 @@ function ConversationRow({
       alignItems="center"
       hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
       pressStyle={{ backgroundColor: '$backgroundTertiary' }}
-      cursor="pointer"
+      $platform-web={{ cursor: 'pointer' }}
       onPress={onPress}
       testID={ELEMENT.conversationList.row(index)}
     >
