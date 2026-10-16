@@ -9,7 +9,7 @@ import { Icon } from './Icon'
 import { Image } from './Image'
 import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
-import { stagedPreview } from './stagedPreview'
+import { NOTHING_HEARD, previewFailed, previewLoaded, stagedPreview } from './stagedPreview'
 import { STAGED_TILE_SIDE } from './stagingMetrics'
 import { Text } from './Text'
 
@@ -36,8 +36,8 @@ export interface StagedTileProps {
   onRemove: () => void
   /** Names the file, since every tile has one and "Remove" six times says nothing. */
   removeLabel: string
-  testID: string
-  removeTestID: string
+  testID: ElementId
+  removeTestID: ElementId
   /** The thumbnail's picture, for a test asking whether it loaded. */
   previewTestID: ElementId
 }
@@ -102,9 +102,8 @@ export function StagedTile({
   removeTestID,
   previewTestID,
 }: StagedTileProps) {
-  const [loadedUrl, setLoadedUrl] = useState<string | null>(null)
-  const [failedUrl, setFailedUrl] = useState<string | null>(null)
-  const preview = stagedPreview(previewUrl, failedUrl)
+  const [heard, setHeard] = useState(NOTHING_HEARD)
+  const { url: preview, shown } = stagedPreview(previewUrl, heard)
   return (
     <YStack
       width={STAGED_TILE_SIDE}
@@ -124,14 +123,7 @@ export function StagedTile({
         <DocumentFace name={name} contentType={contentType} sizeLabel={sizeLabel} />
         {preview === undefined ? null : (
           // Over the face, hidden until it loads: a picture still decoding shows the face.
-          <YStack
-            position="absolute"
-            top={0}
-            bottom={0}
-            left={0}
-            right={0}
-            opacity={loadedUrl === preview ? 1 : 0}
-          >
+          <YStack position="absolute" top={0} bottom={0} left={0} right={0} opacity={shown ? 1 : 0}>
             <Image
               uri={preview}
               width={STAGED_TILE_SIDE}
@@ -139,10 +131,10 @@ export function StagedTile({
               fit="cover"
               resizeMultiplier={4 / 3}
               onLoad={() => {
-                setLoadedUrl(preview)
+                setHeard((current) => previewLoaded(current, preview))
               }}
               onError={() => {
-                setFailedUrl(preview)
+                setHeard((current) => previewFailed(current, preview))
               }}
               testID={previewTestID}
             />
