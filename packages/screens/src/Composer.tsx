@@ -17,6 +17,7 @@ import {
 import { useRef, useState } from 'react'
 
 import { AttachMenu } from './AttachMenu'
+import { draftAfterSend } from './draftAfterSend'
 import { PENDING_COPY } from './pendingCopy'
 import { refusalAnnouncement, refusalNotices } from './refusalNotices'
 import { isFull, sizeOf } from './staging'
@@ -61,26 +62,19 @@ export function Composer({
   const sendable = !sending && (draft.trim().length > 0 || staging.files.length > 0)
 
   function send(): void {
-    const body = draft.trim()
-    const files = staging.files
     if (!sendable) return
-    if (files.length === 0) {
-      // Cleared straight away: libsession stores the row before the promise settles, so the
-      // message appears on its own and there is nothing to put back if this fails.
-      setDraft('')
-      onSend(body, files).catch(() => undefined)
-      return
-    }
+    const sent = draft
+    const files = staging.files
     // Held until libsession answers, since a refusal leaves both here to try again.
     setSending(true)
-    onSend(body, files)
+    onSend(sent.trim(), files)
       .then(
         () => {
-          setDraft((typed) => (typed.trim() === body ? '' : typed))
+          setDraft((typed) => draftAfterSend(typed, sent))
           staging.handOff(files)
         },
         () => {
-          staging.refuseSend()
+          staging.refuseSend(files.length > 0 ? 'files' : 'text')
         },
       )
       .finally(() => {
@@ -119,10 +113,9 @@ export function Composer({
             MAX_ATTACHMENTS_PER_MESSAGE,
           )}
           clearLabel={tr('clear')}
+          onClear={staging.clear}
           // While a send is out, its files are the message's: neither cleared nor removed.
-          onClear={() => {
-            if (!sending) staging.clear()
-          }}
+          clearDisabled={sending}
           addLabel={tr('attachmentsAdd')}
           onAdd={full || sending ? undefined : attach}
           previousLabel={PENDING_COPY.previous}
@@ -143,8 +136,9 @@ export function Composer({
               label={[file.name, sizeOf(file)].filter(Boolean).join(', ')}
               removeLabel={PENDING_COPY.attachmentRemove(file.name)}
               onRemove={() => {
-                if (!sending) staging.remove(file.path)
+                staging.remove(file.path)
               }}
+              removeDisabled={sending}
               testID={ELEMENT.conversation.stagedTile(index)}
               removeTestID={ELEMENT.conversation.stagedRemove(index)}
               previewTestID={ELEMENT.conversation.stagedPreview(index)}

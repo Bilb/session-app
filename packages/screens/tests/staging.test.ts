@@ -23,7 +23,7 @@ describe('staging attachments', () => {
       [file('b.pdf', 10), file('c.mp4', 10), file('d.m4a', 10)],
     )
     expect(staged.map((f) => f.name)).toEqual(['a.jpg', 'b.pdf', 'c.mp4', 'd.m4a'])
-    expect(refused).toEqual({ tooLarge: [], overLimit: 0, unreadable: 0, sendRefused: false })
+    expect(refused).toEqual({ tooLarge: [], overLimit: 0, unreadable: 0, sendRefused: 'none' })
   })
 
   it('refuses a file over the file server limit and keeps the rest', () => {
@@ -75,7 +75,7 @@ describe('staging attachments', () => {
     const a = file('a.jpg', 10)
     const { files: staged, refused, unused } = stage([a], [a, file('b.jpg', 10)])
     expect(staged.map((f) => f.name)).toEqual(['a.jpg', 'b.jpg'])
-    expect(refused).toEqual({ tooLarge: [], overLimit: 0, unreadable: 0, sendRefused: false })
+    expect(refused).toEqual({ tooLarge: [], overLimit: 0, unreadable: 0, sendRefused: 'none' })
     // The same path is the staged file's own: handing it back to be deleted would delete that.
     expect(unused).toEqual([])
   })

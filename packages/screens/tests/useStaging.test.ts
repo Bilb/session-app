@@ -115,7 +115,7 @@ describe('the composer staging', () => {
     expect(released).toEqual(['session-media://picked/a'])
     hook.writes.length = 0
     staging.handOff([a])
-    staging.refuseSend()
+    staging.refuseSend('files')
     expect(released).toEqual(['session-media://picked/a'])
     expect(hook.writes).toEqual([])
   })
@@ -123,12 +123,12 @@ describe('the composer staging', () => {
   it('keeps a refused send staged and says so', () => {
     const staging = mount()
     staging.add([picked('a.jpg')])
-    staging.refuseSend()
+    staging.refuseSend('files')
     expect(hook.writes).toContainEqual({
       tooLarge: [],
       overLimit: 0,
       unreadable: 0,
-      sendRefused: true,
+      sendRefused: 'files',
     })
     expect(discarded).toEqual([])
   })
@@ -151,13 +151,13 @@ describe('the composer staging', () => {
       tooLarge: [],
       overLimit: 0,
       unreadable: 3,
-      sendRefused: false,
+      sendRefused: 'none',
     })
     expect(refusals).toContainEqual({
       tooLarge: [],
       overLimit: 0,
       unreadable: 1,
-      sendRefused: false,
+      sendRefused: 'none',
     })
   })
 
@@ -168,7 +168,7 @@ describe('the composer staging', () => {
       tooLarge: [],
       overLimit: 0,
       unreadable: 2,
-      sendRefused: false,
+      sendRefused: 'none',
     })
   })
 

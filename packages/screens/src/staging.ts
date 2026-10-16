@@ -7,6 +7,9 @@ import {
 } from '@session/basic-types'
 import type { OutgoingAttachment } from '@session/client'
 
+/** What the last refused send held: files, or only text. */
+export type SendRefusal = 'none' | 'text' | 'files'
+
 /** What the composer turned away: what a pick or a drop left out, or a send. */
 export interface StagingRefusal {
   tooLarge: PickedFile[]
@@ -14,8 +17,8 @@ export interface StagingRefusal {
   overLimit: number
   /** How many could not be read at all: a drop with no file on disk, or a picker that failed. */
   unreadable: number
-  /** Whether libsession refused the last send, whose files are still staged. */
-  sendRefused: boolean
+  /** Whether libsession refused the last send, whose text and files are still in the composer. */
+  sendRefused: SendRefusal
 }
 
 export interface Staging {
@@ -101,7 +104,7 @@ export function stage(
 
   return {
     files,
-    refused: { tooLarge, overLimit, unreadable: 0, sendRefused: false },
+    refused: { tooLarge, overLimit, unreadable: 0, sendRefused: 'none' },
     unused,
     replaced,
   }

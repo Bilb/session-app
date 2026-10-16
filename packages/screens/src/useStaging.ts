@@ -1,7 +1,7 @@
 import { requirePorts, type PickedFile } from '@session/app'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { letGo, stage, unstage, type StagingRefusal } from './staging'
+import { letGo, stage, unstage, type SendRefusal, type StagingRefusal } from './staging'
 
 function discard(files: readonly PickedFile[]): void {
   letGo(requirePorts().files, files, { sent: false })
@@ -11,7 +11,7 @@ const NOTHING_REFUSED: StagingRefusal = {
   tooLarge: [],
   overLimit: 0,
   unreadable: 0,
-  sendRefused: false,
+  sendRefused: 'none',
 }
 
 export interface StagingState {
@@ -35,8 +35,8 @@ export interface StagingState {
    * owns, but not their previews. Anything staged since stays, a re-pick of a sent path included.
    */
   handOff: (sent: readonly PickedFile[]) => void
-  /** Says a send was refused; its files stay staged for another try. */
-  refuseSend: () => void
+  /** Says a send was refused; what it held stays for another try. */
+  refuseSend: (what: Exclude<SendRefusal, 'none'>) => void
   dismiss: (kind: keyof StagingRefusal) => void
 }
 
@@ -126,9 +126,9 @@ export function useStaging(): StagingState {
       setFiles(latest.current)
       setRefused(NOTHING_REFUSED)
     },
-    refuseSend: () => {
+    refuseSend: (what) => {
       if (!mounted.current) return
-      setRefused({ ...NOTHING_REFUSED, sendRefused: true })
+      setRefused({ ...NOTHING_REFUSED, sendRefused: what })
       setRefusal((count) => count + 1)
     },
     dismiss: (kind) => {

@@ -30,8 +30,14 @@ export function refusalNotices({
   sendRefused,
 }: StagingRefusal): RefusalNotice[] {
   const notices: RefusalNotice[] = []
-  if (sendRefused)
-    notices.push({ kind: 'sendRefused', id: 'send', message: tr('attachmentsErrorSending') })
+  if (sendRefused !== 'none')
+    notices.push({
+      kind: 'sendRefused',
+      id: 'send',
+      message: tr(
+        sendRefused === 'files' ? 'attachmentsErrorSending' : 'messageStatusFailedToSend',
+      ),
+    })
   if (unreadable > 0)
     notices.push({ kind: 'unreadable', id: 'unreadable', message: tr('attachmentsErrorLoad') })
   if (tooLarge.length > 0)

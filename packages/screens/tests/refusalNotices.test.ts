@@ -16,16 +16,33 @@ describe('what the composer says about a refusal', () => {
       tooLarge: [big],
       overLimit: 3,
       unreadable: 1,
-      sendRefused: false,
+      sendRefused: 'none',
     })
     expect(notices.map((n) => n.kind)).toEqual(['unreadable', 'tooLarge', 'overLimit'])
   })
 
   it('says a refused send failed, above anything else', () => {
-    const notices = refusalNotices({ tooLarge: [], overLimit: 0, unreadable: 1, sendRefused: true })
+    const notices = refusalNotices({
+      tooLarge: [],
+      overLimit: 0,
+      unreadable: 1,
+      sendRefused: 'files',
+    })
     expect(notices.map((n) => [n.id, n.message])).toEqual([
       ['send', tr('attachmentsErrorSending')],
       ['unreadable', tr('attachmentsErrorLoad')],
+    ])
+  })
+
+  it('says a refused message with no files failed, not that a file did', () => {
+    const notices = refusalNotices({
+      tooLarge: [],
+      overLimit: 0,
+      unreadable: 0,
+      sendRefused: 'text',
+    })
+    expect(notices.map((n) => [n.id, n.message])).toEqual([
+      ['send', tr('messageStatusFailedToSend')],
     ])
   })
 
@@ -34,7 +51,7 @@ describe('what the composer says about a refusal', () => {
       tooLarge: [big],
       overLimit: 3,
       unreadable: 0,
-      sendRefused: false,
+      sendRefused: 'none',
     })
     const said = refusalAnnouncement(notices)
     const lines = said.split('\n')
@@ -52,7 +69,7 @@ describe('what the composer says about a refusal', () => {
   it('says nothing when nothing was refused', () => {
     expect(
       refusalAnnouncement(
-        refusalNotices({ tooLarge: [], overLimit: 0, unreadable: 0, sendRefused: false }),
+        refusalNotices({ tooLarge: [], overLimit: 0, unreadable: 0, sendRefused: 'none' }),
       ),
     ).toBe('')
   })
