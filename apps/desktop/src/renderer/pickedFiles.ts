@@ -29,7 +29,7 @@ function isFile(item: unknown): item is File {
 
 async function toPickedFile(file: File, preview: boolean): Promise<PickedFile | null> {
   const path = window.sessionDesktop.pathForFile(file)
-  if (path === '') return null
+  if (path === '' || !(await window.sessionDesktop.allowSend(file))) return null
   const contentType = file.type === '' ? undefined : file.type
   return {
     path,
@@ -57,7 +57,8 @@ export async function toPickedFiles(items: readonly unknown[]): Promise<PickedFi
   return picked.filter((file) => file !== null)
 }
 
-/** A pick that left the tray: its preview's grant goes with it. */
+/** A pick that left the tray: its grants, to draw it and to send it, go with it. */
 export function releasePreview(file: PickedFile): void {
   if (file.previewUrl !== undefined) void window.sessionDesktop.revokePreview(file.previewUrl)
+  void window.sessionDesktop.releaseSend(file.path)
 }

@@ -13,6 +13,7 @@ import {
   MAX_PATH_CHARS,
   readLastFolder,
   sanitiseSuggestedName,
+  SendGate,
   writeLastFolder,
 } from '#src/main/files'
 
@@ -221,5 +222,76 @@ describe('where a save dialog opens', () => {
 
     writeFileSync(file, '')
     expect(readLastFolder(file)).toBeUndefined()
+  })
+})
+
+function sending(attachments: unknown, id = 1): Request {
+  return {
+    id,
+    command: {
+      type: 'sendMessage',
+      conversationId: '05' + 'ab'.repeat(32),
+      body: '',
+      attachments: attachments as never,
+    },
+  }
+}
+
+/** libsession reads whatever a send names, so the page may name only what the person picked. */
+describe('a send the page asks for', () => {
+  const photo = '/home/someone/Pictures/harbour.jpg'
+
+  it('carries a file picked in this window, as it was described', () => {
+    const gate = new SendGate(false)
+    gate.grant(photo)
+    const asked = sending([{ path: photo, contentType: 'image/jpeg', filename: 'harbour.jpg' }])
+    expect(gate.admit(asked)).toEqual(asked)
+  })
+
+  it('is refused for a file nobody picked', () => {
+    const gate = new SendGate(false)
+    gate.grant(photo)
+    expect(
+      typeof gate.admit(sending([{ path: photo }, { path: '/home/someone/.ssh/id_ed25519' }])),
+    ).toBe('string')
+    expect(typeof gate.admit(sending([{}]))).toBe('string')
+    expect(typeof gate.admit(sending([null]))).toBe('string')
+    expect(typeof gate.admit(sending('/etc/passwd'))).toBe('string')
+  })
+
+  it('never lets libsession take the person’s own file', () => {
+    const gate = new SendGate(false)
+    gate.grant(photo)
+    expect(gate.admit(sending([{ path: photo, takeFile: true }]))).toEqual(
+      sending([{ path: photo }]),
+    )
+  })
+
+  it('holds a grant until every pick of the path has been let go', () => {
+    const gate = new SendGate(false)
+    gate.grant(photo)
+    gate.grant(photo)
+    gate.release(photo)
+    expect(typeof gate.admit(sending([{ path: photo }]))).not.toBe('string')
+    gate.release(photo)
+    expect(typeof gate.admit(sending([{ path: photo }]))).toBe('string')
+  })
+
+  it('folds case where the file system does', () => {
+    const gate = new SendGate(true)
+    gate.grant('C:\\Users\\Someone\\Photo.JPG')
+    expect(typeof gate.admit(sending([{ path: 'c:\\users\\someone\\photo.jpg' }]))).not.toBe(
+      'string',
+    )
+  })
+
+  it('leaves a message without files, and every other command, alone', () => {
+    const gate = new SendGate(false)
+    const plain: Request = {
+      id: 2,
+      command: { type: 'sendMessage', conversationId: '05' + 'ab'.repeat(32), body: 'hi' },
+    }
+    expect(gate.admit(plain)).toBe(plain)
+    expect(gate.admit(exportTo('/tmp/x'))).toEqual(exportTo('/tmp/x'))
   })
 })
