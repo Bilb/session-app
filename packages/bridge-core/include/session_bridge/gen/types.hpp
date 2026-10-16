@@ -304,8 +304,10 @@ struct Attachment {
     /// What a tile draws, through the media scheme's `thumbnail` path; a viewer draws the file.
     bool has_thumbnail;
     /// Whether libsession holds a rendition of this attachment: the whole picture as a JPEG or WebP
-    /// (animated WebP for an animation), at most 2048 px on a side and stripped of metadata. Made
-    /// after the thumbnail and kept, evicted and reported exactly as `hasThumbnail` is.
+    /// (animated WebP for an animation) within the rendition edge (2048 px on a side unless set).
+    /// It is re-encoded without metadata, or is the original itself when that is already an upright
+    /// JPEG or WebP within the edge, metadata included. Made after the thumbnail and kept, evicted
+    /// and reported exactly as `hasThumbnail` is.
     ///
     /// What a viewer draws, through the media scheme's `rendition` path; export still writes the file.
     bool has_rendition;
