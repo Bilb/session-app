@@ -4,6 +4,7 @@ import { XStack } from 'tamagui'
 import { avatarInitials } from './avatarInitials'
 import { avatarPairLayout } from './avatarPair'
 import { rampSizeAtMost } from './rampSize'
+import { SIZE_SCALE } from './scales'
 import { Text } from './Text'
 
 /**
@@ -23,7 +24,10 @@ function colorFor(id: string): string {
 /** Initials scale with the diameter; one letter gets more room. */
 const INITIALS_RATIO = { one: 0.5, more: 0.4 } as const
 
-const DEFAULT_SIZE_PX = 40
+const DEFAULT_SIZE_PX = SIZE_SCALE['2xl']
+
+/** A rung of the size ladder, so a caller outside this package can name one without the scale. */
+type AvatarSize = Exclude<keyof typeof SIZE_SCALE, 'none' | 'true'>
 
 /** Whose avatar: the account the colour and the initials are read from. */
 interface AvatarMember {
@@ -32,8 +36,11 @@ interface AvatarMember {
 }
 
 type WithAvatarFrame = {
-  /** The diameter, or for a pair the square both discs sit in. */
-  size?: number | undefined
+  /**
+   * The diameter, or for a pair the square both discs sit in: a rung of the size ladder, or
+   * points.
+   */
+  size?: AvatarSize | number | undefined
   testID?: string | undefined
 }
 
@@ -82,7 +89,12 @@ function Disc({ id, name, sizePx, ringPx, testID }: DiscProps) {
  * that is hovered or pressed the ring keeps the page colour rather than following the state.
  */
 export function Avatar(props: AvatarProps) {
-  const sizePx = props.size ?? DEFAULT_SIZE_PX
+  const sizePx =
+    props.size === undefined
+      ? DEFAULT_SIZE_PX
+      : typeof props.size === 'number'
+        ? props.size
+        : SIZE_SCALE[props.size]
   if (!('members' in props))
     return <Disc id={props.id} name={props.name} sizePx={sizePx} testID={props.testID} />
 

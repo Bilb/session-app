@@ -14,23 +14,27 @@ import { SYSTEM_LOCALE, useLocaleChoice } from './useLocale'
 /**
  * The height of one row, which the list needs in order to place a scrollbar without measuring.
  *
- * The design's 72: a 48 avatar - the tallest thing in the row - with 12 above and below. Both text
- * lines are `numberOfLines={1}`, so nothing here can wrap and change it; `ConversationRow` is the
- * only place that could, which is why the constant lives beside it.
+ * The design's 72: the avatar, size `3xl` (48) and the tallest thing in the row, with the `sm` gap
+ * (12) above and below. A number rather than a token because the list places rows with it before
+ * any are laid out. Both text lines are `numberOfLines={1}`, so nothing here can wrap and change
+ * it; `ConversationRow` is the only place that could, which is why the constant lives beside it.
  */
 const ROW_HEIGHT_PX = 72
-const AVATAR_SIZE_PX = 48
-/** Each line is this tall whatever it holds, so a row with a pill lines up with one without. */
-const LINE_HEIGHT_PX = 20
-/** The kind glyph's disc, and the pill a count sits in: both the line's height or under it. */
-const KIND_DISC_PX = 18
-const PILL_HEIGHT_PX = LINE_HEIGHT_PX
-/** Takes no width, so a row's contents sit in the same place unread or not. */
+const AVATAR_SIZE = '3xl'
+/**
+ * Each line is this tall whatever it holds, so a row with a pill lines up with one without. The
+ * kind glyph's disc and the pill a count sits in are the same height, so neither moves the line.
+ */
+const LINE_HEIGHT = '$md'
+/**
+ * Takes no width, so a row's contents sit in the same place unread or not. A number because the
+ * size ladder stops at 8: a `$2xs` width would resolve against it and draw nothing.
+ */
 const STRIP_WIDTH_PX = 4
 /** The accent dot on the marked-unread envelope. */
-const MARKED_DOT_PX = 8
+const MARKED_DOT = '$xxs'
 /** The least room between the end of the name's icons and the time. */
-const TIME_GAP_MIN_PX = 8
+const TIME_GAP_MIN = '$xxs'
 
 /**
  * The conversation list.
@@ -177,8 +181,8 @@ function UnreadBadgeView({ badge }: { badge: UnreadBadge }) {
     return (
       // The envelope is the height of the count it replaces, so the line does not move.
       <XStack
-        width={PILL_HEIGHT_PX}
-        height={PILL_HEIGHT_PX}
+        width={LINE_HEIGHT}
+        height={LINE_HEIGHT}
         position="relative"
         testID={ELEMENT.conversationList.rowMarkedUnread}
       >
@@ -186,8 +190,8 @@ function UnreadBadgeView({ badge }: { badge: UnreadBadge }) {
         <XStack
           position="absolute"
           top={0}
-          width={MARKED_DOT_PX}
-          height={MARKED_DOT_PX}
+          width={MARKED_DOT}
+          height={MARKED_DOT}
           borderRadius="$full"
           backgroundColor="$primaryColor"
           {...logical({ insetEnd: 0 })}
@@ -201,8 +205,8 @@ function UnreadBadgeView({ badge }: { badge: UnreadBadge }) {
       backgroundColor={colors.ground}
       borderRadius="$full"
       paddingHorizontal="$xs"
-      minWidth={PILL_HEIGHT_PX}
-      height={PILL_HEIGHT_PX}
+      minWidth={LINE_HEIGHT}
+      height={LINE_HEIGHT}
       alignItems="center"
       justifyContent="center"
       testID={ELEMENT.conversationList.rowUnreadBadge}
@@ -270,14 +274,14 @@ function ConversationRow({
 
       {/* TODO: draw a group as its first two members stacked, with Avatar's `members`, once the
           bridge carries a group's member list. */}
-      <Avatar id={conversation.id} name={title} size={AVATAR_SIZE_PX} />
+      <Avatar id={conversation.id} name={title} size={AVATAR_SIZE} />
 
       <YStack flex={1} gap="$2xs">
-        <XStack height={LINE_HEIGHT_PX} alignItems="center" gap="$2xs">
+        <XStack height={LINE_HEIGHT} alignItems="center" gap="$2xs">
           {row.kindGlyph === null ? null : (
             <XStack
-              width={KIND_DISC_PX}
-              height={KIND_DISC_PX}
+              width={LINE_HEIGHT}
+              height={LINE_HEIGHT}
               flexShrink={0}
               borderRadius="$full"
               backgroundColor="$textPrimary"
@@ -323,7 +327,7 @@ function ConversationRow({
               ) : null}
             </XStack>
           ) : null}
-          <XStack flexGrow={1} flexShrink={0} minWidth={TIME_GAP_MIN_PX} />
+          <XStack flexGrow={1} flexShrink={0} minWidth={TIME_GAP_MIN} />
           {time === null ? null : (
             <Text
               size="$label"
@@ -337,7 +341,7 @@ function ConversationRow({
           )}
         </XStack>
 
-        <XStack height={LINE_HEIGHT_PX} alignItems="center" gap="$2xs">
+        <XStack height={LINE_HEIGHT} alignItems="center" gap="$2xs">
           {/* TODO: prefix the snippet with "You:" or the sender, and word an attachment-only
               message, once the bridge carries the snippet's author and attachment fields. */}
           {conversation.snippet === undefined ? (
