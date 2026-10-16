@@ -152,6 +152,32 @@ describe('the composer while a send is out', () => {
   })
 })
 
+describe('the draft after a send went', () => {
+  async function sendWhileTyping(sent: string, ...meanwhile: string[]): Promise<unknown> {
+    const answer = deferred()
+    onSend = vi.fn(() => answer.promise)
+    type(sent)
+    press(ELEMENT.conversation.sendButton)
+    for (const typed of meanwhile) type(typed)
+    answer.resolve()
+    await answer.promise
+    await Promise.resolve()
+    return render().find(ELEMENT.conversation.composerInput)?.props.value
+  }
+
+  it('is empty when nothing was typed while it was out', async () => {
+    expect(await sendWhileTyping('hi')).toBe('')
+  })
+
+  it('keeps only what was typed after the sent text', async () => {
+    expect(await sendWhileTyping('hi', 'hi ', 'hi there')).toBe('there')
+  })
+
+  it('keeps a draft cleared and retyped whole, even one starting with the sent text', async () => {
+    expect(await sendWhileTyping('ok', '', 'o', 'ok', 'okay')).toBe('okay')
+  })
+})
+
 describe('a refused send', () => {
   it.each([
     ['with files', [photo], tr('attachmentsErrorSending')],

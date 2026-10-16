@@ -17,7 +17,7 @@ import {
 import { useRef, useState } from 'react'
 
 import { AttachMenu } from './AttachMenu'
-import { draftAfterSend } from './draftAfterSend'
+import { draftAfterSend, followSent } from './draftAfterSend'
 import { PENDING_COPY } from './pendingCopy'
 import { refusalAnnouncement, refusalNotices } from './refusalNotices'
 import { isFull, sizeOf } from './staging'
@@ -58,6 +58,7 @@ export function Composer({
   const [menuOpen, setMenuOpen] = useState(false)
   const [sending, setSending] = useState(false)
   const picking = useRef(false)
+  const outgoing = useRef<string | null>(null)
   const full = isFull(staging.files)
   const sendable = !sending && (draft.trim().length > 0 || staging.files.length > 0)
 
@@ -65,12 +66,13 @@ export function Composer({
     if (!sendable) return
     const sent = draft
     const files = staging.files
+    outgoing.current = sent
     // Held until libsession answers, since a refusal leaves both here to try again.
     setSending(true)
     onSend(sent.trim(), files)
       .then(
         () => {
-          setDraft((typed) => draftAfterSend(typed, sent))
+          setDraft((typed) => draftAfterSend(typed, outgoing.current))
           staging.handOff(files)
         },
         () => {
@@ -160,7 +162,10 @@ export function Composer({
         <Input
           grow
           value={draft}
-          onChangeText={setDraft}
+          onChangeText={(typed) => {
+            outgoing.current = followSent(outgoing.current, typed)
+            setDraft(typed)
+          }}
           placeholder={tr('message')}
           onSubmit={send}
           testID={ELEMENT.conversation.composerInput}
