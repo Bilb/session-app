@@ -14,7 +14,7 @@
  * the two cannot drift apart quietly.
  */
 
-import { isDisplayableImage } from '@session/basic-types'
+import { isDisplayableImage, isShrunkToFit } from '@session/basic-types'
 import {
   ATTACHMENT_NOT_FOUND,
   FILE_DOWNLOAD_CANCELLED,
@@ -41,6 +41,8 @@ import {
 } from '@session/bridge-types'
 
 import { SessionClientError } from '../errors'
+
+import { inferContentType } from './contentType'
 
 export interface FakeAccountOptions {
   displayName: string
@@ -631,21 +633,26 @@ export class FakeAccount {
     })
     const now = this.world?.now() ?? Date.now()
     const uploading = outgoing.length > 0
-    // libsession infers a missing type from the extension; the app always passes the picker's.
-    const attachments = outgoing.map((file, index): Attachment => ({
-      index,
-      ...(file.contentType === undefined ? {} : { contentType: file.contentType }),
-      filename: file.filename ?? baseName(file.path),
-      voiceMessage: false,
-      hasThumbhash: false,
-      hasThumbnail: false,
-      hasRendition: false,
-      originalFile: false,
-      uploaded: false,
-      availability: 'absent',
-      fetchDoneBytes: 0,
-      fetchTotalBytes: 0,
-    }))
+    const attachments = outgoing.map((file, index): Attachment => {
+      const contentType = file.contentType ?? inferContentType(baseName(file.path))
+      return {
+        index,
+        contentType,
+        filename: file.filename ?? baseName(file.path),
+        voiceMessage: false,
+        hasThumbhash: false,
+        hasThumbnail: false,
+        hasRendition: false,
+        // libsession sends a picture it cannot decode as it is, flagged. No platform decoder here.
+        originalFile:
+          contentType.toLowerCase().startsWith('image/') &&
+          !isShrunkToFit(contentType, { decodesHeic: false }),
+        uploaded: false,
+        availability: 'absent',
+        fetchDoneBytes: 0,
+        fetchTotalBytes: 0,
+      }
+    })
     const message: Message = {
       id: nextId(),
       conversationId: id,

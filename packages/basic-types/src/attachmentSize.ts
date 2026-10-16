@@ -60,6 +60,16 @@ const SHRUNK_TO_FIT: ReadonlySet<string> = new Set([
 ])
 const HEIC: ReadonlySet<string> = new Set(['image/heic', 'image/heif'])
 
+/** Whether libsession decodes a picture of this declared type, and so re-encodes it to send. */
+export function isShrunkToFit(
+  contentType: string | undefined,
+  { decodesHeic }: WithDecodesHeic,
+): boolean {
+  const type = contentType?.split(';')[0]?.trim().toLowerCase()
+  if (type === undefined) return false
+  return SHRUNK_TO_FIT.has(type) || (decodesHeic && HEIC.has(type))
+}
+
 /**
  * Whether a picked file can be sent at all: within the file server's limit, or a picture
  * libsession shrinks to fit. A size the platform did not report passes, as there is nothing to
@@ -68,11 +78,9 @@ const HEIC: ReadonlySet<string> = new Set(['image/heic', 'image/heif'])
  */
 export function fitsAttachmentLimit(
   file: WithContentType & { size?: number | undefined },
-  { decodesHeic }: WithDecodesHeic,
+  options: WithDecodesHeic,
 ): boolean {
   if (file.size === undefined || encryptedAttachmentSize(file.size) <= MAX_ATTACHMENT_BYTES)
     return true
-  const type = file.contentType?.split(';')[0]?.trim().toLowerCase()
-  if (type === undefined) return false
-  return SHRUNK_TO_FIT.has(type) || (decodesHeic && HEIC.has(type))
+  return isShrunkToFit(file.contentType, options)
 }

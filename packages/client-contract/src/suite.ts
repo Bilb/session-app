@@ -561,6 +561,39 @@ export function runSessionClientContract(
       seen.stop()
     })
 
+    it('types a file sent without a type by its extension', async () => {
+      const { alice, bobId, writeFile } = await harness.friends()
+      const path = await writeFile('minutes.PDF', 2_000)
+      const seen = collect(alice)
+
+      const messageId = await alice.sendMessage(bobId, { body: '', attachments: [{ path }] })
+
+      const added = messagesOf(seen.events, 'messages-added').find((m) => m.id === messageId)
+      expect(added?.attachments.map((a) => a.contentType)).toEqual(['application/pdf'])
+      seen.stop()
+    })
+
+    it('marks a picture it cannot decode as the original file, and nothing else', async () => {
+      const { alice, bobId, settle, writeFile } = await harness.friends()
+      const bitmap = await writeFile('scan.bmp', 2_000)
+      const notes = await writeFile('notes.txt', 2_000)
+
+      const messageId = await alice.sendMessage(bobId, {
+        body: '',
+        attachments: [{ path: bitmap, contentType: 'image/bmp' }, { path: notes }],
+      })
+      // libsession decides as it reads the file for sending, after the message is stored.
+      const flags = async () =>
+        (await alice.getMessages(bobId)).messages
+          .find((m) => m.id === messageId)
+          ?.attachments.map((a) => a.originalFile)
+      for (let round = 0; round < 50 && (await flags())?.[0] !== true; round += 1) {
+        await settle()
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      }
+      expect(await flags()).toEqual([true, false])
+    })
+
     it('refuses a send whose file is missing or empty, storing nothing', async () => {
       const { alice, bobId, writeFile } = await harness.friends()
       const empty = await writeFile('empty.bin', 0)
