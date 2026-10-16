@@ -141,14 +141,13 @@ void closing_returns_while_a_decode_is_blocked_and_answers_nothing_after() {
     check(answers.size() == 0, "a decode finished after close was answered");
 }
 
-void a_handler_may_cancel_itself_and_ask_again() {
+void a_handler_withdrawing_its_own_request_may_ask_again() {
     auto stub = std::make_shared<Stub>();
     StagedThumbnails staged{stub->make(), PROMPT};
     auto cancel = std::make_shared<StagedThumbnails::Cancel>();
     std::atomic<bool> returned = false;
     Answers again;
     *cancel = staged.request("/a.jpg", 240, [&, cancel](Media) {
-        // What Android's loader once did: withdraw from inside the answer.
         (*cancel)();
         staged.request("/b.jpg", 240, again.handler());
         returned = true;
@@ -372,7 +371,7 @@ int main() {
     one_decode_answers_every_request_for_a_path();
     a_cancelled_path_is_never_decoded();
     closing_returns_while_a_decode_is_blocked_and_answers_nothing_after();
-    a_handler_may_cancel_itself_and_ask_again();
+    a_handler_withdrawing_its_own_request_may_ask_again();
     a_cancel_after_the_answer_answers_nothing();
     a_request_joins_a_decode_already_running();
     a_started_decode_whose_requests_all_cancel_answers_nobody();
