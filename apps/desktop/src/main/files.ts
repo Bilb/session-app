@@ -133,6 +133,11 @@ export class SendGate {
     else this.picked.delete(key)
   }
 
+  /** Drops every grant, for a page that went without letting its picks go. */
+  forgetAll(): void {
+    this.picked.clear()
+  }
+
   /** The request to send on, or why it is refused. Only `sendMessage` is ever changed. */
   admit(request: Request): Request | string {
     const command = request.command as Request['command'] | undefined
@@ -289,6 +294,14 @@ export function serveFiles(
   // Only ever takes a grant away, so the page may name any path it likes.
   ipc.handle('files:release-send', (event, path: unknown): void => {
     if (isFromAppFrame(event.senderFrame, appUrl)) sends.release(path)
+  })
+
+  // A grant belongs to the page that picked the file, and a reloaded or crashed one releases none.
+  window.webContents.on('did-navigate', () => {
+    sends.forgetAll()
+  })
+  window.webContents.on('render-process-gone', () => {
+    sends.forgetAll()
   })
 
   return {

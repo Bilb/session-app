@@ -2,10 +2,12 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { MAX_SUGGESTED_NAME_CHARS } from '@session/app/exportFileName'
 import type { Frame, Request } from '@session/client'
+
+import type { BrowserWindow } from 'electron'
 
 import {
   dialogDefaultPath,
@@ -14,8 +16,14 @@ import {
   readLastFolder,
   sanitiseSuggestedName,
   SendGate,
+  serveFiles,
   writeLastFolder,
 } from '#src/main/files'
+import { PreviewGrants } from '#src/main/previewGrants'
+
+vi.mock('electron', () => ({
+  default: { app: { getPath: () => tmpdir() }, dialog: {}, shell: {} },
+}))
 
 function exportTo(destination: string, id = 1, replace = false): Request {
   return {
@@ -293,5 +301,55 @@ describe('a send the page asks for', () => {
     }
     expect(gate.admit(plain)).toBe(plain)
     expect(gate.admit(exportTo('/tmp/x'))).toEqual(exportTo('/tmp/x'))
+  })
+})
+
+const APP_URL = 'app://session/index.html'
+
+/** A window as `serveFiles` uses it: its handlers and listeners, callable from the test. */
+function fakeWindow() {
+  const handlers = new Map<string, (event: unknown, ...args: unknown[]) => unknown>()
+  const listeners = new Map<string, () => void>()
+  const window = {
+    webContents: {
+      ipc: {
+        handle: (channel: string, handler: (event: unknown, ...args: unknown[]) => unknown) => {
+          handlers.set(channel, handler)
+        },
+      },
+      on: (name: string, listener: () => void) => {
+        listeners.set(name, listener)
+      },
+    },
+  }
+  const fromApp = { senderFrame: { url: APP_URL, parent: null } }
+  return {
+    window: window as unknown as BrowserWindow,
+    invoke: (channel: string, ...args: unknown[]) => handlers.get(channel)?.(fromApp, ...args),
+    emit: (name: string) => {
+      listeners.get(name)?.()
+    },
+  }
+}
+
+describe('the gate a window serves its sends through', () => {
+  const photo = '/home/someone/Pictures/harbour.jpg'
+
+  it('admits only what this window picked and still holds', () => {
+    const { window, invoke } = fakeWindow()
+    const gate = serveFiles(window, APP_URL, new PreviewGrants())
+    expect(typeof gate.admit(sending([{ path: photo }]))).toBe('string')
+    expect(invoke('files:allow-send', photo)).toBe(true)
+    expect(typeof gate.admit(sending([{ path: photo }]))).not.toBe('string')
+    invoke('files:release-send', photo)
+    expect(typeof gate.admit(sending([{ path: photo }]))).toBe('string')
+  })
+
+  it.each(['did-navigate', 'render-process-gone'])('forgets every pick on %s', (name) => {
+    const { window, invoke, emit } = fakeWindow()
+    const gate = serveFiles(window, APP_URL, new PreviewGrants())
+    invoke('files:allow-send', photo)
+    emit(name)
+    expect(typeof gate.admit(sending([{ path: photo }]))).toBe('string')
   })
 })
