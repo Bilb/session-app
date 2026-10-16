@@ -3,6 +3,7 @@ import type {
   AccountInfo,
   AutoDownload,
   Command,
+  ConfigSize,
   Conversation,
   ConversationId,
   Deletion,
@@ -315,6 +316,11 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
     async getAttachmentCacheSize(): Promise<number> {
       const response = await call({ type: 'getAttachmentCacheSize' })
       return resultOf(response, 'byteCount').bytes ?? 0
+    },
+
+    async getConfigSizes(): Promise<ConfigSize[]> {
+      const response = await call({ type: 'getConfigSizes' })
+      return resultOf(response, 'configSizes').sizes
     },
 
     async getPref(key): Promise<string | undefined> {

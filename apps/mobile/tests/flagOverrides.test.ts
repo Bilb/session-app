@@ -1,6 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
-import { expectedVariables, flagOverride, overriddenVariables } from '#src/flagOverrides'
+import {
+  expectedVariables,
+  flagOverride,
+  flagVariables,
+  overriddenVariables,
+} from '#src/flagOverrides'
 
 /**
  * The one thing a table of hand-written names can get wrong.
@@ -21,5 +26,23 @@ describe('the mobile flag overrides', () => {
 
   it('has nothing to say about a name that is not a flag', () => {
     expect(flagOverride('SESSION_FLAG_NOT_A_FLAG')).toBeNull()
+  })
+})
+
+describe('flagVariables', () => {
+  afterEach(() => {
+    delete process.env['EXPO_PUBLIC_SESSION_FLAGS']
+  })
+
+  it('carries a prefixed variable that is no flag, from what metro.config.js collected', () => {
+    process.env['EXPO_PUBLIC_SESSION_FLAGS'] = JSON.stringify({
+      EXPO_PUBLIC_SESSION_FLAG_DEBUG_MOD: '1',
+    })
+    expect(flagVariables()).toMatchObject({ EXPO_PUBLIC_SESSION_FLAG_DEBUG_MOD: '1' })
+  })
+
+  it('still names every flag the table has when nothing was collected', () => {
+    process.env['EXPO_PUBLIC_SESSION_FLAGS'] = 'not json'
+    expect(Object.keys(flagVariables()).sort()).toEqual(expectedVariables().sort())
   })
 })

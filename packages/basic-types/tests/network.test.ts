@@ -19,9 +19,10 @@ describe('parseRouterKind', () => {
     expect(parseRouterKind('')).toBeUndefined()
   })
 
-  it('reads the two transports', () => {
+  it('reads the three transports', () => {
     expect(parseRouterKind('onion-requests')).toBe('onion-requests')
     expect(parseRouterKind('session-router')).toBe('session-router')
+    expect(parseRouterKind('direct')).toBe('direct')
   })
 
   it('treats a typo as unset rather than picking one', () => {

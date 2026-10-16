@@ -198,6 +198,16 @@ export type ExportAttachmentOptions = {
 export type PixelSize = { width: number; height: number }
 
 /**
+ * One of the account's configs and how large it is: the size of the dump it would write now.
+ * For diagnostics - the header of an exported log - and nothing else.
+ */
+export interface ConfigSize {
+  /** `user_profile`, `contacts`, `convo_info_volatile`, `user_groups` or `local`. */
+  name: string
+  bytes: number
+}
+
+/**
  * Where a page of history starts. Newest-first, keyed by (timestamp, id) so that a page seam
  * cannot duplicate or skip a message that shares a timestamp with its neighbour.
  */
