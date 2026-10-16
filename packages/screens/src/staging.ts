@@ -63,14 +63,22 @@ export function stage(
   for (const file of picked) {
     const at = files.findIndex((staged) => sameFile(staged, file, options))
     const already = files[at]
-    if (already !== undefined) {
-      if (already.path === file.path) {
-        files[at] = file
-        replaced.push(already)
-      } else unused.push(file)
+    const fits =
+      file.size === undefined || encryptedAttachmentSize(file.size) <= MAX_ATTACHMENT_BYTES
+    if (already !== undefined && already.path !== file.path) {
+      unused.push(file)
       continue
     }
-    if (file.size !== undefined && encryptedAttachmentSize(file.size) > MAX_ATTACHMENT_BYTES) {
+    if (already !== undefined) {
+      replaced.push(already)
+      if (fits) {
+        files[at] = file
+        continue
+      }
+      // Grown past the limit since it was staged: refused now, not at the upload.
+      files.splice(at, 1)
+    }
+    if (!fits) {
       tooLarge.push(file)
       unused.push(file)
       continue

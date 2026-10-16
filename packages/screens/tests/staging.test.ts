@@ -85,6 +85,19 @@ describe('staging attachments', () => {
     expect(unused).toEqual([])
   })
 
+  it('refuses a file picked again at its path once it has grown past the limit', () => {
+    const before = { ...file('clip.mov', 10), previewUrl: 'session-media://picked/old' }
+    const grown = {
+      ...file('clip.mov', MAX_ATTACHMENT_BYTES),
+      previewUrl: 'session-media://picked/new',
+    }
+    const { files: staged, refused, unused, replaced } = stage([before, file('b.jpg', 1)], [grown])
+    expect(staged.map((f) => f.name)).toEqual(['b.jpg'])
+    expect(refused.tooLarge).toEqual([grown])
+    expect(unused).toEqual([grown])
+    expect(replaced).toEqual([before])
+  })
+
   it('knows the same photo picked twice on mobile, where every pick is a fresh copy', () => {
     const first = { path: '/cache/ImagePicker/A.jpg', name: 'IMG_1.jpg', size: 2_000 }
     const again = { path: '/cache/ImagePicker/B.jpg', name: 'IMG_1.jpg', size: 2_000 }
