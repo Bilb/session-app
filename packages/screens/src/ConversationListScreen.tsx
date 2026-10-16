@@ -248,7 +248,10 @@ function ConversationRow({
       {...(open ? { backgroundColor: '$backgroundTertiary' } : {})}
       hoverStyle={{ backgroundColor: open ? '$backgroundTertiary' : '$backgroundSecondary' }}
       pressStyle={{ backgroundColor: '$backgroundTertiary' }}
-      cursor="pointer"
+      // The web only. On an iPad `cursor` turns on UIKit's pointer interaction, whose hover
+      // effect inserts views beside the row that React Native does not know about; unmounting a
+      // row from the list then finds its siblings shifted and aborts.
+      $platform-web={{ cursor: 'pointer' }}
       onPress={onPress}
       aria-selected={open}
       testID={ELEMENT.conversationList.row(index)}
