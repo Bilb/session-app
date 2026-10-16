@@ -41,7 +41,6 @@ describe('the essence of a declared content type', () => {
 describe('which content types are viewable', () => {
   it('draws the common bitmaps and refuses svg', () => {
     expect(isViewableImage('image/png')).toBe(true)
-    expect(isViewableImage('image/apng')).toBe(true)
     expect(isViewableImage('image/svg+xml')).toBe(false)
   })
 

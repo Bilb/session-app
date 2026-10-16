@@ -34,8 +34,6 @@ export function bareFileName(suggested: unknown): string {
 const TYPE_EXTENSIONS: Readonly<Record<string, string>> = {
   'image/jpeg': 'jpg',
   'image/jpg': 'jpg',
-  // What every viewer and file manager recognises an animated PNG by.
-  'image/apng': 'png',
   'image/svg+xml': 'svg',
   'video/quicktime': 'mov',
   'video/3gpp': '3gp',
