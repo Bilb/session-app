@@ -11,13 +11,13 @@ import java.io.FileNotFoundException
 /**
  * The directories the app stores anything in.
  *
- * **`filesDir` for the data and the logs**, not `noBackupFilesDir`: expo-file-system lets JS write
+ * **`filesDir` for the data, the logs and staged picks**, not `noBackupFilesDir`: expo-file-system lets JS write
  * only inside `filesDir` and `cacheDir` (expo-modules-core's `FilePermissionService`), and the logs
  * and the database's directory are written from JS. What keeps them out of backups is the manifest:
  * `allowBackup="false"`, and rules that exclude every domain from both Auto Backup and
  * device-to-device transfer. So `inspect` reads the app's own backup flag rather than trusting the
  * location, and a manifest that lost it shows up in the startup block. Exports are in `cacheDir`,
- * which is never backed up and which the OS may clear, as it should a staging copy.
+ * which is never backed up and which the OS may clear, as it should an export's copy.
  *
  * Android has nothing per file to set: app-private storage is credential-encrypted, which is
  * iOS's class C -- readable once the device has been unlocked since boot.

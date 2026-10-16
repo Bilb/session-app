@@ -49,7 +49,7 @@ its extension's files and fixed it by protecting each one again where it landed.
   result in, has to call `protect` on it**, as legacy's extension does.
 
 **Temporary files.** There is no temporary directory of the app's own: the pickers write theirs, and
-`staged` and `exports` are roots, each swept at launch. The first thing that needs one -- the
+what `staged` and `exports/attachments` hold is deleted at launch. The first thing that needs one -- the
 notification extension, say -- should make one the way legacy does: a directory per launch inside `NSTemporaryDirectory()`, created
 under class C, with the previous launches' directories deleted shortly after start
 (`SessionFileManager.clearOldTemporaryDirectories` in legacy's `FileManagerType.swift`). Files staged

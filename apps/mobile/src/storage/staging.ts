@@ -27,9 +27,12 @@ export function discardStaged(path: string): void {
  */
 // TODO: once messages with attachments are sent, keep what a message not yet uploaded holds.
 export function sweepStaged(): void {
-  try {
-    removeIfPresent(plainPath(stagedDirectory().uri))
-  } catch {
-    // Nothing to sweep is the common case.
+  // What is in the root, not the root: the native module made and protected that at launch.
+  for (const entry of stagedDirectory().list()) {
+    try {
+      entry.delete()
+    } catch {
+      // Gone already, or the next launch's to sweep.
+    }
   }
 }
