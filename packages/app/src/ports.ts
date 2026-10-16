@@ -113,6 +113,12 @@ export interface MediaPort {
    * says there is one.
    */
   thumbnailUrlFor(ref: AttachmentRef): string | null
+  /**
+   * The display copy libsession made of a picture it holds, which the viewer draws in place of
+   * the file. Never a download, so only worth asking for when `Attachment.hasRendition` says
+   * there is one.
+   */
+  renditionUrlFor(ref: AttachmentRef): string | null
 }
 
 export interface MediaProbePort {

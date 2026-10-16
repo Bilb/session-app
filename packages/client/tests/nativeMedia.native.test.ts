@@ -17,6 +17,10 @@ type Serve = (
     index: number,
   ) => Promise<{ width: number; height: number; rgba: ArrayBuffer }>,
   fetchThumbnail: (messageId: number, index: number) => Promise<ArrayBuffer>,
+  fetchRendition: (
+    messageId: number,
+    index: number,
+  ) => Promise<{ contentType: string; bytes: ArrayBuffer }>,
   fetchStagedThumbnail: (path: string) => Promise<ArrayBuffer>,
 ) => void
 
@@ -25,10 +29,10 @@ const bridges = vi.hoisted(
 )
 
 /**
- * A dev client's native side: current, from before staged thumbnails, or from before serving
- * media.
+ * A dev client's native side: current, from before renditions, from before staged thumbnails, or
+ * from before serving media.
  */
-type NativeEra = 'current' | 'noStagedThumbnails' | 'noServing'
+type NativeEra = 'current' | 'noRenditions' | 'noStagedThumbnails' | 'noServing'
 
 const native = vi.hoisted<{ era: NativeEra }>(() => ({ era: 'current' }))
 
@@ -37,8 +41,10 @@ vi.mock('@session/bridge-rn', () => ({
     if (native.era === 'noServing') return { close: vi.fn() }
     const bridge = { serveMediaFrom: vi.fn(), close: vi.fn() }
     if (native.era === 'noStagedThumbnails') return { ...bridge, fetchThumbnail: vi.fn() }
+    const staged = { ...bridge, fetchThumbnail: vi.fn(), fetchStagedThumbnail: vi.fn() }
+    if (native.era === 'noRenditions') return staged
     bridges.push(bridge)
-    return { ...bridge, fetchThumbnail: vi.fn(), fetchStagedThumbnail: vi.fn() }
+    return { ...staged, fetchRendition: vi.fn() }
   },
 }))
 
@@ -58,12 +64,12 @@ describe('serving the native loaders from JavaScript', () => {
       fetchMedia: () => Promise.resolve({ contentType: 'image/jpeg', bytes: whole }),
       fetchThumbhash: () => Promise.resolve({ width: 1, height: 1, rgba: within }),
       fetchThumbnail: () => Promise.resolve(within),
+      fetchRendition: () => Promise.resolve({ contentType: 'image/webp', bytes: within }),
       fetchStagedThumbnail: (path) => Promise.resolve(path === '/a.jpg' ? whole : Uint8Array.of()),
     }
     serveNativeMediaFrom(source)
-    const [fetchMedia, fetchThumbhash, fetchThumbnail, fetchStagedThumbnail] = served(
-      bridges.length - 1,
-    )
+    const [fetchMedia, fetchThumbhash, fetchThumbnail, fetchRendition, fetchStagedThumbnail] =
+      served(bridges.length - 1)
 
     const media = await fetchMedia(4, 0)
     expect(media.contentType).toBe('image/jpeg')
@@ -74,6 +80,9 @@ describe('serving the native loaders from JavaScript', () => {
     expect([...new Uint8Array(thumbhash.rgba)]).toEqual([1, 2, 3, 4])
 
     expect([...new Uint8Array(await fetchThumbnail(4, 0))]).toEqual([1, 2, 3, 4])
+    const rendition = await fetchRendition(4, 0)
+    expect(rendition.contentType).toBe('image/webp')
+    expect([...new Uint8Array(rendition.bytes)]).toEqual([1, 2, 3, 4])
     expect(await fetchStagedThumbnail('/a.jpg')).toBe(whole.buffer)
   })
 
@@ -82,15 +91,16 @@ describe('serving the native loaders from JavaScript', () => {
       fetchMedia: () => Promise.reject(new Error('not a picture')),
       fetchThumbhash: () => Promise.reject(new Error('no thumbhash: no hash')),
       fetchThumbnail: () => Promise.reject(new Error('has no thumbnail')),
+      fetchRendition: () => Promise.reject(new Error('has no rendition')),
       fetchStagedThumbnail: () => Promise.reject(new Error('the file is not a picture')),
     }
     serveNativeMediaFrom(source)
-    const [fetchMedia, fetchThumbhash, fetchThumbnail, fetchStagedThumbnail] = served(
-      bridges.length - 1,
-    )
+    const [fetchMedia, fetchThumbhash, fetchThumbnail, fetchRendition, fetchStagedThumbnail] =
+      served(bridges.length - 1)
     await expect(fetchMedia(4, 1)).rejects.toThrow('not a picture')
     await expect(fetchThumbhash(4, 1)).rejects.toThrow('no hash')
     await expect(fetchThumbnail(4, 1)).rejects.toThrow('has no thumbnail')
+    await expect(fetchRendition(4, 1)).rejects.toThrow('has no rendition')
     await expect(fetchStagedThumbnail('/a.jpg')).rejects.toThrow('not a picture')
   })
 
@@ -99,6 +109,7 @@ describe('serving the native loaders from JavaScript', () => {
       fetchMedia: () => Promise.reject(new Error('unused')),
       fetchThumbhash: () => Promise.reject(new Error('unused')),
       fetchThumbnail: () => Promise.reject(new Error('unused')),
+      fetchRendition: () => Promise.reject(new Error('unused')),
       fetchStagedThumbnail: () => Promise.reject(new Error('unused')),
     }
     serveNativeMediaFrom(source)
@@ -111,11 +122,13 @@ describe('serving the native loaders from JavaScript', () => {
   it.each([
     ['serving media', 'noServing'],
     ['staged thumbnails', 'noStagedThumbnails'],
+    ['renditions', 'noRenditions'],
   ] as const)('says to rebuild the dev client when its native side predates %s', (_, era) => {
     const source: MediaSource = {
       fetchMedia: () => Promise.reject(new Error('unused')),
       fetchThumbhash: () => Promise.reject(new Error('unused')),
       fetchThumbnail: () => Promise.reject(new Error('unused')),
+      fetchRendition: () => Promise.reject(new Error('unused')),
       fetchStagedThumbnail: () => Promise.reject(new Error('unused')),
     }
     native.era = era

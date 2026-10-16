@@ -19,10 +19,10 @@ export const MEDIA_SCHEME = 'session-media'
  * The authority, so that no part of the ref is parsed as a host name.
  *
  * One per image rather than a query parameter: the authority is the part the special-scheme host
- * parser already normalises, and it keeps the file, its placeholder and its thumbnail at separate
+ * parser already normalises, and it keeps the file and each image made of it at separate
  * URLs, which is what lets the platform cache them separately.
  */
-export type MediaUrlKind = 'attachment' | 'thumbhash' | 'thumbnail'
+export type MediaUrlKind = 'attachment' | 'thumbhash' | 'thumbnail' | 'rendition'
 
 export function mediaUrl(kind: MediaUrlKind, { messageId, index }: AttachmentRef): string {
   return `${MEDIA_SCHEME}://${kind}/${String(messageId)}/${String(index)}`
@@ -31,7 +31,7 @@ export function mediaUrl(kind: MediaUrlKind, { messageId, index }: AttachmentRef
 // The canonical form only, as the shim's `parse_media_url` reads it: Chromium hands a handler the
 // canonicalised URL, and a native loader is handed the one the app built.
 const MEDIA_URL = new RegExp(
-  `^${MEDIA_SCHEME}://(?<kind>attachment|thumbhash|thumbnail)/(?<message>0|[1-9]\\d{0,15})/(?<index>0|[1-9]\\d{0,15})$`,
+  `^${MEDIA_SCHEME}://(?<kind>attachment|thumbhash|thumbnail|rendition)/(?<message>0|[1-9]\\d{0,15})/(?<index>0|[1-9]\\d{0,15})$`,
 )
 
 const UNRESERVED = /^[A-Za-z0-9._~-]$/
@@ -94,7 +94,7 @@ interface ParsedStagedUrl {
 }
 
 /**
- * `session-media://<attachment|thumbhash|thumbnail>/<messageId>/<index>` or
+ * `session-media://<attachment|thumbhash|thumbnail|rendition>/<messageId>/<index>` or
  * `session-media://staged/<path>` split back up, or null.
  */
 export function parseMediaUrl(url: string): ParsedAttachmentUrl | ParsedStagedUrl | null {

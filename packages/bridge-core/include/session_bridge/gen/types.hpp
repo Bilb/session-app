@@ -303,6 +303,15 @@ struct Attachment {
     ///
     /// What a tile draws, through the media scheme's `thumbnail` path; a viewer draws the file.
     bool has_thumbnail;
+    /// Whether libsession holds a rendition of this attachment: the whole picture as a JPEG or WebP
+    /// (animated WebP for an animation), at most 2048 px on a side and stripped of metadata. Made
+    /// after the thumbnail and kept, evicted and reported exactly as `hasThumbnail` is.
+    ///
+    /// What a viewer draws, through the media scheme's `rendition` path; export still writes the file.
+    bool has_rendition;
+    /// The sender sent the file exactly as it was, metadata included. Offered only as a file to
+    /// export, never opened in the viewer, though its thumbnail is still drawn.
+    bool original_file;
     /// On the file server: an outgoing attachment's upload finished, and always true for an incoming
     /// one. Deliberately not "the bytes are here" - libsession records no local path, because the
     /// application chose it and a stored copy would go stale the moment the file moved.
@@ -322,8 +331,8 @@ struct Attachment {
     /// depends on the other end volunteering a notification.
     std::optional<double> saved_at_ms;
 
-    Attachment(double index_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<double> size_bytes_, bool voice_message_, std::optional<double> width_, std::optional<double> height_, bool has_thumbhash_, bool has_thumbnail_, bool uploaded_, ::session_bridge::AttachmentAvailability availability_, double fetch_done_bytes_, double fetch_total_bytes_, std::optional<double> saved_at_ms_) :
-            index{std::move(index_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, size_bytes{std::move(size_bytes_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)}, has_thumbhash{std::move(has_thumbhash_)}, has_thumbnail{std::move(has_thumbnail_)}, uploaded{std::move(uploaded_)}, availability{std::move(availability_)}, fetch_done_bytes{std::move(fetch_done_bytes_)}, fetch_total_bytes{std::move(fetch_total_bytes_)}, saved_at_ms{std::move(saved_at_ms_)} {}
+    Attachment(double index_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<double> size_bytes_, bool voice_message_, std::optional<double> width_, std::optional<double> height_, bool has_thumbhash_, bool has_thumbnail_, bool has_rendition_, bool original_file_, bool uploaded_, ::session_bridge::AttachmentAvailability availability_, double fetch_done_bytes_, double fetch_total_bytes_, std::optional<double> saved_at_ms_) :
+            index{std::move(index_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, size_bytes{std::move(size_bytes_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)}, has_thumbhash{std::move(has_thumbhash_)}, has_thumbnail{std::move(has_thumbnail_)}, has_rendition{std::move(has_rendition_)}, original_file{std::move(original_file_)}, uploaded{std::move(uploaded_)}, availability{std::move(availability_)}, fetch_done_bytes{std::move(fetch_done_bytes_)}, fetch_total_bytes{std::move(fetch_total_bytes_)}, saved_at_ms{std::move(saved_at_ms_)} {}
 };
 
 /// The message a reply points at, resolved one level deep only: a reply to a reply shows its own
@@ -1289,9 +1298,11 @@ struct TestAttachment {
     std::string content_type;
     /// Unset is a sender who sent no ThumbHash, which is what leaves `hasThumbhash` false.
     std::optional<std::vector<std::byte>> thumbhash;
+    /// Sent as the sender's original file, which is what leaves `originalFile` true.
+    std::optional<bool> original_file;
 
-    TestAttachment(std::string content_type_, std::optional<std::vector<std::byte>> thumbhash_) :
-            content_type{std::move(content_type_)}, thumbhash{std::move(thumbhash_)} {}
+    TestAttachment(std::string content_type_, std::optional<std::vector<std::byte>> thumbhash_, std::optional<bool> original_file_) :
+            content_type{std::move(content_type_)}, thumbhash{std::move(thumbhash_)}, original_file{std::move(original_file_)} {}
 };
 
 /// Builds, encrypts and delivers a v1 DM as if it had arrived from the swarm. The sender is

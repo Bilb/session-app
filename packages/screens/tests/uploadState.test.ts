@@ -16,6 +16,8 @@ function attachment(index: number, uploaded: boolean): Attachment {
     voiceMessage: false,
     hasThumbhash: false,
     hasThumbnail: false,
+    hasRendition: false,
+    originalFile: false,
     uploaded,
     availability: 'cached',
     fetchDoneBytes: 0,

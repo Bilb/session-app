@@ -11,6 +11,8 @@ const attachment = (contentType: string): Attachment => ({
   voiceMessage: false,
   hasThumbhash: false,
   hasThumbnail: false,
+  hasRendition: false,
+  originalFile: false,
   uploaded: true,
   availability: 'absent',
   fetchDoneBytes: 0,

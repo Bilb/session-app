@@ -68,6 +68,7 @@ const harness: MediaSourceHarness = {
         hasThumbhash: false,
       },
       { ...png, index: 2, contentType: 'image/avif', filename: 'scan.avif', hasThumbhash: false },
+      { ...png, index: 3, filename: 'original.png', originalFile: true },
     ])
     world.settle()
     return Promise.resolve({
@@ -78,6 +79,7 @@ const harness: MediaSourceHarness = {
       unhashed: { messageId: unhashed.id, index: 0 },
       document: { messageId: unhashed.id, index: 1 },
       avif: { messageId: unhashed.id, index: 2 },
+      original: { messageId: unhashed.id, index: 3 },
       settle: () => {
         world.settle()
         return Promise.resolve()

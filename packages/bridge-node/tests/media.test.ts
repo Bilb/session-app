@@ -145,7 +145,7 @@ describeAddon('addon', () => {
 
       const hash = PHOTO_THUMBHASHES[0]
       if (hash === undefined) throw new Error('the fake has no photo hashes')
-      const body = 'two pictures, one hashed, a PDF and an AVIF'
+      const body = 'two pictures, one hashed, a PDF, an AVIF and an original file'
       const delivered = await recipient.ask({
         type: 'deliverTestMessage',
         senderSeedHex: sender.seed,
@@ -156,6 +156,7 @@ describeAddon('addon', () => {
           { contentType: 'image/png' },
           { contentType: 'application/pdf' },
           { contentType: 'image/avif' },
+          { contentType: 'image/png', originalFile: true },
         ],
       })
       if (delivered.error !== undefined) throw new Error(delivered.error)
@@ -171,6 +172,7 @@ describeAddon('addon', () => {
         unhashed: { messageId: message.id, index: 1 },
         document: { messageId: message.id, index: 2 },
         avif: { messageId: message.id, index: 3 },
+        original: { messageId: message.id, index: 4 },
         settle: () => Promise.resolve(),
       }
     },
@@ -215,7 +217,10 @@ describeAddon('addon', () => {
           OFFLINE_ATTACHMENTS,
         'answers a downloaded picture with a square JPEG thumbnail no larger than the edge':
           OFFLINE_ATTACHMENTS,
-        'has no thumbnail of a downloaded PDF': OFFLINE_ATTACHMENTS,
+        'has no thumbnail or rendition of a downloaded PDF': OFFLINE_ATTACHMENTS,
+        'answers a downloaded picture with a JPEG or WebP rendition within the edge':
+          OFFLINE_ATTACHMENTS,
+        'thumbnails a downloaded original file but makes no rendition of it': OFFLINE_ATTACHMENTS,
         'answers a downloaded AVIF with a JPEG thumbnail, though no viewer here opens one':
           OFFLINE_ATTACHMENTS,
         ...(forges
@@ -225,6 +230,8 @@ describeAddon('addon', () => {
                 NEEDS_TEST_COMMANDS,
               'has no thumbhash where the sender sent no hash': NEEDS_TEST_COMMANDS,
               'has no thumbnail of a picture not yet downloaded': NEEDS_TEST_COMMANDS,
+              'has no rendition of a picture not yet downloaded': NEEDS_TEST_COMMANDS,
+              'marks a picture its sender sent as the original file': NEEDS_TEST_COMMANDS,
               'refuses a picture that is not downloaded, and starts no transfer':
                 NEEDS_TEST_COMMANDS,
             }),

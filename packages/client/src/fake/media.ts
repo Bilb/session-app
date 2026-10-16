@@ -126,10 +126,10 @@ const SNIFF_BYTES = 16
 
 /**
  * The bytes behind each media URL on the fake: what the real bridge's `fetchMedia`,
- * `fetchThumbhash`, `fetchThumbnail` and `fetchStagedThumbnail` answer. `readPhoto` reads a dev
- * photograph or thumbnail by file name, wherever the app keeps them; `readStagedHead` reads the
- * first `count` bytes and the size of a file staged to send by its path, rejecting anything but a
- * regular file, as the shim does.
+ * `fetchThumbhash`, `fetchThumbnail`, `fetchRendition` and `fetchStagedThumbnail` answer.
+ * `readPhoto` reads a dev photograph or thumbnail by file name, wherever the app keeps them;
+ * `readStagedHead` reads the first `count` bytes and the size of a file staged to send by its path,
+ * rejecting anything but a regular file, as the shim does.
  */
 export function createFakeMediaSource(
   client: FakeSessionClient,
@@ -185,6 +185,19 @@ export function createFakeMediaSource(
       const photo = stillFileName(client, ref)
       if (photo === null) throw new Error('not a picture')
       return readPhoto(thumbnailFileName(photo))
+    },
+    async fetchRendition(ref) {
+      refuseUnknown(client, ref)
+      // As the shim does, in its words.
+      if (!client.hasRendition(ref)) {
+        throw new Error(
+          `attachment ${String(ref.index)} of message ${String(ref.messageId)} has no rendition`,
+        )
+      }
+      // A dev photograph is a JPEG within the edge, which libsession serves as its own rendition.
+      const photo = stillFileName(client, ref)
+      if (photo === null) throw new Error('not a picture')
+      return { contentType: 'image/jpeg', bytes: await readPhoto(photo) }
     },
   }
 }

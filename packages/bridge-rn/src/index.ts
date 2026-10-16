@@ -26,6 +26,8 @@ export type SessionBridge = Spec & {
     fetchThumbhash: (messageId: number, index: number) => Promise<ServedThumbhash>,
     /** A JPEG, as the loaders check before decoding. */
     fetchThumbnail: (messageId: number, index: number) => Promise<ArrayBuffer>,
+    /** A JPEG or WebP, typed by what the bytes are, as the loaders check before decoding. */
+    fetchRendition: (messageId: number, index: number) => Promise<ServedMedia>,
     /** A JPEG too, of a file staged to send, by its path. */
     fetchStagedThumbnail: (path: string) => Promise<ArrayBuffer>,
   ): void

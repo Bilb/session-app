@@ -376,6 +376,8 @@ struct Codec<::session_bridge::Attachment> {
             obj.Set("height", Codec<double>::to(env, *value.height));
         obj.Set("hasThumbhash", Codec<bool>::to(env, value.has_thumbhash));
         obj.Set("hasThumbnail", Codec<bool>::to(env, value.has_thumbnail));
+        obj.Set("hasRendition", Codec<bool>::to(env, value.has_rendition));
+        obj.Set("originalFile", Codec<bool>::to(env, value.original_file));
         obj.Set("uploaded", Codec<bool>::to(env, value.uploaded));
         obj.Set("availability", Codec<::session_bridge::AttachmentAvailability>::to(env, value.availability));
         obj.Set("fetchDoneBytes", Codec<double>::to(env, value.fetch_done_bytes));
@@ -396,6 +398,8 @@ struct Codec<::session_bridge::Attachment> {
                 optional<double>(obj.Get("height"), "Attachment.height"),
                 Codec<bool>::from(obj.Get("hasThumbhash"), "Attachment.hasThumbhash"),
                 Codec<bool>::from(obj.Get("hasThumbnail"), "Attachment.hasThumbnail"),
+                Codec<bool>::from(obj.Get("hasRendition"), "Attachment.hasRendition"),
+                Codec<bool>::from(obj.Get("originalFile"), "Attachment.originalFile"),
                 Codec<bool>::from(obj.Get("uploaded"), "Attachment.uploaded"),
                 Codec<::session_bridge::AttachmentAvailability>::from(obj.Get("availability"), "Attachment.availability"),
                 Codec<double>::from(obj.Get("fetchDoneBytes"), "Attachment.fetchDoneBytes"),
@@ -1816,13 +1820,16 @@ struct Codec<::session_bridge::TestAttachment> {
         obj.Set("contentType", Codec<std::string>::to(env, value.content_type));
         if (value.thumbhash)
             obj.Set("thumbhash", Codec<std::vector<std::byte>>::to(env, *value.thumbhash));
+        if (value.original_file)
+            obj.Set("originalFile", Codec<bool>::to(env, *value.original_file));
         return obj;
     }
     static ::session_bridge::TestAttachment from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
         return ::session_bridge::TestAttachment(
                 Codec<std::string>::from(obj.Get("contentType"), "TestAttachment.contentType"),
-                optional<std::vector<std::byte>>(obj.Get("thumbhash"), "TestAttachment.thumbhash"));
+                optional<std::vector<std::byte>>(obj.Get("thumbhash"), "TestAttachment.thumbhash"),
+                optional<bool>(obj.Get("originalFile"), "TestAttachment.originalFile"));
     }
 };
 

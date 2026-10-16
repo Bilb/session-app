@@ -10,7 +10,7 @@ import { mediaUrl, parseMediaUrl, stagedThumbnailUrl } from '#src/mediaUrl'
  */
 describe('a media url', () => {
   it('parses back exactly what the app builds', () => {
-    for (const kind of ['attachment', 'thumbhash', 'thumbnail'] as const) {
+    for (const kind of ['attachment', 'thumbhash', 'thumbnail', 'rendition'] as const) {
       for (const ref of [
         { messageId: 1, index: 0 },
         { messageId: 42, index: 7 },

@@ -84,6 +84,11 @@ namespace {
                " has no thumbnail";
     }
 
+    std::string no_rendition(int64_t id, size_t at) {
+        return "attachment " + std::to_string(at) + " of message " + std::to_string(id) +
+               " has no rendition";
+    }
+
     /// A number from JavaScript as a whole number of type T, or an error naming the field.
     ///
     /// Every numeric field crosses as a double, and `static_cast` to an integer type is undefined
@@ -1227,6 +1232,8 @@ struct ClientBridge::Impl {
                 ptr->set_contenttype(a.content_type);
                 if (a.thumbhash)
                     ptr->set_thumbhash(a.thumbhash->data(), a.thumbhash->size());
+                if (a.original_file.value_or(false))
+                    ptr->set_flags(SessionProtos::AttachmentPointer::ORIGINAL_FILE);
             }
         auto plaintext = content.SerializeAsString();
 
@@ -1493,6 +1500,43 @@ void ClientBridge::fetch_thumbnail(double message_id, double index, MediaHandler
                     const auto code = r.error().code;
                     if (code == client::err::no_thumbnail)
                         cb(Media{no_thumbnail(id, at), {}, {}});
+                    else if (
+                            code == client::err::message_not_found ||
+                            code == client::err::attachment_not_found)
+                        cb(Media{no_such_attachment(id, at), {}, {}});
+                    else
+                        cb(Media{std::string{r.error().message}, {}, {}});
+                });
+    } catch (const std::exception& e) {
+        cb(Media{std::string{e.what()}, {}, {}});
+    }
+}
+
+void ClientBridge::fetch_rendition(double message_id, double index, MediaHandler cb) {
+    if (!_impl || !_impl->client) {
+        cb(Media{"the bridge is closed", {}, {}});
+        return;
+    }
+
+    try {
+        const int64_t id = whole<int64_t>(message_id, "rendition.messageId");
+        const auto at = whole<size_t>(index, "rendition.index");
+
+        _impl->client->attachment_rendition(
+                id,
+                at,
+                [id, at, cb = std::move(cb)](session::Expected<std::vector<std::byte>> r) mutable {
+                    if (r) {
+                        auto type = rendition_content_type(*r);
+                        if (!type)
+                            cb(Media{"the rendition is not a JPEG or WebP", {}, {}});
+                        else
+                            cb(Media{std::nullopt, *std::move(type), *std::move(r)});
+                        return;
+                    }
+                    const auto code = r.error().code;
+                    if (code == client::err::no_rendition)
+                        cb(Media{no_rendition(id, at), {}, {}});
                     else if (
                             code == client::err::message_not_found ||
                             code == client::err::attachment_not_found)

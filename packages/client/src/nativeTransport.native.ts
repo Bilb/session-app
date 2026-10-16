@@ -75,6 +75,12 @@ export function createNativeBridgeTransport(
       return new Uint8Array(await bridge.fetchThumbnail(messageId, index))
     },
 
+    async fetchRendition({ messageId, index }: AttachmentRef): Promise<AttachmentMedia> {
+      if (closed) throw new Error('the bridge is closed')
+      const media = await bridge.fetchRendition(messageId, index)
+      return { contentType: media.contentType, bytes: new Uint8Array(media.bytes) }
+    },
+
     async fetchStagedThumbnail(path: string): Promise<Uint8Array> {
       if (closed) throw new Error('the bridge is closed')
       return new Uint8Array(await bridge.fetchStagedThumbnail(path))

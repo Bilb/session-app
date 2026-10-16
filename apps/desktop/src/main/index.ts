@@ -61,6 +61,7 @@ function refusingBridge(reason: string): Awaited<ReturnType<typeof createBridge>
     fetchMedia: refuse,
     fetchThumbhash: refuse,
     fetchThumbnail: refuse,
+    fetchRendition: refuse,
     fetchStagedThumbnail: refuse,
   }
 }
