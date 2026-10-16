@@ -1070,8 +1070,8 @@ struct ClientBridge::Impl {
                 msg.attachments.push_back(std::move(out));
             }
         }
-        // No upload handler, as for retrySend: a sending set counts its files by `uploaded` on the
-        // message rather than following bytes.
+        // TODO: pass an upload handler for per-file upload progress; until then a sending set
+        // counts its files by `uploaded` on the message rather than following bytes.
         convo(cmd.conversation_id)
                 .send_message(std::move(msg), on(id, [this, id](int64_t message_id) {
                                   respond(id, MessageIdResult{static_cast<double>(message_id)});
