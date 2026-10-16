@@ -1,5 +1,7 @@
 // Imported by desktop main and mobile: no platform APIs.
 
+import { contentTypeEssence } from '@session/basic-types'
+
 /**
  * The longest suggestion either app will make a name from; past it, both use their fallback.
  *
@@ -54,7 +56,7 @@ const HAS_EXTENSION = /.\.[^.\s]{1,16}$/
 
 /** The extension a declared content type calls for, or null when it calls for no known one. */
 function extensionForType(contentType: string | undefined): string | null {
-  const essence = contentType?.split(';')[0]?.trim().toLowerCase() ?? ''
+  const essence = contentTypeEssence(contentType) ?? ''
   return TYPE_EXTENSIONS[essence] ?? PLAIN_MEDIA_TYPE.exec(essence)?.[1] ?? null
 }
 

@@ -21,7 +21,7 @@ const VIEWABLE_VIDEO: ReadonlySet<string> = new Set(['video/mp4', 'video/webm', 
 const ASCII_EDGE_SPACE = /^[ \t\r\n\f\v]+|[ \t\r\n\f\v]+$/g
 
 /** `Image/JPEG; charset=binary` → `image/jpeg`: a declared type is compared by its essence only. */
-function essence(contentType: string | undefined): string | undefined {
+export function contentTypeEssence(contentType: string | undefined): string | undefined {
   return contentType?.split(';')[0]?.replace(ASCII_EDGE_SPACE, '').toLowerCase()
 }
 
@@ -46,12 +46,12 @@ export function isDisplayableImage(contentType: string | undefined): boolean {
 }
 
 export function isViewableImage(contentType: string | undefined): boolean {
-  const type = essence(contentType)
+  const type = contentTypeEssence(contentType)
   return type !== undefined && VIEWABLE_IMAGE.has(type)
 }
 
 export function isViewableVideo(contentType: string | undefined): boolean {
-  const type = essence(contentType)
+  const type = contentTypeEssence(contentType)
   return type !== undefined && VIEWABLE_VIDEO.has(type)
 }
 
@@ -114,4 +114,12 @@ export function sniffContentType(bytes: Uint8Array): string | null {
     runs.every(([at, run]) => [...run].every((c, i) => bytes[at + i] === c.charCodeAt(0))),
   )
   return match?.[0] ?? null
+}
+
+/**
+ * The edge to make thumbnails at for the densest of these displays. 1 with none connected, since
+ * thumbnails are never remade and a headless start would otherwise ask for an edge of -Infinity.
+ */
+export function thumbnailEdgePxFor(scaleFactors: readonly number[]): number {
+  return Math.round(ALBUM_WIDTH * Math.max(1, ...scaleFactors))
 }

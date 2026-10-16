@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import {
   isViewable,
+  leadUri,
   leadsWithPicture,
   viewableAttachments,
   viewerUri,
@@ -112,5 +113,60 @@ describe('what the viewer is handed', () => {
   it('hands a picture its url', () => {
     serving()
     expect(viewerUri(7, attachment(2, 'image/png'))).toBe('media://7/2')
+  })
+})
+
+describe('what a row square or an album tile draws', () => {
+  afterEach(() => {
+    resetPorts()
+  })
+
+  function serving(): void {
+    setPorts(
+      memoryPorts({
+        media: {
+          urlFor: ({ messageId, index }) => `media://${String(messageId)}/${String(index)}`,
+          thumbhashUrlFor: () => null,
+          thumbnailUrlFor: ({ messageId, index }) =>
+            `thumb://${String(messageId)}/${String(index)}`,
+        },
+      }),
+    )
+  }
+
+  it("draws libsession's thumbnail where there is one", () => {
+    serving()
+    const jpeg = { ...attachment(1, 'image/jpeg'), hasThumbnail: true }
+    expect(leadUri(7, jpeg, 'ready')).toBe('thumb://7/1')
+    expect(leadUri(7, jpeg, 'idle')).toBe('thumb://7/1')
+  })
+
+  it('draws a downloaded BMP, which libsession makes no thumbnail of, from the file', () => {
+    serving()
+    const bmp = { ...attachment(0, 'image/bmp'), availability: 'cached' as const }
+    expect(leadsWithPicture(bmp)).toBe(true)
+    expect(leadUri(7, bmp, 'ready')).toBe('media://7/0')
+  })
+
+  it('draws a downloaded JPEG declared with parameters from the file', () => {
+    serving()
+    const jpeg = {
+      ...attachment(2, 'image/jpeg; charset=binary'),
+      availability: 'cached' as const,
+    }
+    expect(leadsWithPicture(jpeg)).toBe(true)
+    expect(leadUri(7, jpeg, 'ready')).toBe('media://7/2')
+  })
+
+  it('keeps the placeholder until the file is here', () => {
+    serving()
+    for (const state of ['idle', 'fetching', 'failed', 'unavailable'] as const)
+      expect(leadUri(7, attachment(0, 'image/bmp'), state), state).toBeUndefined()
+  })
+
+  it('never draws a file the viewer cannot open', () => {
+    serving()
+    expect(leadUri(7, attachment(0, 'image/avif'), 'ready')).toBeUndefined()
+    expect(leadUri(7, attachment(0, 'application/pdf'), 'ready')).toBeUndefined()
   })
 })
