@@ -15,11 +15,22 @@ describe('the essence of a declared content type', () => {
   it('drops parameters, folds case and trims ASCII space', () => {
     expect(contentTypeEssence('Image/JPEG; charset=binary')).toBe('image/jpeg')
     expect(contentTypeEssence(' video/MP4 ;codecs="avc1"')).toBe('video/mp4')
+    expect(contentTypeEssence('\t\r\n image/png \n\r\t')).toBe('image/png')
     expect(contentTypeEssence('image/png')).toBe('image/png')
   })
 
-  it('leaves Unicode space alone, as the shim does', () => {
+  it('ends at a NUL', () => {
+    expect(contentTypeEssence('image/png\0.exe')).toBe('image/png')
+  })
+
+  it('trims space, tab, CR and LF alone', () => {
+    expect(contentTypeEssence('\fimage/png\v')).toBe('\fimage/png\v')
     expect(contentTypeEssence('\u00a0image/png')).toBe('\u00a0image/png')
+  })
+
+  it('folds ASCII case alone', () => {
+    // A Unicode-aware lowercase turns the Kelvin sign into a k.
+    expect(contentTypeEssence('image/\u212a')).toBe('image/\u212a')
   })
 
   it('has no essence for an absent type', () => {
@@ -30,6 +41,7 @@ describe('the essence of a declared content type', () => {
 describe('which content types are viewable', () => {
   it('draws the common bitmaps and refuses svg', () => {
     expect(isViewableImage('image/png')).toBe(true)
+    expect(isViewableImage('image/apng')).toBe(true)
     expect(isViewableImage('image/svg+xml')).toBe(false)
   })
 
@@ -40,10 +52,10 @@ describe('which content types are viewable', () => {
   it('ignores parameters and case', () => {
     expect(isViewableImage('Image/JPEG; charset=binary')).toBe(true)
     expect(isViewableVideo('VIDEO/MP4;codecs="avc1"')).toBe(true)
-    expect(isViewableImage('\t\r\n\f\v image/png \v\f\n\r\t')).toBe(true)
+    expect(isViewableImage('\t\r\n image/png \n\r\t')).toBe(true)
   })
 
-  it('trims ASCII space only, as the shim does', () => {
+  it('trims no Unicode space', () => {
     expect(isViewableImage('\u00a0image/png')).toBe(false)
     expect(isViewableImage('\ufeffimage/png')).toBe(false)
     expect(isViewableImage('image/png\u2003')).toBe(false)
