@@ -9,7 +9,7 @@ import { fetchOf } from './attachmentFetch'
 import { exportOne } from './exportAttachment'
 import { useExportFeedback } from './useExportFeedback'
 import { PENDING_COPY } from './pendingCopy'
-import { viewableAttachments, viewerItem } from './viewableAttachments'
+import { heldItem, viewableAttachments, viewerItem } from './viewableAttachments'
 
 /** An open viewer: which message, and the attachment's index in that message. */
 export interface ViewerTarget {
@@ -45,11 +45,17 @@ function MessageViewer({
           ),
     [message, transfers],
   )
+  const held = useRef(new Map<string, MediaViewerItem>())
+  if (!open) held.current.clear()
   const items = useMemo(
     (): MediaViewerItem[] =>
       // A null url where the platform has no resolver: the viewer says so rather than drawing a
       // broken picture, which is the one thing it must not do with somebody's photograph.
-      viewable.map((attachment) => viewerItem(target.messageId, attachment)),
+      viewable.map((attachment) =>
+        heldItem(held.current, `${String(target.messageId)}:${String(attachment.index)}`, () =>
+          viewerItem(target.messageId, attachment),
+        ),
+      ),
     [viewable, target.messageId],
   )
 

@@ -1,8 +1,10 @@
 import { memoryPorts, resetPorts, setPorts } from '@session/app'
 import type { Attachment, Message } from '@session/client'
+import type { MediaViewerItem } from '@session/ui'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
+  heldItem,
   isViewable,
   leadsWithPicture,
   opensInViewer,
@@ -177,5 +179,15 @@ describe('what the viewer is handed', () => {
       uri: 'rendition://7/2',
       fallbackUri: undefined,
     })
+  })
+})
+
+describe('an item an open viewer holds', () => {
+  it('stays the one first handed over, whatever is made of the attachment since', () => {
+    const held = new Map<string, MediaViewerItem>()
+    const file = { uri: 'media://7/0' }
+    expect(heldItem(held, '7:0', () => file)).toBe(file)
+    expect(heldItem(held, '7:0', () => ({ uri: 'rendition://7/0' }))).toBe(file)
+    expect(heldItem(held, '7:1', () => ({ uri: 'media://7/1' }))).toEqual({ uri: 'media://7/1' })
   })
 })

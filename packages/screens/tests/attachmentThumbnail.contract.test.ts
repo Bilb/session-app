@@ -26,9 +26,10 @@ describe('which picture each place draws', () => {
       'if (!attachment.hasRendition) return { uri: media.urlFor(ref) }',
     )
     expect(read('viewableAttachments.ts')).toContain('uri: media.renditionUrlFor(ref),')
-    expect(read('MessageMediaViewer.tsx')).toContain(
-      'viewable.map((attachment) => viewerItem(target.messageId, attachment))',
+    expect(read('MessageMediaViewer.tsx')).toMatch(
+      /heldItem\(held\.current, [^,]+, \(\) =>\s+viewerItem\(target\.messageId, attachment\),/,
     )
+    expect(read('MessageMediaViewer.tsx')).toContain('if (!open) held.current.clear()')
   })
 
   it('opens in the viewer only what is not an original file, in a row and in a tile', () => {

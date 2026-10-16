@@ -66,3 +66,19 @@ export function viewerItem(messageId: number, attachment: Attachment): MediaView
     fallbackUri: isViewable(attachment) ? media.urlFor(ref) : undefined,
   }
 }
+
+/**
+ * The item an open viewer was first handed for `key`, so a rendition landing or being evicted
+ * mid-view does not swap the url under a drawn picture, which blanks a frame on native.
+ */
+export function heldItem(
+  held: Map<string, MediaViewerItem>,
+  key: string,
+  make: () => MediaViewerItem,
+): MediaViewerItem {
+  const kept = held.get(key)
+  if (kept !== undefined) return kept
+  const item = make()
+  held.set(key, item)
+  return item
+}
