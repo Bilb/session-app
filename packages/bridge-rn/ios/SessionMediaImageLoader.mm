@@ -186,6 +186,53 @@ static void FinishThumbnail(
     done(nil, image);
 }
 
+/// An animated PNG, which `RCTAnimatedImage` reads as a GIF: without these it plays once, every
+/// frame a tenth of a second, since ImageIO keeps an APNG's timing under the PNG dictionary.
+@interface SessionAnimatedPNG : RCTAnimatedImage
+@end
+
+@implementation SessionAnimatedPNG {
+    NSUInteger _loops;
+    NSArray<NSNumber*>* _durations;
+}
+
+- (instancetype)initWithData:(NSData*)data scale:(CGFloat)scale {
+    if (!(self = [super initWithData:data scale:scale]))
+        return nil;
+    CGImageSourceRef source = CGImageSourceCreateWithData((__bridge CFDataRef)data, nullptr);
+    if (!source)
+        return nil;
+    NSDictionary* container =
+            (__bridge_transfer NSDictionary*)CGImageSourceCopyProperties(source, nullptr);
+    _loops = [container[(id)kCGImagePropertyPNGDictionary][(id)kCGImagePropertyAPNGLoopCount]
+            unsignedIntegerValue];
+    NSMutableArray<NSNumber*>* durations = [NSMutableArray array];
+    for (size_t i = 0, count = CGImageSourceGetCount(source); i < count; i++) {
+        NSDictionary* frame = (__bridge_transfer NSDictionary*)CGImageSourceCopyPropertiesAtIndex(
+                source, i, nullptr);
+        NSDictionary* png = frame[(id)kCGImagePropertyPNGDictionary];
+        double delay = [png[(id)kCGImagePropertyAPNGUnclampedDelayTime] doubleValue];
+        if (delay <= 0)
+            delay = [png[(id)kCGImagePropertyAPNGDelayTime] doubleValue];
+        // Browsers draw a frame of 10 ms or less for 100 ms; 0.011 as WebKit and SDWebImage, since
+        // ImageIO's float delays read 10 ms back as just over 0.01.
+        [durations addObject:@(delay < 0.011 ? 0.1 : delay)];
+    }
+    CFRelease(source);
+    _durations = durations;
+    return self;
+}
+
+- (NSUInteger)animatedImageLoopCount {
+    return _loops;
+}
+
+- (NSTimeInterval)animatedImageDurationAtIndex:(NSUInteger)index {
+    return index < _durations.count ? _durations[index].doubleValue : 0;
+}
+
+@end
+
 /**
  * Draws `session-media://` URLs: the image loader behind the `MediaPort` URLs on iOS.
  *
@@ -365,12 +412,18 @@ RCT_EXPORT_MODULE()
                 }
                 // `RCTAnimatedImage` decodes every frame at full canvas size, at draw, so only an
                 // animation within the budget is one; anything else is its first frame, bounded.
-                const bool animated = *type == "image/gif"
+                // An APNG is served as `image/png`, as its bytes sniff; a still PNG has one frame.
+                const bool animated = (*type == "image/gif" || *type == "image/png")
                                       && CGImageSourceGetCount(imageSource) > 1
                                       && ::session_bridge_rn::fits_decode_budget(
                                               pixels.width, pixels.height);
-                UIImage* image = animated ? [[RCTAnimatedImage alloc] initWithData:data scale:scale]
-                                          : DecodedImage(imageSource, pixels, scale);
+                UIImage* image = nil;
+                if (!animated)
+                    image = DecodedImage(imageSource, pixels, scale);
+                else if (*type == "image/png")
+                    image = [[SessionAnimatedPNG alloc] initWithData:data scale:scale];
+                else
+                    image = [[RCTAnimatedImage alloc] initWithData:data scale:scale];
                 CFRelease(imageSource);
                 if (!image) {
                     Fail(done, imageURL, "the picture did not decode");
