@@ -214,7 +214,7 @@ static void FinishThumbnail(
         double delay = [webp[(id)kCGImagePropertyWebPUnclampedDelayTime] doubleValue];
         if (delay <= 0)
             delay = [webp[(id)kCGImagePropertyWebPDelayTime] doubleValue];
-        // Browsers draw a frame of 10 ms or less for 100 ms; 0.011 as RCTAnimatedImage, since
+        // Browsers draw a frame of 10 ms or less for 100 ms; 0.011 as WebKit and SDWebImage, since
         // ImageIO's float delays read 10 ms back as just over 0.01.
         [durations addObject:@(delay < 0.011 ? 0.1 : delay)];
     }
