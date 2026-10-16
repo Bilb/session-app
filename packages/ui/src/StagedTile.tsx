@@ -1,4 +1,6 @@
+import type { ElementId } from '@session/test-ids'
 import { RADII } from '@session/theme-tokens'
+import { useState } from 'react'
 import { XStack, YStack } from 'tamagui'
 
 import { fileFormat, fileGlyph, splitFilename } from './attachmentFile'
@@ -7,6 +9,7 @@ import { Icon } from './Icon'
 import { Image } from './Image'
 import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
+import { stagedPreview } from './stagedPreview'
 import { STAGED_TILE_SIDE } from './stagingMetrics'
 import { Text } from './Text'
 
@@ -22,10 +25,10 @@ export interface StagedTileProps {
   /** Already formatted, since the units are the screen's to word. */
   sizeLabel?: string | undefined
   /**
-   * A picture of the file, where the platform can draw one.
+   * libsession's thumbnail of the file, where it is a picture.
    *
-   * Only for images: a video has no still here yet, so it draws as a document like every other
-   * file that is not a picture.
+   * Drawn over the document face once it loads, and dropped for good if it fails, so a file that
+   * turns out not to decode reads as the document it is. A video has no still here yet.
    */
   previewUrl?: string | undefined
   /** What a screen reader calls the tile: its name, and its size where known. */
@@ -35,6 +38,8 @@ export interface StagedTileProps {
   removeLabel: string
   testID: string
   removeTestID: string
+  /** The thumbnail's picture, for a test asking whether it loaded. */
+  previewTestID: ElementId
 }
 
 /**
@@ -95,7 +100,11 @@ export function StagedTile({
   removeLabel,
   testID,
   removeTestID,
+  previewTestID,
 }: StagedTileProps) {
+  const [loadedUrl, setLoadedUrl] = useState<string | null>(null)
+  const [failedUrl, setFailedUrl] = useState<string | null>(null)
+  const preview = stagedPreview(previewUrl, failedUrl)
   return (
     <YStack
       width={STAGED_TILE_SIDE}
@@ -112,10 +121,32 @@ export function StagedTile({
       {/* Beside the remove button rather than around it: a native screen reader reads a labelled
           container as one element, and would swallow the button inside. */}
       <YStack flex={1} role="img" aria-label={label}>
-        {previewUrl === undefined ? (
-          <DocumentFace name={name} contentType={contentType} sizeLabel={sizeLabel} />
-        ) : (
-          <Image uri={previewUrl} width={STAGED_TILE_SIDE} height={STAGED_TILE_SIDE} fit="cover" />
+        <DocumentFace name={name} contentType={contentType} sizeLabel={sizeLabel} />
+        {preview === undefined ? null : (
+          // Over the face, hidden until it loads: a picture still decoding shows the face.
+          <YStack
+            position="absolute"
+            top={0}
+            bottom={0}
+            left={0}
+            right={0}
+            opacity={loadedUrl === preview ? 1 : 0}
+          >
+            <Image
+              uri={preview}
+              width={STAGED_TILE_SIDE}
+              height={STAGED_TILE_SIDE}
+              fit="cover"
+              resizeMultiplier={4 / 3}
+              onLoad={() => {
+                setLoadedUrl(preview)
+              }}
+              onError={() => {
+                setFailedUrl(preview)
+              }}
+              testID={previewTestID}
+            />
+          </YStack>
         )}
       </YStack>
       <YStack position="absolute" top={0} {...logical({ insetEnd: 0 })}>

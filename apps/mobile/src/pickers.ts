@@ -1,4 +1,5 @@
 import type { FilesPort, PickedFile } from '@session/app'
+import { stagedThumbnailUrl } from '@session/app/mediaUrl'
 import { isDisplayableImage } from '@session/basic-types'
 import { getDocumentAsync } from 'expo-document-picker'
 import { randomUUID } from 'expo-crypto'
@@ -31,14 +32,17 @@ async function picked(
   contentType?: string,
   size?: number,
 ): Promise<PickedFile> {
-  const uri = await keep(copy)
+  const path = pathOf(await keep(copy))
   return {
-    path: pathOf(uri),
+    path,
     name,
     contentType,
     size,
-    // The copy itself, which both platforms' image loaders read. A video has no still here.
-    previewUrl: isDisplayableImage(contentType) ? uri : undefined,
+    // libsession's thumbnail rather than the copy: a tile decoding 32 full photographs is the
+    // memory a phone runs out of. A video has no still here.
+    previewUrl: isDisplayableImage(contentType)
+      ? (stagedThumbnailUrl(path) ?? undefined)
+      : undefined,
   }
 }
 

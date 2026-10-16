@@ -177,6 +177,7 @@ export function Composer({
               }}
               testID={ELEMENT.conversation.stagedTile(index)}
               removeTestID={ELEMENT.conversation.stagedRemove(index)}
+              previewTestID={ELEMENT.conversation.stagedPreview(index)}
             />
           ))}
         </StagedTray>

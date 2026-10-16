@@ -3,6 +3,8 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
+import { stagedPreview } from '#src/stagedPreview'
+
 const source = (file: string) => readFileSync(join(import.meta.dirname, '../src', file), 'utf8')
 
 /** What the composer's staging draws that a screen reader and a mirrored layout depend on. */
@@ -13,6 +15,23 @@ describe('the staged tray', () => {
     expect(tile).toMatch(/<YStack flex=\{1\} role="img" aria-label=\{label\}>/)
     expect(tile).not.toContain('role="group"')
     expect(tile).toContain('accessibilityLabel={removeLabel}')
+  })
+
+  it('draws a thumbnail over the document face, which stays if the thumbnail fails', () => {
+    const tile = source('StagedTile.tsx')
+    expect(tile).toContain('<DocumentFace name={name}')
+    expect(tile).toContain('opacity={loadedUrl === preview ? 1 : 0}')
+    expect(tile).toContain('setFailedUrl(preview)')
+    expect(stagedPreview('session-media://staged/%2Fa.jpg', null)).toBe(
+      'session-media://staged/%2Fa.jpg',
+    )
+    expect(
+      stagedPreview('session-media://staged/%2Fa.jpg', 'session-media://staged/%2Fa.jpg'),
+    ).toBe(undefined)
+    expect(
+      stagedPreview('session-media://staged/%2Fb.jpg', 'session-media://staged/%2Fa.jpg'),
+    ).toBe('session-media://staged/%2Fb.jpg')
+    expect(stagedPreview(undefined, null)).toBe(undefined)
   })
 
   it('pages a right-to-left rail the way Chromium counts it', () => {

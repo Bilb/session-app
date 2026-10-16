@@ -23,7 +23,7 @@ setPorts(
       pickFiles: async (options) => toPickedFiles(await chooseFiles(options ?? {})),
       pickImages: async (options) =>
         toPickedFiles(await chooseFiles({ ...options, accept: 'image/*' })),
-      droppedFiles: (items) => Promise.resolve(toPickedFiles(items)),
+      droppedFiles: (items) => toPickedFiles(items),
       chooseExportLocation: (suggestedName) =>
         window.sessionDesktop.chooseExportLocation(suggestedName),
       revealInFolder: async (path) => {

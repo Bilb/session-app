@@ -79,6 +79,7 @@ export const ELEMENT = {
     stagedTray: 'composer-staged',
     stagedTile: (index: number) => `composer-staged-${index}` as const,
     stagedRemove: (index: number) => `composer-staged-remove-${index}` as const,
+    stagedPreview: (index: number) => `composer-staged-preview-${index}` as const,
     stagedClear: 'composer-staged-clear',
     stagedAdd: 'composer-staged-add',
     stagedPrevious: 'composer-staged-previous',

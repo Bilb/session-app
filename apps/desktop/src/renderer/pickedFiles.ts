@@ -1,4 +1,5 @@
 import type { PickedFile } from '@session/app'
+import { isDisplayableImage } from '@session/basic-types'
 
 /**
  * The page's own file chooser, rather than a dialog in main.
@@ -26,18 +27,23 @@ function isFile(item: unknown): item is File {
   return typeof File !== 'undefined' && item instanceof File
 }
 
+async function toPickedFile(file: File): Promise<PickedFile | null> {
+  const path = window.sessionDesktop.pathForFile(file)
+  if (path === '') return null
+  const contentType = file.type === '' ? undefined : file.type
+  return {
+    path,
+    name: file.name,
+    size: file.size,
+    contentType,
+    previewUrl: isDisplayableImage(contentType)
+      ? ((await window.sessionDesktop.allowPreview(file)) ?? undefined)
+      : undefined,
+  }
+}
+
 /** What the composer stages. A file with no path on disk cannot be sent, so it is left out. */
-export function toPickedFiles(items: readonly unknown[]): PickedFile[] {
-  return items.filter(isFile).flatMap((file) => {
-    const path = window.sessionDesktop.pathForFile(file)
-    if (path === '') return []
-    return [
-      {
-        path,
-        name: file.name,
-        size: file.size,
-        contentType: file.type === '' ? undefined : file.type,
-      },
-    ]
-  })
+export async function toPickedFiles(items: readonly unknown[]): Promise<PickedFile[]> {
+  const picked = await Promise.all(items.filter(isFile).map(toPickedFile))
+  return picked.filter((file) => file !== null)
 }
