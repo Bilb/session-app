@@ -30,6 +30,12 @@ describe('the image picker plugin', () => {
     expect(options?.['cameraPermission']).not.toBe(false)
     expect(typeof options?.['cameraPermission']).toBe('string')
   })
+
+  // `false` deletes the plist key, and expo-camera then writes Expo's default English there.
+  it('gives the microphone the catalogue’s purpose string, and Android no audio grant', () => {
+    expect(typeof options?.['microphonePermission']).toBe('string')
+    expect(config.android?.blockedPermissions).toContain('android.permission.RECORD_AUDIO')
+  })
 })
 
 describe('picked photos', () => {

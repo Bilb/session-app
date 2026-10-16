@@ -100,6 +100,7 @@ const PLUGIN_WRITTEN_KEYS = new Set([
   'NSCameraUsageDescription',
   'NSPhotoLibraryUsageDescription',
   'NSPhotoLibraryAddUsageDescription',
+  'NSMicrophoneUsageDescription',
 ])
 
 /** The English of one of them, which is what the plist itself carries. */
@@ -338,15 +339,15 @@ export default ({ config }: ConfigContext): ExpoConfig =>
           granularPermissions: ['photo', 'video'],
         },
       ],
-      // The photo library half of +. Its purpose strings are the catalogue's. `false` does not
-      // mean "not declared here": the plugin blocks that permission for every module, and the
-      // restore screen's QR scanner needs CAMERA. RECORD_AUDIO is blocked, as expo-camera's is.
+      // The photo library half of +. Its purpose strings are the catalogue's: `false` would delete
+      // the microphone's, and expo-camera would then write Expo's default English in its place.
+      // RECORD_AUDIO stays blocked below.
       [
         'expo-image-picker',
         {
           photosPermission: englishPermission('NSPhotoLibraryUsageDescription'),
           cameraPermission: englishPermission('NSCameraUsageDescription'),
-          microphonePermission: false,
+          microphonePermission: englishPermission('NSMicrophoneUsageDescription'),
         },
       ],
       // Legacy Android's floor.
@@ -385,6 +386,8 @@ export default ({ config }: ConfigContext): ExpoConfig =>
         // Without it the system photo picker zeroes a photo's GPS before handing it over. Not
         // where there is none: the document picker it falls back to keeps it.
         'android.permission.ACCESS_MEDIA_LOCATION',
+        // A string given for the microphone above declares it; nothing here records audio yet.
+        'android.permission.RECORD_AUDIO',
       ],
     },
     ios: {
