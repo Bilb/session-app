@@ -153,6 +153,10 @@ struct StagedThumbnails::State {
     std::unordered_set<std::string> given_up_paths;
     // Threads running handlers, which `close` waits out unless it is one of them.
     std::vector<std::thread::id> answering;
+    // A give-up's requests until it answers them, here rather than on its stack so that a give-up
+    // that throws partway can still be answered.
+    std::vector<Waiter> giving_up_unreadable;
+    std::vector<Waiter> giving_up_refused;
 
     static std::string key_of(const std::string& path, uint32_t edge) {
         return std::to_string(edge) + '\n' + path;
@@ -246,10 +250,11 @@ struct StagedThumbnails::State {
                 }))
                 continue;
 
-            std::vector<Waiter> stuck;
+            auto& stuck = state->giving_up_unreadable;
             if (auto found = state->pending.find(state->running->key);
                 found != state->pending.end()) {
-                stuck = std::move(found->second.waiting);
+                for (auto& waiter : found->second.waiting)
+                    stuck.push_back(std::move(waiter));
                 state->pending.erase(found);
             }
             state->given_up_paths.insert(state->running->path);
@@ -263,7 +268,7 @@ struct StagedThumbnails::State {
             state->worker = std::make_shared<Worker>();
             state->generation++;
             const bool held_up = state->abandoned_decodes >= MAX_ABANDONED_DECODES;
-            std::vector<Waiter> refused;
+            auto& refused = state->giving_up_refused;
             const auto refuse = [&](const std::string& key, std::vector<Waiter>& into) {
                 if (auto found = state->pending.find(key); found != state->pending.end()) {
                     for (auto& waiter : found->second.waiting)
@@ -292,9 +297,11 @@ struct StagedThumbnails::State {
                     break;
                 }
 
+            auto unreadable = std::exchange(stuck, {});
+            auto not_started = std::exchange(refused, {});
             state->answer_unlocked(guard, [&] {
-                answer_each(stuck, Media{"the file could not be read", {}, {}});
-                answer_each(refused, Media{"the thumbnail could not be started", {}, {}});
+                answer_each(unreadable, Media{"the file could not be read", {}, {}});
+                answer_each(not_started, Media{"the thumbnail could not be started", {}, {}});
             });
         }
     }
@@ -324,18 +331,24 @@ StagedThumbnails::Cancel StagedThumbnails::request(
                     State::watch(state);
                 } catch (...) {
                     // Out of memory mid give-up: refuse from here on rather than end the app.
-                    std::unique_lock guard{state->lock};
-                    state->broken = true;
-                    auto stranded = std::move(state->pending);
-                    state->pending.clear();
-                    state->queue.clear();
-                    if (state->open)
-                        state->answer_unlocked(guard, [&] {
-                            for (auto& [key, entry] : stranded)
-                                State::answer_each(
-                                        entry.waiting,
-                                        Media{"the thumbnail could not be started", {}, {}});
-                        });
+                    try {
+                        std::unique_lock guard{state->lock};
+                        state->broken = true;
+                        auto stranded = std::exchange(state->pending, {});
+                        auto unreadable = std::exchange(state->giving_up_unreadable, {});
+                        auto not_started = std::exchange(state->giving_up_refused, {});
+                        state->queue.clear();
+                        if (state->open)
+                            state->answer_unlocked(guard, [&] {
+                                const Media refusal{"the thumbnail could not be started", {}, {}};
+                                State::answer_each(unreadable, refusal);
+                                State::answer_each(not_started, refusal);
+                                for (auto& [key, entry] : stranded)
+                                    State::answer_each(entry.waiting, refusal);
+                            });
+                    } catch (...) {
+                        // Nothing left to answer with; at least the app keeps running.
+                    }
                 }
             }}.detach();
             _state->watching = true;
