@@ -229,16 +229,24 @@ namespace {
             opts.emplace_back(network::opt::netid::mainnet());
 
         // Session Router has no devnet: it refuses one outright, and the router library's own
-        // netid knows the two public networks only. Onion requests reach the same swarms, which is
-        // why a devnet defaults to them and cannot be moved off them.
-        const bool session_router =
-                network.router ? *network.router == RouterKind::session_router : !devnet;
-        if (devnet && session_router)
+        // netid knows the two public networks only. Onion requests and direct both reach the same
+        // swarms, which is why a devnet defaults to onion requests and takes either.
+        const RouterKind router = network.router ? *network.router
+                                : devnet          ? RouterKind::onion_requests
+                                                  : RouterKind::session_router;
+        if (devnet && router == RouterKind::session_router)
             throw std::invalid_argument{
-                    "router must be onion-requests on a devnet: Session Router has no devnet"};
-        opts.emplace_back(
-                session_router ? network::opt::router::session_router()
-                               : network::opt::router::onion_requests());
+                    "router must be onion-requests or direct on a devnet: Session Router has no "
+                    "devnet"};
+        switch (router) {
+            case RouterKind::session_router:
+                opts.emplace_back(network::opt::router::session_router());
+                break;
+            case RouterKind::onion_requests:
+                opts.emplace_back(network::opt::router::onion_requests());
+                break;
+            case RouterKind::direct: opts.emplace_back(network::opt::router::direct()); break;
+        }
 
         // A devnet is usually one machine, and path building will not put two nodes from a /24 in
         // one path - so left enforced it builds no paths at all and every request times out.
@@ -1091,6 +1099,19 @@ struct ClientBridge::Impl {
     void handle(double id, const GetAttachmentCacheSizeCommand&) {
         client->attachment_cache_size(on(id, [this, id](int64_t bytes) {
             respond(id, ByteCountResult{static_cast<double>(bytes)});
+        }));
+    }
+
+    void handle(double id, const GetConfigSizesCommand&) {
+        client->config_sizes(on(id, [this, id](std::unordered_map<std::string, int> measured) {
+            std::vector<ConfigSize> sizes;
+            sizes.reserve(measured.size());
+            for (auto& [name, bytes] : measured)
+                sizes.emplace_back(name, static_cast<double>(bytes));
+            // By name, since the map has no order and an export should list them the same way
+            // every time.
+            std::ranges::sort(sizes, {}, &ConfigSize::name);
+            respond(id, ConfigSizesResult{std::move(sizes)});
         }));
     }
 

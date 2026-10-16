@@ -478,6 +478,20 @@ describeEcho('the generated converters', () => {
       response: { id: 900_015, result: { type: 'byteCount', bytes: 5_000_000 } },
     },
     { type: 'response', response: { id: 900_016, result: { type: 'byteCount' } } },
+    {
+      type: 'response',
+      response: {
+        id: 900_017,
+        result: {
+          type: 'configSizes',
+          sizes: [
+            { name: 'user_profile', bytes: 312 },
+            { name: 'contacts', bytes: 18_400 },
+          ],
+        },
+      },
+    },
+    { type: 'response', response: { id: 900_018, result: { type: 'configSizes', sizes: [] } } },
     { type: 'event', event: { type: 'conversation-added', conversation: fullConversation } },
     { type: 'event', event: { type: 'conversation-updated', conversation: bareConversation } },
     { type: 'event', event: { type: 'conversation-removed', conversationId } },

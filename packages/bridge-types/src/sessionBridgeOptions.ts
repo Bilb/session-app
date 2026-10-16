@@ -57,15 +57,17 @@ export interface FileServerConfig {
  * How requests reach the network.
  *
  * Session Router is what mainnet and testnet ship, and is the default for both. Onion requests are
- * the other production path and the only one a devnet has - Session Router refuses a devnet
- * outright, so devnet defaults to onion requests and cannot be moved off them.
+ * the other production path, and a devnet's default - Session Router refuses a devnet outright, so
+ * a devnet takes onion requests or direct, never Session Router. Direct sends each request
+ * straight to the node it is for, with no path: for development and diagnosis, since a node sees
+ * the address of the device asking.
  *
  * Settable so that the transport can be chosen independently of the network: the two paths share
  * only a ten-method interface, and uploads, downloads, connection status and retry behaviour are
  * separate implementations on each side. Without this, testing the shipped transport and using a
  * disposable network are mutually exclusive.
  */
-export type RouterKind = 'onion-requests' | 'session-router'
+export type RouterKind = 'onion-requests' | 'session-router' | 'direct'
 
 export type DeviceType = 'ios' | 'android' | 'desktop'
 

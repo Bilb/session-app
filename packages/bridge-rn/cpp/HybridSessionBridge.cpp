@@ -43,6 +43,7 @@ namespace {
                 return ::session_bridge::RouterKind::onion_requests;
             case RouterKind::ROUTER_KIND_SESSION_ROUTER:
                 return ::session_bridge::RouterKind::session_router;
+            case RouterKind::ROUTER_KIND_DIRECT: return ::session_bridge::RouterKind::direct;
         }
         return ::session_bridge::RouterKind::session_router;
     }

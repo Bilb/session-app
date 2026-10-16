@@ -25,6 +25,7 @@ export function PressArea({
   role = 'button',
   checked,
   toggled,
+  busy = false,
   testID,
   children,
 }: PressAreaProps) {
@@ -39,6 +40,7 @@ export function PressArea({
       disabled={disabled}
       onPress={disabled ? undefined : onPress}
       aria-label={accessibilityLabel}
+      aria-busy={busy}
       testID={testID}
     >
       {children(false)}

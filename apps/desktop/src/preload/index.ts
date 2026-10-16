@@ -45,4 +45,19 @@ contextBridge.exposeInMainWorld('sessionDesktop', {
   restart: () => {
     ipcRenderer.send('restart')
   },
+  /**
+   * The log: one call to learn main's clock, and one to hand over lines as records, which main
+   * sweeps and writes. Main owns the files and the pseudonym key; the page only ever appends.
+   */
+  openLog: (): Promise<unknown> => ipcRenderer.invoke('log:open'),
+  appendLog: (records: unknown[]) => {
+    ipcRenderer.send('log:append', records)
+  },
+  /** The export's four calls; main asks where to save, so no path ever comes back here. */
+  retainedLogs: (): Promise<unknown> => ipcRenderer.invoke('log:retained'),
+  logSpan: (first: string, last: string): Promise<unknown> =>
+    ipcRenderer.invoke('log:span', first, last),
+  exportLogs: (name: string, parts: unknown): Promise<boolean> =>
+    ipcRenderer.invoke('log:export', name, parts),
+  diagnostics: (): Promise<unknown> => ipcRenderer.invoke('log:diagnostics'),
 })
