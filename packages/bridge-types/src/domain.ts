@@ -187,8 +187,8 @@ export interface Attachment {
   originalFile: boolean
   /**
    * On the file server: an outgoing attachment's upload finished, and always true for an incoming
-   * one. Deliberately not "the bytes are here" - libsession records no local path, because the
-   * application chose it and a stored copy would go stale the moment the file moved.
+   * one. Deliberately not "the bytes are here": libsession records where it reads a file to send
+   * from but exposes no path, because the application chose it and knows it.
    */
   uploaded: boolean
   /** Whether the bytes are here, coming, or neither. See `AttachmentAvailability`. */
@@ -225,9 +225,16 @@ export interface OutgoingAttachment {
   /** What the recipient sees it called; `path`'s own filename when unset. */
   filename?: string
   /**
-   * Hands the file to libsession, which moves it into its own storage once the message is stored
-   * and deletes it once the message no longer needs it. Only for a copy the app made: after a send
-   * that succeeded nothing may touch `path`, and a send that was refused leaves the file there.
+   * Hands the file to libsession, which needs `cacheDir` for it and refuses a symbolic link. Only
+   * for a copy the app made: once the message is stored the file is gone from `path`, and a send
+   * that was refused leaves it there.
+   *
+   * It is hard-linked under the cache directory, or copied where it cannot be, on the calling
+   * thread during the send, so a large copy holds that call up. It waits there unencrypted.
+   *
+   * Until it uploads, the attachment is `cached`, and `fetchMedia` and `exportAttachment` serve it
+   * from that copy; `absent` if the copy has gone. libsession deletes it once it has uploaded, or
+   * its message is unsendable or deleted.
    */
   takeFile?: boolean
 }
