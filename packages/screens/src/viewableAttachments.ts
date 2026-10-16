@@ -34,11 +34,12 @@ export function viewableAttachments(message: Message): Attachment[] {
 }
 
 /**
- * What the viewer is handed to draw `attachment`, or null where the platform has no resolver: the
- * file itself, never the thumbnail a tile draws.
+ * What the viewer is handed to draw `attachment`, or null where the platform has no resolver:
+ * libsession's rendition once it has made one, else the file, never the thumbnail a tile draws.
+ * Export writes the file whichever is drawn.
  */
 export function viewerUri(messageId: number, attachment: Attachment): string | null {
-  // TODO: a picture larger than the screen may need a rendition at screen size rather than the
-  // whole file decoded and reduced; export must keep writing out the raw content either way.
-  return requirePorts().media.urlFor({ messageId, index: attachment.index })
+  const ref = { messageId, index: attachment.index }
+  const { media } = requirePorts()
+  return attachment.hasRendition ? media.renditionUrlFor(ref) : media.urlFor(ref)
 }

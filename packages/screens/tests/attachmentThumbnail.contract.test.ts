@@ -21,7 +21,9 @@ describe('which picture each place draws', () => {
     }
   })
 
-  it('draws the file in the viewer', () => {
-    expect(read('viewableAttachments.ts')).toContain('requirePorts().media.urlFor(')
+  it('draws the rendition in the viewer once there is one, else the file', () => {
+    expect(read('viewableAttachments.ts')).toMatch(
+      /attachment\.hasRendition\s*\?\s*media\.renditionUrlFor\(ref\)\s*:\s*media\.urlFor\(ref\)/,
+    )
   })
 })

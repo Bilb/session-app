@@ -106,13 +106,22 @@ describe('what the viewer is handed', () => {
           urlFor: ({ messageId, index }) => `media://${String(messageId)}/${String(index)}`,
           thumbhashUrlFor: () => null,
           thumbnailUrlFor: () => null,
+          renditionUrlFor: ({ messageId, index }) =>
+            `rendition://${String(messageId)}/${String(index)}`,
         },
       }),
     )
   }
 
-  it('hands a picture its url', () => {
+  it('hands a picture its url until libsession has made a rendition of it', () => {
     serving()
     expect(viewerUri(7, attachment(2, 'image/png'))).toBe('media://7/2')
+  })
+
+  it('hands a picture its rendition once there is one', () => {
+    serving()
+    expect(viewerUri(7, { ...attachment(2, 'image/png'), hasRendition: true })).toBe(
+      'rendition://7/2',
+    )
   })
 })
