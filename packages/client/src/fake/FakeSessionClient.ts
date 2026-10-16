@@ -360,6 +360,11 @@ export class FakeSessionClient implements SessionClient {
     return this.account.locate(ref)
   }
 
+  /** Fake-only: the size of a file a send took, while it is served and the world knows it. */
+  takenSizeBytes(ref: AttachmentRef): number | undefined {
+    return this.account.takenSizeBytes(ref)
+  }
+
   /** Fake-only: whether an attachment's bytes have arrived, for a dev loader deciding to draw. */
   isCached(ref: AttachmentRef): boolean {
     return this.account.isCached(ref)

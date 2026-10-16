@@ -6,6 +6,7 @@
  */
 
 import {
+  createFakeMediaSource,
   FakeSessionClient,
   friends,
   friendsWithAttachments,
@@ -62,6 +63,11 @@ const harness: ContractHarness = {
         world.writeFile(path, sizeBytes)
         return Promise.resolve(path)
       },
+      aliceMedia: createFakeMediaSource(
+        alice,
+        () => Promise.reject(new Error('no photographs here')),
+        () => Promise.reject(new Error('ENOENT')),
+      ),
     })
   },
 

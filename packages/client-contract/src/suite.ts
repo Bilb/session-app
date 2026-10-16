@@ -18,6 +18,7 @@ import {
   type AttachmentAvailability,
   type AttachmentTransfer,
   type Conversation,
+  type MediaSource,
   type Message,
   type MessagePage,
   type SessionClient,
@@ -35,6 +36,8 @@ export interface ContractHarness {
     settle: () => Promise<void>
     /** Writes a file of `sizeBytes` bytes for a send to name, and answers its path. */
     writeFile: (name: string, sizeBytes: number) => Promise<string>
+    /** Alice's media source. */
+    aliceMedia: MediaSource
   }>
   /** A pair where bob has written to alice but alice has not approved. */
   strangers(): Promise<{
@@ -595,7 +598,7 @@ export function runSessionClientContract(
     })
 
     it('serves a file it took for a send before it is up, and only one it took', async () => {
-      const { alice, bobId, writeFile } = await harness.friends()
+      const { alice, bobId, writeFile, aliceMedia } = await harness.friends()
       const taken = await writeFile('taken.txt', 2_000)
       const lent = await writeFile('lent.txt', 2_000)
       const seen = collect(alice)
@@ -613,6 +616,11 @@ export function runSessionClientContract(
         [false, 'cached'],
         [false, 'absent'],
       ])
+      expect((await aliceMedia.fetchMedia({ messageId, index: 0 })).bytes.length).toBe(2_000)
+      const lentFetch = await failure(() => aliceMedia.fetchMedia({ messageId, index: 1 }))
+      expect(lentFetch instanceof Error && lentFetch.message).toBe(
+        `attachment 1 of message ${String(messageId)} is not downloaded`,
+      )
       seen.stop()
     })
 

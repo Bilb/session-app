@@ -110,6 +110,7 @@ describeAddon('addon', () => {
           await writeFile(path, Buffer.alloc(sizeBytes, 0x5a))
           return path
         },
+        aliceMedia: alice.transport,
       }
     },
 

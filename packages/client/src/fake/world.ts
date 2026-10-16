@@ -259,8 +259,9 @@ export class FakeAccount {
   /**
    * Files a send took and has not uploaded yet, by `keyOf`: served from libsession's outgoing
    * folder until then, but not in the cache, so neither counted in its size nor thumbnailed.
+   * Each with its size, where the world knows it.
    */
-  private readonly taken = new Set<string>()
+  private readonly taken = new Map<string, number | undefined>()
   /** The sizes `seedSending` held back from files not up yet, which their upload reports. */
   private readonly unreportedSizes = new Map<string, number>()
   /**
@@ -695,7 +696,8 @@ export class FakeAccount {
         : { replyTo: { author: this.sessionId, timestamp: now, messageId: replyTo } }),
     }
     outgoing.forEach((file, index) => {
-      if (file.takeFile === true) this.taken.add(keyOf({ messageId: message.id, index }))
+      if (file.takeFile === true)
+        this.taken.set(keyOf({ messageId: message.id, index }), sizes[index])
     })
     this.addMessage(id, message)
     for (const file of outgoing) if (file.takeFile === true) this.world?.removeFile(file.path)
@@ -855,6 +857,14 @@ export class FakeAccount {
   /** Whether a taken file is still served: libsession drops it once its send is unsendable. */
   private takenServed(key: string, sendState: SendState | undefined): boolean {
     return this.taken.has(key) && sendState !== 'unsendable'
+  }
+
+  /** A taken file's size while it is served, for the media source to answer bytes of it. */
+  takenSizeBytes(ref: AttachmentRef): number | undefined {
+    const key = keyOf(ref)
+    return this.takenServed(key, this.locate(ref)?.message.sendState)
+      ? this.taken.get(key)
+      : undefined
   }
 
   /** Whether the bytes can be had without a transfer: from the cache, or as a taken file. */

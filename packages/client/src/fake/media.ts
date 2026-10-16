@@ -163,6 +163,10 @@ export function createFakeMediaSource(
       }
       const photo = photoFileName(client, ref)
       const declared = client.locate(ref)?.attachment.contentType
+      // The world keeps a file's size and not its bytes, so a taken file is served as that many.
+      const takenBytes = client.takenSizeBytes(ref)
+      if (photo === null && declared !== undefined && takenBytes !== undefined)
+        return { contentType: declared, bytes: new Uint8Array(takenBytes) }
       if (photo === null || declared === undefined) throw new Error('not a picture')
       // A video is served its still, which a video type would get refused: nothing here plays one.
       const contentType = isViewableVideo(declared) ? 'image/jpeg' : declared
