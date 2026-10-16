@@ -31,6 +31,18 @@ export interface MediaSourceHarness {
   }>
   /** A source over a client with no messages at all. */
   empty(): Promise<{ source: MediaSource }>
+  /**
+   * A source over a client with no messages, and the absolute paths of files staged to send: a
+   * JPEG neither square nor within the largest thumbnail edge, a PNG, a PDF, and one not there.
+   */
+  staged(): Promise<{
+    source: MediaSource
+    client: SessionClient
+    jpeg: string
+    png: string
+    document: string
+    missing: string
+  }>
 }
 
 async function failure(call: () => Promise<unknown>): Promise<unknown> {
@@ -227,6 +239,46 @@ export function runMediaSourceContract(
       expect(messageOf(await failure(() => source.fetchThumbnail(picture)))).toBe(
         noThumbnailMessage(picture),
       )
+    })
+
+    it('answers a staged picture with a square JPEG thumbnail no larger than the edge', async () => {
+      const { source, client, jpeg } = await harness.staged()
+      const size = jpegSize(await source.fetchStagedThumbnail(jpeg))
+      const edge = await client.getThumbnailEdge()
+      expect(size?.width).toBeGreaterThan(0)
+      expect(size?.width).toBe(size?.height)
+      expect((size?.width ?? Infinity) <= edge).toBe(true)
+    })
+
+    it('answers a staged PNG with a JPEG thumbnail', async () => {
+      const { source, png } = await harness.staged()
+      expect(jpegSize(await source.fetchStagedThumbnail(png))?.width).toBeGreaterThan(0)
+    })
+
+    it('refuses a staged file that is not a picture, or is not there', async () => {
+      const { source, document, missing } = await harness.staged()
+      expect(messageOf(await failure(() => source.fetchStagedThumbnail(document)))).toBe(
+        'the file is not a picture',
+      )
+      expect(messageOf(await failure(() => source.fetchStagedThumbnail(missing)))).toBe(
+        'the file could not be read',
+      )
+    })
+
+    it('refuses a staged path that is relative, climbs out or reaches across a network', async () => {
+      const { source, jpeg } = await harness.staged()
+      for (const path of [
+        'photo.jpg',
+        `${jpeg}/../photo.jpg`,
+        '//host/share/photo.jpg',
+        '\\\\host\\share\\photo.jpg',
+        `${jpeg}\0`,
+        '',
+      ]) {
+        expect(messageOf(await failure(() => source.fetchStagedThumbnail(path)))).toBe(
+          'not an absolute path',
+        )
+      }
     })
 
     it('has no thumbnail of a downloaded PDF', async () => {

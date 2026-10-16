@@ -43,6 +43,12 @@ contextBridge.exposeInMainWorld('sessionDesktop', {
    * gone from Electron. Empty for anything not on disk.
    */
   pathForFile: (file: File): string => webUtils.getPathForFile(file),
+  /**
+   * The url of a picked or dropped file's staged thumbnail, or null. Takes the `File` rather than
+   * a path, so the page can only ever preview a file the person chose.
+   */
+  allowPreview: (file: File): Promise<string | null> =>
+    ipcRenderer.invoke('files:allow-preview', webUtils.getPathForFile(file)),
   copyText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard-write-text', text),
   setLocale: (locale: string) => {
     ipcRenderer.send('locale', locale)

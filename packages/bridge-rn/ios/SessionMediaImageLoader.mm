@@ -276,8 +276,10 @@ RCT_EXPORT_MODULE()
     }
     // Originals are not kept: only the viewer draws one, and one is most of the cache's budget.
     const bool cacheable = parsed->kind != ::session_bridge::MediaUrlKind::attachment;
+    const bool thumbnail = parsed->kind == ::session_bridge::MediaUrlKind::thumbnail
+                        || parsed->kind == ::session_bridge::MediaUrlKind::staged;
     // A thumbnail's decode depends on the view it fills; a thumbhash's does not.
-    NSString* key = parsed->kind == ::session_bridge::MediaUrlKind::thumbnail
+    NSString* key = thumbnail
                             ? [NSString stringWithFormat:@"%@ %.0fx%.0f",
                                                          imageURL.absoluteString,
                                                          size.width * scale,
@@ -326,6 +328,14 @@ RCT_EXPORT_MODULE()
                             FinishThumbnail(media, size, scale, cache, key, imageURL, done);
                     });
                 });
+    } else if (parsed->kind == ::session_bridge::MediaUrlKind::staged) {
+        source->fetch_staged_thumbnail(parsed->path, [=](::session_bridge::Media answer) {
+            auto media = std::make_shared<::session_bridge::Media>(std::move(answer));
+            dispatch_async(drain, ^{
+                if (!cancelled->load())
+                    FinishThumbnail(media, size, scale, cache, key, imageURL, done);
+            });
+        });
     } else {
         source->fetch_media(parsed->message_id, parsed->index, [=](::session_bridge::Media answer) {
             auto media = std::make_shared<::session_bridge::Media>(std::move(answer));

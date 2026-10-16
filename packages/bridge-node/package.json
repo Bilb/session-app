@@ -35,6 +35,7 @@
     "@types/node": "catalog:",
     "cmake-js": "catalog:",
     "eslint": "catalog:",
+    "jpeg-js": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",
     "@session/bench": "workspace:*"

@@ -540,6 +540,9 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 10.9.1(jiti@2.7.0)
+      jpeg-js:
+        specifier: 'catalog:'
+        version: 0.4.4
       typescript:
         specifier: 'catalog:'
         version: 5.9.3

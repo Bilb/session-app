@@ -5,7 +5,9 @@
 #include <session/client/conversation_id.hpp>
 #include <session/client/error_codes.hpp>
 #include <session/core/devices.hpp>
+#include <session/image/source.hpp>
 #include <session/image/thumbhash.hpp>
+#include <session/image/thumbnail.hpp>
 #include <session/logging.hpp>
 #include <session/mnemonics.hpp>
 #include <session/network/network_opt.hpp>
@@ -41,6 +43,8 @@
 #include <vector>
 
 #include "convert.hpp"
+#include "session_bridge/media_url.hpp"
+#include "session_bridge/worker.hpp"
 #include "mark_downloaded.hpp"
 
 namespace session_bridge {
@@ -309,6 +313,9 @@ struct ClientBridge::Impl {
     /// joins the loop the callback is running on, so dropping it from there deadlocks. Whatever
     /// drops it runs on another thread -- an attach, a discard, or `close`.
     std::unique_ptr<session::network::Network> warm;
+    /// Where staged thumbnails are made. Shared, so a callback on Core's loop can post to it
+    /// without reaching back through `this`.
+    std::shared_ptr<Worker> worker = std::make_shared<Worker>();
 
     explicit Impl(Sink s, InitOptions o) : sink{std::move(s)}, options{std::move(o)} {}
 
@@ -1290,6 +1297,8 @@ void ClientBridge::close() {
     // returns, no warm answer can still be in flight.
     _impl->warm.reset();
     _impl->client.reset();
+    // After the client, whose loop is what posts here: nothing can queue a job once it is joined.
+    _impl->worker->stop();
     _impl.reset();
 }
 
@@ -1446,6 +1455,57 @@ void ClientBridge::fetch_thumbnail(double message_id, double index, MediaHandler
     } catch (const std::exception& e) {
         cb(Media{std::string{e.what()}, {}, {}});
     }
+}
+
+void ClientBridge::fetch_staged_thumbnail(std::string path, MediaHandler cb) {
+    if (!_impl || !_impl->client) {
+        cb(Media{"the bridge is closed", {}, {}});
+        return;
+    }
+    if (!is_staged_path(path)) {
+        cb(Media{"not an absolute path", {}, {}});
+        return;
+    }
+
+    // The edge libsession will make this file's thumbnail at once it is sent, so the tile and the
+    // message it becomes draw the same picture.
+    _impl->client->thumbnail_edge([worker = _impl->worker,
+                                   path = std::move(path),
+                                   cb = std::move(cb)](session::Expected<uint32_t> edge) mutable {
+        if (!edge) {
+            cb(Media{std::string{edge.error().message}, {}, {}});
+            return;
+        }
+        worker->post([path = std::move(path), edge = *edge, cb = std::move(cb)] {
+            // From UTF-8 explicitly: a narrow string is the ANSI code page on Windows.
+            const std::filesystem::path file{
+                    std::u8string{reinterpret_cast<const char8_t*>(path.data()), path.size()}};
+            std::error_code ec;
+            // A FIFO or a device would block the worker, and `close` with it.
+            if (!std::filesystem::is_regular_file(file, ec) || ec) {
+                cb(Media{"the file could not be read", {}, {}});
+                return;
+            }
+            std::optional<image::Source> source;
+            try {
+                source.emplace(file);
+            } catch (const std::exception&) {
+                cb(Media{"the file could not be read", {}, {}});
+                return;
+            }
+            std::optional<std::vector<std::byte>> jpeg;
+            try {
+                jpeg = image::thumbnail(*source, edge);
+            } catch (const std::exception&) {
+                // Probed as a picture, then failed to decode: nothing anyone can draw.
+            }
+            if (!jpeg) {
+                cb(Media{"the file is not a picture", {}, {}});
+                return;
+            }
+            cb(Media{std::nullopt, "image/jpeg", *std::move(jpeg)});
+        });
+    });
 }
 
 void ClientBridge::call(Request request) {

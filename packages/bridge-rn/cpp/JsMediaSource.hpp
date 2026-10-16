@@ -23,20 +23,27 @@ class JsMediaSource final : public MediaSource, public std::enable_shared_from_t
             std::function<void(double message_id, double index, ::session_bridge::MediaHandler cb)>;
     using AskThumbhash = std::function<void(
             double message_id, double index, ::session_bridge::ThumbhashHandler cb)>;
+    using AskStaged = std::function<void(std::string path, ::session_bridge::MediaHandler cb)>;
 
-    /// A thumbnail is asked like a file: JPEG bytes, typed `image/jpeg`.
+    /// A thumbnail, staged or not, is asked like a file: JPEG bytes, typed `image/jpeg`.
     JsMediaSource(
-            OnJs on_js, AskMedia ask_media, AskThumbhash ask_thumbhash, AskMedia ask_thumbnail) :
+            OnJs on_js,
+            AskMedia ask_media,
+            AskThumbhash ask_thumbhash,
+            AskMedia ask_thumbnail,
+            AskStaged ask_staged_thumbnail) :
             _on_js{std::move(on_js)},
             _ask_media{std::move(ask_media)},
             _ask_thumbhash{std::move(ask_thumbhash)},
-            _ask_thumbnail{std::move(ask_thumbnail)} {}
+            _ask_thumbnail{std::move(ask_thumbnail)},
+            _ask_staged_thumbnail{std::move(ask_staged_thumbnail)} {}
 
     void fetch_media(double message_id, double index, ::session_bridge::MediaHandler cb) override;
     void fetch_thumbhash(
             double message_id, double index, ::session_bridge::ThumbhashHandler cb) override;
     void fetch_thumbnail(
             double message_id, double index, ::session_bridge::MediaHandler cb) override;
+    void fetch_staged_thumbnail(std::string path, ::session_bridge::MediaHandler cb) override;
 
     /// **On the JS thread**, so the functions holding JavaScript values are released there. Answers
     /// everything pending, and every call after.
@@ -47,6 +54,7 @@ class JsMediaSource final : public MediaSource, public std::enable_shared_from_t
     AskMedia _ask_media;
     AskThumbhash _ask_thumbhash;
     AskMedia _ask_thumbnail;
+    AskStaged _ask_staged_thumbnail;
     std::atomic<bool> _closed = false;
     std::shared_ptr<PendingAnswers> _pending = std::make_shared<PendingAnswers>();
 };

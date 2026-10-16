@@ -17,6 +17,20 @@ const THUMBNAIL = grey(32, 32)
 const readPhoto = (fileName: string): Promise<Uint8Array> =>
   Promise.resolve(fileName.startsWith('thumbnail-') ? THUMBNAIL : ORIGINAL)
 
+const PNG = Uint8Array.from('\x89PNG\r\n\x1a\n\0\0\0\rIHDR', (c) => c.charCodeAt(0))
+const PDF = Uint8Array.from('%PDF-1.7\n', (c) => c.charCodeAt(0))
+
+const STAGED: ReadonlyMap<string, Uint8Array> = new Map([
+  ['/home/alice/Pictures/\u00e9t\u00e9 \u65e5\u672c.jpg', ORIGINAL],
+  ['/home/alice/Pictures/scan.png', PNG],
+  ['/home/alice/Documents/paper.pdf', PDF],
+])
+
+const readStaged = (path: string): Promise<Uint8Array> => {
+  const bytes = STAGED.get(path)
+  return bytes === undefined ? Promise.reject(new Error('ENOENT')) : Promise.resolve(bytes)
+}
+
 const harness: MediaSourceHarness = {
   withAttachments() {
     const { world, clients } = friendsWithAttachments(['Alice', 'Bob'], { sets: ['pictures'] })
@@ -41,7 +55,7 @@ const harness: MediaSourceHarness = {
     ])
     world.settle()
     return Promise.resolve({
-      source: createFakeMediaSource(alice, readPhoto),
+      source: createFakeMediaSource(alice, readPhoto, readStaged),
       client: alice,
       conversationId,
       picture: { messageId: album.id, index: png.index },
@@ -59,7 +73,22 @@ const harness: MediaSourceHarness = {
     const { clients } = solo('Alice')
     const alice = clients['Alice']
     if (!alice) throw new Error('fixture did not produce a client')
-    return Promise.resolve({ source: createFakeMediaSource(alice, readPhoto) })
+    return Promise.resolve({ source: createFakeMediaSource(alice, readPhoto, readStaged) })
+  },
+
+  staged() {
+    const { clients } = solo('Alice')
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const [jpeg = '', png = '', document = ''] = STAGED.keys()
+    return Promise.resolve({
+      source: createFakeMediaSource(alice, readPhoto, readStaged),
+      client: alice,
+      jpeg,
+      png,
+      document,
+      missing: '/home/alice/Pictures/gone.jpg',
+    })
   },
 }
 

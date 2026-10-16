@@ -227,6 +227,15 @@ class ClientBridge {
     /// for the same reason `fetch_media` does.
     void fetch_thumbnail(double message_id, double index, MediaHandler cb);
 
+    /// libsession's thumbnail of a local file staged to send, which no message holds yet: the same
+    /// square JPEG at the same edge as the one it makes once the file is sent, as `Media` typed
+    /// `image/jpeg`.
+    ///
+    /// `path` is UTF-8 and must pass `is_staged_path`. Made on the bridge's own worker thread, and
+    /// `cb` runs there. Refused with "not an absolute path", "the file could not be read" or "the
+    /// file is not a picture", none of which names the file: loaders log what they are refused.
+    void fetch_staged_thumbnail(std::string path, MediaHandler cb);
+
     /// Stops delivering frames and destroys the Client, which joins Core's loop. Idempotent, and
     /// implied by the destructor. Handlers for calls still in flight are dropped rather than
     /// completed - the facade rejects their promises, which is where "exactly once" is restored.

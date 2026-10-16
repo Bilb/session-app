@@ -32,6 +32,10 @@ export function createFakeBridge(): BridgeTransport & MediaSource {
 
   return {
     ...createFakeTransport(served),
-    ...createFakeMediaSource(alice, (photo) => readFile(join(MEDIA_DIR, photo))),
+    ...createFakeMediaSource(
+      alice,
+      (photo) => readFile(join(MEDIA_DIR, photo)),
+      (path) => readFile(path),
+    ),
   }
 }

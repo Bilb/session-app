@@ -1,4 +1,10 @@
-import { isDisplayableImage, isViewableContentType, isViewableVideo } from '@session/basic-types'
+import {
+  isDisplayableImage,
+  isStagedPath,
+  isViewableContentType,
+  isViewableVideo,
+  sniffContentType,
+} from '@session/basic-types'
 import type { AttachmentRef } from '@session/bridge-types'
 
 import type { MediaSource } from '../types'
@@ -110,14 +116,31 @@ function refuseUnknown(client: FakeSessionClient, { messageId, index }: Attachme
 
 /**
  * The bytes behind each media URL on the fake: what the real bridge's `fetchMedia`,
- * `fetchThumbhash` and `fetchThumbnail` answer. `readPhoto` reads a dev photograph or thumbnail by
- * file name, wherever the app keeps them.
+ * `fetchThumbhash`, `fetchThumbnail` and `fetchStagedThumbnail` answer. `readPhoto` reads a dev
+ * photograph or thumbnail by file name, wherever the app keeps them; `readStaged` reads a file
+ * staged to send by its path.
  */
 export function createFakeMediaSource(
   client: FakeSessionClient,
   readPhoto: (fileName: string) => Promise<Uint8Array>,
+  readStaged: (path: string) => Promise<Uint8Array>,
 ): MediaSource {
   return {
+    async fetchStagedThumbnail(path) {
+      // As the shim does, in its words, none of which names the file.
+      if (!isStagedPath(path)) throw new Error('not an absolute path')
+      const bytes = await readStaged(path).catch(() => {
+        throw new Error('the file could not be read')
+      })
+      if (sniffContentType(bytes)?.startsWith('image/') !== true) {
+        throw new Error('the file is not a picture')
+      }
+      // The fake makes no thumbnails: a picture is drawn as a dev photograph, as an attachment is.
+      const name = path.split(/[\\/]/).pop() ?? path
+      return readPhoto(
+        thumbnailFileName(`unsplash-${photoNumber(name) ?? assignedNumber(name)}.jpg`),
+      )
+    },
     async fetchMedia(ref) {
       refuseUnknown(client, ref)
       // As the shim does, in its words: from the cache only, so nothing drawn spends data.

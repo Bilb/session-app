@@ -231,6 +231,10 @@ Java_session_bridge_rn_SessionMediaNative_fetch(JNIEnv* env, jclass, jstring url
         source->fetch_thumbnail(parsed->message_id, parsed->index, [held](auto media) {
             answer_thumbnail(held, std::move(media));
         });
+    else if (parsed->kind == ::session_bridge::MediaUrlKind::staged)
+        source->fetch_staged_thumbnail(parsed->path, [held](auto media) {
+            answer_thumbnail(held, std::move(media));
+        });
     else
         source->fetch_media(parsed->message_id, parsed->index, [held](auto media) {
             answer_media(held, std::move(media));

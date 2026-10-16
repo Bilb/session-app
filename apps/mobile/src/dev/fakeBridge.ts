@@ -76,11 +76,15 @@ export function createFakeBridge(): BridgeTransport {
   writingExports(alice, photos)
   // Through the real loaders: the port is platform.ts's, and only the bytes are the fake's.
   serveNativeMediaFrom(
-    createFakeMediaSource(alice, async (photo) => {
-      const uri = photos.get(photo)
-      if (uri === undefined) throw new Error(`no dev photograph ${photo}`)
-      return new Uint8Array(await new File(uri).arrayBuffer())
-    }),
+    createFakeMediaSource(
+      alice,
+      async (photo) => {
+        const uri = photos.get(photo)
+        if (uri === undefined) throw new Error(`no dev photograph ${photo}`)
+        return new Uint8Array(await new File(uri).arrayBuffer())
+      },
+      async (path) => new Uint8Array(await new File(fileUrl(path)).arrayBuffer()),
+    ),
   )
 
   return createFakeTransport(served)
