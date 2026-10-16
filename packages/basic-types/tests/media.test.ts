@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  ALBUM_WIDTH,
   contentTypeEssence,
   isDisplayableImage,
   isViewableContentType,
   isViewableImage,
   isViewableVideo,
   mediaKindOf,
+  thumbnailEdgePxFor,
 } from '#src/media'
 
 describe('the essence of a declared content type', () => {
@@ -79,5 +81,15 @@ describe('a viewable type’s kind', () => {
   it('is video only for a viewable video', () => {
     expect(mediaKindOf('video/webm')).toBe('video')
     expect(mediaKindOf('image/gif')).toBe('image')
+  })
+})
+
+describe('the edge thumbnails are made at', () => {
+  it('follows the densest display', () => {
+    expect(thumbnailEdgePxFor([1, 2, 1.5])).toBe(ALBUM_WIDTH * 2)
+  })
+
+  it('makes them at 1x with no display connected', () => {
+    expect(thumbnailEdgePxFor([])).toBe(ALBUM_WIDTH)
   })
 })

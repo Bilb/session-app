@@ -74,3 +74,11 @@ export function mediaKindOf(contentType: string | undefined): MediaKind {
  * a prop - the album has never been the thing that decides how wide a message is.
  */
 export const ALBUM_WIDTH = 240
+
+/**
+ * The edge to make thumbnails at for the densest of these displays. 1 with none connected, since
+ * thumbnails are never remade and a headless start would otherwise ask for an edge of -Infinity.
+ */
+export function thumbnailEdgePxFor(scaleFactors: readonly number[]): number {
+  return Math.round(ALBUM_WIDTH * Math.max(1, ...scaleFactors))
+}
