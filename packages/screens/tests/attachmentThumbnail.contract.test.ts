@@ -26,4 +26,12 @@ describe('which picture each place draws', () => {
       /attachment\.hasRendition\s*\?\s*media\.renditionUrlFor\(ref\)\s*:\s*media\.urlFor\(ref\)/,
     )
   })
+
+  it('opens in the viewer only what is not an original file, in a row and in a tile', () => {
+    expect(read('AttachmentRow.tsx')).toContain('const opens = opensInViewer(attachment)')
+    expect(read('MessageAlbum.tsx')).toContain('rowVerb(state, opensInViewer(attachment))')
+    expect(read('MessageAttachments.tsx')).toMatch(
+      /if \(opensInViewer\(tapped\)\) ui\.openViewer\(message\.id, index\)\s*else if \(!sending\) void exportOne\(/,
+    )
+  })
 })

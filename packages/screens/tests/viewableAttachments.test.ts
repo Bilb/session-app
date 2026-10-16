@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   isViewable,
   leadsWithPicture,
+  opensInViewer,
   viewableAttachments,
   viewerUri,
 } from '#src/viewableAttachments'
@@ -73,6 +74,25 @@ describe('which attachments a viewer can show', () => {
     const viewable = viewableAttachments(set)
     expect(viewable.map((a) => a.index)).toEqual([0, 2])
     expect(viewable[1]?.index).toBe(2)
+  })
+})
+
+describe('a picture sent as the original file', () => {
+  const original = { ...attachment(1, 'image/jpeg'), originalFile: true }
+
+  it('is a picture, but one the viewer never opens', () => {
+    expect(isViewable(original)).toBe(true)
+    expect(opensInViewer(original)).toBe(false)
+    expect(opensInViewer(attachment(0, 'image/jpeg'))).toBe(true)
+  })
+
+  it('is left out of the viewer, so paging cannot reach it', () => {
+    const set = message([attachment(0, 'image/jpeg'), original, attachment(2, 'image/png')])
+    expect(viewableAttachments(set).map((a) => a.index)).toEqual([0, 2])
+  })
+
+  it('still leads its row with a picture, for its thumbnail', () => {
+    expect(leadsWithPicture({ ...original, hasThumbnail: true })).toBe(true)
   })
 })
 

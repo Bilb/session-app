@@ -72,7 +72,8 @@ export interface FilesPort {
    * Where to export a file to; null when the person cancelled.
    *
    * `contentType` is the sender's claim, for a platform whose destination depends on the kind of
-   * file: mobile sends a picture to the photo library and anything else to a folder.
+   * file: mobile sends a picture to the photo library and anything else to a folder. Unset files
+   * it as a plain file, which is how a picture sent as its original file is exported.
    *
    * Rejects with `ExportAccessRefused` when that destination needs access that was refused.
    */

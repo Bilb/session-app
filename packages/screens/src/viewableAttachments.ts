@@ -12,6 +12,14 @@ export function isViewable(attachment: Attachment): boolean {
 }
 
 /**
+ * Whether the viewer opens it: a viewable picture, unless its sender sent it as the original file,
+ * metadata and all, which is only ever exported.
+ */
+export function opensInViewer(attachment: Attachment): boolean {
+  return isViewable(attachment) && !attachment.originalFile
+}
+
+/**
  * Whether a file row leads with a picture rather than a glyph. libsession thumbnails some types
  * the viewer cannot open (AVIF), and its thumbnail is a JPEG every platform draws.
  */
@@ -30,7 +38,7 @@ export function leadsWithPicture(attachment: Attachment): boolean {
  * document sits between two pictures, and confusing them exports the wrong file.
  */
 export function viewableAttachments(message: Message): Attachment[] {
-  return message.attachments.filter(isViewable)
+  return message.attachments.filter(opensInViewer)
 }
 
 /**
