@@ -205,6 +205,13 @@ private constructor(
     if (cancelled.get()) SessionMediaNative.withdraw(handle) else SessionMediaNative.forget(handle)
   }
 
+  // An answer has come, so there is nothing to withdraw; and this runs inside the native answer,
+  // where a withdraw would re-enter the request being answered.
+  private fun answered() {
+    val handle = withdrawal.getAndSet(LET_GO)
+    if (handle != 0L && handle != LET_GO) SessionMediaNative.forget(handle)
+  }
+
   fun cancel() {
     if (!settle()) return
     cancelled.set(true)
@@ -221,7 +228,7 @@ private constructor(
 
   @DoNotStrip
   fun onMedia(bytes: ByteBuffer, handle: Long) {
-    letGo()
+    answered()
     DRAIN.execute {
       try {
         val consumer = encoded
@@ -252,7 +259,7 @@ private constructor(
 
   @DoNotStrip
   fun onThumbhash(width: Int, height: Int, rgba: ByteBuffer, handle: Long) {
-    letGo()
+    answered()
     DRAIN.execute {
       try {
         val consumer = decoded
@@ -290,7 +297,7 @@ private constructor(
 
   @DoNotStrip
   fun onFailure(message: String) {
-    letGo()
+    answered()
     DRAIN.execute { if (settle()) failWith(RuntimeException(message)) }
   }
 

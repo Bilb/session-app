@@ -303,7 +303,7 @@ namespace {
 namespace {
 
     // A message carries at most 10 MB, so nothing staged to send is near this; a file past it is
-    // refused before it is read whole.
+    // refused before it is read whole. The fake holds to the same number, through the contract.
     constexpr size_t MAX_STAGED_READ_BYTES = 64 * 1024 * 1024;
 
     // None of these sentences names the file: the loaders log what they are refused.
@@ -1324,7 +1324,7 @@ void ClientBridge::close() {
     // returns, no warm answer can still be in flight.
     _impl->warm.reset();
     _impl->client.reset();
-    // Returns at once, so a decode stuck on a mount that stopped answering cannot hold up a quit.
+    // Waits a bounded moment for a decode under way, so a stuck one cannot hold up a quit.
     _impl->staged->close();
     _impl.reset();
 }
@@ -1495,43 +1495,24 @@ std::function<void()> ClientBridge::fetch_staged_thumbnail(std::string path, Med
     }
 
     // The edge arrives on Core's loop, so a cancel can come before the request it withdraws.
-    struct Withdrawal {
-        std::mutex lock;
-        bool withdrawn = false;
-        StagedThumbnails::Cancel cancel;
-    };
-    auto withdrawal = std::make_shared<Withdrawal>();
+    Deferred deferred;
 
     // The edge libsession will make this file's thumbnail at once it is sent, so the tile and the
     // message it becomes draw the same picture.
     _impl->client->thumbnail_edge([staged = _impl->staged,
-                                   withdrawal,
+                                   deferred,
                                    path = std::move(path),
                                    cb = std::move(cb)](session::Expected<uint32_t> edge) mutable {
         if (!edge) {
             cb(Media{std::string{edge.error().message}, {}, {}});
             return;
         }
-        std::lock_guard guard{withdrawal->lock};
-        if (withdrawal->withdrawn) {
-            cb(Media{"cancelled", {}, {}});
-            return;
-        }
-        withdrawal->cancel = staged->request(std::move(path), *edge, std::move(cb));
+        deferred.make(
+                [&] { return staged->request(std::move(path), *edge, std::move(cb)); },
+                [&] { cb(Media{"cancelled", {}, {}}); });
     });
 
-    return [withdrawal] {
-        StagedThumbnails::Cancel cancel;
-        {
-            std::lock_guard guard{withdrawal->lock};
-            if (withdrawal->withdrawn)
-                return;
-            withdrawal->withdrawn = true;
-            cancel = std::move(withdrawal->cancel);
-        }
-        if (cancel)
-            cancel();
-    };
+    return deferred.canceller();
 }
 
 void ClientBridge::call(Request request) {
