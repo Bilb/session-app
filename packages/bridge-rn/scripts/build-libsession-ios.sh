@@ -52,7 +52,8 @@ source_hash=$( \
 
 # Shared by every clone on this machine: libsession's build tree is ~9GB, the part the app links ~1.5GB.
 cache_root="${SESSION_LIBSESSION_IOS_CACHE:-$HOME/Library/Caches/session-app/libsession-ios}"
-built="$cache_root/$source_hash-${1:-both}-${IPHONEOS_DEPLOYMENT_TARGET:-default}"
+xcode_build="$(xcodebuild -version | awk '/Build version/ {print $3}')"
+built="$cache_root/$source_hash-${1:-both}-${IPHONEOS_DEPLOYMENT_TARGET:-default}-$xcode_build"
 
 if [ -d "$built" ]; then
     touch "$built"

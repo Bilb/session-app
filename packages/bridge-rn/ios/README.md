@@ -18,7 +18,7 @@ Intel Mac running the simulator; it is another 1.6GB of build tree and nothing o
 machine will ever load it, so it is a release's business rather than the default.
 
 libsession's outputs are cached per machine in `~/Library/Caches/session-app/libsession-ios`,
-keyed by the source hash below and the slice mode, and the five most recently used are kept. A
+keyed by the source hash below, the slice mode and the Xcode build, and the five most recently used are kept. A
 clone on a cached libsession skips its build. The ~9GB build tree is deleted afterwards, unless
 `SESSION_LIBSESSION_IOS_KEEP_BUILD=1` for incremental rebuilds while changing libsession, and the
 xcframework here is an APFS clone of the cached one. `SESSION_LIBSESSION_IOS_CACHE` moves the
