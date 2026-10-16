@@ -17,12 +17,18 @@ const VIEWABLE_IMAGE: ReadonlySet<string> = new Set([
 
 const VIEWABLE_VIDEO: ReadonlySet<string> = new Set(['video/mp4', 'video/webm', 'video/ogg'])
 
-// The six characters the shim's essence() strips; trim() would also take Unicode space and a BOM.
-const ASCII_EDGE_SPACE = /^[ \t\r\n\f\v]+|[ \t\r\n\f\v]+$/g
+// libsession's set: trim() would also take \f, \v, Unicode space and a BOM.
+const EDGE_SPACE = /^[ \t\r\n]+|[ \t\r\n]+$/g
 
-/** `Image/JPEG; charset=binary` → `image/jpeg`: a declared type is compared by its essence only. */
+/**
+ * `Image/JPEG; charset=binary` → `image/jpeg`: a declared type is compared by its essence only,
+ * which ends at a `;` or a NUL and folds ASCII case alone.
+ */
 export function contentTypeEssence(contentType: string | undefined): string | undefined {
-  return contentType?.split(';')[0]?.replace(ASCII_EDGE_SPACE, '').toLowerCase()
+  return contentType
+    ?.split(/[;\0]/)[0]
+    ?.replace(EDGE_SPACE, '')
+    .replace(/[A-Z]/g, (c) => c.toLowerCase())
 }
 
 /**

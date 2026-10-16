@@ -58,6 +58,7 @@ describe('the name an export is suggested under', () => {
     expect(unnamed('image/jpeg')).toBe('Session_2026-10-09-140305.jpg')
     expect(unnamed('audio/mpeg')).toBe('Session_2026-10-09-140305.mp3')
     expect(unnamed('application/pdf')).toBe('Session_2026-10-09-140305.pdf')
+    expect(unnamed('image/apng')).toBe('Session_2026-10-09-140305.png')
   })
 
   it('names two unnamed attachments of one message apart, and one sent a second later apart', () => {

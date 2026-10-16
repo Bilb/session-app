@@ -32,6 +32,7 @@ const PHOTO_LIBRARY_TYPES: Readonly<Record<string, string>> = {
   'image/jpeg': 'jpg',
   'image/jpg': 'jpg',
   'image/png': 'png',
+  'image/apng': 'png',
   'image/gif': 'gif',
   'image/webp': 'webp',
   'image/heic': 'heic',
