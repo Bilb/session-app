@@ -33,6 +33,8 @@ export interface ContractHarness {
     bobId: string
     /** Lets whatever is in flight finish: a manual clock, or a real poll. */
     settle: () => Promise<void>
+    /** Writes a file of `sizeBytes` bytes for a send to name, and answers its path. */
+    writeFile: (name: string, sizeBytes: number) => Promise<string>
   }>
   /** A pair where bob has written to alice but alice has not approved. */
   strangers(): Promise<{
@@ -526,6 +528,90 @@ export function runSessionClientContract(
       // libsession's send queue does not survive the process; a UI that has never seen
       // this state spins for ever after a crash.
       expect(['interrupted', 'sent', 'failed']).toContain(inFlight?.sendState)
+    })
+
+    it('stores a message with its files before uploading them, and settles it after', async () => {
+      const { alice, bobId, settle, writeFile } = await harness.friends()
+      const path = await writeFile('notes.txt', 1_200)
+      const seen = collect(alice)
+
+      // No body: a message can be only its files.
+      const messageId = await alice.sendMessage(bobId, {
+        body: '',
+        attachments: [{ path, contentType: 'text/plain', filename: 'for bob.txt' }],
+      })
+
+      const added = messagesOf(seen.events, 'messages-added').find((m) => m.id === messageId)
+      expect(added?.sendState).toBe('uploading')
+      expect(
+        added?.attachments.map((a) => [a.index, a.filename, a.contentType, a.uploaded]),
+      ).toEqual([[0, 'for bob.txt', 'text/plain', false]])
+
+      // Offline, as the addon runs, the upload fails; either way it leaves `uploading` by update.
+      const last = () =>
+        messagesOf(seen.events, 'messages-updated')
+          .filter((m) => m.id === messageId)
+          .at(-1)?.sendState
+      const terminal = new Set(['sent', 'failed'])
+      for (let round = 0; round < 50 && !terminal.has(last() ?? ''); round += 1) {
+        await settle()
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      }
+      expect(['sent', 'failed']).toContain(last())
+      seen.stop()
+    })
+
+    it('refuses a send whose file is missing or empty, storing nothing', async () => {
+      const { alice, bobId, writeFile } = await harness.friends()
+      const empty = await writeFile('empty.bin', 0)
+      const seen = collect(alice)
+
+      const missing = await failure(() =>
+        alice.sendMessage(bobId, { body: 'gone', attachments: [{ path: `${empty}.gone` }] }),
+      )
+      const blank = await failure(() =>
+        alice.sendMessage(bobId, { body: 'empty', attachments: [{ path: empty }] }),
+      )
+
+      expect(missing instanceof SessionClientError).toBe(true)
+      expect(blank instanceof SessionClientError).toBe(true)
+      expect(messagesOf(seen.events, 'messages-added').length).toBe(0)
+      seen.stop()
+    })
+
+    it('delivers the files of a message to the other side once they are up', async () => {
+      const { alice, bob, aliceId, bobId, settle, writeFile } = await harness.friends()
+      const path = await writeFile('harbour.jpg', 48_000)
+
+      const messageId = await alice.sendMessage(bobId, {
+        body: 'look',
+        attachments: [{ path, contentType: 'image/jpeg' }],
+      })
+      await settle()
+
+      const sent = (await alice.getMessages(bobId)).messages.find((m) => m.id === messageId)
+      expect(sent?.sendState).toBe('sent')
+      expect(sent?.attachments.map((a) => a.uploaded)).toEqual([true])
+      const arrived = (await bob.getMessages(aliceId)).messages.find((m) => m.body === 'look')
+      expect(arrived?.attachments.map((a) => [a.filename, a.contentType, a.uploaded])).toEqual([
+        ['harbour.jpg', 'image/jpeg', true],
+      ])
+    })
+
+    it('fails a message whose files were still uploading across a restart', async () => {
+      const { alice, bobId, writeFile } = await harness.friends()
+      const path = await writeFile('draft.pdf', 30_000)
+      await alice.sendMessage(bobId, {
+        body: 'mid-upload',
+        attachments: [{ path, contentType: 'application/pdf' }],
+      })
+
+      const restarted = await harness.restart(alice)
+      const { messages } = await restarted.getMessages(bobId)
+
+      // Nothing reached a swarm before the files were up, so this is no unknown: it is a failure,
+      // and a retry is safe.
+      expect(messages.find((m) => m.body === 'mid-upload')?.sendState).toBe('failed')
     })
 
     it('clears a conversation by replacing its history, not by removing it', async () => {

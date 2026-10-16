@@ -22,6 +22,7 @@ import type {
   Frame,
   Message,
   MessageCursor,
+  OutgoingAttachment,
   PixelSize,
   Request,
   RouterKind,
@@ -46,6 +47,8 @@ export type MessagePage = { messages: Message[] }
 export interface OutgoingMessage {
   body: string
   replyTo?: number
+  /** In the order the recipient sees them. */
+  attachments?: OutgoingAttachment[] | undefined
 }
 
 export interface SessionClient {

@@ -1051,6 +1051,21 @@ struct ClientBridge::Impl {
         msg.body = std::move(cmd.body);
         if (cmd.reply_to)
             msg.reply_to = whole<int64_t>(*cmd.reply_to, "sendMessage.replyTo");
+        if (cmd.attachments) {
+            msg.attachments.reserve(cmd.attachments->size());
+            // Dimensions and ThumbHash are libsession's to read from the file, and `original_file`
+            // is never set: nothing offers sending a picture as it is.
+            for (auto& a : *cmd.attachments) {
+                client::OutgoingAttachment out;
+                out.path = std::filesystem::path{std::move(a.path)};
+                out.content_type = std::move(a.content_type);
+                out.filename = std::move(a.filename);
+                out.take_file = a.take_file.value_or(false);
+                msg.attachments.push_back(std::move(out));
+            }
+        }
+        // No upload handler, as for retrySend: a sending set counts its files by `uploaded` on the
+        // message rather than following bytes.
         convo(cmd.conversation_id)
                 .send_message(std::move(msg), on(id, [this, id](int64_t message_id) {
                                   respond(id, MessageIdResult{static_cast<double>(message_id)});

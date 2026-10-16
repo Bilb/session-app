@@ -1551,6 +1551,30 @@ struct Codec<::session_bridge::GetMessagesCommand> {
 };
 
 template <>
+struct Codec<::session_bridge::OutgoingAttachment> {
+    static constexpr std::string_view name = "OutgoingAttachment";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::OutgoingAttachment& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("path", Codec<std::string>::to(env, value.path));
+        if (value.content_type)
+            obj.Set("contentType", Codec<std::string>::to(env, *value.content_type));
+        if (value.filename)
+            obj.Set("filename", Codec<std::string>::to(env, *value.filename));
+        if (value.take_file)
+            obj.Set("takeFile", Codec<bool>::to(env, *value.take_file));
+        return obj;
+    }
+    static ::session_bridge::OutgoingAttachment from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::OutgoingAttachment(
+                Codec<std::string>::from(obj.Get("path"), "OutgoingAttachment.path"),
+                optional<std::string>(obj.Get("contentType"), "OutgoingAttachment.contentType"),
+                optional<std::string>(obj.Get("filename"), "OutgoingAttachment.filename"),
+                optional<bool>(obj.Get("takeFile"), "OutgoingAttachment.takeFile"));
+    }
+};
+
+template <>
 struct Codec<::session_bridge::SendMessageCommand> {
     static constexpr std::string_view name = "SendMessageCommand";
     static Napi::Value to(Napi::Env env, const ::session_bridge::SendMessageCommand& value) {
@@ -1560,6 +1584,8 @@ struct Codec<::session_bridge::SendMessageCommand> {
         obj.Set("body", Codec<std::string>::to(env, value.body));
         if (value.reply_to)
             obj.Set("replyTo", Codec<double>::to(env, *value.reply_to));
+        if (value.attachments)
+            obj.Set("attachments", Codec<std::vector<::session_bridge::OutgoingAttachment>>::to(env, *value.attachments));
         return obj;
     }
     static ::session_bridge::SendMessageCommand from(const Napi::Value& value, std::string_view where) {
@@ -1567,7 +1593,8 @@ struct Codec<::session_bridge::SendMessageCommand> {
         return ::session_bridge::SendMessageCommand(
                 Codec<std::string>::from(obj.Get("conversationId"), "SendMessageCommand.conversationId"),
                 Codec<std::string>::from(obj.Get("body"), "SendMessageCommand.body"),
-                optional<double>(obj.Get("replyTo"), "SendMessageCommand.replyTo"));
+                optional<double>(obj.Get("replyTo"), "SendMessageCommand.replyTo"),
+                optional<std::vector<::session_bridge::OutgoingAttachment>>(obj.Get("attachments"), "SendMessageCommand.attachments"));
     }
 };
 

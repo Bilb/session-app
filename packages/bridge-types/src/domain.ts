@@ -187,6 +187,27 @@ export interface Attachment {
 }
 
 /**
+ * A file to send with a message.
+ *
+ * Read when its upload comes up and again by any retry, so it has to stay at `path`, unchanged,
+ * until the message is sent, unless `takeFile` hands it over. A picture libsession decodes is sent
+ * re-encoded to fit the file server, and the stored attachment then describes what was sent.
+ */
+export interface OutgoingAttachment {
+  path: string
+  /** Inferred from the filename's extension when unset. */
+  contentType?: string
+  /** What the recipient sees it called; `path`'s own filename when unset. */
+  filename?: string
+  /**
+   * Hands the file to libsession, which moves it into its own storage once the message is stored
+   * and deletes it once the message no longer needs it. Only for a copy the app made: after a send
+   * that succeeded nothing may touch `path`, and a send that was refused leaves the file there.
+   */
+  takeFile?: boolean
+}
+
+/**
  * One attachment, by its message and its place in that message's list.
  *
  * For TypeScript signatures only: the protocol spells the two fields out on each command, because

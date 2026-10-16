@@ -31,6 +31,7 @@ export type {
   Frame,
   Message,
   MessageCursor,
+  OutgoingAttachment,
   PixelSize,
   Reply,
   Request,

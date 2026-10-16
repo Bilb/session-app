@@ -425,7 +425,13 @@ export class FakeSessionClient implements SessionClient {
 
   sendMessage(id: ConversationId, message: OutgoingMessage): Promise<number> {
     this.assertOpen()
-    return Promise.resolve(this.account.send(id, message.body, message.replyTo))
+    try {
+      return Promise.resolve(
+        this.account.send(id, message.body, message.replyTo, message.attachments),
+      )
+    } catch (error) {
+      return Promise.reject(error instanceof Error ? error : new Error(String(error)))
+    }
   }
 
   retrySend(messageId: number): Promise<boolean> {

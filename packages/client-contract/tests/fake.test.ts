@@ -55,6 +55,11 @@ const harness: ContractHarness = {
       aliceId: world.account('Alice').sessionId,
       bobId: world.account('Bob').sessionId,
       settle: settleWith(world),
+      writeFile: (name, sizeBytes) => {
+        const path = `/fake-disk/${name}`
+        world.writeFile(path, sizeBytes)
+        return Promise.resolve(path)
+      },
     })
   },
 

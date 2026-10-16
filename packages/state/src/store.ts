@@ -4,6 +4,7 @@ import type {
   ConfigSize,
   ConversationId,
   Message,
+  OutgoingMessage,
   SessionClient,
 } from '@session/client'
 import { BRIDGE_UNAVAILABLE, SessionClientError } from '@session/client'
@@ -74,7 +75,8 @@ export interface SessionActions {
   hydrate: () => Promise<void>
   loadHistory: (id: ConversationId) => Promise<void>
   loadOlder: (id: ConversationId) => Promise<void>
-  send: (id: ConversationId, body: string, replyTo?: number) => Promise<void>
+  /** Rejects, storing nothing, when libsession refuses it: a file that cannot be read, say. */
+  send: (id: ConversationId, message: OutgoingMessage) => Promise<void>
   markRead: (id: ConversationId) => Promise<void>
   approve: (id: ConversationId) => Promise<void>
   /**
@@ -431,11 +433,11 @@ export function createSessionStore(
       })
     },
 
-    async send(id, body, replyTo): Promise<void> {
+    async send(id, message): Promise<void> {
       // No optimistic row: libsession stores the message before this resolves and announces
       // it as message-added, so inventing one here would only produce a duplicate to
       // reconcile.
-      await client.sendMessage(id, { body, ...(replyTo === undefined ? {} : { replyTo }) })
+      await client.sendMessage(id, message)
     },
 
     async markRead(id): Promise<void> {

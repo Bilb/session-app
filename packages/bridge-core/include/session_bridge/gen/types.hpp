@@ -1140,15 +1140,39 @@ struct GetMessagesCommand {
             conversation_id{std::move(conversation_id_)}, limit{std::move(limit_)}, before{std::move(before_)}, include_deleted{std::move(include_deleted_)} {}
 };
 
+/// A file to send with a message.
+///
+/// Read when its upload comes up and again by any retry, so it has to stay at `path`, unchanged,
+/// until the message is sent, unless `takeFile` hands it over. A picture libsession decodes is sent
+/// re-encoded to fit the file server, and the stored attachment then describes what was sent.
+struct OutgoingAttachment {
+    std::string path;
+    /// Inferred from the filename's extension when unset.
+    std::optional<std::string> content_type;
+    /// What the recipient sees it called; `path`'s own filename when unset.
+    std::optional<std::string> filename;
+    /// Hands the file to libsession, which moves it into its own storage once the message is stored
+    /// and deletes it once the message no longer needs it. Only for a copy the app made: after a send
+    /// that succeeded nothing may touch `path`, and a send that was refused leaves the file there.
+    std::optional<bool> take_file;
+
+    OutgoingAttachment(std::string path_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<bool> take_file_) :
+            path{std::move(path_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, take_file{std::move(take_file_)} {}
+};
+
+/// Stores the message and answers its id; it is then announced like any other. With attachments
+/// it is `uploading` until every file is on the file server, and goes on to the ordinary states
+/// from there. Refused, storing nothing, when a file is not a readable, non-empty file.
 struct SendMessageCommand {
     static constexpr std::string_view type_tag = "sendMessage";
 
     std::string conversation_id;
     std::string body;
     std::optional<double> reply_to;
+    std::optional<std::vector<::session_bridge::OutgoingAttachment>> attachments;
 
-    SendMessageCommand(std::string conversation_id_, std::string body_, std::optional<double> reply_to_) :
-            conversation_id{std::move(conversation_id_)}, body{std::move(body_)}, reply_to{std::move(reply_to_)} {}
+    SendMessageCommand(std::string conversation_id_, std::string body_, std::optional<double> reply_to_, std::optional<std::vector<::session_bridge::OutgoingAttachment>> attachments_) :
+            conversation_id{std::move(conversation_id_)}, body{std::move(body_)}, reply_to{std::move(reply_to_)}, attachments{std::move(attachments_)} {}
 };
 
 struct RetrySendCommand {

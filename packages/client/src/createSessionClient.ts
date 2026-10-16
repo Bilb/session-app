@@ -263,6 +263,9 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
         conversationId: id,
         body: message.body,
         ...(message.replyTo === undefined ? {} : { replyTo: message.replyTo }),
+        ...(message.attachments === undefined || message.attachments.length === 0
+          ? {}
+          : { attachments: message.attachments }),
       })
       return resultOf(response, 'messageId').messageId
     },

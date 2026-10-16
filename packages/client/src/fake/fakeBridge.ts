@@ -187,6 +187,7 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     messageId: await client.sendMessage(cmd.conversationId, {
       body: cmd.body,
       ...(cmd.replyTo === undefined ? {} : { replyTo: cmd.replyTo }),
+      ...(cmd.attachments === undefined ? {} : { attachments: cmd.attachments }),
     }),
   }),
   retrySend: async (client, cmd) => ({
