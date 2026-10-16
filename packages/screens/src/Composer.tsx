@@ -86,19 +86,10 @@ export function Composer({
       which === 'images' ? files.pickImages({ multiple: true, limit }) : files.pickFiles()
     // Closed once the picker is done rather than before it opens: iOS presents the picker over the
     // menu's modal, and one presented while that modal is still dismissing never appears.
-    void chosen
-      .then(
-        (picked) => {
-          staging.add(picked)
-        },
-        () => {
-          staging.add([], 1)
-        },
-      )
-      .finally(() => {
-        picking.current = false
-        setMenuOpen(false)
-      })
+    void staging.take(chosen).finally(() => {
+      picking.current = false
+      setMenuOpen(false)
+    })
   }
 
   function attach(): void {

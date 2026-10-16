@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { memoryPorts, resetPorts, setPorts, type PickedFile } from '@session/app'
 import type * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -86,5 +89,30 @@ describe('the composer staging', () => {
     expect(hook.writes).toEqual([])
     expect(released).toEqual(['session-media://picked/late'])
     expect(discarded).toEqual(['/home/a/late.jpg'])
+  })
+
+  it('refuses a drop that fails as unreadable, as it does a picker that fails', async () => {
+    const staging = mount()
+    await staging.take(Promise.reject(new Error('allowPreview')), 3)
+    await staging.take(Promise.reject(new Error('picker')))
+    const refusals = hook.writes.filter((value) => typeof value === 'object')
+    expect(refusals).toContainEqual({ tooLarge: [], overLimit: 0, unreadable: 3 })
+    expect(refusals).toContainEqual({ tooLarge: [], overLimit: 0, unreadable: 1 })
+  })
+
+  it('counts what a drop could not hand back as unreadable', async () => {
+    const staging = mount()
+    await staging.take(Promise.resolve([picked('a.jpg')]), 3)
+    expect(hook.writes).toContainEqual({ tooLarge: [], overLimit: 0, unreadable: 2 })
+  })
+
+  it('is how both a pick and a drop are staged', () => {
+    const source = (file: string) => readFileSync(join(import.meta.dirname, '../src', file), 'utf8')
+    expect(source('Composer.tsx')).toContain('staging.take(chosen)')
+    expect(source('ConversationScreen.tsx')).toContain(
+      'staging.take(requirePorts().files.droppedFiles(items)',
+    )
+    for (const file of ['Composer.tsx', 'ConversationScreen.tsx'])
+      expect(source(file)).not.toContain('staging.add(')
   })
 })

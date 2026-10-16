@@ -17,6 +17,11 @@ export interface StagingState {
   refusal: number
   /** What a pick or drop gave, and how many items it could not read at all. */
   add: (picked: readonly PickedFile[], unreadable?: number) => void
+  /**
+   * Stages what a picker or a drop resolves to. `asked` is how many items it was given, where
+   * known: any it did not hand back could not be read, and a failure could read none of them.
+   */
+  take: (chosen: Promise<readonly PickedFile[]>, asked?: number) => Promise<void>
   remove: (path: string) => void
   /** Empties the tray, deleting what it holds. Not for a send: the message needs the files. */
   clear: () => void
@@ -72,11 +77,25 @@ export function useStaging(): StagingState {
     for (const file of next.replaced) requirePorts().files.releasePreview(file)
   }, [])
 
+  const take = useCallback(
+    (chosen: Promise<readonly PickedFile[]>, asked?: number) =>
+      chosen.then(
+        (picked) => {
+          add(picked, asked === undefined ? 0 : asked - picked.length)
+        },
+        () => {
+          add([], asked ?? 1)
+        },
+      ),
+    [add],
+  )
+
   return {
     files,
     refused,
     refusal,
     add,
+    take,
     remove: (path) => {
       discard(latest.current.filter((file) => file.path === path))
       latest.current = unstage(latest.current, path)
