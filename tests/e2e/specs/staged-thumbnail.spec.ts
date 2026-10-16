@@ -38,9 +38,6 @@ interface PageGlobals {
  * behind the grant, and an `<img>` draws it. A folder name outside ASCII, since that path crosses
  * the preload, main and the bridge. A path the page names itself, and a grant taken back, are
  * refused.
- *
- * Through the page's own file input rather than the composer, so it holds whatever the
- * `attachmentSending` flag the build was made with.
  */
 test('draws a picked file by its staged thumbnail, and nothing that was not picked', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'session-staged-thumbnail-'))

@@ -33,7 +33,7 @@ function carriesFiles(event: DragEvent): boolean {
  * crosses, each just after the enter of the next one. A flag would flicker the overlay off and on
  * across every bubble in the transcript.
  */
-export function DropZone({ enabled, onActive, onDrop, children, overlay }: DropZoneProps) {
+export function DropZone({ onActive, onDrop, children, overlay }: DropZoneProps) {
   const zone = useRef<ElementRef<typeof YStack>>(null)
   // Read through refs so the listeners are bound once, not once per render of the screen.
   const handlers = useRef({ onActive, onDrop })
@@ -42,7 +42,7 @@ export function DropZone({ enabled, onActive, onDrop, children, overlay }: DropZ
   useEffect(() => {
     // tamagui hands back the DOM node on the web.
     const element = zone.current as unknown as HTMLElement | null
-    if (!enabled || element === null) return
+    if (element === null) return
     let depth = 0
 
     const enter = (event: DragEvent) => {
@@ -82,7 +82,7 @@ export function DropZone({ enabled, onActive, onDrop, children, overlay }: DropZ
       element.removeEventListener('drop', drop)
       if (depth > 0) handlers.current.onActive(false)
     }
-  }, [enabled])
+  }, [])
 
   return (
     <YStack ref={zone} flex={1} position="relative">

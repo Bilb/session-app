@@ -1,4 +1,4 @@
-import { flag, requirePorts } from '@session/app'
+import { requirePorts } from '@session/app'
 import {
   formatBytes,
   MAX_ATTACHMENT_BYTES,
@@ -151,7 +151,6 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
   const { messages, ready } = useMessages(conversationId)
   const actions = useSessionActions()
   const staging = useStaging()
-  const attaching = flag('attachmentSending')
   const [dropping, setDropping] = useState(false)
   // Unset means nobody has been asked what this conversation should fetch unprompted, which is
   // not the same as having been asked and said no. Asked once, on the first attachment fetched.
@@ -218,7 +217,6 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
         <Separator borderColor="$bordersColor" />
 
         <DropZone
-          enabled={attaching}
           onActive={setDropping}
           onDrop={(items, skipped) => {
             void staging.take(requirePorts().files.droppedFiles(items), skipped + items.length)
@@ -259,7 +257,6 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
 
           <Composer
             staging={staging}
-            attaching={attaching}
             onSend={(body) => {
               void actions.send(conversationId, body)
             }}

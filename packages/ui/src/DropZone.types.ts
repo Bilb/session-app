@@ -1,8 +1,6 @@
 import type { ReactNode } from 'react'
 
 export interface DropZoneProps {
-  /** Off, the zone is only its children: nothing is accepted and nothing is announced. */
-  enabled: boolean
   /** Whether files are being held over the zone, for the screen to draw its overlay. */
   onActive: (active: boolean) => void
   /**

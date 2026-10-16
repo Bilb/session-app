@@ -44,18 +44,12 @@ function Notices({ staging }: { staging: StagingState }) {
   )
 }
 
-/**
- * The bottom of a conversation: what is staged, why anything was refused, and the line being typed.
- *
- * `attaching` is the feature flag. Off, this is the text composer it always was: no +, no tray.
- */
+/** The bottom of a conversation: what is staged, what was refused, and the line being typed. */
 export function Composer({
   staging,
-  attaching,
   onSend,
 }: {
   staging: StagingState
-  attaching: boolean
   onSend: (body: string) => void
 }) {
   const [draft, setDraft] = useState('')
@@ -99,8 +93,8 @@ export function Composer({
 
   return (
     <YStack padding="$md" gap="$sm" borderTopWidth={1} borderTopColor="$bordersColor">
-      {attaching ? <Notices staging={staging} /> : null}
-      {attaching && staging.files.length > 0 ? (
+      <Notices staging={staging} />
+      {staging.files.length > 0 ? (
         <StagedTray
           countLabel={PENDING_COPY.attachmentsStagedCount(
             staging.files.length,
@@ -138,18 +132,16 @@ export function Composer({
         </StagedTray>
       ) : null}
       <XStack gap="$sm" alignItems="center">
-        {attaching ? (
-          <Button
-            variant="tonal"
-            size="md"
-            circular
-            disabled={full}
-            icon={<Icon name="plus" size="md" color="$textPrimary" />}
-            accessibilityLabel={tr('attachmentsAdd')}
-            onPress={attach}
-            testID={ELEMENT.conversation.attachButton}
-          />
-        ) : null}
+        <Button
+          variant="tonal"
+          size="md"
+          circular
+          disabled={full}
+          icon={<Icon name="plus" size="md" color="$textPrimary" />}
+          accessibilityLabel={tr('attachmentsAdd')}
+          onPress={attach}
+          testID={ELEMENT.conversation.attachButton}
+        />
         <Input
           grow
           value={draft}
@@ -167,7 +159,7 @@ export function Composer({
           {tr('send')}
         </Button>
       </XStack>
-      {attaching && ATTACH_OPENS_MENU ? (
+      {ATTACH_OPENS_MENU ? (
         <AttachMenu
           open={menuOpen}
           onClose={() => {
