@@ -1,11 +1,12 @@
 import type { ComponentProps, ReactNode } from 'react'
-import { isWeb, Spinner, styled, XStack } from 'tamagui'
+import { isWeb, Spinner, styled, XStack, YStack } from 'tamagui'
 
 import { INHERITED_LABEL } from './labelColor'
 import { hitSlopFor } from './buttonHitTarget'
 import type { FocusRingShape } from './keyboardPress'
 import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import { PressArea } from './PressArea'
+import { Concealed } from './Concealed'
 import { Text } from './Text'
 
 const Frame = styled(XStack, {
@@ -395,6 +396,13 @@ export function Button({
     destructive && !INVERTS_ON_PRESS.has(variant) ? '$dangerColor' : PRESSED_LABEL[variant]
 
   const inert = disabled || loading
+  /**
+   * The name a screen reader gives the button. While loading the label is hidden, and Android
+   * drops a fully transparent child from the accessibility tree, so the label's text is passed
+   * as the button's own name -- which every platform announces whatever the child's opacity.
+   */
+  const name =
+    accessibilityLabel ?? (loading && typeof children === 'string' ? children : undefined)
 
   const ring: FocusRingShape =
     borderRadius === undefined
@@ -410,11 +418,15 @@ export function Button({
       // Grown outwards rather than drawn larger: the control keeps the size the designs give it and
       // the target reaches the floor. Ignored on the web, where a pointer does not need it.
       hitSlop={hitSlop ?? hitSlopFor(size)}
-      {...(accessibilityLabel === undefined ? {} : { accessibilityLabel })}
+      {...(name === undefined ? {} : { accessibilityLabel: name })}
+      busy={loading}
       {...(testID === undefined ? {} : { testID })}
     >
       {(pressed) => (
         <Frame
+          // The loading spinner's containing block: on the web a stack is static, and the
+          // spinner's absolute offsets would otherwise resolve against the page.
+          position="relative"
           {...(fill ? { flex: 1 } : {})}
           {...FRAME_ROLE}
           variant={variant}
@@ -427,20 +439,39 @@ export function Button({
           {...PRESS_PASSTHROUGH}
           {...(pressed && !inert ? PRESSED[variant] : {})}
         >
-          {loading ? <Spinner size="small" color={nativeLabel} /> : icon}
-          {typeof children === 'string' ? (
-            <Text
-              size={size === 'xs' || size === 'sm' ? '$label' : '$body'}
-              // Bold, which is what the desktop client's button is: `font-weight: 700` unless a
-              // caller says otherwise, and none of the onboarding callers do.
-              weight="bold"
-              color={INHERITED_LABEL ?? (pressed && !inert ? pressedLabel : nativeLabel)}
+          {/* Loading hides the content but keeps its room, so the button keeps its size and
+              nothing around it moves; the spinner is drawn over it, centred. The button's
+              accessible name is set above, since Android does not read a transparent child. */}
+          <Concealed when={loading}>{icon}</Concealed>
+          <Concealed when={loading}>
+            {typeof children === 'string' ? (
+              <Text
+                size={size === 'xs' || size === 'sm' ? '$label' : '$body'}
+                // Bold, which is what the desktop client's button is: `font-weight: 700` unless a
+                // caller says otherwise, and none of the onboarding callers do.
+                weight="bold"
+                color={INHERITED_LABEL ?? (pressed && !inert ? pressedLabel : nativeLabel)}
+              >
+                {children}
+              </Text>
+            ) : (
+              children
+            )}
+          </Concealed>
+          {loading ? (
+            <YStack
+              position="absolute"
+              top={0}
+              bottom={0}
+              left={0}
+              right={0}
+              alignItems="center"
+              justifyContent="center"
+              pointerEvents="none"
             >
-              {children}
-            </Text>
-          ) : (
-            children
-          )}
+              <Spinner size="small" color={nativeLabel} />
+            </YStack>
+          ) : null}
         </Frame>
       )}
     </PressArea>

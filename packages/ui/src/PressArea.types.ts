@@ -27,6 +27,8 @@ export interface PressAreaProps {
    * which only the caller knows. A rounded rectangle just outside the control, on the page.
    */
   ring?: FocusRingShape | undefined
+  /** Announced as busy, for a control whose action is running. */
+  busy?: boolean
   testID?: string
   /**
    * The control, told whether it is currently pressed.

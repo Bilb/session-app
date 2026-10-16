@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -18,9 +18,8 @@ import { withSessionMedia } from '#plugins/withSessionMedia'
  * detect. `import { IOSConfig }` therefore fails at load with "does not provide an export named",
  * while the plain functions beside it import fine. Through `require` they are ordinary properties.
  */
-const { AndroidConfig, IOSConfig, withAndroidManifest, withXcodeProject } = createRequire(
-  import.meta.url,
-)('@expo/config-plugins') as typeof ConfigPlugins
+const { AndroidConfig, IOSConfig, withAndroidManifest, withDangerousMod, withXcodeProject } =
+  createRequire(import.meta.url)('@expo/config-plugins') as typeof ConfigPlugins
 
 /**
  * A file in the generated catalogue, read as text rather than imported from.
@@ -141,8 +140,8 @@ function permissionLocales(): Record<string, { ios: Record<string, string> }> {
     const entry = /^ {4}(\w+): '((?:[^'\\]|\\.)*)',$/.exec(line)
     const plistKey = plistKeys.find(([, key]) => key === entry?.[1])?.[0]
     if (locale === undefined || entry?.[2] === undefined || plistKey === undefined) continue
-    locales[locale] ??= { ios: {} }
-    locales[locale].ios[plistKey] = unquoted(entry[2]).replace(/[\\"]/g, '\\$&')
+    const strings = (locales[locale] ??= { ios: {} }).ios
+    strings[plistKey] = unquoted(entry[2]).replace(/[\\"]/g, '\\$&')
   }
 
   if (Object.keys(locales).length === 0) {
@@ -200,6 +199,80 @@ const withExportStorageAccess: ConfigPlugins.ConfigPlugin = (config) =>
   })
 
 /**
+ * Every place Android keeps an app's files, as its backup rules name them: credential-encrypted
+ * storage, then the device-encrypted storage an app can opt into, then external storage.
+ */
+const BACKUP_DOMAINS = [
+  'root',
+  'file',
+  'database',
+  'sharedpref',
+  'device_root',
+  'device_file',
+  'device_database',
+  'device_sharedpref',
+  'external',
+]
+
+/** One `<exclude>` per domain: the whole of it, since `.` is the domain's own directory. */
+const excludeAll = (indent: string): string =>
+  BACKUP_DOMAINS.map((domain) => `${indent}<exclude domain="${domain}" path="." />`).join('\n')
+
+/**
+ * The rules Android 12 (API 31) and later read: one set for cloud backup and one for
+ * device-to-device transfer. **`allowBackup="false"` does not cover the second** -- a phone set up
+ * from an old one copies an app's data across regardless, unless these rules say otherwise.
+ */
+const DATA_EXTRACTION_RULES = `<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+  <cloud-backup>
+${excludeAll('    ')}
+  </cloud-backup>
+  <device-transfer>
+${excludeAll('    ')}
+  </device-transfer>
+</data-extraction-rules>
+`
+
+/** The rules Android 11 (API 30) and earlier read, for anything that still backs up there. */
+const FULL_BACKUP_CONTENT = `<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+${excludeAll('  ')}
+</full-backup-content>
+`
+
+/**
+ * Nothing the app keeps leaves the phone by backup or by transfer to a new one, as on iOS.
+ *
+ * `allowBackup: false` below turns off backup; these rules close device-to-device transfer, which
+ * it does not, and stand in for it should it ever be turned back on. Between them they are the
+ * whole of the protection: the data and logs are in `filesDir`, the only place besides the cache
+ * that expo-file-system lets JS write -- see `modules/storage-roots`.
+ *
+ * expo-secure-store would otherwise point the same two attributes at rules of its own, which back
+ * up the shared preferences it keeps; it is told not to in the plugin list.
+ */
+const withNoBackups: ConfigPlugins.ConfigPlugin = (config) =>
+  withAndroidManifest(
+    withDangerousMod(config, [
+      'android',
+      (android) => {
+        const dir = join(android.modRequest.platformProjectRoot, 'app/src/main/res/xml')
+        mkdirSync(dir, { recursive: true })
+        writeFileSync(join(dir, 'session_data_extraction_rules.xml'), DATA_EXTRACTION_RULES)
+        writeFileSync(join(dir, 'session_backup_rules.xml'), FULL_BACKUP_CONTENT)
+        return android
+      },
+    ]),
+    (android) => {
+      const application = AndroidConfig.Manifest.getMainApplicationOrThrow(android.modResults)
+      application.$['android:dataExtractionRules'] = '@xml/session_data_extraction_rules'
+      application.$['android:fullBackupContent'] = '@xml/session_backup_rules'
+      return android
+    },
+  )
+
+/**
  * What a local build's bundle identifier gets on the end.
  *
  * **`-test` by default, and deliberately so.** An identifier is reserved with Apple by the first
@@ -217,126 +290,146 @@ function bundleId(config: ConfigContext['config']): string {
 }
 
 /**
+ * The app group the data lives in, which a notification extension will share. Follows the bundle
+ * identifier for the reason the keychain group does: a `-test` build is not in the unsuffixed
+ * group. Each one has to be registered with Apple before a device build can be signed with it.
+ */
+function appGroup(config: ConfigContext['config']): string {
+  return `group.${bundleId(config)}`
+}
+
+/** The plugins written in this file, which take the computed config rather than a plugin entry. */
+const withLocalPlugins: ConfigPlugins.ConfigPlugin = (config) =>
+  withSessionMedia(withExportStorageAccess(withNoBackups(withPermissionStrings(config))))
+
+/**
  * `app.json` plus the things that have to be computed.
  *
  * Everything static stays in the JSON, where it is easier to read.
  */
 export default ({ config }: ConfigContext): ExpoConfig =>
-  withSessionMedia(
-    withExportStorageAccess(
-      withPermissionStrings({
-        ...config,
-        name: config.name ?? 'Session',
-        slug: config.slug ?? 'session-app',
-        plugins: [
-          ...(config.plugins ?? []),
-          // The camera is the scanner behind the restore screen's QR tab.
-          [
-            'expo-camera',
-            {
-              cameraPermission: englishPermission('NSCameraUsageDescription'),
-              // The plugin adds RECORD_AUDIO to the Android manifest unless told not to, and a
-              // dangerous permission on the store listing wants a reason. The only camera here
-              // reads QR codes.
-              recordAudioAndroid: false,
-            },
-          ],
-          // iOS saves an exported picture or video to Photos through this. The plugin's own strings
-          // would replace the catalogue's, and `false` deletes the key from the plist outright. On
-          // Android `modules/media-store` does the saving, and `withExportStorageAccess` trims what
-          // this declares there.
-          [
-            'expo-media-library',
-            {
-              photosPermission: englishPermission('NSPhotoLibraryUsageDescription'),
-              savePhotosPermission: englishPermission('NSPhotoLibraryAddUsageDescription'),
-              // Unset, the plugin declares audio too. Images and video are blocked below.
-              granularPermissions: ['photo', 'video'],
-            },
-          ],
-          // The photo library half of +. Its purpose strings are the catalogue's. `false` does not
-          // mean "not declared here": the plugin blocks that permission for every module, and the
-          // restore screen's QR scanner needs CAMERA. RECORD_AUDIO is blocked, as expo-camera's is.
-          [
-            'expo-image-picker',
-            {
-              photosPermission: englishPermission('NSPhotoLibraryUsageDescription'),
-              cameraPermission: englishPermission('NSCameraUsageDescription'),
-              microphonePermission: false,
-            },
-          ],
-          // Legacy Android's floor.
-          ['expo-build-properties', { android: { minSdkVersion: 26 } }],
-          [
-            'expo-splash-screen',
-            {
-              // The legacy clients' launch screen: the logo on black, at its size there, in every
-              // theme -- nothing is known about the account's theme until after it has gone.
-              // `imageWidth` sizes a square box the logo is fitted into, and the logo is taller
-              // than it is wide, so 64 is what gives legacy's 64-point-tall logo.
-              image: './assets/splash-logo.png',
-              imageWidth: 64,
-              resizeMode: 'contain',
-              // The default theme's background; tests/splashColours.test.ts keeps the two equal.
-              backgroundColor: '#000000',
-            },
-          ],
-        ],
-        android: {
-          ...config.android,
-          // The media-library plugin declares reading the library, which saving to it never does;
-          // Play asks every app declaring them to justify it. On 9 and below WRITE grants READ.
-          blockedPermissions: [
-            ...(config.android?.blockedPermissions ?? []),
-            'android.permission.READ_MEDIA_IMAGES',
-            'android.permission.READ_MEDIA_VIDEO',
-            'android.permission.READ_MEDIA_VISUAL_USER_SELECTED',
-            'android.permission.READ_EXTERNAL_STORAGE',
-            // Without it the system photo picker zeroes a photo's GPS before handing it over.
-            'android.permission.ACCESS_MEDIA_LOCATION',
-          ],
+  withLocalPlugins({
+    ...config,
+    name: config.name ?? 'Session',
+    slug: config.slug ?? 'session-app',
+    plugins: [
+      ...(config.plugins ?? []),
+      // The camera is the scanner behind the restore screen's QR tab.
+      [
+        'expo-camera',
+        {
+          cameraPermission: englishPermission('NSCameraUsageDescription'),
+          // The plugin adds RECORD_AUDIO to the Android manifest unless told not to, and a
+          // dangerous permission on the store listing wants a reason. The only camera here reads
+          // QR codes.
+          recordAudioAndroid: false,
         },
-        ios: {
-          ...config.ios,
-          bundleIdentifier: bundleId(config),
-          entitlements: {
-            ...config.ios?.entitlements,
-            // **Follows the identifier, because it has to.** The access group is the app's own
-            // identifier prefixed by the team, so a `-test` build entitled to the unsuffixed group
-            // is entitled to a group it is not in -- and the keychain refuses it. That surfaces as
-            // expo-secure-store failing to store the database key, which is the app not starting
-            // rather than a warning.
-            'keychain-access-groups': [`$(AppIdentifierPrefix)${bundleId(config)}`],
-          },
-          infoPlist: {
-            ...config.ios?.infoPlist,
-            // Every purpose string the plugins above do not write. English only here;
-            // `permissionLocales` puts each of the other languages into its own `.lproj`, keyed off
-            // this same map.
-            ...Object.fromEntries(
-              Object.keys(PERMISSION_STRINGS)
-                .filter((plistKey) => !PLUGIN_WRITTEN_KEYS.has(plistKey))
-                .map((plistKey) => [plistKey, englishPermission(plistKey)]),
-            ),
-            // The service the local-network prompt is triggered by. The client's own name, and not
-            // a service anything offers: browsing for it is what makes iOS ask, which is the whole
-            // reason it is declared. Without this array the usage description above never appears.
-            NSBonjourServices: ['_session_local_network_access_check._tcp'],
-            /**
-             * **What makes iOS offer a per-app language at all**, and what makes the `.lproj`
-             * strings above reachable: a bundle is localized for the languages it declares here.
-             *
-             * Settings shows a Preferred Language row only for a bundle declaring more than one
-             * localization. Nothing sends anybody there -- the picker owns the language -- but iOS
-             * reports whatever is chosen as the app's effective locale, which is what the picker's
-             * *Default* row follows.
-             *
-             * The catalogue's own identifiers. iOS matches them by the usual BCP-47 rules rather
-             * than exactly, so one it does not recognise costs a row in that list and nothing else.
-             */
-            CFBundleLocalizations: shippedLocales(),
-          },
+      ],
+      // iOS saves an exported picture or video to Photos through this. The plugin's own strings
+      // would replace the catalogue's, and `false` deletes the key from the plist outright. On
+      // Android `modules/media-store` does the saving, and `withExportStorageAccess` trims what
+      // this declares there.
+      [
+        'expo-media-library',
+        {
+          photosPermission: englishPermission('NSPhotoLibraryUsageDescription'),
+          savePhotosPermission: englishPermission('NSPhotoLibraryAddUsageDescription'),
+          // Unset, the plugin declares audio too. Images and video are blocked below.
+          granularPermissions: ['photo', 'video'],
         },
-      }),
-    ),
-  )
+      ],
+      // The photo library half of +. Its purpose strings are the catalogue's. `false` does not
+      // mean "not declared here": the plugin blocks that permission for every module, and the
+      // restore screen's QR scanner needs CAMERA. RECORD_AUDIO is blocked, as expo-camera's is.
+      [
+        'expo-image-picker',
+        {
+          photosPermission: englishPermission('NSPhotoLibraryUsageDescription'),
+          cameraPermission: englishPermission('NSCameraUsageDescription'),
+          microphonePermission: false,
+        },
+      ],
+      // Legacy Android's floor.
+      ['expo-build-properties', { android: { minSdkVersion: 26 } }],
+      [
+        'expo-splash-screen',
+        {
+          // The legacy clients' launch screen: the logo on black, at its size there, in every
+          // theme -- nothing is known about the account's theme until after it has gone.
+          // `imageWidth` sizes a square box the logo is fitted into, and the logo is taller than it
+          // is wide, so 64 is what gives legacy's 64-point-tall logo.
+          image: './assets/splash-logo.png',
+          imageWidth: 64,
+          resizeMode: 'contain',
+          // The default theme's background; tests/splashColours.test.ts keeps the two equal.
+          backgroundColor: '#000000',
+        },
+      ],
+      // Its own backup rules would back up the shared preferences it keeps; withNoBackups writes
+      // rules that exclude everything instead. Here rather than as a bare name in app.json, which
+      // would apply it with its defaults first and make this entry a no-op: it runs once.
+      ['expo-secure-store', { configureAndroidBackup: false }],
+    ],
+    android: {
+      ...config.android,
+      // Cloud backup off; withNoBackups closes device-to-device transfer, which this does not.
+      allowBackup: false,
+      // The media-library plugin declares reading the library, which saving to it never does;
+      // Play asks every app declaring them to justify it. On 9 and below WRITE grants READ.
+      blockedPermissions: [
+        ...(config.android?.blockedPermissions ?? []),
+        'android.permission.READ_MEDIA_IMAGES',
+        'android.permission.READ_MEDIA_VIDEO',
+        'android.permission.READ_MEDIA_VISUAL_USER_SELECTED',
+        'android.permission.READ_EXTERNAL_STORAGE',
+        // Without it the system photo picker zeroes a photo's GPS before handing it over.
+        'android.permission.ACCESS_MEDIA_LOCATION',
+      ],
+    },
+    ios: {
+      ...config.ios,
+      bundleIdentifier: bundleId(config),
+      entitlements: {
+        ...config.ios?.entitlements,
+        // **Follows the identifier, because it has to.** The access group is the app's own
+        // identifier prefixed by the team, so a `-test` build entitled to the unsuffixed group is
+        // entitled to a group it is not in -- and the keychain refuses it. That surfaces as
+        // expo-secure-store failing to store the database key, which is the app not starting
+        // rather than a warning.
+        'keychain-access-groups': [`$(AppIdentifierPrefix)${bundleId(config)}`],
+        // Where the data lives: see modules/storage-roots.
+        'com.apple.security.application-groups': [appGroup(config)],
+      },
+      infoPlist: {
+        ...config.ios?.infoPlist,
+        // Every purpose string the plugins above do not write. English only here;
+        // `permissionLocales` puts each of the other languages into its own `.lproj`, keyed off
+        // this same map.
+        ...Object.fromEntries(
+          Object.keys(PERMISSION_STRINGS)
+            .filter((plistKey) => !PLUGIN_WRITTEN_KEYS.has(plistKey))
+            .map((plistKey) => [plistKey, englishPermission(plistKey)]),
+        ),
+        // The service the local-network prompt is triggered by. The client's own name, and not a
+        // service anything offers: browsing for it is what makes iOS ask, which is the whole
+        // reason it is declared. Without this array the usage description above never appears.
+        NSBonjourServices: ['_session_local_network_access_check._tcp'],
+        /**
+         * **What makes iOS offer a per-app language at all**, and what makes the `.lproj` strings
+         * above reachable: a bundle is localized for the languages it declares here.
+         *
+         * Settings shows a Preferred Language row only for a bundle declaring more than one
+         * localization. Nothing sends anybody there -- the picker owns the language -- but iOS
+         * reports whatever is chosen as the app's effective locale, which is what the picker's
+         * *Default* row follows.
+         *
+         * The catalogue's own identifiers. iOS matches them by the usual BCP-47 rules rather than
+         * exactly, so one it does not recognise costs a row in that list and nothing else.
+         */
+        CFBundleLocalizations: shippedLocales(),
+        // The group above, for the storage-roots module to find its container by. Read rather
+        // than derived from the bundle identifier there, which an extension's would not match.
+        SessionAppGroup: appGroup(config),
+      },
+    },
+  })

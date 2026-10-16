@@ -1,5 +1,9 @@
 import { flag, requirePorts } from '@session/app'
-import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
+import {
+  formatBytes,
+  MAX_ATTACHMENT_BYTES,
+  MAX_ATTACHMENTS_PER_MESSAGE,
+} from '@session/basic-types'
 import type { ConversationId, Message } from '@session/client'
 import { useConversation, useMessage, useMessages, useSessionActions } from '@session/state'
 import { tr } from '@session/localization'
@@ -19,7 +23,6 @@ import { memo, useMemo, useState } from 'react'
 
 import { AttachmentSheet } from './AttachmentSheet'
 import { Composer } from './Composer'
-import { formatBytes } from './formatBytes'
 import { PENDING_COPY } from './pendingCopy'
 import { isUploadPhase } from './uploadState'
 import { useStaging } from './useStaging'

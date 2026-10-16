@@ -27,6 +27,7 @@ export function PressArea({
   accessibilityLabel,
   role = 'button',
   checked,
+  busy = false,
   testID,
   children,
 }: PressAreaProps) {
@@ -36,11 +37,12 @@ export function PressArea({
       // and two fill buttons with different labels come out different widths.
       {...(fill ? { style: { flexGrow: 1, flexShrink: 1, flexBasis: 0 } } : {})}
       accessibilityRole={role}
-      {...(checked === undefined ? {} : { accessibilityState: { checked } })}
       disabled={disabled}
       onPress={onPress}
       {...(hitSlop === undefined || hitSlop === 0 ? {} : { hitSlop })}
       accessibilityLabel={accessibilityLabel}
+      // Stated whole: passing a state replaces the one Pressable derives from `disabled`.
+      accessibilityState={{ disabled, busy, ...(checked === undefined ? {} : { checked }) }}
       testID={testID}
     >
       {({ pressed }) => children(pressed)}

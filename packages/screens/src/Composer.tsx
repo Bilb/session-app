@@ -1,5 +1,5 @@
 import { requirePorts, type PickedFile } from '@session/app'
-import { MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
+import { formatBytes, MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import {
@@ -16,7 +16,6 @@ import {
 import { useRef, useState } from 'react'
 
 import { AttachMenu } from './AttachMenu'
-import { formatBytes } from './formatBytes'
 import { PENDING_COPY } from './pendingCopy'
 import { isFull } from './staging'
 import type { StagingState } from './useStaging'

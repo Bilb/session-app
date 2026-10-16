@@ -1,3 +1,4 @@
+import { formatBytes } from '@session/basic-types'
 import { requirePorts } from '@session/app'
 import type { Attachment, Message } from '@session/client'
 import { tr } from '@session/localization'
@@ -5,7 +6,6 @@ import { useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { FileRow, type FileRowState, type FileRowThumbnail } from '@session/ui'
 
-import { formatBytes } from './formatBytes'
 import { PENDING_COPY } from './pendingCopy'
 import { uploadStateOf, type UploadState } from './uploadState'
 import { leadsWithPicture } from './viewableAttachments'

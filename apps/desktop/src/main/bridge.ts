@@ -14,6 +14,7 @@ import {
   parseRouterKind,
 } from '@session/basic-types'
 import type { BridgeTransport, MediaSource } from '@session/client'
+import type { NetworkSettings } from '@session/logging'
 
 const { app, safeStorage, screen } = electron
 
@@ -77,6 +78,31 @@ function developerSetting(name: string): string | undefined {
   return app.isPackaged ? undefined : process.env[name]
 }
 
+/** The network settings this run's bridge is opened with, for the log's startup block. */
+export function networkSettings(): NetworkSettings {
+  // The startup block can be written before the bridge is opened, so before it loads `.env`.
+  loadDotEnv()
+  return {
+    fake: developerSetting('EXPO_PUBLIC_SESSION_FAKE') === '1',
+    netid: developerSetting('EXPO_PUBLIC_SESSION_NETID'),
+    router: developerSetting('EXPO_PUBLIC_SESSION_ROUTER'),
+    devnetSeedUrl: developerSetting('EXPO_PUBLIC_SESSION_DEVNET_SEED_URL'),
+    fileServerUrl: developerSetting('EXPO_PUBLIC_SESSION_FILE_SERVER_URL'),
+    logSpec: developerSetting('EXPO_PUBLIC_SESSION_LOG'),
+  }
+}
+
+/**
+ * Where this run's database and attachments live: per network, under userData. Also read by the
+ * log export, which measures what is there.
+ */
+export function sessionDataDir(): string {
+  return join(
+    app.getPath('userData'),
+    parseNetworkName(developerSetting('EXPO_PUBLIC_SESSION_NETID')),
+  )
+}
+
 /**
  * Opens the bridge the renderer talks to.
  *
@@ -115,7 +141,7 @@ export async function createBridge(): Promise<BridgeTransport & MediaSource> {
   // Per network, so a devnet identity and a mainnet one can both exist and switching back loses
   // neither. libsession derives its own snode cache from the database's directory, which puts
   // that on the right side of the split too.
-  const dir = join(app.getPath('userData'), name)
+  const dir = sessionDataDir()
   mkdirSync(dir, { recursive: true })
 
   const seedNodes =

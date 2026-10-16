@@ -14,6 +14,7 @@ import { createBridge } from './bridge'
 import { editMenuItems } from './editMenu'
 import { serveFiles } from './files'
 import { launchColors } from './launchColors'
+import { finishLogs, logDatabase, logLibsession, openLogs, serveLogs } from './logs'
 import { registerMediaScheme, serveMedia, stopServingMedia } from './media'
 import { PreviewGrants } from './previewGrants'
 import {
@@ -25,6 +26,7 @@ import {
   isFromAppFrame,
   refuseNewContents,
 } from './security'
+import { excludeUserData, placeUserData } from './userData'
 
 /**
  * What the app calls itself, which decides where its data lives.
@@ -39,6 +41,12 @@ import {
  * decides on branding, not a name anyone chose.
  */
 app.setName('session-app')
+// Where the name has put it, moved and kept out of backups. See userData.ts.
+placeUserData()
+void excludeUserData()
+
+// As early as the data directory is known, so the launch marker is the first line of the run.
+void openLogs()
 
 const here = fileURLToPath(new URL('.', import.meta.url))
 
@@ -84,8 +92,12 @@ async function requireBridge(): Promise<NonNullable<typeof bridge>> {
     bridge = await createBridge().catch((error: unknown) => {
       const reason = error instanceof Error ? error.message : String(error)
       console.error(`[session] the bridge could not start: ${reason}`)
+      void openLogs().then(({ logger }) => {
+        logger.error('main', 'the bridge could not start', { reason })
+      })
       return refusingBridge(reason)
     })
+    logDatabase('open')
     // With the bridge rather than with a window: `protocol.handle` installs one handler for the
     // whole session, and the scheme has to outlive a window for the same reason the bridge does.
     serveMedia(bridge, previews)
@@ -154,6 +166,7 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
   })
 
   const files = serveFiles(window, appUrl, previews)
+  serveLogs(window, appUrl)
 
   // Rejects rather than resolving, so a refused copy is not reported to the person as done.
   ipc.handle('clipboard-write-text', async (event, text: unknown) => {
@@ -168,8 +181,18 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
   // whatever the cleared account left in its memory. See `restart` on the window port.
   ipc.on('restart', (event) => {
     if (!isFromAppFrame(event.senderFrame, appUrl)) return
-    app.relaunch()
-    app.exit(0)
+    // `app.exit` skips `before-quit`, so the run is marked as ending here, and written out before
+    // the process goes: otherwise the next launch reports a run that did not end cleanly. The
+    // renderer hands over its last records first, on this same channel, so they come before it.
+    void openLogs()
+      .then(async ({ logger, writer }) => {
+        logger.marker('lifecycle', 'restart')
+        await writer.flush()
+      })
+      .finally(() => {
+        app.relaunch()
+        app.exit(0)
+      })
   })
 
   // The menu below is drawn here, so it follows the language the person chose in the app.
@@ -208,7 +231,13 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
     port = port1
 
     // A frame is a plain object built by the addon; structured clone carries it to the renderer.
+    // libsession's log lines are the exception: written here, where they arrive, rather than sent
+    // to the renderer to be swept and back again to be written.
     open.setSink((frame) => {
+      if (frame.type === 'event' && frame.event.type === 'log') {
+        logLibsession(frame.event.level, frame.event.category, frame.event.message)
+        return
+      }
       files.observe(frame)
       port?.postMessage(frame)
     })
@@ -266,13 +295,60 @@ void app.whenReady().then(async () => {
   })
 })
 
+// A process of ours that died, with Chromium's reason: `oom`, `crashed`, `killed`. Otherwise a
+// renderer that dies and reloads, or a GPU process that restarts, leaves nothing to say it did.
+app.on('render-process-gone', (_event, _contents, details) => {
+  void openLogs().then(({ logger }) => {
+    logger.marker('lifecycle', 'renderer gone', {
+      reason: details.reason,
+      exitCode: details.exitCode,
+    })
+  })
+})
+app.on('child-process-gone', (_event, details) => {
+  void openLogs().then(({ logger }) => {
+    logger.marker('lifecycle', 'child process gone', {
+      type: details.type,
+      reason: details.reason,
+      exitCode: details.exitCode,
+    })
+  })
+})
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
 // The bridge outlives every window, so it is closed here rather than with one of them.
 app.on('before-quit', () => {
+  // Urgent, so it reaches the disk without waiting for a flush; `will-quit` below writes whatever
+  // follows it.
+  logDatabase('at quit')
+  void openLogs().then(({ logger }) => {
+    logger.marker('lifecycle', 'quit')
+  })
   stopServingMedia()
   bridge?.close()
   bridge = null
+})
+
+/** The longest quitting waits for the log, so a write that never finishes cannot keep it open. */
+const QUIT_LOG_CAP_MS = 500
+let logFinished = false
+
+// After the windows have closed, with every line logged on the way out - by libsession closing,
+// by the renderer before its window went - held for ordering or waiting for a flush. Quitting
+// waits for them to reach the disk, once, and then exits.
+app.on('will-quit', (event) => {
+  if (logFinished) return
+  logFinished = true
+  event.preventDefault()
+  const cap = new Promise<void>((resolve) => {
+    setTimeout(resolve, QUIT_LOG_CAP_MS)
+  })
+  void Promise.race([finishLogs(), cap])
+    .catch(() => undefined)
+    .finally(() => {
+      app.exit(0)
+    })
 })
