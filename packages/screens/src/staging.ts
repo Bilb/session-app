@@ -1,6 +1,7 @@
 import type { FilesPort, PickedFile } from '@session/app'
 import {
   encryptedAttachmentSize,
+  formatBytes,
   MAX_ATTACHMENT_BYTES,
   MAX_ATTACHMENTS_PER_MESSAGE,
 } from '@session/basic-types'
@@ -75,6 +76,10 @@ export function stage(
   }
 
   return { files, refused: { tooLarge, overLimit, unreadable: 0 }, unused }
+}
+
+export function sizeOf(file: PickedFile): string | undefined {
+  return file.size === undefined ? undefined : formatBytes(file.size)
 }
 
 export function unstage(staged: readonly PickedFile[], path: string): PickedFile[] {

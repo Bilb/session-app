@@ -46,11 +46,21 @@ describe('the staged tray', () => {
 
 describe('a composer notice', () => {
   const notice = source('ComposerNotice.tsx')
+  const announcement = source('Announcement.tsx')
 
-  it('is announced on every platform, once per refusal', () => {
-    expect(notice).toContain('role="alert"')
-    expect(notice).toContain('AccessibilityInfo.announceForAccessibility')
-    expect(notice).toMatch(/\}, \[announceKey\]\)/)
+  it('is drawn only, leaving what is said to one announcement for all of them', () => {
+    expect(notice).not.toContain('role="alert"')
+    expect(notice).not.toContain('announceForAccessibility')
+  })
+
+  it('is said once per refusal on every platform, the same words twice included', () => {
+    expect(announcement).toContain('AccessibilityInfo.announceForAccessibility(said.text)')
+    expect(announcement).toMatch(/\}, \[said\]\)/)
+    expect(announcement).toContain(
+      'if (said.key !== announceKey) setSaid({ key: announceKey, text })',
+    )
+    // A live region whose words do not change is not announced again, so the web remounts it.
+    expect(announcement).toMatch(/key=\{said\.key\}\s+role="alert"/)
   })
 
   it('keeps its words off the danger colour, which fails 4.5:1 on the composer in dark themes', () => {
