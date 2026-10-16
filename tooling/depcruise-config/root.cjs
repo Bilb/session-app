@@ -43,7 +43,9 @@ module.exports = {
     mayOnlyDependOn('client-contract', ['client', 'basic-types']),
     mayOnlyDependOn('state', ['client', 'basic-types']),
     mayOnlyDependOn('ui', ['theme-tokens', 'test-ids', 'basic-types']),
-    mayOnlyDependOn('app', ['client', 'state', 'basic-types']),
+    // The network parsers, so the startup block names a network the way the apps parse it.
+    mayOnlyDependOn('logging', ['basic-types']),
+    mayOnlyDependOn('app', ['client', 'state', 'basic-types', 'logging']),
     mayOnlyDependOn('bridge-node', ['client', 'client-contract', 'bridge-types']),
     mayOnlyDependOn('bridge-rn', ['bridge-types']),
     mayOnlyDependOn('screens', [
@@ -77,7 +79,7 @@ module.exports = {
         'Shared packages run on Hermes, in a browser and in Node. Wrap platform APIs in @session/ui or a port.',
       severity: 'error',
       from: {
-        path: '^packages/(basic-types|bridge-types|test-ids|theme-tokens|localization|client|client-contract|state|app|screens)/',
+        path: '^packages/(basic-types|bridge-types|test-ids|theme-tokens|localization|logging|client|client-contract|state|app|screens)/',
         pathNot: '\\.(native|web|ios|android)\\.tsx?$',
       },
       to: {
@@ -89,12 +91,13 @@ module.exports = {
       name: 'shared-has-no-node-builtins',
       comment:
         'Shared packages run on three platforms, and two of them have no node. Tests are exempt ' +
-        "because they only ever run under vitest, and so is a package's scripts/ directory, " +
-        'which is build-time codegen invoked by `pnpm codegen` and never bundled into anything.',
+        "because they only ever run under vitest -- a package's tests/ directory, helpers beside " +
+        "the tests included -- and so is a package's scripts/ directory, which is build-time " +
+        'codegen invoked by `pnpm codegen` and never bundled into anything.',
       severity: 'error',
       from: {
-        path: '^packages/(basic-types|bridge-types|test-ids|theme-tokens|localization|client|client-contract|state|app|screens|ui)/',
-        pathNot: '\\.(test|spec)\\.tsx?$|^packages/[^/]+/scripts/',
+        path: '^packages/(basic-types|bridge-types|test-ids|theme-tokens|localization|logging|client|client-contract|state|app|screens|ui)/',
+        pathNot: '\\.(test|spec)\\.tsx?$|^packages/[^/]+/(scripts|tests)/',
       },
       to: { dependencyTypes: ['core'] },
     },
@@ -108,6 +111,17 @@ module.exports = {
       severity: 'error',
       from: { pathNot: '^apps/mobile/' },
       to: { path: '^node_modules/expo($|[-/])', dependencyTypes: ['npm', 'npm-dev'] },
+    },
+    {
+      name: 'mobile-files-go-through-storage',
+      comment:
+        'apps/mobile reaches the file system only through src/storage/, which hands out the ' +
+        'roots: directories under data protection class C and excluded from backup. A path made ' +
+        'from expo-file-system anywhere else can land in Documents, which iCloud backs up. See ' +
+        'docs/STORAGE.md.',
+      severity: 'error',
+      from: { path: '^apps/mobile/', pathNot: '^apps/mobile/src/storage/' },
+      to: { path: '^node_modules/expo-file-system($|/)', dependencyTypes: ['npm', 'npm-dev'] },
     },
     {
       name: 'ui-owns-tamagui',

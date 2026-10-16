@@ -31,6 +31,7 @@ namespace margelo::nitro::session::bridge::rn {
   enum class RouterKind {
     ROUTER_KIND_ONION_REQUESTS      SWIFT_NAME(routerKindOnionRequests) = 0,
     ROUTER_KIND_SESSION_ROUTER      SWIFT_NAME(routerKindSessionRouter) = 1,
+    ROUTER_KIND_DIRECT      SWIFT_NAME(routerKindDirect) = 2,
   } CLOSED_ENUM;
 
 } // namespace margelo::nitro::session::bridge::rn
@@ -45,6 +46,7 @@ namespace margelo::nitro {
       switch (hashString(unionValue.c_str(), unionValue.size())) {
         case hashString("onion-requests"): return margelo::nitro::session::bridge::rn::RouterKind::ROUTER_KIND_ONION_REQUESTS;
         case hashString("session-router"): return margelo::nitro::session::bridge::rn::RouterKind::ROUTER_KIND_SESSION_ROUTER;
+        case hashString("direct"): return margelo::nitro::session::bridge::rn::RouterKind::ROUTER_KIND_DIRECT;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum RouterKind - invalid value!");
       }
@@ -53,6 +55,7 @@ namespace margelo::nitro {
       switch (arg) {
         case margelo::nitro::session::bridge::rn::RouterKind::ROUTER_KIND_ONION_REQUESTS: return JSIConverter<std::string>::toJSI(runtime, "onion-requests");
         case margelo::nitro::session::bridge::rn::RouterKind::ROUTER_KIND_SESSION_ROUTER: return JSIConverter<std::string>::toJSI(runtime, "session-router");
+        case margelo::nitro::session::bridge::rn::RouterKind::ROUTER_KIND_DIRECT: return JSIConverter<std::string>::toJSI(runtime, "direct");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert RouterKind to JS - invalid value: "
                                     + std::to_string(static_cast<int>(arg)) + "!");
@@ -66,6 +69,7 @@ namespace margelo::nitro {
       switch (hashString(unionValue.c_str(), unionValue.size())) {
         case hashString("onion-requests"):
         case hashString("session-router"):
+        case hashString("direct"):
           return true;
         default:
           return false;

@@ -88,8 +88,28 @@ const ONLY_GATED_MOBILE_CLIENT = {
     'destination the files port did not stage.',
 }
 
-/** apps/mobile - Expo and react-native are its own; electron and the node addon are not. */
+const NO_FILE_SYSTEM = {
+  group: ['expo-file-system', 'expo-file-system/*'],
+  message:
+    "Use the roots from src/storage/: they are the app's only directories that are protected " +
+    'and never backed up. See docs/STORAGE.md.',
+}
+
+/**
+ * apps/mobile - Expo and react-native are its own; electron and the node addon are not, and the
+ * file system is reached only through `src/storage/`.
+ */
 export const mobileAppZone = restrict(
+  [NO_DEEP, NO_ELECTRON, NO_ROUTER, NO_BRIDGE_NODE, NO_FILE_SYSTEM],
+  [ONLY_GATED_MOBILE_CLIENT],
+)
+
+/**
+ * apps/mobile/src/storage - the mobile zone less the file-system rule, which it exists to
+ * honour. A whole zone rather than an exemption, because a later `no-restricted-imports` replaces
+ * an earlier one instead of merging with it.
+ */
+export const mobileStorageZone = restrict(
   [NO_DEEP, NO_ELECTRON, NO_ROUTER, NO_BRIDGE_NODE],
   [ONLY_GATED_MOBILE_CLIENT],
 )
