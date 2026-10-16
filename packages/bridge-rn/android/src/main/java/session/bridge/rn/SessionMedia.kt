@@ -206,8 +206,7 @@ private constructor(
     if (cancelled.get()) SessionMediaNative.withdraw(handle) else SessionMediaNative.forget(handle)
   }
 
-  // An answer has come, so there is nothing to withdraw; and this runs inside the native answer,
-  // where a withdraw would re-enter the request being answered.
+  // An answer has come, so there is nothing to withdraw.
   private fun answered() {
     val handle = withdrawal.getAndSet(LET_GO)
     if (handle != 0L && handle != LET_GO) SessionMediaNative.forget(handle)

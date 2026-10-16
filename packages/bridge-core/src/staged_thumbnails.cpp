@@ -9,6 +9,7 @@
 #include <system_error>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 #ifdef _WIN32
@@ -117,6 +118,7 @@ struct StagedThumbnails::State {
     };
     struct Running {
         std::string key;
+        std::string path;
         uint64_t job;
         std::chrono::steady_clock::time_point since;
     };
@@ -133,8 +135,8 @@ struct StagedThumbnails::State {
     bool watching = false;
     uint64_t next_id = 0;
     uint64_t next_job = 0;
-    // Replaced when a decode is given up on; `generation` tells the jobs of the one replaced
-    // apart, so they never take what the fresh one should.
+    // Replaced when a decode is given up on. `generation` keeps a job of a replaced worker from
+    // taking a key, whether or not `Worker::stop` dropped it.
     std::shared_ptr<Worker> worker = std::make_shared<Worker>();
     uint64_t generation = 0;
     // Keys in the order asked, one per job posted. A key whose entry was cancelled away is
@@ -142,6 +144,10 @@ struct StagedThumbnails::State {
     std::deque<std::string> queue;
     std::unordered_map<std::string, Pending> pending;
     std::optional<Running> running;
+    // Given up on and still inside `make`, which `close` waits out as it does `running`.
+    size_t abandoned_decodes = 0;
+    // Refused from then on: another decode of one would likely hold another thread for good.
+    std::unordered_set<std::string> given_up_paths;
     // Threads running handlers, which `close` waits out unless it is one of them.
     std::vector<std::thread::id> answering;
 
@@ -164,6 +170,15 @@ struct StagedThumbnails::State {
         changed.notify_all();
     }
 
+    // A try for each, so a handler that throws, or a copy that cannot be made, skips only its own.
+    static void answer_each(std::vector<Waiter>& waiting, Media media) {
+        for (size_t i = 0; i < waiting.size(); i++)
+            try {
+                waiting[i].cb(i + 1 == waiting.size() ? std::move(media) : media);
+            } catch (...) {
+            }
+    }
+
     // Under the lock: one job for the key at the back of `queue`, on the current worker.
     bool post_one(const std::shared_ptr<State>& self) {
         return worker->post([self, generation = generation] { run_one(self, generation); });
@@ -183,7 +198,7 @@ struct StagedThumbnails::State {
         const std::string path = found->second.path;
         const uint32_t edge = found->second.edge;
         const uint64_t job = state->next_job++;
-        state->running = Running{key, job, std::chrono::steady_clock::now()};
+        state->running = Running{key, path, job, std::chrono::steady_clock::now()};
         state->changed.notify_all();
         guard.unlock();
 
@@ -196,8 +211,11 @@ struct StagedThumbnails::State {
 
         guard.lock();
         // Given up on by the watchdog, which has answered its requests already.
-        if (!state->running || state->running->job != job)
+        if (!state->running || state->running->job != job) {
+            state->abandoned_decodes--;
+            state->changed.notify_all();
             return;
+        }
         state->running.reset();
         state->changed.notify_all();
         found = state->pending.find(key);
@@ -205,10 +223,7 @@ struct StagedThumbnails::State {
             return;
         auto waiting = std::move(found->second.waiting);
         state->pending.erase(found);
-        state->answer_unlocked(guard, [&] {
-            for (size_t i = 0; i < waiting.size(); i++)
-                waiting[i].cb(i + 1 == waiting.size() ? std::move(media) : media);
-        });
+        state->answer_unlocked(guard, [&] { answer_each(waiting, std::move(media)); });
     }
 
     // On a thread of its own while the object is open: gives up on a decode past `stuck_after`.
@@ -232,31 +247,49 @@ struct StagedThumbnails::State {
                 stuck = std::move(found->second.waiting);
                 state->pending.erase(found);
             }
+            state->given_up_paths.insert(state->running->path);
             state->running.reset();
+            state->abandoned_decodes++;
             state->changed.notify_all();
 
-            // The stuck thread is left where it is; the keys still queued go to a fresh one.
+            // The stuck thread is left where it is; the keys still queued go to a fresh one,
+            // unless they would only be stuck too.
             state->worker->stop();
             state->worker = std::make_shared<Worker>();
             state->generation++;
+            const bool held_up = state->abandoned_decodes >= MAX_ABANDONED_DECODES;
             std::vector<Waiter> refused;
+            const auto refuse = [&](const std::string& key, std::vector<Waiter>& into) {
+                if (auto found = state->pending.find(key); found != state->pending.end()) {
+                    for (auto& waiter : found->second.waiting)
+                        into.push_back(std::move(waiter));
+                    state->pending.erase(found);
+                }
+            };
+            std::deque<std::string> queued;
+            queued.swap(state->queue);
+            for (auto& key : queued) {
+                auto found = state->pending.find(key);
+                if (found == state->pending.end())
+                    continue;
+                if (state->given_up_paths.contains(found->second.path))
+                    refuse(key, stuck);
+                else if (held_up)
+                    refuse(key, refused);
+                else
+                    state->queue.push_back(std::move(key));
+            }
             for (size_t i = 0; i < state->queue.size(); i++)
                 if (!state->post_one(state)) {
                     for (auto& key : state->queue)
-                        if (auto found = state->pending.find(key); found != state->pending.end()) {
-                            for (auto& waiter : found->second.waiting)
-                                refused.push_back(std::move(waiter));
-                            state->pending.erase(found);
-                        }
+                        refuse(key, refused);
                     state->queue.clear();
                     break;
                 }
 
             state->answer_unlocked(guard, [&] {
-                for (auto& waiter : stuck)
-                    waiter.cb(Media{"the file could not be read", {}, {}});
-                for (auto& waiter : refused)
-                    waiter.cb(Media{"the thumbnail could not be started", {}, {}});
+                answer_each(stuck, Media{"the file could not be read", {}, {}});
+                answer_each(refused, Media{"the thumbnail could not be started", {}, {}});
             });
         }
     }
@@ -286,6 +319,15 @@ StagedThumbnails::Cancel StagedThumbnails::request(
         } catch (const std::system_error&) {
             // Without a watchdog a stuck decode holds up later ones, which is all it costs.
         }
+    }
+
+    const bool unreadable = _state->given_up_paths.contains(path);
+    if (unreadable || _state->abandoned_decodes >= MAX_ABANDONED_DECODES) {
+        guard.unlock();
+        cb(Media{unreadable ? "the file could not be read" : "the thumbnail could not be started",
+                 {},
+                 {}});
+        return [] {};
     }
 
     const uint64_t id = _state->next_id++;
@@ -346,8 +388,9 @@ void StagedThumbnails::close() {
     _state->changed.wait(guard, [&] {
         return std::ranges::all_of(_state->answering, [&](auto id) { return id == me; });
     });
-    _state->changed.wait_for(
-            guard, _state->timing.settle_at_close, [&] { return !_state->running; });
+    _state->changed.wait_for(guard, _state->timing.settle_at_close, [&] {
+        return !_state->running && _state->abandoned_decodes == 0;
+    });
     worker = _state->worker;
     guard.unlock();
     worker->stop();

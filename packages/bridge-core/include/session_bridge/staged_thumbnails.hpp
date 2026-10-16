@@ -35,12 +35,17 @@ class StagedThumbnails {
     struct Timing {
         /// A decode running longer is given up on: its requests are answered with a failure and
         /// a fresh thread takes the rest, so one file on a mount that stopped answering cannot
-        /// hold up every later pick. Its thread is left to finish, its answer dropped.
+        /// hold up every later pick. Its thread is left to finish, its answer dropped, and its
+        /// path is refused from then on.
         std::chrono::milliseconds stuck_after = std::chrono::seconds{30};
-        /// How long `close` waits for a decode under way, which uses libraries whose statics
-        /// `exit` destroys. Bounded, so a stuck one cannot hold up a quit.
+        /// How long `close` waits for the decodes under way, given up on or not, which use
+        /// libraries whose statics `exit` destroys. Bounded, so a stuck one cannot hold up a quit.
         std::chrono::milliseconds settle_at_close = std::chrono::seconds{2};
     };
+
+    /// Past this many decodes given up on and still running, requests fail at once until one
+    /// ends, so a mount that stopped answering holds a bounded number of threads.
+    static constexpr size_t MAX_ABANDONED_DECODES = 4;
 
     explicit StagedThumbnails(Make make);
     StagedThumbnails(Make make, Timing timing);
