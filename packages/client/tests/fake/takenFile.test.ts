@@ -39,3 +39,12 @@ describe('a file the fake took for a send', () => {
     ).rejects.toThrow('is not downloaded')
   })
 })
+
+describe('a picture the fake sends as the original file', () => {
+  it('is flagged when its upload starts, not when the message is stored', async () => {
+    const { world, message } = await sendTakenBehindLent('image/bmp')
+    expect((await message())?.attachments[0]?.originalFile).toBe(false)
+    world.settle()
+    expect((await message())?.attachments.map((a) => a.originalFile)).toEqual([true, false])
+  })
+})

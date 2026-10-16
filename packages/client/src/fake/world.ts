@@ -131,6 +131,7 @@ interface Upload {
   path: string
   taken: boolean
   sizeBytes: number | undefined
+  originalFile: boolean
 }
 
 /** libsession's bounds on a thumbnail's side: 1024² at 4 bytes a pixel is 4 MiB decoded. */
@@ -643,11 +644,18 @@ export class FakeAccount {
       if (sizeBytes === 0) throw new SessionClientError(`send_message: attachment ${path} is empty`)
       return sizeBytes
     })
-    const uploads = outgoing.map((file, index): Upload => ({
-      path: file.path,
-      taken: file.takeFile === true,
-      sizeBytes: sizes[index],
-    }))
+    const uploads = outgoing.map((file, index): Upload => {
+      const contentType = file.contentType ?? inferContentType(baseName(file.path))
+      return {
+        path: file.path,
+        taken: file.takeFile === true,
+        sizeBytes: sizes[index],
+        // libsession sends a picture it cannot decode as it is, flagged. No platform decoder here.
+        originalFile:
+          contentType.toLowerCase().startsWith('image/') &&
+          !isShrunkToFit(contentType, { decodesHeic: false }),
+      }
+    })
     const now = this.world?.now() ?? Date.now()
     const uploading = outgoing.length > 0
     const attachments = outgoing.map((file, index): Attachment => {
@@ -660,10 +668,8 @@ export class FakeAccount {
         hasThumbhash: false,
         hasThumbnail: false,
         hasRendition: false,
-        // libsession sends a picture it cannot decode as it is, flagged. No platform decoder here.
-        originalFile:
-          contentType.toLowerCase().startsWith('image/') &&
-          !isShrunkToFit(contentType, { decodesHeic: false }),
+        // Flagged by libsession as that file's upload starts, when it converts it.
+        originalFile: false,
         uploaded: false,
         availability: 'absent',
         fetchDoneBytes: 0,
@@ -731,10 +737,15 @@ export class FakeAccount {
       // As libsession: what we sent is kept in the cache, and its size is known once it is up.
       this.cached.add(keyOf({ messageId, index: attachment.index }))
       this.taken.delete(keyOf({ messageId, index: attachment.index }))
-      const { sizeBytes } = upload
+      const { sizeBytes, originalFile } = upload
       const attachments = message.attachments.map((a, index) =>
         index === at
-          ? { ...a, uploaded: true, ...(sizeBytes === undefined ? {} : { sizeBytes }) }
+          ? {
+              ...a,
+              uploaded: true,
+              originalFile,
+              ...(sizeBytes === undefined ? {} : { sizeBytes }),
+            }
           : a,
       )
       this.updateMessage(id, messageId, { attachments })
