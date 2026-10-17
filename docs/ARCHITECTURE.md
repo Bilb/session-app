@@ -399,21 +399,27 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   libsession shrinks until it fits; HEIC counts only on iOS and macOS, where ImageIO decodes it.
 
 - **2026-10-17 - One decode budget for an original or a rendition, on every platform.**
-  `bridge-core`'s `decode_bound.hpp` holds the budget (3072x2048 pixels) and the 100 MP ceiling
-  past which a GIF or PNG is refused, and `decode_plan` reads a picture's header with libsession's
-  `image::probe`, decoding nothing, into a plan: the longest edge to decode at, whether an
-  animation is drawn as its first frame, and whether it is refused. An animation animates while its
-  canvas fits the budget, since its frames are decoded one at a time. A GIF is measured by its
-  declared screen as well as its frames, because libnsgif ignores a screen past 2048 and every other
-  decoder allocates it. Bytes whose header libsession cannot read are unmeasured: the largest
-  square the budget allows, still. Android plans at decode time, from the bytes Fresco already
-  holds, and decodes under a copy of the request with the plan applied: `ResizeOptions` capping the
-  sample, `forceStaticImage`, or a failed load. iOS keeps its ImageIO reading of the same header
-  rules. Chromium can be told neither a size nor a first frame, so desktop main serves an original
-  that is not planned whole as libsession's rendition instead, and as a failed, uncached load when
-  there is none yet; a rendition, a thumbnail, a video and an unmeasured picture pass. The fake
-  mirrors the plan in TypeScript, reading only a JPEG's frame header since it serves nothing else,
-  and `DECODE_PLAN_VECTORS` holds it and the C++ to one table.
+  `bridge-core`'s `decode_bound.hpp` holds the budget (3072x2048 pixels) and the 100 MP
+  whole-decode ceiling, past which a decoder that holds a GIF or PNG whole cannot take it at all.
+  `decode_plan` reads a picture's header with libsession's `image::probe`, decoding nothing, into a
+  plan: the longest edge to decode at, whether to draw it still, and whether it is past the
+  ceiling. Anything past the budget is drawn still, its first frame; an animation within it
+  animates, at a few canvases rather than one per frame (one on iOS, about four on Android, where
+  Fresco prepares frames ahead). A GIF is measured by its declared screen as well as its frames,
+  because libnsgif ignores a screen past 2048 and every other decoder allocates it. Bytes whose
+  header libsession cannot read are unmeasured: the largest square the budget allows, still.
+
+  Android plans at decode time, from the bytes Fresco holds, read in place from its native pool,
+  and decodes under a copy of the request with the plan applied: `ResizeOptions` capping the
+  sample and `forceStaticImage`. Fresco samples a GIF or PNG as it decodes, so the ceiling refuses
+  nothing there, and for a still its own 2048 cap is the tighter bound. iOS applies the same rules
+  through ImageIO's reading of the header and refuses past the ceiling, since ImageIO holds both
+  whole. Chromium can be told neither a size nor a first frame, so desktop main serves an original
+  past the budget as libsession's rendition wherever there is one, and the original itself until
+  then, except past the ceiling, where the thumbnail stands in, else a failed, uncached load. A
+  viewer open on the file takes the rendition once it lands. A rendition, a thumbnail, a video and
+  an unmeasured picture pass. The fake mirrors the plan in TypeScript, reading only a JPEG's frame
+  header since it serves nothing else, and `DECODE_PLAN_VECTORS` holds it and the C++ to one table.
 
 - **2026-10-16 - The viewer draws libsession's rendition; an original file is only exported.**
   libsession makes a rendition of each displayable picture it caches, after its thumbnail: the
