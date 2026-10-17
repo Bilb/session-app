@@ -309,21 +309,40 @@ Java_session_bridge_rn_SessionMediaNative_release(JNIEnv*, jclass, jlong handle)
     delete reinterpret_cast<std::vector<std::byte>*>(handle);
 }
 
-/// The shim's plan for the first `size` bytes of a direct buffer, as `[edge, first frame only,
-/// refused]`; null with OutOfMemoryError pending.
+namespace {
+
+/// A plan as `[edge in pixels, first frame only]`; null with OutOfMemoryError pending.
+jintArray plan_array(JNIEnv* env, const ::session_bridge::DecodePlan& plan) {
+    const jint values[] = {
+            static_cast<jint>(std::min(plan.edge_px, static_cast<double>(INT_MAX))),
+            plan.first_frame_only};
+    jintArray out = env->NewIntArray(2);
+    if (out)
+        env->SetIntArrayRegion(out, 0, 2, values);
+    return out;
+}
+
+}  // namespace
+
+/// The shim's plan for the first `size` bytes of a direct buffer.
 extern "C" JNIEXPORT jintArray JNICALL
 Java_session_bridge_rn_SessionMediaNative_plan(JNIEnv* env, jclass, jobject bytes, jint size) {
     const auto* data = static_cast<const std::byte*>(env->GetDirectBufferAddress(bytes));
     const jlong capacity = env->GetDirectBufferCapacity(bytes);
-    const auto plan = data && size >= 0 && size <= capacity
-                            ? ::session_bridge::decode_plan(std::span{data, static_cast<size_t>(size)})
-                            : ::session_bridge::unmeasured_decode_plan();
-    const jint values[] = {
-            static_cast<jint>(std::min(plan.edge, static_cast<double>(INT_MAX))),
-            plan.first_frame_only,
-            plan.refused};
-    jintArray out = env->NewIntArray(3);
-    if (out)
-        env->SetIntArrayRegion(out, 0, 3, values);
-    return out;
+    return plan_array(
+            env,
+            data && size >= 0 && size <= capacity
+                    ? ::session_bridge::decode_plan(std::span{data, static_cast<size_t>(size)})
+                    : ::session_bridge::unmeasured_decode_plan());
+}
+
+/// The shim's plan for `size` bytes at `address`, which the caller keeps alive for the call.
+extern "C" JNIEXPORT jintArray JNICALL
+Java_session_bridge_rn_SessionMediaNative_planAt(JNIEnv* env, jclass, jlong address, jint size) {
+    const auto* data = reinterpret_cast<const std::byte*>(address);
+    return plan_array(
+            env,
+            data && size >= 0
+                    ? ::session_bridge::decode_plan(std::span{data, static_cast<size_t>(size)})
+                    : ::session_bridge::unmeasured_decode_plan());
 }

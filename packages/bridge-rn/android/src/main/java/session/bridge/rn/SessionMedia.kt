@@ -100,9 +100,12 @@ internal object SessionMediaNative {
 
   /**
    * The shim's `decode_plan` for the first `size` bytes of a direct buffer, read from their header
-   * alone: `[edge, first frame only, refused]`, the flags as 0 or 1.
+   * alone: `[edge in pixels, first frame only as 0 or 1]`.
    */
   @JvmStatic external fun plan(bytes: ByteBuffer, size: Int): IntArray
+
+  /** [plan] for `size` bytes of native memory at `address`, held alive by the caller. */
+  @JvmStatic external fun planAt(address: Long, size: Int): IntArray
 
   /** Drops every session-media picture from Fresco's memory caches; see `forget_media`. */
   @JvmStatic
@@ -159,24 +162,19 @@ internal class SessionMediaSequenceFactory : CustomProducerSequenceFactory() {
 }
 
 /** What the shim's `decode_plan` says of an original or a rendition; see `decode_bound.hpp`. */
-internal class DecodePlan(
-    private val edge: Int,
-    private val firstFrameOnly: Boolean,
-    val refused: Boolean,
-) {
-  /** `request`, decoding no larger than the edge, and an animation as its first frame if told. */
+internal class DecodePlan(private val edgePx: Int, private val firstFrameOnly: Boolean) {
+  /** `request`, decoding no larger than the edge, and still if told. */
   fun applyTo(request: ImageRequest): ImageRequest {
-    if (edge == 0 && !firstFrameOnly) return request
+    if (edgePx == 0 && !firstFrameOnly) return request
     val builder = ImageRequestBuilder.fromRequest(request)
-    if (edge > 0) {
-      // The decoder's sample keeps the longest edge within maxBitmapDimension; a ResizeOptions'
-      // default for it is Fresco's own 2048 cap, which stays wherever it is the tighter.
-      val resize = request.resizeOptions ?: ResizeOptions(edge, edge)
+    if (edgePx > 0) {
+      // Fresco's 2048 cap, a ResizeOptions' default, is the tighter for a still: edgePx >= 2508.
+      val resize = request.resizeOptions ?: ResizeOptions(edgePx, edgePx)
       builder.setResizeOptions(
           ResizeOptions(
               resize.width,
               resize.height,
-              min(resize.maxBitmapDimension, edge.toFloat()),
+              min(resize.maxBitmapDimension, edgePx.toFloat()),
               resize.roundUpFraction))
     }
     if (firstFrameOnly) {
@@ -192,12 +190,22 @@ internal class DecodePlan(
   companion object {
     private val EMPTY = ByteBuffer.allocateDirect(0)
 
-    /** The plan for an encoded image's bytes, read in place when its pool keeps them direct. */
+    /**
+     * The plan for an encoded image's bytes, read in place: Fresco's default pool is native
+     * memory, and a buffer pool's chunk is a direct buffer. Copied only from any other pool.
+     */
     fun of(image: EncodedImage): DecodePlan {
       val ref = image.byteBufferRef ?: return from(SessionMediaNative.plan(EMPTY, 0))
       try {
         val pooled = ref.get()
         val size = pooled.size()
+        val address =
+            try {
+              pooled.nativePtr
+            } catch (_: UnsupportedOperationException) {
+              0L
+            }
+        if (address != 0L) return from(SessionMediaNative.planAt(address, size))
         val direct = pooled.byteBuffer?.takeIf { it.isDirect } ?: copied(pooled, size)
         return from(SessionMediaNative.plan(direct, size))
       } finally {
@@ -218,18 +226,14 @@ internal class DecodePlan(
       return copy
     }
 
-    private fun from(values: IntArray) = DecodePlan(values[0], values[1] != 0, values[2] != 0)
+    private fun from(values: IntArray) = DecodePlan(values[0], values[1] != 0)
   }
 }
 
 /**
- * Fresco's decode of an original or a rendition, under the plan its bytes call for: no larger than
- * the shared budget, an animation past it as its first frame, and one too large to decode at all as
- * a failed load. Fresco would otherwise decode every animated frame at full canvas size.
- *
- * The plan is known only once the bytes are, after the request was made, so the decode runs under a
- * copy of the request's context with the plan applied. The bitmap cache above keys by the original
- * request, which names the same bytes and so the same plan.
+ * Fresco's decode of an original or a rendition under the plan its bytes call for, run under a
+ * copy of the request's context since the plan is known only once the bytes are. The bitmap cache
+ * above keys by the original request, which names the same bytes and so the same plan.
  */
 internal class PlannedDecodeProducer(
     private val producerFactory: ProducerFactory,
@@ -247,27 +251,34 @@ internal class PlannedDecodeProducer(
               consumer.onFailure(RuntimeException("no bytes to decode"))
               return
             }
-            val plan = DecodePlan.of(newResult)
-            if (plan.refused) {
-              val url = context.imageRequest.sourceUri.toString()
-              Log.w(TAG, "$url did not load: too large to decode")
-              consumer.onFailure(RuntimeException("too large to decode"))
-              return
+            // BaseConsumer only logs a throw from here, which would leave the load hanging.
+            try {
+              decode(newResult, status, consumer, context)
+            } catch (error: Throwable) {
+              Log.w(TAG, "${context.imageRequest.sourceUri} did not load: ${error.message}")
+              consumer.onFailure(error)
             }
-            val planned = SettableProducerContext(plan.applyTo(context.imageRequest), context)
-            context.addCallbacks(
-                object : BaseProducerContextCallbacks() {
-                  override fun onCancellationRequested() {
-                    planned.cancel()
-                  }
-                })
-            // The decoder takes its own reference before this returns and the image is closed.
-            producerFactory
-                .newDecodeProducer(Replay(newResult, status))
-                .produceResults(consumer, planned)
           }
         },
         context)
+  }
+
+  private fun decode(
+      image: EncodedImage,
+      status: Int,
+      consumer: Consumer<CloseableReference<CloseableImage>>,
+      context: ProducerContext,
+  ) {
+    val planned =
+        SettableProducerContext(DecodePlan.of(image).applyTo(context.imageRequest), context)
+    context.addCallbacks(
+        object : BaseProducerContextCallbacks() {
+          override fun onCancellationRequested() {
+            planned.cancel()
+          }
+        })
+    // The decoder takes its own reference before this returns and the image is closed.
+    producerFactory.newDecodeProducer(Replay(image, status)).produceResults(consumer, planned)
   }
 
   /** Hands the decoder the bytes already fetched. */
