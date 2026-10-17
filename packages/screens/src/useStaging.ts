@@ -57,6 +57,15 @@ export interface StagingState {
 /** libsession's plan for sending a file, which says whether it may be staged. */
 export type PlanSend = (file: PickedFile) => Promise<SendPlan>
 
+/** Asked at once, and a planner that throws rather than rejects cannot leave `planning` up. */
+function asked(planSend: PlanSend, file: PickedFile): Promise<SendPlan> {
+  try {
+    return planSend(file)
+  } catch {
+    return Promise.reject(new Error('the send planner threw'))
+  }
+}
+
 /**
  * What the composer has staged, and what it most recently refused.
  *
@@ -128,15 +137,12 @@ export function useStaging(planSend: PlanSend): StagingState {
         return Promise.resolve()
       }
       setPlanning((count) => count + 1)
-      // Through a then, so a planner that throws rather than rejects cannot leave `planning` up.
       const plans = Promise.all(
         picked.map((file) =>
-          Promise.resolve(file)
-            .then(plan.current)
-            .then(
-              (answer): [PickedFile, SendPlan] => [file, answer],
-              (): [PickedFile, SendPlan] => [file, 'unreadable'],
-            ),
+          asked(plan.current, file).then(
+            (answer): [PickedFile, SendPlan] => [file, answer],
+            (): [PickedFile, SendPlan] => [file, 'unreadable'],
+          ),
         ),
       ).then((answers) => new Map(answers))
       const staged = queue.current
