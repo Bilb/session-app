@@ -49,8 +49,8 @@ struct DecodePlan {
     /// Whether to draw it still, as its first frame: anything past the budget, so that no frame of
     /// an animation is decoded at a canvas the budget does not allow.
     bool first_frame_only;
-    /// Whether it is a GIF or PNG past `WHOLE_DECODE_PIXEL_CEILING`, which a decoder that holds
-    /// those whole cannot decode at all; one that samples as it decodes still can.
+    /// Whether it is a GIF or PNG past `WHOLE_DECODE_PIXEL_CEILING`, which ImageIO and Skia may
+    /// hold at source size however they sample, so neither mobile loader decodes it.
     bool exceeds_whole_decode_ceiling;
     /// Whether its size was read. One that was not is planned as the largest square the budget
     /// allows, drawn still.

@@ -100,7 +100,7 @@ internal object SessionMediaNative {
 
   /**
    * The shim's `decode_plan` for the first `size` bytes of a direct buffer, read from their header
-   * alone: `[edge in pixels, first frame only as 0 or 1]`.
+   * alone: `[edge in pixels, first frame only, past the whole-decode ceiling]`, the flags 0 or 1.
    */
   @JvmStatic external fun plan(bytes: ByteBuffer, size: Int): IntArray
 
@@ -162,7 +162,12 @@ internal class SessionMediaSequenceFactory : CustomProducerSequenceFactory() {
 }
 
 /** What the shim's `decode_plan` says of an original or a rendition; see `decode_bound.hpp`. */
-internal class DecodePlan(private val edgePx: Int, private val firstFrameOnly: Boolean) {
+internal class DecodePlan(
+    private val edgePx: Int,
+    private val firstFrameOnly: Boolean,
+    /** A GIF or PNG past the whole-decode ceiling, which Skia may hold at source size. */
+    val refused: Boolean,
+) {
   /** `request`, decoding no larger than the edge, and still if told. */
   fun applyTo(request: ImageRequest): ImageRequest {
     if (edgePx == 0 && !firstFrameOnly) return request
@@ -191,8 +196,8 @@ internal class DecodePlan(private val edgePx: Int, private val firstFrameOnly: B
     private val EMPTY = ByteBuffer.allocateDirect(0)
 
     /**
-     * The plan for an encoded image's bytes, read in place: Fresco's default pool is native
-     * memory, and a buffer pool's chunk is a direct buffer. Copied only from any other pool.
+     * The plan for an encoded image's bytes, read in place: a native chunk by its pointer, an
+     * ashmem or buffer chunk by its direct buffer. Copied only as a last resort.
      */
     fun of(image: EncodedImage): DecodePlan {
       val ref = image.byteBufferRef ?: return from(SessionMediaNative.plan(EMPTY, 0))
@@ -226,13 +231,14 @@ internal class DecodePlan(private val edgePx: Int, private val firstFrameOnly: B
       return copy
     }
 
-    private fun from(values: IntArray) = DecodePlan(values[0], values[1] != 0)
+    private fun from(values: IntArray) = DecodePlan(values[0], values[1] != 0, values[2] != 0)
   }
 }
 
 /**
- * Fresco's decode of an original or a rendition under the plan its bytes call for, run under a
- * copy of the request's context since the plan is known only once the bytes are. The bitmap cache
+ * Fresco's decode of an original or a rendition under the plan its bytes call for, or a failed
+ * load past the whole-decode ceiling, run under a copy of the request's context since the plan is
+ * known only once the bytes are. The bitmap cache
  * above keys by the original request, which names the same bytes and so the same plan.
  */
 internal class PlannedDecodeProducer(
@@ -269,8 +275,13 @@ internal class PlannedDecodeProducer(
       consumer: Consumer<CloseableReference<CloseableImage>>,
       context: ProducerContext,
   ) {
-    val planned =
-        SettableProducerContext(DecodePlan.of(image).applyTo(context.imageRequest), context)
+    val plan = DecodePlan.of(image)
+    if (plan.refused) {
+      Log.w(TAG, "${context.imageRequest.sourceUri} did not load: too large to decode")
+      consumer.onFailure(RuntimeException("too large to decode"))
+      return
+    }
+    val planned = SettableProducerContext(plan.applyTo(context.imageRequest), context)
     context.addCallbacks(
         object : BaseProducerContextCallbacks() {
           override fun onCancellationRequested() {

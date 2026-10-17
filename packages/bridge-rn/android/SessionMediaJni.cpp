@@ -311,14 +311,16 @@ Java_session_bridge_rn_SessionMediaNative_release(JNIEnv*, jclass, jlong handle)
 
 namespace {
 
-/// A plan as `[edge in pixels, first frame only]`; null with OutOfMemoryError pending.
+/// A plan as `[edge in pixels, first frame only, past the whole-decode ceiling]`; null with
+/// OutOfMemoryError pending.
 jintArray plan_array(JNIEnv* env, const ::session_bridge::DecodePlan& plan) {
     const jint values[] = {
             static_cast<jint>(std::min(plan.edge_px, static_cast<double>(INT_MAX))),
-            plan.first_frame_only};
-    jintArray out = env->NewIntArray(2);
+            plan.first_frame_only,
+            plan.exceeds_whole_decode_ceiling};
+    jintArray out = env->NewIntArray(3);
     if (out)
-        env->SetIntArrayRegion(out, 0, 2, values);
+        env->SetIntArrayRegion(out, 0, 3, values);
     return out;
 }
 
