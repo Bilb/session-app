@@ -326,7 +326,7 @@ describe('a send the page asks for', () => {
       ).toEqual(sending([{ path: admitted, contentType: 'image/jpeg', filename: 'h.jpg' }]))
       const plan = (path: string): Request => ({
         id: 3,
-        command: { type: 'attachmentSendPlan', path } as Request['command'],
+        command: { type: 'attachmentSendPlan', path },
       })
       expect(gate.admit(plan(spelled))).toEqual(plan(admitted))
     } finally {
