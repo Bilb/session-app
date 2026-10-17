@@ -1,13 +1,17 @@
 // The decode bounds the image loaders draw originals and thumbnails within, which the loaders
-// themselves cannot be run here to check.
+// themselves cannot be run here to check, and the plan against the table the fake's mirror of it
+// is held to: `media_vectors.hpp` is written from `mediaVectors.ts` by `run.sh`.
 
 #include <session_bridge/decode_bound.hpp>
+
+#include "media_vectors.hpp"
 
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 
 using session_bridge::decode_edge_bound;
+using session_bridge::decode_plan;
 using session_bridge::DECODE_PIXEL_BUDGET;
 using session_bridge::exceeds_whole_decode_ceiling;
 using session_bridge::fits_decode_budget;
@@ -112,6 +116,39 @@ void an_unknown_view_decodes_the_thumbnail_whole() {
     CHECK(thumbnail_decode_edge(0, 0, 120, 120) == 0);
 }
 
+void plans_every_header_as_the_table_says() {
+    for (const auto& vector : media_vectors::DECODE_PLANS) {
+        const auto plan = decode_plan(vector.type, vector.width, vector.height, vector.frames);
+        const bool same = plan.edge == vector.edge
+                       && plan.first_frame_only == vector.first_frame_only
+                       && plan.refused == vector.refused && plan.measured == vector.measured;
+        if (!same) {
+            std::fprintf(
+                    stderr,
+                    "decode_plan: %.*s %gx%g x%g: edge %g, first frame %d, refused %d, measured "
+                    "%d\n",
+                    static_cast<int>(vector.type.size()), vector.type.data(), vector.width,
+                    vector.height, vector.frames, plan.edge, plan.first_frame_only, plan.refused,
+                    plan.measured);
+            failures++;
+        }
+    }
+}
+
+void a_planned_decode_stays_within_the_budget() {
+    for (const auto& vector : media_vectors::DECODE_PLANS) {
+        const auto plan = decode_plan(vector.type, vector.width, vector.height, vector.frames);
+        if (plan.measured && plan.edge > 0)
+            CHECK(decoded_area(plan.edge, vector.width, vector.height) <= DECODE_PIXEL_BUDGET);
+    }
+}
+
+void a_negative_or_unknown_size_is_unmeasured() {
+    CHECK(!decode_plan("image/png", -1, 100, 1).measured);
+    CHECK(!decode_plan("image/gif", 0, 65535, 2).measured);
+    CHECK(!decode_plan("image/gif", 0, 65535, 2).refused);
+}
+
 }  // namespace
 
 int main() {
@@ -129,6 +166,9 @@ int main() {
     a_tile_near_the_thumbnail_size_decodes_it_whole();
     a_cover_fit_takes_the_view_edge_that_needs_more();
     an_unknown_view_decodes_the_thumbnail_whole();
+    plans_every_header_as_the_table_says();
+    a_planned_decode_stays_within_the_budget();
+    a_negative_or_unknown_size_is_unmeasured();
     if (failures == 0)
         std::puts("decode_bound: all passed");
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;

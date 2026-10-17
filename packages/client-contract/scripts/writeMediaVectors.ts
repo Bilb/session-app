@@ -1,11 +1,12 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 
-import { MEDIA_URL_VECTORS, SERVABLE_VECTORS } from '#src/mediaVectors'
+import { DECODE_PLAN_VECTORS, MEDIA_URL_VECTORS, SERVABLE_VECTORS } from '#src/mediaVectors'
 
 /**
- * Writes `mediaVectors.ts` as a C++ header, for the host test that holds the shim's
- * `parse_media_url` and `servable_content_type` to the same table as the TypeScript.
+ * Writes `mediaVectors.ts` as a C++ header, for the host tests that hold the shim's
+ * `parse_media_url`, `servable_content_type` and `decode_plan` to the same tables as the
+ * TypeScript.
  *
  * `pnpm --filter @session/client-contract media-vectors:hpp <path>`, which `bridge-rn`'s
  * `tests/cpp/run.sh` runs before it compiles. A header rather than JSON because the shim has no
@@ -47,6 +48,10 @@ function header(): string {
     ({ declared, bytes, served }) =>
       `        {${literal(utf8(declared))}, ${literal(bytes)}, ${optional(served)}},`,
   )
+  const plans = DECODE_PLAN_VECTORS.map(
+    ({ type, width, height, frames, plan }) =>
+      `        {${literal(utf8(type))}, ${String(width)}.0, ${String(height)}.0, ${String(frames)}.0, ${String(plan.edge)}.0, ${String(plan.firstFrameOnly)}, ${String(plan.refused)}, ${String(plan.measured)}},`,
+  )
   return `// Generated from packages/client-contract/src/mediaVectors.ts by scripts/writeMediaVectors.ts.
 #pragma once
 
@@ -71,12 +76,27 @@ struct Servable {
     std::optional<std::string_view> served;
 };
 
+struct DecodePlan {
+    std::string_view type;
+    double width;
+    double height;
+    double frames;
+    double edge;
+    bool first_frame_only;
+    bool refused;
+    bool measured;
+};
+
 inline const std::vector<Url> URLS{
 ${urls.join('\n')}
 };
 
 inline const std::vector<Servable> SERVABLE{
 ${servable.join('\n')}
+};
+
+inline const std::vector<DecodePlan> DECODE_PLANS{
+${plans.join('\n')}
 };
 
 }  // namespace media_vectors

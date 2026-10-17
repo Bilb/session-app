@@ -247,3 +247,113 @@ export const SERVABLE_VECTORS: readonly ServableVector[] = [
   { declared: 'image/webp', bytes: ascii('RIFF', 4), served: null },
   { declared: 'video/mp4', bytes: MP4.subarray(0, 7), served: null },
 ]
+
+export interface DecodePlanVector {
+  /** The type the header was read as, and its size and frame count; 0 by 0 when unread. */
+  type: string
+  width: number
+  height: number
+  frames: number
+  plan: { edge: number; firstFrameOnly: boolean; refused: boolean; measured: boolean }
+}
+
+const WHOLE = { edge: 0, firstFrameOnly: false, refused: false, measured: true }
+
+/**
+ * How a loader draws a picture from its header: the shim's `decode_plan` in C++, which the mobile
+ * loaders apply and desktop main serves by, and the fake's mirror of it.
+ */
+export const DECODE_PLAN_VECTORS: readonly DecodePlanVector[] = [
+  // A phone screenshot, the largest iPad screen, and the budget's own size.
+  { type: 'image/png', width: 1179, height: 2556, frames: 1, plan: WHOLE },
+  { type: 'image/jpeg', width: 2752, height: 2064, frames: 1, plan: WHOLE },
+  { type: 'image/jpeg', width: 3072, height: 2048, frames: 1, plan: WHOLE },
+  {
+    type: 'image/jpeg',
+    width: 3073,
+    height: 2048,
+    frames: 1,
+    plan: { ...WHOLE, edge: 3072 },
+  },
+  // A 12 MP photo, reduced to the budget's area at its own aspect.
+  {
+    type: 'image/jpeg',
+    width: 4032,
+    height: 3024,
+    frames: 1,
+    plan: { ...WHOLE, edge: 2896 },
+  },
+  {
+    type: 'image/jpeg',
+    width: 3024,
+    height: 4032,
+    frames: 1,
+    plan: { ...WHOLE, edge: 2896 },
+  },
+  // A long thin picture keeps its long edge far past the square's.
+  {
+    type: 'image/png',
+    width: 1440,
+    height: 30000,
+    frames: 1,
+    plan: { ...WHOLE, edge: 11448 },
+  },
+
+  // An animation within the budget animates; past it, it is its first frame, reduced.
+  { type: 'image/gif', width: 480, height: 270, frames: 40, plan: WHOLE },
+  { type: 'image/webp', width: 3072, height: 2048, frames: 12, plan: WHOLE },
+  {
+    type: 'image/gif',
+    width: 4000,
+    height: 4000,
+    frames: 2,
+    plan: { ...WHOLE, edge: 2508, firstFrameOnly: true },
+  },
+  {
+    type: 'image/webp',
+    width: 4096,
+    height: 4096,
+    frames: 5,
+    plan: { ...WHOLE, edge: 2508, firstFrameOnly: true },
+  },
+
+  // A GIF or PNG past the whole-decode ceiling is refused; a JPEG or WebP never is.
+  {
+    type: 'image/png',
+    width: 16384,
+    height: 16384,
+    frames: 1,
+    plan: { ...WHOLE, edge: 2508, refused: true },
+  },
+  {
+    type: 'image/gif',
+    width: 12000,
+    height: 10000,
+    frames: 3,
+    plan: { edge: 2747, firstFrameOnly: true, refused: true, measured: true },
+  },
+  {
+    type: 'image/jpeg',
+    width: 16384,
+    height: 16384,
+    frames: 1,
+    plan: { ...WHOLE, edge: 2508 },
+  },
+  // A 48 MP camera frame saved as PNG is within the ceiling.
+  {
+    type: 'image/png',
+    width: 8064,
+    height: 6048,
+    frames: 1,
+    plan: { ...WHOLE, edge: 2896 },
+  },
+
+  // Unread: the largest square, still.
+  {
+    type: '',
+    width: 0,
+    height: 0,
+    frames: 0,
+    plan: { edge: 2508, firstFrameOnly: true, refused: false, measured: false },
+  },
+]

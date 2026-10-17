@@ -29,8 +29,8 @@ inline double decode_edge_bound(double width, double height) {
     return std::min(std::max(width, height), std::floor(std::sqrt(DECODE_PIXEL_BUDGET * aspect)));
 }
 
-/// The largest GIF or PNG area the loader hands ImageIO, which decodes both whole before it
-/// thumbnails: twice a 48 MP camera frame saved as PNG, and 400 MB at 4 bytes a pixel.
+/// The largest GIF or PNG area a loader hands its decoder, since ImageIO decodes both whole before
+/// it reduces them: twice a 48 MP camera frame saved as PNG, and 400 MB at 4 bytes a pixel.
 inline constexpr double WHOLE_DECODE_PIXEL_CEILING = 100'000'000.0;
 
 /// Whether a picture of `type` whose header says `width` by `height` is too large to decode, given
@@ -39,6 +39,38 @@ inline bool exceeds_whole_decode_ceiling(std::string_view type, double width, do
     if (type != "image/gif" && type != "image/png")
         return false;
     return width > 0 && height > 0 && width * height > WHOLE_DECODE_PIXEL_CEILING;
+}
+
+/// How to draw an original or a rendition, from its header: what every platform's loader applies.
+struct DecodePlan {
+    /// The longest edge to decode at, or zero to decode it whole.
+    double edge;
+    /// Whether an animation is to be drawn as its first frame alone.
+    bool first_frame_only;
+    /// Whether it is too large to decode at all, and is to draw as failed.
+    bool refused;
+    /// Whether its size was read. One that was not is planned as the largest square the budget
+    /// allows, drawn still.
+    bool measured;
+};
+
+/// The plan for a picture whose size could not be read.
+inline DecodePlan unmeasured_decode_plan() {
+    return {decode_edge_bound(0, 0), true, false, false};
+}
+
+/// The plan for a picture of `type` whose header says `width` by `height` and `frames` frames.
+///
+/// An animation animates only while its canvas fits the budget. Its frames are decoded one at a
+/// time as they are drawn, so the canvas, not the canvas times the frames, is what one costs.
+inline DecodePlan decode_plan(std::string_view type, double width, double height, double frames) {
+    if (!(width > 0 && height > 0))
+        return unmeasured_decode_plan();
+    const bool fits = fits_decode_budget(width, height);
+    return {fits ? 0 : decode_edge_bound(width, height),
+            !fits && frames > 1,
+            exceeds_whole_decode_ceiling(type, width, height),
+            true};
 }
 
 /// The longest edge to decode a `width` by `height` thumbnail at, to fill a `view_width` by
