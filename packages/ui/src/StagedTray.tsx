@@ -2,7 +2,7 @@ import type { ElementId } from '@session/test-ids'
 import { RADII } from '@session/theme-tokens'
 import { useRef, useState, type ReactNode } from 'react'
 import { ScrollView, type ScrollViewInstance } from 'react-native'
-import { XStack, YStack } from 'tamagui'
+import { isWeb, XStack, YStack } from 'tamagui'
 
 import { backChevron, forwardChevron } from './backChevron'
 import { Button } from './Button'
@@ -12,6 +12,7 @@ import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
 import { STAGED_TILE_SIDE, TRAY_SCROLL_BUTTONS } from './stagingMetrics'
 import { Text } from './Text'
+import { VISUALLY_HIDDEN } from './visuallyHidden'
 
 /** Between tiles, and between the last tile and the add tile. */
 const TILE_GAP = 8
@@ -22,6 +23,8 @@ const PAGE_FRACTION = 0.8
 export interface StagedTrayProps {
   /** "6 / 32", already worded. */
   countLabel: string
+  /** The count as a screen reader says it, where the drawn one would read as a fraction. */
+  countSpokenLabel: string
   clearLabel: string
   onClear: () => void
   addLabel: string
@@ -52,6 +55,7 @@ interface RailExtent {
  */
 export function StagedTray({
   countLabel,
+  countSpokenLabel,
   clearLabel,
   onClear,
   addLabel,
@@ -81,9 +85,19 @@ export function StagedTray({
   return (
     <YStack gap="$2xs" testID={testID}>
       <XStack alignItems="center" justifyContent="space-between">
-        <Text size="$label" color="$textSecondary">
+        {/* The web ignores a label on plain text, so there the spoken count is text of its own. */}
+        <Text
+          size="$label"
+          color="$textSecondary"
+          {...(isWeb ? { 'aria-hidden': true } : { 'aria-label': countSpokenLabel })}
+        >
           {countLabel}
         </Text>
+        {isWeb ? (
+          <Text position="absolute" width={1} height={1} overflow="hidden" style={VISUALLY_HIDDEN}>
+            {countSpokenLabel}
+          </Text>
+        ) : null}
         <Button variant="ghost" size="xs" onPress={onClear} testID={clearTestID}>
           {clearLabel}
         </Button>
