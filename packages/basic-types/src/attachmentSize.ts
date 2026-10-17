@@ -1,6 +1,3 @@
-import { MAX_ATTACHMENT_BYTES } from './media'
-import type { WithContentType, WithDecodesHeic } from './with'
-
 const ENCRYPT_HEADER = 24
 const ENCRYPT_CHUNK_SIZE = 32_768
 const ENCRYPT_CHUNK_OVERHEAD = 17
@@ -33,54 +30,12 @@ function encryptedPadding(dataSize: number): number {
 /**
  * The bytes a file of this size uploads as: libsession's `attachment::encrypted_size`.
  *
- * What the file server's limit is checked against, so a picker's plaintext size has to go through
- * this before it is compared. Ported rather than asked for: the bridge carries no such call, and
- * the screen has to answer at staging, before anything reaches libsession.
+ * What the file server's limit is checked against, so a plaintext size has to go through this
+ * before it is compared.
  */
 export function encryptedAttachmentSize(plaintextBytes: number): number {
   const padding = encryptedPadding(plaintextBytes)
   const paddedSize = plaintextBytes + padding
   const tagsSize = Math.ceil(paddedSize / ENCRYPT_CHUNK_SIZE) * ENCRYPT_CHUNK_OVERHEAD
   return 1 + ENCRYPT_HEADER + plaintextBytes + padding + tagsSize
-}
-
-/**
- * libsession's `image::can_decode` in this build, by declared type: every picture it decodes is
- * sent re-encoded (`image::sendable`), shrunk until it fits the file server. HEIC needs a platform
- * decoder, since the static libvips carries none for HEVC: ImageIO on iOS and macOS, nothing else.
- */
-const SHRUNK_TO_FIT: ReadonlySet<string> = new Set([
-  'image/jpeg',
-  'image/jpg',
-  'image/pjpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-  'image/avif',
-])
-const HEIC: ReadonlySet<string> = new Set(['image/heic', 'image/heif'])
-
-/** Whether libsession decodes a picture of this declared type, and so re-encodes it to send. */
-export function isShrunkToFit(
-  contentType: string | undefined,
-  { decodesHeic }: WithDecodesHeic,
-): boolean {
-  const type = contentType?.split(';')[0]?.trim().toLowerCase()
-  if (type === undefined) return false
-  return SHRUNK_TO_FIT.has(type) || (decodesHeic && HEIC.has(type))
-}
-
-/**
- * Whether a picked file can be sent at all: within the file server's limit, or a picture
- * libsession shrinks to fit. A size the platform did not report passes, as there is nothing to
- * check; so does an animated PNG, typed as any PNG, which libsession sends as it is and refuses
- * only when its upload comes up.
- */
-export function fitsAttachmentLimit(
-  file: WithContentType & { size?: number | undefined },
-  options: WithDecodesHeic,
-): boolean {
-  if (file.size === undefined || encryptedAttachmentSize(file.size) <= MAX_ATTACHMENT_BYTES)
-    return true
-  return isShrunkToFit(file.contentType, options)
 }

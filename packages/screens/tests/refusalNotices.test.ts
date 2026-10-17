@@ -9,10 +9,13 @@ import { PENDING_COPY } from '#src/pendingCopy'
 import { refusalAnnouncement, refusalNotices } from '#src/refusalNotices'
 
 const big = { path: '/picked/drone.mov', name: 'drone.mov', size: MAX_ATTACHMENT_BYTES + 1 }
+const PANO_BYTES = 12
+const NAMED = { tooLarge: [], tooLargeToDecode: [], unopenable: [] }
 
 describe('what the composer says about a refusal', () => {
   it('stacks a notice for each thing a pick left out', () => {
     const notices = refusalNotices({
+      ...NAMED,
       tooLarge: [big],
       overLimit: 3,
       unreadable: 1,
@@ -21,8 +24,29 @@ describe('what the composer says about a refusal', () => {
     expect(notices.map((n) => n.kind)).toEqual(['unreadable', 'tooLarge', 'overLimit'])
   })
 
+  it('names what a plan refused, in the order the notices stack', () => {
+    const pano = { path: '/picked/pano.jpg', name: 'pano.jpg', size: PANO_BYTES }
+    const gone = { path: '/picked/gone.pdf', name: 'gone.pdf' }
+    const notices = refusalNotices({
+      tooLarge: [big],
+      tooLargeToDecode: [pano],
+      unopenable: [gone, pano],
+      overLimit: 0,
+      unreadable: 0,
+      sendRefused: 'none',
+    })
+    expect(notices.map((n) => [n.id, n.message])).toEqual([
+      ['open', tr('attachmentsErrorOpen')],
+      ['size', tr('attachmentsErrorSize')],
+      ['pixels', PENDING_COPY.attachmentsErrorImageTooLarge],
+    ])
+    expect(notices[0]?.detail).toBe(PENDING_COPY.attachmentNameAndMore('gone.pdf', 1))
+    expect(notices[2]?.detail?.startsWith('pano.jpg · ')).toBe(true)
+  })
+
   it('says a refused send failed, above anything else', () => {
     const notices = refusalNotices({
+      ...NAMED,
       tooLarge: [],
       overLimit: 0,
       unreadable: 1,
@@ -36,6 +60,7 @@ describe('what the composer says about a refusal', () => {
 
   it('says a refused message with no files failed, not that a file did', () => {
     const notices = refusalNotices({
+      ...NAMED,
       tooLarge: [],
       overLimit: 0,
       unreadable: 0,
@@ -48,6 +73,7 @@ describe('what the composer says about a refusal', () => {
 
   it('says every notice of one pick in one announcement, so none cuts another off', () => {
     const notices = refusalNotices({
+      ...NAMED,
       tooLarge: [big],
       overLimit: 3,
       unreadable: 0,
@@ -69,7 +95,7 @@ describe('what the composer says about a refusal', () => {
   it('says nothing when nothing was refused', () => {
     expect(
       refusalAnnouncement(
-        refusalNotices({ tooLarge: [], overLimit: 0, unreadable: 0, sendRefused: 'none' }),
+        refusalNotices({ ...NAMED, overLimit: 0, unreadable: 0, sendRefused: 'none' }),
       ),
     ).toBe('')
   })

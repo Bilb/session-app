@@ -6,7 +6,6 @@ import {
   launchImageLibraryAsync,
   UIImagePickerPreferredAssetRepresentationMode,
 } from 'expo-image-picker'
-import { Platform } from 'react-native'
 
 import { keepAll, lastSegment } from './pickedPaths'
 import { discardStaged, keepPicked } from './storage/staging'
@@ -38,12 +37,10 @@ export const pickers: Pick<
   | 'pickImages'
   | 'droppedFiles'
   | 'picksAreCopies'
-  | 'decodesHeic'
   | 'discardPicked'
   | 'releasePreview'
 > = {
   picksAreCopies: true,
-  decodesHeic: Platform.OS === 'ios',
   pickFiles: async () => {
     const result = await getDocumentAsync({ multiple: true, copyToCacheDirectory: true })
     if (result.canceled) return []

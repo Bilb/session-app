@@ -1,12 +1,27 @@
 import type { PickedFile } from '@session/app'
-import { MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
+import { MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
+import type { SendPlan } from '@session/client'
 import { describe, expect, it } from 'vitest'
 
 import { isFull, letGo, outgoingAttachment, stage as stageWith, unstage } from '#src/staging'
 
-const DESKTOP = { picksAreCopies: false, decodesHeic: false }
-const MOBILE = { picksAreCopies: true, decodesHeic: false }
+/** libsession's answer by name, `as-is` for a name it is not given; `big*` is over the limit. */
+function planOf(plans: Record<string, SendPlan> = {}) {
+  return (file: PickedFile): SendPlan =>
+    plans[file.name] ?? (file.name.startsWith('big') ? 'too-large-for-server' : 'as-is')
+}
+
+const DESKTOP = { picksAreCopies: false, planOf: planOf() }
+const MOBILE = { picksAreCopies: true, planOf: planOf() }
 const stage = (staged: PickedFile[], picked: PickedFile[]) => stageWith(staged, picked, DESKTOP)
+const NOTHING_REFUSED = {
+  tooLarge: [],
+  tooLargeToDecode: [],
+  unopenable: [],
+  overLimit: 0,
+  unreadable: 0,
+  sendRefused: 'none',
+}
 
 function file(name: string, size?: number): PickedFile {
   return { path: `/picked/${name}`, name, ...(size === undefined ? {} : { size }) }
@@ -23,35 +38,39 @@ describe('staging attachments', () => {
       [file('b.pdf', 10), file('c.mp4', 10), file('d.m4a', 10)],
     )
     expect(staged.map((f) => f.name)).toEqual(['a.jpg', 'b.pdf', 'c.mp4', 'd.m4a'])
-    expect(refused).toEqual({ tooLarge: [], overLimit: 0, unreadable: 0, sendRefused: 'none' })
+    expect(refused).toEqual(NOTHING_REFUSED)
   })
 
   it('refuses a file over the file server limit and keeps the rest', () => {
-    const big = file('drone.mov', MAX_ATTACHMENT_BYTES + 1)
+    const big = file('big-drone.mov', 20_000_000)
     const { files: staged, refused } = stage([], [file('a.jpg', 10), big, file('b.jpg', 10)])
     expect(staged.map((f) => f.name)).toEqual(['a.jpg', 'b.jpg'])
     expect(refused.tooLarge).toEqual([big])
   })
 
-  it('measures a file by what it uploads as, which padding takes over the limit first', () => {
-    expect(stage([], [file('fits.bin', 9_956_278)]).files).toHaveLength(1)
-    expect(stage([], [file('pads-over.bin', 9_956_279)]).refused.tooLarge).toHaveLength(1)
-    expect(
-      stage([], [file('exactly-10mb.bin', MAX_ATTACHMENT_BYTES)]).refused.tooLarge,
-    ).toHaveLength(1)
-  })
-
-  it('stages a picture of any size that libsession shrinks to fit, but not one it cannot', () => {
-    const huge = MAX_ATTACHMENT_BYTES * 4
-    const photo = { ...file('pano.jpg', huge), contentType: 'image/jpeg' }
-    const heic = { ...file('pano.heic', huge), contentType: 'image/heic' }
-    expect(stage([], [photo]).files).toEqual([photo])
-    expect(stage([], [heic]).refused.tooLarge).toEqual([heic])
-    expect(stageWith([], [heic], { ...DESKTOP, decodesHeic: true }).files).toEqual([heic])
-  })
-
-  it('lets through a file whose size the platform did not report', () => {
-    expect(stage([], [file('unknown.bin')]).files).toHaveLength(1)
+  it('files each refused plan under its own notice, and stages every other plan', () => {
+    const plans: Record<string, SendPlan> = {
+      'pano.jpg': 'too-large-to-decode',
+      'broken.png': 'unreadable',
+      'gone.pdf': 'missing',
+      'photo.jpg': 'reencoded',
+      'heic.heic': 'original-cannot-decode',
+      'spin.png': 'original-animated-png',
+    }
+    const picked = Object.keys(plans).map((name) => file(name, 10))
+    const {
+      files: staged,
+      refused,
+      unused,
+    } = stageWith([], picked, {
+      ...DESKTOP,
+      planOf: planOf(plans),
+    })
+    expect(staged.map((f) => f.name)).toEqual(['photo.jpg', 'heic.heic', 'spin.png'])
+    expect(refused.tooLargeToDecode.map((f) => f.name)).toEqual(['pano.jpg'])
+    expect(refused.unopenable.map((f) => f.name)).toEqual(['broken.png', 'gone.pdf'])
+    expect(refused.tooLarge).toEqual([])
+    expect(unused.map((f) => f.name)).toEqual(['pano.jpg', 'broken.png', 'gone.pdf'])
   })
 
   it('stops at the per-message limit and counts what it left out', () => {
@@ -64,7 +83,7 @@ describe('staging attachments', () => {
 
   it('does not count an oversized file against the limit', () => {
     const { files: staged, refused } = stage(files(31), [
-      file('big.mov', MAX_ATTACHMENT_BYTES + 1),
+      file('big.mov', 20_000_000),
       file('last.jpg', 10),
     ])
     expect(staged.at(-1)?.name).toBe('last.jpg')
@@ -75,7 +94,7 @@ describe('staging attachments', () => {
     const a = file('a.jpg', 10)
     const { files: staged, refused, unused } = stage([a], [a, file('b.jpg', 10)])
     expect(staged.map((f) => f.name)).toEqual(['a.jpg', 'b.jpg'])
-    expect(refused).toEqual({ tooLarge: [], overLimit: 0, unreadable: 0, sendRefused: 'none' })
+    expect(refused).toEqual(NOTHING_REFUSED)
     // The same path is the staged file's own: handing it back to be deleted would delete that.
     expect(unused).toEqual([])
   })
@@ -94,12 +113,9 @@ describe('staging attachments', () => {
     expect(unused).toEqual([])
   })
 
-  it('refuses a file picked again at its path once it has grown past the limit', () => {
-    const before = { ...file('clip.mov', 10), previewUrl: 'session-media://picked/old' }
-    const grown = {
-      ...file('clip.mov', MAX_ATTACHMENT_BYTES),
-      previewUrl: 'session-media://picked/new',
-    }
+  it('refuses a file picked again at its path once it cannot be sent', () => {
+    const before = { ...file('big-clip.mov', 10), previewUrl: 'session-media://picked/old' }
+    const grown = { ...file('big-clip.mov', 20_000_000), previewUrl: 'session-media://picked/new' }
     const { files: staged, refused, unused, replaced } = stage([before, file('b.jpg', 1)], [grown])
     expect(staged.map((f) => f.name)).toEqual(['b.jpg'])
     expect(refused.tooLarge).toEqual([grown])
@@ -122,7 +138,7 @@ describe('staging attachments', () => {
   })
 
   it('hands back every pick it did not stage, so its copy can go', () => {
-    const big = file('big.mov', MAX_ATTACHMENT_BYTES)
+    const big = file('big.mov', 20_000_000)
     const { unused } = stage(files(32), [big, file('extra.jpg', 10)])
     expect(unused.map((f) => f.name)).toEqual(['big.mov', 'extra.jpg'])
   })

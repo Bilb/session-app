@@ -152,7 +152,7 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
   const conversation = useConversation(conversationId)
   const { messages, ready } = useMessages(conversationId)
   const actions = useSessionActions()
-  const staging = useStaging()
+  const staging = useStaging((file) => actions.attachmentSendPlan(file.path, file.contentType))
   const [dropping, setDropping] = useState(false)
   // Unset means nobody has been asked what this conversation should fetch unprompted, which is
   // not the same as having been asked and said no. Asked once, on the first attachment fetched.

@@ -1,10 +1,12 @@
 import { memoryPorts, resetPorts, setPorts, type PickedFile } from '@session/app'
+import type { SendPlan } from '@session/client'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import type * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { Composer } from '#src/Composer'
+import { PENDING_COPY } from '#src/pendingCopy'
 import { useStaging, type StagingState } from '#src/useStaging'
 
 /**
@@ -75,11 +77,12 @@ function hostElements(node: unknown): Element[] {
 }
 
 let onSend: ReturnType<typeof vi.fn<(body: string, files: readonly PickedFile[]) => Promise<void>>>
+let planSend: (file: PickedFile) => Promise<SendPlan>
 
 /** One render of a conversation's composer and the staging it is given. */
 function render(): { staging: StagingState; find: (testID: string) => Element | undefined } {
   hooks.cursor = 0
-  const staging = useStaging()
+  const staging = useStaging((file) => planSend(file))
   const tree = Composer({ staging, onSend })
   const elements = hostElements(tree)
   return {
@@ -120,6 +123,7 @@ const photo: PickedFile = { path: '/home/a/photo.jpg', name: 'photo.jpg', size: 
 beforeEach(() => {
   setPorts(memoryPorts())
   hooks.slots = []
+  planSend = () => Promise.resolve('as-is')
 })
 
 afterEach(() => {
@@ -130,7 +134,7 @@ describe('the composer while a send is out', () => {
   it('sends once however often Send is pressed', async () => {
     const answer = deferred()
     onSend = vi.fn(() => answer.promise)
-    render().staging.add([photo])
+    await render().staging.add([photo])
     type('hi')
     press(ELEMENT.conversation.sendButton)
     press(ELEMENT.conversation.sendButton)
@@ -156,9 +160,9 @@ describe('the composer while a send is out', () => {
     }
   })
 
-  it('disables removing and clearing what it is sending', () => {
+  it('disables removing and clearing what it is sending', async () => {
     onSend = vi.fn(() => deferred().promise)
-    render().staging.add([photo])
+    await render().staging.add([photo])
     press(ELEMENT.conversation.sendButton)
     const { find } = render()
     expect(find(ELEMENT.conversation.stagedTray)?.props.clearDisabled).toBe(true)
@@ -199,7 +203,7 @@ describe('a refused send', () => {
   ])('%s keeps the draft and the tray and says it failed', async (_, files, message) => {
     const answer = deferred()
     onSend = vi.fn(() => answer.promise)
-    render().staging.add(files)
+    await render().staging.add(files)
     type('hi')
     press(ELEMENT.conversation.sendButton)
     answer.reject(new Error('refused'))
@@ -210,5 +214,76 @@ describe('a refused send', () => {
     expect(find(ELEMENT.conversation.composerInput)?.props.value).toBe('hi')
     expect(find(ELEMENT.conversation.composerNotice('send'))?.props.message).toBe(message)
     expect(find('announcement')?.props.text).toBe(`${message}.`)
+  })
+})
+
+describe('staging by libsession’s plan', () => {
+  it.each([
+    ['too-large-for-server', 'size', tr('attachmentsErrorSize')],
+    ['too-large-to-decode', 'pixels', PENDING_COPY.attachmentsErrorImageTooLarge],
+    ['unreadable', 'open', tr('attachmentsErrorOpen')],
+    ['missing', 'open', tr('attachmentsErrorOpen')],
+  ] as const)('refuses a file planned %s, naming it', async (plan, id, message) => {
+    planSend = (file) => Promise.resolve(file === photo ? plan : 'as-is')
+    const notes: PickedFile = { path: '/home/a/notes.txt', name: 'notes.txt' }
+    await render().staging.add([photo, notes])
+    const { staging, find } = render()
+    expect(staging.files).toEqual([notes])
+    const notice = find(ELEMENT.conversation.composerNotice(id))
+    expect(notice?.props.message).toBe(message)
+    expect(String(notice?.props.detail)).toMatch(/^photo\.jpg/)
+    expect(find('announcement')?.props.text).toContain('photo.jpg')
+  })
+
+  it.each(['reencoded', 'as-is', 'original-cannot-decode', 'original-animated-png'] as const)(
+    'stages a file planned %s',
+    async (plan) => {
+      planSend = () => Promise.resolve(plan)
+      await render().staging.add([photo])
+      expect(render().staging.files).toEqual([photo])
+      expect(render().staging.refused.tooLarge).toEqual([])
+    },
+  )
+
+  it('refuses a file whose plan could not be asked for', async () => {
+    planSend = () => Promise.reject(new Error('bridge closed'))
+    await render().staging.add([photo])
+    expect(render().staging.files).toEqual([])
+    expect(render().find(ELEMENT.conversation.composerNotice('open'))).toBeDefined()
+  })
+
+  it('holds Send until every plan is in, and sends the files with the text', async () => {
+    let answer: (plan: SendPlan) => void = () => undefined
+    planSend = () =>
+      new Promise((resolve) => {
+        answer = resolve
+      })
+    onSend = vi.fn(() => deferred().promise)
+    const staged = render().staging.add([photo])
+    type('hi')
+    expect(render().staging.planning).toBe(true)
+    expect(render().find(ELEMENT.conversation.sendButton)?.props.disabled).toBe(true)
+    press(ELEMENT.conversation.sendButton)
+    expect(onSend).not.toHaveBeenCalled()
+    answer('reencoded')
+    await staged
+    expect(render().find(ELEMENT.conversation.sendButton)?.props.disabled).toBe(false)
+    press(ELEMENT.conversation.sendButton)
+    expect(onSend).toHaveBeenCalledWith('hi', [photo])
+  })
+
+  it('stages picks in the order they were made, whichever plan answers first', async () => {
+    const answers: ((plan: SendPlan) => void)[] = []
+    planSend = () =>
+      new Promise((resolve) => {
+        answers.push(resolve)
+      })
+    const notes: PickedFile = { path: '/home/a/notes.txt', name: 'notes.txt' }
+    const first = render().staging.add([photo])
+    const second = render().staging.add([notes])
+    answers[1]?.('as-is')
+    answers[0]?.('reencoded')
+    await Promise.all([first, second])
+    expect(render().staging.files).toEqual([photo, notes])
   })
 })

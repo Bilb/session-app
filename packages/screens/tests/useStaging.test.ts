@@ -33,7 +33,7 @@ vi.mock('react', async (importOriginal) => ({
 }))
 
 function mount() {
-  const staging = useStaging()
+  const staging = useStaging(() => Promise.resolve('as-is'))
   for (const effect of hook.effects.splice(0)) {
     const cleanup = effect()
     if (cleanup !== undefined) hook.cleanups.push(cleanup)
@@ -73,11 +73,11 @@ afterEach(() => {
 })
 
 describe('the composer staging', () => {
-  it('lets go of the preview a re-pick of a staged path replaced, keeping its file', () => {
+  it('lets go of the preview a re-pick of a staged path replaced, keeping its file', async () => {
     const staging = mount()
-    staging.add([picked('photo.jpg', 'session-media://picked/old')])
+    await staging.add([picked('photo.jpg', 'session-media://picked/old')])
     const repicked = picked('photo.jpg', 'session-media://picked/new')
-    staging.add([repicked])
+    await staging.add([repicked])
     expect(released).toEqual(['session-media://picked/old'])
     expect(discarded).toEqual([])
     staging.handOff([repicked])
@@ -85,21 +85,21 @@ describe('the composer staging', () => {
     expect(discarded).toEqual([])
   })
 
-  it('hands over only what a message was sent with, and keeps what was staged since', () => {
+  it('hands over only what a message was sent with, and keeps what was staged since', async () => {
     const staging = mount()
     const a = picked('a.jpg')
-    staging.add([a, picked('b.jpg')])
+    await staging.add([a, picked('b.jpg')])
     staging.handOff([a])
     expect(hook.writes).toContainEqual([picked('b.jpg')])
     expect(discarded).toEqual([])
   })
 
-  it('keeps a re-pick of a path whose earlier pick is being sent', () => {
+  it('keeps a re-pick of a path whose earlier pick is being sent', async () => {
     const staging = mount()
     const sent = picked('a.jpg', 'session-media://picked/sent')
-    staging.add([sent])
+    await staging.add([sent])
     const again = picked('a.jpg', 'session-media://picked/again')
-    staging.add([again])
+    await staging.add([again])
     hook.writes.length = 0
     released.length = 0
     staging.handOff([sent])
@@ -107,10 +107,10 @@ describe('the composer staging', () => {
     expect(released).toEqual([])
   })
 
-  it('lets go of nothing twice when a send lands after the conversation closed', () => {
+  it('lets go of nothing twice when a send lands after the conversation closed', async () => {
     const staging = mount()
     const a = picked('a.jpg', 'session-media://picked/a')
-    staging.add([a])
+    await staging.add([a])
     unmount()
     expect(released).toEqual(['session-media://picked/a'])
     hook.writes.length = 0
@@ -120,12 +120,14 @@ describe('the composer staging', () => {
     expect(hook.writes).toEqual([])
   })
 
-  it('keeps a refused send staged and says so', () => {
+  it('keeps a refused send staged and says so', async () => {
     const staging = mount()
-    staging.add([picked('a.jpg')])
+    await staging.add([picked('a.jpg')])
     staging.refuseSend('files')
     expect(hook.writes).toContainEqual({
       tooLarge: [],
+      tooLargeToDecode: [],
+      unopenable: [],
       overLimit: 0,
       unreadable: 0,
       sendRefused: 'files',
@@ -133,10 +135,10 @@ describe('the composer staging', () => {
     expect(discarded).toEqual([])
   })
 
-  it('lets go of what a picker hands back after the conversation closed', () => {
+  it('lets go of what a picker hands back after the conversation closed', async () => {
     const staging = mount()
     unmount()
-    staging.add([picked('late.jpg', 'session-media://picked/late')], 1)
+    await staging.add([picked('late.jpg', 'session-media://picked/late')], 1)
     expect(hook.writes).toEqual([])
     expect(released).toEqual(['session-media://picked/late'])
     expect(discarded).toEqual(['/home/a/late.jpg'])
@@ -149,12 +151,16 @@ describe('the composer staging', () => {
     const refusals = hook.writes.filter((value) => typeof value === 'object')
     expect(refusals).toContainEqual({
       tooLarge: [],
+      tooLargeToDecode: [],
+      unopenable: [],
       overLimit: 0,
       unreadable: 3,
       sendRefused: 'none',
     })
     expect(refusals).toContainEqual({
       tooLarge: [],
+      tooLargeToDecode: [],
+      unopenable: [],
       overLimit: 0,
       unreadable: 1,
       sendRefused: 'none',
@@ -166,6 +172,8 @@ describe('the composer staging', () => {
     await staging.take(Promise.resolve([picked('a.jpg')]), 3)
     expect(hook.writes).toContainEqual({
       tooLarge: [],
+      tooLargeToDecode: [],
+      unopenable: [],
       overLimit: 0,
       unreadable: 2,
       sendRefused: 'none',

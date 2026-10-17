@@ -59,8 +59,8 @@ export function Composer({
   const picking = useRef(false)
   const outgoing = useRef<string | null>(null)
   const full = isFull(staging.files)
-  const { sending } = staging
-  const sendable = !sending && (draft.trim().length > 0 || staging.files.length > 0)
+  const { sending, planning } = staging
+  const sendable = !sending && !planning && (draft.trim().length > 0 || staging.files.length > 0)
 
   function send(): void {
     if (!sendable) return

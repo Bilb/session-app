@@ -60,6 +60,11 @@ export const PENDING_COPY = {
    */
   attachmentsErrorLimit: (max: number): string =>
     `Unable to send more than ${String(max)} files at once.`,
+  /**
+   * The composer refusing a picture past libsession's decode limits, which is a matter of its
+   * pixels rather than its bytes, so `attachmentsErrorSize` would name the wrong limit.
+   */
+  attachmentsErrorImageTooLarge: 'Image too large to send',
   /** How many files that refusal left out. Counts in English only, as `attachmentCount` does. */
   attachmentsNotAdded: (count: number): string => `${String(count)} not added`,
   /** Over the staged tray: how many of the message's allowance are used. */
