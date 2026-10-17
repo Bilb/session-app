@@ -47,5 +47,5 @@ run "$out/worker.test"
     "$here/staged_thumbnails.test.cpp" -o "$out/staged_thumbnails.test"
 run "$out/staged_thumbnails.test"
 
-"${CXX:-g++}" "${flags[@]}" "$here/DecodeBound.test.cpp" -o "$out/DecodeBound.test"
-run "$out/DecodeBound.test"
+"${CXX:-g++}" "${flags[@]}" "$here/decode_bound.test.cpp" -o "$out/decode_bound.test"
+run "$out/decode_bound.test"

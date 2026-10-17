@@ -4,9 +4,9 @@
 #include <cmath>
 #include <string_view>
 
-// How large the iOS image loader lets ImageIO decode an original, which only the viewer draws, and a
-// thumbnail. Kept free of CoreGraphics so the host tests can hold it.
-namespace session_bridge_rn {
+// How large an image loader may decode an original or a rendition, which only the viewer draws, and
+// a thumbnail. Free of libsession and of any platform's headers, so the host tests can hold it.
+namespace session_bridge {
 
 /// A decode's ceiling in pixels: the largest iPad screen, 2752x2064, fits whole, and at 4 bytes a
 /// pixel no decode passes 24 MiB.
@@ -55,4 +55,4 @@ inline double thumbnail_decode_edge(
     return std::ceil(cover * std::max(width, height));
 }
 
-}  // namespace session_bridge_rn
+}  // namespace session_bridge

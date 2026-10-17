@@ -6,9 +6,9 @@
 #import <UIKit/UIKit.h>
 #import <os/log.h>
 
-#include "DecodeBound.hpp"
 #include "MediaSource.hpp"
 
+#include <session_bridge/decode_bound.hpp>
 #include <session_bridge/media_url.hpp>
 
 #include <algorithm>
@@ -59,7 +59,7 @@ static CGSize SourcePixelSize(CGImageSourceRef source) {
 /// An original, for the viewer: decoded on the calling queue rather than at first draw, with the
 /// file's orientation applied, and no larger than the pixel budget allows.
 static UIImage* _Nullable DecodedImage(CGImageSourceRef source, CGSize pixels, CGFloat scale) {
-    const CGFloat bound = ::session_bridge_rn::decode_edge_bound(pixels.width, pixels.height);
+    const CGFloat bound = ::session_bridge::decode_edge_bound(pixels.width, pixels.height);
     NSDictionary* options = @{
         (id)kCGImageSourceCreateThumbnailFromImageAlways : @YES,
         (id)kCGImageSourceCreateThumbnailWithTransform : @YES,
@@ -121,7 +121,7 @@ static UIImage* _Nullable ThumbhashImage(std::shared_ptr<::session_bridge::Thumb
 /// such as the other album tiles or a file row's glyph.
 static UIImage* _Nullable ThumbnailImage(CGImageSourceRef source, CGSize view, CGFloat scale) {
     const CGSize pixels = SourcePixelSize(source);
-    const CGFloat edge = ::session_bridge_rn::thumbnail_decode_edge(
+    const CGFloat edge = ::session_bridge::thumbnail_decode_edge(
             pixels.width, pixels.height, view.width * scale, view.height * scale);
     CGImageRef decoded = nullptr;
     if (edge > 0) {
@@ -256,7 +256,7 @@ static void FinishPicture(
         return;
     }
     const CGSize pixels = SourcePixelSize(imageSource);
-    if (::session_bridge_rn::exceeds_whole_decode_ceiling(type, pixels.width, pixels.height)) {
+    if (::session_bridge::exceeds_whole_decode_ceiling(type, pixels.width, pixels.height)) {
         CFRelease(imageSource);
         Fail(done, url, "a GIF or PNG too large to decode whole");
         return;
@@ -265,7 +265,7 @@ static void FinishPicture(
     // within the budget is one.
     const bool animated = (type == "image/gif" || type == "image/webp")
                           && CGImageSourceGetCount(imageSource) > 1
-                          && ::session_bridge_rn::fits_decode_budget(pixels.width, pixels.height);
+                          && ::session_bridge::fits_decode_budget(pixels.width, pixels.height);
     UIImage* image = !animated              ? DecodedImage(imageSource, pixels, scale)
                      : type == "image/webp" ? [[SessionAnimatedWebP alloc] initWithData:data
                                                                                   scale:scale]

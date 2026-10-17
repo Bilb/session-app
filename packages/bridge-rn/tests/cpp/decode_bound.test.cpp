@@ -1,17 +1,17 @@
-// The iOS image loader's decode bounds for originals and thumbnails, which the loader itself cannot
-// be run here to check.
+// The decode bounds the image loaders draw originals and thumbnails within, which the loaders
+// themselves cannot be run here to check.
 
-#include "DecodeBound.hpp"
+#include <session_bridge/decode_bound.hpp>
 
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 
-using session_bridge_rn::decode_edge_bound;
-using session_bridge_rn::DECODE_PIXEL_BUDGET;
-using session_bridge_rn::exceeds_whole_decode_ceiling;
-using session_bridge_rn::fits_decode_budget;
-using session_bridge_rn::thumbnail_decode_edge;
+using session_bridge::decode_edge_bound;
+using session_bridge::DECODE_PIXEL_BUDGET;
+using session_bridge::exceeds_whole_decode_ceiling;
+using session_bridge::fits_decode_budget;
+using session_bridge::thumbnail_decode_edge;
 
 namespace {
 
@@ -130,6 +130,6 @@ int main() {
     a_cover_fit_takes_the_view_edge_that_needs_more();
     an_unknown_view_decodes_the_thumbnail_whole();
     if (failures == 0)
-        std::puts("DecodeBound: all passed");
+        std::puts("decode_bound: all passed");
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
