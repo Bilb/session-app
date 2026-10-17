@@ -1,5 +1,6 @@
 #include <napi.h>
 #include <session_bridge/client_bridge.hpp>
+#include <session_bridge/decode_plan.hpp>
 #include <session_bridge/gen/napi.hpp>
 #include <session_bridge/media_url.hpp>
 #include <session_bridge/utf8_path.hpp>
@@ -8,6 +9,7 @@
 #include <cstring>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <unordered_map>
 
@@ -461,6 +463,24 @@ Napi::Value ServableContentType(const Napi::CallbackInfo& info) {
     return Napi::String::New(env, *served);
 }
 
+/// `planDecode(bytes) -> { edge, firstFrameOnly, refused, measured }`, the shim's plan, which desktop
+/// main serves an original by. Synchronous: it reads a header and decodes no pixel.
+Napi::Value PlanDecode(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    if (info.Length() < 1 || !info[0].IsTypedArray() ||
+        info[0].As<Napi::TypedArray>().TypedArrayType() != napi_uint8_array)
+        throw Napi::TypeError::New(env, "planDecode(bytes: Uint8Array)");
+    auto bytes = info[0].As<Napi::Uint8Array>();
+    const auto plan = session_bridge::decode_plan(std::span<const std::byte>{
+            reinterpret_cast<const std::byte*>(bytes.Data()), bytes.ElementLength()});
+    Napi::Object result = Napi::Object::New(env);
+    result.Set("edge", plan.edge);
+    result.Set("firstFrameOnly", plan.first_frame_only);
+    result.Set("refused", plan.refused);
+    result.Set("measured", plan.measured);
+    return result;
+}
+
 }  // namespace
 
 static Napi::Object InitAll(Napi::Env env, Napi::Object exports) {
@@ -468,6 +488,7 @@ static Napi::Object InitAll(Napi::Env env, Napi::Object exports) {
     exports.Set(
             "servableContentType",
             Napi::Function::New<ServableContentType>(env, "servableContentType"));
+    exports.Set("planDecode", Napi::Function::New<PlanDecode>(env, "planDecode"));
     return SessionBridge::Init(env, exports);
 }
 
