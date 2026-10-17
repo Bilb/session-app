@@ -10,6 +10,8 @@ import com.facebook.cache.common.CacheKey
 import com.facebook.common.internal.Predicate
 import com.facebook.common.memory.PooledByteBuffer
 import com.facebook.common.references.CloseableReference
+import com.facebook.imagepipeline.common.ImageDecodeOptions
+import com.facebook.imagepipeline.common.ResizeOptions
 import com.facebook.imagepipeline.core.ImagePipelineFactory
 import com.facebook.imagepipeline.core.ProducerFactory
 import com.facebook.imagepipeline.core.ProducerSequenceFactory
@@ -21,10 +23,13 @@ import com.facebook.imagepipeline.producers.BaseConsumer
 import com.facebook.imagepipeline.producers.BaseProducerContextCallbacks
 import com.facebook.imagepipeline.producers.Consumer
 import com.facebook.imagepipeline.producers.CustomProducerSequenceFactory
+import com.facebook.imagepipeline.producers.DelegatingConsumer
 import com.facebook.imagepipeline.producers.Producer
 import com.facebook.imagepipeline.producers.ProducerContext
+import com.facebook.imagepipeline.producers.SettableProducerContext
 import com.facebook.imagepipeline.producers.ThreadHandoffProducerQueue
 import com.facebook.imagepipeline.request.ImageRequest
+import com.facebook.imagepipeline.request.ImageRequestBuilder
 import com.facebook.proguard.annotations.DoNotStrip
 import com.facebook.react.shell.MainPackageConfig
 import java.nio.ByteBuffer
@@ -32,6 +37,7 @@ import java.nio.channels.Channels
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.math.min
 
 /**
  * Draws `session-media://` URLs: the image loader behind the `MediaPort` URLs on Android.
@@ -92,6 +98,12 @@ internal object SessionMediaNative {
   /** Frees the memory a direct buffer handed to `load` points into. */
   @JvmStatic external fun release(handle: Long)
 
+  /**
+   * The shim's `decode_plan` for the first `size` bytes of a direct buffer, read from their header
+   * alone: `[edge, first frame only, refused]`, the flags as 0 or 1.
+   */
+  @JvmStatic external fun plan(bytes: ByteBuffer, size: Int): IntArray
+
   /** Drops every session-media picture from Fresco's memory caches; see `forget_media`. */
   @JvmStatic
   @DoNotStrip
@@ -115,7 +127,6 @@ internal object SessionMediaNative {
  * keeps naming one picture: libsession never reuses a message id, and a discard calls
  * `forget_media`.
  */
-// TODO: Fresco decodes animated GIF and WebP frames at canvas size, unbudgeted, unlike iOS.
 internal class SessionMediaSequenceFactory : CustomProducerSequenceFactory() {
   override fun getCustomDecodedImageSequence(
       imageRequest: ImageRequest,
@@ -127,18 +138,148 @@ internal class SessionMediaSequenceFactory : CustomProducerSequenceFactory() {
   ): Producer<CloseableReference<CloseableImage>>? {
     val uri = imageRequest.sourceUri
     if (uri.scheme != SessionMedia.SCHEME) return null
+    val encoded =
+        ProducerFactory.newAddImageTransformMetaDataProducer(
+            producerFactory.newEncodedCacheKeyMultiplexProducer(
+                producerFactory.newEncodedMemoryCacheProducer(FetchProducer())))
+    // libsession makes a thumbnail within its edge, so only an original or a rendition is planned.
     val decoded =
-        if (uri.host == "thumbhash") ThumbhashProducer()
-        else
-            producerFactory.newDecodeProducer(
-                ProducerFactory.newAddImageTransformMetaDataProducer(
-                    producerFactory.newEncodedCacheKeyMultiplexProducer(
-                        producerFactory.newEncodedMemoryCacheProducer(FetchProducer()))))
+        when (uri.host) {
+          "thumbhash" -> ThumbhashProducer()
+          "attachment",
+          "rendition" -> PlannedDecodeProducer(producerFactory, encoded)
+          else -> producerFactory.newDecodeProducer(encoded)
+        }
     return producerFactory.newBitmapMemoryCacheGetProducer(
         producerFactory.newBackgroundThreadHandoffProducer(
             producerFactory.newBitmapMemoryCacheKeyMultiplexProducer(
                 producerFactory.newBitmapMemoryCacheProducer(decoded)),
             threadHandoffProducerQueue))
+  }
+}
+
+/** What the shim's `decode_plan` says of an original or a rendition; see `decode_bound.hpp`. */
+internal class DecodePlan(
+    private val edge: Int,
+    private val firstFrameOnly: Boolean,
+    val refused: Boolean,
+) {
+  /** `request`, decoding no larger than the edge, and an animation as its first frame if told. */
+  fun applyTo(request: ImageRequest): ImageRequest {
+    if (edge == 0 && !firstFrameOnly) return request
+    val builder = ImageRequestBuilder.fromRequest(request)
+    if (edge > 0) {
+      // The decoder's sample keeps the longest edge within maxBitmapDimension; a ResizeOptions'
+      // default for it is Fresco's own 2048 cap, which stays wherever it is the tighter.
+      val resize = request.resizeOptions ?: ResizeOptions(edge, edge)
+      builder.setResizeOptions(
+          ResizeOptions(
+              resize.width,
+              resize.height,
+              min(resize.maxBitmapDimension, edge.toFloat()),
+              resize.roundUpFraction))
+    }
+    if (firstFrameOnly) {
+      builder.setImageDecodeOptions(
+          ImageDecodeOptions.newBuilder()
+              .setFrom(request.imageDecodeOptions)
+              .setForceStaticImage(true)
+              .build())
+    }
+    return builder.build()
+  }
+
+  companion object {
+    private val EMPTY = ByteBuffer.allocateDirect(0)
+
+    /** The plan for an encoded image's bytes, read in place when its pool keeps them direct. */
+    fun of(image: EncodedImage): DecodePlan {
+      val ref = image.byteBufferRef ?: return from(SessionMediaNative.plan(EMPTY, 0))
+      try {
+        val pooled = ref.get()
+        val size = pooled.size()
+        val direct = pooled.byteBuffer?.takeIf { it.isDirect } ?: copied(pooled, size)
+        return from(SessionMediaNative.plan(direct, size))
+      } finally {
+        CloseableReference.closeSafely(ref)
+      }
+    }
+
+    private fun copied(pooled: PooledByteBuffer, size: Int): ByteBuffer {
+      val copy = ByteBuffer.allocateDirect(size)
+      val chunk = ByteArray(64 * 1024)
+      var at = 0
+      while (at < size) {
+        val read = pooled.read(at, chunk, 0, min(chunk.size, size - at))
+        if (read <= 0) break
+        copy.put(chunk, 0, read)
+        at += read
+      }
+      return copy
+    }
+
+    private fun from(values: IntArray) = DecodePlan(values[0], values[1] != 0, values[2] != 0)
+  }
+}
+
+/**
+ * Fresco's decode of an original or a rendition, under the plan its bytes call for: no larger than
+ * the shared budget, an animation past it as its first frame, and one too large to decode at all as
+ * a failed load. Fresco would otherwise decode every animated frame at full canvas size.
+ *
+ * The plan is known only once the bytes are, after the request was made, so the decode runs under a
+ * copy of the request's context with the plan applied. The bitmap cache above keys by the original
+ * request, which names the same bytes and so the same plan.
+ */
+internal class PlannedDecodeProducer(
+    private val producerFactory: ProducerFactory,
+    private val encoded: Producer<EncodedImage>,
+) : Producer<CloseableReference<CloseableImage>> {
+  override fun produceResults(
+      consumer: Consumer<CloseableReference<CloseableImage>>,
+      context: ProducerContext,
+  ) {
+    encoded.produceResults(
+        object : DelegatingConsumer<EncodedImage, CloseableReference<CloseableImage>>(consumer) {
+          override fun onNewResultImpl(newResult: EncodedImage?, status: Int) {
+            if (BaseConsumer.isNotLast(status)) return
+            if (newResult == null) {
+              consumer.onFailure(RuntimeException("no bytes to decode"))
+              return
+            }
+            val plan = DecodePlan.of(newResult)
+            if (plan.refused) {
+              val url = context.imageRequest.sourceUri.toString()
+              Log.w(TAG, "$url did not load: too large to decode")
+              consumer.onFailure(RuntimeException("too large to decode"))
+              return
+            }
+            val planned = SettableProducerContext(plan.applyTo(context.imageRequest), context)
+            context.addCallbacks(
+                object : BaseProducerContextCallbacks() {
+                  override fun onCancellationRequested() {
+                    planned.cancel()
+                  }
+                })
+            // The decoder takes its own reference before this returns and the image is closed.
+            producerFactory
+                .newDecodeProducer(Replay(newResult, status))
+                .produceResults(consumer, planned)
+          }
+        },
+        context)
+  }
+
+  /** Hands the decoder the bytes already fetched. */
+  private class Replay(private val image: EncodedImage, private val status: Int) :
+      Producer<EncodedImage> {
+    override fun produceResults(consumer: Consumer<EncodedImage>, context: ProducerContext) {
+      consumer.onNewResult(image, status)
+    }
+  }
+
+  private companion object {
+    const val TAG = "SessionMedia"
   }
 }
 

@@ -2,15 +2,18 @@
 
 #include "MediaSource.hpp"
 
+#include <session_bridge/decode_plan.hpp>
 #include <session_bridge/media_url.hpp>
 
 #include <oxen/log.hpp>
 #include <pthread.h>
 
+#include <algorithm>
 #include <climits>
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <span>
 #include <string>
 #include <utility>
 #include <vector>
@@ -304,4 +307,23 @@ Java_session_bridge_rn_SessionMediaNative_forget(JNIEnv*, jclass, jlong handle) 
 extern "C" JNIEXPORT void JNICALL
 Java_session_bridge_rn_SessionMediaNative_release(JNIEnv*, jclass, jlong handle) {
     delete reinterpret_cast<std::vector<std::byte>*>(handle);
+}
+
+/// The shim's plan for the first `size` bytes of a direct buffer, as `[edge, first frame only,
+/// refused]`; null with OutOfMemoryError pending.
+extern "C" JNIEXPORT jintArray JNICALL
+Java_session_bridge_rn_SessionMediaNative_plan(JNIEnv* env, jclass, jobject bytes, jint size) {
+    const auto* data = static_cast<const std::byte*>(env->GetDirectBufferAddress(bytes));
+    const jlong capacity = env->GetDirectBufferCapacity(bytes);
+    const auto plan = data && size >= 0 && size <= capacity
+                            ? ::session_bridge::decode_plan(std::span{data, static_cast<size_t>(size)})
+                            : ::session_bridge::unmeasured_decode_plan();
+    const jint values[] = {
+            static_cast<jint>(std::min(plan.edge, static_cast<double>(INT_MAX))),
+            plan.first_frame_only,
+            plan.refused};
+    jintArray out = env->NewIntArray(3);
+    if (out)
+        env->SetIntArrayRegion(out, 0, 3, values);
+    return out;
 }
