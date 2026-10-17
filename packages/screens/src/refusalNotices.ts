@@ -7,13 +7,13 @@ import { sizeOf, type StagingRefusal } from './staging'
 export interface RefusalNotice {
   kind: keyof StagingRefusal
   /** The suffix of its test ids. */
-  id: 'unreadable' | 'size' | 'limit' | 'send'
+  id: 'unreadable' | 'open' | 'size' | 'pixels' | 'limit' | 'send'
   message: string
   detail?: string | undefined
 }
 
 /** The first refused file by name and size, and how many more there were. */
-function tooLargeDetail(files: readonly PickedFile[]): string | undefined {
+function namedDetail(files: readonly PickedFile[]): string | undefined {
   const [first] = files
   if (first === undefined) return undefined
   const size = sizeOf(first)
@@ -24,6 +24,8 @@ function tooLargeDetail(files: readonly PickedFile[]): string | undefined {
 /** A notice for each thing the last pick, drop or send turned away, in the order they stack. */
 export function refusalNotices({
   tooLarge,
+  tooLargeToDecode,
+  unopenable,
   overLimit,
   unreadable,
   sendRefused,
@@ -39,12 +41,26 @@ export function refusalNotices({
     })
   if (unreadable > 0)
     notices.push({ kind: 'unreadable', id: 'unreadable', message: tr('attachmentsErrorLoad') })
+  if (unopenable.length > 0)
+    notices.push({
+      kind: 'unopenable',
+      id: 'open',
+      message: tr('attachmentsErrorOpen'),
+      detail: namedDetail(unopenable),
+    })
   if (tooLarge.length > 0)
     notices.push({
       kind: 'tooLarge',
       id: 'size',
       message: tr('attachmentsErrorSize'),
-      detail: tooLargeDetail(tooLarge),
+      detail: namedDetail(tooLarge),
+    })
+  if (tooLargeToDecode.length > 0)
+    notices.push({
+      kind: 'tooLargeToDecode',
+      id: 'pixels',
+      message: PENDING_COPY.attachmentsErrorImageTooLarge,
+      detail: namedDetail(tooLargeToDecode),
     })
   if (overLimit > 0)
     notices.push({

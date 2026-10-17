@@ -602,6 +602,38 @@ struct Codec<::session_bridge::ByteCountResult> {
 };
 
 template <>
+struct Codec<::session_bridge::SendPlan> {
+    static constexpr std::string_view name = "SendPlan";
+    static Napi::Value to(Napi::Env env, ::session_bridge::SendPlan value) {
+        auto text = ::session_bridge::EnumTraits<::session_bridge::SendPlan>::to_string(value);
+        return Napi::String::New(env, text.data(), text.size());
+    }
+    static ::session_bridge::SendPlan from(const Napi::Value& value, std::string_view where) {
+        std::string text = Codec<std::string>::from(value, where);
+        auto parsed = ::session_bridge::EnumTraits<::session_bridge::SendPlan>::parse(text);
+        if (!parsed)
+            throw std::invalid_argument(std::string{where} + ": \"" + text + "\" is not a SendPlan");
+        return *parsed;
+    }
+};
+
+template <>
+struct Codec<::session_bridge::SendPlanResult> {
+    static constexpr std::string_view name = "SendPlanResult";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::SendPlanResult& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::SendPlanResult::type_tag.data(), ::session_bridge::SendPlanResult::type_tag.size()));
+        obj.Set("plan", Codec<::session_bridge::SendPlan>::to(env, value.plan));
+        return obj;
+    }
+    static ::session_bridge::SendPlanResult from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::SendPlanResult(
+                Codec<::session_bridge::SendPlan>::from(obj.Get("plan"), "SendPlanResult.plan"));
+    }
+};
+
+template <>
 struct Codec<::session_bridge::EdgeResult> {
     static constexpr std::string_view name = "EdgeResult";
     static Napi::Value to(Napi::Env env, const ::session_bridge::EdgeResult& value) {
@@ -687,6 +719,8 @@ struct Codec<::session_bridge::Result> {
             return Codec<::session_bridge::PathResult>::from(value, where);
         if (tag == "byteCount")
             return Codec<::session_bridge::ByteCountResult>::from(value, where);
+        if (tag == "sendPlan")
+            return Codec<::session_bridge::SendPlanResult>::from(value, where);
         if (tag == "edge")
             return Codec<::session_bridge::EdgeResult>::from(value, where);
         if (tag == "configSizes")
@@ -1603,6 +1637,25 @@ struct Codec<::session_bridge::SendMessageCommand> {
 };
 
 template <>
+struct Codec<::session_bridge::AttachmentSendPlanCommand> {
+    static constexpr std::string_view name = "AttachmentSendPlanCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::AttachmentSendPlanCommand& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::AttachmentSendPlanCommand::type_tag.data(), ::session_bridge::AttachmentSendPlanCommand::type_tag.size()));
+        obj.Set("path", Codec<std::string>::to(env, value.path));
+        if (value.content_type)
+            obj.Set("contentType", Codec<std::string>::to(env, *value.content_type));
+        return obj;
+    }
+    static ::session_bridge::AttachmentSendPlanCommand from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::AttachmentSendPlanCommand(
+                Codec<std::string>::from(obj.Get("path"), "AttachmentSendPlanCommand.path"),
+                optional<std::string>(obj.Get("contentType"), "AttachmentSendPlanCommand.contentType"));
+    }
+};
+
+template <>
 struct Codec<::session_bridge::RetrySendCommand> {
     static constexpr std::string_view name = "RetrySendCommand";
     static Napi::Value to(Napi::Env env, const ::session_bridge::RetrySendCommand& value) {
@@ -1997,6 +2050,8 @@ struct Codec<::session_bridge::Command> {
             return Codec<::session_bridge::GetMessagesCommand>::from(value, where);
         if (tag == "sendMessage")
             return Codec<::session_bridge::SendMessageCommand>::from(value, where);
+        if (tag == "attachmentSendPlan")
+            return Codec<::session_bridge::AttachmentSendPlanCommand>::from(value, where);
         if (tag == "retrySend")
             return Codec<::session_bridge::RetrySendCommand>::from(value, where);
         if (tag == "deleteMessage")

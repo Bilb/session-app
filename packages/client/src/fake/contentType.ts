@@ -5,6 +5,7 @@ const BY_EXTENSION: Readonly<Record<string, string>> = {
   png: 'image/png',
   gif: 'image/gif',
   webp: 'image/webp',
+  avif: 'image/avif',
   heic: 'image/heic',
   bmp: 'image/bmp',
   tiff: 'image/tiff',

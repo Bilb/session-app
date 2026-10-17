@@ -1,18 +1,18 @@
 import type { FilesPort, PickedFile } from '@session/app'
-import {
-  fitsAttachmentLimit,
-  formatBytes,
-  MAX_ATTACHMENTS_PER_MESSAGE,
-  type WithDecodesHeic,
-} from '@session/basic-types'
-import type { OutgoingAttachment } from '@session/client'
+import { formatBytes, MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
+import type { OutgoingAttachment, SendPlan } from '@session/client'
 
 /** What the last refused send held: files, or only text. */
 export type SendRefusal = 'none' | 'text' | 'files'
 
 /** What the composer turned away: what a pick or a drop left out, or a send. */
 export interface StagingRefusal {
+  /** Over the file server's limit, and not a picture re-encoding could shrink. */
   tooLarge: PickedFile[]
+  /** A picture past libsession's decode limits. */
+  tooLargeToDecode: PickedFile[]
+  /** Gone since it was picked, or a picture whose header is damaged. */
+  unopenable: PickedFile[]
   /** How many were left out because the message was full. */
   overLimit: number
   /** How many could not be read at all: a drop with no file on disk, or a picker that failed. */
@@ -36,12 +36,39 @@ export interface Staging {
   replaced: PickedFile[]
 }
 
-export interface StagingOptions extends WithDecodesHeic {
+/** Whether libsession will refuse to send a file it planned this for. */
+function isRefusedPlan(plan: SendPlan): boolean {
+  switch (plan) {
+    case 'too-large-to-decode':
+    case 'too-large-for-server':
+    case 'unreadable':
+    case 'missing':
+      return true
+    case 'reencoded':
+    case 'as-is':
+    case 'original-cannot-decode':
+    case 'original-animated-png':
+      return false
+  }
+}
+
+export interface StagingOptions {
+  /** libsession's answer for each picked file, asked before it is staged. */
+  planOf: (file: PickedFile) => SendPlan
   /**
    * Whether every pick is a fresh copy, as on mobile, where the same photo picked twice never
    * shares a path. Only then do a name and size say two picks are one file.
    */
   picksAreCopies: boolean
+}
+
+/** The refusals that name the files they turned away, one list per notice. */
+type NamedRefusals = Pick<StagingRefusal, 'tooLarge' | 'tooLargeToDecode' | 'unopenable'>
+
+function refusalOf(refused: NamedRefusals, plan: SendPlan): PickedFile[] {
+  if (plan === 'too-large-for-server') return refused.tooLarge
+  if (plan === 'too-large-to-decode') return refused.tooLargeToDecode
+  return refused.unopenable
 }
 
 function sameFile(
@@ -59,7 +86,7 @@ function sameFile(
  * In the order given, so the tray and the message read in the order somebody chose. A file already
  * staged is not refused: choosing it twice is not a mistake worth a notice. One picked again at
  * its path replaces the staged entry, so a file edited since is drawn as it is now. What may be
- * staged at all is `fitsAttachmentLimit`'s to say.
+ * staged at all is libsession's send plan to say.
  */
 export function stage(
   staged: readonly PickedFile[],
@@ -67,7 +94,11 @@ export function stage(
   options: StagingOptions,
 ): Staging {
   const files = [...staged]
-  const tooLarge: PickedFile[] = []
+  const refused: NamedRefusals = {
+    tooLarge: [],
+    tooLargeToDecode: [],
+    unopenable: [],
+  }
   const unused: PickedFile[] = []
   const replaced: PickedFile[] = []
   let overLimit = 0
@@ -75,22 +106,23 @@ export function stage(
   for (const file of picked) {
     const at = files.findIndex((staged) => sameFile(staged, file, options))
     const already = files[at]
-    const fits = fitsAttachmentLimit(file, options)
+    const plan = options.planOf(file)
+    const sendable = !isRefusedPlan(plan)
     if (already !== undefined && already.path !== file.path) {
       unused.push(file)
       continue
     }
     if (already !== undefined) {
       replaced.push(already)
-      if (fits) {
+      if (sendable) {
         files[at] = file
         continue
       }
-      // Grown past the limit since it was staged: refused now, not at the upload.
+      // Changed since it was staged so that it cannot be sent: refused now, not at the upload.
       files.splice(at, 1)
     }
-    if (!fits) {
-      tooLarge.push(file)
+    if (!sendable) {
+      refusalOf(refused, plan).push(file)
       unused.push(file)
       continue
     }
@@ -104,7 +136,7 @@ export function stage(
 
   return {
     files,
-    refused: { tooLarge, overLimit, unreadable: 0, sendRefused: 'none' },
+    refused: { ...refused, overLimit, unreadable: 0, sendRefused: 'none' },
     unused,
     replaced,
   }

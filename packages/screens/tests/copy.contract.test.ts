@@ -150,6 +150,7 @@ describe('screen copy', () => {
       'attachmentImagePosition',
       'attachmentNameAndMore',
       'attachmentsErrorLimit',
+      'attachmentsErrorImageTooLarge',
       'attachmentsNotAdded',
       'attachmentsStagedCount',
       'attachmentsStagedCountSpoken',

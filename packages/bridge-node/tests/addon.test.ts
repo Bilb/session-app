@@ -653,6 +653,21 @@ describeEcho('the generated converters', () => {
       },
     },
     { type: 'response', response: { id: 900_019, result: { type: 'configSizes', sizes: [] } } },
+    ...(
+      [
+        'reencoded',
+        'as-is',
+        'original-cannot-decode',
+        'original-animated-png',
+        'too-large-to-decode',
+        'too-large-for-server',
+        'unreadable',
+        'missing',
+      ] as const
+    ).map((plan, at): Frame => ({
+      type: 'response',
+      response: { id: 900_100 + at, result: { type: 'sendPlan', plan } },
+    })),
     { type: 'event', event: { type: 'conversation-added', conversation: fullConversation } },
     { type: 'event', event: { type: 'conversation-updated', conversation: bareConversation } },
     { type: 'event', event: { type: 'conversation-removed', conversationId } },

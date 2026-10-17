@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -290,6 +290,55 @@ describe('a send the page asks for', () => {
     gate.grant('C:\\Users\\Someone\\Photo.JPG')
     expect(typeof gate.admit(sending([{ path: 'c:\\users\\someone\\photo.jpg' }]))).not.toBe(
       'string',
+    )
+  })
+
+  it('plans a send only of a file picked in this window, and while it is held', () => {
+    const plan = (path: unknown): Request => ({
+      id: 3,
+      command: { type: 'attachmentSendPlan', path } as Request['command'],
+    })
+    const gate = new SendGate(false)
+    expect(typeof gate.admit(plan(photo))).toBe('string')
+    gate.grant(photo)
+    expect(gate.admit(plan(photo))).toEqual(plan(photo))
+    expect(typeof gate.admit(plan('/home/someone/.ssh/id_ed25519'))).toBe('string')
+    expect(typeof gate.admit(plan(undefined))).toBe('string')
+    expect(typeof gate.admit(plan(42))).toBe('string')
+    gate.release(photo)
+    expect(typeof gate.admit(plan(photo))).toBe('string')
+  })
+
+  it('sends and plans the file it admitted, as the grant resolved it', () => {
+    const root = mkdtempSync(join(tmpdir(), 'session-app-files-test-'))
+    try {
+      const real = join(root, 'real')
+      mkdirSync(real)
+      const alias = join(root, 'alias')
+      symlinkSync(real, alias)
+      const gate = new SendGate(false)
+      gate.grant(join(alias, 'harbour.jpg'))
+      const admitted = join(realpathSync(real), 'harbour.jpg')
+      const spelled = join(alias, '..', 'alias', 'harbour.jpg')
+
+      expect(
+        gate.admit(sending([{ path: spelled, contentType: 'image/jpeg', filename: 'h.jpg' }])),
+      ).toEqual(sending([{ path: admitted, contentType: 'image/jpeg', filename: 'h.jpg' }]))
+      const plan = (path: string): Request => ({
+        id: 3,
+        command: { type: 'attachmentSendPlan', path },
+      })
+      expect(gate.admit(plan(spelled))).toEqual(plan(admitted))
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('keeps the case of the path it sends where it folds case to compare', () => {
+    const gate = new SendGate(true)
+    gate.grant('/home/Someone/Photo.JPG')
+    expect(gate.admit(sending([{ path: '/home/someone/photo.jpg' }]))).toEqual(
+      sending([{ path: '/home/someone/photo.jpg' }]),
     )
   })
 

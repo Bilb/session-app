@@ -39,6 +39,7 @@ export type {
   Request,
   Response,
   Result,
+  SendPlan,
   SendState,
   SessionBridgeOptions,
   SessionEvent,

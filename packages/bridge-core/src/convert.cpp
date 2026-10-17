@@ -209,4 +209,19 @@ Conversation to_bridge(::session::client::AnyConversation&& from) {
             blocked);
 }
 
+SendPlan to_bridge(image::SendPlan from) {
+    // No default label: -Werror=switch makes a new plan a build failure here.
+    switch (from) {
+        case image::SendPlan::reencoded: return SendPlan::reencoded;
+        case image::SendPlan::as_is: return SendPlan::as_is;
+        case image::SendPlan::original_cannot_decode: return SendPlan::original_cannot_decode;
+        case image::SendPlan::original_animated_png: return SendPlan::original_animated_png;
+        case image::SendPlan::too_large_to_decode: return SendPlan::too_large_to_decode;
+        case image::SendPlan::too_large_for_server: return SendPlan::too_large_for_server;
+        case image::SendPlan::unreadable: return SendPlan::unreadable;
+        case image::SendPlan::missing: return SendPlan::missing;
+    }
+    return SendPlan::unreadable;
+}
+
 }  // namespace session_bridge

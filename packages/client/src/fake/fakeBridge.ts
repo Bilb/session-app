@@ -210,6 +210,10 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
       replace: cmd.replace,
     }),
   }),
+  attachmentSendPlan: async (client, cmd) => ({
+    type: 'sendPlan',
+    plan: await client.attachmentSendPlan(cmd.path, cmd.contentType),
+  }),
   setAutoDownload: async (client, cmd) => {
     await client.setAutoDownload(cmd.conversationId, cmd.mode)
     return empty

@@ -41,6 +41,32 @@ export type Deletion = 'here' | 'everywhere'
 export type AutoDownload = 'none' | 'image-attachments' | 'all'
 
 /**
+ * What sending a file as an attachment will do with it, decided from its header alone as the send
+ * decides it: libsession's `image::SendPlan`.
+ *
+ * - `reencoded`: a picture libsession decodes, sent re-encoded and shrunk to fit. Only the send
+ *   tells whether its pixels decode and whether it then fits; it is refused there if not.
+ * - `as-is`: not a picture, and not labelled one, within the file server's limit.
+ * - `original-cannot-decode`: sent as it is, flagged as the original file: a picture this build
+ *   does not decode (HEIC off Apple), or a file labelled a picture that is not one libvips reads.
+ * - `original-animated-png`: sent as it is, flagged as the original file, since re-encoding would
+ *   keep only its first frame.
+ * - `too-large-to-decode`: refused, a picture past the decode limits.
+ * - `too-large-for-server`: refused, over the file server's limit and not shrinkable.
+ * - `unreadable`: refused, a picture whose header is damaged.
+ * - `missing`: refused, no regular file at the path.
+ */
+export type SendPlan =
+  | 'reencoded'
+  | 'as-is'
+  | 'original-cannot-decode'
+  | 'original-animated-png'
+  | 'too-large-to-decode'
+  | 'too-large-for-server'
+  | 'unreadable'
+  | 'missing'
+
+/**
  * Which request a progress report belongs to.
  *
  * libsession fetches a file once for every download and export of it, but reports to each request

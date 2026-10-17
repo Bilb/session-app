@@ -11,11 +11,12 @@ import type {
   Deletion,
   ExportAttachmentOptions,
   MessageCursor,
+  SendPlan,
   SessionEvent,
 } from '@session/bridge-types'
 
 import type { MessagePage, NetworkAttachment, OutgoingMessage, SessionClient } from '../types'
-import type { FakeAccount, FakeWorld, LocatedAttachment } from './world'
+import type { FakeAccount, FakeStagedFiles, FakeWorld, LocatedAttachment } from './world'
 
 /** Why this network will not attach, or undefined when it will. */
 function networkRefusal(config: NetworkAttachment): string | undefined {
@@ -431,6 +432,16 @@ export class FakeSessionClient implements SessionClient {
   getConfigSizes(): Promise<ConfigSize[]> {
     this.assertOpen()
     return Promise.resolve(this.account.configSizes())
+  }
+
+  attachmentSendPlan(path: string, contentType?: string): Promise<SendPlan> {
+    this.assertOpen()
+    return this.account.sendPlan(path, contentType)
+  }
+
+  /** How the plan reads a file behind an app, whose disk the world cannot see. */
+  readStagedFilesWith(files: FakeStagedFiles): void {
+    this.account.readStagedFilesWith(files)
   }
 
   sendMessage(id: ConversationId, message: OutgoingMessage): Promise<number> {

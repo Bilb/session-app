@@ -25,7 +25,6 @@ setPorts(
       pickImages: async (options) =>
         toPickedFiles(await chooseFiles({ ...options, accept: 'image/*' })),
       droppedFiles: (items) => toPickedFiles(items),
-      decodesHeic: window.sessionDesktop.platform === 'darwin',
       // A pick is the person's own file, which nothing deletes.
       discardPicked: () => undefined,
       releasePreview,

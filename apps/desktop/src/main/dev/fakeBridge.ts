@@ -52,6 +52,11 @@ export function createFakeBridge(): BridgeTransport & MediaSource {
     fix: 'pnpm fake-media:fetch',
   })
 
+  alice.readStagedFilesWith({
+    decodesHeic: process.platform === 'darwin',
+    sizeOf: async (path) => (await readHead(path, 0)).size,
+  })
+
   return {
     ...createFakeTransport(served),
     ...createFakeMediaSource(alice, (photo) => readFile(join(MEDIA_DIR, photo)), readHead),

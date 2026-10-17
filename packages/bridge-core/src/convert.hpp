@@ -3,6 +3,7 @@
 #include <session/client/attachment.hpp>
 #include <session/client/conversation.hpp>
 #include <session/client/message.hpp>
+#include <session/image/sendable.hpp>
 
 #include <cstdint>
 
@@ -26,6 +27,7 @@ Message to_bridge(::session::client::Message&& from);
 /// applies them in. Only the paged query reverses, because paging runs the other way.
 std::vector<Message> to_bridge(std::vector<::session::client::Message>&& from);
 Conversation to_bridge(::session::client::AnyConversation&& from);
+SendPlan to_bridge(::session::image::SendPlan from);
 
 /// Whether `fetch_thumbhash` can decode this attachment's ThumbHash: what `hasThumbhash` says.
 bool thumbhash_decodable(const ::session::client::Attachment& a);

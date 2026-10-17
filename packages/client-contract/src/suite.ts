@@ -605,6 +605,44 @@ export function runSessionClientContract(
       expect(await flags()).toEqual([true, false])
     })
 
+    it('plans a send from the file, its label and the file server limit, sending nothing', async () => {
+      const { alice, bobId, writeFile } = await harness.friends()
+      const notes = await writeFile('notes.txt', 2_000)
+      // Well past the limit either way it is counted, plaintext or padded and encrypted.
+      const big = await writeFile('big.bin', 12_000_000)
+      const scan = await writeFile('scan.bmp', 2_000)
+      const hugeScan = await writeFile('huge.bmp', 12_000_000)
+      const tiff = await writeFile('scan.tiff', 2_000)
+      const seen = collect(alice)
+
+      expect(await alice.attachmentSendPlan(notes)).toBe('as-is')
+      expect(await alice.attachmentSendPlan(notes, 'text/plain')).toBe('as-is')
+      expect(await alice.attachmentSendPlan(big)).toBe('too-large-for-server')
+      // A label that is a picture this build does not read goes as the original file.
+      expect(await alice.attachmentSendPlan(scan, 'image/bmp')).toBe('original-cannot-decode')
+      expect(await alice.attachmentSendPlan(scan, 'Image/BMP; x=y')).toBe('original-cannot-decode')
+      expect(await alice.attachmentSendPlan(hugeScan, 'image/bmp')).toBe('too-large-for-server')
+      // Unlabelled, typed by its extension as a send types it.
+      expect(await alice.attachmentSendPlan(tiff)).toBe('original-cannot-decode')
+      expect(await alice.attachmentSendPlan(`${notes}.gone`)).toBe('missing')
+
+      expect((await alice.getMessages(bobId)).messages).toEqual([])
+      expect(seen.events.filter((e) => e.type !== 'log')).toEqual([])
+      seen.stop()
+    })
+
+    it('holds a file sent as it is to the file server limit once it is encrypted', async () => {
+      const { alice, writeFile } = await harness.friends()
+      // 9,956,278 bytes encrypt to just within MAX_ATTACHMENT_BYTES; one more byte does not.
+      const fits = await writeFile('fits.bin', 9_956_278)
+      const over = await writeFile('over.bin', 9_956_279)
+
+      expect(await alice.attachmentSendPlan(fits)).toBe('as-is')
+      expect(await alice.attachmentSendPlan(over)).toBe('too-large-for-server')
+      expect(await alice.attachmentSendPlan(fits, 'image/bmp')).toBe('original-cannot-decode')
+      expect(await alice.attachmentSendPlan(over, 'image/bmp')).toBe('too-large-for-server')
+    })
+
     it('serves a file it took for a send before it is up, and only one it took', async () => {
       const { alice, bobId, writeFile, aliceMedia } = await harness.friends()
       const taken = await writeFile('taken.txt', 2_000)

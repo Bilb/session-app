@@ -11,6 +11,7 @@ import type {
   Request,
   Response,
   Result,
+  SendPlan,
   SessionEvent,
 } from '@session/bridge-types'
 
@@ -293,6 +294,15 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
         replace: options?.replace ?? false,
       })
       return resultOf(response, 'path').path
+    },
+
+    async attachmentSendPlan(path, contentType): Promise<SendPlan> {
+      const response = await call({
+        type: 'attachmentSendPlan',
+        path,
+        ...(contentType === undefined ? {} : { contentType }),
+      })
+      return resultOf(response, 'sendPlan').plan
     },
 
     async setAutoDownload(id, mode: AutoDownload): Promise<void> {
