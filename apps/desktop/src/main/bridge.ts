@@ -13,7 +13,7 @@ import {
   parseRouterKind,
   thumbnailEdgePxFor,
 } from '@session/basic-types'
-import type { BridgeTransport, MediaSource } from '@session/client'
+import type { BridgeTransport, DecodePlanner, MediaSource } from '@session/client'
 import type { NetworkSettings } from '@session/logging'
 
 const { app, safeStorage, screen } = electron
@@ -108,7 +108,7 @@ export function sessionDataDir(): string {
  *
  * Everything above this file sees frames either way.
  */
-export async function createBridge(): Promise<BridgeTransport & MediaSource> {
+export async function createBridge(): Promise<BridgeTransport & MediaSource & DecodePlanner> {
   loadDotEnv()
 
   if (developerSetting('EXPO_PUBLIC_SESSION_FAKE') === '1') {

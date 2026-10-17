@@ -63,6 +63,9 @@ function refusingBridge(reason: string): Awaited<ReturnType<typeof createBridge>
     fetchThumbnail: refuse,
     fetchRendition: refuse,
     fetchStagedThumbnail: refuse,
+    planDecode: () => {
+      throw new Error(`the bridge could not start: ${reason}`)
+    },
   }
 }
 

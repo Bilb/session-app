@@ -1,7 +1,8 @@
 import { protocol } from 'electron'
 
 import { isViewableContentType, mediaKindOf, sniffContentType } from '@session/basic-types'
-import type { MediaSource } from '@session/client'
+import type { AttachmentRef } from '@session/bridge-types'
+import type { DecodePlan, DecodePlanner, MediaSource } from '@session/client'
 
 import { MEDIA_SCHEME, parseMediaUrl } from '@session/app/mediaUrl'
 import { encodePng } from './png'
@@ -47,6 +48,102 @@ function mediaHeaders(contentType: string): Record<string, string> {
   }
 }
 
+/** Not stored, so the url is asked again once what it names is here. */
+const UNAVAILABLE = { 'cache-control': 'no-store' }
+
+/**
+ * An original Chromium may not be handed: libsession's rendition in its place, at most 2048 px and
+ * a still or an animated WebP, or a failed load, which the viewer and a tile already draw.
+ */
+async function standIn(bridge: MediaSource, ref: AttachmentRef): Promise<Response> {
+  try {
+    const rendition = await bridge.fetchRendition(ref)
+    const contentType = servableContentType(rendition.contentType, rendition.bytes)
+    if (contentType === null) return new Response(null, { status: 415 })
+    return new Response(rendition.bytes, { status: 200, headers: mediaHeaders(contentType) })
+  } catch {
+    return new Response(null, { status: 413, headers: UNAVAILABLE })
+  }
+}
+
+/**
+ * Whether Chromium may decode these bytes as they are. It cannot be told a size or to stop at a
+ * first frame, so anything the shim would have a loader reduce is past it; bytes libsession cannot
+ * read the size of have no rendition to stand in either, and pass.
+ */
+function drawsWhole(plan: DecodePlan): boolean {
+  return !plan.measured || plan.edge === 0
+}
+
+/** The response to a media url: what the scheme's handler answers, without Electron. */
+export async function mediaResponse(
+  bridge: MediaSource & DecodePlanner,
+  previews: PreviewGrants,
+  url: string,
+): Promise<Response> {
+  if (previews.names(url)) {
+    const path = previews.pathFor(url)
+    if (path === null) return new Response(null, { status: 403 })
+    try {
+      const jpeg = await bridge.fetchStagedThumbnail(path)
+      if (servableContentType('image/jpeg', jpeg) !== 'image/jpeg') {
+        return new Response(null, { status: 415 })
+      }
+      return new Response(jpeg, { status: 200, headers: mediaHeaders('image/jpeg') })
+    } catch {
+      return new Response(null, { status: 404, headers: UNAVAILABLE })
+    }
+  }
+
+  const target = parseMediaUrl(url)
+  if (!target) return new Response(null, { status: 400 })
+  // A path the page names itself is never opened here: a picked file is drawn by its grant.
+  if (target.kind === 'staged') return new Response(null, { status: 403 })
+
+  try {
+    if (target.kind === 'thumbhash') {
+      const thumbhash = await bridge.fetchThumbhash(target.ref)
+      return new Response(encodePng(thumbhash.width, thumbhash.height, thumbhash.rgba), {
+        status: 200,
+        headers: mediaHeaders('image/png'),
+      })
+    }
+
+    if (target.kind === 'thumbnail') {
+      const jpeg = await bridge.fetchThumbnail(target.ref)
+      if (servableContentType('image/jpeg', jpeg) !== 'image/jpeg') {
+        return new Response(null, { status: 415 })
+      }
+      return new Response(jpeg, { status: 200, headers: mediaHeaders('image/jpeg') })
+    }
+
+    const media =
+      target.kind === 'rendition'
+        ? await bridge.fetchRendition(target.ref)
+        : await bridge.fetchMedia(target.ref)
+    const contentType = servableContentType(media.contentType, media.bytes)
+    if (contentType === null) return new Response(null, { status: 415 })
+    // A rendition is within the budget by how libsession makes it.
+    if (
+      target.kind === 'attachment' &&
+      mediaKindOf(contentType) === 'image' &&
+      !drawsWhole(bridge.planDecode(media.bytes))
+    ) {
+      return await standIn(bridge, target.ref)
+    }
+    return new Response(media.bytes, {
+      status: 200,
+      headers: mediaHeaders(contentType),
+    })
+  } catch {
+    // A file not downloaded, a missing message, a failed thumbhash or a missing derived image is
+    // known from this status alone, so whoever draws the url has to handle the image failing.
+    // TODO: serve a sender's own attachment from its local copy while it uploads; libsession
+    // serves only a file a send took before it is up, and a desktop send takes none.
+    return new Response(null, { status: 404, headers: UNAVAILABLE })
+  }
+}
+
 /**
  * Serves the scheme from the bridge, in the main process, where the addon already is.
  *
@@ -55,63 +152,8 @@ function mediaHeaders(contentType: string): Record<string, string> {
  * kind is served from libsession's cache only, so drawing a URL never downloads anything; a staged
  * file only once the preload has granted it.
  */
-export function serveMedia(bridge: MediaSource, previews: PreviewGrants): void {
-  protocol.handle(MEDIA_SCHEME, async (request) => {
-    if (previews.names(request.url)) {
-      const path = previews.pathFor(request.url)
-      if (path === null) return new Response(null, { status: 403 })
-      try {
-        const jpeg = await bridge.fetchStagedThumbnail(path)
-        if (servableContentType('image/jpeg', jpeg) !== 'image/jpeg') {
-          return new Response(null, { status: 415 })
-        }
-        return new Response(jpeg, { status: 200, headers: mediaHeaders('image/jpeg') })
-      } catch {
-        return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } })
-      }
-    }
-
-    const target = parseMediaUrl(request.url)
-    if (!target) return new Response(null, { status: 400 })
-    // A path the page names itself is never opened here: a picked file is drawn by its grant.
-    if (target.kind === 'staged') return new Response(null, { status: 403 })
-
-    try {
-      if (target.kind === 'thumbhash') {
-        const thumbhash = await bridge.fetchThumbhash(target.ref)
-        return new Response(encodePng(thumbhash.width, thumbhash.height, thumbhash.rgba), {
-          status: 200,
-          headers: mediaHeaders('image/png'),
-        })
-      }
-
-      if (target.kind === 'thumbnail') {
-        const jpeg = await bridge.fetchThumbnail(target.ref)
-        if (servableContentType('image/jpeg', jpeg) !== 'image/jpeg') {
-          return new Response(null, { status: 415 })
-        }
-        return new Response(jpeg, { status: 200, headers: mediaHeaders('image/jpeg') })
-      }
-
-      const media =
-        target.kind === 'rendition'
-          ? await bridge.fetchRendition(target.ref)
-          : await bridge.fetchMedia(target.ref)
-      const contentType = servableContentType(media.contentType, media.bytes)
-      if (contentType === null) return new Response(null, { status: 415 })
-      return new Response(media.bytes, {
-        status: 200,
-        headers: mediaHeaders(contentType),
-      })
-    } catch {
-      // A file not downloaded, a missing message, a failed thumbhash or a missing derived image is
-      // known from this status alone, so whoever draws the url has to handle the image failing.
-      // Not stored, so the url is asked again once the file is here.
-      // TODO: serve a sender's own attachment from its local copy while it uploads; libsession
-      // serves only a file a send took before it is up, and a desktop send takes none.
-      return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } })
-    }
-  })
+export function serveMedia(bridge: MediaSource & DecodePlanner, previews: PreviewGrants): void {
+  protocol.handle(MEDIA_SCHEME, (request) => mediaResponse(bridge, previews, request.url))
 }
 
 /** Called before the bridge closes, so nothing asks a closing bridge for bytes. */

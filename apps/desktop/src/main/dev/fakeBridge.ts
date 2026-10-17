@@ -3,9 +3,10 @@ import { open, readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-import type { BridgeTransport, MediaSource } from '@session/client'
+import type { BridgeTransport, DecodePlanner, MediaSource } from '@session/client'
 import {
   createFakeMediaSource,
+  fakeDecodePlan,
   createFakeTransport,
   startDevFake,
   type StagedHead,
@@ -45,7 +46,7 @@ async function readHead(path: string, count: number): Promise<StagedHead> {
  * never imports the fake, and the dynamic import in ../bridge.ts is what keeps it out of a
  * shipped bundle.
  */
-export function createFakeBridge(): BridgeTransport & MediaSource {
+export function createFakeBridge(): BridgeTransport & MediaSource & DecodePlanner {
   const { alice, served } = startDevFake(process.env, {
     has: (fileName) => existsSync(join(MEDIA_DIR, fileName)),
     where: `in ${MEDIA_DIR}`,
@@ -60,5 +61,6 @@ export function createFakeBridge(): BridgeTransport & MediaSource {
   return {
     ...createFakeTransport(served),
     ...createFakeMediaSource(alice, (photo) => readFile(join(MEDIA_DIR, photo)), readHead),
+    planDecode: fakeDecodePlan,
   }
 }
