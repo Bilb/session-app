@@ -148,14 +148,12 @@ describe('what a row square or an album tile draws', () => {
     expect(leadUri(7, bmp, 'ready')).toBe('media://7/0')
   })
 
-  it('draws a downloaded JPEG declared with parameters from the file', () => {
+  it('keeps a downloaded JPEG on its placeholder until libsession thumbnails it', () => {
     serving()
-    const jpeg = {
-      ...attachment(2, 'image/jpeg; charset=binary'),
-      availability: 'cached' as const,
-    }
+    const jpeg = { ...attachment(2, 'image/jpeg'), availability: 'cached' as const }
     expect(leadsWithPicture(jpeg)).toBe(true)
-    expect(leadUri(7, jpeg, 'ready')).toBe('media://7/2')
+    expect(leadUri(7, jpeg, 'ready')).toBeUndefined()
+    expect(leadUri(7, { ...jpeg, hasThumbnail: true }, 'ready')).toBe('thumb://7/2')
   })
 
   it('keeps the placeholder until the file is here', () => {
