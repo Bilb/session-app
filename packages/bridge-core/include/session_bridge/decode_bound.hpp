@@ -41,14 +41,17 @@ inline bool exceeds_whole_decode_ceiling(std::string_view type, double width, do
     return width > 0 && height > 0 && width * height > WHOLE_DECODE_PIXEL_CEILING;
 }
 
-/// How to draw an original or a rendition, from its header: what every platform's loader applies.
+/// How to draw an original or a rendition, from its header. Android's loader applies it, desktop
+/// main serves by it, and iOS applies the same rules through ImageIO's reading of the header.
 struct DecodePlan {
     /// The longest edge to decode at, or zero to decode it whole.
-    double edge;
-    /// Whether an animation is to be drawn as its first frame alone.
+    double edge_px;
+    /// Whether to draw it still, as its first frame: anything past the budget, so that no frame of
+    /// an animation is decoded at a canvas the budget does not allow.
     bool first_frame_only;
-    /// Whether it is too large to decode at all, and is to draw as failed.
-    bool refused;
+    /// Whether it is a GIF or PNG past `WHOLE_DECODE_PIXEL_CEILING`, which a decoder that holds
+    /// those whole cannot decode at all; one that samples as it decodes still can.
+    bool exceeds_whole_decode_ceiling;
     /// Whether its size was read. One that was not is planned as the largest square the budget
     /// allows, drawn still.
     bool measured;
@@ -59,16 +62,17 @@ inline DecodePlan unmeasured_decode_plan() {
     return {decode_edge_bound(0, 0), true, false, false};
 }
 
-/// The plan for a picture of `type` whose header says `width` by `height` and `frames` frames.
+/// The plan for a picture of `type` whose header says `width` by `height`.
 ///
-/// An animation animates only while its canvas fits the budget. Its frames are decoded one at a
-/// time as they are drawn, so the canvas, not the canvas times the frames, is what one costs.
-inline DecodePlan decode_plan(std::string_view type, double width, double height, double frames) {
+/// An animation animates only while its canvas fits the budget. Its frames are decoded as they are
+/// drawn, so it costs a few canvases, not one per frame: one on iOS, about four on Android, where
+/// Fresco prepares frames ahead.
+inline DecodePlan decode_plan(std::string_view type, double width, double height) {
     if (!(width > 0 && height > 0))
         return unmeasured_decode_plan();
     const bool fits = fits_decode_budget(width, height);
     return {fits ? 0 : decode_edge_bound(width, height),
-            !fits && frames > 1,
+            !fits,
             exceeds_whole_decode_ceiling(type, width, height),
             true};
 }

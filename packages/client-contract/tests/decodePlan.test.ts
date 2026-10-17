@@ -24,11 +24,10 @@ function jpegHeader(width: number, height: number): Uint8Array {
 
 describe("the fake's decode plan", () => {
   it('plans every header as the shim does', () => {
-    for (const { type, width, height, frames, plan } of DECODE_PLAN_VECTORS) {
-      expect(
-        decodePlan(type, width, height, frames),
-        `${type} ${String(width)}x${String(height)}`,
-      ).toEqual(plan)
+    for (const { type, width, height, plan } of DECODE_PLAN_VECTORS) {
+      expect(decodePlan(type, width, height), `${type} ${String(width)}x${String(height)}`).toEqual(
+        plan,
+      )
     }
   })
 
@@ -38,12 +37,12 @@ describe("the fake's decode plan", () => {
       90,
     ).data
     expect(fakeDecodePlan(photo)).toEqual({
-      edge: 0,
+      edgePx: 0,
       firstFrameOnly: false,
-      refused: false,
+      exceedsWholeDecodeCeiling: false,
       measured: true,
     })
-    expect(fakeDecodePlan(jpegHeader(4032, 3024))).toMatchObject({ edge: 2896, measured: true })
+    expect(fakeDecodePlan(jpegHeader(4032, 3024))).toMatchObject({ edgePx: 2896, measured: true })
   })
 
   it('leaves anything but a JPEG unmeasured', () => {

@@ -205,15 +205,15 @@ export interface AttachmentMedia {
 
 /**
  * How a loader is to draw an original or a rendition, from its header alone: the shim's
- * `decode_plan`, which both mobile loaders apply and desktop main serves by.
+ * `decode_plan`, which Android applies and desktop main serves by.
  */
 export interface DecodePlan {
   /** The longest edge to decode at, or 0 to decode it whole. */
-  edge: number
-  /** Whether an animation is to be drawn as its first frame alone. */
+  edgePx: number
+  /** Whether to draw it still, as its first frame: anything past the budget. */
   firstFrameOnly: boolean
-  /** Whether it is too large to decode at all, and is to draw as failed. */
-  refused: boolean
+  /** Whether it is a GIF or PNG too large for a decoder that holds those whole to decode at all. */
+  exceedsWholeDecodeCeiling: boolean
   /** Whether its size was read; one that was not is planned as the largest square, still. */
   measured: boolean
 }

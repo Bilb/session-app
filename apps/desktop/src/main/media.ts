@@ -51,28 +51,44 @@ function mediaHeaders(contentType: string): Record<string, string> {
 /** Not stored, so the url is asked again once what it names is here. */
 const UNAVAILABLE = { 'cache-control': 'no-store' }
 
-/**
- * An original Chromium may not be handed: libsession's rendition in its place, at most 2048 px and
- * a still or an animated WebP, or a failed load, which the viewer and a tile already draw.
- */
-async function standIn(bridge: MediaSource, ref: AttachmentRef): Promise<Response> {
-  try {
-    const rendition = await bridge.fetchRendition(ref)
-    const contentType = servableContentType(rendition.contentType, rendition.bytes)
-    if (contentType === null) return new Response(null, { status: 415 })
-    return new Response(rendition.bytes, { status: 200, headers: mediaHeaders(contentType) })
-  } catch {
+/** libsession's rendition of `ref`, or null while it has none. */
+async function renditionResponse(
+  bridge: MediaSource,
+  ref: AttachmentRef,
+): Promise<Response | null> {
+  const rendition = await bridge.fetchRendition(ref).catch(() => null)
+  if (rendition === null) return null
+  const contentType = servableContentType(rendition.contentType, rendition.bytes)
+  if (contentType === null) return new Response(null, { status: 415 })
+  return new Response(rendition.bytes, { status: 200, headers: mediaHeaders(contentType) })
+}
+
+/** A picture no decoder may take whole: its thumbnail, else a failed load the viewer draws. */
+async function thumbnailInstead(bridge: MediaSource, ref: AttachmentRef): Promise<Response> {
+  const jpeg = await bridge.fetchThumbnail(ref).catch(() => null)
+  if (jpeg === null || servableContentType('image/jpeg', jpeg) !== 'image/jpeg') {
     return new Response(null, { status: 413, headers: UNAVAILABLE })
   }
+  return new Response(jpeg, {
+    status: 200,
+    headers: { ...mediaHeaders('image/jpeg'), ...UNAVAILABLE },
+  })
 }
 
 /**
- * Whether Chromium may decode these bytes as they are. It cannot be told a size or to stop at a
- * first frame, so anything the shim would have a loader reduce is past it; bytes libsession cannot
- * read the size of have no rendition to stand in either, and pass.
+ * What stands in for an original past the budget, or null to serve it as it is. Chromium can be
+ * told neither a size nor a first frame, so the rendition wherever there is one; without one, the
+ * original, unless it is past the whole-decode ceiling.
  */
-function drawsWhole(plan: DecodePlan): boolean {
-  return !plan.measured || plan.edge === 0
+async function standIn(
+  bridge: MediaSource,
+  ref: AttachmentRef,
+  plan: DecodePlan,
+): Promise<Response | null> {
+  if (!plan.measured || plan.edgePx === 0) return null
+  const rendition = await renditionResponse(bridge, ref)
+  if (rendition !== null) return rendition
+  return plan.exceedsWholeDecodeCeiling ? thumbnailInstead(bridge, ref) : null
 }
 
 /** The response to a media url: what the scheme's handler answers, without Electron. */
@@ -123,13 +139,10 @@ export async function mediaResponse(
         : await bridge.fetchMedia(target.ref)
     const contentType = servableContentType(media.contentType, media.bytes)
     if (contentType === null) return new Response(null, { status: 415 })
-    // A rendition is within the budget by how libsession makes it.
-    if (
-      target.kind === 'attachment' &&
-      mediaKindOf(contentType) === 'image' &&
-      !drawsWhole(bridge.planDecode(media.bytes))
-    ) {
-      return await standIn(bridge, target.ref)
+    // A rendition fits the budget at libsession's default 2048 edge, and nothing here sets another.
+    if (target.kind === 'attachment' && mediaKindOf(contentType) === 'image') {
+      const replaced = await standIn(bridge, target.ref, bridge.planDecode(media.bytes))
+      if (replaced !== null) return replaced
     }
     return new Response(media.bytes, {
       status: 200,

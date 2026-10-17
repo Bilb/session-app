@@ -463,8 +463,9 @@ Napi::Value ServableContentType(const Napi::CallbackInfo& info) {
     return Napi::String::New(env, *served);
 }
 
-/// `planDecode(bytes) -> { edge, firstFrameOnly, refused, measured }`, the shim's plan, which desktop
-/// main serves an original by. Synchronous: it reads a header and decodes no pixel.
+/// `planDecode(bytes) -> { edgePx, firstFrameOnly, exceedsWholeDecodeCeiling, measured }`, the
+/// shim's plan, which desktop main serves an original by. Synchronous: it reads a header and
+/// decodes no pixel.
 Napi::Value PlanDecode(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
     if (info.Length() < 1 || !info[0].IsTypedArray() ||
@@ -474,9 +475,9 @@ Napi::Value PlanDecode(const Napi::CallbackInfo& info) {
     const auto plan = session_bridge::decode_plan(std::span<const std::byte>{
             reinterpret_cast<const std::byte*>(bytes.Data()), bytes.ElementLength()});
     Napi::Object result = Napi::Object::New(env);
-    result.Set("edge", plan.edge);
+    result.Set("edgePx", plan.edge_px);
     result.Set("firstFrameOnly", plan.first_frame_only);
-    result.Set("refused", plan.refused);
+    result.Set("exceedsWholeDecodeCeiling", plan.exceeds_whole_decode_ceiling);
     result.Set("measured", plan.measured);
     return result;
 }

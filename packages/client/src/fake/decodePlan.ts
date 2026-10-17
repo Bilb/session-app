@@ -15,26 +15,21 @@ function decodeEdgeBound(width: number, height: number): number {
 }
 
 const UNMEASURED: DecodePlan = {
-  edge: decodeEdgeBound(0, 0),
+  edgePx: decodeEdgeBound(0, 0),
   firstFrameOnly: true,
-  refused: false,
+  exceedsWholeDecodeCeiling: false,
   measured: false,
 }
 
-/** The plan for a picture of `type` whose header says `width` by `height` and `frames` frames. */
-export function decodePlan(
-  type: string,
-  width: number,
-  height: number,
-  frames: number,
-): DecodePlan {
+/** The plan for a picture of `type` whose header says `width` by `height`. */
+export function decodePlan(type: string, width: number, height: number): DecodePlan {
   if (!(width > 0 && height > 0)) return UNMEASURED
   const fits = width * height <= DECODE_PIXEL_BUDGET
   const wholeDecoded = type === 'image/gif' || type === 'image/png'
   return {
-    edge: fits ? 0 : decodeEdgeBound(width, height),
-    firstFrameOnly: !fits && frames > 1,
-    refused: wholeDecoded && width * height > WHOLE_DECODE_PIXEL_CEILING,
+    edgePx: fits ? 0 : decodeEdgeBound(width, height),
+    firstFrameOnly: !fits,
+    exceedsWholeDecodeCeiling: wholeDecoded && width * height > WHOLE_DECODE_PIXEL_CEILING,
     measured: true,
   }
 }
@@ -67,5 +62,5 @@ function jpegSize(bytes: Uint8Array): { width: number; height: number } | null {
  */
 export function fakeDecodePlan(bytes: Uint8Array): DecodePlan {
   const size = jpegSize(bytes)
-  return size === null ? UNMEASURED : decodePlan('image/jpeg', size.width, size.height, 1)
+  return size === null ? UNMEASURED : decodePlan('image/jpeg', size.width, size.height)
 }

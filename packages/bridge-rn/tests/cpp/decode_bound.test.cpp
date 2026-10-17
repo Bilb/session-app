@@ -118,18 +118,19 @@ void an_unknown_view_decodes_the_thumbnail_whole() {
 
 void plans_every_header_as_the_table_says() {
     for (const auto& vector : media_vectors::DECODE_PLANS) {
-        const auto plan = decode_plan(vector.type, vector.width, vector.height, vector.frames);
-        const bool same = plan.edge == vector.edge
+        const auto plan = decode_plan(vector.type, vector.width, vector.height);
+        const bool same = plan.edge_px == vector.edge_px
                        && plan.first_frame_only == vector.first_frame_only
-                       && plan.refused == vector.refused && plan.measured == vector.measured;
+                       && plan.exceeds_whole_decode_ceiling == vector.exceeds_whole_decode_ceiling
+                       && plan.measured == vector.measured;
         if (!same) {
             std::fprintf(
                     stderr,
-                    "decode_plan: %.*s %gx%g x%g: edge %g, first frame %d, refused %d, measured "
-                    "%d\n",
+                    "decode_plan: %.*s %gx%g: edge %g, first frame %d, past the ceiling %d, "
+                    "measured %d\n",
                     static_cast<int>(vector.type.size()), vector.type.data(), vector.width,
-                    vector.height, vector.frames, plan.edge, plan.first_frame_only, plan.refused,
-                    plan.measured);
+                    vector.height, plan.edge_px, plan.first_frame_only,
+                    plan.exceeds_whole_decode_ceiling, plan.measured);
             failures++;
         }
     }
@@ -137,16 +138,16 @@ void plans_every_header_as_the_table_says() {
 
 void a_planned_decode_stays_within_the_budget() {
     for (const auto& vector : media_vectors::DECODE_PLANS) {
-        const auto plan = decode_plan(vector.type, vector.width, vector.height, vector.frames);
-        if (plan.measured && plan.edge > 0)
-            CHECK(decoded_area(plan.edge, vector.width, vector.height) <= DECODE_PIXEL_BUDGET);
+        const auto plan = decode_plan(vector.type, vector.width, vector.height);
+        if (plan.measured && plan.edge_px > 0)
+            CHECK(decoded_area(plan.edge_px, vector.width, vector.height) <= DECODE_PIXEL_BUDGET);
     }
 }
 
 void a_negative_or_unknown_size_is_unmeasured() {
-    CHECK(!decode_plan("image/png", -1, 100, 1).measured);
-    CHECK(!decode_plan("image/gif", 0, 65535, 2).measured);
-    CHECK(!decode_plan("image/gif", 0, 65535, 2).refused);
+    CHECK(!decode_plan("image/png", -1, 100).measured);
+    CHECK(!decode_plan("image/gif", 0, 65535).measured);
+    CHECK(!decode_plan("image/gif", 0, 65535).exceeds_whole_decode_ceiling);
 }
 
 }  // namespace

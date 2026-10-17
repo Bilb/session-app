@@ -141,7 +141,12 @@ function pngHeader(width: number, height: number): Buffer {
   ])
 }
 
-const WHOLE: DecodePlan = { edge: 0, firstFrameOnly: false, refused: false, measured: true }
+const WHOLE: DecodePlan = {
+  edgePx: 0,
+  firstFrameOnly: false,
+  exceedsWholeDecodeCeiling: false,
+  measured: true,
+}
 
 describeAddon('the shim decode plan', () => {
   let rules: MediaRules
@@ -149,48 +154,45 @@ describeAddon('the shim decode plan', () => {
     rules = createRequire(import.meta.url)(addon) as MediaRules
   })
 
-  it('decodes a still within the budget whole', () => {
+  it('decodes a picture within the budget whole, an animation included', () => {
     expect(rules.planDecode(grey(1280, 960))).toEqual(WHOLE)
     expect(rules.planDecode(greyPng(300, 200))).toEqual(WHOLE)
-  })
-
-  it('reduces a still past the budget to it', () => {
-    expect(rules.planDecode(greyPng(4032, 3024))).toEqual({ ...WHOLE, edge: 2896 })
-  })
-
-  it('animates an animation within the budget and stills one past it', () => {
     expect(rules.planDecode(gif(480, 270, 3))).toEqual(WHOLE)
-    expect(rules.planDecode(gif(4000, 4000, 2))).toEqual({
-      ...WHOLE,
-      edge: 2508,
-      firstFrameOnly: true,
-    })
+  })
+
+  it('reduces a picture past the budget to it, and draws it still', () => {
+    const still = { ...WHOLE, firstFrameOnly: true }
+    expect(rules.planDecode(greyPng(4032, 3024))).toEqual({ ...still, edgePx: 2896 })
+    expect(rules.planDecode(gif(4000, 4000, 2))).toEqual({ ...still, edgePx: 2508 })
   })
 
   it('plans a GIF by its screen, which a decoder allocates, however small its frames', () => {
     expect(rules.planDecode(gif(4000, 4000, 2, true))).toMatchObject({
-      edge: 2508,
+      edgePx: 2508,
       firstFrameOnly: true,
     })
-    expect(rules.planDecode(gif(65535, 65535, 1, true))).toMatchObject({ refused: true })
+    expect(rules.planDecode(gif(65535, 65535, 1, true))).toMatchObject({
+      exceedsWholeDecodeCeiling: true,
+    })
   })
 
-  it('refuses a GIF or PNG past the whole-decode ceiling from its header alone', () => {
-    expect(rules.planDecode(pngHeader(16384, 16384))).toEqual({
-      ...WHOLE,
-      edge: 2508,
-      refused: true,
-    })
+  it('marks a GIF or PNG past the whole-decode ceiling from its header alone', () => {
+    const past = { edgePx: 2508, firstFrameOnly: true, exceedsWholeDecodeCeiling: true }
+    expect(rules.planDecode(pngHeader(16384, 16384))).toEqual({ ...past, measured: true })
     expect(rules.planDecode(gif(12000, 10000, 3))).toEqual({
-      edge: 2747,
-      firstFrameOnly: true,
-      refused: true,
+      ...past,
+      edgePx: 2747,
       measured: true,
     })
   })
 
   it('leaves what it does not read as a picture unmeasured', () => {
-    const unmeasured = { edge: 2508, firstFrameOnly: true, refused: false, measured: false }
+    const unmeasured = {
+      edgePx: 2508,
+      firstFrameOnly: true,
+      exceedsWholeDecodeCeiling: false,
+      measured: false,
+    }
     expect(rules.planDecode(Buffer.from('%PDF-1.7\n', 'latin1'))).toEqual(unmeasured)
     expect(rules.planDecode(new Uint8Array())).toEqual(unmeasured)
     expect(rules.planDecode(Buffer.from('GIF89a', 'latin1'))).toEqual(unmeasured)

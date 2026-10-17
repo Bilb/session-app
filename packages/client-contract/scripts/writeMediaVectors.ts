@@ -49,8 +49,8 @@ function header(): string {
       `        {${literal(utf8(declared))}, ${literal(bytes)}, ${optional(served)}},`,
   )
   const plans = DECODE_PLAN_VECTORS.map(
-    ({ type, width, height, frames, plan }) =>
-      `        {${literal(utf8(type))}, ${String(width)}.0, ${String(height)}.0, ${String(frames)}.0, ${String(plan.edge)}.0, ${String(plan.firstFrameOnly)}, ${String(plan.refused)}, ${String(plan.measured)}},`,
+    ({ type, width, height, plan }) =>
+      `        {${literal(utf8(type))}, ${String(width)}.0, ${String(height)}.0, ${String(plan.edgePx)}.0, ${String(plan.firstFrameOnly)}, ${String(plan.exceedsWholeDecodeCeiling)}, ${String(plan.measured)}},`,
   )
   return `// Generated from packages/client-contract/src/mediaVectors.ts by scripts/writeMediaVectors.ts.
 #pragma once
@@ -80,10 +80,9 @@ struct DecodePlan {
     std::string_view type;
     double width;
     double height;
-    double frames;
-    double edge;
+    double edge_px;
     bool first_frame_only;
-    bool refused;
+    bool exceeds_whole_decode_ceiling;
     bool measured;
 };
 

@@ -5,8 +5,8 @@
 
 #include <algorithm>
 #include <exception>
-#include <utility>
 #include <string_view>
+#include <utility>
 
 namespace session_bridge {
 
@@ -51,7 +51,7 @@ DecodePlan decode_plan(std::span<const std::byte> bytes) {
             width = std::max(width, screen_width);
             height = std::max(height, screen_height);
         }
-        return decode_plan(content_type_of(info->format), width, height, info->frames);
+        return decode_plan(content_type_of(info->format), width, height);
     } catch (const std::exception&) {
         return unmeasured_decode_plan();
     }
