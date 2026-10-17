@@ -19,25 +19,24 @@ export const MAX_PATH_CHARS = 4096
 
 // Resolved and, where it exists, symlink-followed, so a folder cannot read as contained by
 // pointing somewhere else -- a folder not created yet has nothing to follow and compares as given.
-function folderKey(folder: string, caseInsensitive: boolean): string {
+function realFolder(folder: string): string {
   const resolved = resolve(folder)
-  const real = (() => {
-    try {
-      return realpathSync(resolved)
-    } catch {
-      return resolved
-    }
-  })()
-  return caseInsensitive ? real.toLowerCase() : real
+  try {
+    return realpathSync(resolved)
+  } catch {
+    return resolved
+  }
 }
 
-// A file's key is its folder's key plus its own name, since the file itself need not exist yet.
+// A file is its real folder plus its own name, since the file itself need not exist yet.
+function resolvedPath(path: string): string {
+  const full = resolve(path)
+  return join(realFolder(dirname(full)), basename(full))
+}
+
 function pathKey(path: string, caseInsensitive: boolean): string {
-  const name = basename(resolve(path))
-  return join(
-    folderKey(dirname(resolve(path)), caseInsensitive),
-    caseInsensitive ? name.toLowerCase() : name,
-  )
+  const resolved = resolvedPath(path)
+  return caseInsensitive ? resolved.toLowerCase() : resolved
 }
 
 function isPath(path: unknown): path is string {
@@ -109,9 +108,10 @@ export class ExportGate {
  *
  * libsession reads whatever path a send names, so without this a page script could send any file
  * this user can read to anyone, or learn from a plan whether any path exists and what it holds.
- * Counted, since a path can be picked again while an earlier pick
- * of it is still staged, and released as the composer lets each pick go. `takeFile` never gets
- * through: a desktop pick is the person's own file, which libsession must not move or delete.
+ *
+ * Counted, since a path can be picked again while an earlier pick of it is still staged, and
+ * released as the composer lets each pick go. `takeFile` never gets through: a desktop pick is the
+ * person's own file, which libsession must not move or delete.
  */
 export class SendGate {
   private readonly picked = new Map<string, number>()
@@ -139,13 +139,16 @@ export class SendGate {
     this.picked.clear()
   }
 
-  /** The request to send on, or why it is refused. Only `sendMessage` is ever changed. */
+  /**
+   * The request to send on, or why it is refused. Each path goes on as the one its grant was
+   * checked against, so libsession reads the file admitted rather than the page's spelling of it.
+   */
   admit(request: Request): Request | string {
     const command = request.command as Request['command'] | undefined
     if (command?.type === 'attachmentSendPlan') {
       const { path } = command as { path: unknown }
       return isPath(path) && this.picked.has(pathKey(path, this.caseInsensitive))
-        ? request
+        ? { ...request, command: { ...command, path: resolvedPath(path) } }
         : 'attachmentSendPlan.path names a file that was not picked'
     }
     if (command?.type !== 'sendMessage' || command.attachments === undefined) return request
@@ -158,7 +161,7 @@ export class SendGate {
       if (!isPath(path) || !this.picked.has(pathKey(path, this.caseInsensitive)))
         return 'sendMessage.attachments names a file that was not picked'
       attachments.push({
-        path,
+        path: resolvedPath(path),
         ...(contentType === undefined ? {} : { contentType }),
         ...(filename === undefined ? {} : { filename }),
       })
