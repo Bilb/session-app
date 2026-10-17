@@ -91,10 +91,11 @@ namespace {
         return true;
     }
 
-    /// `Image/JPEG; charset=binary` -> `image/jpeg`: a declared type is compared by its essence.
+    /// `Image/JPEG; charset=binary` -> `image/jpeg`: a declared type is compared by its essence,
+    /// as basic-types' `contentTypeEssence` reads it. A NUL is kept, so it matches nothing.
     std::string essence(std::string_view type) {
         type = type.substr(0, type.find(';'));
-        constexpr std::string_view space = " \t\r\n\f\v";
+        constexpr std::string_view space = " \t\r\n";
         const auto first = type.find_first_not_of(space);
         if (first == std::string_view::npos)
             return {};
