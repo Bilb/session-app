@@ -1,4 +1,4 @@
-import { mkdtempSync, truncateSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, truncateSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -8,6 +8,11 @@ import { ELEMENT } from '@session/test-ids'
 import { FAKE_LAUNCH_ENV } from '../harness/fakeEnv'
 
 const repoRoot = join(import.meta.dirname, '../../..')
+
+/** The page's own globals, which the e2e package is typed without. */
+interface PageGlobals {
+  requestIdleCallback: (callback: () => void) => number
+}
 
 /** An 8x8 JPEG, whole. */
 const JPEG = Buffer.from(
@@ -43,27 +48,39 @@ async function pick(page: Page, ...paths: string[]): Promise<void> {
   await (await chooser).setFiles(paths)
 }
 
+function sized(dataDir: string, name: string, sizeBytes: number): string {
+  const path = join(dataDir, name)
+  writeFileSync(path, '')
+  truncateSync(path, sizeBytes)
+  return path
+}
+
 /**
  * Staging asks libsession's plan for each file, and a file it will not send is turned away there,
- * by name, while the rest of the pick is staged.
+ * by name, while the rest of the pick is staged. The limit holds on the encrypted upload, so a
+ * file a byte past what encrypts to fit is refused though its own size is under the limit.
  */
 test('refuses a non-picture over the file server limit by name, and stages the rest', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'session-staged-plan-'))
-  const archive = join(dataDir, 'holiday-footage.zip')
-  writeFileSync(archive, '')
-  truncateSync(archive, 12_000_000)
-  const notes = join(dataDir, 'notes.txt')
-  writeFileSync(notes, 'remember the tickets')
-  const { app, page } = await launch(dataDir)
   try {
-    await pick(page, archive, notes)
-    const notice = page.getByTestId(ELEMENT.conversation.composerNotice('size'))
-    await expect(notice).toContainText('holiday-footage.zip')
-    await expect(page.getByTestId(ELEMENT.conversation.stagedTile(0))).toContainText('notes.txt')
-    await expect(page.getByTestId(ELEMENT.conversation.stagedTile(1))).toHaveCount(0)
-    await expect(page.getByTestId(ELEMENT.conversation.sendButton)).toBeEnabled()
+    const over = sized(dataDir, 'holiday-footage.zip', 9_956_279)
+    const fits = sized(dataDir, 'boarding-passes.zip', 9_956_278)
+    const { app, page } = await launch(dataDir)
+    try {
+      await pick(page, over, fits)
+      const notice = page.getByTestId(ELEMENT.conversation.composerNotice('size'))
+      await expect(notice).toContainText('holiday-footage.zip')
+      await expect(notice).not.toContainText('boarding-passes.zip')
+      await expect(page.getByTestId(ELEMENT.conversation.stagedTile(0))).toContainText(
+        'boarding-passes.zip',
+      )
+      await expect(page.getByTestId(ELEMENT.conversation.stagedTile(1))).toHaveCount(0)
+      await expect(page.getByTestId(ELEMENT.conversation.sendButton)).toBeEnabled()
+    } finally {
+      await app.close()
+    }
   } finally {
-    await app.close()
+    rmSync(dataDir, { recursive: true, force: true })
   }
 })
 
@@ -75,7 +92,10 @@ test('fetches a staged preview once, and not again after the send', async () => 
   const dataDir = mkdtempSync(join(tmpdir(), 'session-staged-preview-'))
   const photo = join(dataDir, 'unsplash-07.jpg')
   writeFileSync(photo, JPEG)
-  const { app, page } = await launch(dataDir)
+  const { app, page } = await launch(dataDir).catch((error: unknown) => {
+    rmSync(dataDir, { recursive: true, force: true })
+    throw error
+  })
   try {
     // Every fetch of a picked url the window makes, with what main answered.
     await app.evaluate(({ BrowserWindow }) => {
@@ -98,10 +118,23 @@ test('fetches a staged preview once, and not again after the send', async () => 
     await input.pressSequentially('a caption')
     await page.getByTestId(ELEMENT.conversation.sendButton).click()
     await expect(page.getByTestId(ELEMENT.conversation.stagedTray)).toHaveCount(0)
-    await page.waitForTimeout(500)
+    // The sent message drawn and the renderer idle after it: whatever that render asks for is out.
+    await expect(
+      page.getByTestId(/^message-row-\d+$/).filter({ hasText: 'a caption' }),
+    ).toBeVisible()
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          const { requestIdleCallback } = globalThis as unknown as PageGlobals
+          requestIdleCallback(() => {
+            resolve()
+          })
+        }),
+    )
     expect(await fetches()).toEqual(drawn)
     expect(drawn.every((status) => status === 200)).toBe(true)
   } finally {
     await app.close()
+    rmSync(dataDir, { recursive: true, force: true })
   }
 })
