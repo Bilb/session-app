@@ -11,7 +11,7 @@ describe('the staged tray', () => {
     const tile = source('StagedTile.tsx')
     // On the face beside the button, not on the tile around it, which would swallow the button.
     expect(tile).toMatch(
-      /<YStack flex=\{1\} role="img" aria-label=\{label\} \{\.\.\.NATIVE_ELEMENT\}>/,
+      /<YStack\s+flex=\{1\}\s+role="img"\s+aria-label=\{label\}\s+\{\.\.\.NATIVE_ELEMENT\}/,
     )
     expect(tile).not.toContain('role="group"')
     expect(tile).toContain('accessibilityLabel={removeLabel}')
@@ -27,6 +27,27 @@ describe('the staged tray', () => {
     )
     // The picture has no text to hide, and hiding it would take its test id with it on Android.
     expect(tile).toMatch(/opacity=\{shown \? 1 : 0\}\s*>/)
+  })
+
+  it('carries the picture’s test id on the face on iOS, where the face hides the picture', () => {
+    const tile = source('StagedTile.tsx')
+    expect(tile).toContain(
+      "testID={Platform.OS === 'ios' && preview !== undefined ? previewTestID : undefined}",
+    )
+    // Android and the web reach the picture itself, so it keeps the id there.
+    expect(tile).toContain('testID={previewTestID}')
+  })
+
+  it('edges the remove disc, so it shows on a dark picture as on a light one', () => {
+    expect(source('StagedTile.tsx')).toMatch(
+      /backgroundColor=\{TILE_SCRIM\}\s*(\/\/[^\n]*\n\s*)?borderWidth=\{TILE_HAIRLINE_WIDTH\}\s*borderColor="\$surfaceInverted"/,
+    )
+  })
+
+  it('says its count as words, which "3 / 32" is not', () => {
+    const tray = source('StagedTray.tsx')
+    expect(tray).toContain("isWeb ? { 'aria-hidden': true } : { 'aria-label': countSpokenLabel }")
+    expect(tray).toMatch(/style=\{VISUALLY_HIDDEN\}>\s*\{countSpokenLabel\}/)
   })
 
   it('lines the name and its size up on the edge the name starts from, and only those', () => {
@@ -69,7 +90,9 @@ describe('a composer notice', () => {
   })
 
   it('is said once per refusal on every platform, the same words twice included', () => {
-    expect(announcement).toContain('AccessibilityInfo.announceForAccessibility(said.text)')
+    expect(announcement).toContain(
+      'return scheduleAnnouncement(said.text, Platform.OS, AccessibilityInfo)',
+    )
     expect(announcement).toMatch(/\}, \[said\]\)/)
     expect(announcement).toContain(
       'if (said.key !== announceKey) setSaid({ key: announceKey, text })',

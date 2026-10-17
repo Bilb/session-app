@@ -23,18 +23,15 @@ describe('the album’s download cloud', () => {
   const pressable =
     /onPress === undefined\s*\?\s*\{\}\s*:\s*\{([\s\S]*?)\}\)\}/.exec(hint)?.[1] ?? ''
 
-  it('is the set’s named control where it takes the press', () => {
-    expect(pressable).toContain("role: 'button'")
-    expect(pressable).toContain("'aria-label': label")
+  it('is the set’s named control on the web where it takes the press', () => {
+    expect(pressable).toContain("isWeb ? { role: 'button', 'aria-label': label }")
     expect(pressable).toContain('testID')
   })
 
-  it('is an accessibility element on iOS, which tamagui makes only a stack with tabIndex 0', () => {
-    expect(pressable).toContain('isWeb ? {} : { tabIndex: 0 }')
-  })
-
-  it('is not hidden from the tree its id is looked up in', () => {
-    expect(hint).not.toContain('aria-hidden')
+  it('is no stop of its own on native, where the footer offers the same verb', () => {
+    // tamagui makes a native stack accessible only for tabIndex 0, which would undo the hiding.
+    expect(pressable).toContain(": { 'aria-hidden': true })")
+    expect(hint).not.toContain('tabIndex')
   })
 })
 

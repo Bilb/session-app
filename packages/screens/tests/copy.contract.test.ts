@@ -152,6 +152,8 @@ describe('screen copy', () => {
       'attachmentsErrorImageTooLarge',
       'attachmentsNotAdded',
       'attachmentsStagedCount',
+      'attachmentsStagedCountSpoken',
+      'attachmentsAddMore',
       'attachmentQueued',
       'attachmentNotSent',
       'attachmentsUploaded',

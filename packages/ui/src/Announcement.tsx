@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
-import { AccessibilityInfo } from 'react-native'
+import { AccessibilityInfo, Platform } from 'react-native'
 import { isWeb, YStack } from 'tamagui'
 
+import { scheduleAnnouncement } from './announce'
 import { Text } from './Text'
+import { VISUALLY_HIDDEN } from './visuallyHidden'
 
 export interface AnnouncementProps {
   /** Said once per `announceKey`; nothing while empty. */
@@ -10,12 +12,6 @@ export interface AnnouncementProps {
   /** Changes with each event worth saying, so the same words twice are said twice. */
   announceKey: number
 }
-
-/**
- * Undrawn but in the accessibility tree, which `display: none` is not. Fixed, so it takes no place
- * in its parent's layout and needs no containing block.
- */
-const VISUALLY_HIDDEN = { clipPath: 'inset(50%)', whiteSpace: 'nowrap' } as const
 
 /**
  * Says something to a screen reader without drawing it, once per key.
@@ -31,12 +27,14 @@ export function Announcement({ text, announceKey }: AnnouncementProps) {
 
   // Neither mobile screen reader announces a view that merely appears.
   useEffect(() => {
-    if (!isWeb && said.text !== '') AccessibilityInfo.announceForAccessibility(said.text)
+    if (isWeb || said.text === '') return undefined
+    return scheduleAnnouncement(said.text, Platform.OS, AccessibilityInfo)
   }, [said])
 
   if (!isWeb || said.text === '') return null
   return (
-    // Remounted per key: a live region whose words do not change is not announced again.
+    // Remounted per key: a live region whose words do not change is not announced again. Fixed, so
+    // it needs no containing block.
     <YStack
       key={said.key}
       role="alert"

@@ -70,6 +70,11 @@ export const PENDING_COPY = {
   /** Over the staged tray: how many of the message's allowance are used. */
   attachmentsStagedCount: (count: number, max: number): string =>
     `${String(count)} / ${String(max)}`,
+  /** That count as a screen reader says it. Counts in English only, as `attachmentCount` does. */
+  attachmentsStagedCountSpoken: (count: number, max: number): string =>
+    `${String(count)} of ${String(max)} attachments`,
+  /** The tray's add tile, told apart from the composer's +, which is `attachmentsAdd`. */
+  attachmentsAddMore: 'Add more attachments',
   /** A file of a message being sent, waiting for the ones before it to upload. */
   attachmentQueued: 'Queued',
   /** A file of a failed message that was never tried, since the one before it failed. */

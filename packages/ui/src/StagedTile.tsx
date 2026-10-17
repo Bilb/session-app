@@ -1,6 +1,7 @@
 import type { ElementId } from '@session/test-ids'
 import { RADII } from '@session/theme-tokens'
 import { useState } from 'react'
+import { Platform } from 'react-native'
 import { isWeb, XStack, YStack } from 'tamagui'
 
 import { fileFormat, fileGlyph, nameDirection } from './attachmentFile'
@@ -124,7 +125,15 @@ export function StagedTile({
     >
       {/* Beside the remove button rather than around it: a native screen reader reads a labelled
           container as one element, and would swallow the button inside. */}
-      <YStack flex={1} role="img" aria-label={label} {...NATIVE_ELEMENT}>
+      <YStack
+        flex={1}
+        role="img"
+        aria-label={label}
+        {...NATIVE_ELEMENT}
+        // iOS hides an accessibility element's subtree, test ids included, so the face carries the
+        // picture's there, for as long as the picture is drawn.
+        testID={Platform.OS === 'ios' && preview !== undefined ? previewTestID : undefined}
+      >
         <DocumentFace name={name} contentType={contentType} sizeLabel={sizeLabel} />
         {preview === undefined ? null : (
           // Over the face, hidden until it loads: a picture still decoding shows the face.
@@ -165,6 +174,9 @@ export function StagedTile({
                 height={REMOVE_DISC}
                 borderRadius="$full"
                 backgroundColor={TILE_SCRIM}
+                // The scrim alone vanishes into a dark picture, leaving the cross without its disc.
+                borderWidth={TILE_HAIRLINE_WIDTH}
+                borderColor="$surfaceInverted"
                 alignItems="center"
                 justifyContent="center"
               >
