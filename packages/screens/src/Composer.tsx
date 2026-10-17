@@ -106,9 +106,13 @@ export function Composer({
             staging.files.length,
             MAX_ATTACHMENTS_PER_MESSAGE,
           )}
+          countSpokenLabel={PENDING_COPY.attachmentsStagedCountSpoken(
+            staging.files.length,
+            MAX_ATTACHMENTS_PER_MESSAGE,
+          )}
           clearLabel={tr('clear')}
           onClear={staging.clear}
-          addLabel={tr('attachmentsAdd')}
+          addLabel={PENDING_COPY.attachmentsAddMore}
           onAdd={full ? undefined : attach}
           previousLabel={PENDING_COPY.previous}
           nextLabel={tr('next')}

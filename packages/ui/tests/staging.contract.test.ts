@@ -44,6 +44,12 @@ describe('the staged tray', () => {
     )
   })
 
+  it('says its count as words, which "3 / 32" is not', () => {
+    const tray = source('StagedTray.tsx')
+    expect(tray).toContain("isWeb ? { 'aria-hidden': true } : { 'aria-label': countSpokenLabel }")
+    expect(tray).toMatch(/style=\{VISUALLY_HIDDEN\}>\s*\{countSpokenLabel\}/)
+  })
+
   it('lines the name and its size up on the edge the name starts from, and only those', () => {
     expect(source('StagedTile.tsx')).toMatch(
       /<YStack gap="\$2xs" style=\{\{ direction: nameDirection\(name\) \}\}>\s+<FileName/,
