@@ -1,10 +1,11 @@
 import { protocol } from 'electron'
 
-import { isViewableContentType, mediaKindOf } from '@session/basic-types'
+import { isViewableContentType, mediaKindOf, sniffContentType } from '@session/basic-types'
 import type { MediaSource } from '@session/client'
 
 import { MEDIA_SCHEME, parseMediaUrl } from '@session/app/mediaUrl'
 import { encodePng } from './png'
+import type { PreviewGrants } from './previewGrants'
 
 /**
  * Registered before `app.whenReady()`, which is the only time Electron accepts it.
@@ -19,34 +20,6 @@ export function registerMediaScheme(): void {
   protocol.registerSchemesAsPrivileged([
     { scheme: MEDIA_SCHEME, privileges: { standard: true, secure: true } },
   ])
-}
-
-/**
- * Leading bytes of each format the scheme serves, as `[offset, bytes]` runs that must all match.
- */
-const SIGNATURES: readonly (readonly [contentType: string, runs: readonly [number, string][]])[] = [
-  ['image/png', [[0, '\x89PNG\r\n\x1a\n']]],
-  ['image/jpeg', [[0, '\xff\xd8\xff']]],
-  ['image/gif', [[0, 'GIF87a']]],
-  ['image/gif', [[0, 'GIF89a']]],
-  [
-    'image/webp',
-    [
-      [0, 'RIFF'],
-      [8, 'WEBP'],
-    ],
-  ],
-  ['image/bmp', [[0, 'BM']]],
-  ['video/mp4', [[4, 'ftyp']]],
-  ['video/webm', [[0, '\x1a\x45\xdf\xa3']]],
-  ['video/ogg', [[0, 'OggS']]],
-]
-
-function sniffContentType(bytes: Uint8Array): string | null {
-  const match = SIGNATURES.find(([, runs]) =>
-    runs.every(([at, run]) => [...run].every((c, i) => bytes[at + i] === c.charCodeAt(0))),
-  )
-  return match?.[0] ?? null
 }
 
 /**
@@ -78,13 +51,30 @@ function mediaHeaders(contentType: string): Record<string, string> {
  * Serves the scheme from the bridge, in the main process, where the addon already is.
  *
  * Bytes never touch the frame stream and never cross as a message: Chromium fetches them for the
- * element that asked, decodes off the main thread, and caches the result itself. Every kind is
- * served from libsession's cache only, so drawing a URL never downloads anything.
+ * element that asked, decodes off the main thread, and caches the result itself. Every attachment
+ * kind is served from libsession's cache only, so drawing a URL never downloads anything; a staged
+ * file only once the preload has granted it.
  */
-export function serveMedia(bridge: MediaSource): void {
+export function serveMedia(bridge: MediaSource, previews: PreviewGrants): void {
   protocol.handle(MEDIA_SCHEME, async (request) => {
+    if (previews.names(request.url)) {
+      const path = previews.pathFor(request.url)
+      if (path === null) return new Response(null, { status: 403 })
+      try {
+        const jpeg = await bridge.fetchStagedThumbnail(path)
+        if (servableContentType('image/jpeg', jpeg) !== 'image/jpeg') {
+          return new Response(null, { status: 415 })
+        }
+        return new Response(jpeg, { status: 200, headers: mediaHeaders('image/jpeg') })
+      } catch {
+        return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } })
+      }
+    }
+
     const target = parseMediaUrl(request.url)
     if (!target) return new Response(null, { status: 400 })
+    // A path the page names itself is never opened here: a picked file is drawn by its grant.
+    if (target.kind === 'staged') return new Response(null, { status: 403 })
 
     try {
       if (target.kind === 'thumbhash') {

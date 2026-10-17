@@ -8,14 +8,22 @@
 export interface MediaUrlVector {
   url: string
   /** What it parses to, or null for a URL that must be refused. */
-  parsed: {
-    kind: 'attachment' | 'thumbhash' | 'thumbnail'
-    messageId: number
-    index: number
-  } | null
+  parsed: ParsedAttachmentVector | ParsedStagedVector | null
+}
+
+interface ParsedAttachmentVector {
+  kind: 'attachment' | 'thumbhash' | 'thumbnail'
+  messageId: number
+  index: number
+}
+
+interface ParsedStagedVector {
+  kind: 'staged'
+  path: string
 }
 
 const S = 'session-media://'
+const STAGED = `${S}staged/`
 
 export const MEDIA_URL_VECTORS: readonly MediaUrlVector[] = [
   { url: `${S}attachment/1/0`, parsed: { kind: 'attachment', messageId: 1, index: 0 } },
@@ -93,6 +101,72 @@ export const MEDIA_URL_VECTORS: readonly MediaUrlVector[] = [
   { url: S, parsed: null },
   { url: '', parsed: null },
   { url: 'not a url', parsed: null },
+
+  // A staged file: the absolute path as one segment, every byte outside the unreserved set
+  // escaped in uppercase hex.
+  {
+    url: `${STAGED}%2Fhome%2Fa%2Fphoto.jpg`,
+    parsed: { kind: 'staged', path: '/home/a/photo.jpg' },
+  },
+  {
+    url: `${STAGED}%2Fhome%2Fa%2F%D0%A4%D0%BE%D1%82%D0%BE%2F%C3%A7%C3%A0%20%E6%97%A5%E6%9C%AC.jpg`,
+    parsed: {
+      kind: 'staged',
+      path: '/home/a/\u0424\u043e\u0442\u043e/\u00e7\u00e0 \u65e5\u672c.jpg',
+    },
+  },
+  {
+    url: `${STAGED}%2Ftmp%2F%F0%9F%93%B7.png`,
+    parsed: { kind: 'staged', path: '/tmp/\u{1f4f7}.png' },
+  },
+  {
+    url: `${STAGED}C%3A%5CUsers%5CZo%C3%AB%5Cx.png`,
+    parsed: { kind: 'staged', path: 'C:\\Users\\Zo\u00eb\\x.png' },
+  },
+  { url: `${STAGED}C%3A%2Fx.png`, parsed: { kind: 'staged', path: 'C:/x.png' } },
+  { url: `${STAGED}%2Fa~b_c-d.e`, parsed: { kind: 'staged', path: '/a~b_c-d.e' } },
+  { url: `${STAGED}%2F100%25.jpg`, parsed: { kind: 'staged', path: '/100%.jpg' } },
+  { url: `${STAGED}c%3A%5Cx.png`, parsed: { kind: 'staged', path: 'c:\\x.png' } },
+
+  // One spelling per path: lowercase hex, an escaped unreserved byte, a raw reserved one.
+  { url: `${STAGED}%2fhome%2Fa.jpg`, parsed: null },
+  { url: `${STAGED}%2F%41.jpg`, parsed: null },
+  { url: `${STAGED}/etc/passwd`, parsed: null },
+  { url: `${STAGED}%2Fa b.jpg`, parsed: null },
+  { url: `${STAGED}%2Fa%2`, parsed: null },
+  { url: `${STAGED}%2Fa%GG`, parsed: null },
+  // UTF-8 only: NUL, overlong, surrogate, past U+10FFFF, truncated.
+  { url: `${STAGED}%2Fa%00.jpg`, parsed: null },
+  { url: `${STAGED}%2Fa%C0%AF.jpg`, parsed: null },
+  { url: `${STAGED}%2Fa%ED%A0%80.jpg`, parsed: null },
+  { url: `${STAGED}%2Fa%F4%90%80%80.jpg`, parsed: null },
+  { url: `${STAGED}%2Fa%E2%82`, parsed: null },
+  { url: `${STAGED}%2Fa%FF`, parsed: null },
+  // Absolute paths only, and none that reaches across a network or climbs out.
+  { url: `${STAGED}a.jpg`, parsed: null },
+  { url: `${STAGED}%5C%5Cserver%5Cshare%5Ca.jpg`, parsed: null },
+  { url: `${STAGED}%5C%5C%3F%5CC%3A%5Ca.jpg`, parsed: null },
+  { url: `${STAGED}%2F%2Fhost%2Fa.jpg`, parsed: null },
+  // Either slash separates on Windows, in any pairing.
+  { url: `${STAGED}%2F%5Chost%5Cshare%5Ca.jpg`, parsed: null },
+  { url: `${STAGED}%2F%5C%3F%5CC%3A%5Ca.jpg`, parsed: null },
+  { url: `${STAGED}%5C%2Fhost%2Fa.jpg`, parsed: null },
+  { url: `${STAGED}%5Ca.jpg`, parsed: null },
+  { url: `${STAGED}C%3Ax.png`, parsed: null },
+  { url: `${STAGED}%2Fa%2F..%2Fb.jpg`, parsed: null },
+  { url: `${STAGED}%2Fa%2F.%2Fb.jpg`, parsed: null },
+  { url: `${STAGED}C%3A%5Ca%5C..%5Cb.jpg`, parsed: null },
+  { url: STAGED, parsed: null },
+  { url: `${S}staged`, parsed: null },
+  { url: `${STAGED}%2Fa.jpg?x=1`, parsed: null },
+  { url: `${STAGED}%2Fa.jpg#f`, parsed: null },
+  { url: `${STAGED}%2Fa.jpg\n`, parsed: null },
+  { url: `${S}Staged/%2Fa.jpg`, parsed: null },
+  { url: `${STAGED}%2F${'a'.repeat(4096)}`, parsed: null },
+  {
+    url: `${STAGED}%2F${'a'.repeat(4095)}`,
+    parsed: { kind: 'staged', path: `/${'a'.repeat(4095)}` },
+  },
 ]
 
 function ascii(text: string, length = 16): Uint8Array {

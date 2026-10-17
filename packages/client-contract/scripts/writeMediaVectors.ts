@@ -35,11 +35,14 @@ function optional(type: string | null): string {
 }
 
 function header(): string {
-  const urls = MEDIA_URL_VECTORS.map(({ url, parsed }) =>
-    parsed === null
-      ? `        {${literal(utf8(url))}, false, "", 0, 0},`
-      : `        {${literal(utf8(url))}, true, "${parsed.kind}", ${String(parsed.messageId)}.0, ${String(parsed.index)}.0},`,
-  )
+  const urls = MEDIA_URL_VECTORS.map(({ url, parsed }) => {
+    const at = literal(utf8(url))
+    if (parsed === null) return `        {${at}, false, "", 0, 0, ""},`
+    if (parsed.kind === 'staged') {
+      return `        {${at}, true, "staged", 0, 0, ${literal(utf8(parsed.path))}},`
+    }
+    return `        {${at}, true, "${parsed.kind}", ${String(parsed.messageId)}.0, ${String(parsed.index)}.0, ""},`
+  })
   const servable = SERVABLE_VECTORS.map(
     ({ declared, bytes, served }) =>
       `        {${literal(utf8(declared))}, ${literal(bytes)}, ${optional(served)}},`,
@@ -59,6 +62,7 @@ struct Url {
     std::string_view kind;
     double message_id;
     double index;
+    std::string_view path;
 };
 
 struct Servable {

@@ -58,5 +58,7 @@ export interface SessionBridge extends HybridObject<{ ios: 'c++'; android: 'c++'
   fetchThumbhash(messageId: number, index: number): Promise<NativeThumbhash>
   /** The thumbnail's JPEG bytes. */
   fetchThumbnail(messageId: number, index: number): Promise<ArrayBuffer>
+  /** The JPEG bytes of a staged file's thumbnail, by its absolute UTF-8 path. */
+  fetchStagedThumbnail(path: string): Promise<ArrayBuffer>
   close(): void
 }

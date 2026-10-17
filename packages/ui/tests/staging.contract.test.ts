@@ -25,12 +25,20 @@ describe('the staged tray', () => {
     expect(tile).toContain(
       '<YStack flex={1} padding="$xs" paddingTop="$sm" gap="$2xs" aria-hidden>',
     )
+    // The picture has no text to hide, and hiding it would take its test id with it on Android.
+    expect(tile).toMatch(/opacity=\{shown \? 1 : 0\}\s*>/)
   })
 
   it('lines the name and its size up on the edge the name starts from, and only those', () => {
     expect(source('StagedTile.tsx')).toMatch(
       /<YStack gap="\$2xs" style=\{\{ direction: nameDirection\(name\) \}\}>\s+<FileName/,
     )
+  })
+
+  it('keeps the document face under its thumbnail', () => {
+    const tile = source('StagedTile.tsx')
+    expect(tile).toContain('<DocumentFace name={name}')
+    expect(tile).toContain('opacity={shown ? 1 : 0}')
   })
 
   it('pages a right-to-left rail the way Chromium counts it', () => {

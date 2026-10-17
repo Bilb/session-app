@@ -26,6 +26,7 @@ namespace margelo::nitro::session::bridge::rn { struct NativeThumbhash; }
 #include <NitroModules/Promise.hpp>
 #include "NativeThumbhash.hpp"
 #include <NitroModules/ArrayBuffer.hpp>
+#include <string>
 
 namespace margelo::nitro::session::bridge::rn {
 
@@ -63,6 +64,7 @@ namespace margelo::nitro::session::bridge::rn {
       virtual std::shared_ptr<Promise<NativeMedia>> fetchMedia(double messageId, double index) = 0;
       virtual std::shared_ptr<Promise<NativeThumbhash>> fetchThumbhash(double messageId, double index) = 0;
       virtual std::shared_ptr<Promise<std::shared_ptr<ArrayBuffer>>> fetchThumbnail(double messageId, double index) = 0;
+      virtual std::shared_ptr<Promise<std::shared_ptr<ArrayBuffer>>> fetchStagedThumbnail(const std::string& path) = 0;
       virtual void close() = 0;
 
     protected:

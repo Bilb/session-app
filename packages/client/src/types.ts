@@ -217,4 +217,10 @@ export interface MediaSource {
    * while `Attachment.hasThumbnail` is false.
    */
   fetchThumbnail(ref: AttachmentRef): Promise<Uint8Array>
+  /**
+   * libsession's thumbnail of a local file staged to send, a JPEG at the edge it will make the sent
+   * file's at. Refused for a path `isStagedPath` refuses, a file that cannot be read, and anything
+   * that is not a picture.
+   */
+  fetchStagedThumbnail(path: string): Promise<Uint8Array>
 }

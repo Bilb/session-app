@@ -54,6 +54,8 @@ declare global {
       revealInFolder(path: string): Promise<boolean>
       /** Empty for a file that is not on disk. */
       pathForFile(file: File): string
+      allowPreview(file: File): Promise<string | null>
+      revokePreview(url: string): Promise<void>
       /** Rejects when the main process refuses: no recent click or key press, or too long. */
       copyText(text: string): Promise<void>
       setLocale(locale: string): void

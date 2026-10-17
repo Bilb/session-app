@@ -5,7 +5,7 @@ import { getLocale, subscribeLocale } from '@session/localization'
 import { mediaUrl } from '@session/app/mediaUrl'
 
 import { flushLogRecords } from './logs'
-import { chooseFiles, toPickedFiles } from './pickedFiles'
+import { chooseFiles, releasePreview, toPickedFiles } from './pickedFiles'
 
 const memory = memoryPorts()
 
@@ -24,10 +24,10 @@ setPorts(
       pickFiles: async (options) => toPickedFiles(await chooseFiles(options ?? {})),
       pickImages: async (options) =>
         toPickedFiles(await chooseFiles({ ...options, accept: 'image/*' })),
-      droppedFiles: (items) => Promise.resolve(toPickedFiles(items)),
+      droppedFiles: (items) => toPickedFiles(items),
       // A pick is the person's own file, which nothing deletes.
       discardPicked: () => undefined,
-      releasePreview: () => undefined,
+      releasePreview,
       chooseExportLocation: (suggestedName) =>
         window.sessionDesktop.chooseExportLocation(suggestedName),
       revealInFolder: async (path) => {

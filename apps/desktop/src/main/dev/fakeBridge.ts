@@ -1,10 +1,15 @@
-import { existsSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
+import { constants, existsSync } from 'node:fs'
+import { open, readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 import type { BridgeTransport, MediaSource } from '@session/client'
-import { createFakeMediaSource, createFakeTransport, startDevFake } from '@session/client/fake'
+import {
+  createFakeMediaSource,
+  createFakeTransport,
+  startDevFake,
+  type StagedHead,
+} from '@session/client/fake'
 
 /**
  * The folder of dev photographs the fake serves, filled by `pnpm fake-media:fetch`.
@@ -15,6 +20,23 @@ import { createFakeMediaSource, createFakeTransport, startDevFake } from '@sessi
  */
 const MEDIA_DIR =
   process.env['SESSION_FAKE_MEDIA_DIR'] ?? join(homedir(), '.cache', 'session-app', 'dev-media')
+
+/**
+ * The first `count` bytes of a regular file, as the shim reads one: opened without blocking, so a
+ * FIFO cannot stall the main process, and refused unless the opened file is a regular one.
+ */
+async function readHead(path: string, count: number): Promise<StagedHead> {
+  const file = await open(path, constants.O_RDONLY | constants.O_NONBLOCK)
+  try {
+    const info = await file.stat()
+    if (!info.isFile()) throw new Error('not a regular file')
+    const head = new Uint8Array(count)
+    const { bytesRead } = await file.read(head, 0, count, 0)
+    return { head: head.subarray(0, bytesRead), size: info.size }
+  } finally {
+    await file.close()
+  }
+}
 
 /**
  * The bridge, backed by the fake.
@@ -32,6 +54,6 @@ export function createFakeBridge(): BridgeTransport & MediaSource {
 
   return {
     ...createFakeTransport(served),
-    ...createFakeMediaSource(alice, (photo) => readFile(join(MEDIA_DIR, photo))),
+    ...createFakeMediaSource(alice, (photo) => readFile(join(MEDIA_DIR, photo)), readHead),
   }
 }

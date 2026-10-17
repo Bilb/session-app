@@ -93,6 +93,36 @@ export const MAX_ATTACHMENT_BYTES = 10_000_000
 export const MAX_ATTACHMENTS_PER_MESSAGE = 32
 
 /**
+ * Leading bytes of each format the media scheme serves, as `[offset, bytes]` runs that must all
+ * match.
+ */
+const SIGNATURES: readonly (readonly [contentType: string, runs: readonly [number, string][]])[] = [
+  ['image/png', [[0, '\x89PNG\r\n\x1a\n']]],
+  ['image/jpeg', [[0, '\xff\xd8\xff']]],
+  ['image/gif', [[0, 'GIF87a']]],
+  ['image/gif', [[0, 'GIF89a']]],
+  [
+    'image/webp',
+    [
+      [0, 'RIFF'],
+      [8, 'WEBP'],
+    ],
+  ],
+  ['image/bmp', [[0, 'BM']]],
+  ['video/mp4', [[4, 'ftyp']]],
+  ['video/webm', [[0, '\x1a\x45\xdf\xa3']]],
+  ['video/ogg', [[0, 'OggS']]],
+]
+
+/** What the leading bytes say a file is, of the formats the media scheme serves, or null. */
+export function sniffContentType(bytes: Uint8Array): string | null {
+  const match = SIGNATURES.find(([, runs]) =>
+    runs.every(([at, run]) => [...run].every((c, i) => bytes[at + i] === c.charCodeAt(0))),
+  )
+  return match?.[0] ?? null
+}
+
+/**
  * The edge to make thumbnails at for the densest of these displays. 1 with none connected, since
  * thumbnails are never remade and a headless start would otherwise ask for an edge of -Infinity.
  */

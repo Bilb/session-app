@@ -41,7 +41,8 @@ void parses_every_url_as_the_table_says() {
             continue;
         if (session_bridge::media_url_kind_name(parsed->kind) != vector.kind
             || parsed->message_id != vector.message_id
-            || parsed->index != vector.index)
+            || parsed->index != vector.index
+            || parsed->path != vector.path)
             failed("parse_media_url", vector.url, "parsed to the wrong ref");
     }
 }

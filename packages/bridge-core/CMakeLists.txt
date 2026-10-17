@@ -78,7 +78,9 @@ add_library(session-bridge-core STATIC
     src/client_bridge.cpp
     src/convert.cpp
     src/mark_downloaded.cpp
-    src/media_url.cpp)
+    src/media_url.cpp
+    src/staged_thumbnails.cpp
+    src/worker.cpp)
 
 target_include_directories(session-bridge-core
     PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include

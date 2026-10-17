@@ -1,13 +1,16 @@
 import type { ElementId } from '@session/test-ids'
 import { RADII } from '@session/theme-tokens'
+import { useState } from 'react'
 import { isWeb, XStack, YStack } from 'tamagui'
 
 import { fileFormat, fileGlyph, nameDirection } from './attachmentFile'
 import { TILE_HAIRLINE_WIDTH, TILE_SCRIM } from './attachmentTileStyle'
 import { FileName } from './FileName'
 import { Icon } from './Icon'
+import { Image } from './Image'
 import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
+import { NOTHING_HEARD, previewFailed, previewLoaded, stagedPreview } from './stagedPreview'
 import { STAGED_TILE_SIDE } from './stagingMetrics'
 import { Text } from './Text'
 
@@ -30,6 +33,9 @@ export interface StagedTileProps {
   sizeLabel?: string | undefined
   /**
    * libsession's thumbnail of the file, where it is a picture.
+   *
+   * Drawn over the document face once it loads, and dropped for good if it fails, so a file that
+   * turns out not to decode reads as the document it is. A video has no still here yet.
    */
   previewUrl?: string | undefined
   /** What a screen reader calls the tile: its name, and its size where known. */
@@ -39,6 +45,8 @@ export interface StagedTileProps {
   removeLabel: string
   testID: ElementId
   removeTestID: ElementId
+  /** The thumbnail's picture, for a test asking whether it loaded. */
+  previewTestID: ElementId
 }
 
 /**
@@ -89,12 +97,16 @@ export function StagedTile({
   name,
   contentType,
   sizeLabel,
+  previewUrl,
   label,
   onRemove,
   removeLabel,
   testID,
   removeTestID,
+  previewTestID,
 }: StagedTileProps) {
+  const [heard, setHeard] = useState(NOTHING_HEARD)
+  const { url: preview, shown } = stagedPreview(previewUrl, heard)
   return (
     <YStack
       width={STAGED_TILE_SIDE}
@@ -112,6 +124,25 @@ export function StagedTile({
           container as one element, and would swallow the button inside. */}
       <YStack flex={1} role="img" aria-label={label} {...NATIVE_ELEMENT}>
         <DocumentFace name={name} contentType={contentType} sizeLabel={sizeLabel} />
+        {preview === undefined ? null : (
+          // Over the face, hidden until it loads: a picture still decoding shows the face.
+          <YStack position="absolute" top={0} bottom={0} left={0} right={0} opacity={shown ? 1 : 0}>
+            <Image
+              uri={preview}
+              width={STAGED_TILE_SIDE}
+              height={STAGED_TILE_SIDE}
+              fit="cover"
+              resizeMultiplier={4 / 3}
+              onLoad={() => {
+                setHeard((current) => previewLoaded(current, preview))
+              }}
+              onError={() => {
+                setHeard((current) => previewFailed(current, preview))
+              }}
+              testID={previewTestID}
+            />
+          </YStack>
+        )}
       </YStack>
       <YStack position="absolute" top={0} {...logical({ insetEnd: 0 })}>
         <PressArea onPress={onRemove} accessibilityLabel={removeLabel} testID={removeTestID}>

@@ -75,6 +75,11 @@ export function createNativeBridgeTransport(
       return new Uint8Array(await bridge.fetchThumbnail(messageId, index))
     },
 
+    async fetchStagedThumbnail(path: string): Promise<Uint8Array> {
+      if (closed) throw new Error('the bridge is closed')
+      return new Uint8Array(await bridge.fetchStagedThumbnail(path))
+    },
+
     setSink(onFrame: (frame: Frame) => void): void {
       sink = onFrame
       for (const frame of pending.splice(0, pending.length)) onFrame(frame)

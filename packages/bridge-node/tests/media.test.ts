@@ -1,10 +1,13 @@
+import { execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, symlink, truncate, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { crc32, deflateSync } from 'node:zlib'
 
 import {
+  MAX_STAGED_READ_BYTES,
   MEDIA_URL_VECTORS,
   runMediaSourceContract,
   SERVABLE_VECTORS,
@@ -12,6 +15,7 @@ import {
   type MediaUrlVector,
 } from '@session/client-contract'
 import { PHOTO_THUMBHASHES } from '@session/client/fake'
+import jpeg from 'jpeg-js'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { createNodeBridgeTransport } from '#src/index'
@@ -60,6 +64,37 @@ const NEEDS_TEST_COMMANDS = 'needs the test commands: build:native:testing'
 
 const forges = builtForTesting()
 
+function grey(width: number, height: number): Uint8Array {
+  return jpeg.encode({ width, height, data: new Uint8Array(width * height * 4).fill(0x80) }, 90)
+    .data
+}
+
+function chunk(type: string, data: Uint8Array): Buffer {
+  const body = Buffer.concat([Buffer.from(type, 'latin1'), data])
+  const out = Buffer.alloc(body.length + 8)
+  out.writeUInt32BE(data.length, 0)
+  body.copy(out, 4)
+  out.writeUInt32BE(crc32(body), body.length + 4)
+  return out
+}
+
+/** A grey 8-bit RGB PNG, since libsession is handed a real one to decode. */
+function greyPng(width: number, height: number): Buffer {
+  const header = Buffer.alloc(13)
+  header.writeUInt32BE(width, 0)
+  header.writeUInt32BE(height, 4)
+  header.set([8, 2, 0, 0, 0], 8)
+  const row = Buffer.alloc(1 + width * 3, 0x80)
+  row[0] = 0
+  const rows = Buffer.concat(Array.from({ length: height }, () => row))
+  return Buffer.concat([
+    Buffer.from('\x89PNG\r\n\x1a\n', 'latin1'),
+    chunk('IHDR', header),
+    chunk('IDAT', deflateSync(rows)),
+    chunk('IEND', new Uint8Array()),
+  ])
+}
+
 describeAddon('addon', () => {
   let root: string
   let sequence = 0
@@ -73,6 +108,33 @@ describeAddon('addon', () => {
     for (const transport of open) transport.close()
     await rm(root, { recursive: true, force: true })
   })
+
+  async function stagedPeer() {
+    sequence += 1
+    const dir = join(root, `staged-${String(sequence)}`)
+    await mkdir(dir, { recursive: true })
+    const peer = await openPeer(join(dir, 'peer'), { deferred: true })
+    open.push(peer.client)
+    // A name outside ASCII, since the path crosses the addon and the url as UTF-8.
+    const files = {
+      jpeg: join(dir, '\u00e9t\u00e9 \u65e5\u672c.jpg'),
+      png: join(dir, 'scan.png'),
+      document: join(dir, 'paper.pdf'),
+      missing: join(dir, 'gone.jpg'),
+      oversized: join(dir, 'panorama.jpg'),
+    }
+    await writeFile(files.jpeg, grey(1280, 960))
+    // Sparse: a real JPEG's head, and past the largest staged file read in length alone.
+    await writeFile(files.oversized, grey(64, 48))
+    await truncate(files.oversized, MAX_STAGED_READ_BYTES + 1)
+    await writeFile(files.png, greyPng(300, 200))
+    await writeFile(files.document, '%PDF-1.7\n')
+    const fifo = join(dir, 'fifo.jpg')
+    const device = join(dir, 'zero.jpg')
+    execFileSync('mkfifo', [fifo])
+    await symlink('/dev/zero', device)
+    return { peer, files: { ...files, notRegular: [dir, fifo, device] } }
+  }
 
   const harness: MediaSourceHarness = {
     async withAttachments() {
@@ -126,7 +188,23 @@ describeAddon('addon', () => {
       open.push(transport)
       return { source: transport }
     },
+
+    async staged() {
+      const { peer, files } = await stagedPeer()
+      return { source: peer.transport, client: peer.client, ...files }
+    },
   }
+
+  it('closes while staged thumbnails are being made, rejecting each rather than answering late', async () => {
+    const { peer, files } = await stagedPeer()
+    const asked = Array.from({ length: 8 }, () => peer.transport.fetchStagedThumbnail(files.jpeg))
+    peer.transport.close()
+    const settled = await Promise.allSettled(asked)
+    for (const outcome of settled) {
+      if (outcome.status === 'rejected') expect(String(outcome.reason)).toContain('closed')
+    }
+    expect(settled.some((outcome) => outcome.status === 'rejected')).toBe(true)
+  })
 
   runMediaSourceContract(
     harness,

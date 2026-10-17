@@ -9,6 +9,7 @@ import electron from 'electron'
 
 import type { BrowserWindow } from 'electron'
 
+import type { PreviewGrants } from './previewGrants'
 import { isFromAppFrame } from './security'
 
 const { app, dialog, shell } = electron
@@ -164,13 +165,18 @@ export function dialogDefaultPath(
 }
 
 /**
- * Choosing where a file goes, and showing somebody where it went, for one window. Returns the
- * window's export gate, which its bridge relay passes every request through.
+ * Choosing where a file goes, showing somebody where it went, and previewing a file picked to
+ * send, for one window. Returns the window's export gate, which its bridge relay passes every
+ * request through.
  *
  * In main because that is where Electron's `dialog` and `shell` are, and because deciding what
  * the renderer may reach is not a decision the renderer can be trusted with.
  */
-export function serveFiles(window: BrowserWindow, appUrl: string): ExportGate {
+export function serveFiles(
+  window: BrowserWindow,
+  appUrl: string,
+  previews: PreviewGrants,
+): ExportGate {
   const gate = new ExportGate()
   const lastFolderFile = join(app.getPath('userData'), 'last-export-folder')
   let lastFolder = readLastFolder(lastFolderFile)
@@ -196,6 +202,17 @@ export function serveFiles(window: BrowserWindow, appUrl: string): ExportGate {
     writeLastFolder(lastFolderFile, lastFolder)
     gate.grant(answer.filePath, existsSync(answer.filePath))
     return answer.filePath
+  })
+
+  // The path comes from the preload's `webUtils.getPathForFile`, never from the page.
+  ipc.handle('files:allow-preview', (event, path: unknown): string | null => {
+    if (!isFromAppFrame(event.senderFrame, appUrl)) return null
+    return previews.grant(path)
+  })
+
+  // Only ever takes a grant away, so the page may name any url it likes.
+  ipc.handle('files:revoke-preview', (event, url: unknown): void => {
+    if (isFromAppFrame(event.senderFrame, appUrl)) previews.revoke(url)
   })
 
   ipc.handle('files:reveal', (event, path: unknown): boolean => {

@@ -17,6 +17,7 @@ const bridge = vi.hoisted(() => ({
   fetchMedia: vi.fn(),
   fetchThumbhash: vi.fn(),
   fetchThumbnail: vi.fn(),
+  fetchStagedThumbnail: vi.fn(),
   close: vi.fn(),
 }))
 
@@ -90,6 +91,11 @@ describe('the JSI transport', () => {
     const thumbnail = await transport.fetchThumbnail({ messageId: 4, index: 1 })
     expect(bridge.fetchThumbnail).toHaveBeenLastCalledWith(4, 1)
     expect(thumbnail.buffer).toBe(jpeg)
+
+    bridge.fetchStagedThumbnail.mockResolvedValueOnce(jpeg)
+    const staged = await transport.fetchStagedThumbnail('/a/\u00e9.jpg')
+    expect(bridge.fetchStagedThumbnail).toHaveBeenLastCalledWith('/a/\u00e9.jpg')
+    expect(staged.buffer).toBe(jpeg)
   })
 
   it('refuses media once closed rather than asking a closed bridge', async () => {
@@ -99,6 +105,7 @@ describe('the JSI transport', () => {
     await expect(transport.fetchMedia({ messageId: 4, index: 0 })).rejects.toThrow('closed')
     await expect(transport.fetchThumbhash({ messageId: 4, index: 0 })).rejects.toThrow('closed')
     await expect(transport.fetchThumbnail({ messageId: 4, index: 0 })).rejects.toThrow('closed')
+    await expect(transport.fetchStagedThumbnail('/a.jpg')).rejects.toThrow('closed')
     expect(bridge.fetchMedia).not.toHaveBeenCalled()
   })
 })

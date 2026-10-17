@@ -279,8 +279,10 @@ RCT_EXPORT_MODULE()
     // Originals are not kept: one is most of the cache's budget, and a tile draws one only for a
     // type libsession never thumbnails.
     const bool cacheable = parsed->kind != ::session_bridge::MediaUrlKind::attachment;
+    const bool thumbnail = parsed->kind == ::session_bridge::MediaUrlKind::thumbnail
+                        || parsed->kind == ::session_bridge::MediaUrlKind::staged;
     // A thumbnail's decode depends on the view it fills; a thumbhash's does not.
-    NSString* key = parsed->kind == ::session_bridge::MediaUrlKind::thumbnail
+    NSString* key = thumbnail
                             ? [NSString stringWithFormat:@"%@ %.0fx%.0f",
                                                          imageURL.absoluteString,
                                                          size.width * scale,
@@ -297,6 +299,8 @@ RCT_EXPORT_MODULE()
     }
 
     auto cancelled = std::make_shared<std::atomic<bool>>(false);
+    // Withdraws a staged decode that has not started, so a scrolled-away tile costs nothing.
+    std::function<void()> withdraw;
     dispatch_queue_t drain = _drain;
     NSCache<NSString*, UIImage*>* cache = _cache;
     RCTImageLoaderCompletionBlock done = [completionHandler copy];
@@ -329,6 +333,14 @@ RCT_EXPORT_MODULE()
                             FinishThumbnail(media, size, scale, cache, key, imageURL, done);
                     });
                 });
+    } else if (parsed->kind == ::session_bridge::MediaUrlKind::staged) {
+        withdraw = source->fetch_staged_thumbnail(parsed->path, [=](::session_bridge::Media answer) {
+            auto media = std::make_shared<::session_bridge::Media>(std::move(answer));
+            dispatch_async(drain, ^{
+                if (!cancelled->load())
+                    FinishThumbnail(media, size, scale, cache, key, imageURL, done);
+            });
+        });
     } else {
         source->fetch_media(parsed->message_id, parsed->index, [=](::session_bridge::Media answer) {
             auto media = std::make_shared<::session_bridge::Media>(std::move(answer));
@@ -384,6 +396,8 @@ RCT_EXPORT_MODULE()
 
     return ^{
         cancelled->store(true);
+        if (withdraw)
+            withdraw();
     };
 }
 

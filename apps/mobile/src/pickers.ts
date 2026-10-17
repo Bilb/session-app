@@ -1,4 +1,6 @@
 import type { FilesPort, PickedFile } from '@session/app'
+import { stagedThumbnailUrl } from '@session/app/mediaUrl'
+import { isDisplayableImage } from '@session/basic-types'
 import { getDocumentAsync } from 'expo-document-picker'
 import {
   launchImageLibraryAsync,
@@ -9,7 +11,18 @@ import { keepAll, lastSegment } from './pickedPaths'
 import { discardStaged, keepPicked } from './storage/staging'
 
 function picked(copy: string, name: string, contentType?: string, size?: number): PickedFile {
-  return { path: keepPicked(copy, lastSegment(copy)), name, contentType, size }
+  const path = keepPicked(copy, lastSegment(copy))
+  return {
+    path,
+    name,
+    contentType,
+    size,
+    // libsession's thumbnail rather than the copy: a tile decoding 32 full photographs is the
+    // memory a phone runs out of. A video has no still here.
+    previewUrl: isDisplayableImage(contentType)
+      ? (stagedThumbnailUrl(path) ?? undefined)
+      : undefined,
+  }
 }
 
 /**
