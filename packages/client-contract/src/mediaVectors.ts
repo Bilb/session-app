@@ -207,8 +207,12 @@ export const SERVABLE_VECTORS: readonly ServableVector[] = [
   { declared: 'video/ogg', bytes: OGG, served: 'video/ogg' },
   { declared: 'Image/PNG; charset=binary', bytes: PNG, served: 'image/png' },
   { declared: '  image/png  ', bytes: PNG, served: 'image/png' },
-  // Only ASCII space is trimmed off a declared type: a no-break space is not, on any platform.
+  // Only space, tab, CR and LF are trimmed off a declared type, on every platform.
   { declared: '\u00a0image/png', bytes: PNG, served: null },
+  { declared: '\fimage/png\v', bytes: PNG, served: null },
+  // A NUL ends no type: one carrying it is on no list.
+  { declared: 'image/png\0', bytes: PNG, served: null },
+  { declared: 'image/png\0.exe', bytes: PNG, served: null },
 
   // The wrong image format named: what the bytes are is what is served.
   { declared: 'image/png', bytes: JPEG, served: 'image/jpeg' },
