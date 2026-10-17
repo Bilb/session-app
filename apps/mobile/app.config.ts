@@ -100,6 +100,7 @@ const PLUGIN_WRITTEN_KEYS = new Set([
   'NSCameraUsageDescription',
   'NSPhotoLibraryUsageDescription',
   'NSPhotoLibraryAddUsageDescription',
+  'NSMicrophoneUsageDescription',
 ])
 
 /** The English of one of them, which is what the plist itself carries. */
@@ -338,6 +339,17 @@ export default ({ config }: ConfigContext): ExpoConfig =>
           granularPermissions: ['photo', 'video'],
         },
       ],
+      // The photo library half of +. Its purpose strings are the catalogue's: `false` would delete
+      // the microphone's, and expo-camera would then write Expo's default English in its place.
+      // RECORD_AUDIO stays blocked below.
+      [
+        'expo-image-picker',
+        {
+          photosPermission: englishPermission('NSPhotoLibraryUsageDescription'),
+          cameraPermission: englishPermission('NSCameraUsageDescription'),
+          microphonePermission: englishPermission('NSMicrophoneUsageDescription'),
+        },
+      ],
       // Legacy Android's floor.
       ['expo-build-properties', { android: { minSdkVersion: 26 } }],
       [
@@ -371,6 +383,11 @@ export default ({ config }: ConfigContext): ExpoConfig =>
         'android.permission.READ_MEDIA_VIDEO',
         'android.permission.READ_MEDIA_VISUAL_USER_SELECTED',
         'android.permission.READ_EXTERNAL_STORAGE',
+        // Without it the system photo picker zeroes a photo's GPS before handing it over. Not
+        // where there is none: the document picker it falls back to keeps it.
+        'android.permission.ACCESS_MEDIA_LOCATION',
+        // A string given for the microphone above declares it; nothing here records audio yet.
+        'android.permission.RECORD_AUDIO',
       ],
     },
     ios: {

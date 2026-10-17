@@ -20,6 +20,7 @@ import { FileArchive } from '@tamagui/lucide-icons-2/icons/FileArchive'
 import { FileAudio } from '@tamagui/lucide-icons-2/icons/FileAudio'
 import { FileCode } from '@tamagui/lucide-icons-2/icons/FileCode'
 import { FileImage } from '@tamagui/lucide-icons-2/icons/FileImage'
+import { FilePlus } from '@tamagui/lucide-icons-2/icons/FilePlus'
 import { FileSpreadsheet } from '@tamagui/lucide-icons-2/icons/FileSpreadsheet'
 import { FileText } from '@tamagui/lucide-icons-2/icons/FileText'
 import { FileVideo } from '@tamagui/lucide-icons-2/icons/FileVideo'
@@ -91,6 +92,7 @@ const GLYPHS = {
   fileAudio: FileAudio,
   fileCode: FileCode,
   fileImage: FileImage,
+  filePlus: FilePlus,
   fileSpreadsheet: FileSpreadsheet,
   fileText: FileText,
   fileVideo: FileVideo,

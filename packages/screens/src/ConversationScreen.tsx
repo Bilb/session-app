@@ -1,11 +1,19 @@
+import { requirePorts } from '@session/app'
+import {
+  formatBytes,
+  MAX_ATTACHMENT_BYTES,
+  MAX_ATTACHMENTS_PER_MESSAGE,
+} from '@session/basic-types'
 import type { ConversationId } from '@session/client'
 import { useConversation, useMessages, useSessionActions } from '@session/state'
-import { tr } from '@session/localization'
+import { PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Input, List, Screen, Separator, Text, XStack, YStack } from '@session/ui'
+import { DropOverlay, DropZone, List, Screen, Separator, Text, XStack, YStack } from '@session/ui'
 import { useMemo, useState } from 'react'
 
 import { AttachmentSheet } from './AttachmentSheet'
+import { Composer } from './Composer'
+import { useStaging } from './useStaging'
 import { createViewChoices } from './viewChoices'
 import { ConversationUiContext, type ConversationUi } from './conversationUi'
 import { MessageMediaViewer, type ViewerTarget } from './MessageMediaViewer'
@@ -20,7 +28,8 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
   const conversation = useConversation(conversationId)
   const { messages, ready } = useMessages(conversationId)
   const actions = useSessionActions()
-  const [draft, setDraft] = useState('')
+  const staging = useStaging()
+  const [dropping, setDropping] = useState(false)
   // Unset means nobody has been asked what this conversation should fetch unprompted, which is
   // not the same as having been asked and said no. Asked once, on the first attachment fetched.
   // A request made while the conversation is still loading is held, and asked once it is known
@@ -57,15 +66,6 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
     [conversationId, autoDownload, views],
   )
 
-  function send(): void {
-    const body = draft.trim()
-    if (body.length === 0) return
-    // Cleared straight away: libsession stores the row before the promise settles, so the
-    // message appears on its own and there is nothing to put back if this fails.
-    setDraft('')
-    void actions.send(conversationId, body)
-  }
-
   // The id stands in for the conversation as well as for the name: opening one from a route
   // beats the store hydrating it, and a header that says nothing for a moment is a header
   // that flickers.
@@ -95,47 +95,53 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
 
         <Separator borderColor="$bordersColor" />
 
-        {ready ? (
-          // No itemHeight: a bubble is as tall as its body wraps to, so the list has to measure.
-          <List
-            data={messages}
-            keyExtractor={(message) => String(message.id)}
-            renderItem={(message, index) => (
-              <YStack paddingHorizontal="$md" paddingBottom="$sm">
-                <MessageRow conversationId={conversationId} messageId={message.id} index={index} />
-              </YStack>
-            )}
-          />
-        ) : (
-          <YStack flex={1} padding="$md">
-            <Text tone="secondary">{tr('loading')}</Text>
-          </YStack>
-        )}
-
-        <XStack
-          padding="$md"
-          gap="$sm"
-          alignItems="center"
-          borderTopWidth={1}
-          borderTopColor="$bordersColor"
+        <DropZone
+          enabled
+          onActive={setDropping}
+          onDrop={(items, skipped) => {
+            void staging.take(requirePorts().files.droppedFiles(items), skipped + items.length)
+          }}
+          overlay={
+            dropping ? (
+              <DropOverlay
+                title={tr('attachmentsAdd')}
+                hint={PENDING_COPY.attachmentsDropHint(
+                  MAX_ATTACHMENTS_PER_MESSAGE,
+                  formatBytes(MAX_ATTACHMENT_BYTES),
+                )}
+                testID={ELEMENT.conversation.dropOverlay}
+              />
+            ) : undefined
+          }
         >
-          <Input
-            grow
-            value={draft}
-            onChangeText={setDraft}
-            placeholder={tr('message')}
-            onSubmit={send}
-            testID={ELEMENT.conversation.composerInput}
+          {ready ? (
+            // No itemHeight: a bubble is as tall as its body wraps to, so the list has to measure.
+            <List
+              data={messages}
+              keyExtractor={(message) => String(message.id)}
+              renderItem={(message, index) => (
+                <YStack paddingHorizontal="$md" paddingBottom="$sm">
+                  <MessageRow
+                    conversationId={conversationId}
+                    messageId={message.id}
+                    index={index}
+                  />
+                </YStack>
+              )}
+            />
+          ) : (
+            <YStack flex={1} padding="$md">
+              <Text tone="secondary">{tr('loading')}</Text>
+            </YStack>
+          )}
+
+          <Composer
+            staging={staging}
+            onSend={(body) => {
+              void actions.send(conversationId, body)
+            }}
           />
-          <Button
-            size="md"
-            onPress={send}
-            disabled={draft.trim().length === 0}
-            testID={ELEMENT.conversation.sendButton}
-          >
-            {tr('send')}
-          </Button>
-        </XStack>
+        </DropZone>
 
         <AttachmentSheet
           conversationId={conversationId}

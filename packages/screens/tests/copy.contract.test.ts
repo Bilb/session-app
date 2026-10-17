@@ -149,6 +149,11 @@ describe('screen copy', () => {
       'previous',
       'attachmentImagePosition',
       'attachmentNameAndMore',
+      'attachmentsErrorLimit',
+      'attachmentsNotAdded',
+      'attachmentsStagedCount',
+      'attachmentsDropHint',
+      'attachmentRemove',
       'autoDownloadAllFiles',
       'autoDownloadImagesOnly',
     ])

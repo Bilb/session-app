@@ -52,6 +52,24 @@ export const PENDING_COPY = {
    */
   attachmentNameAndMore: (name: string, count: number): string =>
     `${name}, and ${String(count)} more`,
+  /**
+   * The composer refusing files past the per-message limit.
+   *
+   * `attachmentsErrorNumber` says "image and video files", which is wrong once any type can be
+   * staged.
+   */
+  attachmentsErrorLimit: (max: number): string =>
+    `Unable to send more than ${String(max)} files at once.`,
+  /** How many files that refusal left out. Counts in English only, as `attachmentCount` does. */
+  attachmentsNotAdded: (count: number): string => `${String(count)} not added`,
+  /** Over the staged tray: how many of the message's allowance are used. */
+  attachmentsStagedCount: (count: number, max: number): string =>
+    `${String(count)} / ${String(max)}`,
+  /** Under the drop overlay's title, which is `attachmentsAdd`. */
+  attachmentsDropHint: (max: number, size: string): string =>
+    `Up to ${String(max)} files of any type, each under ${size}`,
+  /** A staged tile's remove button, which has to say which file. */
+  attachmentRemove: (name: string): string => `Remove ${name}`,
   /** The auto-download prompt's two answers to what Yes fetches. */
   autoDownloadAllFiles: 'All files',
   autoDownloadImagesOnly: 'Images only',

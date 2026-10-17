@@ -2,7 +2,7 @@ import electron from 'electron'
 
 import { readLaunchOverrides } from '../shared/launchOverrides'
 
-const { contextBridge, ipcRenderer } = electron
+const { contextBridge, ipcRenderer, webUtils } = electron
 
 /**
  * Hands the bridge's MessagePort to the page and steps aside.
@@ -59,6 +59,11 @@ contextBridge.exposeInMainWorld('sessionDesktop', {
   chooseExportLocation: (suggestedName: string): Promise<string | null> =>
     ipcRenderer.invoke('files:choose-export-location', suggestedName),
   revealInFolder: (path: string): Promise<boolean> => ipcRenderer.invoke('files:reveal', path),
+  /**
+   * Where a picked or dropped file lives, which the page cannot learn by itself: `File.path` is
+   * gone from Electron. Empty for anything not on disk.
+   */
+  pathForFile: (file: File): string => webUtils.getPathForFile(file),
   copyText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard-write-text', text),
   setLocale: (locale: string) => {
     ipcRenderer.send('locale', locale)

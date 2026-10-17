@@ -29,13 +29,45 @@ export interface PickedFile {
   /** A real filesystem path: libsession takes paths, not blobs. */
   path: string
   name: string
-  contentType?: string
-  size?: number
+  contentType?: string | undefined
+  size?: number | undefined
+  /**
+   * A URL the platform can draw the file from, where it is a picture. Nothing for anything else:
+   * a video has no still yet, so it stages as a document.
+   */
+  previewUrl?: string | undefined
 }
 
 export interface FilesPort {
   pickFiles(options?: { multiple?: boolean }): Promise<PickedFile[]>
-  pickImages(options?: { multiple?: boolean }): Promise<PickedFile[]>
+  /** `limit` is how many more the message can take, which a picker that can stop at it does. */
+  pickImages(options?: { multiple?: boolean; limit?: number | undefined }): Promise<PickedFile[]>
+  /**
+   * The files behind what was dropped on the window, as `DropZone` handed them over.
+   *
+   * Only desktop takes a drop, and only it can say where a dropped file lives on disk. Anything
+   * not on disk -- a picture dragged out of a browser -- has no path and is left out.
+   */
+  droppedFiles(items: readonly unknown[]): Promise<PickedFile[]>
+  /**
+   * Whether each pick is a copy the app made, which a fresh path for the same file says nothing
+   * against. True on mobile; on desktop a pick is the person's own file at its own path.
+   */
+  picksAreCopies: boolean
+  /**
+   * Lets go of a pick that will not be sent: deletes the app's copy, where it made one.
+   *
+   * Never for a file a message has been given. libsession reads it only when its upload's turn
+   * comes, maybe in a later run after a retry, so it has to stay until the message is sent,
+   * unsendable or deleted.
+   */
+  discardPicked(file: PickedFile): void
+  /**
+   * Lets go of what drew a pick in the tray, for every pick that leaves it, sent or not. Desktop
+   * grants each preview to the page, and a grant held for a file nobody draws pushes out one in
+   * use.
+   */
+  releasePreview(file: PickedFile): void
   /**
    * Where to export a file to; null when the person cancelled.
    *
