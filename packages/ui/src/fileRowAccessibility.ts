@@ -43,3 +43,11 @@ export function fileRowActions(verbs: FileRowVerbs): FileRowAction[] {
     actions[0] = { ...first, name: 'activate' }
   return actions
 }
+
+/**
+ * The actions to list as custom ones. A VoiceOver double-tap reaches `onAccessibilityTap` and never
+ * `activate`, so on iOS listing it only repeats the hint; TalkBack maps `activate` to its click.
+ */
+export function listedFileRowActions(actions: FileRowAction[], os: string): FileRowAction[] {
+  return os === 'ios' ? actions.filter(({ name }) => name !== 'activate') : actions
+}

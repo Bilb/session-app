@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { fileRowAccessibleName, fileRowActions } from '#src/fileRowAccessibility'
+import {
+  fileRowAccessibleName,
+  fileRowActions,
+  listedFileRowActions,
+} from '#src/fileRowAccessibility'
 
 const noop = (): void => undefined
 
@@ -95,5 +99,30 @@ describe('the actions a file row offers on native', () => {
   it('offers nothing for a verb with no press or no words', () => {
     expect(fileRowActions({ onAction: noop })).toEqual([])
     expect(fileRowActions({ actionLabel: 'Export' })).toEqual([])
+  })
+})
+
+describe('the actions a file row lists as custom ones', () => {
+  const actions = fileRowActions({
+    onPress: noop,
+    pressLabel: 'Open',
+    onAction: noop,
+    actionLabel: 'Export',
+  })
+
+  it('leaves the activation out on iOS, where the double-tap and the hint already say it', () => {
+    expect(listedFileRowActions(actions, 'ios').map(({ name }) => name)).toEqual(['control'])
+  })
+
+  it('keeps the activation on Android, where it is the click TalkBack performs', () => {
+    expect(listedFileRowActions(actions, 'android').map(({ name }) => name)).toEqual([
+      'activate',
+      'control',
+    ])
+  })
+
+  it('lists nothing on iOS for a failed send, whose Retry is the double-tap', () => {
+    const retry = fileRowActions({ onAction: noop, actionLabel: 'Retry' })
+    expect(listedFileRowActions(retry, 'ios')).toEqual([])
   })
 })

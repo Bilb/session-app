@@ -119,8 +119,26 @@ describe('a file row', () => {
     expect(nativeButton).toContain('const operable = pressable || activate !== undefined')
   })
 
+  it('runs its activation on a VoiceOver double-tap, which reaches no accessibility action', () => {
+    // RN's iOS view answers accessibilityActivate only through onAccessibilityTap.
+    expect(nativeButton).toContain(
+      '...(activate === undefined ? {} : { onAccessibilityTap: activate.run })',
+    )
+  })
+
+  it('exposes a running transfer as busy, with its progress where it is known', () => {
+    // Set in every state, as aria-disabled is.
+    expect(nativeButton).toContain("'aria-busy': held")
+    expect(nativeButton).toMatch(
+      /accessibilityValue:\s*held && progress !== undefined\s*\?\s*\{ min: 0, max: 100, now: Math\.round\(progress \* 100\) \}\s*:\s*\{\}/,
+    )
+    expect(rowStack).toMatch(/held,\s*progress,\s*\}\)\}/)
+  })
+
   it('offers the lead square’s and the control’s verbs as the row’s actions on native', () => {
-    expect(nativeButton).toContain('accessibilityActions: actions.map(')
+    expect(nativeButton).toContain(
+      'accessibilityActions: listedFileRowActions(actions, Platform.OS)',
+    )
     expect(nativeButton).toMatch(
       /onAccessibilityAction:[\s\S]*actions\.find\(\(action\) => action\.name === event\.nativeEvent\.actionName\)\?\.run\(\)/,
     )
