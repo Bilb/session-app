@@ -119,8 +119,17 @@ describe('a file row', () => {
     expect(nativeButton).toContain('const operable = pressable || activate !== undefined')
   })
 
+  it('runs its activation on a VoiceOver double-tap, which reaches no accessibility action', () => {
+    // RN's iOS view answers accessibilityActivate only through onAccessibilityTap.
+    expect(nativeButton).toContain(
+      '...(activate === undefined ? {} : { onAccessibilityTap: activate.run })',
+    )
+  })
+
   it('offers the lead square’s and the control’s verbs as the row’s actions on native', () => {
-    expect(nativeButton).toContain('accessibilityActions: actions.map(')
+    expect(nativeButton).toContain(
+      'accessibilityActions: listedFileRowActions(actions, Platform.OS)',
+    )
     expect(nativeButton).toMatch(
       /onAccessibilityAction:[\s\S]*actions\.find\(\(action\) => action\.name === event\.nativeEvent\.actionName\)\?\.run\(\)/,
     )
