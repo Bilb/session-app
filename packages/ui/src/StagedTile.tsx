@@ -129,7 +129,7 @@ export function StagedTile({
         aria-label={label}
         {...NATIVE_ELEMENT}
         // iOS hides an accessibility element's subtree, test ids included, so the face carries the
-        // picture's there, for as long as the picture is drawn.
+        // picture's while the picture is mounted.
         testID={Platform.OS === 'ios' && preview !== undefined ? previewTestID : undefined}
       >
         <DocumentFace name={name} contentType={contentType} sizeLabel={sizeLabel} />

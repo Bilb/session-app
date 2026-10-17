@@ -112,7 +112,7 @@ export function Composer({
           )}
           clearLabel={tr('clear')}
           onClear={staging.clear}
-          addLabel={PENDING_COPY.attachmentsAddMore}
+          addLabel={tr('attachmentsAdd')}
           onAdd={full ? undefined : attach}
           previousLabel={PENDING_COPY.previous}
           nextLabel={tr('next')}

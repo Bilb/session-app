@@ -13,8 +13,8 @@ describe('the composer’s staged tray', () => {
     expect(composer).toContain('countSpokenLabel={PENDING_COPY.attachmentsStagedCountSpoken(')
   })
 
-  it('names its add tile apart from the composer’s +, though both open the same picker', () => {
-    expect(composer).toContain('addLabel={PENDING_COPY.attachmentsAddMore}')
+  it('names its add tile as the composer’s +, since both open the same picker', () => {
+    expect(composer).toContain("addLabel={tr('attachmentsAdd')}")
     expect(composer).toContain("accessibilityLabel={tr('attachmentsAdd')}")
   })
 })
