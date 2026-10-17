@@ -40,9 +40,42 @@ describe('the actions a file row offers on native', () => {
     expect(actions.map(({ name }) => name)).toEqual(['activate'])
   })
 
-  it('offers a retry for a failed file', () => {
-    const actions = fileRowActions({ onAction: noop, actionLabel: 'Retry' })
-    expect(actions.map(({ name, label }) => [name, label])).toEqual([['control', 'Retry']])
+  it('retries a failed file on a double-tap, though the row takes no press of its own', () => {
+    let retried = false
+    const actions = fileRowActions({
+      onAction: () => {
+        retried = true
+      },
+      actionLabel: 'Retry',
+    })
+    expect(actions.map(({ name, label }) => [name, label])).toEqual([['activate', 'Retry']])
+    actions[0]?.run()
+    expect(retried).toBe(true)
+  })
+
+  it('takes the first verb as the press of a row with none, and keeps the rest', () => {
+    const actions = fileRowActions({
+      onOpen: noop,
+      openLabel: 'View',
+      onAction: noop,
+      actionLabel: 'Export',
+    })
+    expect(actions.map(({ name, label }) => [name, label])).toEqual([
+      ['activate', 'View'],
+      ['control', 'Export'],
+    ])
+  })
+
+  it('keeps the row’s own press as the activation where it has one', () => {
+    const actions = fileRowActions({
+      onPress: noop,
+      pressLabel: 'Open',
+      onAction: noop,
+      actionLabel: 'Export',
+    })
+    expect(actions.filter(({ name }) => name === 'activate').map(({ label }) => label)).toEqual([
+      'Open',
+    ])
   })
 
   it('runs the part the action names', () => {

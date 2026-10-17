@@ -115,24 +115,24 @@ const RING_THICKNESS = 3
 function nativeRowElement({
   name,
   actions,
-  pressLabel,
   pressable,
   held,
 }: {
   name: string
   actions: FileRowAction[]
-  pressLabel: string | undefined
   pressable: boolean
   held: boolean
 }) {
   if (isWeb) return {}
+  const activate = actions.find((action) => action.name === 'activate')
+  const operable = pressable || activate !== undefined
   return {
     accessible: true,
-    ...(pressable || held ? { role: 'button' } : {}),
+    ...(operable || held ? { role: 'button' } : {}),
     'aria-label': name,
-    ...(pressable ? pressHint(pressLabel) : {}),
+    ...pressHint(activate?.label),
     // Set in every state: Android keeps a disabled state that is dropped rather than cleared.
-    'aria-disabled': !pressable && held,
+    'aria-disabled': !operable && held,
     accessibilityActions: actions.map(({ name: action, label }) => ({ name: action, label })),
     onAccessibilityAction: (event: { nativeEvent: { actionName: string } }) => {
       actions.find((action) => action.name === event.nativeEvent.actionName)?.run()
@@ -310,7 +310,6 @@ export function FileRow({
       {...nativeRowElement({
         name: fileRowAccessibleName(filename, format, caption),
         actions,
-        pressLabel,
         pressable: onPress !== undefined,
         held,
       })}

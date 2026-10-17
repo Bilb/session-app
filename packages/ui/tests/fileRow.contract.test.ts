@@ -105,10 +105,18 @@ describe('a file row', () => {
   it('is the one accessibility element on native, named by the file and its caption', () => {
     // iOS hides whatever an accessibility element holds, so the row speaks for the whole of it.
     expect(nativeButton).toContain('accessible: true')
-    expect(nativeButton).toContain("...(pressable || held ? { role: 'button' } : {})")
+    expect(nativeButton).toContain("...(operable || held ? { role: 'button' } : {})")
     expect(nativeButton).toContain("'aria-label': name")
-    expect(nativeButton).toContain('...(pressable ? pressHint(pressLabel) : {})')
+    expect(nativeButton).toContain('...pressHint(activate?.label)')
     expect(rowStack).toContain('name: fileRowAccessibleName(filename, format, caption)')
+  })
+
+  it('is a button on native wherever a double-tap does something, its own press or not', () => {
+    // A failed send's row has no press, and its Retry is the activation fileRowActions gives it.
+    expect(nativeButton).toContain(
+      "const activate = actions.find((action) => action.name === 'activate')",
+    )
+    expect(nativeButton).toContain('const operable = pressable || activate !== undefined')
   })
 
   it('offers the lead square’s and the control’s verbs as the row’s actions on native', () => {
@@ -131,7 +139,8 @@ describe('a file row', () => {
     expect(control.indexOf('!isWeb')).toBeLessThan(control.indexOf("role: 'button'"))
   })
 
-  it('keeps every part addressable by id, which the row being one element does not change', () => {
+  it('gives every part its id, which the web and Android reach though the row is one element', () => {
+    // On iOS what the one accessible element holds is no XCUITest element: address the row there.
     for (const id of ['row', 'name', 'caption', 'lead', 'thumbnail'])
       expect(row).toContain(`testID={testIDs?.${id}}`)
     expect(row).toContain('testID={testIDs?.action}')
@@ -157,7 +166,7 @@ describe('a file row', () => {
     expect(control).toContain('? heldButton(actionLabel, ring)')
     // Set in every state: Android keeps a disabled state that is dropped rather than cleared.
     expect(control).toContain("{...(isWeb ? { 'aria-disabled': held } : {})}")
-    expect(nativeButton).toContain("'aria-disabled': !pressable && held")
+    expect(nativeButton).toContain("'aria-disabled': !operable && held")
     expect(row).toContain("{...(isWeb ? { 'aria-disabled': leadHeld } : {})}")
     expect(control.match(/<YStack\b/g)).toHaveLength(2)
     // tamagui remounts a view whose group comes or goes, so the row's is unconditional.

@@ -20,7 +20,8 @@ export function fileRowAccessibleName(filename: string, format: string, caption:
 
 /**
  * The row's verbs as native accessibility actions: its own press as `activate`, then the lead
- * square's and the control's where they say something the row's press does not.
+ * square's and the control's where they say something the row's press does not. A row with no
+ * press of its own takes its first verb as `activate`, so a double-tap still does something.
  */
 export function fileRowActions(verbs: FileRowVerbs): FileRowAction[] {
   const actions: FileRowAction[] = []
@@ -37,5 +38,8 @@ export function fileRowActions(verbs: FileRowVerbs): FileRowAction[] {
   offer('activate', verbs.pressLabel, verbs.onPress)
   offer('lead', verbs.openLabel, verbs.onOpen)
   offer('control', verbs.actionLabel, verbs.onAction)
+  const [first] = actions
+  if (verbs.onPress === undefined && first !== undefined)
+    actions[0] = { ...first, name: 'activate' }
   return actions
 }
