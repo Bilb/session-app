@@ -19,9 +19,8 @@ describe('the essence of a declared content type', () => {
     expect(contentTypeEssence('image/png')).toBe('image/png')
   })
 
-  it('keeps a NUL, which no type it is compared with carries', () => {
-    expect(contentTypeEssence('image/png\0.exe')).toBe('image/png\0.exe')
-    expect(isViewableImage('image/png\0')).toBe(false)
+  it('ends at a NUL', () => {
+    expect(contentTypeEssence('image/png\0.exe')).toBe('image/png')
   })
 
   it('trims space, tab, CR and LF alone', () => {

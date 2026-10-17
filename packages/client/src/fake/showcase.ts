@@ -55,6 +55,10 @@ export function showcase(names: readonly [FixtureName, FixtureName] = ['Alice', 
     // Longer than the transcript holds, so the list caps and the rest moves into a sheet.
     ['The whole roll', set([...image(13), 'pdf'])],
 
+    // Sent as the sender's files, metadata and all: a thumbnail to look at, a file to export.
+    ['Two photos sent as the originals', set(image(2), { original: true })],
+    ['A photo sent as the original, and the paperwork', set(['image', 'pdf'], { original: true })],
+
     // Nothing to do with the count: a file the server will not hand out again.
     ['One of these is gone', set(['pdf'], { expired: true })],
     [

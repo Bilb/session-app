@@ -1,6 +1,7 @@
 import { isDisplayableImage, isViewableImage } from '@session/basic-types'
 import { requirePorts } from '@session/app'
 import type { Attachment, Message } from '@session/client'
+import type { MediaViewerItem } from '@session/ui'
 
 import type { FetchState } from './attachmentFetch'
 
@@ -11,6 +12,23 @@ import type { FetchState } from './attachmentFetch'
  */
 export function isViewable(attachment: Attachment): boolean {
   return isViewableImage(attachment.contentType)
+}
+
+/**
+ * What the viewer makes of it: it opens a viewable picture, or one libsession made a rendition of
+ * (AVIF). A picture libsession will make one of but has not yet awaits it, so its tap does not
+ * export first and open later. One its sender sent as the original file, metadata and all, exports.
+ */
+export type ViewerFit = 'opens' | 'awaitsRendition' | 'exports'
+
+export function viewerFit(attachment: Attachment): ViewerFit {
+  if (attachment.originalFile) return 'exports'
+  if (isViewable(attachment) || attachment.hasRendition) return 'opens'
+  return isDisplayableImage(attachment.contentType) ? 'awaitsRendition' : 'exports'
+}
+
+export function opensInViewer(attachment: Attachment): boolean {
+  return viewerFit(attachment) === 'opens'
 }
 
 /**
@@ -49,15 +67,37 @@ export function leadUri(
  * document sits between two pictures, and confusing them exports the wrong file.
  */
 export function viewableAttachments(message: Message): Attachment[] {
-  return message.attachments.filter(isViewable)
+  return message.attachments.filter(opensInViewer)
 }
 
 /**
- * What the viewer is handed to draw `attachment`, or null where the platform has no resolver: the
- * file itself, never the thumbnail a tile draws.
+ * What the viewer is handed to draw `attachment`, a url null where the platform has no resolver:
+ * libsession's rendition once it has made one, else the file, never the thumbnail a tile draws.
+ * The file stands behind a rendition that fails to load, where its own type is one we draw.
+ * Export writes the file whichever is drawn.
  */
-export function viewerUri(messageId: number, attachment: Attachment): string | null {
-  // TODO: a picture larger than the screen may need a rendition at screen size rather than the
-  // whole file decoded and reduced; export must keep writing out the raw content either way.
-  return requirePorts().media.urlFor({ messageId, index: attachment.index })
+export function viewerItem(messageId: number, attachment: Attachment): MediaViewerItem {
+  const ref = { messageId, index: attachment.index }
+  const { media } = requirePorts()
+  if (!attachment.hasRendition) return { uri: media.urlFor(ref) }
+  return {
+    uri: media.renditionUrlFor(ref),
+    fallbackUri: isViewable(attachment) ? media.urlFor(ref) : undefined,
+  }
+}
+
+/**
+ * The item an open viewer was first handed for `key`, so a rendition landing or being evicted
+ * mid-view does not swap the url under a drawn picture, which blanks a frame on native.
+ */
+export function heldItem(
+  held: Map<string, MediaViewerItem>,
+  key: string,
+  make: () => MediaViewerItem,
+): MediaViewerItem {
+  const kept = held.get(key)
+  if (kept !== undefined) return kept
+  const item = make()
+  held.set(key, item)
+  return item
 }

@@ -17,6 +17,7 @@ const bridge = vi.hoisted(() => ({
   fetchMedia: vi.fn(),
   fetchThumbhash: vi.fn(),
   fetchThumbnail: vi.fn(),
+  fetchRendition: vi.fn(),
   fetchStagedThumbnail: vi.fn(),
   close: vi.fn(),
 }))
@@ -92,6 +93,13 @@ describe('the JSI transport', () => {
     expect(bridge.fetchThumbnail).toHaveBeenLastCalledWith(4, 1)
     expect(thumbnail.buffer).toBe(jpeg)
 
+    const webp = Uint8Array.from([0x52, 0x49, 0x46, 0x46]).buffer
+    bridge.fetchRendition.mockResolvedValueOnce({ contentType: 'image/webp', bytes: webp })
+    const rendition = await transport.fetchRendition({ messageId: 4, index: 1 })
+    expect(bridge.fetchRendition).toHaveBeenLastCalledWith(4, 1)
+    expect(rendition.contentType).toBe('image/webp')
+    expect(rendition.bytes.buffer).toBe(webp)
+
     bridge.fetchStagedThumbnail.mockResolvedValueOnce(jpeg)
     const staged = await transport.fetchStagedThumbnail('/a/\u00e9.jpg')
     expect(bridge.fetchStagedThumbnail).toHaveBeenLastCalledWith('/a/\u00e9.jpg')
@@ -105,6 +113,7 @@ describe('the JSI transport', () => {
     await expect(transport.fetchMedia({ messageId: 4, index: 0 })).rejects.toThrow('closed')
     await expect(transport.fetchThumbhash({ messageId: 4, index: 0 })).rejects.toThrow('closed')
     await expect(transport.fetchThumbnail({ messageId: 4, index: 0 })).rejects.toThrow('closed')
+    await expect(transport.fetchRendition({ messageId: 4, index: 0 })).rejects.toThrow('closed')
     await expect(transport.fetchStagedThumbnail('/a.jpg')).rejects.toThrow('closed')
     expect(bridge.fetchMedia).not.toHaveBeenCalled()
   })

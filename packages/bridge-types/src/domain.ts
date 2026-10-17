@@ -161,6 +161,21 @@ export interface Attachment {
    */
   hasThumbnail: boolean
   /**
+   * Whether libsession holds a rendition of this attachment: the whole picture as a JPEG or WebP
+   * (animated WebP for an animation) within the rendition edge (2048 px on a side unless set).
+   * It is re-encoded without metadata, or is the original itself when that is already an upright
+   * JPEG or WebP within the edge, metadata included. Made after the thumbnail and kept, evicted
+   * and reported exactly as `hasThumbnail` is.
+   *
+   * What a viewer draws, through the media scheme's `rendition` path; export still writes the file.
+   */
+  hasRendition: boolean
+  /**
+   * The sender sent the file exactly as it was, metadata included. Offered only as a file to
+   * export, never opened in the viewer, though its thumbnail is still drawn.
+   */
+  originalFile: boolean
+  /**
    * On the file server: an outgoing attachment's upload finished, and always true for an incoming
    * one. Deliberately not "the bytes are here" - libsession records no local path, because the
    * application chose it and a stored copy would go stale the moment the file moved.

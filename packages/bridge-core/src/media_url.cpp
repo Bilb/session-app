@@ -192,6 +192,7 @@ std::string_view media_url_kind_name(MediaUrlKind kind) {
         case MediaUrlKind::attachment: return "attachment";
         case MediaUrlKind::thumbhash: return "thumbhash";
         case MediaUrlKind::thumbnail: return "thumbnail";
+        case MediaUrlKind::rendition: return "rendition";
         case MediaUrlKind::staged: return "staged";
     }
     return "<INVALID>";
@@ -244,6 +245,8 @@ std::optional<MediaUrl> parse_media_url(std::string_view url) {
         kind = MediaUrlKind::thumbhash;
     else if (take(rest, "thumbnail/"))
         kind = MediaUrlKind::thumbnail;
+    else if (take(rest, "rendition/"))
+        kind = MediaUrlKind::rendition;
     else
         return std::nullopt;
 
@@ -283,6 +286,16 @@ std::optional<std::string> servable_image_type(
     if (!type || !type->starts_with("image/"))
         return std::nullopt;
     return type;
+}
+
+std::optional<std::string> rendition_content_type(std::span<const std::byte> bytes) {
+    for (const auto& signature : SIGNATURES) {
+        if (signature.type != "image/jpeg" && signature.type != "image/webp")
+            continue;
+        if (matches(signature.runs[0], bytes) && matches(signature.runs[1], bytes))
+            return std::string{signature.type};
+    }
+    return std::nullopt;
 }
 
 }  // namespace session_bridge

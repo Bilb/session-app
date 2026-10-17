@@ -64,6 +64,7 @@ namespace margelo::nitro::session::bridge::rn {
       virtual std::shared_ptr<Promise<NativeMedia>> fetchMedia(double messageId, double index) = 0;
       virtual std::shared_ptr<Promise<NativeThumbhash>> fetchThumbhash(double messageId, double index) = 0;
       virtual std::shared_ptr<Promise<std::shared_ptr<ArrayBuffer>>> fetchThumbnail(double messageId, double index) = 0;
+      virtual std::shared_ptr<Promise<NativeMedia>> fetchRendition(double messageId, double index) = 0;
       virtual std::shared_ptr<Promise<std::shared_ptr<ArrayBuffer>>> fetchStagedThumbnail(const std::string& path) = 0;
       virtual void close() = 0;
 

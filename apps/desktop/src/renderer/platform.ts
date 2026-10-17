@@ -48,6 +48,7 @@ setPorts(
       urlFor: (ref) => mediaUrl('attachment', ref),
       thumbhashUrlFor: (ref) => mediaUrl('thumbhash', ref),
       thumbnailUrlFor: (ref) => mediaUrl('thumbnail', ref),
+      renditionUrlFor: (ref) => mediaUrl('rendition', ref),
     },
     // The same variable and the same parser the main process uses, inlined at build time.
     network: {

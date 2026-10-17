@@ -16,6 +16,8 @@ function attachment(
     voiceMessage: false,
     hasThumbhash: false,
     hasThumbnail: false,
+    hasRendition: false,
+    originalFile: false,
     uploaded: true,
     availability,
     fetchDoneBytes: 0,

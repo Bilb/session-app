@@ -3,29 +3,35 @@ import type { FileRowState } from '@session/ui'
 import { describe, expect, it } from 'vitest'
 
 import { controlVerb, rowVerb, verbLabel, type AttachmentVerb } from '#src/attachmentPress'
+import type { ViewerFit } from '#src/viewableAttachments'
 
 const STATES: FileRowState[] = ['idle', 'fetching', 'ready', 'failed', 'unavailable']
+const FITS: ViewerFit[] = ['opens', 'awaitsRendition', 'exports']
 
 describe('what a press on an attachment row does', () => {
   it('opens a picture the viewer shows once it is here', () => {
-    expect(rowVerb('ready', true)).toBe('open')
+    expect(rowVerb('ready', 'opens')).toBe('open')
   })
 
   it('exports anything else that is here', () => {
-    expect(rowVerb('ready', false)).toBe('export')
+    expect(rowVerb('ready', 'exports')).toBe('export')
+  })
+
+  it('does nothing for a picture that is here until libsession has a rendition of it', () => {
+    expect(rowVerb('ready', 'awaitsRendition')).toBeNull()
   })
 
   it('fetches what is not here yet, picture or not', () => {
-    for (const viewable of [true, false]) {
-      expect(rowVerb('idle', viewable)).toBe('download')
-      expect(rowVerb('failed', viewable)).toBe('retry')
+    for (const fit of FITS) {
+      expect(rowVerb('idle', fit)).toBe('download')
+      expect(rowVerb('failed', fit)).toBe('retry')
     }
   })
 
   it('does nothing while fetching or once the file is gone', () => {
-    for (const viewable of [true, false]) {
-      expect(rowVerb('fetching', viewable)).toBeNull()
-      expect(rowVerb('unavailable', viewable)).toBeNull()
+    for (const fit of FITS) {
+      expect(rowVerb('fetching', fit)).toBeNull()
+      expect(rowVerb('unavailable', fit)).toBeNull()
     }
   })
 
@@ -35,8 +41,9 @@ describe('what a press on an attachment row does', () => {
 
   it('is the control’s verb in every state but a picture that is here', () => {
     for (const state of STATES) {
-      expect(rowVerb(state, false)).toBe(controlVerb(state))
-      if (state !== 'ready') expect(rowVerb(state, true)).toBe(controlVerb(state))
+      expect(rowVerb(state, 'exports')).toBe(controlVerb(state))
+      if (state !== 'ready')
+        for (const fit of FITS) expect(rowVerb(state, fit)).toBe(controlVerb(state))
     }
   })
 })

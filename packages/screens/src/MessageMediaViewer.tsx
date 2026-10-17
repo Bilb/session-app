@@ -8,7 +8,7 @@ import { useMemo, useRef } from 'react'
 import { fetchOf } from './attachmentFetch'
 import { exportOne } from './exportAttachment'
 import { useExportFeedback } from './useExportFeedback'
-import { viewableAttachments, viewerUri } from './viewableAttachments'
+import { heldItem, viewableAttachments, viewerItem } from './viewableAttachments'
 
 /** An open viewer: which message, and the attachment's index in that message. */
 export interface ViewerTarget {
@@ -44,13 +44,17 @@ function MessageViewer({
           ),
     [message, transfers],
   )
+  const held = useRef(new Map<string, MediaViewerItem>())
+  if (!open) held.current.clear()
   const items = useMemo(
     (): MediaViewerItem[] =>
-      viewable.map((attachment) => ({
-        // Null where the platform has no resolver. The viewer says so rather than drawing a broken
-        // picture, which is the one thing it must not do with somebody's photograph.
-        uri: viewerUri(target.messageId, attachment),
-      })),
+      // A null url where the platform has no resolver: the viewer says so rather than drawing a
+      // broken picture, which is the one thing it must not do with somebody's photograph.
+      viewable.map((attachment) =>
+        heldItem(held.current, `${String(target.messageId)}:${String(attachment.index)}`, () =>
+          viewerItem(target.messageId, attachment),
+        ),
+      ),
     [viewable, target.messageId],
   )
 

@@ -43,6 +43,7 @@ const MEDIA: MediaPort = {
   urlFor: (ref) => mediaUrl('attachment', ref),
   thumbhashUrlFor: (ref) => mediaUrl('thumbhash', ref),
   thumbnailUrlFor: (ref) => mediaUrl('thumbnail', ref),
+  renditionUrlFor: (ref) => mediaUrl('rendition', ref),
 }
 
 // Hex rather than base64: the keychain stores strings, and hex needs no polyfill on either

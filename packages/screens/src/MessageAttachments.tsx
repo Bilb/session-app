@@ -1,16 +1,20 @@
 import { ALBUM_WIDTH } from '@session/basic-types'
 import type { Attachment, Message } from '@session/client'
 import { SPACE_SCALE, YStack } from '@session/ui'
+import { useSessionActions } from '@session/state'
 
 import { AttachmentFooter, ROW_OVERHANG } from './AttachmentFooter'
 import { AttachmentList, LIST_MAX_ROWS } from './AttachmentList'
 import { AttachmentPill } from './AttachmentPill'
 import { attachmentView, canChooseView } from './attachmentView'
 import { useConversationUi } from './conversationUi'
+import { exportOne } from './exportAttachment'
 import { MessageAlbum } from './MessageAlbum'
 import { isUploadPhase, whileSending } from './uploadState'
 import { useAttachmentFooter } from './useAttachmentFooter'
 import { useAttachmentSet } from './useAttachmentSet'
+import { useExportFeedback } from './useExportFeedback'
+import { viewerFit } from './viewableAttachments'
 import { useViewChoice } from './viewChoices'
 
 /**
@@ -21,6 +25,8 @@ import { useViewChoice } from './viewChoices'
  */
 export function MessageAttachments({ message }: { message: Message }) {
   const ui = useConversationUi()
+  const actions = useSessionActions()
+  const feedback = useExportFeedback()
   const attachmentSet = useAttachmentSet(message)
   const { set, fetchFor, downloadMissing } = attachmentSet
   const footer = useAttachmentFooter(message, attachmentSet)
@@ -47,13 +53,17 @@ export function MessageAttachments({ message }: { message: Message }) {
           onAccent={message.outgoing}
           fetchFor={albumFetch}
           setState={set.state}
-          // Opens only a picture that is here, as the legacy clients do. A tile is the whole set's,
-          // so tapping one that is not fetches every attachment the album stands for.
+          // Opens only a picture that is here, as the legacy clients do, and exports one sent as
+          // the original file. A tile is the whole set's, so tapping one that is not here fetches
+          // every attachment the album stands for.
           onOpen={(index) => {
             const tapped = message.attachments.find((a) => a.index === index)
-            if (tapped !== undefined && albumFetch(tapped).state === 'ready')
-              ui.openViewer(message.id, index)
-            else if (!sending) downloadMissing()
+            if (tapped !== undefined && albumFetch(tapped).state === 'ready') {
+              const fit = viewerFit(tapped)
+              if (fit === 'opens') ui.openViewer(message.id, index)
+              else if (fit === 'exports' && !sending)
+                void exportOne(message, index, actions, feedback)
+            } else if (!sending) downloadMissing()
           }}
           // The pill is the download's: while sending, the footer's count says the same.
           control={sending ? undefined : <AttachmentPill set={set} />}

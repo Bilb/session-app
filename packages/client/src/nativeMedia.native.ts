@@ -26,7 +26,7 @@ export function serveNativeMediaFrom(source: MediaSource): void {
   const bridge = createSessionBridge()
   // Probed by the newest method rather than `serveMediaFrom`: an older dev client takes the
   // functions it does not know, ignores them, and fails their URLs without saying why.
-  if (typeof (bridge as Partial<SessionBridge>).fetchStagedThumbnail !== 'function') {
+  if (typeof (bridge as Partial<SessionBridge>).fetchRendition !== 'function') {
     throw new Error(
       'This dev client is older than the JavaScript it is running: its native side cannot serve ' +
         'media. Rebuild and reinstall it with `pnpm android` (or `pnpm ios`).',
@@ -42,6 +42,10 @@ export function serveNativeMediaFrom(source: MediaSource): void {
       return { width: thumbhash.width, height: thumbhash.height, rgba: wholeBuffer(thumbhash.rgba) }
     },
     async (messageId, index) => wholeBuffer(await source.fetchThumbnail({ messageId, index })),
+    async (messageId, index) => {
+      const media = await source.fetchRendition({ messageId, index })
+      return { contentType: media.contentType, bytes: wholeBuffer(media.bytes) }
+    },
     async (path) => wholeBuffer(await source.fetchStagedThumbnail(path)),
   )
   serving = bridge

@@ -72,7 +72,8 @@ export interface FilesPort {
    * Where to export a file to; null when the person cancelled.
    *
    * `contentType` is the sender's claim, for a platform whose destination depends on the kind of
-   * file: mobile sends a picture to the photo library and anything else to a folder.
+   * file: mobile sends a picture to the photo library and anything else to a folder. Unset files
+   * it as a plain file, which is how a picture sent as its original file is exported.
    *
    * Rejects with `ExportAccessRefused` when that destination needs access that was refused.
    */
@@ -113,6 +114,12 @@ export interface MediaPort {
    * says there is one.
    */
   thumbnailUrlFor(ref: AttachmentRef): string | null
+  /**
+   * The display copy libsession made of a picture it holds, which the viewer draws in place of
+   * the file. Never a download, so only worth asking for when `Attachment.hasRendition` says
+   * there is one.
+   */
+  renditionUrlFor(ref: AttachmentRef): string | null
 }
 
 export interface MediaProbePort {

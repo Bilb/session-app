@@ -142,6 +142,11 @@ void answers_that_are_already_there_are_read_on_the_js_thread() {
                     asked_elsewhere++;
                 cb(session_bridge::Media{std::nullopt, "image/jpeg", {std::byte{0xd8}}});
             },
+            [&](double, double, session_bridge::MediaHandler cb) {
+                if (std::this_thread::get_id() != js.id())
+                    asked_elsewhere++;
+                cb(session_bridge::Media{std::nullopt, "image/webp", {std::byte{0x52}}});
+            },
             [&](std::string path, session_bridge::MediaHandler cb) {
                 if (std::this_thread::get_id() != js.id() || path != "/a/\xc3\xa9.jpg")
                     asked_elsewhere++;
@@ -149,13 +154,16 @@ void answers_that_are_already_there_are_read_on_the_js_thread() {
             });
 
     Tally tally;
-    tally.open(4);
+    tally.open(5);
     std::thread loader{[&] {
         source->fetch_media(1, 0, [&](session_bridge::Media m) { tally.record(0, !m.error); });
         source->fetch_thumbhash(1, 0, [&](session_bridge::Thumbhash p) { tally.record(1, !p.error); });
         source->fetch_thumbnail(1, 0, [&](session_bridge::Media m) { tally.record(2, !m.error); });
         source->fetch_staged_thumbnail(
                 "/a/\xc3\xa9.jpg", [&](session_bridge::Media m) { tally.record(3, !m.error); });
+        source->fetch_rendition(1, 0, [&](session_bridge::Media m) {
+            tally.record(4, !m.error && m.content_type == "image/webp");
+        });
     }};
     loader.join();
     js.drain();
@@ -165,6 +173,7 @@ void answers_that_are_already_there_are_read_on_the_js_thread() {
     CHECK(tally.answers[1] == 1 && tally.ok[1]);
     CHECK(tally.answers[2] == 1 && tally.ok[2]);
     CHECK(tally.answers[3] == 1 && tally.ok[3]);
+    CHECK(tally.answers[4] == 1 && tally.ok[4]);
     js.run_now([&] { source->close(); });
 }
 
@@ -186,6 +195,7 @@ void concurrent_fetches_of_one_ref_are_each_answered_once() {
                     asked_elsewhere++;
                 later.push_back(std::move(cb));
             },
+            [](double, double, session_bridge::MediaHandler) {},
             [](double, double, session_bridge::MediaHandler) {},
             [](std::string, session_bridge::MediaHandler) {});
 
@@ -245,14 +255,16 @@ void closing_answers_what_is_pending_and_everything_after() {
             },
             [](double, double, session_bridge::ThumbhashHandler) {},
             [&](double, double, session_bridge::MediaHandler cb) { never.push_back(std::move(cb)); },
+            [&](double, double, session_bridge::MediaHandler cb) { never.push_back(std::move(cb)); },
             [&](std::string, session_bridge::MediaHandler cb) { never.push_back(std::move(cb)); });
     probe.reset();
 
     Tally tally;
-    tally.open(7);
+    tally.open(9);
     source->fetch_staged_thumbnail("/a.jpg", [&](session_bridge::Media m) { tally.record(5, !m.error); });
     source->fetch_thumbnail(1, 0, [&](session_bridge::Media m) { tally.record(3, !m.error); });
     source->fetch_media(1, 0, [&](session_bridge::Media m) { tally.record(0, !m.error); });
+    source->fetch_rendition(1, 0, [&](session_bridge::Media m) { tally.record(7, !m.error); });
     js.drain();
     js.run_now([&] { source->close(); });
     js.run_now([&] {
@@ -263,6 +275,7 @@ void closing_answers_what_is_pending_and_everything_after() {
     source->fetch_thumbhash(1, 0, [&](session_bridge::Thumbhash p) { tally.record(2, !p.error); });
     source->fetch_thumbnail(1, 0, [&](session_bridge::Media m) { tally.record(4, !m.error); });
     source->fetch_staged_thumbnail("/a.jpg", [&](session_bridge::Media m) { tally.record(6, !m.error); });
+    source->fetch_rendition(1, 0, [&](session_bridge::Media m) { tally.record(8, !m.error); });
 
     CHECK(tally.answers[5] == 1 && !tally.ok[5]);
     CHECK(tally.answers[6] == 1 && !tally.ok[6]);
@@ -271,6 +284,8 @@ void closing_answers_what_is_pending_and_everything_after() {
     CHECK(tally.answers[2] == 1 && !tally.ok[2]);
     CHECK(tally.answers[3] == 1 && !tally.ok[3]);
     CHECK(tally.answers[4] == 1 && !tally.ok[4]);
+    CHECK(tally.answers[7] == 1 && !tally.ok[7]);
+    CHECK(tally.answers[8] == 1 && !tally.ok[8]);
     // What held JavaScript values was released on the JS thread, by close().
     CHECK(released_on_js);
 }
@@ -282,6 +297,7 @@ void a_js_thread_that_has_gone_fails_the_load() {
             posting_to(js),
             [](double, double, session_bridge::MediaHandler) {},
             [](double, double, session_bridge::ThumbhashHandler) {},
+            [](double, double, session_bridge::MediaHandler) {},
             [](double, double, session_bridge::MediaHandler) {},
             [](std::string, session_bridge::MediaHandler) {});
     js.stop();
@@ -299,6 +315,7 @@ void a_job_accepted_and_dropped_is_answered_once_by_close() {
             [](std::function<void()>) { return true; },
             [](double, double, session_bridge::MediaHandler) {},
             [](double, double, session_bridge::ThumbhashHandler) {},
+            [](double, double, session_bridge::MediaHandler) {},
             [](double, double, session_bridge::MediaHandler) {},
             [](std::string, session_bridge::MediaHandler) {});
     Tally tally;
@@ -320,6 +337,7 @@ void the_registry_says_whether_another_source_is_serving() {
                 [](std::function<void()>) { return true; },
                 [](double, double, session_bridge::MediaHandler) {},
                 [](double, double, session_bridge::ThumbhashHandler) {},
+            [](double, double, session_bridge::MediaHandler) {},
             [](double, double, session_bridge::MediaHandler) {},
             [](std::string, session_bridge::MediaHandler) {});
     };
