@@ -1,6 +1,5 @@
 import { memoryPorts, resetPorts, setPorts } from '@session/app'
 import type { Attachment, Message } from '@session/client'
-import type { MediaViewerItem } from '@session/ui'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
@@ -12,6 +11,7 @@ import {
   viewerFit,
   viewableAttachments,
   viewerItem,
+  type HeldItem,
 } from '#src/viewableAttachments'
 
 function attachment(index: number, contentType?: string): Attachment {
@@ -184,12 +184,31 @@ describe('what the viewer is handed', () => {
 })
 
 describe('an item an open viewer holds', () => {
-  it('stays the one first handed over, whatever is made of the attachment since', () => {
-    const held = new Map<string, MediaViewerItem>()
+  it('stays the one first handed over while the rendition stays as it was', () => {
+    const held = new Map<string, HeldItem>()
     const file = { uri: 'media://7/0' }
-    expect(heldItem(held, '7:0', () => file)).toBe(file)
-    expect(heldItem(held, '7:0', () => ({ uri: 'rendition://7/0' }))).toBe(file)
-    expect(heldItem(held, '7:1', () => ({ uri: 'media://7/1' }))).toEqual({ uri: 'media://7/1' })
+    expect(heldItem(held, '7:0', false, () => file)).toBe(file)
+    expect(heldItem(held, '7:0', false, () => ({ uri: 'media://7/0?again' }))).toBe(file)
+    expect(heldItem(held, '7:1', false, () => ({ uri: 'media://7/1' }))).toEqual({
+      uri: 'media://7/1',
+    })
+  })
+
+  it('takes the rendition once it lands, and keeps it when it is evicted', () => {
+    const held = new Map<string, HeldItem>()
+    const file = { uri: 'media://7/0' }
+    const rendition = { uri: 'rendition://7/0', fallbackUri: 'media://7/0' }
+    expect(heldItem(held, '7:0', false, () => file)).toBe(file)
+    expect(heldItem(held, '7:0', true, () => rendition)).toBe(rendition)
+    expect(heldItem(held, '7:0', true, () => ({ uri: 'rendition://7/0?again' }))).toBe(rendition)
+    expect(heldItem(held, '7:0', false, () => file)).toBe(rendition)
+  })
+
+  it('keeps a rendition it was first handed when that is evicted', () => {
+    const held = new Map<string, HeldItem>()
+    const rendition = { uri: 'rendition://7/0' }
+    expect(heldItem(held, '7:0', true, () => rendition)).toBe(rendition)
+    expect(heldItem(held, '7:0', false, () => ({ uri: 'media://7/0' }))).toBe(rendition)
   })
 })
 

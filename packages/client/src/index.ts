@@ -51,6 +51,8 @@ export type {
   AttachmentMedia,
   AttachmentThumbhash,
   BridgeTransport,
+  DecodePlan,
+  DecodePlanner,
   MediaSource,
   MessagePage,
   OutgoingMessage,

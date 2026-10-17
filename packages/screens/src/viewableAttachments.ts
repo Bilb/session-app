@@ -86,18 +86,26 @@ export function viewerItem(messageId: number, attachment: Attachment): MediaView
   }
 }
 
+/** An item an open viewer holds, and whether it was made with a rendition to draw. */
+export interface HeldItem {
+  item: MediaViewerItem
+  hadRendition: boolean
+}
+
 /**
- * The item an open viewer was first handed for `key`, so a rendition landing or being evicted
- * mid-view does not swap the url under a drawn picture, which blanks a frame on native.
+ * The item an open viewer was first handed for `key`, so a rendition evicted mid-view does not
+ * swap the url under a drawn picture, which blanks a frame on native. A rendition landing replaces
+ * an item made without one, once: it can replace what was drawn first, such as desktop's thumbnail.
  */
 export function heldItem(
-  held: Map<string, MediaViewerItem>,
+  held: Map<string, HeldItem>,
   key: string,
+  hasRendition: boolean,
   make: () => MediaViewerItem,
 ): MediaViewerItem {
   const kept = held.get(key)
-  if (kept !== undefined) return kept
+  if (kept !== undefined && (kept.hadRendition || !hasRendition)) return kept.item
   const item = make()
-  held.set(key, item)
+  held.set(key, { item, hadRendition: hasRendition })
   return item
 }

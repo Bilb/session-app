@@ -204,6 +204,26 @@ export interface AttachmentMedia {
 }
 
 /**
+ * How a loader is to draw an original or a rendition, from its header alone: the shim's
+ * `decode_plan`, which Android applies and desktop main serves by.
+ */
+export interface DecodePlan {
+  /** The longest edge to decode at, or 0 to decode it whole. */
+  edgePx: number
+  /** Whether to draw it still, as its first frame: anything past the budget. */
+  firstFrameOnly: boolean
+  /** Whether it is a GIF or PNG too large for a decoder that holds those whole to decode at all. */
+  exceedsWholeDecodeCeiling: boolean
+  /** Whether its size was read; one that was not is planned as the largest square, still. */
+  measured: boolean
+}
+
+/** What desktop main asks before it hands Chromium an original, which no `<img>` can bound. */
+export interface DecodePlanner {
+  planDecode(bytes: Uint8Array): DecodePlan
+}
+
+/**
  * A decoded ThumbHash: RGBA8, row-major, not alpha-premultiplied, `width * height * 4` long.
  *
  * Raw pixels rather than an encoded image, because the bridge is not the right place to pick a

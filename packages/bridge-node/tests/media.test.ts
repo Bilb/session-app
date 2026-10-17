@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { crc32, deflateSync } from 'node:zlib'
 
+import type { DecodePlan } from '@session/client'
 import {
   MAX_STAGED_READ_BYTES,
   MEDIA_URL_VECTORS,
@@ -32,6 +33,7 @@ const describeAddon = existsSync(addon) ? describe : describe.skip
 interface MediaRules {
   parseMediaUrl(url: string): MediaUrlVector['parsed']
   servableContentType(declared: string, bytes: Uint8Array): string | null
+  planDecode(bytes: Uint8Array): DecodePlan
 }
 
 describeAddon('the shim media rules', () => {
@@ -94,6 +96,114 @@ function greyPng(width: number, height: number): Buffer {
     chunk('IEND', new Uint8Array()),
   ])
 }
+
+/**
+ * A GIF of a `width` by `height` screen holding `frames` frames as large, or one pixel each when
+ * `tiny`, whose image data is one pixel's however large the frame says it is.
+ */
+function gif(width: number, height: number, frames: number, tiny = false): Buffer {
+  const screen = Buffer.alloc(13)
+  screen.write('GIF89a', 'latin1')
+  screen.writeUInt16LE(width, 6)
+  screen.writeUInt16LE(height, 8)
+  // A two-colour global table, black and white.
+  screen[10] = 0x80
+  const descriptor = Buffer.alloc(10)
+  descriptor[0] = 0x2c
+  descriptor.writeUInt16LE(tiny ? 1 : width, 5)
+  descriptor.writeUInt16LE(tiny ? 1 : height, 7)
+  const frame = Buffer.concat([
+    // A tenth of a second each.
+    Buffer.from([0x21, 0xf9, 0x04, 0x00, 0x0a, 0x00, 0x00, 0x00]),
+    descriptor,
+    // Colour 0, LZW-coded at the smallest code size.
+    Buffer.from([0x02, 0x02, 0x44, 0x01, 0x00]),
+  ])
+  return Buffer.concat([
+    screen,
+    Buffer.from([0, 0, 0, 0xff, 0xff, 0xff]),
+    ...Array.from({ length: frames }, () => frame),
+    Buffer.from([0x3b]),
+  ])
+}
+
+/** A PNG header claiming `width` by `height`, with too little data behind it to decode. */
+function pngHeader(width: number, height: number): Buffer {
+  const header = Buffer.alloc(13)
+  header.writeUInt32BE(width, 0)
+  header.writeUInt32BE(height, 4)
+  header.set([8, 2, 0, 0, 0], 8)
+  return Buffer.concat([
+    Buffer.from('\x89PNG\r\n\x1a\n', 'latin1'),
+    chunk('IHDR', header),
+    chunk('IDAT', deflateSync(Buffer.alloc(64))),
+    chunk('IEND', new Uint8Array()),
+  ])
+}
+
+const WHOLE: DecodePlan = {
+  edgePx: 0,
+  firstFrameOnly: false,
+  exceedsWholeDecodeCeiling: false,
+  measured: true,
+}
+
+describeAddon('the shim decode plan', () => {
+  let rules: MediaRules
+  beforeAll(() => {
+    rules = createRequire(import.meta.url)(addon) as MediaRules
+  })
+
+  it('decodes a picture within the budget whole, an animation included', () => {
+    expect(rules.planDecode(grey(1280, 960))).toEqual(WHOLE)
+    expect(rules.planDecode(greyPng(300, 200))).toEqual(WHOLE)
+    expect(rules.planDecode(gif(480, 270, 3))).toEqual(WHOLE)
+  })
+
+  it('reduces a picture past the budget to it, and draws it still', () => {
+    const still = { ...WHOLE, firstFrameOnly: true }
+    expect(rules.planDecode(greyPng(4032, 3024))).toEqual({ ...still, edgePx: 2896 })
+    expect(rules.planDecode(gif(4000, 4000, 2))).toEqual({ ...still, edgePx: 2508 })
+  })
+
+  it('plans a GIF by its screen, which a decoder allocates, however small its frames', () => {
+    expect(rules.planDecode(gif(4000, 4000, 2, true))).toMatchObject({
+      edgePx: 2508,
+      firstFrameOnly: true,
+    })
+    expect(rules.planDecode(gif(65535, 65535, 1, true))).toMatchObject({
+      exceedsWholeDecodeCeiling: true,
+    })
+  })
+
+  it('marks a GIF or PNG past the whole-decode ceiling from its header alone', () => {
+    const past = { edgePx: 2508, firstFrameOnly: true, exceedsWholeDecodeCeiling: true }
+    expect(rules.planDecode(pngHeader(16384, 16384))).toEqual({ ...past, measured: true })
+    expect(rules.planDecode(gif(12000, 10000, 3))).toEqual({
+      ...past,
+      edgePx: 2747,
+      measured: true,
+    })
+  })
+
+  it('leaves what it does not read as a picture unmeasured', () => {
+    const unmeasured = {
+      edgePx: 2508,
+      firstFrameOnly: true,
+      exceedsWholeDecodeCeiling: false,
+      measured: false,
+    }
+    expect(rules.planDecode(Buffer.from('%PDF-1.7\n', 'latin1'))).toEqual(unmeasured)
+    expect(rules.planDecode(new Uint8Array())).toEqual(unmeasured)
+    expect(rules.planDecode(Buffer.from('GIF89a', 'latin1'))).toEqual(unmeasured)
+  })
+
+  it('takes only a Uint8Array', () => {
+    expect(() => rules.planDecode(new Uint16Array(4) as unknown as Uint8Array)).toThrow(
+      'planDecode(bytes: Uint8Array)',
+    )
+  })
+})
 
 describeAddon('addon', () => {
   let root: string
