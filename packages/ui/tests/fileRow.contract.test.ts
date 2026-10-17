@@ -130,7 +130,7 @@ describe('a file row', () => {
     // Set in every state, as aria-disabled is.
     expect(nativeButton).toContain("'aria-busy': held")
     expect(nativeButton).toMatch(
-      /accessibilityValue:\s*held && progress !== undefined\s*\?\s*\{ min: 0, max: 100, now: Math\.round\(progress \* 100\) \}\s*:\s*\{\}/,
+      /accessibilityValue:\s*held && progress !== undefined\s*\?\s*\{ min: 0, max: 100, now: Math\.round\(Math\.min\(Math\.max\(progress, 0\), 1\) \* 100\) \}\s*:\s*\{\}/,
     )
     expect(rowStack).toMatch(/held,\s*progress,\s*\}\)\}/)
   })

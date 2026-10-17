@@ -143,7 +143,9 @@ function nativeRowElement({
     'aria-disabled': !operable && held,
     'aria-busy': held,
     accessibilityValue:
-      held && progress !== undefined ? { min: 0, max: 100, now: Math.round(progress * 100) } : {},
+      held && progress !== undefined
+        ? { min: 0, max: 100, now: Math.round(Math.min(Math.max(progress, 0), 1) * 100) }
+        : {},
     // iOS's double-tap calls this alone; without it VoiceOver taps the row's middle, which has no
     // press when the verb is the control's.
     ...(activate === undefined ? {} : { onAccessibilityTap: activate.run }),

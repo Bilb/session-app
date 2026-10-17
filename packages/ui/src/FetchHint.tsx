@@ -64,8 +64,6 @@ export function FetchHint({
               onPress,
               cursor: 'pointer',
               testID,
-              // On native the footer offers the same verb, so the cloud would be a duplicate stop
-              // ahead of the first tile.
               ...(isWeb ? { role: 'button', 'aria-label': label } : { 'aria-hidden': true }),
             })}
       >
