@@ -29,11 +29,11 @@ export function FetchHint({
   restsOnTouch?: boolean | undefined
   /**
    * Makes the cloud itself take a press, where it sits over a seam between tiles that would
-   * otherwise swallow it. It is then the set's named control, so a reader lands on one thing
-   * that says what it does.
+   * otherwise swallow it. On the web it is then the set's named control; on native it is out of
+   * the accessibility tree, test id included, since the footer offers the same verb.
    */
   onPress?: (() => void) | undefined
-  /** Already worded; what the pressable cloud is announced as. */
+  /** Already worded; what the pressable cloud is announced as on the web. */
   label?: string | undefined
 }) {
   const small = side < LARGE_TILE
@@ -63,13 +63,8 @@ export function FetchHint({
           : {
               onPress,
               cursor: 'pointer',
-              role: 'button',
-              'aria-label': label,
               testID,
-              // tamagui sets `accessible` on native only for this; without it VoiceOver skips it.
-              // TODO: do the same for every native stack with a role or onPress, held by a source
-              // check.
-              ...(isWeb ? {} : { tabIndex: 0 }),
+              ...(isWeb ? { role: 'button', 'aria-label': label } : { 'aria-hidden': true }),
             })}
       >
         <Icon name="cloudDownload" size={small ? 'xs' : 'md'} color="$textPrimary" />
