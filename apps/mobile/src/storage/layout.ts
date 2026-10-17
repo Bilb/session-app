@@ -13,11 +13,13 @@ export interface StorageRootPaths {
   logs: string
   /** Decrypted copies on their way out of the app, to the share sheet. */
   exports: string
+  /** Copies of what was picked, until the message that takes them has uploaded them. */
+  staged: string
 }
 
 export type RootName = keyof StorageRootPaths
 
-export const ROOT_NAMES: readonly RootName[] = ['data', 'logs', 'exports']
+export const ROOT_NAMES: readonly RootName[] = ['data', 'logs', 'exports', 'staged']
 
 /** What the file system reports for one root: see the native module's `inspect`. */
 export interface RootState {

@@ -123,6 +123,11 @@ export function exportsDirectory(): Directory {
   return directory(roots.exports)
 }
 
+/** Where picked files are copied until their message has uploaded them, created if missing. */
+export function stagedDirectory(): Directory {
+  return directory(roots.staged)
+}
+
 /** A directory inside the exports root, created if missing. */
 export function exportsSubdirectory(name: string): Directory {
   return directory(`${roots.exports}/${name}`)

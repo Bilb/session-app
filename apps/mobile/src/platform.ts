@@ -16,6 +16,7 @@ import { attachmentsBytes, databaseSizes } from './storageSizes'
 import { readDatabaseKey, writeDatabaseKey } from './storage/databaseKey'
 import { plainPath } from './storage/layout'
 import { exportsDirectory, File } from './storage/roots'
+import { sweepStaged } from './storage/staging'
 
 /**
  * Whose servers fast mode would use, which is what the onboarding screen has to name.
@@ -226,6 +227,7 @@ const ports = memoryPorts({
 })
 
 sweepStagedExports()
+sweepStaged()
 
 setPorts({
   ...ports,
