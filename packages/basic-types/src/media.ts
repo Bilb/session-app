@@ -11,7 +11,6 @@ const VIEWABLE_IMAGE: ReadonlySet<string> = new Set([
   'image/jpeg',
   'image/jpg',
   'image/png',
-  'image/apng',
   'image/webp',
 ])
 
@@ -33,8 +32,8 @@ export function contentTypeEssence(contentType: string | undefined): string | un
 
 /**
  * libsession's `image::is_displayable_image`: what it shows as a gallery, what `image-attachments`
- * fetches unasked, and what it makes a thumbnail of. Its list, compared by essence as
- * `contentTypeEssence` reads one.
+ * fetches unasked, and what it makes a thumbnail of. Its list, compared by essence. `image/apng`
+ * is not on it: an APNG so labelled is a file, and one labelled `image/png` its first frame.
  */
 const DISPLAYABLE_IMAGE: ReadonlySet<string> = new Set([
   'image/jpeg',

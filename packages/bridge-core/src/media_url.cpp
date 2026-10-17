@@ -121,13 +121,12 @@ namespace {
     };
 
     // `image/jpg` is not a registered type, but senders send it. The list is basic-types' media.ts.
-    constexpr std::array<Viewable, 10> VIEWABLE{{
+    constexpr std::array<Viewable, 9> VIEWABLE{{
             {"image/bmp", Family::image},
             {"image/gif", Family::image},
             {"image/jpeg", Family::image},
             {"image/jpg", Family::image},
             {"image/png", Family::image},
-            {"image/apng", Family::image},
             {"image/webp", Family::image},
             {"video/mp4", Family::video},
             {"video/webm", Family::video},

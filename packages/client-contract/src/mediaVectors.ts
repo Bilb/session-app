@@ -205,16 +205,17 @@ export const SERVABLE_VECTORS: readonly ServableVector[] = [
   { declared: 'image/gif', bytes: GIF89, served: 'image/gif' },
   { declared: 'image/webp', bytes: WEBP, served: 'image/webp' },
   { declared: 'image/bmp', bytes: BMP, served: 'image/bmp' },
-  { declared: 'image/apng', bytes: PNG, served: 'image/png' },
   { declared: 'video/mp4', bytes: MP4, served: 'video/mp4' },
   { declared: 'video/webm', bytes: WEBM, served: 'video/webm' },
   { declared: 'video/ogg', bytes: OGG, served: 'video/ogg' },
   { declared: 'Image/PNG; charset=binary', bytes: PNG, served: 'image/png' },
   { declared: '  image/png  ', bytes: PNG, served: 'image/png' },
   // Only space, tab, CR and LF are trimmed off a declared type, on every platform.
+  { declared: '\t\r\n image/png \n', bytes: PNG, served: 'image/png' },
   { declared: '\u00a0image/png', bytes: PNG, served: null },
-  { declared: '\fimage/png\v', bytes: PNG, served: null },
-  // A NUL ends no type: one carrying it is on no list.
+  { declared: '\fimage/png', bytes: PNG, served: null },
+  { declared: 'image/png\v', bytes: PNG, served: null },
+  // A NUL does not end the essence, so a type carrying one names nothing.
   { declared: 'image/png\0', bytes: PNG, served: null },
   { declared: 'image/png\0.exe', bytes: PNG, served: null },
 
@@ -227,6 +228,8 @@ export const SERVABLE_VECTORS: readonly ServableVector[] = [
   { declared: 'image/svg+xml', bytes: PNG, served: null },
 
   // A type that is not viewable.
+  // An APNG is a file, whatever its bytes.
+  { declared: 'image/apng', bytes: PNG, served: null },
   { declared: 'application/octet-stream', bytes: PNG, served: null },
   { declared: 'text/html', bytes: PNG, served: null },
   { declared: '', bytes: PNG, served: null },

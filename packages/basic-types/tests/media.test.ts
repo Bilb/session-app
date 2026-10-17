@@ -19,8 +19,10 @@ describe('the essence of a declared content type', () => {
     expect(contentTypeEssence('image/png')).toBe('image/png')
   })
 
-  it('ends at a NUL', () => {
-    expect(contentTypeEssence('image/png\0.exe')).toBe('image/png')
+  it('keeps a NUL, which no type it is compared with carries', () => {
+    expect(contentTypeEssence('image/png\0.exe')).toBe('image/png\0.exe')
+    expect(isViewableImage('image/png\0')).toBe(false)
+    expect(isDisplayableImage('image/png\0')).toBe(false)
   })
 
   it('trims space, tab, CR and LF alone', () => {
@@ -82,9 +84,15 @@ describe('which content types libsession calls displayable', () => {
     expect(isDisplayableImage(undefined)).toBe(false)
   })
 
-  it('compares the essence, as libsession does: parameters and edge space ignored', () => {
+  it('compares the essence, as libsession does', () => {
     expect(isDisplayableImage('image/jpeg; charset=binary')).toBe(true)
-    expect(isDisplayableImage(' image/png')).toBe(true)
+    expect(isDisplayableImage(' image/png ')).toBe(true)
+    expect(isDisplayableImage('\fimage/png')).toBe(false)
+  })
+
+  it('shows an APNG as a file', () => {
+    expect(isDisplayableImage('image/apng')).toBe(false)
+    expect(isViewableImage('image/apng')).toBe(false)
   })
 })
 
