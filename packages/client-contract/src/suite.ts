@@ -631,6 +631,18 @@ export function runSessionClientContract(
       seen.stop()
     })
 
+    it('holds a file sent as it is to the file server limit once it is encrypted', async () => {
+      const { alice, writeFile } = await harness.friends()
+      // 9,956,278 bytes encrypt to just within MAX_ATTACHMENT_BYTES; one more byte does not.
+      const fits = await writeFile('fits.bin', 9_956_278)
+      const over = await writeFile('over.bin', 9_956_279)
+
+      expect(await alice.attachmentSendPlan(fits)).toBe('as-is')
+      expect(await alice.attachmentSendPlan(over)).toBe('too-large-for-server')
+      expect(await alice.attachmentSendPlan(fits, 'image/bmp')).toBe('original-cannot-decode')
+      expect(await alice.attachmentSendPlan(over, 'image/bmp')).toBe('too-large-for-server')
+    })
+
     it('serves a file it took for a send before it is up, and only one it took', async () => {
       const { alice, bobId, writeFile, aliceMedia } = await harness.friends()
       const taken = await writeFile('taken.txt', 2_000)
