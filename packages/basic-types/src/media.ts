@@ -11,7 +11,6 @@ const VIEWABLE_IMAGE: ReadonlySet<string> = new Set([
   'image/jpeg',
   'image/jpg',
   'image/png',
-  'image/apng',
   'image/webp',
 ])
 
@@ -21,20 +20,20 @@ const VIEWABLE_VIDEO: ReadonlySet<string> = new Set(['video/mp4', 'video/webm', 
 const EDGE_SPACE = /^[ \t\r\n]+|[ \t\r\n]+$/g
 
 /**
- * `Image/JPEG; charset=binary` → `image/jpeg`: a declared type is compared by its essence only,
- * which ends at a `;` or a NUL and folds ASCII case alone.
+ * `Image/JPEG; charset=binary` → `image/jpeg`: libsession's `mime_essence`, which ends at a `;`,
+ * with ASCII case folded. An embedded NUL is kept, so a type carrying one matches no list.
  */
 export function contentTypeEssence(contentType: string | undefined): string | undefined {
   return contentType
-    ?.split(/[;\0]/)[0]
+    ?.split(';')[0]
     ?.replace(EDGE_SPACE, '')
     .replace(/[A-Z]/g, (c) => c.toLowerCase())
 }
 
 /**
  * libsession's `image::is_displayable_image`: what it shows as a gallery, what `image-attachments`
- * fetches unasked, and what it makes a thumbnail of. Its list and its comparison, which folds ASCII
- * case and nothing else: no parameters, no space trimmed.
+ * fetches unasked, and what it makes a thumbnail of. Its list, compared by essence. `image/apng`
+ * is not on it: an APNG so labelled is a file, and one labelled `image/png` its first frame.
  */
 const DISPLAYABLE_IMAGE: ReadonlySet<string> = new Set([
   'image/jpeg',
@@ -47,8 +46,8 @@ const DISPLAYABLE_IMAGE: ReadonlySet<string> = new Set([
 ])
 
 export function isDisplayableImage(contentType: string | undefined): boolean {
-  if (contentType === undefined) return false
-  return DISPLAYABLE_IMAGE.has(contentType.replace(/[A-Z]/g, (c) => c.toLowerCase()))
+  const type = contentTypeEssence(contentType)
+  return type !== undefined && DISPLAYABLE_IMAGE.has(type)
 }
 
 export function isViewableImage(contentType: string | undefined): boolean {
