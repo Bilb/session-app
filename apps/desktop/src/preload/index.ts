@@ -74,6 +74,14 @@ contextBridge.exposeInMainWorld('sessionDesktop', {
   /** Takes back a url `allowPreview` gave, once the composer lets go of the file. */
   revokePreview: (url: string): Promise<void> => ipcRenderer.invoke('files:revoke-preview', url),
   copyText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard-write-text', text),
+  /**
+   * Lets the page send a picked or dropped file; main refuses a send that names any other. Takes
+   * the `File`, as `allowPreview` does, so the page cannot name a path itself.
+   */
+  allowSend: (file: File): Promise<boolean> =>
+    ipcRenderer.invoke('files:allow-send', webUtils.getPathForFile(file)),
+  /** Gives back what `allowSend` granted, once the composer lets go of the file. */
+  releaseSend: (path: string): Promise<void> => ipcRenderer.invoke('files:release-send', path),
   setLocale: (locale: string) => {
     ipcRenderer.send('locale', locale)
   },

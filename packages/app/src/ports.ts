@@ -67,9 +67,9 @@ export interface FilesPort {
    */
   discardPicked(file: PickedFile): void
   /**
-   * Lets go of what drew a pick in the tray, for every pick that leaves it, sent or not. Desktop
-   * grants each preview to the page, and a grant held for a file nobody draws pushes out one in
-   * use.
+   * Lets go of what the platform holds for a pick in the tray, for every pick that leaves it, sent
+   * or not. Desktop grants the page each preview, and the right to send the file; a preview grant
+   * held for a file nobody draws pushes out one in use.
    */
   releasePreview(file: PickedFile): void
   /**

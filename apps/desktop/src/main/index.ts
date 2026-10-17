@@ -322,8 +322,8 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
       // Renderer input: an exception escaping here is an uncaught one in the main process.
       try {
         const request = event.data as Request
-        // The one command that names a filesystem path of its own choosing, and `save_attachment`
-        // has no containment of its own, so every request passes the gate on its way to the bridge.
+        // An export and a send name filesystem paths of the page's choosing, and libsession
+        // contains neither, so every request passes the gate on its way to the bridge.
         const admitted = files.admit(request)
         if (typeof admitted === 'string') {
           port?.postMessage({ type: 'response', response: { id: request.id, error: admitted } })
