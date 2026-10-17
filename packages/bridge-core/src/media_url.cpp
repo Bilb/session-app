@@ -168,8 +168,8 @@ namespace {
         return true;
     }
 
-    /// `Image/JPEG; charset=binary` -> `image/jpeg`: libsession's `mime_essence`, ASCII case folded.
-    /// An embedded NUL is kept, so a type carrying one matches nothing.
+    /// `Image/JPEG; charset=binary` -> `image/jpeg`: a declared type is compared by its essence,
+    /// as basic-types' `contentTypeEssence` reads it. A NUL is kept, so it matches nothing.
     std::string essence(std::string_view type) {
         type = type.substr(0, type.find(';'));
         constexpr std::string_view space = " \t\r\n";

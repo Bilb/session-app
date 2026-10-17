@@ -210,7 +210,7 @@ export const SERVABLE_VECTORS: readonly ServableVector[] = [
   { declared: 'video/ogg', bytes: OGG, served: 'video/ogg' },
   { declared: 'Image/PNG; charset=binary', bytes: PNG, served: 'image/png' },
   { declared: '  image/png  ', bytes: PNG, served: 'image/png' },
-  // Only space, tab, CR and LF are trimmed off a declared type, as libsession trims them.
+  // Only space, tab, CR and LF are trimmed off a declared type, on every platform.
   { declared: '\t\r\n image/png \n', bytes: PNG, served: 'image/png' },
   { declared: '\u00a0image/png', bytes: PNG, served: null },
   { declared: '\fimage/png', bytes: PNG, served: null },

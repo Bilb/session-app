@@ -369,8 +369,8 @@ RCT_EXPORT_MODULE()
         Fail(completionHandler, imageURL, "not a media URL");
         return nil;
     }
-    // Originals and renditions are not kept: only the viewer draws one, and one is most of the
-    // cache's budget.
+    // Originals and renditions are not kept: one is most of the cache's budget, and only the viewer
+    // draws one, but for a tile of a type libsession never thumbnails.
     const bool cacheable = parsed->kind != ::session_bridge::MediaUrlKind::attachment
                         && parsed->kind != ::session_bridge::MediaUrlKind::rendition;
     const bool thumbnail = parsed->kind == ::session_bridge::MediaUrlKind::thumbnail

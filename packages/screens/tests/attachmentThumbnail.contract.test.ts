@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 /**
  * A tile draws libsession's thumbnail and the viewer draws the file, read from the source because
  * nothing in the unit tier renders a tile. A tile handed the file would decode a full photograph
- * for a few hundred pixels, so it does only where libsession made no thumbnail: see `leadUri`.
+ * for a few hundred pixels, so it does only for a type libsession never thumbnails: see `leadUri`.
  */
 describe('which picture each place draws', () => {
   const read = (file: string) => readFileSync(join(import.meta.dirname, '../src', file), 'utf8')
@@ -39,9 +39,16 @@ describe('which picture each place draws', () => {
     )
   })
 
-  it('prefers the thumbnail and falls back to the file only once it is here', () => {
+  it('draws a file we are sending through leadUri too', () => {
+    const source = read('SendingRow.tsx')
+    expect(source).toMatch(/uri: leadUri\(message\.id, attachment, fetchOf\(attachment\)\.state\)/)
+    expect(source).not.toContain('media.urlFor(')
+    expect(source).not.toContain('media.thumbnailUrlFor(')
+  })
+
+  it('prefers the thumbnail, and falls back to the file only for a type that never gets one', () => {
     expect(read('viewableAttachments.ts')).toMatch(
-      /if \(attachment\.hasThumbnail\) return requirePorts\(\)\.media\.thumbnailUrlFor\(ref\)\n\s*if \(state === 'ready' && isViewable\(attachment\)\) return requirePorts\(\)\.media\.urlFor\(ref\)/,
+      /if \(attachment\.hasThumbnail\) return requirePorts\(\)\.media\.thumbnailUrlFor\(ref\)\n\s*if \(state === 'ready' && isViewable\(attachment\) && !isDisplayableImage\(attachment\.contentType\)\)\n\s*return requirePorts\(\)\.media\.urlFor\(ref\)/,
     )
   })
 })

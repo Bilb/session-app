@@ -41,8 +41,8 @@ export function leadsWithPicture(attachment: Attachment): boolean {
 
 /**
  * What a row square or an album tile draws: libsession's thumbnail, else the file once it is here
- * and viewable, else nothing and the placeholder stays. libsession makes no thumbnail of every
- * viewable type (BMP), and a picture that never gets one would otherwise never be drawn.
+ * where it is viewable but of a type libsession never thumbnails (BMP), else nothing and the
+ * placeholder stays. A type libsession does thumbnail waits for it rather than decode the file.
  */
 export function leadUri(
   messageId: number,
@@ -51,7 +51,8 @@ export function leadUri(
 ): string | null | undefined {
   const ref = { messageId, index: attachment.index }
   if (attachment.hasThumbnail) return requirePorts().media.thumbnailUrlFor(ref)
-  if (state === 'ready' && isViewable(attachment)) return requirePorts().media.urlFor(ref)
+  if (state === 'ready' && isViewable(attachment) && !isDisplayableImage(attachment.contentType))
+    return requirePorts().media.urlFor(ref)
   return undefined
 }
 
