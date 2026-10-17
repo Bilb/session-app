@@ -13,6 +13,7 @@ import { useMemo, useState } from 'react'
 
 import { AttachmentSheet } from './AttachmentSheet'
 import { Composer } from './Composer'
+import { outgoingAttachment } from './staging'
 import { useStaging } from './useStaging'
 import { createViewChoices } from './viewChoices'
 import { ConversationUiContext, type ConversationUi } from './conversationUi'
@@ -96,7 +97,8 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
         <Separator borderColor="$bordersColor" />
 
         <DropZone
-          enabled
+          // Refused while a send is out, as the tray's + is: the tray is the message's until then.
+          accepting={!staging.sending}
           onActive={setDropping}
           onDrop={(items, skipped) => {
             void staging.take(requirePorts().files.droppedFiles(items), skipped + items.length)
@@ -137,8 +139,12 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
 
           <Composer
             staging={staging}
-            onSend={(body) => {
-              void actions.send(conversationId, body)
+            onSend={(body, files) => {
+              const { picksAreCopies } = requirePorts().files
+              return actions.send(conversationId, {
+                body,
+                attachments: files.map((file) => outgoingAttachment(file, { picksAreCopies })),
+              })
             }}
           />
         </DropZone>

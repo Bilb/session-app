@@ -23,9 +23,9 @@ export function discardStaged(path: string): void {
 
 /**
  * Deletes every staged copy a previous run left behind: a run killed with files in the tray
- * leaves them, and nothing else would.
+ * leaves them, and nothing else would. None belongs to a message: a send hands its copies to
+ * libsession with `takeFile`, which moves them out of this root.
  */
-// TODO: once messages with attachments are sent, keep what a message not yet uploaded holds.
 export function sweepStaged(): void {
   // What is in the root, not the root: the native module made and protected that at launch.
   let entries: ReturnType<Directory['list']>

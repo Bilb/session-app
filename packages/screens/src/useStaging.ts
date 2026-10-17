@@ -1,20 +1,28 @@
 import { requirePorts, type PickedFile } from '@session/app'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { letGo, stage, unstage, type StagingRefusal } from './staging'
+import { letGo, stage, unstage, type SendRefusal, type StagingRefusal } from './staging'
 
 function discard(files: readonly PickedFile[]): void {
   letGo(requirePorts().files, files, { sent: false })
 }
 
-const NOTHING_REFUSED: StagingRefusal = { tooLarge: [], overLimit: 0, unreadable: 0 }
+const NOTHING_REFUSED: StagingRefusal = {
+  tooLarge: [],
+  overLimit: 0,
+  unreadable: 0,
+  sendRefused: 'none',
+}
 
 export interface StagingState {
   files: PickedFile[]
-  /** What the last pick or drop left out. Replaced by the next one, so it is always current. */
+  /** What the last pick, drop or send turned away. The next replaces it, so it is current. */
   refused: StagingRefusal
-  /** Bumped by every pick or drop that refused something, so a repeat is announced again. */
+  /** Bumped by every pick, drop or send refused, so a repeat is announced again. */
   refusal: number
+  /** From `beginSend` until `handOff` or `refuseSend`: the tray is the message's, and locked. */
+  sending: boolean
+  beginSend: () => void
   /** What a pick or drop gave, and how many items it could not read at all. */
   add: (picked: readonly PickedFile[], unreadable?: number) => void
   /**
@@ -26,10 +34,12 @@ export interface StagingState {
   /** Empties the tray, deleting what it holds. Not for a send: the message needs the files. */
   clear: () => void
   /**
-   * Empties the tray and keeps the files, which a message being sent now owns, but not their
-   * previews.
+   * Takes what a message was sent with out of the tray, keeping the files, which the message now
+   * owns, but not their previews. Anything staged since stays, a re-pick of a sent path included.
    */
-  handOff: () => PickedFile[]
+  handOff: (sent: readonly PickedFile[]) => void
+  /** Says a send was refused; what it held stays for another try. */
+  refuseSend: (what: Exclude<SendRefusal, 'none'>) => void
   dismiss: (kind: keyof StagingRefusal) => void
 }
 
@@ -43,6 +53,7 @@ export function useStaging(): StagingState {
   const [files, setFiles] = useState<PickedFile[]>([])
   const [refused, setRefused] = useState<StagingRefusal>(NOTHING_REFUSED)
   const [refusal, setRefusal] = useState(0)
+  const [sending, setSending] = useState(false)
   // A picker resolves after the render that opened it, so it stages onto what is there by then.
   const latest = useRef(files)
   latest.current = files
@@ -64,9 +75,8 @@ export function useStaging(): StagingState {
       discard(picked)
       return
     }
-    const next = stage(latest.current, picked, {
-      picksAreCopies: requirePorts().files.picksAreCopies,
-    })
+    const { picksAreCopies, decodesHeic } = requirePorts().files
+    const next = stage(latest.current, picked, { picksAreCopies, decodesHeic })
     latest.current = next.files
     setFiles(next.files)
     setRefused({ ...next.refused, unreadable })
@@ -94,6 +104,10 @@ export function useStaging(): StagingState {
     files,
     refused,
     refusal,
+    sending,
+    beginSend: () => {
+      setSending(true)
+    },
     add,
     take,
     remove: (path) => {
@@ -107,13 +121,25 @@ export function useStaging(): StagingState {
       setFiles([])
       setRefused(NOTHING_REFUSED)
     },
-    handOff: () => {
-      const handed = latest.current
-      letGo(requirePorts().files, handed, { sent: true })
-      latest.current = []
-      setFiles([])
+    handOff: (sent) => {
+      // The unmount already let go of everything staged, these included.
+      if (!mounted.current) return
+      const handed = new Set(sent)
+      letGo(
+        requirePorts().files,
+        latest.current.filter((file) => handed.has(file)),
+        { sent: true },
+      )
+      latest.current = latest.current.filter((file) => !handed.has(file))
+      setFiles(latest.current)
       setRefused(NOTHING_REFUSED)
-      return handed
+      setSending(false)
+    },
+    refuseSend: (what) => {
+      if (!mounted.current) return
+      setRefused({ ...NOTHING_REFUSED, sendRefused: what })
+      setRefusal((count) => count + 1)
+      setSending(false)
     },
     dismiss: (kind) => {
       setRefused((current) => ({ ...current, [kind]: NOTHING_REFUSED[kind] }))

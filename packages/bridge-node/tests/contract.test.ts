@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -105,6 +105,12 @@ describeAddon('addon', () => {
         aliceId: alice.sessionId,
         bobId: bob.sessionId,
         settle,
+        writeFile: async (name, sizeBytes) => {
+          const path = join(alice.dir, name)
+          await writeFile(path, Buffer.alloc(sizeBytes, 0x5a))
+          return path
+        },
+        aliceMedia: alice.transport,
       }
     },
 
@@ -226,6 +232,8 @@ describeAddon('addon', () => {
         'joins an export to a running download': OFFLINE_ATTACHMENTS,
         'joins a download to a running export': OFFLINE_ATTACHMENTS,
         'withdraws what was asked of an attachment once it is deleted': OFFLINE_ATTACHMENTS,
+        'delivers the files of a message to the other side once they are up':
+          'needs a file server to upload to; offline every upload fails',
       },
     },
   )

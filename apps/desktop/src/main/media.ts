@@ -108,7 +108,7 @@ export function serveMedia(bridge: MediaSource, previews: PreviewGrants): void {
       // known from this status alone, so whoever draws the url has to handle the image failing.
       // Not stored, so the url is asked again once the file is here.
       // TODO: serve a sender's own attachment from its local copy while it uploads; libsession
-      // refuses a file not uploaded yet, so that picture is a 404 here.
+      // serves only a file a send took before it is up, and a desktop send takes none.
       return new Response(null, { status: 404, headers: { 'cache-control': 'no-store' } })
     }
   })

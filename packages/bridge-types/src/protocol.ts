@@ -9,6 +9,7 @@ import type {
   Deletion,
   Message,
   MessageCursor,
+  OutgoingAttachment,
 } from './domain'
 import type { FileServerConfig, RouterKind, SeedNode } from './sessionBridgeOptions'
 
@@ -209,7 +210,18 @@ export type Command =
       before?: MessageCursor
       includeDeleted: boolean
     }
-  | { type: 'sendMessage'; conversationId: ConversationId; body: string; replyTo?: number }
+  /**
+   * Stores the message and answers its id; it is then announced like any other. With attachments
+   * it is `uploading` until every file is on the file server, and goes on to the ordinary states
+   * from there. Refused, storing nothing, when a file is not a readable, non-empty file.
+   */
+  | {
+      type: 'sendMessage'
+      conversationId: ConversationId
+      body: string
+      replyTo?: number
+      attachments?: OutgoingAttachment[]
+    }
   | { type: 'retrySend'; messageId: number }
   | { type: 'deleteMessage'; messageId: number; scope: Deletion }
   // Attachments. Nothing here carries bytes: a transfer is reported by `attachment-progress`

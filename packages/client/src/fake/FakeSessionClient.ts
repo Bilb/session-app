@@ -360,6 +360,11 @@ export class FakeSessionClient implements SessionClient {
     return this.account.locate(ref)
   }
 
+  /** Fake-only: the size of a file a send took, while it is served and the world knows it. */
+  takenSizeBytes(ref: AttachmentRef): number | undefined {
+    return this.account.takenSizeBytes(ref)
+  }
+
   /** Fake-only: whether an attachment's bytes have arrived, for a dev loader deciding to draw. */
   isCached(ref: AttachmentRef): boolean {
     return this.account.isCached(ref)
@@ -430,7 +435,13 @@ export class FakeSessionClient implements SessionClient {
 
   sendMessage(id: ConversationId, message: OutgoingMessage): Promise<number> {
     this.assertOpen()
-    return Promise.resolve(this.account.send(id, message.body, message.replyTo))
+    try {
+      return Promise.resolve(
+        this.account.send(id, message.body, message.replyTo, message.attachments),
+      )
+    } catch (error) {
+      return Promise.reject(error instanceof Error ? error : new Error(String(error)))
+    }
   }
 
   retrySend(messageId: number): Promise<boolean> {

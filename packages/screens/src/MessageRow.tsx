@@ -25,8 +25,9 @@ function stateLabel(message: Message): string | undefined {
       return tr('uploading')
     case 'failed':
       return tr('messageStatusFailedToSend')
-    // A file the message needs is gone, which the catalogue has words for. Without attachments
-    // there is no key for either state, so they say nothing rather than English only.
+    // A file the message needs is gone, or too large to send even re-encoded, which the
+    // catalogue's "Error sending file" covers. Without attachments there is no key for either
+    // state, so they say nothing rather than English only.
     case 'unsendable':
       return message.attachments.length > 0 ? tr('attachmentsErrorSending') : undefined
     case 'interrupted':
@@ -38,10 +39,10 @@ function stateLabel(message: Message): string | undefined {
 /**
  * Which states are worth offering a retry for.
  *
- * `failed` and `interrupted` are worth another attempt - something was unreachable. `unsendable`
- * is not: libsession keeps it apart precisely so a client knows which failures to offer a retry
- * for, and it means something the message needs is gone rather than merely unreachable, so
- * retrying re-reads the same missing file and fails identically every time.
+ * `failed` and `interrupted` are worth another attempt - something was unreachable, or a picture
+ * could not be read this time. `unsendable` is not: libsession keeps it apart precisely so a client
+ * knows which failures to offer a retry for, and it means a file is gone or too large to send, so
+ * retrying fails identically every time.
  */
 const RETRYABLE: readonly Message['sendState'][] = ['failed', 'interrupted']
 

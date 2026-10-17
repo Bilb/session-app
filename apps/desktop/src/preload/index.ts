@@ -47,6 +47,7 @@ ipcRenderer.on('zoom', (_event, next: unknown) => {
  * page can end its own process.
  */
 contextBridge.exposeInMainWorld('sessionDesktop', {
+  platform: process.platform,
   openExternal: (url: string) => {
     ipcRenderer.send('open-external', url)
   },

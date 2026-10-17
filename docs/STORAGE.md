@@ -40,6 +40,9 @@ its extension's files and fixed it by protecting each one again where it landed.
   (`.part` to final, its snode and router caches) stay within one directory, and expo-file-system
   does not write through a temporary file. A picker writes its copy in the cache, and `staged`
   takes it in through `moveInto`.
+- **A staged copy sent with a message is libsession's from then on.** `takeFile` has libsession
+  move it beneath its cache, in the same container, so it keeps the class `moveInto` gave it, and
+  the launch sweep of `staged` never meets it.
 - **A move goes through `moveInto`**, which protects the file again where it lands. The storage
   module's `File` and `Directory` types leave out expo-file-system's `move` and `copy`, so nothing
   else can move a file in; a copy, when something needs one, gets a `copyInto` beside it.

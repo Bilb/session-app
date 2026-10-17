@@ -6,6 +6,7 @@
  */
 
 import {
+  createFakeMediaSource,
   FakeSessionClient,
   friends,
   friendsWithAttachments,
@@ -57,6 +58,16 @@ const harness: ContractHarness = {
       aliceId: world.account('Alice').sessionId,
       bobId: world.account('Bob').sessionId,
       settle: settleWith(world),
+      writeFile: (name, sizeBytes) => {
+        const path = `/fake-disk/${name}`
+        world.writeFile(path, sizeBytes)
+        return Promise.resolve(path)
+      },
+      aliceMedia: createFakeMediaSource(
+        alice,
+        () => Promise.reject(new Error('no photographs here')),
+        () => Promise.reject(new Error('ENOENT')),
+      ),
     })
   },
 

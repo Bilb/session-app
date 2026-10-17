@@ -32,6 +32,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
       pickImages: () => Promise.resolve([]),
       droppedFiles: () => Promise.resolve([]),
       picksAreCopies: false,
+      decodesHeic: false,
       discardPicked: () => undefined,
       releasePreview: () => undefined,
       chooseExportLocation: () => Promise.resolve(null),

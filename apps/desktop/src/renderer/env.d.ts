@@ -48,6 +48,8 @@ declare global {
   /** What the preload exposes, which is the whole of the page's privilege. */
   interface Window {
     readonly sessionDesktop: {
+      /** Node's `process.platform` for this machine. */
+      readonly platform: string
       openExternal(url: string): void
       chooseExportLocation(suggestedName: string): Promise<string | null>
       /** False when main refused a path outside the folders chosen this run. */

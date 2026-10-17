@@ -28,6 +28,7 @@ export function useAttachmentFooter(
       void actions.retry(message.id)
     },
     sending: {
+      // TODO: per-file upload progress, once the bridge's sendMessage passes an upload handler.
       caption: PENDING_COPY.attachmentsUploaded(summary.uploaded, summary.count),
       retryable: summary.retryable,
     },

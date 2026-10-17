@@ -62,6 +62,14 @@ describe('the staged tray', () => {
     expect(tile).toContain('opacity={shown ? 1 : 0}')
   })
 
+  it('says Clear and each remove button are disabled when they are, and draws them so', () => {
+    expect(source('StagedTray.tsx')).toMatch(/disabled=\{clearDisabled\}\s+onPress=\{onClear\}/)
+    const tile = source('StagedTile.tsx')
+    expect(tile).toMatch(/onPress=\{onRemove\}\s+disabled=\{removeDisabled\}/)
+    expect(tile).toMatch(/color="\$surfaceInverted"\s+opacity=\{removeDisabled \? 0\.35 : 1\}/)
+    expect(tile).not.toContain('$textDisabled')
+  })
+
   it('pages a right-to-left rail the way Chromium counts it', () => {
     const tray = source('StagedTray.tsx')
     expect(tray).toContain('offset: Math.abs(contentOffset.x)')
@@ -102,6 +110,18 @@ describe('a composer notice', () => {
   it('keeps its words off the danger colour, which fails 4.5:1 on the composer in dark themes', () => {
     expect(notice).not.toMatch(/<Text[^>]*\$dangerColor/)
     expect(notice).toContain('<Icon name="triangleAlert" size="sm" color="$dangerColor" />')
+  })
+})
+
+describe('a drop zone that is not accepting', () => {
+  const zone = source('DropZone.tsx')
+
+  it('draws no overlay, shows a no-entry cursor and takes nothing dropped', () => {
+    expect(zone).toContain(
+      'if (depth === 1 && handlers.current.accepting) handlers.current.onActive(true)',
+    )
+    expect(zone).toContain("dropEffect = handlers.current.accepting ? 'copy' : 'none'")
+    expect(zone).toMatch(/if \(!handlers\.current\.accepting\) return\s+const \{ files, folders \}/)
   })
 })
 

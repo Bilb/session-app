@@ -1,4 +1,4 @@
-import { requirePorts } from '@session/app'
+import { requirePorts, type PickedFile } from '@session/app'
 import { MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
 import { PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
@@ -17,6 +17,7 @@ import {
 import { useRef, useState } from 'react'
 
 import { AttachMenu } from './AttachMenu'
+import { draftAfterSend, followSent } from './draftAfterSend'
 import { refusalAnnouncement, refusalNotices } from './refusalNotices'
 import { isFull, sizeOf } from './staging'
 import type { StagingState } from './useStaging'
@@ -43,30 +44,39 @@ function Notices({ staging }: { staging: StagingState }) {
   )
 }
 
-/** The bottom of a conversation: what is staged, why anything was refused, and the line being typed. */
+/** The bottom of a conversation: what is staged, what was refused, and the line being typed. */
 export function Composer({
   staging,
   onSend,
 }: {
   staging: StagingState
-  onSend: (body: string) => void
+  /** Rejects when libsession refused the message, which it then has not stored. */
+  onSend: (body: string, files: readonly PickedFile[]) => Promise<void>
 }) {
   const [draft, setDraft] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
   const picking = useRef(false)
+  const outgoing = useRef<string | null>(null)
   const full = isFull(staging.files)
-  // TODO: send the staged files with the body once `sendMessage` can carry attachments. Until
-  // then a message with files staged waits, rather than going out without them.
-  const holding = staging.files.length > 0
-  const sendable = draft.trim().length > 0 && !holding
+  const { sending } = staging
+  const sendable = !sending && (draft.trim().length > 0 || staging.files.length > 0)
 
   function send(): void {
-    const body = draft.trim()
-    if (body.length === 0 || holding) return
-    // Cleared straight away: libsession stores the row before the promise settles, so the
-    // message appears on its own and there is nothing to put back if this fails.
-    setDraft('')
-    onSend(body)
+    if (!sendable) return
+    const sent = draft
+    const files = staging.files
+    outgoing.current = sent
+    // Held until libsession answers, since a refusal leaves both here to try again.
+    staging.beginSend()
+    onSend(sent.trim(), files).then(
+      () => {
+        setDraft((typed) => draftAfterSend(typed, outgoing.current))
+        staging.handOff(files)
+      },
+      () => {
+        staging.refuseSend(files.length > 0 ? 'files' : 'text')
+      },
+    )
   }
 
   function pick(which: 'files' | 'images'): void {
@@ -105,8 +115,10 @@ export function Composer({
           )}
           clearLabel={tr('clear')}
           onClear={staging.clear}
+          // While a send is out, its files are the message's: neither cleared nor removed.
+          clearDisabled={sending}
           addLabel={tr('attachmentsAdd')}
-          onAdd={full ? undefined : attach}
+          onAdd={full || sending ? undefined : attach}
           previousLabel={PENDING_COPY.previous}
           nextLabel={tr('next')}
           testID={ELEMENT.conversation.stagedTray}
@@ -127,6 +139,7 @@ export function Composer({
               onRemove={() => {
                 staging.remove(file.path)
               }}
+              removeDisabled={sending}
               testID={ELEMENT.conversation.stagedTile(index)}
               removeTestID={ELEMENT.conversation.stagedRemove(index)}
               previewTestID={ELEMENT.conversation.stagedPreview(index)}
@@ -139,7 +152,7 @@ export function Composer({
           variant="tonal"
           size="md"
           circular
-          disabled={full}
+          disabled={full || sending}
           icon={<Icon name="plus" size="md" color="$textPrimary" />}
           accessibilityLabel={tr('attachmentsAdd')}
           onPress={attach}
@@ -148,7 +161,10 @@ export function Composer({
         <Input
           grow
           value={draft}
-          onChangeText={setDraft}
+          onChangeText={(typed) => {
+            outgoing.current = followSent(outgoing.current, typed)
+            setDraft(typed)
+          }}
           placeholder={tr('message')}
           onSubmit={send}
           testID={ELEMENT.conversation.composerInput}

@@ -14,7 +14,7 @@
  * the two cannot drift apart quietly.
  */
 
-import { isDisplayableImage } from '@session/basic-types'
+import { isDisplayableImage, isShrunkToFit } from '@session/basic-types'
 import {
   ATTACHMENT_NOT_FOUND,
   FILE_DOWNLOAD_CANCELLED,
@@ -34,12 +34,15 @@ import {
   type ConversationId,
   type Deletion,
   type Message,
+  type OutgoingAttachment,
   type SendState,
   type SessionEvent,
   type TransferProgress,
 } from '@session/bridge-types'
 
 import { SessionClientError } from '../errors'
+
+import { inferContentType } from './contentType'
 
 export interface FakeAccountOptions {
   displayName: string
@@ -101,9 +104,34 @@ function transferTicks(bytes: number): number {
   return Math.max(Math.round((bytes / 1_000_000) * TICKS_PER_MEGABYTE), MIN_TRANSFER_TICKS)
 }
 
+/** The last component of a path, whichever separator the platform that picked it uses. */
+function baseName(path: string): string {
+  return path.split(/[\\/]/).pop() ?? path
+}
+
 /** libsession's rule: has attachments, and every one of them is a displayable image. */
 function galleryViewable(attachments: Attachment[]): boolean {
   return attachments.length > 0 && attachments.every((a) => isDisplayableImage(a.contentType))
+}
+
+/** What a recipient is told of the files a message of ours carried: up, and not fetched. */
+function received(sent: readonly Attachment[]): Attachment[] {
+  return sent.map((attachment) => ({
+    ...attachment,
+    uploaded: true,
+    hasThumbnail: false,
+    availability: 'absent',
+    fetchDoneBytes: 0,
+    fetchTotalBytes: 0,
+  }))
+}
+
+/** What `send` was given for one file, kept for that file's turn to upload. */
+interface Upload {
+  path: string
+  taken: boolean
+  sizeBytes: number | undefined
+  originalFile: boolean
 }
 
 /** libsession's bounds on a thumbnail's side: 1024² at 4 bytes a pixel is 4 MiB decoded. */
@@ -228,6 +256,12 @@ export class FakeAccount {
   private world: FakeWorld | undefined
   /** Attachments whose bytes are in the cache, by `keyOf`. */
   private readonly cached = new Set<string>()
+  /**
+   * Files a send took and has not uploaded yet, by `keyOf`: served from libsession's outgoing
+   * folder until then, but not in the cache, so neither counted in its size nor thumbnailed.
+   * Each with its size, where the world knows it.
+   */
+  private readonly taken = new Map<string, number | undefined>()
   /** The sizes `seedSending` held back from files not up yet, which their upload reports. */
   private readonly unreportedSizes = new Map<string, number>()
   /**
@@ -529,6 +563,14 @@ export class FakeAccount {
         if (message.syncState !== undefined && inFlight.includes(message.syncState)) {
           this.updateMessage(id, message.id, { syncState: 'interrupted' })
         }
+        // Nothing can have reached a swarm while its files were still uploading, so that is a
+        // failure rather than an unknown, and a retry uploads only what did not get up.
+        if (message.sendState === 'uploading') {
+          this.updateMessage(id, message.id, {
+            sendState: 'failed',
+            ...(message.syncState === 'uploading' ? { syncState: 'failed' } : {}),
+          })
+        }
       }
     }
   }
@@ -584,8 +626,57 @@ export class FakeAccount {
     return message
   }
 
-  send(id: ConversationId, body: string, replyTo?: number): number {
+  /**
+   * Stores a message of ours and starts sending it. With attachments it is `uploading` first,
+   * one file a step in order, as libsession uploads them; the send proper follows the last.
+   *
+   * Throws, storing nothing, when a file is not a readable, non-empty one, as libsession does.
+   */
+  send(
+    id: ConversationId,
+    body: string,
+    replyTo?: number,
+    outgoing: readonly OutgoingAttachment[] = [],
+  ): number {
+    const sizes = outgoing.map(({ path }) => {
+      const sizeBytes = this.world?.fileSize(path)
+      if (sizeBytes === null)
+        throw new SessionClientError(`send_message: attachment ${path} is not a readable file`)
+      if (sizeBytes === 0) throw new SessionClientError(`send_message: attachment ${path} is empty`)
+      return sizeBytes
+    })
+    const uploads = outgoing.map((file, index): Upload => {
+      const contentType = file.contentType ?? inferContentType(baseName(file.path))
+      return {
+        path: file.path,
+        taken: file.takeFile === true,
+        sizeBytes: sizes[index],
+        // libsession sends a picture it cannot decode as it is, flagged. No platform decoder here.
+        originalFile:
+          contentType.toLowerCase().startsWith('image/') &&
+          !isShrunkToFit(contentType, { decodesHeic: false }),
+      }
+    })
     const now = this.world?.now() ?? Date.now()
+    const uploading = outgoing.length > 0
+    const attachments = outgoing.map((file, index): Attachment => {
+      const contentType = file.contentType ?? inferContentType(baseName(file.path))
+      return {
+        index,
+        contentType,
+        filename: file.filename ?? baseName(file.path),
+        voiceMessage: false,
+        hasThumbhash: false,
+        hasThumbnail: false,
+        hasRendition: false,
+        // Flagged by libsession as that file's upload starts, when it converts it.
+        originalFile: false,
+        uploaded: false,
+        availability: 'absent',
+        fetchDoneBytes: 0,
+        fetchTotalBytes: 0,
+      }
+    })
     const message: Message = {
       id: nextId(),
       conversationId: id,
@@ -594,27 +685,80 @@ export class FakeAccount {
       body,
       outgoing: true,
       // Stored and shown before it is sent - which is why the app needs no optimistic copy.
-      sendState: 'pending',
-      // Sending an attachment is not in the protocol, so an outgoing message never has one.
-      attachments: [],
-      galleryViewable: false,
+      sendState: uploading ? 'uploading' : 'pending',
+      attachments,
+      galleryViewable: galleryViewable(attachments),
       // A second send, to our own swarm, so our other devices see it. Left unset on an incoming
       // message, which is why `deliverFrom` does not set one.
-      syncState: 'pending',
+      syncState: uploading ? 'uploading' : 'pending',
       ...(replyTo === undefined
         ? {}
         : { replyTo: { author: this.sessionId, timestamp: now, messageId: replyTo } }),
     }
+    outgoing.forEach((file, index) => {
+      if (file.takeFile === true)
+        this.taken.set(keyOf({ messageId: message.id, index }), sizes[index])
+    })
     this.addMessage(id, message)
-    this.world?.scheduleSend(this, id, message)
+    for (const file of outgoing) if (file.takeFile === true) this.world?.removeFile(file.path)
+    if (uploading) this.uploadNext(id, message.id, uploads)
+    else this.world?.scheduleSend(this, id, message)
     return message.id
   }
 
   /**
-   * A message of ours caught partway through sending its files, for a fixture to show.
-   *
-   * The protocol cannot send an attachment yet, so `send` never makes one; this is the only way a
-   * set being uploaded reaches a screen. The first `uploaded` files are on the file server.
+   * Uploads the first file not up yet, a step from now, then the next, then sends. A lent file
+   * gone by its turn leaves the message unsendable, as libsession does.
+   */
+  private uploadNext(id: ConversationId, messageId: number, uploads: readonly Upload[]): void {
+    const world = this.world
+    if (world === undefined) return
+    world.schedule(1, () => {
+      const message = this.messages(id).find((m) => m.id === messageId)
+      // A restart failed it, or it was deleted, while this was waiting its turn.
+      if (message?.sendState !== 'uploading') return
+      const at = message.attachments.findIndex((a) => !a.uploaded)
+      const attachment = message.attachments[at]
+      if (attachment === undefined) {
+        this.updateMessage(id, messageId, {
+          sendState: 'pending',
+          ...(message.syncState === undefined ? {} : { syncState: 'pending' }),
+        })
+        world.scheduleSend(this, id, { ...message, sendState: 'pending' })
+        return
+      }
+      const upload = uploads[at]
+      if (upload === undefined) return
+      if (!upload.taken && world.fileSize(upload.path) === null) {
+        this.updateMessage(id, messageId, {
+          sendState: 'unsendable',
+          ...(message.syncState === undefined ? {} : { syncState: 'unsendable' }),
+        })
+        return
+      }
+      // As libsession: what we sent is kept in the cache, and its size is known once it is up.
+      this.cached.add(keyOf({ messageId, index: attachment.index }))
+      this.taken.delete(keyOf({ messageId, index: attachment.index }))
+      const { sizeBytes, originalFile } = upload
+      const attachments = message.attachments.map((a, index) =>
+        index === at
+          ? {
+              ...a,
+              uploaded: true,
+              originalFile,
+              ...(sizeBytes === undefined ? {} : { sizeBytes }),
+            }
+          : a,
+      )
+      this.updateMessage(id, messageId, { attachments })
+      this.uploadNext(id, messageId, uploads)
+    })
+  }
+
+  /**
+   * A message of ours caught partway through sending its files, for a fixture to show: `send`
+   * passes through every state too quickly to look at. The first `uploaded` files are on the
+   * file server.
    */
   seedSending(
     id: ConversationId,
@@ -710,17 +854,32 @@ export class FakeAccount {
     return false
   }
 
+  /** Whether a taken file is still served: libsession drops it once its send is unsendable. */
+  private takenServed(key: string, sendState: SendState | undefined): boolean {
+    return this.taken.has(key) && sendState !== 'unsendable'
+  }
+
+  /** A taken file's size while it is served, for the media source to answer bytes of it. */
+  takenSizeBytes(ref: AttachmentRef): number | undefined {
+    const key = keyOf(ref)
+    return this.takenServed(key, this.locate(ref)?.message.sendState)
+      ? this.taken.get(key)
+      : undefined
+  }
+
+  /** Whether the bytes can be had without a transfer: from the cache, or as a taken file. */
   isCached(ref: AttachmentRef): boolean {
-    return this.cached.has(keyOf(ref))
+    const key = keyOf(ref)
+    return this.cached.has(key) || this.takenServed(key, this.locate(ref)?.message.sendState)
   }
 
   hasThumbnail(ref: AttachmentRef): boolean {
-    return thumbnailed(this.isCached(ref), this.locate(ref)?.attachment.contentType)
+    return thumbnailed(this.cached.has(keyOf(ref)), this.locate(ref)?.attachment.contentType)
   }
 
   hasRendition(ref: AttachmentRef): boolean {
     const attachment = this.locate(ref)?.attachment
-    return attachment !== undefined && rendered(this.isCached(ref), attachment)
+    return attachment !== undefined && rendered(this.cached.has(keyOf(ref)), attachment)
   }
 
   /**
@@ -766,14 +925,14 @@ export class FakeAccount {
         const running = this.transfers.get(key)?.progress
         const availability: AttachmentAvailability = running
           ? 'fetching'
-          : this.cached.has(key)
+          : this.cached.has(key) || this.takenServed(key, message.sendState)
             ? 'cached'
             : (this.verdicts.get(key) ?? 'absent')
         return {
           ...attachment,
           availability,
-          hasThumbnail: thumbnailed(availability === 'cached', attachment.contentType),
-          hasRendition: rendered(availability === 'cached', attachment),
+          hasThumbnail: thumbnailed(this.cached.has(key), attachment.contentType),
+          hasRendition: rendered(this.cached.has(key), attachment),
           fetchDoneBytes: running?.doneBytes ?? 0,
           fetchTotalBytes: running?.totalBytes ?? 0,
         }
@@ -813,7 +972,7 @@ export class FakeAccount {
     for (const { messages } of this.conversations.values()) {
       for (const message of messages) {
         for (const attachment of message.attachments) {
-          if (this.isCached({ messageId: message.id, index: attachment.index })) {
+          if (this.cached.has(keyOf({ messageId: message.id, index: attachment.index }))) {
             usageBytes += encryptedSize(attachment.sizeBytes ?? 0)
           }
         }
@@ -849,7 +1008,7 @@ export class FakeAccount {
    */
   downloadAttachment(ref: AttachmentRef): Promise<void> {
     if (!this.locate(ref)) return refuseMissing(ref, this.hasMessage(ref.messageId))
-    if (this.cached.has(keyOf(ref))) return Promise.resolve()
+    if (this.isCached(ref)) return Promise.resolve()
     return this.consume(ref, 'download')
   }
 
@@ -863,7 +1022,7 @@ export class FakeAccount {
   exportAttachment(ref: AttachmentRef, destination: string, replace = false): Promise<string> {
     if (!this.locate(ref)) return refuseMissing(ref, this.hasMessage(ref.messageId))
 
-    const fetched = this.cached.has(keyOf(ref)) ? Promise.resolve() : this.consume(ref, 'export')
+    const fetched = this.isCached(ref) ? Promise.resolve() : this.consume(ref, 'export')
     return fetched.then(() => {
       const found = this.locate(ref)
       if (found) {
@@ -1025,7 +1184,29 @@ export class FakeWorld {
   private queue: Array<{ at: number; run: () => void }> = []
   private clock = 1_700_000_000_000
 
+  /**
+   * The files a send can name, with their sizes. Unset, as behind an app, every path reads as a
+   * file of unknown size: the platform's picker found it on a disk the fake cannot see.
+   */
+  private files: Map<string, number> | undefined
+
   constructor(private readonly stepMs = 10) {}
+
+  /** Puts a file where a send can name it; from the first, only such files are readable. */
+  writeFile(path: string, sizeBytes: number): void {
+    this.files ??= new Map()
+    this.files.set(path, sizeBytes)
+  }
+
+  removeFile(path: string): void {
+    this.files?.delete(path)
+  }
+
+  /** Its size; null where nothing readable is, and undefined where the fake cannot know. */
+  fileSize(path: string): number | null | undefined {
+    if (this.files === undefined) return undefined
+    return this.files.get(path) ?? null
+  }
 
   now(): number {
     return this.clock
@@ -1059,7 +1240,8 @@ export class FakeWorld {
       run: () => {
         sender.setSendState(conversationId, message.id, 'sent')
         const recipient = this.find(conversationId)
-        if (recipient) recipient.deliverFrom(sender, message.body, this.clock)
+        if (recipient)
+          recipient.deliverFrom(sender, message.body, this.clock, received(message.attachments))
       },
     })
 

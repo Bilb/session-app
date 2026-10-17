@@ -96,6 +96,16 @@ export const MESSAGE_NOT_FOUND: AttachmentError = 'message.not_found'
 export const ATTACHMENT_NOT_FOUND: AttachmentError = 'attachment.not_found'
 /** The file is no longer at the path it was attached from. Reported on an upload, never a fetch. */
 export const ATTACHMENT_FILE_MISSING: AttachmentError = 'attachment.file_missing'
+/**
+ * A picture too large for the file server even re-encoded at libsession's smallest sendable edge.
+ * Reported on an upload, and leaves the message `unsendable`: a retry would fail the same way.
+ */
+export const ATTACHMENT_TOO_LARGE: AttachmentError = 'attachment.too_large'
+/**
+ * A picture that could not be read or re-encoded for sending. Reported on an upload, and leaves
+ * the message `failed`, since a retry reads the file again.
+ */
+export const ATTACHMENT_UNREADABLE: AttachmentError = 'attachment.unreadable'
 /** The file server does not hold it. The sender's to repair by sending it again. */
 export const FILE_NOT_FOUND: AttachmentError = 'file.not_found'
 /** It arrived but could not be turned back into the file it claims to be. Not worth retrying. */
@@ -177,8 +187,8 @@ export interface Attachment {
   originalFile: boolean
   /**
    * On the file server: an outgoing attachment's upload finished, and always true for an incoming
-   * one. Deliberately not "the bytes are here" - libsession records no local path, because the
-   * application chose it and a stored copy would go stale the moment the file moved.
+   * one. Deliberately not "the bytes are here": libsession records where it reads a file to send
+   * from but exposes no path, because the application chose it and knows it.
    */
   uploaded: boolean
   /** Whether the bytes are here, coming, or neither. See `AttachmentAvailability`. */
@@ -199,6 +209,34 @@ export interface Attachment {
    * depends on the other end volunteering a notification.
    */
   savedAtMs?: number
+}
+
+/**
+ * A file to send with a message.
+ *
+ * Read when its upload comes up and again by any retry, so it has to stay at `path`, unchanged,
+ * until the message is sent, unless `takeFile` hands it over. A picture libsession decodes is sent
+ * re-encoded to fit the file server, and the stored attachment then describes what was sent.
+ */
+export interface OutgoingAttachment {
+  path: string
+  /** Inferred from the filename's extension when unset. */
+  contentType?: string
+  /** What the recipient sees it called; `path`'s own filename when unset. */
+  filename?: string
+  /**
+   * Hands the file to libsession, which needs `cacheDir` for it and refuses a symbolic link. Only
+   * for a copy the app made: once the message is stored the file is gone from `path`, and a send
+   * that was refused leaves it there.
+   *
+   * It is hard-linked under the cache directory, or copied where it cannot be, on the calling
+   * thread during the send, so a large copy holds that call up. It waits there unencrypted.
+   *
+   * Until it uploads, the attachment is `cached`, and `fetchMedia` and `exportAttachment` serve it
+   * from that copy; `absent` if the copy has gone. libsession deletes it once it has uploaded, or
+   * its message is unsendable or deleted.
+   */
+  takeFile?: boolean
 }
 
 /**
