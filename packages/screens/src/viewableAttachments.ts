@@ -95,8 +95,7 @@ export interface HeldItem {
 /**
  * The item an open viewer was first handed for `key`, so a rendition evicted mid-view does not
  * swap the url under a drawn picture, which blanks a frame on native. A rendition landing replaces
- * an item made without one, once: the file may be one desktop cannot draw and only the rendition
- * stands in for it.
+ * an item made without one, once: it can replace what was drawn first, such as desktop's thumbnail.
  */
 export function heldItem(
   held: Map<string, HeldItem>,
