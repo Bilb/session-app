@@ -118,7 +118,7 @@ export function Composer({
           onClear={staging.clear}
           // While a send is out, its files are the message's: neither cleared nor removed.
           clearDisabled={sending}
-          addLabel={PENDING_COPY.attachmentsAddMore}
+          addLabel={tr('attachmentsAdd')}
           onAdd={full || sending ? undefined : attach}
           previousLabel={PENDING_COPY.previous}
           nextLabel={tr('next')}
