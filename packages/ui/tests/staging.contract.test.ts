@@ -76,7 +76,9 @@ describe('a composer notice', () => {
   })
 
   it('is said once per refusal on every platform, the same words twice included', () => {
-    expect(announcement).toContain('AccessibilityInfo.announceForAccessibility(said.text)')
+    expect(announcement).toContain(
+      'return scheduleAnnouncement(said.text, Platform.OS, AccessibilityInfo)',
+    )
     expect(announcement).toMatch(/\}, \[said\]\)/)
     expect(announcement).toContain(
       'if (said.key !== announceKey) setSaid({ key: announceKey, text })',
