@@ -1,11 +1,14 @@
 #include <session_bridge/staged_thumbnails.hpp>
+#include <session_bridge/utf8_path.hpp>
 #include <session_bridge/worker.hpp>
 
 #include <algorithm>
 #include <condition_variable>
 #include <deque>
+#include <filesystem>
 #include <mutex>
 #include <optional>
+#include <stdexcept>
 #include <system_error>
 #include <thread>
 #include <unordered_map>
@@ -30,18 +33,12 @@ namespace session_bridge {
 #ifdef _WIN32
 
 std::optional<std::vector<std::byte>> read_staged_file(std::string_view path, size_t max_bytes) {
-    const int wide_size = MultiByteToWideChar(
-            CP_UTF8, MB_ERR_INVALID_CHARS, path.data(), static_cast<int>(path.size()), nullptr, 0);
-    if (wide_size <= 0)
+    std::filesystem::path wide;
+    try {
+        wide = utf8_path(path);
+    } catch (const std::invalid_argument&) {
         return std::nullopt;
-    std::wstring wide(static_cast<size_t>(wide_size), L'\0');
-    MultiByteToWideChar(
-            CP_UTF8,
-            MB_ERR_INVALID_CHARS,
-            path.data(),
-            static_cast<int>(path.size()),
-            wide.data(),
-            wide_size);
+    }
 
     HANDLE file = CreateFileW(
             wide.c_str(),

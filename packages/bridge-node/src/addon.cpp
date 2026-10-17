@@ -2,6 +2,7 @@
 #include <session_bridge/client_bridge.hpp>
 #include <session_bridge/gen/napi.hpp>
 #include <session_bridge/media_url.hpp>
+#include <session_bridge/utf8_path.hpp>
 
 #include <cstdint>
 #include <cstring>
@@ -48,9 +49,11 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
         Napi::Object options = info[0].As<Napi::Object>();
         session_bridge::InitOptions init;
 
-        init.db_path = options.Get("dbPath").As<Napi::String>().Utf8Value();
+        init.db_path =
+                session_bridge::utf8_path(options.Get("dbPath").As<Napi::String>().Utf8Value());
         if (options.Has("cacheDir"))
-            init.cache_dir = options.Get("cacheDir").As<Napi::String>().Utf8Value();
+            init.cache_dir = session_bridge::utf8_path(
+                    options.Get("cacheDir").As<Napi::String>().Utf8Value());
 
         if (options.Has("rawKey") && !options.Get("rawKey").IsUndefined()) {
             Napi::Value raw = options.Get("rawKey");
