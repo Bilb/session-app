@@ -126,6 +126,15 @@ describe('a file row', () => {
     )
   })
 
+  it('exposes a running transfer as busy, with its progress where it is known', () => {
+    // Set in every state, as aria-disabled is.
+    expect(nativeButton).toContain("'aria-busy': held")
+    expect(nativeButton).toMatch(
+      /accessibilityValue:\s*held && progress !== undefined\s*\?\s*\{ min: 0, max: 100, now: Math\.round\(progress \* 100\) \}\s*:\s*\{\}/,
+    )
+    expect(rowStack).toMatch(/held,\s*progress,\s*\}\)\}/)
+  })
+
   it('offers the lead square’s and the control’s verbs as the row’s actions on native', () => {
     expect(nativeButton).toContain(
       'accessibilityActions: listedFileRowActions(actions, Platform.OS)',

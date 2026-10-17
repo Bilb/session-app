@@ -123,11 +123,13 @@ function nativeRowElement({
   actions,
   pressable,
   held,
+  progress,
 }: {
   name: string
   actions: FileRowAction[]
   pressable: boolean
   held: boolean
+  progress: number | undefined
 }) {
   if (isWeb) return {}
   const activate = actions.find((action) => action.name === 'activate')
@@ -139,6 +141,9 @@ function nativeRowElement({
     ...pressHint(activate?.label),
     // Set in every state: Android keeps a disabled state that is dropped rather than cleared.
     'aria-disabled': !operable && held,
+    'aria-busy': held,
+    accessibilityValue:
+      held && progress !== undefined ? { min: 0, max: 100, now: Math.round(progress * 100) } : {},
     // iOS's double-tap calls this alone; without it VoiceOver taps the row's middle, which has no
     // press when the verb is the control's.
     ...(activate === undefined ? {} : { onAccessibilityTap: activate.run }),
@@ -323,6 +328,7 @@ export function FileRow({
         actions,
         pressable: onPress !== undefined,
         held,
+        progress,
       })}
     >
       {onPress === undefined ? null : (
