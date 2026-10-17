@@ -26,7 +26,7 @@ describe('which picture each place draws', () => {
     )
     expect(read('viewableAttachments.ts')).toContain('uri: media.renditionUrlFor(ref),')
     expect(read('MessageMediaViewer.tsx')).toMatch(
-      /heldItem\(held\.current, [^,]+, \(\) =>\s+viewerItem\(target\.messageId, attachment\),/,
+      /heldItem\(\s*held\.current,\s*[^,]+,\s*attachment\.hasRendition,\s*\(\) => viewerItem\(target\.messageId, attachment\),/,
     )
     expect(read('MessageMediaViewer.tsx')).toContain('if (!open) held.current.clear()')
   })
