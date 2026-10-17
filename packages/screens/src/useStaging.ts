@@ -128,12 +128,15 @@ export function useStaging(planSend: PlanSend): StagingState {
         return Promise.resolve()
       }
       setPlanning((count) => count + 1)
+      // Through a then, so a planner that throws rather than rejects cannot leave `planning` up.
       const plans = Promise.all(
         picked.map((file) =>
-          plan.current(file).then(
-            (answer): [PickedFile, SendPlan] => [file, answer],
-            (): [PickedFile, SendPlan] => [file, 'unreadable'],
-          ),
+          Promise.resolve(file)
+            .then(plan.current)
+            .then(
+              (answer): [PickedFile, SendPlan] => [file, answer],
+              (): [PickedFile, SendPlan] => [file, 'unreadable'],
+            ),
         ),
       ).then((answers) => new Map(answers))
       const staged = queue.current

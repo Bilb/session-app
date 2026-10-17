@@ -2,10 +2,11 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { memoryPorts, resetPorts, setPorts, type PickedFile } from '@session/app'
+import type { SendPlan } from '@session/client'
 import type * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { useStaging } from '#src/useStaging'
+import { useStaging, type PlanSend } from '#src/useStaging'
 
 /**
  * One render of a hook, without a renderer: its state writes are recorded rather than applied,
@@ -32,8 +33,8 @@ vi.mock('react', async (importOriginal) => ({
   },
 }))
 
-function mount() {
-  const staging = useStaging(() => Promise.resolve('as-is'))
+function mount(planSend: PlanSend = () => Promise.resolve('as-is')) {
+  const staging = useStaging(planSend)
   for (const effect of hook.effects.splice(0)) {
     const cleanup = effect()
     if (cleanup !== undefined) hook.cleanups.push(cleanup)
@@ -43,6 +44,22 @@ function mount() {
 
 function unmount(): void {
   for (const cleanup of hook.cleanups.splice(0)) cleanup()
+}
+
+/** A plan that answers when the test says so. */
+function pending(): { planSend: PlanSend; answer: (plan: SendPlan) => void } {
+  let answer: (plan: SendPlan) => void = () => undefined
+  const plan = new Promise<SendPlan>((resolve) => {
+    answer = resolve
+  })
+  return { planSend: () => plan, answer: (value) => answer(value) }
+}
+
+/** What the state updaters written so far make of 0: a pick's `planning` is +1, then -1. */
+function counted(): number[] {
+  return hook.writes
+    .filter((value): value is (count: number) => number => typeof value === 'function')
+    .map((update) => update(0))
 }
 
 const released: (string | undefined)[] = []
@@ -142,6 +159,58 @@ describe('the composer staging', () => {
     expect(hook.writes).toEqual([])
     expect(released).toEqual(['session-media://picked/late'])
     expect(discarded).toEqual(['/home/a/late.jpg'])
+  })
+
+  it('refuses a file whose planner throws, and stops planning', async () => {
+    const staging = mount(() => {
+      throw new Error('planner')
+    })
+    await staging.add([picked('a.jpg')])
+    expect(counted()).toContain(-1)
+    expect(hook.writes).toContainEqual(expect.objectContaining({ unopenable: [picked('a.jpg')] }))
+    expect(hook.writes).not.toContainEqual([picked('a.jpg')])
+  })
+
+  it('lets go of a pick whose plan answers after the conversation closed', async () => {
+    const plan = pending()
+    const staging = mount(plan.planSend)
+    const staged = staging.add([picked('late.jpg')])
+    unmount()
+    hook.writes.length = 0
+    plan.answer('as-is')
+    await staged
+    expect(discarded).toEqual(['/home/a/late.jpg'])
+    expect(hook.writes).not.toContainEqual([picked('late.jpg')])
+  })
+
+  it('stages a pick still planning onto what clear left, bringing back nothing it cleared', async () => {
+    const plan = pending()
+    let planSend: PlanSend = () => Promise.resolve('as-is')
+    const staging = mount((file) => planSend(file))
+    await staging.add([picked('a.jpg')])
+    planSend = plan.planSend
+    const staged = staging.add([picked('b.jpg')])
+    staging.clear()
+    expect(discarded).toEqual(['/home/a/a.jpg'])
+    plan.answer('as-is')
+    await staged
+    expect(hook.writes.at(-1)).not.toEqual(expect.arrayContaining([picked('a.jpg')]))
+    expect(hook.writes).toContainEqual([picked('b.jpg')])
+    expect(discarded).toEqual(['/home/a/a.jpg'])
+  })
+
+  it('stages a pick still planning without the file removed meanwhile', async () => {
+    const plan = pending()
+    let planSend: PlanSend = () => Promise.resolve('as-is')
+    const staging = mount((file) => planSend(file))
+    await staging.add([picked('a.jpg'), picked('b.jpg')])
+    planSend = plan.planSend
+    const staged = staging.add([picked('c.jpg')])
+    staging.remove('/home/a/a.jpg')
+    plan.answer('as-is')
+    await staged
+    expect(hook.writes).toContainEqual([picked('b.jpg'), picked('c.jpg')])
+    expect(discarded).toEqual(['/home/a/a.jpg'])
   })
 
   it('refuses a drop that fails as unreadable, as it does a picker that fails', async () => {
