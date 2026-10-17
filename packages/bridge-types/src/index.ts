@@ -41,6 +41,7 @@ export type {
   OutgoingAttachment,
   PixelSize,
   Reply,
+  SendPlan,
   SendState,
   TransferProgress,
   WithAttachmentRef,

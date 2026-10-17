@@ -27,6 +27,7 @@ import type {
   Request,
   RouterKind,
   SeedNode,
+  SendPlan,
   SessionEvent,
 } from '@session/bridge-types'
 
@@ -153,6 +154,12 @@ export interface SessionClient {
     destination: string,
     options?: ExportAttachmentOptions,
   ): Promise<string>
+  /**
+   * What sending the file at `path` would do with it, decided from its header as the send decides
+   * it, under the file server's limit. `contentType` is inferred from the extension when unset.
+   * Answers `missing` rather than failing for a path with no file.
+   */
+  attachmentSendPlan(path: string, contentType?: string): Promise<SendPlan>
   /** Also records that the question was asked, which is why `none` is worth sending. */
   setAutoDownload(id: ConversationId, mode: AutoDownload): Promise<void>
   /** Where libsession caches downloads. Empty when the bridge was opened without one. */

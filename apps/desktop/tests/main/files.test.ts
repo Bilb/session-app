@@ -293,6 +293,22 @@ describe('a send the page asks for', () => {
     )
   })
 
+  it('plans a send only of a file picked in this window, and while it is held', () => {
+    const plan = (path: unknown): Request => ({
+      id: 3,
+      command: { type: 'attachmentSendPlan', path } as Request['command'],
+    })
+    const gate = new SendGate(false)
+    expect(typeof gate.admit(plan(photo))).toBe('string')
+    gate.grant(photo)
+    expect(gate.admit(plan(photo))).toEqual(plan(photo))
+    expect(typeof gate.admit(plan('/home/someone/.ssh/id_ed25519'))).toBe('string')
+    expect(typeof gate.admit(plan(undefined))).toBe('string')
+    expect(typeof gate.admit(plan(42))).toBe('string')
+    gate.release(photo)
+    expect(typeof gate.admit(plan(photo))).toBe('string')
+  })
+
   it('leaves a message without files, and every other command, alone', () => {
     const gate = new SendGate(false)
     const plain: Request = {

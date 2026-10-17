@@ -14,7 +14,7 @@
  * the two cannot drift apart quietly.
  */
 
-import { isDisplayableImage, isShrunkToFit } from '@session/basic-types'
+import { contentTypeEssence, isDisplayableImage, type WithDecodesHeic } from '@session/basic-types'
 import {
   ATTACHMENT_NOT_FOUND,
   FILE_DOWNLOAD_CANCELLED,
@@ -35,6 +35,7 @@ import {
   type Deletion,
   type Message,
   type OutgoingAttachment,
+  type SendPlan,
   type SendState,
   type SessionEvent,
   type TransferProgress,
@@ -43,6 +44,15 @@ import {
 import { SessionClientError } from '../errors'
 
 import { inferContentType } from './contentType'
+import { fakeSendPlan, isReencoded } from './sendPlan'
+
+/**
+ * What the platform running the fake says of a file named to send, which the world cannot see
+ * behind an app: whether it decodes HEIC, and the file's size, rejecting where there is none.
+ */
+export type FakeStagedFiles = WithDecodesHeic & {
+  sizeOf?: ((path: string) => Promise<number>) | undefined
+}
 
 export interface FakeAccountOptions {
   displayName: string
@@ -278,6 +288,7 @@ export class FakeAccount {
   private readonly exported = new Set<string>()
   private cacheLimitBytes: number | undefined
   private storedThumbnailEdgePx: number | undefined
+  private stagedFiles: FakeStagedFiles = { decodesHeic: false }
 
   constructor(options: FakeAccountOptions) {
     this.displayName = options.displayName
@@ -626,6 +637,28 @@ export class FakeAccount {
     return message
   }
 
+  readStagedFilesWith(files: FakeStagedFiles): void {
+    this.stagedFiles = files
+  }
+
+  /** libsession's `attachment_send_plan`, as `fakeSendPlan` can decide it. */
+  async sendPlan(path: string, contentType?: string): Promise<SendPlan> {
+    let sizeBytes = this.world?.fileSize(path)
+    if (sizeBytes === null) return 'missing'
+    if (sizeBytes === undefined && this.stagedFiles.sizeOf !== undefined) {
+      try {
+        sizeBytes = await this.stagedFiles.sizeOf(path)
+      } catch {
+        return 'missing'
+      }
+    }
+    return fakeSendPlan(
+      contentType ?? inferContentType(baseName(path)),
+      sizeBytes,
+      this.stagedFiles,
+    )
+  }
+
   /**
    * Stores a message of ours and starts sending it. With attachments it is `uploading` first,
    * one file a step in order, as libsession uploads them; the send proper follows the last.
@@ -651,10 +684,10 @@ export class FakeAccount {
         path: file.path,
         taken: file.takeFile === true,
         sizeBytes: sizes[index],
-        // libsession sends a picture it cannot decode as it is, flagged. No platform decoder here.
+        // libsession sends a picture it cannot decode as it is, flagged.
         originalFile:
-          contentType.toLowerCase().startsWith('image/') &&
-          !isShrunkToFit(contentType, { decodesHeic: false }),
+          contentTypeEssence(contentType)?.startsWith('image/') === true &&
+          !isReencoded(contentType, this.stagedFiles),
       }
     })
     const now = this.world?.now() ?? Date.now()

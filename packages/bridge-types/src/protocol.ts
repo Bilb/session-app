@@ -10,6 +10,7 @@ import type {
   Message,
   MessageCursor,
   OutgoingAttachment,
+  SendPlan,
 } from './domain'
 import type { FileServerConfig, RouterKind, SeedNode } from './sessionBridgeOptions'
 
@@ -222,6 +223,12 @@ export type Command =
       replyTo?: number
       attachments?: OutgoingAttachment[]
     }
+  /**
+   * What sending the file at `path` would do with it, under the file server's limit, without
+   * sending it: for staging to refuse a file before Send. `contentType` is inferred from the
+   * extension when unset, as `sendMessage` infers it. Read on libsession's disk thread.
+   */
+  | { type: 'attachmentSendPlan'; path: string; contentType?: string }
   | { type: 'retrySend'; messageId: number }
   | { type: 'deleteMessage'; messageId: number; scope: Deletion }
   // Attachments. Nothing here carries bytes: a transfer is reported by `attachment-progress`
@@ -353,6 +360,7 @@ export type Result =
   | { type: 'path'; path: string }
   /** Unset only in answer to `getAttachmentCacheLimit`, where it means no limit. */
   | { type: 'byteCount'; bytes?: number }
+  | { type: 'sendPlan'; plan: SendPlan }
   /** A thumbnail's side in device pixels, as libsession clamped it. */
   | { type: 'edge'; edgePx: number }
   | { type: 'configSizes'; sizes: ConfigSize[] }

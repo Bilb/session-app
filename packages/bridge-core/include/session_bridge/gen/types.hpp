@@ -476,6 +476,57 @@ struct ByteCountResult {
             bytes{std::move(bytes_)} {}
 };
 
+/// What sending a file as an attachment will do with it, decided from its header alone as the send
+/// decides it: libsession's `image::SendPlan`.
+///
+/// - `reencoded`: a picture libsession decodes, sent re-encoded and shrunk to fit. Only the send
+///   tells whether its pixels decode and whether it then fits; it is refused there if not.
+/// - `as-is`: not a picture, and not labelled one, within the file server's limit.
+/// - `original-cannot-decode`: sent as it is, flagged as the original file: a picture this build
+///   does not decode (HEIC off Apple), or a file labelled a picture that is not one libvips reads.
+/// - `original-animated-png`: sent as it is, flagged as the original file, since re-encoding would
+///   keep only its first frame.
+/// - `too-large-to-decode`: refused, a picture past the decode limits.
+/// - `too-large-for-server`: refused, over the file server's limit and not shrinkable.
+/// - `unreadable`: refused, a picture whose header is damaged.
+/// - `missing`: refused, no regular file at the path.
+enum class SendPlan {
+    reencoded,
+    as_is,
+    original_cannot_decode,
+    original_animated_png,
+    too_large_to_decode,
+    too_large_for_server,
+    unreadable,
+    missing,
+};
+
+template <>
+struct EnumTraits<SendPlan> {
+    static constexpr std::string_view name = "SendPlan";
+    static constexpr std::array<std::string_view, 8> names{"reencoded", "as-is", "original-cannot-decode", "original-animated-png", "too-large-to-decode", "too-large-for-server", "unreadable", "missing"};
+
+    static constexpr std::string_view to_string(SendPlan value) {
+        return names[static_cast<std::size_t>(value)];
+    }
+
+    static constexpr std::optional<SendPlan> parse(std::string_view text) {
+        for (std::size_t i = 0; i < names.size(); i++)
+            if (names[i] == text)
+                return static_cast<SendPlan>(i);
+        return std::nullopt;
+    }
+};
+
+struct SendPlanResult {
+    static constexpr std::string_view type_tag = "sendPlan";
+
+    ::session_bridge::SendPlan plan;
+
+    explicit SendPlanResult(::session_bridge::SendPlan plan_) :
+            plan{std::move(plan_)} {}
+};
+
 /// A thumbnail's side in device pixels, as libsession clamped it.
 struct EdgeResult {
     static constexpr std::string_view type_tag = "edge";
@@ -520,6 +571,7 @@ using Result = std::variant<
         BoolResult,
         PathResult,
         ByteCountResult,
+        SendPlanResult,
         EdgeResult,
         ConfigSizesResult>;
 
@@ -1193,6 +1245,19 @@ struct SendMessageCommand {
             conversation_id{std::move(conversation_id_)}, body{std::move(body_)}, reply_to{std::move(reply_to_)}, attachments{std::move(attachments_)} {}
 };
 
+/// What sending the file at `path` would do with it, under the file server's limit, without
+/// sending it: for staging to refuse a file before Send. `contentType` is inferred from the
+/// extension when unset, as `sendMessage` infers it. Read on libsession's disk thread.
+struct AttachmentSendPlanCommand {
+    static constexpr std::string_view type_tag = "attachmentSendPlan";
+
+    std::string path;
+    std::optional<std::string> content_type;
+
+    AttachmentSendPlanCommand(std::string path_, std::optional<std::string> content_type_) :
+            path{std::move(path_)}, content_type{std::move(content_type_)} {}
+};
+
 struct RetrySendCommand {
     static constexpr std::string_view type_tag = "retrySend";
 
@@ -1427,6 +1492,7 @@ using Command = std::variant<
         DeleteConversationCommand,
         GetMessagesCommand,
         SendMessageCommand,
+        AttachmentSendPlanCommand,
         RetrySendCommand,
         DeleteMessageCommand,
         DownloadAttachmentCommand,

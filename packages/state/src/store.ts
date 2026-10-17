@@ -5,6 +5,7 @@ import type {
   ConversationId,
   Message,
   OutgoingMessage,
+  SendPlan,
   SessionClient,
 } from '@session/client'
 import { BRIDGE_UNAVAILABLE, SessionClientError } from '@session/client'
@@ -77,6 +78,8 @@ export interface SessionActions {
   loadOlder: (id: ConversationId) => Promise<void>
   /** Rejects, storing nothing, when libsession refuses it: a file that cannot be read, say. */
   send: (id: ConversationId, message: OutgoingMessage) => Promise<void>
+  /** What sending the file at `path` would do with it: whether the composer may stage it. */
+  attachmentSendPlan: (path: string, contentType?: string) => Promise<SendPlan>
   markRead: (id: ConversationId) => Promise<void>
   approve: (id: ConversationId) => Promise<void>
   /**
@@ -438,6 +441,10 @@ export function createSessionStore(
       // it as message-added, so inventing one here would only produce a duplicate to
       // reconcile.
       await client.sendMessage(id, message)
+    },
+
+    attachmentSendPlan(path, contentType): Promise<SendPlan> {
+      return client.attachmentSendPlan(path, contentType)
     },
 
     async markRead(id): Promise<void> {

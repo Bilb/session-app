@@ -104,11 +104,12 @@ export class ExportGate {
 }
 
 /**
- * Which files the renderer may send: only those the preload resolved from a `File` the person
- * picked or dropped in this window.
+ * Which files the renderer may send, or ask the send plan of: only those the preload resolved from
+ * a `File` the person picked or dropped in this window.
  *
  * libsession reads whatever path a send names, so without this a page script could send any file
- * this user can read to anyone. Counted, since a path can be picked again while an earlier pick
+ * this user can read to anyone, or learn from a plan whether any path exists and what it holds.
+ * Counted, since a path can be picked again while an earlier pick
  * of it is still staged, and released as the composer lets each pick go. `takeFile` never gets
  * through: a desktop pick is the person's own file, which libsession must not move or delete.
  */
@@ -141,6 +142,12 @@ export class SendGate {
   /** The request to send on, or why it is refused. Only `sendMessage` is ever changed. */
   admit(request: Request): Request | string {
     const command = request.command as Request['command'] | undefined
+    if (command?.type === 'attachmentSendPlan') {
+      const { path } = command as { path: unknown }
+      return isPath(path) && this.picked.has(pathKey(path, this.caseInsensitive))
+        ? request
+        : 'attachmentSendPlan.path names a file that was not picked'
+    }
     if (command?.type !== 'sendMessage' || command.attachments === undefined) return request
     // Renderer input: the shape is checked here, and the field types by the bridge's converter.
     const named: unknown = command.attachments

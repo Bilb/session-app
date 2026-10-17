@@ -1078,6 +1078,15 @@ struct ClientBridge::Impl {
                               }));
     }
 
+    void handle(double id, AttachmentSendPlanCommand& cmd) {
+        client->attachment_send_plan(
+                utf8_path(cmd.path),
+                std::move(cmd.content_type),
+                on(id, [this, id](image::SendPlan plan) {
+                    respond(id, SendPlanResult{to_bridge(plan)});
+                }));
+    }
+
     void handle(double id, const RetrySendCommand& cmd) {
         const int64_t message_id = whole<int64_t>(cmd.message_id, "retrySend.messageId");
         // The callback form takes an upload handler and there is no overload without one, so it
