@@ -28,6 +28,7 @@ import {
   FILE_ROW_GAP,
   fileLeadHeight,
   fileRowControl,
+  fileRowMarker,
   fileRowTone,
   type FileRowState,
 } from './fileRowState'
@@ -194,7 +195,16 @@ function Trailing({
     justifyContent: 'center',
   } as const
 
-  if (control === null) return <YStack {...square} />
+  if (control === null) {
+    const marker = fileRowMarker(state)
+    return (
+      <YStack {...square} aria-hidden>
+        {marker === null ? null : (
+          <Icon name={marker} size="sm" {...inkFor('secondary', onAccent)} />
+        )}
+      </YStack>
+    )
+  }
 
   const ring = focusRing({ onAccent, offset: 0, radius: '$full' })
   // While a transfer runs, a disabled button showing progress, since the bridge has no cancel. The

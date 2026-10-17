@@ -223,6 +223,8 @@ export class FakeAccount {
   private world: FakeWorld | undefined
   /** Attachments whose bytes are in the cache, by `keyOf`. */
   private readonly cached = new Set<string>()
+  /** The sizes `seedSending` held back from files not up yet, which their upload reports. */
+  private readonly unreportedSizes = new Map<string, number>()
   /**
    * Transfers in flight, by `keyOf`, so a second request for a file joins its transfer rather than
    * starting another - a download and an export alike, as libsession keys both by the file.
@@ -601,6 +603,87 @@ export class FakeAccount {
     this.addMessage(id, message)
     this.world?.scheduleSend(this, id, message)
     return message.id
+  }
+
+  /**
+   * A message of ours caught partway through sending its files, for a fixture to show.
+   *
+   * The protocol cannot send an attachment yet, so `send` never makes one; this is the only way a
+   * set being uploaded reaches a screen. The first `uploaded` files are on the file server.
+   */
+  seedSending(
+    id: ConversationId,
+    body: string,
+    attachments: Attachment[],
+    sendState: SendState,
+    uploaded: number,
+  ): Message {
+    const now = this.world?.now() ?? Date.now()
+    const messageId = nextId()
+    // As libsession leaves them: an uploaded file is in the cache, kept there by the upload, and
+    // one that is not up yet has no size, which is the uploaded pointer's to report.
+    const seeded = attachments.map((attachment, index) => {
+      if (index < uploaded) {
+        this.cached.add(keyOf({ messageId, index: attachment.index }))
+        return { ...attachment, uploaded: true }
+      }
+      const { sizeBytes, ...rest } = attachment
+      if (sizeBytes !== undefined)
+        this.unreportedSizes.set(keyOf({ messageId, index: attachment.index }), sizeBytes)
+      return { ...rest, uploaded: false }
+    })
+    return this.addMessage(id, {
+      id: messageId,
+      conversationId: id,
+      author: this.sessionId,
+      timestamp: now,
+      body,
+      outgoing: true,
+      sendState,
+      attachments: seeded,
+      galleryViewable: galleryViewable(seeded),
+      syncState: sendState,
+    })
+  }
+
+  /**
+   * libsession's `retry_send`: from `failed` or `interrupted` only, uploading what has no URL yet
+   * and keeping what has. The fake's uploads cannot fail, so a resume always finishes.
+   */
+  resumeSend(messageId: number): boolean {
+    for (const [id, state] of this.conversations) {
+      const message = state.messages.find((m) => m.id === messageId)
+      if (message === undefined) continue
+      if (message.sendState !== 'failed' && message.sendState !== 'interrupted') return false
+      const finish = () => {
+        const attachments = message.attachments.map((attachment) => {
+          const key = keyOf({ messageId, index: attachment.index })
+          this.cached.add(key)
+          const sizeBytes = this.unreportedSizes.get(key)
+          this.unreportedSizes.delete(key)
+          return {
+            ...attachment,
+            uploaded: true,
+            ...(sizeBytes === undefined ? {} : { sizeBytes }),
+          }
+        })
+        this.updateMessage(id, messageId, {
+          sendState: 'sent',
+          ...(message.syncState === undefined ? {} : { syncState: 'sent' }),
+          attachments,
+        })
+      }
+      // As libsession: back to uploading while a file is not up yet, else queued for the send.
+      const resumed = message.attachments.every((a) => a.uploaded) ? 'pending' : 'uploading'
+      this.updateMessage(id, messageId, {
+        sendState: resumed,
+        ...(message.syncState === undefined ? {} : { syncState: resumed }),
+      })
+      if (this.world) this.world.schedule(1, finish)
+      else finish()
+      return true
+    }
+    return false
   }
 
   // -- Attachments ---------------------------------------------------------------------------

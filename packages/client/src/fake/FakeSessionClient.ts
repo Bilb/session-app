@@ -428,9 +428,9 @@ export class FakeSessionClient implements SessionClient {
     return Promise.resolve(this.account.send(id, message.body, message.replyTo))
   }
 
-  retrySend(): Promise<boolean> {
+  retrySend(messageId: number): Promise<boolean> {
     this.assertOpen()
-    return Promise.resolve(true)
+    return Promise.resolve(this.account.resumeSend(messageId))
   }
 
   deleteMessage(messageId: number, scope: Deletion): Promise<void> {

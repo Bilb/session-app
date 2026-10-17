@@ -1,9 +1,10 @@
 import type { Attachment, Message } from '@session/client'
-import { tr } from '@session/localization'
+import { PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { forwardChevron, Icon, inkFor, PressArea, Text, XStack, YStack } from '@session/ui'
 
 import { AttachmentRow } from './AttachmentRow'
+import { failsPast } from './uploadState'
 
 /**
  * How many rows a message draws before the rest moves into a sheet.
@@ -24,10 +25,13 @@ function ShowAll({
   count,
   onPress,
   onAccent,
+  failedHidden,
 }: {
   count: number
   onPress: () => void
   onAccent: boolean
+  /** Set when a file it hides failed to upload, which nothing in the transcript would show. */
+  failedHidden: boolean
 }) {
   return (
     <PressArea
@@ -40,6 +44,18 @@ function ShowAll({
           <Text size="$label" weight="semibold" {...inkFor('link', onAccent)} flex={1}>
             {tr('showAll')}
           </Text>
+          {failedHidden ? (
+            <XStack
+              alignItems="center"
+              gap="$3xs"
+              testID={ELEMENT.conversation.attachmentShowAllFailed}
+            >
+              <Icon name="triangleAlert" size="xs" {...inkFor('primary', onAccent)} />
+              <Text size="$label" weight="semibold" {...inkFor('primary', onAccent)}>
+                {PENDING_COPY.attachmentsFailedCount(1)}
+              </Text>
+            </XStack>
+          ) : null}
           <Text size="$label" {...inkFor('secondary', onAccent)}>
             {count}
           </Text>
@@ -90,7 +106,12 @@ export function AttachmentList({
         />
       ))}
       {hidden === 0 || onShowAll === undefined ? null : (
-        <ShowAll count={message.attachments.length} onPress={onShowAll} onAccent={onAccent} />
+        <ShowAll
+          count={message.attachments.length}
+          onPress={onShowAll}
+          onAccent={onAccent}
+          failedHidden={failsPast(message, LIST_MAX_ROWS)}
+        />
       )}
     </YStack>
   )

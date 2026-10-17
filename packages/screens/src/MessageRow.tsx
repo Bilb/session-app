@@ -7,6 +7,7 @@ import { memo, useMemo, useState, type ReactNode } from 'react'
 
 import { ConversationUiContext, type ConversationUi } from './conversationUi'
 import { MessageAttachments } from './MessageAttachments'
+import { isUploadPhase } from './uploadState'
 import { createViewChoices } from './viewChoices'
 
 /**
@@ -15,8 +16,8 @@ import { createViewChoices } from './viewChoices'
  * A function rather than a table, because `tr` reads the locale when it is called: a table built
  * at module scope would be resolved once, on import, and keep whatever locale was in use then.
  */
-function stateLabel(state: Message['sendState']): string | undefined {
-  switch (state) {
+function stateLabel(message: Message): string | undefined {
+  switch (message.sendState) {
     case 'pending':
     case 'sending':
       return tr('sending')
@@ -24,11 +25,11 @@ function stateLabel(state: Message['sendState']): string | undefined {
       return tr('uploading')
     case 'failed':
       return tr('messageStatusFailedToSend')
-    // No catalogue entry for either of these yet, so they say nothing rather than saying it in
-    // English only. `interrupted` offers a retry and `unsendable` does not, which is the part
-    // that matters and is not copy.
-    case 'interrupted':
+    // A file the message needs is gone, which the catalogue has words for. Without attachments
+    // there is no key for either state, so they say nothing rather than English only.
     case 'unsendable':
+      return message.attachments.length > 0 ? tr('attachmentsErrorSending') : undefined
+    case 'interrupted':
     default:
       return undefined
   }
@@ -62,8 +63,10 @@ export const MessageRow = memo(function MessageRow({
   const message = useMessage(conversationId, messageId)
   if (message === undefined) return null
 
-  const label = message.outgoing ? stateLabel(message.sendState) : undefined
-  const retryable = message.outgoing && RETRYABLE.includes(message.sendState)
+  const label = message.outgoing ? stateLabel(message) : undefined
+  // A set still uploading has its Retry in the attachment footer, beside the count it resumes.
+  const retryable =
+    message.outgoing && RETRYABLE.includes(message.sendState) && !isUploadPhase(message)
 
   return (
     <MessageFrame

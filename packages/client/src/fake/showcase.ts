@@ -1,4 +1,4 @@
-import type { Attachment } from '@session/bridge-types'
+import type { Attachment, SendState } from '@session/bridge-types'
 
 import { image, resetPhotos, set } from './attachments'
 import { ensureDm, type FakeSetup, type FixtureName } from './fixtures'
@@ -66,6 +66,23 @@ export function showcase(names: readonly [FixtureName, FixtureName] = ['Alice', 
   for (const [body, attachments] of messages) {
     // Nothing is fetched: the conversation has not been asked what to download.
     first.deliverFrom(second, body, world.now(), attachments)
+    world.settle()
+  }
+
+  // Ours, caught sending: what the composer's files become once the bridge can carry them.
+  const sending: Array<[string, Attachment[], SendState, number]> = [
+    [
+      'Still uploading, one at a time',
+      set(['image', 'pdf', 'video', 'image', 'zip']),
+      'uploading',
+      2,
+    ],
+    ['File 31 of 32 failed', set([...image(30), 'video', 'image']), 'failed', 30],
+    ['Gallery whose 31st failed', set(image(32)), 'failed', 30],
+    ['A file of this one went missing', set(['pdf', 'image']), 'unsendable', 1],
+  ]
+  for (const [body, attachments, sendState, uploaded] of sending) {
+    first.seedSending(second.sessionId, body, attachments, sendState, uploaded)
     world.settle()
   }
 

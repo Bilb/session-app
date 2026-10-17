@@ -14,6 +14,8 @@ import { fetchOf, type Fetch } from './attachmentFetch'
 import { controlVerb, rowVerb, verbLabel, type AttachmentVerb } from './attachmentPress'
 import { useConversationUi } from './conversationUi'
 import { exportOne } from './exportAttachment'
+import { SendingRow } from './SendingRow'
+import { isUploadPhase } from './uploadState'
 import { useExportFeedback } from './useExportFeedback'
 import { isViewable, leadUri, leadsWithPicture } from './viewableAttachments'
 
@@ -45,16 +47,19 @@ function caption(
  * wording is the catalogue's and the transfers are the store's, and `@session/ui` can reach
  * neither. What is left here is the mapping between them.
  */
-export function AttachmentRow({
-  message,
-  attachment,
-  onAccent,
-}: {
+interface RowProps {
   message: Message
   attachment: Attachment
   /** Drawn on a bubble you sent; absent in the sheet, which draws its rows on the page. */
   onAccent?: boolean | undefined
-}) {
+}
+
+/** One attachment as a row: its upload while ours is being sent, its download otherwise. */
+export function AttachmentRow(props: RowProps) {
+  return isUploadPhase(props.message) ? <SendingRow {...props} /> : <SettledRow {...props} />
+}
+
+function SettledRow({ message, attachment, onAccent }: RowProps) {
   const actions = useSessionActions()
   const feedback = useExportFeedback()
   const ui = useConversationUi()
