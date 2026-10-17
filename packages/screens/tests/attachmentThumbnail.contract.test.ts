@@ -20,6 +20,13 @@ describe('which picture each place draws', () => {
     }
   })
 
+  it('draws a file we are sending through leadUri too', () => {
+    const source = read('SendingRow.tsx')
+    expect(source).toMatch(/uri: leadUri\(message\.id, attachment, fetchOf\(attachment\)\.state\)/)
+    expect(source).not.toContain('media.urlFor(')
+    expect(source).not.toContain('media.thumbnailUrlFor(')
+  })
+
   it('prefers the thumbnail, and falls back to the file only for a type that never gets one', () => {
     expect(read('viewableAttachments.ts')).toMatch(
       /if \(attachment\.hasThumbnail\) return requirePorts\(\)\.media\.thumbnailUrlFor\(ref\)\n\s*if \(state === 'ready' && isViewable\(attachment\) && !isDisplayableImage\(attachment\.contentType\)\)\n\s*return requirePorts\(\)\.media\.urlFor\(ref\)/,
