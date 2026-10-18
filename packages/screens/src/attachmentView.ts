@@ -28,14 +28,10 @@ export function canChooseView(message: Message): boolean {
  * per-item retry - and libsession has been reporting per `(message_id, index)` all along. A set
  * that cannot be drawn as a gallery is exactly the set most likely to need them.
  *
- * `chosen` is the reader's answer where they have given one. The default is the gallery wherever
- * one is possible, so the only choice that changes anything is the list; a choice on a set that
- * cannot be a gallery is ignored.
- *
- * TODO: surface libsession's per-message gallery decision through the bridge and store the
- * reader's choice there; it is screen state today, so it is lost when the conversation closes.
+ * Otherwise it is libsession's stored `gallery`, which starts on wherever a gallery is possible.
+ * Where libsession says gallery and this client cannot draw one, the list wins and the stored
+ * value is left alone, so a client that can draw the set still shows it as one.
  */
-export function attachmentView(message: Message, chosen?: AttachmentView): AttachmentView {
-  if (!canChooseView(message)) return 'list'
-  return chosen ?? 'gallery'
+export function attachmentView(message: Message): AttachmentView {
+  return canChooseView(message) && message.gallery ? 'gallery' : 'list'
 }

@@ -15,7 +15,6 @@ import { AttachmentSheet } from './AttachmentSheet'
 import { Composer } from './Composer'
 import { outgoingAttachment } from './staging'
 import { useStaging } from './useStaging'
-import { createViewChoices } from './viewChoices'
 import { ConversationUiContext, type ConversationUi } from './conversationUi'
 import { MessageMediaViewer, type ViewerTarget } from './MessageMediaViewer'
 import { MessageRow } from './MessageRow'
@@ -38,15 +37,6 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
   const [prompting, setPrompting] = useState(false)
   const autoDownload = conversation?.autoDownload
   const asking = prompting && conversation !== undefined && autoDownload === undefined
-  /**
-   * Which shape each message's attachments were last asked for, keyed by message id.
-   *
-   * Here rather than in the message row, because the transcript is a windowed list: a row
-   * scrolled far enough away is unmounted, and state held inside one is a choice that undoes
-   * itself the moment somebody scrolls down and back. Dropped with the conversation, which is the
-   * right scope - it is a way of reading one message, not a setting.
-   */
-  const [views] = useState(createViewChoices)
   // One viewer and one sheet for the whole transcript, so two can never be open at once.
   const [viewer, setViewer] = useState<ViewerTarget | null>(null)
   const [sheet, setSheet] = useState<number | null>(null)
@@ -58,13 +48,12 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
       requestAutoDownloadPrompt: () => {
         if (autoDownload === undefined) setPrompting(true)
       },
-      views,
       openViewer: (messageId, index) => {
         setViewer({ messageId, index })
       },
       openSheet: setSheet,
     }),
-    [conversationId, autoDownload, views],
+    [conversationId, autoDownload],
   )
 
   // The id stands in for the conversation as well as for the name: opening one from a route

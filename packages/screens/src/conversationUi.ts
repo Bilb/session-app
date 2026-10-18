@@ -1,8 +1,6 @@
 import type { ConversationId } from '@session/client'
 import { createContext, useContext } from 'react'
 
-import type { ViewChoices } from './viewChoices'
-
 /**
  * What a conversation's messages ask of the screen around them.
  *
@@ -13,8 +11,6 @@ export interface ConversationUi {
   conversationId: ConversationId
   /** Puts the question to the reader the first time anything is fetched, and never again. */
   requestAutoDownloadPrompt: () => void
-  /** The shape the reader chose for each message's attachments, where they chose one. */
-  views: ViewChoices
   /** `index` is the attachment's index in the message, not its place among the viewable ones. */
   openViewer: (messageId: number, index: number) => void
   openSheet: (messageId: number) => void

@@ -20,13 +20,17 @@ function attachment(index: number, contentType?: string): Attachment {
   }
 }
 
-/** libsession's rule by default: has attachments, and every one is a displayable image type. */
+/**
+ * libsession's rules by default: viewable when it has attachments and every one is a displayable
+ * image type, and stored as a gallery wherever it is viewable.
+ */
 function message(
   attachments: Attachment[],
   galleryViewable = attachments.length > 0 &&
     attachments.every((a) => isDisplayableImage(a.contentType)),
+  gallery = galleryViewable,
 ): Message {
-  return { attachments, galleryViewable } as unknown as Message
+  return { attachments, galleryViewable, gallery } as unknown as Message
 }
 
 describe('which shape a message takes', () => {
@@ -82,18 +86,12 @@ describe('when the reader gets to choose', () => {
     expect(canChooseView(mixed)).toBe(false)
   })
 
-  it('draws what was asked for', () => {
-    expect(attachmentView(photos, 'list')).toBe('list')
-    expect(attachmentView(photos, 'gallery')).toBe('gallery')
+  it('draws the list once libsession stores that the reader asked for it', () => {
+    const listed = message([attachment(0, 'image/jpeg'), attachment(1, 'image/png')], true, false)
+    expect(attachmentView(listed)).toBe('list')
   })
 
-  it('keeps the gallery where nothing was asked for', () => {
+  it('draws the gallery libsession starts a viewable set as', () => {
     expect(attachmentView(photos)).toBe('gallery')
-  })
-
-  it('ignores a choice on a set that has none', () => {
-    // The choice is held per message and outlives what is on screen, so a set that has since
-    // stopped being drawable as a gallery must not be handed one it cannot draw.
-    expect(attachmentView(mixed, 'gallery')).toBe('list')
   })
 })

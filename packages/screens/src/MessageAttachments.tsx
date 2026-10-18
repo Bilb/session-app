@@ -15,7 +15,6 @@ import { useAttachmentFooter } from './useAttachmentFooter'
 import { useAttachmentSet } from './useAttachmentSet'
 import { useExportFeedback } from './useExportFeedback'
 import { viewerFit } from './viewableAttachments'
-import { useViewChoice } from './viewChoices'
 
 /**
  * Everything one message's attachments draw: the album or the list, and the one footer under both.
@@ -30,7 +29,7 @@ export function MessageAttachments({ message }: { message: Message }) {
   const attachmentSet = useAttachmentSet(message)
   const { set, fetchFor, downloadMissing } = attachmentSet
   const footer = useAttachmentFooter(message, attachmentSet)
-  const view = attachmentView(message, useViewChoice(ui.views, message.id))
+  const view = attachmentView(message)
   const overflows = view === 'list' && message.attachments.length > LIST_MAX_ROWS
   const sending = isUploadPhase(message)
   const albumFetch = sending
@@ -88,7 +87,7 @@ export function MessageAttachments({ message }: { message: Message }) {
         sending={footer.sending}
         view={canChooseView(message) ? view : undefined}
         onView={(chosen) => {
-          ui.views.choose(message.id, chosen)
+          void actions.setGallery(message.id, chosen === 'gallery')
         }}
       />
     </YStack>

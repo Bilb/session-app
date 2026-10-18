@@ -3,12 +3,11 @@ import { useMessage, useSessionActions } from '@session/state'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { MessageFrame, ON_ACCENT_SECONDARY_OPACITY, Text, XStack } from '@session/ui'
-import { memo, useMemo, useState, type ReactNode } from 'react'
+import { memo, useMemo, type ReactNode } from 'react'
 
 import { ConversationUiContext, type ConversationUi } from './conversationUi'
 import { MessageAttachments } from './MessageAttachments'
 import { isUploadPhase } from './uploadState'
-import { createViewChoices } from './viewChoices'
 
 /**
  * What a send state is called on screen. Only the ones worth showing say anything.
@@ -132,16 +131,14 @@ export function DetachedMessages({
   conversationId: ConversationId
   children: ReactNode
 }) {
-  const [views] = useState(createViewChoices)
   const ui = useMemo<ConversationUi>(
     () => ({
       conversationId,
       requestAutoDownloadPrompt: ignore,
-      views,
       openViewer: ignore,
       openSheet: ignore,
     }),
-    [conversationId, views],
+    [conversationId],
   )
   return <ConversationUiContext.Provider value={ui}>{children}</ConversationUiContext.Provider>
 }
