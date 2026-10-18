@@ -71,6 +71,10 @@ export interface ContractHarness {
    * The attachments point at nothing, so only what the client says about them can be asked.
    */
   receivesAttachments(): Promise<{
+    /** The receiving client, which `restart` accepts. */
+    client: SessionClient
+    /** The conversation the forged messages land in. */
+    conversationId: string
     receive: (contentTypes: readonly string[]) => Promise<Message>
   }>
   /** Stops and restarts a client against the same data. */
@@ -1233,6 +1237,53 @@ export function runSessionClientContract(
       expect((await receive(['image/jpeg', 'application/pdf'])).galleryViewable).toBe(false)
       expect((await receive(['image/heic', 'image/png'])).galleryViewable).toBe(false)
       expect((await receive(['image/png', 'IMAGE/GIF'])).galleryViewable).toBe(true)
+    })
+
+    it('starts a message as a gallery exactly where it can be one', async () => {
+      const { receive } = await harness.receivesAttachments()
+      expect((await receive(['image/jpeg', 'image/png'])).gallery).toBe(true)
+      expect((await receive(['image/jpeg', 'application/pdf'])).gallery).toBe(false)
+    })
+
+    it('stores a gallery choice, announces it, and keeps it across a restart', async () => {
+      const { client, conversationId, receive } = await harness.receivesAttachments()
+      const { id } = await receive(['image/jpeg'])
+      const seen = collect(client)
+
+      expect(await client.setGallery(id, false)).toBe(true)
+      const announced = messagesOf(seen.events, 'messages-updated').filter((m) => m.id === id)
+      expect(announced.map((m) => m.gallery)).toEqual([false])
+      seen.stop()
+
+      const restarted = await harness.restart(client)
+      const stored = async () =>
+        (await restarted.getMessages(conversationId)).messages.find((m) => m.id === id)?.gallery
+      expect(await stored()).toBe(false)
+
+      expect(await restarted.setGallery(id, true)).toBe(true)
+      expect(await stored()).toBe(true)
+    })
+
+    it('announces nothing when asked for the gallery choice already stored', async () => {
+      const { client, receive } = await harness.receivesAttachments()
+      const { id } = await receive(['image/png'])
+      const seen = collect(client)
+      expect(await client.setGallery(id, true)).toBe(true)
+      // The stream is ordered, so a no-op that announced would show up ahead of the real change.
+      expect(await client.setGallery(id, false)).toBe(true)
+      const announced = messagesOf(seen.events, 'messages-updated').filter((m) => m.id === id)
+      expect(announced.map((m) => m.gallery)).toEqual([false])
+      seen.stop()
+    })
+
+    it('refuses a gallery for a message that cannot be one, and for one that does not exist', async () => {
+      const { client, conversationId, receive } = await harness.receivesAttachments()
+      const { id } = await receive(['image/jpeg', 'application/pdf'])
+      expect(await client.setGallery(id, true)).toBe(false)
+      expect(await client.setGallery(id, false)).toBe(true)
+      const page = await client.getMessages(conversationId)
+      expect(page.messages.find((m) => m.id === id)?.gallery).toBe(false)
+      expect(await client.setGallery(987_654_321, false)).toBe(false)
     })
 
     it('has no attachment cache limit until one is set, and reads back the one set', async () => {

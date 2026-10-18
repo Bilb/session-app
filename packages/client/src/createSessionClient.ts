@@ -276,6 +276,11 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       return resultOf(response, 'bool').value
     },
 
+    async setGallery(messageId, gallery): Promise<boolean> {
+      const response = await call({ type: 'setGallery', messageId, gallery })
+      return resultOf(response, 'bool').value
+    },
+
     async deleteMessage(messageId, scope: Deletion): Promise<void> {
       await call({ type: 'deleteMessage', messageId, scope })
     },

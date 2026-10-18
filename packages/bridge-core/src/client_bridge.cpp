@@ -1108,6 +1108,13 @@ struct ClientBridge::Impl {
                 on(id, [this, id](bool started) { respond(id, BoolResult{started}); }));
     }
 
+    void handle(double id, const SetGalleryCommand& cmd) {
+        client->set_gallery(
+                whole<int64_t>(cmd.message_id, "setGallery.messageId"),
+                cmd.gallery,
+                on(id, [this, id](bool done) { respond(id, BoolResult{done}); }));
+    }
+
     void handle(double id, const DeleteMessageCommand& cmd) {
         auto answer = on(id, [this, id](bool deleted) { respond(id, BoolResult{deleted}); });
         const int64_t message_id = whole<int64_t>(cmd.message_id, "deleteMessage.messageId");

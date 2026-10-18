@@ -194,6 +194,10 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     type: 'bool',
     value: await client.retrySend(cmd.messageId),
   }),
+  setGallery: async (client, cmd) => ({
+    type: 'bool',
+    value: await client.setGallery(cmd.messageId, cmd.gallery),
+  }),
   deleteMessage: async (client, cmd) => {
     await client.deleteMessage(cmd.messageId, cmd.scope)
     return { type: 'bool', value: true }

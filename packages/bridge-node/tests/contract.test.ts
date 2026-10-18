@@ -155,6 +155,8 @@ describeAddon('addon', () => {
       await alice.ask({ type: 'approveTestContact', sessionId: bob.sessionId })
       let sent = 0
       return {
+        client: alice.client,
+        conversationId: bob.sessionId,
         async receive(contentTypes: readonly string[]) {
           sent += 1
           const body = `attachments ${String(sent)}`

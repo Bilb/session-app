@@ -519,6 +519,7 @@ export class FakeAccount {
         body: '',
         attachments: [],
         galleryViewable: false,
+        gallery: false,
       })
       this.withdrawOrphanedTransfers()
       return
@@ -620,6 +621,7 @@ export class FakeAccount {
       sendState: 'sent',
       attachments,
       galleryViewable: galleryViewable(attachments),
+      gallery: galleryViewable(attachments),
     })
 
     // Whatever the conversation said to fetch unasked, fetched now. Unset means nobody has been
@@ -721,6 +723,7 @@ export class FakeAccount {
       sendState: uploading ? 'uploading' : 'pending',
       attachments,
       galleryViewable: galleryViewable(attachments),
+      gallery: galleryViewable(attachments),
       // A second send, to our own swarm, so our other devices see it. Left unset on an incoming
       // message, which is why `deliverFrom` does not set one.
       syncState: uploading ? 'uploading' : 'pending',
@@ -824,6 +827,7 @@ export class FakeAccount {
       sendState,
       attachments: seeded,
       galleryViewable: galleryViewable(seeded),
+      gallery: galleryViewable(seeded),
       syncState: sendState,
     })
   }
@@ -863,6 +867,21 @@ export class FakeAccount {
       })
       if (this.world) this.world.schedule(1, finish)
       else finish()
+      return true
+    }
+    return false
+  }
+
+  /**
+   * libsession's `set_gallery`: false for a message that is not here, or for turning a gallery on
+   * where `galleryViewable` does not hold. Asking for what is stored announces nothing.
+   */
+  setGallery(messageId: number, gallery: boolean): boolean {
+    for (const [id, state] of this.conversations) {
+      const message = state.messages.find((m) => m.id === messageId)
+      if (message === undefined) continue
+      if (gallery && !message.galleryViewable) return false
+      if (message.gallery !== gallery) this.updateMessage(id, messageId, { gallery })
       return true
     }
     return false

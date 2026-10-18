@@ -463,6 +463,7 @@ struct Codec<::session_bridge::Message> {
             obj.Set("syncState", Codec<::session_bridge::SendState>::to(env, *value.sync_state));
         obj.Set("attachments", Codec<std::vector<::session_bridge::Attachment>>::to(env, value.attachments));
         obj.Set("galleryViewable", Codec<bool>::to(env, value.gallery_viewable));
+        obj.Set("gallery", Codec<bool>::to(env, value.gallery));
         if (value.reply_to)
             obj.Set("replyTo", Codec<::session_bridge::Reply>::to(env, *value.reply_to));
         if (value.deleted)
@@ -482,6 +483,7 @@ struct Codec<::session_bridge::Message> {
                 optional<::session_bridge::SendState>(obj.Get("syncState"), "Message.syncState"),
                 Codec<std::vector<::session_bridge::Attachment>>::from(obj.Get("attachments"), "Message.attachments"),
                 Codec<bool>::from(obj.Get("galleryViewable"), "Message.galleryViewable"),
+                Codec<bool>::from(obj.Get("gallery"), "Message.gallery"),
                 optional<::session_bridge::Reply>(obj.Get("replyTo"), "Message.replyTo"),
                 optional<::session_bridge::Deletion>(obj.Get("deleted"), "Message.deleted"));
     }
@@ -1690,6 +1692,24 @@ struct Codec<::session_bridge::DeleteMessageCommand> {
 };
 
 template <>
+struct Codec<::session_bridge::SetGalleryCommand> {
+    static constexpr std::string_view name = "SetGalleryCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::SetGalleryCommand& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::SetGalleryCommand::type_tag.data(), ::session_bridge::SetGalleryCommand::type_tag.size()));
+        obj.Set("messageId", Codec<double>::to(env, value.message_id));
+        obj.Set("gallery", Codec<bool>::to(env, value.gallery));
+        return obj;
+    }
+    static ::session_bridge::SetGalleryCommand from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::SetGalleryCommand(
+                Codec<double>::from(obj.Get("messageId"), "SetGalleryCommand.messageId"),
+                Codec<bool>::from(obj.Get("gallery"), "SetGalleryCommand.gallery"));
+    }
+};
+
+template <>
 struct Codec<::session_bridge::DownloadAttachmentCommand> {
     static constexpr std::string_view name = "DownloadAttachmentCommand";
     static Napi::Value to(Napi::Env env, const ::session_bridge::DownloadAttachmentCommand& value) {
@@ -2056,6 +2076,8 @@ struct Codec<::session_bridge::Command> {
             return Codec<::session_bridge::RetrySendCommand>::from(value, where);
         if (tag == "deleteMessage")
             return Codec<::session_bridge::DeleteMessageCommand>::from(value, where);
+        if (tag == "setGallery")
+            return Codec<::session_bridge::SetGalleryCommand>::from(value, where);
         if (tag == "downloadAttachment")
             return Codec<::session_bridge::DownloadAttachmentCommand>::from(value, where);
         if (tag == "exportAttachment")

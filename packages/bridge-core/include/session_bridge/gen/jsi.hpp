@@ -469,6 +469,7 @@ struct JSIConverter<::session_bridge::Message> final {
                 ::session_bridge::optional_from_jsi<::session_bridge::SendState>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "syncState"))),
                 JSIConverter<std::vector<::session_bridge::Attachment>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "attachments"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "galleryViewable"))),
+                JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "gallery"))),
                 ::session_bridge::optional_from_jsi<::session_bridge::Reply>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "replyTo"))),
                 ::session_bridge::optional_from_jsi<::session_bridge::Deletion>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "deleted"))));
     }
@@ -485,6 +486,7 @@ struct JSIConverter<::session_bridge::Message> final {
             obj.setProperty(runtime, PropNameIDCache::get(runtime, "syncState"), JSIConverter<::session_bridge::SendState>::toJSI(runtime, *arg.sync_state));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "attachments"), JSIConverter<std::vector<::session_bridge::Attachment>>::toJSI(runtime, arg.attachments));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "galleryViewable"), JSIConverter<bool>::toJSI(runtime, arg.gallery_viewable));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "gallery"), JSIConverter<bool>::toJSI(runtime, arg.gallery));
         if (arg.reply_to)
             obj.setProperty(runtime, PropNameIDCache::get(runtime, "replyTo"), JSIConverter<::session_bridge::Reply>::toJSI(runtime, *arg.reply_to));
         if (arg.deleted)
@@ -1997,6 +1999,29 @@ struct JSIConverter<::session_bridge::DeleteMessageCommand> final {
 };
 
 template <>
+struct JSIConverter<::session_bridge::SetGalleryCommand> final {
+    static inline ::session_bridge::SetGalleryCommand fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+        jsi::Object obj = arg.asObject(runtime);
+        return ::session_bridge::SetGalleryCommand(
+                JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "messageId"))),
+                JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "gallery"))));
+    }
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::SetGalleryCommand& arg) {
+        jsi::Object obj(runtime);
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::SetGalleryCommand::type_tag));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "messageId"), JSIConverter<double>::toJSI(runtime, arg.message_id));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "gallery"), JSIConverter<bool>::toJSI(runtime, arg.gallery));
+        return obj;
+    }
+    static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
+        if (!value.isObject())
+            return false;
+        jsi::Value type = value.getObject(runtime).getProperty(runtime, PropNameIDCache::get(runtime, "type"));
+        return type.isString() && type.getString(runtime).utf8(runtime) == ::session_bridge::SetGalleryCommand::type_tag;
+    }
+};
+
+template <>
 struct JSIConverter<::session_bridge::DownloadAttachmentCommand> final {
     static inline ::session_bridge::DownloadAttachmentCommand fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
         jsi::Object obj = arg.asObject(runtime);
@@ -2431,6 +2456,8 @@ struct JSIConverter<::session_bridge::Command> final {
             return JSIConverter<::session_bridge::RetrySendCommand>::fromJSI(runtime, arg);
         if (tag == "deleteMessage")
             return JSIConverter<::session_bridge::DeleteMessageCommand>::fromJSI(runtime, arg);
+        if (tag == "setGallery")
+            return JSIConverter<::session_bridge::SetGalleryCommand>::fromJSI(runtime, arg);
         if (tag == "downloadAttachment")
             return JSIConverter<::session_bridge::DownloadAttachmentCommand>::fromJSI(runtime, arg);
         if (tag == "exportAttachment")
@@ -2479,7 +2506,7 @@ struct JSIConverter<::session_bridge::Command> final {
         if (!type.isString())
             return false;
         std::string tag = type.getString(runtime).utf8(runtime);
-        return tag == "getAccountInfo" || tag == "createAccount" || tag == "restoreAccountFromWords" || tag == "checkRecoveryPhrase" || tag == "restoreAccountFromSeed" || tag == "discardAccount" || tag == "keepAccount" || tag == "getSeedMnemonic" || tag == "setDisplayName" || tag == "attachNetwork" || tag == "warmNetworkCache" || tag == "setPollInterval" || tag == "pollOnce" || tag == "setPushToken" || tag == "handlePushPayload" || tag == "getConversations" || tag == "getMessageRequests" || tag == "getConversation" || tag == "openDm" || tag == "markRead" || tag == "setBlocked" || tag == "setNickname" || tag == "setPriority" || tag == "approveConversation" || tag == "deleteConversation" || tag == "getMessages" || tag == "sendMessage" || tag == "attachmentSendPlan" || tag == "retrySend" || tag == "deleteMessage" || tag == "downloadAttachment" || tag == "exportAttachment" || tag == "setAutoDownload" || tag == "getCacheDir" || tag == "getAttachmentCacheLimit" || tag == "setAttachmentCacheLimit" || tag == "getAttachmentCacheSize" || tag == "getThumbnailEdge" || tag == "setThumbnailEdge" || tag == "getConfigSizes" || tag == "getPref" || tag == "setPref" || tag == "deliverTestMessage" || tag == "getTestAccountSeed" || tag == "approveTestContact" || tag == "echoTestFrame";
+        return tag == "getAccountInfo" || tag == "createAccount" || tag == "restoreAccountFromWords" || tag == "checkRecoveryPhrase" || tag == "restoreAccountFromSeed" || tag == "discardAccount" || tag == "keepAccount" || tag == "getSeedMnemonic" || tag == "setDisplayName" || tag == "attachNetwork" || tag == "warmNetworkCache" || tag == "setPollInterval" || tag == "pollOnce" || tag == "setPushToken" || tag == "handlePushPayload" || tag == "getConversations" || tag == "getMessageRequests" || tag == "getConversation" || tag == "openDm" || tag == "markRead" || tag == "setBlocked" || tag == "setNickname" || tag == "setPriority" || tag == "approveConversation" || tag == "deleteConversation" || tag == "getMessages" || tag == "sendMessage" || tag == "attachmentSendPlan" || tag == "retrySend" || tag == "deleteMessage" || tag == "setGallery" || tag == "downloadAttachment" || tag == "exportAttachment" || tag == "setAutoDownload" || tag == "getCacheDir" || tag == "getAttachmentCacheLimit" || tag == "setAttachmentCacheLimit" || tag == "getAttachmentCacheSize" || tag == "getThumbnailEdge" || tag == "setThumbnailEdge" || tag == "getConfigSizes" || tag == "getPref" || tag == "setPref" || tag == "deliverTestMessage" || tag == "getTestAccountSeed" || tag == "approveTestContact" || tag == "echoTestFrame";
     }
 };
 

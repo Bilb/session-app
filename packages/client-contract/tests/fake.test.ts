@@ -128,6 +128,8 @@ const harness: ContractHarness = {
     if (!alice) throw new Error('fixture did not produce a client')
     const bob = world.account('Bob')
     return Promise.resolve({
+      client: alice,
+      conversationId: bob.sessionId,
       async receive(contentTypes: readonly string[]) {
         const attachments = contentTypes.map((contentType, index): Attachment => ({
           ...ARRIVING_IMAGE,

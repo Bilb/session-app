@@ -397,11 +397,16 @@ struct Message {
     /// image" (JPEG, PNG, WebP, GIF, AVIF, `image/pjpeg`, case-insensitive). It does not say whether
     /// this client can draw them, which is the screens' decision to make.
     bool gallery_viewable;
+    /// Whether this message is shown as a gallery: libsession's stored decision, on from the start
+    /// wherever `galleryViewable` holds and changed by `setGallery`. Never true when `galleryViewable`
+    /// is false. A client that cannot draw every attachment as a picture shows a list regardless and
+    /// leaves this alone.
+    bool gallery;
     std::optional<::session_bridge::Reply> reply_to;
     std::optional<::session_bridge::Deletion> deleted;
 
-    Message(double id_, std::string conversation_id_, std::string author_, double timestamp_, std::string body_, bool outgoing_, ::session_bridge::SendState send_state_, std::optional<::session_bridge::SendState> sync_state_, std::vector<::session_bridge::Attachment> attachments_, bool gallery_viewable_, std::optional<::session_bridge::Reply> reply_to_, std::optional<::session_bridge::Deletion> deleted_) :
-            id{std::move(id_)}, conversation_id{std::move(conversation_id_)}, author{std::move(author_)}, timestamp{std::move(timestamp_)}, body{std::move(body_)}, outgoing{std::move(outgoing_)}, send_state{std::move(send_state_)}, sync_state{std::move(sync_state_)}, attachments{std::move(attachments_)}, gallery_viewable{std::move(gallery_viewable_)}, reply_to{std::move(reply_to_)}, deleted{std::move(deleted_)} {}
+    Message(double id_, std::string conversation_id_, std::string author_, double timestamp_, std::string body_, bool outgoing_, ::session_bridge::SendState send_state_, std::optional<::session_bridge::SendState> sync_state_, std::vector<::session_bridge::Attachment> attachments_, bool gallery_viewable_, bool gallery_, std::optional<::session_bridge::Reply> reply_to_, std::optional<::session_bridge::Deletion> deleted_) :
+            id{std::move(id_)}, conversation_id{std::move(conversation_id_)}, author{std::move(author_)}, timestamp{std::move(timestamp_)}, body{std::move(body_)}, outgoing{std::move(outgoing_)}, send_state{std::move(send_state_)}, sync_state{std::move(sync_state_)}, attachments{std::move(attachments_)}, gallery_viewable{std::move(gallery_viewable_)}, gallery{std::move(gallery_)}, reply_to{std::move(reply_to_)}, deleted{std::move(deleted_)} {}
 };
 
 /// A page of history.
@@ -1277,6 +1282,21 @@ struct DeleteMessageCommand {
             message_id{std::move(message_id_)}, scope{std::move(scope_)} {}
 };
 
+/// Shows a message as a gallery, or as a list. Answers false, changing nothing, for a message
+/// that does not exist or, when `gallery` is true, one that is not `galleryViewable`; turning it
+/// off is always allowed. A change is announced as messages-updated; asking for what is already
+/// stored answers true and announces nothing. Fetches nothing: getting a gallery's pictures is
+/// still the caller's `downloadAttachment`.
+struct SetGalleryCommand {
+    static constexpr std::string_view type_tag = "setGallery";
+
+    double message_id;
+    bool gallery;
+
+    SetGalleryCommand(double message_id_, bool gallery_) :
+            message_id{std::move(message_id_)}, gallery{std::move(gallery_)} {}
+};
+
 /// Fetch an attachment into libsession's cache, reporting progress as it goes.
 ///
 /// One call covers all three cases: it answers at once when the file is already cached, joins a
@@ -1495,6 +1515,7 @@ using Command = std::variant<
         AttachmentSendPlanCommand,
         RetrySendCommand,
         DeleteMessageCommand,
+        SetGalleryCommand,
         DownloadAttachmentCommand,
         ExportAttachmentCommand,
         SetAutoDownloadCommand,

@@ -460,6 +460,11 @@ export class FakeSessionClient implements SessionClient {
     return Promise.resolve(this.account.resumeSend(messageId))
   }
 
+  setGallery(messageId: number, gallery: boolean): Promise<boolean> {
+    this.assertOpen()
+    return Promise.resolve(this.account.setGallery(messageId, gallery))
+  }
+
   deleteMessage(messageId: number, scope: Deletion): Promise<void> {
     this.assertOpen()
     this.account.deleteMessage(messageId, scope)

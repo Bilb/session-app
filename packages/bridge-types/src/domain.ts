@@ -350,6 +350,13 @@ export interface Message {
    * this client can draw them, which is the screens' decision to make.
    */
   galleryViewable: boolean
+  /**
+   * Whether this message is shown as a gallery: libsession's stored decision, on from the start
+   * wherever `galleryViewable` holds and changed by `setGallery`. Never true when `galleryViewable`
+   * is false. A client that cannot draw every attachment as a picture shows a list regardless and
+   * leaves this alone.
+   */
+  gallery: boolean
   replyTo?: Reply
   deleted?: Deletion
 }

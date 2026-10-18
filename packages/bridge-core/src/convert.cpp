@@ -153,6 +153,7 @@ Message to_bridge(::session::client::Message&& from) {
                                  : std::nullopt,
             std::move(attachments),
             from.gallery_viewable,
+            from.gallery,
             std::move(reply),
             deleted);
 }

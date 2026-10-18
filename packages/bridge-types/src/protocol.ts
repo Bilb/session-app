@@ -231,6 +231,14 @@ export type Command =
   | { type: 'attachmentSendPlan'; path: string; contentType?: string }
   | { type: 'retrySend'; messageId: number }
   | { type: 'deleteMessage'; messageId: number; scope: Deletion }
+  /**
+   * Shows a message as a gallery, or as a list. Answers false, changing nothing, for a message
+   * that does not exist or, when `gallery` is true, one that is not `galleryViewable`; turning it
+   * off is always allowed. A change is announced as messages-updated; asking for what is already
+   * stored answers true and announces nothing. Fetches nothing: getting a gallery's pictures is
+   * still the caller's `downloadAttachment`.
+   */
+  | { type: 'setGallery'; messageId: number; gallery: boolean }
   // Attachments. Nothing here carries bytes: a transfer is reported by `attachment-progress`
   // events, and the file itself is reached by the media scheme each platform resolves natively.
   /**

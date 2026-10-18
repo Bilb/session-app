@@ -19,6 +19,7 @@ function message(id: number): Message {
     sendState: 'sent',
     attachments: [],
     galleryViewable: false,
+    gallery: false,
   }
 }
 

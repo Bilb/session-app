@@ -32,6 +32,7 @@ function message(overrides: Partial<Message> = {}): Message {
     sendState: 'sent',
     attachments: [],
     galleryViewable: false,
+    gallery: false,
     ...overrides,
   }
 }

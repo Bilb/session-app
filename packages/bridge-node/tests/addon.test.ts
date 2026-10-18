@@ -560,6 +560,7 @@ describeEcho('the generated converters', () => {
     syncState: 'pending',
     attachments: [fullAttachment, bareAttachment],
     galleryViewable: true,
+    gallery: true,
     replyTo: { author, timestamp: 1_699_999_999_999, messageId: 7, body: 'orig' },
     deleted: 'here',
   }
@@ -573,6 +574,7 @@ describeEcho('the generated converters', () => {
     sendState: 'sent',
     attachments: [],
     galleryViewable: false,
+    gallery: false,
   }
 
   const frames: Frame[] = [
