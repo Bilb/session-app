@@ -156,6 +156,11 @@ export interface SessionActions {
    */
   retry: (messageId: number) => Promise<boolean>
   /**
+   * Shows a message as a gallery or as a list, stored by libsession. The message redraws when the
+   * change is announced, so nothing is patched here; false is a gallery libsession refused.
+   */
+  setGallery: (messageId: number, gallery: boolean) => Promise<boolean>
+  /**
    * Fetches an attachment: one that is already cached resolves at once and reports nothing at
    * all. Whether the bytes are here is the attachment's `availability`, not this.
    *
@@ -464,6 +469,10 @@ export function createSessionStore(
 
     async retry(messageId): Promise<boolean> {
       return client.retrySend(messageId)
+    },
+
+    async setGallery(messageId, gallery): Promise<boolean> {
+      return client.setGallery(messageId, gallery)
     },
 
     async downloadAttachment(ref): Promise<void> {

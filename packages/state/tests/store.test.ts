@@ -231,6 +231,29 @@ describe('the store', () => {
     expect(attachment(withOne.id)?.availability).toBe('cached')
   })
 
+  it('shows a message as a list once asked, and reads the choice back after a reload', async () => {
+    const { store, world, bob } = fixture
+    const load = async () => {
+      const running = store.actions.loadHistory(bob)
+      world.settle()
+      await running
+    }
+    const gallery = (id: number) =>
+      store.getState().histories[bob]?.messages.find((m) => m.id === id)?.gallery
+
+    await load()
+    const album = store.getState().histories[bob]?.messages.find((m) => m.galleryViewable)
+    expect(album?.gallery).toBe(true)
+    if (!album) return
+
+    expect(await store.actions.setGallery(album.id, false)).toBe(true)
+    expect(gallery(album.id)).toBe(false)
+
+    store.actions.forgetHistory(bob)
+    await load()
+    expect(gallery(album.id)).toBe(false)
+  })
+
   it('drops a conversations window and its transfers when a screen stops showing it', async () => {
     const { store, world, bob } = fixture
     const running = store.actions.loadHistory(bob)
