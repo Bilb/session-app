@@ -892,3 +892,11 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   only of a picture that decoded, so one that does not load was evicted under it and the placeholder
   is the truth. The fake serves thumbnails `pnpm fake-media:fetch` makes of its dev photographs at
   720 px.
+
+- **2026-10-19 - A message's gallery/list choice is libsession's, stored per message.**
+  `Message.gallery` carries libsession's stored decision, on from the start wherever
+  `galleryViewable` holds, and the view switch calls `setGallery`, which announces the change as
+  `messages-updated` so only that message redraws. The screens no longer keep a choice of their
+  own: one held in screen state was lost when the conversation closed. Where libsession says
+  gallery and this client cannot draw the set (AVIF, `image/pjpeg`), the list wins and the stored
+  value is left alone, so another client that can draw it still shows the gallery.
