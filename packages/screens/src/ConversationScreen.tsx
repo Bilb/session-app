@@ -184,6 +184,6 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
  */
 export function ConversationScreen({ conversationId }: { conversationId: string }) {
   // A wide layout keeps this mounted and changes only the id; the key gives each conversation
-  // its own draft, attachment views and open overlays.
+  // its own draft and open overlays.
   return <Conversation key={conversationId} conversationId={conversationId} />
 }

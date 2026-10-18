@@ -894,9 +894,11 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   720 px.
 
 - **2026-10-19 - A message's gallery/list choice is libsession's, stored per message.**
-  `Message.gallery` carries libsession's stored decision, on from the start wherever
-  `galleryViewable` holds, and the view switch calls `setGallery`, which announces the change as
-  `messages-updated` so only that message redraws. The screens no longer keep a choice of their
-  own: one held in screen state was lost when the conversation closed. Where libsession says
-  gallery and this client cannot draw the set (AVIF, `image/pjpeg`), the list wins and the stored
-  value is left alone, so another client that can draw it still shows the gallery.
+  `Message.gallery` carries libsession's decision, stored on this device and never synced. It is on
+  by default for a `galleryViewable` message stored by this libsession; a database from earlier
+  builds may hold such sets stored as lists, and is not migrated. The view switch calls
+  `setGallery`, which announces the change as `messages-updated` so only that message redraws. The
+  screens keep no choice of their own: one held in screen state was lost when the conversation
+  closed. Where libsession says gallery and this client cannot draw the set (AVIF, `image/pjpeg`),
+  the list wins and the stored value is left alone, so a build that can draw it still shows the
+  gallery.

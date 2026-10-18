@@ -28,9 +28,9 @@ export function canChooseView(message: Message): boolean {
  * per-item retry - and libsession has been reporting per `(message_id, index)` all along. A set
  * that cannot be drawn as a gallery is exactly the set most likely to need them.
  *
- * Otherwise it is libsession's stored `gallery`, which starts on wherever a gallery is possible.
+ * Otherwise it is libsession's stored `gallery`, on by default for a set stored by this libsession.
  * Where libsession says gallery and this client cannot draw one, the list wins and the stored
- * value is left alone, so a client that can draw the set still shows it as one.
+ * value is left alone, so a build that can draw the set still shows it as one.
  */
 export function attachmentView(message: Message): AttachmentView {
   return canChooseView(message) && message.gallery ? 'gallery' : 'list'

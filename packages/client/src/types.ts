@@ -137,8 +137,9 @@ export interface SessionClient {
   /** Resumes a send that failed, and answers whether there was anything left to resume. */
   retrySend(messageId: number): Promise<boolean>
   /**
-   * Stores whether a message is shown as a gallery, announced as message-updated when it changes.
-   * False, changing nothing, for a missing message or for a gallery its `galleryViewable` refuses.
+   * Stores, on this device, whether a message is shown as a gallery, announced as messages-updated
+   * when it changes. False, changing nothing, for a missing message or for a gallery its
+   * `galleryViewable` refuses.
    */
   setGallery(messageId: number, gallery: boolean): Promise<boolean>
   deleteMessage(messageId: number, scope: Deletion): Promise<void>

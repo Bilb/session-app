@@ -397,10 +397,11 @@ struct Message {
     /// image" (JPEG, PNG, WebP, GIF, AVIF, `image/pjpeg`, case-insensitive). It does not say whether
     /// this client can draw them, which is the screens' decision to make.
     bool gallery_viewable;
-    /// Whether this message is shown as a gallery: libsession's stored decision, on from the start
-    /// wherever `galleryViewable` holds and changed by `setGallery`. Never true when `galleryViewable`
-    /// is false. A client that cannot draw every attachment as a picture shows a list regardless and
-    /// leaves this alone.
+    /// Whether this message is shown as a gallery: libsession's decision, stored on this device only
+    /// and changed by `setGallery`. On by default for a `galleryViewable` message stored by this
+    /// libsession; a database from earlier builds may hold such sets stored as lists. Never true when
+    /// `galleryViewable` is false. A client that cannot draw every attachment as a picture shows a
+    /// list regardless and leaves this alone.
     bool gallery;
     std::optional<::session_bridge::Reply> reply_to;
     std::optional<::session_bridge::Deletion> deleted;
