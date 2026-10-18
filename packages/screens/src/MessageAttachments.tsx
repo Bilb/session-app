@@ -87,7 +87,8 @@ export function MessageAttachments({ message }: { message: Message }) {
         sending={footer.sending}
         view={canChooseView(message) ? view : undefined}
         onView={(chosen) => {
-          void actions.setGallery(message.id, chosen === 'gallery')
+          // Nothing redraws until libsession announces it, so a failure still shows what is stored.
+          void actions.setGallery(message.id, chosen === 'gallery').catch(() => undefined)
         }}
       />
     </YStack>
