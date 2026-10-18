@@ -28,6 +28,17 @@ export function isReencoded(contentType: string, { decodesHeic }: WithDecodesHei
   return REENCODED.has(type) || (decodesHeic && HEIC.has(type))
 }
 
+/** Types whose pictures may carry alpha or frames, which libsession re-encodes as WebP. */
+const REENCODED_AS_WEBP: ReadonlySet<string> = new Set(['image/png', 'image/webp', 'image/gif'])
+
+/**
+ * The type libsession gives a picture it re-encodes: WebP where it has alpha or is animated, else
+ * JPEG. Read from the declared type, since the fake holds no bytes to look for either.
+ */
+export function reencodedContentType(contentType: string): 'image/jpeg' | 'image/webp' {
+  return REENCODED_AS_WEBP.has(contentTypeEssence(contentType) ?? '') ? 'image/webp' : 'image/jpeg'
+}
+
 /**
  * libsession's `image::send_plan` for a file of this type and size, read from its declared type
  * where libsession reads its header: the fake holds no bytes. So it cannot tell an animated PNG

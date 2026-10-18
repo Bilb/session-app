@@ -44,7 +44,7 @@ import {
 import { SessionClientError } from '../errors'
 
 import { inferContentType } from './contentType'
-import { fakeSendPlan, isReencoded } from './sendPlan'
+import { fakeSendPlan, isReencoded, reencodedContentType } from './sendPlan'
 
 /**
  * What the platform running the fake says of a file named to send, which the world cannot see
@@ -142,6 +142,26 @@ interface Upload {
   taken: boolean
   sizeBytes: number | undefined
   originalFile: boolean
+  /** What libsession re-encodes the file as when its upload comes up; unset when sent as it is. */
+  reencodedAs: 'image/jpeg' | 'image/webp' | undefined
+}
+
+/** `std::filesystem::path::replace_extension`, as libsession renames a re-encoded file. */
+function withExtension(name: string, extension: string): string {
+  const dot = name.lastIndexOf('.')
+  return (dot > 0 ? name.slice(0, dot) : name) + extension
+}
+
+/** The row libsession rewrites for a file it re-encoded: the new type, and a name to match. */
+function reencoded(attachment: Attachment, contentType: 'image/jpeg' | 'image/webp'): Attachment {
+  const extension = contentType === 'image/webp' ? '.webp' : '.jpg'
+  return {
+    ...attachment,
+    contentType,
+    ...(attachment.filename === undefined
+      ? {}
+      : { filename: withExtension(attachment.filename, extension) }),
+  }
 }
 
 /** libsession's bounds on a thumbnail's side: 1024² at 4 bytes a pixel is 4 MiB decoded. */
@@ -690,6 +710,9 @@ export class FakeAccount {
         originalFile:
           contentTypeEssence(contentType)?.startsWith('image/') === true &&
           !isReencoded(contentType, this.stagedFiles),
+        reencodedAs: isReencoded(contentType, this.stagedFiles)
+          ? reencodedContentType(contentType)
+          : undefined,
       }
     })
     const now = this.world?.now() ?? Date.now()
@@ -775,18 +798,25 @@ export class FakeAccount {
       // As libsession: what we sent is kept in the cache, and its size is known once it is up.
       this.cached.add(keyOf({ messageId, index: attachment.index }))
       this.taken.delete(keyOf({ messageId, index: attachment.index }))
-      const { sizeBytes, originalFile } = upload
-      const attachments = message.attachments.map((a, index) =>
-        index === at
-          ? {
-              ...a,
-              uploaded: true,
-              originalFile,
-              ...(sizeBytes === undefined ? {} : { sizeBytes }),
-            }
-          : a,
-      )
-      this.updateMessage(id, messageId, { attachments })
+      const { sizeBytes, originalFile, reencodedAs } = upload
+      const attachments = message.attachments.map((a, index) => {
+        if (index !== at) return a
+        const up: Attachment = {
+          ...a,
+          uploaded: true,
+          originalFile,
+          ...(sizeBytes === undefined ? {} : { sizeBytes }),
+        }
+        return reencodedAs === undefined ? up : reencoded(up, reencodedAs)
+      })
+      const viewable = galleryViewable(attachments)
+      this.updateMessage(id, messageId, {
+        attachments,
+        galleryViewable: viewable,
+        // As libsession: only the conversion that makes the set viewable turns the gallery on;
+        // once it was viewable, the stored choice is the reader's.
+        ...(viewable && !message.galleryViewable ? { gallery: true } : {}),
+      })
       this.uploadNext(id, messageId, uploads)
     })
   }
