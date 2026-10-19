@@ -3,30 +3,43 @@ import type { Conversation } from '@session/client'
 import { useConversations, useUnreadRequestCount } from '@session/state'
 import { formatConversationTime, tr, type ConversationTimeOptions } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Avatar, Icon, List, logical, Screen, Separator, Text, XStack, YStack } from '@session/ui'
+import {
+  Avatar,
+  Icon,
+  List,
+  logical,
+  Screen,
+  Separator,
+  SIZE_SCALE,
+  SPACE_SCALE,
+  Text,
+  textHeight,
+  useFontScale,
+  XStack,
+  YStack,
+} from '@session/ui'
 
 import { NetworkOverlay } from './NetworkOverlay'
 import { conversationRowState, type UnreadBadge, type UnreadTone } from './conversationRowState'
 import { conversationTitle } from './conversationTitle'
 import { useOpenSettings } from './settings/SettingsRootPage'
 import { useTopBarInsets } from './shell/pane'
-import { SYSTEM_LOCALE, useLocaleChoice } from './useLocale'
+import { useFormattingLocale } from './useLocale'
 
+const AVATAR_SIZE_PX = SIZE_SCALE['3xl']
 /**
- * The height of one row, which the list needs in order to place a scrollbar without measuring.
- *
- * The design's 72: the avatar, size `3xl` (48) and the tallest thing in the row, with the `sm` gap
- * (12) above and below. A number rather than a token because the list places rows with it before
- * any are laid out. Both text lines are `numberOfLines={1}`, so nothing here can wrap and change
- * it; `ConversationRow` is the only place that could, which is why the constant lives beside it.
+ * The text size past which the avatar stops growing with it: iOS's XXX Large, the largest size
+ * outside the accessibility ones. Beyond it a bigger avatar takes room the text needs and looks
+ * swollen, so the text goes on growing and the avatar holds.
  */
-const ROW_HEIGHT_PX = 72
-const AVATAR_SIZE = '3xl'
+const AVATAR_MAX_SCALE = 1.353
 /**
- * Each line is this tall whatever it holds, so a row with a pill lines up with one without. The
- * kind glyph's disc and the pill a count sits in are the same height, so neither moves the line.
+ * Each line is at least this tall whatever it holds, so a row with a pill lines up with one
+ * without. The kind glyph's disc and the pill a count sits in are the same height, so neither moves
+ * the line. Text set larger than the default outgrows it, and the line grows with the text.
  */
 const LINE_HEIGHT = '$md'
+const LINE_HEIGHT_PX = SIZE_SCALE.md
 /**
  * Takes no width, so a row's contents sit in the same place unread or not. A number because the
  * size ladder stops at 8: a `$2xs` width would resolve against it and draw nothing.
@@ -36,6 +49,28 @@ const STRIP_WIDTH_PX = 4
 const MARKED_DOT = '$xxs'
 /** The least room between the end of the name's icons and the time. */
 const TIME_GAP_MIN = '$xxs'
+
+/**
+ * One row's size at a text size, which the list needs in order to place a scrollbar without
+ * measuring.
+ *
+ * Counted rather than measured, because the list places rows before any are laid out. Both lines
+ * are `numberOfLines={1}`, so the only thing that changes a row's height is the text size: each
+ * line is its tallest text at that size or `LINE_HEIGHT`, whichever is more, and the row is the
+ * taller of the two lines and the avatar, with the `sm` gap above and below. At the default size
+ * that is the design's 72, set by the avatar. The row is drawn at exactly this height so the
+ * list's arithmetic and the layout cannot disagree; rounding up leaves under a point to spare.
+ */
+function rowLayout(fontScale: number): { heightPx: number; avatarPx: number } {
+  const avatarPx = Math.round(AVATAR_SIZE_PX * Math.min(Math.max(fontScale, 1), AVATAR_MAX_SCALE))
+  const line = (tallest: number): number => Math.max(LINE_HEIGHT_PX, tallest * fontScale)
+  // The name sets the first line and the snippet the second; the time and the pill are smaller.
+  const textPx = line(textHeight('bodyLarge', 1)) + SPACE_SCALE['2xs'] + line(textHeight('body', 1))
+  return {
+    heightPx: Math.ceil(Math.max(textPx, avatarPx) + SPACE_SCALE.sm * 2),
+    avatarPx,
+  }
+}
 
 /**
  * The conversation list.
@@ -55,10 +90,8 @@ export function ConversationListScreen({
   const unreadRequests = useUnreadRequestCount()
   const nav = useNav()
   const openSettings = useOpenSettings()
-  const localeChoice = useLocaleChoice()
-  // Following the system leaves the locale to the runtime, which knows the device's region as well
-  // as its language; a language picked here says nothing about region, so it is passed as it is.
-  const timeLocale = localeChoice === SYSTEM_LOCALE ? undefined : localeChoice
+  const timeLocale = useFormattingLocale()
+  const layout = rowLayout(useFontScale())
 
   return (
     <Screen testID={ELEMENT.conversationList.screen}>
@@ -138,12 +171,13 @@ export function ConversationListScreen({
 
       <List
         data={conversations}
-        itemHeight={ROW_HEIGHT_PX}
+        itemHeight={layout.heightPx}
         keyExtractor={(conversation) => conversation.id}
         renderItem={(conversation, index) => (
           <ConversationRow
             conversation={conversation}
             index={index}
+            layout={layout}
             timeLocale={timeLocale}
             open={conversation.id === openConversationId}
             onPress={() => {
@@ -170,18 +204,23 @@ export function ConversationListScreen({
   )
 }
 
-const STRIP_COLOR: Record<UnreadTone, '$primaryColor' | '$textDisabled'> = {
+/**
+ * A muted conversation's unread marks are the same shapes as a loud one's in the secondary text
+ * colour: quieter, not different. That colour is held to text contrast against the page, so the
+ * strip and pill clear the 3:1 an indicator needs in every theme, the selected row's ground
+ * included.
+ */
+const STRIP_COLOR: Record<UnreadTone, '$primaryColor' | '$textSecondary'> = {
   notify: '$primaryColor',
-  // Grey, because the conversation is not going to alert: unread, but held quiet by a mute.
-  quiet: '$textDisabled',
+  quiet: '$textSecondary',
 }
 
 const PILL_COLORS: Record<
   UnreadTone,
-  { ground: '$primaryColor' | '$backgroundNested'; text: '$onAccent' | '$textPrimary' }
+  { ground: '$primaryColor' | '$textSecondary'; text: '$onAccent' | '$backgroundPrimary' }
 > = {
   notify: { ground: '$primaryColor', text: '$onAccent' },
-  quiet: { ground: '$backgroundNested', text: '$textPrimary' },
+  quiet: { ground: '$textSecondary', text: '$backgroundPrimary' },
 }
 
 // TODO: pass the reader's own clock and date layout once the appearance settings exist to choose
@@ -218,7 +257,7 @@ function UnreadBadgeView({ badge }: { badge: UnreadBadge }) {
       borderRadius="$full"
       paddingHorizontal="$xs"
       minWidth={LINE_HEIGHT}
-      height={LINE_HEIGHT}
+      minHeight={LINE_HEIGHT}
       alignItems="center"
       justifyContent="center"
       testID={ELEMENT.conversationList.rowUnreadBadge}
@@ -233,17 +272,21 @@ function UnreadBadgeView({ badge }: { badge: UnreadBadge }) {
 function ConversationRow({
   conversation,
   index,
+  layout,
   timeLocale,
   open,
   onPress,
 }: {
   conversation: Conversation
   index: number
+  layout: { heightPx: number; avatarPx: number }
   timeLocale: string | undefined
   open: boolean
   onPress: () => void
 }) {
   const title = conversationTitle(conversation)
+  // TODO: "today" is read at render, so a list left open past midnight keeps yesterday's times as
+  // today's until something redraws it; redraw the list when the day turns.
   const nowMs = Date.now()
   const row = conversationRowState(conversation, nowMs)
   const time =
@@ -256,7 +299,7 @@ function ConversationRow({
 
   return (
     <XStack
-      height={ROW_HEIGHT_PX}
+      height={layout.heightPx}
       paddingHorizontal="$md"
       gap="$sm"
       alignItems="center"
@@ -283,10 +326,10 @@ function ConversationRow({
 
       {/* TODO: draw a group as its first two members stacked, with Avatar's `members`, once the
           bridge carries a group's member list. */}
-      <Avatar id={conversation.id} name={title} size={AVATAR_SIZE} />
+      <Avatar id={conversation.id} name={title} size={layout.avatarPx} />
 
       <YStack flex={1} gap="$2xs">
-        <XStack height={LINE_HEIGHT} alignItems="center" gap="$2xs">
+        <XStack minHeight={LINE_HEIGHT} alignItems="center" gap="$2xs">
           {row.kindGlyph === null ? null : (
             <XStack
               width={LINE_HEIGHT}
@@ -350,7 +393,7 @@ function ConversationRow({
           )}
         </XStack>
 
-        <XStack height={LINE_HEIGHT} alignItems="center" gap="$2xs">
+        <XStack minHeight={LINE_HEIGHT} alignItems="center" gap="$2xs">
           {/* TODO: prefix the snippet with "You:" or the sender, and word an attachment-only
               message, once the bridge carries the snippet's author and attachment fields. */}
           {conversation.snippet === undefined ? (

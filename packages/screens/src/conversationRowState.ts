@@ -59,6 +59,10 @@ export function conversationRowState(conversation: RowFields, nowMs: number): Co
   const unread = conversation.unreadCount > 0
   // TODO: a mention cuts through a mute -- give it the accent strip and an @ pill beside the
   // count once mentions are detected, which arrives with groups.
+  // TODO: libsession keeps a notifications setting (disabled, or mentions only) apart from the
+  // mute time, and the bridge carries only the mute time, so a conversation whose notifications
+  // were turned off on another client draws as loud here. Treat it as muted once the bridge
+  // carries the setting.
   const tone: UnreadTone = muted ? 'quiet' : 'notify'
 
   let strip: UnreadTone | null = null

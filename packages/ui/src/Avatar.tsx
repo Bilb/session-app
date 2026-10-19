@@ -3,6 +3,7 @@ import { XStack } from 'tamagui'
 
 import { avatarInitials } from './avatarInitials'
 import { avatarPairLayout } from './avatarPair'
+import { logical } from './logicalEdges'
 import { rampSizeAtMost } from './rampSize'
 import { SIZE_SCALE } from './scales'
 import { Text } from './Text'
@@ -74,8 +75,10 @@ function Disc({ id, name, sizePx, ringPx, testID }: DiscProps) {
       borderColor="$backgroundPrimary"
       testID={testID}
     >
-      {/* White: the circle is the account's colour, not the theme's, so no theme role fits. */}
-      <Text size={`$${initialsSize}`} weight="bold" color={COLORS.WHITE}>
+      {/* White: the circle is the account's colour, not the theme's, so no theme role fits. The
+          initials are sized off the disc, so the system text size must not scale them a second
+          time: a disc that grows with the text already carries them with it. */}
+      <Text size={`$${initialsSize}`} weight="bold" color={COLORS.WHITE} allowFontScaling={false}>
         {letters}
       </Text>
     </XStack>
@@ -104,10 +107,10 @@ export function Avatar(props: AvatarProps) {
     // `position="relative"`: the web makes no containing block by default, so the absolute discs
     // would otherwise place themselves against whichever ancestor happens to be positioned.
     <XStack width={sizePx} height={sizePx} position="relative" testID={props.testID}>
-      <XStack position="absolute" top={0} left={0}>
+      <XStack position="absolute" top={0} {...logical({ insetStart: 0 })}>
         <Disc id={back.id} name={back.name} sizePx={backPx} />
       </XStack>
-      <XStack position="absolute" bottom={0} right={0}>
+      <XStack position="absolute" bottom={0} {...logical({ insetEnd: 0 })}>
         <Disc id={front.id} name={front.name} sizePx={frontPx} ringPx={ringPx} />
       </XStack>
     </XStack>

@@ -65,13 +65,35 @@ const EXPLICIT_DATES: Record<ExplicitDateFormat, (date: Date) => string> = {
   'YYYY-M-D': (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`,
 }
 
+const formatters = new Map<string, Intl.DateTimeFormat>()
+
+/**
+ * One formatter per locale and set of options, kept for the life of the process.
+ *
+ * Every row formats its time on every render, and building an `Intl` object is the expensive part:
+ * reused, a call is about a hundred times cheaper on V8, and Hermes builds them slower still. The
+ * options come from the few fixed shapes below, so the map stays a handful of entries.
+ */
+function formatter(
+  locale: string | undefined,
+  options: Intl.DateTimeFormatOptions,
+): Intl.DateTimeFormat {
+  const key = `${locale ?? ''}|${JSON.stringify(options)}`
+  let cached = formatters.get(key)
+  if (cached === undefined) {
+    cached = new Intl.DateTimeFormat(locale, options)
+    formatters.set(key, cached)
+  }
+  return cached
+}
+
 /**
  * Whether the locale reads a 12-hour clock, or undefined where the runtime will not say.
  *
  * Asked rather than assumed from the language: en-US and en-GB share one and differ here.
  */
 function localeUsesTwelveHours(locale: string | undefined): boolean | undefined {
-  const resolved = new Intl.DateTimeFormat(locale, { hour: 'numeric' }).resolvedOptions()
+  const resolved = formatter(locale, { hour: 'numeric' }).resolvedOptions()
   if (resolved.hourCycle !== undefined)
     return resolved.hourCycle === 'h11' || resolved.hourCycle === 'h12'
   return resolved.hour12
@@ -90,6 +112,9 @@ function clockFields(
 ): Intl.DateTimeFormatOptions {
   if (timeFormat === '12h') return { hour: 'numeric', minute: '2-digit', hour12: true }
   if (timeFormat === '24h') return { hour: '2-digit', minute: '2-digit', hour12: false }
+  // TODO: `Intl` knows the locale's clock and not the device's own setting, so an en-US phone with
+  // the 24-hour switch on reads "6:00 PM" here beside "18:00" in its status bar. Prefer the
+  // device's setting once a native read of it exists (expo-localization's `uses24hourClock`).
   const twelve = localeUsesTwelveHours(locale)
   return { hour: twelve === false ? '2-digit' : 'numeric', minute: '2-digit' }
 }
@@ -107,16 +132,11 @@ export function formatConversationTime(
   const then = new Date(timestampMs)
   const daysAgo = localDayNumber(new Date(nowMs)) - localDayNumber(then)
 
-  if (daysAgo === 0)
-    return new Intl.DateTimeFormat(locale, clockFields(locale, timeFormat)).format(then)
+  if (daysAgo === 0) return formatter(locale, clockFields(locale, timeFormat)).format(then)
 
   if (daysAgo > 0 && daysAgo < WEEKDAY_SPAN_DAYS)
-    return new Intl.DateTimeFormat(locale, {
-      weekday: 'short',
-      ...clockFields(locale, timeFormat),
-    }).format(then)
+    return formatter(locale, { weekday: 'short', ...clockFields(locale, timeFormat) }).format(then)
 
-  if (dateFormat === 'system')
-    return new Intl.DateTimeFormat(locale, { dateStyle: 'short' }).format(then)
+  if (dateFormat === 'system') return formatter(locale, { dateStyle: 'short' }).format(then)
   return EXPLICIT_DATES[dateFormat](then)
 }
