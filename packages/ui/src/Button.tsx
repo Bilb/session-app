@@ -13,6 +13,10 @@ import { Text } from './Text'
  * What each variant looks like while it is held down: the web's `pressStyle`, and on native the
  * frame's style while `PressArea` reports a press (see `PRESSED`). One table, so the two can only
  * agree.
+ *
+ * Hover has no such table because native needs no copy of it: while `PressArea` reports a pointer
+ * over the button, the frame is given `forceStyle="hover"`, and tamagui applies the variant's own
+ * `hoverStyle`. So each `hoverStyle` is written once, in its variant.
  */
 const PRESS_STYLE = {
   solid: {

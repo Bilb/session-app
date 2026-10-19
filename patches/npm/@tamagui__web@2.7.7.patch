@@ -12,27 +12,67 @@ index 12e4d302c525312b6d214388d28610cd8a7971e1..08670f6fe12e92dce53cccc543c6039d
      var needsPressState = Boolean(hasDynamicGroupChildren || runtimePressStyle);
      if (process.env.NODE_ENV === "development" && time) time`events-setup`;
 diff --git a/dist/cjs/eventHandling.native.js b/dist/cjs/eventHandling.native.js
-index e6ac652e9335e82a1bd411ccd1c5fab54cad8072..9b777265f8db16036aff6cd35991fb013c06a808 100644
+index e6ac652e9335e82a1bd411ccd1c5fab54cad8072..71d946d4db8658fe1fa77f67dc238f6c3a2384ff 100644
 --- a/dist/cjs/eventHandling.native.js
 +++ b/dist/cjs/eventHandling.native.js
-@@ -85,6 +85,22 @@ function useEvents(events, viewProps, stateRef, staticConfig, isHOC, isInsideNat
+@@ -85,6 +85,62 @@ function useEvents(events, viewProps, stateRef, staticConfig, isHOC, isInsideNat
          viewProps["onMouseLeave"] = events.onMouseLeave;
        }
      }
 +    if (require("react-native").Platform.OS === "ios" && require("react-native").Platform.isPad) {
 +      // Session patch: iPadOS, and the Mac's iPad apps, report a mouse or trackpad as pointer
 +      // events, never mouse events. A touch is not a hover.
++      // Pressing the button ends UIKit's hover, which React Native reports as the pointer
++      // leaving, just before the press. Acted on at once, the control drops its hover style for a
++      // frame before the press styles it; and tamagui's leave also ends a press, so it cannot
++      // simply run later either. So a leave waits a moment, an enter cancels it, and a press
++      // starting cancels it too and holds it until the press ends.
++      var pointer = stateRef.current;
 +      if (events.onMouseEnter) {
 +        var onEnter = events.onMouseEnter;
 +        viewProps["onPointerEnter"] = function (e) {
-+          if (e.nativeEvent.pointerType !== "touch") onEnter(e);
++          if (e.nativeEvent.pointerType === "touch") return;
++          clearTimeout(pointer.pendingPointerLeave);
++          pointer.pointerLeftDuringPress = undefined;
++          onEnter(e);
 +        };
 +      }
 +      if (events.onMouseLeave) {
 +        var onLeave = events.onMouseLeave;
-+        viewProps["onPointerLeave"] = function (e) {
-+          if (e.nativeEvent.pointerType !== "touch") onLeave(e);
++        var leaveSoon = function (e) {
++          clearTimeout(pointer.pendingPointerLeave);
++          pointer.pendingPointerLeave = setTimeout(function () {
++            pointer.pendingPointerLeave = undefined;
++            onLeave(e);
++          }, 32);
 +        };
++        viewProps["onPointerLeave"] = function (e) {
++          if (e.nativeEvent.pointerType === "touch") return;
++          if (pointer.pressing) pointer.pointerLeftDuringPress = e;
++          else leaveSoon(e);
++        };
++        if (events.onPressIn) {
++          var pressIn = events.onPressIn;
++          events.onPressIn = function (e) {
++            pointer.pressing = true;
++            if (pointer.pendingPointerLeave !== undefined) {
++              clearTimeout(pointer.pendingPointerLeave);
++              pointer.pendingPointerLeave = undefined;
++              pointer.pointerLeftDuringPress = e;
++            }
++            pressIn(e);
++          };
++        }
++        if (events.onPressOut) {
++          var pressOut = events.onPressOut;
++          events.onPressOut = function (e) {
++            pointer.pressing = false;
++            pressOut(e);
++            var left = pointer.pointerLeftDuringPress;
++            pointer.pointerLeftDuringPress = undefined;
++            if (left !== undefined) leaveSoon(left);
++          };
++        }
 +      }
 +    }
    }
@@ -74,27 +114,67 @@ index 10f06bd4f0d72e55014711c7eb2f3646508ea7f6..366cf5fb60f8c3bf49dc6bf45bacad19
      var needsPressState = Boolean(hasDynamicGroupChildren || runtimePressStyle);
      if (process.env.NODE_ENV === "development" && time) time`events-setup`;
 diff --git a/dist/esm/eventHandling.native.js b/dist/esm/eventHandling.native.js
-index bc07b3f4214807c8cba259edeb29c004af57557c..9ed18508ee56815a93557cf5cb318f71450631ef 100644
+index bc07b3f4214807c8cba259edeb29c004af57557c..baea9de577fc79408f4715ee79da733b3613861f 100644
 --- a/dist/esm/eventHandling.native.js
 +++ b/dist/esm/eventHandling.native.js
-@@ -43,6 +43,22 @@ function useEvents(events, viewProps, stateRef, staticConfig, isHOC, isInsideNat
+@@ -43,6 +43,62 @@ function useEvents(events, viewProps, stateRef, staticConfig, isHOC, isInsideNat
          viewProps["onMouseLeave"] = events.onMouseLeave;
        }
      }
 +    if (Platform.OS === "ios" && Platform.isPad) {
 +      // Session patch: iPadOS, and the Mac's iPad apps, report a mouse or trackpad as pointer
 +      // events, never mouse events. A touch is not a hover.
++      // Pressing the button ends UIKit's hover, which React Native reports as the pointer
++      // leaving, just before the press. Acted on at once, the control drops its hover style for a
++      // frame before the press styles it; and tamagui's leave also ends a press, so it cannot
++      // simply run later either. So a leave waits a moment, an enter cancels it, and a press
++      // starting cancels it too and holds it until the press ends.
++      var pointer = stateRef.current;
 +      if (events.onMouseEnter) {
 +        var onEnter = events.onMouseEnter;
 +        viewProps["onPointerEnter"] = function (e) {
-+          if (e.nativeEvent.pointerType !== "touch") onEnter(e);
++          if (e.nativeEvent.pointerType === "touch") return;
++          clearTimeout(pointer.pendingPointerLeave);
++          pointer.pointerLeftDuringPress = undefined;
++          onEnter(e);
 +        };
 +      }
 +      if (events.onMouseLeave) {
 +        var onLeave = events.onMouseLeave;
-+        viewProps["onPointerLeave"] = function (e) {
-+          if (e.nativeEvent.pointerType !== "touch") onLeave(e);
++        var leaveSoon = function (e) {
++          clearTimeout(pointer.pendingPointerLeave);
++          pointer.pendingPointerLeave = setTimeout(function () {
++            pointer.pendingPointerLeave = undefined;
++            onLeave(e);
++          }, 32);
 +        };
++        viewProps["onPointerLeave"] = function (e) {
++          if (e.nativeEvent.pointerType === "touch") return;
++          if (pointer.pressing) pointer.pointerLeftDuringPress = e;
++          else leaveSoon(e);
++        };
++        if (events.onPressIn) {
++          var pressIn = events.onPressIn;
++          events.onPressIn = function (e) {
++            pointer.pressing = true;
++            if (pointer.pendingPointerLeave !== undefined) {
++              clearTimeout(pointer.pendingPointerLeave);
++              pointer.pendingPointerLeave = undefined;
++              pointer.pointerLeftDuringPress = e;
++            }
++            pressIn(e);
++          };
++        }
++        if (events.onPressOut) {
++          var pressOut = events.onPressOut;
++          events.onPressOut = function (e) {
++            pointer.pressing = false;
++            pressOut(e);
++            var left = pointer.pointerLeftDuringPress;
++            pointer.pointerLeftDuringPress = undefined;
++            if (left !== undefined) leaveSoon(left);
++          };
++        }
 +      }
 +    }
    }
