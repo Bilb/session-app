@@ -52,7 +52,7 @@ function expoDirectory(dir: Directory): LogDirectory {
     append: (name, text) => {
       const file = new File(dir, name)
       if (!file.exists) file.create()
-      file.write(text, { append: true })
+      file.writeSync(text, { append: true })
       return Promise.resolve()
     },
     remove: (name) => {
@@ -106,7 +106,7 @@ function readSalt(dir: Directory): { salt: Uint8Array; replaced: boolean } {
   const written = new File(dir, `${SALT_FILE}.tmp`)
   if (written.exists) written.delete()
   written.create()
-  written.write([...salt].map((byte) => byte.toString(16).padStart(2, '0')).join(''))
+  written.writeSync([...salt].map((byte) => byte.toString(16).padStart(2, '0')).join(''))
   moveInto(written, file, { overwrite: true })
   return { salt, replaced }
 }

@@ -66,8 +66,8 @@ export function List<T>({
       renderItem={renderRow}
       keyExtractor={keyExtractor}
       {...(itemHeight === undefined ? {} : { getItemLayout })}
-      {...(empty === undefined ? {} : { ListEmptyComponent: empty })}
-      {...(header === undefined ? {} : { ListHeaderComponent: header })}
+      {...(empty == null ? {} : { ListEmptyComponent: empty })}
+      {...(header == null ? {} : { ListHeaderComponent: header })}
       {...(inverted === undefined ? {} : { inverted })}
       {...(testID === undefined ? {} : { testID })}
       {...(onEndReached === undefined ? {} : { onEndReached, onEndReachedThreshold: 0.5 })}

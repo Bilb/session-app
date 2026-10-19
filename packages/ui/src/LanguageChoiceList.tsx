@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ScrollView, XStack, YStack } from 'tamagui'
-import type { ElementRef } from 'react'
+import { ScrollView, type ScrollViewInstance } from 'react-native'
+import { XStack, YStack } from 'tamagui'
 
 import { Icon } from './Icon'
 import { filterLanguages } from './languageFilter'
@@ -40,7 +40,9 @@ export function LanguageChoiceList({
   testIDs,
 }: LanguageChoiceListProps) {
   const [query, setQuery] = useState('')
-  const scroller = useRef<ElementRef<typeof ScrollView>>(null)
+  // React Native's ScrollView rather than tamagui's: tamagui types its ref as the component rather
+  // than the instance, so `scrollTo` is not on it.
+  const scroller = useRef<ScrollViewInstance>(null)
 
   const matches = useMemo(() => filterLanguages(options, query), [options, query])
 
@@ -87,7 +89,7 @@ export function LanguageChoiceList({
           </Text>
         </YStack>
       ) : (
-        <ScrollView ref={scroller} flexShrink={1} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={scroller} style={{ flexShrink: 1 }} keyboardShouldPersistTaps="handled">
           <YStack>
             {matches.map((option) => {
               const selected = option.value === value
