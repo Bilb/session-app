@@ -1,5 +1,5 @@
 diff --git a/dist/cjs/createComponent.native.js b/dist/cjs/createComponent.native.js
-index 12e4d302c525312b6d214388d28610cd8a7971e1..82451e6c24dcef0e78625f1f1f2c3f98416ff9fe 100644
+index 12e4d302c525312b6d214388d28610cd8a7971e1..08670f6fe12e92dce53cccc543c6039dc801bd03 100644
 --- a/dist/cjs/createComponent.native.js
 +++ b/dist/cjs/createComponent.native.js
 @@ -750,7 +750,7 @@ If you meant to do this, you can disable this warning - either change untilMeasu
@@ -7,19 +7,19 @@ index 12e4d302c525312b6d214388d28610cd8a7971e1..82451e6c24dcef0e78625f1f1f2c3f98
      var runtimeHoverStyle = !disabled && noClass && (pseudos === null || pseudos === void 0 ? void 0 : pseudos.hoverStyle);
      var needsHoverState = Boolean(hasDynamicGroupChildren || runtimeHoverStyle && !platformPseudo);
 -    var attachHover = (import_constants.isWeb || import_constants.isNativeDesktop) && !!(hasDynamicGroupChildren || needsHoverState || onMouseEnter || onMouseLeave);
-+    var attachHover = (import_constants.isWeb || import_constants.isNativeDesktop || require("react-native").Platform.OS === "ios") && !!(hasDynamicGroupChildren || needsHoverState || onMouseEnter || onMouseLeave);
++    var attachHover = (import_constants.isWeb || import_constants.isNativeDesktop || (require("react-native").Platform.OS === "ios" && require("react-native").Platform.isPad)) && !!(hasDynamicGroupChildren || needsHoverState || onMouseEnter || onMouseLeave);
      var shouldAttach = !disabled && !props.asChild && Boolean(attachFocus || attachPress || attachHover || runtimePressStyle || runtimeHoverStyle || runtimeFocusStyle);
      var needsPressState = Boolean(hasDynamicGroupChildren || runtimePressStyle);
      if (process.env.NODE_ENV === "development" && time) time`events-setup`;
 diff --git a/dist/cjs/eventHandling.native.js b/dist/cjs/eventHandling.native.js
-index e6ac652e9335e82a1bd411ccd1c5fab54cad8072..16b1393ae9a7d6aba3287a3c42562459e670c330 100644
+index e6ac652e9335e82a1bd411ccd1c5fab54cad8072..9b777265f8db16036aff6cd35991fb013c06a808 100644
 --- a/dist/cjs/eventHandling.native.js
 +++ b/dist/cjs/eventHandling.native.js
 @@ -85,6 +85,22 @@ function useEvents(events, viewProps, stateRef, staticConfig, isHOC, isInsideNat
          viewProps["onMouseLeave"] = events.onMouseLeave;
        }
      }
-+    if (require("react-native").Platform.OS === "ios") {
++    if (require("react-native").Platform.OS === "ios" && require("react-native").Platform.isPad) {
 +      // Session patch: iPadOS, and the Mac's iPad apps, report a mouse or trackpad as pointer
 +      // events, never mouse events. A touch is not a hover.
 +      if (events.onMouseEnter) {
@@ -39,7 +39,7 @@ index e6ac652e9335e82a1bd411ccd1c5fab54cad8072..16b1393ae9a7d6aba3287a3c42562459
    var hasPressEvents = events === null || events === void 0 ? void 0 : events.onPress;
    var gh = (0, import_native.getGestureHandler)();
 diff --git a/dist/cjs/helpers/getSplitStyles.native.js b/dist/cjs/helpers/getSplitStyles.native.js
-index e359b6d7cc6198b33bcd7721caff27b8eb758d82..1526784316fb04f80a29143c03a223039b95bea9 100644
+index e359b6d7cc6198b33bcd7721caff27b8eb758d82..deea4a3777b122e4a0083a8b5a1cda8996341550 100644
 --- a/dist/cjs/helpers/getSplitStyles.native.js
 +++ b/dist/cjs/helpers/getSplitStyles.native.js
 @@ -93,6 +93,9 @@ function isValidStyleKey(key, validStyles, accept) {
@@ -47,13 +47,13 @@ index e359b6d7cc6198b33bcd7721caff27b8eb758d82..1526784316fb04f80a29143c03a22303
    var _getPlatformDriver;
    if ((_getPlatformDriver = (0, import_constants.getPlatformDriver)()) === null || _getPlatformDriver === void 0 ? void 0 : _getPlatformDriver.pseudo) return false;
 +  // Session patch: iPadOS, and the Mac's iPad apps, deliver a mouse or trackpad as pointer
-+  // events, so hover styles apply there as on the web.
-+  if (import_constants.isIos) return false;
++  // events, so hover styles apply there as on the web. Not on a phone, which has no pointer.
++  if (import_constants.isIos && require("react-native").Platform.isPad) return false;
    if (key === "hoverStyle") return true;
    if (isMedia === "group") return (0, import_getGroupPropParts.getGroupPropParts)(key.slice(1)).pseudo === "hover";
    return false;
 diff --git a/dist/esm/createComponent.native.js b/dist/esm/createComponent.native.js
-index 10f06bd4f0d72e55014711c7eb2f3646508ea7f6..7953b849e733e6336c6a61a5b2f65d431813651f 100644
+index 10f06bd4f0d72e55014711c7eb2f3646508ea7f6..366cf5fb60f8c3bf49dc6bf45bacad19dca0cf2e 100644
 --- a/dist/esm/createComponent.native.js
 +++ b/dist/esm/createComponent.native.js
 @@ -1,6 +1,7 @@
@@ -69,19 +69,19 @@ index 10f06bd4f0d72e55014711c7eb2f3646508ea7f6..7953b849e733e6336c6a61a5b2f65d43
      var runtimeHoverStyle = !disabled && noClass && (pseudos === null || pseudos === void 0 ? void 0 : pseudos.hoverStyle);
      var needsHoverState = Boolean(hasDynamicGroupChildren || runtimeHoverStyle && !platformPseudo);
 -    var attachHover = (isWeb || isNativeDesktop) && !!(hasDynamicGroupChildren || needsHoverState || onMouseEnter || onMouseLeave);
-+    var attachHover = (isWeb || isNativeDesktop || Platform.OS === "ios") && !!(hasDynamicGroupChildren || needsHoverState || onMouseEnter || onMouseLeave);
++    var attachHover = (isWeb || isNativeDesktop || Platform.OS === "ios" && Platform.isPad) && !!(hasDynamicGroupChildren || needsHoverState || onMouseEnter || onMouseLeave);
      var shouldAttach = !disabled && !props.asChild && Boolean(attachFocus || attachPress || attachHover || runtimePressStyle || runtimeHoverStyle || runtimeFocusStyle);
      var needsPressState = Boolean(hasDynamicGroupChildren || runtimePressStyle);
      if (process.env.NODE_ENV === "development" && time) time`events-setup`;
 diff --git a/dist/esm/eventHandling.native.js b/dist/esm/eventHandling.native.js
-index bc07b3f4214807c8cba259edeb29c004af57557c..e8c0410a759e39c071728a6e249d6f3b04feb124 100644
+index bc07b3f4214807c8cba259edeb29c004af57557c..9ed18508ee56815a93557cf5cb318f71450631ef 100644
 --- a/dist/esm/eventHandling.native.js
 +++ b/dist/esm/eventHandling.native.js
 @@ -43,6 +43,22 @@ function useEvents(events, viewProps, stateRef, staticConfig, isHOC, isInsideNat
          viewProps["onMouseLeave"] = events.onMouseLeave;
        }
      }
-+    if (Platform.OS === "ios") {
++    if (Platform.OS === "ios" && Platform.isPad) {
 +      // Session patch: iPadOS, and the Mac's iPad apps, report a mouse or trackpad as pointer
 +      // events, never mouse events. A touch is not a hover.
 +      if (events.onMouseEnter) {
@@ -101,22 +101,25 @@ index bc07b3f4214807c8cba259edeb29c004af57557c..e8c0410a759e39c071728a6e249d6f3b
    var hasPressEvents = events === null || events === void 0 ? void 0 : events.onPress;
    var gh = getGestureHandler();
 diff --git a/dist/esm/helpers/getSplitStyles.native.js b/dist/esm/helpers/getSplitStyles.native.js
-index 108c0e7cbf0db823f78c8c0fe88307f4a73fdadf..5117d4eb2e6fe74a8447c0b2db899951c31088c4 100644
+index 108c0e7cbf0db823f78c8c0fe88307f4a73fdadf..3bf06e5d8279e9ea026ec6f115905a0ff0008f19 100644
 --- a/dist/esm/helpers/getSplitStyles.native.js
 +++ b/dist/esm/helpers/getSplitStyles.native.js
-@@ -1,4 +1,4 @@
+@@ -1,6 +1,7 @@
 -import { getPlatformDriver, isAndroid, isClient, isWeb, supportsDynamicColorIOS } from "@tamagui/constants";
 +import { getPlatformDriver, isAndroid, isClient, isIos, isWeb, supportsDynamicColorIOS } from "@tamagui/constants";
  import { StyleObjectIdentifier, StyleObjectProperty, StyleObjectPseudo, stylePropsText, stylePropsTransform, tokenCategories, validPseudoKeys, validStyles } from "@tamagui/helpers";
  import React from "react";
++import { Platform } from "react-native";
  import { getConfig, getFont, getSetting } from "../config.native.js";
-@@ -45,6 +45,9 @@ function isValidStyleKey(key, validStyles, accept) {
+ import { isDevTools } from "../constants/isDevTools.native.js";
+ import { getMediaImportanceIfMoreImportant, getMediaKey, getMediaKeyImportance, mediaKeyMatch } from "../hooks/useMedia.native.js";
+@@ -45,6 +46,9 @@ function isValidStyleKey(key, validStyles, accept) {
  function shouldSkipNativeHoverProp(key, isMedia) {
    var _getPlatformDriver;
    if ((_getPlatformDriver = getPlatformDriver()) === null || _getPlatformDriver === void 0 ? void 0 : _getPlatformDriver.pseudo) return false;
 +  // Session patch: iPadOS, and the Mac's iPad apps, deliver a mouse or trackpad as pointer
-+  // events, so hover styles apply there as on the web.
-+  if (isIos) return false;
++  // events, so hover styles apply there as on the web. Not on a phone, which has no pointer.
++  if (isIos && Platform.isPad) return false;
    if (key === "hoverStyle") return true;
    if (isMedia === "group") return getGroupPropParts(key.slice(1)).pseudo === "hover";
    return false;
