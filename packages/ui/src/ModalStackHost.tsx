@@ -16,6 +16,7 @@ import {
 } from './modalPanelMetrics'
 import { useModalEntries, useModals, type OpenModal } from './ModalsProvider'
 import { Text } from './Text'
+import { LABEL_MAX_SCALE } from './glyphScale'
 import { useThemeIsDark } from './UIProvider'
 import { useScreenInsets } from './screenInsets'
 import { useTokenColor } from './useTokenColor'
@@ -211,12 +212,16 @@ export function ModalStackHost({
                     )}
                   </YStack>
 
+                  {/* Held to the label cap and one line, since the bar is a fixed height: past it
+                      a large system text size cut the title off at the top. */}
                   <Text
                     flex={1}
                     size="$title"
                     weight="semibold"
                     textAlign="center"
                     userSelect="none"
+                    numberOfLines={1}
+                    maxFontSizeMultiplier={LABEL_MAX_SCALE}
                   >
                     {screen?.title ?? ''}
                   </Text>
