@@ -6,6 +6,7 @@ import { Icon } from './Icon'
 import { filterLanguages } from './languageFilter'
 import { Input } from './Input'
 import { Text } from './Text'
+import { GLYPH_MAX_SCALE, LABEL_MAX_SCALE } from './glyphScale'
 import type { LanguageChoice, LanguagePickerTestIDs } from './LanguagePicker.types'
 
 interface LanguageChoiceListProps {
@@ -18,8 +19,10 @@ interface LanguageChoiceListProps {
 }
 
 /**
- * Fixed, so the selected row can be scrolled to by arithmetic rather than by measuring every row
- * above it. Tall enough for a comfortable target and for the scripts with tall ascenders.
+ * A row's height at the default text size, and its floor: a larger system text size grows a row
+ * whose name wraps. The selected row is scrolled to by arithmetic on this rather than by measuring
+ * every row above it, so at a large text size it lands near the row rather than on it. Tall enough
+ * for a comfortable target and for the scripts with tall ascenders.
  */
 const ROW_HEIGHT = 40
 
@@ -99,7 +102,7 @@ export function LanguageChoiceList({
                   role="button"
                   alignItems="center"
                   gap="$sm"
-                  height={ROW_HEIGHT}
+                  minHeight={ROW_HEIGHT}
                   paddingHorizontal="$sm"
                   borderRadius="$sm"
                   $platform-web={{ cursor: 'pointer' }}
@@ -113,10 +116,15 @@ export function LanguageChoiceList({
                 >
                   {/* The flag is decoration: it repeats across rows and is absent on three of
                       them, so it is hidden from screen readers and the name carries the row. */}
-                  <Text size="$title" aria-hidden>
+                  <Text size="$title" aria-hidden maxFontSizeMultiplier={GLYPH_MAX_SCALE}>
                     {option.flag}
                   </Text>
-                  <Text flex={1} size="$body" weight={selected ? 'semibold' : 'regular'}>
+                  <Text
+                    flex={1}
+                    size="$body"
+                    weight={selected ? 'semibold' : 'regular'}
+                    maxFontSizeMultiplier={LABEL_MAX_SCALE}
+                  >
                     {option.label}
                   </Text>
                   {selected ? <Icon name="check" size="md" color="$primaryColor" /> : null}

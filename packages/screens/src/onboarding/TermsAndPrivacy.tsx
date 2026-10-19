@@ -1,7 +1,7 @@
 import { URLS } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Icon, Modal, Text, XStack, YStack } from '@session/ui'
+import { Button, Icon, LABEL_MAX_SCALE, Modal, Text, XStack, YStack } from '@session/ui'
 import { Fragment, useState } from 'react'
 
 import { LocalizedText } from '../LocalizedText'
@@ -60,6 +60,9 @@ export function TermsAndPrivacy() {
           size="$label"
           textAlign="center"
           userSelect="none"
+          // A footer, so it stops growing with the labels around it; it must stay on screen with
+          // the buttons above it whatever the text size.
+          maxFontSizeMultiplier={LABEL_MAX_SCALE}
         />
       </Button>
 

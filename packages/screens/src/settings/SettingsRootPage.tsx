@@ -5,6 +5,7 @@ import { ELEMENT } from '@session/test-ids'
 import {
   Avatar,
   Button,
+  LABEL_MAX_SCALE,
   ProBadge,
   RecoveryPasswordShield,
   SessionTokenMark,
@@ -110,13 +111,6 @@ function ClearDataActions({
   )
 }
 
-/**
- * How far the pill's label grows with the system text size. Past about twice the default it wraps,
- * and a two-line label runs past the pill's rounded ends; it names the ID below rather than being
- * read for itself, so it stops there while the ID goes on growing.
- */
-const ACCOUNT_ID_PILL_MAX_SCALE = 2
-
 /** "Your Account ID" in a pill between two rules. */
 function AccountIdPill() {
   return (
@@ -134,7 +128,7 @@ function AccountIdPill() {
           size="$body"
           tone="secondary"
           userSelect="none"
-          maxFontSizeMultiplier={ACCOUNT_ID_PILL_MAX_SCALE}
+          maxFontSizeMultiplier={LABEL_MAX_SCALE}
         >
           {tr('accountIdYours')}
         </Text>

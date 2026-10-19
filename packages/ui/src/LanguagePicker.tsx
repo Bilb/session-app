@@ -11,6 +11,7 @@ import { Button } from './Button'
 import { Icon } from './Icon'
 import { LanguageChoiceList } from './LanguageChoiceList'
 import { Text } from './Text'
+import { GLYPH_MAX_SCALE, LABEL_MAX_SCALE } from './glyphScale'
 import { useScreenInsets } from './screenInsets'
 import type { LanguagePickerProps } from './LanguagePicker.types'
 
@@ -102,7 +103,7 @@ export function LanguagePicker({
           <XStack alignItems="center" gap="$2xs">
             {/* The flag is not the label: it repeats across languages and three have none, so it
                 stays out of the accessibility tree and `accessibilityLabel` names the control. */}
-            <Text size="$title" aria-hidden>
+            <Text size="$title" aria-hidden maxFontSizeMultiplier={GLYPH_MAX_SCALE}>
               {selected?.flag ?? ''}
             </Text>
             <Icon name="chevronDown" size="md" color="$textPrimary" />
@@ -164,7 +165,7 @@ export function LanguagePicker({
               testID={testIDs.panel}
             >
               <XStack alignItems="center" justifyContent="space-between" gap="$xs">
-                <Text size="$title" weight="bold">
+                <Text size="$title" weight="bold" maxFontSizeMultiplier={LABEL_MAX_SCALE}>
                   {title}
                 </Text>
                 {/* A cross rather than the word: it is the corner of a panel, where a cross is

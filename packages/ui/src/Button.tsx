@@ -8,6 +8,7 @@ import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import { PressArea } from './PressArea'
 import { Concealed } from './Concealed'
 import { Text } from './Text'
+import { LABEL_MAX_SCALE } from './glyphScale'
 
 /**
  * What each variant looks like while it is held down: the web's `pressStyle`, and on native the
@@ -336,6 +337,13 @@ export interface ButtonProps {
   testID?: string
 }
 
+/**
+ * Each size's height, as a floor for a text button: at a large system text size the label outgrows
+ * it, and a fixed height cuts the label's second line or the bottom of its first. A circular
+ * button keeps the variant's fixed height, since its width is taken from it.
+ */
+const SIZE_MIN_HEIGHT = { xs: '$lg', sm: '$xl', md: '$2xl', lg: '$3xl' } as const
+
 export function Button({
   children,
   onPress,
@@ -408,6 +416,9 @@ export function Button({
           variant={variant}
           size={size}
           circular={circular}
+          {...(circular
+            ? {}
+            : { height: 'auto', minHeight: SIZE_MIN_HEIGHT[size], paddingVertical: '$2xs' })}
           destructive={destructive}
           {...(paddingHorizontal === undefined ? {} : { paddingHorizontal })}
           {...(borderRadius === undefined ? {} : { borderRadius })}
@@ -428,6 +439,7 @@ export function Button({
                 // Bold, which is what the desktop client's button is: `font-weight: 700` unless a
                 // caller says otherwise, and none of the onboarding callers do.
                 weight="bold"
+                maxFontSizeMultiplier={LABEL_MAX_SCALE}
                 color={
                   INHERITED_LABEL ??
                   ((pressed || hovered) && !inert ? (pressedLabel ?? nativeLabel) : nativeLabel)

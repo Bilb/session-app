@@ -11,3 +11,11 @@ export const GLYPH_MAX_SCALE = 1.353
 export function useGlyphScale(): number {
   return Math.min(Math.max(useFontScale(), 1), GLYPH_MAX_SCALE)
 }
+
+/**
+ * How far text that labels something grows with the system text size: a button's label, a footer
+ * line, a heading, a pill. Past about twice the default such text wraps word by word and takes the
+ * screen from the content it labels, which is what the large size is for, so it holds there while
+ * body text goes on growing.
+ */
+export const LABEL_MAX_SCALE = 2
