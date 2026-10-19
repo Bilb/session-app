@@ -8,7 +8,7 @@ import { Avatar, Icon, List, Screen, Separator, Text, XStack, YStack } from '@se
 import { NetworkOverlay } from './NetworkOverlay'
 import { conversationTitle } from './conversationTitle'
 import { useOpenSettings } from './settings/SettingsRootPage'
-import { useTopBarLeading } from './shell/pane'
+import { useTopBarInsets } from './shell/pane'
 
 /**
  * The height of one row, which the list needs in order to place a scrollbar without measuring.
@@ -27,8 +27,13 @@ const ROW_HEIGHT = 60
  * in a tablet's left pane and in the desktop window. Which of those it is showing in is
  * AdaptiveShell's business, not its own.
  */
-export function ConversationListScreen() {
-  const topBarLeading = useTopBarLeading()
+export function ConversationListScreen({
+  openConversationId,
+}: {
+  /** The conversation showing beside the list, where one is. */
+  openConversationId?: string | undefined
+}) {
+  const topBarInsets = useTopBarInsets()
   const conversations = useConversations()
   const unreadRequests = useUnreadRequestCount()
   const nav = useNav()
@@ -41,7 +46,7 @@ export function ConversationListScreen() {
         paddingVertical="$sm"
         alignItems="center"
         justifyContent="space-between"
-        {...topBarLeading}
+        {...topBarInsets}
       >
         <NetworkOverlay>
           <Text size="$title" weight="bold">
@@ -118,7 +123,16 @@ export function ConversationListScreen() {
           <ConversationRow
             conversation={conversation}
             index={index}
-            onPress={() => nav.push(routes.conversation(conversation.id))}
+            onPress={() => {
+              // Beside the list, a conversation replaces the one already open rather than
+              // stacking on it, and the open one again changes nothing. Pushed every time, the
+              // history fills with every conversation looked at, and Android's back walks through
+              // all of them before it leaves.
+              if (conversation.id === openConversationId) return
+              const path = routes.conversation(conversation.id)
+              if (openConversationId === undefined) nav.push(path)
+              else nav.replace(path)
+            }}
           />
         )}
         empty={

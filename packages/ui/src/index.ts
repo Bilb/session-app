@@ -78,8 +78,8 @@ export type { BackdropBlur, BackdropBlurProps } from './backdropBlur'
 export type { Glass, GlassProps } from './glass'
 export {
   useTopBarControlsPadding,
-  useWindowControlsInset,
   WindowControlsInsetProvider,
+  type WindowControlsInset,
 } from './windowControls'
 
 export { config, tokens } from './config'

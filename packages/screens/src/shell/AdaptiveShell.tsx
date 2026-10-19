@@ -26,29 +26,38 @@ export function AdaptiveShell({
 }) {
   const media = useMedia()
   const rule = useTokenColor('$bordersColor')
+  const twoPanes = media.gtSm
+  const showsList = twoPanes || !hasDetail
+  const showsDetail = twoPanes || hasDetail
 
-  if (media.gtSm) {
-    return (
-      <XStack flex={1} backgroundColor="$backgroundPrimary">
-        <YStack
-          width={media.gtLg ? 380 : 320}
-          // The rule between the two panes sits on the edge the list ends at, which in Arabic is
-          // its left: a physical right keeps the divider on the detail pane's outer edge and
-          // leaves the two panes touching.
-          {...logical({ borderEndWidth: 1, borderEndColor: rule })}
-        >
-          <PaneProvider value={LIST_PANE}>{list}</PaneProvider>
-        </YStack>
-        <YStack flex={1}>
-          <PaneProvider value={DETAIL_PANE}>{hasDetail ? detail : placeholder}</PaneProvider>
-        </YStack>
-      </XStack>
-    )
-  }
-
+  // **One tree for both layouts**, the detail pane always the same element in the same place. A
+  // second tree for one pane would remount whatever the detail holds whenever the window crosses
+  // the breakpoint -- on mobile that is the router's `Slot`, which forgets the open conversation
+  // when it remounts, so turning a tablet would close it. The list pane comes and goes beside it;
+  // the detail pane is only hidden, never unmounted.
   return (
-    <YStack flex={1} backgroundColor="$backgroundPrimary">
-      <PaneProvider value={SOLE_PANE}>{hasDetail ? detail : list}</PaneProvider>
-    </YStack>
+    <XStack flex={1} backgroundColor="$backgroundPrimary">
+      {showsList ? (
+        <YStack
+          key="list"
+          {...(twoPanes
+            ? {
+                width: media.gtLg ? 380 : 320,
+                // The rule between the two panes sits on the edge the list ends at, which in
+                // Arabic is its left: a physical right keeps the divider on the detail pane's outer
+                // edge and leaves the two panes touching.
+                ...logical({ borderEndWidth: 1, borderEndColor: rule }),
+              }
+            : { flex: 1 })}
+        >
+          <PaneProvider value={twoPanes ? LIST_PANE : SOLE_PANE}>{list}</PaneProvider>
+        </YStack>
+      ) : null}
+      <YStack key="detail" flex={1} display={showsDetail ? 'flex' : 'none'}>
+        <PaneProvider value={twoPanes ? DETAIL_PANE : SOLE_PANE}>
+          {hasDetail ? detail : placeholder}
+        </PaneProvider>
+      </YStack>
+    </XStack>
   )
 }

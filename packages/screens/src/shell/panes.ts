@@ -7,10 +7,13 @@
 export interface Pane {
   /** Drawn beside the conversation list, which is then the way back. */
   besideList: boolean
-  /** Touches the window's top-leading corner, where a resizable iPad window draws its controls. */
-  atLeadingEdge: boolean
+  /**
+   * Which of the window's top corners the pane's top bar runs into, by reading direction: a
+   * resizable iPad window draws its controls in one of them.
+   */
+  corners: 'start' | 'end' | 'both'
 }
 
-export const SOLE_PANE: Pane = { besideList: false, atLeadingEdge: true }
-export const LIST_PANE: Pane = { besideList: false, atLeadingEdge: true }
-export const DETAIL_PANE: Pane = { besideList: true, atLeadingEdge: false }
+export const SOLE_PANE: Pane = { besideList: false, corners: 'both' }
+export const LIST_PANE: Pane = { besideList: false, corners: 'start' }
+export const DETAIL_PANE: Pane = { besideList: true, corners: 'end' }

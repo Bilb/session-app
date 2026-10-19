@@ -13,12 +13,21 @@ import { NoSelectionPane } from './NoSelectionPane'
  * Everything the app draws once its store exists: the startup failure, the launch screen,
  * onboarding, or the conversation list with the routed screen beside it.
  *
- * Each app hands over what its own router matched as `detail` and says whether that is anything
- * but the list, because reading a route is the app's business and never a screen's. Which of one
- * pane or two that becomes is `AdaptiveShell`'s decision, so a phone, a tablet and the desktop
- * window all go through here.
+ * Each app hands over what its own router matched, because reading a route is the app's business
+ * and never a screen's: the routed screen as `detail`, whether that is anything but the list, and
+ * which conversation it is, if one. Which of one pane or two that becomes is `AdaptiveShell`'s
+ * decision, so a phone, a tablet and the desktop window all go through here.
  */
-export function SessionShell({ detail, hasDetail }: { detail: ReactNode; hasDetail: boolean }) {
+export function SessionShell({
+  detail,
+  hasDetail,
+  openConversationId,
+}: {
+  detail: ReactNode
+  /** Any route but the list: requests and new conversation are routed screens too. */
+  hasDetail: boolean
+  openConversationId: string | undefined
+}) {
   const hydrated = useHydrated()
   const startupError = useStartupError()
   const account = useAccount()
@@ -40,11 +49,8 @@ export function SessionShell({ detail, hasDetail }: { detail: ReactNode; hasDeta
 
   return (
     <AdaptiveShell
-      list={<ConversationListScreen />}
+      list={<ConversationListScreen openConversationId={openConversationId} />}
       detail={detail}
-      // Any route but the list has something to show in the detail pane, not just a
-      // conversation: requests and settings are detail routes too, and keying this on the
-      // conversation alone left them rendering the placeholder instead of the screen.
       hasDetail={hasDetail}
       placeholder={<NoSelectionPane />}
     />

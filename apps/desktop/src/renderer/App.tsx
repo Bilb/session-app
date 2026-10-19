@@ -1,3 +1,4 @@
+import { conversationFromPath } from '@session/app'
 import {
   ConversationScreen,
   ModalHost,
@@ -78,6 +79,7 @@ function Shell() {
         </Routes>
       }
       hasDetail={location.pathname !== '/'}
+      openConversationId={conversationFromPath(location.pathname) ?? undefined}
     />
   )
 }
