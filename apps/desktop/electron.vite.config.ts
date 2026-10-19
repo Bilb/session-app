@@ -245,7 +245,13 @@ export default defineConfig({
       rollupOptions: { input: 'src/renderer/index.html' },
     },
     resolve: {
-      alias: { 'react-native': 'react-native-web' },
+      alias: {
+        'react-native': 'react-native-web',
+        // react-native-svg's web build looks images up in React Native's asset registry, a package
+        // React Native no longer installs from 0.88. react-native-web's registry is the one the
+        // renderer's images are registered with, and has the same `getAssetByID`.
+        '@react-native/assets-registry/registry': 'react-native-web/dist/modules/AssetRegistry',
+      },
       // Tamagui ships both; the web build has to win here or the DOM flavour never loads.
       mainFields: ['module', 'browser', 'main'],
       conditions: ['browser', 'import', 'default'],
