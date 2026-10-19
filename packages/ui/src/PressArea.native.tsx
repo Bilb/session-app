@@ -1,19 +1,47 @@
 import { useEffect, useRef, useState } from 'react'
-import { Pressable, type PointerEvent } from 'react-native'
+import { Pressable, type GestureResponderEvent, type PointerEvent } from 'react-native'
 
 import type { PressAreaProps } from './PressArea.types'
 
 export type { PressAreaProps }
 
 /**
- * How long a pointer leaving waits before it clears the hover. Pressing the button ends UIKit's
- * hover, which React Native reports as the pointer leaving, around the moment the press starts;
- * acted on at once, the control drops to its resting style for a frame. So a leave waits this
- * long, an enter cancels it, and one that comes with a press is held until the press ends. Two
- * frames: the leave and the press come from one UIKit event, so the press is never further behind,
- * and a real exit has to clear its hover too soon to see the wait.
+ * Pressing the button ends UIKit's hover, and React Native reports that as the pointer leaving --
+ * at (0, 0), since an ended hover has no position. Acted on, the control drops to its resting style
+ * for a frame before the press styles it. So a leave at (0, 0) is held -- the press that follows
+ * replaces the hover style -- and cleared after this long if no press comes, as when the pointer
+ * leaves the window. A leave with a position is the pointer moving off, and clears at once.
  */
-const POINTER_LEAVE_DELAY_MS = 32
+const HELD_LEAVE_MS = 250
+
+/**
+ * After a press whose release position is unknown, how long an enter has to arrive to say the
+ * pointer is still over the control.
+ */
+const AFTER_PRESS_LEAVE_MS = 32
+
+interface Rect {
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
+
+/**
+ * Whether a press ended over the control, as it was when the pointer entered it; undefined when
+ * the release has no position. UIKit resumes hover only once the mouse moves again, so a release
+ * over the control keeps its hover rather than dropping to rest under a pointer that has not moved.
+ */
+function releasedOver(e: GestureResponderEvent, r: Rect | undefined): boolean | undefined {
+  const { pageX: x, pageY: y } = e.nativeEvent
+  if (r === undefined || typeof x !== 'number' || typeof y !== 'number') return undefined
+  return x >= r.left && x < r.right && y >= r.top && y < r.bottom
+}
+
+/** Whether a leave is UIKit ending the hover -- a click, or the pointer leaving the window. */
+function hoverEnded(e: PointerEvent): boolean {
+  return e.nativeEvent.clientX === 0 && e.nativeEvent.clientY === 0
+}
 
 /**
  * The native half, and the reason this split exists at all.
@@ -44,14 +72,15 @@ export function PressArea({
   const pendingLeave = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const pressing = useRef(false)
   const leftDuringPress = useRef(false)
+  const hoverRect = useRef<Rect | undefined>(undefined)
   useEffect(() => () => clearTimeout(pendingLeave.current), [])
 
-  const leaveSoon = () => {
+  const leaveAfter = (delayMs: number) => {
     clearTimeout(pendingLeave.current)
     pendingLeave.current = setTimeout(() => {
       pendingLeave.current = undefined
       setHovered(false)
-    }, POINTER_LEAVE_DELAY_MS)
+    }, delayMs)
   }
 
   return (
@@ -73,12 +102,19 @@ export function PressArea({
         clearTimeout(pendingLeave.current)
         pendingLeave.current = undefined
         leftDuringPress.current = false
+        const target = e.currentTarget as unknown as { getBoundingClientRect?: () => Rect } | null
+        hoverRect.current = target?.getBoundingClientRect?.()
         setHovered(true)
       }}
       onPointerLeave={(e: PointerEvent) => {
         if (e.nativeEvent.pointerType === 'touch') return
         if (pressing.current) leftDuringPress.current = true
-        else leaveSoon()
+        else if (hoverEnded(e)) leaveAfter(HELD_LEAVE_MS)
+        else {
+          clearTimeout(pendingLeave.current)
+          pendingLeave.current = undefined
+          setHovered(false)
+        }
       }}
       onPressIn={() => {
         pressing.current = true
@@ -87,11 +123,16 @@ export function PressArea({
         pendingLeave.current = undefined
         leftDuringPress.current = true
       }}
-      onPressOut={() => {
+      onPressOut={(e) => {
         pressing.current = false
         if (!leftDuringPress.current) return
         leftDuringPress.current = false
-        leaveSoon()
+        const over = releasedOver(e, hoverRect.current)
+        if (over === false) {
+          clearTimeout(pendingLeave.current)
+          pendingLeave.current = undefined
+          setHovered(false)
+        } else if (over === undefined) leaveAfter(AFTER_PRESS_LEAVE_MS)
       }}
     >
       {({ pressed }) => children(pressed, hovered && !disabled)}
