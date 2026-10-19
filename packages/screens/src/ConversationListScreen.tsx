@@ -9,6 +9,7 @@ import { NetworkOverlay } from './NetworkOverlay'
 import { conversationRowState, type UnreadBadge, type UnreadTone } from './conversationRowState'
 import { conversationTitle } from './conversationTitle'
 import { useOpenSettings } from './settings/SettingsRootPage'
+import { useTopBarInsets } from './shell/pane'
 import { SYSTEM_LOCALE, useLocaleChoice } from './useLocale'
 
 /**
@@ -49,6 +50,7 @@ export function ConversationListScreen({
   /** The conversation showing beside the list, where one is: its row is drawn selected. */
   openConversationId?: string | undefined
 }) {
+  const topBarInsets = useTopBarInsets()
   const conversations = useConversations()
   const unreadRequests = useUnreadRequestCount()
   const nav = useNav()
@@ -65,6 +67,7 @@ export function ConversationListScreen({
         paddingVertical="$sm"
         alignItems="center"
         justifyContent="space-between"
+        {...topBarInsets}
       >
         <NetworkOverlay>
           <Text size="$title" weight="bold">
@@ -97,7 +100,7 @@ export function ConversationListScreen({
             height={44}
             alignItems="center"
             justifyContent="center"
-            cursor="pointer"
+            $platform-web={{ cursor: 'pointer' }}
             hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
             pressStyle={{ backgroundColor: '$backgroundTertiary' }}
             borderRadius="$full"
@@ -118,7 +121,7 @@ export function ConversationListScreen({
             height={44}
             alignItems="center"
             justifyContent="center"
-            cursor="pointer"
+            $platform-web={{ cursor: 'pointer' }}
             hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
             pressStyle={{ backgroundColor: '$backgroundTertiary' }}
             borderRadius="$full"
@@ -143,7 +146,16 @@ export function ConversationListScreen({
             index={index}
             timeLocale={timeLocale}
             open={conversation.id === openConversationId}
-            onPress={() => nav.push(routes.conversation(conversation.id))}
+            onPress={() => {
+              // Beside the list, a conversation replaces the one already open rather than
+              // stacking on it, and the open one again changes nothing. Pushed every time, the
+              // history fills with every conversation looked at, and Android's back walks through
+              // all of them before it leaves.
+              if (conversation.id === openConversationId) return
+              const path = routes.conversation(conversation.id)
+              if (openConversationId === undefined) nav.push(path)
+              else nav.replace(path)
+            }}
           />
         )}
         empty={
@@ -252,9 +264,6 @@ function ConversationRow({
       {...(open ? { backgroundColor: '$backgroundTertiary' } : {})}
       hoverStyle={{ backgroundColor: open ? '$backgroundTertiary' : '$backgroundSecondary' }}
       pressStyle={{ backgroundColor: '$backgroundTertiary' }}
-      // The web only. On an iPad `cursor` turns on UIKit's pointer interaction, whose hover
-      // effect inserts views beside the row that React Native does not know about; unmounting a
-      // row from the list then finds its siblings shifted and aborts.
       $platform-web={{ cursor: 'pointer' }}
       onPress={onPress}
       aria-selected={open}

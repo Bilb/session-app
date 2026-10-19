@@ -114,6 +114,23 @@ const RESTRICTED_SYNTAX = [
       'render: drawn as <Inner /> React remounts it, and either way it cannot be memoised. ' +
       'Move it to module scope and pass what it reads as props.',
   },
+  // On iOS 17+ `cursor` is a UIHoverStyle, whose hover effect inserts views React Native does not
+  // track: on an iPad with a pointer, unmounting the view's siblings then aborts the app. The
+  // cursor only means something to a mouse on the web, so it goes under `$platform-web`.
+  {
+    selector: "JSXAttribute[name.name='cursor']",
+    message:
+      "Set the cursor for the web only: `$platform-web={{ cursor: 'pointer' }}`. On an iPad it " +
+      'becomes a UIKit hover effect that crashes React Native when the view is unmounted.',
+  },
+  {
+    selector:
+      "Property[key.name='cursor']:not(JSXAttribute[name.name='$platform-web'] Property)" +
+      ":not(Property[key.value='$platform-web'] Property)",
+    message:
+      "Set the cursor for the web only: `'$platform-web': { cursor: 'pointer' }`. On an iPad it " +
+      'becomes a UIKit hover effect that crashes React Native when the view is unmounted.',
+  },
   {
     selector: 'Property[key.name=/^' + SCALED_PROPS + '$/] > Literal[raw=/^[0-9]+(\\.[0-9]+)?$/]',
     message:
