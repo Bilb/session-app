@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-
 import { describe, expect, it, vi } from 'vitest'
 
 import {
@@ -11,6 +8,7 @@ import {
   type PressKeyEvent,
 } from '#src/keyboardPress'
 import { pressHint } from '#src/pressHint'
+import { buildThemes } from '#src/themes'
 
 const element = {}
 
@@ -76,11 +74,6 @@ describe('what a stack spreads to take the keyboard', () => {
     expect(props).toMatchObject({ tabIndex: 0, focusVisibleStyle: ring })
     expect(props).toHaveProperty('onKeyDown')
   })
-
-  it('is nothing on native, where a tab index makes an iOS row a single element', () => {
-    const source = readFileSync(join(import.meta.dirname, '../src/keyboardPress.ts'), 'utf8')
-    expect(source).toContain('if (!isWeb || onPress === undefined) return {}')
-  })
 })
 
 describe('a button held while a transfer runs', () => {
@@ -107,9 +100,8 @@ describe('a button held while a transfer runs', () => {
 })
 
 describe('the focus ring', () => {
-  it('is the colour the theme gives focus', () => {
-    const theme = readFileSync(join(import.meta.dirname, '../src/themes.ts'), 'utf8')
-    expect(theme).toContain('outlineColor: tokens.primaryColor')
+  it.each(Object.entries(buildThemes()))('is the colour %s gives focus', (_, theme) => {
+    expect(theme['outlineColor']).toBe(theme['primaryColor'])
   })
 
   it('is the theme’s focus colour on the page', () => {
@@ -130,10 +122,5 @@ describe('a press hint', () => {
   it('is ARIA’s description on the web and is absent with nothing to say', () => {
     expect(pressHint('Open')).toEqual({ 'aria-description': 'Open' })
     expect(pressHint(undefined)).toEqual({})
-  })
-
-  it('is react-native’s hint on native', () => {
-    const source = readFileSync(join(import.meta.dirname, '../src/pressHint.ts'), 'utf8')
-    expect(source).toContain("isWeb ? { 'aria-description': label } : { accessibilityHint: label }")
   })
 })

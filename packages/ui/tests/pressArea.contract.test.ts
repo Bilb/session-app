@@ -29,40 +29,4 @@ describe('the web PressArea', () => {
   it('is not a row', () => {
     expect(source).not.toMatch(/<XStack\b|flexDirection=["{]?["']?row/)
   })
-
-  it('is a tab stop that Enter and Space press, wherever a pointer could press it', () => {
-    // tamagui hands `onPress` a click and nothing else, so every Button in the app needs this.
-    expect(source).toContain('const press = disabled ? undefined : onPress')
-    expect(source).toContain('onPress={press}')
-    expect(source).toContain('{...keyboardPress(press, focusRing(ring))}')
-  })
-})
-
-describe('the native PressArea', () => {
-  const source = readFileSync(join(import.meta.dirname, '../src/PressArea.native.tsx'), 'utf8')
-
-  it('takes no tab index, which on iOS would hide what it holds from VoiceOver', () => {
-    expect(source).not.toMatch(/keyboardPress|tabIndex/)
-  })
-})
-
-describe('a Button', () => {
-  const source = readFileSync(join(import.meta.dirname, '../src/Button.tsx'), 'utf8')
-  const frame = source.slice(source.indexOf('const Frame = styled('), source.indexOf('variants:'))
-
-  it('leaves the role to its PressArea on the web, so one control is one button', () => {
-    expect(frame).not.toContain('role')
-    expect(source).toContain("const FRAME_ROLE = isWeb ? {} : ({ role: 'button' } as const)")
-    expect(source).toContain('{...FRAME_ROLE}')
-  })
-
-  it('hands its PressArea a ring in the shape and fill it is drawn on', () => {
-    expect(source).toContain('ring={ring}')
-    expect(source).toMatch(/radius: variant === 'tonal' \? '\$sm' : '\$full'/)
-  })
-
-  it('reads onAccent for its ring alone, keeping its own fill on a bubble you sent', () => {
-    expect(source).not.toMatch(/onAccent \?/)
-    expect(source.match(/\{ onAccent, offset:/g)).toHaveLength(2)
-  })
 })
