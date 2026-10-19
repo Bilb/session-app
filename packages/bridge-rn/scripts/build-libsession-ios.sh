@@ -70,9 +70,21 @@ source_hash=$( \
     | awk '{print $1}' | sort | md5 -q \
 )
 
+# One ios.sh per slice, at once: its own loop builds them one after another, leaving most cores idle.
 build_libsession() {
+    local slice slice_platform pids="" failed=0
+    for slice in $slices; do
+        case "$slice" in sim-*) slice_platform=iphonesimulator ;; *) slice_platform=iphoneos ;; esac
+        ( cd "$libsession" && env ARCHS="${slice#*-}" PLATFORM_NAME="$slice_platform" CONFIGURATION=Debug \
+            ./utils/ios.sh "" true false false false 2>&1 | sed -u "s/^/[$slice] /" ) &
+        pids="$pids $!"
+    done
+    # Waits for every slice before failing, so none is left building in the background.
+    for pid in $pids; do wait "$pid" || failed=1; done
+    [ "$failed" = 0 ] || { echo "a libsession slice failed to build" >&2; exit 1; }
+
     ( cd "$libsession" && env ARCHS="$archs" PLATFORM_NAME="$platform" CONFIGURATION=Debug \
-        ./utils/ios.sh "" true true true false )
+        ./utils/ios.sh "" false true true false )
 }
 
 tree="$libsession/build-ios"
