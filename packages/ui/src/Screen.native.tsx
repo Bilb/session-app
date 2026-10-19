@@ -1,4 +1,4 @@
-import { Keyboard, TouchableWithoutFeedback } from 'react-native'
+import { Keyboard } from 'react-native'
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { YStack } from 'tamagui'
@@ -10,6 +10,19 @@ export type { ScreenProps }
 const ALL_EDGES = ['top', 'bottom', 'left', 'right'] as const
 
 const FILL = { flex: 1 } as const
+
+/**
+ * Puts the keyboard away on a tap, claiming the touch only while the keyboard is up. Spread onto
+ * the screen's own view rather than a wrapper of its own: keyboard-controller's avoiding view
+ * measures its position against its parent, and a wrapper between it and the safe-area padding
+ * made it leave the control at the bottom part-hidden behind the keyboard.
+ */
+const DISMISS_ON_TAP = {
+  onStartShouldSetResponder: () => Keyboard.isVisible(),
+  onResponderRelease: () => {
+    Keyboard.dismiss()
+  },
+} as const
 
 /**
  * The native flavour: the same frame, held clear of the hardware and of the keyboard.
@@ -63,24 +76,26 @@ export function Screen({
       */}
       {/*
         Tapping anywhere that is not a control puts the keyboard away, which is the convention on
-        both platforms and costs nothing here. `TouchableWithoutFeedback` rather than a Pressable
-        because there is deliberately no feedback: this is the background, not a button, and
-        `accessible={false}` stops the whole screen announcing itself to a screen reader as one
-        control.
+        both platforms.
+
+        **A bare responder, claimed only while the keyboard is up, and never blocking native
+        gestures.** A touchable here (`TouchableWithoutFeedback` until React Native 0.88) claims
+        every touch at its start and asks native views not to respond, and from 0.88 that stops a
+        scroll view inside the screen from scrolling at all. Returning nothing from the grant
+        leaves native gestures alone, and claiming nothing while the keyboard is down leaves
+        every touch to the screen.
       */}
-      <TouchableWithoutFeedback accessible={false} onPress={() => Keyboard.dismiss()}>
-        {avoidsKeyboard ? (
-          <KeyboardAvoidingView style={FILL} behavior="padding">
-            <YStack flex={1} {...(padded ? { padding: '$md' } : {})}>
-              {children}
-            </YStack>
-          </KeyboardAvoidingView>
-        ) : (
+      {avoidsKeyboard ? (
+        <KeyboardAvoidingView style={FILL} behavior="padding" {...DISMISS_ON_TAP}>
           <YStack flex={1} {...(padded ? { padding: '$md' } : {})}>
             {children}
           </YStack>
-        )}
-      </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      ) : (
+        <YStack flex={1} {...(padded ? { padding: '$md' } : {})} {...DISMISS_ON_TAP}>
+          {children}
+        </YStack>
+      )}
     </YStack>
   )
 }
