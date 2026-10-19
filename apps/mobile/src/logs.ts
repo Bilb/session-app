@@ -67,7 +67,7 @@ function expoDirectory(dir: Directory): LogDirectory {
         const sizeBytes = handle.size ?? 0
         const length = Math.min(bytes, sizeBytes)
         handle.offset = sizeBytes - length
-        return Promise.resolve(handle.readBytes(length))
+        return Promise.resolve(handle.readBytesSync(length))
       } finally {
         handle.close()
       }
@@ -75,7 +75,7 @@ function expoDirectory(dir: Directory): LogDirectory {
     readHead: (name, bytes) => {
       const handle = new File(dir, name).open(FileMode.ReadOnly)
       try {
-        return Promise.resolve(handle.readBytes(Math.min(bytes, handle.size ?? 0)))
+        return Promise.resolve(handle.readBytesSync(Math.min(bytes, handle.size ?? 0)))
       } finally {
         handle.close()
       }
