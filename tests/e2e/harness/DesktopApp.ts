@@ -9,7 +9,6 @@ import type { ElementId } from '@session/test-ids'
 import { FAKE_LAUNCH_ENV } from './fakeEnv'
 import type { ISessionApp } from './ISessionApp'
 import type { IFileChooser } from './FileChooser'
-import type { FocusedElement, IKeyboardProbe } from './KeyboardProbe'
 import type { ILayoutProbe } from './LayoutProbe'
 import type { IPerformanceProbe } from './PerformanceProbe'
 
@@ -60,16 +59,6 @@ interface LaidOutNode {
   querySelectorAll(selector: string): ArrayLike<LaidOutNode>
 }
 
-/** What `focused`'s page-side body reads of an element. */
-interface FocusNode {
-  getAttribute(name: string): string | null
-}
-
-interface FocusGlobals {
-  document: { activeElement: FocusNode | null; body: FocusNode; documentElement: FocusNode }
-  getComputedStyle(element: FocusNode): { outlineWidth: string }
-}
-
 /** What the layout probe's page-side bodies touch. */
 interface DocumentGlobals {
   document: { documentElement: { dir: string; clientWidth: number } }
@@ -85,9 +74,7 @@ const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
  * writes is the same string the component was given. There is no per-platform locator table
  * here, and there should not need to be one.
  */
-export class DesktopApp
-  implements ISessionApp, IPerformanceProbe, IFileChooser, ILayoutProbe, IKeyboardProbe
-{
+export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser, ILayoutProbe {
   readonly platform = 'desktop' as const
 
   private constructor(
@@ -149,10 +136,6 @@ export class DesktopApp
 
   async tap(id: ElementId): Promise<void> {
     await this.locator(id).first().click()
-  }
-
-  async tapAt(id: ElementId, at: number): Promise<void> {
-    await this.locator(id).nth(at).click()
   }
 
   async type(id: ElementId, text: string): Promise<void> {
@@ -308,32 +291,6 @@ export class DesktopApp
     ])
     if (a === null || b === null) throw new Error(`${first} or ${second} is not laid out`)
     return a.x + a.width / 2 < b.x + b.width / 2
-  }
-
-  // -- IKeyboardProbe ---------------------------------------------------------------------
-
-  async pressKey(key: string): Promise<void> {
-    await this.page.keyboard.press(key)
-  }
-
-  async focused(): Promise<FocusedElement | null> {
-    return this.page.evaluate(() => {
-      const page = globalThis as unknown as FocusGlobals
-      const { document } = page
-      const node = document.activeElement
-      if (node === null || node === document.body || node === document.documentElement) return null
-      return {
-        testID: node.getAttribute('data-testid'),
-        role: node.getAttribute('role'),
-        name: node.getAttribute('aria-label'),
-        hint: node.getAttribute('aria-description'),
-        outlineWidth: page.getComputedStyle(node).outlineWidth,
-      }
-    })
-  }
-
-  async ariaSnapshot(id: ElementId): Promise<string> {
-    return this.locator(id).first().ariaSnapshot()
   }
 
   // -- IPerformanceProbe ------------------------------------------------------------------

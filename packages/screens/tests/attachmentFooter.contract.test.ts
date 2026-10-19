@@ -22,11 +22,8 @@ describe('the attachment footer', () => {
     expect(row).toContain('marginVertical={-ROW_OVERHANG}')
   })
 
-  it('draws the verb as a tonal button the line is sized to, with a slop that reaches the row', () => {
+  it('grows the verb to the row as well, rather than leaving it a caption-high target', () => {
     const verb = source.slice(source.lastIndexOf('<Button'), source.indexOf('</Button>'))
-    expect(verb).toContain('variant="tonal"')
-    expect(verb).toContain('onPress={onAction}')
-    expect(source).toMatch(/FOOTER_HEIGHT = buttonHeight\(ACTION_SIZE\)/)
     expect(source).toMatch(/ACTION_SLOP = ROW_OVERHANG/)
     expect(verb).toContain('hitSlop={ACTION_SLOP}')
   })

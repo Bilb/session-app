@@ -13,7 +13,7 @@ export interface PressKeyEvent {
  * Presses on Enter or Space, as a `<button>` does, and only when the focused element is this one:
  * keys bubble, so a stack holding another that takes keys would press for its key too.
  */
-export function pressOnKey(onPress: () => void): (event: PressKeyEvent) => void {
+function pressOnKey(onPress: () => void): (event: PressKeyEvent) => void {
   return (event) => {
     if (event.target !== event.currentTarget || event.repeat) return
     if (event.key !== 'Enter' && event.key !== ' ') return
