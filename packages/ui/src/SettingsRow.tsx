@@ -14,16 +14,29 @@ import type { IconName } from './Icon.types'
 import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
 import { PRESS_PASSTHROUGH } from './pressPassthrough'
-import { SIZE_SCALE, SPACE_SCALE } from './scales'
+import { FONT_SIZE_SCALE, SIZE_SCALE, SPACE_SCALE } from './scales'
 import { Text } from './Text'
 import { useFontScale } from './useFontScale'
-import { useGlyphScale } from './glyphScale'
+import { LABEL_MAX_SCALE, useGlyphScale } from './glyphScale'
 
 /** A control's rung rather than a text line's: a row is a tap target. */
 const ROW_MIN_HEIGHT = SIZE_SCALE['4xl']
 
 /** How wide the leading icon's column is, so labels line up whether or not a row has one. */
 const ICON_COLUMN = SIZE_SCALE.lg
+/**
+ * How far a row's name grows with the system text size: iOS's first accessibility size. Past it the
+ * longer English names ("Recovery Password") wrap on a phone, beside the icon column, and broke
+ * mid-word at the largest size; a name is scanned down the list, so it holds on one line where it
+ * can. A longer translation can still wrap.
+ */
+const ROW_LABEL_MAX_SCALE = 1.786
+/**
+ * The subtitle goes on growing past the name, since it is read rather than scanned, but never past
+ * the size the name stops at: a subtitle larger than its name reads as the row's name.
+ */
+const SUBTITLE_MAX_SCALE = (ROW_LABEL_MAX_SCALE * FONT_SIZE_SCALE.bodyLarge) / FONT_SIZE_SCALE.label
+
 /** The leading glyph, at the default text size. */
 const ICON_SIZE = SIZE_SCALE.lg
 
@@ -196,13 +209,22 @@ function RowContent({
         )}
 
         <YStack flex={1} gap="$3xs">
-          <Text size="$bodyLarge" weight="bold" color={tone}>
+          <Text
+            size="$bodyLarge"
+            weight="bold"
+            color={tone}
+            maxFontSizeMultiplier={ROW_LABEL_MAX_SCALE}
+          >
             {label}
           </Text>
           {subtitle === undefined ? null : (
             // Unmuted. Label size so it reads as the name's
             // explanation rather than as a second line of body text.
-            <Text size="$label" color={disabled ? '$textDisabled' : '$textPrimary'}>
+            <Text
+              size="$label"
+              color={disabled ? '$textDisabled' : '$textPrimary'}
+              maxFontSizeMultiplier={SUBTITLE_MAX_SCALE}
+            >
               {subtitle}
             </Text>
           )}
@@ -263,7 +285,7 @@ export function SettingsGroup({ children }: { children: ReactNode }) {
 export function SettingsSection({ label, description }: { label: string; description?: string }) {
   return (
     <YStack gap="$3xs" paddingBottom="$xs" {...logical({ paddingStart: SPACE_SCALE.xs })}>
-      <Text size="$body" tone="secondary">
+      <Text size="$body" tone="secondary" maxFontSizeMultiplier={LABEL_MAX_SCALE}>
         {label}
       </Text>
       {description === undefined ? null : (

@@ -9,7 +9,9 @@ import {
   KeyboardAvoiding,
   SafeArea,
   Screen,
+  ScrollView,
   SessionWordmark,
+  useFontScale,
   XStack,
   YStack,
 } from '@session/ui'
@@ -48,6 +50,12 @@ export function WideChrome({
   banner,
   fading,
 }: Pick<ChromeProps, 'children' | 'testID' | 'banner'> & { fading: number }) {
+  /**
+   * Above the default system text size the step grows past its reserve, so the reserve becomes a
+   * floor and the column scrolls: a fixed height spills the step's action off the bottom of the
+   * screen, where nothing can reach it. At the default size, and on desktop, it stays fixed.
+   */
+  const grows = useFontScale() > 1
   const column = (
     // Centred both ways in whatever is left, which is the rule the designs state.
     <YStack flex={1} alignItems="center" justifyContent="center" padding="$xl">
@@ -69,7 +77,7 @@ export function WideChrome({
           // a minimum its block grows to 424 and the centring lifts the header clear of where the
           // step before it drew the same header. Fixed, a taller step spills out of the bottom and
           // nothing above it moves.
-          height={CONTENT_MIN_HEIGHT}
+          {...(grows ? { minHeight: CONTENT_MIN_HEIGHT } : { height: CONTENT_MIN_HEIGHT })}
           opacity={fading}
           // No animation driver is configured, so the transition is declared directly. On
           // native this property is ignored and the step simply appears, which is the same
@@ -123,7 +131,15 @@ export function WideChrome({
             is 0.4 x 398. A floor that never binds still changed the answer. */}
         <YStack flexBasis={0} flexGrow={COLUMN_GROW}>
           <SafeArea>
-            <KeyboardAvoiding>{column}</KeyboardAvoiding>
+            <KeyboardAvoiding>
+              {grows ? (
+                <ScrollView flex={1} contentContainerStyle={{ flexGrow: 1 }}>
+                  {column}
+                </ScrollView>
+              ) : (
+                column
+              )}
+            </KeyboardAvoiding>
           </SafeArea>
         </YStack>
       </XStack>

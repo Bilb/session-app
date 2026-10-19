@@ -152,7 +152,12 @@ function AccountHeader({ sessionId, name }: { sessionId: string; name: string })
     >
       <Avatar id={sessionId} name={name} size={PROFILE_AVATAR} />
       {name === '' ? null : (
-        <Text size="$headingLarge" weight="bold" testID={ELEMENT.settings.displayName}>
+        <Text
+          size="$headingLarge"
+          weight="bold"
+          maxFontSizeMultiplier={LABEL_MAX_SCALE}
+          testID={ELEMENT.settings.displayName}
+        >
           {name}
         </Text>
       )}
