@@ -33,8 +33,8 @@ export function contentTypeEssence(contentType: string | undefined): string | un
 
 /**
  * libsession's `image::is_displayable_image`: what it shows as a gallery, what `image-attachments`
- * fetches unasked, and what it makes a thumbnail of. Its list and its comparison, which folds ASCII
- * case and nothing else: no parameters, no space trimmed.
+ * fetches unasked, and what it makes a thumbnail of. Its list, compared by essence as
+ * `contentTypeEssence` reads one.
  */
 const DISPLAYABLE_IMAGE: ReadonlySet<string> = new Set([
   'image/jpeg',
@@ -47,8 +47,8 @@ const DISPLAYABLE_IMAGE: ReadonlySet<string> = new Set([
 ])
 
 export function isDisplayableImage(contentType: string | undefined): boolean {
-  if (contentType === undefined) return false
-  return DISPLAYABLE_IMAGE.has(contentType.replace(/[A-Z]/g, (c) => c.toLowerCase()))
+  const type = contentTypeEssence(contentType)
+  return type !== undefined && DISPLAYABLE_IMAGE.has(type)
 }
 
 export function isViewableImage(contentType: string | undefined): boolean {

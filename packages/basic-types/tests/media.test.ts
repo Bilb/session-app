@@ -83,9 +83,9 @@ describe('which content types libsession calls displayable', () => {
     expect(isDisplayableImage(undefined)).toBe(false)
   })
 
-  it('compares the whole string, as libsession does: no parameters, no space', () => {
-    expect(isDisplayableImage('image/jpeg; charset=binary')).toBe(false)
-    expect(isDisplayableImage(' image/png')).toBe(false)
+  it('compares the essence, as libsession does: parameters and edge space ignored', () => {
+    expect(isDisplayableImage('image/jpeg; charset=binary')).toBe(true)
+    expect(isDisplayableImage(' image/png')).toBe(true)
   })
 })
 

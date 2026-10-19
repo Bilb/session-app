@@ -145,8 +145,8 @@ function announcedAvailability(
 }
 
 /**
- * libsession's `image::displayable_image_types` and its comparison, which folds ASCII case and
- * nothing else, as the `galleryViewable` of a message holding one attachment of each type.
+ * libsession's `image::displayable_image_types` and its comparison, which reads the MIME essence
+ * and folds ASCII case, as the `galleryViewable` of a message holding one attachment of each type.
  */
 const GALLERY_VIEWABLE: [contentType: string, galleryViewable: boolean][] = [
   ['image/jpeg', true],
@@ -171,9 +171,9 @@ const GALLERY_VIEWABLE: [contentType: string, galleryViewable: boolean][] = [
   ['image/apng', false],
   ['image/jxl', false],
   ['image/x-icon', false],
-  ['image/jpeg; charset=binary', false],
-  ['image/jpeg ', false],
-  [' image/png', false],
+  ['image/jpeg; charset=binary', true],
+  ['image/jpeg ', true],
+  [' image/png', true],
   ['image/', false],
   ['', false],
   ['video/mp4', false],
