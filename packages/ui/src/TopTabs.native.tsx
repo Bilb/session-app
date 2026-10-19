@@ -4,6 +4,7 @@ import { XStack, YStack } from 'tamagui'
 
 import { PressArea } from './PressArea'
 import { Text } from './Text'
+import { GLYPH_MAX_SCALE } from './glyphScale'
 import { isLayoutRtl } from './layoutDirection'
 import type { TopTabsProps } from './TopTabs.types'
 import { BAR_HEIGHT, INDICATOR_HEIGHT, INDICATOR_INSET, SLIDE_MS } from './topTabsMetrics'
@@ -72,7 +73,13 @@ export function TopTabs({ tabs, active, onChange, instant = false }: TopTabsProp
               <YStack flex={1} alignItems="center" justifyContent="center">
                 {/* 17 on iOS, bold. The label keeps the text colour in both states: the bar
                     underneath is the whole signal, which is how the client draws it. */}
-                <Text size="$bodyLarge" weight="bold">
+                <Text
+                  size="$bodyLarge"
+                  weight="bold"
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  maxFontSizeMultiplier={GLYPH_MAX_SCALE}
+                >
                   {tab.label}
                 </Text>
               </YStack>

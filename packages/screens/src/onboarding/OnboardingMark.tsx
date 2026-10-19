@@ -1,4 +1,4 @@
-import { SessionBrand, Text } from '@session/ui'
+import { GLYPH_MAX_SCALE, SessionBrand, Text } from '@session/ui'
 
 import { NetworkOverlay } from '../NetworkOverlay'
 
@@ -20,7 +20,14 @@ export function OnboardingMark({ size, title }: { size: number; title?: string }
       {title === undefined ? (
         <SessionBrand size={size} color="$primaryColor" />
       ) : (
-        <Text size="$bodyLarge" weight="bold">
+        // A navigation bar's title, which iOS holds at XXX Large: past it the title ran into the
+        // bar's back control and language button.
+        <Text
+          size="$bodyLarge"
+          weight="bold"
+          numberOfLines={1}
+          maxFontSizeMultiplier={GLYPH_MAX_SCALE}
+        >
           {title}
         </Text>
       )}
