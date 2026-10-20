@@ -22,6 +22,9 @@ const PANEL_WIDTH = 320
 const MARGIN = 12
 /** Clear of the trigger, close enough to read as hanging from it. */
 const GAP = 6
+/** The margin when the panel covers the window rather than hanging from the trigger. */
+const COVER_MARGIN = 4
+
 /** Below this the panel is not worth opening downwards, and it flips above the trigger instead. */
 const MIN_PANEL_HEIGHT = 260
 
@@ -72,7 +75,9 @@ export function LanguagePicker({
   const placement =
     anchor === null
       ? null
-      : panelPlacement(anchor, window.height - taken, GAP, MARGIN, MIN_PANEL_HEIGHT)
+      : panelPlacement(anchor, window.height - taken, GAP, MARGIN, MIN_PANEL_HEIGHT, COVER_MARGIN)
+  // Covering the window means the window is short, so the frame gives its padding to the list.
+  const covering = placement?.covers === true
 
   return (
     <>
@@ -149,8 +154,8 @@ export function LanguagePicker({
               // the last row ends up under the keyboard. Nothing is estimated here -- the chrome
               // takes what it needs and the list shrinks into the remainder.
               maxHeight={placement.available}
-              gap="$sm"
-              padding="$md"
+              gap={covering ? '$xs' : '$sm'}
+              padding={covering ? '$sm' : '$md'}
               borderRadius="$md"
               borderWidth={1}
               borderColor="$bordersColor"

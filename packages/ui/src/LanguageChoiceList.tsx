@@ -77,6 +77,7 @@ export function LanguageChoiceList({
         <Icon name="search" size="md" color="$textSecondary" />
         <Input
           grow
+          compact
           value={query}
           onChangeText={setQuery}
           placeholder={searchPlaceholder}
