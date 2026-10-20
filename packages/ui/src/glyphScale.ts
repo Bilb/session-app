@@ -13,9 +13,14 @@ export function useGlyphScale(): number {
 }
 
 /**
- * How far text that labels something grows with the system text size: a button's label, a footer
- * line, a heading, a pill. Past about twice the default such text wraps word by word and takes the
- * screen from the content it labels, which is what the large size is for, so it holds there while
- * body text goes on growing.
+ * How far text that labels something grows with the system text size: a button's label, a title, a
+ * tab, a list row's name and subtitle, a footer line, a pill. Past about twice the default such
+ * text wraps word by word and takes the screen from the content it labels, which is what the large
+ * size is for, so it holds there while body text goes on growing.
+ *
+ * **One cap for all of it, deliberately.** Text that labels stops here and glyphs beside text stop
+ * at `GLYPH_MAX_SCALE`; a component that looks cramped at the largest sizes is left cramped rather
+ * than given a multiplier of its own. Where something would be pushed out of sight entirely, fix
+ * the layout instead.
  */
 export const LABEL_MAX_SCALE = 2

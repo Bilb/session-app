@@ -5,6 +5,7 @@ import { formatConversationTime, tr, type ConversationTimeOptions } from '@sessi
 import { ELEMENT } from '@session/test-ids'
 import {
   Avatar,
+  GLYPH_MAX_SCALE,
   Icon,
   LABEL_MAX_SCALE,
   List,
@@ -28,12 +29,6 @@ import { useTopBarInsets } from './shell/pane'
 import { useFormattingLocale } from './useLocale'
 
 const AVATAR_SIZE_PX = SIZE_SCALE['3xl']
-/**
- * The text size past which the avatar stops growing with it: iOS's XXX Large, the largest size
- * outside the accessibility ones. Beyond it a bigger avatar takes room the text needs and looks
- * swollen, so the text goes on growing and the avatar holds.
- */
-const AVATAR_MAX_SCALE = 1.353
 /**
  * Each line is at least this tall whatever it holds, so a row with a pill lines up with one
  * without. The kind glyph's disc and the pill a count sits in are the same height, so neither moves
@@ -63,7 +58,7 @@ const TIME_GAP_MIN = '$xxs'
  * list's arithmetic and the layout cannot disagree; rounding up leaves under a point to spare.
  */
 function rowLayout(fontScale: number): { heightPx: number; avatarPx: number } {
-  const avatarPx = Math.round(AVATAR_SIZE_PX * Math.min(Math.max(fontScale, 1), AVATAR_MAX_SCALE))
+  const avatarPx = Math.round(AVATAR_SIZE_PX * Math.min(Math.max(fontScale, 1), GLYPH_MAX_SCALE))
   const line = (tallest: number): number => Math.max(LINE_HEIGHT_PX, tallest * fontScale)
   // The name sets the first line and the snippet the second; the time and the pill are smaller.
   const textPx = line(textHeight('bodyLarge', 1)) + SPACE_SCALE['2xs'] + line(textHeight('body', 1))

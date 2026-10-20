@@ -14,7 +14,7 @@ import type { IconName } from './Icon.types'
 import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
 import { PRESS_PASSTHROUGH } from './pressPassthrough'
-import { FONT_SIZE_SCALE, SIZE_SCALE, SPACE_SCALE } from './scales'
+import { SIZE_SCALE, SPACE_SCALE } from './scales'
 import { Text } from './Text'
 import { useFontScale } from './useFontScale'
 import { LABEL_MAX_SCALE, useGlyphScale } from './glyphScale'
@@ -24,18 +24,6 @@ const ROW_MIN_HEIGHT = SIZE_SCALE['4xl']
 
 /** How wide the leading icon's column is, so labels line up whether or not a row has one. */
 const ICON_COLUMN = SIZE_SCALE.lg
-/**
- * How far a row's name grows with the system text size: iOS's first accessibility size. Past it the
- * longer English names ("Recovery Password") wrap on a phone, beside the icon column, and broke
- * mid-word at the largest size; a name is scanned down the list, so it holds on one line where it
- * can. A longer translation can still wrap.
- */
-const ROW_LABEL_MAX_SCALE = 1.786
-/**
- * The subtitle goes on growing past the name, since it is read rather than scanned, but never past
- * the size the name stops at: a subtitle larger than its name reads as the row's name.
- */
-const SUBTITLE_MAX_SCALE = (ROW_LABEL_MAX_SCALE * FONT_SIZE_SCALE.bodyLarge) / FONT_SIZE_SCALE.label
 
 /** The leading glyph, at the default text size. */
 const ICON_SIZE = SIZE_SCALE.lg
@@ -213,7 +201,7 @@ function RowContent({
             size="$bodyLarge"
             weight="bold"
             color={tone}
-            maxFontSizeMultiplier={ROW_LABEL_MAX_SCALE}
+            maxFontSizeMultiplier={LABEL_MAX_SCALE}
           >
             {label}
           </Text>
@@ -223,7 +211,7 @@ function RowContent({
             <Text
               size="$label"
               color={disabled ? '$textDisabled' : '$textPrimary'}
-              maxFontSizeMultiplier={SUBTITLE_MAX_SCALE}
+              maxFontSizeMultiplier={LABEL_MAX_SCALE}
             >
               {subtitle}
             </Text>

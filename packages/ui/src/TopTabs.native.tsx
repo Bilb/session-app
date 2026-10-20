@@ -4,7 +4,7 @@ import { XStack, YStack } from 'tamagui'
 
 import { PressArea } from './PressArea'
 import { Text } from './Text'
-import { GLYPH_MAX_SCALE } from './glyphScale'
+import { LABEL_MAX_SCALE } from './glyphScale'
 import { isLayoutRtl } from './layoutDirection'
 import type { TopTabsProps } from './TopTabs.types'
 import { BAR_HEIGHT, INDICATOR_HEIGHT, INDICATOR_INSET, SLIDE_MS } from './topTabsMetrics'
@@ -78,7 +78,7 @@ export function TopTabs({ tabs, active, onChange, instant = false }: TopTabsProp
                   weight="bold"
                   numberOfLines={1}
                   adjustsFontSizeToFit
-                  maxFontSizeMultiplier={GLYPH_MAX_SCALE}
+                  maxFontSizeMultiplier={LABEL_MAX_SCALE}
                 >
                   {tab.label}
                 </Text>
