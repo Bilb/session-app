@@ -51,6 +51,9 @@ dev entries. When a rule fires, fix the design - not the config.
   flipped by editing source cannot be used to bisect a bug on someone else's device, which is most
   of what a flag is for. The default belongs in the shared flag table; reading the override is a
   port, because each platform exposes the environment differently.
+- An environment variable that means the same on every platform has one name on all of them,
+  `EXPO_PUBLIC_SESSION_<AREA>_<NAME>`, desktop included - the shape `envVarFor` derives for flags.
+  One whose value only makes sense on the machine running it (a host path) stays unprefixed.
 - Types compose from small `With*` pieces in `packages/basic-types/src/with.ts`. A shape declared
   inline twice gets a `With*`. A discriminated union is one shared piece plus one piece per variant
   (`AlbumImage | AlbumVideo`), never an optional field only one variant uses.

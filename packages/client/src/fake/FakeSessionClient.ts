@@ -350,6 +350,11 @@ export class FakeSessionClient implements SessionClient {
     return this.account.locate(ref)
   }
 
+  /** Fake-only: whether an attachment's bytes have arrived, for a dev loader deciding to draw. */
+  isCached(ref: AttachmentRef): boolean {
+    return this.account.isCached(ref)
+  }
+
   setAutoDownload(id: ConversationId, mode: AutoDownload): Promise<void> {
     this.assertOpen()
     this.account.setAutoDownload(id, mode)

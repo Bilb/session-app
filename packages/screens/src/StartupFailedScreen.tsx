@@ -42,7 +42,11 @@ export function StartupFailedScreen({ error }: StartupFailedScreenProps) {
           <Text size="$titleLarge" weight="bold" textAlign="center">
             {tr('theError')}
           </Text>
-          <LocalizedText text={tr('databaseErrorGeneric')} textAlign="center" />
+          {/* With no bridge nothing was opened, so it is not a database error. */}
+          <LocalizedText
+            text={clearable ? tr('databaseErrorGeneric') : tr('errorUnknown')}
+            textAlign="center"
+          />
           <FailureReason error={error} />
         </YStack>
 
