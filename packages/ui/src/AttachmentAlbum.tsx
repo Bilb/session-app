@@ -76,7 +76,7 @@ const AlbumTile = memo(function AlbumTile({
       role="button"
       {...(name === undefined ? {} : { 'aria-label': name })}
       position="relative"
-      cursor="pointer"
+      $platform-web={{ cursor: 'pointer' }}
       onPress={() => {
         onOpen(at)
       }}

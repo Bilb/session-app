@@ -55,7 +55,7 @@ function SegmentFace({
       justifyContent="center"
       position="relative"
       group="control"
-      cursor="pointer"
+      $platform-web={{ cursor: 'pointer' }}
       backgroundColor={selected ? '$backgroundPrimary' : 'transparent'}
       style={FEEDBACK_TRANSITION}
       {...PRESS_PASSTHROUGH}

@@ -144,7 +144,7 @@ function Trailing({
       role="button"
       position="relative"
       group="control"
-      cursor="pointer"
+      $platform-web={{ cursor: 'pointer' }}
       {...(actionLabel === undefined ? {} : { 'aria-label': actionLabel })}
       testID={testID}
       onPress={(event) => {
@@ -226,7 +226,7 @@ export function FileRow({
       testID={testIDs?.row}
       {...(onAction === undefined
         ? {}
-        : { group: 'row' as const, cursor: 'pointer', onPress: onAction })}
+        : { group: 'row' as const, '$platform-web': { cursor: 'pointer' }, onPress: onAction })}
     >
       {onAction === undefined ? null : (
         <StateLayer group="row" tone="ink" borderRadius="$sm" bleed={SPACING.xs} />
@@ -249,7 +249,7 @@ export function FileRow({
             }
             position="relative"
             group="tile"
-            cursor="pointer"
+            $platform-web={{ cursor: 'pointer' }}
             onPress={(event) => {
               // Opening the picture is not the row's download or export.
               event.stopPropagation()
