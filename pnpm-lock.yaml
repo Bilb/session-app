@@ -176,6 +176,9 @@ overrides:
   react-native: 0.86.3
 
 patchedDependencies:
+  '@tamagui/web@2.7.7':
+    hash: 2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80
+    path: patches/npm/@tamagui__web@2.7.7.patch
   expo-modules-jsi:
     hash: 3d4c1295429334244746b2907e9e1658161121aa722a0e42d1a4bf0ad721bf19
     path: patches/npm/expo-modules-jsi.patch
@@ -8794,7 +8797,7 @@ snapshots:
       '@tamagui/use-constant': 2.7.7(react@19.2.3)
       '@tamagui/use-force-update': 2.7.7(react@19.2.3)
       '@tamagui/use-presence': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -8814,7 +8817,7 @@ snapshots:
       '@tamagui/constants': 2.7.7(react@19.2.3)
       '@tamagui/cubic-bezier-animator': 2.7.7
       '@tamagui/use-presence': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
 
@@ -8823,7 +8826,7 @@ snapshots:
       '@tamagui/animation-helpers': 2.7.7
       '@tamagui/constants': 2.7.7(react@19.2.3)
       '@tamagui/use-presence': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -8866,7 +8869,7 @@ snapshots:
       '@tamagui/spacer': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/stacks': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/text': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -8876,7 +8879,7 @@ snapshots:
       '@tamagui/create-context': 2.7.7(react@19.2.3)
       '@tamagui/helpers': 2.7.7(react@19.2.3)
       '@tamagui/stacks': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -8891,7 +8894,7 @@ snapshots:
       '@tamagui/label': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/use-controllable-state': 2.7.7(react@19.2.3)
       '@tamagui/use-previous': 2.7.7(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -8928,7 +8931,7 @@ snapshots:
       '@tamagui/polyfill-dev': 2.7.7
       '@tamagui/stacks': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/use-controllable-state': 2.7.7(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -8956,7 +8959,7 @@ snapshots:
       '@tamagui/animations-react-native': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/core': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/shorthands': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
     transitivePeerDependencies:
       - react
       - react-dom
@@ -8971,7 +8974,7 @@ snapshots:
       '@tamagui/popover': 2.7.7(react-dom@19.2.3(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.87.1(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
       '@tamagui/use-callback-ref': 2.7.7(react@19.2.3)
       '@tamagui/use-controllable-state': 2.7.7(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -8984,7 +8987,7 @@ snapshots:
       '@tamagui/react-native-use-pressable': 2.7.7(react@19.2.3)
       '@tamagui/use-element-layout': 2.7.7(react@19.2.3)
       '@tamagui/use-event': 2.7.7(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9013,7 +9016,7 @@ snapshots:
       '@tamagui/text': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/use-callback-ref': 2.7.7(react@19.2.3)
       '@tamagui/use-direction': 2.7.7(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9021,7 +9024,7 @@ snapshots:
 
   '@tamagui/create-theme@2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
     transitivePeerDependencies:
       - react
       - react-dom
@@ -9105,7 +9108,7 @@ snapshots:
   '@tamagui/focusable@2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@tamagui/compose-refs': 2.7.7(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9141,7 +9144,7 @@ snapshots:
   '@tamagui/get-button-sized@2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@tamagui/get-token': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9149,14 +9152,14 @@ snapshots:
   '@tamagui/get-font-sized@2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@tamagui/constants': 2.7.7(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
 
   '@tamagui/get-token@2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9188,7 +9191,7 @@ snapshots:
   '@tamagui/helpers-tamagui@2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@tamagui/helpers': 2.7.7(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9203,7 +9206,7 @@ snapshots:
     dependencies:
       '@tamagui/constants': 2.7.7(react@19.2.3)
       '@tamagui/core': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9221,7 +9224,7 @@ snapshots:
       '@tamagui/helpers-tamagui': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/stacks': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/text': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9239,7 +9242,7 @@ snapshots:
       '@tamagui/get-button-sized': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/get-font-sized': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/text': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9262,7 +9265,7 @@ snapshots:
       '@tamagui/helpers-tamagui': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/stacks': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/text': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9284,7 +9287,7 @@ snapshots:
       '@tamagui/popper': 2.7.7(react-dom@19.2.3(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.87.1(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
       '@tamagui/scroll-view': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/use-controllable-state': 2.7.7(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9349,7 +9352,7 @@ snapshots:
       '@tamagui/native': 2.7.7(react@19.2.3)
       '@tamagui/start-transition': 2.7.7(react@19.2.3)
       '@tamagui/use-event': 2.7.7(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/z-index-stack': 2.7.7(react@19.2.3)
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
@@ -9397,14 +9400,14 @@ snapshots:
       '@tamagui/label': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/use-controllable-state': 2.7.7(react@19.2.3)
       '@tamagui/use-previous': 2.7.7(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
 
   '@tamagui/react-native-media-driver@2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
     transitivePeerDependencies:
       - react
       - react-dom
@@ -9424,7 +9427,7 @@ snapshots:
       '@tamagui/react-native-use-responder-events': 2.7.7(react@19.2.3)
       '@tamagui/simple-hash': 2.7.7
       '@tamagui/use-element-layout': 2.7.7(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
 
@@ -9434,7 +9437,7 @@ snapshots:
       '@tamagui/react-native-use-pressable': 2.7.7(react@19.2.3)
       '@tamagui/react-native-use-responder-events': 2.7.7(react@19.2.3)
       '@tamagui/react-native-web-internals': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       invariant: 2.2.4
       memoize-one: 6.0.0
       react: 19.2.3
@@ -9462,7 +9465,7 @@ snapshots:
   '@tamagui/scroll-view@2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@tamagui/stacks': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9510,7 +9513,7 @@ snapshots:
   '@tamagui/shapes@2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@tamagui/stacks': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9541,7 +9544,7 @@ snapshots:
 
   '@tamagui/shorthands@2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
     transitivePeerDependencies:
       - react
       - react-dom
@@ -9573,7 +9576,7 @@ snapshots:
 
   '@tamagui/spacer@2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9590,7 +9593,7 @@ snapshots:
     dependencies:
       '@tamagui/core': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/get-button-sized': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9634,7 +9637,7 @@ snapshots:
       '@tamagui/react-native-web-lite': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/shorthands': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/types': 2.7.7
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       babel-literal-to-ast: 2.1.0(@babel/core@7.29.7)
       browserslist: 4.28.8
       check-dependency-version-consistency: 4.1.1
@@ -9697,7 +9700,7 @@ snapshots:
       '@tamagui/stacks': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/use-controllable-state': 2.7.7(react@19.2.3)
       '@tamagui/use-direction': 2.7.7(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9706,7 +9709,7 @@ snapshots:
     dependencies:
       '@tamagui/get-font-sized': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/helpers-tamagui': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9714,7 +9717,7 @@ snapshots:
   '@tamagui/theme-builder@2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@tamagui/create-theme': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       color2k: 2.0.4
     transitivePeerDependencies:
       - react
@@ -9724,7 +9727,7 @@ snapshots:
     dependencies:
       '@tamagui/constants': 2.7.7(react@19.2.3)
       '@tamagui/start-transition': 2.7.7(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9767,7 +9770,7 @@ snapshots:
       '@tamagui/stacks': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@tamagui/use-controllable-state': 2.7.7(react@19.2.3)
       '@tamagui/use-direction': 2.7.7(react@19.2.3)
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9848,7 +9851,7 @@ snapshots:
 
   '@tamagui/use-presence@2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
@@ -9864,12 +9867,12 @@ snapshots:
 
   '@tamagui/visually-hidden@2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
-      '@tamagui/web': 2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@tamagui/web': 2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       react: 19.2.3
     transitivePeerDependencies:
       - react-dom
 
-  '@tamagui/web@2.7.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
+  '@tamagui/web@2.7.7(patch_hash=2212bedefdcf3a73dcbb0a79cdfa1e902d51092ef417f36997e9d917ac989b80)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@tamagui/compose-refs': 2.7.7(react@19.2.3)
       '@tamagui/constants': 2.7.7(react@19.2.3)
