@@ -24,6 +24,7 @@ export { RadioIndicator } from './RadioIndicator'
 export { Reveal } from './Reveal'
 export { ScannerFrame } from './ScannerFrame'
 export { textHeight } from './textHeight'
+export { useFontScale } from './useFontScale'
 export { useScreenInsets } from './screenInsets'
 export type { ScreenInsets } from './screenInsets.types'
 export { SlidePager } from './SlidePager'
@@ -76,6 +77,11 @@ export { UIProvider } from './UIProvider'
 export type { UIProviderProps } from './UIProvider'
 export type { BackdropBlur, BackdropBlurProps } from './backdropBlur'
 export type { Glass, GlassProps } from './glass'
+export {
+  useTopBarControlsPadding,
+  WindowControlsInsetProvider,
+  type WindowControlsInset,
+} from './windowControls'
 
 export { config, tokens } from './config'
 // The numbers behind the named scales, for a raw style that tamagui does not resolve.

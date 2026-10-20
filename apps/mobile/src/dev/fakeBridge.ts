@@ -3,6 +3,7 @@ import {
   createFakeTransport,
   friendsWithAttachments,
   newcomer,
+  rowShowcase,
   unopenable,
 } from '@session/client/fake'
 
@@ -14,9 +15,13 @@ export function createFakeBridge(): BridgeTransport {
   // No identity yet, which is the only way to reach onboarding: everywhere else the app sees an
   // account and goes straight past it -- and mobile is where most of the onboarding screens are.
   const fresh = process.env['EXPO_PUBLIC_SESSION_NO_ACCOUNT'] === '1'
+  // One conversation per state the conversation row draws.
+  const rows = process.env['EXPO_PUBLIC_SESSION_FAKE_ROWS'] === '1'
   const { world, clients } = fresh
     ? newcomer()
-    : friendsWithAttachments(['Alice', 'Bob'], { history: 4 })
+    : rows
+      ? rowShowcase()
+      : friendsWithAttachments(['Alice', 'Bob'], { history: 4 })
   const alice = clients['Alice']
   if (!alice) throw new Error('the fixture did not produce a client')
 

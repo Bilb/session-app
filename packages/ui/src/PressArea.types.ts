@@ -18,10 +18,15 @@ export interface PressAreaProps {
   busy?: boolean
   testID?: string
   /**
-   * The control, told whether it is currently pressed.
+   * The control, told whether it is currently pressed and whether a pointer is over it.
    *
    * A function rather than an element because only the native half knows: on the web the styling
-   * is CSS and this is always false.
+   * is CSS and both are always false.
+   *
+   * `hovered` is for an iPad's pointer and the iPad app on a Mac. The frame inside a native
+   * `PressArea` takes no pointer events -- see `PRESS_PASSTHROUGH` -- and hover is hit-tested like
+   * a touch, so the frame's own `hoverStyle` never fires there; the wrapper sees the pointer
+   * instead.
    */
-  children: (pressed: boolean) => ReactNode
+  children: (pressed: boolean, hovered: boolean) => ReactNode
 }
