@@ -145,7 +145,15 @@ export function LoadAccountScreen({
           {/* One chrome and two panes rather than two screens: the bar, the title and the tabs
               stay put and only what is under them slides, which is what makes the indicator and
               the pane read as one movement. */}
-          <SlidePager index={tab === 'qr' ? 1 : 0} instant={cut} clip={wide} fitsPage={fitsPage}>
+          <SlidePager
+            index={tab === 'qr' ? 1 : 0}
+            onIndexChange={(page) => {
+              setTab(page === 1 ? 'qr' : 'phrase')
+            }}
+            instant={cut}
+            clip={wide}
+            fitsPage={fitsPage}
+          >
             {phrasePane}
             <ScanQrPane
               showing={tab === 'qr'}
