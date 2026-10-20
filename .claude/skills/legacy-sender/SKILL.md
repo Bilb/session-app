@@ -93,8 +93,22 @@ someone approves them - then send from the legacy side.
 - **Pictures and videos share a message; anything else goes alone.**
 - **`waitForMessageStatus` gives a send 20 s**, which a first message on mainnet or an upload can
   outlast. The driver waits 180 s.
-- **`window.evaluate` with a function fails** (`result is not a function`) because the TS
-  transform wraps it in helpers the page lacks. Pass a string instead.
+- **DevTools are closed.** The legacy app docks them over the window for any `devprod` instance,
+  which every instance here is: it is part of the data directory's name. `launch` closes them
+  from main, including when they open after the load.
+- **The Donate appeal is dismissed.** An account over a week old gets a "New Hope for Session"
+  dialog some time after launch, for its first few launches, covering the composer. Its close
+  button has no test id; `launch` registers a locator handler that presses Escape whenever
+  `cta-heading` shows, which Playwright runs before the next action.
+- **The driver waits 15 s before closing.** A message stays in the legacy app's persisted send
+  queue until its sync copy is stored, after the sent tick. Closing sooner makes the next launch
+  store it again, under a new hash with the same sent timestamp, and libsession keeps both: legacy
+  messages carry no message id, and it de-duplicates only by hash and message id. The run's last
+  message then shows twice on whichever client received it. A clean run is one whose next launch
+  sends nothing; the shutdown log's `0 jobs outstanding` counts SQL calls, not this queue.
+- **Nothing evaluates in the page.** `window.evaluate` returns `null` for a string, even
+  `'1 + 1'`, and fails with `result is not a function` for a function. Go through main instead:
+  `app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].webContents.executeJavaScript('…'))`.
 - **Wait for the onion path** (`checkPathLight`) after launch, or the first send times out.
 - **`TEST_PRO_BACKEND` is forced off.** session-playwright's `.env` may set it for its Pro tests.
   With no dev Pro backend configured, the legacy app then throws on every poll that returns 1o1

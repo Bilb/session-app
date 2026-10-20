@@ -205,7 +205,7 @@ function Trailing({
       position="relative"
       group="control"
       testID={testID}
-      {...(held ? {} : { cursor: 'pointer' as const })}
+      {...(held ? {} : { '$platform-web': { cursor: 'pointer' as const } })}
       {...(!isWeb
         ? {}
         : held
@@ -324,7 +324,7 @@ export function FileRow({
       // A group in every state: tamagui remounts a view that gains or drops one, dropping focus.
       group="row"
       testID={testIDs?.row}
-      {...(onPress === undefined ? {} : { cursor: 'pointer', onPress })}
+      {...(onPress === undefined ? {} : { '$platform-web': { cursor: 'pointer' }, onPress })}
       {...nativeRowElement({
         name: fileRowAccessibleName(filename, format, caption),
         actions,
@@ -359,7 +359,7 @@ export function FileRow({
             {...(isWeb ? { 'aria-disabled': leadHeld } : {})}
             position="relative"
             group="tile"
-            cursor="pointer"
+            $platform-web={{ cursor: 'pointer' }}
             testID={testIDs?.lead}
             onPress={
               leadHeld

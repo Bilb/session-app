@@ -115,7 +115,7 @@ const AlbumTile = memo(function AlbumTile({
       {...(isWeb ? {} : { tabIndex: 0 })}
       testID={testID}
       position="relative"
-      cursor="pointer"
+      $platform-web={{ cursor: 'pointer' }}
       onPress={held ? undefined : press}
       // A group in every state: tamagui remounts a view that gains or drops one, dropping focus.
       group="tile"

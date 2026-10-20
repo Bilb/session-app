@@ -62,7 +62,7 @@ export function FetchHint({
           ? {}
           : {
               onPress,
-              cursor: 'pointer',
+              '$platform-web': { cursor: 'pointer' },
               testID,
               ...(isWeb ? { role: 'button', 'aria-label': label } : { 'aria-hidden': true }),
             })}

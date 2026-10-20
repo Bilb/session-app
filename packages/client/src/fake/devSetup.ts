@@ -3,6 +3,7 @@ import { backlog } from './backlog'
 import type { FakeSessionClient } from './FakeSessionClient'
 import { crowd, newcomer, type FakeSetup } from './fixtures'
 import { photoFileNames, thumbnailFileNames } from './media'
+import { rowShowcase } from './rows'
 import { showcase } from './showcase'
 import type { SessionClient } from '../types'
 import { unopenable } from './unopenable'
@@ -15,7 +16,14 @@ import type { FakeWorld } from './world'
  * Shared so desktop and mobile start the same worlds from the same variables.
  */
 
-export const FAKE_FIXTURES = ['friends', 'showcase', 'backlog', 'newcomer', 'crowd'] as const
+export const FAKE_FIXTURES = [
+  'friends',
+  'showcase',
+  'backlog',
+  'newcomer',
+  'crowd',
+  'rows',
+] as const
 
 export type FakeFixture = (typeof FAKE_FIXTURES)[number]
 
@@ -29,6 +37,8 @@ export interface FakeDevEnv {
   EXPO_PUBLIC_SESSION_FAKE_FIXTURE?: string | undefined
   /** `1` opens `newcomer`. Older than the fixture. */
   EXPO_PUBLIC_SESSION_NO_ACCOUNT?: string | undefined
+  /** `1` opens `rows`, a conversation per state a row draws. Older than the fixture. */
+  EXPO_PUBLIC_SESSION_FAKE_ROWS?: string | undefined
   /** How many peers `crowd` makes, and `crowd` when set. */
   EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS?: string | undefined
   /** Messages per peer in `crowd`. */
@@ -63,6 +73,7 @@ function chosenFixture(env: FakeDevEnv, crowdPeers: number | undefined): FakeFix
     )
   }
   if (env.EXPO_PUBLIC_SESSION_NO_ACCOUNT === '1') return 'newcomer'
+  if (env.EXPO_PUBLIC_SESSION_FAKE_ROWS === '1') return 'rows'
   if (crowdPeers !== undefined) return 'crowd'
   return 'friends'
 }
@@ -87,6 +98,8 @@ export function pickFakeFixture(env: FakeDevEnv): FakeSetup & { fixture: FakeFix
       return { fixture, ...backlog() }
     case 'crowd':
       return { fixture, ...crowd({ peers: peers ?? 100, history: history ?? 1 }) }
+    case 'rows':
+      return { fixture, ...rowShowcase() }
     case 'friends':
       return { fixture, ...friendsWithAttachments(['Alice', 'Bob'], { history: 4 }) }
   }
