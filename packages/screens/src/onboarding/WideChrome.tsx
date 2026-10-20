@@ -52,15 +52,23 @@ export function WideChrome({
   fading,
 }: Pick<ChromeProps, 'children' | 'testID' | 'banner'> & { fading: number }) {
   /**
-   * Above the default system text size the step grows past its reserve, so the reserve becomes a
-   * floor and the column scrolls: a fixed height spills the step's action off the bottom of the
-   * screen, where nothing can reach it. At the default size, and on desktop, it stays fixed.
+   * Above the default system text size, or zoomed in on desktop, the step grows past its reserve,
+   * so the reserve becomes a floor and the column scrolls: a fixed height spills the header off the
+   * top of the window and the step's action off the bottom, where nothing can reach them. At the
+   * default size and zoom it stays fixed.
    */
-  const grows = useFontScale() > 1
   const zoom = usePageZoom()
+  const grows = useFontScale() > 1 || zoom > 1
   const column = (
-    // Centred both ways in whatever is left, which is the rule the designs state.
-    <YStack flex={1} alignItems="center" justifyContent="center" padding="$xl">
+    // Centred both ways in whatever is left, which is the rule the designs state. Scrolling, it
+    // grows from its content rather than from nothing: the web's `flex: 1` starts at zero height,
+    // which pinned the column to the window and pushed what did not fit off both ends unreachable.
+    <YStack
+      {...(grows ? { flexGrow: 1, flexShrink: 0 } : { flex: 1 })}
+      alignItems="center"
+      justifyContent="center"
+      padding="$xl"
+    >
       <YStack
         width={COLUMN_WIDTH}
         // Narrower than its width where the desktop zoom leaves less room than that, rather than
