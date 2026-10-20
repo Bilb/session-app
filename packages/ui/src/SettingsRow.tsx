@@ -80,13 +80,13 @@ export function SettingsRow({
   if (onPress === undefined && !disabled) {
     return (
       <YStack testID={testID}>
-        <RowContent {...content} pressed={false} />
+        <RowContent {...content} pressed={false} hovered={false} />
       </YStack>
     )
   }
   return (
     <PressArea {...(disabled ? {} : { onPress })} disabled={inert} testID={testID}>
-      {(pressed) => <RowContent {...content} pressed={pressed} />}
+      {(pressed, hovered) => <RowContent {...content} pressed={pressed} hovered={hovered} />}
     </PressArea>
   )
 }
@@ -100,6 +100,8 @@ interface RowContentProps {
   /** Not pressable, whether static or disabled: no hover, press or pointer. */
   inert: boolean
   pressed: boolean
+  /** A pointer over a pressable row, on native: see `PressArea`. */
+  hovered: boolean
   tone: string
   iconTone: string
 }
@@ -113,6 +115,7 @@ function RowContent({
   disabled,
   inert,
   pressed,
+  hovered,
   tone,
   iconTone,
 }: RowContentProps) {
@@ -130,13 +133,14 @@ function RowContent({
         {...(inert
           ? {}
           : {
-              cursor: 'pointer',
+              '$platform-web': { cursor: 'pointer' },
               hoverStyle: { backgroundColor: '$hoverOverlay' },
               pressStyle: { backgroundColor: '$pressedOverlay' },
               // Native: without this a frame with a `pressStyle` claims the touch from
               // `PressArea` and the row never fires. Pressable rows only: it takes the subtree
               // with it, and on a static row the trailing control is what gets pressed.
               ...PRESS_PASSTHROUGH,
+              ...(hovered && !pressed ? { forceStyle: 'hover' as const } : {}),
               ...(pressed ? { backgroundColor: '$pressedOverlay' } : {}),
             })}
       >

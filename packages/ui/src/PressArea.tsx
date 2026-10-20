@@ -43,7 +43,7 @@ export function PressArea({
       aria-busy={busy}
       testID={testID}
     >
-      {children(false)}
+      {children(false, false)}
     </YStack>
   )
 }
