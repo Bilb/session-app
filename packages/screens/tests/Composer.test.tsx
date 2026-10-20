@@ -12,12 +12,12 @@ import { useStaging, type StagingState } from '#src/useStaging'
  * A renderer just big enough for the composer: hook state lives in slots taken in call order, as
  * React's does, and a render walks the element tree it returns, running its local components.
  */
-const hooks = vi.hoisted(() => ({ slots: [] as unknown[], cursor: 0 }))
+const hooks = vi.hoisted(() => ({ slots: [] as unknown[], nextSlot: 0 }))
 
 vi.mock('react', async (importOriginal) => ({
   ...(await importOriginal<typeof React>()),
   useState: (initial: unknown) => {
-    const at = hooks.cursor++
+    const at = hooks.nextSlot++
     if (!(at in hooks.slots)) hooks.slots[at] = initial
     return [
       hooks.slots[at],
@@ -30,7 +30,7 @@ vi.mock('react', async (importOriginal) => ({
     ]
   },
   useRef: (current: unknown) => {
-    const at = hooks.cursor++
+    const at = hooks.nextSlot++
     if (!(at in hooks.slots)) hooks.slots[at] = { current }
     return hooks.slots[at]
   },
@@ -80,7 +80,7 @@ let planSend: (file: PickedFile) => Promise<SendPlan>
 
 /** One render of a conversation's composer and the staging it is given. */
 function render(): { staging: StagingState; find: (testID: string) => Element | undefined } {
-  hooks.cursor = 0
+  hooks.nextSlot = 0
   const staging = useStaging((file) => planSend(file))
   const tree = Composer({ staging, onSend })
   const elements = hostElements(tree)
