@@ -279,6 +279,7 @@ A package with render tests runs vitest as two projects, `unit` and `render`
 **What a control is, written once.** `@session/expectations` says what each control is to a
 screen reader and a driver (role, name, hint, disabled, busy, focusable) per state, with a
 `desktop` and a `native` side; `null` on a side means absent on purpose. Render tests assert it.
+An e2e spec compares `app.describe(id)` with `toMatchObject` against its platform's side.
 
 **No source greps.** A test asserts what is drawn, never what a file contains.
 `packages/ui/tests/nativeOnly.contract.test.ts` keeps what only a native tree shows and no driver
@@ -287,6 +288,14 @@ reads, each with the reason.
 `tests/e2e/harness/ISessionApp.ts` is the platform-neutral driver interface. Its rule: every
 member takes and returns primitives, enums or plain data - no Playwright `Locator`, no Appium
 element. Anything one platform cannot do belongs somewhere narrower until every platform can.
+`describe(id, at?)` reads one element as assistive technology does, as an `AccessibleNode`;
+`audit(scope?)` returns the platform checker's serious and critical findings, axe's on desktop.
+Desktop-only checks (focus, layout, CSS) use Playwright's own matchers on `DesktopApp.page`.
+
+`EXPO_PUBLIC_SESSION_THEME` (and `EXPO_PUBLIC_SESSION_ACCENT`) draws one launch in a named theme
+over the stored choice, without saving it, on all three platforms. `themes.spec.ts` audits the
+`showcase` fixture in each theme at two widths and compares a few attachment controls with their
+baselines, which are in Git LFS: run `git lfs pull` before it.
 
 `sessionTest` is the only way to declare a test and the only thing that opens or closes a
 client. Its `clients` descriptor decides the platforms _and_ the tags, so a spec asking for two
