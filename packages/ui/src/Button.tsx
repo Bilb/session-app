@@ -487,6 +487,8 @@ export function Button({
                 // Bold, which is what the desktop client's button is: `font-weight: 700` unless a
                 // caller says otherwise, and none of the onboarding callers do.
                 weight="bold"
+                // Centred line by line, so a label that wraps stays centred in the button.
+                textAlign="center"
                 maxFontSizeMultiplier={LABEL_MAX_SCALE}
                 color={
                   INHERITED_LABEL ??
