@@ -1,3 +1,5 @@
+import { currentPageZoom } from './pageZoom'
+
 /** Where an element sits in the window, in the coordinates a full-screen overlay is laid out in. */
 export interface AnchorRect {
   x: number
@@ -29,6 +31,16 @@ interface MeasurableNode {
  */
 export function measureAnchor(node: unknown, onMeasured: (rect: AnchorRect | null) => void): void {
   const measurable = node as MeasurableNode | null
+  // Both measurements answer in the window's pixels, and the panel is placed inside the page,
+  // whose pixels the desktop zoom has scaled: unscaled, a panel at 200% opened twice as far from
+  // the corner as its trigger, which was off the window.
+  const zoom = currentPageZoom()
+  const unzoomed = (x: number, y: number, width: number, height: number): AnchorRect => ({
+    x: x / zoom,
+    y: y / zoom,
+    width: width / zoom,
+    height: height / zoom,
+  })
   if (measurable === null || measurable === undefined) {
     onMeasured(null)
     return
@@ -36,14 +48,14 @@ export function measureAnchor(node: unknown, onMeasured: (rect: AnchorRect | nul
 
   if (typeof measurable.measureInWindow === 'function') {
     measurable.measureInWindow((x, y, width, height) => {
-      onMeasured({ x, y, width, height })
+      onMeasured(unzoomed(x, y, width, height))
     })
     return
   }
 
   if (typeof measurable.getBoundingClientRect === 'function') {
     const rect = measurable.getBoundingClientRect()
-    onMeasured({ x: rect.left, y: rect.top, width: rect.width, height: rect.height })
+    onMeasured(unzoomed(rect.left, rect.top, rect.width, rect.height))
     return
   }
 

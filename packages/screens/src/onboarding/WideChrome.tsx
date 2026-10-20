@@ -12,6 +12,7 @@ import {
   ScrollView,
   SessionWordmark,
   useFontScale,
+  usePageZoom,
   XStack,
   YStack,
 } from '@session/ui'
@@ -56,11 +57,15 @@ export function WideChrome({
    * screen, where nothing can reach it. At the default size, and on desktop, it stays fixed.
    */
   const grows = useFontScale() > 1
+  const zoom = usePageZoom()
   const column = (
     // Centred both ways in whatever is left, which is the rule the designs state.
     <YStack flex={1} alignItems="center" justifyContent="center" padding="$xl">
       <YStack
         width={COLUMN_WIDTH}
+        // Narrower than its width where the desktop zoom leaves less room than that, rather than
+        // running off the side of the window.
+        maxWidth="100%"
         gap="$xl"
         // Room above, so the lockup sits where a step without a banner puts it. The step keeps its
         // whole reserve: the pager clips to it, so a block short of it loses the control at the
@@ -99,7 +104,8 @@ export function WideChrome({
       <XStack flex={1}>
         {/**
          * **The split is declared, not computed.** These properties state the rule where the
-         * frame is known: two fifths of it, and never more than `HERO_MAX_WIDTH`.
+         * frame is known: two fifths of it, and never more than `HERO_MAX_WIDTH` -- of the window,
+         * so divided by the desktop zoom, which scales content and not the split.
          *
          * Asking Yoga rather than asking the window is the point. A width computed in JS comes
          * from a `useWindowDimensions` snapshot, and during a rotation the frame is already
@@ -111,7 +117,7 @@ export function WideChrome({
           flexBasis={0}
           flexGrow={HERO_GROW}
           flexShrink={1}
-          maxWidth={HERO_MAX_WIDTH}
+          maxWidth={HERO_MAX_WIDTH / zoom}
           testID={ELEMENT.onboarding.hero}
         >
           <HeroImage />

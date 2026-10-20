@@ -10,6 +10,7 @@ const { app, BrowserWindow, Menu, MessageChannelMain, clipboard, session, shell 
 import { createRefusingTransport, type Request } from '@session/client'
 import { isCrowdinLocale, setLocale } from '@session/localization'
 
+import { appMenuTemplate } from './appMenu'
 import { createBridge } from './bridge'
 import { editMenuItems } from './editMenu'
 import { serveFiles } from './files'
@@ -26,6 +27,7 @@ import {
   refuseNewContents,
 } from './security'
 import { excludeUserData, placeUserData } from './userData'
+import { readZoom, steppedZoom, writeZoom, type ZoomStep } from './zoom'
 
 /**
  * What the app calls itself, which decides where its data lives.
@@ -51,6 +53,29 @@ const here = fileURLToPath(new URL('.', import.meta.url))
 
 // Before whenReady, which is the only point Electron accepts a privileged scheme.
 registerMediaScheme()
+
+/** The content's zoom, which the View menu sets and every window draws at. See `appMenu.ts`. */
+let zoom = 1
+
+function zoomFile(): string {
+  return join(app.getPath('userData'), 'zoom.json')
+}
+
+function stepZoom(step: ZoomStep): void {
+  zoom = steppedZoom(zoom, step)
+  writeZoom(zoomFile(), zoom)
+  for (const window of BrowserWindow.getAllWindows()) window.webContents.send('zoom', zoom)
+}
+
+/** Rebuilt when the language changes, since its labels are drawn here rather than by the page. */
+function installAppMenu(): void {
+  const template = appMenuTemplate({
+    platform: process.platform,
+    dev: !app.isPackaged,
+    onZoom: stepZoom,
+  })
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
 
 /** A bridge that could not be made, standing in for one: see `createRefusingTransport`. */
 function refusingBridge(reason: string): Awaited<ReturnType<typeof createBridge>> {
@@ -185,10 +210,26 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
       })
   })
 
-  // The menu below is drawn here, so it follows the language the person chose in the app.
+  // The menus are drawn here, so they follow the language the person chose in the app.
   ipc.on('locale', (event, locale: unknown) => {
     if (!isFromAppFrame(event.senderFrame, appUrl)) return
-    if (typeof locale === 'string' && isCrowdinLocale(locale)) setLocale(locale)
+    if (typeof locale === 'string' && isCrowdinLocale(locale)) {
+      setLocale(locale)
+      installAppMenu()
+    }
+  })
+
+  // **The browser's zoom stays at 100%, and the page zooms its content.** See `appMenu.ts`. The
+  // browser's is pinned on each load because Chromium remembers it per page, and a pinch or a
+  // zoom left over from an earlier build would otherwise shrink the CSS width again.
+  window.webContents.setVisualZoomLevelLimits(1, 1).catch(() => undefined)
+  window.webContents.on('dom-ready', () => {
+    window.webContents.setZoomFactor(1)
+    window.webContents.send('zoom', zoom)
+  })
+  // Control and the scroll wheel, which Electron reports rather than acting on.
+  window.webContents.on('zoom-changed', (_event, direction) => {
+    stepZoom(direction)
   })
 
   window.webContents.on('context-menu', (_event, params) => {
@@ -277,6 +318,8 @@ app.on('web-contents-created', (_event, contents) => {
 
 void app.whenReady().then(async () => {
   denyAllPermissions(session.defaultSession)
+  zoom = readZoom(zoomFile())
+  installAppMenu()
 
   await createWindow()
 

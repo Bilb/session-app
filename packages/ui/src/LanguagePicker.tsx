@@ -1,6 +1,6 @@
 import { SPACING } from '@session/theme-tokens'
 import { useRef, useState } from 'react'
-import { Modal, useWindowDimensions } from 'react-native'
+import { Modal } from 'react-native'
 import { XStack, YStack, type TamaguiElement } from 'tamagui'
 
 import { measureAnchor, panelInset, panelPlacement, type AnchorRect } from './anchorRect'
@@ -13,6 +13,7 @@ import { LanguageChoiceList } from './LanguageChoiceList'
 import { Text } from './Text'
 import { GLYPH_MAX_SCALE, LABEL_MAX_SCALE } from './glyphScale'
 import { useScreenInsets } from './screenInsets'
+import { useWindowSize } from './useWindowSize'
 import type { LanguagePickerProps } from './LanguagePicker.types'
 
 /** Wide enough for the longest language name, narrow enough for a phone. */
@@ -51,7 +52,7 @@ export function LanguagePicker({
   // has been measured, so a separate `open` flag would have a frame where the two disagree.
   const [anchor, setAnchor] = useState<AnchorRect | null>(null)
   const trigger = useRef<TamaguiElement>(null)
-  const window = useWindowDimensions()
+  const window = useWindowSize()
   const keyboard = useKeyboardHeight()
   const insets = useScreenInsets()
 
@@ -60,7 +61,7 @@ export function LanguagePicker({
   /**
    * What is left of the window once the hardware and the keyboard have taken their share.
    *
-   * **The keyboard comes out of the window, not out of nothing.** `useWindowDimensions` reports the
+   * **The keyboard comes out of the window, not out of nothing.** `useWindowSize` reports the
    * whole window whether or not a keyboard is over it, so a panel sized from it puts the bottom of
    * the list under the keys, unscrollable -- the list believes it is already fully visible.
    *
