@@ -1,0 +1,177 @@
+name: e2e-mobile
+
+# Started by hand: the device specs and the themed showcase on Android and iOS, on the fake.
+# Needs self-hosted runners registered to this repository: Linux with an Android SDK, KVM, meson
+# and the api34 and tablet34 AVDs (`android-emulators`), and a Mac with Xcode and meson
+# (`ios-simulators`). Not nightly: every run builds libsession and the dev client from scratch.
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Which devices to run on'
+        type: choice
+        options: [both, android, ios]
+        default: both
+      grep:
+        description: 'Which tests to run, as a Playwright --grep expression'
+        required: false
+        default: ''
+
+env:
+  APPIUM_VERSION: 3.8.0
+  SESSION_E2E_APPIUM_URL: http://127.0.0.1:4723
+
+jobs:
+  android:
+    if: inputs.platform != 'ios'
+    runs-on: [self-hosted, linux, android-emulators]
+    timeout-minutes: 180
+    env:
+      SESSION_E2E_ANDROID_PHONE: emulator-5554
+      SESSION_E2E_ANDROID_TABLET: emulator-5556
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          lfs: true
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @session/localization build
+      - run: pnpm --filter @session/bridge-rn build:libsession:android x86_64
+      - run: pnpm --filter @session/mobile prebuild --platform android --no-install
+        env:
+          CI: '1'
+      - working-directory: apps/mobile/android
+        run: ./gradlew :app:assembleDebug -PreactNativeArchitectures=x86_64 --no-configuration-cache
+
+      # The serials above are the ports these two take, in this order.
+      - run: |
+          for avd in api34 tablet34; do
+            nohup "$ANDROID_HOME/emulator/emulator" -avd "$avd" -no-snapshot-save -no-audio \
+              -no-boot-anim -no-window > "$RUNNER_TEMP/$avd.log" 2>&1 &
+          done
+          for serial in "$SESSION_E2E_ANDROID_PHONE" "$SESSION_E2E_ANDROID_TABLET"; do
+            timeout 300 "$ANDROID_HOME/platform-tools/adb" -s "$serial" wait-for-device
+            timeout 300 sh -c "until [ \"\$($ANDROID_HOME/platform-tools/adb -s $serial shell getprop sys.boot_completed | tr -d '\r')\" = 1 ]; do sleep 3; done"
+          done
+
+      - run: pnpm fake-media:fetch
+      - run: |
+          for serial in "$SESSION_E2E_ANDROID_PHONE" "$SESSION_E2E_ANDROID_TABLET"; do
+            "$ANDROID_HOME/platform-tools/adb" -s "$serial" install -r \
+              apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+            ANDROID_SERIAL="$serial" pnpm --filter @session/mobile fake-media:push --android
+          done
+
+      - run: |
+          npm install --prefix "$RUNNER_TEMP/appium" "appium@$APPIUM_VERSION"
+          export APPIUM_HOME="$RUNNER_TEMP/appium/home"
+          "$RUNNER_TEMP/appium/node_modules/.bin/appium" driver install uiautomator2@8.7.0
+          nohup "$RUNNER_TEMP/appium/node_modules/.bin/appium" server --port 4723 \
+            > "$RUNNER_TEMP/appium.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/appium.pid"
+          timeout 60 sh -c 'until curl -sf http://127.0.0.1:4723/status; do sleep 2; done'
+
+      - run: pnpm --filter @session/e2e test:e2e:android ${GREP:+--grep "$GREP"}
+        env:
+          GREP: ${{ inputs.grep }}
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: android-e2e
+          path: |
+            test-results/
+            ${{ runner.temp }}/appium.log
+
+      - if: always()
+        run: |
+          for serial in "$SESSION_E2E_ANDROID_PHONE" "$SESSION_E2E_ANDROID_TABLET"; do
+            "$ANDROID_HOME/platform-tools/adb" -s "$serial" emu kill || true
+          done
+          kill "$(cat "$RUNNER_TEMP/appium.pid")" || true
+
+  ios:
+    if: inputs.platform != 'android'
+    runs-on: [self-hosted, macOS, ios-simulators]
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          lfs: true
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @session/localization build
+      # `all`: the one-slice modes rename the simulator slice; see CLAUDE.md.
+      - run: packages/bridge-rn/scripts/build-libsession-ios.sh all
+      - run: pnpm --filter @session/mobile prebuild --platform ios
+        env:
+          CI: '1'
+      - working-directory: apps/mobile/ios
+        run: |
+          xcodebuild -workspace Session.xcworkspace -scheme Session -configuration Debug \
+            -destination "generic/platform=iOS Simulator" -derivedDataPath build/dd \
+            CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES
+
+      # Simulators of the run's own, so nothing on the machine is touched and nothing is left.
+      - id: simulators
+        run: |
+          phone=$(xcrun simctl create "e2e-phone-$GITHUB_RUN_ID" "iPhone 17 Pro")
+          tablet=$(xcrun simctl create "e2e-tablet-$GITHUB_RUN_ID" "iPad Pro 13-inch (M5)")
+          echo "SESSION_E2E_IOS_PHONE=$phone" >> "$GITHUB_ENV"
+          echo "SESSION_E2E_IOS_TABLET=$tablet" >> "$GITHUB_ENV"
+          for udid in "$phone" "$tablet"; do
+            xcrun simctl boot "$udid"
+            timeout 300 sh -c "until xcrun simctl spawn $udid /usr/bin/true; do sleep 4; done"
+          done
+
+      - run: pnpm fake-media:fetch
+      - run: |
+          for udid in "$SESSION_E2E_IOS_PHONE" "$SESSION_E2E_IOS_TABLET"; do
+            xcrun simctl install "$udid" apps/mobile/ios/build/dd/Build/Products/Debug-iphonesimulator/Session.app
+            SESSION_SIMULATOR="$udid" pnpm --filter @session/mobile fake-media:push --ios
+          done
+
+      - run: |
+          npm install --prefix "$RUNNER_TEMP/appium" "appium@$APPIUM_VERSION"
+          export APPIUM_HOME="$RUNNER_TEMP/appium/home"
+          # 12.13's WebDriverAgent copies lib_TestingInterop, which Xcode 26.2 does not ship.
+          "$RUNNER_TEMP/appium/node_modules/.bin/appium" driver install xcuitest@10.43.1
+          nohup "$RUNNER_TEMP/appium/node_modules/.bin/appium" server --port 4723 \
+            > "$RUNNER_TEMP/appium.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/appium.pid"
+          timeout 60 sh -c 'until curl -sf http://127.0.0.1:4723/status; do sleep 2; done'
+
+      - run: pnpm --filter @session/e2e test:e2e:ios ${GREP:+--grep "$GREP"}
+        env:
+          GREP: ${{ inputs.grep }}
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: ios-e2e
+          path: |
+            test-results/
+            ${{ runner.temp }}/appium.log
+
+      - if: always()
+        run: |
+          for udid in "$SESSION_E2E_IOS_PHONE" "$SESSION_E2E_IOS_TABLET"; do
+            [ -n "$udid" ] && { xcrun simctl shutdown "$udid" || true; xcrun simctl delete "$udid" || true; }
+          done
+          kill "$(cat "$RUNNER_TEMP/appium.pid")" || true
