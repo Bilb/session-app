@@ -28,3 +28,6 @@ export const SEEDED_ROLL = [
   ...Array.from({ length: 12 }, (_, at) => `roll-${String(at + 1).padStart(2, '0')}.jpg`),
   'contact-sheet.pdf',
 ]
+
+/** `receipt.jpg`'s format and size line, as every client formats the fake's 96 500 bytes. */
+export const SEEDED_RECEIPT = { format: 'JPG', size: '96.5 kB' } as const
