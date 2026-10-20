@@ -55,6 +55,14 @@ function iosRect(node: NativeNode): Box {
   return { x: number('x'), y: number('y'), width: number('width'), height: number('height') }
 }
 
+/** A node's box in dp or pt, which is what a layout is written in; `density` is Android's dpi. */
+export function nativeFrame(node: NativeNode, platform: 'android' | 'ios', density: number): Box {
+  if (platform === 'ios') return iosRect(node)
+  const { x, y, width, height } = androidBounds(node)
+  const dp = (px: number) => (px * 160) / density
+  return { x: dp(x), y: dp(y), width: dp(width), height: dp(height) }
+}
+
 const inside = (inner: Box, outer: Box) =>
   inner.x >= outer.x &&
   inner.y >= outer.y &&

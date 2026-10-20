@@ -31,6 +31,14 @@ export interface AccessibleNode {
   bounds: { width: number; height: number }
 }
 
+/** Where an element is drawn, from the window's top left, in the platform's own unit. */
+export interface Frame {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 /** One finding of a platform's accessibility checker. */
 export interface AuditIssue {
   /** The checker's own rule name: axe's `color-contrast`, an Appium audit's type. */
@@ -53,6 +61,8 @@ export interface ISessionApp {
   tap(id: ElementId): Promise<void>
   /** Taps the `at`th carrying this id, from 0 in the order they appear: one row of a list. */
   tapAt(id: ElementId, at: number): Promise<void>
+  /** Taps one point of the window, in the unit `frame` answers in: an edge, not a middle. */
+  tapPoint(x: number, y: number): Promise<void>
   type(id: ElementId, text: string): Promise<void>
   readText(id: ElementId): Promise<string>
   /** Every occurrence, in the order they appear - a transcript, a conversation list. */
@@ -79,6 +89,10 @@ export interface ISessionApp {
    * the checker's opinion rather than a barrier to anyone.
    */
   audit(scope?: ElementId): Promise<AuditIssue[]>
+  /** Where the `at`th carrying `id` is drawn, from 0; null when nothing carries the id. */
+  frame(id: ElementId, at?: number): Promise<Frame | null>
+  /** Scrolls `within` until the `at`th carrying `id` is wholly on screen. */
+  reveal(id: ElementId, within: ElementId, at?: number): Promise<void>
   screenshot(name: string): Promise<void>
   close(): Promise<void>
 }

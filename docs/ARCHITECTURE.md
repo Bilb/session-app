@@ -294,6 +294,9 @@ element. Anything one platform cannot do belongs somewhere narrower until every 
 On iOS they are XCTest's `performAccessibilityAudit`'s, and on Android a rule set's over the tree
 (a stop says something, takes 48dp, and sits in no other stop); both phones also size targets
 from `bounds`.
+`frame(id, at?)` and `tapPoint(x, y)` place an element and touch one point, in CSS px, dp or pt:
+a tree shows a control's drawn box, never its `hitSlop`, so a target's real size is tapped at
+its edges (`attachment-footer.spec.ts`).
 Desktop-only checks (focus, layout, CSS) use Playwright's own matchers on `DesktopApp.page`.
 
 `MobileApp` drives an installed debug build through Appium, finding elements by `testID` (Android's

@@ -8,7 +8,7 @@ import { remote } from 'webdriverio'
 
 import { METRO_PORT, serveBundle } from './bundleServer'
 import { FAKE_LAUNCH_ENV } from './fakeEnv'
-import type { AccessibleNode, AuditIssue, ISessionApp } from './ISessionApp'
+import type { AccessibleNode, AuditIssue, Frame, ISessionApp } from './ISessionApp'
 import {
   androidAccessibleNode,
   androidAudit,
@@ -17,6 +17,7 @@ import {
   iosAccessibleNode,
   iosTargetSizes,
   liesWithin,
+  nativeFrame,
   shownWhole,
   testIdOf,
 } from './nativeAccessibility'
@@ -43,6 +44,8 @@ const FIRST_SCREEN_MS = 180_000
 const POLL_MS = 250
 const SETTLE_PAUSE_MS = 500
 const SETTLE_ATTEMPTS = 20
+/** Swipes `reveal` makes each way before giving up on an element. */
+const REVEAL_SWIPES = 8
 
 /** What `captureShown` captures: `scope` itself, or the `at`th carrying `id` inside it. */
 export interface CaptureTarget {
@@ -295,6 +298,19 @@ export class MobileApp implements ISessionApp {
     await (await this.element(id, at)).click()
   }
 
+  async tapPoint(x: number, y: number): Promise<void> {
+    this.scrolledTo = null
+    // Appium takes Android's pixels and iOS's points.
+    const scale = this.platform === 'android' ? (await this.screenDensity()) / 160 : 1
+    await this.driver
+      .action('pointer', { parameters: { pointerType: 'touch' } })
+      .move({ x: Math.round(x * scale), y: Math.round(y * scale) })
+      .down()
+      .pause(50)
+      .up()
+      .perform()
+  }
+
   async type(id: ElementId, text: string): Promise<void> {
     this.scrolledTo = null
     await (await this.element(id)).setValue(text)
@@ -337,6 +353,30 @@ export class MobileApp implements ISessionApp {
       return androidAccessibleNode(node, await this.screenDensity())
     }
     return iosAccessibleNode(node, await this.iosHint(node))
+  }
+
+  async frame(id: ElementId, at = 0): Promise<Frame | null> {
+    const node = (await this.carrying(id))[at]
+    if (node === undefined) return null
+    return nativeFrame(
+      node,
+      this.platform,
+      this.platform === 'android' ? await this.screenDensity() : 1,
+    )
+  }
+
+  async reveal(id: ElementId, within: ElementId, at = 0): Promise<void> {
+    const shown = this.platform === 'android' ? 'displayed' : 'visible'
+    const revealed = async () => {
+      const node = (await this.carrying(id))[at]
+      return node?.attributes[shown] === 'true' && shownWhole(node, this.platform)
+    }
+    for (const direction of [1, -1] as const)
+      for (let swipe = 0; swipe < REVEAL_SWIPES; swipe++) {
+        if (await revealed()) return
+        if (!(await this.scroll(within, direction, 0.4))) break
+      }
+    if (!(await revealed())) throw new Error(`${id} at ${String(at)} is nowhere in ${within}`)
   }
 
   /**

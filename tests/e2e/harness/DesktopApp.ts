@@ -14,7 +14,7 @@ import {
 import type { ElementId } from '@session/test-ids'
 
 import { FAKE_LAUNCH_ENV } from './fakeEnv'
-import type { AccessibleNode, AuditIssue, ISessionApp } from './ISessionApp'
+import type { AccessibleNode, AuditIssue, Frame, ISessionApp } from './ISessionApp'
 import type { IFileChooser } from './FileChooser'
 import type { IPerformanceProbe } from './PerformanceProbe'
 
@@ -201,6 +201,10 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser 
     await this.locator(id).nth(at).click()
   }
 
+  async tapPoint(x: number, y: number): Promise<void> {
+    await this.page.mouse.click(x, y)
+  }
+
   async type(id: ElementId, text: string): Promise<void> {
     await this.locator(id).first().fill(text)
   }
@@ -301,6 +305,16 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser 
       focusable: property('focusable') === true,
       bounds: { width: box?.width ?? 0, height: box?.height ?? 0 },
     }
+  }
+
+  async frame(id: ElementId, at = 0): Promise<Frame | null> {
+    const element = this.locator(id).nth(at)
+    if ((await element.count()) === 0) return null
+    return element.boundingBox()
+  }
+
+  async reveal(id: ElementId, _within: ElementId, at = 0): Promise<void> {
+    await this.locator(id).nth(at).scrollIntoViewIfNeeded()
   }
 
   async audit(scope?: ElementId): Promise<AuditIssue[]> {
