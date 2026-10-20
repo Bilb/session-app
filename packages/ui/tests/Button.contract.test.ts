@@ -82,6 +82,7 @@ describe('every Button variant', () => {
       'ghost',
       'ghostAccent',
       'simple',
+      'tonal',
       'danger',
     ])
   })

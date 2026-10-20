@@ -22,10 +22,10 @@ sessionTest({
 
     await openFirstConversation(alice)
 
-    // Nothing fetches itself. Resolving a media url *is* a download - the url is the request -
-    // so a tile handed one has spent somebody's data before anyone was asked, and unset means
-    // nobody has been. A short wait rather than the default: this is asserting that something
-    // never happens, so the only cost of the timeout is how long the suite sits here.
+    // Nothing fetches itself. A tile draws libsession's thumbnail, which is never a download, so
+    // only a tap or libsession's own rule on arrival spends data, and unset means nobody has been
+    // asked. A short wait rather than the default: this is asserting that something never
+    // happens, so the only cost of the timeout is how long the suite sits here.
     expect(
       await alice.imageLoaded(ELEMENT.conversation.attachmentImage, { timeoutMs: 2_000 }),
     ).toBe(false)

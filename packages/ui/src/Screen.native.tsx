@@ -1,8 +1,9 @@
-import { Keyboard } from 'react-native'
+import { Keyboard, View } from 'react-native'
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { YStack } from 'tamagui'
 
+import { backgroundDismissResponder } from './backgroundDismiss'
 import type { ScreenProps } from './Screen.types'
 
 export type { ScreenProps }
@@ -11,18 +12,12 @@ const ALL_EDGES = ['top', 'bottom', 'left', 'right'] as const
 
 const FILL = { flex: 1 } as const
 
-/**
- * Puts the keyboard away on a tap, claiming the touch only while the keyboard is up. Spread onto
- * the screen's own view rather than a wrapper of its own: keyboard-controller's avoiding view
- * measures its position against its parent, and a wrapper between it and the safe-area padding
- * made it leave the control at the bottom part-hidden behind the keyboard.
- */
-const DISMISS_ON_TAP = {
-  onStartShouldSetResponder: () => Keyboard.isVisible(),
-  onResponderRelease: () => {
+const DISMISS_ON_BACKGROUND = backgroundDismissResponder(
+  () => Keyboard.isVisible(),
+  () => {
     Keyboard.dismiss()
   },
-} as const
+)
 
 /**
  * The native flavour: the same frame, held clear of the hardware and of the keyboard.
@@ -76,25 +71,25 @@ export function Screen({
       */}
       {/*
         Tapping anywhere that is not a control puts the keyboard away, which is the convention on
-        both platforms.
+        both platforms. A bare responder rather than a Touchable: no feedback, no role for a
+        screen reader to announce, and no claim at all while the keyboard is down - see
+        `backgroundDismissResponder`. A list inside dismisses on its own, `List` says how.
 
-        **A bare responder, claimed only while the keyboard is up, and never blocking native
-        gestures.** A touchable here (`TouchableWithoutFeedback` until React Native 0.88) claims
-        every touch at its start and asks native views not to respond, and from 0.88 that stops a
-        scroll view inside the screen from scrolling at all. Returning nothing from the grant
-        leaves native gestures alone, and claiming nothing while the keyboard is down leaves
-        every touch to the screen.
+        On the avoiding view itself, never a wrapper: it measures its offset from its parent, and
+        a wrapper at the frame's top hides the top inset, leaving the composer under the keyboard.
       */}
       {avoidsKeyboard ? (
-        <KeyboardAvoidingView style={FILL} behavior="padding" {...DISMISS_ON_TAP}>
+        <KeyboardAvoidingView style={FILL} behavior="padding" {...DISMISS_ON_BACKGROUND}>
           <YStack flex={1} {...(padded ? { padding: '$md' } : {})}>
             {children}
           </YStack>
         </KeyboardAvoidingView>
       ) : (
-        <YStack flex={1} {...(padded ? { padding: '$md' } : {})} {...DISMISS_ON_TAP}>
-          {children}
-        </YStack>
+        <View style={FILL} {...DISMISS_ON_BACKGROUND}>
+          <YStack flex={1} {...(padded ? { padding: '$md' } : {})}>
+            {children}
+          </YStack>
+        </View>
       )}
     </YStack>
   )

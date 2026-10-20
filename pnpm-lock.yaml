@@ -63,6 +63,9 @@ catalogs:
     expo-blur:
       specifier: ~58.0.3
       version: 58.0.4
+    expo-build-properties:
+      specifier: ~58.0.11
+      version: 58.0.11
     expo-camera:
       specifier: ~58.0.10
       version: 58.0.10
@@ -87,6 +90,9 @@ catalogs:
     expo-linking:
       specifier: ~58.0.13
       version: 58.0.13
+    expo-media-library:
+      specifier: ~58.0.10
+      version: 58.0.11
     expo-router:
       specifier: ~58.0.20
       version: 58.0.23
@@ -99,6 +105,9 @@ catalogs:
     expo-splash-screen:
       specifier: ~58.0.9
       version: 58.0.10
+    jpeg-js:
+      specifier: 0.4.4
+      version: 0.4.4
     knip:
       specifier: 6.34.0
       version: 6.34.0
@@ -263,6 +272,9 @@ importers:
       '@session/build-stamp':
         specifier: workspace:*
         version: link:../../tooling/build-stamp
+      '@session/client-contract':
+        specifier: workspace:*
+        version: link:../../packages/client-contract
       '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
@@ -335,6 +347,9 @@ importers:
       expo-blur:
         specifier: 'catalog:'
         version: 58.0.4(expo@58.0.14)(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)
+      expo-build-properties:
+        specifier: 'catalog:'
+        version: 58.0.11(expo@58.0.14)
       expo-camera:
         specifier: 'catalog:'
         version: 58.0.10(@types/emscripten@1.41.6)(expo@58.0.14)(react-native-web@0.21.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)
@@ -359,6 +374,9 @@ importers:
       expo-linking:
         specifier: 'catalog:'
         version: 58.0.13(expo@58.0.14)(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)(typescript@5.9.3)
+      expo-media-library:
+        specifier: 'catalog:'
+        version: 58.0.11(expo@58.0.14)(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))
       expo-router:
         specifier: 'catalog:'
         version: 58.0.23(3e0b868551327e187bd52b70537615a8)
@@ -448,6 +466,9 @@ importers:
         specifier: workspace:*
         version: link:../logging
     devDependencies:
+      '@session/client-contract':
+        specifier: workspace:*
+        version: link:../client-contract
       '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
@@ -602,15 +623,21 @@ importers:
       '@session/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript-config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.1
       eslint:
         specifier: 'catalog:'
         version: 10.9.1(jiti@2.7.0)
+      jpeg-js:
+        specifier: 'catalog:'
+        version: 0.4.4
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@26.4.1)(vite@8.2.2(@types/node@26.4.1)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.0))
+        version: 5.0.0(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.0))
 
   packages/client-contract:
     dependencies:
@@ -624,15 +651,21 @@ importers:
       '@session/typescript-config':
         specifier: workspace:*
         version: link:../../tooling/typescript-config
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.1
       eslint:
         specifier: 'catalog:'
         version: 10.9.1(jiti@2.7.0)
+      jpeg-js:
+        specifier: 'catalog:'
+        version: 0.4.4
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
       vitest:
         specifier: 'catalog:'
-        version: 5.0.0(@types/node@26.4.1)(vite@8.2.2(@types/node@26.4.1)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.0))
+        version: 5.0.0(@types/node@22.20.1)(vite@8.2.2(@types/node@22.20.1)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.0))
 
   packages/localization:
     dependencies:
@@ -4394,6 +4427,11 @@ packages:
       react: 19.3.0
       react-native: 0.88.0
 
+  expo-build-properties@58.0.11:
+    resolution: {integrity: sha512-8vjp+RSD7VW/VeEpG9l1YON4ZqOqQXPmtMYFqmh41I7cBGwELRYybHFrh2P3uBgzWlRBuQrRLO5UAtAYfT7HLg==}
+    peerDependencies:
+      expo: '*'
+
   expo-camera@58.0.10:
     resolution: {integrity: sha512-QXs93Kd2oZO2VuiCUPPHZgzUIPazdURx9Mse+i03U+74K5Vy7FT1F4ONp21w91aTIp1NbWtmJAcJNjSnTE+5bQ==}
     peerDependencies:
@@ -4454,6 +4492,12 @@ packages:
     peerDependencies:
       expo: '*'
       react: 19.3.0
+      react-native: 0.88.0
+
+  expo-media-library@58.0.11:
+    resolution: {integrity: sha512-kLwnmsDF80UbzOUdstvfCVDzvCrr+wYqnvT80MWh8uQysC9Ky7d00bZDZISJjBsxe9wTKzEsd4h7UqcVe2vAqQ==}
+    peerDependencies:
+      expo: '*'
       react-native: 0.88.0
 
   expo-modules-autolinking@58.0.13:
@@ -4905,6 +4949,9 @@ packages:
   joycon@3.1.1:
     resolution: {integrity: sha512-34wB/Y7MW7bzjKRjUKTa46I2Z7eV62Rkhva+KkopW7Qvv/OSWBqvkSY7vusOPrNuZcUG3tApvdVgNB8POj3SPw==}
     engines: {node: '>=10'}
+
+  jpeg-js@0.4.4:
+    resolution: {integrity: sha512-WZzeDOEtTOBK4Mdsar0IqEU5sMr3vSV2RqkAIzUEV2BHnUfKGyswWFPFwK5EeDo93K3FohSHbLAjj0s1Wzd+dg==}
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -10540,6 +10587,13 @@ snapshots:
       react: 19.3.0
       react-native: 0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0)
 
+  expo-build-properties@58.0.11(expo@58.0.14):
+    dependencies:
+      '@expo/schema-utils': 58.0.2
+      expo: 58.0.14(@babel/core@7.29.7)(@expo/dom-webview@58.0.2)(@expo/metro-runtime@58.0.14)(expo-router@58.0.23)(react-dom@19.3.0(react@19.3.0))(react-native-web@0.21.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-native-worklets@0.13.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)(typescript@5.9.3)
+      resolve-from: 5.0.0
+      semver: 7.8.5
+
   expo-camera@58.0.10(@types/emscripten@1.41.6)(expo@58.0.14)(react-native-web@0.21.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0):
     dependencies:
       barcode-detector: 3.2.2(@types/emscripten@1.41.6)
@@ -10603,6 +10657,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
       - typescript
+
+  expo-media-library@58.0.11(expo@58.0.14)(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0)):
+    dependencies:
+      expo: 58.0.14(@babel/core@7.29.7)(@expo/dom-webview@58.0.2)(@expo/metro-runtime@58.0.14)(expo-router@58.0.23)(react-dom@19.3.0(react@19.3.0))(react-native-web@0.21.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react-native-worklets@0.13.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))(react-native@0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)(typescript@5.9.3)
+      react-native: 0.88.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.0(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0)
 
   expo-modules-autolinking@58.0.13(typescript@5.9.3):
     dependencies:
@@ -11061,6 +11120,8 @@ snapshots:
   jiti@2.7.0: {}
 
   joycon@3.1.1: {}
+
+  jpeg-js@0.4.4: {}
 
   js-tokens@4.0.0: {}
 
