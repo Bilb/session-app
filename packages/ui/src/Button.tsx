@@ -1,3 +1,4 @@
+import { INTERACTION_OPACITY } from '@session/theme-tokens'
 import type { ComponentProps, ReactNode } from 'react'
 import { Spinner, styled, XStack, YStack } from 'tamagui'
 
@@ -8,6 +9,44 @@ import { PressArea } from './PressArea'
 import { Concealed } from './Concealed'
 import { Text } from './Text'
 
+/**
+ * What each variant looks like while it is held down: the web's `pressStyle`, and on native the
+ * frame's style while `PressArea` reports a press (see `PRESSED`). One table, so the two can only
+ * agree.
+ *
+ * Hover has no such table because native needs no copy of it: while `PressArea` reports a pointer
+ * over the button, the frame is given `forceStyle="hover"`, and tamagui applies the variant's own
+ * `hoverStyle`. So each `hoverStyle` is written once, in its variant.
+ */
+const PRESS_STYLE = {
+  solid: {
+    backgroundColor: '$accentPressed',
+    borderColor: '$accentPressed',
+    color: '$onAccent',
+  },
+  outline: {
+    backgroundColor: '$textPrimary',
+    borderColor: '$textPrimary',
+    color: '$backgroundPrimary',
+    opacity: INTERACTION_OPACITY.filledPressed,
+  },
+  outlineAccent: {
+    backgroundColor: '$primaryColor',
+    borderColor: '$primaryColor',
+    color: '$onAccent',
+    opacity: INTERACTION_OPACITY.filledPressed,
+  },
+  ghost: { backgroundColor: '$pressedOverlay' },
+  ghostAccent: { backgroundColor: '$pressedOverlay' },
+  simple: { opacity: INTERACTION_OPACITY.dimPressed },
+  danger: {
+    backgroundColor: '$dangerColor',
+    borderColor: '$dangerColor',
+    color: '$onDanger',
+    opacity: INTERACTION_OPACITY.filledPressed,
+  },
+} as const
+
 const Frame = styled(XStack, {
   name: 'Button',
   role: 'button',
@@ -16,7 +55,7 @@ const Frame = styled(XStack, {
   gap: '$xs',
   borderRadius: '$full',
   borderWidth: 1,
-  cursor: 'pointer',
+  '$platform-web': { cursor: 'pointer' },
   // A label is not text you select; dragging across a control should do nothing. The desktop
   // client sets the same thing on its button for the same reason.
   userSelect: 'none',
@@ -39,11 +78,7 @@ const Frame = styled(XStack, {
           borderColor: '$accentHover',
           color: '$onAccent',
         },
-        pressStyle: {
-          backgroundColor: '$accentPressed',
-          borderColor: '$accentPressed',
-          color: '$onAccent',
-        },
+        pressStyle: PRESS_STYLE.solid,
       },
       /**
        * Hover **inverts** rather than tinting: the outline fills with the text colour and the label
@@ -61,12 +96,7 @@ const Frame = styled(XStack, {
           borderColor: '$textPrimary',
           color: '$backgroundPrimary',
         },
-        pressStyle: {
-          backgroundColor: '$textPrimary',
-          borderColor: '$textPrimary',
-          color: '$backgroundPrimary',
-          opacity: 0.82,
-        },
+        pressStyle: PRESS_STYLE.outline,
       },
       /**
        * The outline, in the accent rather than in the text colour.
@@ -85,12 +115,7 @@ const Frame = styled(XStack, {
           borderColor: '$primaryColor',
           color: '$onAccent',
         },
-        pressStyle: {
-          backgroundColor: '$primaryColor',
-          borderColor: '$primaryColor',
-          color: '$onAccent',
-          opacity: 0.82,
-        },
+        pressStyle: PRESS_STYLE.outlineAccent,
       },
       /** Overlays rather than surfaces, so the step shows on any ground, even a hovered row. */
       ghost: {
@@ -98,7 +123,7 @@ const Frame = styled(XStack, {
         borderColor: 'transparent',
         color: '$textPrimary',
         hoverStyle: { backgroundColor: '$hoverOverlay' },
-        pressStyle: { backgroundColor: '$pressedOverlay' },
+        pressStyle: PRESS_STYLE.ghost,
       },
       /**
        * `ghost`, in the accent.
@@ -113,7 +138,7 @@ const Frame = styled(XStack, {
         borderColor: 'transparent',
         color: '$primaryColor',
         hoverStyle: { backgroundColor: '$hoverOverlay' },
-        pressStyle: { backgroundColor: '$pressedOverlay' },
+        pressStyle: PRESS_STYLE.ghostAccent,
       },
       /**
        * Text on its own, no frame -- what the desktop client calls Simple and uses for every modal
@@ -124,8 +149,8 @@ const Frame = styled(XStack, {
         backgroundColor: 'transparent',
         borderColor: 'transparent',
         color: '$textPrimary',
-        hoverStyle: { opacity: 0.7 },
-        pressStyle: { opacity: 0.55 },
+        hoverStyle: { opacity: INTERACTION_OPACITY.dimHover },
+        pressStyle: PRESS_STYLE.simple,
       },
       /** Danger text on a transparent ground, filling on hover. The table's destructive row. */
       danger: {
@@ -137,12 +162,7 @@ const Frame = styled(XStack, {
           borderColor: '$dangerColor',
           color: '$onDanger',
         },
-        pressStyle: {
-          backgroundColor: '$dangerColor',
-          borderColor: '$dangerColor',
-          color: '$onDanger',
-          opacity: 0.82,
-        },
+        pressStyle: PRESS_STYLE.danger,
       },
     },
     size: {
@@ -200,26 +220,29 @@ const Frame = styled(XStack, {
   defaultVariants: { variant: 'solid', size: 'md' },
 })
 
+/** A press style without its label colour, which native hands to the label instead. */
+function withoutColor<T extends object>(style: T): Omit<T, 'color'> {
+  const { color: _color, ...rest } = style as T & { color?: unknown }
+  return rest
+}
+
 /**
- * What a variant looks like while it is held down, as plain values.
+ * The frame's style while `PressArea` reports a press, on native.
  *
- * The same styles the `pressStyle` above declares, restated here because **native cannot use
- * those**: the frame no longer owns the press -- `PressArea` does, so that a finger sliding off
- * the control clears the highlight the way the platform does -- and tamagui only applies
- * `pressStyle` for presses it handled itself. On the web nothing reads this; the pseudo-class
- * still does the work.
- *
- * Kept next to the variants rather than derived from them, so the pair is visible in one screen
- * and a change to one is an obvious prompt to change the other.
+ * **Native cannot use `pressStyle`**: the frame no longer owns the press -- `PressArea` does, so
+ * that a finger sliding off the control clears the highlight the way the platform does -- and
+ * tamagui only applies `pressStyle` for presses it handled itself. So the same table is applied
+ * by hand, less the colour: a native label inherits nothing from its frame, and `PRESSED_LABEL`
+ * colours it. On the web nothing reads this; the pseudo-class still does the work.
  */
 const PRESSED = {
-  solid: { backgroundColor: '$accentPressed', borderColor: '$accentPressed' },
-  outline: { backgroundColor: '$textPrimary', borderColor: '$textPrimary', opacity: 0.82 },
-  outlineAccent: { backgroundColor: '$primaryColor', borderColor: '$primaryColor', opacity: 0.82 },
-  ghost: { backgroundColor: '$pressedOverlay' },
-  ghostAccent: { backgroundColor: '$pressedOverlay' },
-  simple: { opacity: 0.7 },
-  danger: { backgroundColor: '$dangerColor', borderColor: '$dangerColor', opacity: 0.82 },
+  solid: withoutColor(PRESS_STYLE.solid),
+  outline: withoutColor(PRESS_STYLE.outline),
+  outlineAccent: withoutColor(PRESS_STYLE.outlineAccent),
+  ghost: PRESS_STYLE.ghost,
+  ghostAccent: PRESS_STYLE.ghostAccent,
+  simple: PRESS_STYLE.simple,
+  danger: withoutColor(PRESS_STYLE.danger),
 } as const
 
 /**
@@ -376,7 +399,7 @@ export function Button({
       busy={loading}
       {...(testID === undefined ? {} : { testID })}
     >
-      {(pressed) => (
+      {(pressed, hovered) => (
         <Frame
           // The loading spinner's containing block: on the web a stack is static, and the
           // spinner's absolute offsets would otherwise resolve against the page.
@@ -390,6 +413,8 @@ export function Button({
           {...(borderRadius === undefined ? {} : { borderRadius })}
           disabled={inert}
           {...PRESS_PASSTHROUGH}
+          // The variant's own `hoverStyle`, applied from the wrapper's hover: see `PressArea`.
+          {...(hovered && !pressed && !inert ? { forceStyle: 'hover' as const } : {})}
           {...(pressed && !inert ? PRESSED[variant] : {})}
         >
           {/* Loading hides the content but keeps its room, so the button keeps its size and
@@ -403,7 +428,10 @@ export function Button({
                 // Bold, which is what the desktop client's button is: `font-weight: 700` unless a
                 // caller says otherwise, and none of the onboarding callers do.
                 weight="bold"
-                color={INHERITED_LABEL ?? (pressed && !inert ? pressedLabel : nativeLabel)}
+                color={
+                  INHERITED_LABEL ??
+                  ((pressed || hovered) && !inert ? (pressedLabel ?? nativeLabel) : nativeLabel)
+                }
               >
                 {children}
               </Text>
