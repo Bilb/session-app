@@ -6,7 +6,7 @@ import { usePageZoom } from './pageZoom'
 /**
  * Holds what it wraps to at most `maxScale` times its size however far the desktop is zoomed in:
  * the page's zoom, counter-zoomed past the cap. For controls that sit beside something more worth
- * the room -- the onboarding header's buttons, which at 300% left the logo beside them no space.
+ * the room -- the onboarding header's buttons, which zoomed in left the logo beside them no space.
  */
 export function ZoomCap({ maxScale, children }: { maxScale: number; children: ReactNode }) {
   const zoom = usePageZoom()

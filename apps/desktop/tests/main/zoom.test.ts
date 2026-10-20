@@ -15,7 +15,7 @@ describe('stepping the zoom', () => {
 
   it('stops at either end rather than wrapping', () => {
     expect(steppedZoom(ZOOM_LEVELS[0], 'out')).toBe(ZOOM_LEVELS[0])
-    expect(steppedZoom(3, 'in')).toBe(3)
+    expect(steppedZoom(2, 'in')).toBe(2)
   })
 })
 
@@ -35,6 +35,9 @@ describe('the saved zoom', () => {
     expect(readZoom(broken)).toBe(1)
     const odd = join(dir, 'odd.json')
     writeFileSync(odd, JSON.stringify({ zoom: 1.33 }))
+    expect(readZoom(odd)).toBe(1)
+    // A level outside this build's range, which falls back the same way.
+    writeFileSync(odd, JSON.stringify({ zoom: 3 }))
     expect(readZoom(odd)).toBe(1)
   })
 })
