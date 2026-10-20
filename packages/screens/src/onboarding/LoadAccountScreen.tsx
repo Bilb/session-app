@@ -86,7 +86,9 @@ export function LoadAccountScreen({
   const phrasePane = (
     <PhrasePane
       padding={stepPadding}
-      onBack={onBack}
+      // Beside a camera the back control sits beside the pager (see below), so the pane draws none
+      // of its own: one hanging off a page showed up when the page was swiped past its edge.
+      onBack={scanning ? undefined : onBack}
       backDisabled={backDisabled}
       busy={busy}
       rejected={rejected}
@@ -177,7 +179,8 @@ export function LoadAccountScreen({
 interface PhrasePaneProps {
   /** The chrome's own step padding, which this pane applies because the chrome is told not to. */
   padding: ReturnType<typeof useStepPadding>
-  onBack: () => void
+  /** The wide design's back control, drawn by the pane only where nothing else draws one. */
+  onBack?: (() => void) | undefined
   backDisabled: boolean
   busy: boolean
   rejected: boolean

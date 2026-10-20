@@ -27,7 +27,7 @@ interface OnboardingStepProps {
   description?: string
   /** Drawn beside the title. The recovery screen has one; nothing else does. */
   titleMark?: ReactNode
-  onBack?: () => void
+  onBack?: (() => void) | undefined
   /** Refuses back without taking the chevron away. See `ChromeProps`. */
   backDisabled?: boolean
   children: ReactNode
