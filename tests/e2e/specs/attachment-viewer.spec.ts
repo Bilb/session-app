@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { ELEMENT } from '@session/test-ids'
+import { ELEMENT, type ElementId } from '@session/test-ids'
 
 import { downloadFromRow, openFirstConversation } from '../harness/attachments'
 import { DesktopApp } from '../harness/DesktopApp'
@@ -55,15 +55,20 @@ sessionTest({
 /**
  * The chevrons sit on the picture's middle, not on the middle of a box that also holds the header.
  *
- * Launched directly rather than through `sessionTest`, because the position is a layout probe and
- * `ISessionApp` has none.
+ * Launched directly rather than through `sessionTest`, because a position is Chromium's layout and
+ * `ISessionApp` has no way to ask a device for one.
  */
 test('centres the chevrons on the picture', async () => {
   const app = await DesktopApp.launch('alice')
   try {
     await openViewer(app)
-    const picture = await app.verticalCentre(ELEMENT.conversation.mediaViewerImage)
-    const next = await app.verticalCentre(ELEMENT.conversation.mediaViewerNext)
+    const centre = async (id: ElementId) => {
+      const box = await app.locator(id).first().boundingBox()
+      if (box === null) throw new Error(`${id} is not laid out`)
+      return box.y + box.height / 2
+    }
+    const picture = await centre(ELEMENT.conversation.mediaViewerImage)
+    const next = await centre(ELEMENT.conversation.mediaViewerNext)
     expect(Math.abs(next - picture)).toBeLessThanOrEqual(1)
   } finally {
     await app.close()

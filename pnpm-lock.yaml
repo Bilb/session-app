@@ -6,6 +6,9 @@ settings:
 
 catalogs:
   default:
+    '@axe-core/playwright':
+      specifier: 4.13.0
+      version: 4.13.0
     '@eslint/js':
       specifier: 10.0.1
       version: 10.0.1
@@ -980,12 +983,18 @@ importers:
 
   tests/e2e:
     devDependencies:
+      '@axe-core/playwright':
+        specifier: 'catalog:'
+        version: 4.13.0(playwright-core@1.62.1)
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.62.1
       '@session/eslint-config':
         specifier: workspace:*
         version: link:../../tooling/eslint-config
+      '@session/expectations':
+        specifier: workspace:*
+        version: link:../expectations
       '@session/test-ids':
         specifier: workspace:*
         version: link:../../packages/test-ids
@@ -1175,6 +1184,11 @@ importers:
   tooling/typescript-config: {}
 
 packages:
+
+  '@axe-core/playwright@4.13.0':
+    resolution: {integrity: sha512-6YLx+kxXu5GJceG4ozFg+33a2EMTdjYwWGloJ3sb9Kta5pp+ZNS53uxGVog5JetIY8s++P5UrtX+cri+u0VAVg==}
+    peerDependencies:
+      playwright-core: '>= 1.0.0'
 
   '@babel/code-frame@7.29.7':
     resolution: {integrity: sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw==}
@@ -4049,6 +4063,10 @@ packages:
   astral-regex@2.0.0:
     resolution: {integrity: sha512-Z7tMw1ytTXt5jqMcOP+OQteU1VuNK9Y02uuJtKQ1Sv69jXQKKg5cibLwGJow8yzZP+eAc18EmLGPal0bp36rvQ==}
     engines: {node: '>=8'}
+
+  axe-core@4.13.0:
+    resolution: {integrity: sha512-UzGt8zg7Ny8djbYMhxl2zuEevVa7r2gJjYY5Lwr1xM7+XU2nd6CkIWFTVcCIbAP63vSz71NaVyyuSk9lHKcy0A==}
+    engines: {node: '>=4'}
 
   babel-literal-to-ast@2.1.0:
     resolution: {integrity: sha512-CxfpQ0ysQ0bZOhlaPgcWjl79Em16Rhqc6++UAFn0A3duiXmuyhhj8yyl9PYbj0I0CyjrHovdDbp2QEKT7uIMxw==}
@@ -7054,6 +7072,11 @@ packages:
       '@types/emscripten': '>=1.39.6'
 
 snapshots:
+
+  '@axe-core/playwright@4.13.0(playwright-core@1.62.1)':
+    dependencies:
+      axe-core: 4.13.0
+      playwright-core: 1.62.1
 
   '@babel/code-frame@7.29.7':
     dependencies:
@@ -10562,6 +10585,8 @@ snapshots:
   assertion-error@2.0.1: {}
 
   astral-regex@2.0.0: {}
+
+  axe-core@4.13.0: {}
 
   babel-literal-to-ast@2.1.0(@babel/core@7.29.7):
     dependencies:

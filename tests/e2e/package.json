@@ -11,8 +11,10 @@
     "test:e2e:full": "playwright test"
   },
   "devDependencies": {
+    "@axe-core/playwright": "catalog:",
     "@playwright/test": "catalog:",
     "@session/eslint-config": "workspace:*",
+    "@session/expectations": "workspace:*",
     "@session/test-ids": "workspace:*",
     "@session/theme-tokens": "workspace:*",
     "@session/typescript-config": "workspace:*",
