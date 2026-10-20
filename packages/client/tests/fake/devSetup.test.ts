@@ -27,9 +27,10 @@ describe('the world a dev fake starts in', () => {
     )
   })
 
-  it('still answers the older no-account switch, and crowd from its size alone', () => {
+  it('still answers the older no-account and rows switches, and crowd from its size alone', () => {
     expect(pickFakeFixture({ EXPO_PUBLIC_SESSION_NO_ACCOUNT: '1' }).fixture).toBe('newcomer')
     expect(pickFakeFixture({ EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS: '3' }).fixture).toBe('crowd')
+    expect(pickFakeFixture({ EXPO_PUBLIC_SESSION_FAKE_ROWS: '1' }).fixture).toBe('rows')
   })
 
   it('treats an empty value as unset', () => {

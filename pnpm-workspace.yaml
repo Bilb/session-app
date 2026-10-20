@@ -84,6 +84,7 @@ overrides:
   react-native: 0.86.3
 
 patchedDependencies:
+  '@tamagui/web@2.7.7': patches/npm/@tamagui__web@2.7.7.patch
   expo-modules-jsi: patches/npm/expo-modules-jsi.patch
   nitrogen: patches/npm/nitrogen.patch
 

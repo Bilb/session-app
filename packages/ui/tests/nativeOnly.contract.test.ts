@@ -131,12 +131,30 @@ describe('a Button on native', () => {
     return fill !== undefined && !SURFACES.includes(fill)
   }
 
+  /** Each variant's entry in `PRESS_STYLE`, the one table the web and native presses read. */
+  function pressStyles(): Map<string, string> {
+    const block = /const PRESS_STYLE = \{\n([\s\S]*?)\n\} as const/.exec(button)?.[1] ?? ''
+    const out = new Map<string, string>()
+    for (const m of block.matchAll(/^ {2}(\w+): \{([\s\S]*?)\},$/gm))
+      out.set(m[1] as string, m[2] as string)
+    return out
+  }
+
   // A press lasts while a finger is down, and no spec holds one to screenshot it.
+  it('takes its web press style from the shared table, so native cannot differ', () => {
+    const found = variants()
+    expect([...pressStyles().keys()]).toEqual([...found.keys()])
+    const inline = [...found].filter(
+      ([name, body]) => !body.includes(`pressStyle: PRESS_STYLE.${name},`),
+    )
+    expect(inline.map(([name]) => name)).toEqual([])
+  })
+
   it('has a pressed-label entry wherever the press inverts', () => {
     // A Text inherits nothing from a View on native, so PRESSED_LABEL is what colours it there.
     const pressedLabel = /const PRESSED_LABEL[\s\S]*?\n\}/.exec(button)?.[0] ?? ''
-    const inverts = [...variants()]
-      .filter(([, body]) => leavesTheLadder(/pressStyle: \{([^}]*)\}/.exec(body)?.[1] ?? ''))
+    const inverts = [...pressStyles()]
+      .filter(([, declared]) => leavesTheLadder(declared))
       .map(([name]) => name)
     expect(inverts.length).toBeGreaterThan(0)
     expect(inverts.filter((name) => !new RegExp(`^\\s+${name}:`, 'm').test(pressedLabel))).toEqual(
@@ -144,18 +162,16 @@ describe('a Button on native', () => {
     )
   })
 
-  it('fills on a press with the same colour its web press fills with', () => {
-    // PRESSED restates each pressStyle for the phones, where the frame does not own the press.
+  it('presses on native with its entry in the shared table, less only the label colour', () => {
+    // PRESSED is what native applies while held, since the frame does not own the press there.
     const pressed = /const PRESSED = \{[\s\S]*?\n\} as const/.exec(button)?.[0] ?? ''
-    const mismatched: string[] = []
-    for (const [name, body] of variants()) {
-      const web = /pressStyle: \{[^}]*backgroundColor: '(\$\w+)'/.exec(body)?.[1]
-      if (web === undefined || !leavesTheLadder(`backgroundColor: '${web}'`)) continue
-      const native = new RegExp(`^\\s+${name}: \\{[^}]*backgroundColor: '(\\$\\w+)'`, 'm').exec(
-        pressed,
-      )?.[1]
-      if (native !== web) mismatched.push(`${name}: web ${web}, native ${String(native)}`)
-    }
-    expect(mismatched).toEqual([])
+    const restated = [...variants().keys()].filter(
+      (name) =>
+        !new RegExp(
+          `^\\s+${name}: (withoutColor\\(PRESS_STYLE\\.${name}\\)|PRESS_STYLE\\.${name}),$`,
+          'm',
+        ).test(pressed),
+    )
+    expect(restated).toEqual([])
   })
 })

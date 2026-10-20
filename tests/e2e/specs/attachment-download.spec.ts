@@ -50,7 +50,10 @@ sessionTest({
     // Left and come back. The window is dropped when a screen stops showing it, so the store has
     // nothing to remember this by: what redraws it as downloaded is the page saying so, which is
     // the only thing that can - no event ever announces a file that is simply already here.
-    await alice.tap(ELEMENT.conversation.back)
+    // Left by opening another screen in its place: the desktop window shows the list beside the
+    // conversation, where there is no back control, and tapping the open row again changes
+    // nothing, so neither would unmount it.
+    await alice.tap(ELEMENT.conversationList.newConversation)
     await openFirstConversation(alice)
     await expect
       .poll(async () => alice.isVisible(ELEMENT.conversation.attachmentExport), { timeout: 10_000 })
