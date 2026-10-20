@@ -52,12 +52,13 @@ setPorts(
           ? 'fake'
           : parseNetworkName(import.meta.env.EXPO_PUBLIC_SESSION_NETID),
     },
-    // Substituted at build time alongside the netid, because the renderer cannot read the
-    // environment. That makes a desktop override a rebuild rather than a relaunch, which main
-    // reading it and the preload carrying it across would fix: a flag you cannot flip on someone
-    // else's machine does half of what a flag is for.
+    // The appearance overrides main read at launch, then the flags, substituted at build time
+    // because the renderer cannot read the environment: a flag override is a rebuild here.
     flags: {
-      override: (name) => import.meta.env.EXPO_PUBLIC_SESSION_FLAGS?.[name] ?? null,
+      override: (name) =>
+        window.sessionDesktop.launchOverrides[name] ??
+        import.meta.env.EXPO_PUBLIC_SESSION_FLAGS?.[name] ??
+        null,
     },
     build: {
       version: import.meta.env.EXPO_PUBLIC_SESSION_BUILD_VERSION,

@@ -1,5 +1,7 @@
 import electron from 'electron'
 
+import { readLaunchOverrides } from '../shared/launchOverrides'
+
 const { contextBridge, ipcRenderer } = electron
 
 /**
@@ -60,4 +62,6 @@ contextBridge.exposeInMainWorld('sessionDesktop', {
   exportLogs: (name: string, parts: unknown): Promise<boolean> =>
     ipcRenderer.invoke('log:export', name, parts),
   diagnostics: (): Promise<unknown> => ipcRenderer.invoke('log:diagnostics'),
+  /** What main read of the environment at launch for the flags port; see `launchOverrides.ts`. */
+  launchOverrides: readLaunchOverrides(process.argv),
 })

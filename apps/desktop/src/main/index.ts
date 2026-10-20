@@ -14,6 +14,7 @@ import { createBridge } from './bridge'
 import { editMenuItems } from './editMenu'
 import { serveFiles } from './files'
 import { launchColors } from './launchColors'
+import { launchOverridesSwitch } from '../shared/launchOverrides'
 import { finishLogs, logDatabase, logLibsession, openLogs, serveLogs } from './logs'
 import { registerMediaScheme, serveMedia, stopServingMedia } from './media'
 import {
@@ -127,6 +128,7 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
       // CommonJS, because a sandboxed preload cannot be an ES module; it is built that way in
       // electron.vite.config.ts. The preload needs nothing from Node, so the sandbox costs nothing.
       preload: join(here, '../preload/index.cjs'),
+      additionalArguments: [launchOverridesSwitch(process.env)],
     },
   })
 
