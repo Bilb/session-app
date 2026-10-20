@@ -80,7 +80,9 @@ export function TermsAndPrivacy() {
         sideInset={20}
         bottomInset={20}
       >
-        <Text size="$body" textAlign="center">
+        {/* Capped like a label: past twice the default the addresses wrap a few letters to a
+            line, and the dialog becomes something to scroll through rather than read. */}
+        <Text size="$body" textAlign="center" maxFontSizeMultiplier={LABEL_MAX_SCALE}>
           {tr('urlOpenDescriptionAlternative')}
         </Text>
 
@@ -116,7 +118,13 @@ export function TermsAndPrivacy() {
                     deceptive one hides what it really is, so it is the view that gives way. The
                     text takes the width and pushes the icon to the trailing edge, which is why
                     there is no gap between them to set. */}
-                <Text flex={1} size="$bodyLarge" weight="bold" userSelect="none">
+                <Text
+                  flex={1}
+                  size="$bodyLarge"
+                  weight="bold"
+                  userSelect="none"
+                  maxFontSizeMultiplier={LABEL_MAX_SCALE}
+                >
                   {link.url}
                 </Text>
                 <Icon name="externalLink" size="md" color="$textPrimary" />

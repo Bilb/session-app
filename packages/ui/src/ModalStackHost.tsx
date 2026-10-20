@@ -5,7 +5,7 @@ import { ScrollView, useMedia, XStack, YStack } from 'tamagui'
 import { useBackdropBlur } from './backdropBlur'
 import { backChevron } from './backChevron'
 import { BarButton } from './BarButton'
-import { AlertBox } from './Modal'
+import { AlertBox, AlertFrame } from './Modal'
 import {
   ACTION_HEIGHT,
   HEADER_HEIGHT,
@@ -123,13 +123,7 @@ export function ModalStackHost({
             <Fragment key={entry.id}>
               {layerScrim}
               {backdrop}
-              <YStack
-                fullscreen
-                alignItems="center"
-                justifyContent="center"
-                padding="$xl"
-                pointerEvents={frontmost ? 'box-none' : 'none'}
-              >
+              <AlertFrame pointerEvents={frontmost ? 'box-none' : 'none'}>
                 <AlertBox
                   title={screen?.title ?? ''}
                   closeLabel={closeLabel}
@@ -144,7 +138,7 @@ export function ModalStackHost({
                 >
                   {screen?.render() ?? null}
                 </AlertBox>
-              </YStack>
+              </AlertFrame>
             </Fragment>
           )
 
