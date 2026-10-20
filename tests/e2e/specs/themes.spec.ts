@@ -8,6 +8,7 @@ import { openFirstConversation } from '../harness/attachments'
 import { assertBaselinesPulled } from '../harness/baselines'
 import { DesktopApp } from '../harness/DesktopApp'
 import type { AuditIssue, ISessionApp } from '../harness/ISessionApp'
+import { MobileApp, type FormFactor, type MobilePlatform } from '../harness/MobileApp'
 
 const THEMES: readonly ThemeState[] = ['classic-dark', 'classic-light', 'ocean-dark', 'ocean-light']
 
@@ -68,6 +69,22 @@ const KNOWN_ISSUES: Partial<Record<ISessionApp['platform'], Readonly<Record<stri
       'textSecondary at caption size on a received bubble is 3.5 to 4.1:1 in every theme, under AA',
     'color-contrast message-attachment': 'the format line under a lead square: the same ink',
     'color-contrast message-attachment-show-all': "the roll's Show all count: the same ink",
+  },
+  android: {
+    'target-size conversation-back':
+      'drawn at 32dp; its hitSlop reaches MIN_HIT_TARGET, 40, which is under 48 and not in the bounds',
+    'target-size message-attachment-view-list': 'the same: a Button drawn at 32dp',
+    'target-size message-attachment-action': 'the same: a Button drawn 32dp tall',
+    'target-size message-attachment-show-all': 'a PressArea 32dp tall, with no hitSlop at all',
+  },
+  ios: {
+    'XCUIAccessibilityAuditTypeSufficientElementDescription message-attachment-tile':
+      "a tile is named by its filename, which Apple's audit reads as no human-readable label",
+    'target-size conversation-back':
+      'drawn at 32pt; its hitSlop reaches MIN_HIT_TARGET, 40, which is under 44 and not in the bounds',
+    'target-size message-attachment-view-list': 'the same: a Button drawn at 32pt',
+    'target-size message-attachment-action': 'the same: a Button drawn 32pt tall',
+    'target-size message-attachment-show-all': 'a PressArea 32pt tall, with no hitSlop at all',
   },
 }
 
@@ -189,4 +206,94 @@ for (const theme of THEMES) {
       await app.close()
     }
   })
+}
+
+const MOBILE_PLATFORMS: readonly MobilePlatform[] = ['android', 'ios']
+const FORMS: readonly FormFactor[] = ['phone', 'tablet']
+
+/**
+ * How far each step down the transcript moves, as a share of the view: short enough that every
+ * captured bubble is whole on some step, where a longer swipe leaves the tallest cut on each.
+ */
+const VISIT_SPAN = 0.3
+
+/**
+ * How far apart two audits are, as a share of the view: each reads a whole screen, so under one
+ * apart leaves no part of the transcript unread. An iOS audit takes seconds.
+ */
+const AUDIT_SPAN = 0.6
+
+/** Font rendering and image decoding differ by a few pixels between runs of one device. */
+const MAX_DIFF_PIXEL_RATIO = 0.002
+
+/**
+ * The same on a phone and a tablet of each mobile platform, against that platform's baselines. No
+ * capture draws the time or holds a caret, and the fake keeps its own fixed clock, so neither needs
+ * an override; the launch turns motion off. A capture is the element alone, so it leaves out the
+ * status bar, whose icons Android draws light on a light theme's header. Themes are the outer loop
+ * because each is its own bundle on a device, and a change of bundle restarts Metro.
+ */
+for (const platform of MOBILE_PLATFORMS) {
+  for (const theme of THEMES) {
+    for (const form of FORMS) {
+      test(`draws the showcase in ${theme} on a ${form}, with nothing serious for the audit @${platform} @low-risk`, async () => {
+        const app = await MobileApp.launch(platform, 'alice', {
+          form,
+          env: { EXPO_PUBLIC_SESSION_FAKE_FIXTURE: 'showcase', EXPO_PUBLIC_SESSION_THEME: theme },
+        })
+
+        try {
+          await openFirstConversation(app)
+          const found = new Map<string, AuditIssue>()
+          const mismatched: string[] = []
+          const left = new Set(CAPTURE_NAMES)
+          const audit = async () => {
+            for (const issue of await app.audit(ELEMENT.conversation.screen))
+              found.set(key(issue), issue)
+          }
+          // Before the audit, which reads the page source a capture can share.
+          const captureLeft = async () => {
+            const shown = await app.captureShown(
+              [...left].map((capture) => {
+                const { row, id, at } = CAPTURES[capture]
+                return { name: capture, scope: ELEMENT.conversation.messageRow(row), id, at }
+              }),
+            )
+            for (const [capture, png] of shown) {
+              left.delete(capture as CaptureName)
+              const name = `${theme}-${form}-${capture}.png`
+              const failures = test.info().errors.length
+              expect.soft(png).toMatchSnapshot(name, { maxDiffPixelRatio: MAX_DIFF_PIXEL_RATIO })
+              if (test.info().errors.length > failures) mismatched.push(name)
+            }
+          }
+          // To the start first: iOS bounces at an end, so where it opened is no answer.
+          for (let step = 0; step < MAX_SCROLL_STEPS; step++)
+            if (!(await app.scroll(ELEMENT.conversation.screen, -1))) break
+          // Short steps while a capture is left, and an audit every AUDIT_SPAN of the way down.
+          let sinceAudit = AUDIT_SPAN
+          for (let step = 0; step < MAX_SCROLL_STEPS; step++) {
+            if (left.size > 0) await captureLeft()
+            if (sinceAudit >= AUDIT_SPAN) {
+              await audit()
+              sinceAudit = 0
+            }
+            const span = left.size > 0 ? VISIT_SPAN : AUDIT_SPAN - sinceAudit
+            if (!(await app.scroll(ELEMENT.conversation.screen, 1, span))) break
+            sinceAudit += span
+          }
+          if (sinceAudit > 0) await audit()
+          for (const capture of left) mismatched.push(`${theme}-${form}-${capture}: never drawn`)
+
+          const unknown = unknownIssues(platform, found.values())
+          expect(
+            [...mismatched, ...unknown],
+            summary(`${theme} on a ${platform} ${form}`, mismatched, unknown),
+          ).toEqual([])
+        } finally {
+          await app.close()
+        }
+      })
+    }
+  }
 }
