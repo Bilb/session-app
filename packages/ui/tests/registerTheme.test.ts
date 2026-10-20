@@ -62,4 +62,21 @@ describe('appearanceFrom', () => {
     })
     expect(appearanceFrom(null)).toEqual({ theme: DEFAULT_THEME, accent: DEFAULT_ACCENT })
   })
+
+  it('lays a launch override over the stored choice, per half', () => {
+    const stored = { theme: 'ocean-dark', accent: 'pink' }
+    expect(appearanceFrom(stored, { theme: 'classic-light', accent: null })).toEqual({
+      theme: 'classic-light',
+      accent: 'pink',
+    })
+    expect(appearanceFrom(null, { theme: null, accent: 'blue' })).toEqual({
+      theme: DEFAULT_THEME,
+      accent: 'blue',
+    })
+  })
+
+  it('ignores an override this build does not ship, rather than drawing the default', () => {
+    const stored = { theme: 'ocean-dark', accent: 'pink' }
+    expect(appearanceFrom(stored, { theme: 'ocean-lite', accent: '' })).toEqual(stored)
+  })
 })

@@ -1,4 +1,5 @@
 import { envVarFor, FLAGS, type FlagName } from '@session/app'
+import { APPEARANCE_OVERRIDE_VARIABLES } from '@session/app/appearanceOverride'
 
 /**
  * The flag overrides this build was started with.
@@ -28,6 +29,9 @@ const OVERRIDES: Record<string, string | undefined> = {
   EXPO_PUBLIC_SESSION_FLAG_DISABLE_ANIMATIONS:
     process.env.EXPO_PUBLIC_SESSION_FLAG_DISABLE_ANIMATIONS,
   EXPO_PUBLIC_SESSION_FLAG_DEBUG_MODE: process.env.EXPO_PUBLIC_SESSION_FLAG_DEBUG_MODE,
+  // Read through the same port as a flag; see `appearanceOverride` in @session/app.
+  EXPO_PUBLIC_SESSION_THEME: process.env.EXPO_PUBLIC_SESSION_THEME,
+  EXPO_PUBLIC_SESSION_ACCENT: process.env.EXPO_PUBLIC_SESSION_ACCENT,
 }
 
 /**
@@ -61,7 +65,7 @@ export function overriddenVariables(): string[] {
   return Object.keys(OVERRIDES)
 }
 
-/** Every variable the shared table expects a mobile build to read. */
+/** Every variable the shared code expects a mobile build to read. */
 export function expectedVariables(): string[] {
-  return (Object.keys(FLAGS) as FlagName[]).map(envVarFor)
+  return [...(Object.keys(FLAGS) as FlagName[]).map(envVarFor), ...APPEARANCE_OVERRIDE_VARIABLES]
 }

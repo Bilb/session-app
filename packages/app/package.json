@@ -16,7 +16,8 @@
     ".": "./src/index.ts",
     "./exportFileName": "./src/exportFileName.ts",
     "./mediaUrl": "./src/mediaUrl.ts",
-    "./flags": "./src/flags.ts"
+    "./flags": "./src/flags.ts",
+    "./appearanceOverride": "./src/appearanceOverride.ts"
   },
   "scripts": {
     "lint": "eslint .",

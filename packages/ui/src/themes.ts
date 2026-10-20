@@ -60,13 +60,26 @@ export { DEFAULT_ACCENT, DEFAULT_THEME }
 /**
  * The theme and accent a stored choice names, each falling back to the default where this build
  * does not ship the name -- a preference outlives the build that wrote it.
+ *
+ * `override` is a launch's own choice (see `appearanceOverride` in `@session/app`), laid over the
+ * stored one per half. A name this build does not ship is ignored there too, so a typo draws the
+ * account's theme rather than the default.
  */
-export function appearanceFrom(stored: { theme: string; accent: string } | null): {
+export function appearanceFrom(
+  stored: { theme: string; accent: string } | null,
+  override: { theme: string | null; accent: string | null } = { theme: null, accent: null },
+): {
   theme: ThemeState
   accent: PrimaryColorState
 } {
-  const theme = THEME_STATES.find((name) => name === stored?.theme) ?? DEFAULT_THEME
-  const accent = PRIMARY_COLORS.find((name) => name === stored?.accent) ?? DEFAULT_ACCENT
+  const theme =
+    THEME_STATES.find((name) => name === override.theme) ??
+    THEME_STATES.find((name) => name === stored?.theme) ??
+    DEFAULT_THEME
+  const accent =
+    PRIMARY_COLORS.find((name) => name === override.accent) ??
+    PRIMARY_COLORS.find((name) => name === stored?.accent) ??
+    DEFAULT_ACCENT
   return { theme, accent }
 }
 
