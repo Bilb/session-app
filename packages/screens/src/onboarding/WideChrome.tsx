@@ -7,17 +7,22 @@ import {
   Icon,
   IconRing,
   KeyboardAvoiding,
+  logical,
   SafeArea,
   Screen,
   ScrollView,
   SessionWordmark,
+  SPACE_SCALE,
   useFontScale,
   usePageZoom,
   XStack,
   YStack,
 } from '@session/ui'
 
+import { useState } from 'react'
+
 import { LanguageButton } from '../LanguageButton'
+import { WIDE_BACK_OVERHANG } from './OnboardingBackButton'
 import { OnboardingMark } from './OnboardingMark'
 import {
   BANNER_GAP,
@@ -25,6 +30,8 @@ import {
   CONTENT_MIN_HEIGHT,
   FADE_MS,
   HEADER_HEIGHT,
+  HEADER_LOCKUP_GAP,
+  HEADER_LOCKUP_WIDTH,
   HEADER_MARK_SIZE,
   HEADER_WORDMARK_SIZE,
   RING_SIZE,
@@ -67,7 +74,14 @@ export function WideChrome({
       {...(grows ? { flexGrow: 1, flexShrink: 0 } : { flex: 1 })}
       alignItems="center"
       justifyContent="center"
-      padding="$xl"
+      paddingVertical="$xl"
+      // Room for the back control that hangs off the column's leading side: zoomed in, the column
+      // fills the width and the scroll view around it clips anything past this padding. Only that
+      // side, so the header keeps the rest of the width for the lockup.
+      {...logical({
+        paddingStart: Math.max(SPACE_SCALE.xl, WIDE_BACK_OVERHANG),
+        paddingEnd: SPACE_SCALE.xl,
+      })}
     >
       <YStack
         width={COLUMN_WIDTH}
@@ -176,12 +190,27 @@ function OnboardingHeader() {
   // Confirmed before leaving, like every other link here. The desktop client routes its FAQ button
   // through the same dialog rather than opening the browser from the button.
   const open = useConfirmUrl()
+  /**
+   * The lockup's scale: its own size, or smaller to fill exactly the room left beside the
+   * controls. Zoomed in on desktop the controls grow and that room shrinks, and left to the row
+   * the artwork shrank far further than it had to, leaving a wide gap beside the language picker.
+   */
+  const [scale, setScale] = useState(1)
 
   return (
     <XStack alignItems="center" gap="$xs" height={HEADER_HEIGHT}>
-      <OnboardingMark size={HEADER_MARK_SIZE} />
-      <SessionWordmark size={HEADER_WORDMARK_SIZE} color="$textPrimary" />
-      <YStack flex={1} />
+      <XStack
+        flex={1}
+        minWidth={0}
+        alignItems="center"
+        gap={HEADER_LOCKUP_GAP * scale}
+        onLayout={(event) => {
+          setScale(Math.min(1, event.nativeEvent.layout.width / HEADER_LOCKUP_WIDTH))
+        }}
+      >
+        <OnboardingMark size={HEADER_MARK_SIZE * scale} />
+        <SessionWordmark size={HEADER_WORDMARK_SIZE * scale} color="$textPrimary" />
+      </XStack>
       {/* One group of three, at the 8 the designs give them. */}
       <XStack alignItems="center" gap="$xs">
         <LanguageButton />
