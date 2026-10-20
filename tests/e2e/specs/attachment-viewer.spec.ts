@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test'
 import { ELEMENT } from '@session/test-ids'
 
-import { openFirstConversation } from '../harness/attachments'
+import { downloadFromRow, openFirstConversation } from '../harness/attachments'
 import { DesktopApp } from '../harness/DesktopApp'
+import { SEEDED_LIST } from '../harness/fixtures'
 import type { ISessionApp } from '../harness/ISessionApp'
 import { sessionTest } from '../harness/sessionTest'
 
@@ -67,4 +68,30 @@ test('centres the chevrons on the picture', async () => {
   } finally {
     await app.close()
   }
+})
+
+/**
+ * A picture's row opens it once it is here, as its thumbnail does, and fetches it before. Its
+ * control still exports it, so the row is the only thing that changed meaning.
+ */
+sessionTest({
+  title: 'opens a downloaded picture from its row',
+  risk: 'medium',
+  clients: { alice: 'desktop' },
+  run: async ({ alice }) => {
+    if (!alice) throw new Error('the harness did not open alice')
+
+    await openFirstConversation(alice)
+    const at = await downloadFromRow(alice, SEEDED_LIST[0])
+
+    await alice.tapAt(ELEMENT.conversation.attachmentName, at)
+    await alice.waitForVisible(ELEMENT.conversation.mediaViewer)
+    await alice.screenshot('attachment-row-opens-viewer-desktop')
+
+    await alice.tap(ELEMENT.conversation.mediaViewerClose)
+    await expect
+      .poll(async () => alice.isVisible(ELEMENT.conversation.mediaViewer), { timeout: 5_000 })
+      .toBe(false)
+    expect(await alice.isVisible(ELEMENT.conversation.attachmentExport)).toBe(true)
+  },
 })

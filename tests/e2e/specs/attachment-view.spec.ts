@@ -35,6 +35,7 @@ sessionTest({
 
     // Each footer offers only the view it is not showing: the album offers the list.
     expect(await alice.count(ELEMENT.conversation.attachmentViewList)).toBe(1)
+    expect(await alice.count(ELEMENT.conversation.attachmentViewGallery)).toBe(0)
 
     const before = await alice.readAllText(ELEMENT.conversation.attachmentName)
     expect(before.slice(0, SEEDED_LIST.length)).toEqual(SEEDED_LIST)
@@ -48,6 +49,7 @@ sessionTest({
         { timeout: 5_000 },
       )
       .toEqual(expected)
+    expect(await alice.count(ELEMENT.conversation.attachmentViewGallery)).toBe(1)
 
     await alice.screenshot('attachment-view-list-desktop')
   },
