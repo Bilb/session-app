@@ -22,6 +22,11 @@ export const ELEMENT = {
     rowName: 'conversation-row-name',
     rowSnippet: 'conversation-row-snippet',
     rowUnreadBadge: 'conversation-row-unread',
+    rowMarkedUnread: 'conversation-row-marked-unread',
+    rowUnreadStrip: 'conversation-row-unread-strip',
+    rowTime: 'conversation-row-time',
+    rowPinned: 'conversation-row-pinned',
+    rowMuted: 'conversation-row-muted',
     empty: 'conversation-list-empty',
   },
   conversation: {
