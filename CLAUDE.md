@@ -86,13 +86,15 @@ reference: the tablet layout will catch most of a phone layout's mistakes.
 
 ## Tests required, in the same PR
 
-| change            | test                                              |
-| ----------------- | ------------------------------------------------- |
-| bridge capability | contract scenario + fake update + echo-frame case |
-| screen            | route-contract row + fast-tier e2e smoke          |
-| ui component      | render test                                       |
-| state projection  | reducer unit test                                 |
-| bug fix           | the test that would have caught it                |
+| change            | test                                                       |
+| ----------------- | ---------------------------------------------------------- |
+| bridge capability | contract scenario + fake update + echo-frame case          |
+| screen            | route-contract row + fast-tier e2e smoke                   |
+| ui component      | render test (`*.test.tsx`) against `@session/expectations` |
+| state projection  | reducer unit test                                          |
+| bug fix           | the test that would have caught it                         |
+
+No source greps: assert what is drawn, never what a file contains.
 
 **Tests live in `tests/`, never in `src/`.** Every package puts them in its own
 `packages/<pkg>/tests/`, mirroring the `src/` path they cover -

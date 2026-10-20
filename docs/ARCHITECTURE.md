@@ -266,11 +266,23 @@ arriving from a message body is the unencoded form, which is the case that matte
 
 ## Testing
 
-| tier     | what                                                  | when                         |
-| -------- | ----------------------------------------------------- | ---------------------------- |
-| unit     | projections, route contracts, the generator, the fake | every push                   |
-| fast e2e | the Electron app on the fake, no network              | `e2e-fast` workflow, by hand |
-| full e2e | real bindings, devnet, device pool                    | `e2e-full` workflow, by hand |
+| tier     | what                                                               | when                         |
+| -------- | ------------------------------------------------------------------ | ---------------------------- |
+| unit     | `*.test.ts`: projections, route contracts, the generator, fake     | every push                   |
+| render   | `*.test.tsx`: components drawn through react-native-web, happy-dom | every push                   |
+| fast e2e | the Electron app on the fake, no network                           | `e2e-fast` workflow, by hand |
+| full e2e | real bindings, devnet, device pool                                 | `e2e-full` workflow, by hand |
+
+A package with render tests runs vitest as two projects, `unit` and `render`
+(`@session/render-tier/vitest`).
+
+**What a control is, written once.** `@session/expectations` says what each control is to a
+screen reader and a driver (role, name, hint, disabled, busy, focusable) per state, with a
+`desktop` and a `native` side; `null` on a side means absent on purpose. Render tests assert it.
+
+**No source greps.** A test asserts what is drawn, never what a file contains.
+`packages/ui/tests/nativeOnly.contract.test.ts` keeps what only a native tree shows and no driver
+reads, each with the reason.
 
 `tests/e2e/harness/ISessionApp.ts` is the platform-neutral driver interface. Its rule: every
 member takes and returns primitives, enums or plain data - no Playwright `Locator`, no Appium
