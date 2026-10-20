@@ -1,11 +1,12 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 
 /**
- * The zoom levels View → Zoom In and Zoom Out step through: the browser's own, from half size to
- * twice. Steps rather than a fixed increment, because the useful levels bunch up near 100%. The
- * range is the current desktop client's, which offers 50% to 200%.
+ * The zoom levels View → Zoom In and Zoom Out step through, and what a picker would list: 10% steps
+ * from 50% to 150%, then 175% and 200%. Round numbers read as settings where the browser's own
+ * steps (67%, 125%) look arbitrary in a list, and the wider steps at the top keep the largest sizes
+ * a couple of presses away. The range is the current desktop client's, 50% to 200%.
  */
-export const ZOOM_LEVELS = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2] as const
+export const ZOOM_LEVELS = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.75, 2] as const
 
 /** One step in or out, or back to the default. */
 export type ZoomStep = 'in' | 'out' | 'reset'
