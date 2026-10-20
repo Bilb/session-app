@@ -2,15 +2,25 @@ import { test as base } from '@playwright/test'
 
 import { DesktopApp } from './DesktopApp'
 import type { ISessionApp } from './ISessionApp'
+import { MobileApp } from './MobileApp'
 
-type Platform = 'desktop' | 'android' | 'ios'
+type Platform = ISessionApp['platform']
+
+/** A client that runs on each of these in turn, one generated test per platform. */
+export const EACH = 'each'
+const PLATFORMS: readonly Platform[] = ['desktop', 'android', 'ios']
 
 export interface SessionTestOptions {
   title: string
   /** How much it matters if this breaks. The tag it produces is what CI shards on. */
   risk: 'high' | 'medium' | 'low'
-  /** One client per entry; the platforms decide which tests get generated. */
-  clients: Record<string, Platform>
+  /**
+   * One client per entry; the platforms decide which tests get generated. `EACH` puts that client
+   * on every platform in turn, the same one for all such clients in a test.
+   */
+  clients: Record<string, Platform | typeof EACH>
+  /** Over the variables every launch sets: a fixture, say. */
+  env?: Record<string, string> | undefined
   run: (apps: Record<string, ISessionApp>) => Promise<void>
 }
 
@@ -24,7 +34,27 @@ export interface SessionTestOptions {
  * This is also the only place that opens and closes clients. A spec that opened its own
  * would be a spec that leaks one when an assertion fails halfway.
  */
-export function sessionTest({ title, risk, clients, run }: SessionTestOptions): void {
+export function sessionTest({ title, risk, clients, env, run }: SessionTestOptions): void {
+  // Without EACH a round changes nothing, so one is declared.
+  const rounds = Object.values(clients).includes(EACH) ? PLATFORMS : PLATFORMS.slice(0, 1)
+  for (const round of rounds) {
+    const resolved = Object.fromEntries(
+      Object.entries(clients).map(([identity, chosen]) => [
+        identity,
+        chosen === EACH ? round : chosen,
+      ]),
+    )
+    declare(title, risk, resolved, env, run)
+  }
+}
+
+function declare(
+  title: string,
+  risk: SessionTestOptions['risk'],
+  clients: Record<string, Platform>,
+  env: SessionTestOptions['env'],
+  run: SessionTestOptions['run'],
+): void {
   const platforms = [...new Set(Object.values(clients))]
   const scope = platforms.length > 1 ? 'cross-platform' : (platforms[0] ?? 'desktop')
   const count = Object.keys(clients).length
@@ -39,7 +69,7 @@ export function sessionTest({ title, risk, clients, run }: SessionTestOptions): 
       // siblings running with nobody holding a reference to close them.
       const results = await Promise.allSettled(
         Object.entries(clients).map(async ([identity, platform]) => {
-          const app = await open(platform, identity)
+          const app = await open(platform, identity, env)
           return [identity, app] as const
         }),
       )
@@ -65,14 +95,16 @@ export function sessionTest({ title, risk, clients, run }: SessionTestOptions): 
   })
 }
 
-function open(platform: Platform, identity: string): Promise<ISessionApp> {
+function open(
+  platform: Platform,
+  identity: string,
+  env: SessionTestOptions['env'],
+): Promise<ISessionApp> {
   switch (platform) {
     case 'desktop':
-      return DesktopApp.launch(identity)
+      return DesktopApp.launch(identity, { env })
     case 'android':
     case 'ios':
-      // The mobile drivers arrive with the Nitro bridge; the interface they will implement
-      // is already the one the specs are written against.
-      return Promise.reject(new Error(`The ${platform} driver is not implemented yet`))
+      return MobileApp.launch(platform, identity, { env })
   }
 }
