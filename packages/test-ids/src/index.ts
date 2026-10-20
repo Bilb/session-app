@@ -52,6 +52,7 @@ export const ELEMENT = {
     attachmentSheet: 'message-attachment-sheet',
     attachmentSheetClose: 'message-attachment-sheet-close',
     attachmentSheetScrim: 'message-attachment-sheet-scrim',
+    attachmentSheetList: 'message-attachment-sheet-list',
     mediaViewer: 'media-viewer',
     mediaViewerClose: 'media-viewer-close',
     mediaViewerExport: 'media-viewer-export',
