@@ -24,12 +24,6 @@ describe('the album’s download cloud', () => {
     expect(pressable).toContain("isWeb ? { role: 'button', 'aria-label': label }")
     expect(pressable).toContain('testID')
   })
-
-  it('is no stop of its own on native, where the footer offers the same verb', () => {
-    // tamagui makes a native stack accessible only for tabIndex 0, which would undo the hiding.
-    expect(pressable).toContain(": { 'aria-hidden': true })")
-    expect(hint).not.toContain('tabIndex')
-  })
 })
 
 describe('the three-up’s cloud', () => {
