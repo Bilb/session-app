@@ -143,7 +143,10 @@ export function OnboardingStepBody({
           <XStack alignItems="center" gap="$sm" minHeight={34}>
             {/* 26/700, from the designs -- and the desktop client agrees: its `OnboardHeading` is
               an h3 at `--font-size-h4`, which is 26px. */}
+            {/* Shrinks, so a title that wraps does so beside the mark rather than pushing it out of
+                the row. */}
             <Text
+              flexShrink={1}
               size="$headingLarge"
               weight="bold"
               userSelect="none"

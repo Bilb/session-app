@@ -14,6 +14,12 @@ export type { SlidePagerProps }
  */
 const DURATION_MS = 250
 
+/** A page laid over the pager's box, which is how every page slides. */
+const OVER = { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 } as const
+
+/** The page showing, when it is the one that sets the pager's height. See `fitsPage`. */
+const IN_PLACE = { position: 'relative' } as const
+
 /**
  * The pages of a tabbed screen, laid side by side and slid across.
  *
@@ -26,7 +32,13 @@ const DURATION_MS = 250
  * there after a look at the other tab, and it is why the pages are positioned rather than swapped:
  * a page taken out of the tree loses everything it was holding.
  */
-export function SlidePager({ index, instant = false, clip = false, children }: SlidePagerProps) {
+export function SlidePager({
+  index,
+  instant = false,
+  clip = false,
+  fitsPage = false,
+  children,
+}: SlidePagerProps) {
   /**
    * The pager's own width, which is how far a page travels.
    *
@@ -69,11 +81,7 @@ export function SlidePager({ index, instant = false, clip = false, children }: S
           // The pages are a fixed list in source order, so their position is what identifies them.
           key={String(at_)}
           style={{
-            position: 'absolute',
-            top: 0,
-            right: 0,
-            bottom: 0,
-            left: 0,
+            ...(fitsPage && at_ === index ? IN_PLACE : OVER),
             transform: [
               {
                 // Mirrored, because a transform is not. The next page arrives from the trailing
