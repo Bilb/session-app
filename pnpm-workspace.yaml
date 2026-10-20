@@ -10,6 +10,9 @@ catalog:
   '@playwright/test': 1.62.1
   '@tamagui/babel-plugin': 2.7.7
   '@tamagui/lucide-icons-2': 2.7.7
+  '@testing-library/dom': 10.4.2
+  '@testing-library/react': 16.3.3
+  '@testing-library/user-event': 14.6.7
   '@types/node': 22.20.1
   '@types/react': 19.2.18
   '@types/react-dom': 19.2.7
@@ -17,6 +20,7 @@ catalog:
   babel-plugin-react-remove-properties: 0.3.1
   cmake-js: 8.0.0
   dependency-cruiser: 18.2.0
+  dom-accessibility-api: 0.7.1
   electron: 44.1.1
   electron-vite: 5.0.0
   eslint: 10.9.1
@@ -39,6 +43,7 @@ catalog:
   expo-secure-store: ~57.0.1
   expo-sharing: ~57.0.17
   expo-splash-screen: ~57.0.8
+  happy-dom: 20.14.5
   jpeg-js: 0.4.4
   knip: 6.34.0
   nitrogen: 0.37.1
