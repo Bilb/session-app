@@ -1,9 +1,10 @@
 import { INTERACTION_OPACITY } from '@session/theme-tokens'
 import type { ComponentProps, ReactNode } from 'react'
-import { Spinner, styled, XStack, YStack } from 'tamagui'
+import { isWeb, Spinner, styled, XStack, YStack } from 'tamagui'
 
 import { INHERITED_LABEL } from './labelColor'
 import { hitSlopFor } from './buttonHitTarget'
+import type { FocusRingShape } from './keyboardPress'
 import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import { PressArea } from './PressArea'
 import { Concealed } from './Concealed'
@@ -40,6 +41,7 @@ const PRESS_STYLE = {
   ghost: { backgroundColor: '$pressedOverlay' },
   ghostAccent: { backgroundColor: '$pressedOverlay' },
   simple: { opacity: INTERACTION_OPACITY.dimPressed },
+  tonal: { opacity: 0.7 },
   danger: {
     backgroundColor: '$dangerColor',
     borderColor: '$dangerColor',
@@ -50,7 +52,6 @@ const PRESS_STYLE = {
 
 const Frame = styled(XStack, {
   name: 'Button',
-  role: 'button',
   alignItems: 'center',
   justifyContent: 'center',
   gap: '$xs',
@@ -153,6 +154,21 @@ const Frame = styled(XStack, {
         hoverStyle: { opacity: INTERACTION_OPACITY.dimHover },
         pressStyle: PRESS_STYLE.simple,
       },
+      /**
+       * A quiet fill: the nested surface under a plain label, in a rounded rect rather than a pill.
+       *
+       * Legacy iOS's non-primary rounded rect, for a control among content -- an attachment's
+       * Download -- where a bare label does not read as something to press and an outline is louder
+       * than what it sits in. The nested surface steps off both message bubbles in every theme.
+       */
+      tonal: {
+        backgroundColor: '$backgroundNested',
+        borderColor: '$backgroundNested',
+        borderRadius: '$sm',
+        color: '$textPrimary',
+        hoverStyle: { opacity: 0.8 },
+        pressStyle: PRESS_STYLE.tonal,
+      },
       /** Danger text on a transparent ground, filling on hover. The table's destructive row. */
       danger: {
         backgroundColor: 'transparent',
@@ -243,6 +259,7 @@ const PRESSED = {
   ghost: PRESS_STYLE.ghost,
   ghostAccent: PRESS_STYLE.ghostAccent,
   simple: PRESS_STYLE.simple,
+  tonal: PRESS_STYLE.tonal,
   danger: withoutColor(PRESS_STYLE.danger),
 } as const
 
@@ -269,6 +286,7 @@ const LABEL_TONE = {
   ghost: '$textPrimary',
   ghostAccent: '$primaryColor',
   simple: '$textPrimary',
+  tonal: '$textPrimary',
   danger: '$dangerColor',
 } as const
 
@@ -286,12 +304,24 @@ const PRESSED_LABEL: Partial<Record<keyof typeof LABEL_TONE, string>> = {
   danger: '$onDanger',
 }
 
+/** On the web the `PressArea` round the frame is the button; a second role inside it is noise. */
+const FRAME_ROLE = isWeb ? {} : ({ role: 'button' } as const)
+
+/** Outside the frame, so the ring reads against a fill in the ring's own colour. */
+const RING_OFFSET = 2
+
+/** A cell shares its edges with what holds it, which would clip a ring drawn outside it. */
+const CELL_RING_OFFSET = -2
+
 export interface ButtonProps {
   children?: ReactNode
   onPress?: () => void
   variant?: keyof typeof LABEL_TONE
   size?: 'xs' | 'sm' | 'md' | 'lg'
-  /** For an icon on its own: equal width and height, so the full radius is a circle. */
+  /**
+   * For an icon on its own: equal width and height, so a full radius draws a circle and `tonal`'s
+   * rounded rect a rounded square.
+   */
   circular?: boolean
   /** Takes an equal share of the row it is in. What a dialog's actions do. */
   fill?: boolean
@@ -314,6 +344,11 @@ export interface ButtonProps {
    */
   borderRadius?: ComponentProps<typeof Frame>['borderRadius']
   /**
+   * Overrides how far the touch target reaches past each side, which is otherwise just enough to
+   * reach `MIN_HIT_TARGET`. For a button in a row that offers more, so the whole row takes the tap.
+   */
+  hitSlop?: number | undefined
+  /**
    * Colour the label danger without filling the button.
    *
    * Every destructive action in a modal is drawn this way in the desktop client -- red text beside
@@ -321,6 +356,11 @@ export interface ButtonProps {
    * because it is the one that looks like a primary action.
    */
   destructive?: boolean
+  /**
+   * Drawn on an accent fill, a bubble you sent. Only the web focus ring reads it, since the
+   * ring falls on the fill round the button.
+   */
+  onAccent?: boolean | undefined
   disabled?: boolean
   loading?: boolean
   icon?: ReactNode
@@ -356,6 +396,8 @@ export function Button({
   fill = false,
   paddingHorizontal,
   borderRadius,
+  hitSlop,
+  onAccent = false,
   icon,
   accessibilityLabel,
   testID,
@@ -385,7 +427,6 @@ export function Button({
   const pressedLabel =
     destructive && !INVERTS_ON_PRESS.has(variant) ? '$dangerColor' : PRESSED_LABEL[variant]
 
-  const hitSlop = hitSlopFor(size)
   const inert = disabled || loading
   /**
    * The name a screen reader gives the button. While loading the label is hidden, and Android
@@ -395,14 +436,20 @@ export function Button({
   const name =
     accessibilityLabel ?? (loading && typeof children === 'string' ? children : undefined)
 
+  const ring: FocusRingShape =
+    borderRadius === undefined
+      ? { onAccent, offset: RING_OFFSET, radius: variant === 'tonal' ? '$sm' : '$full' }
+      : { onAccent, offset: CELL_RING_OFFSET, radius: 0 }
+
   return (
     <PressArea
       fill={fill}
+      ring={ring}
       {...(inert || onPress === undefined ? {} : { onPress })}
       disabled={inert}
       // Grown outwards rather than drawn larger: the control keeps the size the designs give it and
       // the target reaches the floor. Ignored on the web, where a pointer does not need it.
-      hitSlop={hitSlop}
+      hitSlop={hitSlop ?? hitSlopFor(size)}
       {...(name === undefined ? {} : { accessibilityLabel: name })}
       busy={loading}
       {...(testID === undefined ? {} : { testID })}
@@ -413,6 +460,7 @@ export function Button({
           // spinner's absolute offsets would otherwise resolve against the page.
           position="relative"
           {...(fill ? { flex: 1 } : {})}
+          {...FRAME_ROLE}
           variant={variant}
           size={size}
           circular={circular}

@@ -2,11 +2,21 @@ import type { ConversationId, Message } from '@session/client'
 import { useConversation, useMessage, useMessages, useSessionActions } from '@session/state'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Input, List, Screen, Separator, Text, XStack, YStack } from '@session/ui'
+import {
+  Button,
+  Input,
+  List,
+  ON_ACCENT_SECONDARY_OPACITY,
+  Screen,
+  Separator,
+  Text,
+  XStack,
+  YStack,
+} from '@session/ui'
 import { memo, useMemo, useState } from 'react'
 
 import { AttachmentSheet } from './AttachmentSheet'
-import type { AttachmentView } from './attachmentView'
+import { createViewChoices } from './viewChoices'
 import { ConversationUiContext, type ConversationUi } from './conversationUi'
 import { MessageAttachments } from './MessageAttachments'
 import { MessageMediaViewer, type ViewerTarget } from './MessageMediaViewer'
@@ -94,13 +104,11 @@ const MessageRow = memo(function MessageRow({
       {message.attachments.length === 0 ? null : <MessageAttachments message={message} />}
       {label === undefined ? null : (
         <XStack alignItems="center" gap="$xs">
-          {/* On the fill, not on the page: a label only ever appears on an outgoing message, so a
-              text tone would be green on green. 0.85 is the floor -- see THEMING.md on dimming an
-              on-colour. */}
+          {/* On the fill, not on the page: a label only ever appears on an outgoing message. */}
           <Text
             size="$caption"
             color="$onAccent"
-            opacity={0.85}
+            opacity={ON_ACCENT_SECONDARY_OPACITY}
             testID={ELEMENT.conversation.messageState}
           >
             {label}
@@ -148,7 +156,7 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
    * itself the moment somebody scrolls down and back. Dropped with the conversation, which is the
    * right scope - it is a way of reading one message, not a setting.
    */
-  const [views, setViews] = useState<Record<number, AttachmentView>>({})
+  const [views] = useState(createViewChoices)
   // One viewer and one sheet for the whole transcript, so two can never be open at once.
   const [viewer, setViewer] = useState<ViewerTarget | null>(null)
   const [sheet, setSheet] = useState<number | null>(null)
@@ -157,14 +165,10 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
   const ui = useMemo(
     (): ConversationUi => ({
       conversationId,
-      autoDownload,
       requestAutoDownloadPrompt: () => {
         if (autoDownload === undefined) setPrompting(true)
       },
-      viewFor: (messageId) => views[messageId],
-      chooseView: (messageId, view) => {
-        setViews((all) => ({ ...all, [messageId]: view }))
-      },
+      views,
       openViewer: (messageId, index) => {
         setViewer({ messageId, index })
       },

@@ -11,13 +11,12 @@ import {
   parseNetworkName,
   parseLogSpec,
   parseRouterKind,
+  thumbnailEdgePxFor,
 } from '@session/basic-types'
-import type { BridgeTransport } from '@session/client'
+import type { BridgeTransport, MediaSource } from '@session/client'
 import type { NetworkSettings } from '@session/logging'
 
-import type { MediaSource } from './media'
-
-const { app, safeStorage } = electron
+const { app, safeStorage, screen } = electron
 
 /**
  * The database key.
@@ -177,6 +176,11 @@ export async function createBridge(): Promise<BridgeTransport & MediaSource> {
     // only way to exercise a transport we ship on a network that has it.
     ...(router === undefined ? {} : { router }),
     deviceType: 'desktop',
+    // The densest connected display's, since thumbnails are never remade: one made too small stays
+    // soft, one made too large only costs memory. A stored edge (setThumbnailEdge) wins over this.
+    thumbnailEdgePx: thumbnailEdgePxFor(
+      screen.getAllDisplays().map((display) => display.scaleFactor),
+    ),
     // Off unless asked for: it is chatty at anything below warn, and the reason to turn it up is
     // always a specific failure. `warn,network=debug` is what a diagnosis looks like - a flat
     // `debug` buries it under quic and the router.
