@@ -13,7 +13,7 @@ async function openViewer(app: ISessionApp): Promise<void> {
   await app.waitForVisible(ELEMENT.conversation.autoDownloadPrompt)
   await app.tap(ELEMENT.conversation.autoDownloadNo)
   await app.waitForVisible(ELEMENT.conversation.attachmentImage)
-  await app.tap(ELEMENT.conversation.attachmentTile)
+  await app.tap(ELEMENT.conversation.attachmentImage)
   await app.waitForVisible(ELEMENT.conversation.mediaViewer)
 }
 
