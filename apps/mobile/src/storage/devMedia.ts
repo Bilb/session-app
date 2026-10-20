@@ -27,5 +27,5 @@ export async function readPushedPhoto(uri: string): Promise<Uint8Array> {
 export function writeFakeExport(path: string, source: ExportSource): void {
   const target = new File(fileUri(path))
   if ('photo' in source) new File(source.photo).copySync(target)
-  else target.write(source.text)
+  else target.writeSync(source.text)
 }

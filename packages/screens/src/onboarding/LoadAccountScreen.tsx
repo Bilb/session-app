@@ -9,6 +9,7 @@ import {
   RecoveryPasswordMark,
   SlidePager,
   TopTabs,
+  useFontScale,
   useMedia,
   XStack,
   YStack,
@@ -66,6 +67,11 @@ export function LoadAccountScreen({
   // Null where no platform put a camera in the tree, which is the desktop app today.
   const scanning = useCamera() !== null
   const wide = useMedia().gtSm
+  const fontScale = useFontScale()
+  // Above the default text size the wide column scrolls rather than holding a fixed height (see
+  // `WideChrome`), and a pager only gives that scroll something to reach if it takes its height
+  // from the page showing.
+  const fitsPage = wide && fontScale > 1
   const [tab, setTab] = useState<'phrase' | 'qr'>('phrase')
   const [phrase, setPhrase] = useState('')
   const [revealed, setRevealed] = useState(false)
@@ -80,7 +86,9 @@ export function LoadAccountScreen({
   const phrasePane = (
     <PhrasePane
       padding={stepPadding}
-      onBack={onBack}
+      // Beside a camera the back control sits beside the pager (see below), so the pane draws none
+      // of its own: one hanging off a page would show when the page is swiped past its edge.
+      onBack={scanning ? undefined : onBack}
       backDisabled={backDisabled}
       busy={busy}
       rejected={rejected}
@@ -139,10 +147,19 @@ export function LoadAccountScreen({
           {/* One chrome and two panes rather than two screens: the bar, the title and the tabs
               stay put and only what is under them slides, which is what makes the indicator and
               the pane read as one movement. */}
-          <SlidePager index={tab === 'qr' ? 1 : 0} instant={cut} clip={wide}>
+          <SlidePager
+            index={tab === 'qr' ? 1 : 0}
+            onIndexChange={(page) => {
+              setTab(page === 1 ? 'qr' : 'phrase')
+            }}
+            instant={cut}
+            clip={wide}
+            fitsPage={fitsPage}
+          >
             {phrasePane}
             <ScanQrPane
               showing={tab === 'qr'}
+              fitsPage={fitsPage}
               onScan={(value) => {
                 // Handed over as it was read. Whether it decodes to a seed is libsession's to say,
                 // and its refusal comes back the same way a typed phrase's does.
@@ -162,7 +179,8 @@ export function LoadAccountScreen({
 interface PhrasePaneProps {
   /** The chrome's own step padding, which this pane applies because the chrome is told not to. */
   padding: ReturnType<typeof useStepPadding>
-  onBack: () => void
+  /** The wide design's back control, drawn by the pane only where nothing else draws one. */
+  onBack?: (() => void) | undefined
   backDisabled: boolean
   busy: boolean
   rejected: boolean

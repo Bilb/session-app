@@ -3,6 +3,13 @@ import type { ReactNode } from 'react'
 export interface SlidePagerProps {
   /** Which page is showing. Changing it slides. */
   index: number
+  /**
+   * The page the person swiped to, once it has settled.
+   *
+   * The tabs above follow the pager this way. Where nothing swipes -- the desktop app, which shows
+   * one page at a time -- it is never called.
+   */
+  onIndexChange?: ((index: number) => void) | undefined
   /** Cut rather than slide. See the `disableAnimations` flag. */
   instant?: boolean
   /**
@@ -17,6 +24,14 @@ export interface SlidePagerProps {
    * that too. Whoever lays the pager out knows both facts and so decides.
    */
   clip?: boolean
+  /**
+   * Be as tall as its pages, rather than as tall as whatever lays the pager out.
+   *
+   * For a pager inside something that scrolls, which gives the pager no height to fill: without
+   * this the pages are clipped at the column's floor with nothing to scroll. The tallest page sets
+   * the height, so a page that only fills, like a camera preview, needs a height of its own.
+   */
+  fitsPage?: boolean
   /** One per page, in order. */
   children: ReactNode[]
 }

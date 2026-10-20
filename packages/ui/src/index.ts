@@ -15,6 +15,8 @@ export {
   SessionTokenLogo,
   SessionTokenMark,
   SessionWordmark,
+  sessionBrandWidth,
+  sessionWordmarkWidth,
   type MarkProps,
 } from './Brand'
 export { HeroImage } from './HeroImage'
@@ -25,6 +27,11 @@ export { Reveal } from './Reveal'
 export { ScannerFrame } from './ScannerFrame'
 export { textHeight } from './textHeight'
 export { useFontScale } from './useFontScale'
+export { EndPinnedScroll } from './EndPinnedScroll'
+export { GLYPH_MAX_SCALE, LABEL_MAX_SCALE, useGlyphScale } from './fontScaleCaps'
+export { FitText } from './FitText'
+export { setPageZoom, usePageZoom } from './pageZoom'
+export { ZoomCap } from './ZoomCap'
 export { useScreenInsets } from './screenInsets'
 export type { ScreenInsets } from './screenInsets.types'
 export { SlidePager } from './SlidePager'

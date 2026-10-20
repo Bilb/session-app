@@ -7,14 +7,24 @@ import {
   Icon,
   IconRing,
   KeyboardAvoiding,
+  LABEL_MAX_SCALE,
+  logical,
   SafeArea,
   Screen,
+  ScrollView,
   SessionWordmark,
+  SPACE_SCALE,
+  useFontScale,
+  usePageZoom,
   XStack,
   YStack,
+  ZoomCap,
 } from '@session/ui'
 
+import { useState } from 'react'
+
 import { LanguageButton } from '../LanguageButton'
+import { WIDE_BACK_OVERHANG } from './OnboardingBackButton'
 import { OnboardingMark } from './OnboardingMark'
 import {
   BANNER_GAP,
@@ -22,6 +32,8 @@ import {
   CONTENT_MIN_HEIGHT,
   FADE_MS,
   HEADER_HEIGHT,
+  HEADER_LOCKUP_GAP,
+  HEADER_LOCKUP_WIDTH,
   HEADER_MARK_SIZE,
   HEADER_WORDMARK_SIZE,
   RING_SIZE,
@@ -48,11 +60,36 @@ export function WideChrome({
   banner,
   fading,
 }: Pick<ChromeProps, 'children' | 'testID' | 'banner'> & { fading: number }) {
+  /**
+   * Above the default system text size, or zoomed in on desktop, the step grows past its reserve,
+   * so the reserve becomes a floor and the column scrolls: a fixed height spills the header off the
+   * top of the window and the step's action off the bottom, where nothing can reach them. At the
+   * default size and zoom it stays fixed.
+   */
+  const zoom = usePageZoom()
+  const grows = useFontScale() > 1 || zoom > 1
   const column = (
-    // Centred both ways in whatever is left, which is the rule the designs state.
-    <YStack flex={1} alignItems="center" justifyContent="center" padding="$xl">
+    // Centred both ways in whatever is left, which is the rule the designs state. Scrolling, it
+    // grows from its content rather than from nothing: the web's `flex: 1` starts at zero height,
+    // which would pin the column to the window and push what does not fit off both ends.
+    <YStack
+      {...(grows ? { flexGrow: 1, flexShrink: 0 } : { flex: 1 })}
+      alignItems="center"
+      justifyContent="center"
+      paddingVertical="$xl"
+      // Room for the back control that hangs off the column's leading side: zoomed in, the column
+      // fills the width and the scroll view around it clips anything past this padding. Only that
+      // side, so the header keeps the rest of the width for the lockup.
+      {...logical({
+        paddingStart: Math.max(SPACE_SCALE.xl, WIDE_BACK_OVERHANG),
+        paddingEnd: SPACE_SCALE.xl,
+      })}
+    >
       <YStack
         width={COLUMN_WIDTH}
+        // Narrower than its width where the desktop zoom leaves less room than that, rather than
+        // running off the side of the window.
+        maxWidth="100%"
         gap="$xl"
         // Room above, so the lockup sits where a step without a banner puts it. The step keeps its
         // whole reserve: the pager clips to it, so a block short of it loses the control at the
@@ -69,7 +106,7 @@ export function WideChrome({
           // a minimum its block grows to 424 and the centring lifts the header clear of where the
           // step before it drew the same header. Fixed, a taller step spills out of the bottom and
           // nothing above it moves.
-          height={CONTENT_MIN_HEIGHT}
+          {...(grows ? { minHeight: CONTENT_MIN_HEIGHT } : { height: CONTENT_MIN_HEIGHT })}
           opacity={fading}
           // No animation driver is configured, so the transition is declared directly. On
           // native this property is ignored and the step simply appears, which is the same
@@ -91,7 +128,8 @@ export function WideChrome({
       <XStack flex={1}>
         {/**
          * **The split is declared, not computed.** These properties state the rule where the
-         * frame is known: two fifths of it, and never more than `HERO_MAX_WIDTH`.
+         * frame is known: two fifths of it, and never more than `HERO_MAX_WIDTH` -- of the window,
+         * so divided by the desktop zoom, which scales content and not the split.
          *
          * Asking Yoga rather than asking the window is the point. A width computed in JS comes
          * from a `useWindowDimensions` snapshot, and during a rotation the frame is already
@@ -103,7 +141,7 @@ export function WideChrome({
           flexBasis={0}
           flexGrow={HERO_GROW}
           flexShrink={1}
-          maxWidth={HERO_MAX_WIDTH}
+          maxWidth={HERO_MAX_WIDTH / zoom}
           testID={ELEMENT.onboarding.hero}
         >
           <HeroImage />
@@ -123,7 +161,15 @@ export function WideChrome({
             is 0.4 x 398. A floor that never binds still changed the answer. */}
         <YStack flexBasis={0} flexGrow={COLUMN_GROW}>
           <SafeArea>
-            <KeyboardAvoiding>{column}</KeyboardAvoiding>
+            <KeyboardAvoiding>
+              {grows ? (
+                <ScrollView flex={1} contentContainerStyle={{ flexGrow: 1 }}>
+                  {column}
+                </ScrollView>
+              ) : (
+                column
+              )}
+            </KeyboardAvoiding>
           </SafeArea>
         </YStack>
       </XStack>
@@ -146,51 +192,69 @@ function OnboardingHeader() {
   // Confirmed before leaving, like every other link here. The desktop client routes its FAQ button
   // through the same dialog rather than opening the browser from the button.
   const open = useConfirmUrl()
+  /**
+   * The lockup's scale: its own size, or smaller to fill exactly the room left beside the
+   * controls. Zoomed in on desktop the controls grow and that room shrinks, and left to the row
+   * the artwork shrinks far further than it needs to, leaving a gap beside the language picker.
+   */
+  const [scale, setScale] = useState(1)
 
   return (
     <XStack alignItems="center" gap="$xs" height={HEADER_HEIGHT}>
-      <OnboardingMark size={HEADER_MARK_SIZE} />
-      <SessionWordmark size={HEADER_WORDMARK_SIZE} color="$textPrimary" />
-      <YStack flex={1} />
-      {/* One group of three, at the 8 the designs give them. */}
-      <XStack alignItems="center" gap="$xs">
-        <LanguageButton />
-        {/* Ghost, because `circleHelp` brings its own circle: a border here would draw a second
+      <XStack
+        flex={1}
+        minWidth={0}
+        alignItems="center"
+        gap={HEADER_LOCKUP_GAP * scale}
+        onLayout={(event) => {
+          setScale(Math.min(1, event.nativeEvent.layout.width / HEADER_LOCKUP_WIDTH))
+        }}
+      >
+        <OnboardingMark size={HEADER_MARK_SIZE * scale} />
+        <SessionWordmark size={HEADER_WORDMARK_SIZE * scale} color="$textPrimary" />
+      </XStack>
+      {/* One group of three, at the 8 the designs give them. Zoomed in, they stop growing where
+          labels do, which leaves the lockup beside them room to be read. */}
+      <ZoomCap maxScale={LABEL_MAX_SCALE}>
+        <XStack alignItems="center" gap="$xs">
+          <LanguageButton />
+          {/* Ghost, because `circleHelp` brings its own circle: a border here would draw a second
             ring around the first. The glyph is therefore the full control size, where the bordered
             one below has the border at that size and a smaller glyph inside it. */}
-        <Button
-          variant="ghost"
-          size="xs"
-          circular
-          accessibilityLabel={tr('helpFAQ')}
-          testID={ELEMENT.onboarding.faqLink}
-          onPress={() => {
-            open(URLS.faq)
-          }}
-          // An explicit number rather than a token, because the ring beside it has to be drawn at
-          // the same pixel size for the two circles to match -- and `IconRing` takes a number.
-          icon={<Icon name="circleHelp" size={RING_SIZE} color="$textPrimary" />}
-        />
-        {/* Ghost like its neighbour, with the ring drawn rather than bordered -- a CSS border is
+          <Button
+            variant="ghost"
+            size="xs"
+            circular
+            accessibilityLabel={tr('helpFAQ')}
+            testID={ELEMENT.onboarding.faqLink}
+            onPress={() => {
+              open(URLS.faq)
+            }}
+            // An explicit number rather than a token, because the ring beside it has to be drawn at
+            // the same pixel size for the two circles to match -- and `IconRing` takes a number.
+            icon={<Icon name="circleHelp" size={RING_SIZE} color="$textPrimary" />}
+          />
+          {/* Ghost like its neighbour, with the ring drawn rather than bordered -- a CSS border is
             visibly a different weight beside a glyph's own stroke. */}
-        <Button
-          variant="ghost"
-          size="xs"
-          circular
-          accessibilityLabel={tr('openPlatformWebsite', { platform: tr('appName') })}
-          testID={ELEMENT.onboarding.websiteLink}
-          onPress={() => {
-            open(URLS.website)
-          }}
-          icon={
-            <IconRing size={RING_SIZE} color="$textPrimary">
-              {/* A rung down from the ? glyph's own mark: inside a ring this size, 16 crowds the
+          <Button
+            variant="ghost"
+            size="xs"
+            circular
+            accessibilityLabel={tr('openPlatformWebsite', { platform: tr('appName') })}
+            testID={ELEMENT.onboarding.websiteLink}
+            onPress={() => {
+              open(URLS.website)
+            }}
+            icon={
+              <IconRing size={RING_SIZE} color="$textPrimary">
+                {/* A rung down from the ? glyph's own mark: inside a ring this size, 16 crowds the
                   stroke and 12 sits in it. */}
-              <Icon name="link" size="xs" color="$textPrimary" />
-            </IconRing>
-          }
-        />
-      </XStack>
+                <Icon name="link" size="xs" color="$textPrimary" />
+              </IconRing>
+            }
+          />
+        </XStack>
+      </ZoomCap>
     </XStack>
   )
 }

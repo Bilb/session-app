@@ -36,6 +36,12 @@ const BACK_GAP = SPACE_SCALE.xs
 const HEADING_INSET = SPACE_SCALE['2xs']
 
 /**
+ * How far the wide control hangs past the column's leading edge. Whatever holds the column keeps
+ * at least this much room beside it, or a scrolling container clips the control.
+ */
+export const WIDE_BACK_OVERHANG = BACK_WIDTH + BACK_GAP - HEADING_INSET
+
+/**
  * The same control, hung off the side of the wide column.
  *
  * The fixed height pins it to the heading's first line, so it stays level however many lines the

@@ -1,4 +1,4 @@
-import { Text, useMedia, XStack, YStack } from '@session/ui'
+import { LABEL_MAX_SCALE, ScrollView, Text, useMedia, XStack, YStack } from '@session/ui'
 import type { ReactNode } from 'react'
 
 import { WideBackButton } from './OnboardingBackButton'
@@ -27,7 +27,7 @@ interface OnboardingStepProps {
   description?: string
   /** Drawn beside the title. The recovery screen has one; nothing else does. */
   titleMark?: ReactNode
-  onBack?: () => void
+  onBack?: (() => void) | undefined
   /** Refuses back without taking the chevron away. See `ChromeProps`. */
   backDisabled?: boolean
   children: ReactNode
@@ -122,7 +122,7 @@ export function OnboardingStepBody({
 }: Omit<OnboardingStepProps, 'testID' | 'barTitle' | 'banner'>) {
   const wide = useMedia().gtSm
 
-  return (
+  const block = (
     <>
       {/**
        * **Centred, and pulled upward — not top-aligned.** The legacy client splits the free space
@@ -143,7 +143,15 @@ export function OnboardingStepBody({
           <XStack alignItems="center" gap="$sm" minHeight={34}>
             {/* 26/700, from the designs -- and the desktop client agrees: its `OnboardHeading` is
               an h3 at `--font-size-h4`, which is 26px. */}
-            <Text size="$headingLarge" weight="bold" userSelect="none">
+            {/* Shrinks, so a title that wraps does so beside the mark rather than pushing it out of
+                the row. */}
+            <Text
+              flexShrink={1}
+              size="$headingLarge"
+              weight="bold"
+              userSelect="none"
+              maxFontSizeMultiplier={LABEL_MAX_SCALE}
+            >
               {title}
             </Text>
             {titleMark}
@@ -175,6 +183,30 @@ export function OnboardingStepBody({
       </XStack>
       {/* Twice the weight of the spacer above, which is what leaves the block above centre. */}
       {wide ? null : <YStack flex={2} />}
+    </>
+  )
+
+  return (
+    <>
+      {wide ? (
+        block
+      ) : (
+        /**
+         * **Scrolls when it does not fit, and is centred as before when it does.** At a large
+         * system text size the title, the explanation and the field outgrow the screen, and
+         * without this the field and the action are pushed off it with no way back. The spacers
+         * inside keep the block above centre while there is room, since the content box grows to
+         * at least the region's height.
+         */
+        <ScrollView
+          flex={1}
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {block}
+        </ScrollView>
+      )}
       {wide ? null : (
         /**
          * **The action sits at the bottom of the screen, and that is also what makes the keyboard

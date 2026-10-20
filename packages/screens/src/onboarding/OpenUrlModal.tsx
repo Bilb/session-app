@@ -1,7 +1,7 @@
 import { openExternalUrl, requirePorts } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Modal, ScrollView, textHeight } from '@session/ui'
+import { Button, LABEL_MAX_SCALE, Modal, ScrollView, textHeight, useFontScale } from '@session/ui'
 import { useEffect, useRef } from 'react'
 
 import { LocalizedText } from '../LocalizedText'
@@ -32,6 +32,7 @@ interface OpenUrlModalProps {
  * all because the app is about to hand an address to another program.
  */
 export function OpenUrlModal({ url, onClose }: OpenUrlModalProps) {
+  const textScale = Math.min(Math.max(useFontScale(), 1), LABEL_MAX_SCALE)
   /**
    * The last address shown, kept after `url` goes null.
    *
@@ -88,13 +89,14 @@ export function OpenUrlModal({ url, onClose }: OpenUrlModalProps) {
         </>
       }
     >
-      <ScrollView maxHeight={MAX_URL_HEIGHT}>
+      <ScrollView maxHeight={MAX_URL_HEIGHT * textScale}>
         {/* The catalogue string carries the address in a bold run and two line breaks before it,
             so the question and the URL are one piece of copy rather than two stacked elements. */}
         <LocalizedText
           text={tr('urlOpenDescription', { url: url ?? shown.current })}
           size="$body"
           textAlign="center"
+          maxFontSizeMultiplier={LABEL_MAX_SCALE}
         />
       </ScrollView>
     </Modal>
