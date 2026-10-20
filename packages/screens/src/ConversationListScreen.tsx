@@ -5,6 +5,7 @@ import { formatConversationTime, tr, type ConversationTimeOptions } from '@sessi
 import { ELEMENT } from '@session/test-ids'
 import {
   Avatar,
+  FitText,
   GLYPH_MAX_SCALE,
   Icon,
   LABEL_MAX_SCALE,
@@ -380,18 +381,16 @@ function ConversationRow({
             // Held to half the line, and shrunk to fit past that rather than truncated: at a large
             // text size in a tablet's list column a full date took the whole line and left the
             // name no room at all. A label, so it also stops growing where labels do.
-            <Text
+            <FitText
               size="$label"
               tone={row.emphasised ? 'primary' : 'secondary'}
-              numberOfLines={1}
               flexShrink={0}
               maxWidth="50%"
-              adjustsFontSizeToFit
               maxFontSizeMultiplier={LABEL_MAX_SCALE}
               testID={ELEMENT.conversationList.rowTime}
             >
               {time}
-            </Text>
+            </FitText>
           )}
         </XStack>
 
