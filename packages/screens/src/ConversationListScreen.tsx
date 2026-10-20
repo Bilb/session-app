@@ -6,6 +6,7 @@ import { ELEMENT } from '@session/test-ids'
 import {
   Avatar,
   Icon,
+  LABEL_MAX_SCALE,
   List,
   logical,
   Screen,
@@ -343,10 +344,10 @@ function ConversationRow({
               <Icon name={row.kindGlyph} size="xs" color="$backgroundPrimary" />
             </XStack>
           )}
-          {/* The name is the only thing on the line that gives way: the time matters most, then the
-              icons, so both are held at their size and the name truncates first. Every item says
-              so explicitly, because the web's flexbox shrinks items by default where native does
-              not. `minWidth={0}` is what lets the name shrink below its text at all. */}
+          {/* The name is what gives way: the time matters most, then the icons, so both are held at
+              their size and the name truncates first. Every item says so explicitly, because the
+              web's flexbox shrinks items by default where native does not. `minWidth={0}` is what
+              lets the name shrink below its text at all. The time's own limit is below. */}
           <Text
             size="$bodyLarge"
             weight={row.emphasised ? 'bold' : 'semibold'}
@@ -381,11 +382,17 @@ function ConversationRow({
           ) : null}
           <XStack flexGrow={1} flexShrink={0} minWidth={TIME_GAP_MIN} />
           {time === null ? null : (
+            // Held to half the line, and shrunk to fit past that rather than truncated: at a large
+            // text size in a tablet's list column a full date took the whole line and left the
+            // name no room at all. A label, so it also stops growing where labels do.
             <Text
               size="$label"
               tone={row.emphasised ? 'primary' : 'secondary'}
               numberOfLines={1}
               flexShrink={0}
+              maxWidth="50%"
+              adjustsFontSizeToFit
+              maxFontSizeMultiplier={LABEL_MAX_SCALE}
               testID={ELEMENT.conversationList.rowTime}
             >
               {time}
