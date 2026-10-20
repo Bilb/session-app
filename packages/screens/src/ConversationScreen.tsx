@@ -13,6 +13,7 @@ import { MessageMediaViewer, type ViewerTarget } from './MessageMediaViewer'
 import { AutoDownloadPrompt } from './AutoDownloadPrompt'
 import { BackButton } from './BackButton'
 import { conversationTitle } from './conversationTitle'
+import { useTopBarInsets } from './shell/pane'
 
 /**
  * What a send state is called on screen. Only the ones worth showing say anything.
@@ -127,6 +128,7 @@ const MessageRow = memo(function MessageRow({
 })
 
 function Conversation({ conversationId }: { conversationId: ConversationId }) {
+  const topBarInsets = useTopBarInsets()
   const conversation = useConversation(conversationId)
   const { messages, ready } = useMessages(conversationId)
   const actions = useSessionActions()
@@ -194,6 +196,7 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
           gap="$sm"
           alignItems="center"
           testID={ELEMENT.conversation.header}
+          {...topBarInsets}
         >
           <BackButton testID={ELEMENT.conversation.back} />
           <Text
