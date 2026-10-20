@@ -1,4 +1,10 @@
-import { TOP_TABS_HEIGHT, useMedia } from '@session/ui'
+import {
+  sessionBrandWidth,
+  sessionWordmarkWidth,
+  SPACE_SCALE,
+  TOP_TABS_HEIGHT,
+  useMedia,
+} from '@session/ui'
 import { useEffect, useState } from 'react'
 
 /**
@@ -131,12 +137,13 @@ export const HEADER_MARK_SIZE = 26
 export const HEADER_WORDMARK_SIZE = 15
 
 /** Between the mark and the wordmark, the `$xs` the header's row sets. */
-export const HEADER_LOCKUP_GAP = 8
+export const HEADER_LOCKUP_GAP = SPACE_SCALE.xs
 
 /**
- * The lockup's width at those sizes, from the two pieces of artwork's own proportions: the mark is
- * 30 by 34 and the wordmark 766.2 by 102.3. The header scales the lockup down from here when the
- * room beside its controls is narrower -- see `OnboardingHeader`.
+ * The lockup's width at those sizes. The header scales the lockup down from here when the room
+ * beside its controls is narrower -- see `OnboardingHeader`.
  */
 export const HEADER_LOCKUP_WIDTH =
-  (HEADER_MARK_SIZE * 30) / 34 + HEADER_LOCKUP_GAP + (HEADER_WORDMARK_SIZE * 766.2) / 102.3
+  sessionBrandWidth(HEADER_MARK_SIZE) +
+  HEADER_LOCKUP_GAP +
+  sessionWordmarkWidth(HEADER_WORDMARK_SIZE)

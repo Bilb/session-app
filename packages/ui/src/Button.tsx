@@ -9,7 +9,7 @@ import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import { PressArea } from './PressArea'
 import { Concealed } from './Concealed'
 import { Text } from './Text'
-import { LABEL_MAX_SCALE } from './glyphScale'
+import { LABEL_MAX_SCALE } from './fontScaleCaps'
 
 /**
  * What each variant looks like while it is held down: the web's `pressStyle`, and on native the

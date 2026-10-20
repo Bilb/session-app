@@ -45,8 +45,8 @@ export function StepTransition({ path, instant = false, onBack, children }: Step
             contentStyle={styles.fill}
             // **Pinned to the stack's frame.** Left to the item's own `flex: 1`, the stack lays its
             // screens out one under another and only UIKit draws them over each other, so every
-            // measurement on a pushed step came back a screen height too low: the language picker
-            // opened off the bottom of the screen.
+            // measurement on a pushed step comes back a screen height too low, and anything placed
+            // from one -- the language picker -- opens off the bottom of the screen.
             style={StyleSheet.absoluteFill}
           >
             {top ? children : shown.current.get(key)}

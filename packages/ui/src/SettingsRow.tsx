@@ -18,7 +18,7 @@ import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import { SIZE_SCALE, SPACE_SCALE } from './scales'
 import { Text } from './Text'
 import { useFontScale } from './useFontScale'
-import { LABEL_MAX_SCALE, useGlyphScale } from './glyphScale'
+import { LABEL_MAX_SCALE, useGlyphScale } from './fontScaleCaps'
 
 /** A control's rung rather than a text line's: a row is a tap target. */
 const ROW_MIN_HEIGHT = SIZE_SCALE['4xl']

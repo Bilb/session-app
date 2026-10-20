@@ -194,7 +194,7 @@ export function OnboardingStepBody({
         /**
          * **Scrolls when it does not fit, and is centred as before when it does.** At a large
          * system text size the title, the explanation and the field outgrow the screen, and
-         * without this the field and the action were pushed off it with no way back. The spacers
+         * without this the field and the action are pushed off it with no way back. The spacers
          * inside keep the block above centre while there is room, since the content box grows to
          * at least the region's height.
          */

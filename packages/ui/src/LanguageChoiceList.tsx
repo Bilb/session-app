@@ -6,7 +6,7 @@ import { Icon } from './Icon'
 import { filterLanguages } from './languageFilter'
 import { Input } from './Input'
 import { Text } from './Text'
-import { GLYPH_MAX_SCALE, LABEL_MAX_SCALE } from './glyphScale'
+import { GLYPH_MAX_SCALE, LABEL_MAX_SCALE } from './fontScaleCaps'
 import type { LanguageChoice, LanguagePickerTestIDs } from './LanguagePicker.types'
 
 interface LanguageChoiceListProps {

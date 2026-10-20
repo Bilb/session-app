@@ -16,7 +16,7 @@ import { usePageZoom } from './pageZoom'
 export function useWindowSize(): { width: number; height: number } {
   const { width, height } = useWindowDimensions()
   // In the page's own units, which the desktop zoom scales: a size laid out inside the page from
-  // the window's raw pixels came out larger than the window by the zoom.
+  // the window's raw pixels comes out larger than the window by the zoom.
   const zoom = usePageZoom()
   return { width: width / zoom, height: height / zoom }
 }

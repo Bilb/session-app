@@ -5,7 +5,7 @@ import { useTheme, XStack, YStack } from 'tamagui'
 import { useBackdropBlur } from './backdropBlur'
 import { useThemeIsDark } from './UIProvider'
 import { Button } from './Button'
-import { LABEL_MAX_SCALE } from './glyphScale'
+import { LABEL_MAX_SCALE } from './fontScaleCaps'
 import { Icon } from './Icon'
 import { Text } from './Text'
 import { logical } from './logicalEdges'
@@ -210,8 +210,8 @@ interface AlertBoxProps {
  * The dialog without its window, so `Modal` and the modal stack draw the same alert.
  *
  * **No taller than its frame, whatever the text size.** The title row and the actions stay put and
- * the body scrolls between them: at the largest sizes a body that pushed the box past the screen
- * took the close control and the buttons off it, leaving nothing to answer the dialog with.
+ * the body scrolls between them: at the largest sizes a body that pushes the box past the screen
+ * takes the close control and the buttons with it, leaving nothing to answer the dialog with.
  */
 export function AlertBox({
   title,

@@ -379,8 +379,9 @@ function ConversationRow({
           <XStack flexGrow={1} flexShrink={0} minWidth={TIME_GAP_MIN} />
           {time === null ? null : (
             // Held to half the line, and shrunk to fit past that rather than truncated: at a large
-            // text size in a tablet's list column a full date took the whole line and left the
-            // name no room at all. A label, so it also stops growing where labels do.
+            // text size or zoom in a narrow list column a full date can be as wide as the whole
+            // line, and the name has to keep some of it. A label, so it stops growing where labels
+            // do.
             <FitText
               size="$label"
               tone={row.emphasised ? 'primary' : 'secondary'}

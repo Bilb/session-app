@@ -45,7 +45,7 @@ export function SessionInfo() {
       <PressArea testID={ELEMENT.settings.version} onPress={onVersionPress}>
         {() => (
           // Held at the label cap so it stays in proportion with the logo above it, which stops
-          // growing sooner; a version line three times its size read as unrelated to it.
+          // growing sooner; a version line three times its size reads as unrelated to it.
           <Text
             size="$label"
             tone="secondary"

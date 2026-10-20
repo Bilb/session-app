@@ -32,8 +32,8 @@ interface MeasurableNode {
 export function measureAnchor(node: unknown, onMeasured: (rect: AnchorRect | null) => void): void {
   const measurable = node as MeasurableNode | null
   // Both measurements answer in the window's pixels, and the panel is placed inside the page,
-  // whose pixels the desktop zoom has scaled: unscaled, a panel at 200% opened twice as far from
-  // the corner as its trigger, which was off the window.
+  // whose pixels the desktop zoom has scaled: unscaled, a panel at 200% would open twice as far
+  // from the corner as its trigger.
   const zoom = currentPageZoom()
   const unzoomed = (x: number, y: number, width: number, height: number): AnchorRect => ({
     x: x / zoom,

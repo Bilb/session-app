@@ -71,7 +71,7 @@ export function WideChrome({
   const column = (
     // Centred both ways in whatever is left, which is the rule the designs state. Scrolling, it
     // grows from its content rather than from nothing: the web's `flex: 1` starts at zero height,
-    // which pinned the column to the window and pushed what did not fit off both ends unreachable.
+    // which would pin the column to the window and push what does not fit off both ends.
     <YStack
       {...(grows ? { flexGrow: 1, flexShrink: 0 } : { flex: 1 })}
       alignItems="center"
@@ -195,7 +195,7 @@ function OnboardingHeader() {
   /**
    * The lockup's scale: its own size, or smaller to fill exactly the room left beside the
    * controls. Zoomed in on desktop the controls grow and that room shrinks, and left to the row
-   * the artwork shrank far further than it had to, leaving a wide gap beside the language picker.
+   * the artwork shrinks far further than it needs to, leaving a gap beside the language picker.
    */
   const [scale, setScale] = useState(1)
 

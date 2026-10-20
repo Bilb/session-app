@@ -226,7 +226,7 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
 
   // **The browser's zoom stays at 100%, and the page zooms its content.** See `appMenu.ts`. The
   // browser's is pinned on each load because Chromium remembers it per page, and a pinch or a
-  // zoom left over from an earlier build would otherwise shrink the CSS width again.
+  // remembered zoom would otherwise shrink the CSS width and flip the layout.
   window.webContents.setVisualZoomLevelLimits(1, 1).catch(() => undefined)
   window.webContents.on('dom-ready', () => {
     window.webContents.setZoomFactor(1)

@@ -87,7 +87,7 @@ export function LoadAccountScreen({
     <PhrasePane
       padding={stepPadding}
       // Beside a camera the back control sits beside the pager (see below), so the pane draws none
-      // of its own: one hanging off a page showed up when the page was swiped past its edge.
+      // of its own: one hanging off a page would show when the page is swiped past its edge.
       onBack={scanning ? undefined : onBack}
       backDisabled={backDisabled}
       busy={busy}

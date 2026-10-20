@@ -11,7 +11,7 @@ import { Button } from './Button'
 import { Icon } from './Icon'
 import { LanguageChoiceList } from './LanguageChoiceList'
 import { Text } from './Text'
-import { GLYPH_MAX_SCALE, LABEL_MAX_SCALE } from './glyphScale'
+import { GLYPH_MAX_SCALE, LABEL_MAX_SCALE } from './fontScaleCaps'
 import { useScreenInsets } from './screenInsets'
 import { useWindowSize } from './useWindowSize'
 import type { LanguagePickerProps } from './LanguagePicker.types'
@@ -19,11 +19,11 @@ import type { LanguagePickerProps } from './LanguagePicker.types'
 /** Wide enough for the longest language name, narrow enough for a phone. */
 const PANEL_WIDTH = 320
 /** The smallest gap worth keeping between the panel and the window's edge. */
-const MARGIN = 12
+const MARGIN = SPACING.sm
 /** Clear of the trigger, close enough to read as hanging from it. */
-const GAP = 6
+const GAP = SPACING.xs
 /** The margin when the panel covers the window rather than hanging from the trigger. */
-const COVER_MARGIN = 4
+const COVER_MARGIN = SPACING['2xs']
 
 /** Below this the panel is not worth opening downwards, and it flips above the trigger instead. */
 const MIN_PANEL_HEIGHT = 260
