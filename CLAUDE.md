@@ -95,6 +95,8 @@ reference: the tablet layout will catch most of a phone layout's mistakes.
 | bug fix           | the test that would have caught it                         |
 
 No source greps: assert what is drawn, never what a file contains.
+What only a phone shows goes in a shared spec with `clients: { alice: EACH }`, run by
+`pnpm --filter @session/e2e test:e2e:android` (or `:ios`).
 
 **Tests live in `tests/`, never in `src/`.** Every package puts them in its own
 `packages/<pkg>/tests/`, mirroring the `src/` path they cover -

@@ -271,6 +271,7 @@ arriving from a message body is the unencoded form, which is the case that matte
 | unit     | `*.test.ts`: projections, route contracts, the generator, fake     | every push                   |
 | render   | `*.test.tsx`: components drawn through react-native-web, happy-dom | every push                   |
 | fast e2e | the Electron app on the fake, no network                           | `e2e-fast` workflow, by hand |
+| device   | the same specs on an Android emulator and an iOS simulator, Appium | `e2e-mobile`, by hand        |
 | full e2e | real bindings, devnet, device pool                                 | `e2e-full` workflow, by hand |
 
 A package with render tests runs vitest as two projects, `unit` and `render`
@@ -290,16 +291,29 @@ member takes and returns primitives, enums or plain data - no Playwright `Locato
 element. Anything one platform cannot do belongs somewhere narrower until every platform can.
 `describe(id, at?)` reads one element as assistive technology does, as an `AccessibleNode`;
 `audit(scope?)` returns the platform checker's serious and critical findings, axe's on desktop.
+On iOS they are XCTest's `performAccessibilityAudit`'s, and on Android a rule set's over the tree
+(a stop says something, takes 48dp, and sits in no other stop); both phones also size targets
+from `bounds`.
 Desktop-only checks (focus, layout, CSS) use Playwright's own matchers on `DesktopApp.page`.
+
+`MobileApp` drives an installed debug build through Appium, finding elements by `testID` (Android's
+resource id, iOS's accessibility identifier) and reading them from the page source. It serves the
+bundle itself: Metro inlines every `EXPO_PUBLIC_` variable, so the fake, its fixture and the theme
+are chosen per bundle, and a launch with other values restarts Metro. It reads the devices from
+`SESSION_E2E_{ANDROID,IOS}_{PHONE,TABLET}`, Appium from `SESSION_E2E_APPIUM_URL` and Metro's
+port from `SESSION_E2E_METRO_PORT`; `.github/workflows/e2e-mobile.yml` is the whole setup.
 
 `EXPO_PUBLIC_SESSION_THEME` (and `EXPO_PUBLIC_SESSION_ACCENT`) draws one launch in a named theme
 over the stored choice, without saving it, on all three platforms. `themes.spec.ts` audits the
 `showcase` fixture in each theme at two widths and compares a few attachment controls with their
 baselines, which are in Git LFS: run `git lfs pull` before it.
+On each mobile platform it does the same on a phone and a tablet, against that platform's
+baselines.
 
 `sessionTest` is the only way to declare a test and the only thing that opens or closes a
 client. Its `clients` descriptor decides the platforms _and_ the tags, so a spec asking for two
 clients is tagged `@2-devices` without anyone writing it down.
+`EACH` runs a client on every platform in turn, and the Playwright project is chosen by the tag.
 
 **One id per element**, in `@session/test-ids`, used as the component's `testID` and as the test's
 selector. Verified: `testID` reaches the DOM as `data-testid` untouched through
