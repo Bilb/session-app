@@ -5,15 +5,11 @@ import {
   parseNetworkName,
   parseRouterKind,
 } from '@session/basic-types'
-import {
-  createRefusingTransport,
-  createSessionClient,
-  type BridgeTransport,
-  type FetchLike,
-} from '@session/client'
+import { createRefusingTransport, type BridgeTransport, type FetchLike } from '@session/client'
 import { createSessionStore } from '@session/state'
 import { Platform } from 'react-native'
 
+import { mobileClient } from './client'
 import { libsessionLog, storeLog, watchStore } from './logs'
 import { resolveDatabaseKey } from './storage/databaseKey'
 import { protectDatabase, sessionPaths } from './storage/roots'
@@ -130,7 +126,7 @@ async function openTransportOrRefusal(): Promise<BridgeTransport> {
 }
 
 export const storePromise = openTransportOrRefusal().then((transport) => {
-  const store = createSessionStore(createSessionClient(transport), {
+  const store = createSessionStore(mobileClient(transport), {
     attachmentCacheLimitBytes: ATTACHMENT_CACHE_LIMIT_BYTES,
     log: storeLog,
     libsessionLog,

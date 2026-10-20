@@ -25,6 +25,7 @@ catalog:
   eslint-plugin-pnpm: 1.9.1
   expo: ~57.0.19
   expo-blur: ~57.0.3
+  expo-build-properties: ~57.0.22
   expo-camera: ~57.0.4
   expo-clipboard: ~57.0.1
   expo-constants: ~57.0.17
@@ -33,6 +34,7 @@ catalog:
   expo-font: ~57.0.3
   expo-glass-effect: ~57.0.1
   expo-linking: ~57.0.9
+  expo-media-library: ~57.0.4
   expo-router: ~57.0.18
   expo-secure-store: ~57.0.1
   expo-sharing: ~57.0.17

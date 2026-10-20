@@ -41,6 +41,7 @@ export interface MediaViewerProps {
   nextLabel: string
   testID: ElementId
   closeTestID: ElementId
+  exportTestID: ElementId
 }
 
 function Control({
@@ -121,6 +122,7 @@ export function MediaViewer({
   nextLabel,
   testID,
   closeTestID,
+  exportTestID,
 }: MediaViewerProps) {
   const { width, height } = useWindowSize()
   const current = items[index]
@@ -144,7 +146,7 @@ export function MediaViewer({
           <Text size="$label" color="$textSecondary" flex={1}>
             {positionLabel}
           </Text>
-          <Control icon="download" label={exportLabel} onPress={onExport} />
+          <Control icon="download" label={exportLabel} onPress={onExport} testID={exportTestID} />
           <Control icon="ellipsis" label={moreLabel} onPress={onMore} />
         </XStack>
 

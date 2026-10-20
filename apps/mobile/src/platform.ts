@@ -6,6 +6,7 @@ import Constants from 'expo-constants'
 import * as Sharing from 'expo-sharing'
 import { Linking, Platform, Share } from 'react-native'
 
+import { exportFiles, sweepStagedExports } from './files'
 import { flagOverride } from './flagOverrides'
 import { endingRun, logDirectory, logFiles, logWriter, lowPowerRows, osName } from './logs'
 import { restartProcess, terminateProcess } from './processExit'
@@ -219,8 +220,12 @@ const ports = memoryPorts({
   },
 })
 
+sweepStagedExports()
+
 setPorts({
   ...ports,
+  // The pickers stay the memory ones until the composer can attach.
+  files: { ...ports.files, ...exportFiles },
   window: {
     ...ports.window,
     close: endingRun('quit', terminateProcess),
