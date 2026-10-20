@@ -2,7 +2,7 @@ import { XStack, YStack } from 'tamagui'
 
 import type { FocusRingShape } from './keyboardPress'
 import { PressArea } from './PressArea'
-import { Text } from './Text'
+import { FitText } from './FitText'
 import { LABEL_MAX_SCALE } from './glyphScale'
 import type { TopTabsProps } from './TopTabs.types'
 import { BAR_HEIGHT, INDICATOR_HEIGHT, INDICATOR_INSET, SLIDE_MS } from './topTabsMetrics'
@@ -51,15 +51,15 @@ export function TopTabs({ tabs, active, onChange, instant = false }: TopTabsProp
           >
             {() => (
               <YStack flex={1} alignItems="center" justifyContent="center">
-                <Text
+                <FitText
                   size="$bodyLarge"
                   weight="bold"
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
+                  // The tab's width rather than the label's, so a long label has a box to fit.
+                  maxWidth="100%"
                   maxFontSizeMultiplier={LABEL_MAX_SCALE}
                 >
                   {tab.label}
-                </Text>
+                </FitText>
               </YStack>
             )}
           </PressArea>
