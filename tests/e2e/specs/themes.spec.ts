@@ -73,8 +73,10 @@ const KNOWN_ISSUES: Partial<Record<ISessionApp['platform'], Readonly<Record<stri
   android: {
     'target-size conversation-back':
       'drawn at 32dp; its hitSlop reaches MIN_HIT_TARGET, 40, which is under 48 and not in the bounds',
-    'target-size message-attachment-view-list': 'the same: a Button drawn at 32dp',
-    'target-size message-attachment-action': 'the same: a Button drawn 32dp tall',
+    'target-size message-attachment-view-list':
+      "drawn at 32dp; its hitSlop fills the footer's 48 row, which the tree does not show",
+    'target-size message-attachment-action':
+      'the same: attachment-footer.spec.ts taps the row edges',
     'target-size message-attachment-show-all': 'a PressArea 32dp tall, with no hitSlop at all',
   },
   ios: {
@@ -82,8 +84,10 @@ const KNOWN_ISSUES: Partial<Record<ISessionApp['platform'], Readonly<Record<stri
       "a tile is named by its filename, which Apple's audit reads as no human-readable label",
     'target-size conversation-back':
       'drawn at 32pt; its hitSlop reaches MIN_HIT_TARGET, 40, which is under 44 and not in the bounds',
-    'target-size message-attachment-view-list': 'the same: a Button drawn at 32pt',
-    'target-size message-attachment-action': 'the same: a Button drawn 32pt tall',
+    'target-size message-attachment-view-list':
+      "drawn at 32pt; its hitSlop fills the footer's 48 row, which the tree does not show",
+    'target-size message-attachment-action':
+      'the same: attachment-footer.spec.ts taps the row edges',
     'target-size message-attachment-show-all': 'a PressArea 32pt tall, with no hitSlop at all',
   },
 }
