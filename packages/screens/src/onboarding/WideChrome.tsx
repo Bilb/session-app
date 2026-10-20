@@ -7,6 +7,7 @@ import {
   Icon,
   IconRing,
   KeyboardAvoiding,
+  LABEL_MAX_SCALE,
   logical,
   SafeArea,
   Screen,
@@ -17,6 +18,7 @@ import {
   usePageZoom,
   XStack,
   YStack,
+  ZoomCap,
 } from '@session/ui'
 
 import { useState } from 'react'
@@ -211,45 +213,48 @@ function OnboardingHeader() {
         <OnboardingMark size={HEADER_MARK_SIZE * scale} />
         <SessionWordmark size={HEADER_WORDMARK_SIZE * scale} color="$textPrimary" />
       </XStack>
-      {/* One group of three, at the 8 the designs give them. */}
-      <XStack alignItems="center" gap="$xs">
-        <LanguageButton />
-        {/* Ghost, because `circleHelp` brings its own circle: a border here would draw a second
+      {/* One group of three, at the 8 the designs give them. Zoomed in, they stop growing where
+          labels do, which leaves the lockup beside them room to be read. */}
+      <ZoomCap maxScale={LABEL_MAX_SCALE}>
+        <XStack alignItems="center" gap="$xs">
+          <LanguageButton />
+          {/* Ghost, because `circleHelp` brings its own circle: a border here would draw a second
             ring around the first. The glyph is therefore the full control size, where the bordered
             one below has the border at that size and a smaller glyph inside it. */}
-        <Button
-          variant="ghost"
-          size="xs"
-          circular
-          accessibilityLabel={tr('helpFAQ')}
-          testID={ELEMENT.onboarding.faqLink}
-          onPress={() => {
-            open(URLS.faq)
-          }}
-          // An explicit number rather than a token, because the ring beside it has to be drawn at
-          // the same pixel size for the two circles to match -- and `IconRing` takes a number.
-          icon={<Icon name="circleHelp" size={RING_SIZE} color="$textPrimary" />}
-        />
-        {/* Ghost like its neighbour, with the ring drawn rather than bordered -- a CSS border is
+          <Button
+            variant="ghost"
+            size="xs"
+            circular
+            accessibilityLabel={tr('helpFAQ')}
+            testID={ELEMENT.onboarding.faqLink}
+            onPress={() => {
+              open(URLS.faq)
+            }}
+            // An explicit number rather than a token, because the ring beside it has to be drawn at
+            // the same pixel size for the two circles to match -- and `IconRing` takes a number.
+            icon={<Icon name="circleHelp" size={RING_SIZE} color="$textPrimary" />}
+          />
+          {/* Ghost like its neighbour, with the ring drawn rather than bordered -- a CSS border is
             visibly a different weight beside a glyph's own stroke. */}
-        <Button
-          variant="ghost"
-          size="xs"
-          circular
-          accessibilityLabel={tr('openPlatformWebsite', { platform: tr('appName') })}
-          testID={ELEMENT.onboarding.websiteLink}
-          onPress={() => {
-            open(URLS.website)
-          }}
-          icon={
-            <IconRing size={RING_SIZE} color="$textPrimary">
-              {/* A rung down from the ? glyph's own mark: inside a ring this size, 16 crowds the
+          <Button
+            variant="ghost"
+            size="xs"
+            circular
+            accessibilityLabel={tr('openPlatformWebsite', { platform: tr('appName') })}
+            testID={ELEMENT.onboarding.websiteLink}
+            onPress={() => {
+              open(URLS.website)
+            }}
+            icon={
+              <IconRing size={RING_SIZE} color="$textPrimary">
+                {/* A rung down from the ? glyph's own mark: inside a ring this size, 16 crowds the
                   stroke and 12 sits in it. */}
-              <Icon name="link" size="xs" color="$textPrimary" />
-            </IconRing>
-          }
-        />
-      </XStack>
+                <Icon name="link" size="xs" color="$textPrimary" />
+              </IconRing>
+            }
+          />
+        </XStack>
+      </ZoomCap>
     </XStack>
   )
 }
