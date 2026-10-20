@@ -10,6 +10,7 @@ import {
   crowd,
   friendsWithAttachments,
   newcomer,
+  rowShowcase,
   showcase,
   unopenable,
 } from '@session/client/fake'
@@ -135,13 +136,18 @@ export function createFakeBridge(): BridgeTransport & MediaSource {
   const fresh = process.env['EXPO_PUBLIC_SESSION_NO_ACCOUNT'] === '1'
   // Every attachment shape in one conversation, for looking at rather than asserting on.
   const showing = process.env['SESSION_FAKE_SHOWCASE'] === '1'
+  // One conversation per state the conversation row draws. The name mobile reads, so one variable
+  // does this on both.
+  const rows = process.env['EXPO_PUBLIC_SESSION_FAKE_ROWS'] === '1'
   const { world, clients } = fresh
     ? newcomer()
-    : showing
-      ? showcase()
-      : peers > 0
-        ? crowd({ peers, history: Number(process.env['SESSION_FAKE_HISTORY'] ?? '1') })
-        : friendsWithAttachments(['Alice', 'Bob'], { history: 4 })
+    : rows
+      ? rowShowcase()
+      : showing
+        ? showcase()
+        : peers > 0
+          ? crowd({ peers, history: Number(process.env['SESSION_FAKE_HISTORY'] ?? '1') })
+          : friendsWithAttachments(['Alice', 'Bob'], { history: 4 })
   const alice = clients['Alice']
   if (!alice) throw new Error('the fixture did not produce a client')
 
