@@ -72,9 +72,15 @@ export interface MediaPort {
    *
    * A second URL rather than a second kind of value, so a placeholder reaches the screen by the
    * same route a picture does and nothing has to hold pixels to show one. Only worth asking for
-   * when `Attachment.hasPreview` says there is one.
+   * when `Attachment.hasThumbhash` says there is one.
    */
-  previewUrlFor(ref: AttachmentRef): string | null
+  thumbhashUrlFor(ref: AttachmentRef): string | null
+  /**
+   * The square JPEG libsession made of a picture it holds, which is what a tile draws: a viewer
+   * draws `urlFor`. Never a download, so only worth asking for when `Attachment.hasThumbnail`
+   * says there is one.
+   */
+  thumbnailUrlFor(ref: AttachmentRef): string | null
 }
 
 export interface MediaProbePort {

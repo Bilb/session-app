@@ -1,11 +1,15 @@
 import { XStack, YStack } from 'tamagui'
 
+import type { FocusRingShape } from './keyboardPress'
 import { PressArea } from './PressArea'
 import { Text } from './Text'
 import type { TopTabsProps } from './TopTabs.types'
 import { BAR_HEIGHT, INDICATOR_HEIGHT, INDICATOR_INSET, SLIDE_MS } from './topTabsMetrics'
 
 export type { TopTabsProps }
+
+/** Inside the tab, which shares its edges with its neighbours and the bar's border. */
+const TAB_RING: FocusRingShape = { onAccent: false, offset: -2, radius: '$sm' }
 
 /**
  * The bar of tabs across the top of a screen that has more than one way in.
@@ -37,6 +41,7 @@ export function TopTabs({ tabs, active, onChange, instant = false }: TopTabsProp
           <PressArea
             key={tab.key}
             fill
+            ring={TAB_RING}
             {...(tab.testID === undefined ? {} : { testID: tab.testID })}
             accessibilityLabel={tab.label}
             onPress={() => {

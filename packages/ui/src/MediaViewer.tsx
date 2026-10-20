@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Modal as NativeModal } from 'react-native'
 import { isWeb, XStack, YStack } from 'tamagui'
 
-import type { WithMediaKind } from '@session/basic-types'
 import type { ElementId } from '@session/test-ids'
 import { SPACING } from '@session/theme-tokens'
 
@@ -19,7 +18,7 @@ import { useWindowSize } from './useWindowSize'
 export type MediaViewerItem = {
   /** Null where this platform has no resolver for the bytes, which is a state, not a failure. */
   uri: string | null
-} & WithMediaKind
+}
 
 export interface MediaViewerProps {
   open: boolean
@@ -111,9 +110,7 @@ const HEADER_HEIGHT = isWeb ? SIZE_SCALE.xl + SPACING.sm : SIZE_SCALE['3xl']
  *
  * Deliberately the least ambitious thing that makes a gallery mean something. **No zoom of any
  * kind** - a pinch needs a gesture arbiter between the pager and the image, and getting that wrong
- * is worse than not having it. **No video playback**: a video opens the platform's own player, so
- * a pager that sometimes holds one would be two components pretending to be one. No swipe to
- * dismiss, no filmstrip, no editing.
+ * is worse than not having it. No swipe to dismiss, no filmstrip, no editing.
  *
  * The chevrons step through **one message's** previewable attachments, not the conversation's
  * media history, and they stop at the ends rather than wrapping - wrapping hides how many there

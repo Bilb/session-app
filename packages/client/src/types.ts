@@ -163,6 +163,13 @@ export interface SessionClient {
   setAttachmentCacheLimit(limitBytes?: number): Promise<void>
   /** How much disk the cached attachments occupy now, measured as the limit is. */
   getAttachmentCacheSize(): Promise<number>
+  /**
+   * The side of the square thumbnails libsession makes, in device pixels, clamped to 64 to 1024.
+   * Kept on this device, and undefined forgets it, back to the edge the bridge was opened with.
+   * Thumbnails already made keep the size they were made at.
+   */
+  getThumbnailEdge(): Promise<number>
+  setThumbnailEdge(edgePx?: number): Promise<void>
   /** Each config and the size of its dump, for an exported log's header; empty with no account. */
   getConfigSizes(): Promise<ConfigSize[]>
 
@@ -192,16 +199,22 @@ export interface AttachmentMedia {
  * Raw pixels rather than an encoded image, because the bridge is not the right place to pick a
  * format. Whatever serves the media scheme hands them to its platform's image pipeline.
  */
-export type AttachmentPreview = PixelSize & { rgba: Uint8Array }
+export type AttachmentThumbhash = PixelSize & { rgba: Uint8Array }
 
 /**
  * What answers a media URL: the addon, the Nitro bridge, or the fake.
  *
  * Beside the transport rather than on it, because the frame stream carries state and its ordering
  * is what makes a display bindable: a multi-megabyte file on it would stall every state frame
- * behind a payload nothing can contradict. Progress still arrives as events.
+ * behind a payload nothing can contradict.
  */
 export interface MediaSource {
+  /** From libsession's cache only, never a download: refused while the file is not cached. */
   fetchMedia(ref: AttachmentRef): Promise<AttachmentMedia>
-  fetchPreview(ref: AttachmentRef): Promise<AttachmentPreview>
+  fetchThumbhash(ref: AttachmentRef): Promise<AttachmentThumbhash>
+  /**
+   * The attachment's thumbnail, a JPEG, from libsession's cache only: never a download. Refused
+   * while `Attachment.hasThumbnail` is false.
+   */
+  fetchThumbnail(ref: AttachmentRef): Promise<Uint8Array>
 }

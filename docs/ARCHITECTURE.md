@@ -119,16 +119,20 @@ its poll ticker and exposes no one-shot entry point. Both are open questions in 
 Attachment metadata, transfer progress and the per-conversation auto-download setting cross;
 bytes do not. They leave by a second channel instead: `session-media://attachment/<id>/<index>`,
 resolved natively by each platform straight out of `ClientBridge::fetch_media`, so a picture never
-passes through JavaScript and never rides this stream. Whether the bytes are here is the
+passes through JavaScript and never rides this stream. It answers from libsession's cache only:
+nothing drawn on screen downloads, so a file arrives by libsession's own rule as its message does,
+or by a tap. Whether the bytes are here is the
 attachment's `availability` on the page. `downloadAttachment` reads the cache, joins a fetch
 already running, or starts one. `exportAttachment` writes the file to a destination, fetching it
 first if the cache does not hold it, and answers with where it landed: a collision lands at
 `name (1)` unless the caller asked to replace.
 
-The sender's placeholder is an image too, so it comes by the same road: `session-media://preview/`
-answers from `ClientBridge::fetch_preview`, which decodes the ThumbHash on the attachment's row.
-Two authorities rather than one URL with a flag, so a file and its stand-in cache separately, and
-nothing decodes an image in JavaScript on either platform. The sender's content type is a claim,
+The sender's placeholder is an image too, so it comes by the same road: `session-media://thumbhash/`
+answers from `ClientBridge::fetch_thumbhash`, which decodes the ThumbHash on the attachment's row.
+So does the thumbnail a tile draws: `session-media://thumbnail/` answers from
+`ClientBridge::fetch_thumbnail`, the JPEG libsession made of a cached picture, from its cache only.
+One authority per image rather than one URL with a flag, so a file and its stand-ins cache
+separately, and nothing decodes an image in JavaScript on either platform. The sender's content type is a claim,
 so desktop serves an attachment only when that type is on the viewable list and the leading bytes
 are the same family, and every response carries a `sandbox` CSP: a file opened as a document gets
 no script and no origin.
@@ -664,13 +668,12 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   Bytes leave by `session-media://`, not by the frame stream. A decrypted attachment is not state,
   so no event can contradict it, and a multi-megabyte payload on a FIFO stalls every state frame
   behind it. `ClientBridge::fetch_media` answers its own caller, and a renderer gets a URL its
-  platform resolves: `protocol.handle` on Electron, an image loader per platform on mobile. Progress
-  still goes to the sink, so a picture loading draws the same bar a tap does, and the codegen
-  subset never needs a bytes primitive. A standard scheme gets the special-scheme host parser, so
-  `session-media://5/0` would canonicalise to the host `0.0.0.5`, hence the fixed `attachment`
-  authority with both ids in the path. And tamagui's `Image` passes `source` through as a DOM
-  attribute, producing an `<img>` with nothing to load, so `@session/ui`'s wraps react-native's,
-  which react-native-web turns into something that fetches.
+  platform resolves: `protocol.handle` on Electron, an image loader per platform on mobile. The
+  codegen subset never needs a bytes primitive. A standard scheme gets the special-scheme host
+  parser, so `session-media://5/0` would canonicalise to the host `0.0.0.5`, hence the fixed
+  `attachment` authority with both ids in the path. And tamagui's `Image` passes `source` through as
+  a DOM attribute, producing an `<img>` with nothing to load, so `@session/ui`'s wraps
+  react-native's, which react-native-web turns into something that fetches.
 
 - **2026-09-16 - A history window lives as long as its screen.** `useMessages` drops
   `histories[id]` when it stops showing that id, and the transfers of the messages it held go with
@@ -697,11 +700,11 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   canonical form only, because Chromium canonicalises before a handler sees a URL and a native
   loader is handed the one the app built.
 
-  The Nitro bridge has `fetchMedia` and `fetchPreview` as the addon does, returning `ArrayBuffer`s
-  the client views as `Uint8Array`, so the transport has one shape and a device-side contract run
-  can assert bytes. Nothing in the app calls them. The fake answers the same `MediaSource`
-  contract through `createFakeMediaSource`. Video is out of scope until a tile has a still on any
-  platform.
+  The Nitro bridge has `fetchMedia`, `fetchThumbnail` and `fetchThumbhash` as the addon does,
+  returning `ArrayBuffer`s the client views as `Uint8Array`, so the transport has one shape and a
+  device-side contract run can assert bytes. Nothing in the app calls them. The fake answers the
+  same `MediaSource` contract through `createFakeMediaSource`. Video is out of scope until a tile
+  has a still on any platform.
 
 - **2026-09-30 - Android draws `session-media://` through a Fresco producer sequence.**
   A `CustomProducerSequenceFactory`, installed by a config plugin that rewrites the generated
@@ -719,7 +722,7 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   bridge, and every fetch holds that lock, so a load in flight never reaches a freed bridge. The loader does not wait on the network: it starts the fetch and
   returns, the answer arrives on Core's loop and is handed to a thread the loader owns, which
   copies the bytes into Fresco's pool. The gate is `servable_image_type`: a video is servable to
-  desktop's `protocol.handle`, but no picture decoder may be handed one. Previews are RGBA handed
+  desktop's `protocol.handle`, but no picture decoder may be handed one. Thumbhashes are RGBA handed
   over as a bitmap rather than encoded; only desktop encodes, because `protocol.handle` answers
   with a body. The fake has no libsession behind it, so `serveMediaFrom` lets JavaScript be the
   source: each load is posted to the JS thread, the only thread that may touch a JavaScript value,
@@ -730,31 +733,56 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   hands to React Native. The answer, on Core's loop or the JS thread, is handed to a concurrent
   queue the loader owns, which runs `servable_image_type` and hands ImageIO the shim's bytes in
   place, held by an `NSData` deallocator. A still is decoded there into a new bitmap, with the
-  file's orientation applied; the result is no larger than the view needs under a `cover` fit and
-  never past one pixel-area budget, which the overshoot of a long thin picture would otherwise
-  exceed. That bounds the result, not the decode: ImageIO holds a GIF or PNG whole before reducing
-  it, so one whose header area is past a 100 MP ceiling is refused and draws as failed. A GIF
+  file's orientation applied, and never past one pixel-area budget, whatever the view. That bounds
+  the result, not the decode: ImageIO holds a GIF or PNG whole before reducing it, so one whose
+  header area is past a 100 MP ceiling is refused and draws as failed. A GIF
   of more than one frame whose canvas fits that budget is an `RCTAnimatedImage`, which keeps the
   shim's bytes and decodes each frame whole at draw; any other GIF is its first frame, decoded as a
   still. Nothing is written to disk: a URL loader is not behind `NSURLCache`. React Native caches
   only the images it decoded itself from an HTTP response, so the loader keeps its own cache of
-  decoded stills and previews, keyed by URL, size and scale, and leaves out an animation and any
-  entry over 4 MB, so one full-screen decode cannot evict a screen of tiles. React Native reports a
-  failed load only to the view's `onError`, so the loader logs each one with its URL. The fake
+  decoded thumbnails and thumbhashes, keyed by URL (and a thumbnail's by the view's pixel size too),
+  and leaves out originals, which only the viewer draws and which would take most of its budget.
+  React Native reports a failed load only to the view's `onError`, so the loader logs each one with
+  its URL. The fake
   registers itself as the source with `serveMediaFrom` on both platforms, so it draws through the
   real loaders.
 
 - **2026-10-09 - A media URL names one attachment for the life of one database.** libsession
-  never hands a message id out twice within a database, so `session-media://attachment/<id>/<n>`
-  and its preview can be cached by URL for as long as that database is open. A discard opens a new
-  one numbering from 1 again, after which every URL cached before it names some other message. The
-  bridge calls `InitOptions::on_database_replaced` after every discard, the startup sweep's
-  included. Mobile empties its loaders' caches there: Fresco's bitmap and encoded memory caches on
-  Android, the loader's cache of decoded stills and previews on iOS. Desktop empties nothing, because Blink caches the
-  scheme's responses where main cannot reach them; it relies on the process ending instead.
-  Settings > Clear data ends the process, and so does the clear offered when the database will
-  not open if an account had been loaded, which is where a failed Settings > Clear data lands.
-  Onboarding's back, that clear at launch and the startup sweep all come before any media is
-  drawn. A decode answered just before a mobile reset can still land after it and cache the old
-  picture again, which the same ordering keeps latent. A discard that can follow drawn media in one process needs a per-database
-  epoch in the URL instead.
+  never hands a message id out twice within a database, so `session-media://attachment/<id>/<n>`,
+  its thumbnail and its thumbhash can be cached by URL for as long as that database is open. A
+  discard opens a new one numbering from 1 again, after which every URL cached before it names some
+  other message. The bridge calls `InitOptions::on_database_replaced` after every discard, the
+  startup sweep's included. Mobile empties its loaders' caches there: Fresco's bitmap and encoded
+  memory caches on Android, the loader's cache of decoded thumbnails and thumbhashes on iOS. Desktop
+  empties nothing, because Blink caches the scheme's responses where main cannot reach them; it
+  relies on the process ending instead. Settings > Clear data ends the process, and so does the
+  clear offered when the database will not open if an account had been loaded, which is where a
+  failed Settings > Clear data lands. Onboarding's back, that clear at launch and the startup sweep
+  all come before any media is drawn. A decode answered just before a mobile reset can still land
+  after it and cache the old picture again, which the same ordering keeps latent. A discard that can
+  follow drawn media in one process needs a per-database epoch in the URL instead.
+
+- **2026-10-09 - A tile draws libsession's thumbnail; only the viewer draws the file.**
+  libsession makes a square JPEG of each displayable picture it caches - cropped to cover, EXIF
+  orientation applied, first frame of an animation, alpha on a checkerboard, quality 90 - on a
+  worker, and reports it as `Attachment.hasThumbnail` in a later `messages-updated`. Its side is at
+  most the client's thumbnail edge, which each app opens the bridge with as `ALBUM_WIDTH` times its
+  display density and `setThumbnailEdge` can store over, clamped to 64-1024 so a decoded one stays
+  within 4 MiB. It lives in the original's cache entry and is evicted with it. Generating it there
+  rather than in each loader gives every platform the same picture from one decoder, libvips under
+  libsession's own loader whitelist, and leaves the loaders two paths: a thumbnail, checked to be a
+  JPEG and reduced while decoding but never below its view, a file row's glyph far less than a tile
+  (Fresco's decoder and downsampling on Android, the same as an original's, asked for 4/3 the view
+  because Fresco's JPEG sample can land up to that far below its target; ImageIO's maximum pixel
+  size on iOS, only where the view needs half of it or less), cached by URL and view size; and the
+  viewer's original, which keeps the pixel budget, the GIF/PNG refusal, animation and Fresco's
+  downsampling. Drawing never starts a download: a tile's URL used to be the original's, and
+  resolving it fetched the file, which under `image-attachments` or `all` spent data on any older
+  message that scrolled past. Now every URL is served from the cache only (`attachment_data_cached`,
+  refused as "is not downloaded"), and a file arrives only by libsession's own rule when its message
+  does, or when somebody taps. This supersedes the 2026-09-15 entry's sentence on progress: drawing
+  a picture reports none. A viewer whose file was evicted just before it loaded draws its
+  unavailable state rather than downloading again. A tile has no failed face: a thumbnail exists
+  only of a picture that decoded, so one that does not load was evicted under it and the placeholder
+  is the truth. The fake serves thumbnails `pnpm fake-media:fetch` makes of its dev photographs at
+  720 px.

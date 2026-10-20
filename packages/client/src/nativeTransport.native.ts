@@ -3,7 +3,7 @@ import { createSessionBridge } from '@session/bridge-rn'
 import type { NativeFrame, NativeRequest } from '@session/bridge-rn'
 import type { AttachmentRef, Frame, Request, SessionBridgeOptions } from '@session/bridge-types'
 
-import type { AttachmentMedia, AttachmentPreview, BridgeTransport, MediaSource } from './types'
+import type { AttachmentMedia, AttachmentThumbhash, BridgeTransport, MediaSource } from './types'
 
 /**
  * The bridge, backed by the real libsession, over JSI.
@@ -60,10 +60,19 @@ export function createNativeBridgeTransport(
       return { contentType: media.contentType, bytes: new Uint8Array(media.bytes) }
     },
 
-    async fetchPreview({ messageId, index }: AttachmentRef): Promise<AttachmentPreview> {
+    async fetchThumbhash({ messageId, index }: AttachmentRef): Promise<AttachmentThumbhash> {
       if (closed) throw new Error('the bridge is closed')
-      const preview = await bridge.fetchPreview(messageId, index)
-      return { width: preview.width, height: preview.height, rgba: new Uint8Array(preview.rgba) }
+      const thumbhash = await bridge.fetchThumbhash(messageId, index)
+      return {
+        width: thumbhash.width,
+        height: thumbhash.height,
+        rgba: new Uint8Array(thumbhash.rgba),
+      }
+    },
+
+    async fetchThumbnail({ messageId, index }: AttachmentRef): Promise<Uint8Array> {
+      if (closed) throw new Error('the bridge is closed')
+      return new Uint8Array(await bridge.fetchThumbnail(messageId, index))
     },
 
     setSink(onFrame: (frame: Frame) => void): void {

@@ -25,8 +25,8 @@ Pod::Spec.new do |s|
   # Both are xcframeworks rather than plain archives so the pod can carry a device slice and a
   # simulator one at once: `vendored_libraries` has no per-SDK form, so a directory of archives
   # is a directory for exactly one slice -- and the iOS build running on an Apple silicon Mac is
-  # the device slice, so the two have to coexist. The shim's xcframework holds one merged archive
-  # per slice; see the build script for what goes into it.
+  # the device slice, so the two have to coexist. The shim's xcframework holds the shim's own
+  # archive per slice; see the build script for what goes into it.
   s.vendored_frameworks = "ios/libsession-util.xcframework", "ios/SessionBridgeCore.xcframework"
 
   # System libraries the vendored archives expect to find. libunistring wants iconv, which the

@@ -34,7 +34,9 @@ class HybridSessionBridge : public HybridSessionBridgeSpec {
     void init(const SessionBridgeOptions& options) override;
     void call(::session_bridge::Request request) override;
     std::shared_ptr<Promise<NativeMedia>> fetchMedia(double messageId, double index) override;
-    std::shared_ptr<Promise<NativePreview>> fetchPreview(double messageId, double index) override;
+    std::shared_ptr<Promise<NativeThumbhash>> fetchThumbhash(double messageId, double index) override;
+    std::shared_ptr<Promise<std::shared_ptr<ArrayBuffer>>> fetchThumbnail(
+            double messageId, double index) override;
     void close() override;
 
   protected:
@@ -48,7 +50,7 @@ class HybridSessionBridge : public HybridSessionBridgeSpec {
     jsi::Value setSink(
             jsi::Runtime& runtime, const jsi::Value& thisArg, const jsi::Value* args, size_t count);
 
-    /// `serveMediaFrom(fetchMedia, fetchPreview)`, raw so the functions are called, and the bytes
+    /// `serveMediaFrom(fetchMedia, fetchThumbhash, fetchThumbnail)`, raw so the functions are called, and the bytes
     /// they answer with read, on the JS thread only.
     jsi::Value serveMediaFrom(
             jsi::Runtime& runtime, const jsi::Value& thisArg, const jsi::Value* args, size_t count);

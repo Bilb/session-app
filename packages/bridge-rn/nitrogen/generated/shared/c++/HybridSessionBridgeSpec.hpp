@@ -17,14 +17,15 @@
 namespace margelo::nitro::session::bridge::rn { struct SessionBridgeOptions; }
 // Forward declaration of `NativeMedia` to properly resolve imports.
 namespace margelo::nitro::session::bridge::rn { struct NativeMedia; }
-// Forward declaration of `NativePreview` to properly resolve imports.
-namespace margelo::nitro::session::bridge::rn { struct NativePreview; }
+// Forward declaration of `NativeThumbhash` to properly resolve imports.
+namespace margelo::nitro::session::bridge::rn { struct NativeThumbhash; }
 
 #include "SessionBridgeOptions.hpp"
 #include "session_bridge/gen/jsi.hpp"
 #include "NativeMedia.hpp"
 #include <NitroModules/Promise.hpp>
-#include "NativePreview.hpp"
+#include "NativeThumbhash.hpp"
+#include <NitroModules/ArrayBuffer.hpp>
 
 namespace margelo::nitro::session::bridge::rn {
 
@@ -60,7 +61,8 @@ namespace margelo::nitro::session::bridge::rn {
       virtual void init(const SessionBridgeOptions& options) = 0;
       virtual void call(::session_bridge::Request request) = 0;
       virtual std::shared_ptr<Promise<NativeMedia>> fetchMedia(double messageId, double index) = 0;
-      virtual std::shared_ptr<Promise<NativePreview>> fetchPreview(double messageId, double index) = 0;
+      virtual std::shared_ptr<Promise<NativeThumbhash>> fetchThumbhash(double messageId, double index) = 0;
+      virtual std::shared_ptr<Promise<std::shared_ptr<ArrayBuffer>>> fetchThumbnail(double messageId, double index) = 0;
       virtual void close() = 0;
 
     protected:

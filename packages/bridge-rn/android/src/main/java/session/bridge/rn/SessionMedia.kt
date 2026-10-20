@@ -33,7 +33,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Draws `session-media://` URLs: the image loader behind `MediaPort.urlFor` on Android.
+ * Draws `session-media://` URLs: the image loader behind the `MediaPort` URLs on Android.
  *
  * The URL is the request. Fresco asks for it, C++ parses it and asks whichever source is serving -
  * the open bridge, or the fake through `serveMediaFrom` - and the bytes come back here without
@@ -97,8 +97,12 @@ internal object SessionMediaNative {
 
 /**
  * Fresco's own order for a decoded sequence, minus every disk-cache producer, so decrypted bytes
- * live only in memory. Keyed by URL, which is why a file and its preview have separate ones, and
- * which keeps naming one picture: libsession never reuses a message id, and a discard calls
+ * live only in memory. A thumbnail takes it as a file does, so Fresco's decoder downsamples it
+ * towards the request's resize target: a file row's glyph decodes a fraction of the JPEG a tile
+ * does. Its JPEG sample can land up to 4/3 below that target, so a tile asks for 4/3 its view.
+ *
+ * Keyed by URL, which is why a file, its thumbhash and its thumbnail have separate ones, and which
+ * keeps naming one picture: libsession never reuses a message id, and a discard calls
  * `forget_media`.
  */
 internal class SessionMediaSequenceFactory : CustomProducerSequenceFactory() {
@@ -113,7 +117,7 @@ internal class SessionMediaSequenceFactory : CustomProducerSequenceFactory() {
     val uri = imageRequest.sourceUri
     if (uri.scheme != SessionMedia.SCHEME) return null
     val decoded =
-        if (uri.host == "preview") PreviewProducer()
+        if (uri.host == "thumbhash") ThumbhashProducer()
         else
             producerFactory.newDecodeProducer(
                 ProducerFactory.newAddImageTransformMetaDataProducer(
@@ -144,8 +148,8 @@ internal class FetchProducer : Producer<EncodedImage> {
   }
 }
 
-/** A preview arrives as pixels, so it skips the decoder and is handed over as a bitmap. */
-internal class PreviewProducer : Producer<CloseableReference<CloseableImage>> {
+/** A thumbhash arrives as pixels, so it skips the decoder and is handed over as a bitmap. */
+internal class ThumbhashProducer : Producer<CloseableReference<CloseableImage>> {
   override fun produceResults(
       consumer: Consumer<CloseableReference<CloseableImage>>,
       context: ProducerContext,
@@ -158,8 +162,8 @@ internal class PreviewProducer : Producer<CloseableReference<CloseableImage>> {
  * One load in flight: what the C++ answers call, on Core's loop or the JS thread.
  *
  * Every method only hands off to [DRAIN], the one thread that copies bytes and calls Fresco, so a
- * source's thread is never held. Settles exactly once, whether by an answer or by cancellation;
- * native memory is released however it settles.
+ * source's thread is never held. Settles exactly once, whether by an answer or
+ * by cancellation; native memory is released however it settles.
  */
 @DoNotStrip
 internal class SessionMediaLoad
@@ -215,7 +219,7 @@ private constructor(
   }
 
   @DoNotStrip
-  fun onPreview(width: Int, height: Int, rgba: ByteBuffer, handle: Long) {
+  fun onThumbhash(width: Int, height: Int, rgba: ByteBuffer, handle: Long) {
     DRAIN.execute {
       try {
         val consumer = decoded

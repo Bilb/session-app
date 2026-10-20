@@ -275,7 +275,7 @@ describeAddon('the N-API addon', () => {
     await expect(transport.fetchMedia({ messageId: 424_242, index: 0 })).rejects.toThrow(
       'attachment 0 of message 424242 does not exist',
     )
-    await expect(transport.fetchPreview({ messageId: 424_242, index: 0 })).rejects.toThrow(
+    await expect(transport.fetchThumbhash({ messageId: 424_242, index: 0 })).rejects.toThrow(
       'attachment 0 of message 424242 does not exist',
     )
     transport.close()
@@ -289,11 +289,69 @@ describeAddon('the N-API addon', () => {
     })
 
     const media = transport.fetchMedia({ messageId: 1, index: 0 })
-    const preview = transport.fetchPreview({ messageId: 1, index: 0 })
+    const thumbhash = transport.fetchThumbhash({ messageId: 1, index: 0 })
     transport.close()
 
     await expect(media).rejects.toThrow('the bridge is closed')
-    await expect(preview).rejects.toThrow('the bridge is closed')
+    await expect(thumbhash).rejects.toThrow('the bridge is closed')
+  })
+
+  it('opens at the thumbnail edge it is given, unless an edge is stored, across reopens', async () => {
+    const open = (thumbnailEdgePx: number) => {
+      // The addon reads this by a hand-typed key: misspelt, it compiles and opens at the default.
+      const transport = createNodeBridgeTransport({
+        dbPath: join(dir, 'thumbnail-edge.db'),
+        cacheDir: join(dir, 'cache'),
+        rawKey: new Uint8Array(32).fill(5),
+        deferAccount: true,
+        thumbnailEdgePx,
+      })
+      let id = 0
+      const ask = (command: Request['command']) => {
+        const request = { id: ++id, command }
+        const answered = new Promise<Frame>((resolve) => {
+          transport.setSink((frame) => {
+            if (frame.type === 'response' && frame.response.id === request.id) resolve(frame)
+          })
+        })
+        transport.send(request)
+        return answered
+      }
+      return {
+        edge: async () => {
+          const frame = await ask({ type: 'getThumbnailEdge' })
+          if (frame.type !== 'response' || frame.response.result?.type !== 'edge')
+            throw new Error(
+              `no edge: ${frame.type === 'response' ? String(frame.response.error) : ''}`,
+            )
+          return frame.response.result.edgePx
+        },
+        setEdge: (edgePx: number) => ask({ type: 'setThumbnailEdge', edgePx }),
+        unsetEdge: () => ask({ type: 'setThumbnailEdge' }),
+        close: () => transport.close(),
+      }
+    }
+
+    const first = open(300)
+    expect(await first.edge()).toBe(300)
+    await first.setEdge(500)
+    expect(await first.edge()).toBe(500)
+    first.close()
+
+    // The app passes its display's edge at every launch; that must not discard the user's choice.
+    const second = open(300)
+    expect(await second.edge()).toBe(500)
+    await second.unsetEdge()
+    expect(await second.edge()).toBe(300)
+    second.close()
+
+    const third = open(300)
+    expect(await third.edge()).toBe(300)
+    third.close()
+
+    const fourth = open(400)
+    expect(await fourth.edge()).toBe(400)
+    fourth.close()
   })
 
   it('lets the process exit with a media fetch pending at close', async () => {
@@ -373,7 +431,8 @@ describeEcho('the generated converters', () => {
     voiceMessage: true,
     width: 1600,
     height: 1200,
-    hasPreview: true,
+    hasThumbhash: true,
+    hasThumbnail: true,
     uploaded: true,
     availability: 'notFound',
     fetchDoneBytes: 0,
@@ -383,7 +442,8 @@ describeEcho('the generated converters', () => {
   const bareAttachment: Attachment = {
     index: 1,
     voiceMessage: false,
-    hasPreview: false,
+    hasThumbhash: false,
+    hasThumbnail: false,
     uploaded: false,
     availability: 'absent',
     fetchDoneBytes: 0,
@@ -479,10 +539,11 @@ describeEcho('the generated converters', () => {
       response: { id: 900_015, result: { type: 'byteCount', bytes: 5_000_000 } },
     },
     { type: 'response', response: { id: 900_016, result: { type: 'byteCount' } } },
+    { type: 'response', response: { id: 900_017, result: { type: 'edge', edgePx: 720 } } },
     {
       type: 'response',
       response: {
-        id: 900_017,
+        id: 900_018,
         result: {
           type: 'configSizes',
           sizes: [
@@ -492,7 +553,7 @@ describeEcho('the generated converters', () => {
         },
       },
     },
-    { type: 'response', response: { id: 900_018, result: { type: 'configSizes', sizes: [] } } },
+    { type: 'response', response: { id: 900_019, result: { type: 'configSizes', sizes: [] } } },
     { type: 'event', event: { type: 'conversation-added', conversation: fullConversation } },
     { type: 'event', event: { type: 'conversation-updated', conversation: bareConversation } },
     { type: 'event', event: { type: 'conversation-removed', conversationId } },

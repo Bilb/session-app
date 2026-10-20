@@ -29,6 +29,7 @@
     "@session/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "eslint": "catalog:",
+    "jpeg-js": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

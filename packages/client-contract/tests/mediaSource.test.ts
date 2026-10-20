@@ -1,11 +1,21 @@
 import { createFakeMediaSource, friendsWithAttachments, solo } from '@session/client/fake'
+import jpeg from 'jpeg-js'
 import { describe, expect, it } from 'vitest'
 
 import { runMediaSourceContract, type MediaSourceHarness } from '#src/index'
 
-const JPEG = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46])
+function grey(width: number, height: number): Uint8Array {
+  return jpeg.encode({ width, height, data: new Uint8Array(width * height * 4).fill(0x80) }, 90)
+    .data
+}
 
-const readPhoto = (): Promise<Uint8Array> => Promise.resolve(JPEG)
+// Real JPEGs, since a thumbnail is checked by its frame header. The original is neither square nor
+// within the largest thumbnail edge, 1024, so a thumbnail served from it fails both shape checks.
+const ORIGINAL = grey(1280, 960)
+const THUMBNAIL = grey(32, 32)
+
+const readPhoto = (fileName: string): Promise<Uint8Array> =>
+  Promise.resolve(fileName.startsWith('thumbnail-') ? THUMBNAIL : ORIGINAL)
 
 const harness: MediaSourceHarness = {
   withAttachments() {
@@ -17,9 +27,17 @@ const harness: MediaSourceHarness = {
     const conversationId = sender.sessionId
     const album = recipient.messages(conversationId).find((m) => m.attachments.length > 0)
     const png = album?.attachments.find((a) => a.contentType === 'image/png')
-    if (!album || !png?.hasPreview) throw new Error('fixture did not seed a hashed PNG')
+    if (!album || !png?.hasThumbhash) throw new Error('fixture did not seed a hashed PNG')
     const unhashed = recipient.deliverFrom(sender, 'No hash', world.now(), [
-      { ...png, index: 0, hasPreview: false },
+      { ...png, index: 0, hasThumbhash: false },
+      {
+        ...png,
+        index: 1,
+        contentType: 'application/pdf',
+        filename: 'paper.pdf',
+        hasThumbhash: false,
+      },
+      { ...png, index: 2, contentType: 'image/avif', filename: 'scan.avif', hasThumbhash: false },
     ])
     world.settle()
     return Promise.resolve({
@@ -28,6 +46,8 @@ const harness: MediaSourceHarness = {
       conversationId,
       picture: { messageId: album.id, index: png.index },
       unhashed: { messageId: unhashed.id, index: 0 },
+      document: { messageId: unhashed.id, index: 1 },
+      avif: { messageId: unhashed.id, index: 2 },
       settle: () => {
         world.settle()
         return Promise.resolve()

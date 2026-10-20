@@ -11,6 +11,7 @@ import { XStack, YStack } from 'tamagui'
 import type { MarkProps } from './Brand'
 import { Icon } from './Icon'
 import type { IconName } from './Icon.types'
+import type { FocusRingShape } from './keyboardPress'
 import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
 import { PRESS_PASSTHROUGH } from './pressPassthrough'
@@ -19,6 +20,9 @@ import { Text } from './Text'
 
 /** A control's rung rather than a text line's: a row is a tap target. */
 const ROW_MIN_HEIGHT = SIZE_SCALE['4xl']
+
+/** Inside the row: its group clips whatever is drawn past its edge. */
+const ROW_RING: FocusRingShape = { onAccent: false, offset: -2, radius: '$sm' }
 
 /** How wide the leading icon's column is, so labels line up whether or not a row has one. */
 const ICON_COLUMN = SIZE_SCALE.lg
@@ -85,7 +89,7 @@ export function SettingsRow({
     )
   }
   return (
-    <PressArea {...(disabled ? {} : { onPress })} disabled={inert} testID={testID}>
+    <PressArea {...(disabled ? {} : { onPress })} disabled={inert} ring={ROW_RING} testID={testID}>
       {(pressed, hovered) => <RowContent {...content} pressed={pressed} hovered={hovered} />}
     </PressArea>
   )

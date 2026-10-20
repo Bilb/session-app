@@ -2,7 +2,7 @@ import { friendsWithAttachments } from './attachments'
 import { backlog } from './backlog'
 import type { FakeSessionClient } from './FakeSessionClient'
 import { crowd, newcomer, type FakeSetup } from './fixtures'
-import { photoFileNames } from './media'
+import { photoFileNames, thumbnailFileNames } from './media'
 import { rowShowcase } from './rows'
 import { showcase } from './showcase'
 import type { SessionClient } from '../types'
@@ -160,7 +160,7 @@ export interface DevFake {
  * really arrive are drawn right.
  */
 export function startDevFake(env: FakeDevEnv, photos: DevPhotos): DevFake {
-  const missing = photoFileNames().filter((name) => !photos.has(name))
+  const missing = [...photoFileNames(), ...thumbnailFileNames()].filter((name) => !photos.has(name))
   if (missing.length > 0) {
     throw new Error(
       `The fake needs its dev photographs ${photos.where}, and ${String(missing.length)} are ` +

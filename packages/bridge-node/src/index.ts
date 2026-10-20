@@ -2,7 +2,7 @@ import { createRequire } from 'node:module'
 
 import type {
   AttachmentMedia,
-  AttachmentPreview,
+  AttachmentThumbhash,
   AttachmentRef,
   BridgeTransport,
   Frame,
@@ -32,7 +32,8 @@ export interface NodeBridgeOptions extends Omit<SessionBridgeOptions, 'rawKeyHex
 interface NativeBridge {
   call(request: Request): void
   fetchMedia(messageId: number, index: number): Promise<AttachmentMedia>
-  fetchPreview(messageId: number, index: number): Promise<AttachmentPreview>
+  fetchThumbhash(messageId: number, index: number): Promise<AttachmentThumbhash>
+  fetchThumbnail(messageId: number, index: number): Promise<Uint8Array>
   close(): void
 }
 
@@ -106,9 +107,14 @@ export function createNodeBridgeTransport(options: NodeBridgeOptions): NodeBridg
       return bridge.fetchMedia(messageId, index)
     },
 
-    fetchPreview({ messageId, index }: AttachmentRef): Promise<AttachmentPreview> {
+    fetchThumbhash({ messageId, index }: AttachmentRef): Promise<AttachmentThumbhash> {
       if (closed) return Promise.reject(new Error('the bridge is closed'))
-      return bridge.fetchPreview(messageId, index)
+      return bridge.fetchThumbhash(messageId, index)
+    },
+
+    fetchThumbnail({ messageId, index }: AttachmentRef): Promise<Uint8Array> {
+      if (closed) return Promise.reject(new Error('the bridge is closed'))
+      return bridge.fetchThumbnail(messageId, index)
     },
 
     setSink(onFrame: (frame: Frame) => void): void {

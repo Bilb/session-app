@@ -39,7 +39,8 @@ const PUSH_SERVICE: NotificationsPort['pushService'] = ((): NotificationsPort['p
 /** The scheme, which a native image loader resolves on each platform: Fresco's, and React's. */
 const MEDIA: MediaPort = {
   urlFor: (ref) => mediaUrl('attachment', ref),
-  previewUrlFor: (ref) => mediaUrl('preview', ref),
+  thumbhashUrlFor: (ref) => mediaUrl('thumbhash', ref),
+  thumbnailUrlFor: (ref) => mediaUrl('thumbnail', ref),
 }
 
 // Hex rather than base64: the keychain stores strings, and hex needs no polyfill on either

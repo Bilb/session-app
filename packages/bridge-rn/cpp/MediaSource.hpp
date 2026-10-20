@@ -25,8 +25,10 @@ class MediaSource {
     virtual ~MediaSource() = default;
     virtual void fetch_media(
             double message_id, double index, ::session_bridge::MediaHandler cb) = 0;
-    virtual void fetch_preview(
-            double message_id, double index, ::session_bridge::PreviewHandler cb) = 0;
+    virtual void fetch_thumbhash(
+            double message_id, double index, ::session_bridge::ThumbhashHandler cb) = 0;
+    virtual void fetch_thumbnail(
+            double message_id, double index, ::session_bridge::MediaHandler cb) = 0;
 };
 
 /// The source the loaders use, or null to fail every load. Takes the place of the one before.
@@ -54,11 +56,11 @@ void forget_media();
 /// The handlers a source has handed out and not yet answered, so closing can answer them.
 class PendingAnswers : public std::enable_shared_from_this<PendingAnswers> {
   public:
-    using Handler = std::variant<::session_bridge::MediaHandler, ::session_bridge::PreviewHandler>;
+    using Handler = std::variant<::session_bridge::MediaHandler, ::session_bridge::ThumbhashHandler>;
 
     /// Wraps `cb` so it runs at most once, whether the answer or `fail_all` gets there first.
     ::session_bridge::MediaHandler track(::session_bridge::MediaHandler cb);
-    ::session_bridge::PreviewHandler track(::session_bridge::PreviewHandler cb);
+    ::session_bridge::ThumbhashHandler track(::session_bridge::ThumbhashHandler cb);
 
     /// Answers everything still pending with `error`.
     void fail_all(const std::string& error);
@@ -77,8 +79,10 @@ class BridgeMediaSource final : public MediaSource {
     explicit BridgeMediaSource(::session_bridge::ClientBridge& bridge) : _bridge{&bridge} {}
 
     void fetch_media(double message_id, double index, ::session_bridge::MediaHandler cb) override;
-    void fetch_preview(
-            double message_id, double index, ::session_bridge::PreviewHandler cb) override;
+    void fetch_thumbhash(
+            double message_id, double index, ::session_bridge::ThumbhashHandler cb) override;
+    void fetch_thumbnail(
+            double message_id, double index, ::session_bridge::MediaHandler cb) override;
 
     /// Refuses every call from here on, waiting out any call still starting. **Before** the
     /// `ClientBridge` is destroyed, which is what makes the pointer safe to use under the lock.

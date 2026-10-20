@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 
+import type { FocusRingShape } from './keyboardPress'
+
 /**
  * The props both PressArea variants accept.
  *
@@ -21,10 +23,10 @@ export interface PressAreaProps {
   role?: 'button' | 'switch'
   checked?: boolean
   /**
-   * A button that stays on until pressed again, announced as pressed while it is. A segment of a
-   * choice drawn as buttons; not the transient press `children` is told about.
+   * How the keyboard's focus ring is drawn round the control. Web only: the shape is the child's,
+   * which only the caller knows. A rounded rectangle just outside the control, on the page.
    */
-  toggled?: boolean
+  ring?: FocusRingShape | undefined
   /** Announced as busy, for a control whose action is running. */
   busy?: boolean
   testID?: string

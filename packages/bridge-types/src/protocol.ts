@@ -32,7 +32,7 @@ type SecretBytes = Uint8Array
 // Not exported: only the request below names it, and the generator reads it from this file.
 interface TestAttachment {
   contentType: string
-  /** Unset is a sender who sent no ThumbHash, which is what leaves an attachment no preview. */
+  /** Unset is a sender who sent no ThumbHash, which is what leaves `hasThumbhash` false. */
   thumbhash?: Uint8Array
 }
 
@@ -222,7 +222,8 @@ export type Command =
   | { type: 'downloadAttachment'; messageId: number; index: number }
   /**
    * Write an attachment out to a path the person chose, fetching it first if the cache does not
-   * hold it. Reads the cache but never fills it, so this is not a way to pre-fetch.
+   * hold it. Reads the cache first and fills it as the file arrives, within the cache's size limit,
+   * as `downloadAttachment` does.
    */
   | {
       type: 'exportAttachment'
@@ -254,6 +255,13 @@ export type Command =
    * shown together. 0 when nothing is cached or there is no cache directory.
    */
   | { type: 'getAttachmentCacheSize' }
+  | { type: 'getThumbnailEdge' }
+  /**
+   * The side of the thumbnails made from now on, in device pixels, kept on this device. libsession
+   * clamps it to 64 to 1024. Unset forgets the stored value, which puts the edge back to what the
+   * app opened the bridge with. Thumbnails already made keep the size they were made at.
+   */
+  | { type: 'setThumbnailEdge'; edgePx?: number }
   /**
    * How large each of the account's configs is, for an exported log's header, listed by name.
    * Empty before there is an account: the configs are built from it.
@@ -331,6 +339,8 @@ export type Result =
   | { type: 'path'; path: string }
   /** Unset only in answer to `getAttachmentCacheLimit`, where it means no limit. */
   | { type: 'byteCount'; bytes?: number }
+  /** A thumbnail's side in device pixels, as libsession clamped it. */
+  | { type: 'edge'; edgePx: number }
   | { type: 'configSizes'; sizes: ConfigSize[] }
 
 export interface Response {

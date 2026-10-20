@@ -30,7 +30,7 @@ interface NativeMedia {
 }
 
 /** A decoded ThumbHash: RGBA8, row-major, not alpha-premultiplied, `width * height * 4` long. */
-interface NativePreview {
+interface NativeThumbhash {
   width: number
   height: number
   rgba: ArrayBuffer
@@ -55,6 +55,8 @@ export interface SessionBridge extends HybridObject<{ ios: 'c++'; android: 'c++'
    * way is the multi-megabyte copy those loaders exist to avoid.
    */
   fetchMedia(messageId: number, index: number): Promise<NativeMedia>
-  fetchPreview(messageId: number, index: number): Promise<NativePreview>
+  fetchThumbhash(messageId: number, index: number): Promise<NativeThumbhash>
+  /** The thumbnail's JPEG bytes. */
+  fetchThumbnail(messageId: number, index: number): Promise<ArrayBuffer>
   close(): void
 }

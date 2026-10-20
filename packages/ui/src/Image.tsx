@@ -2,6 +2,13 @@ import { Image as RNImage } from 'react-native'
 
 import type { WithTestID } from './with'
 
+// react-native's hand-written types omit this, though its Android Image takes it.
+declare module 'react-native' {
+  interface ImagePropsAndroid {
+    resizeMultiplier?: number | undefined
+  }
+}
+
 export type ImageProps = WithTestID & {
   /** Where the bytes come from. On both platforms this is the app's media scheme, not a path. */
   uri: string
@@ -15,6 +22,11 @@ export type ImageProps = WithTestID & {
    */
   fit?: 'cover' | 'contain' | undefined
   borderRadius?: number | undefined
+  /**
+   * Android only: Fresco decodes towards the view's pixel size times this, 1 by default. iOS and
+   * desktop ignore it.
+   */
+  resizeMultiplier?: number | undefined
   /** Fires when the bytes are decoded and on screen, which is the only honest "it is here". */
   onLoad?: (() => void) | undefined
   /** Fires when the bytes could not be fetched or decoded. Nothing retries on its own. */
@@ -34,6 +46,7 @@ export function Image({
   height,
   fit = 'cover',
   borderRadius,
+  resizeMultiplier,
   onLoad,
   onError,
   testID,
@@ -46,8 +59,10 @@ export function Image({
       source={{ uri }}
       resizeMode={fit}
       // Fresco only downsamples towards a target size, and `session-media://` is not one of the
-      // local schemes react-native sizes by default: without this a thumbnail decodes at 2048 px.
+      // local schemes react-native sizes by default: without this the viewer's original decodes at
+      // 2048 px, and a file row's glyph decodes a tile-sized thumbnail.
       resizeMethod="resize"
+      resizeMultiplier={resizeMultiplier}
       style={{ width, height, borderRadius }}
       onLoad={onLoad}
       onError={onError}

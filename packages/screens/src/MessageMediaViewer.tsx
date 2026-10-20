@@ -1,4 +1,3 @@
-import { mediaKindOf } from '@session/basic-types'
 import type { ConversationId } from '@session/client'
 import { tr } from '@session/localization'
 import { transferKey, useMessage, useMessageTransfers, useSessionActions } from '@session/state'
@@ -35,8 +34,8 @@ function MessageViewer({
   const feedback = useExportFeedback()
   const message = useMessage(conversationId, target.messageId)
   const transfers = useMessageTransfers(target.messageId)
-  // Only what is here, as the legacy clients' galleries: the url is the request, so an item that
-  // is not would start a download nobody asked for, and paging stops at what has arrived.
+  // Only what is here, as the legacy clients' galleries: the file is served from the cache only,
+  // so an item that is not here could not be drawn, and paging stops at what has arrived.
   const viewable = useMemo(
     () =>
       message === undefined
@@ -52,7 +51,6 @@ function MessageViewer({
         // Null where the platform has no resolver. The viewer says so rather than drawing a broken
         // picture, which is the one thing it must not do with somebody's photograph.
         uri: viewerUri(target.messageId, attachment),
-        kind: mediaKindOf(attachment.contentType),
       })),
     [viewable, target.messageId],
   )

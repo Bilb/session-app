@@ -66,7 +66,6 @@ export function PressArea({
   accessibilityLabel,
   role = 'button',
   checked,
-  toggled,
   busy = false,
   testID,
   children,
@@ -96,14 +95,8 @@ export function PressArea({
       onPress={onPress}
       {...(hitSlop === undefined || hitSlop === 0 ? {} : { hitSlop })}
       accessibilityLabel={accessibilityLabel}
-      // Stated whole: passing a state replaces the one Pressable derives from `disabled`. Native
-      // has no `pressed` state for a toggle button; both readers announce `selected`.
-      accessibilityState={{
-        disabled,
-        busy,
-        ...(checked === undefined ? {} : { checked }),
-        ...(toggled === undefined ? {} : { selected: toggled }),
-      }}
+      // Stated whole: passing a state replaces the one Pressable derives from `disabled`.
+      accessibilityState={{ disabled, busy, ...(checked === undefined ? {} : { checked }) }}
       testID={testID}
       // A finger reports pointer events too, and it does not hover.
       onPointerEnter={(e: PointerEvent) => {

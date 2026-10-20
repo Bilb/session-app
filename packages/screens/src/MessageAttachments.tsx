@@ -1,3 +1,4 @@
+import { ALBUM_WIDTH } from '@session/basic-types'
 import type { Message } from '@session/client'
 import { SPACE_SCALE, YStack } from '@session/ui'
 
@@ -6,7 +7,7 @@ import { AttachmentList, LIST_MAX_ROWS } from './AttachmentList'
 import { AttachmentPill } from './AttachmentPill'
 import { attachmentView, canChooseView } from './attachmentView'
 import { useConversationUi } from './conversationUi'
-import { ALBUM_WIDTH, MessageAlbum } from './MessageAlbum'
+import { MessageAlbum } from './MessageAlbum'
 import { useAttachmentSet } from './useAttachmentSet'
 import { useViewChoice } from './viewChoices'
 
@@ -35,8 +36,9 @@ export function MessageAttachments({ message }: { message: Message }) {
       {view === 'gallery' ? (
         <MessageAlbum
           message={message}
-          autoDownload={ui.autoDownload}
+          onAccent={message.outgoing}
           fetchFor={fetchFor}
+          setState={set.state}
           // Opens only a picture that is here, as the legacy clients do. A tile is the whole set's,
           // so tapping one that is not fetches every attachment the album stands for.
           onOpen={(index) => {
@@ -50,6 +52,7 @@ export function MessageAttachments({ message }: { message: Message }) {
       ) : (
         <AttachmentList
           message={message}
+          onAccent={message.outgoing}
           onShowAll={
             overflows
               ? () => {
@@ -61,6 +64,7 @@ export function MessageAttachments({ message }: { message: Message }) {
       )}
       <AttachmentFooter
         set={set}
+        onAccent={message.outgoing}
         onAction={act}
         view={canChooseView(message) ? view : undefined}
         onView={(chosen) => {

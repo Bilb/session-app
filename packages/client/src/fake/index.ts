@@ -16,7 +16,7 @@ export { noDatabaseOpen, unopenable } from './unopenable'
 export type { FakeSetup, FixtureName } from './fixtures'
 export {
   createFakeMediaSource,
-  fakePreviewPixels,
+  fakeThumbhashPixels,
   PHOTO_COUNT,
   photoFileName,
   photoFileNames,

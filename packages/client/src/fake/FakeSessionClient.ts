@@ -343,6 +343,11 @@ export class FakeSessionClient implements SessionClient {
     return this.account.exportAttachment({ messageId, index }, destination, options?.replace)
   }
 
+  /** Whether libsession would hold a thumbnail of this attachment: `Attachment.hasThumbnail`. */
+  hasThumbnail(ref: AttachmentRef): boolean {
+    return this.account.hasThumbnail(ref)
+  }
+
   /**
    * Fake-only: finds an attachment in memory, where paging every conversation would miss old ones.
    */
@@ -389,6 +394,28 @@ export class FakeSessionClient implements SessionClient {
   getAttachmentCacheSize(): Promise<number> {
     this.assertOpen()
     return Promise.resolve(this.account.attachmentCacheSize())
+  }
+
+  getThumbnailEdge(): Promise<number> {
+    this.assertOpen()
+    return Promise.resolve(this.account.thumbnailEdge())
+  }
+
+  setThumbnailEdge(edgePx?: number): Promise<void> {
+    this.assertOpen()
+    // The shim carries it as a uint32.
+    if (
+      edgePx !== undefined &&
+      !(Number.isInteger(edgePx) && edgePx >= 0 && edgePx <= 0xffffffff)
+    ) {
+      return Promise.reject(
+        new SessionClientError(
+          'setThumbnailEdge.edgePx must be a whole number this bridge can carry',
+        ),
+      )
+    }
+    this.account.setThumbnailEdge(edgePx)
+    return Promise.resolve()
   }
 
   getConfigSizes(): Promise<ConfigSize[]> {

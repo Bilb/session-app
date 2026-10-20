@@ -1,8 +1,11 @@
 import { YStack } from 'tamagui'
 
+import { focusRing, keyboardPress, type FocusRingShape } from './keyboardPress'
 import type { PressAreaProps } from './PressArea.types'
 
 export type { PressAreaProps }
+
+const PAGE_RING: FocusRingShape = { onAccent: false, offset: 2, radius: '$sm' }
 
 /**
  * The web half: tamagui handles the press and the styling, so there is nothing to track.
@@ -16,6 +19,9 @@ export type { PressAreaProps }
  * A row stretches the other axis instead and leaves the frame inside sized to its own content, so
  * a button draws to the width of its label rather than the width it was given, and a label too
  * long for that width overflows instead of wrapping.
+ *
+ * It is the tab stop, as `Pressable` is the accessibility element on native: tamagui turns
+ * `onPress` into a click and nothing else.
  */
 export function PressArea({
   onPress,
@@ -24,21 +30,22 @@ export function PressArea({
   accessibilityLabel,
   role = 'button',
   checked,
-  toggled,
+  ring = PAGE_RING,
   busy = false,
   testID,
   children,
 }: PressAreaProps) {
+  const press = disabled ? undefined : onPress
   return (
     <YStack
       {...(fill ? { flex: 1 } : {})}
       role={role}
       {...(checked === undefined ? {} : { 'aria-checked': checked })}
-      {...(toggled === undefined ? {} : { 'aria-pressed': toggled })}
       // A control's label is not selectable text; set here so a new control cannot forget it.
       userSelect="none"
       disabled={disabled}
-      onPress={disabled ? undefined : onPress}
+      onPress={press}
+      {...keyboardPress(press, focusRing(ring))}
       aria-label={accessibilityLabel}
       aria-busy={busy}
       testID={testID}

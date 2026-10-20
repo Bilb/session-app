@@ -56,7 +56,7 @@ dev entries. When a rule fires, fix the design - not the config.
   One whose value only makes sense on the machine running it (a host path) stays unprefixed.
 - Types compose from small `With*` pieces in `packages/basic-types/src/with.ts`. A shape declared
   inline twice gets a `With*`. A discriminated union is one shared piece plus one piece per variant
-  (`AlbumImage | AlbumVideo`), never an optional field only one variant uses.
+  (`Shared & (TextVariant | IconVariant)`), never an optional field only one variant uses.
 - `exactOptionalPropertyTypes` is on. Our optional props are `x?: T | undefined`, so a caller
   writes `x={x}`; the `{...(x === undefined ? {} : { x })}` spread is only for a third-party prop.
 - A numeric name carries its unit (`sizeBytes`, `timeoutMs`) unless it is already a count.

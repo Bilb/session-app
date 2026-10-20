@@ -8,8 +8,12 @@
 
 namespace session_bridge {
 
-/// Which of an attachment's two images a media URL names: the file, or its placeholder.
-enum class MediaUrlKind { attachment, preview };
+/// Which of an attachment's images a media URL names: the file, its placeholder, or the thumbnail
+/// libsession made of it.
+enum class MediaUrlKind { attachment, thumbhash, thumbnail };
+
+/// The kind as the URL spells it.
+std::string_view media_url_kind_name(MediaUrlKind kind);
 
 struct MediaUrl {
     MediaUrlKind kind;
@@ -17,7 +21,8 @@ struct MediaUrl {
     double index;
 };
 
-/// `session-media://<attachment|preview>/<messageId>/<index>` split back up, or nullopt.
+/// `session-media://<attachment|thumbhash|thumbnail>/<messageId>/<index>` split back up, or
+/// nullopt.
 ///
 /// The same rules as `parseMediaUrl` in `@session/app/mediaUrl`, and checked against the same
 /// vectors: the canonical form only, two plain decimal ids no larger than 2^53 - 1, a non-zero

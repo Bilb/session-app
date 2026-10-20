@@ -55,7 +55,12 @@ registerMediaScheme()
 /** A bridge that could not be made, standing in for one: see `createRefusingTransport`. */
 function refusingBridge(reason: string): Awaited<ReturnType<typeof createBridge>> {
   const refuse = () => Promise.reject(new Error(`the bridge could not start: ${reason}`))
-  return { ...createRefusingTransport(reason), fetchMedia: refuse, fetchPreview: refuse }
+  return {
+    ...createRefusingTransport(reason),
+    fetchMedia: refuse,
+    fetchThumbhash: refuse,
+    fetchThumbnail: refuse,
+  }
 }
 
 /**

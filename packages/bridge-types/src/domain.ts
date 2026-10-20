@@ -150,7 +150,16 @@ export interface Attachment {
    * media port like any other rather than riding the frame stream. What it names is the second
    * path on that scheme.
    */
-  hasPreview: boolean
+  hasThumbhash: boolean
+  /**
+   * Whether libsession holds a thumbnail of this attachment: a square JPEG of the picture, cropped
+   * to cover, at most the client's thumbnail edge on a side. Made only of a displayable image whose
+   * bytes are cached, and after them, so it turns true in a later `messages-updated` than the one
+   * reporting `cached`; false again once the cache evicts the file, which takes the thumbnail too.
+   *
+   * What a tile draws, through the media scheme's `thumbnail` path; a viewer draws the file.
+   */
+  hasThumbnail: boolean
   /**
    * On the file server: an outgoing attachment's upload finished, and always true for an incoming
    * one. Deliberately not "the bytes are here" - libsession records no local path, because the
@@ -257,7 +266,8 @@ export interface Message {
   attachments: Attachment[]
   /**
    * libsession's answer to whether this message's attachments could be shown as pictures rather
-   * than listed as files: "has attachments, and every one is `image/*`". It does not say whether
+   * than listed as files: "has attachments, and every one is a type libsession displays as an
+   * image" (JPEG, PNG, WebP, GIF, AVIF, `image/pjpeg`, case-insensitive). It does not say whether
    * this client can draw them, which is the screens' decision to make.
    */
   galleryViewable: boolean

@@ -91,10 +91,11 @@ namespace {
         return true;
     }
 
-    /// `Image/JPEG; charset=binary` -> `image/jpeg`: a declared type is compared by its essence.
+    /// `Image/JPEG; charset=binary` -> `image/jpeg`: a declared type is compared by its essence,
+    /// as basic-types' `contentTypeEssence` reads it. A NUL is kept, so it matches nothing.
     std::string essence(std::string_view type) {
         type = type.substr(0, type.find(';'));
-        constexpr std::string_view space = " \t\r\n\f\v";
+        constexpr std::string_view space = " \t\r\n";
         const auto first = type.find_first_not_of(space);
         if (first == std::string_view::npos)
             return {};
@@ -108,6 +109,15 @@ namespace {
 
 }  // namespace
 
+std::string_view media_url_kind_name(MediaUrlKind kind) {
+    switch (kind) {
+        case MediaUrlKind::attachment: return "attachment";
+        case MediaUrlKind::thumbhash: return "thumbhash";
+        case MediaUrlKind::thumbnail: return "thumbnail";
+    }
+    return "<INVALID>";
+}
+
 std::optional<MediaUrl> parse_media_url(std::string_view url) {
     std::string_view rest = url;
     if (!take(rest, SCHEME))
@@ -116,8 +126,10 @@ std::optional<MediaUrl> parse_media_url(std::string_view url) {
     MediaUrlKind kind;
     if (take(rest, "attachment/"))
         kind = MediaUrlKind::attachment;
-    else if (take(rest, "preview/"))
-        kind = MediaUrlKind::preview;
+    else if (take(rest, "thumbhash/"))
+        kind = MediaUrlKind::thumbhash;
+    else if (take(rest, "thumbnail/"))
+        kind = MediaUrlKind::thumbnail;
     else
         return std::nullopt;
 

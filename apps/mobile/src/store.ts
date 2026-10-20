@@ -1,4 +1,5 @@
 import {
+  ALBUM_WIDTH,
   netidForTransport,
   parseDevnetConfig,
   parseLogSpec,
@@ -7,7 +8,7 @@ import {
 } from '@session/basic-types'
 import { createRefusingTransport, type BridgeTransport, type FetchLike } from '@session/client'
 import { createSessionStore } from '@session/state'
-import { Platform } from 'react-native'
+import { PixelRatio, Platform } from 'react-native'
 
 import { mobileClient } from './client'
 import { libsessionLog, storeLog, watchStore } from './logs'
@@ -89,6 +90,8 @@ async function openTransport(): Promise<BridgeTransport> {
     // devnet, which is the only thing a devnet can use.
     ...(router === undefined ? {} : { router }),
     deviceType: Platform.OS === 'ios' ? 'ios' : 'android',
+    // A default: a stored edge (setThumbnailEdge) wins over this at every open.
+    thumbnailEdgePx: Math.round(ALBUM_WIDTH * PixelRatio.get()),
     // Off unless asked for, as on desktop: libsession is chatty below warn, and the reason to turn
     // it up is always a specific failure. It is also the only place the network and the transport
     // actually chosen are reported, which no screen shows.

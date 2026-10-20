@@ -53,14 +53,10 @@ static CGSize SourcePixelSize(CGImageSourceRef source) {
 }
 
 // TODO: ImageIO decodes a GIF or most PNGs whole; serve a format it reduces while decoding.
-/// Decodes on the calling queue rather than at first draw, and no larger than the view asks for or
-/// the pixel budget allows: a thumbnail with the file's orientation applied, which is also what
-/// keeps a 12-megapixel photo from being held whole for a tile.
-static UIImage* _Nullable DecodedImage(
-        CGImageSourceRef source, CGSize pixels, CGSize size, CGFloat scale) {
-    const CGFloat longest = std::max(size.width, size.height) * std::max<CGFloat>(scale, 1);
-    const CGFloat bound =
-            ::session_bridge_rn::decode_edge_bound(longest, pixels.width, pixels.height);
+/// An original, for the viewer: decoded on the calling queue rather than at first draw, with the
+/// file's orientation applied, and no larger than the pixel budget allows.
+static UIImage* _Nullable DecodedImage(CGImageSourceRef source, CGSize pixels, CGFloat scale) {
+    const CGFloat bound = ::session_bridge_rn::decode_edge_bound(pixels.width, pixels.height);
     NSDictionary* options = @{
         (id)kCGImageSourceCreateThumbnailFromImageAlways : @YES,
         (id)kCGImageSourceCreateThumbnailWithTransform : @YES,
@@ -77,23 +73,23 @@ static UIImage* _Nullable DecodedImage(
     return image;
 }
 
-/// A preview's RGBA, which is not premultiplied - what `kCGImageAlphaLast` describes.
-static UIImage* _Nullable PreviewImage(std::shared_ptr<::session_bridge::Preview> preview) {
+/// A thumbhash's RGBA, which is not premultiplied - what `kCGImageAlphaLast` describes.
+static UIImage* _Nullable ThumbhashImage(std::shared_ptr<::session_bridge::Thumbhash> thumbhash) {
     // Bounded as doubles first: a JavaScript source may answer NaN or 1e12, and casting either
     // to size_t is undefined before the check would run.
     constexpr double max_edge = 16384;
-    const double w = preview->width, h = preview->height;
+    const double w = thumbhash->width, h = thumbhash->height;
     if (!(w > 0 && w <= max_edge && h > 0 && h <= max_edge))
         return nil;
     const auto width = static_cast<size_t>(w);
     const auto height = static_cast<size_t>(h);
-    if (preview->rgba.size() != width * height * 4)
+    if (thumbhash->rgba.size() != width * height * 4)
         return nil;
-    // The provider keeps the preview alive for as long as the image needs its pixels.
-    auto* held = new std::shared_ptr<::session_bridge::Preview>(std::move(preview));
+    // The provider keeps the thumbhash alive for as long as the image needs its pixels.
+    auto* held = new std::shared_ptr<::session_bridge::Thumbhash>(std::move(thumbhash));
     CGDataProviderRef provider = CGDataProviderCreateWithData(
             held, (*held)->rgba.data(), (*held)->rgba.size(), [](void* info, const void*, size_t) {
-                delete static_cast<std::shared_ptr<::session_bridge::Preview>*>(info);
+                delete static_cast<std::shared_ptr<::session_bridge::Thumbhash>*>(info);
             });
     CGColorSpaceRef colours = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
     CGImageRef image = CGImageCreate(
@@ -117,33 +113,81 @@ static UIImage* _Nullable PreviewImage(std::shared_ptr<::session_bridge::Preview
     return result;
 }
 
-/// Decoded tiles and previews, keyed by URL, size and scale. React Native caches only what it
-/// decoded itself from an HTTP response, so a loader's answers would otherwise decode again on
-/// every mount; bounded per entry so a viewer-size picture never evicts a screen of tiles. A URL
-/// keeps naming one picture: libsession never reuses a message id, and a discard calls
-/// `forget_media`.
-static const NSUInteger kCacheTotalCostBytes = 48 * 1024 * 1024;
-static const NSUInteger kCacheEntryCostLimitBytes = 4 * 1024 * 1024;
-
-static NSString* CacheKey(NSURL* url, CGSize size, CGFloat scale) {
-    return [NSString stringWithFormat:@"%@|%.0f|%.0f|%.2f",
-                                      url.absoluteString,
-                                      size.width,
-                                      size.height,
-                                      scale];
+/// A thumbnail, decoded whole for a view that wants about all of libsession's JPEG (a single album
+/// tile or a three-up's lead), and reduced while decoding for one that needs half of it or less,
+/// such as the other album tiles or a file row's glyph.
+static UIImage* _Nullable ThumbnailImage(CGImageSourceRef source, CGSize view, CGFloat scale) {
+    const CGSize pixels = SourcePixelSize(source);
+    const CGFloat edge = ::session_bridge_rn::thumbnail_decode_edge(
+            pixels.width, pixels.height, view.width * scale, view.height * scale);
+    CGImageRef decoded = nullptr;
+    if (edge > 0) {
+        NSDictionary* options = @{
+            (id)kCGImageSourceCreateThumbnailFromImageAlways : @YES,
+            (id)kCGImageSourceShouldCacheImmediately : @YES,
+            (id)kCGImageSourceThumbnailMaxPixelSize : @(edge),
+        };
+        decoded = CGImageSourceCreateThumbnailAtIndex(source, 0, (__bridge CFDictionaryRef)options);
+    } else {
+        NSDictionary* options = @{(id)kCGImageSourceShouldCacheImmediately : @YES};
+        decoded = CGImageSourceCreateImageAtIndex(source, 0, (__bridge CFDictionaryRef)options);
+    }
+    if (!decoded)
+        return nil;
+    UIImage* image = [UIImage imageWithCGImage:decoded scale:std::max<CGFloat>(scale, 1)
+                                   orientation:UIImageOrientationUp];
+    CGImageRelease(decoded);
+    return image;
 }
+
+/// Decoded thumbnails and thumbhashes. React Native caches only what it decoded itself from an HTTP
+/// response, so a loader's answers would otherwise decode again on every mount. A URL keeps naming
+/// one picture: libsession never reuses a message id, and a discard calls `forget_media`.
+static const NSUInteger kCacheTotalCostBytes = 48 * 1024 * 1024;
 
 static void Remember(NSCache<NSString*, UIImage*>* cache, NSString* key, UIImage* image) {
     CGImageRef pixels = image.CGImage;
     if (!pixels)
         return;
-    const NSUInteger cost = CGImageGetBytesPerRow(pixels) * CGImageGetHeight(pixels);
-    if (cost > 0 && cost <= kCacheEntryCostLimitBytes)
-        [cache setObject:image forKey:key cost:cost];
+    [cache setObject:image forKey:key cost:CGImageGetBytesPerRow(pixels) * CGImageGetHeight(pixels)];
+}
+
+/// Answers `done` with a thumbnail's JPEG decoded, refusing anything else.
+static void FinishThumbnail(
+        std::shared_ptr<::session_bridge::Media> media,
+        CGSize view,
+        CGFloat scale,
+        NSCache<NSString*, UIImage*>* cache,
+        NSString* key,
+        NSURL* url,
+        RCTImageLoaderCompletionBlock done) {
+    if (media->error) {
+        Fail(done, url, *media->error);
+        return;
+    }
+    if (::session_bridge::servable_image_type("image/jpeg", media->bytes) != "image/jpeg") {
+        Fail(done, url, "a thumbnail that is not a JPEG");
+        return;
+    }
+    NSData* data = [[NSData alloc] initWithBytesNoCopy:media->bytes.data()
+                                                length:media->bytes.size()
+                                           deallocator:^(void*, NSUInteger) {
+                                               (void)media;
+                                           }];
+    CGImageSourceRef source = CGImageSourceCreateWithData((__bridge CFDataRef)data, nullptr);
+    UIImage* image = source ? ThumbnailImage(source, view, scale) : nil;
+    if (source)
+        CFRelease(source);
+    if (!image) {
+        Fail(done, url, "the thumbnail did not decode");
+        return;
+    }
+    Remember(cache, key, image);
+    done(nil, image);
 }
 
 /**
- * Draws `session-media://` URLs: the image loader behind `MediaPort.urlFor` on iOS.
+ * Draws `session-media://` URLs: the image loader behind the `MediaPort` URLs on iOS.
  *
  * Registered through `codegenConfig.ios.modulesConformingToProtocol` in this package's
  * package.json, which is what reaches React Native's image loader on the new architecture. The URL
@@ -166,7 +210,7 @@ RCT_EXPORT_MODULE()
 
 // TODO: admit decodes by their summed peak estimated from the header (whole for a GIF or PNG),
 // refusing one that os_proc_available_memory() less that sum and a margin cannot hold.
-/// Concurrent: every block owns what it touches, and a microsecond preview must not wait behind
+/// Concurrent: every block owns what it touches, and a microsecond thumbhash must not wait behind
 /// an album's decodes.
 - (instancetype)init {
     if (self = [super init]) {
@@ -232,8 +276,17 @@ RCT_EXPORT_MODULE()
         Fail(completionHandler, imageURL, "not a media URL");
         return nil;
     }
-    NSString* key = CacheKey(imageURL, size, scale);
-    if (UIImage* cached = [_cache objectForKey:key]) {
+    // Originals are not kept: one is most of the cache's budget, and a tile draws one only for a
+    // type libsession never thumbnails.
+    const bool cacheable = parsed->kind != ::session_bridge::MediaUrlKind::attachment;
+    // A thumbnail's decode depends on the view it fills; a thumbhash's does not.
+    NSString* key = parsed->kind == ::session_bridge::MediaUrlKind::thumbnail
+                            ? [NSString stringWithFormat:@"%@ %.0fx%.0f",
+                                                         imageURL.absoluteString,
+                                                         size.width * scale,
+                                                         size.height * scale]
+                            : imageURL.absoluteString;
+    if (UIImage* cached = cacheable ? [_cache objectForKey:key] : nil) {
         completionHandler(nil, cached);
         return nil;
     }
@@ -248,25 +301,34 @@ RCT_EXPORT_MODULE()
     NSCache<NSString*, UIImage*>* cache = _cache;
     RCTImageLoaderCompletionBlock done = [completionHandler copy];
 
-    if (parsed->kind == ::session_bridge::MediaUrlKind::preview) {
-        source->fetch_preview(parsed->message_id, parsed->index, [=](::session_bridge::Preview answer) {
-            auto preview = std::make_shared<::session_bridge::Preview>(std::move(answer));
+    if (parsed->kind == ::session_bridge::MediaUrlKind::thumbhash) {
+        source->fetch_thumbhash(parsed->message_id, parsed->index, [=](::session_bridge::Thumbhash answer) {
+            auto thumbhash = std::make_shared<::session_bridge::Thumbhash>(std::move(answer));
             dispatch_async(drain, ^{
                 if (cancelled->load())
                     return;
-                if (preview->error) {
-                    Fail(done, imageURL, *preview->error);
+                if (thumbhash->error) {
+                    Fail(done, imageURL, *thumbhash->error);
                     return;
                 }
-                UIImage* image = PreviewImage(preview);
+                UIImage* image = ThumbhashImage(thumbhash);
                 if (!image) {
-                    Fail(done, imageURL, "a preview whose pixels do not match its size");
+                    Fail(done, imageURL, "a thumbhash whose pixels do not match its size");
                     return;
                 }
                 Remember(cache, key, image);
                 done(nil, image);
             });
         });
+    } else if (parsed->kind == ::session_bridge::MediaUrlKind::thumbnail) {
+        source->fetch_thumbnail(
+                parsed->message_id, parsed->index, [=](::session_bridge::Media answer) {
+                    auto media = std::make_shared<::session_bridge::Media>(std::move(answer));
+                    dispatch_async(drain, ^{
+                        if (!cancelled->load())
+                            FinishThumbnail(media, size, scale, cache, key, imageURL, done);
+                    });
+                });
     } else {
         source->fetch_media(parsed->message_id, parsed->index, [=](::session_bridge::Media answer) {
             auto media = std::make_shared<::session_bridge::Media>(std::move(answer));
@@ -309,16 +371,12 @@ RCT_EXPORT_MODULE()
                                       && ::session_bridge_rn::fits_decode_budget(
                                               pixels.width, pixels.height);
                 UIImage* image = animated ? [[RCTAnimatedImage alloc] initWithData:data scale:scale]
-                                          : DecodedImage(imageSource, pixels, size, scale);
+                                          : DecodedImage(imageSource, pixels, scale);
                 CFRelease(imageSource);
                 if (!image) {
                     Fail(done, imageURL, "the picture did not decode");
                     return;
                 }
-                // An animated image holds its source and the file's bytes, which its poster frame
-                // does not measure, so only stills are kept.
-                if (!animated)
-                    Remember(cache, key, image);
                 done(nil, image);
             });
         });

@@ -24,9 +24,9 @@ function wholeBuffer(bytes: Uint8Array): ArrayBuffer {
 export function serveNativeMediaFrom(source: MediaSource): void {
   serving?.close()
   const bridge = createSessionBridge()
-  // A dev client built before this JavaScript has no such method, and calling it would only say
-  // "undefined is not a function".
-  if (typeof (bridge as Partial<SessionBridge>).serveMediaFrom !== 'function') {
+  // Probed by `fetchThumbnail` rather than `serveMediaFrom`: a dev client with only the latter
+  // takes the thumbnail function, ignores it, and fails every thumbnail URL without saying why.
+  if (typeof (bridge as Partial<SessionBridge>).fetchThumbnail !== 'function') {
     throw new Error(
       'This dev client is older than the JavaScript it is running: its native side cannot serve ' +
         'media. Rebuild and reinstall it with `pnpm android` (or `pnpm ios`).',
@@ -38,9 +38,10 @@ export function serveNativeMediaFrom(source: MediaSource): void {
       return { contentType: media.contentType, bytes: wholeBuffer(media.bytes) }
     },
     async (messageId, index) => {
-      const preview = await source.fetchPreview({ messageId, index })
-      return { width: preview.width, height: preview.height, rgba: wholeBuffer(preview.rgba) }
+      const thumbhash = await source.fetchThumbhash({ messageId, index })
+      return { width: thumbhash.width, height: thumbhash.height, rgba: wholeBuffer(thumbhash.rgba) }
     },
+    async (messageId, index) => wholeBuffer(await source.fetchThumbnail({ messageId, index })),
   )
   serving = bridge
 }

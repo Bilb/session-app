@@ -27,7 +27,8 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
                 {
                         InstanceMethod<&SessionBridge::Call>("call"),
                         InstanceMethod<&SessionBridge::FetchMedia>("fetchMedia"),
-                        InstanceMethod<&SessionBridge::FetchPreview>("fetchPreview"),
+                        InstanceMethod<&SessionBridge::FetchThumbhash>("fetchThumbhash"),
+                        InstanceMethod<&SessionBridge::FetchThumbnail>("fetchThumbnail"),
                         InstanceMethod<&SessionBridge::DatabasesReplaced>("databasesReplaced"),
                         InstanceMethod<&SessionBridge::Close>("close"),
                 });
@@ -127,6 +128,12 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
         }
         if (options.Has("logLevel") && !options.Get("logLevel").IsUndefined())
             init.log_level = options.Get("logLevel").As<Napi::String>().Utf8Value();
+        if (options.Has("thumbnailEdgePx") && !options.Get("thumbnailEdgePx").IsUndefined()) {
+            Napi::Value edge = options.Get("thumbnailEdgePx");
+            if (!edge.IsNumber())
+                throw Napi::TypeError::New(env, "thumbnailEdgePx must be a number");
+            init.thumbnail_edge_px = edge.As<Napi::Number>().DoubleValue();
+        }
 
         // Desktop keeps nothing by message id that main could empty (docs/ARCHITECTURE.md,
         // 2026-10-09), so this only counts, for the tests that hold the bridge to calling it.
@@ -284,23 +291,39 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
     }
 
     /// A decoded ThumbHash, by the same route and for the same reason as `FetchMedia`.
-    Napi::Value FetchPreview(const Napi::CallbackInfo& info) {
-        return Fetch<session_bridge::Preview>(
+    Napi::Value FetchThumbhash(const Napi::CallbackInfo& info) {
+        return Fetch<session_bridge::Thumbhash>(
                 info,
-                "fetchPreview(messageId, index)",
-                "sessionBridgePreview",
-                [this](double message_id, double index, session_bridge::PreviewHandler cb) {
-                    _bridge->fetch_preview(message_id, index, std::move(cb));
+                "fetchThumbhash(messageId, index)",
+                "sessionBridgeThumbhash",
+                [this](double message_id, double index, session_bridge::ThumbhashHandler cb) {
+                    _bridge->fetch_thumbhash(message_id, index, std::move(cb));
                 },
-                [](Napi::Env env, const session_bridge::Preview& preview) {
-                    auto rgba = Napi::Uint8Array::New(env, preview.rgba.size());
-                    std::memcpy(rgba.Data(), preview.rgba.data(), preview.rgba.size());
+                [](Napi::Env env, const session_bridge::Thumbhash& thumbhash) {
+                    auto rgba = Napi::Uint8Array::New(env, thumbhash.rgba.size());
+                    std::memcpy(rgba.Data(), thumbhash.rgba.data(), thumbhash.rgba.size());
 
                     Napi::Object result = Napi::Object::New(env);
-                    result.Set("width", preview.width);
-                    result.Set("height", preview.height);
+                    result.Set("width", thumbhash.width);
+                    result.Set("height", thumbhash.height);
                     result.Set("rgba", rgba);
                     return result;
+                });
+    }
+
+    /// `fetchThumbnail(messageId, index) -> Promise<Uint8Array>`: the JPEG, by the same route.
+    Napi::Value FetchThumbnail(const Napi::CallbackInfo& info) {
+        return Fetch<session_bridge::Media>(
+                info,
+                "fetchThumbnail(messageId, index)",
+                "sessionBridgeThumbnail",
+                [this](double message_id, double index, session_bridge::MediaHandler cb) {
+                    _bridge->fetch_thumbnail(message_id, index, std::move(cb));
+                },
+                [](Napi::Env env, const session_bridge::Media& media) {
+                    auto bytes = Napi::Uint8Array::New(env, media.bytes.size());
+                    std::memcpy(bytes.Data(), media.bytes.data(), media.bytes.size());
+                    return bytes;
                 });
     }
 
@@ -348,9 +371,7 @@ Napi::Value ParseMediaUrl(const Napi::CallbackInfo& info) {
     if (!parsed)
         return env.Null();
     Napi::Object result = Napi::Object::New(env);
-    result.Set(
-            "kind",
-            parsed->kind == session_bridge::MediaUrlKind::attachment ? "attachment" : "preview");
+    result.Set("kind", std::string{session_bridge::media_url_kind_name(parsed->kind)});
     result.Set("messageId", parsed->message_id);
     result.Set("index", parsed->index);
     return result;

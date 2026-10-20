@@ -151,6 +151,15 @@ export interface SessionBridgeOptions {
   deviceType?: DeviceType
 
   /**
+   * The side of the square thumbnails libsession makes, in device pixels: what an album is drawn
+   * at, times the display density. Clamped by libsession to 64 to 1024, which keeps a decoded one
+   * within 4 MiB. Left out, libsession's own default.
+   *
+   * A default only: a value stored by `setThumbnailEdge` wins over it at every open.
+   */
+  thumbnailEdgePx?: number
+
+  /**
    * Left out, none of it is forwarded. Worth turning up when something fails for no visible
    * reason: the send state machine says what happened and never why.
    */

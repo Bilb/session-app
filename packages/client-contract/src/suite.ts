@@ -59,6 +59,15 @@ export interface ContractHarness {
     /** Delivers another incoming message holding one image, and answers its id. */
     receiveImage: () => Promise<number>
   }>
+  /**
+   * A client a friend can send forged attachments to. `receive` delivers one incoming message
+   * with one attachment of each content type given, and answers it as the client lists it.
+   *
+   * The attachments point at nothing, so only what the client says about them can be asked.
+   */
+  receivesAttachments(): Promise<{
+    receive: (contentTypes: readonly string[]) => Promise<Message>
+  }>
   /** Stops and restarts a client against the same data. */
   restart(client: SessionClient): Promise<SessionClient>
   /**
@@ -134,6 +143,43 @@ function announcedAvailability(
   return event.messages.find((m) => m.id === messageId)?.attachments.find((a) => a.index === index)
     ?.availability
 }
+
+/**
+ * libsession's `image::displayable_image_types` and its comparison, which reads the MIME essence
+ * and folds ASCII case, as the `galleryViewable` of a message holding one attachment of each type.
+ */
+const GALLERY_VIEWABLE: [contentType: string, galleryViewable: boolean][] = [
+  ['image/jpeg', true],
+  ['image/jpg', true],
+  ['image/pjpeg', true],
+  ['image/png', true],
+  ['image/webp', true],
+  ['image/gif', true],
+  ['image/avif', true],
+  ['IMAGE/Jpeg', true],
+  ['image/JPG', true],
+  ['Image/PJPEG', true],
+  ['image/PNG', true],
+  ['image/WebP', true],
+  ['IMAGE/GIF', true],
+  ['image/AVIF', true],
+  ['image/heic', false],
+  ['image/heif', false],
+  ['image/svg+xml', false],
+  ['image/tiff', false],
+  ['image/bmp', false],
+  ['image/apng', false],
+  ['image/jxl', false],
+  ['image/x-icon', false],
+  ['image/jpeg; charset=binary', true],
+  ['image/jpeg ', true],
+  [' image/png', true],
+  ['image/', false],
+  ['', false],
+  ['video/mp4', false],
+  ['application/pdf', false],
+  ['application/octet-stream', false],
+]
 
 export interface ContractOptions {
   /**
@@ -980,6 +1026,20 @@ export function runSessionClientContract(
       seen.stop()
     })
 
+    it('shows a message as a gallery only when every attachment is an image libsession displays', async () => {
+      // The fake keeps its own copy of libsession's list, so the answers are written out here:
+      // derived from that copy, a type libsession added or dropped would pass on the fake.
+      const { receive } = await harness.receivesAttachments()
+      const answers: [contentType: string, galleryViewable: boolean][] = []
+      for (const [contentType] of GALLERY_VIEWABLE)
+        answers.push([contentType, (await receive([contentType])).galleryViewable])
+      expect(answers).toEqual(GALLERY_VIEWABLE)
+
+      expect((await receive(['image/jpeg', 'application/pdf'])).galleryViewable).toBe(false)
+      expect((await receive(['image/heic', 'image/png'])).galleryViewable).toBe(false)
+      expect((await receive(['image/png', 'IMAGE/GIF'])).galleryViewable).toBe(true)
+    })
+
     it('has no attachment cache limit until one is set, and reads back the one set', async () => {
       const { alice } = await harness.friends()
       expect(typeof (await alice.getCacheDir())).toBe('string')
@@ -999,6 +1059,32 @@ export function runSessionClientContract(
       const error = await failure(() => alice.setAttachmentCacheLimit(-1))
       expect(error instanceof Error ? error.message : error).toContain('must not be negative')
       expect(await alice.getAttachmentCacheLimit()).toBe(250_000_000)
+    })
+
+    it('clamps the thumbnail edge it keeps, and forgets it when unset', async () => {
+      const { alice } = await harness.friends()
+      const opened = await alice.getThumbnailEdge()
+
+      await alice.setThumbnailEdge(300)
+      expect(await alice.getThumbnailEdge()).toBe(300)
+      await alice.setThumbnailEdge(4096)
+      expect(await alice.getThumbnailEdge()).toBe(1024)
+      await alice.setThumbnailEdge(1)
+      expect(await alice.getThumbnailEdge()).toBe(64)
+
+      await alice.setThumbnailEdge(undefined)
+      expect(await alice.getThumbnailEdge()).toBe(opened)
+    })
+
+    it('refuses a thumbnail edge past what the bridge carries and keeps the one it had', async () => {
+      const { alice } = await harness.friends()
+      await alice.setThumbnailEdge(300)
+
+      const error = await failure(() => alice.setThumbnailEdge(2 ** 32))
+      expect(error instanceof Error ? error.message : error).toContain(
+        'setThumbnailEdge.edgePx must be a whole number this bridge can carry',
+      )
+      expect(await alice.getThumbnailEdge()).toBe(300)
     })
 
     it("measures each of the account's configs, listed by name", async () => {
