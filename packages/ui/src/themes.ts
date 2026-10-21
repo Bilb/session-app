@@ -55,6 +55,17 @@ export function isDarkTheme(theme: ThemeState): boolean {
   return theme.endsWith('-dark')
 }
 
+/**
+ * The same family at the other polarity: what the light/dark toggle switches to. Keeps the family,
+ * as the legacy desktop's toggle does, so Ocean stays Ocean; the accent is the caller's to keep.
+ */
+export function oppositePolarity(theme: ThemeState): ThemeState {
+  const flipped = isDarkTheme(theme)
+    ? theme.replace(/-dark$/, '-light')
+    : theme.replace(/-light$/, '-dark')
+  return THEME_STATES.find((name) => name === flipped) ?? theme
+}
+
 export { DEFAULT_ACCENT, DEFAULT_THEME }
 
 /**
