@@ -163,7 +163,9 @@ export function ConversationListScreen({
         justifyContent="space-between"
         {...topBarInsets}
       >
-        <XStack alignItems="center" gap="$xs">
+        {/* Shrinks first, so that at a large text size the title wraps rather than pushing the
+            controls after it off the edge. */}
+        <XStack alignItems="center" gap="$xs" flexShrink={1}>
           {/* Settings had a route and no way to reach it, which made the account ID - the one
               thing someone else needs in order to write to this device - unreachable too. On the
               leading side, before the title, as both legacy mobile clients have it. */}
