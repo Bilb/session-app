@@ -52,21 +52,29 @@ function SettingsAvatar() {
         onPress={openSettings}
         testID={ELEMENT.rail.avatar}
       >
-        <Avatar id={account?.sessionId ?? ''} name={account?.displayName ?? ''} size={AVATAR_PX} />
-        <YStack
-          position="absolute"
-          bottom={GEAR_DROP_PX}
-          width={GEAR_DISC_PX}
-          height={GEAR_DISC_PX}
-          borderRadius="$full"
-          alignItems="center"
-          justifyContent="center"
-          backgroundColor="$primaryColor"
-          boxShadow={`0px 0px 3px 2px ${ring}`}
-          pointerEvents="none"
-          {...logical({ insetEnd: 0 })}
-        >
-          <Icon name="settings" size={GEAR_GLYPH_PX} color="$onAccent" />
+        {/* The badge's own containing block, so it is placed against the avatar whatever the
+            button around it does. */}
+        <YStack width={AVATAR_PX} height={AVATAR_PX} position="relative">
+          <Avatar
+            id={account?.sessionId ?? ''}
+            name={account?.displayName ?? ''}
+            size={AVATAR_PX}
+          />
+          <YStack
+            position="absolute"
+            bottom={GEAR_DROP_PX}
+            width={GEAR_DISC_PX}
+            height={GEAR_DISC_PX}
+            borderRadius="$full"
+            alignItems="center"
+            justifyContent="center"
+            backgroundColor="$primaryColor"
+            boxShadow={`0px 0px 3px 2px ${ring}`}
+            pointerEvents="none"
+            {...logical({ insetEnd: 0 })}
+          >
+            <Icon name="settings" size={GEAR_GLYPH_PX} color="$onAccent" />
+          </YStack>
         </YStack>
       </RailButton>
     </Tooltip>
