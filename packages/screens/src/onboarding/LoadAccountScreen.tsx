@@ -69,8 +69,7 @@ export function LoadAccountScreen({
   const wide = useMedia().gtSm
   const fontScale = useFontScale()
   // Above the default text size the wide column scrolls rather than holding a fixed height (see
-  // `WideChrome`), and a pager only gives that scroll something to reach if it takes its height
-  // from the page showing.
+  // `WideChrome`), so it has no height for the camera preview to fill.
   const fitsPage = wide && fontScale > 1
   const [tab, setTab] = useState<'phrase' | 'qr'>('phrase')
   const [phrase, setPhrase] = useState('')
@@ -131,9 +130,9 @@ export function LoadAccountScreen({
       }
     >
       {scanning ? (
-        /* Stretching, deliberately: the pager fills the row's height unless it fits its pages
-           (`fitsPage`), and `alignItems="flex-start"` would collapse it. The back control keeps
-           its own height and so does not stretch with it. */
+        /* Stretching, deliberately: the pager takes the row's height, and `alignItems="flex-start"`
+           would collapse it. The back control keeps its own height and so does not stretch with
+           it. */
         <XStack flex={1}>
           {/* **The back control sits beside the pager, not inside a pane.** The pager has to clip
               -- a page at rest is one column-width to the side, which on a tablet is still on
@@ -154,7 +153,6 @@ export function LoadAccountScreen({
             }}
             instant={cut}
             clip={wide}
-            fitsPage={fitsPage}
           >
             {phrasePane}
             <ScanQrPane

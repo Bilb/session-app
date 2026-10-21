@@ -21,8 +21,8 @@ interface ScanQrPaneProps {
   /** Shown under the frame. The bridge's refusal of whatever was scanned. */
   error?: string | null
   /**
-   * Whether the pager takes its height from this pane, so the preview needs one of its own rather
-   * than filling. See `SlidePager`'s `fitsPage`.
+   * Whether the pane sits in a column that scrolls, which has no height for the preview to fill,
+   * so the preview is square instead.
    */
   fitsPage?: boolean
 }

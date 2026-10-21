@@ -32,7 +32,6 @@ export function SlidePager({
   onIndexChange,
   instant = false,
   clip = false,
-  fitsPage = false,
   children,
 }: SlidePagerProps) {
   /**
@@ -79,7 +78,7 @@ export function SlidePager({
       keyboardShouldPersistTaps="handled"
       // Anything a page means to draw outside this box -- the wide back control hangs off the
       // column's leading edge -- belongs to whatever lays the pager out, not inside a page.
-      style={[fitsPage ? null : FILL, clip ? null : UNCLIPPED]}
+      style={[FILL, clip ? null : UNCLIPPED]}
       onLayout={(event) => {
         setWidth(event.nativeEvent.layout.width)
       }}
