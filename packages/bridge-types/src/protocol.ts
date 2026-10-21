@@ -9,6 +9,7 @@ import type {
   Deletion,
   Message,
   MessageCursor,
+  NetworkStatus,
 } from './domain'
 import type { FileServerConfig, RouterKind, SeedNode } from './sessionBridgeOptions'
 
@@ -164,6 +165,14 @@ export type Command =
    * makes this a warm rather than a second network.
    */
   | { type: 'warmNetworkCache' }
+  /**
+   * Whether the attached network can carry traffic now. `disconnected` where none is attached.
+   *
+   * Asked once and then followed by `network-status-changed`, the way every list here is: a
+   * renderer that reloads, or a store that subscribes after the network came up, has missed the
+   * events that said so.
+   */
+  | { type: 'getNetworkStatus' }
   /**
    * How often libsession polls the swarm, in milliseconds. Its default is 20 seconds, which is a
    * long time to wait for a test and about right for a person.
@@ -342,6 +351,7 @@ export type Result =
   /** A thumbnail's side in device pixels, as libsession clamped it. */
   | { type: 'edge'; edgePx: number }
   | { type: 'configSizes'; sizes: ConfigSize[] }
+  | { type: 'networkStatus'; status: NetworkStatus }
 
 export interface Response {
   id: number
@@ -422,6 +432,15 @@ export type SessionEvent =
       totalBytes: number
       outcome?: AttachmentOutcome
     }
+  /**
+   * The attached network's status changed. One per change, in the order libsession made them, and
+   * never two of the same in a row from libsession itself; the answer to `getNetworkStatus` can
+   * repeat the last one, which is harmless because each carries the whole state.
+   *
+   * A network that goes away reports `disconnected` on the way out, which a discard does. Closing
+   * the bridge reports nothing: there is nobody left to tell.
+   */
+  | { type: 'network-status-changed'; status: NetworkStatus }
   /**
    * libsession's own log lines, forwarded when the bridge was opened with a log level. Worth
    * having because the state machine reports what happened and never why.

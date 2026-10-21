@@ -11,6 +11,7 @@ import type {
   Deletion,
   ExportAttachmentOptions,
   MessageCursor,
+  NetworkStatus,
   SessionEvent,
 } from '@session/bridge-types'
 
@@ -96,6 +97,7 @@ export class FakeSessionClient implements SessionClient {
     this.account.haveAccount = true
     // Provisional until `keepAccount` says otherwise. See FakeAccount.provisional.
     this.account.provisional = true
+    this.account.goOnline()
     return Promise.resolve()
   }
 
@@ -114,6 +116,7 @@ export class FakeSessionClient implements SessionClient {
     // made-up rule here would predict nothing about the one that matters.
     this.account.haveAccount = true
     this.account.provisional = true
+    this.account.goOnline()
     // The account comes back before its profile does: libsession has the identity the moment the
     // seed decodes, and the display name only once the swarm answers. The fake said both at once,
     // which made the wait that exists to cover that gap finish before it was drawn.
@@ -173,8 +176,15 @@ export class FakeSessionClient implements SessionClient {
     const refusal = networkRefusal(config)
     if (refusal !== undefined) return Promise.reject(new SessionClientError(refusal))
 
-    this.account.networkAttached = true
+    // Recorded either way and attached only with an account, as the bridge does.
+    this.account.networkPlanned = true
+    this.account.goOnline()
     return Promise.resolve()
+  }
+
+  getNetworkStatus(): Promise<NetworkStatus> {
+    this.assertOpen()
+    return Promise.resolve(this.account.networkStatus)
   }
 
   pollOnce(): Promise<void> {

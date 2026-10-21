@@ -317,6 +317,13 @@ struct ClientBridge::Impl {
     /// joins the loop the callback is running on, so dropping it from there deadlocks. Whatever
     /// drops it runs on another thread -- an attach, a discard, or `close`.
     std::unique_ptr<session::network::Network> warm;
+    /// Held while a network status is read and emitted, by the network's hook and by
+    /// `getNetworkStatus` alike, so the two reach the stream in the order the status changed: an
+    /// answer read before a change is emitted before that change's event, never after it.
+    std::mutex network_status_lock;
+    /// Cleared by `close` before the client goes. Destroying a Network reports `disconnected` from
+    /// its destructor, which would otherwise reach a sink the adapter is tearing down.
+    bool network_status_open = true;
 
     explicit Impl(Sink s, InitOptions o) : sink{std::move(s)}, options{std::move(o)} {}
 
@@ -493,7 +500,8 @@ struct ClientBridge::Impl {
         // which is also what guarantees its callback is not still holding this Impl.
         warm.reset();
 
-        client->core.make_network(network::config::Config{*planned});
+        auto& net = client->core.make_network(network::config::Config{*planned});
+        follow_network_status(net);
 
         // A devnet is a handful of nodes on one machine with nothing else talking to them, so
         // libsession's 20-second default is all latency and no saving. Decided here rather than
@@ -502,6 +510,27 @@ struct ClientBridge::Impl {
         // call setPollInterval, which runs after this.
         if (options.network.netid == "devnet")
             client->core.set_poll_interval(DEVNET_POLL_INTERVAL);
+    }
+
+    /// Forwards the attached network's status as events, starting from where it is now.
+    ///
+    /// **Assigned after the Network exists, from this thread**, as Core assigns its own hooks
+    /// beside it in `set_network`: the constructor is already connecting, and the hook is a plain
+    /// member nothing can set sooner. So the status it reached before this ran is emitted here,
+    /// under the same lock as the hook. A change racing the assignment can then arrive twice, which
+    /// is harmless for an event that carries the whole state, and never out of order.
+    ///
+    /// Nothing for the warm network: it carries no account's traffic, and a dot showing it would
+    /// say the app is online before it can send anything.
+    void follow_network_status(session::network::Network& net) {
+        auto* impl = this;
+        net.on_status_changed = [impl](session::network::ConnectionStatus status) {
+            std::lock_guard lock{impl->network_status_lock};
+            if (impl->network_status_open)
+                impl->event(NetworkStatusChangedSessionEvent{to_bridge(status)});
+        };
+        std::lock_guard lock{network_status_lock};
+        event(NetworkStatusChangedSessionEvent{to_bridge(net.get_status())});
     }
 
     /// Both halves of "an account now exists", which is what onboarding signals too. The record
@@ -837,6 +866,14 @@ struct ClientBridge::Impl {
             throw;
         }
         ok(id);
+    }
+
+    void handle(double id, const GetNetworkStatusCommand&) {
+        std::lock_guard lock{network_status_lock};
+        auto* net = client->core.network();
+        respond(id,
+                NetworkStatusResult{
+                        net ? to_bridge(net->get_status()) : NetworkStatus::disconnected});
     }
 
     /// How many nodes are asked for, which is what decides whether the pool gets refreshed.
@@ -1310,6 +1347,10 @@ void ClientBridge::close() {
     // the sink, and destroying a Network joins the loop that callback runs on -- so once this
     // returns, no warm answer can still be in flight.
     _impl->warm.reset();
+    {
+        std::lock_guard lock{_impl->network_status_lock};
+        _impl->network_status_open = false;
+    }
     _impl->client.reset();
     _impl.reset();
 }
