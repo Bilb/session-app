@@ -66,8 +66,9 @@ export const PENDING_COPY = {
   /** No path: the network is down, or none is attached. */
   onionRoutingPathOffline: 'Offline',
   /**
-   * The light/dark toggle's name while the theme is light, beside `darkMode` while it is dark. It
-   * names the mode the glyph shows, sun or moon, rather than the one a press switches to.
+   * The light/dark toggle's name: what a press does. Naming the mode the glyph shows instead read
+   * as the mode it would turn on, so Dark Mode while dark was taken for a switch to dark.
    */
-  lightMode: 'Light Mode',
+  changeToLightMode: 'Change to Light Mode',
+  changeToDarkMode: 'Change to Dark Mode',
 } as const

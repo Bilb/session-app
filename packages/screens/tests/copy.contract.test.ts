@@ -153,7 +153,8 @@ describe('screen copy', () => {
       'onionRoutingPathConnected',
       'onionRoutingPathConnecting',
       'onionRoutingPathOffline',
-      'lightMode',
+      'changeToLightMode',
+      'changeToDarkMode',
     ])
   })
 })

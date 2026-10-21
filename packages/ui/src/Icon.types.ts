@@ -54,6 +54,7 @@ export type IconName =
   | 'messageSquare'
   | 'messageSquareWarning'
   | 'moon'
+  | 'packageCheck'
   | 'paintbrush'
   | 'pin'
   | 'play'

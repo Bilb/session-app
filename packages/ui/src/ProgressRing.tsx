@@ -22,6 +22,13 @@ const SWEEP_DEGREES = 306
  */
 const START_DEGREES = (360 - SWEEP_DEGREES) / 2 + 90
 
+/**
+ * A transfer's ring: an attachment's download and upload, and the app's own update. Drawn inside
+ * the touch target rather than filling it, so it reads as a gauge and not a button.
+ */
+export const TRANSFER_RING_SIDE_PX = 28
+export const TRANSFER_RING_THICKNESS = 3
+
 interface ProgressRingProps {
   /** How far round, 0 to 1. Clamped, because a ring that has gone past its end reads as a bug. */
   progress: number

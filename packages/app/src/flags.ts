@@ -86,6 +86,16 @@ export const FLAGS = {
    * debugging one.
    */
   debugMode: false,
+
+  /**
+   * Let the side rail's statuses be stepped through by pressing them: the update indicator through
+   * each of its states, with the download running, and the path light through its tones.
+   *
+   * For judging their design -- the transitions, and the colours against the legacy client's --
+   * where the real states are hard to reach: there is no desktop updater yet, and a path that is
+   * failing on cue needs a broken network. Off, because a pressed status that changes is a lie.
+   */
+  previewRailStates: false,
 } as const
 
 export type FlagName = keyof typeof FLAGS

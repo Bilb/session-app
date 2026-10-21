@@ -38,6 +38,7 @@ import { Mail } from '@tamagui/lucide-icons-2/icons/Mail'
 import { MessageSquare } from '@tamagui/lucide-icons-2/icons/MessageSquare'
 import { MessageSquareWarning } from '@tamagui/lucide-icons-2/icons/MessageSquareWarning'
 import { Moon } from '@tamagui/lucide-icons-2/icons/Moon'
+import { PackageCheck } from '@tamagui/lucide-icons-2/icons/PackageCheck'
 import { PaintbrushVertical } from '@tamagui/lucide-icons-2/icons/PaintbrushVertical'
 import { Pin } from '@tamagui/lucide-icons-2/icons/Pin'
 import { Play } from '@tamagui/lucide-icons-2/icons/Play'
@@ -111,6 +112,7 @@ const GLYPHS = {
   messageSquare: MessageSquare,
   messageSquareWarning: MessageSquareWarning,
   moon: Moon,
+  packageCheck: PackageCheck,
   paintbrush: PaintbrushVertical,
   pin: Pin,
   play: Play,

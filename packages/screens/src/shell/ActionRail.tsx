@@ -1,4 +1,7 @@
+import { flag } from '@session/app'
+import type { NetworkStatus } from '@session/client'
 import { isRtlLocale, tr } from '@session/localization'
+import { useEffect, useState } from 'react'
 import { useAccount, useAppearance, useNetworkStatus, useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import {
@@ -14,6 +17,8 @@ import {
   SIZE_SCALE,
   StatusDot,
   Tooltip,
+  UpdateIndicator,
+  type UpdateStatus,
   useTokenColor,
   useTopBarControlsPadding,
   YStack,
@@ -81,20 +86,137 @@ function SettingsAvatar() {
   )
 }
 
+/** The order `previewRailStates` steps the path light through, then back to the live status. */
+const PREVIEW_PATH: readonly NetworkStatus[] = [
+  'connected',
+  'connecting',
+  'disconnected',
+  'unknown',
+]
+
 /**
  * The onion path's light.
  *
  * TODO: open the path screen on a press, as the legacy desktop's light does. There is no path
  * screen yet: it needs the nodes of the current path, which libsession's `get_path_to` has and the
- * bridge does not carry. Until then the light is a status that names itself, with no press.
+ * bridge does not carry. Until then the light is a status that names itself, with no press --
+ * except under `previewRailStates`, where a press steps through the tones.
  */
 function PathLight() {
-  const status = useNetworkStatus()
+  const live = useNetworkStatus()
+  const [preview, setPreview] = useState<number | null>(null)
+  const status = preview === null ? live : (PREVIEW_PATH[preview] ?? live)
   const label = pathStatusLabel(status)
   return (
     <Tooltip label={label} testID={ELEMENT.rail.tooltip('path-status')}>
-      <RailButton sidePx={PATH_SIDE_PX} accessibilityLabel={label} testID={ELEMENT.rail.pathStatus}>
+      <RailButton
+        sidePx={PATH_SIDE_PX}
+        accessibilityLabel={label}
+        onPress={
+          flag('previewRailStates')
+            ? () => {
+                setPreview((at) => {
+                  const next = at === null ? 0 : at + 1
+                  return next < PREVIEW_PATH.length ? next : null
+                })
+              }
+            : undefined
+        }
+        testID={ELEMENT.rail.pathStatus}
+      >
         <StatusDot tone={pathStatusTone(status)} />
+      </RailButton>
+    </Tooltip>
+  )
+}
+
+/** The update indicator's square: the transfer ring inside the path light's padding. */
+const UPDATE_SIDE_PX = PATH_SIDE_PX
+
+/** How long a previewed download takes to run from empty to full. */
+const PREVIEW_DOWNLOAD_MS = 4000
+const PREVIEW_TICK_MS = 100
+
+/** One step of the update preview: a state, and whether a download shows its percentage. */
+interface PreviewStep {
+  kind: UpdateStatus['kind']
+  showPercent: boolean
+}
+
+/** The order `previewRailStates` steps the update through, each download running on its own. */
+const PREVIEW_UPDATE: readonly PreviewStep[] = [
+  { kind: 'available', showPercent: false },
+  { kind: 'downloading', showPercent: false },
+  { kind: 'downloading', showPercent: true },
+  { kind: 'ready', showPercent: false },
+  { kind: 'error', showPercent: false },
+]
+
+function updateLabel(status: UpdateStatus): string {
+  switch (status.kind) {
+    case 'available':
+      return tr('updateNewVersion')
+    case 'downloading':
+      return tr('updateDownloading', {
+        percent_loader: String(Math.round(status.progress * 100)),
+      })
+    case 'ready':
+      return tr('updateDownloaded')
+    case 'error':
+      return tr('updateError')
+  }
+}
+
+/**
+ * A download that runs from empty to full while `running`, starting again from empty whenever
+ * `run` changes.
+ */
+function usePreviewProgress(running: boolean, run: number): number {
+  const [progress, setProgress] = useState(0)
+  useEffect(() => {
+    setProgress(0)
+    if (!running) return
+    const started = Date.now()
+    const timer = setInterval(() => {
+      setProgress(Math.min(1, (Date.now() - started) / PREVIEW_DOWNLOAD_MS))
+    }, PREVIEW_TICK_MS)
+    return () => {
+      clearInterval(timer)
+    }
+  }, [running, run])
+  return progress
+}
+
+/**
+ * The app's update, above the path light as in the design.
+ *
+ * TODO: drive it from a desktop updater and, on a tablet, the store's version. Neither exists yet
+ * -- the updater needs packaging -- so it shows only under `previewRailStates`, where a press steps
+ * through the states in a loop, each download running by itself.
+ */
+function UpdateLight() {
+  const [at, setAt] = useState(0)
+  const step = PREVIEW_UPDATE[at % PREVIEW_UPDATE.length] ?? PREVIEW_UPDATE[0]
+  const progress = usePreviewProgress(step?.kind === 'downloading', at)
+  if (step === undefined) return null
+  const status: UpdateStatus =
+    step.kind === 'downloading' ? { kind: 'downloading', progress } : { kind: step.kind }
+  const label = updateLabel(status)
+  return (
+    <Tooltip label={label} testID={ELEMENT.rail.tooltip('update')}>
+      <RailButton
+        sidePx={UPDATE_SIDE_PX}
+        accessibilityLabel={label}
+        onPress={() => {
+          setAt((i) => i + 1)
+        }}
+        testID={ELEMENT.rail.update}
+      >
+        <UpdateIndicator
+          status={status}
+          showPercent={step.showPercent}
+          instant={flag('disableAnimations')}
+        />
       </RailButton>
     </Tooltip>
   )
@@ -102,14 +224,13 @@ function PathLight() {
 
 /**
  * Light or dark within the theme's family, keeping the accent, as the legacy desktop's toggle
- * does. Named for the mode the glyph shows: moon and Dark Mode while dark, sun and Light Mode
- * while light.
+ * does. The glyph shows the mode in force, moon while dark, and the name says what a press does.
  */
 function ThemeToggle() {
   const actions = useSessionActions()
   const { theme, accent } = appearanceFrom(useAppearance())
   const dark = isDarkTheme(theme)
-  const label = dark ? tr('darkMode') : PENDING_COPY.lightMode
+  const label = dark ? PENDING_COPY.changeToLightMode : PENDING_COPY.changeToDarkMode
   return (
     <Tooltip label={label} testID={ELEMENT.rail.tooltip('theme-toggle')}>
       <RailButton
@@ -159,8 +280,7 @@ export function ActionRail() {
         </YStack>
         <YStack flex={1} />
         <YStack alignItems="center" gap="$lg">
-          {/* TODO: the update indicator goes here, above the path light, as in the design. It
-              waits on its glyphs being chosen and on a desktop updater, which needs packaging. */}
+          {flag('previewRailStates') ? <UpdateLight /> : null}
           <PathLight />
           <ThemeToggle />
         </YStack>

@@ -163,11 +163,17 @@ export function ConversationListScreen({
         justifyContent="space-between"
         {...topBarInsets}
       >
-        <NetworkOverlay>
-          <Text size="$title" weight="bold">
-            {tr('messages')}
-          </Text>
-        </NetworkOverlay>
+        <XStack alignItems="center" gap="$xs">
+          {/* Settings had a route and no way to reach it, which made the account ID - the one
+              thing someone else needs in order to write to this device - unreachable too. On the
+              leading side, before the title, as both legacy mobile clients have it. */}
+          {besideRail ? null : <SettingsAvatarButton onPress={openSettings} />}
+          <NetworkOverlay>
+            <Text size="$title" weight="bold">
+              {tr('messages')}
+            </Text>
+          </NetworkOverlay>
+        </XStack>
         <XStack alignItems="center" gap="$sm">
           {unreadRequests > 0 ? (
             <XStack
@@ -203,10 +209,6 @@ export function ConversationListScreen({
           >
             <Icon name="plus" size="lg" color="$textSecondary" />
           </XStack>
-
-          {/* Settings had a route and no way to reach it, which made the account ID - the one
-              thing someone else needs in order to write to this device - unreachable too. */}
-          {besideRail ? null : <SettingsAvatarButton onPress={openSettings} />}
         </XStack>
       </XStack>
 
