@@ -51,6 +51,39 @@ describe('hydrating a device that has no account', () => {
   })
 })
 
+describe('the network status', () => {
+  it('is asked for by hydrate and then followed', async () => {
+    const { world, clients } = friends(['Alice', 'Bob'])
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const store = createSessionStore(alice)
+
+    await store.actions.hydrate()
+    // No network attached: the fake, like the bridge, answers disconnected rather than unknown.
+    expect(store.getState().networkStatus).toBe('disconnected')
+
+    await alice.attachNetwork({ netid: 'mainnet' })
+    expect(store.getState().networkStatus).toBe('connecting')
+    world.settle()
+    expect(store.getState().networkStatus).toBe('connected')
+  })
+
+  it('is asked for again on a device left with no account', async () => {
+    const { world, clients } = friends(['Alice', 'Bob'])
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const store = createSessionStore(alice)
+    await alice.attachNetwork({ netid: 'mainnet' })
+    world.settle()
+    await store.actions.hydrate()
+    expect(store.getState().networkStatus).toBe('connected')
+
+    // A discard resets the store to empty; the answer after it is what the bridge now says.
+    await store.actions.discardAccount()
+    expect(store.getState().networkStatus).toBe('disconnected')
+  })
+})
+
 describe("the account's theme", () => {
   function alice() {
     const { world, clients } = friends(['Alice', 'Bob'])
