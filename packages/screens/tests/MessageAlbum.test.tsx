@@ -48,6 +48,8 @@ function picture(index: number, filename?: string): Attachment {
     voiceMessage: false,
     hasThumbhash: false,
     hasThumbnail: false,
+    hasRendition: false,
+    originalFile: false,
     uploaded: true,
     availability: 'absent',
     fetchDoneBytes: 0,
@@ -164,6 +166,7 @@ describe('an album’s tiles', () => {
         media: {
           urlFor: () => null,
           thumbhashUrlFor: () => null,
+          renditionUrlFor: () => null,
           thumbnailUrlFor: ({ index }) => `file:///thumbnail-${String(index)}.jpg`,
         },
       }),

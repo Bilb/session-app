@@ -16,13 +16,15 @@ import { createSessionStore, transferKey, type SessionStore } from '@session/sta
 
 import { AttachmentRow } from '#src/AttachmentRow'
 import type { ConversationUi } from '#src/conversationUi'
-import { createViewChoices } from '#src/viewChoices'
 
 import { renderScreen } from './support/render'
 
 const MESSAGE_ID = 7
 
-const AVAILABILITY: Record<FileRowState, Attachment['availability']> = {
+/** A received file's states: the rest are a file we are sending, which SendingRow draws. */
+type ReceivedState = Exclude<FileRowState, 'queued' | 'uploaded' | 'unsent'>
+
+const AVAILABILITY: Record<ReceivedState, Attachment['availability']> = {
   idle: 'absent',
   fetching: 'fetching',
   ready: 'cached',
@@ -31,7 +33,7 @@ const AVAILABILITY: Record<FileRowState, Attachment['availability']> = {
   unavailable: 'notFound',
 }
 
-const CAPTION: Record<FileRowState, string> = {
+const CAPTION: Record<ReceivedState, string> = {
   idle: '',
   fetching: tr('downloading'),
   ready: '',
@@ -40,7 +42,7 @@ const CAPTION: Record<FileRowState, string> = {
 }
 
 function attachment(
-  state: FileRowState,
+  state: ReceivedState,
   file: { filename: string; contentType: string },
 ): Attachment {
   return {
@@ -49,6 +51,8 @@ function attachment(
     voiceMessage: false,
     hasThumbhash: false,
     hasThumbnail: false,
+    hasRendition: false,
+    originalFile: false,
     uploaded: true,
     availability: AVAILABILITY[state],
     fetchDoneBytes: 0,
@@ -59,7 +63,7 @@ function attachment(
 const PICTURE = { filename: 'harbour.jpg', contentType: 'image/jpeg', format: 'JPG' }
 const DOCUMENT = { filename: 'report.pdf', contentType: 'application/pdf', format: 'PDF' }
 
-function storeIn(state: FileRowState): SessionStore {
+function storeIn(state: ReceivedState): SessionStore {
   const client = friends(['Alice', 'Bob']).clients['Alice']
   if (client === undefined) throw new Error('fixture did not produce a client')
   const store = createSessionStore(client)
@@ -78,13 +82,12 @@ function conversation(): ConversationUi {
   return {
     conversationId: 'conversation',
     requestAutoDownloadPrompt: vi.fn(),
-    views: createViewChoices(),
     openViewer: vi.fn(),
     openSheet: vi.fn(),
   }
 }
 
-function row(state: FileRowState, file: { filename: string; contentType: string }) {
+function row(state: ReceivedState, file: { filename: string; contentType: string }) {
   const shown = attachment(state, file)
   const message = { id: MESSAGE_ID, attachments: [shown] } as unknown as Message
   return <AttachmentRow message={message} attachment={shown} />
@@ -102,7 +105,7 @@ const ROW_VERB = {
 } as const
 const CONTROL_VERB = ROW_VERB.document
 
-const STATES: FileRowState[] = ['idle', 'fetching', 'ready', 'failed', 'unavailable']
+const STATES: ReceivedState[] = ['idle', 'fetching', 'ready', 'failed', 'unavailable']
 
 afterEach(() => {
   resetPorts()
