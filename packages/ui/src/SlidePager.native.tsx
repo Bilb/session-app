@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ScrollView, View, type ScrollViewInstance } from 'react-native'
+import { Keyboard, ScrollView, View, type ScrollViewInstance } from 'react-native'
 
 import { isLayoutRtl } from './layoutDirection'
 import { pageOffset, settledPage } from './pagerOffset'
@@ -73,8 +73,6 @@ export function SlidePager({
       horizontal
       pagingEnabled
       showsHorizontalScrollIndicator={false}
-      // Leaving a page with the keyboard up leaves the field it belongs to.
-      keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
       // Anything a page means to draw outside this box -- the wide back control hangs off the
       // column's leading edge -- belongs to whatever lays the pager out, not inside a page.
@@ -87,6 +85,10 @@ export function SlidePager({
       scrollEventThrottle={16}
       onScroll={(event) => {
         const page = settledPage(event.nativeEvent.contentOffset.x, count, width, rtl)
+        // Leaving a page with the keyboard up leaves the field it belongs to. Once the offset has
+        // moved, not on `keyboardDismissMode`'s drag: iOS starts a horizontal scroll view's drag on
+        // a vertical one too, so scrolling the column it sits in closed the keyboard.
+        if (page === null) Keyboard.dismiss()
         if (page === null || page === showing.current) return
         showing.current = page
         onIndexChange?.(page)

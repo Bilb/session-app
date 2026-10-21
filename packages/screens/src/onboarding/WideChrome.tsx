@@ -3,6 +3,7 @@ import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import {
   Button,
+  EndAboveKeyboardScroll,
   HeroImage,
   Icon,
   IconRing,
@@ -10,7 +11,6 @@ import {
   logical,
   SafeArea,
   Screen,
-  ScrollView,
   SessionWordmark,
   SPACE_SCALE,
   useFontScale,
@@ -39,9 +39,6 @@ import {
 import type { ChromeProps } from './chromeProps'
 import { COLUMN_GROW, COLUMN_WIDTH, HERO_GROW, HERO_MAX_WIDTH } from './heroPanel'
 import { useConfirmUrl } from './ConfirmUrl'
-
-/** Grows to the scroll view's height, so a column that does not scroll still fills it. */
-const SCROLL_CONTENT = { flexGrow: 1 } as const
 
 /**
  * Onboarding as the desktop client draws it, and as a tablet gets: artwork down one side and a
@@ -166,17 +163,9 @@ export function WideChrome({
             <KeyboardAvoiding>
               {/* Always the scroll view, scrolling only while the step grows: switching the parent
                   when the text size or zoom crosses the default would remount the step, dropping a
-                  half-typed field and its focus. Taps pass through to the step's controls with
-                  the keyboard up -- as the outermost scroll view it claims a touch first, and by
-                  default it spends the first tap dismissing the keyboard. */}
-              <ScrollView
-                flex={1}
-                contentContainerStyle={SCROLL_CONTENT}
-                scrollEnabled={grows}
-                keyboardShouldPersistTaps="handled"
-              >
-                {column}
-              </ScrollView>
+                  half-typed field and its focus. At the default size the column fits above the
+                  keyboard, and the avoiding view centres it there. */}
+              <EndAboveKeyboardScroll scrollable={grows}>{column}</EndAboveKeyboardScroll>
             </KeyboardAvoiding>
           </SafeArea>
         </YStack>
