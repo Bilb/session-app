@@ -232,6 +232,10 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
     window.webContents.setZoomFactor(1)
     window.webContents.send('zoom', zoom)
   })
+  // Asked once by the preload, before the page renders, so a saved zoom is the first frame's.
+  ipc.on('zoom:current', (event) => {
+    event.returnValue = isFromAppFrame(event.senderFrame, appUrl) ? zoom : 1
+  })
   // Control and the scroll wheel, which Electron reports rather than acting on.
   window.webContents.on('zoom-changed', (_event, direction) => {
     stepZoom(direction)

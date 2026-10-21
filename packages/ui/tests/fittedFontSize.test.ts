@@ -9,7 +9,7 @@ describe('fitting a line to its box', () => {
   })
 
   it('shrinks a line that overflows by the share it overflows', () => {
-    expect(fittedFontSize(12, 45, 60)).toBe(9)
+    expect(fittedFontSize(12, 46, 60)).toBe(9)
   })
 
   it('stops at half its size, past which it truncates', () => {

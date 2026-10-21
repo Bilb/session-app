@@ -70,7 +70,8 @@ export function appMenuTemplate({
   return [
     platform === 'darwin' ? { role: 'appMenu' } : { role: 'fileMenu' },
     { role: 'editMenu' },
-    // A role keeps the platform's own title for the menu; the items are ours.
+    // The role menus are Electron's, titles and items in its English; only View's items are ours,
+    // and translated. Titling the others needs catalogue keys that do not exist yet.
     { role: 'viewMenu', submenu: view },
     { role: 'windowMenu' },
   ]

@@ -1,5 +1,15 @@
 import { useSyncExternalStore } from 'react'
 
+/**
+ * Tamagui's `onLayout` reports sizes from `offsetWidth` and `offsetHeight` rather than
+ * `getBoundingClientRect`. The latter includes the page's CSS zoom -- at 200% an element 189 wide
+ * reports 378 -- so a layout measured that way is off by the zoom. The offsets are in the
+ * page's own units, which is also what `onLayout` means on a phone. (Its `x` and `y` still come
+ * from the rect; nothing here reads them.)
+ */
+;(globalThis as { __TAMAGUI_ONLAYOUT_PRETRANSFORM?: boolean }).__TAMAGUI_ONLAYOUT_PRETRANSFORM =
+  true
+
 let zoom = 1
 const listeners = new Set<() => void>()
 
