@@ -35,10 +35,13 @@ const launchPerfMs = performance.now()
 const uptimeMs = (): number => performance.now() - launchPerfMs
 
 /**
- * The log directory through expo-file-system's synchronous calls.
+ * The log directory through expo-file-system.
  *
- * Synchronous because each is one bridge call that returns at once, and a write that has been
- * handed over cannot then be lost to the app being suspended before an awaited one resolved.
+ * An urgent append is written synchronously, on the JS thread: by the time it returns the text has
+ * been handed over, so it cannot be lost to the app being suspended before an awaited write
+ * resolved. The routine two-second flush is awaited instead, since expo-file-system runs an async
+ * write on a native queue of its own, off the JS thread. The rest stays synchronous: deleting,
+ * checking and creating files are cheap, and the reads happen at start-up and for an export.
  */
 function expoDirectory(dir: Directory): LogDirectory {
   return {
@@ -49,9 +52,10 @@ function expoDirectory(dir: Directory): LogDirectory {
           .filter((entry): entry is File => entry instanceof File)
           .map((file) => ({ name: file.name, sizeBytes: file.size })),
       ),
-    append: (name, text) => {
+    append: (name, text, urgent) => {
       const file = new File(dir, name)
       if (!file.exists) file.create()
+      if (!urgent) return file.write(text, { append: true })
       file.writeSync(text, { append: true })
       return Promise.resolve()
     },
@@ -274,7 +278,7 @@ const opened = (async (): Promise<LogWriter> => {
     if (state === 'background') {
       appLog.marker('lifecycle', 'background')
       logDatabase('at background')
-      void writer.flush()
+      void writer.flush(true)
     }
   })
   // The OS is about to start killing things to get memory back; this one may be next, and a log
