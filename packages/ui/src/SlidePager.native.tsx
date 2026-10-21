@@ -19,9 +19,15 @@ const FILL = { flex: 1 } as const
  */
 const UNCLIPPED = { overflow: 'visible' } as const
 
-/** The page a scroll position is at. React Native reports it from the leading edge either way. */
-function pageAt(event: NativeSyntheticEvent<NativeScrollEvent>, width: number): number {
-  return width === 0 ? 0 : Math.round(event.nativeEvent.contentOffset.x / width)
+/**
+ * The page a scroll position has settled on, or null while it is between two. React Native reports
+ * the offset from the leading edge either way.
+ */
+function settledPage(event: NativeSyntheticEvent<NativeScrollEvent>, width: number): number | null {
+  if (width === 0) return null
+  const offset = event.nativeEvent.contentOffset.x
+  const page = Math.round(offset / width)
+  return Math.abs(offset - page * width) < 1 ? page : null
 }
 
 /**
@@ -55,11 +61,20 @@ export function SlidePager({
   /** Where the scroll view is, so a page the person swiped to is not scrolled to again. */
   const showing = useRef(index)
 
+  // A tab chosen from the bar: slide to it.
   useEffect(() => {
     if (width === 0 || showing.current === index) return
     showing.current = index
     scroller.current?.scrollTo({ x: index * width, animated: !instant })
+    // A new width alone returns above, as the page is already showing; it is placed below.
   }, [index, width, instant])
+
+  // The page showing, placed again at a new width -- the first, or one after a rotation or a
+  // resize. After the pages have been laid out at that width: placed from `onLayout`, the offset
+  // is clamped to the old, narrower content and the pager is left between two pages.
+  useEffect(() => {
+    if (width > 0) scroller.current?.scrollTo({ x: showing.current * width, animated: false })
+  }, [width])
 
   return (
     <ScrollView
@@ -74,16 +89,14 @@ export function SlidePager({
       // column's leading edge -- belongs to whatever lays the pager out, not inside a page.
       style={[fitsPage ? null : FILL, clip ? null : UNCLIPPED]}
       onLayout={(event) => {
-        const next = event.nativeEvent.layout.width
-        if (next === width) return
-        setWidth(next)
-        // Back to the page showing at the new width, which a rotation would otherwise leave
-        // part-way between two.
-        scroller.current?.scrollTo({ x: showing.current * next, animated: false })
+        setWidth(event.nativeEvent.layout.width)
       }}
-      onMomentumScrollEnd={(event) => {
-        const page = pageAt(event, width)
-        if (page === showing.current) return
+      // Every scroll rather than the end of a fling: VoiceOver's page swipe moves the view without
+      // one, and the tab bar would be left on the old page.
+      scrollEventThrottle={16}
+      onScroll={(event) => {
+        const page = settledPage(event, width)
+        if (page === null || page === showing.current) return
         showing.current = page
         onIndexChange?.(page)
       }}

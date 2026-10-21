@@ -203,6 +203,8 @@ export function OnboardingStepBody({
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          // Still at the default size, where nothing overflows: no rubber band on iOS.
+          alwaysBounceVertical={false}
         >
           {block}
         </ScrollView>

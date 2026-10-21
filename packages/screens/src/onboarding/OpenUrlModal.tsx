@@ -1,22 +1,10 @@
 import { openExternalUrl, requirePorts } from '@session/app'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, LABEL_MAX_SCALE, Modal, ScrollView, textHeight, useFontScale } from '@session/ui'
+import { Button, Modal } from '@session/ui'
 import { useEffect, useRef } from 'react'
 
-import { LocalizedText } from '../LocalizedText'
-
-/**
- * How much of the question and the address is shown before it scrolls.
- *
- * **Lines rather than a pixel height**, so the last one is never cut in half -- which reads as a
- * rendering fault rather than as something to scroll.
- *
- * The address is bounded by the view and never truncated: what a long URL loses to an ellipsis is
- * its end, and the end is where a deceptive one hides what it really is.
- */
-const MAX_LINES = 5
-const MAX_URL_HEIGHT = textHeight('body', MAX_LINES)
+import { LinkAddress } from '../LinkAddress'
 
 interface OpenUrlModalProps {
   /** The address to confirm, or null when the dialog is closed. */
@@ -32,7 +20,6 @@ interface OpenUrlModalProps {
  * all because the app is about to hand an address to another program.
  */
 export function OpenUrlModal({ url, onClose }: OpenUrlModalProps) {
-  const textScale = Math.min(Math.max(useFontScale(), 1), LABEL_MAX_SCALE)
   /**
    * The last address shown, kept after `url` goes null.
    *
@@ -89,16 +76,7 @@ export function OpenUrlModal({ url, onClose }: OpenUrlModalProps) {
         </>
       }
     >
-      <ScrollView maxHeight={MAX_URL_HEIGHT * textScale}>
-        {/* The catalogue string carries the address in a bold run and two line breaks before it,
-            so the question and the URL are one piece of copy rather than two stacked elements. */}
-        <LocalizedText
-          text={tr('urlOpenDescription', { url: url ?? shown.current })}
-          size="$body"
-          textAlign="center"
-          maxFontSizeMultiplier={LABEL_MAX_SCALE}
-        />
-      </ScrollView>
+      <LinkAddress url={url ?? shown.current} />
     </Modal>
   )
 }

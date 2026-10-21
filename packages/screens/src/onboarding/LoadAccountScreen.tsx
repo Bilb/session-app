@@ -131,9 +131,9 @@ export function LoadAccountScreen({
       }
     >
       {scanning ? (
-        /* Stretching, deliberately: the pager's pages are absolutely positioned, so they give it
-           no height of its own and `alignItems="flex-start"` collapses it to nothing. The back
-           control keeps its own height and so does not stretch with it. */
+        /* Stretching, deliberately: the pager fills the row's height unless it fits its pages
+           (`fitsPage`), and `alignItems="flex-start"` would collapse it. The back control keeps
+           its own height and so does not stretch with it. */
         <XStack flex={1}>
           {/* **The back control sits beside the pager, not inside a pane.** The pager has to clip
               -- a page at rest is one column-width to the side, which on a tablet is still on

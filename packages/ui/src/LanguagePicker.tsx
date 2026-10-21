@@ -78,6 +78,9 @@ export function LanguagePicker({
       : panelPlacement(anchor, window.height - taken, GAP, MARGIN, MIN_PANEL_HEIGHT, COVER_MARGIN)
   // Covering the window means the window is short, so the frame gives its padding to the list.
   const covering = placement?.covers === true
+  // Never wider than the window inside its margins: a narrow window zoomed in on desktop can be
+  // under the panel's own width, and the overflow would run off the edge the names start from.
+  const panelWidth = Math.min(PANEL_WIDTH, window.width - 2 * MARGIN)
 
   return (
     <>
@@ -145,9 +148,9 @@ export function LanguagePicker({
                 ? { top: placement.offset }
                 : { bottom: placement.offset })}
               {...logical({
-                insetStart: panelInset(anchor, PANEL_WIDTH, window.width, MARGIN, isLayoutRtl()),
+                insetStart: panelInset(anchor, panelWidth, window.width, MARGIN, isLayoutRtl()),
               })}
-              width={PANEL_WIDTH}
+              width={panelWidth}
               // **The panel is what is capped, and the list takes what is left of it.** Capping
               // the list instead means subtracting the chrome as a constant, and a constant that
               // guesses the height of a heading, a search box, two gaps and the padding is wrong:

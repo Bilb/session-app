@@ -27,7 +27,7 @@ export function OnboardingBackButton({
 }
 
 /** The control's width: a `md` circular bar button's. */
-const BACK_WIDTH = SIZE_SCALE['2xl']
+export const BACK_WIDTH = SIZE_SCALE['2xl']
 
 /** Clears the heading with the whole circle, which iOS 26's glass makes visible. */
 const BACK_GAP = SPACE_SCALE.xs

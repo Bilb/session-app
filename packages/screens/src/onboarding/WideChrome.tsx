@@ -7,7 +7,6 @@ import {
   Icon,
   IconRing,
   KeyboardAvoiding,
-  LABEL_MAX_SCALE,
   logical,
   SafeArea,
   Screen,
@@ -18,7 +17,6 @@ import {
   usePageZoom,
   XStack,
   YStack,
-  ZoomCap,
 } from '@session/ui'
 
 import { useState } from 'react'
@@ -41,6 +39,9 @@ import {
 import type { ChromeProps } from './chromeProps'
 import { COLUMN_GROW, COLUMN_WIDTH, HERO_GROW, HERO_MAX_WIDTH } from './heroPanel'
 import { useConfirmUrl } from './ConfirmUrl'
+
+/** Grows to the scroll view's height, so a column that does not scroll still fills it. */
+const SCROLL_CONTENT = { flexGrow: 1 } as const
 
 /**
  * Onboarding as the desktop client draws it, and as a tablet gets: artwork down one side and a
@@ -77,11 +78,12 @@ export function WideChrome({
       alignItems="center"
       justifyContent="center"
       paddingVertical="$xl"
-      // Room for the back control that hangs off the column's leading side: zoomed in, the column
-      // fills the width and the scroll view around it clips anything past this padding. Only that
-      // side, so the header keeps the rest of the width for the lockup.
+      // Room for the back control that hangs off the column's leading side: while it grows, the
+      // column fills the width and the scroll view around it clips anything past this padding.
+      // Only that side, so the header keeps the rest of the width for the lockup; at the default
+      // size the column is narrower than its space and stays centred.
       {...logical({
-        paddingStart: Math.max(SPACE_SCALE.xl, WIDE_BACK_OVERHANG),
+        paddingStart: grows ? Math.max(SPACE_SCALE.xl, WIDE_BACK_OVERHANG) : SPACE_SCALE.xl,
         paddingEnd: SPACE_SCALE.xl,
       })}
     >
@@ -162,13 +164,19 @@ export function WideChrome({
         <YStack flexBasis={0} flexGrow={COLUMN_GROW}>
           <SafeArea>
             <KeyboardAvoiding>
-              {grows ? (
-                <ScrollView flex={1} contentContainerStyle={{ flexGrow: 1 }}>
-                  {column}
-                </ScrollView>
-              ) : (
-                column
-              )}
+              {/* Always the scroll view, scrolling only while the step grows: switching the parent
+                  when the text size or zoom crosses the default would remount the step, dropping a
+                  half-typed field and its focus. Taps pass through to the step's controls with
+                  the keyboard up -- as the outermost scroll view it claims a touch first, and by
+                  default it spends the first tap dismissing the keyboard. */}
+              <ScrollView
+                flex={1}
+                contentContainerStyle={SCROLL_CONTENT}
+                scrollEnabled={grows}
+                keyboardShouldPersistTaps="handled"
+              >
+                {column}
+              </ScrollView>
             </KeyboardAvoiding>
           </SafeArea>
         </YStack>
@@ -213,48 +221,45 @@ function OnboardingHeader() {
         <OnboardingMark size={HEADER_MARK_SIZE * scale} />
         <SessionWordmark size={HEADER_WORDMARK_SIZE * scale} color="$textPrimary" />
       </XStack>
-      {/* One group of three, at the 8 the designs give them. Zoomed in, they stop growing where
-          labels do, which leaves the lockup beside them room to be read. */}
-      <ZoomCap maxScale={LABEL_MAX_SCALE}>
-        <XStack alignItems="center" gap="$xs">
-          <LanguageButton />
-          {/* Ghost, because `circleHelp` brings its own circle: a border here would draw a second
+      {/* One group of three, at the 8 the designs give them. */}
+      <XStack alignItems="center" gap="$xs">
+        <LanguageButton />
+        {/* Ghost, because `circleHelp` brings its own circle: a border here would draw a second
             ring around the first. The glyph is therefore the full control size, where the bordered
             one below has the border at that size and a smaller glyph inside it. */}
-          <Button
-            variant="ghost"
-            size="xs"
-            circular
-            accessibilityLabel={tr('helpFAQ')}
-            testID={ELEMENT.onboarding.faqLink}
-            onPress={() => {
-              open(URLS.faq)
-            }}
-            // An explicit number rather than a token, because the ring beside it has to be drawn at
-            // the same pixel size for the two circles to match -- and `IconRing` takes a number.
-            icon={<Icon name="circleHelp" size={RING_SIZE} color="$textPrimary" />}
-          />
-          {/* Ghost like its neighbour, with the ring drawn rather than bordered -- a CSS border is
+        <Button
+          variant="ghost"
+          size="xs"
+          circular
+          accessibilityLabel={tr('helpFAQ')}
+          testID={ELEMENT.onboarding.faqLink}
+          onPress={() => {
+            open(URLS.faq)
+          }}
+          // An explicit number rather than a token, because the ring beside it has to be drawn at
+          // the same pixel size for the two circles to match -- and `IconRing` takes a number.
+          icon={<Icon name="circleHelp" size={RING_SIZE} color="$textPrimary" />}
+        />
+        {/* Ghost like its neighbour, with the ring drawn rather than bordered -- a CSS border is
             visibly a different weight beside a glyph's own stroke. */}
-          <Button
-            variant="ghost"
-            size="xs"
-            circular
-            accessibilityLabel={tr('openPlatformWebsite', { platform: tr('appName') })}
-            testID={ELEMENT.onboarding.websiteLink}
-            onPress={() => {
-              open(URLS.website)
-            }}
-            icon={
-              <IconRing size={RING_SIZE} color="$textPrimary">
-                {/* A rung down from the ? glyph's own mark: inside a ring this size, 16 crowds the
+        <Button
+          variant="ghost"
+          size="xs"
+          circular
+          accessibilityLabel={tr('openPlatformWebsite', { platform: tr('appName') })}
+          testID={ELEMENT.onboarding.websiteLink}
+          onPress={() => {
+            open(URLS.website)
+          }}
+          icon={
+            <IconRing size={RING_SIZE} color="$textPrimary">
+              {/* A rung down from the ? glyph's own mark: inside a ring this size, 16 crowds the
                   stroke and 12 sits in it. */}
-                <Icon name="link" size="xs" color="$textPrimary" />
-              </IconRing>
-            }
-          />
-        </XStack>
-      </ZoomCap>
+              <Icon name="link" size="xs" color="$textPrimary" />
+            </IconRing>
+          }
+        />
+      </XStack>
     </XStack>
   )
 }
