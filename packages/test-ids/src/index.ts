@@ -14,8 +14,19 @@
  * component. It is never a reason to reach for an xpath.
  */
 export const ELEMENT = {
+  /** The column down the side of a wide layout, beside the conversation list. */
+  rail: {
+    screen: 'rail',
+    avatar: 'rail-avatar',
+    pathStatus: 'rail-path-status',
+    themeToggle: 'rail-theme-toggle',
+    /** A rail item's tooltip, by the item's own name: `avatar`, `path-status`, `theme-toggle`. */
+    tooltip: (item: string) => `rail-tooltip-${item}` as const,
+  },
   conversationList: {
+    /** The account's avatar on one pane, which opens settings; a wide layout has the rail's. */
     settings: 'conversation-list-settings',
+    settingsPathStatus: 'conversation-list-settings-path-status',
     newConversation: 'conversation-list-new',
     screen: 'conversation-list',
     row: (index: number) => `conversation-row-${index}` as const,
@@ -93,6 +104,7 @@ export const ELEMENT = {
     shareAccountId: 'settings-share-account-id',
     tokenLogo: 'settings-token-logo',
     networkStatus: 'settings-network-status',
+    pathStatus: 'settings-path-status',
     clearData: 'settings-clear-data',
     confirmClearData: 'settings-confirm-clear-data',
     confirmClearDataButton: 'settings-confirm-clear-data-button',

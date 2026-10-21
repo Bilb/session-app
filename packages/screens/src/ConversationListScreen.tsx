@@ -1,6 +1,11 @@
 import { routes, useNav } from '@session/app'
 import type { Conversation } from '@session/client'
-import { useConversations, useUnreadRequestCount } from '@session/state'
+import {
+  useAccount,
+  useConversations,
+  useNetworkStatus,
+  useUnreadRequestCount,
+} from '@session/state'
 import { formatConversationTime, tr, type ConversationTimeOptions } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import {
@@ -12,6 +17,7 @@ import {
   Separator,
   SIZE_SCALE,
   SPACE_SCALE,
+  StatusDot,
   Text,
   textHeight,
   useFontScale,
@@ -23,7 +29,8 @@ import { NetworkOverlay } from './NetworkOverlay'
 import { conversationRowState, type UnreadBadge, type UnreadTone } from './conversationRowState'
 import { conversationTitle } from './conversationTitle'
 import { useOpenSettings } from './settings/SettingsRootPage'
-import { useTopBarInsets } from './shell/pane'
+import { pathStatusTone } from './pathStatus'
+import { useBesideRail, useTopBarInsets } from './shell/pane'
 import { useFormattingLocale } from './useLocale'
 
 const AVATAR_SIZE_PX = SIZE_SCALE['3xl']
@@ -49,6 +56,59 @@ const STRIP_WIDTH_PX = 4
 const MARKED_DOT = '$xxs'
 /** The least room between the end of the name's icons and the time. */
 const TIME_GAP_MIN = '$xxs'
+
+/** The header avatar, as both legacy mobile clients draw it. */
+const HEADER_AVATAR_PX = 26
+/** The path dot on its corner: legacy iOS's and Android's 8, with Android's 4 of glow. */
+const HEADER_DOT_PX = SIZE_SCALE.xxs
+const HEADER_DOT_GLOW_PX = 4
+
+/**
+ * The account's avatar, which opens settings, with the onion path's dot on its bottom-end corner,
+ * as both legacy mobile clients have it.
+ *
+ * Only on one pane: beside the rail, the rail has the avatar. The button is named for what it
+ * does, as legacy iOS names it; the path's state in words is on the Settings row it leads to.
+ */
+function SettingsAvatarButton({ onPress }: { onPress: () => void }) {
+  const account = useAccount()
+  const status = useNetworkStatus()
+  return (
+    // The hit area is the stack rather than the avatar: 26pt is well under the 44pt a finger
+    // needs, and a target that small is one people miss rather than one they cannot see.
+    <XStack
+      width={44}
+      height={44}
+      alignItems="center"
+      justifyContent="center"
+      $platform-web={{ cursor: 'pointer' }}
+      hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
+      pressStyle={{ backgroundColor: '$backgroundTertiary' }}
+      borderRadius="$full"
+      role="button"
+      aria-label={tr('sessionSettings')}
+      testID={ELEMENT.conversationList.settings}
+      // A modal, so closing it returns to the list.
+      onPress={onPress}
+    >
+      <YStack width={HEADER_AVATAR_PX} height={HEADER_AVATAR_PX} position="relative">
+        <Avatar
+          id={account?.sessionId ?? ''}
+          name={account?.displayName ?? ''}
+          size={HEADER_AVATAR_PX}
+        />
+        <YStack position="absolute" bottom={0} {...logical({ insetEnd: 0 })}>
+          <StatusDot
+            tone={pathStatusTone(status)}
+            sidePx={HEADER_DOT_PX}
+            glowPx={HEADER_DOT_GLOW_PX}
+            testID={ELEMENT.conversationList.settingsPathStatus}
+          />
+        </YStack>
+      </YStack>
+    </XStack>
+  )
+}
 
 /**
  * One row's size at a text size, which the list needs in order to place a scrollbar without
@@ -90,6 +150,7 @@ export function ConversationListScreen({
   const unreadRequests = useUnreadRequestCount()
   const nav = useNav()
   const openSettings = useOpenSettings()
+  const besideRail = useBesideRail()
   const timeLocale = useFormattingLocale()
   const layout = rowLayout(useFontScale())
 
@@ -144,26 +205,8 @@ export function ConversationListScreen({
           </XStack>
 
           {/* Settings had a route and no way to reach it, which made the account ID - the one
-              thing someone else needs in order to write to this device - unreachable too.
-
-              The hit area is the stack rather than the glyph: a 24pt icon is well under the
-              44pt minimum a finger needs, and a target that small is one people miss rather
-              than one they cannot see. */}
-          <XStack
-            width={44}
-            height={44}
-            alignItems="center"
-            justifyContent="center"
-            $platform-web={{ cursor: 'pointer' }}
-            hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
-            pressStyle={{ backgroundColor: '$backgroundTertiary' }}
-            borderRadius="$full"
-            testID={ELEMENT.conversationList.settings}
-            // A modal, so closing it returns to the list.
-            onPress={openSettings}
-          >
-            <Icon name="settings" size="lg" color="$textSecondary" />
-          </XStack>
+              thing someone else needs in order to write to this device - unreachable too. */}
+          {besideRail ? null : <SettingsAvatarButton onPress={openSettings} />}
         </XStack>
       </XStack>
 

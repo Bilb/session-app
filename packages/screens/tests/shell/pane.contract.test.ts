@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { DETAIL_PANE, LIST_PANE, SOLE_PANE } from '#src/shell/panes'
+import { DETAIL_PANE, LIST_BESIDE_RAIL_PANE, LIST_PANE, SOLE_PANE } from '#src/shell/panes'
 
 const shell = readFileSync(join(import.meta.dirname, '../../src/shell/AdaptiveShell.tsx'), 'utf8')
 
@@ -23,15 +23,34 @@ describe('which panes show a way back', () => {
     expect(SOLE_PANE.corners).toBe('both')
     expect(LIST_PANE.corners).toBe('start')
     expect(DETAIL_PANE.corners).toBe('end')
+    // The rail holds the start corner, so the list beside it runs into none.
+    expect(LIST_BESIDE_RAIL_PANE.corners).toBe('none')
+    expect(LIST_BESIDE_RAIL_PANE.besideList).toBe(false)
   })
 
   it('is told by the shell which pane each screen is in', () => {
     // Read rather than rendered: the layout is chosen by a media query, and what matters here is
     // that each pane is wrapped, which the source says outright.
-    expect(shell).toContain(
-      '<PaneProvider value={twoPanes ? LIST_PANE : SOLE_PANE}>{list}</PaneProvider>',
+    expect(shell).toMatch(
+      /<PaneProvider\s+value=\{withRail \? LIST_BESIDE_RAIL_PANE : twoPanes \? LIST_PANE : SOLE_PANE\}\s*>\s*\{list\}/,
     )
     expect(shell).toContain('<PaneProvider value={twoPanes ? DETAIL_PANE : SOLE_PANE}>')
+  })
+})
+
+/**
+ * The rail is drawn exactly when the list and the detail are side by side, so a phone keeps the
+ * avatar in the list's header and a tablet or the desktop gets it in the rail, never both.
+ */
+describe('the rail', () => {
+  it('is drawn with two panes and tells the list it is there', () => {
+    expect(shell).toContain('const withRail = twoPanes && rail !== undefined')
+    expect(shell).toMatch(/\{withRail \? \(/)
+    expect(shell).toContain('<RailProvider value={withRail}>')
+  })
+
+  it('comes before the list, so it sits at the start edge', () => {
+    expect(shell.indexOf('key="rail"')).toBeLessThan(shell.indexOf('key="list"'))
   })
 })
 

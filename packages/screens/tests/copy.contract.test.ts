@@ -150,6 +150,10 @@ describe('screen copy', () => {
       'attachmentNameAndMore',
       'autoDownloadAllFiles',
       'autoDownloadImagesOnly',
+      'onionRoutingPathConnected',
+      'onionRoutingPathConnecting',
+      'onionRoutingPathOffline',
+      'lightMode',
     ])
   })
 })
