@@ -1,12 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  ScrollView,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-  type ScrollViewInstance,
-} from 'react-native'
+import { ScrollView, View, type ScrollViewInstance } from 'react-native'
 
+import { isLayoutRtl } from './layoutDirection'
+import { pageOffset, settledPage } from './pagerOffset'
 import type { SlidePagerProps } from './SlidePager.types'
 
 export type { SlidePagerProps }
@@ -18,17 +14,6 @@ const FILL = { flex: 1 } as const
  * past the pager's box: the camera preview runs under the home indicator.
  */
 const UNCLIPPED = { overflow: 'visible' } as const
-
-/**
- * The page a scroll position has settled on, or null while it is between two. React Native reports
- * the offset from the leading edge either way.
- */
-function settledPage(event: NativeSyntheticEvent<NativeScrollEvent>, width: number): number | null {
-  if (width === 0) return null
-  const offset = event.nativeEvent.contentOffset.x
-  const page = Math.round(offset / width)
-  return Math.abs(offset - page * width) < 1 ? page : null
-}
 
 /**
  * The pages of a tabbed screen, laid side by side and swiped or slid across.
@@ -47,7 +32,6 @@ export function SlidePager({
   onIndexChange,
   instant = false,
   clip = false,
-  fitsPage = false,
   children,
 }: SlidePagerProps) {
   /**
@@ -60,21 +44,28 @@ export function SlidePager({
   const scroller = useRef<ScrollViewInstance>(null)
   /** Where the scroll view is, so a page the person swiped to is not scrolled to again. */
   const showing = useRef(index)
+  const count = children.length
+  const rtl = isLayoutRtl()
 
   // A tab chosen from the bar: slide to it.
   useEffect(() => {
     if (width === 0 || showing.current === index) return
     showing.current = index
-    scroller.current?.scrollTo({ x: index * width, animated: !instant })
+    scroller.current?.scrollTo({ x: pageOffset(index, count, width, rtl), animated: !instant })
     // A new width alone returns above, as the page is already showing; it is placed below.
-  }, [index, width, instant])
+  }, [index, count, width, rtl, instant])
 
   // The page showing, placed again at a new width -- the first, or one after a rotation or a
-  // resize. After the pages have been laid out at that width: placed from `onLayout`, the offset
-  // is clamped to the old, narrower content and the pager is left between two pages.
+  // resize -- or in a new direction, which mirrors where every page sits. After the pages have
+  // been laid out: placed from `onLayout`, the offset is clamped to the old, narrower content and
+  // the pager is left between two pages.
   useEffect(() => {
-    if (width > 0) scroller.current?.scrollTo({ x: showing.current * width, animated: false })
-  }, [width])
+    if (width === 0) return
+    scroller.current?.scrollTo({
+      x: pageOffset(showing.current, count, width, rtl),
+      animated: false,
+    })
+  }, [count, width, rtl])
 
   return (
     <ScrollView
@@ -87,7 +78,7 @@ export function SlidePager({
       keyboardShouldPersistTaps="handled"
       // Anything a page means to draw outside this box -- the wide back control hangs off the
       // column's leading edge -- belongs to whatever lays the pager out, not inside a page.
-      style={[fitsPage ? null : FILL, clip ? null : UNCLIPPED]}
+      style={[FILL, clip ? null : UNCLIPPED]}
       onLayout={(event) => {
         setWidth(event.nativeEvent.layout.width)
       }}
@@ -95,7 +86,7 @@ export function SlidePager({
       // one, and the tab bar would be left on the old page.
       scrollEventThrottle={16}
       onScroll={(event) => {
-        const page = settledPage(event, width)
+        const page = settledPage(event.nativeEvent.contentOffset.x, count, width, rtl)
         if (page === null || page === showing.current) return
         showing.current = page
         onIndexChange?.(page)
