@@ -284,7 +284,7 @@ void HybridSessionBridge::init(const SessionBridgeOptions& options) {
                 scheme_of(options.fileServer->scheme),
                 options.fileServer->host,
                 options.fileServer->port,
-                options.fileServer->x25519PubkeyHex};
+                options.fileServer->ed25519PubkeyHex};
     if (options.router)
         init.network.router = router_of(*options.router);
     if (options.deviceType)

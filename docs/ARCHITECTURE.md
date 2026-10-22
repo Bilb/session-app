@@ -630,9 +630,10 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   uploads to _mainnet's_, which is production storage reached over a sandbox, and the upload
   succeeds with nothing afterwards to show for it.
 
-  `EXPO_PUBLIC_SESSION_FILE_SERVER_X25519_PUBKEY` is the server's X25519 key, which is what onion requests to
-  it are encrypted with, not the Ed25519 one its QUIC endpoint is named by. Both are 64 hex
-  characters, and the wrong one fails as a decryption error part-way through an upload.
+  `EXPO_PUBLIC_SESSION_FILE_SERVER_ED25519_PUBKEY` is the server's Ed25519 key, which its QUIC
+  endpoint is named by; libsession derives the X25519 key onion requests to it are encrypted with.
+  Both are 64 hex characters. The bridge refuses an X25519 key at start when it is no Ed25519
+  point, about half the time; otherwise uploads fail at the server.
 
 - **2026-09-11 - Each network gets its own database directory.** `userData/<netid>/` on desktop,
   the storage module's `data` root on mobile (`<root>/<netid>/`; see `docs/STORAGE.md`), so a devnet identity and a mainnet one coexist
