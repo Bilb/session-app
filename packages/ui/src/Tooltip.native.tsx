@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { type PointerEvent, View, type ViewStyle } from 'react-native'
+import { type LayoutChangeEvent, type PointerEvent, View, type ViewStyle } from 'react-native'
 import { YStack } from 'tamagui'
 
 import { logical } from './logicalEdges'
@@ -21,8 +21,12 @@ const LAYER = 10
  * The box the bubble is centred in, beside the control on `placement`'s side. React Native has no
  * percentage transform to centre the bubble itself, so it is laid out in a box as long as the
  * control along one axis and as wide as the bubble may grow along the other, and centred there.
+ *
+ * Placed by the control's measured size rather than by a percentage: a percentage inset on an
+ * absolute child resolved against the rail's column rather than the control, which put the bubble a
+ * rail's width out.
  */
-function slot(placement: TooltipPlacement): ViewStyle {
+function slot(placement: TooltipPlacement, size: { width: number; height: number }): ViewStyle {
   switch (placement) {
     case 'end':
       return {
@@ -32,7 +36,7 @@ function slot(placement: TooltipPlacement): ViewStyle {
         width: MAX_WIDTH_PX,
         justifyContent: 'center',
         alignItems: 'flex-start',
-        ...logical({ insetStart: '100%', marginStart: GAP_PX }).style,
+        ...logical({ insetStart: size.width + GAP_PX }).style,
       }
     case 'start':
       return {
@@ -42,16 +46,14 @@ function slot(placement: TooltipPlacement): ViewStyle {
         width: MAX_WIDTH_PX,
         justifyContent: 'center',
         alignItems: 'flex-end',
-        ...logical({ insetEnd: '100%', marginEnd: GAP_PX }).style,
+        ...logical({ insetEnd: size.width + GAP_PX }).style,
       }
     case 'top':
     case 'bottom':
       return {
         position: 'absolute',
-        ...(placement === 'top'
-          ? { bottom: '100%', marginBottom: GAP_PX }
-          : { top: '100%', marginTop: GAP_PX }),
-        ...logical({ insetStart: '50%', marginStart: -MAX_WIDTH_PX / 2 }).style,
+        ...(placement === 'top' ? { bottom: size.height + GAP_PX } : { top: size.height + GAP_PX }),
+        ...logical({ insetStart: size.width / 2 - MAX_WIDTH_PX / 2 }).style,
         width: MAX_WIDTH_PX,
         alignItems: 'center',
       }
@@ -69,6 +71,7 @@ function slot(placement: TooltipPlacement): ViewStyle {
 export function Tooltip({ label, placement = 'end', children, testID }: TooltipProps) {
   const [open, setOpen] = useState(false)
   const pending = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const [size, setSize] = useState({ width: 0, height: 0 })
   const shadow = useTokenColor('$shadow')
   useEffect(() => () => clearTimeout(pending.current), [])
 
@@ -80,6 +83,10 @@ export function Tooltip({ label, placement = 'end', children, testID }: TooltipP
   return (
     <View
       style={{ position: 'relative', ...(open ? { zIndex: LAYER } : {}) }}
+      onLayout={(event: LayoutChangeEvent) => {
+        const { width, height } = event.nativeEvent.layout
+        setSize({ width, height })
+      }}
       onPointerEnter={(event: PointerEvent) => {
         if (event.nativeEvent.pointerType === 'touch') return
         clearTimeout(pending.current)
@@ -96,7 +103,7 @@ export function Tooltip({ label, placement = 'end', children, testID }: TooltipP
           pointerEvents="none"
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
-          style={slot(placement)}
+          style={slot(placement, size)}
         >
           <YStack
             backgroundColor="$messageBubbleIncomingBg"
