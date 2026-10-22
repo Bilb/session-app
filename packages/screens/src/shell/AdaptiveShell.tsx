@@ -1,4 +1,4 @@
-import { logical, useMedia, useTokenColor, XStack, YStack } from '@session/ui'
+import { logical, useMedia, usePageZoom, useTokenColor, XStack, YStack } from '@session/ui'
 import type { ReactNode } from 'react'
 
 import { PaneProvider } from './pane'
@@ -25,6 +25,7 @@ export function AdaptiveShell({
   placeholder?: ReactNode
 }) {
   const media = useMedia()
+  const zoom = usePageZoom()
   const rule = useTokenColor('$bordersColor')
   const twoPanes = media.gtSm
   const showsList = twoPanes || !hasDetail
@@ -42,7 +43,9 @@ export function AdaptiveShell({
           key="list"
           {...(twoPanes
             ? {
-                width: media.gtLg ? 380 : 320,
+                // The window's, not the content's: divided by the desktop zoom so the list keeps
+                // its share of the window however far the content is zoomed.
+                width: (media.gtLg ? 380 : 320) / zoom,
                 // The rule between the two panes sits on the edge the list ends at, which in
                 // Arabic is its left: a physical right keeps the divider on the detail pane's outer
                 // edge and leaves the two panes touching.

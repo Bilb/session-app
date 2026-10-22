@@ -2,13 +2,6 @@ import { Image as RNImage } from 'react-native'
 
 import type { WithTestID } from './with'
 
-// react-native's hand-written types omit this, though its Android Image takes it.
-declare module 'react-native' {
-  interface ImagePropsAndroid {
-    resizeMultiplier?: number | undefined
-  }
-}
-
 export type ImageProps = WithTestID & {
   /** Where the bytes come from. On both platforms this is the app's media scheme, not a path. */
   uri: string

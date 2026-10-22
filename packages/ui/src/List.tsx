@@ -89,8 +89,8 @@ export function List<T>({
       renderItem={renderRow}
       keyExtractor={keyExtractor}
       {...(itemHeight === undefined ? {} : { getItemLayout })}
-      {...(empty === undefined ? {} : { ListEmptyComponent: empty })}
-      {...(header === undefined ? {} : { ListHeaderComponent: header })}
+      {...(empty == null ? {} : { ListEmptyComponent: empty })}
+      {...(header == null ? {} : { ListHeaderComponent: header })}
       {...(inverted === undefined ? {} : { inverted })}
       // A sheet shows a few rows; FlatList's default 21-screen window renders a long set whole.
       {...(fitsContent ? { windowSize: 3, maxToRenderPerBatch: 5 } : {})}
