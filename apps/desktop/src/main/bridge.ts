@@ -1,5 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { randomBytes } from 'node:crypto'
+import { existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -16,41 +15,9 @@ import {
 import type { BridgeTransport, MediaSource } from '@session/client'
 import type { NetworkSettings } from '@session/logging'
 
+import { resolveDatabaseKey } from './databaseKey'
+
 const { app, safeStorage, screen } = electron
-
-/**
- * The database key.
- *
- * libsession accepts a key but neither derives nor stores one, so custody is ours. A random
- * 32 bytes at first boot, sealed with safeStorage and kept beside the database. The renderer
- * never sees it: it lives in the main process, which is also the only process that can load
- * the addon.
- *
- * safeStorage degrades to plaintext where there is no keyring - a bare Linux session, most
- * often - and says so. Encrypting anyway would be a claim we cannot keep; the fallback that
- * belongs here is the argon2id password path the bridge already supports, which needs a
- * screen to ask on and so waits for onboarding.
- */
-function resolveDatabaseKey(dir: string): Uint8Array {
-  const keyFile = join(dir, 'db-key.bin')
-
-  try {
-    const stored = readFileSync(keyFile)
-    return safeStorage.isEncryptionAvailable()
-      ? new Uint8Array(Buffer.from(safeStorage.decryptString(stored), 'base64'))
-      : new Uint8Array(stored)
-  } catch {
-    // No key yet: this is a first boot.
-  }
-
-  const key = randomBytes(32)
-  writeFileSync(
-    keyFile,
-    safeStorage.isEncryptionAvailable() ? safeStorage.encryptString(key.toString('base64')) : key,
-    { mode: 0o600 },
-  )
-  return new Uint8Array(key)
-}
 
 /**
  * The repo-root `.env`, for a build run out of the checkout.
@@ -143,6 +110,7 @@ export async function createBridge(): Promise<BridgeTransport & MediaSource> {
   // that on the right side of the split too.
   const dir = sessionDataDir()
   mkdirSync(dir, { recursive: true })
+  const dbPath = join(dir, 'session.db')
 
   const seedNodes =
     devnet === undefined
@@ -158,9 +126,9 @@ export async function createBridge(): Promise<BridgeTransport & MediaSource> {
     )
 
   return createNodeBridgeTransport({
-    dbPath: join(dir, 'session.db'),
+    dbPath,
     cacheDir: join(dir, 'attachments'),
-    rawKey: resolveDatabaseKey(dir),
+    rawKey: resolveDatabaseKey(dir, dbPath, safeStorage),
     // Onboarding has to be asked. Without this libsession creates an account as the database
     // opens, and the first screen the user sees is a conversation list for an identity nobody
     // chose.
