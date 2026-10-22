@@ -10,6 +10,19 @@ export interface MarkProps {
   color: string
 }
 
+/** The wordmark's artwork, in its own units. */
+const WORDMARK = { width: 766.2, height: 102.3 } as const
+
+/** How wide `SessionBrand` draws at a height of `size`, for a layout that sets it beside others. */
+export function sessionBrandWidth(size: number): number {
+  return (size * SESSION_BRAND.width) / SESSION_BRAND.height
+}
+
+/** How wide `SessionWordmark` draws at a height of `size`. */
+export function sessionWordmarkWidth(size: number): number {
+  return (size * WORDMARK.width) / WORDMARK.height
+}
+
 /**
  * The looping glyph. Drawn in the accent colour, which is what makes it the brand mark.
  *
@@ -124,19 +137,6 @@ export function SessionTokenLogo({ size, color }: MarkProps) {
       />
     </Svg>
   )
-}
-
-/** The wordmark's artwork, in its own units. */
-const WORDMARK = { width: 766.2, height: 102.3 } as const
-
-/** How wide `SessionBrand` draws at a height of `size`, for a layout that sets it beside others. */
-export function sessionBrandWidth(size: number): number {
-  return (size * SESSION_BRAND.width) / SESSION_BRAND.height
-}
-
-/** How wide `SessionWordmark` draws at a height of `size`. */
-export function sessionWordmarkWidth(size: number): number {
-  return (size * WORDMARK.width) / WORDMARK.height
 }
 
 /** The word SESSION. Drawn in the text colour, not the accent -- it is a word, not a logo. */

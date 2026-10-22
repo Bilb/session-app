@@ -1,5 +1,5 @@
 import { tr } from '@session/localization'
-import { LABEL_MAX_SCALE, ScrollView, textHeight, useFontScale } from '@session/ui'
+import { LABEL_MAX_SCALE, ScrollView, textHeight, useCappedFontScale } from '@session/ui'
 
 import { LocalizedText } from './LocalizedText'
 
@@ -24,7 +24,7 @@ const MAX_URL_HEIGHT = textHeight('body', MAX_LINES)
  * otherwise gives every drag to the outer one.
  */
 export function LinkAddress({ url }: { url: string }) {
-  const textScale = Math.min(Math.max(useFontScale(), 1), LABEL_MAX_SCALE)
+  const textScale = useCappedFontScale(LABEL_MAX_SCALE)
   return (
     <ScrollView maxHeight={MAX_URL_HEIGHT * textScale} nestedScrollEnabled>
       {/* The catalogue string carries the address in a bold run and two line breaks before it,

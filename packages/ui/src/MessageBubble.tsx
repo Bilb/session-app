@@ -22,7 +22,7 @@ export interface MessageBubbleProps {
    * How far the text grows with the system text size, for a bubble that illustrates rather than
    * carries a message: onboarding's conversation. A real message grows with the text size in full.
    */
-  maxFontScale?: number
+  maxFontSizeMultiplier?: number | undefined
   children: ReactNode
   testID?: string
 }
@@ -40,7 +40,7 @@ export interface MessageBubbleProps {
 export function MessageBubble({
   outgoing = false,
   maxWidth,
-  maxFontScale,
+  maxFontSizeMultiplier,
   children,
   testID,
 }: MessageBubbleProps) {
@@ -56,7 +56,7 @@ export function MessageBubble({
       <Text
         size="$bodyLarge"
         color={outgoing ? '$onAccent' : '$messageBubbleIncomingText'}
-        {...(maxFontScale === undefined ? {} : { maxFontSizeMultiplier: maxFontScale })}
+        maxFontSizeMultiplier={maxFontSizeMultiplier}
       >
         {children}
       </Text>

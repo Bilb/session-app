@@ -102,6 +102,80 @@ export function OnboardingStep({
   )
 }
 
+/** The title, with its mark beside it, and the explanation under it. */
+function StepHeading({
+  title,
+  titleMark,
+  description,
+}: {
+  title: string
+  titleMark?: ReactNode
+  description?: string | undefined
+}) {
+  return (
+    <>
+      <XStack alignItems="center" gap="$sm" minHeight={34}>
+        {/* 26/700, from the designs -- and the desktop client agrees: its `OnboardHeading` is an
+            h3 at `--font-size-h4`, which is 26px. */}
+        {/* Shrinks, so a title that wraps does so beside the mark rather than pushing it out of the
+            row. */}
+        <Text
+          flexShrink={1}
+          size="$headingLarge"
+          weight="bold"
+          userSelect="none"
+          maxFontSizeMultiplier={LABEL_MAX_SCALE}
+        >
+          {title}
+        </Text>
+        {titleMark}
+      </XStack>
+
+      {description === undefined ? null : (
+        // 14/400, and not muted: the desktop client draws this in the primary text colour, and it
+        // is the only explanation of what the field below is for -- content, not a caption.
+        <Text size="$body" paddingTop="$xs">
+          {description}
+        </Text>
+      )}
+    </>
+  )
+}
+
+/**
+ * The phone's frame around a step: the content, which scrolls, and the action pinned below it.
+ *
+ * **The content scrolls when it does not fit, and is centred as before when it does.** At a large
+ * system text size the title, the explanation and the field outgrow the screen, and without this
+ * the field and the action are pushed off it with no way back. The spacers inside keep the block
+ * above centre while there is room, since the content box grows to at least the region's height.
+ *
+ * **The action sits at the bottom of the screen, and that is also what makes the keyboard behave.**
+ * Both clients pin it there. Because it is the last thing in a column the keyboard-avoiding view is
+ * shrinking, it rises by the whole height of the keyboard -- while the content above, being centred
+ * in what is left, rises by about half of that. Which is exactly what iOS does: the button comes up
+ * to meet the keyboard and the field follows by less, rather than the whole screen sliding as one.
+ */
+function PhoneStepFrame({ children, footer }: { children: ReactNode; footer: ReactNode }) {
+  return (
+    <>
+      <ScrollView
+        flex={1}
+        contentContainerStyle={{ flexGrow: 1 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        // Still at the default size, where nothing overflows: no rubber band on iOS.
+        alwaysBounceVertical={false}
+      >
+        {children}
+      </ScrollView>
+      <YStack paddingHorizontal={EXTRA_ACTION_INSET} paddingBottom="$md">
+        {footer}
+      </YStack>
+    </>
+  )
+}
+
 /**
  * Everything a step puts *inside* the chrome, without the chrome.
  *
@@ -140,30 +214,7 @@ export function OnboardingStepBody({
         )}
 
         <YStack flex={1}>
-          <XStack alignItems="center" gap="$sm" minHeight={34}>
-            {/* 26/700, from the designs -- and the desktop client agrees: its `OnboardHeading` is
-              an h3 at `--font-size-h4`, which is 26px. */}
-            {/* Shrinks, so a title that wraps does so beside the mark rather than pushing it out of
-                the row. */}
-            <Text
-              flexShrink={1}
-              size="$headingLarge"
-              weight="bold"
-              userSelect="none"
-              maxFontSizeMultiplier={LABEL_MAX_SCALE}
-            >
-              {title}
-            </Text>
-            {titleMark}
-          </XStack>
-
-          {description === undefined ? null : (
-            // 14/400, and not muted: the desktop client draws this in the primary text colour, and
-            // it is the only explanation of what the field below is for -- content, not a caption.
-            <Text size="$body" paddingTop="$xs">
-              {description}
-            </Text>
-          )}
+          <StepHeading title={title} titleMark={titleMark} description={description} />
 
           <YStack paddingTop="$lg">{children}</YStack>
 
@@ -186,42 +237,5 @@ export function OnboardingStepBody({
     </>
   )
 
-  return (
-    <>
-      {wide ? (
-        block
-      ) : (
-        /**
-         * **Scrolls when it does not fit, and is centred as before when it does.** At a large
-         * system text size the title, the explanation and the field outgrow the screen, and
-         * without this the field and the action are pushed off it with no way back. The spacers
-         * inside keep the block above centre while there is room, since the content box grows to
-         * at least the region's height.
-         */
-        <ScrollView
-          flex={1}
-          contentContainerStyle={{ flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          // Still at the default size, where nothing overflows: no rubber band on iOS.
-          alwaysBounceVertical={false}
-        >
-          {block}
-        </ScrollView>
-      )}
-      {wide ? null : (
-        /**
-         * **The action sits at the bottom of the screen, and that is also what makes the keyboard
-         * behave.** Both clients pin it there. Because it is the last thing in a column the
-         * keyboard-avoiding view is shrinking, it rises by the whole height of the keyboard --
-         * while the content above, being centred in what is left, rises by about half of that.
-         * Which is exactly what iOS does: the button comes up to meet the keyboard and the field
-         * follows by less, rather than the whole screen sliding as one.
-         */
-        <YStack paddingHorizontal={EXTRA_ACTION_INSET} paddingBottom="$md">
-          {footer}
-        </YStack>
-      )}
-    </>
-  )
+  return wide ? block : <PhoneStepFrame footer={footer}>{block}</PhoneStepFrame>
 }
