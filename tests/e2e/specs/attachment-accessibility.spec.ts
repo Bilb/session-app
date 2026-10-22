@@ -12,6 +12,7 @@ import {
   verbName,
 } from '@session/expectations'
 import { expect } from '@playwright/test'
+import { PENDING_COPY } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 
 import { openFirstConversation } from '../harness/attachments'
@@ -21,7 +22,7 @@ import { SEEDED_ALBUM, SEEDED_LIST, SEEDED_RECEIPT } from '../harness/fixtures'
 import { EACH, sessionTest } from '../harness/sessionTest'
 
 /** Export has no catalogue word yet; see `attachmentFooterAction`. */
-const EXPORT = 'Export'
+const EXPORT = PENDING_COPY.export
 
 /**
  * What an album and a file row are to a screen reader, before anything is fetched, checked
@@ -46,12 +47,12 @@ sessionTest({
     await expectDescribed(
       alice,
       FOOTER_ACTION_ID,
-      attachmentFooterAction({ state: 'idle', count: SEEDED_ALBUM.length, exportName: EXPORT }),
+      attachmentFooterAction({ state: 'idle', count: SEEDED_ALBUM.length }),
     )
     await expectDescribed(
       alice,
       ELEMENT.conversation.attachmentViewList,
-      pressArea({ name: 'Show as list' }),
+      pressArea({ name: PENDING_COPY.attachmentViewList }),
     )
 
     const receipt = fileRow({

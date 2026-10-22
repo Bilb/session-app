@@ -12,7 +12,6 @@ import { buttonHeight } from '@session/ui'
 
 import { AttachmentFooter } from '#src/AttachmentFooter'
 import type { AttachmentSet } from '#src/attachmentSet'
-import { PENDING_COPY } from '#src/pendingCopy'
 
 import { renderScreen } from './support/render'
 
@@ -33,7 +32,7 @@ const CASES: Array<[AttachmentSetState, number]> = [
 describe('an attachment footer’s verb', () => {
   it.each(CASES)('is what a set %s of %i offers', (state, count) => {
     renderScreen(<AttachmentFooter set={set(state, count)} onAction={() => {}} />)
-    const expected = attachmentFooterAction({ state, count, exportName: PENDING_COPY.export })
+    const expected = attachmentFooterAction({ state, count })
     if (expected.desktop === null) expect(nodeOf(FOOTER_ACTION_ID)).toBeNull()
     else expect(nodeOf(FOOTER_ACTION_ID)).toMatchObject(expected.desktop)
   })

@@ -10,13 +10,12 @@ import {
   type FileRowState,
   verbName,
 } from '@session/expectations'
-import { tr } from '@session/localization'
+import { PENDING_COPY, tr } from '@session/localization'
 import { byId, nodeOf } from '@session/render-tier'
 import { createSessionStore, transferKey, type SessionStore } from '@session/state'
 
 import { AttachmentRow } from '#src/AttachmentRow'
 import type { ConversationUi } from '#src/conversationUi'
-import { PENDING_COPY } from '#src/pendingCopy'
 import { createViewChoices } from '#src/viewChoices'
 
 import { renderScreen } from './support/render'

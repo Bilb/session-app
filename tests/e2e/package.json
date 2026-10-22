@@ -11,7 +11,8 @@
     "test:e2e:android": "playwright test --project android",
     "test:e2e:ios": "playwright test --project ios",
     "test:e2e:full": "playwright test",
-    "test:catalog": "playwright test --project catalog"
+    "test:catalog": "playwright test --project catalog",
+    "catalog:upload": "argos upload"
   },
   "devDependencies": {
     "@argos-ci/cli": "catalog:",
@@ -19,6 +20,7 @@
     "@playwright/test": "catalog:",
     "@session/eslint-config": "workspace:*",
     "@session/expectations": "workspace:*",
+    "@session/localization": "workspace:*",
     "@session/test-ids": "workspace:*",
     "@session/theme-tokens": "workspace:*",
     "@session/typescript-config": "workspace:*",

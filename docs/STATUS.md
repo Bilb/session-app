@@ -66,7 +66,7 @@ a time, via the `port-feature` skill.
   app can hold the same database at once.
 - **Attachment strings have no catalogue key.** The cache section's heading and labels, a set's
   count, the gallery/list switch, Export with its two states, and the viewer's Previous have
-  nothing in the Crowdin set that fits, so they sit in `packages/screens/src/pendingCopy.ts` and
+  nothing in the Crowdin set that fits, so they sit in `packages/localization/src/pendingCopy.ts` and
   ship as English in every locale - the count with English plurals. Each is named for the token it
   is destined for; `copy.contract.test.ts` pins the list so another cannot join quietly. They want
   a pull request against session-localization and a submodule bump.

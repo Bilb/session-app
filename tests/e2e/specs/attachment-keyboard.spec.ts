@@ -7,6 +7,7 @@ import {
   verbName,
   type FileRowState,
 } from '@session/expectations'
+import { PENDING_COPY } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 
 import { downloadFromRow, openFirstConversation } from '../harness/attachments'
@@ -16,7 +17,7 @@ import { SEEDED_ALBUM, SEEDED_LIST } from '../harness/fixtures'
 import { tabStops, tabTo, type Stop } from '../harness/keyboard'
 
 /** Export has no catalogue word yet; see `attachmentFooterAction`. */
-const EXPORT = 'Export'
+const EXPORT = PENDING_COPY.export
 
 /** A list row's parts, on the desktop, in the transfer state given. */
 const rowParts = (filename: string, state: FileRowState, controlName: string) => {
@@ -133,7 +134,9 @@ test('reaches a set’s footer with Tab, switches its view with Enter and downlo
       app,
       (stop) => stop.testID === ELEMENT.conversation.attachmentViewList,
     )
-    expect(toList.node).toMatchObject(onDesktop(pressArea({ name: 'Show as list' })))
+    expect(toList.node).toMatchObject(
+      onDesktop(pressArea({ name: PENDING_COPY.attachmentViewList })),
+    )
     await expect(focused).not.toHaveCSS('outline-width', '0px')
     await app.screenshot('a11y-footer-focus-desktop')
 
@@ -144,9 +147,7 @@ test('reaches a set’s footer with Tab, switches its view with Enter and downlo
 
     const action = await tabTo(app, (stop) => stop.testID === ELEMENT.conversation.attachmentAction)
     expect(action.node).toMatchObject(
-      onDesktop(
-        attachmentFooterAction({ state: 'idle', count: SEEDED_ALBUM.length, exportName: EXPORT }),
-      ),
+      onDesktop(attachmentFooterAction({ state: 'idle', count: SEEDED_ALBUM.length })),
     )
     await app.page.keyboard.press(' ')
     await app.waitForVisible(ELEMENT.conversation.autoDownloadPrompt)

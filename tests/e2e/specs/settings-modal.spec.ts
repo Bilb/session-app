@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 
 import { _electron, expect, test } from '@playwright/test'
+import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 
 import { FAKE_LAUNCH_ENV } from '../harness/fakeEnv'
@@ -121,7 +122,7 @@ test('settings opens over the list, pushes Help, exports logs from it, and asks 
     const toast = page.getByTestId(ELEMENT.toast.item).first()
     await expect(toast).toBeVisible()
     // The catalogue's `copied`, in the English the suite runs in.
-    await expect(toast).toHaveText('Copied')
+    await expect(toast).toHaveText(tr('copied'))
     // Its own close, so nothing after this waits out the toast's timer.
     await page.getByTestId(ELEMENT.toast.close).first().click()
     await expect(page.getByTestId(ELEMENT.toast.item)).toHaveCount(0)
@@ -137,7 +138,7 @@ test('settings opens over the list, pushes Help, exports logs from it, and asks 
     await page.mouse.click(5, 5)
     await expect(page.getByTestId(ELEMENT.onboarding.openUrlDialog)).toHaveCount(0)
     for (let press = 0; press < 10; press += 1) await commit.click()
-    await expect(page.getByTestId(ELEMENT.toast.item).first()).toHaveText('Debug mode enabled')
+    await expect(page.getByTestId(ELEMENT.toast.item).first()).toHaveText(tr('debugModeEnabled'))
     await expect(page.getByTestId(ELEMENT.settings.row('developer-settings')).first()).toBeVisible()
     await page.getByTestId(ELEMENT.toast.close).first().click()
 

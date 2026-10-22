@@ -14,14 +14,13 @@ import {
   setFetchName,
   verbName,
 } from '@session/expectations'
-import { resetLocale, setLocale, tr } from '@session/localization'
+import { resetLocale, setLocale, tr, PENDING_COPY } from '@session/localization'
 import { byId, nodeOf } from '@session/render-tier'
 import { ALBUM_MAX_TILES } from '@session/ui'
 
 import type { FetchState } from '#src/attachmentFetch'
 import type { AttachmentSetState } from '#src/attachmentSet'
 import { MessageAlbum } from '#src/MessageAlbum'
-import { PENDING_COPY } from '#src/pendingCopy'
 
 import { renderScreen } from './support/render'
 

@@ -1,9 +1,8 @@
-import { tr } from '@session/localization'
+import { PENDING_COPY, tr } from '@session/localization'
 import type { FileRowState } from '@session/ui'
 import { describe, expect, it } from 'vitest'
 
 import { controlVerb, rowVerb, verbLabel } from '#src/attachmentPress'
-import { PENDING_COPY } from '#src/pendingCopy'
 
 const STATES: FileRowState[] = ['idle', 'fetching', 'ready', 'failed', 'unavailable']
 

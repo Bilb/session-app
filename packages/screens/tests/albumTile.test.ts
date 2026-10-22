@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs'
+import { PENDING_COPY } from '@session/localization'
 import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
 import { albumTileName } from '#src/albumTileName'
-import { PENDING_COPY } from '#src/pendingCopy'
 
 describe('what a screen reader calls a picture in an album', () => {
   it('is its filename where it has one', () => {

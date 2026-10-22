@@ -1,4 +1,4 @@
-import { tr } from '@session/localization'
+import { PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 
 import type { Expected } from './node'
@@ -16,12 +16,9 @@ export type AttachmentSetState = 'ready' | 'fetching' | 'failed' | 'idle' | 'una
 export function attachmentFooterAction({
   state,
   count,
-  exportName,
 }: {
   state: AttachmentSetState
   count: number
-  /** Export has no catalogue word yet, so the caller says what it is. */
-  exportName: string
 }): Expected {
   const name =
     state === 'fetching' || state === 'unavailable'
@@ -30,7 +27,7 @@ export function attachmentFooterAction({
         ? tr('retry')
         : state === 'ready'
           ? count === 1
-            ? exportName
+            ? PENDING_COPY.export
             : null
           : tr('download')
   return name === null ? { desktop: null, native: null } : pressArea({ name })

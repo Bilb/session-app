@@ -1,12 +1,11 @@
 import type { AutoDownload } from '@session/client'
-import { tr } from '@session/localization'
+import { PENDING_COPY, tr } from '@session/localization'
 import { useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { Button, Modal, RadioIndicator, Text, XStack, YStack } from '@session/ui'
 import { useState } from 'react'
 
 import { LocalizedText } from './LocalizedText'
-import { PENDING_COPY } from './pendingCopy'
 
 /** What Yes fetches: both of libsession's settings that fetch anything. */
 type Scope = Exclude<AutoDownload, 'none'>

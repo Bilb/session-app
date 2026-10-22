@@ -1,10 +1,10 @@
 import { formatBytes } from '@session/basic-types'
+import { PENDING_COPY } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Progress, Text, TILE_SCRIM, XStack, YStack } from '@session/ui'
 
 import type { AttachmentSet } from './attachmentSet'
 import { sharedCaption } from './attachmentSetCaption'
-import { PENDING_COPY } from './pendingCopy'
 
 /** Enough of a bar to read as one, and not so much that the pill stops being a badge. */
 const PILL_BAR_WIDTH = 44

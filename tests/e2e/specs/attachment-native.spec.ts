@@ -6,6 +6,7 @@ import {
   type FileRowState,
   verbName,
 } from '@session/expectations'
+import { PENDING_COPY } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 
 import { openFirstConversation } from '../harness/attachments'
@@ -13,7 +14,7 @@ import { SEEDED_LIST, SEEDED_RECEIPT } from '../harness/fixtures'
 import { MobileApp, type MobilePlatform } from '../harness/MobileApp'
 
 /** Export has no catalogue word yet; see `attachmentFooterAction`. */
-const EXPORT = 'Export'
+const EXPORT = PENDING_COPY.export
 
 /** The album above carries the row's id, so the receipt's row is the second node carrying it. */
 const RECEIPT_ROW = 1

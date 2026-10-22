@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { pressArea } from '@session/expectations'
+import { PENDING_COPY } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 
 import { SEEDED_ALBUM, SEEDED_LIST } from '../harness/fixtures'
@@ -41,7 +42,7 @@ sessionTest({
     expect(await alice.count(ELEMENT.conversation.attachmentViewList)).toBe(1)
     expect(await alice.count(ELEMENT.conversation.attachmentViewGallery)).toBe(0)
     expect(await alice.describe(ELEMENT.conversation.attachmentViewList)).toMatchObject(
-      viewToggle('Show as list'),
+      viewToggle(PENDING_COPY.attachmentViewList),
     )
 
     const before = await alice.readAllText(ELEMENT.conversation.attachmentName)
@@ -58,7 +59,7 @@ sessionTest({
       .toEqual(expected)
     expect(await alice.count(ELEMENT.conversation.attachmentViewGallery)).toBe(1)
     expect(await alice.describe(ELEMENT.conversation.attachmentViewGallery)).toMatchObject(
-      viewToggle('Show as gallery'),
+      viewToggle(PENDING_COPY.attachmentViewGallery),
     )
 
     await alice.screenshot('attachment-view-list-desktop')

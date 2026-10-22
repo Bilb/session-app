@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 
 import { _electron, expect, test } from '@playwright/test'
+import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 
 import { FAKE_LAUNCH_ENV } from '../harness/fakeEnv'
@@ -46,7 +47,7 @@ test('a failed start shows why, exports logs, asks before clearing, and recovers
     await expect
       .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))
       .toBe(await reason.textContent())
-    await expect(page.getByTestId(ELEMENT.toast.item).first()).toHaveText('Copied')
+    await expect(page.getByTestId(ELEMENT.toast.item).first()).toHaveText(tr('copied'))
     await page.getByTestId(ELEMENT.toast.close).first().click()
 
     // Export Logs writes one gzip file where the save dialog says, with the header on top and the
