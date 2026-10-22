@@ -110,18 +110,6 @@ function launchScreenPlugin() {
 }
 
 /**
- * `.web.js` ahead of `.js`, which is how the react-native-web ecosystem ships a DOM flavour beside
- * a native one. `react-native-svg` - which the icons draw through - is one of the packages that
- * does, and it has no exports map and no `browser` field, so no condition list can reach its web
- * build. Only the extension order can.
- *
- * It has to be given to esbuild as well as to vite. Vite's own resolver reads `resolve.extensions`,
- * but the dependency pre-bundler is esbuild with its own, so left to itself the dev server walks
- * into the native flavour, follows it to `react-native/Libraries/...`, and fails to start on a path
- * the `react-native` alias has rewritten to one that does not exist. The built app resolves
- * correctly either way, which is a good way not to notice.
- */
-/**
  * react-native-svg's touch-sound module, swapped for a no-op in the renderer. It is a TurboModule
  * spec, importing `TurboModuleRegistry` from `react-native`, which react-native-web does not
  * export, and the package reaches it only for Android's touch sound, through a lazy `require`. The
@@ -148,6 +136,18 @@ const svgSoundModuleShim = {
   },
 }
 
+/**
+ * `.web.js` ahead of `.js`, which is how the react-native-web ecosystem ships a DOM flavour beside
+ * a native one. `react-native-svg` - which the icons draw through - is one of the packages that
+ * does, and it has no exports map and no `browser` field, so no condition list can reach its web
+ * build. Only the extension order can.
+ *
+ * It has to be given to esbuild as well as to vite. Vite's own resolver reads `resolve.extensions`,
+ * but the dependency pre-bundler is esbuild with its own, so left to itself the dev server walks
+ * into the native flavour, follows it to `react-native/Libraries/...`, and fails to start on a path
+ * the `react-native` alias has rewritten to one that does not exist. The built app resolves
+ * correctly either way, which is a good way not to notice.
+ */
 const WEB_FIRST_EXTENSIONS = [
   '.web.mjs',
   '.web.js',
