@@ -271,7 +271,8 @@ arriving from a message body is the unencoded form, which is the case that matte
 | unit     | `*.test.ts`: projections, route contracts, the generator, fake     | every push                   |
 | render   | `*.test.tsx`: components drawn through react-native-web, happy-dom | every push                   |
 | fast e2e | the Electron app on the fake, no network                           | `e2e-fast` workflow, by hand |
-| device   | the same specs on an Android emulator and an iOS simulator, Appium | `e2e-mobile`, by hand        |
+| device   | the same specs on an Android emulator and an iOS simulator, Appium | `test:e2e:android`/`:ios`    |
+| catalog  | every catalog page captured and audited, uploaded to Argos         | `catalog`, every PR and main |
 | full e2e | real bindings, devnet, device pool                                 | `e2e-full` workflow, by hand |
 
 A package with render tests runs vitest as two projects, `unit` and `render`
@@ -304,7 +305,8 @@ resource id, iOS's accessibility identifier) and reading them from the page sour
 bundle itself: Metro inlines every `EXPO_PUBLIC_` variable, so the fake and its fixture
 are chosen per bundle, and a launch with other values restarts Metro. It reads the devices from
 `SESSION_E2E_{ANDROID,IOS}_{PHONE,TABLET}`, Appium from `SESSION_E2E_APPIUM_URL` and Metro's
-port from `SESSION_E2E_METRO_PORT`; `.github/workflows/e2e-mobile.yml` is the whole setup.
+port from `SESSION_E2E_METRO_PORT`. There is no CI job for it: it runs against a local emulator
+or simulator.
 
 `showcase-audit.spec.ts` audits the `showcase` fixture at two widths on desktop, and on a phone and
 a tablet of each mobile platform, in the default theme.

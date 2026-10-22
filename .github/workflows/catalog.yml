@@ -1,7 +1,10 @@
 name: catalog
 
-# Started by hand, never on a pull request.
+# A build on main is the reference Argos compares a pull request's build with.
 on:
+  push:
+    branches: [main]
+  pull_request:
   workflow_dispatch:
     inputs:
       tier:
@@ -10,11 +13,17 @@ on:
         options: [pr, nightly]
         default: pr
 
+# Only a pull request's runs cancel each other: a cancelled run on main leaves its commit with no
+# reference, and Argos falls back to an older one.
+concurrency:
+  group: catalog-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   desktop:
     runs-on: ubuntu-latest
     env:
-      CATALOG_TIER: ${{ inputs.tier }}
+      CATALOG_TIER: ${{ inputs.tier || 'pr' }}
       CATALOG_OUT: ${{ github.workspace }}/test-results/catalog
     steps:
       - uses: actions/checkout@v5
@@ -52,8 +61,12 @@ jobs:
       - run: xvfb-run -a pnpm --filter @session/e2e test:catalog
 
       # The captures go up even when the audit fails: the two are read separately.
+      # A tier is its own build name, so a nightly build is never compared with a pr one. Skipped
+      # where the token is not given: a fork's pull request, or a repository with no Argos yet.
       - if: success() || failure()
-        run: pnpm --filter @session/e2e catalog:upload "$CATALOG_OUT"
+        run: |
+          if [ -z "$ARGOS_TOKEN" ]; then echo "No ARGOS_TOKEN: captures not uploaded"; exit 0; fi
+          pnpm --filter @session/e2e exec argos upload --build-name "catalog-$CATALOG_TIER" "$CATALOG_OUT"
         env:
           ARGOS_API_BASE_URL: ${{ vars.ARGOS_API_BASE_URL }}
           ARGOS_TOKEN: ${{ secrets.ARGOS_TOKEN }}

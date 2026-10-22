@@ -11,8 +11,7 @@
     "test:e2e:android": "playwright test --project android",
     "test:e2e:ios": "playwright test --project ios",
     "test:e2e:full": "playwright test",
-    "test:catalog": "playwright test --project catalog",
-    "catalog:upload": "argos upload --build-name catalog"
+    "test:catalog": "playwright test --project catalog"
   },
   "devDependencies": {
     "@argos-ci/cli": "catalog:",
