@@ -89,9 +89,9 @@ a time, via the `port-feature` skill.
 - **CI compiles no C++.** `ci.yml` and `e2e-fast` initialise only the localization submodule, so
   every addon test guards itself on the built artifact and skips when it is absent. `e2e-full`
   does check out submodules recursively, and is manual dispatch only.
-- **Two npm patches are carried in `patches/npm/`** and applied by `pnpm install`: nitrogen, and
-  expo-modules-jsi, which does not compile under Xcode 26. Each goes away when an upstream release
-  fixes it, and nothing checks whether one has - the `run` skill's traps table has the symptoms.
+- **One npm patch is carried in `patches/npm/`** and applied by `pnpm install`: nitrogen. It goes
+  away when an upstream release fixes it, and nothing checks whether one has - the `run` skill's
+  traps table has the symptoms.
 - **There is no macOS runner.** The iOS build is verified by hand on a Mac and nothing else.
 - **A send in the first seconds after launch fails.** The router bootstraps for about ten seconds
   after the bridge attaches, and a QUIC handshake started before then times out. Retry is the

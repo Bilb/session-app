@@ -131,6 +131,14 @@ const RESTRICTED_SYNTAX = [
       "Set the cursor for the web only: `'$platform-web': { cursor: 'pointer' }`. On an iPad it " +
       'becomes a UIKit hover effect that crashes React Native when the view is unmounted.',
   },
+  // react-native-web ignores `adjustsFontSizeToFit`, so a line given it shrinks on a phone and is
+  // cut off on desktop. `FitText` does the same on all three.
+  {
+    selector: "JSXAttribute[name.name='adjustsFontSizeToFit']",
+    message:
+      'Use `FitText` from @session/ui for a line that shrinks to fit: the web ignores ' +
+      '`adjustsFontSizeToFit`, so on desktop the line is cut off instead.',
+  },
   {
     selector: 'Property[key.name=/^' + SCALED_PROPS + '$/] > Literal[raw=/^[0-9]+(\\.[0-9]+)?$/]',
     message:

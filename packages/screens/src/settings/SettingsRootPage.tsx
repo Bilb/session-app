@@ -5,6 +5,7 @@ import { ELEMENT } from '@session/test-ids'
 import {
   Avatar,
   Button,
+  LABEL_MAX_SCALE,
   ProBadge,
   RecoveryPasswordShield,
   SessionTokenMark,
@@ -125,7 +126,12 @@ function AccountIdPill() {
         borderWidth={1}
         borderColor="$bordersColor"
       >
-        <Text size="$body" tone="secondary" userSelect="none">
+        <Text
+          size="$body"
+          tone="secondary"
+          userSelect="none"
+          maxFontSizeMultiplier={LABEL_MAX_SCALE}
+        >
           {tr('accountIdYours')}
         </Text>
       </YStack>
@@ -148,7 +154,12 @@ function AccountHeader({ sessionId, name }: { sessionId: string; name: string })
     >
       <Avatar id={sessionId} name={name} size={PROFILE_AVATAR} />
       {name === '' ? null : (
-        <Text size="$headingLarge" weight="bold" testID={ELEMENT.settings.displayName}>
+        <Text
+          size="$headingLarge"
+          weight="bold"
+          maxFontSizeMultiplier={LABEL_MAX_SCALE}
+          testID={ELEMENT.settings.displayName}
+        >
           {name}
         </Text>
       )}

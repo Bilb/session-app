@@ -1,7 +1,8 @@
+import type { ViewProps } from 'react-native'
 import { isWeb } from 'tamagui'
 
 /** Only what the handler reads, so it can take a DOM event or a test's stand-in for one. */
-export interface PressKeyEvent {
+interface PressKeyEvent {
   key: string
   repeat: boolean
   target: unknown
@@ -13,8 +14,14 @@ export interface PressKeyEvent {
  * Presses on Enter or Space, as a `<button>` does, and only when the focused element is this one:
  * keys bubble, so a stack holding another that takes keys would press for its key too.
  */
-function pressOnKey(onPress: () => void): (event: PressKeyEvent) => void {
-  return (event) => {
+/** What a view's `onKeyDown` takes, in react-native's types. */
+type KeyDownHandler = NonNullable<ViewProps['onKeyDown']>
+
+function pressOnKey(onPress: () => void): KeyDownHandler {
+  return (raw) => {
+    // Attached on the web only (see `keyboardPress`), where the event is the DOM's. react-native's
+    // types describe its own key event, which carries no `key` or `repeat` at the top.
+    const event = raw as unknown as PressKeyEvent
     if (event.target !== event.currentTarget || event.repeat) return
     if (event.key !== 'Enter' && event.key !== ' ') return
     // Space would otherwise scroll whatever the control sits in.

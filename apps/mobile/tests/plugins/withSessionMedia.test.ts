@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { mainApplicationServingMedia, withSessionMedia } from '#plugins/withSessionMedia'
 
 /**
- * SDK 57's template, cut down to the lines the rewrite reads. `PackageList(this)` sits in a `lazy`
+ * SDK 58's template, cut down to the lines the rewrite reads. `PackageList(this)` sits in a `lazy`
  * lambda, which has no receiver, so `this` is the Application `packageConfig` takes.
  */
 const KOTLIN = `package org.getsession.session2

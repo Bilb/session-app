@@ -17,7 +17,6 @@ import com.facebook.imagepipeline.image.CloseableImage
 import com.facebook.imagepipeline.image.CloseableStaticBitmap
 import com.facebook.imagepipeline.image.EncodedImage
 import com.facebook.imagepipeline.image.ImmutableQualityInfo
-import com.facebook.imagepipeline.producers.BaseConsumer
 import com.facebook.imagepipeline.producers.BaseProducerContextCallbacks
 import com.facebook.imagepipeline.producers.Consumer
 import com.facebook.imagepipeline.producers.CustomProducerSequenceFactory
@@ -205,7 +204,7 @@ private constructor(
             }
         val image = EncodedImage(pooled)
         try {
-          consumer.onNewResult(image, BaseConsumer.IS_LAST)
+          consumer.onNewResult(image, Consumer.IS_LAST)
         } finally {
           EncodedImage.closeSafely(image)
           CloseableReference.closeSafely(pooled)
@@ -243,7 +242,7 @@ private constructor(
                     ImmutableQualityInfo.FULL_QUALITY,
                     0))
         try {
-          consumer.onNewResult(image, BaseConsumer.IS_LAST)
+          consumer.onNewResult(image, Consumer.IS_LAST)
         } finally {
           CloseableReference.closeSafely(image)
         }

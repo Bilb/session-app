@@ -78,7 +78,10 @@ export function Tooltip({ label, placement = 'end', children, testID }: TooltipP
         if (focusVisible(event)) show()
       }}
       onBlur={hide}
-      onKeyDown={(event: { key: string }) => {
+      onKeyDown={(raw) => {
+        // The DOM's event on the web, which is the only place this file runs; react-native's types
+        // describe its own key event, which carries no `key` at the top.
+        const event = raw as unknown as { key: string }
         if (event.key === 'Escape') hide()
       }}
     >
