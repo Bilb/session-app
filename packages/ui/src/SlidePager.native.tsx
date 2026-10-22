@@ -44,6 +44,8 @@ export function SlidePager({
   const scroller = useRef<ScrollViewInstance>(null)
   /** Where the scroll view is, so a page the person swiped to is not scrolled to again. */
   const showing = useRef(index)
+  // Whether the keyboard has been dismissed for the move in progress; cleared when a page settles.
+  const dismissedThisMove = useRef(false)
   const count = children.length
   const rtl = isLayoutRtl()
 
@@ -87,9 +89,15 @@ export function SlidePager({
         const page = settledPage(event.nativeEvent.contentOffset.x, count, width, rtl)
         // Leaving a page with the keyboard up leaves the field it belongs to. Once the offset has
         // moved, not on `keyboardDismissMode`'s drag: iOS starts a horizontal scroll view's drag on
-        // a vertical one too, so scrolling the column it sits in closed the keyboard.
-        if (page === null) Keyboard.dismiss()
-        if (page === null || page === showing.current) return
+        // a vertical one too, so scrolling the column it sits in closed the keyboard. Once a move,
+        // on its first frame, rather than on every frame until it settles.
+        if (page === null) {
+          if (!dismissedThisMove.current) Keyboard.dismiss()
+          dismissedThisMove.current = true
+          return
+        }
+        dismissedThisMove.current = false
+        if (page === showing.current) return
         showing.current = page
         onIndexChange?.(page)
       }}
