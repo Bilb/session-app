@@ -8,7 +8,10 @@ export function pageOffset(page: number, count: number, width: number, rtl: bool
   return (rtl ? count - 1 - page : page) * width
 }
 
-/** The page a scroll offset has settled on, or null while it is between two. */
+/**
+ * The page a scroll offset has settled on, or null while it is between two - or past either end,
+ * where iOS's bounce can rest on a whole page's width that is not a page.
+ */
 export function settledPage(
   offset: number,
   count: number,
@@ -17,6 +20,6 @@ export function settledPage(
 ): number | null {
   if (width === 0) return null
   const slot = Math.round(offset / width)
-  if (Math.abs(offset - slot * width) >= 1) return null
+  if (Math.abs(offset - slot * width) >= 1 || slot < 0 || slot >= count) return null
   return rtl ? count - 1 - slot : slot
 }

@@ -29,7 +29,12 @@ export { textHeight } from './textHeight'
 export { useFontScale } from './useFontScale'
 export { EndPinnedScroll } from './EndPinnedScroll'
 export { EndAboveKeyboardScroll } from './EndAboveKeyboardScroll'
-export { GLYPH_MAX_SCALE, LABEL_MAX_SCALE, useGlyphScale } from './fontScaleCaps'
+export {
+  GLYPH_MAX_SCALE,
+  LABEL_MAX_SCALE,
+  useCappedFontScale,
+  useGlyphScale,
+} from './fontScaleCaps'
 export { FitText } from './FitText'
 export { MIN_FIT_SCALE } from './fittedFontSize'
 export { setPageZoom, usePageZoom } from './pageZoom'

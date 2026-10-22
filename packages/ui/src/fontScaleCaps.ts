@@ -7,9 +7,17 @@ import { useFontScale } from './useFontScale'
  */
 export const GLYPH_MAX_SCALE = 1.353
 
+/**
+ * How much something grows with the system text size: with it, from the default up to `max`. For a
+ * length that has to keep pace with text that is itself capped - pass the same cap.
+ */
+export function useCappedFontScale(max: number): number {
+  return Math.min(Math.max(useFontScale(), 1), max)
+}
+
 /** How much a glyph beside text grows with the system text size: with it, up to XXX Large. */
 export function useGlyphScale(): number {
-  return Math.min(Math.max(useFontScale(), 1), GLYPH_MAX_SCALE)
+  return useCappedFontScale(GLYPH_MAX_SCALE)
 }
 
 /**

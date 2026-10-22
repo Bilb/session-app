@@ -35,6 +35,13 @@ describe('reading the page a scroll has settled on', () => {
     expect(settledPage(0, 2, 0, false)).toBeNull()
   })
 
+  it('is no page past either end', () => {
+    for (const rtl of [false, true]) {
+      expect(settledPage(-400, 2, 400, rtl)).toBeNull()
+      expect(settledPage(800, 2, 400, rtl)).toBeNull()
+    }
+  })
+
   it('allows the fraction of a pixel a scroll view stops short by', () => {
     expect(settledPage(399.5, 2, 400, false)).toBe(1)
   })

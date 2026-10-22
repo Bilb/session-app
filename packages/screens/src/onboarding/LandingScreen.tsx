@@ -173,7 +173,7 @@ function PhoneOpening() {
                 <MessageBubble
                   outgoing={bubble.outgoing}
                   // The conversation shows what Session is like rather than being read for itself.
-                  maxFontScale={LABEL_MAX_SCALE}
+                  maxFontSizeMultiplier={LABEL_MAX_SCALE}
                   // The floor until the container has been measured, which is one frame and is over
                   // long before the first bubble is due.
                   maxWidth={chatWidth === 0 ? BUBBLE_MIN_WIDTH : bubbleMaxWidth(chatWidth)}

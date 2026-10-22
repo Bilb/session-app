@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { readZoom, steppedZoom, writeZoom, ZOOM_LEVELS } from '#src/main/zoom'
+import { gestureStepGate, readZoom, steppedZoom, writeZoom, ZOOM_LEVELS } from '#src/main/zoom'
 
 describe('stepping the zoom', () => {
   it('moves one level at a time and back to 100%', () => {
@@ -39,5 +39,15 @@ describe('the saved zoom', () => {
     // A level outside this build's range, which falls back the same way.
     writeFileSync(odd, JSON.stringify({ zoom: 3 }))
     expect(readZoom(odd)).toBe(1)
+  })
+})
+
+describe('wheel and pinch steps', () => {
+  it('takes one step from a burst, and the next once the interval has passed', () => {
+    const take = gestureStepGate(100)
+    // A flick: a dozen events 10 ms apart
+    const taken = Array.from({ length: 12 }, (_, i) => take(1000 + i * 10)).filter(Boolean)
+    expect(taken).toHaveLength(2)
+    expect(take(1300)).toBe(true)
   })
 })

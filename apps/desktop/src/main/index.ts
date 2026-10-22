@@ -27,7 +27,14 @@ import {
   refuseNewContents,
 } from './security'
 import { excludeUserData, placeUserData } from './userData'
-import { readZoom, steppedZoom, writeZoom, type ZoomStep } from './zoom'
+import {
+  gestureStepGate,
+  readZoom,
+  steppedZoom,
+  writeZoom,
+  ZOOM_SAVE_DELAY_MS,
+  type ZoomStep,
+} from './zoom'
 
 /**
  * What the app calls itself, which decides where its data lives.
@@ -61,11 +68,32 @@ function zoomFile(): string {
   return join(app.getPath('userData'), 'zoom.json')
 }
 
-function stepZoom(step: ZoomStep): void {
-  zoom = steppedZoom(zoom, step)
+/** A save waiting for the zoom to settle; see `saveZoomSoon`. */
+let zoomSave: ReturnType<typeof setTimeout> | undefined
+
+/** Saves the zoom once it has stopped changing, so a burst of steps is one write, not one each. */
+function saveZoomSoon(): void {
+  clearTimeout(zoomSave)
+  zoomSave = setTimeout(saveZoomNow, ZOOM_SAVE_DELAY_MS)
+}
+
+function saveZoomNow(): void {
+  if (zoomSave === undefined) return
+  clearTimeout(zoomSave)
+  zoomSave = undefined
   writeZoom(zoomFile(), zoom)
+}
+
+function stepZoom(step: ZoomStep): void {
+  const next = steppedZoom(zoom, step)
+  if (next === zoom) return
+  zoom = next
+  saveZoomSoon()
   for (const window of BrowserWindow.getAllWindows()) window.webContents.send('zoom', zoom)
 }
+
+/** Wheel and pinch steps, which come in bursts, at most one each interval. */
+const takeGestureStep = gestureStepGate()
 
 /** Rebuilt when the language changes, since its labels are drawn here rather than by the page. */
 function installAppMenu(): void {
@@ -236,9 +264,9 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
   ipc.on('zoom:current', (event) => {
     event.returnValue = isFromAppFrame(event.senderFrame, appUrl) ? zoom : 1
   })
-  // Control and the scroll wheel, which Electron reports rather than acting on.
+  // Control and the scroll wheel, or a pinch, which Electron reports rather than acting on.
   window.webContents.on('zoom-changed', (_event, direction) => {
-    stepZoom(direction)
+    if (takeGestureStep(Date.now())) stepZoom(direction)
   })
 
   window.webContents.on('context-menu', (_event, params) => {
@@ -372,6 +400,8 @@ app.on('before-quit', () => {
   stopServingMedia()
   bridge?.close()
   bridge = null
+  // A zoom changed in the last moment is still waiting to be saved
+  saveZoomNow()
 })
 
 /** The longest quitting waits for the log, so a write that never finishes cannot keep it open. */
