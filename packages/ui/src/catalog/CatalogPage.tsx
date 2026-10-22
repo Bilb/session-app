@@ -5,6 +5,7 @@ import { Theme, XStack, YStack } from 'tamagui'
 
 import { InteractionOverride, type ForcedInteraction } from '../interactionOverride'
 import { Text } from '../Text'
+import { applyDirection } from '../textDirection'
 import { registerTheme, themeName } from '../themes'
 import type { CatalogPageSpec } from './pages'
 import type { ForcedState } from './story'
@@ -55,12 +56,7 @@ function Block({ page, theme, accent, title }: BlockProps) {
   const states = page.forced ? (page.story.forced ?? []) : []
   return (
     <Theme name={themeName(theme, accent)}>
-      <YStack
-        backgroundColor="$backgroundPrimary"
-        padding="$md"
-        gap="$sm"
-        style={page.rtl ? { direction: 'rtl' } : undefined}
-      >
+      <YStack backgroundColor="$backgroundPrimary" padding="$md" gap="$sm">
         <Text size="$caption" tone="secondary">
           {title}
         </Text>
@@ -105,7 +101,9 @@ function Block({ page, theme, accent, title }: BlockProps) {
  */
 export function CatalogPage({ page }: { page: CatalogPageSpec }) {
   // Registered before the first render: registering a theme wakes every themed component mounted.
+  // The direction too, as the app sets it, since what asks `isLayoutRtl()` reads the document.
   useState(() => {
+    applyDirection(page.rtl)
     for (const theme of page.themes) for (const accent of page.accents) registerTheme(theme, accent)
     return null
   })

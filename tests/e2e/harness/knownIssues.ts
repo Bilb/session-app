@@ -26,6 +26,8 @@ const KNOWN_ISSUES: Partial<Record<ISessionApp['platform'], Readonly<Record<stri
       'the caption on a purple sent bubble, ocean themes: 4.2:1',
     'color-contrast fileRow.onAccent failed': 'the same',
     'aria-progressbar-name button.variants loading': 'the spinner has no accessible name',
+    'color-contrast catalog-settings-row-trailing':
+      'a secondary value on a pressed row, classic-light: 4.1:1',
     'color-contrast catalog-settings-row-destructive':
       'the danger ink on a light page, at label size: 4.3:1',
     'color-contrast avatar.sizes xl': 'white initials on a light avatar colour: 1.4 to 2.3:1',

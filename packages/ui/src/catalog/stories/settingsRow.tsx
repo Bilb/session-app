@@ -1,4 +1,5 @@
 import { SettingsRow, type SettingsRowProps } from '../../SettingsRow'
+import { Text } from '../../Text'
 import { defineStory } from '../story'
 import { LONG, noop } from './shared'
 
@@ -23,6 +24,13 @@ export const settingsRow = defineStory<SettingsRowProps>({
       label: 'Privacy',
       subtitle: 'Read receipts, typing indicators',
       icon: 'lockKeyhole',
+    },
+    trailing: {
+      ...ROW,
+      testID: 'catalog-settings-row-trailing',
+      label: 'Language',
+      icon: 'clock',
+      trailing: <Text tone="secondary">English</Text>,
     },
     accentIcon: {
       ...ROW,
