@@ -4,7 +4,6 @@ import { YStack } from 'tamagui'
 
 import { Icon } from './Icon'
 import { ProgressRing, TRANSFER_RING_SIDE_PX, TRANSFER_RING_THICKNESS } from './ProgressRing'
-import { Text } from './Text'
 import type { UpdateStatus } from './UpdateIndicator.types'
 import { useTokenColor } from './useTokenColor'
 
@@ -67,13 +66,7 @@ function Frame({ children }: { children: ReactNode }) {
  * accent. An error is the one exception, in the danger colour, since it is the one that asks for
  * something to be done.
  */
-export function UpdateGlyph({
-  status,
-  showPercent = false,
-}: {
-  status: UpdateStatus
-  showPercent?: boolean | undefined
-}) {
+export function UpdateGlyph({ status }: { status: UpdateStatus }) {
   switch (status.kind) {
     case 'available':
       return (
@@ -92,13 +85,7 @@ export function UpdateGlyph({
               thickness={TRANSFER_RING_THICKNESS}
             />
           </YStack>
-          {showPercent ? (
-            <Text size="$caption" weight="bold" numberOfLines={1}>
-              {String(Math.round(Math.min(1, Math.max(0, status.progress)) * 100))}
-            </Text>
-          ) : (
-            <Icon name="download" size={GLYPH_PX} color="$textPrimary" />
-          )}
+          <Icon name="download" size={GLYPH_PX} color="$textPrimary" />
         </Frame>
       )
     case 'ready':

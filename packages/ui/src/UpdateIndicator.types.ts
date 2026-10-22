@@ -7,8 +7,6 @@ export type UpdateStatus =
 
 export interface UpdateIndicatorProps {
   status: UpdateStatus
-  /** While downloading, the percentage inside the ring in place of the glyph. */
-  showPercent?: boolean | undefined
   /** Cut rather than cross-fade between states. See the `disableAnimations` flag. */
   instant?: boolean | undefined
   testID?: string | undefined

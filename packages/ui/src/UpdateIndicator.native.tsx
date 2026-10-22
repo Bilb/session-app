@@ -61,18 +61,8 @@ function FadeLayer({
 }
 
 /** See UpdateIndicator.tsx. */
-export function UpdateIndicator({
-  status,
-  showPercent = false,
-  instant = false,
-  testID,
-}: UpdateIndicatorProps) {
-  const layers = useCrossfadeLayers(
-    updateLayerKey(status, showPercent),
-    status,
-    UPDATE_FADE_MS,
-    instant,
-  )
+export function UpdateIndicator({ status, instant = false, testID }: UpdateIndicatorProps) {
+  const layers = useCrossfadeLayers(updateLayerKey(status), status, UPDATE_FADE_MS, instant)
   return (
     <YStack
       width={TRANSFER_RING_SIDE_PX}
@@ -82,7 +72,7 @@ export function UpdateIndicator({
     >
       {layers.map((layer: CrossfadeLayer<UpdateStatus>) => (
         <FadeLayer key={layer.id} leaving={layer.leaving} instant={instant}>
-          <UpdateGlyph status={layer.value} showPercent={showPercent} />
+          <UpdateGlyph status={layer.value} />
         </FadeLayer>
       ))}
     </YStack>

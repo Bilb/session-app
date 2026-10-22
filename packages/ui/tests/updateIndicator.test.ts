@@ -7,25 +7,13 @@ import { updateLayerKey } from '#src/updateIndicatorTiming'
 
 describe('what starts a new cross-fade layer', () => {
   it('is a change of state', () => {
-    expect(updateLayerKey({ kind: 'available' }, false)).not.toBe(
-      updateLayerKey({ kind: 'ready' }, false),
-    )
+    expect(updateLayerKey({ kind: 'available' })).not.toBe(updateLayerKey({ kind: 'ready' }))
   })
 
   it('is not a download moving on, which redraws its ring in place', () => {
-    expect(updateLayerKey({ kind: 'downloading', progress: 0.1 }, false)).toBe(
-      updateLayerKey({ kind: 'downloading', progress: 0.9 }, false),
+    expect(updateLayerKey({ kind: 'downloading', progress: 0.1 })).toBe(
+      updateLayerKey({ kind: 'downloading', progress: 0.9 }),
     )
-  })
-
-  it('is a download switching between its glyph and its percentage', () => {
-    expect(updateLayerKey({ kind: 'downloading', progress: 0.5 }, false)).not.toBe(
-      updateLayerKey({ kind: 'downloading', progress: 0.5 }, true),
-    )
-  })
-
-  it('ignores the percentage outside a download', () => {
-    expect(updateLayerKey({ kind: 'ready' }, true)).toBe(updateLayerKey({ kind: 'ready' }, false))
   })
 })
 

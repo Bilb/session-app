@@ -137,24 +137,19 @@ const UPDATE_SIDE_PX = PATH_SIDE_PX
 const PREVIEW_DOWNLOAD_MS = 4000
 const PREVIEW_TICK_MS = 100
 
-/** One step of the update preview: a state, and whether a download shows its percentage. */
-interface PreviewStep {
-  kind: UpdateStatus['kind']
-  showPercent: boolean
-}
-
-/** The order `previewRailStates` steps the update through, each download running on its own. */
-const PREVIEW_UPDATE: readonly PreviewStep[] = [
-  { kind: 'available', showPercent: false },
-  { kind: 'downloading', showPercent: false },
-  { kind: 'downloading', showPercent: true },
-  { kind: 'ready', showPercent: false },
-  { kind: 'error', showPercent: false },
+/** The order `previewRailStates` steps the update through, the download running on its own. */
+const PREVIEW_UPDATE: readonly UpdateStatus['kind'][] = [
+  'available',
+  'downloading',
+  'ready',
+  'error',
 ]
 
 function updateLabel(status: UpdateStatus): string {
   switch (status.kind) {
     case 'available':
+      // TODO: desktop wants a "click to update" wording; the catalogue has only this "tap" one.
+      // Swap once a desktop variant (`updateNewVersionDesktop`) lands in session-localization.
       return tr('updateNewVersion')
     case 'downloading':
       return tr('updateDownloading', {
@@ -196,11 +191,9 @@ function usePreviewProgress(running: boolean, run: number): number {
  */
 function UpdateLight() {
   const [at, setAt] = useState(0)
-  const step = PREVIEW_UPDATE[at % PREVIEW_UPDATE.length] ?? PREVIEW_UPDATE[0]
-  const progress = usePreviewProgress(step?.kind === 'downloading', at)
-  if (step === undefined) return null
-  const status: UpdateStatus =
-    step.kind === 'downloading' ? { kind: 'downloading', progress } : { kind: step.kind }
+  const kind = PREVIEW_UPDATE[at % PREVIEW_UPDATE.length] ?? 'available'
+  const progress = usePreviewProgress(kind === 'downloading', at)
+  const status: UpdateStatus = kind === 'downloading' ? { kind, progress } : { kind }
   const label = updateLabel(status)
   return (
     <Tooltip label={label} testID={ELEMENT.rail.tooltip('update')}>
@@ -212,11 +205,7 @@ function UpdateLight() {
         }}
         testID={ELEMENT.rail.update}
       >
-        <UpdateIndicator
-          status={status}
-          showPercent={step.showPercent}
-          instant={flag('disableAnimations')}
-        />
+        <UpdateIndicator status={status} instant={flag('disableAnimations')} />
       </RailButton>
     </Tooltip>
   )
