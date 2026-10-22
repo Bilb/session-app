@@ -27,6 +27,7 @@ import {
   XStack,
   YStack,
 } from '@session/ui'
+import { useEffect, useState } from 'react'
 
 import { NetworkOverlay } from './NetworkOverlay'
 import { conversationRowState, type UnreadBadge, type UnreadTone } from './conversationRowState'
@@ -313,6 +314,38 @@ function UnreadBadgeView({ badge }: { badge: UnreadBadge }) {
   )
 }
 
+/** How long a pressed row waits for its route before it lets the selection go. */
+const SELECTION_HOLD_MS = 1000
+
+/**
+ * Whether a row draws as selected: open, or pressed and on its way to being open.
+ *
+ * The route that marks a row open lands a render or more after the press ends, and in between
+ * the row fell back to its hover for a frame -- pressed, then hovered, then selected. So a press
+ * holds the selection until the route catches up, or for `SELECTION_HOLD_MS` if it never does.
+ */
+function useHeldSelection(open: boolean): { held: boolean; hold: () => void } {
+  const [pressed, setPressed] = useState(false)
+  useEffect(() => {
+    if (open) setPressed(false)
+  }, [open])
+  useEffect(() => {
+    if (!pressed) return
+    const timer = setTimeout(() => {
+      setPressed(false)
+    }, SELECTION_HOLD_MS)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [pressed])
+  return {
+    held: open || pressed,
+    hold: () => {
+      setPressed(true)
+    },
+  }
+}
+
 function ConversationRow({
   conversation,
   index,
@@ -329,6 +362,7 @@ function ConversationRow({
   onPress: () => void
 }) {
   const title = conversationTitle(conversation)
+  const selected = useHeldSelection(open)
   // TODO: "today" is read at render, so a list left open past midnight keeps yesterday's times as
   // today's until something redraws it; redraw the list when the day turns.
   const nowMs = Date.now()
@@ -350,11 +384,14 @@ function ConversationRow({
       position="relative"
       // Overlays, so each state is a step from whatever the list is drawn on. The open row holds
       // the pressed step, which hovering it does not lighten.
-      {...(open ? { backgroundColor: '$pressedOverlay' } : {})}
-      hoverStyle={{ backgroundColor: open ? '$pressedOverlay' : '$hoverOverlay' }}
+      {...(selected.held ? { backgroundColor: '$pressedOverlay' } : {})}
+      hoverStyle={{ backgroundColor: selected.held ? '$pressedOverlay' : '$hoverOverlay' }}
       pressStyle={{ backgroundColor: '$pressedOverlay' }}
       $platform-web={{ cursor: 'pointer' }}
-      onPress={onPress}
+      onPress={() => {
+        selected.hold()
+        onPress()
+      }}
       aria-selected={open}
       testID={ELEMENT.conversationList.row(index)}
     >
