@@ -25,11 +25,14 @@ const TONE_COLOR: Record<StatusTone, string> = {
   neutral: '$textDisabled',
 }
 
-/** The legacy desktop's rail dot, and the smallest size the glyph inside still reads at. */
-const DEFAULT_SIDE_PX = SIZE_SCALE.xs
+/**
+ * A step up from the legacy desktop's 12 px dot: with a glyph inside, the glow no longer carries
+ * the dot's presence on its own, and the glyph reads more easily.
+ */
+const DEFAULT_SIDE_PX = SIZE_SCALE.sm
 
-/** The legacy desktop's glow, a blur in the dot's own colour. */
-const DEFAULT_GLOW_PX = 6
+/** A blur in the dot's own colour, wide enough to read as the legacy desktop's soft light. */
+const DEFAULT_GLOW_PX = 10
 
 /** Every glyph is drawn on a 24-unit grid, scaled to the dot. */
 const GRID = 24
