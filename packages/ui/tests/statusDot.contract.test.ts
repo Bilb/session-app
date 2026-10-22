@@ -4,8 +4,8 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /**
- * What the path's status says by shape, held by reading the source: `packages/ui` renders nothing in
- * its unit tier.
+ * What the path's status says by shape, held by reading the source: `packages/ui` renders
+ * nothing in its unit tier.
  */
 const source = readFileSync(join(import.meta.dirname, '../src/StatusDot.tsx'), 'utf8')
 const glyphs = source.slice(source.indexOf('function Glyph'), source.indexOf('export function'))
