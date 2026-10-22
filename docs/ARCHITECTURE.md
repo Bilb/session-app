@@ -308,10 +308,8 @@ port from `SESSION_E2E_METRO_PORT`; `.github/workflows/e2e-mobile.yml` is the wh
 
 `EXPO_PUBLIC_SESSION_THEME` (and `EXPO_PUBLIC_SESSION_ACCENT`) draws one launch in a named theme
 over the stored choice, without saving it, on all three platforms. `themes.spec.ts` audits the
-`showcase` fixture in each theme at two widths and compares a few attachment controls with their
-baselines, which are in Git LFS: run `git lfs pull` before it.
-On each mobile platform it does the same on a phone and a tablet, against that platform's
-baselines.
+`showcase` fixture in each theme at two widths and attaches a capture of a few attachment
+controls to the report. On each mobile platform it does the same on a phone and a tablet.
 
 `sessionTest` is the only way to declare a test and the only thing that opens or closes a
 client. Its `clients` descriptor decides the platforms _and_ the tags, so a spec asking for two

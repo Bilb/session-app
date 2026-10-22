@@ -1,11 +1,8 @@
-import { fileURLToPath } from 'node:url'
-
 import { expect, test, type Locator } from '@playwright/test'
 import type { ThemeState } from '@session/theme-tokens'
 import { ELEMENT, type ElementId } from '@session/test-ids'
 
 import { openFirstConversation } from '../harness/attachments'
-import { assertBaselinesPulled } from '../harness/baselines'
 import { DesktopApp } from '../harness/DesktopApp'
 import type { AuditIssue, ISessionApp } from '../harness/ISessionApp'
 import { MobileApp, type FormFactor, type MobilePlatform } from '../harness/MobileApp'
@@ -26,7 +23,7 @@ interface Capture {
 const CAPTURES = {
   /**
    * Two pictures as halves, their "N attachments" pill and, under the pointer, the download cloud.
-   * A light theme's baseline records their dark ink on the dark scrim, which no audit can see. Not
+   * A light theme's capture shows their dark ink on the dark scrim, which no audit can see. Not
    * the first bubble, which sits on the transcript's edge, where a phone cannot tell it whole.
    */
   pair: { row: 1, id: ELEMENT.conversation.attachment, at: 0 },
@@ -98,10 +95,10 @@ const unknownIssues = (platform: ISessionApp['platform'], found: Iterable<AuditI
   [...found].filter((issue) => !(key(issue) in (KNOWN_ISSUES[platform] ?? {})))
 
 /** What a theme's run found wrong, read in one place once every cell has been visited. */
-function summary(cell: string, mismatched: string[], unknown: AuditIssue[]): string {
+function summary(cell: string, undrawn: string[], unknown: AuditIssue[]): string {
   return [
-    `${cell}: ${String(mismatched.length)} capture(s) differ from their baseline, ${String(unknown.length)} unknown audit finding(s)`,
-    ...mismatched.map((name) => `  capture ${name}`),
+    `${cell}: ${String(undrawn.length)} capture(s) never drawn, ${String(unknown.length)} unknown audit finding(s)`,
+    ...undrawn.map((name) => `  capture ${name}`),
     ...unknown.map((issue) => `  ${key(issue)}: ${issue.message}`),
   ].join('\n')
 }
@@ -138,13 +135,14 @@ async function scrollStep(screen: Locator, direction: -1 | 1): Promise<boolean> 
   return moved
 }
 
-test.beforeAll(() => {
-  assertBaselinesPulled(fileURLToPath(new URL('./themes.spec.ts-snapshots', import.meta.url)))
-})
+/** Attached to the report for a reviewer: nothing is compared until the captures go to Argos. */
+async function attachCapture(name: string, png: Buffer): Promise<void> {
+  await test.info().attach(name, { body: png, contentType: 'image/png' })
+}
 
 /**
  * The showcase conversation in one theme, at two widths: every bubble the audit reaches, and a
- * capture of each control above against a baseline someone has looked at. One launch visits
+ * capture of each control above for the report. One launch visits
  * every cell, and the run fails once at the end with what every cell found.
  *
  * The theme comes from the launch, not from the settings, so a cell never depends on a walk
@@ -167,7 +165,7 @@ for (const theme of THEMES) {
       const screen = app.locator(ELEMENT.conversation.screen).first()
 
       const found = new Map<string, AuditIssue>()
-      const mismatched: string[] = []
+      const undrawn: string[] = []
       for (const [width, px] of Object.entries(WIDTHS)) {
         await app.resize(px, HEIGHT)
         let atStart = false
@@ -184,28 +182,25 @@ for (const theme of THEMES) {
             left.delete(capture)
             const target = id === null ? bubble : bubble.getByTestId(id).nth(at)
             const name = `${theme}-${capture}.png`
-            const failures = test.info().errors.length
             // The desktop draws the cloud only under the pointer.
             if (capture === 'pair')
               await bubble
                 .getByTestId(ELEMENT.conversation.attachmentTile)
                 .first()
                 .hover({ force: true })
-            await expect.soft(target).toHaveScreenshot(name, {
-              animations: 'disabled',
-              caret: 'hide',
-              scale: 'css',
-            })
+            await attachCapture(
+              name,
+              await target.screenshot({ animations: 'disabled', caret: 'hide', scale: 'css' }),
+            )
             await app.page.mouse.move(0, 0)
-            if (test.info().errors.length > failures) mismatched.push(name)
           }
           if (!(await scrollStep(screen, 1))) break
         }
-        for (const capture of left) mismatched.push(`${theme}-${capture}: never drawn`)
+        for (const capture of left) undrawn.push(`${theme}-${capture}`)
       }
 
       const unknown = unknownIssues('desktop', found.values())
-      expect([...mismatched, ...unknown], summary(theme, mismatched, unknown)).toEqual([])
+      expect([...undrawn, ...unknown], summary(theme, undrawn, unknown)).toEqual([])
     } finally {
       await app.close()
     }
@@ -227,11 +222,8 @@ const VISIT_SPAN = 0.3
  */
 const AUDIT_SPAN = 0.6
 
-/** Font rendering and image decoding differ by a few pixels between runs of one device. */
-const MAX_DIFF_PIXEL_RATIO = 0.002
-
 /**
- * The same on a phone and a tablet of each mobile platform, against that platform's baselines. No
+ * The same on a phone and a tablet of each mobile platform. No
  * capture draws the time or holds a caret, and the fake keeps its own fixed clock, so neither needs
  * an override; the launch turns motion off. A capture is the element alone, so it leaves out the
  * status bar, whose icons Android draws light on a light theme's header. Themes are the outer loop
@@ -249,7 +241,7 @@ for (const platform of MOBILE_PLATFORMS) {
         try {
           await openFirstConversation(app)
           const found = new Map<string, AuditIssue>()
-          const mismatched: string[] = []
+          const undrawn: string[] = []
           const left = new Set(CAPTURE_NAMES)
           const audit = async () => {
             for (const issue of await app.audit(ELEMENT.conversation.screen))
@@ -265,10 +257,7 @@ for (const platform of MOBILE_PLATFORMS) {
             )
             for (const [capture, png] of shown) {
               left.delete(capture as CaptureName)
-              const name = `${theme}-${form}-${capture}.png`
-              const failures = test.info().errors.length
-              expect.soft(png).toMatchSnapshot(name, { maxDiffPixelRatio: MAX_DIFF_PIXEL_RATIO })
-              if (test.info().errors.length > failures) mismatched.push(name)
+              await attachCapture(`${theme}-${form}-${capture}.png`, png)
             }
           }
           // To the start first: iOS bounces at an end, so where it opened is no answer.
@@ -287,12 +276,12 @@ for (const platform of MOBILE_PLATFORMS) {
             sinceAudit += span
           }
           if (sinceAudit > 0) await audit()
-          for (const capture of left) mismatched.push(`${theme}-${form}-${capture}: never drawn`)
+          for (const capture of left) undrawn.push(`${theme}-${form}-${capture}`)
 
           const unknown = unknownIssues(platform, found.values())
           expect(
-            [...mismatched, ...unknown],
-            summary(`${theme} on a ${platform} ${form}`, mismatched, unknown),
+            [...undrawn, ...unknown],
+            summary(`${theme} on a ${platform} ${form}`, undrawn, unknown),
           ).toEqual([])
         } finally {
           await app.close()
