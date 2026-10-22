@@ -200,6 +200,7 @@ export const ELEMENT = {
   catalog: {
     page: 'catalog-page',
     ready: 'catalog-ready',
+    row: (page: string, row: string) => `catalog-row-${page}-${row}` as const,
     cell: (page: string, row: string, column: string) =>
       `catalog-cell-${page}-${row}-${column}` as const,
   },

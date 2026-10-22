@@ -313,8 +313,8 @@ a tablet of each mobile platform, in the default theme.
 
 **The component catalog** is where looks are checked. Each story in `@session/ui/catalog` (and
 each scenario, a real message from a fake fixture, in `apps/desktop/src/renderer/catalog/scenarios/`)
-draws its variants as rows and its forced states (hover, press, focus) as columns, in several
-themes side by side on one page. A story says what it is sensitive to (accent, right to left,
+draws each variant as a row, captured on its own so a change in one moves nothing in another,
+with its forced states (hover, press, focus) and the page's themes side by side in it. A story says what it is sensitive to (accent, right to left,
 width), and that decides which extra pages it gets. The `pr` tier draws two themes; `nightly`
 every theme and accent. The desktop app opens the catalog instead of the app under the
 `componentCatalog` flag; `catalog.spec.ts` captures each page and runs axe over it, inside the image

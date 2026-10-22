@@ -67,7 +67,6 @@ test(`captures and audits the component catalog's ${TIER} pages @catalog`, async
       (tier) => (globalThis as unknown as CatalogGlobal).sessionCatalog?.pages(tier) ?? [],
       TIER,
     )
-    if (OUT !== undefined) mkdirSync(OUT, { recursive: true })
 
     const found = new Map<string, AuditIssue>()
     for (const page of pages) {
@@ -79,10 +78,15 @@ test(`captures and audits the component catalog's ${TIER} pages @catalog`, async
         `#/catalog/${encodeURIComponent(id)}`,
       )
       await expect(app.locator(ELEMENT.catalog.ready)).toHaveText(id, { timeout: PAGE_READY_MS })
-      const png = await app
-        .locator(ELEMENT.catalog.page)
-        .screenshot({ animations: 'disabled', caret: 'hide', scale: 'css' })
-      if (OUT !== undefined) writeFileSync(join(OUT, `${id}.png`), png)
+      // A capture per row, so a change in one variant moves nothing in another's picture.
+      for (const row of page.rows) {
+        const png = await app
+          .locator(ELEMENT.catalog.row(id, row))
+          .screenshot({ animations: 'disabled', caret: 'hide', scale: 'css' })
+        if (OUT === undefined) continue
+        mkdirSync(join(OUT, id), { recursive: true })
+        writeFileSync(join(OUT, id, `${row.replaceAll('/', '-')}.png`), png)
+      }
       for (const issue of await app.audit(ELEMENT.catalog.page)) {
         const named = byRow(page, issue)
         found.set(issueKey(named), named)
