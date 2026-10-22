@@ -49,6 +49,13 @@ describe('the rail', () => {
     expect(shell).toContain('<RailProvider value={withRail}>')
   })
 
+  it('and the list beside the detail are drawn on the recessed surface', () => {
+    expect(shell).toContain('<PaneSurfaceProvider value="$backgroundSecondary">{rail}')
+    expect(shell).toContain(
+      "<PaneSurfaceProvider value={twoPanes ? '$backgroundSecondary' : '$backgroundPrimary'}>",
+    )
+  })
+
   it('comes before the list, so it sits at the start edge', () => {
     expect(shell.indexOf('key="rail"')).toBeLessThan(shell.indexOf('key="list"'))
   })

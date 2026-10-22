@@ -1,4 +1,4 @@
-import { logical, useMedia, useTokenColor, XStack, YStack } from '@session/ui'
+import { logical, PaneSurfaceProvider, useMedia, useTokenColor, XStack, YStack } from '@session/ui'
 import type { ReactNode } from 'react'
 
 import { PaneProvider, RailProvider } from './pane'
@@ -49,7 +49,7 @@ export function AdaptiveShell({
         // Raised, so a tooltip opening from it lies over the list rather than under it: the list
         // comes later in the page and would otherwise paint on top.
         <YStack key="rail" position="relative" zIndex={1}>
-          {rail}
+          <PaneSurfaceProvider value="$backgroundSecondary">{rail}</PaneSurfaceProvider>
         </YStack>
       ) : null}
       {showsList ? (
@@ -65,13 +65,17 @@ export function AdaptiveShell({
               }
             : { flex: 1 })}
         >
-          <RailProvider value={withRail}>
-            <PaneProvider
-              value={withRail ? LIST_BESIDE_RAIL_PANE : twoPanes ? LIST_PANE : SOLE_PANE}
-            >
-              {list}
-            </PaneProvider>
-          </RailProvider>
+          {/* Recessed beside the detail, as the legacy desktop's left pane is; on its own the list
+              is the page. */}
+          <PaneSurfaceProvider value={twoPanes ? '$backgroundSecondary' : '$backgroundPrimary'}>
+            <RailProvider value={withRail}>
+              <PaneProvider
+                value={withRail ? LIST_BESIDE_RAIL_PANE : twoPanes ? LIST_PANE : SOLE_PANE}
+              >
+                {list}
+              </PaneProvider>
+            </RailProvider>
+          </PaneSurfaceProvider>
         </YStack>
       ) : null}
       <YStack key="detail" flex={1} display={showsDetail ? 'flex' : 'none'}>

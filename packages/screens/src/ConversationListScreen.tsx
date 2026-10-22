@@ -30,7 +30,7 @@ import { conversationRowState, type UnreadBadge, type UnreadTone } from './conve
 import { conversationTitle } from './conversationTitle'
 import { useOpenSettings } from './settings/SettingsRootPage'
 import { pathStatusTone } from './pathStatus'
-import { useBesideRail, useTopBarInsets } from './shell/pane'
+import { useBesideRail, usePaneHighlights, useTopBarInsets } from './shell/pane'
 import { useFormattingLocale } from './useLocale'
 
 const AVATAR_SIZE_PX = SIZE_SCALE['3xl']
@@ -73,6 +73,7 @@ const HEADER_DOT_GLOW_PX = 4
 function SettingsAvatarButton({ onPress }: { onPress: () => void }) {
   const account = useAccount()
   const status = useNetworkStatus()
+  const highlight = usePaneHighlights()
   return (
     // The hit area is the stack rather than the avatar: 26pt is well under the 44pt a finger
     // needs, and a target that small is one people miss rather than one they cannot see.
@@ -82,8 +83,8 @@ function SettingsAvatarButton({ onPress }: { onPress: () => void }) {
       alignItems="center"
       justifyContent="center"
       $platform-web={{ cursor: 'pointer' }}
-      hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
-      pressStyle={{ backgroundColor: '$backgroundTertiary' }}
+      hoverStyle={{ backgroundColor: highlight.hover }}
+      pressStyle={{ backgroundColor: highlight.selected }}
       borderRadius="$full"
       role="button"
       aria-label={tr('sessionSettings')}
@@ -151,6 +152,7 @@ export function ConversationListScreen({
   const nav = useNav()
   const openSettings = useOpenSettings()
   const besideRail = useBesideRail()
+  const highlight = usePaneHighlights()
   const timeLocale = useFormattingLocale()
   const layout = rowLayout(useFontScale())
 
@@ -203,8 +205,8 @@ export function ConversationListScreen({
             alignItems="center"
             justifyContent="center"
             $platform-web={{ cursor: 'pointer' }}
-            hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
-            pressStyle={{ backgroundColor: '$backgroundTertiary' }}
+            hoverStyle={{ backgroundColor: highlight.hover }}
+            pressStyle={{ backgroundColor: highlight.selected }}
             borderRadius="$full"
             testID={ELEMENT.conversationList.newConversation}
             onPress={() => nav.push(routes.newConversation())}
@@ -332,6 +334,7 @@ function ConversationRow({
   onPress: () => void
 }) {
   const title = conversationTitle(conversation)
+  const highlight = usePaneHighlights()
   // TODO: "today" is read at render, so a list left open past midnight keeps yesterday's times as
   // today's until something redraws it; redraw the list when the day turns.
   const nowMs = Date.now()
@@ -351,9 +354,9 @@ function ConversationRow({
       gap="$sm"
       alignItems="center"
       position="relative"
-      {...(open ? { backgroundColor: '$backgroundTertiary' } : {})}
-      hoverStyle={{ backgroundColor: open ? '$backgroundTertiary' : '$backgroundSecondary' }}
-      pressStyle={{ backgroundColor: '$backgroundTertiary' }}
+      {...(open ? { backgroundColor: highlight.selected } : {})}
+      hoverStyle={{ backgroundColor: open ? highlight.selected : highlight.hover }}
+      pressStyle={{ backgroundColor: highlight.selected }}
       $platform-web={{ cursor: 'pointer' }}
       onPress={onPress}
       aria-selected={open}
