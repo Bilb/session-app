@@ -110,6 +110,33 @@ function launchScreenPlugin() {
 }
 
 /**
+ * react-native-svg's touch-sound module, swapped for a no-op in the renderer. It is a TurboModule
+ * spec, importing `TurboModuleRegistry` from `react-native`, which react-native-web does not
+ * export, and the package reaches it only for Android's touch sound, through a lazy `require`. The
+ * build merely warns; the dev server's dependency pre-bundler refuses to start. The package imports
+ * it by a relative path, which an alias cannot match, so both resolvers are given the swap.
+ */
+const SVG_SOUND_MODULE = /[\\/]fabric[\\/]NativeSvgSoundModule(\.js)?$/
+const svgSoundModuleStub = fileURLToPath(
+  new URL('./src/renderer/shims/svgSoundModule.ts', import.meta.url),
+)
+const svgSoundModuleShim = {
+  vite: {
+    name: 'svg-sound-module-shim',
+    enforce: 'pre' as const,
+    resolveId: (source: string) => (SVG_SOUND_MODULE.test(source) ? svgSoundModuleStub : null),
+  },
+  esbuild: {
+    name: 'svg-sound-module-shim',
+    setup(build: {
+      onResolve: (options: { filter: RegExp }, callback: () => { path: string }) => void
+    }) {
+      build.onResolve({ filter: SVG_SOUND_MODULE }, () => ({ path: svgSoundModuleStub }))
+    },
+  },
+}
+
+/**
  * `.web.js` ahead of `.js`, which is how the react-native-web ecosystem ships a DOM flavour beside
  * a native one. `react-native-svg` - which the icons draw through - is one of the packages that
  * does, and it has no exports map and no `browser` field, so no condition list can reach its web
@@ -258,7 +285,10 @@ export default defineConfig({
       extensions: WEB_FIRST_EXTENSIONS,
     },
     optimizeDeps: {
-      esbuildOptions: { resolveExtensions: WEB_FIRST_EXTENSIONS },
+      esbuildOptions: {
+        resolveExtensions: WEB_FIRST_EXTENSIONS,
+        plugins: [svgSoundModuleShim.esbuild],
+      },
     },
     define: {
       // The main process reads EXPO_PUBLIC_SESSION_NETID from the environment to pick the netid;
@@ -288,6 +318,11 @@ export default defineConfig({
       __DEV__: JSON.stringify(process.env['NODE_ENV'] !== 'production'),
       'process.env.NODE_ENV': JSON.stringify(process.env['NODE_ENV'] ?? 'development'),
     },
-    plugins: [react(), contentSecurityPolicyPlugin(), launchScreenPlugin()],
+    plugins: [
+      svgSoundModuleShim.vite,
+      react(),
+      contentSecurityPolicyPlugin(),
+      launchScreenPlugin(),
+    ],
   },
 })
