@@ -15,4 +15,4 @@ export {
 } from './fileRow'
 export { type Expected, type ExpectedNode, type ExpectedRole, type Platform } from './node'
 export { pressArea } from './pressArea'
-export { pictureVerb, verbName, type CatalogueVerb } from './verbs'
+export { pictureVerb, verbName, type AttachmentVerb } from './verbs'

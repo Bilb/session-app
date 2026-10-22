@@ -17,7 +17,7 @@ import { SEEDED_ALBUM, SEEDED_LIST } from '../harness/fixtures'
 import { tabStops, tabTo, type Stop } from '../harness/keyboard'
 
 /** Export has no catalogue word yet; see `attachmentFooterAction`. */
-const EXPORT = PENDING_COPY.export
+const EXPORT = verbName('export')
 
 /** A list row's parts, on the desktop, in the transfer state given. */
 const rowParts = (filename: string, state: FileRowState, controlName: string) => {

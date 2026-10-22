@@ -22,7 +22,7 @@ import { SEEDED_ALBUM, SEEDED_LIST, SEEDED_RECEIPT } from '../harness/fixtures'
 import { EACH, sessionTest } from '../harness/sessionTest'
 
 /** Export has no catalogue word yet; see `attachmentFooterAction`. */
-const EXPORT = PENDING_COPY.export
+const EXPORT = verbName('export')
 
 /**
  * What an album and a file row are to a screen reader, before anything is fetched, checked

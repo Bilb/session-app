@@ -10,7 +10,7 @@ import {
   type FileRowState,
   verbName,
 } from '@session/expectations'
-import { PENDING_COPY, tr } from '@session/localization'
+import { tr } from '@session/localization'
 import { byId, nodeOf } from '@session/render-tier'
 import { createSessionStore, transferKey, type SessionStore } from '@session/state'
 
@@ -90,11 +90,6 @@ function row(state: FileRowState, file: { filename: string; contentType: string 
   return <AttachmentRow message={message} attachment={shown} />
 }
 
-/** The word for a verb: the catalogue's, and the pending copy's for Export. */
-function word(verb: 'download' | 'retry' | 'open' | 'export'): string {
-  return verb === 'export' ? PENDING_COPY.export : verbName(verb)
-}
-
 const ROW_VERB = {
   picture: { idle: 'download', fetching: null, ready: 'open', failed: 'retry', unavailable: null },
   document: {
@@ -127,15 +122,15 @@ describe('an attachment row', () => {
         format: file.format,
         caption: CAPTION[state],
         state,
-        rowVerb: rowVerb === null ? undefined : word(rowVerb),
+        rowVerb: rowVerb === null ? undefined : verbName(rowVerb),
         leadOpens: kind === 'picture' && state !== 'unavailable',
-        leadVerb: rowVerb === null ? undefined : word(rowVerb),
+        leadVerb: rowVerb === null ? undefined : verbName(rowVerb),
         controlName:
           state === 'fetching'
             ? tr('downloading')
             : controlVerb === null
               ? undefined
-              : word(controlVerb),
+              : verbName(controlVerb),
       })
       expect(nodeOf(IDS.row)).toMatchObject(expected.row.desktop!)
       if (expected.lead.desktop === null) expect(nodeOf(IDS.lead)).toBeNull()
@@ -155,7 +150,7 @@ describe('an attachment row', () => {
     await user.click(byId(IDS.lead))
     expect(ui.openViewer).toHaveBeenCalledTimes(2)
     expect(ui.openViewer).toHaveBeenCalledWith(MESSAGE_ID, 0)
-    expect(nodeOf(IDS.export)?.name).toBe(PENDING_COPY.export)
+    expect(nodeOf(IDS.export)?.name).toBe(verbName('export'))
   })
 
   it('exports a picture that is here from its control, rather than opening it', async () => {

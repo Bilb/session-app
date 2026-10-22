@@ -1,16 +1,23 @@
-import { tr } from '@session/localization'
+import { PENDING_COPY, tr } from '@session/localization'
 
-/** The attachment verbs whose word is in the catalogue. Export's is not yet: callers supply it. */
-export type CatalogueVerb = 'download' | 'retry' | 'open'
+export type AttachmentVerb = 'download' | 'retry' | 'export' | 'open'
 
-export function verbName(verb: CatalogueVerb): string {
-  return tr(verb)
+/** Functions, because `tr` reads the locale when it is called. */
+const NAMES: Record<AttachmentVerb, () => string> = {
+  download: () => tr('download'),
+  retry: () => tr('retry'),
+  open: () => tr('open'),
+  export: () => PENDING_COPY.export,
+}
+
+export function verbName(verb: AttachmentVerb): string {
+  return NAMES[verb]()
 }
 
 /** What a picture's press does in each transfer state, which is what a tile hints. */
 export function pictureVerb(
   state: 'idle' | 'fetching' | 'ready' | 'failed' | 'unavailable',
-): CatalogueVerb | null {
+): AttachmentVerb | null {
   switch (state) {
     case 'idle':
       return 'download'
