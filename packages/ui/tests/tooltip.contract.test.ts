@@ -41,8 +41,20 @@ describe('the tooltip on the web', () => {
   })
 })
 
-describe('the tooltip on touch', () => {
-  it('draws the control alone', () => {
-    expect(native).toMatch(/return <>\{children\}<\/>/)
+describe('the tooltip on native', () => {
+  it('opens for a pointer only, never for a finger', () => {
+    expect(native).toMatch(
+      /onPointerEnter=\{\(event: PointerEvent\) => \{\s*if \(event\.nativeEvent\.pointerType === 'touch'\) return/,
+    )
+  })
+
+  it('closes as the pointer leaves or presses', () => {
+    expect(native).toContain('onPointerLeave={hide}')
+    expect(native).toContain('onPointerDown={hide}')
+  })
+
+  it('is hidden from assistive technology, which reads the control’s label instead', () => {
+    expect(native).toContain('importantForAccessibility="no-hide-descendants"')
+    expect(native).toContain('accessibilityElementsHidden')
   })
 })
