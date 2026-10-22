@@ -2,8 +2,8 @@ import { Text, UIProvider, YStack } from '@session/ui'
 import { CatalogPage, catalogPages, cellsOn, STORIES, type CatalogTier } from '@session/ui/catalog'
 import { useSyncExternalStore } from 'react'
 
-import { SCENARIOS, ScenarioProvider } from './catalogScenarios'
-import { RemoveLaunchScreenOnMount } from './launchScreen'
+import { RemoveLaunchScreenOnMount } from '../launchScreen'
+import { SCENARIOS, ScenarioProvider } from './scenarios'
 
 const PREFIX = '#/catalog/'
 
