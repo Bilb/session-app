@@ -121,6 +121,33 @@ function launchScreenPlugin() {
  * the `react-native` alias has rewritten to one that does not exist. The built app resolves
  * correctly either way, which is a good way not to notice.
  */
+/**
+ * react-native-svg's touch-sound module, swapped for a no-op in the renderer. It is a TurboModule
+ * spec, importing `TurboModuleRegistry` from `react-native`, which react-native-web does not
+ * export, and the package reaches it only for Android's touch sound, through a lazy `require`. The
+ * build merely warns; the dev server's dependency pre-bundler refuses to start. The package imports
+ * it by a relative path, which an alias cannot match, so both resolvers are given the swap.
+ */
+const SVG_SOUND_MODULE = /[\\/]fabric[\\/]NativeSvgSoundModule(\.js)?$/
+const svgSoundModuleStub = fileURLToPath(
+  new URL('./src/renderer/shims/svgSoundModule.ts', import.meta.url),
+)
+const svgSoundModuleShim = {
+  vite: {
+    name: 'svg-sound-module-shim',
+    enforce: 'pre' as const,
+    resolveId: (source: string) => (SVG_SOUND_MODULE.test(source) ? svgSoundModuleStub : null),
+  },
+  esbuild: {
+    name: 'svg-sound-module-shim',
+    setup(build: {
+      onResolve: (options: { filter: RegExp }, callback: () => { path: string }) => void
+    }) {
+      build.onResolve({ filter: SVG_SOUND_MODULE }, () => ({ path: svgSoundModuleStub }))
+    },
+  },
+}
+
 const WEB_FIRST_EXTENSIONS = [
   '.web.mjs',
   '.web.js',
@@ -258,7 +285,10 @@ export default defineConfig({
       extensions: WEB_FIRST_EXTENSIONS,
     },
     optimizeDeps: {
-      esbuildOptions: { resolveExtensions: WEB_FIRST_EXTENSIONS },
+      esbuildOptions: {
+        resolveExtensions: WEB_FIRST_EXTENSIONS,
+        plugins: [svgSoundModuleShim.esbuild],
+      },
     },
     define: {
       // The main process reads EXPO_PUBLIC_SESSION_NETID from the environment to pick the netid;
@@ -288,6 +318,11 @@ export default defineConfig({
       __DEV__: JSON.stringify(process.env['NODE_ENV'] !== 'production'),
       'process.env.NODE_ENV': JSON.stringify(process.env['NODE_ENV'] ?? 'development'),
     },
-    plugins: [react(), contentSecurityPolicyPlugin(), launchScreenPlugin()],
+    plugins: [
+      svgSoundModuleShim.vite,
+      react(),
+      contentSecurityPolicyPlugin(),
+      launchScreenPlugin(),
+    ],
   },
 })
