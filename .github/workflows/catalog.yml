@@ -42,7 +42,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @session/localization build
       - run: pnpm --filter @session/desktop build
-      - run: pnpm --filter @session/e2e exec playwright install --with-deps chromium
       # The fake draws the thirty dev photographs and refuses to start without them. Cached, so the
       # CDN is only asked when the table of photographs changes. Saved straight after the fetch:
       # actions/cache's own post step saves only when the whole job is green.
@@ -58,7 +57,8 @@ jobs:
           path: ~/.cache/session-app/dev-media
           key: ${{ steps.dev-media.outputs.cache-primary-key }}
 
-      - run: xvfb-run -a pnpm --filter @session/e2e test:catalog
+      # In the pinned image: see tests/e2e/catalog/Dockerfile.
+      - run: pnpm --filter @session/e2e test:catalog
 
       # The captures go up even when the audit fails: the two are read separately.
       # A tier is its own build name, so a nightly build is never compared with a pr one. Skipped

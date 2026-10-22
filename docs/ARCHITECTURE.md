@@ -317,8 +317,9 @@ draws its variants as rows and its forced states (hover, press, focus) as column
 themes side by side on one page. A story says what it is sensitive to (accent, right to left,
 width), and that decides which extra pages it gets. The `pr` tier draws two themes; `nightly`
 every theme and accent. The desktop app opens the catalog instead of the app under the
-`componentCatalog` flag; `catalog.spec.ts` captures each page, runs axe over it, and the `catalog`
-workflow uploads the captures to Argos for review.
+`componentCatalog` flag; `catalog.spec.ts` captures each page and runs axe over it, inside the image
+`tests/e2e/catalog/Dockerfile` pins (fonts, fontconfig, the libraries Electron draws with) so a
+capture is the same on any machine, and the `catalog` workflow uploads the captures to Argos.
 
 `sessionTest` is the only way to declare a test and the only thing that opens or closes a
 client. Its `clients` descriptor decides the platforms _and_ the tags, so a spec asking for two
