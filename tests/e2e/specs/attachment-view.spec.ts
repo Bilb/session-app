@@ -77,7 +77,7 @@ sessionTest({
  * Launched directly rather than through `sessionTest`, because the clip check is desktop-only:
  * an overflow is Chromium's layout, and `ISessionApp` has no way to ask a device for one.
  */
-test('draws every name and the total in full in a list', async () => {
+test('draws every name and the total in full in a list @desktop', async () => {
   const app = await DesktopApp.launch('alice')
   try {
     await openFirstConversation(app)

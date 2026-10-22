@@ -28,7 +28,7 @@ interface PageGlobals {
  * The two stacks interacting inside the platform's modal, which only an e2e run can see. One pass
  * rather than four specs because each step needs the state the last one left.
  */
-test('settings opens over the list, pushes Help, exports logs from it, and asks on top of itself', async () => {
+test('settings opens over the list, pushes Help, exports logs from it, and asks on top of itself @desktop', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'session-settings-modal-'))
   const app = await _electron.launch({
     args: [

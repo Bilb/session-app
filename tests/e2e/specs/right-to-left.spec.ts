@@ -43,7 +43,7 @@ async function isLeftOf(first: Locator, second: Locator): Promise<boolean> {
  * Launched directly rather than through `sessionTest`, which has no way to pass the environment
  * that opens the app on onboarding, where the language picker is.
  */
-test('choosing a right-to-left language mirrors the layout', async () => {
+test('choosing a right-to-left language mirrors the layout @desktop', async () => {
   const app = await DesktopApp.launch('alice', { env: { EXPO_PUBLIC_SESSION_NO_ACCOUNT: '1' } })
 
   try {
@@ -82,7 +82,7 @@ test('choosing a right-to-left language mirrors the layout', async () => {
  *
  * In the default locale, where an Arabic name drawn left to right reads its tail first.
  */
-test('reads each filename in its own script’s direction', async () => {
+test('reads each filename in its own script’s direction @desktop', async () => {
   const app = await DesktopApp.launch('alice')
 
   try {

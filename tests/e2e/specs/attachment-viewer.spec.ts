@@ -58,7 +58,7 @@ sessionTest({
  * Launched directly rather than through `sessionTest`, because a position is Chromium's layout and
  * `ISessionApp` has no way to ask a device for one.
  */
-test('centres the chevrons on the picture', async () => {
+test('centres the chevrons on the picture @desktop', async () => {
   const app = await DesktopApp.launch('alice')
   try {
     await openViewer(app)

@@ -16,7 +16,7 @@ const repoRoot = join(import.meta.dirname, '../../..')
  * screen hands over libsession's message and the logs, asks before clearing anything, and recovers
  * in place.
  */
-test('a failed start shows why, exports logs, asks before clearing, and recovers in place', async () => {
+test('a failed start shows why, exports logs, asks before clearing, and recovers in place @desktop', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'session-startup-failed-'))
   const app = await _electron.launch({
     args: [
@@ -88,7 +88,7 @@ test('a failed start shows why, exports logs, asks before clearing, and recovers
  * A bridge that could not be made at all: nothing was opened, so the screen does not call it a
  * database error, offers nothing to clear, and shows the reason as the bridge gave it.
  */
-test('a bridge that could not be made says why, without blaming the database', async () => {
+test('a bridge that could not be made says why, without blaming the database @desktop', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'session-no-bridge-'))
   // The fake refuses to make its bridge without its dev photographs.
   const noPhotos = join(dataDir, 'no-photos')
