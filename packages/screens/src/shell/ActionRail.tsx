@@ -1,7 +1,5 @@
 import { flag } from '@session/app'
-import type { NetworkStatus } from '@session/client'
 import { isRtlLocale, tr } from '@session/localization'
-import { useEffect, useState } from 'react'
 import { useAccount, useAppearance, useNetworkStatus, useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import {
@@ -86,44 +84,19 @@ function SettingsAvatar() {
   )
 }
 
-/** The order `previewRailStates` steps the path light through, then back to the live status. */
-const PREVIEW_PATH: readonly NetworkStatus[] = [
-  'connected',
-  'connecting',
-  'disconnected',
-  'unknown',
-]
-
 /**
  * The onion path's light.
  *
  * TODO: open the path screen on a press, as the legacy desktop's light does. There is no path
  * screen yet: it needs the nodes of the current path, which libsession's `get_path_to` has and the
- * bridge does not carry. Until then the light is a status that names itself, with no press --
- * except under `previewRailStates`, where a press steps through the tones.
+ * bridge does not carry. Until then the light is a status that names itself, with no press.
  */
 function PathLight() {
-  const live = useNetworkStatus()
-  const [preview, setPreview] = useState<number | null>(null)
-  const status = preview === null ? live : (PREVIEW_PATH[preview] ?? live)
+  const status = useNetworkStatus()
   const label = pathStatusLabel(status)
   return (
     <Tooltip label={label} testID={ELEMENT.rail.tooltip('path-status')}>
-      <RailButton
-        sidePx={PATH_SIDE_PX}
-        accessibilityLabel={label}
-        onPress={
-          flag('previewRailStates')
-            ? () => {
-                setPreview((at) => {
-                  const next = at === null ? 0 : at + 1
-                  return next < PREVIEW_PATH.length ? next : null
-                })
-              }
-            : undefined
-        }
-        testID={ELEMENT.rail.pathStatus}
-      >
+      <RailButton sidePx={PATH_SIDE_PX} accessibilityLabel={label} testID={ELEMENT.rail.pathStatus}>
         <StatusDot tone={pathStatusTone(status)} />
       </RailButton>
     </Tooltip>
@@ -132,18 +105,6 @@ function PathLight() {
 
 /** The update indicator's square: the transfer ring inside the path light's padding. */
 const UPDATE_SIDE_PX = PATH_SIDE_PX
-
-/** How long a previewed download takes to run from empty to full. */
-const PREVIEW_DOWNLOAD_MS = 4000
-const PREVIEW_TICK_MS = 100
-
-/** The order `previewRailStates` steps the update through, the download running on its own. */
-const PREVIEW_UPDATE: readonly UpdateStatus['kind'][] = [
-  'available',
-  'downloading',
-  'ready',
-  'error',
-]
 
 function updateLabel(status: UpdateStatus): string {
   switch (status.kind) {
@@ -163,48 +124,21 @@ function updateLabel(status: UpdateStatus): string {
 }
 
 /**
- * A download that runs from empty to full while `running`, starting again from empty whenever
- * `run` changes.
+ * Where the app's own update has got to, or null with none to show.
+ *
+ * TODO: report a desktop updater's progress and, on a tablet, a newer store version. Neither
+ * exists yet -- the updater needs packaging -- so there is never an update to show.
  */
-function usePreviewProgress(running: boolean, run: number): number {
-  const [progress, setProgress] = useState(0)
-  useEffect(() => {
-    setProgress(0)
-    if (!running) return
-    const started = Date.now()
-    const timer = setInterval(() => {
-      setProgress(Math.min(1, (Date.now() - started) / PREVIEW_DOWNLOAD_MS))
-    }, PREVIEW_TICK_MS)
-    return () => {
-      clearInterval(timer)
-    }
-  }, [running, run])
-  return progress
+function useAppUpdate(): UpdateStatus | null {
+  return null
 }
 
-/**
- * The app's update, above the path light as in the design.
- *
- * TODO: drive it from a desktop updater and, on a tablet, the store's version. Neither exists yet
- * -- the updater needs packaging -- so it shows only under `previewRailStates`, where a press steps
- * through the states in a loop, each download running by itself.
- */
-function UpdateLight() {
-  const [at, setAt] = useState(0)
-  const kind = PREVIEW_UPDATE[at % PREVIEW_UPDATE.length] ?? 'available'
-  const progress = usePreviewProgress(kind === 'downloading', at)
-  const status: UpdateStatus = kind === 'downloading' ? { kind, progress } : { kind }
+/** The app's update, above the path light as in the design, while there is one. */
+function UpdateLight({ status }: { status: UpdateStatus }) {
   const label = updateLabel(status)
   return (
     <Tooltip label={label} testID={ELEMENT.rail.tooltip('update')}>
-      <RailButton
-        sidePx={UPDATE_SIDE_PX}
-        accessibilityLabel={label}
-        onPress={() => {
-          setAt((i) => i + 1)
-        }}
-        testID={ELEMENT.rail.update}
-      >
+      <RailButton sidePx={UPDATE_SIDE_PX} accessibilityLabel={label} testID={ELEMENT.rail.update}>
         <UpdateIndicator status={status} instant={flag('disableAnimations')} />
       </RailButton>
     </Tooltip>
@@ -248,6 +182,7 @@ export function ActionRail() {
   const rtl = isRtlLocale(useLocale())
   const controls = useTopBarControlsPadding()
   const underControls = (rtl ? controls.right : controls.left) !== undefined
+  const update = useAppUpdate()
   const rule = useTokenColor('$bordersColor')
 
   return (
@@ -269,7 +204,7 @@ export function ActionRail() {
         </YStack>
         <YStack flex={1} />
         <YStack alignItems="center" gap="$lg">
-          {flag('previewRailStates') ? <UpdateLight /> : null}
+          {update === null ? null : <UpdateLight status={update} />}
           <PathLight />
           <ThemeToggle />
         </YStack>
