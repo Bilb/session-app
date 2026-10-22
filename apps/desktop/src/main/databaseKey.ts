@@ -2,9 +2,10 @@ import {
   closeSync,
   existsSync,
   fsyncSync,
+  linkSync,
   openSync,
   readFileSync,
-  renameSync,
+  unlinkSync,
   writeSync,
 } from 'node:fs'
 import { randomBytes } from 'node:crypto'
@@ -38,18 +39,35 @@ const KEY_BYTES = 32
  */
 export function resolveDatabaseKey(dir: string, dbPath: string, sealer: KeySealer): Uint8Array {
   const keyFile = join(dir, 'db-key.bin')
-  if (existsSync(keyFile)) return openKey(readFileSync(keyFile), sealer)
+  if (existsSync(keyFile)) return openKey(readKey(keyFile), sealer)
   if (existsSync(dbPath))
     throw new Error(
       'The database key is missing beside an existing database, which no new key could open. Nothing was changed.',
     )
 
   const key = randomBytes(KEY_BYTES)
-  writeDurably(
+  const written = createOnce(
     keyFile,
     sealer.isEncryptionAvailable() ? sealer.encryptString(key.toString('base64')) : key,
   )
+  // Another launch made the key first, and may already have created the database with it.
+  if (!written) return openKey(readKey(keyFile), sealer)
   return new Uint8Array(key)
+}
+
+/** The error's code rather than its message, which names the path. */
+function errorCode(e: unknown): string {
+  return e instanceof Error && 'code' in e ? String(e.code) : 'unknown error'
+}
+
+function readKey(file: string): Buffer {
+  try {
+    return readFileSync(file)
+  } catch (e) {
+    throw new Error(`The database key could not be read (${errorCode(e)}). Nothing was changed.`, {
+      cause: e,
+    })
+  }
 }
 
 /**
@@ -80,19 +98,31 @@ function openKey(stored: Buffer, sealer: KeySealer): Uint8Array {
 }
 
 /**
- * Written beside the target and renamed over it, flushed first: the database is created right
- * after, so a key lost to a crash here would leave a database nothing can open.
+ * Flushed to a temporary file and linked into place, which fails if the file already exists: the
+ * key is written once, ever, even by two launches racing at first boot. Returns false if another
+ * one got there first.
  */
-function writeDurably(file: string, data: Uint8Array): void {
-  const temp = `${file}.tmp`
-  const fd = openSync(temp, 'w', 0o600)
+function createOnce(file: string, data: Uint8Array): boolean {
+  const temp = `${file}.${String(process.pid)}.${randomBytes(4).toString('hex')}.tmp`
   try {
-    writeSync(fd, data)
-    fsyncSync(fd)
+    const fd = openSync(temp, 'w', 0o600)
+    try {
+      writeSync(fd, data)
+      fsyncSync(fd)
+    } finally {
+      closeSync(fd)
+    }
+    linkSync(temp, file)
+  } catch (e) {
+    if (errorCode(e) === 'EEXIST') return false
+    throw new Error(`The database key could not be written (${errorCode(e)}).`, { cause: e })
   } finally {
-    closeSync(fd)
+    try {
+      unlinkSync(temp)
+    } catch {
+      // Never created, which the error above already reports.
+    }
   }
-  renameSync(temp, file)
   try {
     const dirFd = openSync(dirname(file), 'r')
     try {
@@ -101,6 +131,7 @@ function writeDurably(file: string, data: Uint8Array): void {
       closeSync(dirFd)
     }
   } catch {
-    // Windows cannot open a directory to flush it; NTFS journals the rename itself.
+    // Windows cannot flush a directory; NTFS journals the link itself.
   }
+  return true
 }

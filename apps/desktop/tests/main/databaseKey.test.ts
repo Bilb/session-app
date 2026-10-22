@@ -1,4 +1,11 @@
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -87,5 +94,34 @@ describe('resolveDatabaseKey', () => {
       /^The database key is missing beside an existing database/,
     )
     expect(existsSync(keyFile)).toBe(false)
+  })
+
+  it('takes the key another launch made first rather than replacing it', () => {
+    const { dir, dbPath, keyFile } = place()
+    const theirs = Buffer.alloc(32, 7)
+    const keyring = sealer()
+    const seal = keyring.encryptString.bind(keyring)
+    // Sealing falls between the existence checks and the write, where a second launch can land.
+    keyring.encryptString = (plain) => {
+      writeFileSync(keyFile, theirs)
+      writeFileSync(dbPath, 'their database')
+      return seal(plain)
+    }
+    expect(resolveDatabaseKey(dir, dbPath, keyring)).toEqual(new Uint8Array(theirs))
+    expect(readFileSync(keyFile)).toEqual(theirs)
+    expect(readdirSync(dir).sort()).toEqual(['db-key.bin', 'session.db'])
+  })
+
+  it('refuses a key file it cannot read, naming the error but not the path', () => {
+    const { dir, dbPath, keyFile } = place()
+    mkdirSync(keyFile)
+    let message = ''
+    try {
+      resolveDatabaseKey(dir, dbPath, sealer())
+    } catch (e) {
+      message = (e as Error).message
+    }
+    expect(message).toMatch(/^The database key could not be read \(EISDIR\)/)
+    expect(message).not.toContain(dir)
   })
 })
