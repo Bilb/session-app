@@ -1,5 +1,5 @@
 import { isRtlLocale } from '@session/localization'
-import { usePaneSurface, useTopBarControlsPadding } from '@session/ui'
+import { useTopBarControlsPadding } from '@session/ui'
 import { createContext, useContext } from 'react'
 
 import { useLocale } from '../useLocale'
@@ -18,23 +18,6 @@ export const PaneProvider = PaneContext.Provider
  */
 export function useShowsBack(): boolean {
   return !useContext(PaneContext).besideList
-}
-
-/**
- * What a row or a button in the pane fills with while hovered and while selected or pressed.
- *
- * One step above the pane's surface. On the page that is `backgroundSecondary` and then
- * `backgroundTertiary`; on the recessed surface, already `backgroundSecondary`, both are
- * `backgroundNested`, since `backgroundTertiary` is measured from the page and sits too close to
- * the recessed surface to show. The legacy desktop draws hover and selection alike there too.
- */
-export function usePaneHighlights(): {
-  hover: '$backgroundSecondary' | '$backgroundNested'
-  selected: '$backgroundTertiary' | '$backgroundNested'
-} {
-  return usePaneSurface() === '$backgroundSecondary'
-    ? { hover: '$backgroundNested', selected: '$backgroundNested' }
-    : { hover: '$backgroundSecondary', selected: '$backgroundTertiary' }
 }
 
 /**
