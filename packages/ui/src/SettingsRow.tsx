@@ -180,7 +180,9 @@ function RowContent({
       // More room than icon-to-label, so wrapped label text does not run into the control.
       <YStack
         {...logical({ paddingStart: SPACE_SCALE.xs, paddingEnd: SPACE_SCALE['2xs'] })}
-        {...(trailingYields ? { flexShrink: 1, minWidth: 0 } : {})}
+        {...(trailingYields
+          ? { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0, alignItems: 'flex-end' }
+          : {})}
       >
         {trailing}
       </YStack>
@@ -224,10 +226,11 @@ function RowContent({
         )}
 
         <YStack
-          // When the trailing text yields, the label takes its own width and never gives any of
-          // it up, wrapping only once it has the whole row; the trailing text gets what is left.
+          // When the trailing text yields, the label keeps its own width and the trailing text,
+          // starting from nothing, takes what is left. Short of room, only the label has width to
+          // give up, so it wraps once the trailing text is gone rather than before.
           {...(trailingYields
-            ? { flexGrow: 1, flexShrink: 0, flexBasis: 'auto', maxWidth: '100%' }
+            ? { flexGrow: 0, flexShrink: 1, flexBasis: 'auto', minWidth: 0 }
             : { flex: 1 })}
           gap="$3xs"
         >
