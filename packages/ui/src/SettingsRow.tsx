@@ -63,6 +63,12 @@ export interface SettingsRowProps {
    * under the text instead of squeezing it. A glyph or a switch stays beside it.
    */
   wideTrailing?: boolean
+  /**
+   * The trailing text gives way before the label: it shrinks first and truncates, so a long
+   * translation of either keeps the row's name whole. For a value that only qualifies the name, as
+   * the path's state does.
+   */
+  trailingYields?: boolean
   /** Tints the label and its icon, for a row that destroys something. */
   destructive?: boolean
   /** Without one the row is static, with nothing to press but its trailing control. */
@@ -85,6 +91,7 @@ export function SettingsRow({
   subtitle,
   trailing,
   wideTrailing = false,
+  trailingYields = false,
   accentIcon = false,
   destructive = false,
   onPress,
@@ -95,7 +102,18 @@ export function SettingsRow({
   const tone = disabled ? '$textDisabled' : destructive ? '$dangerColor' : '$textPrimary'
   // `accentText`, not the accent: as a glyph the accent is too faint on a light ground.
   const iconTone = accentIcon && !disabled ? '$accentText' : tone
-  const content = { label, icon, subtitle, trailing, wideTrailing, disabled, inert, tone, iconTone }
+  const content = {
+    label,
+    icon,
+    subtitle,
+    trailing,
+    wideTrailing,
+    trailingYields,
+    disabled,
+    inert,
+    tone,
+    iconTone,
+  }
 
   // A static row is not a control: as a disabled press area it would be announced as a dimmed
   // button with a live one inside it, and its trailing control counted as disabled with it.
@@ -119,6 +137,7 @@ interface RowContentProps {
   subtitle?: string | undefined
   trailing?: ReactNode | undefined
   wideTrailing: boolean
+  trailingYields: boolean
   disabled: boolean
   /** Not pressable, whether static or disabled: no hover, press or pointer. */
   inert: boolean
@@ -136,6 +155,7 @@ function RowContent({
   subtitle,
   trailing,
   wideTrailing,
+  trailingYields,
   disabled,
   inert,
   pressed,
@@ -158,7 +178,10 @@ function RowContent({
       </YStack>
     ) : (
       // More room than icon-to-label, so wrapped label text does not run into the control.
-      <YStack {...logical({ paddingStart: SPACE_SCALE.xs, paddingEnd: SPACE_SCALE['2xs'] })}>
+      <YStack
+        {...logical({ paddingStart: SPACE_SCALE.xs, paddingEnd: SPACE_SCALE['2xs'] })}
+        {...(trailingYields ? { flexShrink: 1, minWidth: 0 } : {})}
+      >
         {trailing}
       </YStack>
     )
@@ -200,7 +223,14 @@ function RowContent({
           </YStack>
         )}
 
-        <YStack flex={1} gap="$3xs">
+        <YStack
+          // When the trailing text yields, the label takes its own width and never gives any of
+          // it up, wrapping only once it has the whole row; the trailing text gets what is left.
+          {...(trailingYields
+            ? { flexGrow: 1, flexShrink: 0, flexBasis: 'auto', maxWidth: '100%' }
+            : { flex: 1 })}
+          gap="$3xs"
+        >
           <Text
             size="$bodyLarge"
             weight="bold"

@@ -39,7 +39,14 @@ const PRO_BADGE = 14.5
 /** One row of the root list, as `SettingsRow` takes it. */
 type RowSpec = Pick<
   SettingsRowProps,
-  'label' | 'icon' | 'onPress' | 'accentIcon' | 'destructive' | 'trailing'
+  | 'label'
+  | 'icon'
+  | 'onPress'
+  | 'accentIcon'
+  | 'destructive'
+  | 'trailing'
+  | 'trailingYields'
+  | 'wideTrailing'
 > & {
   testID: string
 }
@@ -233,8 +240,12 @@ export function SettingsRootPage() {
         icon: (
           <StatusDot tone={pathStatusTone(networkStatus)} testID={ELEMENT.settings.pathStatus} />
         ),
+        // The state qualifies the row's name, so it is what truncates in a language where the two
+        // do not fit side by side; at the accessibility sizes it goes under the name instead.
+        trailingYields: true,
+        wideTrailing: true,
         trailing: (
-          <Text size="$body" tone="secondary">
+          <Text size="$body" tone="secondary" numberOfLines={1}>
             {pathStatusLabel(networkStatus)}
           </Text>
         ),
