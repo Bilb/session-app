@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 export type ForcedState = 'hover' | 'press' | 'focus'
 
 /** What a component's look depends on beyond its theme, which decides which pages draw it. */
-export interface Sensitivity {
+interface Sensitivity {
   /** Draws `$primaryColor`, so each accent can change it. */
   accent?: boolean | undefined
   /** Has a leading and a trailing edge, so right to left mirrors it. */

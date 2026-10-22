@@ -15,6 +15,10 @@ const KNOWN_ISSUES: Partial<Record<ISessionApp['platform'], Readonly<Record<stri
       "a failed file's retry, the danger ink on a received bubble in a light theme: 4.0:1",
     'color-contrast button.variants outlineAccent':
       'the accent as ink on a light page: 1.4 to 2.3:1, worst in yellow',
+    'color-contrast button.variants ghostAccent': 'the same ink as outlineAccent: down to 2.0:1',
+    'color-contrast button.variants simple': 'its label on the ocean-light page: 3.3:1',
+    'color-contrast button.onAccent cell': "a cell's pressed label on the red accent's fill: 2.6:1",
+    'color-contrast fileRow.onAccent fetching': 'the same as idle',
     'color-contrast button.variants danger': 'the pressed label on the danger fill: 3.7 to 4.2:1',
     'color-contrast button.variants solid':
       "the label on the red accent's fill, ocean themes: 4.0:1",

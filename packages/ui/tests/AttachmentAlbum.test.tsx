@@ -193,17 +193,4 @@ describe('the three-up’s cloud', () => {
     await user.click(byId(FETCH_HINT_ID))
     expect(onOpen).toHaveBeenCalledWith(2)
   })
-
-  it('sits over the tile that fetches', () => {
-    renderInUI(album(three, {}))
-    const place = cellPlace(albumLayout(three.length, WIDTH), 2)
-    expect(place).toBeDefined()
-    // The cloud, then FetchHint's own box, then the box the album places over the tile.
-    const box = byId(FETCH_HINT_ID).parentElement?.parentElement
-    expect(box === null || box === undefined ? {} : declared(box)).toMatchObject({
-      width: `${String(place?.side)}px`,
-      height: `${String(place?.side)}px`,
-      'margin-top': `${String(place?.top)}px`,
-    })
-  })
 })

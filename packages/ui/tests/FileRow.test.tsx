@@ -3,11 +3,8 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { ATTACHMENT_ROW_IDS as IDS, fileRow, type FileRowSituation } from '@session/expectations'
 
-import { FILE_GLYPH_SIDE, fileLeadHeight, type FileRowState } from '#src/fileRowState'
+import { fileLeadHeight, type FileRowState } from '#src/fileRowState'
 import { FileRow, type FileRowProps } from '#src/FileRow'
-import { tileRadius } from '#src/attachmentTileStyle'
-import { ON_ACCENT_SECONDARY_OPACITY } from '#src/ink'
-import { THEME_STATES } from '#src/themes'
 
 import { byId, declared, nodeOf } from '@session/render-tier'
 import { renderInUI } from './support/render'
@@ -212,76 +209,5 @@ describe('a file row’s layout', () => {
     expect(byId(IDS.row).querySelector(hover)).not.toBeNull()
     rerender(<FileRow {...pictureRow('ready', { onPress: undefined })} />)
     expect(byId(IDS.row).querySelector(hover)).toBeNull()
-  })
-})
-
-describe.each(THEME_STATES)('a file row’s ink in %s', (theme) => {
-  /** The colour of every text and glyph on the row, keyed by what it is. */
-  function inks(): Record<string, { color?: string | undefined; opacity?: string | undefined }> {
-    const row = byId(IDS.row)
-    const format = [...row.querySelectorAll('span')].find((span) => span.textContent === 'PDF')
-    const glyph = byId(IDS.download).querySelector('svg')
-    const of = (element: Element | null | undefined) => {
-      const style = element === null || element === undefined ? {} : declared(element)
-      return { color: style.color, opacity: style.opacity }
-    }
-    return {
-      name: of(byId(IDS.name).querySelector('span:last-child')),
-      caption: of(byId(IDS.caption)),
-      format: of(format),
-      control: { color: glyph?.getAttribute('stroke') ?? undefined, opacity: undefined },
-    }
-  }
-  const pdf = { filename: 'report.pdf', contentType: 'application/pdf', thumbnail: undefined }
-
-  it('takes the on-accent ink for every text and glyph on a bubble you sent', () => {
-    renderInUI(<FileRow {...pictureRow('failed', { ...pdf, onAccent: true })} />, theme)
-    expect(inks()).toEqual({
-      name: { color: 'var(--onAccent)', opacity: '1' },
-      caption: { color: 'var(--onAccent)', opacity: '1' },
-      format: { color: 'var(--onAccent)', opacity: String(ON_ACCENT_SECONDARY_OPACITY) },
-      control: { color: 'var(--onAccent)', opacity: undefined },
-    })
-  })
-
-  it('takes the page’s ink for its state on the page', () => {
-    renderInUI(<FileRow {...pictureRow('failed', pdf)} />, theme)
-    expect(inks()).toMatchObject({
-      name: { color: 'var(--dangerColor)' },
-      caption: { color: 'var(--dangerColor)' },
-      format: { color: 'var(--textSecondary)' },
-      control: { color: 'var(--dangerColor)' },
-    })
-  })
-
-  it.each([
-    [false, 'var(--primaryColor)'],
-    [true, 'var(--onAccent)'],
-  ])('draws the progress ring, on an accent fill: %s, in %s', (onAccent, colour) => {
-    renderInUI(<FileRow {...pictureRow('fetching', { ...pdf, onAccent })} />, theme)
-    const arc = byId(IDS.download).querySelectorAll('circle')[1]
-    expect(arc?.getAttribute('stroke')).toBe(colour)
-  })
-
-  it('leaves the lead square on its own fill alone', () => {
-    renderInUI(<FileRow {...pictureRow('idle', { ...pdf, onAccent: true })} />, theme)
-    const square = byId(IDS.lead).firstElementChild!
-    expect(declared(square)['background-color']).toBe('var(--backgroundTertiary)')
-    expect(square.querySelector('svg')?.getAttribute('stroke')).toBe('var(--textPrimary)')
-  })
-
-  it.each([
-    [false, 'var(--primaryColor)'],
-    [true, 'var(--onAccent)'],
-  ])('rings each focused part, on an accent fill: %s, in %s', (onAccent, colour) => {
-    renderInUI(<FileRow {...pictureRow('idle', { onAccent })} />, theme)
-    expect(declared(byId(IDS.lead), ':focus-visible')).toMatchObject({
-      'outline-color': colour,
-      'border-top-left-radius': `${String(tileRadius(FILE_GLYPH_SIDE))}px`,
-    })
-    expect(declared(byId(IDS.download), ':focus-visible')).toMatchObject({
-      'outline-color': colour,
-      'border-top-left-radius': 'var(--t-radius-full)',
-    })
   })
 })

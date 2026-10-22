@@ -7,7 +7,7 @@ import { STORIES } from './stories'
 /** `pr` gates a pull request and stays small; `nightly` sweeps every combination, unreviewed. */
 export type CatalogTier = 'pr' | 'nightly'
 
-export type CatalogPageKind = 'themes' | 'accents' | 'rtl' | 'width'
+type CatalogPageKind = 'themes' | 'accents' | 'rtl' | 'width'
 
 export interface CatalogPageSpec {
   id: string

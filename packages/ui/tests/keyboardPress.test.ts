@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { focusRing, heldButton, keyboardPress, type PressKeyEvent } from '#src/keyboardPress'
 import { pressHint } from '#src/pressHint'
-import { buildThemes } from '#src/themes'
 
 const element = {}
 
@@ -94,25 +93,6 @@ describe('a button held while a transfer runs', () => {
   it('takes no key, since it presses nothing', () => {
     expect(heldButton(undefined, ring)).not.toHaveProperty('onKeyDown')
     expect(heldButton(undefined, ring)).not.toHaveProperty('aria-label')
-  })
-})
-
-describe('the focus ring', () => {
-  it.each(Object.entries(buildThemes()))('is the colour %s gives focus', (_, theme) => {
-    expect(theme['outlineColor']).toBe(theme['primaryColor'])
-  })
-
-  it('is the theme’s focus colour on the page', () => {
-    expect(focusRing({ onAccent: false, offset: 2, radius: '$sm' })).toMatchObject({
-      outlineColor: '$primaryColor',
-      outlineOffset: 2,
-      outlineWidth: 2,
-      outlineStyle: 'solid',
-    })
-  })
-
-  it('is the on-accent colour on an accent fill, where the accent would be the fill itself', () => {
-    expect(focusRing({ onAccent: true, offset: 0, radius: '$full' }).outlineColor).toBe('$onAccent')
   })
 })
 

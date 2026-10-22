@@ -17,6 +17,8 @@ const LONG = 'A label long enough to need a second line or an ellipsis at this w
 
 const PDF = { contentType: 'application/pdf', filename: 'report.pdf' } as const
 
+const OPENS = { onOpen: noop, openLabel: 'Open' } as const
+
 /** A sent bubble's fill, which is what `onAccent` is drawn on. */
 function AccentFill({ children }: { children: ReactNode }) {
   return (
@@ -38,12 +40,38 @@ const button = defineStory<ButtonProps>({
     outlineAccent: { variant: 'outlineAccent', children: 'Continue', onPress: noop },
     tonal: { variant: 'tonal', children: 'Continue', onPress: noop },
     ghost: { variant: 'ghost', children: 'Continue', onPress: noop },
+    ghostAccent: { variant: 'ghostAccent', children: 'Continue', onPress: noop },
+    simple: { variant: 'simple', children: 'Continue', onPress: noop },
     danger: { variant: 'danger', children: 'Delete', onPress: noop },
     disabled: { variant: 'solid', children: 'Continue', disabled: true, onPress: noop },
     loading: { variant: 'solid', children: 'Continue', loading: true, onPress: noop },
     long: { variant: 'solid', children: LONG, onPress: noop },
   },
   render: (props) => <Button {...props} />,
+})
+
+/** On a bubble you sent: the ring takes the on-accent ink, and a button keeps its own fill. */
+const buttonOnAccent = defineStory<ButtonProps>({
+  component: 'button',
+  story: 'onAccent',
+  width: 220,
+  forced: ['press', 'focus'],
+  sensitive: { accent: true },
+  variants: {
+    tonal: { variant: 'tonal', children: 'Continue', onPress: noop, onAccent: true },
+    cell: {
+      variant: 'simple',
+      borderRadius: '$none',
+      children: 'Continue',
+      onPress: noop,
+      onAccent: true,
+    },
+  },
+  render: (props) => (
+    <AccentFill>
+      <Button {...props} />
+    </AccentFill>
+  ),
 })
 
 const buttonSizes = defineStory<ButtonProps>({
@@ -120,7 +148,14 @@ const fileRow = defineStory<FileRowProps>({
   forced: ['focus'],
   sensitive: { rtl: true, responsive: true },
   variants: {
-    idle: { ...PDF, caption: '180 kB', state: 'idle', actionLabel: 'Download', onAction: noop },
+    idle: {
+      ...PDF,
+      ...OPENS,
+      caption: '180 kB',
+      state: 'idle',
+      actionLabel: 'Download',
+      onAction: noop,
+    },
     fetching: {
       ...PDF,
       caption: '90 of 180 kB',
@@ -162,13 +197,24 @@ const fileRowOnAccent = defineStory<FileRowProps>({
   component: 'fileRow',
   story: 'onAccent',
   width: 360,
+  forced: ['focus'],
   sensitive: { accent: true },
   variants: {
     idle: {
       ...PDF,
+      ...OPENS,
       caption: '180 kB',
       state: 'idle',
       actionLabel: 'Download',
+      onAction: noop,
+      onAccent: true,
+    },
+    fetching: {
+      ...PDF,
+      caption: '90 of 180 kB',
+      state: 'fetching',
+      progress: 0.5,
+      actionLabel: 'Downloading',
       onAction: noop,
       onAccent: true,
     },
@@ -246,6 +292,7 @@ const textScale = defineStory<{ size: '$caption' | '$label' | '$body' | '$title'
 
 export const STORIES: readonly AnyStory[] = [
   button,
+  buttonOnAccent,
   buttonSizes,
   settingsRow,
   fileRow,
