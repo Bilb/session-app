@@ -16,7 +16,6 @@ import {
   androidHidden,
   iosAccessibleNode,
   iosTargetSizes,
-  liesWithin,
   nativeFrame,
   shownWhole,
   testIdOf,
@@ -42,18 +41,8 @@ const DEFAULT_WAIT_MS = 10_000
 /** A cold start reads the whole bundle over the network before the first screen draws. */
 const FIRST_SCREEN_MS = 180_000
 const POLL_MS = 250
-const SETTLE_PAUSE_MS = 500
-const SETTLE_ATTEMPTS = 20
 /** Swipes `reveal` makes each way before giving up on an element. */
 const REVEAL_SWIPES = 8
-
-/** What `captureShown` captures: `scope` itself, or the `at`th carrying `id` inside it. */
-export interface CaptureTarget {
-  name: string
-  scope: ElementId
-  id: ElementId | null
-  at: number
-}
 
 /** An accessibility element as `idb ui describe-all` lists it. */
 interface IdbElement {
@@ -458,41 +447,6 @@ export class MobileApp implements ISessionApp {
 
   async screenshot(name: string): Promise<void> {
     await this.driver.saveScreenshot(join(repoRoot, 'test-results', `${name}.png`))
-  }
-
-  /**
-   * Each target wholly on screen, inside the scrolled view round it, as a PNG once it holds still,
-   * keyed by its name: a capture of half a bubble would match nothing. One page source for all.
-   */
-  async captureShown(targets: readonly CaptureTarget[]): Promise<Map<string, Buffer>> {
-    const nodes = [...walk(parseNativeTree(this.scrolledTo ?? (await this.source())))]
-    const carrying = (id: ElementId) => nodes.filter((node) => testIdOf(node, this.platform) === id)
-    const captured = new Map<string, Buffer>()
-    for (const target of targets) {
-      const scope = carrying(target.scope)[0]
-      if (scope === undefined) continue
-      const id = target.id ?? target.scope
-      const all = carrying(id)
-      const node =
-        target.id === null
-          ? scope
-          : all.filter((inner) => liesWithin(inner, scope, this.platform))[target.at]
-      if (node === undefined || !shownWhole(node, this.platform)) continue
-      captured.set(target.name, await this.stillCapture(target.name, id, all.indexOf(node)))
-    }
-    return captured
-  }
-
-  private async stillCapture(name: string, id: ElementId, at: number): Promise<Buffer> {
-    const { elementId } = await this.element(id, at)
-    let previous = Buffer.from(await this.driver.takeElementScreenshot(elementId), 'base64')
-    for (let attempt = 0; attempt < SETTLE_ATTEMPTS; attempt++) {
-      await this.driver.pause(SETTLE_PAUSE_MS)
-      const next = Buffer.from(await this.driver.takeElementScreenshot(elementId), 'base64')
-      if (next.equals(previous)) return next
-      previous = next
-    }
-    throw new Error(`${name} kept changing for ${String(SETTLE_ATTEMPTS)} captures`)
   }
 
   /**

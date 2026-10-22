@@ -1,13 +1,13 @@
-import { APPEARANCE_OVERRIDE_VARIABLES } from '@session/app/appearanceOverride'
+import { envVarFor, FLAGS, type FlagName } from '@session/app/flags'
 
 /**
- * The overrides read at launch rather than substituted at build time, carried from main to the
- * page as a command-line switch on the renderer's process: the page has no environment, and the
- * preload has `process.argv` before the page runs.
+ * The flag overrides read at launch rather than substituted at build time, carried from main to
+ * the page as a command-line switch on the renderer's process: the page has no environment, and
+ * the preload has `process.argv` before the page runs.
  */
 const SWITCH = '--session-launch-overrides='
 
-const CARRIED: readonly string[] = APPEARANCE_OVERRIDE_VARIABLES
+const CARRIED: readonly string[] = (Object.keys(FLAGS) as FlagName[]).map(envVarFor)
 
 /** The switch for main to append, carrying each override set and non-empty in `env`. */
 export function launchOverridesSwitch(env: Readonly<Record<string, string | undefined>>): string {

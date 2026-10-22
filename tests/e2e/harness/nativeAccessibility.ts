@@ -209,12 +209,6 @@ function clippedByScroll(node: NativeNode, platform: 'android' | 'ios'): boolean
 export const shownWhole = (node: NativeNode, platform: 'android' | 'ios') =>
   !clippedByScroll(node, platform)
 
-/** Whether `inner` is drawn within `outer`'s box: Android's tree need not nest the two. */
-export function liesWithin(inner: NativeNode, outer: NativeNode, platform: 'android' | 'ios') {
-  const box = platform === 'android' ? androidBounds : iosRect
-  return inside(box(inner), box(outer))
-}
-
 /**
  * The rules Android gets in place of a platform audit, over the TalkBack stops in the window:
  *

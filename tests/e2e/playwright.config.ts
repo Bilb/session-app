@@ -22,7 +22,9 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'desktop', testMatch: /.*\.spec\.ts/, grepInvert: /@(android|ios)\b/ },
+    { name: 'desktop', testMatch: /.*\.spec\.ts/, grepInvert: /@(android|ios|catalog)\b/ },
+    // Its own run: it uploads what it captures, and a page of every theme takes a while.
+    { name: 'catalog', testMatch: /.*\.spec\.ts/, grep: /@catalog\b/ },
     // A device runs a bundle at a time, and the first launch on a new one waits for its transform.
     { name: 'android', testMatch: /.*\.spec\.ts/, grep: /@android\b/, timeout: 600_000 },
     // XCTest's audit and page source take seconds each, and a themed cell reads both per screen.

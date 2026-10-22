@@ -67,7 +67,7 @@ declare global {
       exportLogs(name: string, parts: readonly ExportPart[]): Promise<boolean>
       /** What main's `log:diagnostics` handler returns, typed alike on both sides. */
       diagnostics(): Promise<DiagnosticsSnapshot>
-      /** Environment variables main read at launch, by full name; only those set. */
+      /** Flag variables main read at launch, by full name; only those set. */
       readonly launchOverrides: Readonly<Record<string, string>>
     }
   }

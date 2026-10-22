@@ -1,4 +1,7 @@
+import { useContext } from 'react'
 import { YStack } from 'tamagui'
+
+import { InteractionOverride, useForcedFocus } from './interactionOverride'
 
 import { focusRing, keyboardPress, type FocusRingShape } from './keyboardPress'
 import type { PressAreaProps } from './PressArea.types'
@@ -36,6 +39,8 @@ export function PressArea({
   children,
 }: PressAreaProps) {
   const press = disabled ? undefined : onPress
+  const forced = useContext(InteractionOverride)
+  const forcedFocus = useForcedFocus()
   return (
     <YStack
       {...(fill ? { flex: 1 } : {})}
@@ -46,11 +51,12 @@ export function PressArea({
       disabled={disabled}
       onPress={press}
       {...keyboardPress(press, focusRing(ring))}
+      {...(press === undefined ? {} : forcedFocus)}
       aria-label={accessibilityLabel}
       aria-busy={busy}
       testID={testID}
     >
-      {children(false, false)}
+      {children(forced?.pressed ?? false, forced?.hovered ?? false)}
     </YStack>
   )
 }

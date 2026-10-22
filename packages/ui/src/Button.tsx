@@ -463,7 +463,12 @@ export function Button({
           {...PRESS_PASSTHROUGH}
           // The variant's own `hoverStyle`, applied from the wrapper's hover: see `PressArea`.
           {...(hovered && !pressed && !inert ? { forceStyle: 'hover' as const } : {})}
-          {...(pressed && !inert ? PRESSED[variant] : {})}
+          {...(pressed && !inert
+            ? // Only the catalog reports a press on the web, where `pressStyle` is the press.
+              isWeb
+              ? { forceStyle: 'press' as const }
+              : PRESSED[variant]
+            : {})}
         >
           {/* Loading hides the content but keeps its room, so the button keeps its size and
               nothing around it moves; the spinner is drawn over it, centred. The button's

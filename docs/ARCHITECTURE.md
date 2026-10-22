@@ -301,15 +301,22 @@ Desktop-only checks (focus, layout, CSS) use Playwright's own matchers on `Deskt
 
 `MobileApp` drives an installed debug build through Appium, finding elements by `testID` (Android's
 resource id, iOS's accessibility identifier) and reading them from the page source. It serves the
-bundle itself: Metro inlines every `EXPO_PUBLIC_` variable, so the fake, its fixture and the theme
+bundle itself: Metro inlines every `EXPO_PUBLIC_` variable, so the fake and its fixture
 are chosen per bundle, and a launch with other values restarts Metro. It reads the devices from
 `SESSION_E2E_{ANDROID,IOS}_{PHONE,TABLET}`, Appium from `SESSION_E2E_APPIUM_URL` and Metro's
 port from `SESSION_E2E_METRO_PORT`; `.github/workflows/e2e-mobile.yml` is the whole setup.
 
-`EXPO_PUBLIC_SESSION_THEME` (and `EXPO_PUBLIC_SESSION_ACCENT`) draws one launch in a named theme
-over the stored choice, without saving it, on all three platforms. `themes.spec.ts` audits the
-`showcase` fixture in each theme at two widths and attaches a capture of a few attachment
-controls to the report. On each mobile platform it does the same on a phone and a tablet.
+`showcase-audit.spec.ts` audits the `showcase` fixture at two widths on desktop, and on a phone and
+a tablet of each mobile platform, in the default theme.
+
+**The component catalog** is where looks are checked. Each story in `@session/ui/catalog` (and
+each scenario, a real message from a fake fixture, in `apps/desktop/src/renderer/catalogScenarios.tsx`)
+draws its variants as rows and its forced states (hover, press, focus) as columns, in several
+themes side by side on one page. A story says what it is sensitive to (accent, right to left,
+width), and that decides which extra pages it gets. The `pr` tier draws two themes; `nightly`
+every theme and accent. The desktop app opens the catalog instead of the app under the
+`componentCatalog` flag; `catalog.spec.ts` captures each page, runs axe over it, and the `catalog`
+workflow uploads the captures to Argos for review.
 
 `sessionTest` is the only way to declare a test and the only thing that opens or closes a
 client. Its `clients` descriptor decides the platforms _and_ the tags, so a spec asking for two

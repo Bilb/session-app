@@ -1,0 +1,65 @@
+name: catalog
+
+# Started by hand, never on a pull request.
+on:
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: pr draws two themes and the default accent; nightly every theme and accent
+        type: choice
+        options: [pr, nightly]
+        default: pr
+
+jobs:
+  desktop:
+    runs-on: ubuntu-latest
+    env:
+      CATALOG_TIER: ${{ inputs.tier }}
+      CATALOG_OUT: ${{ github.workspace }}/test-results/catalog
+    steps:
+      - uses: actions/checkout@v5
+
+      # Only the localization submodule is built here. libsession-util drags in protobuf and
+      # session-deps, and nothing in these checks compiles C++.
+      - run: git submodule update --init --recursive packages/localization/src/localization-src
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @session/localization build
+      - run: pnpm --filter @session/desktop build
+      - run: pnpm --filter @session/e2e exec playwright install --with-deps chromium
+      # The fake draws the thirty dev photographs and refuses to start without them. Cached, so the
+      # CDN is only asked when the table of photographs changes. Saved straight after the fetch:
+      # actions/cache's own post step saves only when the whole job is green.
+      - id: dev-media
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/session-app/dev-media
+          key: dev-media-${{ hashFiles('packages/client/scripts/fetchFakeMedia.ts') }}
+      - run: pnpm fake-media:fetch
+      - if: steps.dev-media.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.cache/session-app/dev-media
+          key: ${{ steps.dev-media.outputs.cache-primary-key }}
+
+      - run: xvfb-run -a pnpm --filter @session/e2e test:catalog
+
+      # The captures go up even when the audit fails: the two are read separately.
+      - if: success() || failure()
+        run: pnpm --filter @session/e2e catalog:upload "$CATALOG_OUT"
+        env:
+          ARGOS_API_BASE_URL: ${{ vars.ARGOS_API_BASE_URL }}
+          ARGOS_TOKEN: ${{ secrets.ARGOS_TOKEN }}
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/

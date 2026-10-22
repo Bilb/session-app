@@ -10,9 +10,12 @@
     "test:e2e:fast": "playwright test --project desktop",
     "test:e2e:android": "playwright test --project android",
     "test:e2e:ios": "playwright test --project ios",
-    "test:e2e:full": "playwright test"
+    "test:e2e:full": "playwright test",
+    "test:catalog": "playwright test --project catalog",
+    "catalog:upload": "argos upload --build-name catalog"
   },
   "devDependencies": {
+    "@argos-ci/cli": "catalog:",
     "@axe-core/playwright": "catalog:",
     "@playwright/test": "catalog:",
     "@session/eslint-config": "workspace:*",

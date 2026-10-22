@@ -1,4 +1,3 @@
-import { appearanceOverride } from '@session/app'
 import { useAppearance, useHydrated, useStartupError, type SessionStore } from '@session/state'
 import { appearanceFrom, registerTheme, UIProvider, type UIProviderProps } from '@session/ui'
 
@@ -23,7 +22,7 @@ export function StoredThemeProvider(props: Omit<UIProviderProps, 'theme' | 'acce
   const hydrated = useHydrated()
   const failed = useStartupError() !== null
   const held = useFirstPaintHeld(hydrated || failed)
-  const { theme, accent } = appearanceFrom(useAppearance(), appearanceOverride())
+  const { theme, accent } = appearanceFrom(useAppearance())
   if (held) return null
   return <UIProvider {...props} theme={theme} accent={accent} />
 }
@@ -39,7 +38,7 @@ export function StoredThemeProvider(props: Omit<UIProviderProps, 'theme' | 'acce
 export function registerStoredAppearance(store: SessionStore): () => void {
   return store.subscribe((state, previous) => {
     if (state.appearance === previous.appearance) return
-    const { theme, accent } = appearanceFrom(state.appearance, appearanceOverride())
+    const { theme, accent } = appearanceFrom(state.appearance)
     registerTheme(theme, accent)
   })
 }

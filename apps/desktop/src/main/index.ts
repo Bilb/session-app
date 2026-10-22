@@ -128,7 +128,8 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
       // CommonJS, because a sandboxed preload cannot be an ES module; it is built that way in
       // electron.vite.config.ts. The preload needs nothing from Node, so the sandbox costs nothing.
       preload: join(here, '../preload/index.cjs'),
-      additionalArguments: [launchOverridesSwitch(process.env)],
+      // Like the network settings, a packaged build takes no override from its environment.
+      additionalArguments: app.isPackaged ? [] : [launchOverridesSwitch(process.env)],
     },
   })
 

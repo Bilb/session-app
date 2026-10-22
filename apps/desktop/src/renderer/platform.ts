@@ -52,8 +52,8 @@ setPorts(
           ? 'fake'
           : parseNetworkName(import.meta.env.EXPO_PUBLIC_SESSION_NETID),
     },
-    // The appearance overrides main read at launch, then the flags, substituted at build time
-    // because the renderer cannot read the environment: a flag override is a rebuild here.
+    // What main read at launch, then what was substituted at build time: the renderer cannot read
+    // the environment, and a packaged build carries nothing from main.
     flags: {
       override: (name) =>
         window.sessionDesktop.launchOverrides[name] ??

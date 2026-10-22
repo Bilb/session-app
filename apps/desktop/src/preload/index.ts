@@ -62,6 +62,6 @@ contextBridge.exposeInMainWorld('sessionDesktop', {
   exportLogs: (name: string, parts: unknown): Promise<boolean> =>
     ipcRenderer.invoke('log:export', name, parts),
   diagnostics: (): Promise<unknown> => ipcRenderer.invoke('log:diagnostics'),
-  /** What main read of the environment at launch for the flags port; see `launchOverrides.ts`. */
+  /** The flag overrides main read at launch; see `launchOverrides.ts`. */
   launchOverrides: readLaunchOverrides(process.argv),
 })

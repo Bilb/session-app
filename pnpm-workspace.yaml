@@ -5,6 +5,7 @@ packages:
   - tests/*
 
 catalog:
+  '@argos-ci/cli': 6.9.5
   '@axe-core/playwright': 4.13.0
   '@eslint/js': 10.0.1
   '@expo/config-plugins': ~57.0.9

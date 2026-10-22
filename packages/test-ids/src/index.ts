@@ -197,6 +197,12 @@ export const ELEMENT = {
 
     loadingScreen: 'onboarding-loading-screen',
   },
+  catalog: {
+    page: 'catalog-page',
+    ready: 'catalog-ready',
+    cell: (page: string, row: string, column: string) =>
+      `catalog-cell-${page}-${row}-${column}` as const,
+  },
 } as const
 
 /**
