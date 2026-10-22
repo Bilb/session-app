@@ -17,6 +17,8 @@ const FORCED: Record<ForcedState, ForcedInteraction> = {
   focus: { hovered: false, pressed: false, focused: true },
 }
 
+const LABEL_WIDTH = 96
+
 const SETTLE_POLL_MS = 100
 const SETTLE_TRIES = 100
 
@@ -42,67 +44,60 @@ async function picturesSettled(): Promise<void> {
 /** Under the capture window's width, so a page of seven accents wraps rather than clips. */
 const PAGE_MAX_WIDTH = 2800
 
-interface SegmentProps {
+interface BlockProps {
   page: CatalogPageSpec
   theme: ThemeState
   accent: PrimaryColorState
   title: string
-  row: string
-  props: never
 }
 
-/**
- * One variant in one theme and accent, a cell per drawn state. Top-aligned, so a cell that grows
- * moves none of its neighbours.
- */
-function Segment({ page, theme, accent, title, row, props }: SegmentProps) {
-  const states = ['rest', ...(page.forced ? (page.story.forced ?? []) : [])] as const
+/** One theme and accent: a row per variant, a column per drawn state. */
+function Block({ page, theme, accent, title }: BlockProps) {
+  const states = page.forced ? (page.story.forced ?? []) : []
   return (
     <Theme name={themeName(theme, accent)}>
-      <YStack backgroundColor="$backgroundPrimary" padding="$md" gap="$xs">
+      <YStack backgroundColor="$backgroundPrimary" padding="$md" gap="$sm">
         <Text size="$caption" tone="secondary">
           {title}
         </Text>
-        <XStack gap="$sm" alignItems="flex-start">
-          {states.map((state) => (
-            <YStack key={state} width={page.width} gap="$xs">
-              {states.length === 1 ? null : (
-                <Text size="$caption" tone="secondary">
-                  {state}
-                </Text>
-              )}
-              <InteractionOverride.Provider value={state === 'rest' ? REST : FORCED[state]}>
-                <YStack testID={ELEMENT.catalog.cell(page.id, row, `${title}-${state}`)}>
+        {states.length === 0 ? null : (
+          <XStack gap="$sm">
+            <YStack width={LABEL_WIDTH} />
+            {(['rest', ...states] as const).map((state) => (
+              <Text key={state} size="$caption" tone="secondary" width={page.width}>
+                {state}
+              </Text>
+            ))}
+          </XStack>
+        )}
+        {Object.entries(page.story.variants).map(([row, props]) => (
+          <XStack key={row} gap="$sm" alignItems="center">
+            <Text size="$caption" tone="secondary" width={LABEL_WIDTH} numberOfLines={1}>
+              {row}
+            </Text>
+            {(['rest', ...states] as const).map((state) => (
+              <InteractionOverride.Provider
+                key={state}
+                value={state === 'rest' ? REST : FORCED[state]}
+              >
+                <YStack
+                  width={page.width}
+                  testID={ELEMENT.catalog.cell(page.id, row, `${title}-${state}`)}
+                >
                   {page.story.render(props)}
                 </YStack>
               </InteractionOverride.Provider>
-            </YStack>
-          ))}
-        </XStack>
+            ))}
+          </XStack>
+        ))}
       </YStack>
     </Theme>
   )
 }
 
-/** Each theme and accent the page draws, in order, with the title its segment carries. */
-function segmentsOf(
-  page: CatalogPageSpec,
-): { theme: ThemeState; accent: PrimaryColorState; title: string }[] {
-  if (page.kind === 'accents')
-    return page.accents.flatMap((accent) =>
-      page.themes.map((theme) => ({ theme, accent, title: `${accent} · ${theme}` })),
-    )
-  const accent = page.accents[0] ?? 'green'
-  return page.themes.map((theme) => ({
-    theme,
-    accent,
-    title: page.kind === 'width' ? `${theme} · ${String(page.width)}px` : theme,
-  }))
-}
-
 /**
- * Every combination a catalog page names: a row per variant, each its own capture, with the
- * page's themes and accents side by side in it.
+ * Every combination a catalog page names, in one picture. Themes sit side by side; an accent page
+ * puts one column per accent with each theme under it.
  */
 export function CatalogPage({ page }: { page: CatalogPageSpec }) {
   // Registered before the first render: registering a theme wakes every themed component mounted.
@@ -128,33 +123,39 @@ export function CatalogPage({ page }: { page: CatalogPageSpec }) {
     }
   }, [])
 
-  const segments = segmentsOf(page)
   return (
     <YStack alignItems="flex-start" padding="$md" gap="$sm">
-      <YStack testID={ELEMENT.catalog.page} gap="$xs" alignItems="flex-start">
-        {Object.entries(page.story.variants).map(([row, props]) => (
-          <XStack
-            key={row}
-            testID={ELEMENT.catalog.row(page.id, row)}
-            gap="$xs"
-            alignItems="flex-start"
-            flexWrap="wrap"
-            maxWidth={PAGE_MAX_WIDTH}
-          >
-            {segments.map(({ theme, accent, title }) => (
-              <Segment
-                key={title}
+      <XStack
+        testID={ELEMENT.catalog.page}
+        gap="$xs"
+        alignItems="flex-start"
+        flexWrap="wrap"
+        maxWidth={PAGE_MAX_WIDTH}
+      >
+        {page.kind === 'accents'
+          ? page.accents.map((accent) => (
+              <YStack key={accent} gap="$xs">
+                {page.themes.map((theme) => (
+                  <Block
+                    key={theme}
+                    page={page}
+                    theme={theme}
+                    accent={accent}
+                    title={`${accent} · ${theme}`}
+                  />
+                ))}
+              </YStack>
+            ))
+          : page.themes.map((theme) => (
+              <Block
+                key={theme}
                 page={page}
                 theme={theme}
-                accent={accent}
-                title={title}
-                row={row}
-                props={props}
+                accent={page.accents[0] ?? 'green'}
+                title={page.kind === 'width' ? `${theme} · ${String(page.width)}px` : theme}
               />
             ))}
-          </XStack>
-        ))}
-      </YStack>
+      </XStack>
       {ready ? (
         <Text testID={ELEMENT.catalog.ready} size="$caption" tone="secondary">
           {page.id}
