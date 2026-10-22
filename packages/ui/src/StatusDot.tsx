@@ -1,6 +1,8 @@
 import { COLORS } from '@session/theme-tokens'
+import Svg, { Circle, Path } from 'react-native-svg'
 import { YStack } from 'tamagui'
 
+import { usePaneSurface } from './paneSurface'
 import { SIZE_SCALE } from './scales'
 import { useTokenColor } from './useTokenColor'
 
@@ -23,40 +25,90 @@ const TONE_COLOR: Record<StatusTone, string> = {
   neutral: '$textDisabled',
 }
 
-/** The legacy desktop's rail dot. */
+/** The legacy desktop's rail dot, and the smallest size the glyph inside still reads at. */
 const DEFAULT_SIDE_PX = SIZE_SCALE.xs
 
 /** The legacy desktop's glow, a blur in the dot's own colour. */
 const DEFAULT_GLOW_PX = 6
 
+/** Every glyph is drawn on a 24-unit grid, scaled to the dot. */
+const GRID = 24
+
 /**
- * A small glowing dot that reports a status.
+ * The glyph in each tone's disc, so the state reads by shape as well as colour: a check, an
+ * ellipsis for a path still being built, a cross, and a question mark. A cross rather than a dash
+ * for no path: at this size a dash and the ellipsis are both a bar through the middle.
+ */
+function Glyph({ tone }: { tone: StatusTone }) {
+  // Black on every tone and in every theme: the tones are light enough to carry it, and one ink
+  // keeps the four reading as one set.
+  const ink = COLORS.BLACK
+  const stroke = {
+    stroke: ink,
+    strokeWidth: 3.4,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    fill: 'none',
+  } as const
+  switch (tone) {
+    case 'positive':
+      return <Path d="M6.5 12.5 10.5 16.5 17.5 8" {...stroke} />
+    case 'warning':
+      return (
+        <>
+          <Circle cx={6.8} cy={12} r={2} fill={ink} />
+          <Circle cx={12} cy={12} r={2} fill={ink} />
+          <Circle cx={17.2} cy={12} r={2} fill={ink} />
+        </>
+      )
+    case 'danger':
+      return <Path d="M8 8 16 16M16 8 8 16" {...stroke} />
+    case 'neutral':
+      return <Path d="M12 18h.01M9.3 9.5a2.8 2.8 0 0 1 5.4 1c0 1.9-2.7 2.4-2.7 3.6" {...stroke} />
+  }
+}
+
+/**
+ * A small glowing disc that reports a status, with a glyph that names it by shape.
  *
- * Never the only thing that says what the status is: two of the four tones are a red and a green,
- * which a red-green colour-blind reader cannot separate, so whatever draws one also names the state
+ * Still never the only thing that says what the status is: whatever draws one also names the state
  * in words -- a tooltip, a label beside it, or the accessibility label of the control it sits on.
+ *
+ * `ringPx` cuts it out of what it overlaps, a ring in the pane's own surface: the home avatar's
+ * badge sits on the avatar's edge.
  */
 export function StatusDot({
   tone,
   sidePx = DEFAULT_SIDE_PX,
   glowPx = DEFAULT_GLOW_PX,
+  ringPx = 0,
   testID,
 }: {
   tone: StatusTone
   sidePx?: number | undefined
   glowPx?: number | undefined
+  ringPx?: number | undefined
   testID?: string | undefined
 }) {
   const color = useTokenColor(TONE_COLOR[tone])
+  const surface = useTokenColor(usePaneSurface())
   return (
     <YStack
-      width={sidePx}
-      height={sidePx}
+      width={sidePx + 2 * ringPx}
+      height={sidePx + 2 * ringPx}
       borderRadius="$full"
+      borderWidth={ringPx}
+      borderColor={surface}
       backgroundColor={color}
       boxShadow={`0px 0px ${String(glowPx)}px 0px ${color}`}
+      alignItems="center"
+      justifyContent="center"
       pointerEvents="none"
       testID={testID}
-    />
+    >
+      <Svg width={sidePx} height={sidePx} viewBox={`0 0 ${String(GRID)} ${String(GRID)}`}>
+        <Glyph tone={tone} />
+      </Svg>
+    </YStack>
   )
 }

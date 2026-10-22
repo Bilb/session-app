@@ -57,9 +57,12 @@ const TIME_GAP_MIN = '$xxs'
 
 /** The header avatar, as both legacy mobile clients draw it. */
 const HEADER_AVATAR_PX = 26
-/** The path dot on its corner: legacy iOS's and Android's 8, with Android's 4 of glow. */
-const HEADER_DOT_PX = SIZE_SCALE.xxs
-const HEADER_DOT_GLOW_PX = 4
+/**
+ * The path's status on its corner. Legacy's 8 is too small for the glyph inside to read, so it is
+ * the rail's 12, cut out of the avatar by a ring of the surface rather than lit by a glow.
+ */
+const HEADER_DOT_PX = SIZE_SCALE.xs
+const HEADER_DOT_RING_PX = 2
 
 /**
  * The account's avatar, which opens settings, with the onion path's dot on its bottom-end corner,
@@ -95,11 +98,16 @@ function SettingsAvatarButton({ onPress }: { onPress: () => void }) {
           name={account?.displayName ?? ''}
           size={HEADER_AVATAR_PX}
         />
-        <YStack position="absolute" bottom={0} {...logical({ insetEnd: 0 })}>
+        <YStack
+          position="absolute"
+          bottom={-HEADER_DOT_RING_PX}
+          {...logical({ insetEnd: -HEADER_DOT_RING_PX })}
+        >
           <StatusDot
             tone={pathStatusTone(status)}
             sidePx={HEADER_DOT_PX}
-            glowPx={HEADER_DOT_GLOW_PX}
+            glowPx={0}
+            ringPx={HEADER_DOT_RING_PX}
             testID={ELEMENT.conversationList.settingsPathStatus}
           />
         </YStack>
