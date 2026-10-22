@@ -3,7 +3,13 @@ import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { updateLayerKey } from '#src/updateIndicatorTiming'
+import {
+  MORPH_MS,
+  MORPH_RING_MS,
+  morphBetween,
+  morphFrame,
+  updateLayerKey,
+} from '#src/updateIndicatorTiming'
 
 describe('what starts a new cross-fade layer', () => {
   it('is a change of state', () => {
@@ -14,6 +20,40 @@ describe('what starts a new cross-fade layer', () => {
     expect(updateLayerKey({ kind: 'downloading', progress: 0.1 })).toBe(
       updateLayerKey({ kind: 'downloading', progress: 0.9 }),
     )
+  })
+})
+
+describe('which changes morph rather than cross-fade', () => {
+  it('is available into downloading, and a finished download into ready', () => {
+    expect(morphBetween('available', 'downloading')).toBe('join')
+    expect(morphBetween('downloading', 'ready')).toBe('fill')
+  })
+
+  it('is nothing else, an error included', () => {
+    expect(morphBetween('downloading', 'error')).toBeNull()
+    expect(morphBetween('ready', 'available')).toBeNull()
+    expect(morphBetween('available', 'ready')).toBeNull()
+  })
+})
+
+describe('a morph frame', () => {
+  it('starts with the ring unchanged and the old glyph whole', () => {
+    expect(morphFrame(0)).toEqual({ ring: 0, outgoing: 1, incoming: 0 })
+  })
+
+  it('shrinks the old glyph away before the ring has finished', () => {
+    const late = morphFrame(MORPH_RING_MS * 0.8)
+    expect(late.ring).toBeLessThan(1)
+    expect(late.outgoing).toBe(0)
+  })
+
+  it('pops the new glyph only once the ring is done, past full size and back', () => {
+    expect(morphFrame(MORPH_RING_MS).incoming).toBe(0)
+    const peak = Math.max(
+      ...[0.3, 0.5, 0.6, 0.7].map((f) => morphFrame(MORPH_RING_MS + f * 360).incoming),
+    )
+    expect(peak).toBeGreaterThan(1)
+    expect(morphFrame(MORPH_MS)).toEqual({ ring: 1, outgoing: 0, incoming: 1 })
   })
 })
 

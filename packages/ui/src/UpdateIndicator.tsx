@@ -2,9 +2,11 @@ import { type ReactNode, useEffect, useState } from 'react'
 import { YStack } from 'tamagui'
 
 import { type CrossfadeLayer, useCrossfadeLayers } from './crossfadeLayers'
+import { logical } from './logicalEdges'
 import { TRANSFER_RING_SIDE_PX } from './ProgressRing'
 import { UpdateGlyph } from './UpdateGlyph'
 import type { UpdateIndicatorProps, UpdateStatus } from './UpdateIndicator.types'
+import { useUpdateMorph } from './useUpdateMorph'
 import { updateLayerKey, UPDATE_FADE_MS, UPDATE_FADE_SCALE } from './updateIndicatorTiming'
 
 export type { UpdateIndicatorProps, UpdateStatus }
@@ -64,7 +66,14 @@ function FadeLayer({
  * reads as one control changing rather than one replaced by another.
  */
 export function UpdateIndicator({ status, instant = false, testID }: UpdateIndicatorProps) {
-  const layers = useCrossfadeLayers(updateLayerKey(status), status, UPDATE_FADE_MS, instant)
+  const morph = useUpdateMorph(status.kind, instant)
+  // A morph draws the change itself, so the layers swap under it rather than fading as well.
+  const layers = useCrossfadeLayers(
+    updateLayerKey(status),
+    status,
+    UPDATE_FADE_MS,
+    instant || morph !== null,
+  )
   return (
     <YStack
       width={TRANSFER_RING_SIDE_PX}
@@ -72,11 +81,26 @@ export function UpdateIndicator({ status, instant = false, testID }: UpdateIndic
       position="relative"
       {...(testID === undefined ? {} : { testID })}
     >
-      {layers.map((layer: CrossfadeLayer<UpdateStatus>) => (
-        <FadeLayer key={layer.id} leaving={layer.leaving} instant={instant}>
-          <UpdateGlyph status={layer.value} />
-        </FadeLayer>
-      ))}
+      {/* Mounted through a morph, hidden, so that the state it ends on is already drawn and does
+          not fade in a second time when the morph hands over. */}
+      <YStack
+        position="absolute"
+        top={0}
+        bottom={0}
+        {...logical({ insetStart: 0, insetEnd: 0 })}
+        opacity={morph === null ? 1 : 0}
+      >
+        {layers.map((layer: CrossfadeLayer<UpdateStatus>) => (
+          <FadeLayer key={layer.id} leaving={layer.leaving} instant={instant || morph !== null}>
+            <UpdateGlyph status={layer.value} />
+          </FadeLayer>
+        ))}
+      </YStack>
+      {morph === null ? null : (
+        <YStack position="absolute" top={0} {...logical({ insetStart: 0 })}>
+          <UpdateGlyph status={status} morph={morph} />
+        </YStack>
+      )}
     </YStack>
   )
 }
