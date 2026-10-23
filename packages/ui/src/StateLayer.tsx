@@ -1,6 +1,8 @@
+import { useContext } from 'react'
 import type { GroupNames } from 'tamagui'
 import { YStack } from 'tamagui'
 
+import { InteractionOverride } from './interactionOverride'
 import { TILE_HOVER_OPACITY, TILE_PRESS_OPACITY, TILE_SCRIM } from './attachmentTileStyle'
 import { FEEDBACK_TRANSITION } from './feedbackTransition'
 
@@ -39,6 +41,13 @@ export function StateLayer({
   pressed?: boolean | undefined
 }) {
   const { color, hover, press } = TONES[tone]
+  const forced = useContext(InteractionOverride)
+  const opacity =
+    pressed || forced?.pressed === true
+      ? press
+      : atRest || forced?.hovered === true
+        ? hover
+        : 0
   return (
     <YStack
       position="absolute"
@@ -48,7 +57,7 @@ export function StateLayer({
       right={-bleed}
       {...(borderRadius === undefined ? {} : { borderRadius })}
       backgroundColor={color}
-      opacity={pressed ? press : atRest ? hover : 0}
+      opacity={opacity}
       pointerEvents="none"
       style={FEEDBACK_TRANSITION}
       {...{

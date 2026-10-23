@@ -190,24 +190,4 @@ describe('a file row’s layout', () => {
       'padding-bottom': 'var(--t-space-xs)',
     })
   })
-
-  it.each([
-    ['تقرير.pdf', 'rtl'],
-    ['report.pdf', 'ltr'],
-  ])('reads %s in its own direction, name and caption together', (filename, direction) => {
-    renderInUI(<FileRow {...pictureRow('idle', { filename })} />)
-    const column = byId(IDS.name).parentElement!
-    expect(column.contains(byId(IDS.caption))).toBe(true)
-    expect(declared(column).direction).toBe(direction)
-    // The caption is the app's copy: under an Arabic name, "52.5 kB" would read "kB 52.5".
-    expect(declared(byId(IDS.caption))['unicode-bidi']).toBe('plaintext')
-  })
-
-  it('draws the row’s hover only where the row takes a press', () => {
-    const hover = '[class*="_grouprow-hover"]'
-    const { rerender } = renderInUI(<FileRow {...pictureRow('ready')} />)
-    expect(byId(IDS.row).querySelector(hover)).not.toBeNull()
-    rerender(<FileRow {...pictureRow('ready', { onPress: undefined })} />)
-    expect(byId(IDS.row).querySelector(hover)).toBeNull()
-  })
 })

@@ -10,7 +10,7 @@ export const fileRow = defineStory<FileRowProps>({
   component: 'fileRow',
   story: 'states',
   width: 360,
-  forced: ['focus'],
+  forced: ['hover', 'focus'],
   sensitive: { rtl: true, responsive: true },
   variants: {
     idle: {
@@ -30,6 +30,16 @@ export const fileRow = defineStory<FileRowProps>({
       onAction: noop,
     },
     ready: { ...PDF, caption: '180 kB', state: 'ready', actionLabel: 'Export', onAction: noop },
+    readyOpens: {
+      ...PDF,
+      ...OPENS,
+      caption: '180 kB',
+      state: 'ready',
+      onPress: noop,
+      pressLabel: 'Open',
+      actionLabel: 'Export',
+      onAction: noop,
+    },
     failed: {
       ...PDF,
       caption: 'Failed to download',
