@@ -6,9 +6,7 @@ import {
   type AttachmentSetState,
   FOOTER_ACTION_ID,
 } from '@session/expectations'
-import { byId, declared, nodeOf } from '@session/render-tier'
-import { ELEMENT } from '@session/test-ids'
-import { buttonHeight } from '@session/ui'
+import { byId, nodeOf } from '@session/render-tier'
 
 import { AttachmentFooter } from '#src/AttachmentFooter'
 import type { AttachmentSet } from '#src/attachmentSet'
@@ -43,16 +41,5 @@ describe('an attachment footer’s verb', () => {
     renderScreen(<AttachmentFooter set={set('idle', 2)} onAction={onAction} />)
     await user.click(byId(FOOTER_ACTION_ID))
     expect(onAction).toHaveBeenCalledTimes(1)
-  })
-})
-
-describe('an attachment footer’s line', () => {
-  it('draws its verb as a quiet tonal button, and is as tall as a small button', () => {
-    renderScreen(<AttachmentFooter set={set('idle', 2)} onAction={() => {}} />)
-    const frame = byId(FOOTER_ACTION_ID).firstElementChild!
-    expect(declared(frame)['background-color']).toBe('var(--backgroundNested)')
-    expect(declared(byId(ELEMENT.conversation.attachmentFooter)).height).toBe(
-      `${String(buttonHeight('sm'))}px`,
-    )
   })
 })

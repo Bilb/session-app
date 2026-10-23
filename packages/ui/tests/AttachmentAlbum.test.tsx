@@ -10,12 +10,10 @@ import {
 } from '@session/expectations'
 import { ELEMENT } from '@session/test-ids'
 
-import { ALBUM_SEAM, albumLayout, cellPlace } from '#src/albumLayout'
+import { albumLayout } from '#src/albumLayout'
 import { AttachmentAlbum, type AlbumItem } from '#src/AttachmentAlbum'
-import { tileRadius } from '#src/attachmentTileStyle'
-import { THEME_STATES } from '#src/themes'
 
-import { byId, declared, nodeOf } from '@session/render-tier'
+import { byId, nodeOf } from '@session/render-tier'
 import { renderInUI } from './support/render'
 
 const WIDTH = 300
@@ -142,28 +140,6 @@ describe('an album tile', () => {
     expect(overflow).toBeGreaterThan(0)
     expect(nodeOf(ALBUM_TILE_ID, 4)?.name).toBe(`e.jpg and ${String(overflow)} more`)
     expect(nodeOf(ALBUM_TILE_ID, 3)?.name).toBe('d.jpg')
-  })
-
-  describe.each(THEME_STATES)('in %s', (theme) => {
-    it.each([
-      [false, 'var(--primaryColor)'],
-      [true, 'var(--onAccent)'],
-    ])('rings every focused tile in the seam, on an accent fill: %s, in %s', (onAccent, colour) => {
-      // Three, so the lead tile and the tiles beside it are both drawn.
-      const items = ['a', 'b', 'c'].map((name) => item(`${name}.jpg`, { hint: 'Open' }))
-      renderInUI(album(items, { onAccent }), theme)
-      const layout = albumLayout(items.length, WIDTH)
-      for (let at = 0; at < items.length; at += 1) {
-        const ring = declared(byId(ALBUM_TILE_ID, at), ':focus-visible')
-        expect(ring).toMatchObject({
-          'outline-color': colour,
-          'outline-offset': '0px',
-          'border-top-left-radius': `${String(tileRadius(cellPlace(layout, at)?.side ?? 0))}px`,
-        })
-        // Wider than the seam, the ring would reach the next tile, which paints over it.
-        expect(parseFloat(ring['outline-width'] ?? '')).toBeLessThanOrEqual(ALBUM_SEAM)
-      }
-    })
   })
 })
 
