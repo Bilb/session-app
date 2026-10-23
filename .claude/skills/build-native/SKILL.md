@@ -5,12 +5,12 @@ description: Rebuild the native layer after a change to packages/bridge-types, t
 
 # Rebuilding the native layer
 
-| changed                      | run                                                                  |
-| ---------------------------- | -------------------------------------------------------------------- |
-| `packages/bridge-types`      | `turbo codegen && turbo build:native`, then the iOS script below     |
-| shim C++ (`bridge-core`)     | `turbo build:native`, then the iOS script below                      |
-| `*.nitro.ts`                 | `turbo codegen`, `pod install`, then rebuild the mobile dev client   |
-| `libsession-util/` submodule | all three targets, then the contract suite against the real addon    |
+| changed                      | run                                                                |
+| ---------------------------- | ------------------------------------------------------------------ |
+| `packages/bridge-types`      | `turbo codegen && turbo build:native`, then the iOS script below   |
+| shim C++ (`bridge-core`)     | `turbo build:native`, then the iOS script below                    |
+| `*.nitro.ts`                 | `turbo codegen`, `pod install`, then rebuild the mobile dev client |
+| `libsession-util/` submodule | all three targets, then the contract suite against the real addon  |
 
 The generated C++ under `packages/bridge-core/include/session_bridge/gen` is committed, and CI's
 `codegen:check` fails if it is stale.
