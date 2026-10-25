@@ -74,6 +74,12 @@ describe('the indicator on both platforms', () => {
     }
   })
 
+  it('starts a departing layer drawn, so the old state fades out rather than vanishing', () => {
+    const [web, native] = halves
+    expect(web).toContain('const shown = leaving ? !entered : entered')
+    expect(native).toContain('const from = instant ? (leaving ? 0 : 1) : leaving ? 1 : 0')
+  })
+
   it('drops a departed layer on a timer that a progress update does not clear', () => {
     const hook = readFileSync(join(dir, 'crossfadeLayers.ts'), 'utf8')
     expect(hook).toContain('timers.current.add(timer)')

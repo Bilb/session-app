@@ -34,7 +34,9 @@ function FadeLayer({
       clearTimeout(frame)
     }
   }, [entered])
-  const shown = entered && !leaving
+  // A departing layer is a new element, mounted as the old one goes, so it starts drawn and fades
+  // out from there; an arriving one starts hidden and fades in.
+  const shown = leaving ? !entered : entered
   return (
     <YStack
       position="absolute"

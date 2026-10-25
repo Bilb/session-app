@@ -22,7 +22,10 @@ function FadeLayer({
   instant: boolean
   children: ReactNode
 }) {
-  const shown = useRef(new Animated.Value(instant ? 1 : 0)).current
+  // Starts where the fade starts: a departing layer is a new view, mounted drawn as the old one
+  // goes, and an arriving one hidden. Instant starts at the end.
+  const from = instant ? (leaving ? 0 : 1) : leaving ? 1 : 0
+  const shown = useRef(new Animated.Value(from)).current
   useEffect(() => {
     const target = leaving ? 0 : 1
     if (instant) {
