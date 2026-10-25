@@ -909,12 +909,12 @@ struct FileServerConfig {
     ::session_bridge::UrlScheme scheme;
     std::string host;
     double port;
-    /// The server's **X25519** pubkey, which is what onion requests to it are encrypted with, and a
-    /// different key from the Ed25519 one its QUIC endpoint is identified by.
-    std::string x25519_pubkey_hex;
+    /// The server's **Ed25519** pubkey, which its QUIC endpoint is identified by. libsession derives
+    /// the X25519 key onion requests to it are encrypted with from this, so that one is wrong here.
+    std::string ed25519_pubkey_hex;
 
-    FileServerConfig(::session_bridge::UrlScheme scheme_, std::string host_, double port_, std::string x25519_pubkey_hex_) :
-            scheme{std::move(scheme_)}, host{std::move(host_)}, port{std::move(port_)}, x25519_pubkey_hex{std::move(x25519_pubkey_hex_)} {}
+    FileServerConfig(::session_bridge::UrlScheme scheme_, std::string host_, double port_, std::string ed25519_pubkey_hex_) :
+            scheme{std::move(scheme_)}, host{std::move(host_)}, port{std::move(port_)}, ed25519_pubkey_hex{std::move(ed25519_pubkey_hex_)} {}
 };
 
 /// How requests reach the network.

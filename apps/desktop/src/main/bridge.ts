@@ -126,8 +126,8 @@ export async function createBridge(): Promise<BridgeTransport & MediaSource> {
           {
             seedUrl: developerSetting('EXPO_PUBLIC_SESSION_DEVNET_SEED_URL'),
             fileServerUrl: developerSetting('EXPO_PUBLIC_SESSION_FILE_SERVER_URL'),
-            fileServerX25519Pubkey: developerSetting(
-              'EXPO_PUBLIC_SESSION_FILE_SERVER_X25519_PUBKEY',
+            fileServerEd25519Pubkey: developerSetting(
+              'EXPO_PUBLIC_SESSION_FILE_SERVER_ED25519_PUBKEY',
             ),
           },
           'EXPO_PUBLIC_SESSION_',

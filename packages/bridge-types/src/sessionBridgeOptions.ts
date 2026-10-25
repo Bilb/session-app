@@ -40,10 +40,10 @@ export interface FileServerConfig {
   port: number
 
   /**
-   * The server's **X25519** pubkey, which is what onion requests to it are encrypted with, and a
-   * different key from the Ed25519 one its QUIC endpoint is identified by.
+   * The server's **Ed25519** pubkey, which its QUIC endpoint is identified by. libsession derives
+   * the X25519 key onion requests to it are encrypted with from this, so that one is wrong here.
    */
-  x25519PubkeyHex: string
+  ed25519PubkeyHex: string
 }
 
 /**
