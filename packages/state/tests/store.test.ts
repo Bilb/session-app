@@ -63,7 +63,8 @@ describe('the network status', () => {
     expect(store.getState().networkStatus).toBe('disconnected')
 
     await alice.attachNetwork({ netid: 'mainnet' })
-    expect(store.getState().networkStatus).toBe('connecting')
+    // A new Network has not heard from its transport or router yet.
+    expect(store.getState().networkStatus).toBe('unknown')
     world.settle()
     expect(store.getState().networkStatus).toBe('connected')
   })

@@ -10,7 +10,7 @@ function statuses(events: SessionEvent[]): NetworkStatus[] {
 }
 
 describe("the fake's network status", () => {
-  it('connects, then has a path a tick later, once a network is attached to an account', async () => {
+  it('starts unknown, then connects and has a path, once a network is attached to an account', async () => {
     const { world, clients } = friends(['Alice', 'Bob'], { history: 0 })
     const alice = clients['Alice']
     if (!alice) throw new Error('no Alice')
@@ -18,11 +18,11 @@ describe("the fake's network status", () => {
     alice.onEvent((e) => events.push(e))
 
     await alice.attachNetwork(MAINNET)
-    expect(statuses(events)).toEqual(['connecting'])
-    expect(await alice.getNetworkStatus()).toBe('connecting')
+    expect(statuses(events)).toEqual(['unknown'])
+    expect(await alice.getNetworkStatus()).toBe('unknown')
 
     world.settle()
-    expect(statuses(events)).toEqual(['connecting', 'connected'])
+    expect(statuses(events)).toEqual(['unknown', 'connecting', 'connected'])
     expect(await alice.getNetworkStatus()).toBe('connected')
     expect((await alice.getAccountInfo()).networkAttached).toBe(true)
   })
@@ -40,7 +40,7 @@ describe("the fake's network status", () => {
 
     await alice.createAccount()
     world.settle()
-    expect(statuses(events)).toEqual(['connecting', 'connected'])
+    expect(statuses(events)).toEqual(['unknown', 'connecting', 'connected'])
   })
 
   it('reports disconnected as a discard takes the network, and reconnects on the next account', async () => {
@@ -58,6 +58,6 @@ describe("the fake's network status", () => {
 
     await alice.createAccount()
     world.settle()
-    expect(statuses(events)).toEqual(['disconnected', 'connecting', 'connected'])
+    expect(statuses(events)).toEqual(['disconnected', 'unknown', 'connecting', 'connected'])
   })
 })

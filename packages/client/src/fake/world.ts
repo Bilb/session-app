@@ -293,15 +293,20 @@ export class FakeAccount {
   }
 
   /**
-   * Attaches the planned network once there is an account, as the bridge does: connecting at once,
-   * and a path a tick later on the world's clock, since a real one takes a round trip to build.
-   * Nothing where there is no plan, no account yet, or a network already attached.
+   * Attaches the planned network once there is an account, as the bridge does: `unknown` at once,
+   * connecting a tick later and a path a tick after that, on the world's clock. The bridge reports
+   * the status the Network has as soon as it exists, which is libsession's `unknown`: its transport
+   * and router report through its own queue, after the constructor has returned. Nothing where
+   * there is no plan, no account yet, or a network already attached.
    */
   goOnline(): void {
     if (!this.networkPlanned || !this.haveAccount || this.networkAttached) return
     this.networkAttached = true
-    this.setNetworkStatus('connecting')
+    this.setNetworkStatus('unknown')
     this.world?.schedule(1, () => {
+      if (this.networkAttached) this.setNetworkStatus('connecting')
+    })
+    this.world?.schedule(2, () => {
       if (this.networkAttached) this.setNetworkStatus('connected')
     })
   }
