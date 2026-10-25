@@ -43,11 +43,7 @@ export function StateLayer({
   const { color, hover, press } = TONES[tone]
   const forced = useContext(InteractionOverride)
   const opacity =
-    pressed || forced?.pressed === true
-      ? press
-      : atRest || forced?.hovered === true
-        ? hover
-        : 0
+    pressed || forced?.pressed === true ? press : atRest || forced?.hovered === true ? hover : 0
   return (
     <YStack
       position="absolute"
