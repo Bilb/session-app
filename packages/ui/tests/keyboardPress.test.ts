@@ -21,7 +21,11 @@ const ring = focusRing({ onAccent: false, offset: 0, radius: '$sm' })
 function keyHandler(onPress: () => void): (event: PressKeyEvent) => void {
   const props = keyboardPress(onPress, ring)
   if (!('onKeyDown' in props)) throw new Error('a pressable stack took no keys')
-  return props.onKeyDown
+  const { onKeyDown } = props
+  // The handler is typed for react-native's key event; on the web it receives the DOM's.
+  return (event) => {
+    onKeyDown(event as unknown as Parameters<typeof onKeyDown>[0])
+  }
 }
 
 describe('a key on a focused pressable stack', () => {

@@ -44,8 +44,8 @@ function networkRefusal(config: NetworkAttachment): string | undefined {
 
   if (config.fileServer) {
     if (config.fileServer.host.length === 0) return 'fileServer.host must not be empty'
-    if (!isHex64(config.fileServer.x25519PubkeyHex))
-      return 'fileServer.x25519PubkeyHex must be 64 hex characters'
+    if (!isHex64(config.fileServer.ed25519PubkeyHex))
+      return 'fileServer.ed25519PubkeyHex must be 64 hex characters'
     if (!isPort(config.fileServer.port)) return 'fileServer.port must be a port'
   }
 

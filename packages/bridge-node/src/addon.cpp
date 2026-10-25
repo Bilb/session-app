@@ -98,7 +98,7 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
                     *scheme,
                     fs.Get("host").As<Napi::String>().Utf8Value(),
                     fs.Get("port").As<Napi::Number>().DoubleValue(),
-                    fs.Get("x25519PubkeyHex").As<Napi::String>().Utf8Value()};
+                    fs.Get("ed25519PubkeyHex").As<Napi::String>().Utf8Value()};
         }
         if (options.Has("router") && !options.Get("router").IsUndefined()) {
             auto kind = session_bridge::EnumTraits<session_bridge::RouterKind>::parse(

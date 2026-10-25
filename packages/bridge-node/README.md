@@ -15,7 +15,7 @@ pnpm --filter @session/bridge-node build:native
 ```
 
 Takes a while the first time: it builds libsession and its static dependencies. Needs `cmake`,
-`ninja` and gcc - see `packages/bridge-core/README.md` for why gcc rather than clang.
+`ninja`, `meson` >= 1.4 and gcc - see `packages/bridge-core/README.md` for why gcc rather than clang.
 
 ## Testing
 

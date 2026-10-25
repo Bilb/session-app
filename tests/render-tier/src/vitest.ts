@@ -28,6 +28,11 @@ export function renderProject(config: string): TestProjectInlineConfiguration {
     resolve: {
       alias: [
         { find: /^react-native$/, replacement: 'react-native-web' },
+        // As the desktop renderer resolves it: React Native no longer installs this from 0.88.
+        {
+          find: /^@react-native\/assets-registry\/registry$/,
+          replacement: 'react-native-web/dist/modules/AssetRegistry',
+        },
         // vite takes only the first of the `#src/*` targets, which misses every .tsx.
         { find: /^#src\/(.*)$/, replacement: `${src}/$1` },
       ],
