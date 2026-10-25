@@ -43,9 +43,10 @@ function focusVisible(event: FocusEvent): boolean {
  * The web half: a bubble beside a control, on a resting pointer or on keyboard focus.
  *
  * WCAG 1.4.13's three rules for content on hover or focus: it can be **dismissed** without moving
- * the pointer or focus (Escape), it is **hoverable** (the bubble is inside the wrapper, so moving
- * onto it is not leaving), and it **persists** until one of those or a blur ends it. A press
- * hides it, since the control has now done what the tooltip described.
+ * the pointer or focus (Escape, heard on the document, since focus may be anywhere while a resting
+ * pointer holds it open), it is **hoverable** (the bubble and the gap before it are inside the
+ * wrapper, so moving onto it is not leaving), and it **persists** until one of those or a blur
+ * ends it. A press hides it, since the control has now done what the tooltip described.
  *
  * Laid out in place rather than through a portal, so it needs no measuring and mirrors with the
  * page; the cost is that an ancestor clipping its overflow would clip the bubble too.
@@ -65,6 +66,17 @@ export function Tooltip({ label, placement = 'end', children, testID }: TooltipP
     setOpen(false)
   }
 
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') hide()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
   return (
     <YStack
       position="relative"
@@ -79,40 +91,35 @@ export function Tooltip({ label, placement = 'end', children, testID }: TooltipP
         if (focusVisible(event)) show()
       }}
       onBlur={hide}
-      onKeyDown={(raw) => {
-        // The DOM's event on the web, which is the only place this file runs; react-native's types
-        // describe its own key event, which carries no `key` at the top.
-        const event = raw as unknown as { key: string }
-        if (event.key === 'Escape') hide()
-      }}
     >
       {children}
       {open ? (
         <YStack
           aria-hidden
-          backgroundColor="$messageBubbleIncomingBg"
-          borderRadius="$sm"
-          paddingVertical="$2xs"
-          paddingHorizontal="$md"
-          boxShadow={`0px 0px 13px 0px ${shadow}`}
           zIndex={LAYER}
-          testID={testID}
-          style={{
-            ...tooltipPosition(placement, GAP_PX),
-            width: 'max-content',
-            maxWidth: MAX_WIDTH_PX,
-          }}
+          style={{ ...tooltipPosition(placement, GAP_PX), width: 'max-content' }}
         >
-          <TooltipArrow placement={placement} />
-          {/* Positioned, so it draws over the arrow, which is too. */}
-          <Text
-            size="$body"
-            color="$messageBubbleIncomingText"
-            userSelect="none"
+          <YStack
             position="relative"
+            backgroundColor="$messageBubbleIncomingBg"
+            borderRadius="$sm"
+            paddingVertical="$2xs"
+            paddingHorizontal="$md"
+            boxShadow={`0px 0px 13px 0px ${shadow}`}
+            maxWidth={MAX_WIDTH_PX}
+            testID={testID}
           >
-            {label}
-          </Text>
+            <TooltipArrow placement={placement} />
+            {/* Positioned, so it draws over the arrow, which is too. */}
+            <Text
+              size="$body"
+              color="$messageBubbleIncomingText"
+              userSelect="none"
+              position="relative"
+            >
+              {label}
+            </Text>
+          </YStack>
         </YStack>
       ) : null}
     </YStack>

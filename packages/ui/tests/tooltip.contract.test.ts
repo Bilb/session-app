@@ -28,6 +28,8 @@ describe('the tooltip on the web', () => {
 
   it('can be dismissed with Escape without moving focus, and goes on a press', () => {
     expect(web).toMatch(/if \(event\.key === 'Escape'\) hide\(\)/)
+    // On the document: a resting pointer opens it while focus is somewhere else entirely.
+    expect(web).toContain("document.addEventListener('keydown', onKeyDown)")
     expect(web).toContain('onMouseDown={hide}')
   })
 
