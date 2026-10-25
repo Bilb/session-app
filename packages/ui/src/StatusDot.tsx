@@ -12,11 +12,10 @@ export type StatusTone = 'positive' | 'warning' | 'danger' | 'neutral'
 /**
  * The colour each tone draws in.
  *
- * `positive` is the onion path's fixed green, the same in every theme and never the accent, as all
- * three legacy clients draw it: the network diagram is an illustration, which THEMING.md exempts.
- * The other two are the theme's semantic roles, as legacy Android draws them, because a path that
- * is failing is a warning to read rather than an illustration, and those roles clear 3:1 in every
- * theme where the legacy desktop's fixed amber and red do not.
+ * `positive` is the onion path's fixed green, the same in every theme and never the accent: the
+ * network diagram is an illustration, which THEMING.md exempts. The other two are the theme's
+ * semantic roles, because a path that is failing is a warning to read rather than an illustration,
+ * and those roles clear 3:1 in every theme where a fixed amber and red do not.
  */
 const TONE_COLOR: Record<StatusTone, string> = {
   positive: COLORS.PATH.DEFAULT,
@@ -25,13 +24,10 @@ const TONE_COLOR: Record<StatusTone, string> = {
   neutral: '$textDisabled',
 }
 
-/**
- * A step up from the legacy desktop's 12 px dot: with a glyph inside, the glow no longer carries
- * the dot's presence on its own, and the glyph reads more easily.
- */
+/** Big enough for the glyph inside it to read. */
 const DEFAULT_SIDE_PX = SIZE_SCALE.sm
 
-/** A blur in the dot's own colour, wide enough to read as the legacy desktop's soft light. */
+/** A blur in the dot's own colour, wide enough to read as a soft light. */
 const DEFAULT_GLOW_PX = 10
 
 /** Every glyph is drawn on a 24-unit grid, scaled to the dot. */
@@ -78,7 +74,9 @@ function Glyph({ tone }: { tone: StatusTone }) {
  * in words -- a tooltip, a label beside it, or the accessibility label of the control it sits on.
  *
  * `ringPx` cuts it out of what it overlaps, a ring in the pane's own surface: the home avatar's
- * badge sits on the avatar's edge.
+ * badge sits on the avatar's edge. The ring is a disc of its own behind the dot rather than a
+ * border on it: a border's anti-aliased outer edge lets the background under it show through, a
+ * fringe of the dot's colour round the ring.
  */
 export function StatusDot({
   tone,
@@ -100,18 +98,25 @@ export function StatusDot({
       width={sidePx + 2 * ringPx}
       height={sidePx + 2 * ringPx}
       borderRadius="$full"
-      borderWidth={ringPx}
-      borderColor={surface}
-      backgroundColor={color}
-      boxShadow={`0px 0px ${String(glowPx)}px 0px ${color}`}
+      backgroundColor={ringPx > 0 ? surface : 'transparent'}
       alignItems="center"
       justifyContent="center"
       pointerEvents="none"
       testID={testID}
     >
-      <Svg width={sidePx} height={sidePx} viewBox={`0 0 ${String(GRID)} ${String(GRID)}`}>
-        <Glyph tone={tone} />
-      </Svg>
+      <YStack
+        width={sidePx}
+        height={sidePx}
+        borderRadius="$full"
+        backgroundColor={color}
+        boxShadow={`0px 0px ${String(glowPx)}px 0px ${color}`}
+        alignItems="center"
+        justifyContent="center"
+      >
+        <Svg width={sidePx} height={sidePx} viewBox={`0 0 ${String(GRID)} ${String(GRID)}`}>
+          <Glyph tone={tone} />
+        </Svg>
+      </YStack>
     </YStack>
   )
 }

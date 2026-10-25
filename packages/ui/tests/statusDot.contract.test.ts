@@ -28,6 +28,8 @@ describe('the status dot', () => {
 
   it('cuts itself out of what it overlaps in the pane surface', () => {
     expect(source).toContain('useTokenColor(usePaneSurface())')
-    expect(source).toContain('borderColor={surface}')
+    // A disc of its own behind the dot: a border's anti-aliased edge lets the dot's colour show.
+    expect(source).toContain("backgroundColor={ringPx > 0 ? surface : 'transparent'}")
+    expect(source).not.toContain('borderColor={surface}')
   })
 })
