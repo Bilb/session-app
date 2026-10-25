@@ -76,7 +76,7 @@ export function AdaptiveShell({
               }
             : { flex: 1 })}
         >
-          {/* Recessed beside the detail, as the legacy desktop's left pane is; on its own the list
+          {/* Recessed beside the detail, so the two read as separate panes; on its own the list
               is the page. */}
           <PaneSurfaceProvider value={twoPanes ? '$backgroundSecondary' : '$backgroundPrimary'}>
             <RailProvider value={withRail}>

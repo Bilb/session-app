@@ -8,8 +8,8 @@ import { PENDING_COPY } from './pendingCopy'
  * The onion path's dot, from the network's status: green with a path, amber while one is being
  * built, red with none, grey before anything has reported.
  *
- * libsession reports one status for the whole network rather than the legacy desktop's count of
- * paths, so there is no amber for "only one path": amber is connecting, as on legacy iOS.
+ * libsession reports one status for the whole network rather than a count of paths, so there is no
+ * amber for "only one path": amber is connecting.
  */
 export function pathStatusTone(status: NetworkStatus): StatusTone {
   switch (status) {

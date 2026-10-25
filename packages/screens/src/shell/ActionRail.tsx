@@ -27,33 +27,32 @@ import { pathStatusLabel, pathStatusTone } from '../pathStatus'
 import { PENDING_COPY } from '../pendingCopy'
 import { useLocale } from '../useLocale'
 
-/** The legacy desktop's `--actions-panel-width`. */
+/** The widest item, the path light's square, with a margin either side. */
 const RAIL_WIDTH_PX = 80
-/** The legacy desktop's `AvatarSize.S`. Off the size ladder, which has 32 and 40. */
-const AVATAR_PX = 36
-/** The settings badge on the avatar: a 15 px gear in a disc 2.5 px wider all round. */
+const AVATAR_PX = SIZE_SCALE['2xl']
+/** The settings badge on the avatar: a gear in a disc 2 px wider all round. */
 const GEAR_DISC_PX = SIZE_SCALE.md
-const GEAR_GLYPH_PX = 15
-/** How far the badge hangs below the avatar: the legacy desktop's -10% of its side. */
+const GEAR_GLYPH_PX = SIZE_SCALE.sm
+/** How far the badge hangs below the avatar, a tenth of its side. */
 const GEAR_DROP_PX = -AVATAR_PX * 0.1
-/** The path light's hit area: its 12 px dot inside the legacy desktop's 22 px of padding. */
+/** The path light's hit area. */
 const PATH_SIDE_PX = SIZE_SCALE['4xl']
-/** The theme toggle's: a 20 px glyph inside the legacy desktop's 15 px of padding. */
-const THEME_SIDE_PX = 50
+/** The theme toggle's: its glyph with room for the hover layer round it. */
+const THEME_SIDE_PX = SIZE_SCALE['3xl']
 
-/** The avatar, with the gear that says it opens settings. */
-function SettingsAvatar() {
+/** The settings button: the account's avatar, with the gear that says what it opens. */
+function SettingsButton() {
   const account = useAccount()
   const openSettings = useOpenSettings()
   const ring = useTokenColor('$bordersColor')
   const label = tr('sessionSettings')
   return (
-    <Tooltip label={label} testID={ELEMENT.rail.tooltip('avatar')}>
+    <Tooltip label={label} testID={ELEMENT.rail.tooltip('settings')}>
       <RailButton
         sidePx={AVATAR_PX}
         accessibilityLabel={label}
         onPress={openSettings}
-        testID={ELEMENT.rail.avatar}
+        testID={ELEMENT.rail.settings}
       >
         {/* The badge's own containing block, so it is placed against the avatar whatever the
             button around it does. */}
@@ -87,9 +86,9 @@ function SettingsAvatar() {
 /**
  * The onion path's light.
  *
- * TODO: open the path screen on a press, as the legacy desktop's light does. There is no path
- * screen yet: it needs the nodes of the current path, which libsession's `get_path_to` has and the
- * bridge does not carry. Until then the light is a status that names itself, with no press.
+ * TODO: open the path screen on a press. There is no path screen yet: it needs the nodes of the
+ * current path, which libsession's `get_path_to` has and the bridge does not carry. Until then the
+ * light is a status that names itself, with no press.
  */
 function PathLight() {
   const status = useNetworkStatus()
@@ -146,8 +145,8 @@ function UpdateLight({ status }: { status: UpdateStatus }) {
 }
 
 /**
- * Light or dark within the theme's family, keeping the accent, as the legacy desktop's toggle
- * does. The glyph shows the mode in force, moon while dark, and the name says what a press does.
+ * Light or dark within the theme's family, keeping the accent. The glyph shows the mode in force,
+ * moon while dark, and the name says what a press does.
  */
 function ThemeToggle() {
   const actions = useSessionActions()
@@ -172,7 +171,7 @@ function ThemeToggle() {
 
 /**
  * The column down the start edge of a wide layout: the account at the top, the app's ambient
- * status at the bottom. What the legacy desktop's rail holds today, less its debug button.
+ * status at the bottom.
  *
  * Its own safe area, since it is against the display's edge where the list used to be: the top,
  * the bottom and the side it sits on. In a resizable iPad window the window's controls sit in its
@@ -200,7 +199,7 @@ export function ActionRail() {
         {...logical({ borderEndWidth: 1, borderEndColor: rule })}
       >
         <YStack alignItems="center" gap="$lg">
-          <SettingsAvatar />
+          <SettingsButton />
         </YStack>
         <YStack flex={1} />
         <YStack alignItems="center" gap="$lg">

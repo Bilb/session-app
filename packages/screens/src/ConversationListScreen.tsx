@@ -27,7 +27,6 @@ import {
   XStack,
   YStack,
 } from '@session/ui'
-import { useEffect, useState } from 'react'
 
 import { NetworkOverlay } from './NetworkOverlay'
 import { conversationRowState, type UnreadBadge, type UnreadTone } from './conversationRowState'
@@ -35,6 +34,7 @@ import { conversationTitle } from './conversationTitle'
 import { useOpenSettings } from './settings/SettingsRootPage'
 import { pathStatusTone } from './pathStatus'
 import { useBesideRail, useTopBarInsets } from './shell/pane'
+import { useHeldSelection } from './useHeldSelection'
 import { useFormattingLocale } from './useLocale'
 
 const AVATAR_SIZE_PX = SIZE_SCALE['3xl']
@@ -55,21 +55,19 @@ const MARKED_DOT = '$xxs'
 /** The least room between the end of the name's icons and the time. */
 const TIME_GAP_MIN = '$xxs'
 
-/** The header avatar, as both legacy mobile clients draw it. */
-const HEADER_AVATAR_PX = 26
+const HEADER_AVATAR_PX = SIZE_SCALE.lg
 /**
- * The path's status on its corner. Legacy's 8 is too small for the glyph inside to read, so it is
- * the rail's 12, cut out of the avatar by a ring of the surface rather than lit by a glow.
+ * The path's status on its corner: the least size its glyph reads at, cut out of the avatar by a
+ * ring of the surface rather than lit by a glow.
  */
 const HEADER_DOT_PX = SIZE_SCALE.xs
 const HEADER_DOT_RING_PX = 2
 
 /**
- * The account's avatar, which opens settings, with the onion path's dot on its bottom-end corner,
- * as both legacy mobile clients have it.
+ * The account's avatar, which opens settings, with the onion path's dot on its bottom-end corner.
  *
  * Only on one pane: beside the rail, the rail has the avatar. The button is named for what it
- * does, as legacy iOS names it; the path's state in words is on the Settings row it leads to.
+ * does; the path's state in words is on the Settings row it leads to.
  */
 function SettingsAvatarButton({ onPress }: { onPress: () => void }) {
   const account = useAccount()
@@ -174,7 +172,7 @@ export function ConversationListScreen({
         <XStack alignItems="center" gap="$xs" flexShrink={1}>
           {/* Settings had a route and no way to reach it, which made the account ID - the one
               thing someone else needs in order to write to this device - unreachable too. On the
-              leading side, before the title, as both legacy mobile clients have it. */}
+              leading side, before the title. */}
           {besideRail ? null : <SettingsAvatarButton onPress={openSettings} />}
           <NetworkOverlay>
             <Text size="$title" weight="bold">
@@ -320,38 +318,6 @@ function UnreadBadgeView({ badge }: { badge: UnreadBadge }) {
       </Text>
     </XStack>
   )
-}
-
-/** How long a pressed row waits for its route before it lets the selection go. */
-const SELECTION_HOLD_MS = 1000
-
-/**
- * Whether a row draws as selected: open, or pressed and on its way to being open.
- *
- * The route that marks a row open lands a render or more after the press ends, and in between
- * the row fell back to its hover for a frame -- pressed, then hovered, then selected. So a press
- * holds the selection until the route catches up, or for `SELECTION_HOLD_MS` if it never does.
- */
-function useHeldSelection(open: boolean): { held: boolean; hold: () => void } {
-  const [pressed, setPressed] = useState(false)
-  useEffect(() => {
-    if (open) setPressed(false)
-  }, [open])
-  useEffect(() => {
-    if (!pressed) return
-    const timer = setTimeout(() => {
-      setPressed(false)
-    }, SELECTION_HOLD_MS)
-    return () => {
-      clearTimeout(timer)
-    }
-  }, [pressed])
-  return {
-    held: open || pressed,
-    hold: () => {
-      setPressed(true)
-    },
-  }
 }
 
 function ConversationRow({

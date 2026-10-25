@@ -232,9 +232,9 @@ export function SettingsRootPage() {
           confirmLink(modals, URLS.donationsApp)
         },
       },
-      // The path's live state, as a dot named in words, as every legacy client's Path row has
-      // its light. TODO: open the path screen, which needs the nodes of the current path that
-      // libsession's `get_path_to` has and the bridge does not carry yet.
+      // The path's live state, as a dot named in words. TODO: open the path screen, which needs
+      // the nodes of the current path that libsession's `get_path_to` has and the bridge does not
+      // carry yet.
       {
         label: tr('onionRoutingPath'),
         icon: (

@@ -29,9 +29,9 @@ export interface RailButtonProps {
  * One item down the side rail: a square hit area with its content centred, lit on hover and press
  * by a round layer the size of the square.
  *
- * Its own component rather than `Button`, whose sizes are control heights: the rail's items keep
- * the legacy desktop's hit areas, which are not on that ladder. Where one is smaller than a finger
- * needs, a touch reaches past it, which only a tablet's rail ever meets.
+ * Its own component rather than `Button`, whose sizes are control heights: a rail item is a square
+ * sized to what it holds. Where one is smaller than a finger needs, a touch reaches past it, which
+ * only a tablet's rail ever meets.
  */
 export function RailButton({
   sidePx,

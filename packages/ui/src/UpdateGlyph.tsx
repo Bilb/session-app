@@ -10,13 +10,14 @@ import {
   TRANSFER_RING_SWEEP_DEGREES,
   TRANSFER_RING_THICKNESS,
 } from './ProgressRing'
+import { SIZE_SCALE } from './scales'
 import type { UpdateStatus } from './UpdateIndicator.types'
 import { morphFrame } from './updateIndicatorTiming'
 import type { ActiveMorph } from './useUpdateMorph'
 import { useTokenColor } from './useTokenColor'
 
 const SIDE_PX = TRANSFER_RING_SIDE_PX
-const GLYPH_PX = 14
+const GLYPH_PX = SIZE_SCALE.sm
 /** How many dots the available ring is drawn with. */
 const DOTS = 12
 

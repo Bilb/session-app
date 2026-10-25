@@ -17,12 +17,12 @@ export const ELEMENT = {
   /** The column down the side of a wide layout, beside the conversation list. */
   rail: {
     screen: 'rail',
-    avatar: 'rail-avatar',
+    settings: 'rail-settings',
     pathStatus: 'rail-path-status',
     update: 'rail-update',
     themeToggle: 'rail-theme-toggle',
     /**
-     * A rail item's tooltip, by the item's own name: `avatar`, `update`, `path-status`,
+     * A rail item's tooltip, by the item's own name: `settings`, `update`, `path-status`,
      * `theme-toggle`.
      */
     tooltip: (item: string) => `rail-tooltip-${item}` as const,
