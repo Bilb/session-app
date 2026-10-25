@@ -14,7 +14,8 @@ docker build --quiet --tag session-catalog "$here" >/dev/null
 mkdir -p "$out"
 
 # --init: xvfb-run as the container's first process never hears that Xvfb is ready.
-docker run --rm --init \
+# CATALOG_CGROUP_PARENT lifts a capture out of a daemon-wide parent that throttles a host's CI.
+docker run --rm --init ${CATALOG_CGROUP_PARENT:+--cgroup-parent "$CATALOG_CGROUP_PARENT"} \
   --user "$(id -u):$(id -g)" \
   --env HOME=/tmp/home --env COREPACK_HOME=/tmp/corepack \
   --env CATALOG_TIER="${CATALOG_TIER:-pr}" --env CATALOG_OUT=/out \

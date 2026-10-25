@@ -21,7 +21,8 @@ concurrency:
 
 jobs:
   desktop:
-    runs-on: ubuntu-latest
+    # The pinned capture image makes the pictures the same on any runner; this one is faster.
+    runs-on: [self-hosted, linux, x64, session-catalog]
     env:
       CATALOG_TIER: ${{ inputs.tier || 'pr' }}
       CATALOG_OUT: ${{ github.workspace }}/test-results/catalog
