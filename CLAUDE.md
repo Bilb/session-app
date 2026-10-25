@@ -86,13 +86,23 @@ reference: the tablet layout will catch most of a phone layout's mistakes.
 
 ## Tests required, in the same PR
 
-| change            | test                                                       |
-| ----------------- | ---------------------------------------------------------- |
-| bridge capability | contract scenario + fake update + echo-frame case          |
-| screen            | route-contract row + fast-tier e2e smoke                   |
-| ui component      | render test (`*.test.tsx`) against `@session/expectations` |
-| state projection  | reducer unit test                                          |
-| bug fix           | the test that would have caught it                         |
+| change            | test                                                                |
+| ----------------- | ------------------------------------------------------------------- |
+| bridge capability | contract scenario + fake update + echo-frame case                   |
+| screen            | route-contract row + fast-tier e2e smoke                            |
+| ui component      | catalog story; a render test only for what a picture cannot show    |
+| screen state      | catalog scenario in `apps/desktop/src/renderer/catalog/scenarios`   |
+| state projection  | reducer unit test                                                   |
+| bug fix           | the test that would have caught it: a catalog row if it can be seen |
+
+**What can be seen is tested in the catalog, not in a render test.** A look (colour, fill, ring,
+hover, press, focus, direction, layout at a width) is a story in `packages/ui/src/catalog/stories`:
+a row per variant including the worst case, `forced` for interaction states, `sensitive` for
+accent, RTL and width. Argos diffs every page and axe audits it on each PR. A `*.test.tsx` holds
+only what a picture cannot show: accessible role, name and state; what a press calls; focus and
+timing; two outcomes that draw alike (which verb, which id, against `@session/expectations`); a
+contract another package reads. A render test that asserts a style, a colour or a direction
+repeats the catalog: write the story instead.
 
 No source greps: assert what is drawn, never what a file contains.
 What only a phone shows goes in a shared spec with `clients: { alice: EACH }`, run by
