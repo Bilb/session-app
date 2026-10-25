@@ -4,19 +4,20 @@ import { YStack } from 'tamagui'
 import { SPACE_SCALE } from './scales'
 import { Text } from './Text'
 import type { TooltipProps } from './Tooltip.types'
+import { TOOLTIP_ARROW_REACH_PX, TooltipArrow } from './TooltipArrow'
 import { tooltipPosition } from './tooltipPosition'
 import { useTokenColor } from './useTokenColor'
 
 export type { TooltipProps }
 
 /**
- * How long a pointer rests on the control before the tooltip shows: the legacy desktop client's
- * debounce, long enough that sweeping across the rail does not flash every one of them.
+ * How long a pointer rests on the control before the tooltip shows: long enough that sweeping
+ * across the rail does not flash every one of them.
  */
 const HOVER_DELAY_MS = 150
 
-/** Clear of the control, so the bubble does not read as part of it. */
-const GAP_PX = SPACE_SCALE.xs
+/** The arrow's tip clear of the control, so the bubble does not read as part of it. */
+const GAP_PX = SPACE_SCALE.xs + TOOLTIP_ARROW_REACH_PX
 
 /** Past this a label wraps rather than running across the window. */
 const MAX_WIDTH_PX = 240
@@ -102,7 +103,14 @@ export function Tooltip({ label, placement = 'end', children, testID }: TooltipP
             maxWidth: MAX_WIDTH_PX,
           }}
         >
-          <Text size="$body" color="$messageBubbleIncomingText" userSelect="none">
+          <TooltipArrow placement={placement} />
+          {/* Positioned, so it draws over the arrow, which is too. */}
+          <Text
+            size="$body"
+            color="$messageBubbleIncomingText"
+            userSelect="none"
+            position="relative"
+          >
             {label}
           </Text>
         </YStack>

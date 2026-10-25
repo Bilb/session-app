@@ -39,6 +39,11 @@ describe('the tooltip on the web', () => {
   it('hides the bubble from assistive technology, which reads the control’s own label', () => {
     expect(web).toMatch(/<YStack\s+aria-hidden/)
   })
+
+  it('points at the control, with the arrow under the label', () => {
+    expect(web).toContain('<TooltipArrow placement={placement} />')
+    expect(web.indexOf('<TooltipArrow')).toBeLessThan(web.indexOf('<Text'))
+  })
 })
 
 describe('the tooltip on native', () => {
@@ -56,5 +61,10 @@ describe('the tooltip on native', () => {
   it('is hidden from assistive technology, which reads the control’s label instead', () => {
     expect(native).toContain('importantForAccessibility="no-hide-descendants"')
     expect(native).toContain('accessibilityElementsHidden')
+  })
+
+  it('points at the control, with the arrow under the label', () => {
+    expect(native).toContain('<TooltipArrow placement={placement} />')
+    expect(native.indexOf('<TooltipArrow')).toBeLessThan(native.indexOf('<Text'))
   })
 })

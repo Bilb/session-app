@@ -6,6 +6,7 @@ import { logical } from './logicalEdges'
 import { SPACE_SCALE } from './scales'
 import { Text } from './Text'
 import type { TooltipProps } from './Tooltip.types'
+import { TOOLTIP_ARROW_REACH_PX, TooltipArrow } from './TooltipArrow'
 import type { TooltipPlacement } from './tooltipPosition'
 import { useTokenColor } from './useTokenColor'
 
@@ -13,7 +14,8 @@ export type { TooltipProps }
 
 /** As the web's: long enough that sweeping a pointer across the rail does not flash each one. */
 const HOVER_DELAY_MS = 150
-const GAP_PX = SPACE_SCALE.xs
+/** As the web's: the arrow's tip clear of the control. */
+const GAP_PX = SPACE_SCALE.xs + TOOLTIP_ARROW_REACH_PX
 const MAX_WIDTH_PX = 240
 const LAYER = 10
 
@@ -23,8 +25,7 @@ const LAYER = 10
  * control along one axis and as wide as the bubble may grow along the other, and centred there.
  *
  * Placed by the control's measured size rather than by a percentage: a percentage inset on an
- * absolute child resolved against the rail's column rather than the control, which put the bubble a
- * rail's width out.
+ * absolute child resolves against the rail's column rather than the control.
  */
 function slot(placement: TooltipPlacement, size: { width: number; height: number }): ViewStyle {
   switch (placement) {
@@ -114,6 +115,7 @@ export function Tooltip({ label, placement = 'end', children, testID }: TooltipP
             maxWidth={MAX_WIDTH_PX}
             testID={testID}
           >
+            <TooltipArrow placement={placement} />
             <Text size="$body" color="$messageBubbleIncomingText">
               {label}
             </Text>
