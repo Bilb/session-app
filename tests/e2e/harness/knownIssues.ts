@@ -30,9 +30,15 @@ const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, string>>> = {
     'color-contrast fileRow.onAccent idle':
       'the caption on a purple sent bubble, ocean themes: 4.2:1',
     'color-contrast fileRow.onAccent failed': 'the same',
+    'color-contrast fileRow.received idle':
+      'the caption on a received bubble, as message-attachment-state: 4.1:1',
+    'color-contrast fileRow.received fetching': 'the same',
+    'color-contrast fileRow.received failed':
+      'the danger ink on a received bubble in a light theme, as message-attachment-action: 3.6:1',
     'aria-progressbar-name button.variants loading': 'the spinner has no accessible name',
     'color-contrast catalog-settings-row-trailing':
       'a secondary value on a pressed row, classic-light: 4.1:1',
+    'color-contrast catalog-settings-row-arabic': 'its trailing value on a pressed row: the same',
     'color-contrast catalog-settings-row-destructive':
       'the danger ink on a light page, at label size: 4.3:1',
     'color-contrast avatar.sizes xl': 'white initials on a light avatar colour: 1.4 to 2.3:1',
