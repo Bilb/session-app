@@ -47,6 +47,10 @@ booted() {
 up() {
   mkdir -p "$STATE/logs"
   "$ADB" start-server >/dev/null
+  # A Play Store image accepts only the adb keys found in the emulator's home, which is ours.
+  local key=${ANDROID_USER_HOME:-$HOME/.android}/adbkey
+  [ -f "$key.pub" ] || "$ADB" keygen "$key" >/dev/null
+  cp "$key" "$key.pub" "$STATE/"
   for form in "${FORMS[@]}"; do
     create "$form"
     # Cold and wiped every time, so nothing one run leaves reaches the next.
