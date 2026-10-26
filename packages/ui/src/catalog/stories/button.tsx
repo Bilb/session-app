@@ -1,6 +1,7 @@
 import { Button, type ButtonProps } from '../../Button'
 import { defineStory } from '../story'
-import { AccentFill, LONG, noop } from './shared'
+import { MessageFrame } from '../../MessageFrame'
+import { LONG, noop } from './shared'
 
 export const button = defineStory<ButtonProps>({
   component: 'button',
@@ -42,9 +43,9 @@ export const buttonOnAccent = defineStory<ButtonProps>({
     },
   },
   render: (props) => (
-    <AccentFill>
+    <MessageFrame outgoing>
       <Button {...props} />
-    </AccentFill>
+    </MessageFrame>
   ),
 })
 

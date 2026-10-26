@@ -2,7 +2,7 @@ import type { ConversationId, Message } from '@session/client'
 import { useMessage, useSessionActions } from '@session/state'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { ON_ACCENT_SECONDARY_OPACITY, Text, XStack, YStack } from '@session/ui'
+import { MessageFrame, ON_ACCENT_SECONDARY_OPACITY, Text, XStack } from '@session/ui'
 import { memo, useMemo, useState, type ReactNode } from 'react'
 
 import { ConversationUiContext, type ConversationUi } from './conversationUi'
@@ -66,14 +66,10 @@ export const MessageRow = memo(function MessageRow({
   const retryable = message.outgoing && RETRYABLE.includes(message.sendState)
 
   return (
-    <YStack
+    <MessageFrame
+      outgoing={message.outgoing}
       alignSelf={message.outgoing ? 'flex-end' : 'flex-start'}
       maxWidth="80%"
-      backgroundColor={message.outgoing ? '$primaryColor' : '$messageBubbleIncomingBg'}
-      borderRadius="$lg"
-      paddingHorizontal="$md"
-      paddingVertical="$sm"
-      gap="$2xs"
       testID={ELEMENT.conversation.messageRow(index)}
     >
       {message.body.length === 0 ? null : (
@@ -115,7 +111,7 @@ export const MessageRow = memo(function MessageRow({
           ) : null}
         </XStack>
       )}
-    </YStack>
+    </MessageFrame>
   )
 })
 

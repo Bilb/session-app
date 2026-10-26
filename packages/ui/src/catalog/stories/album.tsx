@@ -2,7 +2,8 @@ import { ELEMENT } from '@session/test-ids'
 
 import { AttachmentAlbum, type AlbumItem } from '../../AttachmentAlbum'
 import { defineStory } from '../story'
-import { AccentFill, noop } from './shared'
+import { MESSAGE_FRAME_INSET_PX, MessageFrame } from '../../MessageFrame'
+import { noop } from './shared'
 
 const ALBUM_WIDTH = 300
 
@@ -36,7 +37,7 @@ function Album({ count, onAccent }: AlbumStory) {
 export const albumFocus = defineStory<AlbumStory>({
   component: 'album',
   story: 'focus',
-  width: ALBUM_WIDTH,
+  width: ALBUM_WIDTH + 2 * MESSAGE_FRAME_INSET_PX,
   forced: ['focus'],
   sensitive: { accent: true },
   variants: {
@@ -44,12 +45,9 @@ export const albumFocus = defineStory<AlbumStory>({
     five: { count: 5, onAccent: false },
     threeOnAccent: { count: 3, onAccent: true },
   },
-  render: (props) =>
-    props.onAccent ? (
-      <AccentFill>
-        <Album {...props} />
-      </AccentFill>
-    ) : (
+  render: (props) => (
+    <MessageFrame outgoing={props.onAccent}>
       <Album {...props} />
-    ),
+    </MessageFrame>
+  ),
 })

@@ -1,6 +1,7 @@
 import { FileRow, type FileRowProps } from '../../FileRow'
 import { defineStory } from '../story'
-import { AccentFill, noop } from './shared'
+import { MessageFrame } from '../../MessageFrame'
+import { noop } from './shared'
 
 const PDF = { contentType: 'application/pdf', filename: 'report.pdf' } as const
 
@@ -68,6 +69,33 @@ export const fileRow = defineStory<FileRowProps>({
   render: (props) => <FileRow {...props} />,
 })
 
+/** The states a row in a message's bubble takes, sent or received. */
+const IN_BUBBLE = {
+  idle: {
+    ...PDF,
+    ...OPENS,
+    caption: '180 kB',
+    state: 'idle',
+    actionLabel: 'Download',
+    onAction: noop,
+  },
+  fetching: {
+    ...PDF,
+    caption: '90 of 180 kB',
+    state: 'fetching',
+    progress: 0.5,
+    actionLabel: 'Downloading',
+    onAction: noop,
+  },
+  failed: {
+    ...PDF,
+    caption: 'Failed to download',
+    state: 'failed',
+    actionLabel: 'Retry',
+    onAction: noop,
+  },
+} as const satisfies Record<string, FileRowProps>
+
 export const fileRowOnAccent = defineStory<FileRowProps>({
   component: 'fileRow',
   story: 'onAccent',
@@ -75,36 +103,27 @@ export const fileRowOnAccent = defineStory<FileRowProps>({
   forced: ['focus'],
   sensitive: { accent: true },
   variants: {
-    idle: {
-      ...PDF,
-      ...OPENS,
-      caption: '180 kB',
-      state: 'idle',
-      actionLabel: 'Download',
-      onAction: noop,
-      onAccent: true,
-    },
-    fetching: {
-      ...PDF,
-      caption: '90 of 180 kB',
-      state: 'fetching',
-      progress: 0.5,
-      actionLabel: 'Downloading',
-      onAction: noop,
-      onAccent: true,
-    },
-    failed: {
-      ...PDF,
-      caption: 'Failed to download',
-      state: 'failed',
-      actionLabel: 'Retry',
-      onAction: noop,
-      onAccent: true,
-    },
+    idle: { ...IN_BUBBLE.idle, onAccent: true },
+    fetching: { ...IN_BUBBLE.fetching, onAccent: true },
+    failed: { ...IN_BUBBLE.failed, onAccent: true },
   },
   render: (props) => (
-    <AccentFill>
+    <MessageFrame outgoing>
       <FileRow {...props} />
-    </AccentFill>
+    </MessageFrame>
+  ),
+})
+
+export const fileRowReceived = defineStory<FileRowProps>({
+  component: 'fileRow',
+  story: 'received',
+  width: 360,
+  forced: ['focus'],
+  sensitive: { accent: true },
+  variants: IN_BUBBLE,
+  render: (props) => (
+    <MessageFrame outgoing={false}>
+      <FileRow {...props} />
+    </MessageFrame>
   ),
 })

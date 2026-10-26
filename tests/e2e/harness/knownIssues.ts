@@ -1,4 +1,5 @@
 import type { AuditIssue } from './ISessionApp'
+import type { FormFactor } from './MobileApp'
 
 /** One per auditing spec: each sees its own set, and only that spec can tell one is fixed. */
 export type Audit = 'catalog' | 'showcase-desktop' | 'showcase-android' | 'showcase-ios'
@@ -9,7 +10,10 @@ export type Audit = 'catalog' | 'showcase-desktop' | 'showcase-android' | 'showc
  * An entry here is a bug with a name, not a pass: it keeps the audit failing on anything new, and
  * once its audit stops finding it the entry must go, or the next regression of it passes unseen.
  */
-const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, string>>> = {
+/** Why a finding stands; `only` where the other form factor has no such element to draw. */
+type Known = string | { why: string; only: FormFactor }
+
+const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, Known>>> = {
   catalog: {
     'color-contrast message-attachment-state':
       'textSecondary at caption size on a received bubble is 3.5 to 4.1:1 in every theme, under AA',
@@ -30,9 +34,15 @@ const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, string>>> = {
     'color-contrast fileRow.onAccent idle':
       'the caption on a purple sent bubble, ocean themes: 4.2:1',
     'color-contrast fileRow.onAccent failed': 'the same',
+    'color-contrast fileRow.received idle':
+      'the caption on a received bubble, as message-attachment-state: 4.1:1',
+    'color-contrast fileRow.received fetching': 'the same',
+    'color-contrast fileRow.received failed':
+      'the danger ink on a received bubble in a light theme, as message-attachment-action: 3.6:1',
     'aria-progressbar-name button.variants loading': 'the spinner has no accessible name',
     'color-contrast catalog-settings-row-trailing':
       'a secondary value on a pressed row, classic-light: 4.1:1',
+    'color-contrast catalog-settings-row-arabic': 'its trailing value on a pressed row: the same',
     'color-contrast catalog-settings-row-destructive':
       'the danger ink on a light page, at label size: 4.3:1',
     'color-contrast avatar.sizes xl': 'white initials on a light avatar colour: 1.4 to 2.3:1',
@@ -48,8 +58,10 @@ const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, string>>> = {
     'color-contrast message-attachment-show-all': "the roll's Show all count: the same ink",
   },
   'showcase-android': {
-    'target-size conversation-back':
-      'drawn at 32dp; its hitSlop reaches MIN_HIT_TARGET, 40, which is under 48 and not in the bounds',
+    'target-size conversation-back': {
+      why: 'drawn at 32dp; its hitSlop reaches MIN_HIT_TARGET, 40, which is under 48 and not in the bounds',
+      only: 'phone',
+    },
     'target-size message-attachment-view-list':
       "drawn at 32dp; its hitSlop fills the footer's 48 row, which the tree does not show",
     'target-size message-attachment-action':
@@ -59,8 +71,10 @@ const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, string>>> = {
   'showcase-ios': {
     'XCUIAccessibilityAuditTypeSufficientElementDescription message-attachment-tile':
       "a tile is named by its filename, which Apple's audit reads as no human-readable label",
-    'target-size conversation-back':
-      'drawn at 32pt; its hitSlop reaches MIN_HIT_TARGET, 40, which is under 44 and not in the bounds',
+    'target-size conversation-back': {
+      why: 'drawn at 32pt; its hitSlop reaches MIN_HIT_TARGET, 40, which is under 44 and not in the bounds',
+      only: 'phone',
+    },
     'target-size message-attachment-view-list':
       "drawn at 32pt; its hitSlop fills the footer's 48 row, which the tree does not show",
     'target-size message-attachment-action':
@@ -71,14 +85,21 @@ const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, string>>> = {
 
 export const issueKey = (issue: AuditIssue) => `${issue.rule} ${issue.target}`
 
-/** What `audit` found that is not known, and what is known that it no longer finds. */
-export function auditVerdict(audit: Audit, found: Iterable<AuditIssue>) {
+/**
+ * What `audit` found that is not known, and what is known that it no longer finds. On a phone or a
+ * tablet, an entry for the other form factor is neither allowed nor expected.
+ */
+export function auditVerdict(audit: Audit, found: Iterable<AuditIssue>, form?: FormFactor) {
   const issues = [...found]
-  const known = KNOWN_ISSUES[audit]
+  const known = new Set(
+    Object.entries(KNOWN_ISSUES[audit])
+      .filter(([, entry]) => typeof entry === 'string' || form === undefined || entry.only === form)
+      .map(([key]) => key),
+  )
   const keys = new Set(issues.map(issueKey))
   return {
-    unknown: issues.filter((issue) => !(issueKey(issue) in known)),
-    fixed: Object.keys(known).filter((key) => !keys.has(key)),
+    unknown: issues.filter((issue) => !known.has(issueKey(issue))),
+    fixed: [...known].filter((key) => !keys.has(key)),
   }
 }
 

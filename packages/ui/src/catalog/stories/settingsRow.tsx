@@ -53,6 +53,14 @@ export const settingsRow = defineStory<SettingsRowProps>({
       icon: 'bellOff',
       disabled: true,
     },
+    arabic: {
+      ...ROW,
+      testID: 'catalog-settings-row-arabic',
+      label: 'الإشعارات',
+      subtitle: 'إيصالات القراءة ومؤشرات الكتابة',
+      icon: 'bellOff',
+      trailing: <Text tone="secondary">مفعّل</Text>,
+    },
     long: {
       ...ROW,
       testID: 'catalog-settings-row-long',

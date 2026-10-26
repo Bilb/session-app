@@ -1,4 +1,5 @@
 import { act } from '@testing-library/react'
+import { createElement } from 'react'
 import { userEvent } from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
@@ -16,13 +17,28 @@ import {
 } from '@session/expectations'
 import { resetLocale, setLocale, tr, PENDING_COPY } from '@session/localization'
 import { byId, nodeOf } from '@session/render-tier'
-import { ALBUM_MAX_TILES } from '@session/ui'
+import { ALBUM_MAX_TILES, type AttachmentAlbumProps } from '@session/ui'
+import type * as Ui from '@session/ui'
 
 import type { FetchState } from '#src/attachmentFetch'
 import type { AttachmentSetState } from '#src/attachmentSet'
 import { MessageAlbum } from '#src/MessageAlbum'
 
 import { renderScreen } from './support/render'
+
+/** What `AttachmentAlbum` was handed on each render, to see which props kept their identity. */
+const albumProps = vi.hoisted((): AttachmentAlbumProps[] => [])
+
+vi.mock('@session/ui', async (original) => {
+  const ui = await original<typeof Ui>()
+  return {
+    ...ui,
+    AttachmentAlbum: (props: AttachmentAlbumProps) => {
+      albumProps.push(props)
+      return createElement(ui.AttachmentAlbum, props)
+    },
+  }
+})
 
 function picture(index: number, filename?: string): Attachment {
   return {
@@ -128,6 +144,18 @@ describe('an album’s tiles', () => {
     await user.click(byId(ALBUM_TILE_ID, 1))
     expect(first).not.toHaveBeenCalled()
     expect(latest).toHaveBeenCalledWith(1)
+  })
+
+  it('keep their props while a transfer reports, so the memoised tiles do not redraw', () => {
+    const shown = message([picture(0, 'a.jpg'), picture(1, 'b.jpg')])
+    const { rerender } = renderScreen(album(shown, ['fetching', 'ready'], { onOpen: vi.fn() }))
+    const before = albumProps.at(-1)
+    // A progress report: a new caller callback, and no tile's state changed.
+    rerender(album(shown, ['fetching', 'ready'], { onOpen: vi.fn() }))
+    const after = albumProps.at(-1)
+    expect(after).not.toBe(before)
+    expect(after?.onOpen).toBe(before?.onOpen)
+    expect(after?.items).toBe(before?.items)
   })
 
   it('carry the tile id, with the picture id on the picture inside', () => {
