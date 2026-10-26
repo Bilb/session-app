@@ -17,9 +17,10 @@ on:
         default: pr
 
 # Only a pull request's runs cancel each other: a cancelled run on main leaves its commit with no
-# reference, and Argos falls back to an older one.
+# reference, and Argos falls back to an older one. A shared group would still cancel a waiting
+# run, whatever cancel-in-progress says, so each run on main, scheduled or pushed, gets its own.
 concurrency:
-  group: catalog-${{ github.ref }}
+  group: catalog-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
