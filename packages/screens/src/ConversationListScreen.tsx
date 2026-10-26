@@ -55,7 +55,7 @@ const MARKED_DOT = '$xxs'
 /** The least room between the end of the name's icons and the time. */
 const TIME_GAP_MIN = '$xxs'
 
-const HEADER_AVATAR_PX = SIZE_SCALE.lg
+const HEADER_AVATAR_PX = SIZE_SCALE.xl
 /**
  * The path's status on its corner: the least size its glyph reads at, cut out of the avatar by a
  * ring of the surface rather than lit by a glow.
