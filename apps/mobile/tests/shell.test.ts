@@ -15,7 +15,10 @@ describe('the mobile shell', () => {
     expect(shell).not.toMatch(/<Slot\b/)
   })
 
-  it('animates a push only with one pane: beside the list the detail changes in place', () => {
+  it('pushes and swipes back only with one pane: beside the list the detail changes in place', () => {
     expect(shell).toContain("animation: twoPanes ? 'none' : 'default'")
+    // The swipes too: with no animation they would still pop, back to the empty pane.
+    expect(shell).toContain('gestureEnabled: !twoPanes')
+    expect(shell).toContain('fullScreenGestureEnabled: !twoPanes')
   })
 })

@@ -14,7 +14,8 @@ import { Stack, usePathname } from 'expo-router'
  *
  * A native stack rather than a bare `Slot`, so that on a phone opening a screen pushes it in and
  * the edge swipe takes it back, as the platform does everywhere else. Beside the list on a tablet
- * the detail pane changes in place, with no push: what is open is already shown in the list.
+ * the detail pane changes in place, with no push and no swipe back: what is open is already shown
+ * in the list, and going back would only empty the pane.
  */
 export function MobileShell() {
   useLocale()
@@ -29,6 +30,9 @@ export function MobileShell() {
           screenOptions={{
             headerShown: false,
             animation: twoPanes ? 'none' : 'default',
+            // Off with the push: with no animation the swipes still pop, back to the empty pane.
+            gestureEnabled: !twoPanes,
+            fullScreenGestureEnabled: !twoPanes,
             contentStyle: { backgroundColor: background },
           }}
         />
