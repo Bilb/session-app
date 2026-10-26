@@ -101,7 +101,10 @@ jobs:
             ANDROID_SERIAL="$serial" pnpm --filter @session/mobile fake-media:push --android
           done
 
+      # Metro caches under the temp directory, and /tmp/metro-cache on this host is another user's.
       - run: pnpm --filter @session/e2e test:e2e:android
+        env:
+          TMPDIR: ${{ runner.temp }}
 
       - if: always()
         run: |
