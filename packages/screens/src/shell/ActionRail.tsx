@@ -1,5 +1,5 @@
 import { flag } from '@session/app'
-import { isRtlLocale, tr } from '@session/localization'
+import { isRtlLocale, PENDING_COPY, tr } from '@session/localization'
 import { useAccount, useAppearance, useNetworkStatus, useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import {
@@ -24,7 +24,6 @@ import {
 
 import { useOpenSettings } from '../settings/SettingsRootPage'
 import { pathStatusLabel, pathStatusTone } from '../pathStatus'
-import { PENDING_COPY } from '../pendingCopy'
 import { useLocale } from '../useLocale'
 
 /** The widest item, the path light's square, with a margin either side. */

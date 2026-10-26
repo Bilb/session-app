@@ -1,8 +1,6 @@
 import type { NetworkStatus } from '@session/client'
-import { tr } from '@session/localization'
+import { PENDING_COPY, tr } from '@session/localization'
 import type { StatusTone } from '@session/ui'
-
-import { PENDING_COPY } from './pendingCopy'
 
 /**
  * The onion path's dot, from the network's status: green with a path, amber while one is being
