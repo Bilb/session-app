@@ -62,15 +62,15 @@ describe('a morph frame', () => {
  */
 describe('the indicator on both platforms', () => {
   const dir = join(import.meta.dirname, '../src')
-  const halves = ['UpdateIndicator.tsx', 'UpdateIndicator.native.tsx'].map((name) =>
+  // Only the fade layer differs between them; the indicator around it is one file.
+  const halves = ['UpdateFadeLayer.tsx', 'UpdateFadeLayer.native.tsx'].map((name) =>
     readFileSync(join(dir, name), 'utf8'),
   )
 
-  it('fades with the same timing and draws the same glyphs', () => {
+  it('fades with the same timing on both', () => {
     for (const half of halves) {
       expect(half).toContain("from './updateIndicatorTiming'")
       expect(half).toContain('UPDATE_FADE_MS')
-      expect(half).toContain('<UpdateGlyph')
     }
   })
 
