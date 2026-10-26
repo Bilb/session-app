@@ -110,7 +110,7 @@ for (const platform of MOBILE_PLATFORMS) {
           if (!(await app.scroll(ELEMENT.conversation.screen, 1, AUDIT_SPAN))) break
         }
 
-        const { unknown, fixed } = auditVerdict(`showcase-${platform}`, found.values())
+        const { unknown, fixed } = auditVerdict(`showcase-${platform}`, found.values(), form)
         expect(unknown, describeIssues(unknown).join('\n')).toEqual([])
         expect(fixed, 'no longer found: remove from KNOWN_ISSUES').toEqual([])
       } finally {
