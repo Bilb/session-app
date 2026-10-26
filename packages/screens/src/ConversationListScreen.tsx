@@ -62,6 +62,17 @@ const HEADER_AVATAR_PX = SIZE_SCALE.lg
  */
 const HEADER_DOT_PX = SIZE_SCALE.xs
 const HEADER_DOT_RING_PX = 2
+/**
+ * How far the dot's box hangs past the avatar's bottom and end edges: far enough that its centre is
+ * 2 px outside the avatar's circle, on the diagonal through the corner. A picture is cropped to the
+ * circle, so one with a badge drawn into it shows most of that badge cut off, where the app's own
+ * sits whole.
+ */
+const HEADER_DOT_HANG_PX =
+  (HEADER_AVATAR_PX / 2 + 2) / Math.SQRT2 +
+  HEADER_DOT_PX / 2 +
+  HEADER_DOT_RING_PX -
+  HEADER_AVATAR_PX / 2
 
 /**
  * The account's avatar, which opens settings, with the onion path's dot on its bottom-end corner.
@@ -98,8 +109,8 @@ function SettingsAvatarButton({ onPress }: { onPress: () => void }) {
         />
         <YStack
           position="absolute"
-          bottom={-HEADER_DOT_RING_PX}
-          {...logical({ insetEnd: -HEADER_DOT_RING_PX })}
+          bottom={-HEADER_DOT_HANG_PX}
+          {...logical({ insetEnd: -HEADER_DOT_HANG_PX })}
         >
           <StatusDot
             tone={pathStatusTone(status)}
