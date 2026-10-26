@@ -1,10 +1,8 @@
 import type { Message } from '@session/client'
-import { localDayNumber } from '@session/localization'
+import { localDay } from './today'
 
 /** A gap longer than this between two messages starts a new header. */
 export const DATE_HEADER_GAP_MS = 5 * 60_000
-
-const localDay = (timestampMs: number): number => localDayNumber(new Date(timestampMs))
 
 /**
  * Whether `message` gets a date header above it: more than `DATE_HEADER_GAP_MS` after the message

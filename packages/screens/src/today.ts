@@ -110,10 +110,11 @@ function clock(): TodayClock {
   return shared
 }
 
+// Module-level so that their identity is stable: React resubscribes whenever `subscribe` changes.
+const subscribeToday = (onChange: () => void): (() => void) => clock().subscribe(onChange)
+const currentDay = (): number => clock().current()
+
 /** Today, as `localDay` counts it; a component reading it is drawn again when the day turns. */
 export function useToday(): number {
-  return useSyncExternalStore(
-    (onChange) => clock().subscribe(onChange),
-    () => clock().current(),
-  )
+  return useSyncExternalStore(subscribeToday, currentDay)
 }
