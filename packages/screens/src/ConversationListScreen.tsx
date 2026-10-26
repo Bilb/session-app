@@ -27,7 +27,8 @@ import { conversationRowState, type UnreadBadge, type UnreadTone } from './conve
 import { conversationTitle } from './conversationTitle'
 import { useOpenSettings } from './settings/SettingsRootPage'
 import { useTopBarInsets } from './shell/pane'
-import { useFormattingLocale } from './useLocale'
+import { useTimeFormats } from './timeFormats'
+import { useToday } from './today'
 
 const AVATAR_SIZE_PX = SIZE_SCALE['3xl']
 /**
@@ -87,7 +88,7 @@ export function ConversationListScreen({
   const unreadRequests = useUnreadRequestCount()
   const nav = useNav()
   const openSettings = useOpenSettings()
-  const timeLocale = useFormattingLocale()
+  const timeFormats = useTimeFormats()
   const layout = rowLayout(useFontScale())
 
   return (
@@ -175,7 +176,7 @@ export function ConversationListScreen({
             conversation={conversation}
             index={index}
             layout={layout}
-            timeLocale={timeLocale}
+            timeFormats={timeFormats}
             open={conversation.id === openConversationId}
             onPress={() => {
               // Beside the list, a conversation replaces the one already open rather than
@@ -219,10 +220,6 @@ const PILL_COLORS: Record<
   notify: { ground: '$primaryColor', text: '$onAccent' },
   quiet: { ground: '$textSecondary', text: '$backgroundPrimary' },
 }
-
-// TODO: pass the reader's own clock and date layout once the appearance settings exist to choose
-// them; until then every row takes the system's.
-const TIME_FORMATS: ConversationTimeOptions = { timeFormat: 'system', dateFormat: 'system' }
 
 function UnreadBadgeView({ badge }: { badge: UnreadBadge }) {
   if (badge.kind === 'markedUnread')
@@ -270,28 +267,25 @@ function ConversationRow({
   conversation,
   index,
   layout,
-  timeLocale,
+  timeFormats,
   open,
   onPress,
 }: {
   conversation: Conversation
   index: number
   layout: { heightPx: number; avatarPx: number }
-  timeLocale: string | undefined
+  timeFormats: ConversationTimeOptions
   open: boolean
   onPress: () => void
 }) {
   const title = conversationTitle(conversation)
-  // TODO: "today" is read at render, so a list left open past midnight keeps yesterday's times as
-  // today's until something redraws it; redraw the list when the day turns.
+  // Read for its change: a row that says a weekday or the time alone is redrawn when the day turns.
+  useToday()
   const nowMs = Date.now()
   const row = conversationRowState(conversation, nowMs)
   const time =
     conversation.lastActivity > 0
-      ? formatConversationTime(conversation.lastActivity, nowMs, {
-          ...TIME_FORMATS,
-          locale: timeLocale,
-        })
+      ? formatConversationTime(conversation.lastActivity, nowMs, timeFormats)
       : null
 
   return (
