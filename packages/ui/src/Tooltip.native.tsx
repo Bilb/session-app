@@ -117,8 +117,6 @@ export function Tooltip({
           <YStack
             backgroundColor="$messageBubbleIncomingBg"
             borderRadius={TOOLTIP_BUBBLE_RADIUS}
-            paddingVertical="$2xs"
-            paddingHorizontal="$md"
             boxShadow={`0px 0px 13px 0px ${shadow}`}
             maxWidth={MAX_WIDTH_PX}
             testID={testID}
@@ -128,9 +126,11 @@ export function Tooltip({
             }}
           >
             <TooltipArrow placement={placement} bubble={bubble} />
-            <Text size="$body" color="$messageBubbleIncomingText">
-              {label}
-            </Text>
+            <YStack paddingVertical="$2xs" paddingHorizontal="$md">
+              <Text size="$body" color="$messageBubbleIncomingText">
+                {label}
+              </Text>
+            </YStack>
           </YStack>
         </View>
       ) : null}

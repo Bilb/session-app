@@ -45,19 +45,28 @@ function shape(edgePx: number) {
   return { squarePx: (half + SINK_PX) * Math.SQRT2, stretch: TOOLTIP_ARROW_REACH_PX / half }
 }
 
-/** Centred along the bubble's edge that faces the control, sunk `SINK_PX` inside it. */
-function edge(placement: TooltipPlacement, squarePx: number) {
-  const across = -squarePx / 2
+/**
+ * Centred along the bubble's edge that faces the control, sunk `SINK_PX` inside it. In lengths
+ * from the measured bubble rather than percentages, which React Native resolves against a padded
+ * parent's content box and the web against its padding box.
+ */
+function edge(
+  placement: TooltipPlacement,
+  squarePx: number,
+  bubble: { width: number; height: number },
+) {
   const sunk = SINK_PX - squarePx / 2
+  const down = (bubble.height - squarePx) / 2
+  const along = (bubble.width - squarePx) / 2
   switch (placement) {
     case 'end':
-      return { top: '50%', marginTop: across, ...logical({ insetStart: sunk }) } as const
+      return { top: down, ...logical({ insetStart: sunk }) }
     case 'start':
-      return { top: '50%', marginTop: across, ...logical({ insetEnd: sunk }) } as const
+      return { top: down, ...logical({ insetEnd: sunk }) }
     case 'top':
-      return { bottom: sunk, ...logical({ insetStart: '50%', marginStart: across }) } as const
+      return { bottom: sunk, ...logical({ insetStart: along }) }
     case 'bottom':
-      return { top: sunk, ...logical({ insetStart: '50%', marginStart: across }) } as const
+      return { top: sunk, ...logical({ insetStart: along }) }
   }
 }
 
@@ -66,6 +75,9 @@ function edge(placement: TooltipPlacement, squarePx: number) {
  * control, with all but its outer point lost in the bubble's own fill. The shape is the same
  * whichever way it points, so nothing in it mirrors for a right-to-left layout; only the edge it
  * sits on does.
+ *
+ * Drawn in an unpadded bubble, with the label's padding on a view of its own beside it, so that its
+ * offsets have one box to resolve against on every platform.
  *
  * `bubble` is the bubble's measured size, and nothing is drawn until it is known: the width the
  * point can take depends on the length of the edge it sits on, which a multi-line label makes
@@ -81,17 +93,25 @@ export function TooltipArrow({
   if (bubble === null) return null
   const sideways = placement === 'start' || placement === 'end'
   const { squarePx, stretch } = shape(sideways ? bubble.height : bubble.width)
+  // Two views rather than one transform list, because the web and React Native compose a list in
+  // opposite orders: the square has to be turned first and drawn out after, along the screen's
+  // axis, and a parent's transform always applies after its child's.
   return (
     <YStack
       position="absolute"
       width={squarePx}
       height={squarePx}
-      borderRadius={TIP_RADIUS_PX}
-      backgroundColor="$messageBubbleIncomingBg"
-      // Turned first, then drawn out along the axis that points at the control.
-      transform={[sideways ? { scaleX: stretch } : { scaleY: stretch }, { rotate: '45deg' }]}
+      transform={[sideways ? { scaleX: stretch } : { scaleY: stretch }]}
       pointerEvents="none"
-      {...edge(placement, squarePx)}
-    />
+      {...edge(placement, squarePx, bubble)}
+    >
+      <YStack
+        width={squarePx}
+        height={squarePx}
+        borderRadius={TIP_RADIUS_PX}
+        backgroundColor="$messageBubbleIncomingBg"
+        transform={[{ rotate: '45deg' }]}
+      />
+    </YStack>
   )
 }
