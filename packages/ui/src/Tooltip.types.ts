@@ -17,6 +17,11 @@ export interface TooltipProps {
   label: string
   /** Defaults to `end`: a rail at the window's start edge opens its tooltips into the window. */
   placement?: TooltipPlacement | undefined
+  /**
+   * Shows the bubble whatever the pointer does, for the component gallery and screenshot tests,
+   * which have no pointer to rest.
+   */
+  held?: boolean | undefined
   /** The control. A tooltip describes one control, never a group of them. */
   children: ReactNode
   /** On the bubble, so a test can tell it is showing. */

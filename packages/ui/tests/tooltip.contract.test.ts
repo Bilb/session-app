@@ -43,7 +43,7 @@ describe('the tooltip on the web', () => {
   })
 
   it('points at the control, with the arrow under the label', () => {
-    expect(web).toContain('<TooltipArrow placement={placement} />')
+    expect(web).toContain('<TooltipArrow placement={placement} bubble={bubble} />')
     expect(web.indexOf('<TooltipArrow')).toBeLessThan(web.indexOf('<Text'))
   })
 })
@@ -66,7 +66,7 @@ describe('the tooltip on native', () => {
   })
 
   it('points at the control, with the arrow under the label', () => {
-    expect(native).toContain('<TooltipArrow placement={placement} />')
+    expect(native).toContain('<TooltipArrow placement={placement} bubble={bubble} />')
     expect(native.indexOf('<TooltipArrow')).toBeLessThan(native.indexOf('<Text'))
   })
 })

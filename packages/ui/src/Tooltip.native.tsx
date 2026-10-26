@@ -6,7 +6,7 @@ import { logical } from './logicalEdges'
 import { SPACE_SCALE } from './scales'
 import { Text } from './Text'
 import type { TooltipProps } from './Tooltip.types'
-import { TOOLTIP_ARROW_REACH_PX, TooltipArrow } from './TooltipArrow'
+import { TOOLTIP_ARROW_REACH_PX, TOOLTIP_BUBBLE_RADIUS, TooltipArrow } from './TooltipArrow'
 import type { TooltipPlacement } from './tooltipPosition'
 import { useTokenColor } from './useTokenColor'
 
@@ -69,8 +69,16 @@ function slot(placement: TooltipPlacement, size: { width: number; height: number
  * A pointer on an iPad is the exception, as UIKit's own buttons show one: a resting pointer opens
  * the bubble, leaving or pressing closes it, the same as on the desktop.
  */
-export function Tooltip({ label, placement = 'end', children, testID }: TooltipProps) {
-  const [open, setOpen] = useState(false)
+export function Tooltip({
+  label,
+  placement = 'end',
+  held = false,
+  children,
+  testID,
+}: TooltipProps) {
+  const [hovered, setOpen] = useState(false)
+  const open = held || hovered
+  const [bubble, setBubble] = useState<{ width: number; height: number } | null>(null)
   const pending = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const [size, setSize] = useState({ width: 0, height: 0 })
   const shadow = useTokenColor('$shadow')
@@ -108,14 +116,18 @@ export function Tooltip({ label, placement = 'end', children, testID }: TooltipP
         >
           <YStack
             backgroundColor="$messageBubbleIncomingBg"
-            borderRadius="$sm"
+            borderRadius={TOOLTIP_BUBBLE_RADIUS}
             paddingVertical="$2xs"
             paddingHorizontal="$md"
             boxShadow={`0px 0px 13px 0px ${shadow}`}
             maxWidth={MAX_WIDTH_PX}
             testID={testID}
+            onLayout={(event: LayoutChangeEvent) => {
+              const { width, height } = event.nativeEvent.layout
+              setBubble({ width, height })
+            }}
           >
-            <TooltipArrow placement={placement} />
+            <TooltipArrow placement={placement} bubble={bubble} />
             <Text size="$body" color="$messageBubbleIncomingText">
               {label}
             </Text>

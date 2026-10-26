@@ -4,7 +4,7 @@ import { YStack } from 'tamagui'
 import { SPACE_SCALE } from './scales'
 import { Text } from './Text'
 import type { TooltipProps } from './Tooltip.types'
-import { TOOLTIP_ARROW_REACH_PX, TooltipArrow } from './TooltipArrow'
+import { TOOLTIP_ARROW_REACH_PX, TOOLTIP_BUBBLE_RADIUS, TooltipArrow } from './TooltipArrow'
 import { tooltipPosition } from './tooltipPosition'
 import { useTokenColor } from './useTokenColor'
 
@@ -51,8 +51,16 @@ function focusVisible(event: FocusEvent): boolean {
  * Laid out in place rather than through a portal, so it needs no measuring and mirrors with the
  * page; the cost is that an ancestor clipping its overflow would clip the bubble too.
  */
-export function Tooltip({ label, placement = 'end', children, testID }: TooltipProps) {
-  const [open, setOpen] = useState(false)
+export function Tooltip({
+  label,
+  placement = 'end',
+  held = false,
+  children,
+  testID,
+}: TooltipProps) {
+  const [hovered, setOpen] = useState(false)
+  const open = held || hovered
+  const [bubble, setBubble] = useState<{ width: number; height: number } | null>(null)
   const pending = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const shadow = useTokenColor('$shadow')
   useEffect(() => () => clearTimeout(pending.current), [])
@@ -104,14 +112,18 @@ export function Tooltip({ label, placement = 'end', children, testID }: TooltipP
           <YStack
             position="relative"
             backgroundColor="$messageBubbleIncomingBg"
-            borderRadius="$sm"
+            borderRadius={TOOLTIP_BUBBLE_RADIUS}
             paddingVertical="$2xs"
             paddingHorizontal="$md"
             boxShadow={`0px 0px 13px 0px ${shadow}`}
             maxWidth={MAX_WIDTH_PX}
             testID={testID}
+            onLayout={(event) => {
+              const { width, height } = event.nativeEvent.layout
+              setBubble({ width, height })
+            }}
           >
-            <TooltipArrow placement={placement} />
+            <TooltipArrow placement={placement} bubble={bubble} />
             {/* Positioned, so it draws over the arrow, which is too. */}
             <Text
               size="$body"

@@ -1,25 +1,31 @@
 import { YStack } from 'tamagui'
 
 import { logical } from './logicalEdges'
-import { SIZE_SCALE } from './scales'
+import { RADIUS_SCALE } from './scales'
 import type { TooltipPlacement } from './tooltipPosition'
 
-/** The side of the square the arrow is cut from. */
-const SQUARE_PX = SIZE_SCALE.xxs
+/** The bubble's corner radius, `$sm` in both tooltips: the arrow sits on the edge between them. */
+export const TOOLTIP_BUBBLE_RADIUS = '$sm'
+const BUBBLE_RADIUS_PX = RADIUS_SCALE.sm
+
+/** How far the arrow's tip reaches past the bubble, whatever its width. */
+export const TOOLTIP_ARROW_REACH_PX = 7
 
 /**
- * How far the square's centre sits inside the bubble. Its two side corners are on that centre
- * line, so sinking it hides them in the bubble's fill, and what shows is a plain triangle whose
- * sides meet the bubble's edge cleanly rather than a rounded corner sitting on the edge.
+ * The arrow's width where it meets the bubble: as wide as `MAX_BASE_PX` where the edge has room,
+ * which with the reach makes a right-angled point, and down to `MIN_BASE_PX` where it does not.
+ * A one-line bubble's side has about 9 px between its rounded corners; a base wider than the
+ * straight part runs into the corners and leaves a notch at each.
+ */
+const MAX_BASE_PX = 14
+const MIN_BASE_PX = 8
+
+/**
+ * How far the turned square's centre sits inside the bubble. Its two side corners are on that
+ * centre line, so sinking it hides them in the bubble's fill, and what shows is a plain triangle
+ * whose sides meet the edge cleanly rather than a rounded corner sitting on it.
  */
 const SINK_PX = 1.5
-
-/**
- * How much the square is drawn out towards the control: a longer, narrower point. Narrow because
- * the edge it sits on is short -- a one-line bubble's side is about 9 px between its rounded
- * corners -- and a base wider than that runs into the corners and leaves a notch at each.
- */
-const STRETCH = 1.6
 
 /**
  * The tip's rounding. A number because the radius scale starts at 8, which would round a square
@@ -27,16 +33,22 @@ const STRETCH = 1.6
  */
 const TIP_RADIUS_PX = 2
 
-/** Half the turned square's width across the edge, less what is sunk into the bubble. */
-const SHOWN_PX = SQUARE_PX / Math.SQRT2 - SINK_PX
-
-/** How far the arrow's tip reaches past the bubble. */
-export const TOOLTIP_ARROW_REACH_PX = Math.round(SHOWN_PX * STRETCH)
+/**
+ * The square and its stretch for an edge `edgePx` long: half the base shows past the sunk centre
+ * line, and the square is drawn out along the arrow's axis until the tip reaches
+ * `TOOLTIP_ARROW_REACH_PX`.
+ */
+function shape(edgePx: number) {
+  const straight = edgePx - 2 * BUBBLE_RADIUS_PX - 1
+  const base = Math.min(MAX_BASE_PX, Math.max(MIN_BASE_PX, straight))
+  const half = base / 2
+  return { squarePx: (half + SINK_PX) * Math.SQRT2, stretch: TOOLTIP_ARROW_REACH_PX / half }
+}
 
 /** Centred along the bubble's edge that faces the control, sunk `SINK_PX` inside it. */
-function edge(placement: TooltipPlacement) {
-  const across = -SQUARE_PX / 2
-  const sunk = SINK_PX - SQUARE_PX / 2
+function edge(placement: TooltipPlacement, squarePx: number) {
+  const across = -squarePx / 2
+  const sunk = SINK_PX - squarePx / 2
   switch (placement) {
     case 'end':
       return { top: '50%', marginTop: across, ...logical({ insetStart: sunk }) } as const
@@ -55,21 +67,31 @@ function edge(placement: TooltipPlacement) {
  * whichever way it points, so nothing in it mirrors for a right-to-left layout; only the edge it
  * sits on does.
  *
- * The bubble's first child, so that what comes after it -- the label -- draws over it.
+ * `bubble` is the bubble's measured size, and nothing is drawn until it is known: the width the
+ * point can take depends on the length of the edge it sits on, which a multi-line label makes
+ * longer. The bubble's first child, so that what comes after it -- the label -- draws over it.
  */
-export function TooltipArrow({ placement }: { placement: TooltipPlacement }) {
+export function TooltipArrow({
+  placement,
+  bubble,
+}: {
+  placement: TooltipPlacement
+  bubble: { width: number; height: number } | null
+}) {
+  if (bubble === null) return null
   const sideways = placement === 'start' || placement === 'end'
+  const { squarePx, stretch } = shape(sideways ? bubble.height : bubble.width)
   return (
     <YStack
       position="absolute"
-      width={SQUARE_PX}
-      height={SQUARE_PX}
+      width={squarePx}
+      height={squarePx}
       borderRadius={TIP_RADIUS_PX}
       backgroundColor="$messageBubbleIncomingBg"
       // Turned first, then drawn out along the axis that points at the control.
-      transform={[sideways ? { scaleX: STRETCH } : { scaleY: STRETCH }, { rotate: '45deg' }]}
+      transform={[sideways ? { scaleX: stretch } : { scaleY: stretch }, { rotate: '45deg' }]}
       pointerEvents="none"
-      {...edge(placement)}
+      {...edge(placement, squarePx)}
     />
   )
 }
