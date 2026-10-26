@@ -419,6 +419,7 @@ export class MobileApp implements ISessionApp {
   /**
    * The checker's findings within the box of `scope`, by position rather than by subtree: a
    * screen's id can sit on a view the tree lists beside the screen's content rather than over it.
+   * On iOS only target sizes are scoped: XCTest audits the whole screen and gives no frames.
    */
   async audit(scope?: ElementId): Promise<AuditIssue[]> {
     // A page source costs seconds on iOS, and an audit after a scroll needs the one it just read.

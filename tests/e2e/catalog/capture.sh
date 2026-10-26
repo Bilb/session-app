@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
-# Runs catalog.spec.ts inside the pinned image, so a capture is the same on a laptop, a GitHub
-# runner or a self-hosted one. Takes CATALOG_TIER and CATALOG_OUT like the spec; the checkout,
-# its node_modules and a built desktop app come from the host.
+# Runs catalog.spec.ts inside the pinned image, so a capture is the same on any Linux x86_64 host.
+# Takes CATALOG_TIER and CATALOG_OUT like the spec; the checkout, its node_modules and a built
+# desktop app come from the host.
 set -euo pipefail
+
+# The host's Electron runs inside the image, and Argos's references are x86_64 captures.
+if [ "$(uname -s)" != Linux ] || [ "$(uname -m)" != x86_64 ]; then
+  echo "capture.sh: Linux x86_64 only; on another host, read the pull request's build in Argos" >&2
+  exit 1
+fi
 
 here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/../../.." && pwd)

@@ -5,10 +5,13 @@ on:
   push:
     branches: [main]
   pull_request:
+  # The nightly tier. GitHub runs a schedule from the default branch only.
+  schedule:
+    - cron: '0 17 * * *' # 03:00 Sydney (AEST), 04:00 (AEDT)
   workflow_dispatch:
     inputs:
       tier:
-        description: pr draws two themes and the default accent; nightly every theme and accent
+        description: pr draws two themes, plus every accent where a story draws one; nightly every theme and accent
         type: choice
         options: [pr, nightly]
         default: pr
@@ -29,7 +32,7 @@ jobs:
     # The pinned capture image makes the pictures the same on any runner; this one is faster.
     runs-on: [self-hosted, linux, x64, session-catalog]
     env:
-      CATALOG_TIER: ${{ inputs.tier || 'pr' }}
+      CATALOG_TIER: ${{ inputs.tier || (github.event_name == 'schedule' && 'nightly') || 'pr' }}
       CATALOG_OUT: ${{ github.workspace }}/test-results/catalog
     steps:
       - uses: actions/checkout@v5

@@ -98,7 +98,8 @@ repeats the catalog: write the story instead.
 
 No new source grep where a drawn check can fail instead: assert what is drawn, not what a file
 contains. The exceptions say why, one by one: `packages/ui/tests/nativeOnly.contract.test.ts` for
-what no driver reads, and the `*.contract.test.ts` copy checks.
+what no driver reads, and the repo-wide `*.contract.test.ts` checks (copy, logical edges, named
+tokens).
 What only a phone shows goes in a shared spec with `clients: { alice: EACH }`, run by
 `pnpm --filter @session/e2e test:e2e:android` (or `:ios`).
 
