@@ -56,9 +56,10 @@ async function status(port: number): Promise<boolean> {
 }
 
 /** Stops the Metro this harness started, if one is running; what `globalTeardown` calls. */
-export function stopBundleServer(): void {
+export async function stopBundleServer(): Promise<void> {
   const running = readState()
-  if (running !== null && alive(running.pid)) {
+  // The file outlives its Metro when teardown never ran, and its pid may since be anything.
+  if (running !== null && alive(running.pid) && (await status(running.port))) {
     // Its own process group, so the transform workers go with it.
     try {
       process.kill(-running.pid, 'SIGTERM')
@@ -85,7 +86,7 @@ export async function serveBundle(
   const key = keyOf(env)
   const running = readState()
   if (running?.key === key && alive(running.pid) && (await status(running.port))) return
-  stopBundleServer()
+  await stopBundleServer()
   // A stopped Metro keeps answering until its process has exited.
   const stopping = Date.now() + STOP_TIMEOUT_MS
   while ((await status(METRO_PORT)) && Date.now() < stopping)
