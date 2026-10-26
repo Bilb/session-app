@@ -7,6 +7,12 @@ import type { TooltipPlacement } from './tooltipPosition'
 /** The side of the square the arrow is cut from. */
 const SQUARE_PX = SIZE_SCALE.xs
 
+/**
+ * The tip's rounding. A number because the radius scale starts at 8, which would round a square
+ * this small into a disc.
+ */
+const TIP_RADIUS_PX = 2
+
 /** How far the arrow's tip reaches past the bubble: half the square's diagonal. */
 export const TOOLTIP_ARROW_REACH_PX = Math.round(SQUARE_PX / Math.SQRT2)
 
@@ -39,7 +45,7 @@ export function TooltipArrow({ placement }: { placement: TooltipPlacement }) {
       position="absolute"
       width={SQUARE_PX}
       height={SQUARE_PX}
-      borderRadius="$xxs"
+      borderRadius={TIP_RADIUS_PX}
       backgroundColor="$messageBubbleIncomingBg"
       rotate="45deg"
       pointerEvents="none"

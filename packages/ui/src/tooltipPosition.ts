@@ -15,7 +15,8 @@ export type TooltipPositionStyle = Record<string, string | number>
  *
  * The gap is padding on the box the bubble sits in rather than a margin, so it belongs to the
  * tooltip: a pointer crossing it on the way to the bubble is still over the tooltip, and does not
- * close it by leaving.
+ * close it by leaving. The box is at least as long as the control along the edge it opens from,
+ * so that holds wherever along that edge the pointer leaves, not only level with the bubble.
  *
  * Plain CSS rather than tamagui props, because only the web draws a tooltip and the centring needs
  * a percentage transform tamagui would not pass through. The inline sides are logical, written by
@@ -28,6 +29,7 @@ export function tooltipPosition(placement: TooltipPlacement, gapPx: number): Too
         position: 'absolute',
         top: '50%',
         transform: 'translateY(-50%)',
+        minHeight: '100%',
         ...logical({ insetStart: '100%', paddingStart: gapPx }).style,
       }
     case 'start':
@@ -35,6 +37,7 @@ export function tooltipPosition(placement: TooltipPlacement, gapPx: number): Too
         position: 'absolute',
         top: '50%',
         transform: 'translateY(-50%)',
+        minHeight: '100%',
         ...logical({ insetEnd: '100%', paddingEnd: gapPx }).style,
       }
     case 'top':
@@ -43,6 +46,7 @@ export function tooltipPosition(placement: TooltipPlacement, gapPx: number): Too
         bottom: '100%',
         left: '50%',
         transform: 'translateX(-50%)',
+        minWidth: '100%',
         paddingBottom: gapPx,
       }
     case 'bottom':
@@ -51,6 +55,7 @@ export function tooltipPosition(placement: TooltipPlacement, gapPx: number): Too
         top: '100%',
         left: '50%',
         transform: 'translateX(-50%)',
+        minWidth: '100%',
         paddingTop: gapPx,
       }
   }

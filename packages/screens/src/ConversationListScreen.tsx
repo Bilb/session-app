@@ -84,7 +84,7 @@ function SettingsAvatarButton({ onPress }: { onPress: () => void }) {
   const account = useAccount()
   const status = useNetworkStatus()
   return (
-    // The hit area is the stack rather than the avatar: 26pt is well under the 44pt a finger
+    // The hit area is the stack rather than the avatar: 32pt is under the 44pt a finger
     // needs, and a target that small is one people miss rather than one they cannot see.
     <XStack
       width={44}

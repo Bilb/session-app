@@ -97,6 +97,8 @@ export function Tooltip({ label, placement = 'end', children, testID }: TooltipP
         <YStack
           aria-hidden
           zIndex={LAYER}
+          justifyContent="center"
+          alignItems="center"
           style={{ ...tooltipPosition(placement, GAP_PX), width: 'max-content' }}
         >
           <YStack

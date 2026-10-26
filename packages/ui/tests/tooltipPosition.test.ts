@@ -11,6 +11,7 @@ describe("a tooltip's position", () => {
       position: 'absolute',
       top: '50%',
       transform: 'translateY(-50%)',
+      minHeight: '100%',
       insetInlineStart: '100%',
       paddingInlineStart: GAP,
     })
@@ -22,6 +23,13 @@ describe("a tooltip's position", () => {
       paddingInlineEnd: GAP,
       transform: 'translateY(-50%)',
     })
+  })
+
+  it('spans the whole edge it opens from, so leaving anywhere along it is not leaving', () => {
+    expect(tooltipPosition('end', GAP)).toMatchObject({ minHeight: '100%' })
+    expect(tooltipPosition('start', GAP)).toMatchObject({ minHeight: '100%' })
+    expect(tooltipPosition('top', GAP)).toMatchObject({ minWidth: '100%' })
+    expect(tooltipPosition('bottom', GAP)).toMatchObject({ minWidth: '100%' })
   })
 
   it('opens above or below, centred across the control', () => {
