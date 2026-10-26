@@ -35,6 +35,7 @@ export const ELEMENT = {
     headerName: 'conversation-header-name',
     back: 'conversation-back',
     messageRow: (index: number) => `message-row-${index}` as const,
+    dateHeader: 'conversation-date-header',
     messageBody: 'message-body',
     messageState: 'message-state',
     messageRetry: 'message-retry',

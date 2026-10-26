@@ -23,6 +23,8 @@ import { MessageMediaViewer, type ViewerTarget } from './MessageMediaViewer'
 import { AutoDownloadPrompt } from './AutoDownloadPrompt'
 import { BackButton } from './BackButton'
 import { conversationTitle } from './conversationTitle'
+import { DateHeaderRow } from './DateHeaderRow'
+import { showsDateHeader } from './dateHeaders'
 import { useTopBarInsets } from './shell/pane'
 
 /**
@@ -138,7 +140,7 @@ const MessageRow = memo(function MessageRow({
 function Conversation({ conversationId }: { conversationId: ConversationId }) {
   const topBarInsets = useTopBarInsets()
   const conversation = useConversation(conversationId)
-  const { messages, ready } = useMessages(conversationId)
+  const { messages, ready, exhausted } = useMessages(conversationId)
   const actions = useSessionActions()
   const [draft, setDraft] = useState('')
   // Unset means nobody has been asked what this conversation should fetch unprompted, which is
@@ -222,6 +224,9 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
             keyExtractor={(message) => String(message.id)}
             renderItem={(message, index) => (
               <YStack paddingHorizontal="$md" paddingBottom="$sm">
+                {showsDateHeader(messages[index - 1], message, index === 0 && exhausted) ? (
+                  <DateHeaderRow timestampMs={message.timestamp} />
+                ) : null}
                 <MessageRow conversationId={conversationId} messageId={message.id} index={index} />
               </YStack>
             )}
