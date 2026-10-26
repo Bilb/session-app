@@ -77,6 +77,9 @@ jobs:
         env:
           ARGOS_API_BASE_URL: ${{ vars.ARGOS_API_BASE_URL }}
           ARGOS_TOKEN: ${{ secrets.ARGOS_TOKEN }}
+          # Node gives each address family 250ms to connect; a burst of uploads to a server
+          # 250ms away times out on every one, so allow longer.
+          NODE_OPTIONS: --network-family-autoselection-attempt-timeout=2000
 
       - uses: actions/upload-artifact@v7
         if: failure()
