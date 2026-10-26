@@ -92,6 +92,8 @@ for slice in $slices; do
     esac
 
     build="$repo/packages/bridge-core/build-ios/$slice"
+    # CMake refuses a build directory configured at another path, as in a copied clone.
+    rm -rf "$build"
     cmake -G Ninja -S "$repo/packages/bridge-core" -B "$build" \
         -DCMAKE_TOOLCHAIN_FILE="$libsession/external/ios-cmake/ios.toolchain.cmake" \
         -DPLATFORM="$cmake_platform" \
