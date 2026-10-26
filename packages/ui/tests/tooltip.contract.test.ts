@@ -33,6 +33,13 @@ describe('the tooltip on the web', () => {
     expect(web).toContain('onMouseDown={hide}')
   })
 
+  it('goes on a keyboard press of the control too, which fires no mouse event', () => {
+    expect(web).toContain("new Set(['Enter', ' '])")
+    expect(web).toContain(
+      'PRESS_KEYS.has(event.key) && wrapper.current?.contains(event.target as Node)',
+    )
+  })
+
   it('keeps the bubble inside the wrapper, so moving onto it does not close it', () => {
     expect(web.indexOf('{children}')).toBeLessThan(web.indexOf('{open ? ('))
     expect(web).not.toContain('pointerEvents="none"')

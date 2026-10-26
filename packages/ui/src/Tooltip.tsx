@@ -26,6 +26,9 @@ const MAX_WIDTH_PX = 240
 /** Above the pane beside the control, which comes later in the page and would cover it. */
 const LAYER = 10
 
+/** The keys that press a focused button. */
+const PRESS_KEYS = new Set(['Enter', ' '])
+
 /**
  * Whether focus arrived by keyboard. A click focuses the control too, and a tooltip that opened
  * on every click would sit over whatever the click opened.
@@ -47,7 +50,8 @@ function focusVisible(event: FocusEvent): boolean {
  * the pointer or focus (Escape, heard on the document, since focus may be anywhere while a resting
  * pointer holds it open), it is **hoverable** (the bubble and the gap before it are inside the
  * wrapper, so moving onto it is not leaving), and it **persists** until one of those or a blur
- * ends it. A press hides it, since the control has now done what the tooltip described.
+ * ends it. A press, by pointer or keyboard, hides it, since the control has now done what the
+ * tooltip described.
  *
  * Laid out in place rather than through a portal, so it needs no measuring and mirrors with the
  * page; the cost is that an ancestor clipping its overflow would clip the bubble too.
@@ -63,6 +67,7 @@ export function Tooltip({
   const open = held || hovered
   const [bubble, setBubble] = useState<{ width: number; height: number } | null>(null)
   const pending = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const wrapper = useRef<HTMLElement | null>(null)
   const shadow = useTokenColor('$shadow')
   useEffect(() => () => clearTimeout(pending.current), [])
 
@@ -79,6 +84,7 @@ export function Tooltip({
     if (!open) return
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') hide()
+      else if (PRESS_KEYS.has(event.key) && wrapper.current?.contains(event.target as Node)) hide()
     }
     document.addEventListener('keydown', onKeyDown)
     return () => {
@@ -88,6 +94,7 @@ export function Tooltip({
 
   return (
     <YStack
+      ref={wrapper as never}
       position="relative"
       {...(open ? { zIndex: LAYER } : {})}
       onMouseEnter={() => {
