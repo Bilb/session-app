@@ -48,7 +48,7 @@ const MS_PER_DAY = 86_400_000
  * time. Counted through `Date.UTC` because local midnights are not a whole number of days apart
  * across a daylight-saving change.
  */
-function localDayNumber(date: Date): number {
+export function localDayNumber(date: Date): number {
   return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / MS_PER_DAY
 }
 

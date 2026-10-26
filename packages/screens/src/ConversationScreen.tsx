@@ -140,7 +140,7 @@ const MessageRow = memo(function MessageRow({
 function Conversation({ conversationId }: { conversationId: ConversationId }) {
   const topBarInsets = useTopBarInsets()
   const conversation = useConversation(conversationId)
-  const { messages, ready, exhausted } = useMessages(conversationId)
+  const { messages, ready } = useMessages(conversationId)
   const actions = useSessionActions()
   const [draft, setDraft] = useState('')
   // Unset means nobody has been asked what this conversation should fetch unprompted, which is
@@ -224,7 +224,7 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
             keyExtractor={(message) => String(message.id)}
             renderItem={(message, index) => (
               <YStack paddingHorizontal="$md" paddingBottom="$sm">
-                {showsDateHeader(messages[index - 1], message, index === 0 && exhausted) ? (
+                {showsDateHeader(messages[index - 1], message) ? (
                   <DateHeaderRow timestampMs={message.timestamp} />
                 ) : null}
                 <MessageRow conversationId={conversationId} messageId={message.id} index={index} />

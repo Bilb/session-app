@@ -1,7 +1,6 @@
 import { requirePorts, type WindowPort } from '@session/app'
+import { localDayNumber } from '@session/localization'
 import { useSyncExternalStore } from 'react'
-
-const MS_PER_DAY = 86_400_000
 
 /**
  * Past local midnight before the day is looked at again: a timer can fire a little early, and one
@@ -9,14 +8,8 @@ const MS_PER_DAY = 86_400_000
  */
 const PAST_MIDNIGHT_MS = 1000
 
-/**
- * A local calendar day as a whole number. Counted through `Date.UTC` because local midnights are
- * not a whole number of days apart across a daylight-saving change.
- */
-export function localDay(ms: number): number {
-  const date = new Date(ms)
-  return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / MS_PER_DAY
-}
+/** A local calendar day as a whole number, as the time formatting counts days. */
+export const localDay = (ms: number): number => localDayNumber(new Date(ms))
 
 function nextMidnightMs(ms: number): number {
   const date = new Date(ms)

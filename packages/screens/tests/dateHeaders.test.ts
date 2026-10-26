@@ -9,20 +9,19 @@ const at = (day: number, hour: number, minute = 0): { timestamp: number } => ({
 describe('a date header', () => {
   it('starts after more than five minutes since the message before', () => {
     const before = at(16, 9, 0)
-    expect(
-      showsDateHeader(before, { timestamp: before.timestamp + DATE_HEADER_GAP_MS }, false),
-    ).toBe(false)
-    expect(
-      showsDateHeader(before, { timestamp: before.timestamp + DATE_HEADER_GAP_MS + 1 }, false),
-    ).toBe(true)
+    expect(showsDateHeader(before, { timestamp: before.timestamp + DATE_HEADER_GAP_MS })).toBe(
+      false,
+    )
+    expect(showsDateHeader(before, { timestamp: before.timestamp + DATE_HEADER_GAP_MS + 1 })).toBe(
+      true,
+    )
   })
 
   it('starts on a new day, however close to midnight', () => {
-    expect(showsDateHeader(at(15, 23, 59), at(16, 0, 1), false)).toBe(true)
+    expect(showsDateHeader(at(15, 23, 59), at(16, 0, 1))).toBe(true)
   })
 
-  it('goes above the first message only when it is the oldest in the conversation', () => {
-    expect(showsDateHeader(undefined, at(16, 9), true)).toBe(true)
-    expect(showsDateHeader(undefined, at(16, 9), false)).toBe(false)
+  it('always goes above the first message loaded', () => {
+    expect(showsDateHeader(undefined, at(16, 9))).toBe(true)
   })
 })
