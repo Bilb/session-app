@@ -19,6 +19,8 @@ describe('the mobile shell', () => {
     expect(shell).toContain("animation: twoPanes ? 'none' : 'default'")
     // The swipes too: with no animation they would still pop, back to the empty pane.
     expect(shell).toContain('gestureEnabled: !twoPanes')
-    expect(shell).toContain('fullScreenGestureEnabled: !twoPanes')
+    // Which covers iOS 26's full-screen swipe. Setting that one would replace the native
+    // edge swipe with a custom recognizer on iOS 18 and earlier.
+    expect(shell).not.toMatch(/fullScreenGestureEnabled:/)
   })
 })

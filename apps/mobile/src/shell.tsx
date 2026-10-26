@@ -31,8 +31,9 @@ export function MobileShell() {
             headerShown: false,
             animation: twoPanes ? 'none' : 'default',
             // Off with the push: with no animation the swipes still pop, back to the empty pane.
+            // This turns off iOS 26's full-screen swipe too. `fullScreenGestureEnabled` stays
+            // unset: on iOS 18 and earlier it swaps the native edge swipe for a custom one.
             gestureEnabled: !twoPanes,
-            fullScreenGestureEnabled: !twoPanes,
             contentStyle: { backgroundColor: background },
           }}
         />
