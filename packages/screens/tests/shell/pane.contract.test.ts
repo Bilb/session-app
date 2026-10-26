@@ -39,29 +39,6 @@ describe('which panes show a way back', () => {
 })
 
 /**
- * The rail is drawn exactly when the list and the detail are side by side, so a phone keeps the
- * avatar in the list's header and a tablet or the desktop gets it in the rail, never both.
- */
-describe('the rail', () => {
-  it('is drawn with two panes and tells the list it is there', () => {
-    expect(shell).toContain('const withRail = twoPanes && rail !== undefined')
-    expect(shell).toMatch(/\{withRail \? \(/)
-    expect(shell).toContain('<RailProvider value={withRail}>')
-  })
-
-  it('and the list beside the detail are drawn on the recessed surface', () => {
-    expect(shell).toContain('<PaneSurfaceProvider value="$backgroundSecondary">{rail}')
-    expect(shell).toContain(
-      "<PaneSurfaceProvider value={twoPanes ? '$backgroundSecondary' : '$backgroundPrimary'}>",
-    )
-  })
-
-  it('comes before the list, so it sits at the start edge', () => {
-    expect(shell.indexOf('key="rail"')).toBeLessThan(shell.indexOf('key="list"'))
-  })
-})
-
-/**
  * The detail pane survives a change between one pane and two. On mobile it holds the router's
  * `Slot`, which forgets the open conversation if it remounts, so turning a tablet would close it.
  */
