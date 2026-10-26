@@ -46,11 +46,13 @@ booted() {
 
 up() {
   mkdir -p "$STATE/logs"
-  "$ADB" start-server >/dev/null
-  # A Play Store image accepts only the adb keys found in the emulator's home, which is ours.
+  # A Play Store image accepts only the adb keys found in the emulator's home, which is ours, and
+  # a server left from an earlier run may hold another key: this port is ours, so restart it.
   local key=${ANDROID_USER_HOME:-$HOME/.android}/adbkey
+  "$ADB" kill-server >/dev/null 2>&1 || true
   [ -f "$key.pub" ] || "$ADB" keygen "$key" >/dev/null
   cp "$key" "$key.pub" "$STATE/"
+  ADB_VENDOR_KEYS=$key "$ADB" start-server >/dev/null
   for form in "${FORMS[@]}"; do
     create "$form"
     # Cold and wiped every time, so nothing one run leaves reaches the next.
@@ -82,6 +84,7 @@ down() {
       rm -f "$STATE/$form.pid"
     fi
   done
+  "$ADB" kill-server >/dev/null 2>&1 || true
 }
 
 case "${1:-}" in
