@@ -1,6 +1,6 @@
 /**
- * The darkest a raised surface's shadow is drawn: a tooltip, a modal panel. Dark themes draw
- * shadows in opaque black, which reads as a heavy smudge rather than a lift; light themes are
+ * The darkest a raised surface's shadow is drawn: a tooltip, a modal panel, a toast. Dark themes
+ * draw shadows in opaque black, which reads as a heavy smudge rather than a lift; light themes are
  * lighter than this already and are unchanged by it.
  */
 const RAISED_SHADOW_ALPHA_MAX = 0.51
