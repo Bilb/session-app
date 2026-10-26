@@ -1,10 +1,15 @@
 import { expect, test } from '@playwright/test'
+import { pressArea } from '@session/expectations'
+import { PENDING_COPY } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 
 import { SEEDED_ALBUM, SEEDED_LIST } from '../harness/fixtures'
 import { downloadFirstAttachment, openFirstConversation } from '../harness/attachments'
 import { DesktopApp } from '../harness/DesktopApp'
+import { onDesktop } from '../harness/expected'
 import { sessionTest } from '../harness/sessionTest'
+
+const viewToggle = (name: string) => onDesktop(pressArea({ name }))
 
 /**
  * Reading a set of photographs as rows, because somebody asked to.
@@ -35,6 +40,10 @@ sessionTest({
 
     // Each footer offers only the view it is not showing: the album offers the list.
     expect(await alice.count(ELEMENT.conversation.attachmentViewList)).toBe(1)
+    expect(await alice.count(ELEMENT.conversation.attachmentViewGallery)).toBe(0)
+    expect(await alice.describe(ELEMENT.conversation.attachmentViewList)).toMatchObject(
+      viewToggle(PENDING_COPY.attachmentViewList),
+    )
 
     const before = await alice.readAllText(ELEMENT.conversation.attachmentName)
     expect(before.slice(0, SEEDED_LIST.length)).toEqual(SEEDED_LIST)
@@ -48,6 +57,10 @@ sessionTest({
         { timeout: 5_000 },
       )
       .toEqual(expected)
+    expect(await alice.count(ELEMENT.conversation.attachmentViewGallery)).toBe(1)
+    expect(await alice.describe(ELEMENT.conversation.attachmentViewGallery)).toMatchObject(
+      viewToggle(PENDING_COPY.attachmentViewGallery),
+    )
 
     await alice.screenshot('attachment-view-list-desktop')
   },
@@ -61,10 +74,10 @@ sessionTest({
  * no width at all; Chromium lays the same tree out wider, so that half is held by
  * `attachmentWidth.contract.test.ts` in screens, and this is the desktop half.
  *
- * Launched directly rather than through `sessionTest`, because the clip check is a layout probe
- * and `ISessionApp` has none.
+ * Launched directly rather than through `sessionTest`, because the clip check is desktop-only:
+ * an overflow is Chromium's layout, and `ISessionApp` has no way to ask a device for one.
  */
-test('draws every name and the total in full in a list', async () => {
+test('draws every name and the total in full in a list @desktop', async () => {
   const app = await DesktopApp.launch('alice')
   try {
     await openFirstConversation(app)

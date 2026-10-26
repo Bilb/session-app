@@ -1,11 +1,11 @@
 /**
  * English that has no catalogue key yet, quarantined in one file.
  *
- * Every other word a person reads comes from `@session/localization`, and
- * `tests/copy.contract.test.ts` enforces that across every screen. These do not: the attachment
- * cache section, the set's own count, the gallery/list switch, the export verb and the
- * auto-download prompt's choice need them and the Crowdin set has nothing that fits, so they ship
- * as English in every locale until the keys land.
+ * Every other word a person reads comes from the catalogue, and `copy.contract.test.ts` in
+ * `@session/screens` enforces that across every screen. These do not: the attachment cache section,
+ * the set's own count, the gallery/list switch, the export verb and the auto-download prompt's
+ * choice need them and the Crowdin set has nothing that fits, so they ship as English in every
+ * locale until the keys land.
  *
  * Each name is the token it is destined for, so promoting one is a swap:
  * `PENDING_COPY.attachmentCache` becomes `tr('attachmentCache')` and the entry goes. Adding to

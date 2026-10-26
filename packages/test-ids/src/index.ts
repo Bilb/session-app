@@ -72,6 +72,7 @@ export const ELEMENT = {
     attachmentSheet: 'message-attachment-sheet',
     attachmentSheetClose: 'message-attachment-sheet-close',
     attachmentSheetScrim: 'message-attachment-sheet-scrim',
+    attachmentSheetList: 'message-attachment-sheet-list',
     mediaViewer: 'media-viewer',
     mediaViewerClose: 'media-viewer-close',
     mediaViewerExport: 'media-viewer-export',
@@ -211,6 +212,12 @@ export const ELEMENT = {
     notificationsOption: (mode: string) => `onboarding-notifications-${mode}` as const,
 
     loadingScreen: 'onboarding-loading-screen',
+  },
+  catalog: {
+    page: 'catalog-page',
+    ready: 'catalog-ready',
+    cell: (page: string, row: string, column: string) =>
+      `catalog-cell-${page}-${row}-${column}` as const,
   },
 } as const
 

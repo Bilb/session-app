@@ -1461,14 +1461,14 @@ struct JSIConverter<::session_bridge::FileServerConfig> final {
                 JSIConverter<::session_bridge::UrlScheme>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "scheme"))),
                 JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "host"))),
                 JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "port"))),
-                JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "x25519PubkeyHex"))));
+                JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "ed25519PubkeyHex"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::FileServerConfig& arg) {
         jsi::Object obj(runtime);
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "scheme"), JSIConverter<::session_bridge::UrlScheme>::toJSI(runtime, arg.scheme));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "host"), JSIConverter<std::string>::toJSI(runtime, arg.host));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "port"), JSIConverter<double>::toJSI(runtime, arg.port));
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "x25519PubkeyHex"), JSIConverter<std::string>::toJSI(runtime, arg.x25519_pubkey_hex));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "ed25519PubkeyHex"), JSIConverter<std::string>::toJSI(runtime, arg.ed25519_pubkey_hex));
         return obj;
     }
     static inline bool canConvert(jsi::Runtime&, const jsi::Value& value) {

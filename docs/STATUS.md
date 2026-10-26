@@ -66,7 +66,7 @@ a time, via the `port-feature` skill.
   app can hold the same database at once.
 - **Attachment strings have no catalogue key.** The cache section's heading and labels, a set's
   count, the gallery/list switch, Export with its two states, and the viewer's Previous have
-  nothing in the Crowdin set that fits, so they sit in `packages/screens/src/pendingCopy.ts` and
+  nothing in the Crowdin set that fits, so they sit in `packages/localization/src/pendingCopy.ts` and
   ship as English in every locale - the count with English plurals. Each is named for the token it
   is destined for; `copy.contract.test.ts` pins the list so another cannot join quietly. They want
   a pull request against session-localization and a submodule bump.
@@ -101,3 +101,13 @@ a time, via the `port-feature` skill.
 - **Nothing measures a transcript under movement.** No performance or regression test covers
   navigating between conversations, scrolling a window that loads pages above and below, or
   messages arriving, changing and being deleted - nor that attachment state survives all of it.
+- **Android's accessibility audit is our own.** `nativeAccessibility.ts` checks names, target
+  sizes and nested stops from the UI tree; nothing checks contrast. Google's Accessibility Test
+  Framework, run from an instrumentation APK on the live hierarchy and a screenshot, would give
+  Android what `performAccessibilityAudit` gives iOS.
+- **The native audit covers one screen.** `showcase-audit.spec.ts` audits the showcase
+  conversation only; settings, onboarding and the rest are audited on desktop alone.
+- **No native audit runs on its own.** The mobile e2e workflows are manual dispatch, so a
+  regression on a phone shows up only when someone runs them.
+- **Contrast is checked on desktop only.** The catalog draws through react-native-web, so a colour
+  only the native views draw is never measured.

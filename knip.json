@@ -3,6 +3,9 @@
   "workspaces": {
     "packages/localization": {
       "project": ["src/**/*.ts", "!src/localization-src/**"]
+    },
+    "tests/e2e": {
+      "entry": ["playwright.unfiltered.config.ts"]
     }
   },
   "ignoreDependencies": [

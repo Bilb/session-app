@@ -1,4 +1,4 @@
-import { PENDING_COPY } from './pendingCopy'
+import { PENDING_COPY } from '@session/localization'
 
 /**
  * What a screen reader calls one picture in an album: its filename, or else where it sits among

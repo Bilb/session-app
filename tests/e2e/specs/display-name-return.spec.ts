@@ -17,7 +17,7 @@ const repoRoot = join(import.meta.dirname, '../../..')
  * from before the last keystrokes needs characters and the return key in one batch, which a browser
  * never delivers, so that case is not covered here.
  */
-test('the name step takes the return key only with a name', async () => {
+test('the name step takes the return key only with a name @desktop', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'session-name-return-'))
   const app = await _electron.launch({
     args: [

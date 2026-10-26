@@ -52,7 +52,7 @@ async function openTransport(): Promise<BridgeTransport> {
           {
             seedUrl: process.env['EXPO_PUBLIC_SESSION_DEVNET_SEED_URL'],
             fileServerUrl: process.env['EXPO_PUBLIC_SESSION_FILE_SERVER_URL'],
-            fileServerX25519Pubkey: process.env['EXPO_PUBLIC_SESSION_FILE_SERVER_X25519_PUBKEY'],
+            fileServerEd25519Pubkey: process.env['EXPO_PUBLIC_SESSION_FILE_SERVER_ED25519_PUBKEY'],
           },
           'EXPO_PUBLIC_SESSION_',
         )

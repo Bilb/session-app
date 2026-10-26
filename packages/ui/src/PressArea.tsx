@@ -1,4 +1,7 @@
+import { useContext } from 'react'
 import { YStack } from 'tamagui'
+
+import { InteractionOverride, useForcedFocus } from './interactionOverride'
 
 import { focusRing, keyboardPress, type FocusRingShape } from './keyboardPress'
 import type { PressAreaProps } from './PressArea.types'
@@ -10,8 +13,9 @@ const PAGE_RING: FocusRingShape = { onAccent: false, offset: 2, radius: '$sm' }
 /**
  * The web half: tamagui handles the press and the styling, so there is nothing to track.
  *
- * `pressed` is always false here and the frame inside styles itself through `pressStyle`, which is
- * a CSS pseudo-class on the web and needs no state. See PressArea.native.tsx, where it does not.
+ * `pressed` is false here except under the catalog's `InteractionOverride`, and the frame inside
+ * styles itself through `pressStyle`, which is a CSS pseudo-class on the web and needs no state.
+ * See PressArea.native.tsx, where it does not.
  *
  * **A column, because the native half is one.** This split is about the press gesture and nothing
  * else, so the two halves have to lay their child out identically -- and the native half wraps it
@@ -36,6 +40,8 @@ export function PressArea({
   children,
 }: PressAreaProps) {
   const press = disabled ? undefined : onPress
+  const forced = useContext(InteractionOverride)
+  const forcedFocus = useForcedFocus()
   return (
     <YStack
       {...(fill ? { flex: 1 } : {})}
@@ -46,11 +52,12 @@ export function PressArea({
       disabled={disabled}
       onPress={press}
       {...keyboardPress(press, focusRing(ring))}
+      {...(press === undefined ? {} : forcedFocus)}
       aria-label={accessibilityLabel}
       aria-busy={busy}
       testID={testID}
     >
-      {children(false, false)}
+      {children(forced?.pressed ?? false, forced?.hovered ?? false)}
     </YStack>
   )
 }

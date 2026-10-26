@@ -21,7 +21,7 @@ const repoRoot = join(import.meta.dirname, '../../..')
  * mobile driver, and this project is desktop. `ScanQrPane`'s own states are what cover the pane
  * once a camera exists.
  */
-test('the restore screen offers no QR tab where nothing can scan', async () => {
+test('the restore screen offers no QR tab where nothing can scan @desktop', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'session-qr-tab-'))
   const app = await _electron.launch({
     args: [

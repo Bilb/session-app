@@ -5,7 +5,11 @@ import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import { ELEMENT } from '@session/test-ids'
 
-import { downloadFirstAttachment, openFirstConversation } from '../harness/attachments'
+import {
+  downloadFirstAttachment,
+  downloadFromRow,
+  openFirstConversation,
+} from '../harness/attachments'
 import { DesktopApp } from '../harness/DesktopApp'
 import { SEEDED_LIST } from '../harness/fixtures'
 
@@ -67,6 +71,30 @@ test('writes nothing when the save dialog is dismissed @desktop @low-risk', asyn
       .poll(async () => app.isVisible(ELEMENT.conversation.attachmentExport), { timeout: 5_000 })
       .toBe(true)
     expect(await app.revealedPaths()).toEqual([])
+  } finally {
+    await app.close()
+  }
+})
+
+/**
+ * A document's row exports it once it is here, the same verb as its control: only a picture the
+ * viewer shows opens from its row. The tap before it was here fetched it.
+ */
+test('exports a downloaded document from its row @desktop @medium-risk', async () => {
+  const app = await DesktopApp.launch('alice')
+  const document = SEEDED_LIST[1]
+  const destination = join(mkdtempSync(join(tmpdir(), 'session2-export-')), document)
+
+  try {
+    await openFirstConversation(app)
+    const at = await downloadFromRow(app, document)
+
+    await app.recordReveals()
+    await app.answerSaveDialogWith(destination)
+    await app.tapAt(ELEMENT.conversation.attachmentName, at)
+
+    await expect.poll(async () => app.revealedPaths(), { timeout: 10_000 }).toEqual([destination])
+    expect(await app.isVisible(ELEMENT.conversation.mediaViewer)).toBe(false)
   } finally {
     await app.close()
   }

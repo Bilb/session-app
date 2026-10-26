@@ -270,17 +270,27 @@ namespace {
             const auto& fs = *network.file_server;
             if (fs.host.empty())
                 throw std::invalid_argument{"fileServer.host must not be empty"};
-            if (fs.x25519_pubkey_hex.size() != 64 || !oxenc::is_hex(fs.x25519_pubkey_hex))
+            auto key = network::ed25519_pubkey::maybe_from_hex(fs.ed25519_pubkey_hex);
+            if (!key)
                 throw std::invalid_argument{
-                        "fileServer.x25519PubkeyHex must be 64 hex characters: the server's "
-                        "X25519 key, not the Ed25519 one its QUIC endpoint is named by"};
+                        "fileServer.ed25519PubkeyHex must be 64 hex characters: the server's "
+                        "Ed25519 key, not the X25519 one"};
+            // libsession converts it at every upload; converted here, a key that is no Ed25519
+            // point fails the start instead. About half of X25519 keys still pass this.
+            try {
+                network::compute_x25519_pubkey(*key);
+            } catch (const std::exception&) {
+                throw std::invalid_argument{
+                        "fileServer.ed25519PubkeyHex is not an Ed25519 key: the X25519 one, "
+                        "perhaps"};
+            }
 
             opts.emplace_back(network::opt::file_server_scheme{
                     std::string{EnumTraits<UrlScheme>::to_string(fs.scheme)}});
             opts.emplace_back(network::opt::file_server_host{fs.host});
             opts.emplace_back(network::opt::file_server_port{
                     whole<uint16_t>(fs.port, "fileServer.port")});
-            opts.emplace_back(network::opt::file_server_pubkey_hex{fs.x25519_pubkey_hex});
+            opts.emplace_back(network::opt::file_server_pubkey_hex{fs.ed25519_pubkey_hex});
         }
 
         // Beside the database rather than in it: freeing space works by unlinking what the

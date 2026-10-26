@@ -76,26 +76,35 @@ dev entries. When a rule fires, fix the design - not the config.
 
 ## Porting a screen
 
-**Put it side by side with the legacy clients — all three of them — and compare, before calling
-it done.** Most UI exists on iOS, Android and Desktop, and where they differ the point is to pick
-the best of the three for 2.0 rather than to follow whichever one was read first. Onboarding is the
-exception that proves it: Desktop's is a different design, so there the mobile pair is the
-reference. Reading the legacy source and reasoning about what it should look like is not the same
-check and does not catch the same things: a screen whose flow completes can still have the wrong background, the
-wrong button filled, missing chrome, wrong type sizes and a control nobody can hit. Walk the list
-deliberately — colours, which button is primary, chrome present in one and not the other, type
-sizes, control sizes and hit areas, spacing, transitions. An already-ported sibling counts as a
-reference: the tablet layout will catch most of a phone layout's mistakes.
+Compare it side by side with all three legacy clients before calling it done; the `port-feature`
+skill has the checklist.
 
 ## Tests required, in the same PR
 
-| change            | test                                              |
-| ----------------- | ------------------------------------------------- |
-| bridge capability | contract scenario + fake update + echo-frame case |
-| screen            | route-contract row + fast-tier e2e smoke          |
-| ui component      | render test                                       |
-| state projection  | reducer unit test                                 |
-| bug fix           | the test that would have caught it                |
+| change            | test                                                                |
+| ----------------- | ------------------------------------------------------------------- |
+| bridge capability | contract scenario + fake update + echo-frame case                   |
+| screen            | route-contract row + fast-tier e2e smoke                            |
+| ui component      | catalog story; a render test only for what a picture cannot show    |
+| screen state      | catalog scenario in `apps/desktop/src/renderer/catalog/scenarios`   |
+| state projection  | reducer unit test                                                   |
+| bug fix           | the test that would have caught it: a catalog row if it can be seen |
+
+**What can be seen is tested in the catalog, not in a render test.** A look (colour, fill, ring,
+hover, press, focus, direction, layout at a width) is a story in `packages/ui/src/catalog/stories`:
+a row per variant including the worst case, `forced` for interaction states, `sensitive` for
+accent, RTL and width. Argos diffs every page and axe audits it on each PR. A `*.test.tsx` holds
+only what a picture cannot show: accessible role, name and state; what a press calls; focus and
+timing; two outcomes that draw alike (which verb, which id, against `@session/expectations`); a
+contract another package reads. A render test that asserts a style, a colour or a direction
+repeats the catalog: write the story instead.
+
+No new source grep where a drawn check can fail instead: assert what is drawn, not what a file
+contains. The exceptions say why, one by one: `packages/ui/tests/nativeOnly.contract.test.ts` for
+what no driver reads, and the repo-wide `*.contract.test.ts` checks (copy, logical edges, named
+tokens).
+What only a phone shows goes in a shared spec with `clients: { alice: EACH }`, run by
+`pnpm --filter @session/e2e test:e2e:android` (or `:ios`).
 
 **Tests live in `tests/`, never in `src/`.** Every package puts them in its own
 `packages/<pkg>/tests/`, mirroring the `src/` path they cover -
@@ -122,26 +131,9 @@ finds tests wherever they sit, so an unchecked one still runs and nothing compla
 
 ## Native rebuild triggers
 
-- `packages/bridge-types` changed → `turbo codegen && turbo build:native` (the generated C++
-  under `packages/bridge-core/include/session_bridge/gen` is committed; CI's `codegen:check`
-  fails otherwise)
-- shim C++ changed → `turbo build:native`
-- `*.nitro.ts` changed → `turbo codegen`, then rebuild the mobile dev client
-- `libsession-util/` submodule bumped → the `build-native` skill's procedure: rebuild all three
-  targets and run the contract suite against the real addon before committing
-
-**`turbo build:native` only rebuilds the node addon.** iOS reads `bridge-core`'s headers from a
-vendored binary, `packages/bridge-rn/ios/SessionBridgeCore.xcframework`, whose `Headers/` sit ahead
-of the source on the search path — so editing `bridge-core` and rebuilding the addon leaves iOS
-compiling against whatever that artefact was built from, however old. `pod install` does not
-refresh it either. Rebuild it with `packages/bridge-rn/scripts/build-libsession-ios.sh`, and use
-`all` or `both` rather than `simulator`: the one-slice modes also rename the simulator slice, which
-breaks the next build with an `rsync … ios-arm64_x86_64-simulator: No such file or directory` a
-long way from its cause.
-
-**Regenerating also needs `pod install` before iOS will build.** The nitrogen output is _copied_
-into `Pods/Headers/Public/SessionBridgeRN`, so a regeneration that adds a header — a new type in
-the spec — leaves that copy missing it.
+Changed `packages/bridge-types`, the shim C++, a `*.nitro.ts` spec or the `libsession-util/`
+submodule → the `build-native` skill, before running anything. `turbo build:native` alone leaves
+iOS on stale headers.
 
 ## Commands
 

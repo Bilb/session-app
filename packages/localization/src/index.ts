@@ -10,6 +10,7 @@ export {
   subscribeLocale,
 } from './localeStore'
 export { formatConversationTime } from './conversationTime'
+export { PENDING_COPY } from './pendingCopy'
 export type {
   ConversationTimeOptions,
   DateFormat,

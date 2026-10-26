@@ -1258,7 +1258,7 @@ struct Codec<::session_bridge::FileServerConfig> {
         obj.Set("scheme", Codec<::session_bridge::UrlScheme>::to(env, value.scheme));
         obj.Set("host", Codec<std::string>::to(env, value.host));
         obj.Set("port", Codec<double>::to(env, value.port));
-        obj.Set("x25519PubkeyHex", Codec<std::string>::to(env, value.x25519_pubkey_hex));
+        obj.Set("ed25519PubkeyHex", Codec<std::string>::to(env, value.ed25519_pubkey_hex));
         return obj;
     }
     static ::session_bridge::FileServerConfig from(const Napi::Value& value, std::string_view where) {
@@ -1267,7 +1267,7 @@ struct Codec<::session_bridge::FileServerConfig> {
                 Codec<::session_bridge::UrlScheme>::from(obj.Get("scheme"), "FileServerConfig.scheme"),
                 Codec<std::string>::from(obj.Get("host"), "FileServerConfig.host"),
                 Codec<double>::from(obj.Get("port"), "FileServerConfig.port"),
-                Codec<std::string>::from(obj.Get("x25519PubkeyHex"), "FileServerConfig.x25519PubkeyHex"));
+                Codec<std::string>::from(obj.Get("ed25519PubkeyHex"), "FileServerConfig.ed25519PubkeyHex"));
     }
 };
 

@@ -22,8 +22,9 @@ import { parseSource } from './support/source'
  * `{account.name}` or `{count}`, because a value is not copy. The check is deliberately about
  * where the *words* come from, not about spelling `tr` at the call site.
  *
- * `src/pendingCopy.ts` is the one exception, and the second test here is what keeps it one: it
- * holds English the catalogue has no key for, and growing it means editing that list.
+ * `PENDING_COPY` in `@session/localization` is the one exception, and the second test here is
+ * what keeps it one: it holds English the catalogue has no key for, and growing it means editing
+ * that list.
  */
 
 /** Props whose string value is rendered, or read out, rather than used as a value. */
@@ -127,7 +128,7 @@ describe('screen copy', () => {
     // Living in a .ts file is what puts these out of the parser's reach above, so nothing else
     // stops another appearing. This is that stop: the set is spelled out, and adding to it is a
     // deliberate edit here rather than a string that slid in beside an existing one.
-    const source = readFileSync(join(dir, 'pendingCopy.ts'), 'utf8')
+    const source = readFileSync(join(dir, '../../localization/src/pendingCopy.ts'), 'utf8')
     const keys = [...source.matchAll(/^ {2}(\w+):/gm)].map((match) => match[1])
 
     expect(

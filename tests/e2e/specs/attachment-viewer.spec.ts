@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test'
-import { ELEMENT } from '@session/test-ids'
+import { ELEMENT, type ElementId } from '@session/test-ids'
 
-import { openFirstConversation } from '../harness/attachments'
+import { downloadFromRow, openFirstConversation } from '../harness/attachments'
 import { DesktopApp } from '../harness/DesktopApp'
+import { SEEDED_LIST } from '../harness/fixtures'
 import type { ISessionApp } from '../harness/ISessionApp'
 import { sessionTest } from '../harness/sessionTest'
 
@@ -13,7 +14,7 @@ async function openViewer(app: ISessionApp): Promise<void> {
   await app.waitForVisible(ELEMENT.conversation.autoDownloadPrompt)
   await app.tap(ELEMENT.conversation.autoDownloadNo)
   await app.waitForVisible(ELEMENT.conversation.attachmentImage)
-  await app.tap(ELEMENT.conversation.attachmentImage)
+  await app.tap(ELEMENT.conversation.attachmentTile)
   await app.waitForVisible(ELEMENT.conversation.mediaViewer)
 }
 
@@ -54,17 +55,48 @@ sessionTest({
 /**
  * The chevrons sit on the picture's middle, not on the middle of a box that also holds the header.
  *
- * Launched directly rather than through `sessionTest`, because the position is a layout probe and
- * `ISessionApp` has none.
+ * Launched directly rather than through `sessionTest`, because a position is Chromium's layout and
+ * `ISessionApp` has no way to ask a device for one.
  */
-test('centres the chevrons on the picture', async () => {
+test('centres the chevrons on the picture @desktop', async () => {
   const app = await DesktopApp.launch('alice')
   try {
     await openViewer(app)
-    const picture = await app.verticalCentre(ELEMENT.conversation.mediaViewerImage)
-    const next = await app.verticalCentre(ELEMENT.conversation.mediaViewerNext)
+    const centre = async (id: ElementId) => {
+      const box = await app.locator(id).first().boundingBox()
+      if (box === null) throw new Error(`${id} is not laid out`)
+      return box.y + box.height / 2
+    }
+    const picture = await centre(ELEMENT.conversation.mediaViewerImage)
+    const next = await centre(ELEMENT.conversation.mediaViewerNext)
     expect(Math.abs(next - picture)).toBeLessThanOrEqual(1)
   } finally {
     await app.close()
   }
+})
+
+/**
+ * A picture's row opens it once it is here, as its thumbnail does, and fetches it before. Its
+ * control still exports it, so the row is the only thing that changed meaning.
+ */
+sessionTest({
+  title: 'opens a downloaded picture from its row',
+  risk: 'medium',
+  clients: { alice: 'desktop' },
+  run: async ({ alice }) => {
+    if (!alice) throw new Error('the harness did not open alice')
+
+    await openFirstConversation(alice)
+    const at = await downloadFromRow(alice, SEEDED_LIST[0])
+
+    await alice.tapAt(ELEMENT.conversation.attachmentName, at)
+    await alice.waitForVisible(ELEMENT.conversation.mediaViewer)
+    await alice.screenshot('attachment-row-opens-viewer-desktop')
+
+    await alice.tap(ELEMENT.conversation.mediaViewerClose)
+    await expect
+      .poll(async () => alice.isVisible(ELEMENT.conversation.mediaViewer), { timeout: 5_000 })
+      .toBe(false)
+    expect(await alice.isVisible(ELEMENT.conversation.attachmentExport)).toBe(true)
+  },
 })

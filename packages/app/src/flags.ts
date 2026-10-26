@@ -10,9 +10,9 @@ import { requirePorts } from './ports'
  * be used to bisect a bug on somebody else's device, which is most of what a flag is for. One that
  * genuinely cannot be has to say why here.
  *
- * **Desktop meets that at build time rather than at launch**: the renderer cannot read an
- * environment, so its overrides are substituted into the bundle and changing one is a rebuild. It
- * is an override on all three; it is a relaunch on only two. See `flags` in the renderer's ports.
+ * **Desktop reads them at launch only where unpackaged**: main carries them to the renderer, which
+ * cannot read an environment. A packaged build has only what was substituted into its bundle, so
+ * there a change is a rebuild. See `flags` in the renderer's ports.
  */
 
 export const FLAGS = {
@@ -86,6 +86,15 @@ export const FLAGS = {
    * debugging one.
    */
   debugMode: false,
+
+  /**
+   * Open the component catalog instead of the app: every story and scenario as a page, for the
+   * captures that go to Argos. Off, because a release has no use for it.
+   *
+   * Desktop alone draws it so far; the variable is read on all three so a mobile catalog needs no
+   * new plumbing.
+   */
+  componentCatalog: false,
 } as const
 
 export type FlagName = keyof typeof FLAGS
