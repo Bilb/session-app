@@ -21,6 +21,11 @@ concurrency:
 
 jobs:
   desktop:
+    # Forks stay off this host, where docker is root. A pull request runs its own copy of this file,
+    # so the repository setting that refuses fork workflows is what holds; keep both if made public.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     # The pinned capture image makes the pictures the same on any runner; this one is faster.
     runs-on: [self-hosted, linux, x64, session-catalog]
     env:
@@ -38,6 +43,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
+          check-latest: true
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
