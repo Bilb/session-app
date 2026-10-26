@@ -1,0 +1,208 @@
+name: devices
+
+# The android and ios projects: the shared and native specs on an emulator and a simulator, phone
+# and tablet each. Android on pull requests that can change what a phone draws, both nightly.
+on:
+  schedule:
+    - cron: '0 16 * * *' # 02:00 Sydney (AEST), 03:00 (AEDT): after nightly-native
+  pull_request:
+    paths:
+      - apps/mobile/**
+      - packages/ui/**
+      - packages/screens/**
+      - packages/bridge-*/**
+      - packages/client/**
+      - libsession-util
+      - tests/e2e/**
+      - .github/workflows/devices.yml
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Which platforms to run
+        type: choice
+        options: [both, android, ios]
+        default: both
+
+concurrency:
+  group: devices-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Apart from a developer's Metro (8081) and adb server (5037) on the same host.
+  SESSION_E2E_METRO_PORT: '8191'
+  SESSION_E2E_DEVICES_DIR: ${{ github.workspace }}/../session-e2e-devices
+
+jobs:
+  android:
+    if: >-
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository) &&
+      (github.event_name != 'workflow_dispatch' || inputs.platform != 'ios')
+    # The catalog's runner on session-qa-2, which has KVM and the Android SDK.
+    runs-on: [self-hosted, linux, x64, session-catalog]
+    timeout-minutes: 120
+    env:
+      ANDROID_HOME: /opt/android
+      ANDROID_SDK_ROOT: /opt/android
+      ANDROID_ADB_SERVER_PORT: '5047'
+      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_NOHASHDIR: 'true'
+      CCACHE_MAXSIZE: 20G
+      CMAKE_C_COMPILER_LAUNCHER: ccache
+      CMAKE_CXX_COMPILER_LAUNCHER: ccache
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          check-latest: true
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @session/localization build
+
+      # libvips' glib builds with meson >= 1.4; kept per runner rather than installed per run.
+      - name: meson
+        run: |
+          venv="$HOME/.cache/session-e2e/meson"
+          [ -x "$venv/bin/meson" ] || { python3 -m venv "$venv" && "$venv/bin/pip" install -q 'meson>=1.4'; }
+          echo "$venv/bin" >> "$GITHUB_PATH"
+
+      - run: pnpm --filter @session/bridge-rn build:libsession:android x86_64
+
+      - name: Build the dev client
+        working-directory: apps/mobile
+        run: |
+          CI=1 npx expo prebuild --platform android --no-install
+          cd android && ./gradlew :app:assembleDebug -PreactNativeArchitectures=x86_64 --console=plain -q
+
+      - name: Boot the emulators and Appium
+        run: |
+          tests/e2e/devices/android.sh up >> "$GITHUB_ENV"
+          tests/e2e/devices/appium.sh up android >> "$GITHUB_ENV"
+
+      # The fake refuses to start without its dev photographs, and a wiped emulator has none.
+      - name: Install the dev client and the fake's photographs
+        run: |
+          pnpm fake-media:fetch
+          for serial in "$SESSION_E2E_ANDROID_PHONE" "$SESSION_E2E_ANDROID_TABLET"; do
+            "$ANDROID_HOME/platform-tools/adb" -s "$serial" install -r \
+              apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+            ANDROID_SERIAL="$serial" pnpm --filter @session/mobile fake-media:push --android
+          done
+
+      - run: pnpm --filter @session/e2e test:e2e:android
+
+      - if: always()
+        run: |
+          tests/e2e/devices/appium.sh down
+          tests/e2e/devices/android.sh down
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: android-traces
+          path: |
+            test-results/
+            ${{ env.SESSION_E2E_DEVICES_DIR }}/**/*.log
+
+  ios:
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.platform != 'android')
+    runs-on: [self-hosted, macOS, ARM64, session-ios]
+    timeout-minutes: 180
+    env:
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_NOHASHDIR: 'true'
+      CCACHE_MAXSIZE: 20G
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          check-latest: true
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @session/localization build
+
+      - name: meson
+        run: |
+          venv="$HOME/.cache/session-e2e/meson"
+          [ -x "$venv/bin/meson" ] || { python3 -m venv "$venv" && "$venv/bin/pip" install -q 'meson>=1.4'; }
+          echo "$venv/bin" >> "$GITHUB_PATH"
+
+      # This Mac's own slice only, so arm64.
+      - run: taskpolicy -d throttle nice -n 19 packages/bridge-rn/scripts/build-libsession-ios.sh both
+
+      - name: Build the dev client
+        working-directory: apps/mobile
+        run: |
+          npx expo prebuild --platform ios --no-install
+          cd ios && pod install
+          xcodebuild -workspace Session.xcworkspace -scheme Session -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath build/dd \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
+            CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES -quiet
+
+      - name: Boot the simulators and Appium
+        run: |
+          tests/e2e/devices/ios.sh up >> "$GITHUB_ENV"
+          tests/e2e/devices/appium.sh up ios >> "$GITHUB_ENV"
+
+      # The fake refuses to start without its dev photographs, and a new simulator has none.
+      - name: Install the dev client and the fake's photographs
+        run: |
+          pnpm fake-media:fetch
+          app=apps/mobile/ios/build/dd/Build/Products/Debug-iphonesimulator/Session.app
+          for udid in "$SESSION_E2E_IOS_PHONE" "$SESSION_E2E_IOS_TABLET"; do
+            xcrun simctl install "$udid" "$app"
+            SESSION_SIMULATOR="$udid" pnpm --filter @session/mobile fake-media:push --ios
+          done
+
+      - run: pnpm --filter @session/e2e test:e2e:ios
+
+      - if: always()
+        run: |
+          tests/e2e/devices/appium.sh down
+          tests/e2e/devices/ios.sh down
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: ios-traces
+          path: |
+            test-results/
+            ${{ env.SESSION_E2E_DEVICES_DIR }}/**/*.log
+
+  # Only the scheduled run: a dispatched one has someone watching it, and a pull request shows its
+  # own checks.
+  notify:
+    needs: [android, ios]
+    if: >-
+      always() && github.event_name == 'schedule' &&
+      (needs.android.result != 'success' || needs.ios.result != 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post the failure to Discord
+        env:
+          WEBHOOK: ${{ secrets.ALERT_DISCORD_WEBHOOK_URL }}
+          ANDROID: ${{ needs.android.result }}
+          IOS: ${{ needs.ios.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -n "$WEBHOOK" ] || { echo "No ALERT_DISCORD_WEBHOOK_URL: not posted"; exit 0; }
+          jq -n --arg c "devices nightly: android $ANDROID, ios $IOS. $RUN_URL" '{content: $c}' |
+            curl -fsS -H 'Content-Type: application/json' -d @- "$WEBHOOK"
