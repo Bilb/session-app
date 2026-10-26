@@ -4,7 +4,6 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { PENDING_COPY } from '@session/localization'
 
-
 describe('the composer’s staged tray', () => {
   const composer = readFileSync(join(import.meta.dirname, '../src/Composer.tsx'), 'utf8')
 
