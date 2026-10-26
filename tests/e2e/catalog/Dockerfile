@@ -3,7 +3,12 @@
 # here rather than taken from whichever host runs it.
 FROM node:22.23-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d
 
-RUN apt-get update \
+# apt from the snapshot the base was built from, which its sources name, so the digest pins both.
+RUN sed -i -e '/^URIs:/d' \
+    -e 's|^# \(http://snapshot\.debian\.org/.*\)|URIs: \1\nCheck-Valid-Until: no|' \
+    /etc/apt/sources.list.d/debian.sources \
+  && grep -q '^URIs: http://snapshot' /etc/apt/sources.list.d/debian.sources \
+  && apt-get update \
   && apt-get install -y --no-install-recommends \
     xvfb xauth \
     libgtk-3-0 libnss3 libxss1 libasound2 libgbm1 libxshmfence1 libdrm2 libxkbcommon0 \
