@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { shadowWithAlpha } from '#src/shadowColour'
+import { raisedShadow, shadowWithAlpha } from '#src/shadowColour'
 
 describe("a shadow colour's alpha", () => {
   it('is changed and the colour kept', () => {
@@ -14,5 +14,12 @@ describe("a shadow colour's alpha", () => {
 
   it('treats anything but rgba() as opaque black', () => {
     expect(shadowWithAlpha('#000', (a) => a / 2)).toBe('rgba(0, 0, 0, 0.5)')
+  })
+})
+
+describe("a raised surface's shadow", () => {
+  it('is no darker than 0.51, and a lighter one is left as it is', () => {
+    expect(raisedShadow('rgba(0, 0, 0, 1)')).toBe('rgba(0, 0, 0, 0.51)')
+    expect(raisedShadow('rgba(0, 0, 0, 0.25)')).toBe('rgba(0, 0, 0, 0.25)')
   })
 })

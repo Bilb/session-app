@@ -1,4 +1,16 @@
 /**
+ * The darkest a raised surface's shadow is drawn: a tooltip, a modal panel. Dark themes draw
+ * shadows in opaque black, which reads as a heavy smudge rather than a lift; light themes are
+ * lighter than this already and are unchanged by it.
+ */
+const RAISED_SHADOW_ALPHA_MAX = 0.51
+
+/** The theme's shadow colour, no darker than `RAISED_SHADOW_ALPHA_MAX`. */
+export function raisedShadow(shadowColour: string): string {
+  return shadowWithAlpha(shadowColour, (a) => Math.min(a, RAISED_SHADOW_ALPHA_MAX))
+}
+
+/**
  * A theme's shadow colour with its alpha changed by `alpha`. The shadow is an `rgba()` string in
  * every theme; anything else is treated as opaque black.
  */

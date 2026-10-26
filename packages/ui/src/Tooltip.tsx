@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FocusEvent } from 'react'
 import { YStack } from 'tamagui'
 
 import { SPACE_SCALE } from './scales'
-import { shadowWithAlpha } from './shadowColour'
+import { raisedShadow } from './shadowColour'
 import { Text } from './Text'
 import type { TooltipProps } from './Tooltip.types'
 import { TOOLTIP_ARROW_REACH_PX, TOOLTIP_BUBBLE_RADIUS, TooltipArrow } from './TooltipArrow'
@@ -19,12 +19,6 @@ const HOVER_DELAY_MS = 150
 
 /** The arrow's tip clear of the control, so the bubble does not read as part of it. */
 const GAP_PX = SPACE_SCALE.xs + TOOLTIP_ARROW_REACH_PX
-
-/**
- * The shadow's darkest. Dark themes draw shadows in opaque black, which round a bubble this small
- * reads as a heavy smudge rather than a lift.
- */
-const SHADOW_ALPHA_MAX = 0.51
 
 /** Past this a label wraps rather than running across the window. */
 const MAX_WIDTH_PX = 240
@@ -120,7 +114,7 @@ export function Tooltip({
             position="relative"
             backgroundColor="$messageBubbleIncomingBg"
             borderRadius={TOOLTIP_BUBBLE_RADIUS}
-            boxShadow={`0px 0px 13px 0px ${shadowWithAlpha(shadow, (a) => Math.min(a, SHADOW_ALPHA_MAX))}`}
+            boxShadow={`0px 0px 13px 0px ${raisedShadow(shadow)}`}
             maxWidth={MAX_WIDTH_PX}
             testID={testID}
             onLayout={(event) => {
