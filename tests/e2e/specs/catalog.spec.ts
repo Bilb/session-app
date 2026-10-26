@@ -76,7 +76,7 @@ test(`captures and audits the component catalog's ${TIER} pages @catalog`, async
         (hash) => {
           ;(globalThis as unknown as CatalogGlobal).location.hash = hash
         },
-        `#/catalog/${encodeURIComponent(id)}`,
+        `#/catalog/${TIER}/${encodeURIComponent(id)}`,
       )
       await expect(app.locator(ELEMENT.catalog.ready)).toHaveText(id, { timeout: PAGE_READY_MS })
       const png = await app
