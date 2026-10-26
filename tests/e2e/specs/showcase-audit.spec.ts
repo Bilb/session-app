@@ -4,7 +4,7 @@ import { ELEMENT } from '@session/test-ids'
 import { openFirstConversation } from '../harness/attachments'
 import { DesktopApp } from '../harness/DesktopApp'
 import type { AuditIssue } from '../harness/ISessionApp'
-import { describeIssues, issueKey, unknownIssues } from '../harness/knownIssues'
+import { auditVerdict, describeIssues, issueKey } from '../harness/knownIssues'
 import { MobileApp, type FormFactor, type MobilePlatform } from '../harness/MobileApp'
 
 /** Narrow is near the window's 380 floor, where a bubble is at its tightest; wide is a laptop. */
@@ -73,8 +73,9 @@ test('draws the showcase with nothing serious for the audit @desktop @low-risk',
       }
     }
 
-    const unknown = unknownIssues('desktop', found.values())
+    const { unknown, fixed } = auditVerdict('showcase-desktop', found.values())
     expect(unknown, describeIssues(unknown).join('\n')).toEqual([])
+    expect(fixed, 'no longer found: remove from KNOWN_ISSUES').toEqual([])
   } finally {
     await app.close()
   }
@@ -109,8 +110,9 @@ for (const platform of MOBILE_PLATFORMS) {
           if (!(await app.scroll(ELEMENT.conversation.screen, 1, AUDIT_SPAN))) break
         }
 
-        const unknown = unknownIssues(platform, found.values())
+        const { unknown, fixed } = auditVerdict(`showcase-${platform}`, found.values())
         expect(unknown, describeIssues(unknown).join('\n')).toEqual([])
+        expect(fixed, 'no longer found: remove from KNOWN_ISSUES').toEqual([])
       } finally {
         await app.close()
       }

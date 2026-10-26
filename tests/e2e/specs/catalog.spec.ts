@@ -6,7 +6,7 @@ import { ELEMENT } from '@session/test-ids'
 
 import { DesktopApp } from '../harness/DesktopApp'
 import type { AuditIssue } from '../harness/ISessionApp'
-import { describeIssues, issueKey, unknownIssues } from '../harness/knownIssues'
+import { auditVerdict, describeIssues, issueKey } from '../harness/knownIssues'
 
 /** `pr` or `nightly`: see `catalogPages`. */
 const TIER = process.env['CATALOG_TIER'] === 'nightly' ? 'nightly' : 'pr'
@@ -89,8 +89,10 @@ test(`captures and audits the component catalog's ${TIER} pages @catalog`, async
       }
     }
 
-    const unknown = unknownIssues('desktop', found.values())
+    const { unknown, fixed } = auditVerdict('catalog', found.values())
     expect(unknown, describeIssues(unknown).join('\n')).toEqual([])
+    // The pr tier draws a subset of the pages, so only the nightly sweep can tell one is fixed.
+    if (TIER === 'nightly') expect(fixed, 'no longer found: remove from KNOWN_ISSUES').toEqual([])
   } finally {
     await app.close()
   }

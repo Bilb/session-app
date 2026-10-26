@@ -1,12 +1,16 @@
-import type { AuditIssue, ISessionApp } from './ISessionApp'
+import type { AuditIssue } from './ISessionApp'
+
+/** One per auditing spec: each sees its own set, and only that spec can tell one is fixed. */
+export type Audit = 'catalog' | 'showcase-desktop' | 'showcase-android' | 'showcase-ios'
 
 /**
  * Findings that are the app's and known, keyed `rule target`, each with why it stands.
  *
- * An entry here is a bug with a name, not a pass: it keeps the audit failing on anything new.
+ * An entry here is a bug with a name, not a pass: it keeps the audit failing on anything new, and
+ * once its audit stops finding it the entry must go, or the next regression of it passes unseen.
  */
-const KNOWN_ISSUES: Partial<Record<ISessionApp['platform'], Readonly<Record<string, string>>>> = {
-  desktop: {
+const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, string>>> = {
+  catalog: {
     'color-contrast message-attachment-state':
       'textSecondary at caption size on a received bubble is 3.5 to 4.1:1 in every theme, under AA',
     'color-contrast message-attachment': 'the format line under a lead square: the same ink',
@@ -22,6 +26,7 @@ const KNOWN_ISSUES: Partial<Record<ISessionApp['platform'], Readonly<Record<stri
     'color-contrast button.variants danger': 'the pressed label on the danger fill: 3.7 to 4.2:1',
     'color-contrast button.variants solid':
       "the label on the red accent's fill, ocean themes: 4.0:1",
+    'color-contrast button.variants long': 'the same, on the long label',
     'color-contrast fileRow.onAccent idle':
       'the caption on a purple sent bubble, ocean themes: 4.2:1',
     'color-contrast fileRow.onAccent failed': 'the same',
@@ -36,7 +41,13 @@ const KNOWN_ISSUES: Partial<Record<ISessionApp['platform'], Readonly<Record<stri
     'color-contrast avatar.sizes emoji': 'the same',
     'color-contrast avatar.sizes arabic': 'the same',
   },
-  android: {
+  'showcase-desktop': {
+    'color-contrast message-attachment-state':
+      'textSecondary at caption size on a received bubble is 3.5 to 4.1:1 in every theme, under AA',
+    'color-contrast message-attachment': 'the format line under a lead square: the same ink',
+    'color-contrast message-attachment-show-all': "the roll's Show all count: the same ink",
+  },
+  'showcase-android': {
     'target-size conversation-back':
       'drawn at 32dp; its hitSlop reaches MIN_HIT_TARGET, 40, which is under 48 and not in the bounds',
     'target-size message-attachment-view-list':
@@ -45,7 +56,7 @@ const KNOWN_ISSUES: Partial<Record<ISessionApp['platform'], Readonly<Record<stri
       'the same: attachment-footer.spec.ts taps the row edges',
     'target-size message-attachment-show-all': 'a PressArea 32dp tall, with no hitSlop at all',
   },
-  ios: {
+  'showcase-ios': {
     'XCUIAccessibilityAuditTypeSufficientElementDescription message-attachment-tile':
       "a tile is named by its filename, which Apple's audit reads as no human-readable label",
     'target-size conversation-back':
@@ -60,8 +71,16 @@ const KNOWN_ISSUES: Partial<Record<ISessionApp['platform'], Readonly<Record<stri
 
 export const issueKey = (issue: AuditIssue) => `${issue.rule} ${issue.target}`
 
-export const unknownIssues = (platform: ISessionApp['platform'], found: Iterable<AuditIssue>) =>
-  [...found].filter((issue) => !(issueKey(issue) in (KNOWN_ISSUES[platform] ?? {})))
+/** What `audit` found that is not known, and what is known that it no longer finds. */
+export function auditVerdict(audit: Audit, found: Iterable<AuditIssue>) {
+  const issues = [...found]
+  const known = KNOWN_ISSUES[audit]
+  const keys = new Set(issues.map(issueKey))
+  return {
+    unknown: issues.filter((issue) => !(issueKey(issue) in known)),
+    fixed: Object.keys(known).filter((key) => !keys.has(key)),
+  }
+}
 
 /** One line per finding, for an assertion's message. */
 export const describeIssues = (issues: readonly AuditIssue[]) =>
