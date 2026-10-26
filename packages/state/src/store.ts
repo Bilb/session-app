@@ -366,7 +366,8 @@ export function createSessionStore(
       }
 
       const account = await client.getAccountInfo()
-      store.setState({ account })
+      const attachmentUploadLimitBytes = await client.getAttachmentUploadLimit()
+      store.setState({ account, attachmentUploadLimitBytes })
 
       // Logged, not just held, because the account ID is what someone else needs in order to
       // write to this device, and reading it off a screen is not always possible - a headless

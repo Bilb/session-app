@@ -1,13 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { MAX_ATTACHMENT_BYTES } from '@session/basic-types'
 import { PENDING_COPY, tr } from '@session/localization'
 import { describe, expect, it } from 'vitest'
 
 import { refusalAnnouncement, refusalNotices } from '#src/refusalNotices'
 
-const big = { path: '/picked/drone.mov', name: 'drone.mov', size: MAX_ATTACHMENT_BYTES + 1 }
+const big = { path: '/picked/drone.mov', name: 'drone.mov', size: 10_000_001 }
 const PANO_BYTES = 12
 const NAMED = { tooLarge: [], tooLargeToDecode: [], unopenable: [] }
 

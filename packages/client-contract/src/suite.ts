@@ -635,9 +635,15 @@ export function runSessionClientContract(
       seen.stop()
     })
 
+    it('names the file server limit a send plan holds a file to, counted encrypted', async () => {
+      const { alice } = await harness.friends()
+      // The built-in servers' default, which the scenario below is the plaintext edge of.
+      expect(await alice.getAttachmentUploadLimit()).toBe(10_000_000)
+    })
+
     it('holds a file sent as it is to the file server limit once it is encrypted', async () => {
       const { alice, writeFile } = await harness.friends()
-      // 9,956,278 bytes encrypt to just within MAX_ATTACHMENT_BYTES; one more byte does not.
+      // 9,956,278 bytes encrypt to just within the default 10,000,000; one more byte does not.
       const fits = await writeFile('fits.bin', 9_956_278)
       const over = await writeFile('over.bin', 9_956_279)
 

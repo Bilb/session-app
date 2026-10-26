@@ -223,6 +223,10 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     return empty
   },
   getCacheDir: async (client) => ({ type: 'path', path: await client.getCacheDir() }),
+  getAttachmentUploadLimit: async (client) => ({
+    type: 'byteCount',
+    bytes: await client.getAttachmentUploadLimit(),
+  }),
   getAttachmentCacheLimit: async (client) => {
     const bytes = await client.getAttachmentCacheLimit()
     return { type: 'byteCount', ...(bytes === undefined ? {} : { bytes }) }

@@ -640,6 +640,11 @@ describeEcho('the generated converters', () => {
       response: { id: 900_015, result: { type: 'byteCount', bytes: 5_000_000 } },
     },
     { type: 'response', response: { id: 900_016, result: { type: 'byteCount' } } },
+    // A file server's upload limit is a uint64, so one past 32 bits has to cross whole.
+    {
+      type: 'response',
+      response: { id: 900_021, result: { type: 'byteCount', bytes: 5_000_000_000 } },
+    },
     { type: 'response', response: { id: 900_017, result: { type: 'edge', edgePx: 720 } } },
     {
       type: 'response',

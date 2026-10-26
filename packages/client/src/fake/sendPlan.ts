@@ -1,10 +1,11 @@
-import {
-  contentTypeEssence,
-  encryptedAttachmentSize,
-  MAX_ATTACHMENT_BYTES,
-  type WithDecodesHeic,
-} from '@session/basic-types'
+import { contentTypeEssence, type WithDecodesHeic } from '@session/basic-types'
 import type { SendPlan } from '@session/bridge-types'
+
+/** libsession's default for the built-in file servers, which is all the fake has. */
+export const FAKE_UPLOAD_LIMIT_BYTES = 10_000_000
+
+// The largest plaintext that encrypts and pads to within FAKE_UPLOAD_LIMIT_BYTES.
+const LARGEST_SENT_AS_IS = 9_956_278
 
 /**
  * The pictures libsession decodes in this build, and so re-encodes to send: libvips's loaders.
@@ -52,8 +53,7 @@ export function fakeSendPlan(
   options: WithDecodesHeic,
 ): SendPlan {
   if (isReencoded(contentType, options)) return 'reencoded'
-  if (sizeBytes !== undefined && encryptedAttachmentSize(sizeBytes) > MAX_ATTACHMENT_BYTES)
-    return 'too-large-for-server'
+  if (sizeBytes !== undefined && sizeBytes > LARGEST_SENT_AS_IS) return 'too-large-for-server'
   return contentTypeEssence(contentType)?.startsWith('image/') === true
     ? 'original-cannot-decode'
     : 'as-is'

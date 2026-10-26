@@ -1264,6 +1264,14 @@ struct AttachmentSendPlanCommand {
             path{std::move(path_)}, content_type{std::move(content_type_)} {}
 };
 
+/// The most the file server takes in one upload, in encrypted, padded bytes: the limit
+/// `attachmentSendPlan` holds a file to, so a file's own size has to be smaller to fit. Belongs to
+/// the attached network's file server and changes only with `attachNetwork`; before a network is
+/// attached it is libsession's default for the built-in servers.
+struct GetAttachmentUploadLimitCommand {
+    static constexpr std::string_view type_tag = "getAttachmentUploadLimit";
+};
+
 struct RetrySendCommand {
     static constexpr std::string_view type_tag = "retrySend";
 
@@ -1514,6 +1522,7 @@ using Command = std::variant<
         GetMessagesCommand,
         SendMessageCommand,
         AttachmentSendPlanCommand,
+        GetAttachmentUploadLimitCommand,
         RetrySendCommand,
         DeleteMessageCommand,
         SetGalleryCommand,

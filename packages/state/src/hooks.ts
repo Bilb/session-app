@@ -75,6 +75,12 @@ export function useAppearance(): StoredAppearance | null {
   return useStore(store, (state) => state.appearance)
 }
 
+/** The file server's limit on one upload, encrypted and padded, or null before a start asked. */
+export function useAttachmentUploadLimit(): number | null {
+  const store = useSessionStore()
+  return useStore(store, (state) => state.attachmentUploadLimitBytes)
+}
+
 /** The whole of what libsession says about the account, or null before the first answer. */
 export function useAccount(): AccountInfo | null {
   const store = useSessionStore()

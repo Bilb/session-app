@@ -1178,6 +1178,12 @@ struct ClientBridge::Impl {
         respond(id, PathResult{utf8_string(options.cache_dir)});
     }
 
+    void handle(double id, const GetAttachmentUploadLimitCommand&) {
+        client->attachment_upload_limit(on(id, [this, id](uint64_t bytes) {
+            respond(id, ByteCountResult{static_cast<double>(bytes)});
+        }));
+    }
+
     void handle(double id, const GetAttachmentCacheLimitCommand&) {
         client->attachment_cache_limit(on(id, [this, id](std::optional<int64_t> bytes) {
             respond(id,

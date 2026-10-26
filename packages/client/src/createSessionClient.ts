@@ -319,6 +319,14 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       return resultOf(response, 'path').path
     },
 
+    async getAttachmentUploadLimit(): Promise<number> {
+      const response = await call({ type: 'getAttachmentUploadLimit' })
+      const { bytes } = resultOf(response, 'byteCount')
+      if (bytes === undefined)
+        throw new SessionClientError('getAttachmentUploadLimit answered no limit')
+      return bytes
+    },
+
     async getAttachmentCacheLimit(): Promise<number | undefined> {
       const response = await call({ type: 'getAttachmentCacheLimit' })
       return resultOf(response, 'byteCount').bytes

@@ -80,14 +80,6 @@ export function mediaKindOf(contentType: string | undefined): MediaKind {
  */
 export const ALBUM_WIDTH = 240
 
-/**
- * The most the default file server takes in one upload: `session_file_server`'s `max_file_size`.
- *
- * Counted on the encrypted, padded stream, so compare `encryptedAttachmentSize`, not a file's own
- * size: the largest file that fits is 9,956,278 bytes.
- */
-export const MAX_ATTACHMENT_BYTES = 10_000_000
-
 /** How many attachments one message may carry. The legacy clients' limit; libsession sets none. */
 export const MAX_ATTACHMENTS_PER_MESSAGE = 32
 

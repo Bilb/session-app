@@ -166,6 +166,11 @@ export interface SessionClient {
    * Answers `missing` rather than failing for a path with no file.
    */
   attachmentSendPlan(path: string, contentType?: string): Promise<SendPlan>
+  /**
+   * The most the file server takes in one upload, counted encrypted and padded, so a file must be
+   * somewhat smaller to fit. Changes only with `attachNetwork`.
+   */
+  getAttachmentUploadLimit(): Promise<number>
   /** Also records that the question was asked, which is why `none` is worth sending. */
   setAutoDownload(id: ConversationId, mode: AutoDownload): Promise<void>
   /** Where libsession caches downloads. Empty when the bridge was opened without one. */

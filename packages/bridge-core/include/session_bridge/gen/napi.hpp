@@ -1658,6 +1658,21 @@ struct Codec<::session_bridge::AttachmentSendPlanCommand> {
 };
 
 template <>
+struct Codec<::session_bridge::GetAttachmentUploadLimitCommand> {
+    static constexpr std::string_view name = "GetAttachmentUploadLimitCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::GetAttachmentUploadLimitCommand& value) {
+        (void)value;
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::GetAttachmentUploadLimitCommand::type_tag.data(), ::session_bridge::GetAttachmentUploadLimitCommand::type_tag.size()));
+        return obj;
+    }
+    static ::session_bridge::GetAttachmentUploadLimitCommand from(const Napi::Value& value, std::string_view where) {
+        object(value, where);
+        return ::session_bridge::GetAttachmentUploadLimitCommand{};
+    }
+};
+
+template <>
 struct Codec<::session_bridge::RetrySendCommand> {
     static constexpr std::string_view name = "RetrySendCommand";
     static Napi::Value to(Napi::Env env, const ::session_bridge::RetrySendCommand& value) {
@@ -2072,6 +2087,8 @@ struct Codec<::session_bridge::Command> {
             return Codec<::session_bridge::SendMessageCommand>::from(value, where);
         if (tag == "attachmentSendPlan")
             return Codec<::session_bridge::AttachmentSendPlanCommand>::from(value, where);
+        if (tag == "getAttachmentUploadLimit")
+            return Codec<::session_bridge::GetAttachmentUploadLimitCommand>::from(value, where);
         if (tag == "retrySend")
             return Codec<::session_bridge::RetrySendCommand>::from(value, where);
         if (tag == "deleteMessage")

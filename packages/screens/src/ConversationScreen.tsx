@@ -1,11 +1,12 @@
 import { requirePorts } from '@session/app'
-import {
-  formatBytes,
-  MAX_ATTACHMENT_BYTES,
-  MAX_ATTACHMENTS_PER_MESSAGE,
-} from '@session/basic-types'
+import { formatBytes, MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
 import type { ConversationId } from '@session/client'
-import { useConversation, useMessages, useSessionActions } from '@session/state'
+import {
+  useAttachmentUploadLimit,
+  useConversation,
+  useMessages,
+  useSessionActions,
+} from '@session/state'
 import { PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { DropOverlay, DropZone, List, Screen, Separator, Text, XStack, YStack } from '@session/ui'
@@ -30,6 +31,7 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
   const actions = useSessionActions()
   const staging = useStaging((file) => actions.attachmentSendPlan(file.path, file.contentType))
   const [dropping, setDropping] = useState(false)
+  const uploadLimitBytes = useAttachmentUploadLimit()
   // Unset means nobody has been asked what this conversation should fetch unprompted, which is
   // not the same as having been asked and said no. Asked once, on the first attachment fetched.
   // A request made while the conversation is still loading is held, and asked once it is known
@@ -93,12 +95,13 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
             void staging.take(requirePorts().files.droppedFiles(items), skipped + items.length)
           }}
           overlay={
-            dropping ? (
+            // A conversation is reached only after the start that reads the limit.
+            dropping && uploadLimitBytes !== null ? (
               <DropOverlay
                 title={tr('attachmentsAdd')}
                 hint={PENDING_COPY.attachmentsDropHint(
                   MAX_ATTACHMENTS_PER_MESSAGE,
-                  formatBytes(MAX_ATTACHMENT_BYTES),
+                  formatBytes(uploadLimitBytes),
                 )}
                 testID={ELEMENT.conversation.dropOverlay}
               />

@@ -229,6 +229,13 @@ export type Command =
    * extension when unset, as `sendMessage` infers it. Read on libsession's disk thread.
    */
   | { type: 'attachmentSendPlan'; path: string; contentType?: string }
+  /**
+   * The most the file server takes in one upload, in encrypted, padded bytes: the limit
+   * `attachmentSendPlan` holds a file to, so a file's own size has to be smaller to fit. Belongs to
+   * the attached network's file server and changes only with `attachNetwork`; before a network is
+   * attached it is libsession's default for the built-in servers.
+   */
+  | { type: 'getAttachmentUploadLimit' }
   | { type: 'retrySend'; messageId: number }
   | { type: 'deleteMessage'; messageId: number; scope: Deletion }
   /**

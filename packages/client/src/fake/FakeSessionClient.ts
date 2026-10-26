@@ -16,6 +16,7 @@ import type {
 } from '@session/bridge-types'
 
 import type { MessagePage, NetworkAttachment, OutgoingMessage, SessionClient } from '../types'
+import { FAKE_UPLOAD_LIMIT_BYTES } from './sendPlan'
 import type { FakeAccount, FakeStagedFiles, FakeWorld, LocatedAttachment } from './world'
 
 /** Why this network will not attach, or undefined when it will. */
@@ -437,6 +438,11 @@ export class FakeSessionClient implements SessionClient {
   attachmentSendPlan(path: string, contentType?: string): Promise<SendPlan> {
     this.assertOpen()
     return this.account.sendPlan(path, contentType)
+  }
+
+  getAttachmentUploadLimit(): Promise<number> {
+    this.assertOpen()
+    return Promise.resolve(FAKE_UPLOAD_LIMIT_BYTES)
   }
 
   /** How the plan reads a file behind an app, whose disk the world cannot see. */
