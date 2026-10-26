@@ -47,5 +47,8 @@ after touching one.
 
 ## Check
 
-A render test if it has logic worth asserting, then `pnpm --filter @session/ui typecheck` and
-`pnpm --filter @session/mobile typecheck`.
+A catalog story for how it looks (see "What can be seen is tested in the catalog" in
+`CLAUDE.md`), captured with `tests/e2e/catalog/capture.sh` after
+`pnpm --filter @session/desktop build` on a Linux x86_64 host; elsewhere, push and read the
+pull request's build in Argos. A render test only for behaviour a picture cannot show.
+Then `pnpm --filter @session/ui typecheck` and `pnpm --filter @session/mobile typecheck`.

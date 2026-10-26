@@ -12,7 +12,7 @@ const repoRoot = join(import.meta.dirname, '../../..')
  * The window opens in the default theme with the brand mark on it, rather than white, and the
  * mark goes once the app has drawn.
  */
-test('the window opens on the launch screen, which goes once the app draws', async () => {
+test('the window opens on the launch screen, which goes once the app draws @desktop', async () => {
   const { backgroundPrimary } = getThemeTokens(DEFAULT_THEME, DEFAULT_ACCENT)
 
   // The page as built: the launch screen is in the HTML, so it draws with the first frame rather

@@ -34,6 +34,7 @@ import {
 import { FetchHint } from './FetchHint'
 import { Icon } from './Icon'
 import { inkFor } from './ink'
+import { useForcedFocus } from './interactionOverride'
 import { focusRing, heldButton, keyboardPress } from './keyboardPress'
 import { pressHint } from './pressHint'
 import { ProgressRing } from './ProgressRing'
@@ -181,6 +182,7 @@ function Trailing({
   onAccent: boolean
 }) {
   const control = fileRowControl(state)
+  const forcedFocus = useForcedFocus()
 
   // The square is held whatever the state, so the name's width does not change when a transfer
   // ends and the controls stay in one column down a list of rows.
@@ -215,6 +217,7 @@ function Trailing({
               ...(actionLabel === undefined ? {} : { 'aria-label': actionLabel }),
               ...keyboardPress(onAction, ring),
             })}
+      {...forcedFocus}
       {...(isWeb ? { 'aria-disabled': held } : {})}
       onPress={
         held
@@ -279,6 +282,7 @@ export function FileRow({
   const tone = fileRowTone(state)
   const nameInk = inkFor(tone.name, onAccent)
   const fontScale = useFontScale()
+  const forcedFocus = useForcedFocus()
   // While fetching, the lead square stays a disabled button rather than losing its stop, which
   // would drop focus on it to the page.
   const held = state === 'fetching'
@@ -356,6 +360,7 @@ export function FileRow({
                   ...keyboardPress(onOpen, leadRing),
                 })}
             {...(leadHeld && isWeb ? heldButton(filename, leadRing) : {})}
+            {...forcedFocus}
             {...(isWeb ? { 'aria-disabled': leadHeld } : {})}
             position="relative"
             group="tile"

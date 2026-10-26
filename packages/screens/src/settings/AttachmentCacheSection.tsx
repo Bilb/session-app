@@ -1,11 +1,9 @@
 import { formatBytes } from '@session/basic-types'
-import { tr } from '@session/localization'
+import { PENDING_COPY, tr } from '@session/localization'
 import { useSessionActions, type CacheSettings } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { SettingsGroup, SettingsRow, SettingsSection, Text, YStack } from '@session/ui'
 import { useEffect, useState } from 'react'
-
-import { PENDING_COPY } from '../pendingCopy'
 
 function limitLabel(bytes: number | undefined): string {
   return bytes === undefined ? PENDING_COPY.attachmentCacheNoLimit : formatBytes(bytes)

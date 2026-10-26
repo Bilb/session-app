@@ -52,7 +52,8 @@ describe('knob-space coverage', () => {
     // The seeded generator is the point: a figure quoted in a review has to be reproducible. Two
     // small independent draws prove that as well as two large ones and cost a fraction as much.
     expect(coverage(sample(200)).valid).toBe(coverage(sample(200)).valid)
-  })
+    // Compute alone, and 3s of it on a CI runner before other packages' tests share the cores.
+  }, 20_000)
 
   it('knows what chroma sRGB can actually hold', () => {
     // Which is what makes a fixed slider maximum wrong: the ceiling swings by an order of magnitude

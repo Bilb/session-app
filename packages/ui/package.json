@@ -16,7 +16,8 @@
     ".": "./src/index.ts",
     "./config": "./src/config.ts",
     "./brandMark": "./src/brandMark.ts",
-    "./themes": "./src/themes.ts"
+    "./themes": "./src/themes.ts",
+    "./catalog": "./src/catalog/index.ts"
   },
   "scripts": {
     "lint": "eslint .",
@@ -40,10 +41,19 @@
   },
   "devDependencies": {
     "@session/eslint-config": "workspace:*",
+    "@session/expectations": "workspace:*",
+    "@session/render-tier": "workspace:*",
     "@session/typescript-config": "workspace:*",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "catalog:",
     "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "eslint": "catalog:",
+    "happy-dom": "catalog:",
     "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-native-web": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

@@ -68,6 +68,7 @@ function MessageSheet({
             itemHeight={rowHeight}
             fitsContent
             paddingHorizontal="md"
+            testID={ELEMENT.conversation.attachmentSheetList}
           />
         )}
       </Sheet>

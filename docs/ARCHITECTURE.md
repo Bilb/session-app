@@ -266,19 +266,68 @@ arriving from a message body is the unencoded form, which is the case that matte
 
 ## Testing
 
-| tier     | what                                                  | when                         |
-| -------- | ----------------------------------------------------- | ---------------------------- |
-| unit     | projections, route contracts, the generator, the fake | every push                   |
-| fast e2e | the Electron app on the fake, no network              | `e2e-fast` workflow, by hand |
-| full e2e | real bindings, devnet, device pool                    | `e2e-full` workflow, by hand |
+| tier     | what                                                               | when                         |
+| -------- | ------------------------------------------------------------------ | ---------------------------- |
+| unit     | `*.test.ts`: projections, route contracts, the generator, fake     | every push                   |
+| render   | `*.test.tsx`: components drawn through react-native-web, happy-dom | every push                   |
+| fast e2e | the Electron app on the fake, no network                           | `e2e-fast` workflow, by hand |
+| device   | the same specs on an Android emulator and an iOS simulator, Appium | `test:e2e:android`/`:ios`    |
+| catalog  | every catalog page captured and audited, uploaded to Argos         | `catalog`, every PR and main |
+| full e2e | real bindings, devnet, device pool                                 | `e2e-full` workflow, by hand |
+
+A package with render tests runs vitest as two projects, `unit` and `render`
+(`@session/render-tier/vitest`).
+
+**What a control is, written once.** `@session/expectations` says what each control is to a
+screen reader and a driver (role, name, hint, disabled, busy, focusable) per state, with a
+`desktop` and a `native` side; `null` on a side means absent on purpose. Render tests assert it.
+An e2e spec compares `app.describe(id)` with `toMatchObject` against its platform's side.
+
+**No new source grep where a drawn check can fail instead:** assert what is drawn, not what a
+file contains. The greps that stay say why, one by one: `packages/ui/tests/nativeOnly.contract.test.ts`
+for what only a native tree shows and no driver reads, and the repo-wide `*.contract.test.ts`
+checks (copy, logical edges, named tokens).
 
 `tests/e2e/harness/ISessionApp.ts` is the platform-neutral driver interface. Its rule: every
 member takes and returns primitives, enums or plain data - no Playwright `Locator`, no Appium
 element. Anything one platform cannot do belongs somewhere narrower until every platform can.
+`describe(id, at?)` reads one element as assistive technology does, as an `AccessibleNode`;
+`audit(scope?)` returns the platform checker's serious and critical findings, axe's on desktop.
+On iOS they are XCTest's `performAccessibilityAudit`'s, which cover the whole screen whatever the
+`scope`, and on Android a rule set's over the tree
+(a stop says something, takes 48dp, and sits in no other stop); both phones also size targets
+from `bounds`.
+`frame(id, at?)` and `tapPoint(x, y)` place an element and touch one point, in CSS px, dp or pt:
+a tree shows a control's drawn box, never its `hitSlop`, so a target's real size is tapped at
+its edges (`attachment-footer.spec.ts`).
+Desktop-only checks (focus, layout, CSS) use Playwright's own matchers on `DesktopApp.page`.
+
+`MobileApp` drives an installed debug build through Appium, finding elements by `testID` (Android's
+resource id, iOS's accessibility identifier) and reading them from the page source. It serves the
+bundle itself: Metro inlines every `EXPO_PUBLIC_` variable, so the fake and its fixture
+are chosen per bundle, and a launch with other values restarts Metro. It reads the devices from
+`SESSION_E2E_{ANDROID,IOS}_{PHONE,TABLET}`, Appium from `SESSION_E2E_APPIUM_URL` and Metro's
+port from `SESSION_E2E_METRO_PORT`. There is no CI job for it: it runs against a local emulator
+or simulator.
+
+`showcase-audit.spec.ts` audits the `showcase` fixture at two widths on desktop, and on a phone and
+a tablet of each mobile platform, in the default theme.
+
+**The component catalog** is where looks are checked. Each story in `@session/ui/catalog` (and
+each scenario, a real message from a fake fixture, in `apps/desktop/src/renderer/catalog/scenarios/`)
+draws its variants as rows and its forced states (hover, press, focus) as columns, in several
+themes side by side on one page. A story says what it is sensitive to (accent, right to left,
+width), and that decides which extra pages it gets. The `pr` tier draws two themes in the default
+accent with the forced states, plus one unforced page in every accent for a story that draws the
+accent; `nightly` draws every theme and accent, every night. The desktop app opens the catalog instead of the app under the
+`componentCatalog` flag; `catalog.spec.ts` captures each page and runs axe over it, inside the image
+`tests/e2e/catalog/Dockerfile` pins (fonts, fontconfig, the libraries Electron draws with) so a
+capture is the same on any Linux x86_64 host, and the `catalog` workflow uploads the captures to Argos.
 
 `sessionTest` is the only way to declare a test and the only thing that opens or closes a
 client. Its `clients` descriptor decides the platforms _and_ the tags, so a spec asking for two
 clients is tagged `@2-devices` without anyone writing it down.
+`EACH` runs a client on every platform in turn, and the Playwright project is chosen by the tag.
 
 **One id per element**, in `@session/test-ids`, used as the component's `testID` and as the test's
 selector. Verified: `testID` reaches the DOM as `data-testid` untouched through
