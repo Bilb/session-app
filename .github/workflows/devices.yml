@@ -30,7 +30,6 @@ concurrency:
 env:
   # Apart from a developer's Metro (8081) and adb server (5037) on the same host.
   SESSION_E2E_METRO_PORT: '8191'
-  SESSION_E2E_DEVICES_DIR: ${{ github.workspace }}/../session-e2e-devices
 
 jobs:
   android:
@@ -42,6 +41,7 @@ jobs:
     runs-on: [self-hosted, linux, x64, session-catalog]
     timeout-minutes: 120
     env:
+      SESSION_E2E_DEVICES_DIR: ${{ runner.temp }}/session-e2e-devices
       ANDROID_HOME: /opt/android
       ANDROID_SDK_ROOT: /opt/android
       ANDROID_ADB_SERVER_PORT: '5047'
@@ -66,11 +66,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @session/localization build
 
-      # libvips' glib builds with meson >= 1.4; kept per runner rather than installed per run.
+      # libvips' glib builds with meson >= 1.4 and ninja; kept per runner rather than installed per run.
       - name: meson
         run: |
           venv="$HOME/.cache/session-e2e/meson"
-          [ -x "$venv/bin/meson" ] || { python3 -m venv "$venv" && "$venv/bin/pip" install -q 'meson>=1.4'; }
+          [ -x "$venv/bin/ninja" ] || { python3 -m venv "$venv" && "$venv/bin/pip" install -q 'meson>=1.4' ninja; }
           echo "$venv/bin" >> "$GITHUB_PATH"
 
       - run: pnpm --filter @session/bridge-rn build:libsession:android x86_64
@@ -118,6 +118,7 @@ jobs:
     runs-on: [self-hosted, macOS, ARM64, session-ios]
     timeout-minutes: 180
     env:
+      SESSION_E2E_DEVICES_DIR: ${{ runner.temp }}/session-e2e-devices
       LANG: en_US.UTF-8
       LC_ALL: en_US.UTF-8
       CCACHE_BASEDIR: ${{ github.workspace }}
@@ -141,7 +142,7 @@ jobs:
       - name: meson
         run: |
           venv="$HOME/.cache/session-e2e/meson"
-          [ -x "$venv/bin/meson" ] || { python3 -m venv "$venv" && "$venv/bin/pip" install -q 'meson>=1.4'; }
+          [ -x "$venv/bin/ninja" ] || { python3 -m venv "$venv" && "$venv/bin/pip" install -q 'meson>=1.4' ninja; }
           echo "$venv/bin" >> "$GITHUB_PATH"
 
       # This Mac's own slice only, so arm64.
