@@ -20,7 +20,7 @@ const repoRoot = join(import.meta.dirname, '../../..')
  *
  * Any 13 words do on the fake, which checks the count and leaves the word lists to libsession.
  */
-test('a typed recovery phrase gets past the restore screen', async () => {
+test('a typed recovery phrase gets past the restore screen @desktop', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'session-typed-phrase-'))
   const app = await _electron.launch({
     args: [

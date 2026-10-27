@@ -34,6 +34,7 @@ export function useTopBarInsets():
   const { corners } = useContext(PaneContext)
   const rtl = isRtlLocale(useLocale())
   const { left, right } = useTopBarControlsPadding()
+  if (corners === 'none') return {}
   const touchesLeft = corners === 'both' || (corners === 'start') !== rtl
   const touchesRight = corners === 'both' || (corners === 'end') !== rtl
   const style = {
@@ -41,4 +42,17 @@ export function useTopBarInsets():
     ...(touchesRight && right !== undefined ? { paddingRight: right } : {}),
   }
   return Object.keys(style).length > 0 ? { style } : {}
+}
+
+const RailContext = createContext(false)
+
+/** Set by `AdaptiveShell` around the panes it draws beside the rail. */
+export const RailProvider = RailContext.Provider
+
+/**
+ * Whether the rail is on screen beside this pane, which holds the controls a pane would otherwise
+ * draw itself: the account's avatar, and with it the way into settings.
+ */
+export function useBesideRail(): boolean {
+  return useContext(RailContext)
 }

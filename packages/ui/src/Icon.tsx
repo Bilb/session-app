@@ -37,6 +37,8 @@ import { LockKeyhole } from '@tamagui/lucide-icons-2/icons/LockKeyhole'
 import { Mail } from '@tamagui/lucide-icons-2/icons/Mail'
 import { MessageSquare } from '@tamagui/lucide-icons-2/icons/MessageSquare'
 import { MessageSquareWarning } from '@tamagui/lucide-icons-2/icons/MessageSquareWarning'
+import { Moon } from '@tamagui/lucide-icons-2/icons/Moon'
+import { PackageCheck } from '@tamagui/lucide-icons-2/icons/PackageCheck'
 import { PaintbrushVertical } from '@tamagui/lucide-icons-2/icons/PaintbrushVertical'
 import { Pin } from '@tamagui/lucide-icons-2/icons/Pin'
 import { Play } from '@tamagui/lucide-icons-2/icons/Play'
@@ -45,6 +47,7 @@ import { RotateCw } from '@tamagui/lucide-icons-2/icons/RotateCw'
 import { Search } from '@tamagui/lucide-icons-2/icons/Search'
 import { Settings } from '@tamagui/lucide-icons-2/icons/Settings'
 import { Share2 } from '@tamagui/lucide-icons-2/icons/Share2'
+import { SunMedium } from '@tamagui/lucide-icons-2/icons/SunMedium'
 import { Trash2 } from '@tamagui/lucide-icons-2/icons/Trash2'
 import { TriangleAlert } from '@tamagui/lucide-icons-2/icons/TriangleAlert'
 import { UserRoundPlus } from '@tamagui/lucide-icons-2/icons/UserRoundPlus'
@@ -108,6 +111,8 @@ const GLYPHS = {
   mail: Mail,
   messageSquare: MessageSquare,
   messageSquareWarning: MessageSquareWarning,
+  moon: Moon,
+  packageCheck: PackageCheck,
   paintbrush: PaintbrushVertical,
   pin: Pin,
   play: Play,
@@ -116,6 +121,7 @@ const GLYPHS = {
   search: Search,
   settings: Settings,
   share2: Share2,
+  sunMedium: SunMedium,
   trash: Trash2,
   triangleAlert: TriangleAlert,
   userRoundPlus: UserRoundPlus,

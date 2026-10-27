@@ -1,11 +1,11 @@
 /**
  * English that has no catalogue key yet, quarantined in one file.
  *
- * Every other word a person reads comes from `@session/localization`, and
- * `tests/copy.contract.test.ts` enforces that across every screen. These do not: the attachment
- * cache section, the set's own count, the gallery/list switch, the export verb and the
- * auto-download prompt's choice need them and the Crowdin set has nothing that fits, so they ship
- * as English in every locale until the keys land.
+ * Every other word a person reads comes from the catalogue, and `copy.contract.test.ts` in
+ * `@session/screens` enforces that across every screen. These do not: the attachment cache section,
+ * the set's own count, the gallery/list switch, the export verb and the auto-download prompt's
+ * choice need them and the Crowdin set has nothing that fits, so they ship as English in every
+ * locale until the keys land.
  *
  * Each name is the token it is destined for, so promoting one is a swap:
  * `PENDING_COPY.attachmentCache` becomes `tr('attachmentCache')` and the entry goes. Adding to
@@ -55,4 +55,20 @@ export const PENDING_COPY = {
   /** The auto-download prompt's two answers to what Yes fetches. */
   autoDownloadAllFiles: 'All files',
   autoDownloadImagesOnly: 'Images only',
+  /**
+   * The onion path's state, named beside its dot wherever one is drawn: the rail's tooltip, the
+   * Settings row's value. The dot is green or red, which a red-green colour-blind reader cannot
+   * tell apart, so the word is what carries it. The only Connecting in the set is
+   * `callsConnecting`, which is about a call and has an ellipsis. Unknown has a key, `unknown`.
+   */
+  onionRoutingPathConnected: 'Connected',
+  onionRoutingPathConnecting: 'Connecting',
+  /** No path: the network is down, or none is attached. */
+  onionRoutingPathOffline: 'Offline',
+  /**
+   * The light/dark toggle's name: what a press does. Naming the mode the glyph shows instead read
+   * as the mode it would turn on, so Dark Mode while dark was taken for a switch to dark.
+   */
+  changeToLightMode: 'Change to Light Mode',
+  changeToDarkMode: 'Change to Dark Mode',
 } as const

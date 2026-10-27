@@ -1,6 +1,44 @@
 import type { ElementId } from '@session/test-ids'
 
 /**
+ * One element as assistive technology reads it, in terms every platform's tree can answer.
+ *
+ * Desktop reads ARIA, Android UiAutomator2's node, iOS XCUITest's element: each driver maps its
+ * own vocabulary onto this, so one expectation is checked against all three.
+ */
+export interface AccessibleNode {
+  role: 'button' | 'image' | 'text' | 'link' | 'textbox' | 'progressbar' | 'none'
+  /** What a screen reader says first: ARIA's name, Android's content-desc, iOS's label. */
+  name: string | null
+  /** What a press does, said after the name: ARIA's description, iOS's hint. */
+  hint: string | null
+  disabled: boolean
+  busy: boolean
+  /** Whether it is a stop for the keyboard or a switch. */
+  focusable: boolean
+  /** In the platform's own unit: CSS px, dp or pt. */
+  bounds: { width: number; height: number }
+}
+
+/** Where an element is drawn, from the window's top left, in the platform's own unit. */
+export interface Frame {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** One finding of a platform's accessibility checker. */
+export interface AuditIssue {
+  /** The checker's own rule name: axe's `color-contrast`, an Appium audit's type. */
+  rule: string
+  impact: 'minor' | 'moderate' | 'serious' | 'critical'
+  /** The nearest test id at or above the offender, otherwise the checker's own selector. */
+  target: string
+  message: string
+}
+
+/**
  * What a test may ask of a running client, whichever one it is.
  *
  * Every member here must use platform-neutral signatures only - primitives, enums and plain
@@ -21,6 +59,10 @@ export interface ISessionApp {
   /** Whether the control says it is disabled, which is what a reader announces. */
   isDisabled(id: ElementId): Promise<boolean>
   tap(id: ElementId): Promise<void>
+  /** Taps the `at`th carrying this id, from 0 in the order they appear: one row of a list. */
+  tapAt(id: ElementId, at: number): Promise<void>
+  /** Taps one point of the window, in the unit `frame` answers in: an edge, not a middle. */
+  tapPoint(x: number, y: number): Promise<void>
   type(id: ElementId, text: string): Promise<void>
   readText(id: ElementId): Promise<string>
   /** Every occurrence, in the order they appear - a transcript, a conversation list. */
@@ -35,6 +77,23 @@ export interface ISessionApp {
    * laid out and the right shape - `isVisible` cannot tell it from one that loaded.
    */
   imageLoaded(id: ElementId, options?: { timeoutMs?: number }): Promise<boolean>
+  /**
+   * The `at`th element carrying this id as assistive technology reads it, from 0; null when
+   * nothing with the id is in the accessibility tree, hidden on purpose included.
+   */
+  describe(id: ElementId, at?: number): Promise<AccessibleNode | null>
+  /**
+   * What the platform's own checker finds serious or critical on screen, or under `scope`
+   * (on iOS, XCTest's own findings always cover the whole screen).
+   *
+   * Only those two impacts, so an empty answer is the pass a spec asserts: lesser findings are
+   * the checker's opinion rather than a barrier to anyone.
+   */
+  audit(scope?: ElementId): Promise<AuditIssue[]>
+  /** Where the `at`th carrying `id` is drawn, from 0; null when nothing carries the id. */
+  frame(id: ElementId, at?: number): Promise<Frame | null>
+  /** Scrolls `within` until the `at`th carrying `id` is wholly on screen. */
+  reveal(id: ElementId, within: ElementId, at?: number): Promise<void>
   screenshot(name: string): Promise<void>
   close(): Promise<void>
 }

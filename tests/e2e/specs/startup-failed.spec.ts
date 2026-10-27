@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 
 import { _electron, expect, test } from '@playwright/test'
+import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 
 import { FAKE_LAUNCH_ENV } from '../harness/fakeEnv'
@@ -15,7 +16,7 @@ const repoRoot = join(import.meta.dirname, '../../..')
  * screen hands over libsession's message and the logs, asks before clearing anything, and recovers
  * in place.
  */
-test('a failed start shows why, exports logs, asks before clearing, and recovers in place', async () => {
+test('a failed start shows why, exports logs, asks before clearing, and recovers in place @desktop', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'session-startup-failed-'))
   const app = await _electron.launch({
     args: [
@@ -46,7 +47,7 @@ test('a failed start shows why, exports logs, asks before clearing, and recovers
     await expect
       .poll(() => app.evaluate(({ clipboard }) => clipboard.readText()))
       .toBe(await reason.textContent())
-    await expect(page.getByTestId(ELEMENT.toast.item).first()).toHaveText('Copied')
+    await expect(page.getByTestId(ELEMENT.toast.item).first()).toHaveText(tr('copied'))
     await page.getByTestId(ELEMENT.toast.close).first().click()
 
     // Export Logs writes one gzip file where the save dialog says, with the header on top and the
@@ -87,7 +88,7 @@ test('a failed start shows why, exports logs, asks before clearing, and recovers
  * A bridge that could not be made at all: nothing was opened, so the screen does not call it a
  * database error, offers nothing to clear, and shows the reason as the bridge gave it.
  */
-test('a bridge that could not be made says why, without blaming the database', async () => {
+test('a bridge that could not be made says why, without blaming the database @desktop', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'session-no-bridge-'))
   // The fake refuses to make its bridge without its dev photographs.
   const noPhotos = join(dataDir, 'no-photos')

@@ -41,13 +41,19 @@ describe('an absolutely positioned child', () => {
   /**
    * Files whose absolute child is deliberately placed against an ancestor declared elsewhere, and
    * which were **measured clean** on a running desktop app -- nothing in them resolves against the
-   * page. A dialog's close button belongs to the surface the dialog itself puts up, and the
-   * scanner's frame to the camera pane; naming a nearer parent here would move them.
+   * page. A dialog's close button belongs to the surface the dialog itself puts up, the
+   * scanner's frame to the camera pane, and a tooltip's arrow to its bubble, which is itself
+   * absolute; naming a nearer parent here would move them.
    *
    * Adding a file to this list means having run that measurement. It is not a place to put
    * something that has not been looked at.
    */
-  const CONTAINED_ELSEWHERE = ['LanguagePicker.tsx', 'Modal.tsx', 'ScanQrPane.tsx']
+  const CONTAINED_ELSEWHERE = [
+    'LanguagePicker.tsx',
+    'Modal.tsx',
+    'ScanQrPane.tsx',
+    'TooltipArrow.tsx',
+  ]
 
   it('sits in a file that positions something', () => {
     const offenders = roots

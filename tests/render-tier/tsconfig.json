@@ -1,0 +1,10 @@
+{
+  "extends": "@session/typescript-config/bundler.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    // Only the vitest project helper reads node, to turn a config's URL into its source path.
+    "types": ["node"]
+  },
+  "include": ["src", "tests"],
+  "exclude": ["node_modules", "dist"]
+}

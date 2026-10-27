@@ -17,7 +17,7 @@ interface PageGlobals {
  * The renderer is refused every permission, so a copy reaches the clipboard only through the main
  * process, and a refusal there has to reach the page as a rejection rather than a silent success.
  */
-test('copies a URL through main, and rejects a copy main refuses', async () => {
+test('copies a URL through main, and rejects a copy main refuses @desktop', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'session-copy-url-'))
   const app = await _electron.launch({
     args: [

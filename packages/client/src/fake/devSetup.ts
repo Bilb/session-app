@@ -178,6 +178,11 @@ export function startDevFake(env: FakeDevEnv, photos: DevPhotos): DevFake {
 
   driveFakeClock(world, env.EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN)
 
+  // The real bridge attaches the network it was opened with as soon as there is an account. The
+  // fake is opened with none, so the dev entry asks here: a fixture with an account goes online at
+  // once, and `newcomer` once onboarding makes one.
+  void alice.attachNetwork({ netid: 'mainnet' })
+
   // The failure screen is otherwise reachable only with a database somebody has already broken.
   // `unopenable` refuses with libsession's own reason and lets a discard through, so the screen's
   // Clear Device works here too.

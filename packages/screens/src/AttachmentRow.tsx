@@ -1,7 +1,7 @@
 import { formatBytes } from '@session/basic-types'
 import { requirePorts } from '@session/app'
 import type { Attachment, Message } from '@session/client'
-import { tr } from '@session/localization'
+import { PENDING_COPY, tr } from '@session/localization'
 import {
   useAttachmentTransfer,
   useSessionActions,
@@ -13,7 +13,6 @@ import { FileRow, type FileRowState, type FileRowThumbnail } from '@session/ui'
 import { fetchOf, type Fetch } from './attachmentFetch'
 import { controlVerb, rowVerb, verbLabel, type AttachmentVerb } from './attachmentPress'
 import { useConversationUi } from './conversationUi'
-import { PENDING_COPY } from './pendingCopy'
 import { exportOne } from './exportAttachment'
 import { useExportFeedback } from './useExportFeedback'
 import { isViewable, leadUri, leadsWithPicture } from './viewableAttachments'

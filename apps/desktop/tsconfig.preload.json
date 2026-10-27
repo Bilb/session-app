@@ -7,5 +7,5 @@
     // The main process gets no DOM: nothing there should be reaching for a window.
     "lib": ["ES2022", "DOM"]
   },
-  "include": ["src/preload"]
+  "include": ["src/preload", "src/shared"]
 }

@@ -1,7 +1,5 @@
-import { tr } from '@session/localization'
+import { PENDING_COPY, tr } from '@session/localization'
 import type { FileRowState } from '@session/ui'
-
-import { PENDING_COPY } from './pendingCopy'
 
 /**
  * What a press on one attachment row does.

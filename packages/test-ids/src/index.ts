@@ -14,8 +14,23 @@
  * component. It is never a reason to reach for an xpath.
  */
 export const ELEMENT = {
+  /** The column down the side of a wide layout, beside the conversation list. */
+  rail: {
+    screen: 'rail',
+    settings: 'rail-settings',
+    pathStatus: 'rail-path-status',
+    update: 'rail-update',
+    themeToggle: 'rail-theme-toggle',
+    /**
+     * A rail item's tooltip, by the item's own name: `settings`, `update`, `path-status`,
+     * `theme-toggle`.
+     */
+    tooltip: (item: string) => `rail-tooltip-${item}` as const,
+  },
   conversationList: {
+    /** The account's avatar on one pane, which opens settings; a wide layout has the rail's. */
     settings: 'conversation-list-settings',
+    settingsPathStatus: 'conversation-list-settings-path-status',
     newConversation: 'conversation-list-new',
     screen: 'conversation-list',
     row: (index: number) => `conversation-row-${index}` as const,
@@ -58,6 +73,7 @@ export const ELEMENT = {
     attachmentSheet: 'message-attachment-sheet',
     attachmentSheetClose: 'message-attachment-sheet-close',
     attachmentSheetScrim: 'message-attachment-sheet-scrim',
+    attachmentSheetList: 'message-attachment-sheet-list',
     mediaViewer: 'media-viewer',
     mediaViewerClose: 'media-viewer-close',
     mediaViewerExport: 'media-viewer-export',
@@ -94,6 +110,7 @@ export const ELEMENT = {
     shareAccountId: 'settings-share-account-id',
     tokenLogo: 'settings-token-logo',
     networkStatus: 'settings-network-status',
+    pathStatus: 'settings-path-status',
     clearData: 'settings-clear-data',
     confirmClearData: 'settings-confirm-clear-data',
     confirmClearDataButton: 'settings-confirm-clear-data-button',
@@ -196,6 +213,12 @@ export const ELEMENT = {
     notificationsOption: (mode: string) => `onboarding-notifications-${mode}` as const,
 
     loadingScreen: 'onboarding-loading-screen',
+  },
+  catalog: {
+    page: 'catalog-page',
+    ready: 'catalog-ready',
+    cell: (page: string, row: string, column: string) =>
+      `catalog-cell-${page}-${row}-${column}` as const,
   },
 } as const
 

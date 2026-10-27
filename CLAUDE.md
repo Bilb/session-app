@@ -27,6 +27,9 @@ dev entries. When a rule fires, fix the design - not the config.
   side-effecting import at each app's entry; React context for render-scoped ports (NavPort);
   `.native.tsx` pairs with a shared `.types.ts` for file-level splits. New port =
   `turbo gen port`.
+- State: app state goes in the zustand store (`@session/state`). React context is only for a
+  value that differs by subtree, such as which pane a screen is in or which surface it is drawn
+  on. Consider the store first.
 - Navigation: build paths with `routes.ts` only. Route params are extracted at the route file
   and passed as props - a screen never reads a router. Every route gets a route-contract row.
   **A mobile route file calls `useLocale()`**: `tr()` is a module-scope read, and the router holds
@@ -78,13 +81,30 @@ skill has the checklist.
 
 ## Tests required, in the same PR
 
-| change            | test                                              |
-| ----------------- | ------------------------------------------------- |
-| bridge capability | contract scenario + fake update + echo-frame case |
-| screen            | route-contract row + fast-tier e2e smoke          |
-| ui component      | render test                                       |
-| state projection  | reducer unit test                                 |
-| bug fix           | the test that would have caught it                |
+| change            | test                                                                |
+| ----------------- | ------------------------------------------------------------------- |
+| bridge capability | contract scenario + fake update + echo-frame case                   |
+| screen            | route-contract row + fast-tier e2e smoke                            |
+| ui component      | catalog story; a render test only for what a picture cannot show    |
+| screen state      | catalog scenario in `apps/desktop/src/renderer/catalog/scenarios`   |
+| state projection  | reducer unit test                                                   |
+| bug fix           | the test that would have caught it: a catalog row if it can be seen |
+
+**What can be seen is tested in the catalog, not in a render test.** A look (colour, fill, ring,
+hover, press, focus, direction, layout at a width) is a story in `packages/ui/src/catalog/stories`:
+a row per variant including the worst case, `forced` for interaction states, `sensitive` for
+accent, RTL and width. Argos diffs every page and axe audits it on each PR. A `*.test.tsx` holds
+only what a picture cannot show: accessible role, name and state; what a press calls; focus and
+timing; two outcomes that draw alike (which verb, which id, against `@session/expectations`); a
+contract another package reads. A render test that asserts a style, a colour or a direction
+repeats the catalog: write the story instead.
+
+No new source grep where a drawn check can fail instead: assert what is drawn, not what a file
+contains. The exceptions say why, one by one: `packages/ui/tests/nativeOnly.contract.test.ts` for
+what no driver reads, and the repo-wide `*.contract.test.ts` checks (copy, logical edges, named
+tokens).
+What only a phone shows goes in a shared spec with `clients: { alice: EACH }`, run by
+`pnpm --filter @session/e2e test:e2e:android` (or `:ios`).
 
 **Tests live in `tests/`, never in `src/`.** Every package puts them in its own
 `packages/<pkg>/tests/`, mirroring the `src/` path they cover -

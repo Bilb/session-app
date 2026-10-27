@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 
 import { _electron, expect, test } from '@playwright/test'
+import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 
 import { FAKE_LAUNCH_ENV } from '../harness/fakeEnv'
@@ -27,7 +28,7 @@ interface PageGlobals {
  * The two stacks interacting inside the platform's modal, which only an e2e run can see. One pass
  * rather than four specs because each step needs the state the last one left.
  */
-test('settings opens over the list, pushes Help, exports logs from it, and asks on top of itself', async () => {
+test('settings opens over the list, pushes Help, exports logs from it, and asks on top of itself @desktop', async () => {
   const dataDir = mkdtempSync(join(tmpdir(), 'session-settings-modal-'))
   const app = await _electron.launch({
     args: [
@@ -48,7 +49,9 @@ test('settings opens over the list, pushes Help, exports logs from it, and asks 
     const page = await app.firstWindow()
 
     await page.getByTestId(ELEMENT.conversationList.screen).first().waitFor({ timeout: 25_000 })
-    await page.getByTestId(ELEMENT.conversationList.settings).first().click()
+    // The window opens wide enough for two panes, where the rail's settings button is the way
+    // in.
+    await page.getByTestId(ELEMENT.rail.settings).first().click()
 
     // The account ID, not the modal frame, is what says the screen arrived.
     await expect(page.getByTestId(ELEMENT.settings.accountId).first()).toBeVisible()
@@ -121,7 +124,7 @@ test('settings opens over the list, pushes Help, exports logs from it, and asks 
     const toast = page.getByTestId(ELEMENT.toast.item).first()
     await expect(toast).toBeVisible()
     // The catalogue's `copied`, in the English the suite runs in.
-    await expect(toast).toHaveText('Copied')
+    await expect(toast).toHaveText(tr('copied'))
     // Its own close, so nothing after this waits out the toast's timer.
     await page.getByTestId(ELEMENT.toast.close).first().click()
     await expect(page.getByTestId(ELEMENT.toast.item)).toHaveCount(0)
@@ -137,7 +140,7 @@ test('settings opens over the list, pushes Help, exports logs from it, and asks 
     await page.mouse.click(5, 5)
     await expect(page.getByTestId(ELEMENT.onboarding.openUrlDialog)).toHaveCount(0)
     for (let press = 0; press < 10; press += 1) await commit.click()
-    await expect(page.getByTestId(ELEMENT.toast.item).first()).toHaveText('Debug mode enabled')
+    await expect(page.getByTestId(ELEMENT.toast.item).first()).toHaveText(tr('debugModeEnabled'))
     await expect(page.getByTestId(ELEMENT.settings.row('developer-settings')).first()).toBeVisible()
     await page.getByTestId(ELEMENT.toast.close).first().click()
 

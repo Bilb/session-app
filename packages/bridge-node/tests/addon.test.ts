@@ -554,6 +554,11 @@ describeEcho('the generated converters', () => {
       },
     },
     { type: 'response', response: { id: 900_019, result: { type: 'configSizes', sizes: [] } } },
+    // Every NetworkStatus value once: the enum's names are what the converters spell.
+    ...(['unknown', 'connecting', 'connected', 'disconnected'] as const).map((status, at) => ({
+      type: 'response' as const,
+      response: { id: 900_020 + at, result: { type: 'networkStatus' as const, status } },
+    })),
     { type: 'event', event: { type: 'conversation-added', conversation: fullConversation } },
     { type: 'event', event: { type: 'conversation-updated', conversation: bareConversation } },
     { type: 'event', event: { type: 'conversation-removed', conversationId } },
@@ -589,6 +594,8 @@ describeEcho('the generated converters', () => {
       },
     },
     { type: 'event', event: { type: 'log', message: 'm', category: 'c', level: 'info' } },
+    { type: 'event', event: { type: 'network-status-changed', status: 'connected' } },
+    { type: 'event', event: { type: 'network-status-changed', status: 'disconnected' } },
   ]
 
   it('round-trips every frame shape exactly, structured clone included', async () => {

@@ -495,6 +495,48 @@ struct ConfigSizesResult {
             sizes{std::move(sizes_)} {}
 };
 
+/// Whether the attached network can carry traffic: libsession's `ConnectionStatus`, as
+/// `Network::on_status_changed` reports it.
+///
+/// `connected` means both the transport and the router are up -- a path exists -- which is the
+/// readiness `AccountInfo.networkAttached` does not say: that one turns true when a network is
+/// attached, before anything has been reached through it. `disconnected` covers both a network
+/// that lost its connections and no network at all: none attached yet, a client opened to stay
+/// offline, or one torn down by a discard. `unknown` is libsession's state before either layer has
+/// reported, and also its answer when the two disagree in a way it cannot name.
+enum class NetworkStatus {
+    unknown,
+    connecting,
+    connected,
+    disconnected,
+};
+
+template <>
+struct EnumTraits<NetworkStatus> {
+    static constexpr std::string_view name = "NetworkStatus";
+    static constexpr std::array<std::string_view, 4> names{"unknown", "connecting", "connected", "disconnected"};
+
+    static constexpr std::string_view to_string(NetworkStatus value) {
+        return names[static_cast<std::size_t>(value)];
+    }
+
+    static constexpr std::optional<NetworkStatus> parse(std::string_view text) {
+        for (std::size_t i = 0; i < names.size(); i++)
+            if (names[i] == text)
+                return static_cast<NetworkStatus>(i);
+        return std::nullopt;
+    }
+};
+
+struct NetworkStatusResult {
+    static constexpr std::string_view type_tag = "networkStatus";
+
+    ::session_bridge::NetworkStatus status;
+
+    explicit NetworkStatusResult(::session_bridge::NetworkStatus status_) :
+            status{std::move(status_)} {}
+};
+
 /// What a Response carries when the command succeeded.
 using Result = std::variant<
         EmptyResult,
@@ -510,7 +552,8 @@ using Result = std::variant<
         PathResult,
         ByteCountResult,
         EdgeResult,
-        ConfigSizesResult>;
+        ConfigSizesResult,
+        NetworkStatusResult>;
 
 struct Response {
     double id;
@@ -691,6 +734,21 @@ struct AttachmentProgressSessionEvent {
             transfer{std::move(transfer_)}, message_id{std::move(message_id_)}, index{std::move(index_)}, done_bytes{std::move(done_bytes_)}, total_bytes{std::move(total_bytes_)}, outcome{std::move(outcome_)} {}
 };
 
+/// The attached network's status changed. One per change, in the order libsession made them, and
+/// never two of the same in a row from libsession itself; the answer to `getNetworkStatus` can
+/// repeat the last one, which is harmless because each carries the whole state.
+///
+/// A network that goes away reports `disconnected` on the way out, which a discard does. Closing
+/// the bridge reports nothing: there is nobody left to tell.
+struct NetworkStatusChangedSessionEvent {
+    static constexpr std::string_view type_tag = "network-status-changed";
+
+    ::session_bridge::NetworkStatus status;
+
+    explicit NetworkStatusChangedSessionEvent(::session_bridge::NetworkStatus status_) :
+            status{std::move(status_)} {}
+};
+
 /// libsession's own log lines, forwarded when the bridge was opened with a log level. Worth
 /// having because the state machine reports what happened and never why.
 struct LogSessionEvent {
@@ -726,6 +784,7 @@ using SessionEvent = std::variant<
         MessagesUpdatedSessionEvent,
         HistoryReplacedSessionEvent,
         AttachmentProgressSessionEvent,
+        NetworkStatusChangedSessionEvent,
         LogSessionEvent>;
 
 struct EventFrame {
@@ -985,6 +1044,15 @@ struct AttachNetworkCommand {
 /// makes this a warm rather than a second network.
 struct WarmNetworkCacheCommand {
     static constexpr std::string_view type_tag = "warmNetworkCache";
+};
+
+/// Whether the attached network can carry traffic now. `disconnected` where none is attached.
+///
+/// Asked once and then followed by `network-status-changed`, the way every list here is: a
+/// renderer that reloads, or a store that subscribes after the network came up, has missed the
+/// events that said so.
+struct GetNetworkStatusCommand {
+    static constexpr std::string_view type_tag = "getNetworkStatus";
 };
 
 /// How often libsession polls the swarm, in milliseconds. Its default is 20 seconds, which is a
@@ -1367,6 +1435,7 @@ using Command = std::variant<
         SetDisplayNameCommand,
         AttachNetworkCommand,
         WarmNetworkCacheCommand,
+        GetNetworkStatusCommand,
         SetPollIntervalCommand,
         PollOnceCommand,
         SetPushTokenCommand,

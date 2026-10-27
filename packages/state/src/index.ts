@@ -13,6 +13,7 @@ export {
   useMessage,
   useMessageTransfers,
   useMessages,
+  useNetworkStatus,
   useRequests,
   useSessionActions,
   useStartupClearable,

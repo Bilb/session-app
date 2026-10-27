@@ -8,6 +8,7 @@ import { ALBUM_SEAM, albumLayout, cellPlace, lastCell } from './albumLayout'
 import { AttachmentTile } from './AttachmentTile'
 import { FetchHint } from './FetchHint'
 import { tileRadius } from './attachmentTileStyle'
+import { useForcedFocus } from './interactionOverride'
 import { focusRing, heldButton, keyboardPress } from './keyboardPress'
 import { logical } from './logicalEdges'
 import { pressHint } from './pressHint'
@@ -89,6 +90,7 @@ const AlbumTile = memo(function AlbumTile({
   onOpen: (at: number) => void
   onAccent: boolean
 }) {
+  const forcedFocus = useForcedFocus()
   if (item === undefined) return null
   // A tile that would fetch is the whole set's, so it dims with the album, and at rest on touch
   // under the album's cloud. One that is here opens its own picture, so it answers on its own.
@@ -109,6 +111,7 @@ const AlbumTile = memo(function AlbumTile({
           })}
       {...pressHint(item.hint)}
       {...keyboardPress(held || item.hint === undefined ? undefined : press, ring)}
+      {...forcedFocus}
       aria-disabled={held}
       // tamagui makes a native view an accessibility element only for this. On iOS that hides
       // what is nested, the picture's test id included, so the tile carries its own.

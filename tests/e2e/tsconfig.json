@@ -3,5 +3,11 @@
   "compilerOptions": {
     "types": ["node"]
   },
-  "include": ["harness", "specs", "playwright.config.ts"]
+  "include": [
+    "harness",
+    "scripts",
+    "specs",
+    "playwright.config.ts",
+    "playwright.unfiltered.config.ts"
+  ]
 }
