@@ -109,6 +109,9 @@ void a_tile_near_the_thumbnail_size_decodes_it_whole() {
 void a_cover_fit_takes_the_view_edge_that_needs_more() {
     // A wide tile still has to cover its full width from a square thumbnail.
     CHECK(thumbnail_decode_edge(1024, 1024, 300, 100) == 300);
+    // A square tile of a 4:3 thumbnail either way up: its shorter side has to reach the tile's.
+    CHECK(thumbnail_decode_edge(720, 540, 120, 120) == 160);
+    CHECK(thumbnail_decode_edge(540, 720, 120, 120) == 160);
 }
 
 void an_unknown_view_decodes_the_thumbnail_whole() {

@@ -372,6 +372,8 @@ struct JSIConverter<::session_bridge::Attachment> final {
                 ::session_bridge::optional_from_jsi<double>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "height"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "hasThumbhash"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "hasThumbnail"))),
+                JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "thumbnailWidthPx"))),
+                JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "thumbnailHeightPx"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "hasRendition"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "originalFile"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "uploaded"))),
@@ -396,6 +398,8 @@ struct JSIConverter<::session_bridge::Attachment> final {
             obj.setProperty(runtime, PropNameIDCache::get(runtime, "height"), JSIConverter<double>::toJSI(runtime, *arg.height));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "hasThumbhash"), JSIConverter<bool>::toJSI(runtime, arg.has_thumbhash));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "hasThumbnail"), JSIConverter<bool>::toJSI(runtime, arg.has_thumbnail));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "thumbnailWidthPx"), JSIConverter<double>::toJSI(runtime, arg.thumbnail_width_px));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "thumbnailHeightPx"), JSIConverter<double>::toJSI(runtime, arg.thumbnail_height_px));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "hasRendition"), JSIConverter<bool>::toJSI(runtime, arg.has_rendition));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "originalFile"), JSIConverter<bool>::toJSI(runtime, arg.original_file));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "uploaded"), JSIConverter<bool>::toJSI(runtime, arg.uploaded));

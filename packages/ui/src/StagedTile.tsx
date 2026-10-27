@@ -33,7 +33,8 @@ export interface StagedTileProps {
   /** Already formatted, since the units are the screen's to word. */
   sizeLabel?: string | undefined
   /**
-   * libsession's thumbnail of the file, where it is a picture.
+   * libsession's thumbnail of the file, where it is a picture: in the picture's own shape, which
+   * the square tile covers and crops.
    *
    * Drawn over the document face once it loads, and dropped for good if it fails, so a file that
    * turns out not to decode reads as the document it is. A video has no still here yet.

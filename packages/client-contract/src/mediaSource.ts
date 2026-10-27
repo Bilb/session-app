@@ -16,7 +16,8 @@ export interface MediaSourceHarness {
   /**
    * A source over a client holding two incoming pictures, an AVIF, a PDF and a picture sent as the
    * original file, none fetched: one picture sent with a hash, in a type other than the JPEG every
-   * dev photograph is, and one sent without.
+   * dev photograph is, and one sent without. The hashed picture's downloaded bytes are a JPEG, so
+   * its thumbnail can be held to its shape.
    */
   withAttachments(): Promise<{
     source: MediaSource
@@ -36,8 +37,8 @@ export interface MediaSourceHarness {
   empty(): Promise<{ source: MediaSource }>
   /**
    * A source over a client with no messages, and the absolute paths of files staged to send: a
-   * JPEG neither square nor within the largest thumbnail edge, a PNG, a PDF, one not there, and a
-   * JPEG larger than `MAX_STAGED_READ_BYTES`.
+   * JPEG neither square nor within the largest thumbnail edge, `jpegSizePx` in size, a PNG, a PDF,
+   * one not there, and a JPEG larger than `MAX_STAGED_READ_BYTES`.
    * `notRegular` are there but not regular files: a directory, and where the platform has them, a
    * FIFO nobody writes to and a link to a device, any of which would block a reader that waited.
    */
@@ -45,12 +46,39 @@ export interface MediaSourceHarness {
     source: MediaSource
     client: SessionClient
     jpeg: string
+    jpegSizePx: PixelSize
     png: string
     document: string
     missing: string
     oversized: string
     notRegular: readonly string[]
   }>
+}
+
+interface PixelSize {
+  width: number
+  height: number
+}
+
+/**
+ * Whether a thumbnail keeps `source`'s shape: `source` scaled to the thumbnail's longer side, give
+ * or take the pixel a resize rounds by. Only for a source within 21:9, which libsession crops to.
+ */
+function keepsShape(thumbnail: PixelSize | null, source: PixelSize | null): boolean {
+  if (thumbnail === null || source === null || thumbnail.width === 0) return false
+  const scale =
+    thumbnail.width >= thumbnail.height
+      ? thumbnail.width / source.width
+      : thumbnail.height / source.height
+  return (
+    Math.abs(source.width * scale - thumbnail.width) <= 1 &&
+    Math.abs(source.height * scale - thumbnail.height) <= 1
+  )
+}
+
+/** Whether a thumbnail is no taller than the client's thumbnail edge, which is its height. */
+function withinEdge(thumbnail: PixelSize | null, edgePx: number): boolean {
+  return thumbnail !== null && thumbnail.height <= edgePx
 }
 
 async function failure(call: () => Promise<unknown>): Promise<unknown> {
@@ -207,20 +235,22 @@ export function runMediaSourceContract(
       )
     })
 
-    it('answers a downloaded picture with a square JPEG thumbnail no larger than the edge', async () => {
+    it('answers a downloaded picture with a JPEG thumbnail of its shape, within the edge, at the size the attachment gives', async () => {
       const { source, client, conversationId, picture, settle } = await harness.withAttachments()
       const downloaded = client.downloadAttachment(picture.messageId, picture.index)
       await settle()
       await downloaded
-      expect((await untilThumbnailed(client, conversationId, picture, settle))?.hasThumbnail).toBe(
-        true,
-      )
+      const attachment = await untilThumbnailed(client, conversationId, picture, settle)
+      expect(attachment?.hasThumbnail).toBe(true)
 
       const size = jpegSize(await source.fetchThumbnail(picture))
-      const edge = await client.getThumbnailEdge()
-      expect(size?.width).toBeGreaterThan(0)
-      expect(size?.width).toBe(size?.height)
-      expect((size?.width ?? Infinity) <= edge).toBe(true)
+      const original = jpegSize((await source.fetchMedia(picture)).bytes)
+      expect(keepsShape(size, original)).toBe(true)
+      expect(withinEdge(size, await client.getThumbnailEdge())).toBe(true)
+      expect(size).toEqual({
+        width: attachment?.thumbnailWidthPx,
+        height: attachment?.thumbnailHeightPx,
+      })
     })
 
     it('answers a downloaded AVIF with a JPEG thumbnail, though no viewer here opens one', async () => {
@@ -234,7 +264,7 @@ export function runMediaSourceContract(
 
       const size = jpegSize(await source.fetchThumbnail(avif))
       expect(size?.width).toBeGreaterThan(0)
-      expect(size?.width).toBe(size?.height)
+      expect(size?.height).toBeGreaterThan(0)
     })
 
     it('has no thumbnail of a picture not yet downloaded', async () => {
@@ -293,13 +323,11 @@ export function runMediaSourceContract(
       )
     })
 
-    it('answers a staged picture with a square JPEG thumbnail no larger than the edge', async () => {
-      const { source, client, jpeg } = await harness.staged()
+    it('answers a staged picture with a JPEG thumbnail of its shape, within the edge', async () => {
+      const { source, client, jpeg, jpegSizePx } = await harness.staged()
       const size = jpegSize(await source.fetchStagedThumbnail(jpeg))
-      const edge = await client.getThumbnailEdge()
-      expect(size?.width).toBeGreaterThan(0)
-      expect(size?.width).toBe(size?.height)
-      expect((size?.width ?? Infinity) <= edge).toBe(true)
+      expect(keepsShape(size, jpegSizePx)).toBe(true)
+      expect(withinEdge(size, await client.getThumbnailEdge())).toBe(true)
     })
 
     it('answers a staged PNG with a JPEG thumbnail', async () => {

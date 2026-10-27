@@ -103,7 +103,7 @@ struct InitOptions {
     /// one, and `close()` takes its logger back off again.
     std::string log_level;
 
-    /// The side of the square thumbnails libsession makes, in device pixels, or unset for
+    /// The height of the thumbnails libsession makes, in device pixels, or unset for
     /// libsession's own default. A default only: a value stored by `setThumbnailEdge` wins.
     std::optional<double> thumbnail_edge_px;
 
@@ -235,8 +235,8 @@ class ClientBridge {
     void fetch_rendition(double message_id, double index, MediaHandler cb);
 
     /// libsession's thumbnail of a local file staged to send, which no message holds yet: the same
-    /// square JPEG at the same edge as the one it makes once the file is sent, as `Media` typed
-    /// `image/jpeg`.
+    /// JPEG, in the picture's own shape at the same height, as the one it makes once the file is
+    /// sent, as `Media` typed `image/jpeg`.
     ///
     /// `path` is UTF-8 and must pass `is_staged_path`. Made on the bridge's own worker thread, one
     /// decode for every request of the same path, and `cb` runs there. Refused with "not an

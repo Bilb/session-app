@@ -114,6 +114,8 @@ export const AttachmentTile = memo(function AttachmentTile({
             uri={uri}
             width={side}
             height={side}
+            // libsession's thumbnail is the picture's own shape; the square tile crops it.
+            fit="cover"
             borderRadius={radius}
             // Fresco's JPEG sample rounding undershoots the view by up to 4/3, which reads as soft.
             resizeMultiplier={4 / 3}

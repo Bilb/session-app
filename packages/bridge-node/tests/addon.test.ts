@@ -528,6 +528,9 @@ describeEcho('the generated converters', () => {
     height: 1200,
     hasThumbhash: true,
     hasThumbnail: true,
+    // Portrait, so a width and height swapped in the frame cannot pass.
+    thumbnailWidthPx: 540,
+    thumbnailHeightPx: 720,
     hasRendition: true,
     originalFile: true,
     uploaded: true,
@@ -541,6 +544,8 @@ describeEcho('the generated converters', () => {
     voiceMessage: false,
     hasThumbhash: false,
     hasThumbnail: false,
+    thumbnailWidthPx: 0,
+    thumbnailHeightPx: 0,
     hasRendition: false,
     originalFile: false,
     uploaded: false,

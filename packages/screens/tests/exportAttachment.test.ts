@@ -18,6 +18,8 @@ function attachment(index: number, fields: Partial<Attachment> = {}): Attachment
     voiceMessage: false,
     hasThumbhash: false,
     hasThumbnail: false,
+    thumbnailWidthPx: 0,
+    thumbnailHeightPx: 0,
     hasRendition: false,
     originalFile: false,
     uploaded: true,

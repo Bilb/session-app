@@ -15,9 +15,11 @@ function grey(width: number, height: number): Uint8Array {
 }
 
 // Real JPEGs, since a thumbnail is checked by its frame header. The original is neither square nor
-// within the largest thumbnail edge, 1024, so a thumbnail served from it fails both shape checks.
-const ORIGINAL = grey(1280, 960)
-const THUMBNAIL = grey(32, 32)
+// within the largest thumbnail edge, 1024, so a thumbnail served from it fails the edge check. The
+// thumbnail is what `pnpm fake-media:fetch` makes of a 4:3 dev photograph, the size the fake gives.
+const ORIGINAL_SIZE_PX = { width: 1280, height: 960 }
+const ORIGINAL = grey(ORIGINAL_SIZE_PX.width, ORIGINAL_SIZE_PX.height)
+const THUMBNAIL = grey(960, 720)
 
 const readPhoto = (fileName: string): Promise<Uint8Array> =>
   Promise.resolve(fileName.startsWith('thumbnail-') ? THUMBNAIL : ORIGINAL)
@@ -103,6 +105,7 @@ const harness: MediaSourceHarness = {
       source: createFakeMediaSource(alice, readPhoto, readStaged),
       client: alice,
       jpeg,
+      jpegSizePx: ORIGINAL_SIZE_PX,
       png,
       document,
       missing: '/home/alice/Pictures/gone.jpg',

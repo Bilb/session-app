@@ -1245,6 +1245,13 @@ export function runSessionClientContract(
       expect((await receive(['image/png', 'IMAGE/GIF'])).galleryViewable).toBe(true)
     })
 
+    it('gives a picture no thumbnail size before it has a thumbnail', async () => {
+      const { receive } = await harness.receivesAttachments()
+      const [picture] = (await receive(['image/jpeg'])).attachments
+      expect(picture?.hasThumbnail).toBe(false)
+      expect([picture?.thumbnailWidthPx, picture?.thumbnailHeightPx]).toEqual([0, 0])
+    })
+
     it('starts a message as a gallery exactly where it can be one', async () => {
       const { receive } = await harness.receivesAttachments()
       expect((await receive(['image/jpeg', 'image/png'])).gallery).toBe(true)

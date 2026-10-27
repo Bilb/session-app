@@ -66,6 +66,9 @@ const NEEDS_TEST_COMMANDS = 'needs the test commands: build:native:testing'
 
 const forges = builtForTesting()
 
+/** Neither square nor within the largest thumbnail edge. */
+const STAGED_JPEG_SIZE_PX = { width: 1280, height: 960 }
+
 function grey(width: number, height: number): Uint8Array {
   return jpeg.encode({ width, height, data: new Uint8Array(width * height * 4).fill(0x80) }, 90)
     .data
@@ -233,7 +236,7 @@ describeAddon('addon', () => {
       missing: join(dir, 'gone.jpg'),
       oversized: join(dir, 'panorama.jpg'),
     }
-    await writeFile(files.jpeg, grey(1280, 960))
+    await writeFile(files.jpeg, grey(STAGED_JPEG_SIZE_PX.width, STAGED_JPEG_SIZE_PX.height))
     // Sparse: a real JPEG's head, and past the largest staged file read in length alone.
     await writeFile(files.oversized, grey(64, 48))
     await truncate(files.oversized, MAX_STAGED_READ_BYTES + 1)
@@ -243,7 +246,10 @@ describeAddon('addon', () => {
     const device = join(dir, 'zero.jpg')
     execFileSync('mkfifo', [fifo])
     await symlink('/dev/zero', device)
-    return { peer, files: { ...files, notRegular: [dir, fifo, device] } }
+    return {
+      peer,
+      files: { ...files, jpegSizePx: STAGED_JPEG_SIZE_PX, notRegular: [dir, fifo, device] },
+    }
   }
 
   const harness: MediaSourceHarness = {
@@ -325,7 +331,7 @@ describeAddon('addon', () => {
       unsupported: {
         'answers a downloaded picture with its bytes and the type they were sent as':
           OFFLINE_ATTACHMENTS,
-        'answers a downloaded picture with a square JPEG thumbnail no larger than the edge':
+        'answers a downloaded picture with a JPEG thumbnail of its shape, within the edge, at the size the attachment gives':
           OFFLINE_ATTACHMENTS,
         'has no thumbnail or rendition of a downloaded PDF': OFFLINE_ATTACHMENTS,
         'answers a downloaded picture with a JPEG or WebP rendition within the edge':

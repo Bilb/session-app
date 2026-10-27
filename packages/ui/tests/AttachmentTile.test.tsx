@@ -75,4 +75,10 @@ describe('an attachment tile’s picture', () => {
     expect(pictureLayer()).toBe('0')
     expect(drawnAround(container)).toBe(before)
   })
+
+  it('covers its square with a thumbnail of any shape, cropping rather than letterboxing', () => {
+    renderInUI(tile())
+    const layers = [byId(PICTURE), ...byId(PICTURE).querySelectorAll('div')]
+    expect(layers.map((layer) => declared(layer)['background-size'])).toContain('cover')
+  })
 })

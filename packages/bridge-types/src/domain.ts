@@ -188,14 +188,22 @@ export interface Attachment {
    */
   hasThumbhash: boolean
   /**
-   * Whether libsession holds a thumbnail of this attachment: a square JPEG of the picture, cropped
-   * to cover, at most the client's thumbnail edge on a side. Made only of a displayable image whose
-   * bytes are cached, and after them, so it turns true in a later `messages-updated` than the one
-   * reporting `cached`; false again once the cache evicts the file, which takes the thumbnail too.
+   * Whether libsession holds a thumbnail of this attachment: a JPEG of the picture in its own
+   * shape, cropped to its centre at 21:9 when it is wider than that either way up, then the
+   * client's thumbnail edge tall and never enlarged. A square tile covers it and crops. Made only
+   * of a displayable image whose bytes are cached, and after them, so it turns true in a later
+   * `messages-updated` than the one reporting `cached`; false again once the cache evicts the
+   * file, which takes the thumbnail too.
    *
    * What a tile draws, through the media scheme's `thumbnail` path; a viewer draws the file.
    */
   hasThumbnail: boolean
+  /**
+   * The thumbnail's size, read from the JPEG libsession made, so a layout can shape a tile before
+   * loading it. Both 0 while `hasThumbnail` is false.
+   */
+  thumbnailWidthPx: number
+  thumbnailHeightPx: number
   /**
    * Whether libsession holds a rendition of this attachment: the whole picture as a JPEG or WebP
    * (animated WebP for an animation) within the rendition edge (2048 px on a side unless set).

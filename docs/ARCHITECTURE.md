@@ -869,29 +869,33 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   follow drawn media in one process needs a per-database epoch in the URL instead.
 
 - **2026-10-09 - A tile draws libsession's thumbnail; only the viewer draws the file.**
-  libsession makes a square JPEG of each displayable picture it caches - cropped to cover, EXIF
-  orientation applied, first frame of an animation, alpha on a checkerboard, quality 90 - on a
-  worker, and reports it as `Attachment.hasThumbnail` in a later `messages-updated`. Its side is at
-  most the client's thumbnail edge, which each app opens the bridge with as `ALBUM_WIDTH` times its
-  display density and `setThumbnailEdge` can store over, clamped to 64-1024 so a decoded one stays
-  within 4 MiB. It lives in the original's cache entry and is evicted with it. Generating it there
-  rather than in each loader gives every platform the same picture from one decoder, libvips under
-  libsession's own loader whitelist, and leaves the loaders two paths: a thumbnail, checked to be a
-  JPEG and reduced while decoding but never below its view, a file row's glyph far less than a tile
-  (Fresco's decoder and downsampling on Android, the same as an original's, asked for 4/3 the view
-  because Fresco's JPEG sample can land up to that far below its target; ImageIO's maximum pixel
-  size on iOS, only where the view needs half of it or less), cached by URL and view size; and the
-  viewer's original, which keeps the pixel budget, the GIF/PNG refusal, animation and Fresco's
-  downsampling. Drawing never starts a download: a tile's URL used to be the original's, and
-  resolving it fetched the file, which under `image-attachments` or `all` spent data on any older
-  message that scrolled past. Now every URL is served from the cache only (`attachment_data_cached`,
-  refused as "is not downloaded"), and a file arrives only by libsession's own rule when its message
-  does, or when somebody taps. This supersedes the 2026-09-15 entry's sentence on progress: drawing
-  a picture reports none. A viewer whose file was evicted just before it loaded draws its
-  unavailable state rather than downloading again. A tile has no failed face: a thumbnail exists
-  only of a picture that decoded, so one that does not load was evicted under it and the placeholder
-  is the truth. The fake serves thumbnails `pnpm fake-media:fetch` makes of its dev photographs at
-  720 px.
+  libsession makes a JPEG of each displayable picture it caches in the picture's own shape - cropped
+  to its centre at 21:9 when wider than that either way up, then the client's thumbnail edge tall
+  and never enlarged, EXIF orientation applied, first frame of an animation, alpha on a
+  checkerboard, quality 90 - on a worker, and reports it as `Attachment.hasThumbnail` in a later
+  `messages-updated`, with its size as `thumbnailWidthPx` and `thumbnailHeightPx` so a tile can be
+  shaped before it loads. A staged file's thumbnail is made the same way. Its height is the client's
+  thumbnail edge, which each app opens the bridge with as `ALBUM_WIDTH` times its display density
+  and `setThumbnailEdge` can store over, clamped to 64-1024 so a decoded one stays within about 9.3
+  MiB. A square tile draws it with `fit="cover"`. It lives in the original's cache entry and is
+  evicted with it. Generating it there rather than in each loader gives every platform the same
+  picture from one decoder, libvips under libsession's own loader whitelist, and leaves the loaders
+  two paths: a thumbnail, checked to be a JPEG and reduced while decoding but never below its view,
+  a file row's glyph far less than a tile (Fresco's decoder and downsampling on Android, the same as
+  an original's, asked for 4/3 the view because Fresco's JPEG sample can land up to that far below
+  its target; ImageIO's maximum pixel size on iOS, only where the view needs half of it or less),
+  cached by URL and view size; and the viewer's original, which keeps the pixel budget, the GIF/PNG
+  refusal, animation and Fresco's downsampling. Drawing never starts a download: a tile's URL used
+  to be the original's, and resolving it fetched the file, which under `image-attachments` or `all`
+  spent data on any older message that scrolled past. Now every URL is served from the cache only
+  (`attachment_data_cached`, refused as "is not downloaded"), and a file arrives only by
+  libsession's own rule when its message does, or when somebody taps. This supersedes the 2026-09-15
+  entry's sentence on progress: drawing a picture reports none. A viewer whose file was evicted just
+  before it loaded draws its unavailable state rather than downloading again. A tile has no failed
+  face: a thumbnail exists only of a picture that decoded, so one that does not load was evicted
+  under it and the placeholder is the truth. The fake serves thumbnails `pnpm fake-media:fetch`
+  makes of its dev photographs the same way at 720 px tall, 960x720 for every one, which is the size
+  it reports.
 
 - **2026-10-19 - A message's gallery/list choice is libsession's, stored per message.**
   `Message.gallery` carries libsession's decision, stored on this device and never synced. It is on

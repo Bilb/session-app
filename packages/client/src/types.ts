@@ -185,7 +185,7 @@ export interface SessionClient {
   /** How much disk the cached attachments occupy now, measured as the limit is. */
   getAttachmentCacheSize(): Promise<number>
   /**
-   * The side of the square thumbnails libsession makes, in device pixels, clamped to 64 to 1024.
+   * The height of the thumbnails libsession makes, in device pixels, clamped to 64 to 1024.
    * Kept on this device, and undefined forgets it, back to the edge the bridge was opened with.
    * Thumbnails already made keep the size they were made at.
    */

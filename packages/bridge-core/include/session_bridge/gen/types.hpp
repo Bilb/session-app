@@ -296,13 +296,19 @@ struct Attachment {
     /// media port like any other rather than riding the frame stream. What it names is the second
     /// path on that scheme.
     bool has_thumbhash;
-    /// Whether libsession holds a thumbnail of this attachment: a square JPEG of the picture, cropped
-    /// to cover, at most the client's thumbnail edge on a side. Made only of a displayable image whose
-    /// bytes are cached, and after them, so it turns true in a later `messages-updated` than the one
-    /// reporting `cached`; false again once the cache evicts the file, which takes the thumbnail too.
+    /// Whether libsession holds a thumbnail of this attachment: a JPEG of the picture in its own
+    /// shape, cropped to its centre at 21:9 when it is wider than that either way up, then the
+    /// client's thumbnail edge tall and never enlarged. A square tile covers it and crops. Made only
+    /// of a displayable image whose bytes are cached, and after them, so it turns true in a later
+    /// `messages-updated` than the one reporting `cached`; false again once the cache evicts the
+    /// file, which takes the thumbnail too.
     ///
     /// What a tile draws, through the media scheme's `thumbnail` path; a viewer draws the file.
     bool has_thumbnail;
+    /// The thumbnail's size, read from the JPEG libsession made, so a layout can shape a tile before
+    /// loading it. Both 0 while `hasThumbnail` is false.
+    double thumbnail_width_px;
+    double thumbnail_height_px;
     /// Whether libsession holds a rendition of this attachment: the whole picture as a JPEG or WebP
     /// (animated WebP for an animation) within the rendition edge (2048 px on a side unless set).
     /// It is re-encoded without metadata, or is the original itself when that is already an upright
@@ -333,8 +339,8 @@ struct Attachment {
     /// depends on the other end volunteering a notification.
     std::optional<double> saved_at_ms;
 
-    Attachment(double index_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<double> size_bytes_, bool voice_message_, std::optional<double> width_, std::optional<double> height_, bool has_thumbhash_, bool has_thumbnail_, bool has_rendition_, bool original_file_, bool uploaded_, ::session_bridge::AttachmentAvailability availability_, double fetch_done_bytes_, double fetch_total_bytes_, std::optional<double> saved_at_ms_) :
-            index{std::move(index_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, size_bytes{std::move(size_bytes_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)}, has_thumbhash{std::move(has_thumbhash_)}, has_thumbnail{std::move(has_thumbnail_)}, has_rendition{std::move(has_rendition_)}, original_file{std::move(original_file_)}, uploaded{std::move(uploaded_)}, availability{std::move(availability_)}, fetch_done_bytes{std::move(fetch_done_bytes_)}, fetch_total_bytes{std::move(fetch_total_bytes_)}, saved_at_ms{std::move(saved_at_ms_)} {}
+    Attachment(double index_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<double> size_bytes_, bool voice_message_, std::optional<double> width_, std::optional<double> height_, bool has_thumbhash_, bool has_thumbnail_, double thumbnail_width_px_, double thumbnail_height_px_, bool has_rendition_, bool original_file_, bool uploaded_, ::session_bridge::AttachmentAvailability availability_, double fetch_done_bytes_, double fetch_total_bytes_, std::optional<double> saved_at_ms_) :
+            index{std::move(index_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, size_bytes{std::move(size_bytes_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)}, has_thumbhash{std::move(has_thumbhash_)}, has_thumbnail{std::move(has_thumbnail_)}, thumbnail_width_px{std::move(thumbnail_width_px_)}, thumbnail_height_px{std::move(thumbnail_height_px_)}, has_rendition{std::move(has_rendition_)}, original_file{std::move(original_file_)}, uploaded{std::move(uploaded_)}, availability{std::move(availability_)}, fetch_done_bytes{std::move(fetch_done_bytes_)}, fetch_total_bytes{std::move(fetch_total_bytes_)}, saved_at_ms{std::move(saved_at_ms_)} {}
 };
 
 /// The message a reply points at, resolved one level deep only: a reply to a reply shows its own

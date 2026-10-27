@@ -11,6 +11,8 @@ function attachment(overrides: Partial<Attachment> = {}): Attachment {
     voiceMessage: false,
     hasThumbhash: false,
     hasThumbnail: false,
+    thumbnailWidthPx: 0,
+    thumbnailHeightPx: 0,
     hasRendition: false,
     originalFile: false,
     uploaded: true,

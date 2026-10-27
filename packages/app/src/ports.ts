@@ -108,9 +108,10 @@ export interface MediaPort {
    */
   thumbhashUrlFor(ref: AttachmentRef): string | null
   /**
-   * The square JPEG libsession made of a picture it holds, which is what a tile draws: a viewer
-   * draws `urlFor`. Never a download, so only worth asking for when `Attachment.hasThumbnail`
-   * says there is one.
+   * The JPEG libsession made of a picture it holds, in the picture's shape (`Attachment`'s
+   * `thumbnailWidthPx` by `thumbnailHeightPx`), which is what a tile draws: a viewer draws
+   * `urlFor`. Never a download, so only worth asking for when `Attachment.hasThumbnail` says there
+   * is one.
    */
   thumbnailUrlFor(ref: AttachmentRef): string | null
   /**

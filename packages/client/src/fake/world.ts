@@ -130,6 +130,8 @@ function received(sent: readonly Attachment[]): Attachment[] {
     ...attachment,
     uploaded: true,
     hasThumbnail: false,
+    thumbnailWidthPx: 0,
+    thumbnailHeightPx: 0,
     availability: 'absent',
     fetchDoneBytes: 0,
     fetchTotalBytes: 0,
@@ -164,11 +166,13 @@ function reencoded(attachment: Attachment, contentType: 'image/jpeg' | 'image/we
   }
 }
 
-/** libsession's bounds on a thumbnail's side: 1024² at 4 bytes a pixel is 4 MiB decoded. */
+/** libsession's bounds on a thumbnail's height: a 2389 x 1024 strip is about 9.3 MiB decoded. */
 const THUMBNAIL_EDGE_MIN_PX = 64
 const THUMBNAIL_EDGE_MAX_PX = 1024
-/** The side `pnpm fake-media:fetch` makes the dev thumbnails at, so what is served is this size. */
+/** The height `pnpm fake-media:fetch` makes the dev thumbnails, so what is served is this tall. */
 const FAKE_THUMBNAIL_EDGE_PX = 720
+/** Every dev photograph is 1600 x 1200, so every thumbnail served is 4:3 at that height. */
+const FAKE_THUMBNAIL_WIDTH_PX = 960
 
 /** libsession makes one of every displayable picture it caches, and drops it on eviction. */
 function thumbnailed(cached: boolean, contentType: string | undefined): boolean {
@@ -726,6 +730,8 @@ export class FakeAccount {
         voiceMessage: false,
         hasThumbhash: false,
         hasThumbnail: false,
+        thumbnailWidthPx: 0,
+        thumbnailHeightPx: 0,
         hasRendition: false,
         // Flagged by libsession as that file's upload starts, when it converts it.
         originalFile: false,
@@ -1010,10 +1016,13 @@ export class FakeAccount {
           : this.cached.has(key) || this.takenServed(key, message.sendState)
             ? 'cached'
             : (this.verdicts.get(key) ?? 'absent')
+        const thumbnail = thumbnailed(this.cached.has(key), attachment.contentType)
         return {
           ...attachment,
           availability,
-          hasThumbnail: thumbnailed(this.cached.has(key), attachment.contentType),
+          hasThumbnail: thumbnail,
+          thumbnailWidthPx: thumbnail ? FAKE_THUMBNAIL_WIDTH_PX : 0,
+          thumbnailHeightPx: thumbnail ? FAKE_THUMBNAIL_EDGE_PX : 0,
           hasRendition: rendered(this.cached.has(key), attachment),
           fetchDoneBytes: running?.doneBytes ?? 0,
           fetchTotalBytes: running?.totalBytes ?? 0,

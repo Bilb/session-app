@@ -376,6 +376,8 @@ struct Codec<::session_bridge::Attachment> {
             obj.Set("height", Codec<double>::to(env, *value.height));
         obj.Set("hasThumbhash", Codec<bool>::to(env, value.has_thumbhash));
         obj.Set("hasThumbnail", Codec<bool>::to(env, value.has_thumbnail));
+        obj.Set("thumbnailWidthPx", Codec<double>::to(env, value.thumbnail_width_px));
+        obj.Set("thumbnailHeightPx", Codec<double>::to(env, value.thumbnail_height_px));
         obj.Set("hasRendition", Codec<bool>::to(env, value.has_rendition));
         obj.Set("originalFile", Codec<bool>::to(env, value.original_file));
         obj.Set("uploaded", Codec<bool>::to(env, value.uploaded));
@@ -398,6 +400,8 @@ struct Codec<::session_bridge::Attachment> {
                 optional<double>(obj.Get("height"), "Attachment.height"),
                 Codec<bool>::from(obj.Get("hasThumbhash"), "Attachment.hasThumbhash"),
                 Codec<bool>::from(obj.Get("hasThumbnail"), "Attachment.hasThumbnail"),
+                Codec<double>::from(obj.Get("thumbnailWidthPx"), "Attachment.thumbnailWidthPx"),
+                Codec<double>::from(obj.Get("thumbnailHeightPx"), "Attachment.thumbnailHeightPx"),
                 Codec<bool>::from(obj.Get("hasRendition"), "Attachment.hasRendition"),
                 Codec<bool>::from(obj.Get("originalFile"), "Attachment.originalFile"),
                 Codec<bool>::from(obj.Get("uploaded"), "Attachment.uploaded"),

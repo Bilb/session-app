@@ -102,6 +102,8 @@ Attachment to_bridge(::session::client::Attachment&& from) {
             number(from.height),
             thumbhash_decodable(from),
             from.has_thumbnail,
+            static_cast<double>(from.thumbnail_width),
+            static_cast<double>(from.thumbnail_height),
             from.has_rendition,
             from.original_file,
             from.uploaded,
