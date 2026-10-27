@@ -36,6 +36,10 @@ const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, Known>>> = {
     'color-contrast fileRow.onAccent idle':
       'the caption on a purple sent bubble, ocean themes: 4.2:1',
     'color-contrast fileRow.onAccent failed': 'the same',
+    'color-contrast fileRow.onAccent uploading': 'the same',
+    'color-contrast fileRow.onAccent queued': 'the same',
+    'color-contrast fileRow.onAccent uploaded': 'the same',
+    'color-contrast fileRow.onAccent unsent': 'the same',
     'color-contrast fileRow.received idle':
       'the caption on a received bubble, as message-attachment-state: 4.1:1',
     'color-contrast fileRow.received fetching': 'the same',
