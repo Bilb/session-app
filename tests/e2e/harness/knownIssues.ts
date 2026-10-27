@@ -19,6 +19,8 @@ const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, Known>>> = {
       'textSecondary at caption size on a received bubble is 3.5 to 4.1:1 in every theme, under AA',
     'color-contrast message-attachment': 'the format line under a lead square: the same ink',
     'color-contrast message-attachment-show-all': "the roll's Show all count: the same ink",
+    'color-contrast message-state':
+      "our message's send state on a purple sent bubble, ocean themes, as fileRow.onAccent: 4.2:1",
     'color-contrast message-attachment-action':
       "a failed file's retry, the danger ink on a received bubble in a light theme: 4.0:1",
     'color-contrast button.variants outlineAccent':

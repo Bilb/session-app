@@ -57,4 +57,15 @@ export const MESSAGE_SCENARIOS: readonly AnyStory[] = [
     ],
     { rtl: true },
   ),
+  // Ours, so drawn on the accent.
+  message(
+    'sending',
+    [
+      'Still uploading, one at a time',
+      'File 31 of 32 failed',
+      'Gallery whose 31st failed',
+      'A file of this one went missing',
+    ],
+    { accent: true, rtl: true },
+  ),
 ]
