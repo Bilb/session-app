@@ -113,6 +113,29 @@ export function sniffContentType(bytes: Uint8Array): string | null {
   return match?.[0] ?? null
 }
 
+/** Start-of-frame markers, which carry a JPEG's size; C4, C8 and CC share the range and are not. */
+const START_OF_FRAME = new Set([
+  0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf,
+])
+
+/** A JPEG's size from its frame header, or null when these bytes are not a JPEG that has one. */
+export function jpegSize(bytes: Uint8Array): { width: number; height: number } | null {
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return null
+  let at = 2
+  while (at + 9 < bytes.length) {
+    if (bytes[at] !== 0xff) return null
+    const marker = bytes[at + 1] ?? 0
+    const length = ((bytes[at + 2] ?? 0) << 8) | (bytes[at + 3] ?? 0)
+    if (START_OF_FRAME.has(marker)) {
+      const height = ((bytes[at + 5] ?? 0) << 8) | (bytes[at + 6] ?? 0)
+      const width = ((bytes[at + 7] ?? 0) << 8) | (bytes[at + 8] ?? 0)
+      return { width, height }
+    }
+    at += 2 + length
+  }
+  return null
+}
+
 /**
  * The edge to make thumbnails at for the densest of these displays. 1 with none connected, since
  * thumbnails are never remade and a headless start would otherwise ask for an edge of -Infinity.
