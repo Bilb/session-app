@@ -1,6 +1,7 @@
 import { friendsWithAttachments } from './attachments'
 import { backlog } from './backlog'
 import type { FakeSessionClient } from './FakeSessionClient'
+import { dateStates } from './dates'
 import { crowd, newcomer, type FakeSetup } from './fixtures'
 import { photoFileNames, thumbnailFileNames } from './media'
 import { rowShowcase } from './rows'
@@ -23,6 +24,7 @@ export const FAKE_FIXTURES = [
   'newcomer',
   'crowd',
   'rows',
+  'dates',
 ] as const
 
 export type FakeFixture = (typeof FAKE_FIXTURES)[number]
@@ -100,6 +102,8 @@ export function pickFakeFixture(env: FakeDevEnv): FakeSetup & { fixture: FakeFix
       return { fixture, ...crowd({ peers: peers ?? 100, history: history ?? 1 }) }
     case 'rows':
       return { fixture, ...rowShowcase() }
+    case 'dates':
+      return { fixture, ...dateStates() }
     case 'friends':
       return { fixture, ...friendsWithAttachments(['Alice', 'Bob'], { history: 4 }) }
   }

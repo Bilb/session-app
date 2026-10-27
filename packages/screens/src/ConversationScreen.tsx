@@ -13,6 +13,8 @@ import { MessageRow } from './MessageRow'
 import { AutoDownloadPrompt } from './AutoDownloadPrompt'
 import { BackButton } from './BackButton'
 import { conversationTitle } from './conversationTitle'
+import { DateHeaderRow } from './DateHeaderRow'
+import { showsDateHeader } from './dateHeaders'
 import { useTopBarInsets } from './shell/pane'
 
 function Conversation({ conversationId }: { conversationId: ConversationId }) {
@@ -102,6 +104,9 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
             keyExtractor={(message) => String(message.id)}
             renderItem={(message, index) => (
               <YStack paddingHorizontal="$md" paddingBottom="$sm">
+                {showsDateHeader(messages[index - 1], message) ? (
+                  <DateHeaderRow timestampMs={message.timestamp} />
+                ) : null}
                 <MessageRow conversationId={conversationId} messageId={message.id} index={index} />
               </YStack>
             )}
