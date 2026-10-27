@@ -37,7 +37,7 @@ import { inkFor } from './ink'
 import { useForcedFocus } from './interactionOverride'
 import { focusRing, heldButton, keyboardPress } from './keyboardPress'
 import { pressHint } from './pressHint'
-import { ProgressRing } from './ProgressRing'
+import { ProgressRing, TRANSFER_RING_SIDE_PX, TRANSFER_RING_THICKNESS } from './ProgressRing'
 import { StateLayer } from './StateLayer'
 import { Text } from './Text'
 import { useFontScale } from './useFontScale'
@@ -107,12 +107,6 @@ export type FileRowProps = WithFilename &
  * name's direction it sits under. Native text already takes its paragraph direction that way.
  */
 const CAPTION_BIDI = isWeb ? ({ unicodeBidi: 'plaintext' } as const) : undefined
-
-/**
- * Drawn inside the touch target rather than filling it, so it reads as a gauge and not a button.
- */
-const RING_SIDE = 28
-const RING_THICKNESS = 3
 
 /**
  * The row as the one accessibility element, on native alone: iOS hides whatever an element holds,
@@ -232,8 +226,8 @@ function Trailing({
       {held ? (
         <ProgressRing
           progress={progress ?? 0}
-          size={RING_SIDE}
-          thickness={RING_THICKNESS}
+          size={TRANSFER_RING_SIDE_PX}
+          thickness={TRANSFER_RING_THICKNESS}
           color={onAccent ? '$onAccent' : '$primaryColor'}
         />
       ) : (

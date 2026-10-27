@@ -7,6 +7,7 @@ import { logical } from './logicalEdges'
 import { rampSizeAtMost } from './rampSize'
 import { SIZE_SCALE } from './scales'
 import { Text } from './Text'
+import { usePaneSurface } from './paneSurface'
 
 /**
  * Initials on a colour derived from the id, until a display picture is fetched.
@@ -62,6 +63,7 @@ function Disc({ id, name, sizePx, ringPx, testID }: DiscProps) {
   const letters = avatarInitials(name, id)
   // The ring is inside the box on both platforms, so the initials fit what is left of it.
   const innerPx = sizePx - 2 * (ringPx ?? 0)
+  const surface = usePaneSurface()
   const initialsSize = rampSizeAtMost(innerPx * INITIALS_RATIO[letters.length > 1 ? 'more' : 'one'])
   return (
     <XStack
@@ -72,7 +74,7 @@ function Disc({ id, name, sizePx, ringPx, testID }: DiscProps) {
       alignItems="center"
       justifyContent="center"
       borderWidth={ringPx ?? 0}
-      borderColor="$backgroundPrimary"
+      borderColor={surface}
       testID={testID}
     >
       {/* White: the circle is the account's colour, not the theme's, so no theme role fits. The

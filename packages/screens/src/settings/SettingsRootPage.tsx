@@ -1,6 +1,6 @@
 import { requirePorts, URLS, useDebugMode, useNav, routes } from '@session/app'
 import { toPlainText, tr } from '@session/localization'
-import { useAccount, useSessionActions } from '@session/state'
+import { useAccount, useNetworkStatus, useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import {
   Avatar,
@@ -11,6 +11,7 @@ import {
   SessionTokenMark,
   SettingsGroup,
   SettingsRow,
+  StatusDot,
   Text,
   useModals,
   XStack,
@@ -27,6 +28,7 @@ import { HelpPage } from './HelpPage'
 import { SessionInfo } from './SessionInfo'
 import { endAfterClear } from '../endAfterClear'
 import { LocalizedText } from '../LocalizedText'
+import { pathStatusLabel, pathStatusTone } from '../pathStatus'
 
 /**
  * Off the size scale on purpose: a brand badge sized to sit level with the row's icons. At 16 its
@@ -37,7 +39,14 @@ const PRO_BADGE = 14.5
 /** One row of the root list, as `SettingsRow` takes it. */
 type RowSpec = Pick<
   SettingsRowProps,
-  'label' | 'icon' | 'onPress' | 'accentIcon' | 'destructive'
+  | 'label'
+  | 'icon'
+  | 'onPress'
+  | 'accentIcon'
+  | 'destructive'
+  | 'trailing'
+  | 'trailingYields'
+  | 'wideTrailing'
 > & {
   testID: string
 }
@@ -178,6 +187,7 @@ export function SettingsRootPage() {
   const actions = useSessionActions()
   const modals = useModals()
   const nav = useNav()
+  const networkStatus = useNetworkStatus()
 
   // No fallback: without an account there is no honest ID to show, so the caller is at fault.
   if (account?.sessionId === undefined)
@@ -222,8 +232,25 @@ export function SettingsRootPage() {
           confirmLink(modals, URLS.donationsApp)
         },
       },
-      // The live onion-path icon and path modal both wait on the path screen.
-      { label: tr('onionRoutingPath'), icon: 'info', testID: row('onion-path') },
+      // The path's live state, as a dot named in words. TODO: open the path screen, which needs
+      // the nodes of the current path that libsession's `get_path_to` has and the bridge does not
+      // carry yet.
+      {
+        label: tr('onionRoutingPath'),
+        icon: (
+          <StatusDot tone={pathStatusTone(networkStatus)} testID={ELEMENT.settings.pathStatus} />
+        ),
+        // The state qualifies the row's name, so it is what truncates in a language where the two
+        // do not fit side by side; at the accessibility sizes it goes under the name instead.
+        trailingYields: true,
+        wideTrailing: true,
+        trailing: (
+          <Text size="$body" tone="secondary" numberOfLines={1}>
+            {pathStatusLabel(networkStatus)}
+          </Text>
+        ),
+        testID: row('onion-path'),
+      },
       { label: tr('networkName'), icon: SessionTokenMark, testID: row('network') },
     ],
     [

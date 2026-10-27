@@ -3,6 +3,7 @@
 #include <session/client/attachment.hpp>
 #include <session/client/conversation.hpp>
 #include <session/client/message.hpp>
+#include <session/network/session_network_types.hpp>
 
 #include <cstdint>
 
@@ -26,6 +27,8 @@ Message to_bridge(::session::client::Message&& from);
 /// applies them in. Only the paged query reverses, because paging runs the other way.
 std::vector<Message> to_bridge(std::vector<::session::client::Message>&& from);
 Conversation to_bridge(::session::client::AnyConversation&& from);
+/// By value: an enum. Every one of libsession's values is named, so one it adds fails to compile.
+NetworkStatus to_bridge(::session::network::ConnectionStatus from);
 
 /// Whether `fetch_thumbhash` can decode this attachment's ThumbHash: what `hasThumbhash` says.
 bool thumbhash_decodable(const ::session::client::Attachment& a);

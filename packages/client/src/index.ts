@@ -31,6 +31,7 @@ export type {
   Frame,
   Message,
   MessageCursor,
+  NetworkStatus,
   PixelSize,
   Reply,
   Request,

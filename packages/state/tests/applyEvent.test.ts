@@ -576,3 +576,25 @@ describe('attachment transfers', () => {
     expect(after.transfers).toBe(before.transfers)
   })
 })
+
+describe('the network status', () => {
+  it('starts unknown and follows each change in order', () => {
+    expect(emptyState.networkStatus).toBe('unknown')
+    const after = replay(
+      [
+        { type: 'network-status-changed', status: 'connecting' },
+        { type: 'network-status-changed', status: 'connected' },
+        { type: 'network-status-changed', status: 'disconnected' },
+      ],
+      emptyState,
+    )
+    expect(after.networkStatus).toBe('disconnected')
+  })
+
+  it('leaves the state as it was for a repeat, which a status answer can be', () => {
+    const connected = replay([{ type: 'network-status-changed', status: 'connected' }], emptyState)
+    expect(applyEvent(connected, { type: 'network-status-changed', status: 'connected' })).toBe(
+      connected,
+    )
+  })
+})

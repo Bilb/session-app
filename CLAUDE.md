@@ -27,6 +27,9 @@ dev entries. When a rule fires, fix the design - not the config.
   side-effecting import at each app's entry; React context for render-scoped ports (NavPort);
   `.native.tsx` pairs with a shared `.types.ts` for file-level splits. New port =
   `turbo gen port`.
+- State: app state goes in the zustand store (`@session/state`). React context is only for a
+  value that differs by subtree, such as which pane a screen is in or which surface it is drawn
+  on. Consider the store first.
 - Navigation: build paths with `routes.ts` only. Route params are extracted at the route file
   and passed as props - a screen never reads a router. Every route gets a route-contract row.
   **A mobile route file calls `useLocale()`**: `tr()` is a module-scope read, and the router holds

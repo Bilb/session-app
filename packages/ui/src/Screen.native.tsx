@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { YStack } from 'tamagui'
 
 import { backgroundDismissResponder } from './backgroundDismiss'
+import { usePaneSurface } from './paneSurface'
 import type { ScreenProps } from './Screen.types'
 
 export type { ScreenProps }
@@ -42,11 +43,12 @@ export function Screen({
 }: ScreenProps) {
   const insets = useSafeAreaInsets()
   const wanted = new Set(edges)
+  const surface = usePaneSurface()
 
   return (
     <YStack
       flex={1}
-      backgroundColor="$backgroundPrimary"
+      backgroundColor={surface}
       paddingTop={wanted.has('top') ? insets.top : 0}
       paddingBottom={wanted.has('bottom') ? insets.bottom : 0}
       paddingLeft={wanted.has('left') ? insets.left : 0}
