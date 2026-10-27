@@ -1,7 +1,8 @@
+import { verbName } from '@session/expectations'
 import type { FileRowState } from '@session/ui'
 import { describe, expect, it } from 'vitest'
 
-import { controlVerb, rowVerb } from '#src/attachmentPress'
+import { controlVerb, rowVerb, verbLabel, type AttachmentVerb } from '#src/attachmentPress'
 
 const STATES: FileRowState[] = ['idle', 'fetching', 'ready', 'failed', 'unavailable']
 
@@ -37,5 +38,20 @@ describe('what a press on an attachment row does', () => {
       expect(rowVerb(state, false)).toBe(controlVerb(state))
       if (state !== 'ready') expect(rowVerb(state, true)).toBe(controlVerb(state))
     }
+  })
+})
+
+// A record, so a verb added to the screen and not here fails to typecheck, and one the
+// expectations do not know fails at `verbName`.
+const VERBS = Object.keys({
+  download: true,
+  retry: true,
+  export: true,
+  open: true,
+} satisfies Record<AttachmentVerb, true>) as AttachmentVerb[]
+
+describe('what a screen reader says a press does', () => {
+  it.each(VERBS)('names %s as the expectations do', (verb) => {
+    expect(verbLabel(verb)).toBe(verbName(verb))
   })
 })

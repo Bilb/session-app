@@ -68,6 +68,11 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
     case 'attachment-progress':
       return recordTransfer(state, event)
 
+    case 'network-status-changed':
+      return state.networkStatus === event.status
+        ? state
+        : { ...state, networkStatus: event.status }
+
     case 'log':
       return state
 

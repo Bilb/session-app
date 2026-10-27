@@ -1,0 +1,34 @@
+{
+  "name": "@session/expectations",
+  "version": "0.0.0",
+  "private": true,
+  "description": "What each control is to a screen reader and a driver, written once for every platform",
+  "type": "module",
+  "main": "./src/index.ts",
+  "imports": {
+    "#src/*": [
+      "./src/*.ts",
+      "./src/*.tsx"
+    ]
+  },
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@session/localization": "workspace:*",
+    "@session/test-ids": "workspace:*"
+  },
+  "devDependencies": {
+    "@session/eslint-config": "workspace:*",
+    "@session/typescript-config": "workspace:*",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

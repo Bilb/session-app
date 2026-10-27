@@ -9,3 +9,8 @@
 import './src/platform'
 
 import 'expo-router/entry'
+
+import { LogBox } from 'react-native'
+
+// Reduced motion is a setting, not a fault, and the dev build's toast for it covers the composer.
+LogBox.ignoreLogs(['[Reanimated] Reduced motion setting is enabled'])

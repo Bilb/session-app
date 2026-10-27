@@ -1,8 +1,16 @@
-import { logical, useMedia, usePageZoom, useTokenColor, XStack, YStack } from '@session/ui'
+import {
+  logical,
+  PaneSurfaceProvider,
+  useMedia,
+  usePageZoom,
+  useTokenColor,
+  XStack,
+  YStack,
+} from '@session/ui'
 import type { ReactNode } from 'react'
 
-import { PaneProvider } from './pane'
-import { DETAIL_PANE, LIST_PANE, SOLE_PANE } from './panes'
+import { PaneProvider, RailProvider } from './pane'
+import { DETAIL_PANE, LIST_BESIDE_RAIL_PANE, LIST_PANE, SOLE_PANE } from './panes'
 
 /**
  * One list, one detail, and the decision about how many of them fit.
@@ -18,11 +26,18 @@ export function AdaptiveShell({
   detail,
   hasDetail,
   placeholder,
+  rail,
 }: {
   list: ReactNode
   detail: ReactNode
   hasDetail: boolean
   placeholder?: ReactNode
+  /**
+   * The column drawn at the start edge, before the list, whenever the list and the detail are
+   * side by side: the desktop window and a tablet alike. Not on one pane, where the list's own
+   * header holds what the rail would.
+   */
+  rail?: ReactNode
 }) {
   const media = useMedia()
   const zoom = usePageZoom()
@@ -36,8 +51,16 @@ export function AdaptiveShell({
   // the breakpoint -- on mobile that is the router's navigator, which forgets the open
   // conversation when it remounts, so turning a tablet would close it. The list pane comes and goes
   // beside it; the detail pane is only hidden, never unmounted.
+  const withRail = twoPanes && rail !== undefined
   return (
     <XStack flex={1} backgroundColor="$backgroundPrimary">
+      {withRail ? (
+        // Raised, so a tooltip opening from it lies over the list rather than under it: the list
+        // comes later in the page and would otherwise paint on top.
+        <YStack key="rail" position="relative" zIndex={1}>
+          <PaneSurfaceProvider value="$backgroundSecondary">{rail}</PaneSurfaceProvider>
+        </YStack>
+      ) : null}
       {showsList ? (
         <YStack
           key="list"
@@ -53,7 +76,17 @@ export function AdaptiveShell({
               }
             : { flex: 1 })}
         >
-          <PaneProvider value={twoPanes ? LIST_PANE : SOLE_PANE}>{list}</PaneProvider>
+          {/* Recessed beside the detail, so the two read as separate panes; on its own the list
+              is the page. */}
+          <PaneSurfaceProvider value={twoPanes ? '$backgroundSecondary' : '$backgroundPrimary'}>
+            <RailProvider value={withRail}>
+              <PaneProvider
+                value={withRail ? LIST_BESIDE_RAIL_PANE : twoPanes ? LIST_PANE : SOLE_PANE}
+              >
+                {list}
+              </PaneProvider>
+            </RailProvider>
+          </PaneSurfaceProvider>
         </YStack>
       ) : null}
       <YStack key="detail" flex={1} display={showsDetail ? 'flex' : 'none'}>

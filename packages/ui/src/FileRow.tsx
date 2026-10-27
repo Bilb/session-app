@@ -34,9 +34,10 @@ import {
 import { FetchHint } from './FetchHint'
 import { Icon } from './Icon'
 import { inkFor } from './ink'
+import { useForcedFocus } from './interactionOverride'
 import { focusRing, heldButton, keyboardPress } from './keyboardPress'
 import { pressHint } from './pressHint'
-import { ProgressRing } from './ProgressRing'
+import { ProgressRing, TRANSFER_RING_SIDE_PX, TRANSFER_RING_THICKNESS } from './ProgressRing'
 import { StateLayer } from './StateLayer'
 import { Text } from './Text'
 import { useFontScale } from './useFontScale'
@@ -108,12 +109,6 @@ export type FileRowProps = WithFilename &
 const CAPTION_BIDI = isWeb ? ({ unicodeBidi: 'plaintext' } as const) : undefined
 
 /**
- * Drawn inside the touch target rather than filling it, so it reads as a gauge and not a button.
- */
-const RING_SIDE = 28
-const RING_THICKNESS = 3
-
-/**
  * The row as the one accessibility element, on native alone: iOS hides whatever an element holds,
  * so the lead square's and the control's verbs are its actions. On the web it would be a button
  * holding theirs, whose children ARIA makes presentational.
@@ -181,6 +176,7 @@ function Trailing({
   onAccent: boolean
 }) {
   const control = fileRowControl(state)
+  const forcedFocus = useForcedFocus()
 
   // The square is held whatever the state, so the name's width does not change when a transfer
   // ends and the controls stay in one column down a list of rows.
@@ -215,6 +211,7 @@ function Trailing({
               ...(actionLabel === undefined ? {} : { 'aria-label': actionLabel }),
               ...keyboardPress(onAction, ring),
             })}
+      {...forcedFocus}
       {...(isWeb ? { 'aria-disabled': held } : {})}
       onPress={
         held
@@ -229,8 +226,8 @@ function Trailing({
       {held ? (
         <ProgressRing
           progress={progress ?? 0}
-          size={RING_SIDE}
-          thickness={RING_THICKNESS}
+          size={TRANSFER_RING_SIDE_PX}
+          thickness={TRANSFER_RING_THICKNESS}
           color={onAccent ? '$onAccent' : '$primaryColor'}
         />
       ) : (
@@ -279,6 +276,7 @@ export function FileRow({
   const tone = fileRowTone(state)
   const nameInk = inkFor(tone.name, onAccent)
   const fontScale = useFontScale()
+  const forcedFocus = useForcedFocus()
   // While fetching, the lead square stays a disabled button rather than losing its stop, which
   // would drop focus on it to the page.
   const held = state === 'fetching'
@@ -356,6 +354,7 @@ export function FileRow({
                   ...keyboardPress(onOpen, leadRing),
                 })}
             {...(leadHeld && isWeb ? heldButton(filename, leadRing) : {})}
+            {...forcedFocus}
             {...(isWeb ? { 'aria-disabled': leadHeld } : {})}
             position="relative"
             group="tile"

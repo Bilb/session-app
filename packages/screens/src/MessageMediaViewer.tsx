@@ -1,5 +1,5 @@
 import type { ConversationId } from '@session/client'
-import { tr } from '@session/localization'
+import { PENDING_COPY, tr } from '@session/localization'
 import { transferKey, useMessage, useMessageTransfers, useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { MediaViewer, type MediaViewerItem } from '@session/ui'
@@ -8,7 +8,6 @@ import { useMemo, useRef } from 'react'
 import { fetchOf } from './attachmentFetch'
 import { exportOne } from './exportAttachment'
 import { useExportFeedback } from './useExportFeedback'
-import { PENDING_COPY } from './pendingCopy'
 import { viewableAttachments, viewerUri } from './viewableAttachments'
 
 /** An open viewer: which message, and the attachment's index in that message. */

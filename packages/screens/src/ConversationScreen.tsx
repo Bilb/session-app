@@ -1,139 +1,19 @@
-import type { ConversationId, Message } from '@session/client'
-import { useConversation, useMessage, useMessages, useSessionActions } from '@session/state'
+import type { ConversationId } from '@session/client'
+import { useConversation, useMessages, useSessionActions } from '@session/state'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import {
-  Button,
-  Input,
-  List,
-  ON_ACCENT_SECONDARY_OPACITY,
-  Screen,
-  Separator,
-  Text,
-  XStack,
-  YStack,
-} from '@session/ui'
-import { memo, useMemo, useState } from 'react'
+import { Button, Input, List, Screen, Separator, Text, XStack, YStack } from '@session/ui'
+import { useMemo, useState } from 'react'
 
 import { AttachmentSheet } from './AttachmentSheet'
 import { createViewChoices } from './viewChoices'
 import { ConversationUiContext, type ConversationUi } from './conversationUi'
-import { MessageAttachments } from './MessageAttachments'
 import { MessageMediaViewer, type ViewerTarget } from './MessageMediaViewer'
+import { MessageRow } from './MessageRow'
 import { AutoDownloadPrompt } from './AutoDownloadPrompt'
 import { BackButton } from './BackButton'
 import { conversationTitle } from './conversationTitle'
 import { useTopBarInsets } from './shell/pane'
-
-/**
- * What a send state is called on screen. Only the ones worth showing say anything.
- *
- * A function rather than a table, because `tr` reads the locale when it is called: a table built
- * at module scope would be resolved once, on import, and keep whatever locale was in use then.
- */
-function stateLabel(state: Message['sendState']): string | undefined {
-  switch (state) {
-    case 'pending':
-    case 'sending':
-      return tr('sending')
-    case 'uploading':
-      return tr('uploading')
-    case 'failed':
-      return tr('messageStatusFailedToSend')
-    // No catalogue entry for either of these yet, so they say nothing rather than saying it in
-    // English only. `interrupted` offers a retry and `unsendable` does not, which is the part
-    // that matters and is not copy.
-    case 'interrupted':
-    case 'unsendable':
-    default:
-      return undefined
-  }
-}
-
-/**
- * Which states are worth offering a retry for.
- *
- * `failed` and `interrupted` are worth another attempt - something was unreachable. `unsendable`
- * is not: libsession keeps it apart precisely so a client knows which failures to offer a retry
- * for, and it means something the message needs is gone rather than merely unreachable, so
- * retrying re-reads the same missing file and fails identically every time.
- */
-const RETRYABLE: readonly Message['sendState'][] = ['failed', 'interrupted']
-
-/**
- * One message, read by id so an event that changes one message re-renders one row.
- *
- * `index` is the row's place in the transcript and only addresses it for tests.
- */
-const MessageRow = memo(function MessageRow({
-  conversationId,
-  messageId,
-  index,
-}: {
-  conversationId: ConversationId
-  messageId: number
-  index: number
-}) {
-  const actions = useSessionActions()
-  const message = useMessage(conversationId, messageId)
-  if (message === undefined) return null
-
-  const label = message.outgoing ? stateLabel(message.sendState) : undefined
-  const retryable = message.outgoing && RETRYABLE.includes(message.sendState)
-
-  return (
-    <YStack
-      alignSelf={message.outgoing ? 'flex-end' : 'flex-start'}
-      maxWidth="80%"
-      backgroundColor={message.outgoing ? '$primaryColor' : '$messageBubbleIncomingBg'}
-      borderRadius="$lg"
-      paddingHorizontal="$md"
-      paddingVertical="$sm"
-      gap="$2xs"
-      testID={ELEMENT.conversation.messageRow(index)}
-    >
-      {message.body.length === 0 ? null : (
-        <Text
-          size="$body"
-          color={message.outgoing ? '$onAccent' : '$messageBubbleIncomingText'}
-          testID={ELEMENT.conversation.messageBody}
-        >
-          {message.body}
-        </Text>
-      )}
-      {message.attachments.length === 0 ? null : <MessageAttachments message={message} />}
-      {label === undefined ? null : (
-        <XStack alignItems="center" gap="$xs">
-          {/* On the fill, not on the page: a label only ever appears on an outgoing message. */}
-          <Text
-            size="$caption"
-            color="$onAccent"
-            opacity={ON_ACCENT_SECONDARY_OPACITY}
-            testID={ELEMENT.conversation.messageState}
-          >
-            {label}
-          </Text>
-          {retryable ? (
-            <Text
-              size="$caption"
-              color="$onAccent"
-              weight="semibold"
-              textDecorationLine="underline"
-              testID={ELEMENT.conversation.messageRetry}
-              onPress={() => {
-                // Resumes rather than restarts. The state comes back as an update, so
-                // there is nothing to do here.
-                void actions.retry(message.id)
-              }}
-            >
-              {tr('retry')}
-            </Text>
-          ) : null}
-        </XStack>
-      )}
-    </YStack>
-  )
-})
 
 function Conversation({ conversationId }: { conversationId: ConversationId }) {
   const topBarInsets = useTopBarInsets()

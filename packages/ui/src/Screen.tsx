@@ -1,5 +1,6 @@
 import { YStack } from 'tamagui'
 
+import { usePaneSurface } from './paneSurface'
 import type { ScreenProps } from './Screen.types'
 
 export type { ScreenProps }
@@ -16,10 +17,11 @@ export type { ScreenProps }
  * where it is the whole point.
  */
 export function Screen({ children, padded = false, testID }: ScreenProps) {
+  const surface = usePaneSurface()
   return (
     <YStack
       flex={1}
-      backgroundColor="$backgroundPrimary"
+      backgroundColor={surface}
       {...(padded ? { padding: '$md' } : {})}
       testID={testID}
     >

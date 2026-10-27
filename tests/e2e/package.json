@@ -7,17 +7,27 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test": "node --disable-warning=ExperimentalWarning scripts/checkProjects.ts",
     "test:e2e:fast": "playwright test --project desktop",
-    "test:e2e:full": "playwright test"
+    "test:e2e:android": "playwright test --project android",
+    "test:e2e:ios": "playwright test --project ios",
+    "test:e2e:full": "playwright test",
+    "test:catalog": "catalog/capture.sh",
+    "catalog:upload": "argos upload"
   },
   "devDependencies": {
+    "@argos-ci/cli": "catalog:",
+    "@axe-core/playwright": "catalog:",
     "@playwright/test": "catalog:",
     "@session/eslint-config": "workspace:*",
+    "@session/expectations": "workspace:*",
+    "@session/localization": "workspace:*",
     "@session/test-ids": "workspace:*",
     "@session/theme-tokens": "workspace:*",
     "@session/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "eslint": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "webdriverio": "catalog:"
   }
 }

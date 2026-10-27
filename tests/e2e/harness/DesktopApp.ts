@@ -3,13 +3,19 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { _electron, type ElectronApplication, type Page } from '@playwright/test'
+import { AxeBuilder } from '@axe-core/playwright'
+import {
+  _electron,
+  type CDPSession,
+  type ElectronApplication,
+  type Locator,
+  type Page,
+} from '@playwright/test'
 import type { ElementId } from '@session/test-ids'
 
 import { FAKE_LAUNCH_ENV } from './fakeEnv'
-import type { ISessionApp } from './ISessionApp'
+import type { AccessibleNode, AuditIssue, Frame, ISessionApp } from './ISessionApp'
 import type { IFileChooser } from './FileChooser'
-import type { ILayoutProbe } from './LayoutProbe'
 import type { IPerformanceProbe } from './PerformanceProbe'
 
 /**
@@ -59,11 +65,62 @@ interface LaidOutNode {
   querySelectorAll(selector: string): ArrayLike<LaidOutNode>
 }
 
-/** What the layout probe's page-side bodies touch. */
-interface DocumentGlobals {
-  document: { documentElement: { dir: string; clientWidth: number } }
-  getComputedStyle(element: unknown): { direction: string }
+/** What `focusedStop`'s page-side body reads. */
+interface FocusNode {
+  getAttribute(name: string): string | null
 }
+
+interface FocusGlobals {
+  document: {
+    activeElement: FocusNode | null
+    body: FocusNode
+    documentElement: FocusNode
+    querySelectorAll(selector: string): ArrayLike<FocusNode>
+  }
+}
+
+/** What `audit` asks of the element axe names. */
+interface TestIdOwner {
+  closest(selector: string): TestIdOwner | null
+  getAttribute(name: string): string | null
+}
+
+/** The part of a CDP `Accessibility.AXNode` that `describe` reads. */
+interface AXNode {
+  ignored: boolean
+  ignoredReasons?: { name: string }[]
+  role?: { value?: unknown }
+  name?: { value?: unknown }
+  description?: { value?: unknown }
+  properties?: { name: string; value: { value?: unknown } }[]
+}
+
+/** Where focus sits: its test id, and which of the elements carrying it, from 0. */
+export interface FocusedStop {
+  testID: string | null
+  at: number
+}
+
+/** Chromium's computed roles, folded onto the few every platform's tree can tell apart. */
+const ROLES: Record<string, AccessibleNode['role']> = {
+  button: 'button',
+  image: 'image',
+  img: 'image',
+  link: 'link',
+  textbox: 'textbox',
+  searchbox: 'textbox',
+  progressbar: 'progressbar',
+  StaticText: 'text',
+  paragraph: 'text',
+  heading: 'text',
+}
+
+const testIdSelector = (id: string) => `[data-testid=${JSON.stringify(id)}]`
+
+const stringOrNull = (value: unknown): string | null =>
+  typeof value === 'string' && value !== '' ? value : null
+
+const BLOCKING_IMPACTS = new Set(['serious', 'critical'])
 
 const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
 
@@ -74,13 +131,15 @@ const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
  * writes is the same string the component was given. There is no per-platform locator table
  * here, and there should not need to be one.
  */
-export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser, ILayoutProbe {
+export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser {
   readonly platform = 'desktop' as const
+  private cdp: CDPSession | null = null
 
+  /** `page` is public for desktop-only specs, which assert through Playwright's own matchers. */
   private constructor(
     readonly identity: string,
     private readonly app: ElectronApplication,
-    private readonly page: Page,
+    readonly page: Page,
     private readonly dataDir: string,
   ) {}
 
@@ -116,7 +175,7 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser,
     return new DesktopApp(identity, app, page, dataDir)
   }
 
-  private locator(id: ElementId) {
+  locator(id: ElementId): Locator {
     return this.page.getByTestId(id)
   }
 
@@ -136,6 +195,14 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser,
 
   async tap(id: ElementId): Promise<void> {
     await this.locator(id).first().click()
+  }
+
+  async tapAt(id: ElementId, at: number): Promise<void> {
+    await this.locator(id).nth(at).click()
+  }
+
+  async tapPoint(x: number, y: number): Promise<void> {
+    await this.page.mouse.click(x, y)
   }
 
   async type(id: ElementId, text: string): Promise<void> {
@@ -190,6 +257,99 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser,
     )
   }
 
+  async describe(id: ElementId, at = 0): Promise<AccessibleNode | null> {
+    const element = this.locator(id).nth(at)
+    if ((await element.count()) === 0) return null
+    this.cdp ??= await this.page.context().newCDPSession(this.page)
+    // getByTestId's own match, in document order, which is the order `nth` counts in.
+    const { result } = await this.cdp.send('Runtime.evaluate', {
+      expression: `document.querySelectorAll(${JSON.stringify(testIdSelector(id))})[${String(at)}]`,
+    })
+    if (result.objectId === undefined) return null
+    const { nodes } = (await this.cdp.send('Accessibility.getPartialAXTree', {
+      objectId: result.objectId,
+      fetchRelatives: false,
+    })) as { nodes: AXNode[] }
+    await this.cdp.send('Runtime.releaseObject', { objectId: result.objectId })
+    const node = nodes[0]
+    if (node === undefined) return null
+    if (node.ignored) {
+      // Chromium folds a plain box of text into its text; a reader still reads that text there.
+      const hidden = node.ignoredReasons?.some((reason) => reason.name.startsWith('ariaHidden'))
+      const text = hidden === true ? null : stringOrNull((await element.innerText()).trim())
+      if (text === null) return null
+      const box = await element.boundingBox()
+      return {
+        role: 'text',
+        name: text,
+        hint: null,
+        disabled: false,
+        busy: false,
+        focusable: false,
+        bounds: { width: box?.width ?? 0, height: box?.height ?? 0 },
+      }
+    }
+
+    const property = (name: string) =>
+      node.properties?.find((entry) => entry.name === name)?.value.value
+    const box = await element.boundingBox()
+    const name = stringOrNull(node.name?.value)
+    return {
+      // The web has no role for text: a generic element that says something is read as text, as
+      // the render tier and the native drivers read one.
+      role: ROLES[String(node.role?.value)] ?? (name === null ? 'none' : 'text'),
+      name,
+      hint: stringOrNull(node.description?.value),
+      disabled: property('disabled') === true,
+      busy: property('busy') === true,
+      focusable: property('focusable') === true,
+      bounds: { width: box?.width ?? 0, height: box?.height ?? 0 },
+    }
+  }
+
+  async frame(id: ElementId, at = 0): Promise<Frame | null> {
+    const element = this.locator(id).nth(at)
+    if ((await element.count()) === 0) return null
+    return element.boundingBox()
+  }
+
+  async reveal(id: ElementId, _within: ElementId, at = 0): Promise<void> {
+    await this.locator(id).nth(at).scrollIntoViewIfNeeded()
+  }
+
+  async audit(scope?: ElementId): Promise<AuditIssue[]> {
+    // Legacy mode runs axe in the page; the default opens a second page, which Electron refuses.
+    const builder = new AxeBuilder({ page: this.page }).setLegacyMode(true)
+    if (scope !== undefined) builder.include(testIdSelector(scope))
+    const { violations } = await builder.analyze()
+    const found = violations.flatMap((violation) =>
+      violation.nodes
+        .filter((node) => BLOCKING_IMPACTS.has(node.impact ?? violation.impact ?? ''))
+        .map((node) => ({
+          rule: violation.id,
+          impact: (node.impact ?? violation.impact) as AuditIssue['impact'],
+          selector: node.target.join(' '),
+          message: node.failureSummary ?? violation.help,
+        })),
+    )
+    // axe names a node by a selector of tamagui's hashed classes; the nearest test id is stable.
+    const owners = await this.page.evaluate(
+      (selectors) =>
+        selectors.map((selector) => {
+          const { document } = globalThis as unknown as {
+            document: { querySelector(selector: string): TestIdOwner | null }
+          }
+          const owner = document.querySelector(selector)?.closest('[data-testid]') ?? null
+          return owner?.getAttribute('data-testid') ?? null
+        }),
+      found.map((issue) => issue.selector),
+    )
+    return found.map(({ selector, ...issue }, at) => ({
+      ...issue,
+      target: owners[at] ?? selector,
+    }))
+  }
+
   async screenshot(name: string): Promise<void> {
     // Animations frozen at their end state, so an artifact taken the moment a surface opens is
     // the surface rather than a frame of it fading in - which is a picture that reads as a bug.
@@ -240,30 +400,12 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser,
     return revealed
   }
 
-  // -- ILayoutProbe -----------------------------------------------------------------------
+  // -- Desktop only ----------------------------------------------------------------------
 
-  async documentDirection(): Promise<string> {
-    return this.page.evaluate(
-      () => (globalThis as unknown as DocumentGlobals).document.documentElement.dir,
-    )
-  }
-
-  async horizontalHalf(id: ElementId): Promise<'left' | 'right'> {
-    const box = await this.locator(id).first().boundingBox()
-    if (box === null) throw new Error(`${id} is not laid out`)
-    // Electron windows have no emulated viewport, so page.viewportSize() is null here.
-    const width = await this.page.evaluate(
-      () => (globalThis as unknown as DocumentGlobals).document.documentElement.clientWidth,
-    )
-    return box.x + box.width / 2 > width / 2 ? 'right' : 'left'
-  }
-
-  async verticalCentre(id: ElementId): Promise<number> {
-    const box = await this.locator(id).first().boundingBox()
-    if (box === null) throw new Error(`${id} is not laid out`)
-    return box.y + box.height / 2
-  }
-
+  /**
+   * For every element with this id, whether any text in it is cut short: an ellipsis, or a box
+   * with no width to draw into. No matcher says so, since an overflow is no CSS value.
+   */
   async clipped(id: ElementId): Promise<boolean[]> {
     return this.locator(id).evaluateAll((elements) =>
       (elements as unknown as LaidOutNode[]).map((element) =>
@@ -276,21 +418,33 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser,
     )
   }
 
-  async directions(id: ElementId): Promise<string[]> {
-    return this.locator(id).evaluateAll((elements) =>
-      elements.map(
-        (element) => (globalThis as unknown as DocumentGlobals).getComputedStyle(element).direction,
-      ),
+  /** The page's own size, in CSS px: the window's frame is the window manager's. */
+  async resize(width: number, height: number): Promise<void> {
+    await this.app.evaluate(
+      ({ BrowserWindow }, size) => {
+        BrowserWindow.getAllWindows()[0]?.setContentSize(size.width, size.height)
+      },
+      { width, height },
+    )
+    await this.page.waitForFunction(
+      (wanted) => (globalThis as unknown as { innerWidth: number }).innerWidth === wanted,
+      width,
+      { timeout: 5_000 },
     )
   }
 
-  async isLeftOf(first: ElementId, second: ElementId): Promise<boolean> {
-    const [a, b] = await Promise.all([
-      this.locator(first).first().boundingBox(),
-      this.locator(second).first().boundingBox(),
-    ])
-    if (a === null || b === null) throw new Error(`${first} or ${second} is not laid out`)
-    return a.x + a.width / 2 < b.x + b.width / 2
+  /** Null where nothing but the page has focus. `at` counts the elements carrying its id. */
+  async focusedStop(): Promise<FocusedStop | null> {
+    return this.page.evaluate(() => {
+      const { document } = globalThis as unknown as FocusGlobals
+      const node = document.activeElement
+      if (node === null || node === document.body || node === document.documentElement) return null
+      const testID = node.getAttribute('data-testid')
+      const peers = document.querySelectorAll(
+        testID === null ? '*' : `[data-testid=${JSON.stringify(testID)}]`,
+      )
+      return { testID, at: Array.prototype.indexOf.call(peers, node) }
+    })
   }
 
   // -- IPerformanceProbe ------------------------------------------------------------------

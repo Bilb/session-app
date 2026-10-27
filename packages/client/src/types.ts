@@ -22,6 +22,7 @@ import type {
   Frame,
   Message,
   MessageCursor,
+  NetworkStatus,
   PixelSize,
   Request,
   RouterKind,
@@ -96,6 +97,11 @@ export interface SessionClient {
    * network configured, an account already there to use one, or a warm already running.
    */
   warmNetworkCache(): Promise<boolean>
+  /**
+   * Whether the attached network can carry traffic now: `disconnected` with none attached. Each
+   * change after this arrives as `network-status-changed`.
+   */
+  getNetworkStatus(): Promise<NetworkStatus>
   /**
    * How often libsession polls the swarm. Its default of 20 seconds is about right for a
    * person and far too long for a test; a positive number of milliseconds is the only valid

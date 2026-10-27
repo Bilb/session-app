@@ -24,3 +24,24 @@ export async function downloadFirstAttachment(app: ISessionApp): Promise<void> {
     .poll(async () => app.isVisible(ELEMENT.conversation.attachmentExport), { timeout: 10_000 })
     .toBe(true)
 }
+
+/**
+ * Downloads one file by tapping its row rather than its control, first in the conversation, and
+ * waits until it is the one row offering Export. Returns where its name sits among the rows'.
+ */
+export async function downloadFromRow(app: ISessionApp, filename: string): Promise<number> {
+  const at = (await app.readAllText(ELEMENT.conversation.attachmentName)).indexOf(filename)
+  if (at < 0) throw new Error(`no row is named ${filename}`)
+  // The name rather than the row's own id, which the album above the rows carries too.
+  await app.tapAt(ELEMENT.conversation.attachmentName, at)
+  await app.waitForVisible(ELEMENT.conversation.autoDownloadPrompt)
+  await app.tap(ELEMENT.conversation.autoDownloadNo)
+  await expect
+    .poll(async () => app.count(ELEMENT.conversation.attachmentExport), { timeout: 10_000 })
+    .toBe(1)
+  // The prompt fades rather than going, and a tap on the row under it would land on its scrim.
+  await expect
+    .poll(async () => app.isVisible(ELEMENT.conversation.autoDownloadPrompt), { timeout: 5_000 })
+    .toBe(false)
+  return at
+}

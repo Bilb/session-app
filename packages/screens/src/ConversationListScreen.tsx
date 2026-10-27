@@ -1,6 +1,11 @@
 import { routes, useNav } from '@session/app'
 import type { Conversation } from '@session/client'
-import { useConversations, useUnreadRequestCount } from '@session/state'
+import {
+  useAccount,
+  useConversations,
+  useNetworkStatus,
+  useUnreadRequestCount,
+} from '@session/state'
 import { formatConversationTime, tr, type ConversationTimeOptions } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import {
@@ -15,6 +20,7 @@ import {
   Separator,
   SIZE_SCALE,
   SPACE_SCALE,
+  StatusDot,
   Text,
   textHeight,
   useFontScale,
@@ -26,7 +32,9 @@ import { NetworkOverlay } from './NetworkOverlay'
 import { conversationRowState, type UnreadBadge, type UnreadTone } from './conversationRowState'
 import { conversationTitle } from './conversationTitle'
 import { useOpenSettings } from './settings/SettingsRootPage'
-import { useTopBarInsets } from './shell/pane'
+import { pathStatusTone } from './pathStatus'
+import { useBesideRail, useTopBarInsets } from './shell/pane'
+import { useHeldSelection } from './useHeldSelection'
 import { useFormattingLocale } from './useLocale'
 
 const AVATAR_SIZE_PX = SIZE_SCALE['3xl']
@@ -46,6 +54,76 @@ const STRIP_WIDTH_PX = 4
 const MARKED_DOT = '$xxs'
 /** The least room between the end of the name's icons and the time. */
 const TIME_GAP_MIN = '$xxs'
+
+const HEADER_AVATAR_PX = SIZE_SCALE.xl
+/**
+ * The path's status on its corner: the least size its glyph reads at, cut out of the avatar by a
+ * ring of the surface rather than lit by a glow.
+ */
+const HEADER_DOT_PX = SIZE_SCALE.xs
+const HEADER_DOT_RING_PX = 2
+/**
+ * How far the dot's box hangs past the avatar's bottom and end edges: far enough that its centre is
+ * 2 px outside the avatar's circle, on the diagonal through the corner. A picture is cropped to the
+ * circle, so one with a badge drawn into it shows most of that badge cut off, where the app's own
+ * sits whole.
+ */
+const HEADER_DOT_HANG_PX =
+  (HEADER_AVATAR_PX / 2 + 2) / Math.SQRT2 +
+  HEADER_DOT_PX / 2 +
+  HEADER_DOT_RING_PX -
+  HEADER_AVATAR_PX / 2
+
+/**
+ * The account's avatar, which opens settings, with the onion path's dot on its bottom-end corner.
+ *
+ * Only on one pane: beside the rail, the rail has the avatar. The button is named for what it
+ * does; the path's state in words is on the Settings row it leads to.
+ */
+function SettingsAvatarButton({ onPress }: { onPress: () => void }) {
+  const account = useAccount()
+  const status = useNetworkStatus()
+  return (
+    // The hit area is the stack rather than the avatar: 32pt is under the 44pt a finger
+    // needs, and a target that small is one people miss rather than one they cannot see.
+    <XStack
+      width={44}
+      height={44}
+      alignItems="center"
+      justifyContent="center"
+      $platform-web={{ cursor: 'pointer' }}
+      hoverStyle={{ backgroundColor: '$hoverOverlay' }}
+      pressStyle={{ backgroundColor: '$pressedOverlay' }}
+      borderRadius="$full"
+      role="button"
+      aria-label={tr('sessionSettings')}
+      testID={ELEMENT.conversationList.settings}
+      // A modal, so closing it returns to the list.
+      onPress={onPress}
+    >
+      <YStack width={HEADER_AVATAR_PX} height={HEADER_AVATAR_PX} position="relative">
+        <Avatar
+          id={account?.sessionId ?? ''}
+          name={account?.displayName ?? ''}
+          size={HEADER_AVATAR_PX}
+        />
+        <YStack
+          position="absolute"
+          bottom={-HEADER_DOT_HANG_PX}
+          {...logical({ insetEnd: -HEADER_DOT_HANG_PX })}
+        >
+          <StatusDot
+            tone={pathStatusTone(status)}
+            sidePx={HEADER_DOT_PX}
+            glowPx={0}
+            ringPx={HEADER_DOT_RING_PX}
+            testID={ELEMENT.conversationList.settingsPathStatus}
+          />
+        </YStack>
+      </YStack>
+    </XStack>
+  )
+}
 
 /**
  * One row's size at a text size, which the list needs in order to place a scrollbar without
@@ -87,6 +165,7 @@ export function ConversationListScreen({
   const unreadRequests = useUnreadRequestCount()
   const nav = useNav()
   const openSettings = useOpenSettings()
+  const besideRail = useBesideRail()
   const timeLocale = useFormattingLocale()
   const layout = rowLayout(useFontScale())
 
@@ -99,11 +178,19 @@ export function ConversationListScreen({
         justifyContent="space-between"
         {...topBarInsets}
       >
-        <NetworkOverlay>
-          <Text size="$title" weight="bold">
-            {tr('messages')}
-          </Text>
-        </NetworkOverlay>
+        {/* Shrinks first, so that at a large text size the title wraps rather than pushing the
+            controls after it off the edge. */}
+        <XStack alignItems="center" gap="$xs" flexShrink={1}>
+          {/* Settings had a route and no way to reach it, which made the account ID - the one
+              thing someone else needs in order to write to this device - unreachable too. On the
+              leading side, before the title. */}
+          {besideRail ? null : <SettingsAvatarButton onPress={openSettings} />}
+          <NetworkOverlay>
+            <Text size="$title" weight="bold">
+              {tr('messages')}
+            </Text>
+          </NetworkOverlay>
+        </XStack>
         <XStack alignItems="center" gap="$sm">
           {unreadRequests > 0 ? (
             <XStack
@@ -131,35 +218,13 @@ export function ConversationListScreen({
             alignItems="center"
             justifyContent="center"
             $platform-web={{ cursor: 'pointer' }}
-            hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
-            pressStyle={{ backgroundColor: '$backgroundTertiary' }}
+            hoverStyle={{ backgroundColor: '$hoverOverlay' }}
+            pressStyle={{ backgroundColor: '$pressedOverlay' }}
             borderRadius="$full"
             testID={ELEMENT.conversationList.newConversation}
             onPress={() => nav.push(routes.newConversation())}
           >
             <Icon name="plus" size="lg" color="$textSecondary" />
-          </XStack>
-
-          {/* Settings had a route and no way to reach it, which made the account ID - the one
-              thing someone else needs in order to write to this device - unreachable too.
-
-              The hit area is the stack rather than the glyph: a 24pt icon is well under the
-              44pt minimum a finger needs, and a target that small is one people miss rather
-              than one they cannot see. */}
-          <XStack
-            width={44}
-            height={44}
-            alignItems="center"
-            justifyContent="center"
-            $platform-web={{ cursor: 'pointer' }}
-            hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
-            pressStyle={{ backgroundColor: '$backgroundTertiary' }}
-            borderRadius="$full"
-            testID={ELEMENT.conversationList.settings}
-            // A modal, so closing it returns to the list.
-            onPress={openSettings}
-          >
-            <Icon name="settings" size="lg" color="$textSecondary" />
           </XStack>
         </XStack>
       </XStack>
@@ -282,6 +347,7 @@ function ConversationRow({
   onPress: () => void
 }) {
   const title = conversationTitle(conversation)
+  const selected = useHeldSelection(open)
   // TODO: "today" is read at render, so a list left open past midnight keeps yesterday's times as
   // today's until something redraws it; redraw the list when the day turns.
   const nowMs = Date.now()
@@ -301,11 +367,16 @@ function ConversationRow({
       gap="$sm"
       alignItems="center"
       position="relative"
-      {...(open ? { backgroundColor: '$backgroundTertiary' } : {})}
-      hoverStyle={{ backgroundColor: open ? '$backgroundTertiary' : '$backgroundSecondary' }}
-      pressStyle={{ backgroundColor: '$backgroundTertiary' }}
+      // Overlays, so each state is a step from whatever the list is drawn on. The open row holds
+      // the pressed step, which hovering it does not lighten.
+      {...(selected.held ? { backgroundColor: '$pressedOverlay' } : {})}
+      hoverStyle={{ backgroundColor: selected.held ? '$pressedOverlay' : '$hoverOverlay' }}
+      pressStyle={{ backgroundColor: '$pressedOverlay' }}
       $platform-web={{ cursor: 'pointer' }}
-      onPress={onPress}
+      onPress={() => {
+        selected.hold()
+        onPress()
+      }}
       aria-selected={open}
       testID={ELEMENT.conversationList.row(index)}
     >

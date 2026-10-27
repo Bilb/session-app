@@ -6,6 +6,7 @@ import { OnboardingFlow } from '../onboarding/OnboardingFlow'
 import { StartingScreen } from '../StartingScreen'
 import { StartupFailedScreen } from '../StartupFailedScreen'
 import { usePersistedLocale } from '../usePersistedLocale'
+import { ActionRail } from './ActionRail'
 import { AdaptiveShell } from './AdaptiveShell'
 import { NoSelectionPane } from './NoSelectionPane'
 
@@ -53,6 +54,7 @@ export function SessionShell({
       detail={detail}
       hasDetail={hasDetail}
       placeholder={<NoSelectionPane />}
+      rail={<ActionRail />}
     />
   )
 }
