@@ -33,6 +33,11 @@ export interface StagedTrayProps {
   onAdd?: (() => void) | undefined
   previousLabel: string
   nextLabel: string
+  /**
+   * How far across the rail starts, in px from its leading edge, set once its tiles are laid out.
+   * For a capture that has to find the rail mid-way every time.
+   */
+  startOffset?: number | undefined
   /** The tiles, in order. */
   children: ReactNode
   testID: ElementId
@@ -64,6 +69,7 @@ export function StagedTray({
   onAdd,
   previousLabel,
   nextLabel,
+  startOffset,
   children,
   testID,
   clearTestID,
@@ -73,6 +79,7 @@ export function StagedTray({
 }: StagedTrayProps) {
   // React Native's ScrollView rather than tamagui's, whose ref type is the component's.
   const rail = useRef<ScrollViewInstance>(null)
+  const started = useRef(false)
   const [extent, setExtent] = useState<RailExtent>({ offset: 0, visible: 0, content: 0 })
   const canGoBack = extent.offset > 1
   const canGoOn = extent.offset + extent.visible < extent.content - 1
@@ -130,6 +137,12 @@ export function StagedTray({
           }}
           onContentSizeChange={(content) => {
             setExtent((was) => ({ ...was, content }))
+            if (startOffset === undefined || started.current) return
+            started.current = true
+            rail.current?.scrollTo({
+              x: isLayoutRtl() ? -startOffset : startOffset,
+              animated: false,
+            })
           }}
         >
           <XStack gap={TILE_GAP}>

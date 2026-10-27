@@ -10,7 +10,7 @@ import {
 import { useSyncExternalStore } from 'react'
 
 import { RemoveLaunchScreenOnMount } from '../launchScreen'
-import { SCENARIOS, ScenarioProvider } from './scenarios'
+import { PicturesProvider, SCENARIOS, ScenarioProvider } from './scenarios'
 
 const PREFIX = '#/catalog/'
 
@@ -92,10 +92,12 @@ export default function Catalog() {
   return (
     <UIProvider>
       <RemoveLaunchScreenOnMount />
-      {page !== undefined && SCENARIOS.includes(page.story) ? (
+      {page === undefined ? (
+        drawn
+      ) : SCENARIOS.includes(page.story) ? (
         <ScenarioProvider>{drawn}</ScenarioProvider>
       ) : (
-        drawn
+        <PicturesProvider>{drawn}</PicturesProvider>
       )}
     </UIProvider>
   )

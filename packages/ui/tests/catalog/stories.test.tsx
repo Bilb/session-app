@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { STORIES } from '#src/catalog/stories'
+import { STORIES } from '#src/catalog/stories/index'
 
 import { renderInUI } from '../support/render'
 
