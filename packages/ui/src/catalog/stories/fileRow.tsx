@@ -60,7 +60,6 @@ export const fileRow = defineStory<FileRowProps>({
       onAction: noop,
     },
     unavailable: { ...PDF, caption: 'Attachment expired', state: 'unavailable' },
-    ...SENDING,
     longName: {
       ...PDF,
       filename: 'quarterly-board-meeting-minutes-final-revised-v7.pdf',
@@ -77,6 +76,7 @@ export const fileRow = defineStory<FileRowProps>({
       actionLabel: 'Download',
       onAction: noop,
     },
+    ...SENDING,
   },
   render: (props) => <FileRow {...props} />,
 })
