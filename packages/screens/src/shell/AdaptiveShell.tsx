@@ -48,9 +48,9 @@ export function AdaptiveShell({
 
   // **One tree for both layouts**, the detail pane always the same element in the same place. A
   // second tree for one pane would remount whatever the detail holds whenever the window crosses
-  // the breakpoint -- on mobile that is the router's `Slot`, which forgets the open conversation
-  // when it remounts, so turning a tablet would close it. The list pane comes and goes beside it;
-  // the detail pane is only hidden, never unmounted.
+  // the breakpoint -- on mobile that is the router's navigator, which forgets the open
+  // conversation when it remounts, so turning a tablet would close it. The list pane comes and goes
+  // beside it; the detail pane is only hidden, never unmounted.
   const withRail = twoPanes && rail !== undefined
   return (
     <XStack flex={1} backgroundColor="$backgroundPrimary">

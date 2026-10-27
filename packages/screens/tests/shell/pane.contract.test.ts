@@ -40,7 +40,8 @@ describe('which panes show a way back', () => {
 
 /**
  * The detail pane survives a change between one pane and two. On mobile it holds the router's
- * `Slot`, which forgets the open conversation if it remounts, so turning a tablet would close it.
+ * navigator, which forgets the open conversation if it remounts, so turning a tablet would close
+ * it.
  */
 describe('the detail pane across layouts', () => {
   it('is one keyed element, hidden rather than left out', () => {
