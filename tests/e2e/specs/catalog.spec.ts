@@ -13,8 +13,10 @@ const TIER = process.env['CATALOG_TIER'] === 'nightly' ? 'nightly' : 'pr'
 /** Where each page's PNG is written, for `argos upload`; nothing is written without it. */
 const OUT = process.env['CATALOG_OUT']
 
-/** Wide and tall enough that no page is clipped by the window. */
+/** Wide enough that no page is clipped; a taller page grows the window to fit. */
 const WINDOW = { width: 3000, height: 2400 } as const
+/** The Xvfb screen's height in capture.sh: a window past it would be clipped by the screen. */
+const MAX_PAGE_HEIGHT = 16_000
 
 /** A message page waits for every picture in it to decode. */
 const PAGE_READY_MS = 60_000
@@ -79,9 +81,17 @@ test(`captures and audits the component catalog's ${TIER} pages @catalog`, async
         `#/catalog/${TIER}/${encodeURIComponent(id)}`,
       )
       await expect(app.locator(ELEMENT.catalog.ready)).toHaveText(id, { timeout: PAGE_READY_MS })
-      const png = await app
-        .locator(ELEMENT.catalog.page)
-        .screenshot({ animations: 'disabled', caret: 'hide', scale: 'css' })
+      const catalogPage = app.locator(ELEMENT.catalog.page)
+      // Electron paints nothing outside its window, though a screenshot spans the whole element.
+      const box = await catalogPage.boundingBox()
+      const bottom = box === null ? 0 : Math.ceil(box.y + box.height)
+      if (bottom > MAX_PAGE_HEIGHT) throw new Error(`${id} is ${bottom}px tall`)
+      await app.resize(WINDOW.width, Math.max(WINDOW.height, bottom))
+      const png = await catalogPage.screenshot({
+        animations: 'disabled',
+        caret: 'hide',
+        scale: 'css',
+      })
       if (OUT !== undefined) writeFileSync(join(OUT, `${id}.png`), png)
       for (const issue of await app.audit(ELEMENT.catalog.page)) {
         const named = byRow(page, issue)

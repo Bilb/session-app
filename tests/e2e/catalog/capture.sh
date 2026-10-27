@@ -31,4 +31,4 @@ docker run --rm --init ${CATALOG_CGROUP_PARENT:+--cgroup-parent "$CATALOG_CGROUP
   --volume "$repo:$repo" --volume "$out:/out" --volume "$media:/media:ro" \
   --workdir "$repo/tests/e2e" \
   session-catalog \
-  xvfb-run -a -s '-screen 0 3200x2600x24' pnpm exec playwright test --project catalog "$@"
+  xvfb-run -a -s '-screen 0 3200x16000x24' pnpm exec playwright test --project catalog "$@"

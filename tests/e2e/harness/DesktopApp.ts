@@ -427,8 +427,14 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser 
       { width, height },
     )
     await this.page.waitForFunction(
-      (wanted) => (globalThis as unknown as { innerWidth: number }).innerWidth === wanted,
-      width,
+      (wanted) => {
+        const { innerWidth, innerHeight } = globalThis as unknown as {
+          innerWidth: number
+          innerHeight: number
+        }
+        return innerWidth === wanted.width && innerHeight === wanted.height
+      },
+      { width, height },
       { timeout: 5_000 },
     )
   }
