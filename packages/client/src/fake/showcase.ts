@@ -84,11 +84,30 @@ export function showcase(names: readonly [FixtureName, FixtureName] = ['Alice', 
     ['File 31 of 32 failed', set([...image(30), 'video', 'image']), 'failed', 30],
     ['Gallery whose 31st failed', set(image(32)), 'failed', 30],
     ['A file of this one went missing', set(['pdf', 'image']), 'unsendable', 1],
+    // libsession has a message of files uploading from the start, so none is ever only queued.
+    ['Nothing up yet, the first uploading', set(['image', 'pdf', 'image']), 'uploading', 0],
+    ['Failed before any file was up', set(['pdf', 'image', 'zip']), 'failed', 0],
+    ['Interrupted with one file up', set(['image', 'pdf', 'zip']), 'interrupted', 1],
+    ['Only text, and it failed', [], 'failed', 0],
+    ['Pictures only, and one cannot be sent', set(image(2)), 'unsendable', 0],
   ]
   for (const [body, attachments, sendState, uploaded] of sending) {
     first.seedSending(second.sessionId, body, attachments, sendState, uploaded)
     world.settle()
   }
+
+  // After the sends, so the rows above keep their photographs and their place.
+  first.deliverFrom(second, 'An animated PNG, as a file', world.now(), set(['apng']))
+  world.settle()
+  const listed = first.deliverFrom(
+    second,
+    'Shown as a list by its reader',
+    world.now(),
+    set(image(3)),
+  )
+  // The reader's choice, which libsession stores per message.
+  first.setGallery(listed.id, false)
+  world.settle()
 
   return {
     world,
