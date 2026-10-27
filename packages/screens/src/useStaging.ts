@@ -8,7 +8,7 @@ function discard(files: readonly PickedFile[]): void {
   letGo(requirePorts().files, files, { sent: false })
 }
 
-const NOTHING_REFUSED: StagingRefusal = {
+export const NOTHING_REFUSED: StagingRefusal = {
   tooLarge: [],
   tooLargeToDecode: [],
   unopenable: [],

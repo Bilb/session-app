@@ -19,8 +19,8 @@ import { useRef, useState } from 'react'
 import { AttachMenu } from './AttachMenu'
 import { draftAfterSend, followSent } from './draftAfterSend'
 import { refusalAnnouncement, refusalNotices } from './refusalNotices'
-import { isFull, sizeOf } from './staging'
-import type { StagingState } from './useStaging'
+import { isFull, sizeOf, type StagingRefusal } from './staging'
+import { NOTHING_REFUSED, type StagingState } from './useStaging'
 
 function Notices({ staging }: { staging: StagingState }) {
   const notices = refusalNotices(staging.refused)
@@ -194,4 +194,42 @@ export function Composer({
       ) : null}
     </YStack>
   )
+}
+
+/** What a detached composer holds: staged files, what was refused, and whether a send is out. */
+export interface ComposerSeed {
+  files: PickedFile[]
+  refused?: Partial<StagingRefusal> | undefined
+  sending?: boolean | undefined
+}
+
+const ignore = () => {}
+
+/** A send that never answers, so a seed that is sending stays so. */
+const neverAnswered = () => new Promise<void>(ignore)
+
+function seededStaging({ files, refused, sending = false }: ComposerSeed): StagingState {
+  return {
+    files,
+    refused: { ...NOTHING_REFUSED, ...refused },
+    refusal: 0,
+    sending,
+    planning: false,
+    beginSend: ignore,
+    add: () => Promise.resolve(),
+    take: () => Promise.resolve(),
+    remove: ignore,
+    clear: ignore,
+    handOff: ignore,
+    refuseSend: ignore,
+    dismiss: ignore,
+  }
+}
+
+/**
+ * The composer holding what it is given outright rather than picked, which nothing changes and
+ * nothing sends. For the component catalog, as `DetachedMessages` is for rows.
+ */
+export function DetachedComposer({ seed }: { seed: ComposerSeed }) {
+  return <Composer staging={seededStaging(seed)} onSend={neverAnswered} />
 }
