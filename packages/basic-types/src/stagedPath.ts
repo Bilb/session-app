@@ -1,6 +1,7 @@
 /**
  * The largest staged file a thumbnail is made of; the shim's `MAX_STAGED_READ_BYTES`, which the
- * media source contract holds the fake to. A message carries at most 10 MB.
+ * media source contract holds the fake to. The thumbnail reads the file whole on the thumbnail
+ * thread, and a phone has to afford that for every tile in a tray of 32.
  */
 export const MAX_STAGED_READ_BYTES = 64 * 1024 * 1024
 

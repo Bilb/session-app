@@ -326,8 +326,9 @@ namespace {
 
 namespace {
 
-    // A message carries at most 10 MB, so nothing staged to send is near this; a file past it is
-    // refused before it is read whole. The fake holds to the same number, through the contract.
+    // A staged thumbnail reads its file whole on the thumbnail thread, and a phone has to afford
+    // that for every tile in a tray of 32; a file past it is refused before it is read. The fake
+    // holds to the same number, through the contract.
     constexpr size_t MAX_STAGED_READ_BYTES = 64 * 1024 * 1024;
 
     // None of these sentences names the file: the loaders log what they are refused.
