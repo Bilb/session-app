@@ -6,7 +6,6 @@ import { ComposerNotice } from '../../ComposerNotice'
 import { DropOverlay } from '../../DropOverlay'
 import { StagedTile } from '../../StagedTile'
 import { StagedTray } from '../../StagedTray'
-import type { EdgeFadeStyle } from '../../TrayEdgeFade'
 import { STAGED_TILE_SIDE } from '../../stagingMetrics'
 import { useCatalogPicture } from '../pictures'
 import { defineStory } from '../story'
@@ -76,10 +75,9 @@ function trayTile(at: number): TileRow {
 interface TrayRow {
   count: number
   startOffset?: number | undefined
-  edgeFade?: EdgeFadeStyle | undefined
 }
 
-function Tray({ count, startOffset, edgeFade }: TrayRow) {
+function Tray({ count, startOffset }: TrayRow) {
   const tiles = Array.from({ length: count }, (_, at) => trayTile(at))
   return (
     <StagedTray
@@ -90,7 +88,6 @@ function Tray({ count, startOffset, edgeFade }: TrayRow) {
       addLabel="Add attachment"
       onAdd={count >= MAX_ATTACHMENTS_PER_MESSAGE ? undefined : noop}
       startOffset={startOffset}
-      edgeFade={edgeFade}
       testID={ELEMENT.conversation.stagedTray}
       clearTestID={ELEMENT.conversation.stagedClear}
       addTestID={ELEMENT.conversation.stagedAdd}
@@ -116,32 +113,6 @@ export const stagedTray = defineStory<TrayRow>({
     middle: { count: 16, startOffset: 720 },
   },
   render: (row) => <Tray {...row} />,
-})
-
-/** One tray at its start, where only the end can scroll, and one mid-way, where both can. */
-function FadeSample({ edgeFade }: { edgeFade?: EdgeFadeStyle | undefined }) {
-  return (
-    <YStack gap="$md">
-      <Tray count={8} edgeFade={edgeFade} />
-      <Tray count={16} startOffset={720} edgeFade={edgeFade} />
-    </YStack>
-  )
-}
-
-/** Candidates for the ends of the tray that can still scroll, to choose one; goes once chosen. */
-export const trayFade = defineStory<{ edgeFade?: EdgeFadeStyle | undefined }>({
-  component: 'stagedTray',
-  story: 'fadeSamples',
-  width: 560,
-  sensitive: { rtl: true },
-  variants: {
-    none: {},
-    black: { edgeFade: { color: 'black', widthPx: 40, opacity: 0.6 } },
-    surface: { edgeFade: { color: '$backgroundPrimary', widthPx: 40, opacity: 1 } },
-    surfaceWide: { edgeFade: { color: '$backgroundPrimary', widthPx: 72, opacity: 1 } },
-    insetShadow: { edgeFade: { color: '$shadow', widthPx: 14, opacity: 0.5 } },
-  },
-  render: (row) => <FadeSample {...row} />,
 })
 
 interface NoticeRow {

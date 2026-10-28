@@ -56,6 +56,19 @@ describe('the staged tray', () => {
     expect(tile).toContain('<DiscState color="$pressedOverlay" on={pressed} when="press" />')
   })
 
+  it('fades only the ends that can still scroll, into the surface, in the reading direction', () => {
+    const tray = source('StagedTray.tsx')
+    expect(tray).toMatch(
+      /\{canGoBack \? \(\s*<YStack position="absolute" top=\{0\} \{\.\.\.logical\(\{ insetStart: 0 \}\)\}>/,
+    )
+    expect(tray).toMatch(
+      /\{canGoOn \? \(\s*<YStack position="absolute" top=\{0\} \{\.\.\.logical\(\{ insetEnd: 0 \}\)\}>/,
+    )
+    const fade = source('TrayEdgeFade.tsx')
+    expect(fade).toContain("useTokenColor('$backgroundPrimary')")
+    expect(fade).toContain("const opaqueAtZero = (side === 'start') !== isLayoutRtl()")
+  })
+
   it('says its count as words, which "3 / 32" is not', () => {
     const tray = source('StagedTray.tsx')
     expect(tray).toContain("isWeb ? { 'aria-hidden': true } : { 'aria-label': countSpokenLabel }")

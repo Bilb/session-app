@@ -11,7 +11,7 @@ import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
 import { STAGED_TILE_SIDE } from './stagingMetrics'
 import { Text } from './Text'
-import { TrayEdgeFade, type EdgeFadeStyle } from './TrayEdgeFade'
+import { TrayEdgeFade } from './TrayEdgeFade'
 import { VISUALLY_HIDDEN } from './visuallyHidden'
 
 /** Between tiles, and between the last tile and the add tile. */
@@ -33,11 +33,6 @@ export interface StagedTrayProps {
    * For a capture that has to find the rail mid-way every time.
    */
   startOffset?: number | undefined
-  /**
-   * What each end that can still scroll is drawn with. Being chosen from the catalog's samples;
-   * absent draws nothing there.
-   */
-  edgeFade?: EdgeFadeStyle | undefined
   /** The tiles, in order. */
   children: ReactNode
   testID: ElementId
@@ -71,7 +66,6 @@ export function StagedTray({
   addLabel,
   onAdd,
   startOffset,
-  edgeFade,
   children,
   testID,
   clearTestID,
@@ -184,14 +178,14 @@ export function StagedTray({
             )}
           </XStack>
         </ScrollView>
-        {edgeFade !== undefined && canGoBack ? (
+        {canGoBack ? (
           <YStack position="absolute" top={0} {...logical({ insetStart: 0 })}>
-            <TrayEdgeFade side="start" heightPx={STAGED_TILE_SIDE} fade={edgeFade} />
+            <TrayEdgeFade side="start" heightPx={STAGED_TILE_SIDE} />
           </YStack>
         ) : null}
-        {edgeFade !== undefined && canGoOn ? (
+        {canGoOn ? (
           <YStack position="absolute" top={0} {...logical({ insetEnd: 0 })}>
-            <TrayEdgeFade side="end" heightPx={STAGED_TILE_SIDE} fade={edgeFade} />
+            <TrayEdgeFade side="end" heightPx={STAGED_TILE_SIDE} />
           </YStack>
         ) : null}
       </YStack>
