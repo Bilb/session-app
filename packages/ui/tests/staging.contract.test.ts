@@ -132,4 +132,10 @@ describe('the drop overlay', () => {
   it('outlines in the accent text, which keeps 3:1 on its tint in the light themes', () => {
     expect(source('DropOverlay.tsx')).toContain('borderColor="$accentText"')
   })
+
+  it('wraps its words centred and clear of the outline on a narrow window', () => {
+    const overlay = source('DropOverlay.tsx')
+    expect(overlay).toContain('paddingHorizontal="$lg"')
+    expect(overlay.match(/textAlign="center"/g)).toHaveLength(2)
+  })
 })
