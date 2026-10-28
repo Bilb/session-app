@@ -298,6 +298,8 @@ export class FakeAccount {
   private readonly taken = new Map<string, number | undefined>()
   /** The sizes `seedSending` held back from files not up yet, which their upload reports. */
   private readonly unreportedSizes = new Map<string, number>()
+  /** What a send's files were sent as, by message id, for a retry to upload the rest of. */
+  private readonly uploadsOf = new Map<number, readonly Upload[]>()
   /**
    * Transfers in flight, by `keyOf`, so a second request for a file joins its transfer rather than
    * starting another - a download and an export alike, as libsession keys both by the file.
@@ -766,8 +768,10 @@ export class FakeAccount {
     })
     this.addMessage(id, message)
     for (const file of outgoing) if (file.takeFile === true) this.world?.removeFile(file.path)
-    if (uploading) this.uploadNext(id, message.id, uploads)
-    else this.world?.scheduleSend(this, id, message)
+    if (uploading) {
+      this.uploadsOf.set(message.id, uploads)
+      this.uploadNext(id, message.id, uploads)
+    } else this.world?.scheduleSend(this, id, message)
     return message.id
   }
 
@@ -785,6 +789,7 @@ export class FakeAccount {
       const at = message.attachments.findIndex((a) => !a.uploaded)
       const attachment = message.attachments[at]
       if (attachment === undefined) {
+        this.uploadsOf.delete(messageId)
         this.updateMessage(id, messageId, {
           sendState: 'pending',
           ...(message.syncState === undefined ? {} : { syncState: 'pending' }),
@@ -804,6 +809,7 @@ export class FakeAccount {
       // As libsession: what we sent is kept in the cache, and its size is known once it is up.
       this.cached.add(keyOf({ messageId, index: attachment.index }))
       this.taken.delete(keyOf({ messageId, index: attachment.index }))
+      this.unreportedSizes.delete(keyOf({ messageId, index: attachment.index }))
       const { sizeBytes, originalFile, reencodedAs } = upload
       const attachments = message.attachments.map((a, index) => {
         if (index !== at) return a
@@ -870,42 +876,43 @@ export class FakeAccount {
 
   /**
    * libsession's `retry_send`: from `failed` or `interrupted` only, uploading what has no URL yet
-   * and keeping what has. The fake's uploads cannot fail, so a resume always finishes.
+   * and keeping what has, then sending, through the same steps a first send takes.
    */
   resumeSend(messageId: number): boolean {
     for (const [id, state] of this.conversations) {
       const message = state.messages.find((m) => m.id === messageId)
       if (message === undefined) continue
       if (message.sendState !== 'failed' && message.sendState !== 'interrupted') return false
-      const finish = () => {
-        const attachments = message.attachments.map((attachment) => {
-          const key = keyOf({ messageId, index: attachment.index })
-          this.cached.add(key)
-          const sizeBytes = this.unreportedSizes.get(key)
-          this.unreportedSizes.delete(key)
-          return {
-            ...attachment,
-            uploaded: true,
-            ...(sizeBytes === undefined ? {} : { sizeBytes }),
-          }
-        })
-        this.updateMessage(id, messageId, {
-          sendState: 'sent',
-          ...(message.syncState === undefined ? {} : { syncState: 'sent' }),
-          attachments,
-        })
-      }
       // As libsession: back to uploading while a file is not up yet, else queued for the send.
       const resumed = message.attachments.every((a) => a.uploaded) ? 'pending' : 'uploading'
       this.updateMessage(id, messageId, {
         sendState: resumed,
         ...(message.syncState === undefined ? {} : { syncState: resumed }),
       })
-      if (this.world) this.world.schedule(1, finish)
-      else finish()
+      if (resumed === 'pending') {
+        this.world?.scheduleSend(this, id, { ...message, sendState: 'pending' })
+        return true
+      }
+      this.uploadNext(id, messageId, this.uploadsOf.get(messageId) ?? this.seededUploads(message))
       return true
     }
     return false
+  }
+
+  /**
+   * The uploads of a message `seedSending` made, which no send handed files to: each is taken, so
+   * none can have gone from disk, and carries the size it reports once up.
+   */
+  private seededUploads(message: Message): Upload[] {
+    return message.attachments.map((attachment) => ({
+      path: '',
+      taken: true,
+      sizeBytes: this.unreportedSizes.get(
+        keyOf({ messageId: message.id, index: attachment.index }),
+      ),
+      originalFile: attachment.originalFile,
+      reencodedAs: undefined,
+    }))
   }
 
   /**
