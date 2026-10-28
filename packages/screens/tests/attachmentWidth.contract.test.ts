@@ -25,4 +25,8 @@ describe('the attachments of a message', () => {
     // needs, and a fixed width would run out of the bubble rather than giving the list less.
     expect(root).toMatch(/^return \(\n(\s*\/\/.*\n)*\s*<YStack[^>]*maxWidth="100%"/)
   })
+
+  it('leave room between a gallery and the footer under it', () => {
+    expect(root).toContain("gap={SPACE_SCALE[view === 'gallery' ? 'xs' : '3xs'] + ROW_OVERHANG}")
+  })
 })

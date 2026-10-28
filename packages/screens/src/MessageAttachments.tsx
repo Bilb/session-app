@@ -45,7 +45,12 @@ export function MessageAttachments({ message }: { message: Message }) {
     // its names and the footer's total no width at all, and the bubble would resize on a toggle.
     // Capped at the bubble's inside, so where a pane is too narrow the list shrinks instead.
     // The gap clears the footer's overhang, so a tile or row is never under the footer's targets.
-    <YStack gap={SPACE_SCALE['3xs'] + ROW_OVERHANG} width={ALBUM_WIDTH} maxWidth="100%">
+    // Wider under a gallery, whose pictures run edge to edge and would otherwise touch its buttons.
+    <YStack
+      gap={SPACE_SCALE[view === 'gallery' ? 'xs' : '3xs'] + ROW_OVERHANG}
+      width={ALBUM_WIDTH}
+      maxWidth="100%"
+    >
       {view === 'gallery' ? (
         <MessageAlbum
           message={message}
