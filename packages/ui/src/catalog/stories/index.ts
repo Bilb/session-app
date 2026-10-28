@@ -4,7 +4,7 @@ import { button, buttonOnAccent, buttonSizes } from './button'
 import { fileRow, fileRowOnAccent, fileRowReceived } from './fileRow'
 import { avatar, progressRing, radio } from './indicators'
 import { settingsRow } from './settingsRow'
-import { composerNotice, dropOverlay, stagedTile, stagedTray } from './staging'
+import { composerNotice, dropOverlay, stagedTile, stagedTray, trayFade } from './staging'
 import { textScale } from './text'
 
 export const STORIES: readonly AnyStory[] = [
@@ -24,4 +24,5 @@ export const STORIES: readonly AnyStory[] = [
   stagedTray,
   composerNotice,
   dropOverlay,
+  trayFade,
 ]

@@ -1,15 +1,17 @@
 import type { ElementId } from '@session/test-ids'
 import { RADII } from '@session/theme-tokens'
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ScrollView, type ScrollViewInstance } from 'react-native'
 import { isWeb, XStack, YStack } from 'tamagui'
 
 import { Button } from './Button'
 import { Icon } from './Icon'
 import { isLayoutRtl } from './layoutDirection'
+import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
 import { STAGED_TILE_SIDE } from './stagingMetrics'
 import { Text } from './Text'
+import { TrayEdgeFade, type EdgeFadeStyle } from './TrayEdgeFade'
 import { VISUALLY_HIDDEN } from './visuallyHidden'
 
 /** Between tiles, and between the last tile and the add tile. */
@@ -31,11 +33,22 @@ export interface StagedTrayProps {
    * For a capture that has to find the rail mid-way every time.
    */
   startOffset?: number | undefined
+  /**
+   * What each end that can still scroll is drawn with. Being chosen from the catalog's samples;
+   * absent draws nothing there.
+   */
+  edgeFade?: EdgeFadeStyle | undefined
   /** The tiles, in order. */
   children: ReactNode
   testID: ElementId
   clearTestID: ElementId
   addTestID: ElementId
+}
+
+interface RailExtent {
+  offset: number
+  visible: number
+  content: number
 }
 
 /** react-native-web's ScrollView hands back the scrolling element through this. */
@@ -58,6 +71,7 @@ export function StagedTray({
   addLabel,
   onAdd,
   startOffset,
+  edgeFade,
   children,
   testID,
   clearTestID,
@@ -66,6 +80,9 @@ export function StagedTray({
   // React Native's ScrollView rather than tamagui's, whose ref type is the component's.
   const rail = useRef<ScrollViewInstance>(null)
   const started = useRef(false)
+  const [extent, setExtent] = useState<RailExtent>({ offset: 0, visible: 0, content: 0 })
+  const canGoBack = extent.offset > 1
+  const canGoOn = extent.offset + extent.visible < extent.content - 1
 
   useEffect(() => {
     if (!isWeb) return
@@ -111,46 +128,73 @@ export function StagedTray({
         </Button>
       </XStack>
       {/* The scrollbar says there is more: a finger swipes the rail, a pointer drags it. */}
-      <ScrollView
-        ref={rail}
-        horizontal
-        showsHorizontalScrollIndicator
-        onContentSizeChange={() => {
-          if (startOffset === undefined || started.current) return
-          started.current = true
-          // Chromium counts a right-to-left scroller's offset down from 0, and react-native-web
-          // passes it through as it is.
-          rail.current?.scrollTo({
-            x: isLayoutRtl() ? -startOffset : startOffset,
-            animated: false,
-          })
-        }}
-      >
-        {/* Room for the scrollbar under the tiles rather than against them. */}
-        <XStack gap={TILE_GAP} paddingBottom="$xs">
-          {children}
-          {onAdd === undefined ? null : (
-            <PressArea onPress={onAdd} accessibilityLabel={addLabel} testID={addTestID}>
-              {() => (
-                <YStack
-                  width={STAGED_TILE_SIDE}
-                  height={STAGED_TILE_SIDE}
-                  borderRadius={RADII.md}
-                  borderWidth={1.5}
-                  borderStyle="dashed"
-                  // Not the border role: at 1.3:1 a dashed edge is the one thing that says this
-                  // is a place to add, so it takes the muted text, which clears 3:1 everywhere.
-                  borderColor="$textSecondary"
-                  alignItems="center"
-                  justifyContent="center"
-                >
-                  <Icon name="plus" size="md" color="$textSecondary" />
-                </YStack>
-              )}
-            </PressArea>
-          )}
-        </XStack>
-      </ScrollView>
+      <YStack position="relative">
+        <ScrollView
+          ref={rail}
+          horizontal
+          showsHorizontalScrollIndicator
+          scrollEventThrottle={32}
+          onScroll={(event) => {
+            const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent
+            // Chromium counts a right-to-left scroller's offset down from 0.
+            setExtent({
+              offset: Math.abs(contentOffset.x),
+              visible: layoutMeasurement.width,
+              content: contentSize.width,
+            })
+          }}
+          onLayout={(event) => {
+            const visible = event.nativeEvent.layout.width
+            setExtent((was) => ({ ...was, visible }))
+          }}
+          onContentSizeChange={(content) => {
+            setExtent((was) => ({ ...was, content }))
+            if (startOffset === undefined || started.current) return
+            started.current = true
+            // Chromium counts a right-to-left scroller's offset down from 0, and react-native-web
+            // passes it through as it is.
+            rail.current?.scrollTo({
+              x: isLayoutRtl() ? -startOffset : startOffset,
+              animated: false,
+            })
+          }}
+        >
+          {/* Room for the scrollbar under the tiles rather than against them. */}
+          <XStack gap={TILE_GAP} paddingBottom="$xs">
+            {children}
+            {onAdd === undefined ? null : (
+              <PressArea onPress={onAdd} accessibilityLabel={addLabel} testID={addTestID}>
+                {() => (
+                  <YStack
+                    width={STAGED_TILE_SIDE}
+                    height={STAGED_TILE_SIDE}
+                    borderRadius={RADII.md}
+                    borderWidth={1.5}
+                    borderStyle="dashed"
+                    // Not the border role: at 1.3:1 a dashed edge is the one thing that says this
+                    // is a place to add, so it takes the muted text, which clears 3:1 everywhere.
+                    borderColor="$textSecondary"
+                    alignItems="center"
+                    justifyContent="center"
+                  >
+                    <Icon name="plus" size="md" color="$textSecondary" />
+                  </YStack>
+                )}
+              </PressArea>
+            )}
+          </XStack>
+        </ScrollView>
+        {edgeFade !== undefined && canGoBack ? (
+          <YStack position="absolute" top={0} {...logical({ insetStart: 0 })}>
+            <TrayEdgeFade side="start" heightPx={STAGED_TILE_SIDE} fade={edgeFade} />
+          </YStack>
+        ) : null}
+        {edgeFade !== undefined && canGoOn ? (
+          <YStack position="absolute" top={0} {...logical({ insetEnd: 0 })}>
+            <TrayEdgeFade side="end" heightPx={STAGED_TILE_SIDE} fade={edgeFade} />
+          </YStack>
+        ) : null}
+      </YStack>
     </YStack>
   )
 }
