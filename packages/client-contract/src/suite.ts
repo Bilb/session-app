@@ -611,12 +611,19 @@ export function runSessionClientContract(
     it('types a file sent without a type by its extension', async () => {
       const { alice, bobId, writeFile } = await harness.friends()
       const path = await writeFile('minutes.PDF', 2_000)
+      const sheet = await writeFile('budget.xlsx', 2_000)
       const seen = collect(alice)
 
-      const messageId = await alice.sendMessage(bobId, { body: '', attachments: [{ path }] })
+      const messageId = await alice.sendMessage(bobId, {
+        body: '',
+        attachments: [{ path }, { path: sheet }],
+      })
 
       const added = messagesOf(seen.events, 'messages-added').find((m) => m.id === messageId)
-      expect(added?.attachments.map((a) => a.contentType)).toEqual(['application/pdf'])
+      expect(added?.attachments.map((a) => a.contentType)).toEqual([
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ])
       seen.stop()
     })
 
