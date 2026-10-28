@@ -88,8 +88,6 @@ export const ELEMENT = {
     stagedPreview: (index: number) => `composer-staged-preview-${index}` as const,
     stagedClear: 'composer-staged-clear',
     stagedAdd: 'composer-staged-add',
-    stagedPrevious: 'composer-staged-previous',
-    stagedNext: 'composer-staged-next',
     composerNotice: (kind: string) => `composer-notice-${kind}` as const,
     composerNoticeDismiss: (kind: string) => `composer-notice-dismiss-${kind}` as const,
     dropOverlay: 'conversation-drop-overlay',

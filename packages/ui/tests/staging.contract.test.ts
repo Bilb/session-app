@@ -70,13 +70,11 @@ describe('the staged tray', () => {
     expect(tile).not.toContain('$textDisabled')
   })
 
-  it('pages a right-to-left rail the way Chromium counts it', () => {
+  it('scrolls by its scrollbar, and a right-to-left rail the way Chromium counts it', () => {
     const tray = source('StagedTray.tsx')
-    expect(tray).toContain('offset: Math.abs(contentOffset.x)')
-    expect(tray).toContain('x: isLayoutRtl() ? -x : x')
-    // The buttons sit at the reading edges, not at left and right.
-    expect(tray).toContain('logical({ insetStart: 0 })')
-    expect(tray).toContain('logical({ insetEnd: 0 })')
+    expect(tray).toMatch(/horizontal\s+showsHorizontalScrollIndicator\s/)
+    expect(tray).toContain('x: isLayoutRtl() ? -startOffset : startOffset')
+    expect(tray).toContain('left: isLayoutRtl() ? -event.deltaY : event.deltaY')
   })
 })
 

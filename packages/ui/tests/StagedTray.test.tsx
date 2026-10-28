@@ -33,14 +33,10 @@ function tray(startOffset?: number) {
       onClear={() => {}}
       addLabel="Add attachment"
       onAdd={() => {}}
-      previousLabel="Previous"
-      nextLabel="Next"
       startOffset={startOffset}
       testID={ELEMENT.conversation.stagedTray}
       clearTestID={ELEMENT.conversation.stagedClear}
       addTestID={ELEMENT.conversation.stagedAdd}
-      previousTestID={ELEMENT.conversation.stagedPrevious}
-      nextTestID={ELEMENT.conversation.stagedNext}
     >
       {null}
     </StagedTray>
@@ -64,5 +60,28 @@ describe('StagedTray', () => {
     renderInUI(tray())
     await new Promise((resolve) => setTimeout(resolve, 50))
     expect(scroll).not.toHaveBeenCalled()
+  })
+
+  it('turns a mouse wheel into a scroll across, once its tiles overflow', () => {
+    const scrollBy = vi.spyOn(HTMLElement.prototype, 'scrollBy').mockImplementation(() => {})
+    const { getByTestId } = renderInUI(tray())
+    const rail = getByTestId(ELEMENT.conversation.stagedTray).querySelector<HTMLElement>(
+      '[style*="overflow-x"], [class*="r-overflowX"]',
+    )
+    expect(rail).not.toBeNull()
+    if (rail === null) return
+    const wheel = () => new WheelEvent('wheel', { deltaY: 120, cancelable: true })
+
+    const fitting = wheel()
+    rail.dispatchEvent(fitting)
+    expect(scrollBy).not.toHaveBeenCalled()
+    expect(fitting.defaultPrevented).toBe(false)
+
+    Object.defineProperty(rail, 'scrollWidth', { value: 1200 })
+    Object.defineProperty(rail, 'clientWidth', { value: 560 })
+    const overflowing = wheel()
+    rail.dispatchEvent(overflowing)
+    expect(scrollBy.mock.calls).toEqual([[{ left: 120 }]])
+    expect(overflowing.defaultPrevented).toBe(true)
   })
 })

@@ -119,13 +119,9 @@ export function Composer({
           clearDisabled={sending}
           addLabel={tr('attachmentsAdd')}
           onAdd={full || sending ? undefined : attach}
-          previousLabel={PENDING_COPY.previous}
-          nextLabel={tr('next')}
           testID={ELEMENT.conversation.stagedTray}
           clearTestID={ELEMENT.conversation.stagedClear}
           addTestID={ELEMENT.conversation.stagedAdd}
-          previousTestID={ELEMENT.conversation.stagedPrevious}
-          nextTestID={ELEMENT.conversation.stagedNext}
         >
           {staging.files.map((file, index) => (
             <StagedTile

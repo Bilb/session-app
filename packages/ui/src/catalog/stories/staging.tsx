@@ -87,14 +87,10 @@ function Tray({ count, startOffset }: TrayRow) {
       onClear={noop}
       addLabel="Add attachment"
       onAdd={count >= MAX_ATTACHMENTS_PER_MESSAGE ? undefined : noop}
-      previousLabel="Previous"
-      nextLabel="Next"
       startOffset={startOffset}
       testID={ELEMENT.conversation.stagedTray}
       clearTestID={ELEMENT.conversation.stagedClear}
       addTestID={ELEMENT.conversation.stagedAdd}
-      previousTestID={ELEMENT.conversation.stagedPrevious}
-      nextTestID={ELEMENT.conversation.stagedNext}
     >
       {tiles.map((tile, at) => (
         <Tile key={tile.name} {...tile} index={at} />
