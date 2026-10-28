@@ -1,5 +1,4 @@
 import { requirePorts } from '@session/app'
-import { ALBUM_WIDTH } from '@session/basic-types'
 import { useCallback, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import type { Attachment, Message } from '@session/client'
 import { PENDING_COPY, tr } from '@session/localization'
@@ -26,6 +25,7 @@ export function MessageAlbum({
   fetchFor,
   setState,
   onAccent,
+  widthPx,
 }: {
   message: Message
   /** Takes the attachment's index in the message. */
@@ -37,6 +37,8 @@ export function MessageAlbum({
   setState: AttachmentSetState
   /** Drawn on a bubble you sent. */
   onAccent: boolean
+  /** `ALBUM_WIDTH`, or less where the bubble has less room inside it. */
+  widthPx: number
 }) {
   // Every picture, those sent as original files included: they draw a tile and export on a tap.
   const viewable = useMemo(() => message.attachments.filter(isViewable), [message])
@@ -83,7 +85,7 @@ export function MessageAlbum({
   return (
     <AttachmentAlbum
       items={items}
-      width={ALBUM_WIDTH}
+      width={widthPx}
       overflowLabel={(count) => tr('andMore', { count })}
       overflowName={PENDING_COPY.attachmentNameAndMore}
       onOpen={openAt}

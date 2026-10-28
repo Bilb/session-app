@@ -1,3 +1,4 @@
+import { ALBUM_WIDTH } from '@session/basic-types'
 import { act } from '@testing-library/react'
 import { createElement } from 'react'
 import { userEvent } from '@testing-library/user-event'
@@ -82,6 +83,7 @@ function album(
       })}
       setState={setState}
       onAccent={false}
+      widthPx={ALBUM_WIDTH}
     />
   )
 }

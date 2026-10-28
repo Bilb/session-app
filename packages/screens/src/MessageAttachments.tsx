@@ -2,6 +2,7 @@ import { ALBUM_WIDTH } from '@session/basic-types'
 import type { Attachment, Message } from '@session/client'
 import { SPACE_SCALE, YStack } from '@session/ui'
 import { useSessionActions } from '@session/state'
+import { useState } from 'react'
 
 import { AttachmentFooter, ROW_OVERHANG } from './AttachmentFooter'
 import { AttachmentList, LIST_MAX_ROWS } from './AttachmentList'
@@ -35,6 +36,9 @@ export function MessageAttachments({ message }: { message: Message }) {
   const albumFetch = sending
     ? (attachment: Attachment) => whileSending(fetchFor(attachment))
     : fetchFor
+  // The album lays its tiles out from a number, so it is told the room the bubble left rather
+  // than drawn at ALBUM_WIDTH and clipped by a bubble narrower than that.
+  const [albumWidthPx, setAlbumWidthPx] = useState(ALBUM_WIDTH)
 
   // Once rather than per shape: a message with nothing attached would otherwise draw an empty
   // album, because "every attachment can be shown" is true of no attachments at all.
@@ -50,10 +54,14 @@ export function MessageAttachments({ message }: { message: Message }) {
       gap={SPACE_SCALE[view === 'gallery' ? 'xs' : '3xs'] + ROW_OVERHANG}
       width={ALBUM_WIDTH}
       maxWidth="100%"
+      onLayout={(event) => {
+        setAlbumWidthPx(Math.min(ALBUM_WIDTH, Math.floor(event.nativeEvent.layout.width)))
+      }}
     >
       {view === 'gallery' ? (
         <MessageAlbum
           message={message}
+          widthPx={albumWidthPx}
           onAccent={message.outgoing}
           fetchFor={albumFetch}
           setState={set.state}
