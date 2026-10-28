@@ -10,15 +10,21 @@ export interface RefusalNotice {
   id: 'unreadable' | 'open' | 'size' | 'pixels' | 'limit' | 'send'
   message: string
   detail?: string | undefined
+  /** The file named in `detail`, so that name can be shortened without losing its extension. */
+  detailName?: string | undefined
 }
 
 /** The first refused file by name and size, and how many more there were. */
-function namedDetail(files: readonly PickedFile[]): string | undefined {
+function namedDetail(files: readonly PickedFile[]): Pick<RefusalNotice, 'detail' | 'detailName'> {
   const [first] = files
-  if (first === undefined) return undefined
+  if (first === undefined) return {}
   const size = sizeOf(first)
   const named = size === undefined ? first.name : `${first.name} · ${size}`
-  return files.length === 1 ? named : PENDING_COPY.attachmentNameAndMore(named, files.length - 1)
+  return {
+    detail:
+      files.length === 1 ? named : PENDING_COPY.attachmentNameAndMore(named, files.length - 1),
+    detailName: first.name,
+  }
 }
 
 /** A notice for each thing the last pick, drop or send turned away, in the order they stack. */
@@ -46,21 +52,21 @@ export function refusalNotices({
       kind: 'unopenable',
       id: 'open',
       message: tr('attachmentsErrorOpen'),
-      detail: namedDetail(unopenable),
+      ...namedDetail(unopenable),
     })
   if (tooLarge.length > 0)
     notices.push({
       kind: 'tooLarge',
       id: 'size',
       message: tr('attachmentsErrorSize'),
-      detail: namedDetail(tooLarge),
+      ...namedDetail(tooLarge),
     })
   if (tooLargeToDecode.length > 0)
     notices.push({
       kind: 'tooLargeToDecode',
       id: 'pixels',
       message: PENDING_COPY.attachmentsErrorImageTooLarge,
-      detail: namedDetail(tooLargeToDecode),
+      ...namedDetail(tooLargeToDecode),
     })
   if (overLimit > 0)
     notices.push({

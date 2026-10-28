@@ -40,6 +40,8 @@ describe('what the composer says about a refusal', () => {
     ])
     expect(notices[0]?.detail).toBe(PENDING_COPY.attachmentNameAndMore('gone.pdf', 1))
     expect(notices[2]?.detail?.startsWith('pano.jpg · ')).toBe(true)
+    // The name the notice may shorten is the one its detail starts with.
+    expect(notices.map((n) => n.detailName)).toEqual(['gone.pdf', 'drone.mov', 'pano.jpg'])
   })
 
   it('says a refused send failed, above anything else', () => {

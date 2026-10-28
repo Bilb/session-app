@@ -27,11 +27,12 @@ function Notices({ staging }: { staging: StagingState }) {
   return (
     <>
       <Announcement text={refusalAnnouncement(notices)} announceKey={staging.refusal} />
-      {notices.map(({ kind, id, message, detail }) => (
+      {notices.map(({ kind, id, message, detail, detailName }) => (
         <ComposerNotice
           key={kind}
           message={message}
           detail={detail}
+          detailName={detailName}
           dismissLabel={tr('close')}
           onDismiss={() => {
             staging.dismiss(kind)

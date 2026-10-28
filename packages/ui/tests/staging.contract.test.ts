@@ -82,6 +82,11 @@ describe('a composer notice', () => {
   const notice = source('ComposerNotice.tsx')
   const announcement = source('Announcement.tsx')
 
+  it('shortens a file name in its detail as a file row does, keeping the extension', () => {
+    expect(notice).toContain('<FileName name={name} size="$label" weight="regular"')
+    expect(notice).toContain('style={{ direction: nameDirection(detail) }}')
+  })
+
   it('is drawn only, leaving what is said to one announcement for all of them', () => {
     expect(notice).not.toContain('role="alert"')
     expect(notice).not.toContain('announceForAccessibility')

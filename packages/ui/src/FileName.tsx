@@ -9,6 +9,8 @@ export interface FileNameProps {
   name: string
   size: TextSize
   ink?: ReturnType<typeof inkFor> | undefined
+  /** Semibold where the name heads its row; regular inside a line of detail. */
+  weight?: 'regular' | 'semibold' | undefined
   testID?: ElementId | undefined
 }
 
@@ -19,7 +21,7 @@ export interface FileNameProps {
  * They lay out in the name's own direction, not the layout's, or a Latin name under Arabic draws
  * its tail first.
  */
-export function FileName({ name, size, ink, testID }: FileNameProps) {
+export function FileName({ name, size, ink, weight = 'semibold', testID }: FileNameProps) {
   const { head, tail } = splitFilename(name)
   return (
     // The id and the label are on the pair, never on a run: split between two elements the name
@@ -32,7 +34,7 @@ export function FileName({ name, size, ink, testID }: FileNameProps) {
     >
       <Text
         size={size}
-        weight="semibold"
+        weight={weight}
         {...ink}
         numberOfLines={1}
         ellipsizeMode="tail"
@@ -41,7 +43,7 @@ export function FileName({ name, size, ink, testID }: FileNameProps) {
       >
         {head}
       </Text>
-      <Text size={size} weight="semibold" {...ink} numberOfLines={1} flexShrink={0}>
+      <Text size={size} weight={weight} {...ink} numberOfLines={1} flexShrink={0}>
         {tail}
       </Text>
     </XStack>

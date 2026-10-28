@@ -118,12 +118,15 @@ export const stagedTray = defineStory<TrayRow>({
 interface NoticeRow {
   message: string
   detail?: string | undefined
+  detailName?: string | undefined
 }
 
 const TOO_LARGE: NoticeRow = {
   message: 'Files must be less than 10MB',
   detail: 'field-recording.wav · 48 MB',
+  detailName: 'field-recording.wav',
 }
+const LONG_NAME = 'quarterly-board-meeting-minutes-final-revised-v7-with-appendices.pdf'
 const OVER_LIMIT: NoticeRow = {
   message: `Unable to send more than ${String(MAX_ATTACHMENTS_PER_MESSAGE)} files at once.`,
   detail: '3 not added',
@@ -132,11 +135,12 @@ const OVER_LIMIT: NoticeRow = {
 function Notices({ notices }: { notices: readonly NoticeRow[] }) {
   return (
     <YStack gap="$sm">
-      {notices.map(({ message, detail }) => (
+      {notices.map(({ message, detail, detailName }) => (
         <ComposerNotice
           key={message}
           message={message}
           detail={detail}
+          detailName={detailName}
           onDismiss={noop}
           dismissLabel="Close"
           testID={ELEMENT.conversation.composerNotice('size')}
@@ -155,7 +159,13 @@ export const composerNotice = defineStory<{ notices: readonly NoticeRow[] }>({
   variants: {
     tooLarge: { notices: [TOO_LARGE] },
     imageTooLarge: {
-      notices: [{ message: 'Image too large to send', detail: 'panorama.png · 9.1 MB' }],
+      notices: [
+        {
+          message: 'Image too large to send',
+          detail: 'panorama.png · 9.1 MB',
+          detailName: 'panorama.png',
+        },
+      ],
     },
     overLimit: { notices: [OVER_LIMIT] },
     unreadable: { notices: [{ message: 'Error attaching file' }] },
@@ -163,7 +173,8 @@ export const composerNotice = defineStory<{ notices: readonly NoticeRow[] }>({
       notices: [
         {
           message: TOO_LARGE.message,
-          detail: 'quarterly-board-meeting-minutes-final-revised-v7-with-appendices.pdf · 18.4 MB',
+          detail: `${LONG_NAME} · 18.4 MB`,
+          detailName: LONG_NAME,
         },
       ],
     },
