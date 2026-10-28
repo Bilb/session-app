@@ -27,7 +27,8 @@ export interface StagingState {
   sending: boolean
   /**
    * Whether a pick is still waiting on libsession's plan for its files, which are staged or
-   * refused once it answers: no Send until then, or the message would go without them.
+   * refused once it answers: no Send of staged files until then, or the message would go without
+   * the ones still being planned.
    */
   planning: boolean
   beginSend: () => void
@@ -57,13 +58,36 @@ export interface StagingState {
 /** libsession's plan for sending a file, which says whether it may be staged. */
 export type PlanSend = (file: PickedFile) => Promise<SendPlan>
 
+/**
+ * How long a plan may take before its file counts as unreadable: a header read on a stalled
+ * network mount never answers, and would hold Send for as long as the conversation stays open.
+ * The same bound the staged thumbnail's decode has, for the same reason.
+ */
+export const PLAN_GIVES_UP_AFTER_MS = 30_000
+
 /** Asked at once, and a planner that throws rather than rejects cannot leave `planning` up. */
 function asked(planSend: PlanSend, file: PickedFile): Promise<SendPlan> {
+  let planned: Promise<SendPlan>
   try {
-    return planSend(file)
+    planned = planSend(file)
   } catch {
     return Promise.reject(new Error('the send planner threw'))
   }
+  return new Promise((resolve, reject) => {
+    const giveUp = setTimeout(() => {
+      reject(new Error('the send plan did not answer'))
+    }, PLAN_GIVES_UP_AFTER_MS)
+    planned.then(
+      (plan) => {
+        clearTimeout(giveUp)
+        resolve(plan)
+      },
+      (error: unknown) => {
+        clearTimeout(giveUp)
+        reject(error instanceof Error ? error : new Error(String(error)))
+      },
+    )
+  })
 }
 
 /**

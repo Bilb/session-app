@@ -59,7 +59,11 @@ export function Composer({
   const outgoing = useRef<string | null>(null)
   const full = isFull(staging.files)
   const { sending, planning } = staging
-  const sendable = !sending && !planning && (draft.trim().length > 0 || staging.files.length > 0)
+  const typed = draft.trim().length > 0
+  const staged = staging.files.length > 0
+  // A pick still being planned holds back only a send of staged files: a message of text alone
+  // goes, and the pick lands in the emptied tray after it.
+  const sendable = !sending && (planning ? typed && !staged : typed || staged)
 
   function send(): void {
     if (!sendable) return

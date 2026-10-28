@@ -6,7 +6,7 @@ import type * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { Composer } from '#src/Composer'
-import { useStaging, type StagingState } from '#src/useStaging'
+import { PLAN_GIVES_UP_AFTER_MS, useStaging, type StagingState } from '#src/useStaging'
 
 /**
  * A renderer just big enough for the composer: hook state lives in slots taken in call order, as
@@ -251,7 +251,9 @@ describe('staging by libsession’s plan', () => {
     expect(render().find(ELEMENT.conversation.composerNotice('open'))).toBeDefined()
   })
 
-  it('holds Send until every plan is in, and sends the files with the text', async () => {
+  it('holds a send of staged files until every plan is in, and sends them all with the text', async () => {
+    const notes: PickedFile = { path: '/home/a/notes.txt', name: 'notes.txt' }
+    await render().staging.add([notes])
     let answer: (plan: SendPlan) => void = () => undefined
     planSend = () =>
       new Promise((resolve) => {
@@ -268,7 +270,40 @@ describe('staging by libsession’s plan', () => {
     await staged
     expect(render().find(ELEMENT.conversation.sendButton)?.props.disabled).toBe(false)
     press(ELEMENT.conversation.sendButton)
-    expect(onSend).toHaveBeenCalledWith('hi', [photo])
+    expect(onSend).toHaveBeenCalledWith('hi', [notes, photo])
+  })
+
+  it('sends text alone while a pick is still planned, and stages the pick after', async () => {
+    let answer: (plan: SendPlan) => void = () => undefined
+    planSend = () =>
+      new Promise((resolve) => {
+        answer = resolve
+      })
+    onSend = vi.fn(() => Promise.resolve())
+    const staged = render().staging.add([photo])
+    type('hi')
+    expect(render().find(ELEMENT.conversation.sendButton)?.props.disabled).toBe(false)
+    press(ELEMENT.conversation.sendButton)
+    expect(onSend).toHaveBeenCalledWith('hi', [])
+    answer('as-is')
+    await staged
+    expect(render().staging.files).toEqual([photo])
+  })
+
+  it('refuses a file whose plan never answers, so Send is not held for good', async () => {
+    vi.useFakeTimers()
+    try {
+      planSend = () => new Promise(() => undefined)
+      const staged = render().staging.add([photo])
+      expect(render().staging.planning).toBe(true)
+      await vi.advanceTimersByTimeAsync(PLAN_GIVES_UP_AFTER_MS)
+      await staged
+      expect(render().staging.planning).toBe(false)
+      expect(render().staging.files).toEqual([])
+      expect(render().find(ELEMENT.conversation.composerNotice('open'))).toBeDefined()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('stages picks in the order they were made, whichever plan answers first', async () => {
