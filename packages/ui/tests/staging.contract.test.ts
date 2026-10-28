@@ -44,6 +44,18 @@ describe('the staged tray', () => {
     )
   })
 
+  it('rings the remove disc itself, inside the tile, and shows its hover and press', () => {
+    const tile = source('StagedTile.tsx')
+    // The tile clips to its rounded corner, which would cut a ring drawn around the corner square.
+    expect(tile).toContain('ring={REMOVE_RING}')
+    expect(tile).toContain('offset: -((REMOVE_TARGET - REMOVE_DISC) / 2 - 2)')
+    expect(tile).toMatch(/alignItems="center"\s+justifyContent="center"\s+group="control"/)
+    expect(tile).toContain(
+      '<DiscState color="$hoverOverlay" on={hovered && !pressed} when="hover" />',
+    )
+    expect(tile).toContain('<DiscState color="$pressedOverlay" on={pressed} when="press" />')
+  })
+
   it('says its count as words, which "3 / 32" is not', () => {
     const tray = source('StagedTray.tsx')
     expect(tray).toContain("isWeb ? { 'aria-hidden': true } : { 'aria-label': countSpokenLabel }")
