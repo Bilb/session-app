@@ -306,6 +306,32 @@ describe('staging by libsession’s plan', () => {
     }
   })
 
+  it('keeps a file dropped again unchanged as it was staged, without asking its plan again', async () => {
+    const asked = vi.fn(() => Promise.resolve<SendPlan>('as-is'))
+    planSend = asked
+    const released: PickedFile[] = []
+    const ports = memoryPorts()
+    setPorts({
+      ...ports,
+      files: {
+        ...ports.files,
+        releasePreview: (file) => {
+          released.push(file)
+        },
+      },
+    })
+    const first = { ...photo, modifiedMs: 1000, previewUrl: 'session-media://picked/a' }
+    await render().staging.add([first])
+    const again = { ...first, previewUrl: 'session-media://picked/b' }
+    await render().staging.add([again])
+    expect(render().staging.files).toEqual([first])
+    expect(asked).toHaveBeenCalledTimes(1)
+    expect(released).toEqual([again])
+    const edited = { ...first, modifiedMs: 2000, previewUrl: 'session-media://picked/c' }
+    await render().staging.add([edited])
+    expect(render().staging.files).toEqual([edited])
+  })
+
   it('stages picks in the order they were made, whichever plan answers first', async () => {
     const answers: ((plan: SendPlan) => void)[] = []
     planSend = () =>

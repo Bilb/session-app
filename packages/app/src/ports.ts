@@ -32,6 +32,11 @@ export interface PickedFile {
   contentType?: string | undefined
   size?: number | undefined
   /**
+   * When the file was last changed, where the platform says: with its size, what tells a file
+   * picked again unchanged from one edited since.
+   */
+  modifiedMs?: number | undefined
+  /**
    * A URL the platform can draw the file from, where it is a picture. Nothing for anything else:
    * a video has no still yet, so it stages as a document.
    */

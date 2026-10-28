@@ -2,7 +2,14 @@ import { requirePorts, type PickedFile } from '@session/app'
 import type { SendPlan } from '@session/client'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { letGo, stage, unstage, type SendRefusal, type StagingRefusal } from './staging'
+import {
+  letGo,
+  stage,
+  unchangedRepick,
+  unstage,
+  type SendRefusal,
+  type StagingRefusal,
+} from './staging'
 
 function discard(files: readonly PickedFile[]): void {
   letGo(requirePorts().files, files, { sent: false })
@@ -153,13 +160,22 @@ export function useStaging(planSend: PlanSend): StagingState {
   )
 
   const add = useCallback(
-    (picked: readonly PickedFile[], unreadable = 0): Promise<void> => {
+    (everything: readonly PickedFile[], unreadable = 0): Promise<void> => {
       // A cancelled picker hands back nothing, which is not a pick that should clear a notice.
-      if (picked.length === 0 && unreadable === 0) return Promise.resolve()
+      if (everything.length === 0 && unreadable === 0) return Promise.resolve()
       if (!mounted.current) {
-        discard(picked)
+        discard(everything)
         return Promise.resolve()
       }
+      // A file dropped again unchanged keeps its entry, preview and plan: replacing it would blank
+      // its tile while the new preview loads and hold Send for a plan that cannot differ.
+      const { picksAreCopies } = requirePorts().files
+      const repicked = everything.filter((file) =>
+        unchangedRepick(latest.current, file, { picksAreCopies }),
+      )
+      discard(repicked)
+      const picked = everything.filter((file) => !repicked.includes(file))
+      if (picked.length === 0 && unreadable === 0) return Promise.resolve()
       setPlanning((count) => count + 1)
       const plans = Promise.all(
         picked.map((file) =>

@@ -71,6 +71,22 @@ function refusalOf(refused: NamedRefusals, plan: SendPlan): PickedFile[] {
   return refused.unopenable
 }
 
+/**
+ * The file a staged entry already holds, unchanged since: at the same path, with the same size and
+ * modification time, both known. Never for picks that are copies, whose path is new every time.
+ */
+export function unchangedRepick(
+  staged: readonly PickedFile[],
+  file: PickedFile,
+  { picksAreCopies }: Pick<StagingOptions, 'picksAreCopies'>,
+): boolean {
+  if (picksAreCopies || file.size === undefined || file.modifiedMs === undefined) return false
+  return staged.some(
+    (entry) =>
+      entry.path === file.path && entry.size === file.size && entry.modifiedMs === file.modifiedMs,
+  )
+}
+
 function sameFile(
   a: PickedFile,
   b: PickedFile,
@@ -85,7 +101,8 @@ function sameFile(
  *
  * In the order given, so the tray and the message read in the order somebody chose. A file already
  * staged is not refused: choosing it twice is not a mistake worth a notice. One picked again at
- * its path replaces the staged entry, so a file edited since is drawn as it is now. What may be
+ * its path replaces the staged entry, so a file edited since is drawn as it is now; one unchanged
+ * never gets here, kept as staged before its plan is asked (`unchangedRepick`). What may be
  * staged at all is libsession's send plan to say.
  */
 export function stage(
