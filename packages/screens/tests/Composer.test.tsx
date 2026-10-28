@@ -316,14 +316,6 @@ describe('the detached composer', () => {
     ])
   })
 
-  it('locks the tray, + and Send while seeded as sending', () => {
-    const { find } = detached({ files: [photo], sending: true })
-    expect(find(ELEMENT.conversation.stagedTray)?.props.onAdd).toBeUndefined()
-    expect(find(ELEMENT.conversation.stagedTray)?.props.clearDisabled).toBe(true)
-    expect(find(ELEMENT.conversation.attachButton)?.props.disabled).toBe(true)
-    expect(find(ELEMENT.conversation.sendButton)?.props.disabled).toBe(true)
-  })
-
   it('takes the add tile away and disables + once full', () => {
     const full = Array.from({ length: MAX_ATTACHMENTS_PER_MESSAGE }, (_, at) => ({
       path: `/home/a/${String(at)}.jpg`,

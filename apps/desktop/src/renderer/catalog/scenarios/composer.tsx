@@ -8,7 +8,6 @@ import { useContext } from 'react'
 interface ComposerRow {
   count: number
   refused?: ComposerSeed['refused']
-  sending?: boolean | undefined
 }
 
 /** Mostly pictures, with a document every fourth file, as a real pick tends to be. */
@@ -30,10 +29,10 @@ function stagedFile(at: number, pictures: readonly string[]): PickedFile {
   }
 }
 
-function ScenarioComposer({ count, refused, sending }: ComposerRow) {
+function ScenarioComposer({ count, refused }: ComposerRow) {
   const pictures = useContext(CatalogPictures)
   const files = Array.from({ length: count }, (_, at) => stagedFile(at, pictures))
-  return <DetachedComposer seed={{ files, refused, sending }} />
+  return <DetachedComposer seed={{ files, refused }} />
 }
 
 const TOO_LARGE: PickedFile = {
@@ -52,8 +51,6 @@ const composer = defineStory<ComposerRow>({
     empty: { count: 0 },
     threeStaged: { count: 3 },
     withNotices: { count: 3, refused: { tooLarge: [TOO_LARGE], overLimit: 3 } },
-    // The tray, + and drops are the message's until libsession answers.
-    sending: { count: 3, sending: true },
     full: { count: MAX_ATTACHMENTS_PER_MESSAGE },
   },
   render: (row) => <ScenarioComposer {...row} />,

@@ -193,24 +193,26 @@ export function Composer({
   )
 }
 
-/** What a detached composer holds: staged files, what was refused, and whether a send is out. */
+/**
+ * What a detached composer holds: staged files and what was refused. Never a send in flight, which
+ * lasts only until libsession stores the message and is not a state anybody sees.
+ */
 export interface ComposerSeed {
   files: PickedFile[]
   refused?: Partial<StagingRefusal> | undefined
-  sending?: boolean | undefined
 }
 
 const ignore = () => {}
 
-/** A send that never answers, so a seed that is sending stays so. */
+/** A send that never answers, so pressing Send in the catalog changes nothing. */
 const neverAnswered = () => new Promise<void>(ignore)
 
-function seededStaging({ files, refused, sending = false }: ComposerSeed): StagingState {
+function seededStaging({ files, refused }: ComposerSeed): StagingState {
   return {
     files,
     refused: { ...NOTHING_REFUSED, ...refused },
     refusal: 0,
-    sending,
+    sending: false,
     planning: false,
     beginSend: ignore,
     add: () => Promise.resolve(),
