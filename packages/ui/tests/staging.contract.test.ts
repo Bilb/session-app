@@ -85,6 +85,8 @@ describe('a composer notice', () => {
   it('shortens a file name in its detail as a file row does, keeping the extension', () => {
     expect(notice).toContain('<FileName name={name} size="$label" weight="regular"')
     expect(notice).toContain('style={{ direction: nameDirection(detail) }}')
+    // Its own direction inside, the layout's start edge outside, so it sits under the message.
+    expect(notice).toMatch(/alignSelf="flex-start"\s+maxWidth="100%"/)
   })
 
   it('is drawn only, leaving what is said to one announcement for all of them', () => {

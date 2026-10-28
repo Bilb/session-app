@@ -41,9 +41,15 @@ function Detail({ detail, name }: { detail: string; name: string | undefined }) 
       </Text>
     )
   // The line keeps its own direction, as a file name does, or a Latin line under Arabic draws
-  // the size before the name.
+  // the size before the name; it still starts from the layout's edge, under the message.
   return (
-    <XStack minWidth={0} style={{ direction: nameDirection(detail) }} aria-label={detail}>
+    <XStack
+      alignSelf="flex-start"
+      maxWidth="100%"
+      minWidth={0}
+      style={{ direction: nameDirection(detail) }}
+      aria-label={detail}
+    >
       <DetailRun text={detail.slice(0, at)} />
       {/* A column, which stretches the name to its own width so the name has a width to lose. */}
       <YStack flexShrink={1} minWidth={0}>
