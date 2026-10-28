@@ -47,7 +47,7 @@ export function AttachmentPill({ set }: { set: AttachmentSet }) {
       pointerEvents="none"
       testID={ELEMENT.conversation.attachmentPill}
     >
-      <Text size="$caption" color="$textPrimary">
+      <Text size="$caption" color="$surfaceInverted">
         {label(set)}
       </Text>
       {set.state !== 'fetching' ? null : (

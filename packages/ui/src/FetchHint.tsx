@@ -67,7 +67,7 @@ export function FetchHint({
               ...(isWeb ? { role: 'button', 'aria-label': label } : { 'aria-hidden': true }),
             })}
       >
-        <Icon name="cloudDownload" size={small ? 'xs' : 'md'} color="$textPrimary" />
+        <Icon name="cloudDownload" size={small ? 'xs' : 'md'} color="$surfaceInverted" />
       </YStack>
     </YStack>
   )

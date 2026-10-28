@@ -84,7 +84,7 @@ function Control({
       {...(isWeb ? {} : { hitSlop: CONTROL_SLOP })}
       testID={testID}
     >
-      <Icon name={icon} size="md" color="$textPrimary" />
+      <Icon name={icon} size="md" color={overMedia ? '$surfaceInverted' : '$textPrimary'} />
     </YStack>
   )
 }

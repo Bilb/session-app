@@ -157,7 +157,7 @@ export const AttachmentTile = memo(function AttachmentTile({
           justifyContent="center"
           backgroundColor={TILE_SCRIM}
         >
-          <Text size="$title" weight="semibold" color="$textPrimary">
+          <Text size="$title" weight="semibold" color="$surfaceInverted">
             {overflowLabel}
           </Text>
         </YStack>
