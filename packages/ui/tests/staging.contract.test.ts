@@ -38,9 +38,9 @@ describe('the staged tray', () => {
     expect(tile).toContain('testID={previewTestID}')
   })
 
-  it('edges the remove disc, so it shows on a dark picture as on a light one', () => {
+  it('draws the remove disc on the page surface with a shadow, which shows on any picture', () => {
     expect(source('StagedTile.tsx')).toMatch(
-      /backgroundColor=\{TILE_SCRIM\}\s*(\/\/[^\n]*\n\s*)?borderWidth=\{TILE_HAIRLINE_WIDTH\}\s*borderColor="\$surfaceInverted"/,
+      /backgroundColor="\$backgroundPrimary"\s+shadowColor="\$shadow"/,
     )
   })
 
@@ -66,7 +66,7 @@ describe('the staged tray', () => {
     expect(source('StagedTray.tsx')).toMatch(/disabled=\{clearDisabled\}\s+onPress=\{onClear\}/)
     const tile = source('StagedTile.tsx')
     expect(tile).toMatch(/onPress=\{onRemove\}\s+disabled=\{removeDisabled\}/)
-    expect(tile).toMatch(/color="\$surfaceInverted"\s+opacity=\{removeDisabled \? 0\.35 : 1\}/)
+    expect(tile).toMatch(/color="\$textPrimary"\s+opacity=\{removeDisabled \? 0\.35 : 1\}/)
     expect(tile).not.toContain('$textDisabled')
   })
 

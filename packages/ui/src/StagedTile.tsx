@@ -5,7 +5,7 @@ import { Platform } from 'react-native'
 import { isWeb, XStack, YStack } from 'tamagui'
 
 import { fileFormat, fileGlyph, nameDirection } from './attachmentFile'
-import { TILE_HAIRLINE_WIDTH, TILE_SCRIM } from './attachmentTileStyle'
+import { TILE_HAIRLINE_WIDTH } from './attachmentTileStyle'
 import { FileName } from './FileName'
 import { Icon } from './Icon'
 import { Image } from './Image'
@@ -170,24 +170,20 @@ export function StagedTile({
               alignItems="flex-end"
               padding="$2xs"
             >
+              {/* The page's surface with a shadow, not a scrim: it reads on a pale picture, a dark
+                  one and a busy one alike, where a scrim needed an edge to show on dark. */}
               <YStack
                 width={REMOVE_DISC}
                 height={REMOVE_DISC}
                 borderRadius="$full"
-                backgroundColor={TILE_SCRIM}
-                // The scrim alone vanishes into a dark picture, leaving the cross without its disc.
-                borderWidth={TILE_HAIRLINE_WIDTH}
-                borderColor="$surfaceInverted"
+                backgroundColor="$backgroundPrimary"
+                shadowColor="$shadow"
+                shadowRadius={4}
+                shadowOffset={{ width: 0, height: 1 }}
                 alignItems="center"
                 justifyContent="center"
               >
-                {/* Dimmed: the disabled role suits the theme's surfaces, not a scrim. */}
-                <Icon
-                  name="x"
-                  size="xs"
-                  color="$surfaceInverted"
-                  opacity={removeDisabled ? 0.35 : 1}
-                />
+                <Icon name="x" size="xs" color="$textPrimary" opacity={removeDisabled ? 0.35 : 1} />
               </YStack>
             </YStack>
           )}
