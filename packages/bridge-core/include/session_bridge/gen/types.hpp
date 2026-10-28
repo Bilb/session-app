@@ -539,7 +539,7 @@ struct SendPlanResult {
             plan{std::move(plan_)} {}
 };
 
-/// A thumbnail's side in device pixels, as libsession clamped it.
+/// A thumbnail's height in device pixels, as libsession clamped it.
 struct EdgeResult {
     static constexpr std::string_view type_tag = "edge";
 
@@ -1389,9 +1389,9 @@ struct GetThumbnailEdgeCommand {
     static constexpr std::string_view type_tag = "getThumbnailEdge";
 };
 
-/// The side of the thumbnails made from now on, in device pixels, kept on this device. libsession
-/// clamps it to 64 to 1024. Unset forgets the stored value, which puts the edge back to what the
-/// app opened the bridge with. Thumbnails already made keep the size they were made at.
+/// The height of the thumbnails made from now on, in device pixels, kept on this device.
+/// libsession clamps it to 64 to 1024. Unset forgets the stored value, which puts the edge back to
+/// what the app opened the bridge with. Thumbnails already made keep the size they were made at.
 struct SetThumbnailEdgeCommand {
     static constexpr std::string_view type_tag = "setThumbnailEdge";
 

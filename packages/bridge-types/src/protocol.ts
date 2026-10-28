@@ -293,9 +293,9 @@ export type Command =
   | { type: 'getAttachmentCacheSize' }
   | { type: 'getThumbnailEdge' }
   /**
-   * The side of the thumbnails made from now on, in device pixels, kept on this device. libsession
-   * clamps it to 64 to 1024. Unset forgets the stored value, which puts the edge back to what the
-   * app opened the bridge with. Thumbnails already made keep the size they were made at.
+   * The height of the thumbnails made from now on, in device pixels, kept on this device.
+   * libsession clamps it to 64 to 1024. Unset forgets the stored value, which puts the edge back to
+   * what the app opened the bridge with. Thumbnails already made keep the size they were made at.
    */
   | { type: 'setThumbnailEdge'; edgePx?: number }
   /**
@@ -376,7 +376,7 @@ export type Result =
   /** Unset only in answer to `getAttachmentCacheLimit`, where it means no limit. */
   | { type: 'byteCount'; bytes?: number }
   | { type: 'sendPlan'; plan: SendPlan }
-  /** A thumbnail's side in device pixels, as libsession clamped it. */
+  /** A thumbnail's height in device pixels, as libsession clamped it. */
   | { type: 'edge'; edgePx: number }
   | { type: 'configSizes'; sizes: ConfigSize[] }
 
