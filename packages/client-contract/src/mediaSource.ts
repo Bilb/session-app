@@ -275,11 +275,17 @@ export function runMediaSourceContract(
       )
     })
 
-    it('answers a downloaded picture with a JPEG or WebP rendition within the edge', async () => {
+    it('makes a rendition of a downloaded picture once asked, a JPEG or WebP within the edge', async () => {
       const { source, client, conversationId, picture, settle } = await harness.withAttachments()
       const downloaded = client.downloadAttachment(picture.messageId, picture.index)
       await settle()
       await downloaded
+      await untilThumbnailed(client, conversationId, picture, settle)
+      // None until a viewer asks: the first fetch is refused, and is the ask.
+      expect((await attachmentOf(client, conversationId, picture))?.hasRendition).toBe(false)
+      expect(messageOf(await failure(() => source.fetchRendition(picture)))).toBe(
+        noRenditionMessage(picture),
+      )
       expect(
         (await until('hasRendition', client, conversationId, picture, settle))?.hasRendition,
       ).toBe(true)

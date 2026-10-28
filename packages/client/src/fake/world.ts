@@ -179,8 +179,11 @@ function thumbnailed(cached: boolean, contentType: string | undefined): boolean 
   return cached && isDisplayableImage(contentType)
 }
 
-/** Made after the thumbnail, and never of a file sent as its original, which is only exported. */
-function rendered(cached: boolean, attachment: Attachment): boolean {
+/**
+ * Whether a rendition could be made: of a thumbnailed picture, and never of a file sent as its
+ * original, which is only exported. Made only once a viewer asks, as libsession does.
+ */
+function renderable(cached: boolean, attachment: Attachment): boolean {
   return thumbnailed(cached, attachment.contentType) && !attachment.originalFile
 }
 
@@ -298,6 +301,9 @@ export class FakeAccount {
   private readonly taken = new Map<string, number | undefined>()
   /** The sizes `seedSending` held back from files not up yet, which their upload reports. */
   private readonly unreportedSizes = new Map<string, number>()
+  /** Renditions a viewer asked for, by `keyOf`, and those made since. */
+  private readonly renditionsAsked = new Set<string>()
+  private readonly renditions = new Set<string>()
   /** What a send's files were sent as, by message id, for a retry to upload the rest of. */
   private readonly uploadsOf = new Map<number, readonly Upload[]>()
   /**
@@ -974,7 +980,29 @@ export class FakeAccount {
 
   hasRendition(ref: AttachmentRef): boolean {
     const attachment = this.locate(ref)?.attachment
-    return attachment !== undefined && rendered(this.cached.has(keyOf(ref)), attachment)
+    return attachment !== undefined && this.rendered(ref, attachment)
+  }
+
+  private rendered(ref: AttachmentRef, attachment: Attachment): boolean {
+    return this.renditions.has(keyOf(ref)) && renderable(this.cached.has(keyOf(ref)), attachment)
+  }
+
+  /**
+   * libsession's `attachment_rendition` finding none: queues one, made a step later and announced,
+   * for a picture it can make one of and has not been asked for yet.
+   */
+  askRendition(ref: AttachmentRef): void {
+    const attachment = this.locate(ref)?.attachment
+    const key = keyOf(ref)
+    if (attachment === undefined || this.renditionsAsked.has(key)) return
+    if (!renderable(this.cached.has(key), attachment)) return
+    this.renditionsAsked.add(key)
+    const make = () => {
+      this.renditions.add(key)
+      this.announceAttachment(ref.messageId)
+    }
+    if (this.world) this.world.schedule(1, make)
+    else make()
   }
 
   /**
@@ -1030,7 +1058,10 @@ export class FakeAccount {
           hasThumbnail: thumbnail,
           thumbnailWidthPx: thumbnail ? FAKE_THUMBNAIL_WIDTH_PX : 0,
           thumbnailHeightPx: thumbnail ? FAKE_THUMBNAIL_EDGE_PX : 0,
-          hasRendition: rendered(this.cached.has(key), attachment),
+          hasRendition: this.rendered(
+            { messageId: message.id, index: attachment.index },
+            attachment,
+          ),
           fetchDoneBytes: running?.doneBytes ?? 0,
           fetchTotalBytes: running?.totalBytes ?? 0,
         }
