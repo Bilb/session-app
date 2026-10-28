@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
   letGo,
+  recheck,
   stage,
   unchangedRepick,
   unstage,
@@ -57,7 +58,10 @@ export interface StagingState {
    * owns, but not their previews. Anything staged since stays, a re-pick of a sent path included.
    */
   handOff: (sent: readonly PickedFile[]) => void
-  /** Says a send was refused; what it held stays for another try. */
+  /**
+   * Says a send was refused. A refused send of files asks each one's plan again: any it now
+   * refuses leaves the tray, named; the rest stay for another try, as all of it does otherwise.
+   */
   refuseSend: (what: Exclude<SendRefusal, 'none'>) => void
   dismiss: (kind: keyof StagingRefusal) => void
 }
@@ -246,9 +250,43 @@ export function useStaging(planSend: PlanSend): StagingState {
     },
     refuseSend: (what) => {
       if (!mounted.current) return
-      setRefused({ ...NOTHING_REFUSED, sendRefused: what })
-      setRefusal((count) => count + 1)
       setSending(false)
+      const sayRefused = () => {
+        setRefused({ ...NOTHING_REFUSED, sendRefused: what })
+        setRefusal((count) => count + 1)
+      }
+      if (what === 'text') {
+        sayRefused()
+        return
+      }
+      // libsession says only that a file would not do, not which: each file's plan says which,
+      // so the person is told and the tray stops holding a file every retry would fail on.
+      const held = latest.current
+      setPlanning((count) => count + 1)
+      void Promise.all(
+        held.map((file) =>
+          asked(plan.current, file).then(
+            (answer): [PickedFile, SendPlan] => [file, answer],
+            (): [PickedFile, SendPlan] => [file, 'unreadable'],
+          ),
+        ),
+      )
+        .then((answers) => {
+          if (!mounted.current) return
+          const { refused: named, gone } = recheck(answers)
+          if (gone.length === 0) {
+            sayRefused()
+            return
+          }
+          discard(gone)
+          latest.current = latest.current.filter((file) => !gone.includes(file))
+          setFiles(latest.current)
+          setRefused({ ...NOTHING_REFUSED, ...named })
+          setRefusal((count) => count + 1)
+        })
+        .finally(() => {
+          setPlanning((count) => count - 1)
+        })
     },
     dismiss: (kind) => {
       setRefused((current) => ({ ...current, [kind]: NOTHING_REFUSED[kind] }))

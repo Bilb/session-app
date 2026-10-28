@@ -207,7 +207,10 @@ describe('a refused send', () => {
     press(ELEMENT.conversation.sendButton)
     answer.reject(new Error('refused'))
     await answer.promise.catch(() => undefined)
-    await Promise.resolve()
+    // A refused send of files asks each file's plan again before saying so.
+    await vi.waitFor(() => {
+      expect(render().find(ELEMENT.conversation.composerNotice('send'))).toBeDefined()
+    })
     const { staging, find } = render()
     expect(staging.files).toEqual(files)
     expect(find(ELEMENT.conversation.composerInput)?.props.value).toBe('hi')
@@ -330,6 +333,33 @@ describe('staging by libsession’s plan', () => {
     const edited = { ...first, modifiedMs: 2000, previewUrl: 'session-media://picked/c' }
     await render().staging.add([edited])
     expect(render().staging.files).toEqual([edited])
+  })
+
+  it('names a staged file gone before Send and takes it out of the tray', async () => {
+    const notes: PickedFile = { path: '/home/a/notes.txt', name: 'notes.txt' }
+    await render().staging.add([photo, notes])
+    onSend = vi.fn(() => Promise.reject(new Error('attachment is not a readable file')))
+    planSend = (file) => Promise.resolve(file === notes ? 'missing' : 'as-is')
+    press(ELEMENT.conversation.sendButton)
+    await vi.waitFor(() => {
+      expect(render().staging.planning).toBe(false)
+      expect(render().staging.files).toEqual([photo])
+    })
+    expect(render().staging.refused.unopenable).toEqual([notes])
+    expect(render().staging.refused.sendRefused).toBe('none')
+    expect(render().find(ELEMENT.conversation.composerNotice('open'))?.props.detail).toBe(
+      'notes.txt',
+    )
+  })
+
+  it('says a send was refused when every staged file still plans to send', async () => {
+    await render().staging.add([photo])
+    onSend = vi.fn(() => Promise.reject(new Error('refused')))
+    press(ELEMENT.conversation.sendButton)
+    await vi.waitFor(() => {
+      expect(render().staging.refused.sendRefused).toBe('files')
+    })
+    expect(render().staging.files).toEqual([photo])
   })
 
   it('stages picks in the order they were made, whichever plan answers first', async () => {

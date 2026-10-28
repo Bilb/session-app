@@ -71,6 +71,28 @@ function refusalOf(refused: NamedRefusals, plan: SendPlan): PickedFile[] {
   return refused.unopenable
 }
 
+/** What asking each staged file's plan again found: the files it can no longer send, by reason. */
+export interface Rechecked {
+  refused: Pick<StagingRefusal, 'tooLarge' | 'tooLargeToDecode' | 'unopenable'>
+  /** Every file named in `refused`, for the tray to drop. */
+  gone: PickedFile[]
+}
+
+/**
+ * Which staged files their plan now refuses, after libsession refused a send: a file deleted, moved
+ * or grown since it was staged, named as staging names it, so the tray stops holding it.
+ */
+export function recheck(answers: readonly (readonly [PickedFile, SendPlan])[]): Rechecked {
+  const refused: NamedRefusals = { tooLarge: [], tooLargeToDecode: [], unopenable: [] }
+  const gone: PickedFile[] = []
+  for (const [file, plan] of answers) {
+    if (!isRefusedPlan(plan)) continue
+    refusalOf(refused, plan).push(file)
+    gone.push(file)
+  }
+  return { refused, gone }
+}
+
 /**
  * The file a staged entry already holds, unchanged since: at the same path, with the same size and
  * modification time, both known. Never for picks that are copies, whose path is new every time.

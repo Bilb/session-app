@@ -7,6 +7,7 @@ import {
   isFull,
   letGo,
   outgoingAttachment,
+  recheck,
   stage as stageWith,
   unchangedRepick,
   unstage,
@@ -223,5 +224,22 @@ describe('a file picked again', () => {
 
   it('is never unchanged where picks are copies, whose staged copy is the only one', () => {
     expect(unchangedRepick([report], report, { picksAreCopies: true })).toBe(false)
+  })
+})
+
+describe('staged files asked again after a refused send', () => {
+  const kept = { path: '/home/a/kept.jpg', name: 'kept.jpg' }
+  const gone = { path: '/home/a/gone.pdf', name: 'gone.pdf' }
+  const grown = { path: '/home/a/grown.mov', name: 'grown.mov' }
+
+  it('names those their plan now refuses, by why, and keeps the rest', () => {
+    const { refused, gone: dropped } = recheck([
+      [kept, 'reencoded'],
+      [gone, 'missing'],
+      [grown, 'too-large-for-server'],
+    ])
+    expect(refused.unopenable).toEqual([gone])
+    expect(refused.tooLarge).toEqual([grown])
+    expect(dropped).toEqual([gone, grown])
   })
 })
