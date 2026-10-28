@@ -72,10 +72,21 @@ const SCROLLBAR = `::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--textSecondary); }
 ::-webkit-scrollbar-corner { background: transparent; }`
 
+/**
+ * Each text's direction from its own first letter, its alignment from the layout.
+ *
+ * The web otherwise gives every text the layout's direction, so under an Arabic layout "Hello!"
+ * draws as "!Hello" and "2 of 5 uploaded" as "of 5 uploaded 2", and an Arabic message in an
+ * English layout the other way round. Android and iOS already decide each paragraph by its first
+ * letter. The prefixed `match-parent` keeps such a line on the layout's side: Chromium computes the
+ * plain one to `start`, which is the text's own. `:where` lets any `textAlign` win.
+ */
+const TEXT_DIRECTION = `:where(.is_Text) { unicode-bidi: plaintext; text-align: -webkit-match-parent; }`
+
 if (!document.getElementById(ID)) {
   const style = document.createElement('style')
   style.id = ID
-  style.textContent = `${FONT_FACES}\n${SELECTION}\n${SCROLLBAR}\n${config.getCSS()}`
+  style.textContent = `${FONT_FACES}\n${SELECTION}\n${SCROLLBAR}\n${TEXT_DIRECTION}\n${config.getCSS()}`
   // Prepended, not appended: index.html's own rules come after and must keep winning, and so must
   // anything a component inserts at runtime.
   document.head.prepend(style)
