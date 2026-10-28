@@ -112,6 +112,11 @@ export interface MediaPort {
    * `thumbnailWidthPx` by `thumbnailHeightPx`), which is what a tile draws: a viewer draws
    * `urlFor`. Never a download, so only worth asking for when `Attachment.hasThumbnail` says there
    * is one.
+   *
+   * TODO: an animated thumbnail for an animated GIF or WebP, so it plays in the conversation and
+   * not only in the viewer. Today this is a still of the first frame; libsession would make an
+   * animated WebP on demand, and desktop main, the iOS loader and anything wanting a still assume
+   * a JPEG.
    */
   thumbnailUrlFor(ref: AttachmentRef): string | null
   /**
