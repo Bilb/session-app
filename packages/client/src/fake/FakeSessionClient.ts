@@ -355,6 +355,11 @@ export class FakeSessionClient implements SessionClient {
     return this.account.hasRendition(ref)
   }
 
+  /** Asks for a rendition, as a viewer's first fetch of one does: made a step later. */
+  askRendition(ref: AttachmentRef): void {
+    this.account.askRendition(ref)
+  }
+
   /**
    * Fake-only: finds an attachment in memory, where paging every conversation would miss old ones.
    */

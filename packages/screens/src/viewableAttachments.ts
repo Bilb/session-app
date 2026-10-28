@@ -16,8 +16,9 @@ export function isViewable(attachment: Attachment): boolean {
 
 /**
  * What the viewer makes of it: it opens a viewable picture, or one libsession made a rendition of
- * (AVIF). A picture libsession will make one of but has not yet awaits it, so its tap does not
- * export first and open later. One its sender sent as the original file, metadata and all, exports.
+ * (AVIF). A picture libsession can make one of but has not yet awaits it: libsession makes one only
+ * when asked, so the viewer opens on it and asks. One its sender sent as the original file,
+ * metadata and all, exports.
  */
 export type ViewerFit = 'opens' | 'awaitsRendition' | 'exports'
 
@@ -27,8 +28,9 @@ export function viewerFit(attachment: Attachment): ViewerFit {
   return isDisplayableImage(attachment.contentType) ? 'awaitsRendition' : 'exports'
 }
 
+/** Whether a tap shows it in the viewer: one it opens now, or one whose rendition it asks for. */
 export function opensInViewer(attachment: Attachment): boolean {
-  return viewerFit(attachment) === 'opens'
+  return viewerFit(attachment) !== 'exports'
 }
 
 /**
@@ -79,6 +81,9 @@ export function viewableAttachments(message: Message): Attachment[] {
 export function viewerItem(messageId: number, attachment: Attachment): MediaViewerItem {
   const ref = { messageId, index: attachment.index }
   const { media } = requirePorts()
+  // libsession makes a rendition only when one is asked for, and loading its url is the ask.
+  if (viewerFit(attachment) === 'awaitsRendition')
+    return { uri: null, preparing: media.renditionUrlFor(ref) }
   if (!attachment.hasRendition) return { uri: media.urlFor(ref) }
   return {
     uri: media.renditionUrlFor(ref),

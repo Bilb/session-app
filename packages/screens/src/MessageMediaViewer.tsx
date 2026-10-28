@@ -84,6 +84,7 @@ function MessageViewer({
       positionLabel={`${String(at + 1)} / ${String(items.length)}`}
       unavailableLabel={tr('attachmentsErrorNotSupported')}
       failedLabel={tr('attachmentsErrorOpen')}
+      preparingLabel={tr('loading')}
       closeLabel={tr('close')}
       exportLabel={PENDING_COPY.export}
       previousLabel={PENDING_COPY.previous}

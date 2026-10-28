@@ -71,6 +71,44 @@ function refusalOf(refused: NamedRefusals, plan: SendPlan): PickedFile[] {
   return refused.unopenable
 }
 
+/** What asking each staged file's plan again found: the files it can no longer send, by reason. */
+export interface Rechecked {
+  refused: Pick<StagingRefusal, 'tooLarge' | 'tooLargeToDecode' | 'unopenable'>
+  /** Every file named in `refused`, for the tray to drop. */
+  gone: PickedFile[]
+}
+
+/**
+ * Which staged files their plan now refuses, after libsession refused a send: a file deleted, moved
+ * or grown since it was staged, named as staging names it, so the tray stops holding it.
+ */
+export function recheck(answers: readonly (readonly [PickedFile, SendPlan])[]): Rechecked {
+  const refused: NamedRefusals = { tooLarge: [], tooLargeToDecode: [], unopenable: [] }
+  const gone: PickedFile[] = []
+  for (const [file, plan] of answers) {
+    if (!isRefusedPlan(plan)) continue
+    refusalOf(refused, plan).push(file)
+    gone.push(file)
+  }
+  return { refused, gone }
+}
+
+/**
+ * The file a staged entry already holds, unchanged since: at the same path, with the same size and
+ * modification time, both known. Never for picks that are copies, whose path is new every time.
+ */
+export function unchangedRepick(
+  staged: readonly PickedFile[],
+  file: PickedFile,
+  { picksAreCopies }: Pick<StagingOptions, 'picksAreCopies'>,
+): boolean {
+  if (picksAreCopies || file.size === undefined || file.modifiedMs === undefined) return false
+  return staged.some(
+    (entry) =>
+      entry.path === file.path && entry.size === file.size && entry.modifiedMs === file.modifiedMs,
+  )
+}
+
 function sameFile(
   a: PickedFile,
   b: PickedFile,
@@ -85,7 +123,8 @@ function sameFile(
  *
  * In the order given, so the tray and the message read in the order somebody chose. A file already
  * staged is not refused: choosing it twice is not a mistake worth a notice. One picked again at
- * its path replaces the staged entry, so a file edited since is drawn as it is now. What may be
+ * its path replaces the staged entry, so a file edited since is drawn as it is now; one unchanged
+ * never gets here, kept as staged before its plan is asked (`unchangedRepick`). What may be
  * staged at all is libsession's send plan to say.
  */
 export function stage(

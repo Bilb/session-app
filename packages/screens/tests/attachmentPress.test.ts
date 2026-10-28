@@ -17,8 +17,8 @@ describe('what a press on an attachment row does', () => {
     expect(rowVerb('ready', 'exports')).toBe('export')
   })
 
-  it('does nothing for a picture that is here until libsession has a rendition of it', () => {
-    expect(rowVerb('ready', 'awaitsRendition')).toBeNull()
+  it('opens a picture that is here before its rendition is made: the viewer asks for it', () => {
+    expect(rowVerb('ready', 'awaitsRendition')).toBe('open')
   })
 
   it('fetches what is not here yet, picture or not', () => {

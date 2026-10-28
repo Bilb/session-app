@@ -3,6 +3,11 @@ export type MediaViewerItem = {
   uri: string | null
   /** Drawn instead once `uri` fails to load, where there is one. */
   fallbackUri?: string | null | undefined
+  /**
+   * Where `uri` is null because the picture is still being made: a url loaded out of sight, whose
+   * request is what asks for it. The caller swaps in an item with a `uri` once it exists.
+   */
+  preparing?: string | null | undefined
 }
 
 /** The first of an item's urls that has not failed, or null once none is left. */

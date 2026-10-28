@@ -141,6 +141,10 @@ describe('the composer staging', () => {
     const staging = mount()
     await staging.add([picked('a.jpg')])
     staging.refuseSend('files')
+    // Said once every staged file's plan, asked again, still sends.
+    await vi.waitFor(() => {
+      expect(hook.writes).toContainEqual(expect.objectContaining({ sendRefused: 'files' }))
+    })
     expect(hook.writes).toContainEqual({
       tooLarge: [],
       tooLargeToDecode: [],

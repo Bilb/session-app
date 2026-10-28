@@ -31,16 +31,15 @@ export function controlVerb(state: FileRowState): AttachmentVerb | null {
 
 /**
  * The row's verb: a picture the viewer shows opens once it is here, as its lead square does, and
- * the control stays the way to export it. One awaiting its rendition does nothing until then.
- * Anything else does what the control offers.
+ * the control stays the way to export it. One awaiting its rendition opens too, and the viewer asks
+ * for it. Anything else does what the control offers.
  */
 export function rowVerb(state: FileRowState, fit: ViewerFit): AttachmentVerb | null {
   if (state !== 'ready') return controlVerb(state)
   switch (fit) {
     case 'opens':
-      return 'open'
     case 'awaitsRendition':
-      return null
+      return 'open'
     case 'exports':
       return controlVerb(state)
   }

@@ -42,7 +42,14 @@ async function toPickedFile(file: File, preview: boolean): Promise<PickedFile | 
       preview && isDisplayableImage(contentType)
         ? ((await window.sessionDesktop.allowPreview(file)) ?? undefined)
         : undefined
-    return { path, name: file.name, size: file.size, contentType, previewUrl }
+    return {
+      path,
+      name: file.name,
+      size: file.size,
+      modifiedMs: file.lastModified,
+      contentType,
+      previewUrl,
+    }
   } catch (error) {
     void window.sessionDesktop.releaseSend(path)
     throw error

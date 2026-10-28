@@ -72,9 +72,8 @@ export function MessageAttachments({ message }: { message: Message }) {
             const tapped = message.attachments.find((a) => a.index === index)
             if (tapped !== undefined && albumFetch(tapped).state === 'ready') {
               const fit = viewerFit(tapped)
-              if (fit === 'opens') ui.openViewer(message.id, index)
-              else if (fit === 'exports' && !sending)
-                void exportOne(message, index, actions, feedback)
+              if (fit !== 'exports') ui.openViewer(message.id, index)
+              else if (!sending) void exportOne(message, index, actions, feedback)
             } else if (!sending) downloadMissing()
           }}
           // The pill is the download's: while sending, the footer's count says the same.

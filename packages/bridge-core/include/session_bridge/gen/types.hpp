@@ -312,8 +312,9 @@ struct Attachment {
     /// Whether libsession holds a rendition of this attachment: the whole picture as a JPEG or WebP
     /// (animated WebP for an animation) within the rendition edge (2048 px on a side unless set).
     /// It is re-encoded without metadata, or is the original itself when that is already an upright
-    /// JPEG or WebP within the edge, metadata included. Made after the thumbnail and kept, evicted
-    /// and reported exactly as `hasThumbnail` is.
+    /// JPEG or WebP within the edge, metadata included. Made only once asked for: the first
+    /// `fetchRendition` of a picture with none queues it and is refused, and this turns true by
+    /// update when it is made. Kept, evicted and reported as `hasThumbnail` is.
     ///
     /// What a viewer draws, through the media scheme's `rendition` path; export still writes the file.
     bool has_rendition;
@@ -539,7 +540,7 @@ struct SendPlanResult {
             plan{std::move(plan_)} {}
 };
 
-/// A thumbnail's side in device pixels, as libsession clamped it.
+/// A thumbnail's height in device pixels, as libsession clamped it.
 struct EdgeResult {
     static constexpr std::string_view type_tag = "edge";
 
@@ -1389,9 +1390,9 @@ struct GetThumbnailEdgeCommand {
     static constexpr std::string_view type_tag = "getThumbnailEdge";
 };
 
-/// The side of the thumbnails made from now on, in device pixels, kept on this device. libsession
-/// clamps it to 64 to 1024. Unset forgets the stored value, which puts the edge back to what the
-/// app opened the bridge with. Thumbnails already made keep the size they were made at.
+/// The height of the thumbnails made from now on, in device pixels, kept on this device.
+/// libsession clamps it to 64 to 1024. Unset forgets the stored value, which puts the edge back to
+/// what the app opened the bridge with. Thumbnails already made keep the size they were made at.
 struct SetThumbnailEdgeCommand {
     static constexpr std::string_view type_tag = "setThumbnailEdge";
 

@@ -545,6 +545,38 @@ export function runSessionClientContract(
       expect(['interrupted', 'sent', 'failed']).toContain(inFlight?.sendState)
     })
 
+    it('retries a send a restart stopped, uploading again and settling by update', async () => {
+      const { alice, bobId, settle, writeFile } = await harness.friends()
+      const path = await writeFile('again.txt', 1_200)
+      const messageId = await alice.sendMessage(bobId, {
+        body: 'again',
+        attachments: [{ path, contentType: 'text/plain' }],
+      })
+
+      const restarted = await harness.restart(alice)
+      const { messages } = await restarted.getMessages(bobId)
+      // Stopped with its file not up: failed or interrupted, whether or not there is a network.
+      expect(['failed', 'interrupted']).toContain(
+        messages.find((m) => m.id === messageId)?.sendState,
+      )
+
+      const seen = collect(restarted)
+      expect(await restarted.retrySend(messageId)).toBe(true)
+      const last = () =>
+        messagesOf(seen.events, 'messages-updated')
+          .filter((m) => m.id === messageId)
+          .at(-1)?.sendState
+      // Offline, as the addon runs, the upload fails again; with a network it is sent.
+      const terminal = new Set(['sent', 'failed'])
+      for (let round = 0; round < 50 && !terminal.has(last() ?? ''); round += 1) {
+        await settle()
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      }
+      expect(messagesOf(seen.events, 'messages-updated').some((m) => m.id === messageId)).toBe(true)
+      expect(['sent', 'failed']).toContain(last())
+      seen.stop()
+    })
+
     it('stores a message with its files before uploading them, and settles it after', async () => {
       const { alice, bobId, settle, writeFile } = await harness.friends()
       const path = await writeFile('notes.txt', 1_200)
@@ -579,12 +611,19 @@ export function runSessionClientContract(
     it('types a file sent without a type by its extension', async () => {
       const { alice, bobId, writeFile } = await harness.friends()
       const path = await writeFile('minutes.PDF', 2_000)
+      const sheet = await writeFile('budget.xlsx', 2_000)
       const seen = collect(alice)
 
-      const messageId = await alice.sendMessage(bobId, { body: '', attachments: [{ path }] })
+      const messageId = await alice.sendMessage(bobId, {
+        body: '',
+        attachments: [{ path }, { path: sheet }],
+      })
 
       const added = messagesOf(seen.events, 'messages-added').find((m) => m.id === messageId)
-      expect(added?.attachments.map((a) => a.contentType)).toEqual(['application/pdf'])
+      expect(added?.attachments.map((a) => a.contentType)).toEqual([
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ])
       seen.stop()
     })
 

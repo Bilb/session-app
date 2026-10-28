@@ -31,7 +31,7 @@ class StorageRootsModule : Module() {
       File(context.filesDir, "session"),
       File(context.filesDir, "logs"),
       File(context.cacheDir, "exports"),
-      // Not the cache: the OS may clear it before libsession reads the file to upload it.
+      // Not the cache: the OS may clear it while a file is still staged, before a send takes it.
       File(context.filesDir, "staged"),
     )
   }

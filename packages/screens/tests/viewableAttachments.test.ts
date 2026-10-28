@@ -107,11 +107,12 @@ describe('a picture sent as the original file', () => {
 })
 
 describe('a picture of a type nothing here draws', () => {
-  it('opens in the viewer once libsession has a rendition of it', () => {
+  it('opens in the viewer before libsession has a rendition of it, as after', () => {
     const avif = attachment(0, 'image/avif')
-    expect(opensInViewer(avif)).toBe(false)
+    expect(opensInViewer(avif)).toBe(true)
     expect(opensInViewer({ ...avif, hasRendition: true })).toBe(true)
-    expect(viewableAttachments(message([{ ...avif, hasRendition: true }]))).toHaveLength(1)
+    expect(viewableAttachments(message([avif]))).toHaveLength(1)
+    expect(opensInViewer({ ...avif, originalFile: true })).toBe(false)
   })
 
   it('awaits the rendition libsession makes of it, rather than exporting until then', () => {
@@ -173,6 +174,14 @@ describe('what the viewer is handed', () => {
     expect(viewerItem(7, { ...attachment(2, 'image/png'), hasRendition: true })).toEqual({
       uri: 'rendition://7/2',
       fallbackUri: 'media://7/2',
+    })
+  })
+
+  it('asks for the rendition of a type nothing here draws, loading its url out of sight', () => {
+    serving()
+    expect(viewerItem(7, attachment(2, 'image/avif'))).toEqual({
+      uri: null,
+      preparing: 'rendition://7/2',
     })
   })
 

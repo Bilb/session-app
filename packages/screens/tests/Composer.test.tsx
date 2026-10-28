@@ -7,7 +7,7 @@ import type * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { Composer, DetachedComposer, type ComposerSeed } from '#src/Composer'
-import { useStaging, type StagingState } from '#src/useStaging'
+import { PLAN_GIVES_UP_AFTER_MS, useStaging, type StagingState } from '#src/useStaging'
 
 /**
  * A renderer just big enough for the composer: hook state lives in slots taken in call order, as
@@ -208,7 +208,10 @@ describe('a refused send', () => {
     press(ELEMENT.conversation.sendButton)
     answer.reject(new Error('refused'))
     await answer.promise.catch(() => undefined)
-    await Promise.resolve()
+    // A refused send of files asks each file's plan again before saying so.
+    await vi.waitFor(() => {
+      expect(render().find(ELEMENT.conversation.composerNotice('send'))).toBeDefined()
+    })
     const { staging, find } = render()
     expect(staging.files).toEqual(files)
     expect(find(ELEMENT.conversation.composerInput)?.props.value).toBe('hi')
@@ -252,7 +255,9 @@ describe('staging by libsession’s plan', () => {
     expect(render().find(ELEMENT.conversation.composerNotice('open'))).toBeDefined()
   })
 
-  it('holds Send until every plan is in, and sends the files with the text', async () => {
+  it('holds a send of staged files until every plan is in, and sends them all with the text', async () => {
+    const notes: PickedFile = { path: '/home/a/notes.txt', name: 'notes.txt' }
+    await render().staging.add([notes])
     let answer: (plan: SendPlan) => void = () => undefined
     planSend = () =>
       new Promise((resolve) => {
@@ -269,7 +274,93 @@ describe('staging by libsession’s plan', () => {
     await staged
     expect(render().find(ELEMENT.conversation.sendButton)?.props.disabled).toBe(false)
     press(ELEMENT.conversation.sendButton)
-    expect(onSend).toHaveBeenCalledWith('hi', [photo])
+    expect(onSend).toHaveBeenCalledWith('hi', [notes, photo])
+  })
+
+  it('sends text alone while a pick is still planned, and stages the pick after', async () => {
+    let answer: (plan: SendPlan) => void = () => undefined
+    planSend = () =>
+      new Promise((resolve) => {
+        answer = resolve
+      })
+    onSend = vi.fn(() => Promise.resolve())
+    const staged = render().staging.add([photo])
+    type('hi')
+    expect(render().find(ELEMENT.conversation.sendButton)?.props.disabled).toBe(false)
+    press(ELEMENT.conversation.sendButton)
+    expect(onSend).toHaveBeenCalledWith('hi', [])
+    answer('as-is')
+    await staged
+    expect(render().staging.files).toEqual([photo])
+  })
+
+  it('refuses a file whose plan never answers, so Send is not held for good', async () => {
+    vi.useFakeTimers()
+    try {
+      planSend = () => new Promise(() => undefined)
+      const staged = render().staging.add([photo])
+      expect(render().staging.planning).toBe(true)
+      await vi.advanceTimersByTimeAsync(PLAN_GIVES_UP_AFTER_MS)
+      await staged
+      expect(render().staging.planning).toBe(false)
+      expect(render().staging.files).toEqual([])
+      expect(render().find(ELEMENT.conversation.composerNotice('open'))).toBeDefined()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps a file dropped again unchanged as it was staged, without asking its plan again', async () => {
+    const asked = vi.fn(() => Promise.resolve<SendPlan>('as-is'))
+    planSend = asked
+    const released: PickedFile[] = []
+    const ports = memoryPorts()
+    setPorts({
+      ...ports,
+      files: {
+        ...ports.files,
+        releasePreview: (file) => {
+          released.push(file)
+        },
+      },
+    })
+    const first = { ...photo, modifiedMs: 1000, previewUrl: 'session-media://picked/a' }
+    await render().staging.add([first])
+    const again = { ...first, previewUrl: 'session-media://picked/b' }
+    await render().staging.add([again])
+    expect(render().staging.files).toEqual([first])
+    expect(asked).toHaveBeenCalledTimes(1)
+    expect(released).toEqual([again])
+    const edited = { ...first, modifiedMs: 2000, previewUrl: 'session-media://picked/c' }
+    await render().staging.add([edited])
+    expect(render().staging.files).toEqual([edited])
+  })
+
+  it('names a staged file gone before Send and takes it out of the tray', async () => {
+    const notes: PickedFile = { path: '/home/a/notes.txt', name: 'notes.txt' }
+    await render().staging.add([photo, notes])
+    onSend = vi.fn(() => Promise.reject(new Error('attachment is not a readable file')))
+    planSend = (file) => Promise.resolve(file === notes ? 'missing' : 'as-is')
+    press(ELEMENT.conversation.sendButton)
+    await vi.waitFor(() => {
+      expect(render().staging.planning).toBe(false)
+      expect(render().staging.files).toEqual([photo])
+    })
+    expect(render().staging.refused.unopenable).toEqual([notes])
+    expect(render().staging.refused.sendRefused).toBe('none')
+    expect(render().find(ELEMENT.conversation.composerNotice('open'))?.props.detail).toBe(
+      'notes.txt',
+    )
+  })
+
+  it('says a send was refused when every staged file still plans to send', async () => {
+    await render().staging.add([photo])
+    onSend = vi.fn(() => Promise.reject(new Error('refused')))
+    press(ELEMENT.conversation.sendButton)
+    await vi.waitFor(() => {
+      expect(render().staging.refused.sendRefused).toBe('files')
+    })
+    expect(render().staging.files).toEqual([photo])
   })
 
   it('stages picks in the order they were made, whichever plan answers first', async () => {

@@ -434,6 +434,13 @@ Every shared file is checked two or three ways per run, with no synthetic profil
 
 Append one paragraph per decision. Undocumented decisions are what rot.
 
+- **2026-10-28 - libsession makes a rendition only when a viewer asks for one.** The first
+  `fetch_rendition` of a picture with none queues it, ahead of other derived images since somebody
+  is looking, and is refused; `Attachment.hasRendition` turns true by update once it is made.
+  Nothing else asks, so a picture the viewer can open only through a rendition (AVIF) opens on it
+  anyway: the viewer shows it loading and loads the rendition url out of sight, which is the ask
+  on every platform, and draws the rendition once it lands. The fake makes one only when asked.
+
 - **2026-10-16 - A send names its files by path, and libsession reads them.** No bytes cross
   for a send either: `sendMessage` carries each staged pick's path, the name it was picked under
   and its declared type, and libsession stores the message `uploading`, reads each file when its
@@ -474,8 +481,8 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   header since it serves nothing else, and `DECODE_PLAN_VECTORS` holds it and the C++ to one table.
 
 - **2026-10-16 - The viewer draws libsession's rendition; an original file is only exported.**
-  libsession makes a rendition of each displayable picture it caches, after its thumbnail: the
-  whole picture as a JPEG, or a WebP when it has transparency or moves, at most 2048 px and with
+  libsession makes a rendition of a displayable picture it caches, when a viewer asks (see
+  2026-10-28): the whole picture as a JPEG, or a WebP when it has transparency or moves, at most 2048 px and with
   no metadata, reported as `Attachment.hasRendition`. The viewer draws it once there is one and the
   file until then; export always writes the file. It is served like a thumbnail, from the cache
   only, under its own `rendition` authority, and typed by its bytes because libsession says only

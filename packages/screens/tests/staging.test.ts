@@ -3,7 +3,15 @@ import { MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
 import type { SendPlan } from '@session/client'
 import { describe, expect, it } from 'vitest'
 
-import { isFull, letGo, outgoingAttachment, stage as stageWith, unstage } from '#src/staging'
+import {
+  isFull,
+  letGo,
+  outgoingAttachment,
+  recheck,
+  stage as stageWith,
+  unchangedRepick,
+  unstage,
+} from '#src/staging'
 
 /** libsession's answer by name, `as-is` for a name it is not given; `big*` is over the limit. */
 function planOf(plans: Record<string, SendPlan> = {}) {
@@ -190,5 +198,48 @@ describe('what a send hands libsession', () => {
   it('gives libsession a copy the app made, and never the person’s own file', () => {
     expect(outgoingAttachment(pick, MOBILE).takeFile).toBe(true)
     expect(outgoingAttachment(pick, DESKTOP)).not.toHaveProperty('takeFile')
+  })
+})
+
+describe('a file picked again', () => {
+  const REPORT_BYTES = 10
+  const report = {
+    path: '/home/a/report.pdf',
+    name: 'report.pdf',
+    size: REPORT_BYTES,
+    modifiedMs: 1000,
+  }
+  const asOwn = { picksAreCopies: false }
+
+  it('is unchanged at the same path, size and modification time', () => {
+    expect(unchangedRepick([report], { ...report, previewUrl: 'x' }, asOwn)).toBe(true)
+  })
+
+  it('is changed once its size or modification time differs, or either is unknown', () => {
+    expect(unchangedRepick([report], { ...report, modifiedMs: 2000 }, asOwn)).toBe(false)
+    expect(unchangedRepick([report], { ...report, size: REPORT_BYTES + 1 }, asOwn)).toBe(false)
+    expect(unchangedRepick([report], { ...report, modifiedMs: undefined }, asOwn)).toBe(false)
+    expect(unchangedRepick([{ ...report, modifiedMs: undefined }], report, asOwn)).toBe(false)
+  })
+
+  it('is never unchanged where picks are copies, whose staged copy is the only one', () => {
+    expect(unchangedRepick([report], report, { picksAreCopies: true })).toBe(false)
+  })
+})
+
+describe('staged files asked again after a refused send', () => {
+  const kept = { path: '/home/a/kept.jpg', name: 'kept.jpg' }
+  const gone = { path: '/home/a/gone.pdf', name: 'gone.pdf' }
+  const grown = { path: '/home/a/grown.mov', name: 'grown.mov' }
+
+  it('names those their plan now refuses, by why, and keeps the rest', () => {
+    const { refused, gone: dropped } = recheck([
+      [kept, 'reencoded'],
+      [gone, 'missing'],
+      [grown, 'too-large-for-server'],
+    ])
+    expect(refused.unopenable).toEqual([gone])
+    expect(refused.tooLarge).toEqual([grown])
+    expect(dropped).toEqual([gone, grown])
   })
 })

@@ -2,7 +2,15 @@ import { requirePorts, type PickedFile } from '@session/app'
 import type { SendPlan } from '@session/client'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { letGo, stage, unstage, type SendRefusal, type StagingRefusal } from './staging'
+import {
+  letGo,
+  recheck,
+  stage,
+  unchangedRepick,
+  unstage,
+  type SendRefusal,
+  type StagingRefusal,
+} from './staging'
 
 function discard(files: readonly PickedFile[]): void {
   letGo(requirePorts().files, files, { sent: false })
@@ -27,7 +35,8 @@ export interface StagingState {
   sending: boolean
   /**
    * Whether a pick is still waiting on libsession's plan for its files, which are staged or
-   * refused once it answers: no Send until then, or the message would go without them.
+   * refused once it answers: no Send of staged files until then, or the message would go without
+   * the ones still being planned.
    */
   planning: boolean
   beginSend: () => void
@@ -49,7 +58,10 @@ export interface StagingState {
    * owns, but not their previews. Anything staged since stays, a re-pick of a sent path included.
    */
   handOff: (sent: readonly PickedFile[]) => void
-  /** Says a send was refused; what it held stays for another try. */
+  /**
+   * Says a send was refused. A refused send of files asks each one's plan again: any it now
+   * refuses leaves the tray, named; the rest stay for another try, as all of it does otherwise.
+   */
   refuseSend: (what: Exclude<SendRefusal, 'none'>) => void
   dismiss: (kind: keyof StagingRefusal) => void
 }
@@ -57,13 +69,36 @@ export interface StagingState {
 /** libsession's plan for sending a file, which says whether it may be staged. */
 export type PlanSend = (file: PickedFile) => Promise<SendPlan>
 
+/**
+ * How long a plan may take before its file counts as unreadable: a header read on a stalled
+ * network mount never answers, and would hold Send for as long as the conversation stays open.
+ * The same bound the staged thumbnail's decode has, for the same reason.
+ */
+export const PLAN_GIVES_UP_AFTER_MS = 30_000
+
 /** Asked at once, and a planner that throws rather than rejects cannot leave `planning` up. */
 function asked(planSend: PlanSend, file: PickedFile): Promise<SendPlan> {
+  let planned: Promise<SendPlan>
   try {
-    return planSend(file)
+    planned = planSend(file)
   } catch {
     return Promise.reject(new Error('the send planner threw'))
   }
+  return new Promise((resolve, reject) => {
+    const giveUp = setTimeout(() => {
+      reject(new Error('the send plan did not answer'))
+    }, PLAN_GIVES_UP_AFTER_MS)
+    planned.then(
+      (plan) => {
+        clearTimeout(giveUp)
+        resolve(plan)
+      },
+      (error: unknown) => {
+        clearTimeout(giveUp)
+        reject(error instanceof Error ? error : new Error(String(error)))
+      },
+    )
+  })
 }
 
 /**
@@ -129,13 +164,22 @@ export function useStaging(planSend: PlanSend): StagingState {
   )
 
   const add = useCallback(
-    (picked: readonly PickedFile[], unreadable = 0): Promise<void> => {
+    (everything: readonly PickedFile[], unreadable = 0): Promise<void> => {
       // A cancelled picker hands back nothing, which is not a pick that should clear a notice.
-      if (picked.length === 0 && unreadable === 0) return Promise.resolve()
+      if (everything.length === 0 && unreadable === 0) return Promise.resolve()
       if (!mounted.current) {
-        discard(picked)
+        discard(everything)
         return Promise.resolve()
       }
+      // A file dropped again unchanged keeps its entry, preview and plan: replacing it would blank
+      // its tile while the new preview loads and hold Send for a plan that cannot differ.
+      const { picksAreCopies } = requirePorts().files
+      const repicked = everything.filter((file) =>
+        unchangedRepick(latest.current, file, { picksAreCopies }),
+      )
+      discard(repicked)
+      const picked = everything.filter((file) => !repicked.includes(file))
+      if (picked.length === 0 && unreadable === 0) return Promise.resolve()
       setPlanning((count) => count + 1)
       const plans = Promise.all(
         picked.map((file) =>
@@ -206,9 +250,43 @@ export function useStaging(planSend: PlanSend): StagingState {
     },
     refuseSend: (what) => {
       if (!mounted.current) return
-      setRefused({ ...NOTHING_REFUSED, sendRefused: what })
-      setRefusal((count) => count + 1)
       setSending(false)
+      const sayRefused = () => {
+        setRefused({ ...NOTHING_REFUSED, sendRefused: what })
+        setRefusal((count) => count + 1)
+      }
+      if (what === 'text') {
+        sayRefused()
+        return
+      }
+      // libsession says only that a file would not do, not which: each file's plan says which,
+      // so the person is told and the tray stops holding a file every retry would fail on.
+      const held = latest.current
+      setPlanning((count) => count + 1)
+      void Promise.all(
+        held.map((file) =>
+          asked(plan.current, file).then(
+            (answer): [PickedFile, SendPlan] => [file, answer],
+            (): [PickedFile, SendPlan] => [file, 'unreadable'],
+          ),
+        ),
+      )
+        .then((answers) => {
+          if (!mounted.current) return
+          const { refused: named, gone } = recheck(answers)
+          if (gone.length === 0) {
+            sayRefused()
+            return
+          }
+          discard(gone)
+          latest.current = latest.current.filter((file) => !gone.includes(file))
+          setFiles(latest.current)
+          setRefused({ ...NOTHING_REFUSED, ...named })
+          setRefusal((count) => count + 1)
+        })
+        .finally(() => {
+          setPlanning((count) => count - 1)
+        })
     },
     dismiss: (kind) => {
       setRefused((current) => ({ ...current, [kind]: NOTHING_REFUSED[kind] }))

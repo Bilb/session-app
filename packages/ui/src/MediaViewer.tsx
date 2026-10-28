@@ -32,6 +32,8 @@ export interface MediaViewerProps {
   unavailableLabel: string
   /** Shown in place of a picture whose bytes did not load, which an image does not retry. */
   failedLabel: string
+  /** Already worded: shown while an item is `preparing`. */
+  preparingLabel: string
   closeLabel: string
   exportLabel: string
   previousLabel: string
@@ -124,6 +126,7 @@ export function MediaViewer({
   positionLabel,
   unavailableLabel,
   failedLabel,
+  preparingLabel,
   closeLabel,
   exportLabel,
   previousLabel,
@@ -183,7 +186,17 @@ export function MediaViewer({
                 setBox({ width: measured.width, height: measured.height })
               }}
             >
-              {drawn === null ? (
+              {drawn === null && current?.preparing != null ? (
+                <>
+                  <Text size="$body" color="$textSecondary">
+                    {preparingLabel}
+                  </Text>
+                  {/* Out of sight: loading it is the ask, and what it draws is not this. */}
+                  <YStack position="absolute" width={1} height={1} opacity={0} aria-hidden>
+                    <Image uri={current.preparing} width={1} height={1} fit="contain" />
+                  </YStack>
+                </>
+              ) : drawn === null ? (
                 <Text size="$body" color="$textSecondary">
                   {failed ? failedLabel : unavailableLabel}
                 </Text>

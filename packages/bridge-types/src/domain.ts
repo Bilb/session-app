@@ -123,8 +123,10 @@ export const ATTACHMENT_NOT_FOUND: AttachmentError = 'attachment.not_found'
 /** The file is no longer at the path it was attached from. Reported on an upload, never a fetch. */
 export const ATTACHMENT_FILE_MISSING: AttachmentError = 'attachment.file_missing'
 /**
- * A picture too large for the file server even re-encoded at libsession's smallest sendable edge.
- * Reported on an upload, and leaves the message `unsendable`: a retry would fail the same way.
+ * Too large to send: a picture too large for the file server even re-encoded at libsession's
+ * smallest sendable edge, a file sent as it is or as its original that does not fit the file
+ * server's limit, or a picture too large to decode. Reported on an upload, and leaves the message
+ * `unsendable`: a retry would fail the same way.
  */
 export const ATTACHMENT_TOO_LARGE: AttachmentError = 'attachment.too_large'
 /**
@@ -208,8 +210,9 @@ export interface Attachment {
    * Whether libsession holds a rendition of this attachment: the whole picture as a JPEG or WebP
    * (animated WebP for an animation) within the rendition edge (2048 px on a side unless set).
    * It is re-encoded without metadata, or is the original itself when that is already an upright
-   * JPEG or WebP within the edge, metadata included. Made after the thumbnail and kept, evicted
-   * and reported exactly as `hasThumbnail` is.
+   * JPEG or WebP within the edge, metadata included. Made only once asked for: the first
+   * `fetchRendition` of a picture with none queues it and is refused, and this turns true by
+   * update when it is made. Kept, evicted and reported as `hasThumbnail` is.
    *
    * What a viewer draws, through the media scheme's `rendition` path; export still writes the file.
    */

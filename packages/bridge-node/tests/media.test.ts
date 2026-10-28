@@ -334,7 +334,7 @@ describeAddon('addon', () => {
         'answers a downloaded picture with a JPEG thumbnail of its shape, within the edge, at the size the attachment gives':
           OFFLINE_ATTACHMENTS,
         'has no thumbnail or rendition of a downloaded PDF': OFFLINE_ATTACHMENTS,
-        'answers a downloaded picture with a JPEG or WebP rendition within the edge':
+        'makes a rendition of a downloaded picture once asked, a JPEG or WebP within the edge':
           OFFLINE_ATTACHMENTS,
         'thumbnails a downloaded original file but makes no rendition of it': OFFLINE_ATTACHMENTS,
         'answers a downloaded AVIF with a JPEG thumbnail, though no viewer here opens one':

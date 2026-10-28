@@ -72,7 +72,7 @@ function SettledRow({ message, attachment, onAccent }: RowProps) {
   const state: FileRowState = fetched.state
 
   const fit = viewerFit(attachment)
-  const opens = fit === 'opens'
+  const opens = fit !== 'exports'
   // Absent once expired: there is nothing to show and nothing a tap could fetch.
   const thumbnail: FileRowThumbnail | undefined =
     state === 'unavailable' || !leadsWithPicture(attachment)

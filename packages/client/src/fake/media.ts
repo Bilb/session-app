@@ -192,8 +192,9 @@ export function createFakeMediaSource(
     },
     async fetchRendition(ref) {
       refuseUnknown(client, ref)
-      // As the shim does, in its words.
+      // As the shim does, in its words; and as libsession, the ask is what makes one.
       if (!client.hasRendition(ref)) {
+        client.askRendition(ref)
         throw new Error(
           `attachment ${String(ref.index)} of message ${String(ref.messageId)} has no rendition`,
         )

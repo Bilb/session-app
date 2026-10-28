@@ -106,6 +106,13 @@ describe('showcase', () => {
     expect(resumed?.attachments.every((a) => a.uploaded)).toBe(true)
     // Each file not up before the retry reports its size once its upload does.
     expect(resumed?.attachments.every((a) => a.sizeBytes !== undefined)).toBe(true)
+    // Sent means sent: the recipient has it, with every file.
+    const bobClient = clients['Bob']
+    if (!bobClient) throw new Error('fixture did not produce a client for Bob')
+    const aliceId = world.account('Alice').sessionId
+    const received = (await bobClient.getMessages(aliceId, { limit: 100 })).messages
+    const arrived = received.find((m) => m.body === 'File 31 of 32 failed' && !m.outgoing)
+    expect(arrived?.attachments).toHaveLength(failed.attachments.length)
   })
 
   it('sends a failed message whose files are all up without uploading again', async () => {
