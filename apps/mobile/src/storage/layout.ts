@@ -13,7 +13,7 @@ export interface StorageRootPaths {
   logs: string
   /** Decrypted copies on their way out of the app, to the share sheet. */
   exports: string
-  /** Copies of what was picked, until the message that takes them has uploaded them. */
+  /** Copies of what was picked, until a send takes them. */
   staged: string
 }
 

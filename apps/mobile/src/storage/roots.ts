@@ -123,7 +123,7 @@ export function exportsDirectory(): Directory {
   return directory(roots.exports)
 }
 
-/** Where picked files are copied until their message has uploaded them, created if missing. */
+/** Where picked files are copied until a send takes them, created if missing. */
 export function stagedDirectory(): Directory {
   return directory(roots.staged)
 }

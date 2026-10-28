@@ -23,8 +23,8 @@ enum ProtectedRoots {
     let logs: URL
     /// Decrypted copies of attachments on their way to the share sheet.
     let exports: URL
-    /// Copies of what was picked, until their message has uploaded them. Not in Caches: iOS may
-    /// empty that before libsession reads the file.
+    /// Copies of what was picked, until a send takes them. Not in Caches: iOS may empty that while
+    /// they are still staged.
     let staged: URL
     /// False when the app-group container was unavailable and Application Support was used.
     let inAppGroup: Bool
