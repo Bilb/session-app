@@ -1,5 +1,12 @@
-import type { ReactNode } from 'react'
-import { Modal as NativeModal } from 'react-native'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  Animated,
+  Easing,
+  Modal as NativeModal,
+  Platform,
+  StyleSheet,
+  useWindowDimensions,
+} from 'react-native'
 import { ScrollView, XStack, YStack, useMedia } from 'tamagui'
 
 import type { ElementId } from '@session/test-ids'
@@ -9,6 +16,11 @@ import { Icon } from './Icon'
 import { useScreenInsets } from './screenInsets'
 import { SHEET_MAX_HEIGHT, SHEET_MAX_WIDTH, SHEET_RADIUS } from './sheetLayout'
 import { Text } from './Text'
+
+/** About what the platforms' own modal transitions take. */
+const SHEET_TRANSITION_MS = 250
+
+const cubic = (t: number) => t * t * t
 
 export interface SheetProps {
   open: boolean
@@ -63,91 +75,126 @@ export function Sheet({
 }: SheetProps) {
   const wide = useMedia().gtSm
   const insets = useScreenInsets()
+  const { height: windowHeight } = useWindowDimensions()
+  // Mounted past `open` going false, for as long as it takes to leave.
+  const [shown, setShown] = useState(open)
+  const progress = useRef(new Animated.Value(open ? 1 : 0)).current
+
+  useEffect(() => {
+    if (open) setShown(true)
+    const run = Animated.timing(progress, {
+      toValue: open ? 1 : 0,
+      duration: SHEET_TRANSITION_MS,
+      easing: open ? Easing.out(cubic) : Easing.in(cubic),
+      useNativeDriver: Platform.OS !== 'web',
+    })
+    run.start(({ finished }) => {
+      if (finished && !open) setShown(false)
+    })
+    return () => {
+      run.stop()
+    }
+  }, [open, progress])
+
+  // The modal itself does not move: its own slide would carry the scrim up with the sheet. The
+  // scrim fades where it already covers the screen, and only the sheet slides up, on a phone; a
+  // dialog fades with it.
+  const arrival = wide
+    ? { opacity: progress }
+    : {
+        transform: [
+          {
+            translateY: progress.interpolate({
+              inputRange: [0, 1],
+              outputRange: [windowHeight, 0],
+            }),
+          },
+        ],
+      }
 
   return (
-    <NativeModal
-      visible={open}
-      transparent
-      animationType={wide ? 'fade' : 'slide'}
-      onRequestClose={onClose}
-    >
+    <NativeModal visible={shown} transparent animationType="none" onRequestClose={onClose}>
       {/* The scrim is what closes, as a sibling behind the sheet rather than an ancestor of it: a
           press handler on an ancestor claims every touch that starts in the sheet, and the list
           inside then cannot start a scroll from a slow drag. */}
-      <YStack
-        fullscreen
-        backgroundColor="$scrim"
-        // Hidden from a reader: it is a second way to close, and Close is already announced.
-        aria-hidden
-        onPress={onClose}
-        testID={scrimTestID}
-      />
-      <YStack
-        fullscreen
-        alignItems="center"
-        justifyContent={wide ? 'center' : 'flex-end'}
-        {...(wide ? { padding: '$xl' } : {})}
-        pointerEvents="box-none"
-      >
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: progress }]}>
         <YStack
-          width="100%"
-          maxHeight={SHEET_MAX_HEIGHT}
-          {...(wide ? { maxWidth: SHEET_MAX_WIDTH } : {})}
-          borderTopLeftRadius={SHEET_RADIUS}
-          borderTopRightRadius={SHEET_RADIUS}
-          // Square against the bottom of the window on a phone, because there is nothing under it
-          // to round away from.
-          {...(wide
-            ? { borderBottomLeftRadius: SHEET_RADIUS, borderBottomRightRadius: SHEET_RADIUS }
-            : { paddingBottom: insets.bottom })}
-          backgroundColor="$backgroundSecondary"
-          testID={testID}
+          fullscreen
+          backgroundColor="$scrim"
+          // Hidden from a reader: it is a second way to close, and Close is already announced.
+          aria-hidden
+          onPress={onClose}
+          testID={scrimTestID}
+        />
+      </Animated.View>
+      <Animated.View style={[StyleSheet.absoluteFill, arrival]} pointerEvents="box-none">
+        <YStack
+          fullscreen
+          alignItems="center"
+          justifyContent={wide ? 'center' : 'flex-end'}
+          {...(wide ? { padding: '$xl' } : {})}
+          pointerEvents="box-none"
         >
-          <XStack alignItems="center" gap="$xs" paddingHorizontal="$md" paddingVertical="$sm">
-            <Text flex={1} size="$bodyLarge" weight="bold" numberOfLines={1} userSelect="none">
-              {title}
-            </Text>
-            <Button
-              variant="ghost"
-              size="md"
-              circular
-              accessibilityLabel={closeLabel}
-              testID={closeTestID}
-              onPress={onClose}
-              icon={<Icon name="x" size="lg" color="$textPrimary" />}
-            />
-          </XStack>
+          <YStack
+            width="100%"
+            maxHeight={SHEET_MAX_HEIGHT}
+            {...(wide ? { maxWidth: SHEET_MAX_WIDTH } : {})}
+            borderTopLeftRadius={SHEET_RADIUS}
+            borderTopRightRadius={SHEET_RADIUS}
+            // Square against the bottom of the window on a phone, because there is nothing under it
+            // to round away from.
+            {...(wide
+              ? { borderBottomLeftRadius: SHEET_RADIUS, borderBottomRightRadius: SHEET_RADIUS }
+              : { paddingBottom: insets.bottom })}
+            backgroundColor="$backgroundSecondary"
+            testID={testID}
+          >
+            <XStack alignItems="center" gap="$xs" paddingHorizontal="$md" paddingVertical="$sm">
+              <Text flex={1} size="$bodyLarge" weight="bold" numberOfLines={1} userSelect="none">
+                {title}
+              </Text>
+              <Button
+                variant="ghost"
+                size="md"
+                circular
+                accessibilityLabel={closeLabel}
+                testID={closeTestID}
+                onPress={onClose}
+                icon={<Icon name="x" size="lg" color="$textPrimary" />}
+              />
+            </XStack>
 
-          {/* The body scrolls and the footer does not, so a long set cannot push the one control
+            {/* The body scrolls and the footer does not, so a long set cannot push the one control
               that acts on all of it off the bottom of the screen.
 
               Chrome makes a scroller with no tab-focusable children focusable itself, and the
               rows are `role="button"` without a tabindex - so the body took focus and drew the
               UA's ring round all of it. */}
-          {bodyIsList ? (
-            children
-          ) : (
-            <ScrollView outlineStyle="none">
-              <YStack paddingHorizontal="$md" paddingBottom="$sm">
-                {children}
-              </YStack>
-            </ScrollView>
-          )}
+            {bodyIsList ? (
+              children
+            ) : (
+              <ScrollView outlineStyle="none">
+                <YStack paddingHorizontal="$md" paddingBottom="$sm">
+                  {children}
+                </YStack>
+              </ScrollView>
+            )}
 
-          {footer === undefined ? null : (
-            // A rule above it, because the body scrolls under: without one the row cut off at the
-            // scroll boundary runs straight into the footer and reads as a broken row.
-            <YStack
-              paddingHorizontal="$md"
-              paddingBottom="$sm"
-              borderTopWidth={1}
-              borderTopColor="$bordersColor"
-            >
-              {footer}
-            </YStack>
-          )}
+            {footer === undefined ? null : (
+              // A rule above it, because the body scrolls under: without one the row cut off at the
+              // scroll boundary runs straight into the footer and reads as a broken row.
+              <YStack
+                paddingHorizontal="$md"
+                paddingBottom="$sm"
+                borderTopWidth={1}
+                borderTopColor="$bordersColor"
+              >
+                {footer}
+              </YStack>
+            )}
+          </YStack>
         </YStack>
-      </YStack>
+      </Animated.View>
       {overlay}
     </NativeModal>
   )
