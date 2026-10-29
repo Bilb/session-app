@@ -916,15 +916,17 @@ export class FakeAccount {
     const now = this.world?.now() ?? Date.now()
     const messageId = nextId()
     // As libsession leaves them: an uploaded file is in the cache, kept there by the upload, and
-    // one that is not up yet has no size, which is the uploaded pointer's to report.
+    // one that is not up yet is libsession's own copy, with no size, which is the uploaded
+    // pointer's to report. An unsendable seed stands for a file gone before its copy was made.
     const seeded = attachments.map((attachment, index) => {
+      const key = keyOf({ messageId, index: attachment.index })
       if (index < uploaded) {
-        this.cached.add(keyOf({ messageId, index: attachment.index }))
+        this.cached.add(key)
         return { ...attachment, uploaded: true }
       }
       const { sizeBytes, ...rest } = attachment
-      if (sizeBytes !== undefined)
-        this.unreportedSizes.set(keyOf({ messageId, index: attachment.index }), sizeBytes)
+      if (sendState !== 'unsendable') this.taken.set(key, sizeBytes)
+      if (sizeBytes !== undefined) this.unreportedSizes.set(key, sizeBytes)
       return { ...rest, uploaded: false }
     })
     return this.addMessage(id, {

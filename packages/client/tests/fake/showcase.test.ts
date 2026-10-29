@@ -73,6 +73,22 @@ describe('showcase', () => {
     expect(arrived?.attachments).toHaveLength(failed.attachments.length)
   })
 
+  it('holds its own copy of a seeded file not up yet, thumbnailed, but none of a missing one', async () => {
+    const { world, clients } = showcase()
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const messages = (await alice.getMessages(world.account('Bob').sessionId, { limit: 100 }))
+      .messages
+    const queued = messages
+      .find((m) => m.body === 'Still uploading, one at a time')
+      ?.attachments.find((a) => !a.uploaded && a.contentType === 'image/jpeg')
+    expect([queued?.availability, queued?.hasThumbnail]).toEqual(['cached', true])
+    const missing = messages
+      .find((m) => m.sendState === 'unsendable')
+      ?.attachments.find((a) => !a.uploaded)
+    expect([missing?.availability, missing?.hasThumbnail]).toEqual(['absent', false])
+  })
+
   it('sends a failed message whose files are all up without uploading again', async () => {
     const { world, clients } = showcase()
     const alice = clients['Alice']
