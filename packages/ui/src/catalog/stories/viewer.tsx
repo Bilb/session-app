@@ -36,7 +36,7 @@ function Viewer({ set, index }: ViewerRow) {
         onIndex={noop}
         onClose={noop}
         onExport={noop}
-        positionLabel={`${String(index + 1)} / ${String(set.length)}`}
+        positionLabel={`${String(index + 1)} of ${String(set.length)}`}
         unavailableLabel="This file type is not supported."
         failedLabel="Unable to open file."
         preparingLabel="Loading..."

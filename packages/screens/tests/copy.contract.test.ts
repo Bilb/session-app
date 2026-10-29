@@ -148,6 +148,7 @@ describe('screen copy', () => {
       'exportFailed',
       'previous',
       'attachmentImagePosition',
+      'attachmentViewerPosition',
       'attachmentNameAndMore',
       'attachmentsErrorLimit',
       'attachmentsErrorImageTooLarge',
