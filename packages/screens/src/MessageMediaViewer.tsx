@@ -8,7 +8,13 @@ import { useMemo, useRef } from 'react'
 import { fetchOf } from './attachmentFetch'
 import { exportOne } from './exportAttachment'
 import { useExportFeedback } from './useExportFeedback'
-import { heldItem, viewableAttachments, viewerItem, type HeldItem } from './viewableAttachments'
+import {
+  heldItem,
+  renditionSettled,
+  viewableAttachments,
+  viewerItem,
+  type HeldItem,
+} from './viewableAttachments'
 
 /** An open viewer: which message, and the attachment's index in that message. */
 export interface ViewerTarget {
@@ -54,7 +60,7 @@ function MessageViewer({
         heldItem(
           held.current,
           `${String(target.messageId)}:${String(attachment.index)}`,
-          attachment.hasRendition,
+          renditionSettled(attachment),
           () => viewerItem(target.messageId, attachment),
         ),
       ),

@@ -28,6 +28,7 @@ function attachment(index: number, over: Partial<Attachment>): Attachment {
     thumbnailWidthPx: 0,
     thumbnailHeightPx: 0,
     hasRendition: false,
+    renditionRefused: false,
     originalFile: false,
     uploaded: true,
     availability: 'absent',

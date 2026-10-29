@@ -222,6 +222,13 @@ export interface Attachment {
    */
   hasRendition: boolean
   /**
+   * libsession will make no rendition of this picture: past its pixel limits, a header it cannot
+   * read, or a re-encode that failed. Settled once it has read the cached file, so only ever true
+   * while `availability` is `cached`, and never together with `hasRendition`. Asking again does
+   * nothing until a libsession that decodes more replaces this one.
+   */
+  renditionRefused: boolean
+  /**
    * The sender sent the file exactly as it was, metadata included. Offered only as a file to
    * export, never opened in the viewer, though its thumbnail is still drawn.
    */

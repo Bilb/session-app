@@ -8,6 +8,8 @@ export type MediaViewerItem = {
    * request is what asks for it. The caller swaps in an item with a `uri` once it exists.
    */
   preparing?: string | null | undefined
+  /** Known not to draw: what it needed will never be made. Shown as a picture that failed. */
+  failed?: boolean | undefined
 }
 
 /** The first of an item's urls that has not failed, or null once none is left. */

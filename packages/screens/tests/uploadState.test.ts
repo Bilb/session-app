@@ -19,6 +19,7 @@ function attachment(index: number, uploaded: boolean): Attachment {
     thumbnailWidthPx: 0,
     thumbnailHeightPx: 0,
     hasRendition: false,
+    renditionRefused: false,
     originalFile: false,
     uploaded,
     availability: 'cached',

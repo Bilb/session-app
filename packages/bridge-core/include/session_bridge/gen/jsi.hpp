@@ -375,6 +375,7 @@ struct JSIConverter<::session_bridge::Attachment> final {
                 JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "thumbnailWidthPx"))),
                 JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "thumbnailHeightPx"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "hasRendition"))),
+                JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "renditionRefused"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "originalFile"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "uploaded"))),
                 JSIConverter<::session_bridge::AttachmentAvailability>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "availability"))),
@@ -401,6 +402,7 @@ struct JSIConverter<::session_bridge::Attachment> final {
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "thumbnailWidthPx"), JSIConverter<double>::toJSI(runtime, arg.thumbnail_width_px));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "thumbnailHeightPx"), JSIConverter<double>::toJSI(runtime, arg.thumbnail_height_px));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "hasRendition"), JSIConverter<bool>::toJSI(runtime, arg.has_rendition));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "renditionRefused"), JSIConverter<bool>::toJSI(runtime, arg.rendition_refused));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "originalFile"), JSIConverter<bool>::toJSI(runtime, arg.original_file));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "uploaded"), JSIConverter<bool>::toJSI(runtime, arg.uploaded));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "availability"), JSIConverter<::session_bridge::AttachmentAvailability>::toJSI(runtime, arg.availability));

@@ -379,6 +379,7 @@ struct Codec<::session_bridge::Attachment> {
         obj.Set("thumbnailWidthPx", Codec<double>::to(env, value.thumbnail_width_px));
         obj.Set("thumbnailHeightPx", Codec<double>::to(env, value.thumbnail_height_px));
         obj.Set("hasRendition", Codec<bool>::to(env, value.has_rendition));
+        obj.Set("renditionRefused", Codec<bool>::to(env, value.rendition_refused));
         obj.Set("originalFile", Codec<bool>::to(env, value.original_file));
         obj.Set("uploaded", Codec<bool>::to(env, value.uploaded));
         obj.Set("availability", Codec<::session_bridge::AttachmentAvailability>::to(env, value.availability));
@@ -403,6 +404,7 @@ struct Codec<::session_bridge::Attachment> {
                 Codec<double>::from(obj.Get("thumbnailWidthPx"), "Attachment.thumbnailWidthPx"),
                 Codec<double>::from(obj.Get("thumbnailHeightPx"), "Attachment.thumbnailHeightPx"),
                 Codec<bool>::from(obj.Get("hasRendition"), "Attachment.hasRendition"),
+                Codec<bool>::from(obj.Get("renditionRefused"), "Attachment.renditionRefused"),
                 Codec<bool>::from(obj.Get("originalFile"), "Attachment.originalFile"),
                 Codec<bool>::from(obj.Get("uploaded"), "Attachment.uploaded"),
                 Codec<::session_bridge::AttachmentAvailability>::from(obj.Get("availability"), "Attachment.availability"),

@@ -240,6 +240,7 @@ describeAddon('addon', () => {
         'announces an attachment as fetching while its download runs': OFFLINE_ATTACHMENTS,
         'joins a running download, and ends it once per handler': OFFLINE_ATTACHMENTS,
         'fetches an arriving image unasked once told to fetch images': OFFLINE_ATTACHMENTS,
+        'says when it will make no rendition of a picture it holds': OFFLINE_ATTACHMENTS,
         'exports beside a file already written rather than over it, unless told to replace':
           OFFLINE_ATTACHMENTS,
         'fetches an uncached export into the cache, reading as fetching meanwhile':

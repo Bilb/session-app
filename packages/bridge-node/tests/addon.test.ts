@@ -532,6 +532,8 @@ describeEcho('the generated converters', () => {
     thumbnailWidthPx: 540,
     thumbnailHeightPx: 720,
     hasRendition: true,
+    // Never with a rendition from libsession; set here only so the frame carries both values.
+    renditionRefused: true,
     originalFile: true,
     uploaded: true,
     availability: 'notFound',
@@ -547,6 +549,7 @@ describeEcho('the generated converters', () => {
     thumbnailWidthPx: 0,
     thumbnailHeightPx: 0,
     hasRendition: false,
+    renditionRefused: false,
     originalFile: false,
     uploaded: false,
     availability: 'absent',

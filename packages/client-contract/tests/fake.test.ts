@@ -33,6 +33,7 @@ const ARRIVING_IMAGE: Attachment = {
   thumbnailWidthPx: 0,
   thumbnailHeightPx: 0,
   hasRendition: false,
+  renditionRefused: false,
   originalFile: false,
   uploaded: true,
   availability: 'absent',
@@ -118,7 +119,12 @@ const harness: ContractHarness = {
     if (!alice) throw new Error('fixture did not produce a client')
     const conversationId = world.account('Bob').sessionId
     const account = world.account('Alice')
-    const withOne = account.messages(conversationId).find((m) => m.attachments.length > 0)
+    const withOne =
+      options.pastPixelLimits === true
+        ? account.deliverFrom(world.account('Bob'), 'Huge', world.now(), [
+            { ...ARRIVING_IMAGE, width: 20_000, height: 20_000 },
+          ])
+        : account.messages(conversationId).find((m) => m.attachments.length > 0)
     if (!withOne) throw new Error('fixture did not seed an attachment')
     return Promise.resolve({
       client: alice,

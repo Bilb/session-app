@@ -17,8 +17,8 @@ export function isViewable(attachment: Attachment): boolean {
 /**
  * What the viewer makes of it: it opens a viewable picture, or one libsession made a rendition of
  * (AVIF). A picture libsession can make one of but has not yet awaits it: libsession makes one only
- * when asked, so the viewer opens on it and asks. One its sender sent as the original file,
- * metadata and all, exports.
+ * when asked, so the viewer opens on it and asks; one it refused opens on the failed state. One its
+ * sender sent as the original file, metadata and all, exports.
  */
 export type ViewerFit = 'opens' | 'awaitsRendition' | 'exports'
 
@@ -81,9 +81,11 @@ export function viewableAttachments(message: Message): Attachment[] {
 export function viewerItem(messageId: number, attachment: Attachment): MediaViewerItem {
   const ref = { messageId, index: attachment.index }
   const { media } = requirePorts()
-  // libsession makes a rendition only when one is asked for, and loading its url is the ask.
   if (viewerFit(attachment) === 'awaitsRendition')
-    return { uri: null, preparing: media.renditionUrlFor(ref) }
+    // libsession makes a rendition only when one is asked for, and loading its url is the ask.
+    return attachment.renditionRefused
+      ? { uri: null, failed: true }
+      : { uri: null, preparing: media.renditionUrlFor(ref) }
   if (!attachment.hasRendition) return { uri: media.urlFor(ref) }
   return {
     uri: media.renditionUrlFor(ref),
@@ -91,26 +93,32 @@ export function viewerItem(messageId: number, attachment: Attachment): MediaView
   }
 }
 
-/** An item an open viewer holds, and whether it was made with a rendition to draw. */
+/** An item an open viewer holds, and whether libsession had settled its rendition when made. */
 export interface HeldItem {
   item: MediaViewerItem
-  hadRendition: boolean
+  settled: boolean
+}
+
+/** Whether libsession has said all it will about the rendition: made, or refused. */
+export function renditionSettled(attachment: Attachment): boolean {
+  return attachment.hasRendition || attachment.renditionRefused
 }
 
 /**
  * The item an open viewer was first handed for `key`, so a rendition evicted mid-view does not
- * swap the url under a drawn picture, which blanks a frame on native. A rendition landing replaces
- * an item made without one, once: it can replace what was drawn first, such as desktop's thumbnail.
+ * swap the url under a drawn picture, which blanks a frame on native. libsession settling the
+ * rendition replaces an item made before, once: a rendition landing can replace what was drawn
+ * first, such as desktop's thumbnail, and a refusal ends a wait for one.
  */
 export function heldItem(
   held: Map<string, HeldItem>,
   key: string,
-  hasRendition: boolean,
+  settled: boolean,
   make: () => MediaViewerItem,
 ): MediaViewerItem {
   const kept = held.get(key)
-  if (kept !== undefined && (kept.hadRendition || !hasRendition)) return kept.item
+  if (kept !== undefined && (kept.settled || !settled)) return kept.item
   const item = make()
-  held.set(key, { item, hadRendition: hasRendition })
+  held.set(key, { item, settled })
   return item
 }

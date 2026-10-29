@@ -57,9 +57,10 @@ export interface ContractHarness {
    * an incoming attachment cannot produce one for any scenario, and skipping the scenarios is
    * then the honest answer rather than a fixture that quietly has none.
    *
-   * `expired` asks for one the file server no longer holds.
+   * `expired` asks for one the file server no longer holds. `pastPixelLimits` asks for a JPEG
+   * past libsession's decode limits, which it caches but makes no thumbnail or rendition of.
    */
-  withAttachment(options?: { expired?: boolean }): Promise<{
+  withAttachment(options?: { expired?: boolean; pastPixelLimits?: boolean }): Promise<{
     client: SessionClient
     conversationId: string
     messageId: number
@@ -1342,7 +1343,36 @@ export function runSessionClientContract(
         (m) => m.id === messageId,
       )?.attachments[0]
       expect(image?.availability).toBe('cached')
+      expect(image?.renditionRefused).toBe(false)
       seen.stop()
+    })
+
+    it('says when it will make no rendition of a picture it holds', async () => {
+      const { client, conversationId, messageId, index, settle } = await harness.withAttachment({
+        pastPixelLimits: true,
+      })
+      const held = async () =>
+        (await client.getMessages(conversationId)).messages
+          .find((m) => m.id === messageId)
+          ?.attachments.find((a) => a.index === index)
+      expect((await held())?.renditionRefused).toBe(false)
+
+      const running = client.downloadAttachment(messageId, index)
+      await settle()
+      await running
+      // libsession settles it as it reads the cached file's header, and says so by update.
+      for (let round = 0; round < 100 && (await held())?.renditionRefused !== true; round += 1) {
+        await settle()
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      }
+
+      const picture = await held()
+      expect(picture?.availability).toBe('cached')
+      expect([picture?.renditionRefused, picture?.hasRendition, picture?.hasThumbnail]).toEqual([
+        true,
+        false,
+        false,
+      ])
     })
 
     it('shows a message as a gallery only when every attachment is an image libsession displays', async () => {

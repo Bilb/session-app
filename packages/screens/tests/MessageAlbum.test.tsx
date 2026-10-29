@@ -51,6 +51,7 @@ function picture(index: number, filename?: string): Attachment {
     thumbnailWidthPx: 0,
     thumbnailHeightPx: 0,
     hasRendition: false,
+    renditionRefused: false,
     originalFile: false,
     uploaded: true,
     availability: 'absent',
