@@ -18,7 +18,7 @@ set -euo pipefail
 # of build tree, and nothing on an Apple silicon machine will ever load it.
 #
 # `simulator` is the debug loop's fast path, and `device` its opposite; both leave an artefact with
-# one slice in it, so what they are for is a rebuild, not a first build.
+# one slice in it, so what they are for is a rebuild while changing libsession, not a first build.
 #
 # **If you are here writing the release or archive scripts:** there are none yet, and an archive
 # wants `device` rather than the default -- a simulator slice in a shipped binary is dead weight
@@ -42,26 +42,7 @@ case "${1:-both}" in
     *) echo "usage: $0 [both|simulator|device|all]" >&2; exit 1 ;;
 esac
 
-cd "$libsession"
-env ARCHS="$archs" PLATFORM_NAME="$platform" CONFIGURATION=Debug \
-    ./utils/ios.sh "" true true true false
-
-framework="$libsession/build-ios/libsession-util.xcframework"
-[ -d "$framework" ] || { echo "no xcframework at $framework" >&2; exit 1; }
-
-mkdir -p "$here/../ios"
-rm -rf "$here/../ios/libsession-util.xcframework"
-cp -R "$framework" "$here/../ios/libsession-util.xcframework"
-echo "xcframework in place: packages/bridge-rn/ios/libsession-util.xcframework"
-
-# The shim, built by CMake for each slice.
-#
-# CocoaPods compiles only what lives inside the pod directory - a source glob reaching up into
-# packages/bridge-core is dropped in silence, and the first sign of it is our own ClientBridge
-# symbols missing at link time. So bridge-core is a CMake project here exactly as it is for the
-# Node addon and for Android, and the pod vendors what it produces.
-
-# Which slices libsession just built, named as its own build directories are.
+# Which slices libsession builds, named as its own build directories are.
 slices=""
 for arch in $archs; do
     case "$platform" in
@@ -73,6 +54,67 @@ case "$platform" in
     iphonesimulator) ;;
     *) case " $archs " in *" arm64 "*) slices="$slices ios-arm64" ;; esac ;;
 esac
+
+. "$here/../../bridge-core/scripts/libsession-cache.sh"
+
+hashes=$(_ls_hashes "$libsession")
+
+# Each slice through the per-machine cache, with the arguments utils/ios.sh gives
+# static-bundle.sh: the cache cannot run ios.sh's own build, which builds every slice in one tree
+# of its own. Its merge and xcframework steps still run below, on what the cache produced.
+deployment="${IPHONEOS_DEPLOYMENT_TARGET:-13}"
+toolchain="$libsession/external/ios-cmake/ios.toolchain.cmake"
+target="xcode$(xcodebuild -version | awk '/Build version/ {print $3}')-ios$deployment-$(md5 -q "$toolchain")"
+# ios.sh's `env -i`: what an Xcode build phase exports would otherwise reach every dependency.
+# `_LS_HASHES` spares each slice another walk of the whole tree. `JOBS` is static-bundle.sh's
+# make -j.
+clean_env=(env -i PATH="$PATH" HOME="$HOME" SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
+    _LS_HASHES="$hashes")
+for var in SESSION_LIBSESSION_CACHE SESSION_LIBSESSION_CACHE_MAX_GB \
+    SESSION_LIBSESSION_SUBMODULE_CHECK SESSION_BRIDGE_DEPS_MIRROR JOBS; do
+    if [ -n "${!var:-}" ]; then clean_env+=("$var=${!var}"); fi
+done
+# ios.sh merges every slice directory it finds, so one left by another mode would join this build.
+rm -rf "$libsession/build-ios"
+for slice in $slices; do
+    case "$slice" in
+        sim-arm64)  ios_platform="SIMULATORARM64" ;;
+        sim-x86_64) ios_platform="SIMULATOR64" ;;
+        ios-arm64)  ios_platform="OS64" ;;
+        *) echo "no ios-cmake platform known for slice $slice" >&2; exit 1 ;;
+    esac
+    "${clean_env[@]}" bash -c 'set -euo pipefail; . "$1"; shift; libsession_bundle "$@"' _ \
+        "$here/../../bridge-core/scripts/libsession-cache.sh" \
+        "$libsession" "$slice-$target" "$libsession/build-ios/$slice" \
+        -DCMAKE_TOOLCHAIN_FILE=@SRC@/external/ios-cmake/ios.toolchain.cmake \
+        -DPLATFORM="$ios_platform" \
+        -DDEPLOYMENT_TARGET="$deployment" \
+        -DENABLE_BITCODE=OFF \
+        -DBUILD_TESTS=OFF \
+        -DBUILD_STATIC_DEPS=ON \
+        -DENABLE_VISIBILITY=ON \
+        -DSROUTER_FULL=OFF \
+        -DSROUTER_DAEMON=OFF \
+        -DCMAKE_BUILD_TYPE=Debug
+done
+( cd "$libsession" && env ARCHS="$archs" PLATFORM_NAME="$platform" CONFIGURATION=Debug \
+    IPHONEOS_DEPLOYMENT_TARGET="$deployment" ./utils/ios.sh "" false true true false )
+built="$libsession/build-ios"
+
+framework="$built/libsession-util.xcframework"
+[ -d "$framework" ] || { echo "no xcframework at $framework" >&2; exit 1; }
+
+mkdir -p "$here/../ios"
+rm -rf "$here/../ios/libsession-util.xcframework"
+cp -cR "$framework" "$here/../ios/libsession-util.xcframework"
+echo "xcframework in place: packages/bridge-rn/ios/libsession-util.xcframework"
+
+# The shim, built by CMake for each slice.
+#
+# CocoaPods compiles only what lives inside the pod directory - a source glob reaching up into
+# packages/bridge-core is dropped in silence, and the first sign of it is our own ClientBridge
+# symbols missing at link time. So bridge-core is a CMake project here exactly as it is for the
+# Node addon and for Android, and the pod vendors what it produces.
 
 # Read from the podspec rather than written down twice: the shim and the pod that vendors it have
 # to agree on the floor, and the podspec is the one the build actually enforces.
@@ -98,8 +140,9 @@ for slice in $slices; do
         -DDEPLOYMENT_TARGET="$deployment_target" \
         -DENABLE_BITCODE=OFF \
         -DCMAKE_BUILD_TYPE=Release \
-        -DSESSION_BRIDGE_LIBSESSION_BUNDLE="$libsession/build-ios/$slice/libsession-util.a"
-    cmake --build "$build" --target session-bridge-core --parallel
+        -DSESSION_BRIDGE_LIBSESSION_BUNDLE="$built/$slice/libsession-util.a"
+    # A bare --parallel overrides CMAKE_BUILD_PARALLEL_LEVEL, so JOBS is the one cap for both builds.
+    cmake --build "$build" --target session-bridge-core --parallel ${JOBS:+"$JOBS"}
 
     # One library per slice in an xcframework, because `vendored_libraries` has no per-SDK form:
     # a directory of archives is a directory for exactly one slice. libsession's bundle carries
@@ -148,25 +191,16 @@ rm -rf "$here/../ios/lib"
 # against a submodule that has since moved looks exactly like a complete one. This is what to read
 # when something links and then behaves like an older libsession.
 #
-# **The hash is the honest half of that**; the commit alone is not. The nested submodules are
-# routinely carrying uncommitted patches -- the `StaticBuild.cmake` ones are, right now -- and a
-# commit says nothing about them. It is the legacy client's own check
-# (`Scripts/build_libSession_util.sh`): every tracked path across every submodule, hashed by
-# content from the working tree, so an uncommitted edit changes it. Tests, docs and markdown are
-# left out because they cannot affect what gets linked.
-source_hash=$( \
-    ( cd "$libsession" && git ls-files --recurse-submodules ) \
-    | grep -vE '/(tests?|docs?|examples?)/|\.md$|/(\.DS_Store|\.gitignore)$' \
-    | sort | tr '\n' '\0' \
-    | ( cd "$libsession" && xargs -0 md5 -r ) \
-    | awk '{print $1}' | sort | md5 -q \
-)
-
+# Each slice's own source hash: libsession edited while the slices built leaves them on different
+# sources.
+source_hashes=$(for slice in $slices; do
+    printf '"%s": "%s", ' "$slice" "$(cat "$libsession/build-ios/$slice/source-hash")"
+done | sed 's/, $//')
 cat > "$here/../ios/BUILT.json" <<MANIFEST
 {
   "slices": [$(for slice in $slices; do printf '"%s",' "$slice"; done | sed 's/,$//')],
   "libsession": "$(git -C "$libsession" rev-parse HEAD)",
-  "sourceHash": "$source_hash",
+  "sourceHashes": {$source_hashes},
   "built": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 MANIFEST

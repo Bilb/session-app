@@ -34,8 +34,21 @@
       "outputs": ["dist/**", "out/**"]
     },
     "build:native": {
-      "inputs": ["src/**", "CMakeLists.txt", "../bridge-core/**", "../../libsession-util/**"],
-      "outputs": ["prebuilds/**", "build/Release/**"]
+      "inputs": [
+        "src/**",
+        "scripts/**",
+        "CMakeLists.txt",
+        "../bridge-core/**",
+        "../../libsession-util/**"
+      ],
+      "outputs": ["prebuilds/**", "build/Release/**"],
+      "env": ["SESSION_BRIDGE_CC", "SESSION_BRIDGE_CXX", "MACOSX_DEPLOYMENT_TARGET"],
+      "passThroughEnv": [
+        "SESSION_LIBSESSION_CACHE",
+        "SESSION_LIBSESSION_CACHE_MAX_GB",
+        "SESSION_LIBSESSION_SUBMODULE_CHECK",
+        "SESSION_BRIDGE_DEPS_MIRROR"
+      ]
     },
     "dev": {
       "dependsOn": ["^codegen"],
