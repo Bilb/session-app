@@ -11,8 +11,11 @@ import { noop } from './shared'
 const VIEWER_WIDTH = 390
 const VIEWER_HEIGHT = 520
 
-/** What one item of the set is: a picture, one libsession is still making, or one never drawn. */
-type Shown = 'picture' | 'preparing' | 'unsupported'
+/**
+ * What one item of the set is: a picture, one libsession is still making, one it refused to make,
+ * or one never drawn.
+ */
+type Shown = 'picture' | 'preparing' | 'failed' | 'unsupported'
 
 interface ViewerRow {
   set: readonly Shown[]
@@ -26,6 +29,7 @@ function Viewer({ set, index }: ViewerRow) {
     if (shown === 'picture') return { uri: picture }
     // The url it loads out of sight is the ask; any that loads cleanly keeps the page quiet.
     if (shown === 'preparing') return { uri: null, preparing: picture }
+    if (shown === 'failed') return { uri: null, failed: true }
     return { uri: null }
   })
   return (
@@ -70,6 +74,7 @@ export const mediaViewer = defineStory<ViewerRow>({
     preparing: { set: ['picture', 'preparing', 'picture'], index: 1 },
     unsupported: { set: ['picture', 'unsupported'], index: 1 },
     alone: { set: ['picture'], index: 0 },
+    failed: { set: ['picture', 'failed', 'picture'], index: 1 },
   },
   render: (row) => <Viewer {...row} />,
 })
