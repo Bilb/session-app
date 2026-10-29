@@ -100,3 +100,49 @@ sessionTest({
     expect(await alice.isVisible(ELEMENT.conversation.attachmentExport)).toBe(true)
   },
 })
+
+/**
+ * A picture the viewer draws only through its rendition opens on "Loading" while libsession makes
+ * one, then draws it, and the picture before it in the set is a step back. A hundred times slower,
+ * so the rendition is still being made when the viewer is looked at.
+ */
+sessionTest({
+  title: 'opens a picture on its rendition, saying Loading until it is made',
+  risk: 'medium',
+  clients: { alice: 'desktop' },
+  env: { EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN: '100' },
+  run: async ({ alice }) => {
+    if (!alice) throw new Error('the harness did not open alice')
+    const avif = SEEDED_LIST[3]
+
+    await openFirstConversation(alice)
+    const at = await downloadFromRow(alice, avif)
+    // The viewer pages only through what is here, so the receipt before it is fetched too.
+    const names = await alice.readAllText(ELEMENT.conversation.attachmentName)
+    await alice.tapAt(ELEMENT.conversation.attachmentName, names.indexOf(SEEDED_LIST[0]))
+    await expect
+      .poll(async () => alice.count(ELEMENT.conversation.attachmentExport), { timeout: 15_000 })
+      .toBe(2)
+    await alice.tapAt(ELEMENT.conversation.attachmentName, at)
+    await alice.waitForVisible(ELEMENT.conversation.mediaViewer)
+
+    await expect
+      .poll(async () => alice.isVisible(ELEMENT.conversation.mediaViewerPreparing))
+      .toBe(true)
+    await expect
+      .poll(async () => alice.isVisible(ELEMENT.conversation.mediaViewerImage), {
+        timeout: 15_000,
+      })
+      .toBe(true)
+    expect(await alice.isVisible(ELEMENT.conversation.mediaViewerPreparing)).toBe(false)
+    await alice.screenshot('attachment-viewer-rendition-desktop')
+
+    // The receipt comes before it in the set, so only the way back is open.
+    expect(await alice.isDisabled(ELEMENT.conversation.mediaViewerNext)).toBe(true)
+    await alice.tap(ELEMENT.conversation.mediaViewerPrevious)
+    await expect
+      .poll(async () => alice.isDisabled(ELEMENT.conversation.mediaViewerPrevious))
+      .toBe(true)
+    expect(await alice.isDisabled(ELEMENT.conversation.mediaViewerNext)).toBe(false)
+  },
+})
