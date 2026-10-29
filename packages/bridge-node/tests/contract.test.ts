@@ -5,6 +5,7 @@ import { join } from 'node:path'
 
 import { createSessionClient, type SessionClient } from '@session/client'
 import { runSessionClientContract, type ContractHarness } from '@session/client-contract'
+import jpeg from 'jpeg-js'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { createNodeBridgeTransport } from '#src/index'
@@ -24,6 +25,12 @@ import { builtForTesting, openPeer, type Peer } from './peer'
  * Skipped unless the addon was built with the test commands compiled in:
  * `pnpm --filter @session/bridge-node build:native:testing`.
  */
+
+/** A grey JPEG, since libsession is handed a real one to decode. */
+function grey(width: number, height: number): Uint8Array {
+  return jpeg.encode({ width, height, data: new Uint8Array(width * height * 4).fill(0x80) }, 90)
+    .data
+}
 
 const addon = join(import.meta.dirname, '../build/Release/session_bridge_node.node')
 
@@ -111,6 +118,11 @@ describeAddon('addon', () => {
           return path
         },
         removeFile: (path) => rm(path),
+        writePicture: async (name, widthPx, heightPx) => {
+          const path = join(alice.dir, name)
+          await writeFile(path, grey(widthPx, heightPx))
+          return path
+        },
         aliceMedia: alice.transport,
       }
     },
@@ -228,6 +240,7 @@ describeAddon('addon', () => {
         'announces an attachment as fetching while its download runs': OFFLINE_ATTACHMENTS,
         'joins a running download, and ends it once per handler': OFFLINE_ATTACHMENTS,
         'fetches an arriving image unasked once told to fetch images': OFFLINE_ATTACHMENTS,
+        'says when it will make no rendition of a picture it holds': OFFLINE_ATTACHMENTS,
         'exports beside a file already written rather than over it, unless told to replace':
           OFFLINE_ATTACHMENTS,
         'fetches an uncached export into the cache, reading as fetching meanwhile':

@@ -21,6 +21,7 @@ function attachment(index: number, fields: Partial<Attachment> = {}): Attachment
     thumbnailWidthPx: 0,
     thumbnailHeightPx: 0,
     hasRendition: false,
+    renditionRefused: false,
     originalFile: false,
     uploaded: true,
     availability: 'cached',

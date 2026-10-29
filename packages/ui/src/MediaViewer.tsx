@@ -146,7 +146,7 @@ export function MediaViewerBody({
   // under a new url is tried again.
   const [failedUris, setFailedUris] = useState<readonly string[]>([])
   const drawn = current === undefined ? null : drawnUri(current, failedUris)
-  const failed = current?.uri != null && drawn === null
+  const failed = current?.failed === true || (current?.uri != null && drawn === null)
   const close = (): void => {
     setFailedUris([])
     onClose()

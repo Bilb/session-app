@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import {
   heldItem,
+  renditionSettled,
   isViewable,
   leadUri,
   leadsWithPicture,
@@ -24,6 +25,7 @@ function attachment(index: number, contentType?: string): Attachment {
     thumbnailWidthPx: 0,
     thumbnailHeightPx: 0,
     hasRendition: false,
+    renditionRefused: false,
     originalFile: false,
     uploaded: true,
     availability: 'absent',
@@ -185,6 +187,18 @@ describe('what the viewer is handed', () => {
     })
   })
 
+  it('ends the wait for a rendition libsession refused on the failed state', () => {
+    serving()
+    expect(viewerItem(7, { ...attachment(2, 'image/avif'), renditionRefused: true })).toEqual({
+      uri: null,
+      failed: true,
+    })
+    // A type we draw is drawn from its file whatever libsession says of a rendition.
+    expect(viewerItem(7, { ...attachment(2, 'image/png'), renditionRefused: true })).toEqual({
+      uri: 'media://7/2',
+    })
+  })
+
   it('has no file to fall back on for a rendition of a type nothing here draws', () => {
     serving()
     expect(viewerItem(7, { ...attachment(2, 'image/avif'), hasRendition: true })).toEqual({
@@ -213,6 +227,16 @@ describe('an item an open viewer holds', () => {
     expect(heldItem(held, '7:0', true, () => rendition)).toBe(rendition)
     expect(heldItem(held, '7:0', true, () => ({ uri: 'rendition://7/0?again' }))).toBe(rendition)
     expect(heldItem(held, '7:0', false, () => file)).toBe(rendition)
+  })
+
+  it('takes the failed state once libsession refuses the rendition it waits for', () => {
+    const held = new Map<string, HeldItem>()
+    const waiting = { uri: null, preparing: 'rendition://7/0' }
+    const failed = { uri: null, failed: true }
+    expect(heldItem(held, '7:0', false, () => waiting)).toBe(waiting)
+    expect(heldItem(held, '7:0', true, () => failed)).toBe(failed)
+    expect(renditionSettled({ ...attachment(0, 'image/avif'), renditionRefused: true })).toBe(true)
+    expect(renditionSettled(attachment(0, 'image/avif'))).toBe(false)
   })
 
   it('keeps a rendition it was first handed when that is evicted', () => {
@@ -264,20 +288,15 @@ describe('what a row square or an album tile draws', () => {
     expect(leadUri(7, { ...jpeg, hasThumbnail: true }, 'ready')).toBe('thumb://7/2')
   })
 
-  it('draws a JPEG of ours from the file while it uploads, and the thumbnail once up', () => {
+  it('never decodes a JPEG of ours while it uploads: libsession thumbnails it first', () => {
     serving()
     const sending = {
       ...attachment(3, 'image/jpeg'),
       uploaded: false,
       availability: 'cached' as const,
     }
-    expect(leadUri(7, sending, 'ready')).toBe('media://7/3')
-    expect(leadUri(7, { ...sending, availability: 'absent' as const }, 'unavailable')).toBe(
-      undefined,
-    )
-    expect(leadUri(7, { ...sending, uploaded: true, hasThumbnail: true }, 'ready')).toBe(
-      'thumb://7/3',
-    )
+    expect(leadUri(7, sending, 'ready')).toBe(undefined)
+    expect(leadUri(7, { ...sending, hasThumbnail: true }, 'ready')).toBe('thumb://7/3')
   })
 
   it('keeps the placeholder until the file is here', () => {

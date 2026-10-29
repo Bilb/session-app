@@ -105,6 +105,7 @@ Attachment to_bridge(::session::client::Attachment&& from) {
             static_cast<double>(from.thumbnail_width),
             static_cast<double>(from.thumbnail_height),
             from.has_rendition,
+            from.picture && from.picture->rendition_refused,
             from.original_file,
             from.uploaded,
             availability(from.availability),

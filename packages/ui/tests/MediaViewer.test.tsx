@@ -39,6 +39,12 @@ describe('the viewer on a picture still being made', () => {
     expect(baseElement.querySelector('img[src="rendition://7/2"]')).not.toBeNull()
   })
 
+  it('says it cannot open a picture that will never be made, rather than loading', () => {
+    const { getByText, queryByText } = viewer([{ uri: null, failed: true }])
+    expect(getByText('Unable to open')).toBeTruthy()
+    expect(queryByText('Loading...')).toBeNull()
+  })
+
   it('says a picture with no resolver is not supported, rather than loading', () => {
     const { getByText } = viewer([{ uri: null }])
     expect(getByText('Not supported')).toBeTruthy()

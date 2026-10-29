@@ -260,7 +260,7 @@ export interface MediaSource {
   fetchMedia(ref: AttachmentRef): Promise<AttachmentMedia>
   fetchThumbhash(ref: AttachmentRef): Promise<AttachmentThumbhash>
   /**
-   * The attachment's thumbnail, a JPEG, from libsession's cache only: never a download. Refused
+   * The attachment's thumbnail, a JPEG, made locally by libsession: never a download. Refused
    * while `Attachment.hasThumbnail` is false.
    */
   fetchThumbnail(ref: AttachmentRef): Promise<Uint8Array>

@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
+import android.net.Uri
 import android.util.Log
 import com.facebook.imagepipeline.bitmaps.SimpleBitmapReleaser
 import com.facebook.cache.common.CacheKey
@@ -236,10 +237,12 @@ internal class DecodePlan(
 }
 
 /**
- * Fresco's decode of an original or a rendition under the plan its bytes call for, or a failed
- * load past the whole-decode ceiling, run under a copy of the request's context since the plan is
- * known only once the bytes are. The bitmap cache
- * above keys by the original request, which names the same bytes and so the same plan.
+ * Fresco's decode of an original or a rendition under the plan its bytes call for, run under a copy
+ * of the request's context since the plan is known only once the bytes are. An original past the
+ * whole-decode ceiling is drawn as desktop's main process draws it: its rendition, whose fetch
+ * asks libsession for one where there is none yet, else its thumbnail; the viewer swaps to the
+ * rendition's own url once it is made. The bitmap cache above keys by the original request, so
+ * a stand-in is remembered under the original's url, which only ever draws that stand-in.
  */
 internal class PlannedDecodeProducer(
     private val producerFactory: ProducerFactory,
@@ -248,22 +251,35 @@ internal class PlannedDecodeProducer(
   override fun produceResults(
       consumer: Consumer<CloseableReference<CloseableImage>>,
       context: ProducerContext,
+  ) = load(consumer, context, null)
+
+  /** `standIns` is null for the url asked for, else the stand-ins still to try after this one. */
+  private fun load(
+      consumer: Consumer<CloseableReference<CloseableImage>>,
+      context: ProducerContext,
+      standIns: List<Uri>?,
   ) {
     encoded.produceResults(
         object : DelegatingConsumer<EncodedImage, CloseableReference<CloseableImage>>(consumer) {
           override fun onNewResultImpl(newResult: EncodedImage?, status: Int) {
             if (BaseConsumer.isNotLast(status)) return
             if (newResult == null) {
-              consumer.onFailure(RuntimeException("no bytes to decode"))
+              onFailureImpl(RuntimeException("no bytes to decode"))
               return
             }
             // BaseConsumer only logs a throw from here, which would leave the load hanging.
             try {
-              decode(newResult, status, consumer, context)
+              decode(newResult, status, consumer, context, standIns)
             } catch (error: Throwable) {
               Log.w(TAG, "${context.imageRequest.sourceUri} did not load: ${error.message}")
               consumer.onFailure(error)
             }
+          }
+
+          override fun onFailureImpl(t: Throwable) {
+            val next = standIns?.firstOrNull()
+            if (next == null) consumer.onFailure(t)
+            else load(consumer, standInContext(context, next), standIns.drop(1))
           }
         },
         context)
@@ -274,11 +290,16 @@ internal class PlannedDecodeProducer(
       status: Int,
       consumer: Consumer<CloseableReference<CloseableImage>>,
       context: ProducerContext,
+      standIns: List<Uri>?,
   ) {
     val plan = DecodePlan.of(image)
     if (plan.refused) {
-      Log.w(TAG, "${context.imageRequest.sourceUri} did not load: too large to decode")
-      consumer.onFailure(RuntimeException("too large to decode"))
+      val remaining = standIns ?: standInsFor(context.imageRequest.sourceUri)
+      val next = remaining.firstOrNull()
+      if (next == null) {
+        Log.w(TAG, "${context.imageRequest.sourceUri} did not load: too large to decode")
+        consumer.onFailure(RuntimeException("too large to decode"))
+      } else load(consumer, standInContext(context, next), remaining.drop(1))
       return
     }
     val planned = SettableProducerContext(plan.applyTo(context.imageRequest), context)
@@ -290,6 +311,24 @@ internal class PlannedDecodeProducer(
         })
     // The decoder takes its own reference before this returns and the image is closed.
     producerFactory.newDecodeProducer(Replay(image, status)).produceResults(consumer, planned)
+  }
+
+  /** The rendition then the thumbnail of an original; nothing stands in for a rendition. */
+  private fun standInsFor(uri: Uri): List<Uri> =
+      if (uri.host != "attachment") emptyList()
+      else listOf("rendition", "thumbnail").map { uri.buildUpon().authority(it).build() }
+
+  private fun standInContext(context: ProducerContext, uri: Uri): ProducerContext {
+    val standIn =
+        SettableProducerContext(
+            ImageRequestBuilder.fromRequest(context.imageRequest).setSource(uri).build(), context)
+    context.addCallbacks(
+        object : BaseProducerContextCallbacks() {
+          override fun onCancellationRequested() {
+            standIn.cancel()
+          }
+        })
+    return standIn
   }
 
   /** Hands the decoder the bytes already fetched. */

@@ -38,6 +38,8 @@ export interface ContractHarness {
     writeFile: (name: string, sizeBytes: number) => Promise<string>
     /** Deletes a file `writeFile` wrote. */
     removeFile: (path: string) => Promise<void>
+    /** Writes a JPEG libsession decodes, for a send to name, and answers its path. */
+    writePicture: (name: string, widthPx: number, heightPx: number) => Promise<string>
     /** Alice's media source. */
     aliceMedia: MediaSource
   }>
@@ -55,9 +57,10 @@ export interface ContractHarness {
    * an incoming attachment cannot produce one for any scenario, and skipping the scenarios is
    * then the honest answer rather than a fixture that quietly has none.
    *
-   * `expired` asks for one the file server no longer holds.
+   * `expired` asks for one the file server no longer holds. `pastPixelLimits` asks for a JPEG
+   * past libsession's decode limits, which it caches but makes no thumbnail or rendition of.
    */
-  withAttachment(options?: { expired?: boolean }): Promise<{
+  withAttachment(options?: { expired?: boolean; pastPixelLimits?: boolean }): Promise<{
     client: SessionClient
     conversationId: string
     messageId: number
@@ -730,6 +733,43 @@ export function runSessionClientContract(
       seen.stop()
     })
 
+    it('thumbnails a picture we send before it is up, and never takes that back', async () => {
+      const { alice, bobId, settle, writeFile, writePicture } = await harness.friends()
+      const photo = await writePicture('photo.jpg', 640, 480)
+      const notes = await writeFile('notes.txt', 2_000)
+      const seen = collect(alice)
+
+      const messageId = await alice.sendMessage(bobId, {
+        body: '',
+        attachments: [{ path: photo }, { path: notes }],
+      })
+      // libsession makes it off its loop, and says so by update.
+      const thumbnailed = async () =>
+        (await alice.getMessages(bobId)).messages.find((m) => m.id === messageId)?.attachments[0]
+          ?.hasThumbnail === true
+      for (let round = 0; round < 100 && !(await thumbnailed()); round += 1) {
+        await settle()
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      }
+      await settle()
+
+      // Every announcement from the first with a thumbnail on, including the upload's and the
+      // cached file's own thumbnail taking over.
+      const announced = [
+        ...messagesOf(seen.events, 'messages-added'),
+        ...messagesOf(seen.events, 'messages-updated'),
+      ].filter((m) => m.id === messageId)
+      const from = announced.findIndex((m) => m.attachments[0]?.hasThumbnail === true)
+      expect(from).toBeGreaterThan(-1)
+      expect(announced[from]?.attachments[0]?.uploaded).toBe(false)
+      const after = announced.slice(from).map((m) => m.attachments[0])
+      expect(after.every((a) => a?.hasThumbnail === true && (a.thumbnailWidthPx ?? 0) > 0)).toBe(
+        true,
+      )
+      expect(announced.some((m) => m.attachments[1]?.hasThumbnail === true)).toBe(false)
+      seen.stop()
+    })
+
     it('refuses a send whose file is missing or empty, storing nothing', async () => {
       const { alice, bobId, writeFile } = await harness.friends()
       const empty = await writeFile('empty.bin', 0)
@@ -1303,7 +1343,36 @@ export function runSessionClientContract(
         (m) => m.id === messageId,
       )?.attachments[0]
       expect(image?.availability).toBe('cached')
+      expect(image?.renditionRefused).toBe(false)
       seen.stop()
+    })
+
+    it('says when it will make no rendition of a picture it holds', async () => {
+      const { client, conversationId, messageId, index, settle } = await harness.withAttachment({
+        pastPixelLimits: true,
+      })
+      const held = async () =>
+        (await client.getMessages(conversationId)).messages
+          .find((m) => m.id === messageId)
+          ?.attachments.find((a) => a.index === index)
+      expect((await held())?.renditionRefused).toBe(false)
+
+      const running = client.downloadAttachment(messageId, index)
+      await settle()
+      await running
+      // libsession settles it as it reads the cached file's header, and says so by update.
+      for (let round = 0; round < 100 && (await held())?.renditionRefused !== true; round += 1) {
+        await settle()
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      }
+
+      const picture = await held()
+      expect(picture?.availability).toBe('cached')
+      expect([picture?.renditionRefused, picture?.hasRendition, picture?.hasThumbnail]).toEqual([
+        true,
+        false,
+        false,
+      ])
     })
 
     it('shows a message as a gallery only when every attachment is an image libsession displays', async () => {

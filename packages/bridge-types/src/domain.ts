@@ -195,10 +195,11 @@ export interface Attachment {
   /**
    * Whether libsession holds a thumbnail of this attachment: a JPEG of the picture in its own
    * shape, cropped to its centre at 21:9 when it is wider than that either way up, then the
-   * client's thumbnail edge tall and never enlarged. A square tile covers it and crops. Made only
-   * of a displayable image whose bytes are cached, and after them, so it turns true in a later
+   * client's thumbnail edge tall and never enlarged. A square tile covers it and crops. Made of a
+   * displayable image whose bytes are cached, and after them, so it turns true in a later
    * `messages-updated` than the one reporting `cached`; false again once the cache evicts the
-   * file, which takes the thumbnail too.
+   * file, which takes the thumbnail too. One we send has it sooner: made from libsession's own
+   * copy before the upload, and true from then on until the cached file is evicted.
    *
    * What a tile draws, through the media scheme's `thumbnail` path; a viewer draws the file.
    */
@@ -220,6 +221,13 @@ export interface Attachment {
    * What a viewer draws, through the media scheme's `rendition` path; export still writes the file.
    */
   hasRendition: boolean
+  /**
+   * libsession will make no rendition of this picture: past its pixel limits, a header it cannot
+   * read, or a re-encode that failed. Settled once it has read the cached file, so only ever true
+   * while `availability` is `cached`, and never together with `hasRendition`. Asking again does
+   * nothing until a libsession that decodes more replaces this one.
+   */
+  renditionRefused: boolean
   /**
    * The sender sent the file exactly as it was, metadata included. Offered only as a file to
    * export, never opened in the viewer, though its thumbnail is still drawn.

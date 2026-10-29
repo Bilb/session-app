@@ -174,9 +174,30 @@ const FAKE_THUMBNAIL_EDGE_PX = 720
 /** Every dev photograph is 1600 x 1200, so every thumbnail served is 4:3 at that height. */
 const FAKE_THUMBNAIL_WIDTH_PX = 960
 
-/** libsession makes one of every displayable picture it caches, and drops it on eviction. */
-function thumbnailed(cached: boolean, contentType: string | undefined): boolean {
-  return cached && isDisplayableImage(contentType)
+/** libsession's `max_frame_pixels`: past it, it decodes nothing of a picture. */
+const MAX_FRAME_PIXELS = 268_402_689
+
+/** Past libsession's pixel limits, by the size the sender gave, which is all the fake reads. */
+function pastPixelLimits(attachment: Attachment): boolean {
+  return (
+    attachment.width !== undefined &&
+    attachment.height !== undefined &&
+    attachment.width * attachment.height > MAX_FRAME_PIXELS
+  )
+}
+
+/**
+ * libsession makes one of every displayable picture it caches and decodes, and drops it on
+ * eviction; and one of every picture we send, from its own copy before the upload, which the
+ * cached one replaces.
+ */
+function thumbnailed(held: boolean, attachment: Attachment | undefined): boolean {
+  return (
+    held &&
+    attachment !== undefined &&
+    isDisplayableImage(attachment.contentType) &&
+    !pastPixelLimits(attachment)
+  )
 }
 
 /**
@@ -184,7 +205,17 @@ function thumbnailed(cached: boolean, contentType: string | undefined): boolean 
  * original, which is only exported. Made only once a viewer asks, as libsession does.
  */
 function renderable(cached: boolean, attachment: Attachment): boolean {
-  return thumbnailed(cached, attachment.contentType) && !attachment.originalFile
+  return thumbnailed(cached, attachment) && !attachment.originalFile
+}
+
+/** libsession settles a refusal once it reads the cached file, as it makes the thumbnail. */
+function refusesRendition(cached: boolean, attachment: Attachment): boolean {
+  return (
+    cached &&
+    isDisplayableImage(attachment.contentType) &&
+    !attachment.originalFile &&
+    pastPixelLimits(attachment)
+  )
 }
 
 function wantedBy(mode: AutoDownload | undefined, attachment: Attachment): boolean {
@@ -304,8 +335,8 @@ export class FakeAccount {
   private readonly cached = new Set<string>()
   /**
    * Files a send took or copied and has not uploaded yet, by `keyOf`: served from libsession's
-   * outgoing folder until then, but not in the cache, so neither counted in its size nor
-   * thumbnailed. Each with its size, where the world knows it.
+   * outgoing folder until then, but not in the cache, so not counted in its size. A picture's
+   * thumbnail is made from it. Each with its size, where the world knows it.
    */
   private readonly taken = new Map<string, number | undefined>()
   /** The sizes `seedSending` held back from files not up yet, which their upload reports. */
@@ -780,6 +811,7 @@ export class FakeAccount {
         thumbnailWidthPx: 0,
         thumbnailHeightPx: 0,
         hasRendition: false,
+        renditionRefused: false,
         // Flagged by libsession as that file's upload starts, when it converts it.
         originalFile: false,
         uploaded: false,
@@ -1004,7 +1036,12 @@ export class FakeAccount {
   }
 
   hasThumbnail(ref: AttachmentRef): boolean {
-    return thumbnailed(this.cached.has(keyOf(ref)), this.locate(ref)?.attachment.contentType)
+    return thumbnailed(this.holdsPicture(keyOf(ref)), this.locate(ref)?.attachment)
+  }
+
+  /** What a thumbnail is made from: the cached file, or the copy a send holds, sent or not. */
+  private holdsPicture(key: string): boolean {
+    return this.cached.has(key) || this.taken.has(key)
   }
 
   hasRendition(ref: AttachmentRef): boolean {
@@ -1080,7 +1117,7 @@ export class FakeAccount {
           : this.cached.has(key) || this.takenServed(key, message.sendState)
             ? 'cached'
             : (this.verdicts.get(key) ?? 'absent')
-        const thumbnail = thumbnailed(this.cached.has(key), attachment.contentType)
+        const thumbnail = thumbnailed(this.holdsPicture(key), attachment)
         return {
           ...attachment,
           availability,
@@ -1091,6 +1128,7 @@ export class FakeAccount {
             { messageId: message.id, index: attachment.index },
             attachment,
           ),
+          renditionRefused: refusesRendition(this.cached.has(key), attachment),
           fetchDoneBytes: running?.doneBytes ?? 0,
           fetchTotalBytes: running?.totalBytes ?? 0,
         }
