@@ -6,7 +6,7 @@ import { isLayoutRtl } from './layoutDirection'
 import { useTokenColor } from './useTokenColor'
 
 /** How far in from the edge the fade reaches. */
-export const TRAY_FADE_WIDTH = 40
+const TRAY_FADE_WIDTH = 40
 
 /**
  * The page's surface fading in over one end of the rail, saying there is more that way. The
