@@ -434,6 +434,13 @@ Every shared file is checked two or three ways per run, with no synthetic profil
 
 Append one paragraph per decision. Undocumented decisions are what rot.
 
+- **2026-10-29 - libsession sends from its own copy of every file.** A file sent without
+  `takeFile` is copied beneath the cache directory once the message is stored, on libsession's
+  disk thread, so nothing reads the person's file after that: a desktop send draws its own
+  pictures while they upload, as a mobile one does, and a file moved or deleted after Send no
+  longer fails the message. Sending files needs a cache directory. The cost is one copy of each
+  file a desktop send carries.
+
 - **2026-10-28 - libsession makes a rendition only when a viewer asks for one.** The first
   `fetch_rendition` of a picture with none queues it, ahead of other derived images since somebody
   is looking, and is refused; `Attachment.hasRendition` turns true by update once it is made.
@@ -443,14 +450,15 @@ Append one paragraph per decision. Undocumented decisions are what rot.
 
 - **2026-10-16 - A send names its files by path, and libsession reads them.** No bytes cross
   for a send either: `sendMessage` carries each staged pick's path, the name it was picked under
-  and its declared type, and libsession stores the message `uploading`, reads each file when its
-  upload comes up, and refuses on the spot a path that is not a readable, non-empty file. A
-  mobile pick is the app's own copy, so it goes with `takeFile` and becomes libsession's: moved
-  into its storage and deleted when the message no longer needs it. A desktop pick is the
-  person's own file, so it never does. Desktop main admits a send only for paths the preload
+  and its declared type, and libsession stores the message `uploading`, refuses on the spot a
+  path that is not a readable, non-empty file, and reads only its own copy of each file from
+  then on. A mobile pick is the app's own copy, so it goes with `takeFile` and becomes
+  libsession's: moved into its storage and deleted when the message no longer needs it. A desktop
+  pick is the person's own file, so it never does: libsession copies it into the same storage
+  off the calling thread, and the person's file can then go. Desktop main admits a send only for paths the preload
   resolved from a `File` picked or dropped in that window, counted per pick and released as the
-  tray lets go, and strips `takeFile` whatever the page said: libsession reads whatever path it
-  is given, so without that a page script could send any file this user can read. Staging
+  tray lets go, and strips `takeFile` whatever the page said: libsession copies whatever path
+  it is given, so without that a page script could send any file this user can read. Staging
   refuses a file past the file server's limit unless it is a picture this build re-encodes, which
   libsession shrinks until it fits; HEIC counts only on iOS and macOS, where ImageIO decodes it.
 

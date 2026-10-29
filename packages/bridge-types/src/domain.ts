@@ -120,7 +120,10 @@ export type AttachmentError = string
 export const MESSAGE_NOT_FOUND: AttachmentError = 'message.not_found'
 /** The message exists and has no attachment at this index. */
 export const ATTACHMENT_NOT_FOUND: AttachmentError = 'attachment.not_found'
-/** The file is no longer at the path it was attached from. Reported on an upload, never a fetch. */
+/**
+ * The file was gone from the path it was attached from before libsession had its own copy. Reported
+ * on an upload, never a fetch, and leaves the message `unsendable`.
+ */
 export const ATTACHMENT_FILE_MISSING: AttachmentError = 'attachment.file_missing'
 /**
  * Too large to send: a picture too large for the file server even re-encoded at libsession's
@@ -249,11 +252,13 @@ export interface Attachment {
 }
 
 /**
- * A file to send with a message.
+ * A file to send with a message. Sending files needs `cacheDir`.
  *
- * Read when its upload comes up and again by any retry, so it has to stay at `path`, unchanged,
- * until the message is sent, unless `takeFile` hands it over. A picture libsession decodes is sent
- * re-encoded to fit the file server, and the stored attachment then describes what was sent.
+ * Without `takeFile`, libsession copies it beneath the cache directory once the message is stored,
+ * off the calling thread, and reads only that copy from then on: `path` may change or go once the
+ * attachment reads `cached`. Until it uploads, `fetchMedia` and `exportAttachment` serve the copy.
+ * A picture libsession decodes is sent re-encoded to fit the file server, and the stored
+ * attachment then describes what was sent.
  */
 export interface OutgoingAttachment {
   path: string
@@ -262,8 +267,8 @@ export interface OutgoingAttachment {
   /** What the recipient sees it called; `path`'s own filename when unset. */
   filename?: string
   /**
-   * Hands the file to libsession, which needs `cacheDir` for it and refuses a symbolic link. Only
-   * for a copy the app made: once the message is stored the file is gone from `path`, and a send
+   * Hands the file to libsession instead of having it copied, refusing a symbolic link. Only for a
+   * copy the app made: once the message is stored the file is gone from `path`, and a send
    * that was refused leaves it there.
    *
    * It is hard-linked under the cache directory, or copied where it cannot be, on the calling

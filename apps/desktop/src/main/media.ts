@@ -151,8 +151,6 @@ export async function mediaResponse(
   } catch {
     // A file not downloaded, a missing message, a failed thumbhash or a missing derived image is
     // known from this status alone, so whoever draws the url has to handle the image failing.
-    // TODO: serve a sender's own attachment from its local copy while it uploads; libsession
-    // serves only a file a send took before it is up, and a desktop send takes none.
     return new Response(null, { status: 404, headers: UNAVAILABLE })
   }
 }

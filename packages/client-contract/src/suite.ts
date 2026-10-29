@@ -36,6 +36,8 @@ export interface ContractHarness {
     settle: () => Promise<void>
     /** Writes a file of `sizeBytes` bytes for a send to name, and answers its path. */
     writeFile: (name: string, sizeBytes: number) => Promise<string>
+    /** Deletes a file `writeFile` wrote. */
+    removeFile: (path: string) => Promise<void>
     /** Alice's media source. */
     aliceMedia: MediaSource
   }>
@@ -692,10 +694,10 @@ export function runSessionClientContract(
       expect(await alice.attachmentSendPlan(over, 'image/bmp')).toBe('too-large-for-server')
     })
 
-    it('serves a file it took for a send before it is up, and only one it took', async () => {
-      const { alice, bobId, writeFile, aliceMedia } = await harness.friends()
+    it('serves its own copy of every file a send carries before it is up', async () => {
+      const { alice, bobId, writeFile, removeFile, aliceMedia } = await harness.friends()
       const taken = await writeFile('taken.txt', 2_000)
-      const lent = await writeFile('lent.txt', 2_000)
+      const lent = await writeFile('lent.txt', 3_000)
       const seen = collect(alice)
 
       const messageId = await alice.sendMessage(bobId, {
@@ -707,15 +709,24 @@ export function runSessionClientContract(
       })
 
       const added = messagesOf(seen.events, 'messages-added').find((m) => m.id === messageId)
-      expect(added?.attachments.map((a) => [a.uploaded, a.availability])).toEqual([
-        [false, 'cached'],
-        [false, 'absent'],
-      ])
+      expect(added?.attachments.map((a) => a.uploaded)).toEqual([false, false])
+      expect(added?.attachments[0]?.availability).toBe('cached')
+      // libsession copies a file it was not handed off the calling thread, and says so by update.
+      let lentAvailability = added?.attachments[1]?.availability
+      for (let round = 0; round < 100 && lentAvailability !== 'cached'; round += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        lentAvailability = (await alice.getMessages(bobId)).messages
+          .find((m) => m.id === messageId)
+          ?.attachments.find((a) => a.index === 1)?.availability
+      }
+      expect(lentAvailability).toBe('cached')
+
+      // From here the caller's file is not read.
+      await removeFile(lent)
       expect((await aliceMedia.fetchMedia({ messageId, index: 0 })).bytes.length).toBe(2_000)
-      const lentFetch = await failure(() => aliceMedia.fetchMedia({ messageId, index: 1 }))
-      expect(lentFetch instanceof Error && lentFetch.message).toBe(
-        `attachment 1 of message ${String(messageId)} is not downloaded`,
-      )
+      expect((await aliceMedia.fetchMedia({ messageId, index: 1 })).bytes.length).toBe(3_000)
+      const message = (await alice.getMessages(bobId)).messages.find((m) => m.id === messageId)
+      expect(message?.sendState === 'unsendable').toBe(false)
       seen.stop()
     })
 

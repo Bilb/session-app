@@ -25,18 +25,17 @@ async function sendTakenBehindLent(lentType = 'text/plain') {
   return { world, alice, messageId, message }
 }
 
-describe('a file the fake took for a send', () => {
-  it('is no longer served once a lent file gone before its upload leaves the send unsendable', async () => {
+describe('a file the fake sends', () => {
+  it('is served from its own copy before it is up, whatever happens to the caller', async () => {
     const { world, alice, messageId, message } = await sendTakenBehindLent()
-    expect((await message())?.attachments[1]?.availability).toBe('cached')
+    expect((await message())?.attachments.map((a) => a.availability)).toEqual(['cached', 'cached'])
     world.removeFile('/tmp/lent')
-    world.settle()
 
-    expect((await message())?.sendState).toBe('unsendable')
-    expect((await message())?.attachments[1]?.availability).toBe('absent')
-    await expect(
-      createFakeMediaSource(alice, readPhoto, readStaged).fetchMedia({ messageId, index: 1 }),
-    ).rejects.toThrow('is not downloaded')
+    const media = createFakeMediaSource(alice, readPhoto, readStaged)
+    expect((await media.fetchMedia({ messageId, index: 0 })).bytes.length).toBe(2_000)
+    world.settle()
+    expect((await message())?.sendState).not.toBe('unsendable')
+    expect((await message())?.attachments.every((a) => a.uploaded)).toBe(true)
   })
 })
 

@@ -1216,19 +1216,21 @@ struct GetMessagesCommand {
             conversation_id{std::move(conversation_id_)}, limit{std::move(limit_)}, before{std::move(before_)}, include_deleted{std::move(include_deleted_)} {}
 };
 
-/// A file to send with a message.
+/// A file to send with a message. Sending files needs `cacheDir`.
 ///
-/// Read when its upload comes up and again by any retry, so it has to stay at `path`, unchanged,
-/// until the message is sent, unless `takeFile` hands it over. A picture libsession decodes is sent
-/// re-encoded to fit the file server, and the stored attachment then describes what was sent.
+/// Without `takeFile`, libsession copies it beneath the cache directory once the message is stored,
+/// off the calling thread, and reads only that copy from then on: `path` may change or go once the
+/// attachment reads `cached`. Until it uploads, `fetchMedia` and `exportAttachment` serve the copy.
+/// A picture libsession decodes is sent re-encoded to fit the file server, and the stored
+/// attachment then describes what was sent.
 struct OutgoingAttachment {
     std::string path;
     /// Inferred from the filename's extension when unset.
     std::optional<std::string> content_type;
     /// What the recipient sees it called; `path`'s own filename when unset.
     std::optional<std::string> filename;
-    /// Hands the file to libsession, which needs `cacheDir` for it and refuses a symbolic link. Only
-    /// for a copy the app made: once the message is stored the file is gone from `path`, and a send
+    /// Hands the file to libsession instead of having it copied, refusing a symbolic link. Only for a
+    /// copy the app made: once the message is stored the file is gone from `path`, and a send
     /// that was refused leaves it there.
     ///
     /// It is hard-linked under the cache directory, or copied where it cannot be, on the calling
