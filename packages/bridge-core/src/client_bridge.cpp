@@ -1083,7 +1083,8 @@ struct ClientBridge::Impl {
         }
         // TODO: pass an upload handler, for per-file upload progress and to name the file behind
         // `attachment_file_missing` by its index. Until then a sending set counts its files by
-        // `uploaded` on the message, and a file gone after Send fails the message unnamed.
+        // `uploaded` on the message, and a file gone before libsession copied it fails the message
+        // unnamed.
         convo(cmd.conversation_id)
                 .send_message(std::move(msg), on(id, [this, id](int64_t message_id) {
                                   respond(id, MessageIdResult{static_cast<double>(message_id)});

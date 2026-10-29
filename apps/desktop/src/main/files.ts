@@ -111,7 +111,7 @@ export class ExportGate {
  *
  * Counted, since a path can be picked again while an earlier pick of it is still staged, and
  * released as the composer lets each pick go. `takeFile` never gets through: a desktop pick is the
- * person's own file, which libsession must not move or delete.
+ * person's own file, which libsession copies rather than moves.
  */
 export class SendGate {
   private readonly picked = new Map<string, number>()

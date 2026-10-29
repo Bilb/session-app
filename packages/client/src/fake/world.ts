@@ -141,7 +141,6 @@ function received(sent: readonly Attachment[]): Attachment[] {
 /** What `send` was given for one file, kept for that file's turn to upload. */
 interface Upload {
   path: string
-  taken: boolean
   sizeBytes: number | undefined
   originalFile: boolean
   /** What libsession re-encodes the file as when its upload comes up; unset when sent as it is. */
@@ -294,9 +293,9 @@ export class FakeAccount {
   /** Attachments whose bytes are in the cache, by `keyOf`. */
   private readonly cached = new Set<string>()
   /**
-   * Files a send took and has not uploaded yet, by `keyOf`: served from libsession's outgoing
-   * folder until then, but not in the cache, so neither counted in its size nor thumbnailed.
-   * Each with its size, where the world knows it.
+   * Files a send took or copied and has not uploaded yet, by `keyOf`: served from libsession's
+   * outgoing folder until then, but not in the cache, so neither counted in its size nor
+   * thumbnailed. Each with its size, where the world knows it.
    */
   private readonly taken = new Map<string, number | undefined>()
   /** The sizes `seedSending` held back from files not up yet, which their upload reports. */
@@ -716,7 +715,6 @@ export class FakeAccount {
       const contentType = file.contentType ?? inferContentType(baseName(file.path))
       return {
         path: file.path,
-        taken: file.takeFile === true,
         sizeBytes: sizes[index],
         // libsession sends a picture it cannot decode as it is, flagged.
         originalFile:
@@ -768,9 +766,10 @@ export class FakeAccount {
         ? {}
         : { replyTo: { author: this.sessionId, timestamp: now, messageId: replyTo } }),
     }
-    outgoing.forEach((file, index) => {
-      if (file.takeFile === true)
-        this.taken.set(keyOf({ messageId: message.id, index }), sizes[index])
+    // libsession copies a file it was not handed at once, where it takes a handed one; either
+    // way the message reads only its own from here, and the caller's may go.
+    outgoing.forEach((_file, index) => {
+      this.taken.set(keyOf({ messageId: message.id, index }), sizes[index])
     })
     this.addMessage(id, message)
     for (const file of outgoing) if (file.takeFile === true) this.world?.removeFile(file.path)
@@ -781,10 +780,7 @@ export class FakeAccount {
     return message.id
   }
 
-  /**
-   * Uploads the first file not up yet, a step from now, then the next, then sends. A lent file
-   * gone by its turn leaves the message unsendable, as libsession does.
-   */
+  /** Uploads the first file not up yet, a step from now, then the next, then sends. */
   private uploadNext(id: ConversationId, messageId: number, uploads: readonly Upload[]): void {
     const world = this.world
     if (world === undefined) return
@@ -805,13 +801,6 @@ export class FakeAccount {
       }
       const upload = uploads[at]
       if (upload === undefined) return
-      if (!upload.taken && world.fileSize(upload.path) === null) {
-        this.updateMessage(id, messageId, {
-          sendState: 'unsendable',
-          ...(message.syncState === undefined ? {} : { syncState: 'unsendable' }),
-        })
-        return
-      }
       // As libsession: what we sent is kept in the cache, and its size is known once it is up.
       this.cached.add(keyOf({ messageId, index: attachment.index }))
       this.taken.delete(keyOf({ messageId, index: attachment.index }))
@@ -906,13 +895,12 @@ export class FakeAccount {
   }
 
   /**
-   * The uploads of a message `seedSending` made, which no send handed files to: each is taken, so
-   * none can have gone from disk, and carries the size it reports once up.
+   * The uploads of a message `seedSending` made, which no send handed files to: each carries the
+   * size it reports once up.
    */
   private seededUploads(message: Message): Upload[] {
     return message.attachments.map((attachment) => ({
       path: '',
-      taken: true,
       sizeBytes: this.unreportedSizes.get(
         keyOf({ messageId: message.id, index: attachment.index }),
       ),
