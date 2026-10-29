@@ -265,6 +265,29 @@ describe('the store', () => {
     expect(attachment(withOne.id)?.availability).toBe('cached')
   })
 
+  it('shows a message as a list once asked, and reads the choice back after a reload', async () => {
+    const { store, world, bob } = fixture
+    const load = async () => {
+      const running = store.actions.loadHistory(bob)
+      world.settle()
+      await running
+    }
+    const gallery = (id: number) =>
+      store.getState().histories[bob]?.messages.find((m) => m.id === id)?.gallery
+
+    await load()
+    const album = store.getState().histories[bob]?.messages.find((m) => m.galleryViewable)
+    expect(album?.gallery).toBe(true)
+    if (!album) return
+
+    expect(await store.actions.setGallery(album.id, false)).toBe(true)
+    expect(gallery(album.id)).toBe(false)
+
+    store.actions.forgetHistory(bob)
+    await load()
+    expect(gallery(album.id)).toBe(false)
+  })
+
   it('drops a conversations window and its transfers when a screen stops showing it', async () => {
     const { store, world, bob } = fixture
     const running = store.actions.loadHistory(bob)
@@ -299,7 +322,7 @@ describe('the store', () => {
   it('does not bring back a window forgotten while an older page was in flight', async () => {
     const { store, world, bob } = fixture
     for (let i = 0; i < 40; i += 1) {
-      await store.actions.send(bob, `m${i}`)
+      await store.actions.send(bob, { body: `m${i}` })
       world.settle()
     }
     await store.actions.loadHistory(bob)
@@ -329,6 +352,36 @@ describe('the store', () => {
     pages[1]?.({ messages: [] })
     await second
     expect(store.getState().histories[bob]?.ready).toBe(true)
+  })
+
+  it('sends a message with its files, and shows it uploading them before it is sent', async () => {
+    const { store, world, bob } = fixture
+    world.writeFile('/disk/notes.txt', 900)
+    await store.actions.loadHistory(bob)
+
+    await store.actions.send(bob, {
+      body: '',
+      attachments: [{ path: '/disk/notes.txt', contentType: 'text/plain' }],
+    })
+    const sent = () => store.getState().histories[bob]?.messages.at(-1)
+    expect(sent()?.sendState).toBe('uploading')
+    expect(sent()?.attachments.map((a) => a.filename)).toEqual(['notes.txt'])
+
+    world.settle()
+    expect(sent()?.sendState).toBe('sent')
+    expect(sent()?.attachments.map((a) => [a.uploaded, a.sizeBytes])).toEqual([[true, 900]])
+  })
+
+  it('rejects a send libsession refuses, with nothing shown for it', async () => {
+    const { store, world, bob } = fixture
+    world.writeFile('/disk/other.txt', 10)
+    await store.actions.loadHistory(bob)
+    const before = store.getState().histories[bob]?.messages.length
+
+    await expect(
+      store.actions.send(bob, { body: 'x', attachments: [{ path: '/disk/missing.txt' }] }),
+    ).rejects.toThrow(SessionClientError)
+    expect(store.getState().histories[bob]?.messages.length).toBe(before)
   })
 
   it('leaves the state alone when asked to forget a conversation it never loaded', () => {

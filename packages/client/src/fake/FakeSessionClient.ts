@@ -12,11 +12,13 @@ import type {
   ExportAttachmentOptions,
   MessageCursor,
   NetworkStatus,
+  SendPlan,
   SessionEvent,
 } from '@session/bridge-types'
 
 import type { MessagePage, NetworkAttachment, OutgoingMessage, SessionClient } from '../types'
-import type { FakeAccount, FakeWorld, LocatedAttachment } from './world'
+import { FAKE_UPLOAD_LIMIT_BYTES } from './sendPlan'
+import type { FakeAccount, FakeStagedFiles, FakeWorld, LocatedAttachment } from './world'
 
 /** Why this network will not attach, or undefined when it will. */
 function networkRefusal(config: NetworkAttachment): string | undefined {
@@ -358,11 +360,26 @@ export class FakeSessionClient implements SessionClient {
     return this.account.hasThumbnail(ref)
   }
 
+  /** Whether libsession would hold a rendition of this attachment: `Attachment.hasRendition`. */
+  hasRendition(ref: AttachmentRef): boolean {
+    return this.account.hasRendition(ref)
+  }
+
+  /** Asks for a rendition, as a viewer's first fetch of one does: made a step later. */
+  askRendition(ref: AttachmentRef): void {
+    this.account.askRendition(ref)
+  }
+
   /**
    * Fake-only: finds an attachment in memory, where paging every conversation would miss old ones.
    */
   locate(ref: AttachmentRef): LocatedAttachment | undefined {
     return this.account.locate(ref)
+  }
+
+  /** Fake-only: the size of a file a send took, while it is served and the world knows it. */
+  takenSizeBytes(ref: AttachmentRef): number | undefined {
+    return this.account.takenSizeBytes(ref)
   }
 
   /** Fake-only: whether an attachment's bytes have arrived, for a dev loader deciding to draw. */
@@ -433,14 +450,40 @@ export class FakeSessionClient implements SessionClient {
     return Promise.resolve(this.account.configSizes())
   }
 
-  sendMessage(id: ConversationId, message: OutgoingMessage): Promise<number> {
+  attachmentSendPlan(path: string, contentType?: string): Promise<SendPlan> {
     this.assertOpen()
-    return Promise.resolve(this.account.send(id, message.body, message.replyTo))
+    return this.account.sendPlan(path, contentType)
   }
 
-  retrySend(): Promise<boolean> {
+  getAttachmentUploadLimit(): Promise<number> {
     this.assertOpen()
-    return Promise.resolve(true)
+    return Promise.resolve(FAKE_UPLOAD_LIMIT_BYTES)
+  }
+
+  /** How the plan reads a file behind an app, whose disk the world cannot see. */
+  readStagedFilesWith(files: FakeStagedFiles): void {
+    this.account.readStagedFilesWith(files)
+  }
+
+  sendMessage(id: ConversationId, message: OutgoingMessage): Promise<number> {
+    this.assertOpen()
+    try {
+      return Promise.resolve(
+        this.account.send(id, message.body, message.replyTo, message.attachments),
+      )
+    } catch (error) {
+      return Promise.reject(error instanceof Error ? error : new Error(String(error)))
+    }
+  }
+
+  retrySend(messageId: number): Promise<boolean> {
+    this.assertOpen()
+    return Promise.resolve(this.account.resumeSend(messageId))
+  }
+
+  setGallery(messageId: number, gallery: boolean): Promise<boolean> {
+    this.assertOpen()
+    return Promise.resolve(this.account.setGallery(messageId, gallery))
   }
 
   deleteMessage(messageId: number, scope: Deletion): Promise<void> {

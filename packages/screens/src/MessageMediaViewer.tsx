@@ -8,7 +8,13 @@ import { useMemo, useRef } from 'react'
 import { fetchOf } from './attachmentFetch'
 import { exportOne } from './exportAttachment'
 import { useExportFeedback } from './useExportFeedback'
-import { viewableAttachments, viewerUri } from './viewableAttachments'
+import {
+  heldItem,
+  renditionSettled,
+  viewableAttachments,
+  viewerItem,
+  type HeldItem,
+} from './viewableAttachments'
 
 /** An open viewer: which message, and the attachment's index in that message. */
 export interface ViewerTarget {
@@ -44,13 +50,20 @@ function MessageViewer({
           ),
     [message, transfers],
   )
+  const held = useRef(new Map<string, HeldItem>())
+  if (!open) held.current.clear()
   const items = useMemo(
     (): MediaViewerItem[] =>
-      viewable.map((attachment) => ({
-        // Null where the platform has no resolver. The viewer says so rather than drawing a broken
-        // picture, which is the one thing it must not do with somebody's photograph.
-        uri: viewerUri(target.messageId, attachment),
-      })),
+      // A null url where the platform has no resolver: the viewer says so rather than drawing a
+      // broken picture, which is the one thing it must not do with somebody's photograph.
+      viewable.map((attachment) =>
+        heldItem(
+          held.current,
+          `${String(target.messageId)}:${String(attachment.index)}`,
+          renditionSettled(attachment),
+          () => viewerItem(target.messageId, attachment),
+        ),
+      ),
     [viewable, target.messageId],
   )
 
@@ -77,6 +90,7 @@ function MessageViewer({
       positionLabel={`${String(at + 1)} / ${String(items.length)}`}
       unavailableLabel={tr('attachmentsErrorNotSupported')}
       failedLabel={tr('attachmentsErrorOpen')}
+      preparingLabel={tr('loading')}
       closeLabel={tr('close')}
       exportLabel={PENDING_COPY.export}
       previousLabel={PENDING_COPY.previous}

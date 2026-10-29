@@ -7,6 +7,7 @@ export {
   useAccount,
   useAppearance,
   useAttachmentTransfer,
+  useAttachmentUploadLimit,
   useConversation,
   useConversations,
   useHydrated,

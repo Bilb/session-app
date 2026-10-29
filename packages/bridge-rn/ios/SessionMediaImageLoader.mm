@@ -6,9 +6,9 @@
 #import <UIKit/UIKit.h>
 #import <os/log.h>
 
-#include "DecodeBound.hpp"
 #include "MediaSource.hpp"
 
+#include <session_bridge/decode_bound.hpp>
 #include <session_bridge/media_url.hpp>
 
 #include <algorithm>
@@ -35,28 +35,31 @@ static void Fail(RCTImageLoaderCompletionBlock done, NSURL* url, const std::stri
     done(SessionMediaError(message), nil);
 }
 
-/// The source's stored pixel size from its header, or zero when it does not say. A GIF's frames
-/// are drawn onto its canvas, so for a GIF the larger of the two on each edge.
+/// The source's stored pixel size from its header, or zero when it does not say. The frames of a
+/// GIF or an animated WebP are drawn onto its canvas, so for those the larger on each edge.
 static CGSize SourcePixelSize(CGImageSourceRef source) {
     NSDictionary* frame =
             (__bridge_transfer NSDictionary*)CGImageSourceCopyPropertiesAtIndex(source, 0, nullptr);
     NSDictionary* container =
             (__bridge_transfer NSDictionary*)CGImageSourceCopyProperties(source, nullptr);
     NSDictionary* gif = container[(id)kCGImagePropertyGIFDictionary];
+    NSDictionary* webp = container[(id)kCGImagePropertyWebPDictionary];
     return CGSizeMake(
             std::max(
-                    [frame[(id)kCGImagePropertyPixelWidth] doubleValue],
-                    [gif[(id)kCGImagePropertyGIFCanvasPixelWidth] doubleValue]),
+                    {[frame[(id)kCGImagePropertyPixelWidth] doubleValue],
+                     [gif[(id)kCGImagePropertyGIFCanvasPixelWidth] doubleValue],
+                     [webp[(id)kCGImagePropertyWebPCanvasPixelWidth] doubleValue]}),
             std::max(
-                    [frame[(id)kCGImagePropertyPixelHeight] doubleValue],
-                    [gif[(id)kCGImagePropertyGIFCanvasPixelHeight] doubleValue]));
+                    {[frame[(id)kCGImagePropertyPixelHeight] doubleValue],
+                     [gif[(id)kCGImagePropertyGIFCanvasPixelHeight] doubleValue],
+                     [webp[(id)kCGImagePropertyWebPCanvasPixelHeight] doubleValue]}));
 }
 
 // TODO: ImageIO decodes a GIF or most PNGs whole; serve a format it reduces while decoding.
 /// An original, for the viewer: decoded on the calling queue rather than at first draw, with the
 /// file's orientation applied, and no larger than the pixel budget allows.
 static UIImage* _Nullable DecodedImage(CGImageSourceRef source, CGSize pixels, CGFloat scale) {
-    const CGFloat bound = ::session_bridge_rn::decode_edge_bound(pixels.width, pixels.height);
+    const CGFloat bound = ::session_bridge::decode_edge_bound(pixels.width, pixels.height);
     NSDictionary* options = @{
         (id)kCGImageSourceCreateThumbnailFromImageAlways : @YES,
         (id)kCGImageSourceCreateThumbnailWithTransform : @YES,
@@ -118,7 +121,7 @@ static UIImage* _Nullable ThumbhashImage(std::shared_ptr<::session_bridge::Thumb
 /// such as the other album tiles or a file row's glyph.
 static UIImage* _Nullable ThumbnailImage(CGImageSourceRef source, CGSize view, CGFloat scale) {
     const CGSize pixels = SourcePixelSize(source);
-    const CGFloat edge = ::session_bridge_rn::thumbnail_decode_edge(
+    const CGFloat edge = ::session_bridge::thumbnail_decode_edge(
             pixels.width, pixels.height, view.width * scale, view.height * scale);
     CGImageRef decoded = nullptr;
     if (edge > 0) {
@@ -183,6 +186,101 @@ static void FinishThumbnail(
         return;
     }
     Remember(cache, key, image);
+    done(nil, image);
+}
+
+/// An animated WebP, which `RCTAnimatedImage` reads as a GIF: without these it plays once, every
+/// frame a tenth of a second, since ImageIO keeps a WebP's timing under its own dictionary.
+@interface SessionAnimatedWebP : RCTAnimatedImage
+@end
+
+@implementation SessionAnimatedWebP {
+    NSUInteger _loops;
+    NSArray<NSNumber*>* _durations;
+}
+
+- (instancetype)initWithData:(NSData*)data scale:(CGFloat)scale {
+    if (!(self = [super initWithData:data scale:scale]))
+        return nil;
+    CGImageSourceRef source = CGImageSourceCreateWithData((__bridge CFDataRef)data, nullptr);
+    if (!source)
+        return nil;
+    NSDictionary* container =
+            (__bridge_transfer NSDictionary*)CGImageSourceCopyProperties(source, nullptr);
+    _loops = [container[(id)kCGImagePropertyWebPDictionary][(id)kCGImagePropertyWebPLoopCount]
+            unsignedIntegerValue];
+    NSMutableArray<NSNumber*>* durations = [NSMutableArray array];
+    for (size_t i = 0, count = CGImageSourceGetCount(source); i < count; i++) {
+        NSDictionary* frame = (__bridge_transfer NSDictionary*)CGImageSourceCopyPropertiesAtIndex(
+                source, i, nullptr);
+        NSDictionary* webp = frame[(id)kCGImagePropertyWebPDictionary];
+        double delay = [webp[(id)kCGImagePropertyWebPUnclampedDelayTime] doubleValue];
+        if (delay <= 0)
+            delay = [webp[(id)kCGImagePropertyWebPDelayTime] doubleValue];
+        // Browsers draw a frame of 10 ms or less for 100 ms; 0.011 as WebKit and SDWebImage, since
+        // ImageIO's float delays read 10 ms back as just over 0.01.
+        [durations addObject:@(delay < 0.011 ? 0.1 : delay)];
+    }
+    CFRelease(source);
+    _durations = durations;
+    return self;
+}
+
+- (NSUInteger)animatedImageLoopCount {
+    return _loops;
+}
+
+- (NSTimeInterval)animatedImageDurationAtIndex:(NSUInteger)index {
+    return index < _durations.count ? _durations[index].doubleValue : 0;
+}
+
+@end
+
+/// Answers `done` with an original or a rendition decoded, as `type`: a GIF or animated WebP
+/// within the budget animates, and anything else is its first frame, bounded. One past the
+/// whole-decode ceiling is handed to `standIn` where there is one, and fails otherwise.
+static void FinishPicture(
+        std::shared_ptr<::session_bridge::Media> media,
+        const std::string& type,
+        CGFloat scale,
+        NSURL* url,
+        RCTImageLoaderCompletionBlock done,
+        void (^standIn)(void)) {
+    // Not copied: the deallocator holds `media` for as long as ImageIO holds the data.
+    NSData* data = [[NSData alloc] initWithBytesNoCopy:media->bytes.data()
+                                                length:media->bytes.size()
+                                           deallocator:^(void*, NSUInteger) {
+                                               (void)media;
+                                           }];
+    CGImageSourceRef imageSource = CGImageSourceCreateWithData((__bridge CFDataRef)data, nullptr);
+    if (!imageSource) {
+        Fail(done, url, "the picture did not decode");
+        return;
+    }
+    const CGSize pixels = SourcePixelSize(imageSource);
+    if (::session_bridge::exceeds_whole_decode_ceiling(type, pixels.width, pixels.height)) {
+        CFRelease(imageSource);
+        if (standIn)
+            standIn();
+        else
+            Fail(done, url, "a GIF or PNG too large to decode whole");
+        return;
+    }
+    // `RCTAnimatedImage` decodes every frame at full canvas size, at draw, so only an animation
+    // within the budget is one.
+    const bool animated = (type == "image/gif" || type == "image/webp")
+                          && CGImageSourceGetCount(imageSource) > 1
+                          && ::session_bridge::fits_decode_budget(pixels.width, pixels.height);
+    UIImage* image = !animated              ? DecodedImage(imageSource, pixels, scale)
+                     : type == "image/webp" ? [[SessionAnimatedWebP alloc] initWithData:data
+                                                                                  scale:scale]
+                                            : [[RCTAnimatedImage alloc] initWithData:data
+                                                                               scale:scale];
+    CFRelease(imageSource);
+    if (!image) {
+        Fail(done, url, "the picture did not decode");
+        return;
+    }
     done(nil, image);
 }
 
@@ -276,11 +374,14 @@ RCT_EXPORT_MODULE()
         Fail(completionHandler, imageURL, "not a media URL");
         return nil;
     }
-    // Originals are not kept: one is most of the cache's budget, and a tile draws one only for a
-    // type libsession never thumbnails.
-    const bool cacheable = parsed->kind != ::session_bridge::MediaUrlKind::attachment;
+    // Originals and renditions are not kept: one is most of the cache's budget, and only the viewer
+    // draws one, but for a tile of a type libsession never thumbnails.
+    const bool cacheable = parsed->kind != ::session_bridge::MediaUrlKind::attachment
+                        && parsed->kind != ::session_bridge::MediaUrlKind::rendition;
+    const bool thumbnail = parsed->kind == ::session_bridge::MediaUrlKind::thumbnail
+                        || parsed->kind == ::session_bridge::MediaUrlKind::staged;
     // A thumbnail's decode depends on the view it fills; a thumbhash's does not.
-    NSString* key = parsed->kind == ::session_bridge::MediaUrlKind::thumbnail
+    NSString* key = thumbnail
                             ? [NSString stringWithFormat:@"%@ %.0fx%.0f",
                                                          imageURL.absoluteString,
                                                          size.width * scale,
@@ -297,6 +398,8 @@ RCT_EXPORT_MODULE()
     }
 
     auto cancelled = std::make_shared<std::atomic<bool>>(false);
+    // Withdraws a staged decode that has not started, so a scrolled-away tile costs nothing.
+    std::function<void()> withdraw;
     dispatch_queue_t drain = _drain;
     NSCache<NSString*, UIImage*>* cache = _cache;
     RCTImageLoaderCompletionBlock done = [completionHandler copy];
@@ -329,6 +432,34 @@ RCT_EXPORT_MODULE()
                             FinishThumbnail(media, size, scale, cache, key, imageURL, done);
                     });
                 });
+    } else if (parsed->kind == ::session_bridge::MediaUrlKind::staged) {
+        withdraw = source->fetch_staged_thumbnail(parsed->path, [=](::session_bridge::Media answer) {
+            auto media = std::make_shared<::session_bridge::Media>(std::move(answer));
+            dispatch_async(drain, ^{
+                if (!cancelled->load())
+                    FinishThumbnail(media, size, scale, cache, key, imageURL, done);
+            });
+        });
+    } else if (parsed->kind == ::session_bridge::MediaUrlKind::rendition) {
+        source->fetch_rendition(
+                parsed->message_id, parsed->index, [=](::session_bridge::Media answer) {
+                    auto media = std::make_shared<::session_bridge::Media>(std::move(answer));
+                    dispatch_async(drain, ^{
+                        if (cancelled->load())
+                            return;
+                        if (media->error) {
+                            Fail(done, imageURL, *media->error);
+                            return;
+                        }
+                        // Typed by its bytes rather than by whoever answered.
+                        const auto type = ::session_bridge::rendition_content_type(media->bytes);
+                        if (!type) {
+                            Fail(done, imageURL, "a rendition that is not a JPEG or WebP");
+                            return;
+                        }
+                        FinishPicture(media, *type, scale, imageURL, done, nil);
+                    });
+                });
     } else {
         source->fetch_media(parsed->message_id, parsed->index, [=](::session_bridge::Media answer) {
             auto media = std::make_shared<::session_bridge::Media>(std::move(answer));
@@ -345,45 +476,46 @@ RCT_EXPORT_MODULE()
                     Fail(done, imageURL, "not a picture the decoder may be handed");
                     return;
                 }
-                // Not copied: the deallocator holds `media` for as long as ImageIO holds the data.
-                NSData* data = [[NSData alloc] initWithBytesNoCopy:media->bytes.data()
-                                                            length:media->bytes.size()
-                                                       deallocator:^(void*, NSUInteger) {
-                                                           (void)media;
-                                                       }];
-                CGImageSourceRef imageSource =
-                        CGImageSourceCreateWithData((__bridge CFDataRef)data, nullptr);
-                if (!imageSource) {
-                    Fail(done, imageURL, "the picture did not decode");
-                    return;
-                }
-                const CGSize pixels = SourcePixelSize(imageSource);
-                if (::session_bridge_rn::exceeds_whole_decode_ceiling(
-                            *type, pixels.width, pixels.height)) {
-                    CFRelease(imageSource);
-                    Fail(done, imageURL, "a GIF or PNG too large to decode whole");
-                    return;
-                }
-                // `RCTAnimatedImage` decodes every frame at full canvas size, at draw, so only an
-                // animation within the budget is one; anything else is its first frame, bounded.
-                const bool animated = *type == "image/gif"
-                                      && CGImageSourceGetCount(imageSource) > 1
-                                      && ::session_bridge_rn::fits_decode_budget(
-                                              pixels.width, pixels.height);
-                UIImage* image = animated ? [[RCTAnimatedImage alloc] initWithData:data scale:scale]
-                                          : DecodedImage(imageSource, pixels, scale);
-                CFRelease(imageSource);
-                if (!image) {
-                    Fail(done, imageURL, "the picture did not decode");
-                    return;
-                }
-                done(nil, image);
+                // As desktop's main process: the rendition, whose fetch asks libsession for one
+                // where there is none yet, and until then the thumbnail. The viewer swaps to the
+                // rendition's own url once it is made.
+                const int64_t messageId = parsed->message_id;
+                const int64_t index = parsed->index;
+                auto thumbnailInstead = ^{
+                    source->fetch_thumbnail(messageId, index, [=](::session_bridge::Media answer) {
+                        auto thumb = std::make_shared<::session_bridge::Media>(std::move(answer));
+                        dispatch_async(drain, ^{
+                            if (!cancelled->load())
+                                FinishThumbnail(thumb, size, scale, nil, key, imageURL, done);
+                        });
+                    });
+                };
+                auto renditionInstead = ^{
+                    source->fetch_rendition(messageId, index, [=](::session_bridge::Media answer) {
+                        auto rendition = std::make_shared<::session_bridge::Media>(std::move(answer));
+                        dispatch_async(drain, ^{
+                            if (cancelled->load())
+                                return;
+                            const auto renditionType =
+                                    rendition->error ? std::nullopt
+                                                     : ::session_bridge::rendition_content_type(
+                                                               rendition->bytes);
+                            if (renditionType)
+                                FinishPicture(rendition, *renditionType, scale, imageURL, done, nil);
+                            else
+                                thumbnailInstead();
+                        });
+                    });
+                };
+                FinishPicture(media, *type, scale, imageURL, done, renditionInstead);
             });
         });
     }
 
     return ^{
         cancelled->store(true);
+        if (withdraw)
+            withdraw();
     };
 }
 

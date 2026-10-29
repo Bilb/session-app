@@ -102,6 +102,11 @@ Attachment to_bridge(::session::client::Attachment&& from) {
             number(from.height),
             thumbhash_decodable(from),
             from.has_thumbnail,
+            static_cast<double>(from.thumbnail_width),
+            static_cast<double>(from.thumbnail_height),
+            from.has_rendition,
+            from.picture && from.picture->rendition_refused,
+            from.original_file,
             from.uploaded,
             availability(from.availability),
             static_cast<double>(from.fetch_done),
@@ -151,6 +156,7 @@ Message to_bridge(::session::client::Message&& from) {
                                  : std::nullopt,
             std::move(attachments),
             from.gallery_viewable,
+            from.gallery,
             std::move(reply),
             deleted);
 }
@@ -205,6 +211,21 @@ Conversation to_bridge(::session::client::AnyConversation&& from) {
             awaiting_approval,
             note_to_self,
             blocked);
+}
+
+SendPlan to_bridge(image::SendPlan from) {
+    // No default label: -Werror=switch makes a new plan a build failure here.
+    switch (from) {
+        case image::SendPlan::reencoded: return SendPlan::reencoded;
+        case image::SendPlan::as_is: return SendPlan::as_is;
+        case image::SendPlan::original_cannot_decode: return SendPlan::original_cannot_decode;
+        case image::SendPlan::original_animated_png: return SendPlan::original_animated_png;
+        case image::SendPlan::too_large_to_decode: return SendPlan::too_large_to_decode;
+        case image::SendPlan::too_large_for_server: return SendPlan::too_large_for_server;
+        case image::SendPlan::unreadable: return SendPlan::unreadable;
+        case image::SendPlan::missing: return SendPlan::missing;
+    }
+    return SendPlan::unreadable;
 }
 
 NetworkStatus to_bridge(::session::network::ConnectionStatus from) {

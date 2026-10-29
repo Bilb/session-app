@@ -376,6 +376,11 @@ struct Codec<::session_bridge::Attachment> {
             obj.Set("height", Codec<double>::to(env, *value.height));
         obj.Set("hasThumbhash", Codec<bool>::to(env, value.has_thumbhash));
         obj.Set("hasThumbnail", Codec<bool>::to(env, value.has_thumbnail));
+        obj.Set("thumbnailWidthPx", Codec<double>::to(env, value.thumbnail_width_px));
+        obj.Set("thumbnailHeightPx", Codec<double>::to(env, value.thumbnail_height_px));
+        obj.Set("hasRendition", Codec<bool>::to(env, value.has_rendition));
+        obj.Set("renditionRefused", Codec<bool>::to(env, value.rendition_refused));
+        obj.Set("originalFile", Codec<bool>::to(env, value.original_file));
         obj.Set("uploaded", Codec<bool>::to(env, value.uploaded));
         obj.Set("availability", Codec<::session_bridge::AttachmentAvailability>::to(env, value.availability));
         obj.Set("fetchDoneBytes", Codec<double>::to(env, value.fetch_done_bytes));
@@ -396,6 +401,11 @@ struct Codec<::session_bridge::Attachment> {
                 optional<double>(obj.Get("height"), "Attachment.height"),
                 Codec<bool>::from(obj.Get("hasThumbhash"), "Attachment.hasThumbhash"),
                 Codec<bool>::from(obj.Get("hasThumbnail"), "Attachment.hasThumbnail"),
+                Codec<double>::from(obj.Get("thumbnailWidthPx"), "Attachment.thumbnailWidthPx"),
+                Codec<double>::from(obj.Get("thumbnailHeightPx"), "Attachment.thumbnailHeightPx"),
+                Codec<bool>::from(obj.Get("hasRendition"), "Attachment.hasRendition"),
+                Codec<bool>::from(obj.Get("renditionRefused"), "Attachment.renditionRefused"),
+                Codec<bool>::from(obj.Get("originalFile"), "Attachment.originalFile"),
                 Codec<bool>::from(obj.Get("uploaded"), "Attachment.uploaded"),
                 Codec<::session_bridge::AttachmentAvailability>::from(obj.Get("availability"), "Attachment.availability"),
                 Codec<double>::from(obj.Get("fetchDoneBytes"), "Attachment.fetchDoneBytes"),
@@ -459,6 +469,7 @@ struct Codec<::session_bridge::Message> {
             obj.Set("syncState", Codec<::session_bridge::SendState>::to(env, *value.sync_state));
         obj.Set("attachments", Codec<std::vector<::session_bridge::Attachment>>::to(env, value.attachments));
         obj.Set("galleryViewable", Codec<bool>::to(env, value.gallery_viewable));
+        obj.Set("gallery", Codec<bool>::to(env, value.gallery));
         if (value.reply_to)
             obj.Set("replyTo", Codec<::session_bridge::Reply>::to(env, *value.reply_to));
         if (value.deleted)
@@ -478,6 +489,7 @@ struct Codec<::session_bridge::Message> {
                 optional<::session_bridge::SendState>(obj.Get("syncState"), "Message.syncState"),
                 Codec<std::vector<::session_bridge::Attachment>>::from(obj.Get("attachments"), "Message.attachments"),
                 Codec<bool>::from(obj.Get("galleryViewable"), "Message.galleryViewable"),
+                Codec<bool>::from(obj.Get("gallery"), "Message.gallery"),
                 optional<::session_bridge::Reply>(obj.Get("replyTo"), "Message.replyTo"),
                 optional<::session_bridge::Deletion>(obj.Get("deleted"), "Message.deleted"));
     }
@@ -594,6 +606,38 @@ struct Codec<::session_bridge::ByteCountResult> {
         Napi::Object obj = object(value, where);
         return ::session_bridge::ByteCountResult(
                 optional<double>(obj.Get("bytes"), "ByteCountResult.bytes"));
+    }
+};
+
+template <>
+struct Codec<::session_bridge::SendPlan> {
+    static constexpr std::string_view name = "SendPlan";
+    static Napi::Value to(Napi::Env env, ::session_bridge::SendPlan value) {
+        auto text = ::session_bridge::EnumTraits<::session_bridge::SendPlan>::to_string(value);
+        return Napi::String::New(env, text.data(), text.size());
+    }
+    static ::session_bridge::SendPlan from(const Napi::Value& value, std::string_view where) {
+        std::string text = Codec<std::string>::from(value, where);
+        auto parsed = ::session_bridge::EnumTraits<::session_bridge::SendPlan>::parse(text);
+        if (!parsed)
+            throw std::invalid_argument(std::string{where} + ": \"" + text + "\" is not a SendPlan");
+        return *parsed;
+    }
+};
+
+template <>
+struct Codec<::session_bridge::SendPlanResult> {
+    static constexpr std::string_view name = "SendPlanResult";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::SendPlanResult& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::SendPlanResult::type_tag.data(), ::session_bridge::SendPlanResult::type_tag.size()));
+        obj.Set("plan", Codec<::session_bridge::SendPlan>::to(env, value.plan));
+        return obj;
+    }
+    static ::session_bridge::SendPlanResult from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::SendPlanResult(
+                Codec<::session_bridge::SendPlan>::from(obj.Get("plan"), "SendPlanResult.plan"));
     }
 };
 
@@ -715,6 +759,8 @@ struct Codec<::session_bridge::Result> {
             return Codec<::session_bridge::PathResult>::from(value, where);
         if (tag == "byteCount")
             return Codec<::session_bridge::ByteCountResult>::from(value, where);
+        if (tag == "sendPlan")
+            return Codec<::session_bridge::SendPlanResult>::from(value, where);
         if (tag == "edge")
             return Codec<::session_bridge::EdgeResult>::from(value, where);
         if (tag == "configSizes")
@@ -1618,6 +1664,30 @@ struct Codec<::session_bridge::GetMessagesCommand> {
 };
 
 template <>
+struct Codec<::session_bridge::OutgoingAttachment> {
+    static constexpr std::string_view name = "OutgoingAttachment";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::OutgoingAttachment& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("path", Codec<std::string>::to(env, value.path));
+        if (value.content_type)
+            obj.Set("contentType", Codec<std::string>::to(env, *value.content_type));
+        if (value.filename)
+            obj.Set("filename", Codec<std::string>::to(env, *value.filename));
+        if (value.take_file)
+            obj.Set("takeFile", Codec<bool>::to(env, *value.take_file));
+        return obj;
+    }
+    static ::session_bridge::OutgoingAttachment from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::OutgoingAttachment(
+                Codec<std::string>::from(obj.Get("path"), "OutgoingAttachment.path"),
+                optional<std::string>(obj.Get("contentType"), "OutgoingAttachment.contentType"),
+                optional<std::string>(obj.Get("filename"), "OutgoingAttachment.filename"),
+                optional<bool>(obj.Get("takeFile"), "OutgoingAttachment.takeFile"));
+    }
+};
+
+template <>
 struct Codec<::session_bridge::SendMessageCommand> {
     static constexpr std::string_view name = "SendMessageCommand";
     static Napi::Value to(Napi::Env env, const ::session_bridge::SendMessageCommand& value) {
@@ -1627,6 +1697,8 @@ struct Codec<::session_bridge::SendMessageCommand> {
         obj.Set("body", Codec<std::string>::to(env, value.body));
         if (value.reply_to)
             obj.Set("replyTo", Codec<double>::to(env, *value.reply_to));
+        if (value.attachments)
+            obj.Set("attachments", Codec<std::vector<::session_bridge::OutgoingAttachment>>::to(env, *value.attachments));
         return obj;
     }
     static ::session_bridge::SendMessageCommand from(const Napi::Value& value, std::string_view where) {
@@ -1634,7 +1706,42 @@ struct Codec<::session_bridge::SendMessageCommand> {
         return ::session_bridge::SendMessageCommand(
                 Codec<std::string>::from(obj.Get("conversationId"), "SendMessageCommand.conversationId"),
                 Codec<std::string>::from(obj.Get("body"), "SendMessageCommand.body"),
-                optional<double>(obj.Get("replyTo"), "SendMessageCommand.replyTo"));
+                optional<double>(obj.Get("replyTo"), "SendMessageCommand.replyTo"),
+                optional<std::vector<::session_bridge::OutgoingAttachment>>(obj.Get("attachments"), "SendMessageCommand.attachments"));
+    }
+};
+
+template <>
+struct Codec<::session_bridge::AttachmentSendPlanCommand> {
+    static constexpr std::string_view name = "AttachmentSendPlanCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::AttachmentSendPlanCommand& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::AttachmentSendPlanCommand::type_tag.data(), ::session_bridge::AttachmentSendPlanCommand::type_tag.size()));
+        obj.Set("path", Codec<std::string>::to(env, value.path));
+        if (value.content_type)
+            obj.Set("contentType", Codec<std::string>::to(env, *value.content_type));
+        return obj;
+    }
+    static ::session_bridge::AttachmentSendPlanCommand from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::AttachmentSendPlanCommand(
+                Codec<std::string>::from(obj.Get("path"), "AttachmentSendPlanCommand.path"),
+                optional<std::string>(obj.Get("contentType"), "AttachmentSendPlanCommand.contentType"));
+    }
+};
+
+template <>
+struct Codec<::session_bridge::GetAttachmentUploadLimitCommand> {
+    static constexpr std::string_view name = "GetAttachmentUploadLimitCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::GetAttachmentUploadLimitCommand& value) {
+        (void)value;
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::GetAttachmentUploadLimitCommand::type_tag.data(), ::session_bridge::GetAttachmentUploadLimitCommand::type_tag.size()));
+        return obj;
+    }
+    static ::session_bridge::GetAttachmentUploadLimitCommand from(const Napi::Value& value, std::string_view where) {
+        object(value, where);
+        return ::session_bridge::GetAttachmentUploadLimitCommand{};
     }
 };
 
@@ -1669,6 +1776,24 @@ struct Codec<::session_bridge::DeleteMessageCommand> {
         return ::session_bridge::DeleteMessageCommand(
                 Codec<double>::from(obj.Get("messageId"), "DeleteMessageCommand.messageId"),
                 Codec<::session_bridge::Deletion>::from(obj.Get("scope"), "DeleteMessageCommand.scope"));
+    }
+};
+
+template <>
+struct Codec<::session_bridge::SetGalleryCommand> {
+    static constexpr std::string_view name = "SetGalleryCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::SetGalleryCommand& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::SetGalleryCommand::type_tag.data(), ::session_bridge::SetGalleryCommand::type_tag.size()));
+        obj.Set("messageId", Codec<double>::to(env, value.message_id));
+        obj.Set("gallery", Codec<bool>::to(env, value.gallery));
+        return obj;
+    }
+    static ::session_bridge::SetGalleryCommand from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::SetGalleryCommand(
+                Codec<double>::from(obj.Get("messageId"), "SetGalleryCommand.messageId"),
+                Codec<bool>::from(obj.Get("gallery"), "SetGalleryCommand.gallery"));
     }
 };
 
@@ -1883,13 +2008,16 @@ struct Codec<::session_bridge::TestAttachment> {
         obj.Set("contentType", Codec<std::string>::to(env, value.content_type));
         if (value.thumbhash)
             obj.Set("thumbhash", Codec<std::vector<std::byte>>::to(env, *value.thumbhash));
+        if (value.original_file)
+            obj.Set("originalFile", Codec<bool>::to(env, *value.original_file));
         return obj;
     }
     static ::session_bridge::TestAttachment from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
         return ::session_bridge::TestAttachment(
                 Codec<std::string>::from(obj.Get("contentType"), "TestAttachment.contentType"),
-                optional<std::vector<std::byte>>(obj.Get("thumbhash"), "TestAttachment.thumbhash"));
+                optional<std::vector<std::byte>>(obj.Get("thumbhash"), "TestAttachment.thumbhash"),
+                optional<bool>(obj.Get("originalFile"), "TestAttachment.originalFile"));
     }
 };
 
@@ -2032,10 +2160,16 @@ struct Codec<::session_bridge::Command> {
             return Codec<::session_bridge::GetMessagesCommand>::from(value, where);
         if (tag == "sendMessage")
             return Codec<::session_bridge::SendMessageCommand>::from(value, where);
+        if (tag == "attachmentSendPlan")
+            return Codec<::session_bridge::AttachmentSendPlanCommand>::from(value, where);
+        if (tag == "getAttachmentUploadLimit")
+            return Codec<::session_bridge::GetAttachmentUploadLimitCommand>::from(value, where);
         if (tag == "retrySend")
             return Codec<::session_bridge::RetrySendCommand>::from(value, where);
         if (tag == "deleteMessage")
             return Codec<::session_bridge::DeleteMessageCommand>::from(value, where);
+        if (tag == "setGallery")
+            return Codec<::session_bridge::SetGalleryCommand>::from(value, where);
         if (tag == "downloadAttachment")
             return Codec<::session_bridge::DownloadAttachmentCommand>::from(value, where);
         if (tag == "exportAttachment")

@@ -14,7 +14,7 @@ import type {
 import type { ElementId } from '@session/test-ids'
 
 import { AttachmentTile } from './AttachmentTile'
-import { fileFormat, fileGlyph, nameDirection, splitFilename } from './attachmentFile'
+import { fileFormat, fileGlyph, nameDirection } from './attachmentFile'
 import {
   fileRowAccessibleName,
   fileRowActions,
@@ -28,10 +28,12 @@ import {
   FILE_ROW_GAP,
   fileLeadHeight,
   fileRowControl,
+  fileRowMarker,
   fileRowTone,
   type FileRowState,
 } from './fileRowState'
 import { FetchHint } from './FetchHint'
+import { FileName } from './FileName'
 import { Icon } from './Icon'
 import { inkFor } from './ink'
 import { useForcedFocus } from './interactionOverride'
@@ -187,7 +189,16 @@ function Trailing({
     justifyContent: 'center',
   } as const
 
-  if (control === null) return <YStack {...square} />
+  if (control === null) {
+    const marker = fileRowMarker(state)
+    return (
+      <YStack {...square} aria-hidden>
+        {marker === null ? null : (
+          <Icon name={marker} size="sm" {...inkFor('secondary', onAccent)} />
+        )}
+      </YStack>
+    )
+  }
 
   const ring = focusRing({ onAccent, offset: 0, radius: '$full' })
   // While a transfer runs, a disabled button showing progress, since the bridge has no cancel. The
@@ -269,7 +280,6 @@ export function FileRow({
   testIDs,
   onAccent = false,
 }: FileRowProps) {
-  const { head, tail } = splitFilename(filename)
   const format = fileFormat(filename)
   // On the name and the caption together, so the two share an edge.
   const direction = { direction: nameDirection(filename) }
@@ -393,27 +403,7 @@ export function FileRow({
       </YStack>
 
       <YStack flex={1} minWidth={0} gap="$3xs" style={direction}>
-        {/* Two runs: the head gives up whatever width the row is short of and the tail cannot,
-            so a long name loses its middle instead of its extension. See `splitFilename`.
-
-            The id and the label are on the pair, never on a run: split between two elements the
-            name stops being one string, and both a screen reader and a test then read half. */}
-        <XStack minWidth={0} aria-label={filename} testID={testIDs?.name}>
-          <Text
-            size="$body"
-            weight="semibold"
-            {...nameInk}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            flexShrink={1}
-            minWidth={0}
-          >
-            {head}
-          </Text>
-          <Text size="$body" weight="semibold" {...nameInk} numberOfLines={1} flexShrink={0}>
-            {tail}
-          </Text>
-        </XStack>
+        <FileName name={filename} size="$body" ink={nameInk} testID={testIDs?.name} />
         {/* Sized to its words, so the column's direction places it rather than each platform's
             own alignment of a line of text. */}
         <Text

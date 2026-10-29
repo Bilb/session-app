@@ -18,6 +18,7 @@ import { launchColors } from './launchColors'
 import { launchOverridesSwitch } from '../shared/launchOverrides'
 import { finishLogs, logDatabase, logLibsession, openLogs, serveLogs } from './logs'
 import { registerMediaScheme, serveMedia, stopServingMedia } from './media'
+import { PreviewGrants } from './previewGrants'
 import {
   acceptsCopy,
   applyContentProtection,
@@ -114,6 +115,11 @@ function refusingBridge(reason: string): Awaited<ReturnType<typeof createBridge>
     fetchMedia: refuse,
     fetchThumbhash: refuse,
     fetchThumbnail: refuse,
+    fetchRendition: refuse,
+    fetchStagedThumbnail: refuse,
+    planDecode: () => {
+      throw new Error(`the bridge could not start: ${reason}`)
+    },
   }
 }
 
@@ -133,6 +139,9 @@ function refusingBridge(reason: string): Awaited<ReturnType<typeof createBridge>
  */
 let bridge: Awaited<ReturnType<typeof createBridge>> | null = null
 
+/** Per process, as the scheme's handler is: `protocol.handle` cannot tell windows apart. */
+const previews = new PreviewGrants()
+
 async function requireBridge(): Promise<NonNullable<typeof bridge>> {
   if (bridge === null) {
     // A bridge that cannot be made is answered for rather than thrown: every request the window
@@ -149,7 +158,7 @@ async function requireBridge(): Promise<NonNullable<typeof bridge>> {
     logDatabase('open')
     // With the bridge rather than with a window: `protocol.handle` installs one handler for the
     // whole session, and the scheme has to outlive a window for the same reason the bridge does.
-    serveMedia(bridge)
+    serveMedia(bridge, previews)
   }
   return bridge
 }
@@ -216,7 +225,7 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
     if (typeof url === 'string' && /^https?:\/\//i.test(url)) void shell.openExternal(url)
   })
 
-  const files = serveFiles(window, appUrl)
+  const files = serveFiles(window, appUrl, previews)
   serveLogs(window, appUrl)
 
   // Rejects rather than resolving, so a refused copy is not reported to the person as done.
@@ -316,8 +325,8 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
       // Renderer input: an exception escaping here is an uncaught one in the main process.
       try {
         const request = event.data as Request
-        // The one command that names a filesystem path of its own choosing, and `save_attachment`
-        // has no containment of its own, so every request passes the gate on its way to the bridge.
+        // An export and a send name filesystem paths of the page's choosing, and libsession
+        // contains neither, so every request passes the gate on its way to the bridge.
         const admitted = files.admit(request)
         if (typeof admitted === 'string') {
           port?.postMessage({ type: 'response', response: { id: request.id, error: admitted } })

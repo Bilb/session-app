@@ -106,8 +106,13 @@ async function downloadWithRetries(name: string): Promise<Uint8Array> {
   }
 }
 
-/** What libsession makes: a square cover, JPEG at quality 90, checkerboard under any alpha. */
+/**
+ * What libsession makes: the picture cropped to its centre at 21:9 when wider than that either way
+ * up, then the edge tall and never enlarged, JPEG at quality 90, checkerboard under any alpha.
+ */
 const THUMBNAIL_EDGE_PX = 720
+const MAX_ASPECT_LONG = 21
+const MAX_ASPECT_SHORT = 9
 const THUMBNAIL_QUALITY = 90
 const CHECKER_SQUARE_PX = 8
 
@@ -116,24 +121,40 @@ function thumbnailName(photo: string): string {
   return photo.replace(/^unsplash-/, 'thumbnail-')
 }
 
+interface Size {
+  width: number
+  height: number
+}
+
+/** The part of a `width` x `height` picture a thumbnail keeps, and the size it is drawn at. */
+function thumbnailPlan({ width, height }: Size): { kept: Size; out: Size } {
+  const longer = Math.max(width, height)
+  const shorter = Math.min(width, height)
+  const keptLonger = Math.min(longer, Math.floor((shorter * MAX_ASPECT_LONG) / MAX_ASPECT_SHORT))
+  const kept = width >= height ? { width: keptLonger, height } : { width, height: keptLonger }
+  const outHeight = Math.min(THUMBNAIL_EDGE_PX, kept.height)
+  const outWidth = Math.max(1, Math.round((kept.width * outHeight) / kept.height))
+  return { kept, out: { width: outWidth, height: outHeight } }
+}
+
 /**
- * The centre square of `photo`, box-filtered down to `THUMBNAIL_EDGE_PX` a side. The photographs
- * carry no EXIF orientation, so there is none to apply.
+ * `photo` as `thumbnailPlan` says, box-filtered. The photographs carry no EXIF orientation, so
+ * there is none to apply.
  */
 function thumbnail(photo: Uint8Array): Uint8Array {
   const { width, height, data } = jpeg.decode(photo, { useTArray: true, formatAsRGBA: true })
-  const side = Math.min(width, height)
-  const left = Math.floor((width - side) / 2)
-  const top = Math.floor((height - side) / 2)
-  const edge = Math.min(THUMBNAIL_EDGE_PX, side)
-  const step = side / edge
-  const out = new Uint8Array(edge * edge * 4)
-  for (let y = 0; y < edge; y += 1) {
-    const y0 = top + Math.floor(y * step)
-    const y1 = Math.max(y0 + 1, top + Math.floor((y + 1) * step))
-    for (let x = 0; x < edge; x += 1) {
-      const x0 = left + Math.floor(x * step)
-      const x1 = Math.max(x0 + 1, left + Math.floor((x + 1) * step))
+  const { kept, out: size } = thumbnailPlan({ width, height })
+  const left = Math.floor((width - kept.width) / 2)
+  const top = Math.floor((height - kept.height) / 2)
+  const stepX = kept.width / size.width
+  const stepY = kept.height / size.height
+  const out = new Uint8Array(size.width * size.height * 4)
+  for (let y = 0; y < size.height; y += 1) {
+    const y0 = top + Math.floor(y * stepY)
+    const y1 = Math.max(y0 + 1, top + Math.floor((y + 1) * stepY))
+    for (let x = 0; x < size.width; x += 1) {
+      const x0 = left + Math.floor(x * stepX)
+      const x1 = Math.max(x0 + 1, left + Math.floor((x + 1) * stepX))
       const sum = [0, 0, 0, 0]
       for (let sy = y0; sy < y1; sy += 1) {
         for (let sx = x0; sx < x1; sx += 1) {
@@ -146,14 +167,23 @@ function thumbnail(photo: Uint8Array): Uint8Array {
       const light =
         (Math.floor(x / CHECKER_SQUARE_PX) + Math.floor(y / CHECKER_SQUARE_PX)) % 2 === 0
       const checker = light ? 0xff : 0xcc
-      const at = (y * edge + x) * 4
+      const at = (y * size.width + x) * 4
       for (let c = 0; c < 3; c += 1) {
         out[at + c] = Math.round(((sum[c] ?? 0) / count) * alpha + checker * (1 - alpha))
       }
       out[at + 3] = 0xff
     }
   }
-  return jpeg.encode({ width: edge, height: edge, data: out }, THUMBNAIL_QUALITY).data
+  return jpeg.encode({ ...size, data: out }, THUMBNAIL_QUALITY).data
+}
+
+/** Whether `thumbnailPath` holds a thumbnail of `photo` at the size `thumbnailPlan` gives. */
+function current(thumbnailPath: string, photo: Uint8Array): boolean {
+  if (!existsSync(thumbnailPath)) return false
+  const made = jpeg.decode(readFileSync(thumbnailPath), { useTArray: true })
+  const { width, height } = jpeg.decode(photo, { useTArray: true })
+  const { out } = thumbnailPlan({ width, height })
+  return made.width === out.width && made.height === out.height
 }
 
 function writeWhole(path: string, bytes: Uint8Array): void {
@@ -200,7 +230,7 @@ async function main(): Promise<void> {
       }
       writeWhole(path, bytes)
       fetched += 1
-    } else if (existsSync(thumbnailPath)) continue
+    } else if (current(thumbnailPath, bytes)) continue
     writeWhole(thumbnailPath, thumbnail(bytes))
   }
   if (mismatched.length > 0) throw new Error(mismatchReport(mismatched, PHOTOS.length))

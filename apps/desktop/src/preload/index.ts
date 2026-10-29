@@ -2,7 +2,7 @@ import electron from 'electron'
 
 import { readLaunchOverrides } from '../shared/launchOverrides'
 
-const { contextBridge, ipcRenderer } = electron
+const { contextBridge, ipcRenderer, webUtils } = electron
 
 /**
  * Hands the bridge's MessagePort to the page and steps aside.
@@ -59,7 +59,28 @@ contextBridge.exposeInMainWorld('sessionDesktop', {
   chooseExportLocation: (suggestedName: string): Promise<string | null> =>
     ipcRenderer.invoke('files:choose-export-location', suggestedName),
   revealInFolder: (path: string): Promise<boolean> => ipcRenderer.invoke('files:reveal', path),
+  /**
+   * Where a picked or dropped file lives, which the page cannot learn by itself: `File.path` is
+   * gone from Electron. Empty for anything not on disk.
+   */
+  pathForFile: (file: File): string => webUtils.getPathForFile(file),
+  /**
+   * The url of a picked or dropped file's staged thumbnail, or null. Takes the `File` rather than
+   * a path, so the page can only ever preview a file the person chose.
+   */
+  allowPreview: (file: File): Promise<string | null> =>
+    ipcRenderer.invoke('files:allow-preview', webUtils.getPathForFile(file)),
+  /** Takes back a url `allowPreview` gave, once the composer lets go of the file. */
+  revokePreview: (url: string): Promise<void> => ipcRenderer.invoke('files:revoke-preview', url),
   copyText: (text: string): Promise<void> => ipcRenderer.invoke('clipboard-write-text', text),
+  /**
+   * Lets the page send a picked or dropped file; main refuses a send that names any other. Takes
+   * the `File`, as `allowPreview` does, so the page cannot name a path itself.
+   */
+  allowSend: (file: File): Promise<boolean> =>
+    ipcRenderer.invoke('files:allow-send', webUtils.getPathForFile(file)),
+  /** Gives back what `allowSend` granted, once the composer lets go of the file. */
+  releaseSend: (path: string): Promise<void> => ipcRenderer.invoke('files:release-send', path),
   setLocale: (locale: string) => {
     ipcRenderer.send('locale', locale)
   },

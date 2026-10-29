@@ -14,11 +14,9 @@ import { Image } from './Image'
 import { SafeArea } from './SafeArea'
 import { Text } from './Text'
 import { useWindowSize } from './useWindowSize'
+import { drawnUri, type MediaViewerItem } from './viewerItem'
 
-export type MediaViewerItem = {
-  /** Null where this platform has no resolver for the bytes, which is a state, not a failure. */
-  uri: string | null
-}
+export type { MediaViewerItem }
 
 export interface MediaViewerProps {
   open: boolean
@@ -34,6 +32,8 @@ export interface MediaViewerProps {
   unavailableLabel: string
   /** Shown in place of a picture whose bytes did not load, which an image does not retry. */
   failedLabel: string
+  /** Already worded: shown while an item is `preparing`. */
+  preparingLabel: string
   closeLabel: string
   exportLabel: string
   previousLabel: string
@@ -126,6 +126,7 @@ export function MediaViewer({
   positionLabel,
   unavailableLabel,
   failedLabel,
+  preparingLabel,
   closeLabel,
   exportLabel,
   previousLabel,
@@ -143,10 +144,11 @@ export function MediaViewer({
   const current = items[index]
   // By url, so paging to another picture is not drawn as failed, and one that is fetched again
   // under a new url is tried again.
-  const [failedUri, setFailedUri] = useState<string | null>(null)
-  const failed = current?.uri != null && current.uri === failedUri
+  const [failedUris, setFailedUris] = useState<readonly string[]>([])
+  const drawn = current === undefined ? null : drawnUri(current, failedUris)
+  const failed = current?.failed === true || (current?.uri != null && drawn === null)
   const close = (): void => {
-    setFailedUri(null)
+    setFailedUris([])
     onClose()
   }
 
@@ -184,7 +186,17 @@ export function MediaViewer({
                 setBox({ width: measured.width, height: measured.height })
               }}
             >
-              {current === undefined || current.uri === null || failed ? (
+              {drawn === null && current?.preparing != null ? (
+                <>
+                  <Text size="$body" color="$textSecondary">
+                    {preparingLabel}
+                  </Text>
+                  {/* Out of sight: loading it is the ask, and what it draws is not this. */}
+                  <YStack position="absolute" width={1} height={1} opacity={0} aria-hidden>
+                    <Image uri={current.preparing} width={1} height={1} fit="contain" />
+                  </YStack>
+                </>
+              ) : drawn === null ? (
                 <Text size="$body" color="$textSecondary">
                   {failed ? failedLabel : unavailableLabel}
                 </Text>
@@ -194,13 +206,13 @@ export function MediaViewer({
                 // because this is somebody being shown their own picture - a crop here would be
                 // hiding part of the thing they opened.
                 <Image
-                  uri={current.uri}
+                  uri={drawn}
                   width={box.width}
                   height={box.height}
                   fit="contain"
                   testID={imageTestID}
                   onError={() => {
-                    setFailedUri(current.uri)
+                    setFailedUris((was) => [...was, drawn])
                   }}
                 />
               )}

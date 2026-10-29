@@ -13,7 +13,6 @@ import { LIST_MAX_ROWS } from '#src/AttachmentList'
 import type { ConversationUi } from '#src/conversationUi'
 import { MessageAttachments } from '#src/MessageAttachments'
 import { MessageMediaViewer } from '#src/MessageMediaViewer'
-import { createViewChoices } from '#src/viewChoices'
 
 import { renderScreen } from './support/render'
 
@@ -26,6 +25,11 @@ function attachment(index: number, over: Partial<Attachment>): Attachment {
     voiceMessage: false,
     hasThumbhash: false,
     hasThumbnail: false,
+    thumbnailWidthPx: 0,
+    thumbnailHeightPx: 0,
+    hasRendition: false,
+    renditionRefused: false,
+    originalFile: false,
     uploaded: true,
     availability: 'absent',
     fetchDoneBytes: 0,
@@ -43,7 +47,13 @@ const document = (index: number) =>
 const PAPERWORK = Array.from({ length: LIST_MAX_ROWS + 1 }, (_, index) => document(index))
 
 function message(attachments: Attachment[], outgoing: boolean): Message {
-  return { id: MESSAGE_ID, attachments, outgoing, galleryViewable: true } as unknown as Message
+  return {
+    id: MESSAGE_ID,
+    attachments,
+    outgoing,
+    galleryViewable: true,
+    gallery: true,
+  } as unknown as Message
 }
 
 function storeWith(shown: Message): SessionStore {
@@ -62,7 +72,6 @@ function conversation(): ConversationUi {
   return {
     conversationId: CONVERSATION,
     requestAutoDownloadPrompt: vi.fn(),
-    views: createViewChoices(),
     openViewer: vi.fn(),
     openSheet: vi.fn(),
   }
@@ -163,6 +172,7 @@ describe('which picture each place draws', () => {
         media: {
           urlFor: ({ messageId, index }) => `file://${String(messageId)}/${String(index)}`,
           thumbhashUrlFor: () => null,
+          renditionUrlFor: () => null,
           thumbnailUrlFor: ({ messageId, index }) =>
             `thumb://${String(messageId)}/${String(index)}`,
         },

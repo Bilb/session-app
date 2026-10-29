@@ -11,7 +11,6 @@ const VIEWABLE_IMAGE: ReadonlySet<string> = new Set([
   'image/jpeg',
   'image/jpg',
   'image/png',
-  'image/apng',
   'image/webp',
 ])
 
@@ -33,8 +32,8 @@ export function contentTypeEssence(contentType: string | undefined): string | un
 
 /**
  * libsession's `image::is_displayable_image`: what it shows as a gallery, what `image-attachments`
- * fetches unasked, and what it makes a thumbnail of. Its list, compared by essence as
- * `contentTypeEssence` reads one.
+ * fetches unasked, and what it makes a thumbnail of. Its list, compared by essence. `image/apng`
+ * is not on it: an APNG so labelled is a file, and one labelled `image/png` its first frame.
  */
 const DISPLAYABLE_IMAGE: ReadonlySet<string> = new Set([
   'image/jpeg',
@@ -80,6 +79,62 @@ export function mediaKindOf(contentType: string | undefined): MediaKind {
  * a prop - the album has never been the thing that decides how wide a message is.
  */
 export const ALBUM_WIDTH = 240
+
+/** How many attachments one message may carry. The legacy clients' limit; libsession sets none. */
+export const MAX_ATTACHMENTS_PER_MESSAGE = 32
+
+/**
+ * Leading bytes of each format the media scheme serves, as `[offset, bytes]` runs that must all
+ * match.
+ */
+const SIGNATURES: readonly (readonly [contentType: string, runs: readonly [number, string][]])[] = [
+  ['image/png', [[0, '\x89PNG\r\n\x1a\n']]],
+  ['image/jpeg', [[0, '\xff\xd8\xff']]],
+  ['image/gif', [[0, 'GIF87a']]],
+  ['image/gif', [[0, 'GIF89a']]],
+  [
+    'image/webp',
+    [
+      [0, 'RIFF'],
+      [8, 'WEBP'],
+    ],
+  ],
+  ['image/bmp', [[0, 'BM']]],
+  ['video/mp4', [[4, 'ftyp']]],
+  ['video/webm', [[0, '\x1a\x45\xdf\xa3']]],
+  ['video/ogg', [[0, 'OggS']]],
+]
+
+/** What the leading bytes say a file is, of the formats the media scheme serves, or null. */
+export function sniffContentType(bytes: Uint8Array): string | null {
+  const match = SIGNATURES.find(([, runs]) =>
+    runs.every(([at, run]) => [...run].every((c, i) => bytes[at + i] === c.charCodeAt(0))),
+  )
+  return match?.[0] ?? null
+}
+
+/** Start-of-frame markers, which carry a JPEG's size; C4, C8 and CC share the range and are not. */
+const START_OF_FRAME = new Set([
+  0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf,
+])
+
+/** A JPEG's size from its frame header, or null when these bytes are not a JPEG that has one. */
+export function jpegSize(bytes: Uint8Array): { width: number; height: number } | null {
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return null
+  let at = 2
+  while (at + 9 < bytes.length) {
+    if (bytes[at] !== 0xff) return null
+    const marker = bytes[at + 1] ?? 0
+    const length = ((bytes[at + 2] ?? 0) << 8) | (bytes[at + 3] ?? 0)
+    if (START_OF_FRAME.has(marker)) {
+      const height = ((bytes[at + 5] ?? 0) << 8) | (bytes[at + 6] ?? 0)
+      const width = ((bytes[at + 7] ?? 0) << 8) | (bytes[at + 8] ?? 0)
+      return { width, height }
+    }
+    at += 2 + length
+  }
+  return null
+}
 
 /**
  * The edge to make thumbnails at for the densest of these displays. 1 with none connected, since

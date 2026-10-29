@@ -13,7 +13,16 @@ export const ATTACHMENT_ROW_IDS = {
   export: ELEMENT.conversation.attachmentExport,
 } as const
 
-export type FileRowState = 'idle' | 'fetching' | 'ready' | 'failed' | 'unavailable'
+export type FileRowState =
+  'idle' | 'fetching' | 'ready' | 'failed' | 'unavailable' | 'queued' | 'uploaded' | 'unsent'
+
+/** States whose control is a marker or nothing: there is no button in the control's place. */
+const NO_CONTROL: ReadonlySet<FileRowState> = new Set([
+  'unavailable',
+  'queued',
+  'uploaded',
+  'unsent',
+])
 
 export interface FileRowSituation {
   filename: string
@@ -51,8 +60,7 @@ const NO_ROLE: ExpectedNode = { role: 'none', name: null, focusable: false }
 export function fileRow(s: FileRowSituation): FileRowParts {
   const held = s.state === 'fetching'
   const leadOpens = s.leadOpens === true
-  const controlActs =
-    s.controlName !== undefined && s.state !== 'fetching' && s.state !== 'unavailable'
+  const controlActs = s.controlName !== undefined && !held && !NO_CONTROL.has(s.state)
   // A row with no press of its own takes the first verb it offers as its activation.
   const activate =
     s.rowVerb ?? (leadOpens ? s.leadVerb : undefined) ?? (controlActs ? s.controlName : undefined)
@@ -75,18 +83,17 @@ export function fileRow(s: FileRowSituation): FileRowParts {
         ? { role: 'button', name: s.filename, hint: null, disabled: true, focusable: true }
         : NO_ROLE
 
-  const control: Expected =
-    s.state === 'unavailable'
-      ? { desktop: null, native: null }
-      : {
-          desktop: {
-            role: 'button',
-            name: s.controlName ?? null,
-            disabled: held,
-            focusable: true,
-          },
-          native: NO_ROLE,
-        }
+  const control: Expected = NO_CONTROL.has(s.state)
+    ? { desktop: null, native: null }
+    : {
+        desktop: {
+          role: 'button',
+          name: s.controlName ?? null,
+          disabled: held,
+          focusable: true,
+        },
+        native: NO_ROLE,
+      }
 
   return {
     row: {

@@ -4,6 +4,8 @@ import type {
   ConfigSize,
   ConversationId,
   Message,
+  OutgoingMessage,
+  SendPlan,
   SessionClient,
 } from '@session/client'
 import { BRIDGE_UNAVAILABLE, SessionClientError } from '@session/client'
@@ -73,7 +75,10 @@ export interface SessionActions {
   hydrate: () => Promise<void>
   loadHistory: (id: ConversationId) => Promise<void>
   loadOlder: (id: ConversationId) => Promise<void>
-  send: (id: ConversationId, body: string, replyTo?: number) => Promise<void>
+  /** Rejects, storing nothing, when libsession refuses it: a file that cannot be read, say. */
+  send: (id: ConversationId, message: OutgoingMessage) => Promise<void>
+  /** What sending the file at `path` would do with it: whether the composer may stage it. */
+  attachmentSendPlan: (path: string, contentType?: string) => Promise<SendPlan>
   markRead: (id: ConversationId) => Promise<void>
   approve: (id: ConversationId) => Promise<void>
   /**
@@ -149,6 +154,11 @@ export interface SessionActions {
    * sent again, which is why this is not "send it once more".
    */
   retry: (messageId: number) => Promise<boolean>
+  /**
+   * Shows a message as a gallery or as a list, stored by libsession. The message redraws when the
+   * change is announced, so nothing is patched here; false is a gallery libsession refused.
+   */
+  setGallery: (messageId: number, gallery: boolean) => Promise<boolean>
   /**
    * Fetches an attachment: one that is already cached resolves at once and reports nothing at
    * all. Whether the bytes are here is the attachment's `availability`, not this.
@@ -355,7 +365,8 @@ export function createSessionStore(
       }
 
       const account = await client.getAccountInfo()
-      store.setState({ account })
+      const attachmentUploadLimitBytes = await client.getAttachmentUploadLimit()
+      store.setState({ account, attachmentUploadLimitBytes })
 
       // Logged, not just held, because the account ID is what someone else needs in order to
       // write to this device, and reading it off a screen is not always possible - a headless
@@ -439,11 +450,15 @@ export function createSessionStore(
       })
     },
 
-    async send(id, body, replyTo): Promise<void> {
+    async send(id, message): Promise<void> {
       // No optimistic row: libsession stores the message before this resolves and announces
       // it as message-added, so inventing one here would only produce a duplicate to
       // reconcile.
-      await client.sendMessage(id, { body, ...(replyTo === undefined ? {} : { replyTo }) })
+      await client.sendMessage(id, message)
+    },
+
+    attachmentSendPlan(path, contentType): Promise<SendPlan> {
+      return client.attachmentSendPlan(path, contentType)
     },
 
     async markRead(id): Promise<void> {
@@ -463,6 +478,10 @@ export function createSessionStore(
 
     async retry(messageId): Promise<boolean> {
       return client.retrySend(messageId)
+    },
+
+    async setGallery(messageId, gallery): Promise<boolean> {
+      return client.setGallery(messageId, gallery)
     },
 
     async downloadAttachment(ref): Promise<void> {

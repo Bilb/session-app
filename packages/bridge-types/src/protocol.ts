@@ -10,6 +10,8 @@ import type {
   Message,
   MessageCursor,
   NetworkStatus,
+  OutgoingAttachment,
+  SendPlan,
 } from './domain'
 import type { FileServerConfig, RouterKind, SeedNode } from './sessionBridgeOptions'
 
@@ -35,6 +37,8 @@ interface TestAttachment {
   contentType: string
   /** Unset is a sender who sent no ThumbHash, which is what leaves `hasThumbhash` false. */
   thumbhash?: Uint8Array
+  /** Sent as the sender's original file, which is what leaves `originalFile` true. */
+  originalFile?: boolean
 }
 
 /**
@@ -216,9 +220,41 @@ export type Command =
       before?: MessageCursor
       includeDeleted: boolean
     }
-  | { type: 'sendMessage'; conversationId: ConversationId; body: string; replyTo?: number }
+  /**
+   * Stores the message and answers its id; it is then announced like any other. With attachments
+   * it is `uploading` until every file is on the file server, and goes on to the ordinary states
+   * from there. Refused, storing nothing, when a file is not a readable, non-empty file.
+   */
+  | {
+      type: 'sendMessage'
+      conversationId: ConversationId
+      body: string
+      replyTo?: number
+      attachments?: OutgoingAttachment[]
+    }
+  /**
+   * What sending the file at `path` would do with it, under the file server's limit, without
+   * sending it: for staging to refuse a file before Send. `contentType` is inferred from the
+   * extension when unset, as `sendMessage` infers it. Read on libsession's disk thread.
+   */
+  | { type: 'attachmentSendPlan'; path: string; contentType?: string }
+  /**
+   * The most the file server takes in one upload, in encrypted, padded bytes: the limit
+   * `attachmentSendPlan` holds a file to, so a file's own size has to be smaller to fit. Belongs to
+   * the attached network's file server and changes only with `attachNetwork`; before a network is
+   * attached it is libsession's default for the built-in servers.
+   */
+  | { type: 'getAttachmentUploadLimit' }
   | { type: 'retrySend'; messageId: number }
   | { type: 'deleteMessage'; messageId: number; scope: Deletion }
+  /**
+   * Shows a message as a gallery, or as a list. Answers false, changing nothing, for a message
+   * that does not exist or, when `gallery` is true, one that is not `galleryViewable`; turning it
+   * off is always allowed. A change is announced as messages-updated; asking for what is already
+   * stored answers true and announces nothing. Fetches nothing: getting a gallery's pictures is
+   * still the caller's `downloadAttachment`.
+   */
+  | { type: 'setGallery'; messageId: number; gallery: boolean }
   // Attachments. Nothing here carries bytes: a transfer is reported by `attachment-progress`
   // events, and the file itself is reached by the media scheme each platform resolves natively.
   /**
@@ -266,9 +302,9 @@ export type Command =
   | { type: 'getAttachmentCacheSize' }
   | { type: 'getThumbnailEdge' }
   /**
-   * The side of the thumbnails made from now on, in device pixels, kept on this device. libsession
-   * clamps it to 64 to 1024. Unset forgets the stored value, which puts the edge back to what the
-   * app opened the bridge with. Thumbnails already made keep the size they were made at.
+   * The height of the thumbnails made from now on, in device pixels, kept on this device.
+   * libsession clamps it to 64 to 1024. Unset forgets the stored value, which puts the edge back to
+   * what the app opened the bridge with. Thumbnails already made keep the size they were made at.
    */
   | { type: 'setThumbnailEdge'; edgePx?: number }
   /**
@@ -348,7 +384,8 @@ export type Result =
   | { type: 'path'; path: string }
   /** Unset only in answer to `getAttachmentCacheLimit`, where it means no limit. */
   | { type: 'byteCount'; bytes?: number }
-  /** A thumbnail's side in device pixels, as libsession clamped it. */
+  | { type: 'sendPlan'; plan: SendPlan }
+  /** A thumbnail's height in device pixels, as libsession clamped it. */
   | { type: 'edge'; edgePx: number }
   | { type: 'configSizes'; sizes: ConfigSize[] }
   | { type: 'networkStatus'; status: NetworkStatus }

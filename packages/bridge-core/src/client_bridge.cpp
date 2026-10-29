@@ -5,7 +5,9 @@
 #include <session/client/conversation_id.hpp>
 #include <session/client/error_codes.hpp>
 #include <session/core/devices.hpp>
+#include <session/image/source.hpp>
 #include <session/image/thumbhash.hpp>
+#include <session/image/thumbnail.hpp>
 #include <session/logging.hpp>
 #include <session/mnemonics.hpp>
 #include <session/network/network_opt.hpp>
@@ -35,12 +37,16 @@
 #include <mutex>
 #include <optional>
 #include <ranges>
+#include <span>
 #include <stdexcept>
 #include <utility>
 #include <variant>
 #include <vector>
 
 #include "convert.hpp"
+#include "session_bridge/media_url.hpp"
+#include "session_bridge/staged_thumbnails.hpp"
+#include "session_bridge/utf8_path.hpp"
 #include "mark_downloaded.hpp"
 
 namespace session_bridge {
@@ -77,6 +83,11 @@ namespace {
     std::string no_thumbnail(int64_t id, size_t at) {
         return "attachment " + std::to_string(at) + " of message " + std::to_string(id) +
                " has no thumbnail";
+    }
+
+    std::string no_rendition(int64_t id, size_t at) {
+        return "attachment " + std::to_string(at) + " of message " + std::to_string(id) +
+               " has no rendition";
     }
 
     /// A number from JavaScript as a whole number of type T, or an error naming the field.
@@ -313,6 +324,33 @@ namespace {
 
 }  // namespace
 
+namespace {
+
+    // A staged thumbnail reads its file whole on the thumbnail thread, and a phone has to afford
+    // that for every tile in a tray of 32; a file past it is refused before it is read. The fake
+    // holds to the same number, through the contract.
+    constexpr size_t MAX_STAGED_READ_BYTES = 64 * 1024 * 1024;
+
+    // None of these sentences names the file: the loaders log what they are refused.
+    Media make_staged(const std::string& path, uint32_t edge) {
+        try {
+            auto bytes = read_staged_file(path, MAX_STAGED_READ_BYTES);
+            if (!bytes)
+                return Media{"the file could not be read", {}, {}};
+            auto held = std::make_shared<std::vector<std::byte>>(*std::move(bytes));
+            image::Source source{std::span<const std::byte>{*held}, held};
+            auto jpeg = image::thumbnail(source, edge);
+            if (!jpeg)
+                return Media{"the file is not a picture", {}, {}};
+            return Media{std::nullopt, "image/jpeg", *std::move(jpeg)};
+        } catch (const std::exception&) {
+            // Probed as a picture, then failed to decode, or ran out of memory doing it.
+            return Media{"the file is not a picture", {}, {}};
+        }
+    }
+
+}  // namespace
+
 struct ClientBridge::Impl {
     Sink sink;
     std::unique_ptr<client::Client> client;
@@ -327,6 +365,9 @@ struct ClientBridge::Impl {
     /// joins the loop the callback is running on, so dropping it from there deadlocks. Whatever
     /// drops it runs on another thread -- an attach, a discard, or `close`.
     std::unique_ptr<session::network::Network> warm;
+    /// Where staged thumbnails are made. Shared, so a callback on Core's loop can reach it
+    /// without reaching back through `this`.
+    std::shared_ptr<StagedThumbnails> staged = std::make_shared<StagedThumbnails>(make_staged);
     /// Held while a network status is read and emitted, by the network's hook and by
     /// `getNetworkStatus` alike, so the two reach the stream in the order the status changed: an
     /// answer read before a change is emitted before that change's event, never after it.
@@ -1064,10 +1105,36 @@ struct ClientBridge::Impl {
         msg.body = std::move(cmd.body);
         if (cmd.reply_to)
             msg.reply_to = whole<int64_t>(*cmd.reply_to, "sendMessage.replyTo");
+        if (cmd.attachments) {
+            msg.attachments.reserve(cmd.attachments->size());
+            // Dimensions and ThumbHash are libsession's to read from the file, and `original_file`
+            // is never set: nothing offers sending a picture as it is.
+            for (auto& a : *cmd.attachments) {
+                client::OutgoingAttachment out;
+                out.path = utf8_path(a.path);
+                out.content_type = std::move(a.content_type);
+                out.filename = std::move(a.filename);
+                out.take_file = a.take_file.value_or(false);
+                msg.attachments.push_back(std::move(out));
+            }
+        }
+        // TODO: pass an upload handler, for per-file upload progress and to name the file behind
+        // `attachment_file_missing` by its index. Until then a sending set counts its files by
+        // `uploaded` on the message, and a file gone before libsession copied it fails the message
+        // unnamed.
         convo(cmd.conversation_id)
                 .send_message(std::move(msg), on(id, [this, id](int64_t message_id) {
                                   respond(id, MessageIdResult{static_cast<double>(message_id)});
                               }));
+    }
+
+    void handle(double id, AttachmentSendPlanCommand& cmd) {
+        client->attachment_send_plan(
+                utf8_path(cmd.path),
+                std::move(cmd.content_type),
+                on(id, [this, id](image::SendPlan plan) {
+                    respond(id, SendPlanResult{to_bridge(plan)});
+                }));
     }
 
     void handle(double id, const RetrySendCommand& cmd) {
@@ -1079,6 +1146,13 @@ struct ClientBridge::Impl {
                 message_id,
                 nullptr,
                 on(id, [this, id](bool started) { respond(id, BoolResult{started}); }));
+    }
+
+    void handle(double id, const SetGalleryCommand& cmd) {
+        client->set_gallery(
+                whole<int64_t>(cmd.message_id, "setGallery.messageId"),
+                cmd.gallery,
+                on(id, [this, id](bool done) { respond(id, BoolResult{done}); }));
     }
 
     void handle(double id, const DeleteMessageCommand& cmd) {
@@ -1114,13 +1188,13 @@ struct ClientBridge::Impl {
         client->save_attachment(
                 message_id,
                 index,
-                std::filesystem::path{cmd.destination},
+                utf8_path(cmd.destination),
                 report(AttachmentTransfer::export_),
                 on(id,
                    [this, id](std::filesystem::path saved_to) {
                        // Before the answer, which is what the app reveals the file on.
                        mark_downloaded(saved_to);
-                       respond(id, PathResult{saved_to.string()});
+                       respond(id, PathResult{utf8_string(saved_to)});
                    }),
                 cmd.notify_sender,
                 cmd.replace);
@@ -1141,7 +1215,13 @@ struct ClientBridge::Impl {
     }
 
     void handle(double id, const GetCacheDirCommand&) {
-        respond(id, PathResult{options.cache_dir.string()});
+        respond(id, PathResult{utf8_string(options.cache_dir)});
+    }
+
+    void handle(double id, const GetAttachmentUploadLimitCommand&) {
+        client->attachment_upload_limit(on(id, [this, id](uint64_t bytes) {
+            respond(id, ByteCountResult{static_cast<double>(bytes)});
+        }));
     }
 
     void handle(double id, const GetAttachmentCacheLimitCommand&) {
@@ -1240,6 +1320,8 @@ struct ClientBridge::Impl {
                 ptr->set_contenttype(a.content_type);
                 if (a.thumbhash)
                     ptr->set_thumbhash(a.thumbhash->data(), a.thumbhash->size());
+                if (a.original_file.value_or(false))
+                    ptr->set_flags(SessionProtos::AttachmentPointer::ORIGINAL_FILE);
             }
         auto plaintext = content.SerializeAsString();
 
@@ -1362,6 +1444,8 @@ void ClientBridge::close() {
         _impl->network_status_open = false;
     }
     _impl->client.reset();
+    // Waits a bounded moment for a decode under way, so a stuck one cannot hold up a quit.
+    _impl->staged->close();
     _impl.reset();
 }
 
@@ -1518,6 +1602,74 @@ void ClientBridge::fetch_thumbnail(double message_id, double index, MediaHandler
     } catch (const std::exception& e) {
         cb(Media{std::string{e.what()}, {}, {}});
     }
+}
+
+void ClientBridge::fetch_rendition(double message_id, double index, MediaHandler cb) {
+    if (!_impl || !_impl->client) {
+        cb(Media{"the bridge is closed", {}, {}});
+        return;
+    }
+
+    try {
+        const int64_t id = whole<int64_t>(message_id, "rendition.messageId");
+        const auto at = whole<size_t>(index, "rendition.index");
+
+        _impl->client->attachment_rendition(
+                id,
+                at,
+                [id, at, cb = std::move(cb)](session::Expected<std::vector<std::byte>> r) mutable {
+                    if (r) {
+                        auto type = rendition_content_type(*r);
+                        if (!type)
+                            cb(Media{"the rendition is not a JPEG or WebP", {}, {}});
+                        else
+                            cb(Media{std::nullopt, *std::move(type), *std::move(r)});
+                        return;
+                    }
+                    const auto code = r.error().code;
+                    if (code == client::err::no_rendition)
+                        cb(Media{no_rendition(id, at), {}, {}});
+                    else if (
+                            code == client::err::message_not_found ||
+                            code == client::err::attachment_not_found)
+                        cb(Media{no_such_attachment(id, at), {}, {}});
+                    else
+                        cb(Media{std::string{r.error().message}, {}, {}});
+                });
+    } catch (const std::exception& e) {
+        cb(Media{std::string{e.what()}, {}, {}});
+    }
+}
+
+std::function<void()> ClientBridge::fetch_staged_thumbnail(std::string path, MediaHandler cb) {
+    if (!_impl || !_impl->client) {
+        cb(Media{"the bridge is closed", {}, {}});
+        return [] {};
+    }
+    if (!is_staged_path(path)) {
+        cb(Media{"not an absolute path", {}, {}});
+        return [] {};
+    }
+
+    // The edge arrives on Core's loop, so a cancel can come before the request it withdraws.
+    Deferred deferred;
+
+    // The edge libsession will make this file's thumbnail at once it is sent, so the tile and the
+    // message it becomes draw the same picture.
+    _impl->client->thumbnail_edge([staged = _impl->staged,
+                                   deferred,
+                                   path = std::move(path),
+                                   cb = std::move(cb)](session::Expected<uint32_t> edge) mutable {
+        if (!edge) {
+            cb(Media{std::string{edge.error().message}, {}, {}});
+            return;
+        }
+        deferred.make(
+                [&] { return staged->request(std::move(path), *edge, std::move(cb)); },
+                [&] { cb(Media{"cancelled", {}, {}}); });
+    });
+
+    return deferred.canceller();
 }
 
 void ClientBridge::call(Request request) {

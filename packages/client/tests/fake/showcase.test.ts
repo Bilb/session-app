@@ -30,4 +30,81 @@ describe('showcase', () => {
       'absent',
     ])
   })
+
+  it('holds a message of ours whose 31st of 32 files failed, with the thirty before it up', async () => {
+    const messages = await showcaseMessages()
+    const failed = messages.find((m) => m.body === 'File 31 of 32 failed')
+    expect(failed?.outgoing).toBe(true)
+    expect(failed?.sendState).toBe('failed')
+    expect(failed?.attachments.filter((a) => a.uploaded)).toHaveLength(30)
+    expect(failed?.attachments[30]?.uploaded).toBe(false)
+  })
+
+  it('resumes a failed send the way libsession does: the rest upload and it is sent', async () => {
+    const { world, clients } = showcase()
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const bob = world.account('Bob').sessionId
+    const before = (await alice.getMessages(bob, { limit: 100 })).messages
+    const failed = before.find((m) => m.body === 'File 31 of 32 failed')
+    const missing = before.find((m) => m.body === 'A file of this one went missing')
+    if (failed === undefined || missing === undefined) throw new Error('fixture is missing a send')
+
+    expect(await alice.retrySend(failed.id)).toBe(true)
+    // A missing file fails every retry the same way, so libsession refuses one from `unsendable`.
+    expect(await alice.retrySend(missing.id)).toBe(false)
+
+    const resuming = (await alice.getMessages(bob, { limit: 100 })).messages
+    expect(resuming.find((m) => m.id === failed.id)?.sendState).toBe('uploading')
+
+    world.settle()
+    const after = (await alice.getMessages(bob, { limit: 100 })).messages
+    const resumed = after.find((m) => m.id === failed.id)
+    expect(resumed?.sendState).toBe('sent')
+    expect(resumed?.attachments.every((a) => a.uploaded)).toBe(true)
+    // Each file not up before the retry reports its size once its upload does.
+    expect(resumed?.attachments.every((a) => a.sizeBytes !== undefined)).toBe(true)
+    // Sent means sent: the recipient has it, with every file.
+    const bobClient = clients['Bob']
+    if (!bobClient) throw new Error('fixture did not produce a client for Bob')
+    const aliceId = world.account('Alice').sessionId
+    const received = (await bobClient.getMessages(aliceId, { limit: 100 })).messages
+    const arrived = received.find((m) => m.body === 'File 31 of 32 failed' && !m.outgoing)
+    expect(arrived?.attachments).toHaveLength(failed.attachments.length)
+  })
+
+  it('holds its own copy of a seeded file not up yet, thumbnailed, but none of a missing one', async () => {
+    const { world, clients } = showcase()
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const messages = (await alice.getMessages(world.account('Bob').sessionId, { limit: 100 }))
+      .messages
+    const queued = messages
+      .find((m) => m.body === 'Still uploading, one at a time')
+      ?.attachments.find((a) => !a.uploaded && a.contentType === 'image/jpeg')
+    expect([queued?.availability, queued?.hasThumbnail]).toEqual(['cached', true])
+    const missing = messages
+      .find((m) => m.sendState === 'unsendable')
+      ?.attachments.find((a) => !a.uploaded)
+    expect([missing?.availability, missing?.hasThumbnail]).toEqual(['absent', false])
+  })
+
+  it('sends a failed message whose files are all up without uploading again', async () => {
+    const { world, clients } = showcase()
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const bob = world.account('Bob').sessionId
+    const files = (await alice.getMessages(bob, { limit: 100 })).messages.find(
+      (m) => m.body === 'File 31 of 32 failed',
+    )?.attachments
+    if (files === undefined) throw new Error('fixture is missing a send')
+    const allUp = world
+      .account('Alice')
+      .seedSending(bob, 'Every file up, the send failed', files, 'failed', files.length)
+    world.settle()
+
+    expect(await alice.retrySend(allUp.id)).toBe(true)
+    const resuming = (await alice.getMessages(bob, { limit: 100 })).messages
+    expect(resuming.find((m) => m.id === allUp.id)?.sendState).toBe('pending')
+  })
 })

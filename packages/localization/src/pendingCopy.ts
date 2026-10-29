@@ -52,6 +52,44 @@ export const PENDING_COPY = {
    */
   attachmentNameAndMore: (name: string, count: number): string =>
     `${name}, and ${String(count)} more`,
+  /**
+   * The composer refusing files past the per-message limit.
+   *
+   * `attachmentsErrorNumber` says "image and video files", which is wrong once any type can be
+   * staged.
+   */
+  attachmentsErrorLimit: (max: number): string =>
+    `Unable to send more than ${String(max)} files at once.`,
+  /**
+   * The composer refusing a picture past libsession's decode limits, which is a matter of its
+   * pixels rather than its bytes, so `attachmentsErrorSize` would name the wrong limit.
+   */
+  attachmentsErrorImageTooLarge: 'Image too large to send',
+  /** How many files that refusal left out. Counts in English only, as `attachmentCount` does. */
+  attachmentsNotAdded: (count: number): string => `${String(count)} not added`,
+  /** Over the staged tray: how many of the message's allowance are used. */
+  attachmentsStagedCount: (count: number, max: number): string =>
+    `${String(count)} / ${String(max)}`,
+  /** That count as a screen reader says it. Counts in English only, as `attachmentCount` does. */
+  attachmentsStagedCountSpoken: (count: number, max: number): string =>
+    `${String(count)} of ${String(max)} attachments`,
+  /** A file of a message being sent, waiting for the ones before it to upload. */
+  attachmentQueued: 'Queued',
+  /** A file of a failed message that was never tried, since the one before it failed. */
+  attachmentNotSent: 'Not sent',
+  /** A sending set's footer. Counts in English only, as `attachmentCount` does. */
+  attachmentsUploaded: (uploaded: number, count: number): string =>
+    `${String(uploaded)} of ${String(count)} uploaded`,
+  /** Beside Show All when a file it hides failed. */
+  attachmentsFailedCount: (count: number): string => `${String(count)} failed`,
+  /**
+   * Under the drop overlay's title, which is `attachmentsAdd`. Only a picture libsession decodes,
+   * within its pixel limit, is shrunk; any other has the files' limit.
+   */
+  attachmentsDropHint: (max: number, size: string): string =>
+    `Up to ${String(max)} files under ${size}; pictures are shrunk to fit`,
+  /** A staged tile's remove button, which has to say which file. */
+  attachmentRemove: (name: string): string => `Remove ${name}`,
   /** The auto-download prompt's two answers to what Yes fetches. */
   autoDownloadAllFiles: 'All files',
   autoDownloadImagesOnly: 'Images only',

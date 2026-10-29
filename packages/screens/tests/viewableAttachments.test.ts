@@ -3,11 +3,16 @@ import type { Attachment, Message } from '@session/client'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
+  heldItem,
+  renditionSettled,
   isViewable,
   leadUri,
   leadsWithPicture,
+  opensInViewer,
+  viewerFit,
   viewableAttachments,
-  viewerUri,
+  viewerItem,
+  type HeldItem,
 } from '#src/viewableAttachments'
 
 function attachment(index: number, contentType?: string): Attachment {
@@ -17,6 +22,11 @@ function attachment(index: number, contentType?: string): Attachment {
     voiceMessage: false,
     hasThumbhash: false,
     hasThumbnail: false,
+    thumbnailWidthPx: 0,
+    thumbnailHeightPx: 0,
+    hasRendition: false,
+    renditionRefused: false,
+    originalFile: false,
     uploaded: true,
     availability: 'absent',
     fetchDoneBytes: 0,
@@ -75,6 +85,50 @@ describe('which attachments a viewer can show', () => {
   })
 })
 
+describe('a picture sent as the original file', () => {
+  const original = { ...attachment(1, 'image/jpeg'), originalFile: true }
+
+  it('is a picture, but one the viewer never opens', () => {
+    expect(isViewable(original)).toBe(true)
+    expect(opensInViewer(original)).toBe(false)
+    expect(opensInViewer(attachment(0, 'image/jpeg'))).toBe(true)
+  })
+
+  it('stays closed to a rendition of an original, which libsession does not make anyway', () => {
+    expect(opensInViewer({ ...original, hasRendition: true })).toBe(false)
+  })
+
+  it('is left out of the viewer, so paging cannot reach it', () => {
+    const set = message([attachment(0, 'image/jpeg'), original, attachment(2, 'image/png')])
+    expect(viewableAttachments(set).map((a) => a.index)).toEqual([0, 2])
+  })
+
+  it('still leads its row with a picture, for its thumbnail', () => {
+    expect(leadsWithPicture({ ...original, hasThumbnail: true })).toBe(true)
+  })
+})
+
+describe('a picture of a type nothing here draws', () => {
+  it('opens in the viewer before libsession has a rendition of it, as after', () => {
+    const avif = attachment(0, 'image/avif')
+    expect(opensInViewer(avif)).toBe(true)
+    expect(opensInViewer({ ...avif, hasRendition: true })).toBe(true)
+    expect(viewableAttachments(message([avif]))).toHaveLength(1)
+    expect(opensInViewer({ ...avif, originalFile: true })).toBe(false)
+  })
+
+  it('awaits the rendition libsession makes of it, rather than exporting until then', () => {
+    expect(viewerFit(attachment(0, 'image/avif'))).toBe('awaitsRendition')
+    expect(viewerFit({ ...attachment(0, 'image/avif'), hasRendition: true })).toBe('opens')
+    expect(viewerFit({ ...attachment(0, 'image/avif'), originalFile: true })).toBe('exports')
+  })
+
+  it('exports a picture libsession makes no rendition of', () => {
+    expect(viewerFit(attachment(0, 'image/heic'))).toBe('exports')
+    expect(viewerFit(attachment(0, 'image/tiff'))).toBe('exports')
+  })
+})
+
 describe('which file rows lead with a picture', () => {
   it('leads with the thumbnail of a type the viewer cannot open', () => {
     const avif = { ...attachment(0, 'image/avif'), hasThumbnail: true }
@@ -105,14 +159,91 @@ describe('what the viewer is handed', () => {
           urlFor: ({ messageId, index }) => `media://${String(messageId)}/${String(index)}`,
           thumbhashUrlFor: () => null,
           thumbnailUrlFor: () => null,
+          renditionUrlFor: ({ messageId, index }) =>
+            `rendition://${String(messageId)}/${String(index)}`,
         },
       }),
     )
   }
 
-  it('hands a picture its url', () => {
+  it('hands a picture its url until libsession has made a rendition of it', () => {
     serving()
-    expect(viewerUri(7, attachment(2, 'image/png'))).toBe('media://7/2')
+    expect(viewerItem(7, attachment(2, 'image/png'))).toEqual({ uri: 'media://7/2' })
+  })
+
+  it('hands a picture its rendition once there is one', () => {
+    serving()
+    expect(viewerItem(7, { ...attachment(2, 'image/png'), hasRendition: true })).toEqual({
+      uri: 'rendition://7/2',
+      fallbackUri: 'media://7/2',
+    })
+  })
+
+  it('asks for the rendition of a type nothing here draws, loading its url out of sight', () => {
+    serving()
+    expect(viewerItem(7, attachment(2, 'image/avif'))).toEqual({
+      uri: null,
+      preparing: 'rendition://7/2',
+    })
+  })
+
+  it('ends the wait for a rendition libsession refused on the failed state', () => {
+    serving()
+    expect(viewerItem(7, { ...attachment(2, 'image/avif'), renditionRefused: true })).toEqual({
+      uri: null,
+      failed: true,
+    })
+    // A type we draw is drawn from its file whatever libsession says of a rendition.
+    expect(viewerItem(7, { ...attachment(2, 'image/png'), renditionRefused: true })).toEqual({
+      uri: 'media://7/2',
+    })
+  })
+
+  it('has no file to fall back on for a rendition of a type nothing here draws', () => {
+    serving()
+    expect(viewerItem(7, { ...attachment(2, 'image/avif'), hasRendition: true })).toEqual({
+      uri: 'rendition://7/2',
+      fallbackUri: undefined,
+    })
+  })
+})
+
+describe('an item an open viewer holds', () => {
+  it('stays the one first handed over while the rendition stays as it was', () => {
+    const held = new Map<string, HeldItem>()
+    const file = { uri: 'media://7/0' }
+    expect(heldItem(held, '7:0', false, () => file)).toBe(file)
+    expect(heldItem(held, '7:0', false, () => ({ uri: 'media://7/0?again' }))).toBe(file)
+    expect(heldItem(held, '7:1', false, () => ({ uri: 'media://7/1' }))).toEqual({
+      uri: 'media://7/1',
+    })
+  })
+
+  it('takes the rendition once it lands, and keeps it when it is evicted', () => {
+    const held = new Map<string, HeldItem>()
+    const file = { uri: 'media://7/0' }
+    const rendition = { uri: 'rendition://7/0', fallbackUri: 'media://7/0' }
+    expect(heldItem(held, '7:0', false, () => file)).toBe(file)
+    expect(heldItem(held, '7:0', true, () => rendition)).toBe(rendition)
+    expect(heldItem(held, '7:0', true, () => ({ uri: 'rendition://7/0?again' }))).toBe(rendition)
+    expect(heldItem(held, '7:0', false, () => file)).toBe(rendition)
+  })
+
+  it('takes the failed state once libsession refuses the rendition it waits for', () => {
+    const held = new Map<string, HeldItem>()
+    const waiting = { uri: null, preparing: 'rendition://7/0' }
+    const failed = { uri: null, failed: true }
+    expect(heldItem(held, '7:0', false, () => waiting)).toBe(waiting)
+    expect(heldItem(held, '7:0', true, () => failed)).toBe(failed)
+    expect(renditionSettled({ ...attachment(0, 'image/avif'), renditionRefused: true })).toBe(true)
+    expect(renditionSettled(attachment(0, 'image/avif'))).toBe(false)
+  })
+
+  it('keeps a rendition it was first handed when that is evicted', () => {
+    const held = new Map<string, HeldItem>()
+    const rendition = { uri: 'rendition://7/0' }
+    expect(heldItem(held, '7:0', true, () => rendition)).toBe(rendition)
+    expect(heldItem(held, '7:0', false, () => ({ uri: 'media://7/0' }))).toBe(rendition)
   })
 })
 
@@ -129,6 +260,7 @@ describe('what a row square or an album tile draws', () => {
           thumbhashUrlFor: () => null,
           thumbnailUrlFor: ({ messageId, index }) =>
             `thumb://${String(messageId)}/${String(index)}`,
+          renditionUrlFor: () => null,
         },
       }),
     )
@@ -154,6 +286,17 @@ describe('what a row square or an album tile draws', () => {
     expect(leadsWithPicture(jpeg)).toBe(true)
     expect(leadUri(7, jpeg, 'ready')).toBeUndefined()
     expect(leadUri(7, { ...jpeg, hasThumbnail: true }, 'ready')).toBe('thumb://7/2')
+  })
+
+  it('never decodes a JPEG of ours while it uploads: libsession thumbnails it first', () => {
+    serving()
+    const sending = {
+      ...attachment(3, 'image/jpeg'),
+      uploaded: false,
+      availability: 'cached' as const,
+    }
+    expect(leadUri(7, sending, 'ready')).toBe(undefined)
+    expect(leadUri(7, { ...sending, hasThumbnail: true }, 'ready')).toBe('thumb://7/3')
   })
 
   it('keeps the placeholder until the file is here', () => {

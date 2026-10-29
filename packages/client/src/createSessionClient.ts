@@ -12,6 +12,7 @@ import type {
   Request,
   Response,
   Result,
+  SendPlan,
   SessionEvent,
 } from '@session/bridge-types'
 
@@ -264,12 +265,20 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
         conversationId: id,
         body: message.body,
         ...(message.replyTo === undefined ? {} : { replyTo: message.replyTo }),
+        ...(message.attachments === undefined || message.attachments.length === 0
+          ? {}
+          : { attachments: message.attachments }),
       })
       return resultOf(response, 'messageId').messageId
     },
 
     async retrySend(messageId): Promise<boolean> {
       const response = await call({ type: 'retrySend', messageId })
+      return resultOf(response, 'bool').value
+    },
+
+    async setGallery(messageId, gallery): Promise<boolean> {
+      const response = await call({ type: 'setGallery', messageId, gallery })
       return resultOf(response, 'bool').value
     },
 
@@ -293,6 +302,15 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       return resultOf(response, 'path').path
     },
 
+    async attachmentSendPlan(path, contentType): Promise<SendPlan> {
+      const response = await call({
+        type: 'attachmentSendPlan',
+        path,
+        ...(contentType === undefined ? {} : { contentType }),
+      })
+      return resultOf(response, 'sendPlan').plan
+    },
+
     async setAutoDownload(id, mode: AutoDownload): Promise<void> {
       await call({ type: 'setAutoDownload', conversationId: id, mode })
     },
@@ -305,6 +323,14 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
     async getCacheDir(): Promise<string> {
       const response = await call({ type: 'getCacheDir' })
       return resultOf(response, 'path').path
+    },
+
+    async getAttachmentUploadLimit(): Promise<number> {
+      const response = await call({ type: 'getAttachmentUploadLimit' })
+      const { bytes } = resultOf(response, 'byteCount')
+      if (bytes === undefined)
+        throw new SessionClientError('getAttachmentUploadLimit answered no limit')
+      return bytes
     },
 
     async getAttachmentCacheLimit(): Promise<number | undefined> {

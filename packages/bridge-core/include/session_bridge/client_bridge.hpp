@@ -103,7 +103,7 @@ struct InitOptions {
     /// one, and `close()` takes its logger back off again.
     std::string log_level;
 
-    /// The side of the square thumbnails libsession makes, in device pixels, or unset for
+    /// The height of the thumbnails libsession makes, in device pixels, or unset for
     /// libsession's own default. A default only: a value stored by `setThumbnailEdge` wins.
     std::optional<double> thumbnail_edge_px;
 
@@ -204,8 +204,8 @@ class ClientBridge {
     /// `cb` runs on whichever thread libsession finished on, which is Core's loop. It must only
     /// hand the bytes on, for the same reason `Sink` must only enqueue.
     ///
-    /// A native image loader calling this, `fetch_thumbhash` or `fetch_thumbnail` is invoked by the
-    /// OS with no bridge in hand, and must obtain one in a way that cannot race `close()`.
+    /// A native image loader calling this or any other `fetch_` is invoked by the OS with no
+    /// bridge in hand, and must obtain one in a way that cannot race `close()`.
     void fetch_media(double message_id, double index, MediaHandler cb);
 
     /// A blurred stand-in for an attachment, decoded from the ThumbHash its sender supplied.
@@ -226,6 +226,25 @@ class ClientBridge {
     /// From libsession's cache only: never a download, and so no progress. Answers its own caller
     /// for the same reason `fetch_media` does.
     void fetch_thumbnail(double message_id, double index, MediaHandler cb);
+
+    /// The rendition libsession made of a cached picture, for a viewer to draw in place of the
+    /// file, as `Media` typed by what the bytes are: `image/jpeg` or `image/webp`.
+    ///
+    /// From libsession's cache only, as `fetch_thumbnail` is, and refused with "attachment <i> of
+    /// message <id> has no rendition" while `Attachment.hasRendition` is false.
+    void fetch_rendition(double message_id, double index, MediaHandler cb);
+
+    /// libsession's thumbnail of a local file staged to send, which no message holds yet: the same
+    /// JPEG, in the picture's own shape at the same height, as the one it makes once the file is
+    /// sent, as `Media` typed `image/jpeg`.
+    ///
+    /// `path` is UTF-8 and must pass `is_staged_path`. Made on the bridge's own worker thread, one
+    /// decode for every request of the same path, and `cb` runs there. Refused with "not an
+    /// absolute path", "the file could not be read" or "the file is not a picture", none of which
+    /// names the file: loaders log what they are refused.
+    ///
+    /// Returns a cancel, which answers `cb` with "cancelled" unless it has been answered already.
+    std::function<void()> fetch_staged_thumbnail(std::string path, MediaHandler cb);
 
     /// Stops delivering frames and destroys the Client, which joins Core's loop. Idempotent, and
     /// implied by the destructor. Handlers for calls still in flight are dropped rather than

@@ -3,11 +3,11 @@ import { useMessage, useSessionActions } from '@session/state'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { MessageFrame, ON_ACCENT_SECONDARY_OPACITY, Text, XStack } from '@session/ui'
-import { memo, useMemo, useState, type ReactNode } from 'react'
+import { memo, useMemo, type ReactNode } from 'react'
 
 import { ConversationUiContext, type ConversationUi } from './conversationUi'
 import { MessageAttachments } from './MessageAttachments'
-import { createViewChoices } from './viewChoices'
+import { isUploadPhase } from './uploadState'
 
 /**
  * What a send state is called on screen. Only the ones worth showing say anything.
@@ -15,8 +15,8 @@ import { createViewChoices } from './viewChoices'
  * A function rather than a table, because `tr` reads the locale when it is called: a table built
  * at module scope would be resolved once, on import, and keep whatever locale was in use then.
  */
-function stateLabel(state: Message['sendState']): string | undefined {
-  switch (state) {
+function stateLabel(message: Message): string | undefined {
+  switch (message.sendState) {
     case 'pending':
     case 'sending':
       return tr('sending')
@@ -24,11 +24,12 @@ function stateLabel(state: Message['sendState']): string | undefined {
       return tr('uploading')
     case 'failed':
       return tr('messageStatusFailedToSend')
-    // No catalogue entry for either of these yet, so they say nothing rather than saying it in
-    // English only. `interrupted` offers a retry and `unsendable` does not, which is the part
-    // that matters and is not copy.
-    case 'interrupted':
+    // A file the message needs is gone, or too large to send even re-encoded, which the
+    // catalogue's "Error sending file" covers. Without attachments there is no key for either
+    // state, so they say nothing rather than English only.
     case 'unsendable':
+      return message.attachments.length > 0 ? tr('attachmentsErrorSending') : undefined
+    case 'interrupted':
     default:
       return undefined
   }
@@ -37,10 +38,10 @@ function stateLabel(state: Message['sendState']): string | undefined {
 /**
  * Which states are worth offering a retry for.
  *
- * `failed` and `interrupted` are worth another attempt - something was unreachable. `unsendable`
- * is not: libsession keeps it apart precisely so a client knows which failures to offer a retry
- * for, and it means something the message needs is gone rather than merely unreachable, so
- * retrying re-reads the same missing file and fails identically every time.
+ * `failed` and `interrupted` are worth another attempt - something was unreachable, or a picture
+ * could not be read this time. `unsendable` is not: libsession keeps it apart precisely so a client
+ * knows which failures to offer a retry for, and it means a file is gone or too large to send, so
+ * retrying fails identically every time.
  */
 const RETRYABLE: readonly Message['sendState'][] = ['failed', 'interrupted']
 
@@ -62,8 +63,10 @@ export const MessageRow = memo(function MessageRow({
   const message = useMessage(conversationId, messageId)
   if (message === undefined) return null
 
-  const label = message.outgoing ? stateLabel(message.sendState) : undefined
-  const retryable = message.outgoing && RETRYABLE.includes(message.sendState)
+  const label = message.outgoing ? stateLabel(message) : undefined
+  // A set still uploading has its Retry in the attachment footer, beside the count it resumes.
+  const retryable =
+    message.outgoing && RETRYABLE.includes(message.sendState) && !isUploadPhase(message)
 
   return (
     <MessageFrame
@@ -128,16 +131,14 @@ export function DetachedMessages({
   conversationId: ConversationId
   children: ReactNode
 }) {
-  const [views] = useState(createViewChoices)
   const ui = useMemo<ConversationUi>(
     () => ({
       conversationId,
       requestAutoDownloadPrompt: ignore,
-      views,
       openViewer: ignore,
       openSheet: ignore,
     }),
-    [conversationId, views],
+    [conversationId],
   )
   return <ConversationUiContext.Provider value={ui}>{children}</ConversationUiContext.Provider>
 }

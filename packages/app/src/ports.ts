@@ -29,18 +29,55 @@ export interface PickedFile {
   /** A real filesystem path: libsession takes paths, not blobs. */
   path: string
   name: string
-  contentType?: string
-  size?: number
+  contentType?: string | undefined
+  size?: number | undefined
+  /**
+   * When the file was last changed, where the platform says: with its size, what tells a file
+   * picked again unchanged from one edited since.
+   */
+  modifiedMs?: number | undefined
+  /**
+   * A URL the platform can draw the file from, where it is a picture. Nothing for anything else:
+   * a video has no still yet, so it stages as a document.
+   */
+  previewUrl?: string | undefined
 }
 
 export interface FilesPort {
   pickFiles(options?: { multiple?: boolean }): Promise<PickedFile[]>
-  pickImages(options?: { multiple?: boolean }): Promise<PickedFile[]>
+  /** `limit` is how many more the message can take, which a picker that can stop at it does. */
+  pickImages(options?: { multiple?: boolean; limit?: number | undefined }): Promise<PickedFile[]>
+  /**
+   * The files behind what was dropped on the window, as `DropZone` handed them over.
+   *
+   * Only desktop takes a drop, and only it can say where a dropped file lives on disk. Anything
+   * not on disk -- a picture dragged out of a browser -- has no path and is left out.
+   */
+  droppedFiles(items: readonly unknown[]): Promise<PickedFile[]>
+  /**
+   * Whether each pick is a copy the app made, which a fresh path for the same file says nothing
+   * against. True on mobile; on desktop a pick is the person's own file at its own path.
+   */
+  picksAreCopies: boolean
+  /**
+   * Lets go of a pick that will not be sent: deletes the app's copy, where it made one.
+   *
+   * Never for a file a message has been given: a copy is then libsession's, handed over with
+   * `takeFile`, and the person's own file is not the app's to delete.
+   */
+  discardPicked(file: PickedFile): void
+  /**
+   * Lets go of what the platform holds for a pick in the tray, for every pick that leaves it, sent
+   * or not. Desktop grants the page each preview, and the right to send the file; a preview grant
+   * held for a file nobody draws pushes out one in use.
+   */
+  releasePreview(file: PickedFile): void
   /**
    * Where to export a file to; null when the person cancelled.
    *
    * `contentType` is the sender's claim, for a platform whose destination depends on the kind of
-   * file: mobile sends a picture to the photo library and anything else to a folder.
+   * file: mobile sends a picture to the photo library and anything else to a folder. Unset files
+   * it as a plain file, which is how a picture sent as its original file is exported.
    *
    * Rejects with `ExportAccessRefused` when that destination needs access that was refused.
    */
@@ -76,11 +113,23 @@ export interface MediaPort {
    */
   thumbhashUrlFor(ref: AttachmentRef): string | null
   /**
-   * The square JPEG libsession made of a picture it holds, which is what a tile draws: a viewer
-   * draws `urlFor`. Never a download, so only worth asking for when `Attachment.hasThumbnail`
-   * says there is one.
+   * The JPEG libsession made of a picture it holds, in the picture's shape (`Attachment`'s
+   * `thumbnailWidthPx` by `thumbnailHeightPx`), which is what a tile draws: a viewer draws
+   * `urlFor`. Never a download, so only worth asking for when `Attachment.hasThumbnail` says there
+   * is one.
+   *
+   * TODO: an animated thumbnail for an animated GIF or WebP, so it plays in the conversation and
+   * not only in the viewer. Today this is a still of the first frame; libsession would make an
+   * animated WebP on demand, and desktop main, the iOS loader and anything wanting a still assume
+   * a JPEG.
    */
   thumbnailUrlFor(ref: AttachmentRef): string | null
+  /**
+   * The display copy libsession made of a picture it holds, which the viewer draws in place of
+   * the file. Never a download, so only worth asking for when `Attachment.hasRendition` says
+   * there is one.
+   */
+  renditionUrlFor(ref: AttachmentRef): string | null
 }
 
 export interface MediaProbePort {

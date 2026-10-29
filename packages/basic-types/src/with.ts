@@ -27,6 +27,8 @@ export type WithFetchesOnOpen = { fetchesOnOpen?: boolean | undefined }
 export type WithFilename = { filename: string }
 /** The sender's declared type, absent on plenty of attachments. */
 export type WithContentType = { contentType?: string | undefined }
+/** Whether this platform's libsession decodes HEIC, which only Apple's ImageIO does. */
+export type WithDecodesHeic = { decodesHeic: boolean }
 /** Already worded, for a package that cannot reach the catalogue. */
 export type WithCaption = { caption: string }
 /** Label then value, in the order a person reads them: a startup block's or an export's rows. */

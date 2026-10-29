@@ -35,11 +35,10 @@ export async function exportOne(
     sentAtMs: message.timestamp,
     index,
   })
+  // Sent as the original, metadata and all, so it goes where a file goes rather than to Photos.
+  const filedAs = attachment?.originalFile === true ? undefined : attachment?.contentType
   try {
-    const destination = await requirePorts().files.chooseExportLocation(
-      suggested,
-      attachment?.contentType,
-    )
+    const destination = await requirePorts().files.chooseExportLocation(suggested, filedAs)
     if (destination === null) return
     const saved = await actions.exportAttachment({ messageId: message.id, index }, destination)
     await requirePorts().files.revealInFolder(saved)

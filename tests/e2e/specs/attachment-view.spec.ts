@@ -11,6 +11,9 @@ import { sessionTest } from '../harness/sessionTest'
 
 const viewToggle = (name: string) => onDesktop(pressArea({ name }))
 
+/** Below the 701px from which the shell lays the list beside the conversation. */
+const ONE_PANE_WIDTH_PX = 600
+
 /**
  * Reading a set of photographs as rows, because somebody asked to.
  *
@@ -23,11 +26,6 @@ const viewToggle = (name: string) => onDesktop(pressArea({ name }))
  * document in the set the gallery is impossible rather than unwanted. So before it is pressed the
  * first names on screen are the pictures-and-documents list's, and after it the album's come ahead
  * of them.
- *
- * That the choice survives the row being unmounted is not asserted here: the transcript is a
- * windowed list and scrolling one far enough to recycle a row is the kind of step that passes
- * for the wrong reason. `ConversationScreen` holding the record rather than the row is the
- * durable statement of it.
  */
 sessionTest({
   title: 'reads a gallery as a list when asked',
@@ -63,6 +61,44 @@ sessionTest({
     )
 
     await alice.screenshot('attachment-view-list-desktop')
+  },
+})
+
+/**
+ * The choice is libsession's to keep, so leaving the conversation and coming back, which reloads
+ * its history from the client, still draws the album as a list.
+ *
+ * Left by its back button, which only a one-pane window has: in two the list sits beside the
+ * conversation instead.
+ */
+sessionTest({
+  title: 'keeps a gallery read as a list after the conversation is closed',
+  risk: 'low',
+  clients: { alice: 'desktop' },
+  run: async ({ alice }) => {
+    if (!alice) throw new Error('the harness did not open alice')
+
+    await openFirstConversation(alice)
+    await alice.tap(ELEMENT.conversation.attachmentViewList)
+    await expect
+      .poll(async () => alice.count(ELEMENT.conversation.attachmentViewGallery), { timeout: 5_000 })
+      .toBe(1)
+
+    if (!(alice instanceof DesktopApp)) throw new Error('alice is not the desktop app')
+    await alice.resize(ONE_PANE_WIDTH_PX, 900)
+    await alice.tap(ELEMENT.conversation.back)
+    await openFirstConversation(alice)
+
+    const expected = [...SEEDED_ALBUM, ...SEEDED_LIST]
+    await expect
+      .poll(
+        async () =>
+          (await alice.readAllText(ELEMENT.conversation.attachmentName)).slice(0, expected.length),
+        { timeout: 5_000 },
+      )
+      .toEqual(expected)
+    expect(await alice.count(ELEMENT.conversation.attachmentViewList)).toBe(0)
+    expect(await alice.count(ELEMENT.conversation.attachmentViewGallery)).toBe(1)
   },
 })
 

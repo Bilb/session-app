@@ -5,6 +5,8 @@ import type {
   AttachmentThumbhash,
   AttachmentRef,
   BridgeTransport,
+  DecodePlan,
+  DecodePlanner,
   Frame,
   MediaSource,
   Request,
@@ -34,17 +36,20 @@ interface NativeBridge {
   fetchMedia(messageId: number, index: number): Promise<AttachmentMedia>
   fetchThumbhash(messageId: number, index: number): Promise<AttachmentThumbhash>
   fetchThumbnail(messageId: number, index: number): Promise<Uint8Array>
+  fetchRendition(messageId: number, index: number): Promise<AttachmentMedia>
+  fetchStagedThumbnail(path: string): Promise<Uint8Array>
   close(): void
 }
 
-/** The transport, plus the one thing that does not go over it. */
-export type NodeBridgeTransport = BridgeTransport & MediaSource
+/** The transport, plus what does not go over it: the media, and how to draw it. */
+export type NodeBridgeTransport = BridgeTransport & MediaSource & DecodePlanner
 
 interface Addon {
   SessionBridge: new (
     options: Omit<NodeBridgeOptions, 'addonPath'>,
     onFrame: (frame: Frame) => void,
   ) => NativeBridge
+  planDecode: (bytes: Uint8Array) => DecodePlan
 }
 
 const require = createRequire(import.meta.url)
@@ -69,7 +74,7 @@ function loadAddon(explicitPath: string | undefined): Addon {
  */
 export function createNodeBridgeTransport(options: NodeBridgeOptions): NodeBridgeTransport {
   const { addonPath, ...init } = options
-  const { SessionBridge } = loadAddon(addonPath)
+  const { SessionBridge, planDecode } = loadAddon(addonPath)
 
   // Frames produced between construction and setSink would otherwise be dropped: libsession
   // publishes the initial state as the Client is built, which is before any caller can have
@@ -116,6 +121,19 @@ export function createNodeBridgeTransport(options: NodeBridgeOptions): NodeBridg
       if (closed) return Promise.reject(new Error('the bridge is closed'))
       return bridge.fetchThumbnail(messageId, index)
     },
+
+    fetchRendition({ messageId, index }: AttachmentRef): Promise<AttachmentMedia> {
+      if (closed) return Promise.reject(new Error('the bridge is closed'))
+      return bridge.fetchRendition(messageId, index)
+    },
+
+    fetchStagedThumbnail(path: string): Promise<Uint8Array> {
+      if (closed) return Promise.reject(new Error('the bridge is closed'))
+      return bridge.fetchStagedThumbnail(path)
+    },
+
+    // A rule rather than a call into the bridge, so it answers after a close too.
+    planDecode,
 
     setSink(onFrame: (frame: Frame) => void): void {
       sink = onFrame

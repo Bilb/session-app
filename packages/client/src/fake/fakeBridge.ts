@@ -191,11 +191,16 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     messageId: await client.sendMessage(cmd.conversationId, {
       body: cmd.body,
       ...(cmd.replyTo === undefined ? {} : { replyTo: cmd.replyTo }),
+      ...(cmd.attachments === undefined ? {} : { attachments: cmd.attachments }),
     }),
   }),
   retrySend: async (client, cmd) => ({
     type: 'bool',
     value: await client.retrySend(cmd.messageId),
+  }),
+  setGallery: async (client, cmd) => ({
+    type: 'bool',
+    value: await client.setGallery(cmd.messageId, cmd.gallery),
   }),
   deleteMessage: async (client, cmd) => {
     await client.deleteMessage(cmd.messageId, cmd.scope)
@@ -213,11 +218,19 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
       replace: cmd.replace,
     }),
   }),
+  attachmentSendPlan: async (client, cmd) => ({
+    type: 'sendPlan',
+    plan: await client.attachmentSendPlan(cmd.path, cmd.contentType),
+  }),
   setAutoDownload: async (client, cmd) => {
     await client.setAutoDownload(cmd.conversationId, cmd.mode)
     return empty
   },
   getCacheDir: async (client) => ({ type: 'path', path: await client.getCacheDir() }),
+  getAttachmentUploadLimit: async (client) => ({
+    type: 'byteCount',
+    bytes: await client.getAttachmentUploadLimit(),
+  }),
   getAttachmentCacheLimit: async (client) => {
     const bytes = await client.getAttachmentCacheLimit()
     return { type: 'byteCount', ...(bytes === undefined ? {} : { bytes }) }

@@ -138,6 +138,14 @@ export { useThemeIsDark } from './UIProvider'
 export { logical } from './logicalEdges'
 export type { LogicalEdges } from './logicalEdges.types'
 export { AttachmentTile } from './AttachmentTile'
+export { Announcement, type AnnouncementProps } from './Announcement'
+export { ComposerNotice, type ComposerNoticeProps } from './ComposerNotice'
+export { DropOverlay, type DropOverlayProps } from './DropOverlay'
+export { DropZone } from './DropZone'
+export type { DropZoneProps } from './DropZone.types'
+export { StagedTile, type StagedTileProps } from './StagedTile'
+export { StagedTray, type StagedTrayProps } from './StagedTray'
+export { ATTACH_OPENS_MENU } from './stagingMetrics'
 export type { AttachmentTileProps } from './AttachmentTile'
 export { TILE_RADIUS_STEP, TILE_SCRIM, tileRadius } from './attachmentTileStyle'
 export { MIN_HIT_TARGET, buttonHeight } from './buttonHitTarget'
@@ -155,6 +163,7 @@ export {
   FILE_ROW_CONTROL,
   FILE_ROW_GAP,
   fileRowControl,
+  fileRowMarker,
   fileRowHeight,
   fileRowTone,
 } from './fileRowState'

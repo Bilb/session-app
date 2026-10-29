@@ -296,16 +296,40 @@ struct Attachment {
     /// media port like any other rather than riding the frame stream. What it names is the second
     /// path on that scheme.
     bool has_thumbhash;
-    /// Whether libsession holds a thumbnail of this attachment: a square JPEG of the picture, cropped
-    /// to cover, at most the client's thumbnail edge on a side. Made only of a displayable image whose
-    /// bytes are cached, and after them, so it turns true in a later `messages-updated` than the one
-    /// reporting `cached`; false again once the cache evicts the file, which takes the thumbnail too.
+    /// Whether libsession holds a thumbnail of this attachment: a JPEG of the picture in its own
+    /// shape, cropped to its centre at 21:9 when it is wider than that either way up, then the
+    /// client's thumbnail edge tall and never enlarged. A square tile covers it and crops. Made of a
+    /// displayable image whose bytes are cached, and after them, so it turns true in a later
+    /// `messages-updated` than the one reporting `cached`; false again once the cache evicts the
+    /// file, which takes the thumbnail too. One we send has it sooner: made from libsession's own
+    /// copy before the upload, and true from then on until the cached file is evicted.
     ///
     /// What a tile draws, through the media scheme's `thumbnail` path; a viewer draws the file.
     bool has_thumbnail;
+    /// The thumbnail's size, read from the JPEG libsession made, so a layout can shape a tile before
+    /// loading it. Both 0 while `hasThumbnail` is false.
+    double thumbnail_width_px;
+    double thumbnail_height_px;
+    /// Whether libsession holds a rendition of this attachment: the whole picture as a JPEG or WebP
+    /// (animated WebP for an animation) within the rendition edge (2048 px on a side unless set).
+    /// It is re-encoded without metadata, or is the original itself when that is already an upright
+    /// JPEG or WebP within the edge, metadata included. Made only once asked for: the first
+    /// `fetchRendition` of a picture with none queues it and is refused, and this turns true by
+    /// update when it is made. Kept, evicted and reported as `hasThumbnail` is.
+    ///
+    /// What a viewer draws, through the media scheme's `rendition` path; export still writes the file.
+    bool has_rendition;
+    /// libsession will make no rendition of this picture: past its pixel limits, a header it cannot
+    /// read, or a re-encode that failed. Settled once it has read the cached file, so only ever true
+    /// while `availability` is `cached`, and never together with `hasRendition`. Asking again does
+    /// nothing until a libsession that decodes more replaces this one.
+    bool rendition_refused;
+    /// The sender sent the file exactly as it was, metadata included. Offered only as a file to
+    /// export, never opened in the viewer, though its thumbnail is still drawn.
+    bool original_file;
     /// On the file server: an outgoing attachment's upload finished, and always true for an incoming
-    /// one. Deliberately not "the bytes are here" - libsession records no local path, because the
-    /// application chose it and a stored copy would go stale the moment the file moved.
+    /// one. Deliberately not "the bytes are here": libsession records where it reads a file to send
+    /// from but exposes no path, because the application chose it and knows it.
     bool uploaded;
     /// Whether the bytes are here, coming, or neither. See `AttachmentAvailability`.
     ::session_bridge::AttachmentAvailability availability;
@@ -322,8 +346,8 @@ struct Attachment {
     /// depends on the other end volunteering a notification.
     std::optional<double> saved_at_ms;
 
-    Attachment(double index_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<double> size_bytes_, bool voice_message_, std::optional<double> width_, std::optional<double> height_, bool has_thumbhash_, bool has_thumbnail_, bool uploaded_, ::session_bridge::AttachmentAvailability availability_, double fetch_done_bytes_, double fetch_total_bytes_, std::optional<double> saved_at_ms_) :
-            index{std::move(index_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, size_bytes{std::move(size_bytes_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)}, has_thumbhash{std::move(has_thumbhash_)}, has_thumbnail{std::move(has_thumbnail_)}, uploaded{std::move(uploaded_)}, availability{std::move(availability_)}, fetch_done_bytes{std::move(fetch_done_bytes_)}, fetch_total_bytes{std::move(fetch_total_bytes_)}, saved_at_ms{std::move(saved_at_ms_)} {}
+    Attachment(double index_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<double> size_bytes_, bool voice_message_, std::optional<double> width_, std::optional<double> height_, bool has_thumbhash_, bool has_thumbnail_, double thumbnail_width_px_, double thumbnail_height_px_, bool has_rendition_, bool rendition_refused_, bool original_file_, bool uploaded_, ::session_bridge::AttachmentAvailability availability_, double fetch_done_bytes_, double fetch_total_bytes_, std::optional<double> saved_at_ms_) :
+            index{std::move(index_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, size_bytes{std::move(size_bytes_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)}, has_thumbhash{std::move(has_thumbhash_)}, has_thumbnail{std::move(has_thumbnail_)}, thumbnail_width_px{std::move(thumbnail_width_px_)}, thumbnail_height_px{std::move(thumbnail_height_px_)}, has_rendition{std::move(has_rendition_)}, rendition_refused{std::move(rendition_refused_)}, original_file{std::move(original_file_)}, uploaded{std::move(uploaded_)}, availability{std::move(availability_)}, fetch_done_bytes{std::move(fetch_done_bytes_)}, fetch_total_bytes{std::move(fetch_total_bytes_)}, saved_at_ms{std::move(saved_at_ms_)} {}
 };
 
 /// The message a reply points at, resolved one level deep only: a reply to a reply shows its own
@@ -386,11 +410,17 @@ struct Message {
     /// image" (JPEG, PNG, WebP, GIF, AVIF, `image/pjpeg`, case-insensitive). It does not say whether
     /// this client can draw them, which is the screens' decision to make.
     bool gallery_viewable;
+    /// Whether this message is shown as a gallery: libsession's decision, stored on this device only
+    /// and changed by `setGallery`. On by default for a `galleryViewable` message stored by this
+    /// libsession; a database from earlier builds may hold such sets stored as lists. Never true when
+    /// `galleryViewable` is false. A client that cannot draw every attachment as a picture shows a
+    /// list regardless and leaves this alone.
+    bool gallery;
     std::optional<::session_bridge::Reply> reply_to;
     std::optional<::session_bridge::Deletion> deleted;
 
-    Message(double id_, std::string conversation_id_, std::string author_, double timestamp_, std::string body_, bool outgoing_, ::session_bridge::SendState send_state_, std::optional<::session_bridge::SendState> sync_state_, std::vector<::session_bridge::Attachment> attachments_, bool gallery_viewable_, std::optional<::session_bridge::Reply> reply_to_, std::optional<::session_bridge::Deletion> deleted_) :
-            id{std::move(id_)}, conversation_id{std::move(conversation_id_)}, author{std::move(author_)}, timestamp{std::move(timestamp_)}, body{std::move(body_)}, outgoing{std::move(outgoing_)}, send_state{std::move(send_state_)}, sync_state{std::move(sync_state_)}, attachments{std::move(attachments_)}, gallery_viewable{std::move(gallery_viewable_)}, reply_to{std::move(reply_to_)}, deleted{std::move(deleted_)} {}
+    Message(double id_, std::string conversation_id_, std::string author_, double timestamp_, std::string body_, bool outgoing_, ::session_bridge::SendState send_state_, std::optional<::session_bridge::SendState> sync_state_, std::vector<::session_bridge::Attachment> attachments_, bool gallery_viewable_, bool gallery_, std::optional<::session_bridge::Reply> reply_to_, std::optional<::session_bridge::Deletion> deleted_) :
+            id{std::move(id_)}, conversation_id{std::move(conversation_id_)}, author{std::move(author_)}, timestamp{std::move(timestamp_)}, body{std::move(body_)}, outgoing{std::move(outgoing_)}, send_state{std::move(send_state_)}, sync_state{std::move(sync_state_)}, attachments{std::move(attachments_)}, gallery_viewable{std::move(gallery_viewable_)}, gallery{std::move(gallery_)}, reply_to{std::move(reply_to_)}, deleted{std::move(deleted_)} {}
 };
 
 /// A page of history.
@@ -465,7 +495,58 @@ struct ByteCountResult {
             bytes{std::move(bytes_)} {}
 };
 
-/// A thumbnail's side in device pixels, as libsession clamped it.
+/// What sending a file as an attachment will do with it, decided from its header alone as the send
+/// decides it: libsession's `image::SendPlan`.
+///
+/// - `reencoded`: a picture libsession decodes, sent re-encoded and shrunk to fit. Only the send
+///   tells whether its pixels decode and whether it then fits; it is refused there if not.
+/// - `as-is`: not a picture, and not labelled one, within the file server's limit.
+/// - `original-cannot-decode`: sent as it is, flagged as the original file: a picture this build
+///   does not decode (HEIC off Apple), or a file labelled a picture that is not one libvips reads.
+/// - `original-animated-png`: sent as it is, flagged as the original file, since re-encoding would
+///   keep only its first frame.
+/// - `too-large-to-decode`: refused, a picture past the decode limits.
+/// - `too-large-for-server`: refused, over the file server's limit and not shrinkable.
+/// - `unreadable`: refused, a picture whose header is damaged.
+/// - `missing`: refused, no regular file at the path.
+enum class SendPlan {
+    reencoded,
+    as_is,
+    original_cannot_decode,
+    original_animated_png,
+    too_large_to_decode,
+    too_large_for_server,
+    unreadable,
+    missing,
+};
+
+template <>
+struct EnumTraits<SendPlan> {
+    static constexpr std::string_view name = "SendPlan";
+    static constexpr std::array<std::string_view, 8> names{"reencoded", "as-is", "original-cannot-decode", "original-animated-png", "too-large-to-decode", "too-large-for-server", "unreadable", "missing"};
+
+    static constexpr std::string_view to_string(SendPlan value) {
+        return names[static_cast<std::size_t>(value)];
+    }
+
+    static constexpr std::optional<SendPlan> parse(std::string_view text) {
+        for (std::size_t i = 0; i < names.size(); i++)
+            if (names[i] == text)
+                return static_cast<SendPlan>(i);
+        return std::nullopt;
+    }
+};
+
+struct SendPlanResult {
+    static constexpr std::string_view type_tag = "sendPlan";
+
+    ::session_bridge::SendPlan plan;
+
+    explicit SendPlanResult(::session_bridge::SendPlan plan_) :
+            plan{std::move(plan_)} {}
+};
+
+/// A thumbnail's height in device pixels, as libsession clamped it.
 struct EdgeResult {
     static constexpr std::string_view type_tag = "edge";
 
@@ -551,6 +632,7 @@ using Result = std::variant<
         BoolResult,
         PathResult,
         ByteCountResult,
+        SendPlanResult,
         EdgeResult,
         ConfigSizesResult,
         NetworkStatusResult>;
@@ -1208,15 +1290,69 @@ struct GetMessagesCommand {
             conversation_id{std::move(conversation_id_)}, limit{std::move(limit_)}, before{std::move(before_)}, include_deleted{std::move(include_deleted_)} {}
 };
 
+/// A file to send with a message. Sending files needs `cacheDir`.
+///
+/// Without `takeFile`, libsession copies it beneath the cache directory once the message is stored,
+/// off the calling thread, and reads only that copy from then on: `path` may change or go once the
+/// attachment reads `cached`. Until it uploads, `fetchMedia` and `exportAttachment` serve the copy.
+/// A picture libsession decodes is sent re-encoded to fit the file server, and the stored
+/// attachment then describes what was sent.
+struct OutgoingAttachment {
+    std::string path;
+    /// Inferred from the filename's extension when unset.
+    std::optional<std::string> content_type;
+    /// What the recipient sees it called; `path`'s own filename when unset.
+    std::optional<std::string> filename;
+    /// Hands the file to libsession instead of having it copied, refusing a symbolic link. Only for a
+    /// copy the app made: once the message is stored the file is gone from `path`, and a send
+    /// that was refused leaves it there.
+    ///
+    /// It is hard-linked under the cache directory, or copied where it cannot be, on the calling
+    /// thread during the send, so a large copy holds that call up. It waits there unencrypted.
+    ///
+    /// Until it uploads, the attachment is `cached`, and `fetchMedia` and `exportAttachment` serve it
+    /// from that copy; `absent` if the copy has gone. libsession deletes it once it has uploaded, or
+    /// its message is unsendable or deleted.
+    std::optional<bool> take_file;
+
+    OutgoingAttachment(std::string path_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<bool> take_file_) :
+            path{std::move(path_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, take_file{std::move(take_file_)} {}
+};
+
+/// Stores the message and answers its id; it is then announced like any other. With attachments
+/// it is `uploading` until every file is on the file server, and goes on to the ordinary states
+/// from there. Refused, storing nothing, when a file is not a readable, non-empty file.
 struct SendMessageCommand {
     static constexpr std::string_view type_tag = "sendMessage";
 
     std::string conversation_id;
     std::string body;
     std::optional<double> reply_to;
+    std::optional<std::vector<::session_bridge::OutgoingAttachment>> attachments;
 
-    SendMessageCommand(std::string conversation_id_, std::string body_, std::optional<double> reply_to_) :
-            conversation_id{std::move(conversation_id_)}, body{std::move(body_)}, reply_to{std::move(reply_to_)} {}
+    SendMessageCommand(std::string conversation_id_, std::string body_, std::optional<double> reply_to_, std::optional<std::vector<::session_bridge::OutgoingAttachment>> attachments_) :
+            conversation_id{std::move(conversation_id_)}, body{std::move(body_)}, reply_to{std::move(reply_to_)}, attachments{std::move(attachments_)} {}
+};
+
+/// What sending the file at `path` would do with it, under the file server's limit, without
+/// sending it: for staging to refuse a file before Send. `contentType` is inferred from the
+/// extension when unset, as `sendMessage` infers it. Read on libsession's disk thread.
+struct AttachmentSendPlanCommand {
+    static constexpr std::string_view type_tag = "attachmentSendPlan";
+
+    std::string path;
+    std::optional<std::string> content_type;
+
+    AttachmentSendPlanCommand(std::string path_, std::optional<std::string> content_type_) :
+            path{std::move(path_)}, content_type{std::move(content_type_)} {}
+};
+
+/// The most the file server takes in one upload, in encrypted, padded bytes: the limit
+/// `attachmentSendPlan` holds a file to, so a file's own size has to be smaller to fit. Belongs to
+/// the attached network's file server and changes only with `attachNetwork`; before a network is
+/// attached it is libsession's default for the built-in servers.
+struct GetAttachmentUploadLimitCommand {
+    static constexpr std::string_view type_tag = "getAttachmentUploadLimit";
 };
 
 struct RetrySendCommand {
@@ -1236,6 +1372,21 @@ struct DeleteMessageCommand {
 
     DeleteMessageCommand(double message_id_, ::session_bridge::Deletion scope_) :
             message_id{std::move(message_id_)}, scope{std::move(scope_)} {}
+};
+
+/// Shows a message as a gallery, or as a list. Answers false, changing nothing, for a message
+/// that does not exist or, when `gallery` is true, one that is not `galleryViewable`; turning it
+/// off is always allowed. A change is announced as messages-updated; asking for what is already
+/// stored answers true and announces nothing. Fetches nothing: getting a gallery's pictures is
+/// still the caller's `downloadAttachment`.
+struct SetGalleryCommand {
+    static constexpr std::string_view type_tag = "setGallery";
+
+    double message_id;
+    bool gallery;
+
+    SetGalleryCommand(double message_id_, bool gallery_) :
+            message_id{std::move(message_id_)}, gallery{std::move(gallery_)} {}
 };
 
 /// Fetch an attachment into libsession's cache, reporting progress as it goes.
@@ -1315,9 +1466,9 @@ struct GetThumbnailEdgeCommand {
     static constexpr std::string_view type_tag = "getThumbnailEdge";
 };
 
-/// The side of the thumbnails made from now on, in device pixels, kept on this device. libsession
-/// clamps it to 64 to 1024. Unset forgets the stored value, which puts the edge back to what the
-/// app opened the bridge with. Thumbnails already made keep the size they were made at.
+/// The height of the thumbnails made from now on, in device pixels, kept on this device.
+/// libsession clamps it to 64 to 1024. Unset forgets the stored value, which puts the edge back to
+/// what the app opened the bridge with. Thumbnails already made keep the size they were made at.
 struct SetThumbnailEdgeCommand {
     static constexpr std::string_view type_tag = "setThumbnailEdge";
 
@@ -1357,9 +1508,11 @@ struct TestAttachment {
     std::string content_type;
     /// Unset is a sender who sent no ThumbHash, which is what leaves `hasThumbhash` false.
     std::optional<std::vector<std::byte>> thumbhash;
+    /// Sent as the sender's original file, which is what leaves `originalFile` true.
+    std::optional<bool> original_file;
 
-    TestAttachment(std::string content_type_, std::optional<std::vector<std::byte>> thumbhash_) :
-            content_type{std::move(content_type_)}, thumbhash{std::move(thumbhash_)} {}
+    TestAttachment(std::string content_type_, std::optional<std::vector<std::byte>> thumbhash_, std::optional<bool> original_file_) :
+            content_type{std::move(content_type_)}, thumbhash{std::move(thumbhash_)}, original_file{std::move(original_file_)} {}
 };
 
 /// Builds, encrypts and delivers a v1 DM as if it had arrived from the swarm. The sender is
@@ -1452,8 +1605,11 @@ using Command = std::variant<
         DeleteConversationCommand,
         GetMessagesCommand,
         SendMessageCommand,
+        AttachmentSendPlanCommand,
+        GetAttachmentUploadLimitCommand,
         RetrySendCommand,
         DeleteMessageCommand,
+        SetGalleryCommand,
         DownloadAttachmentCommand,
         ExportAttachmentCommand,
         SetAutoDownloadCommand,

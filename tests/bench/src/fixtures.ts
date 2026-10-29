@@ -85,6 +85,7 @@ export function makeCorpus(options: {
       // attachment on every row would measure a conversation nobody has.
       attachments: [],
       galleryViewable: false,
+      gallery: false,
     })
   }
 

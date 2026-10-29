@@ -154,16 +154,15 @@ namespace {
         return "the fetch failed";
     }
 
-    /// Calls `function(messageId, index)` and settles `cb` from what it answers, reading the answer
-    /// with `read`. On the JS thread, as is every callback JavaScript runs.
-    template <typename Answer, typename Read>
+    /// Calls `function(args...)` and settles `cb` from what it answers, reading the answer with
+    /// `read`. On the JS thread, as is every callback JavaScript runs.
+    template <typename Answer, typename Read, typename... Args>
     void ask(
             jsi::Runtime& runtime,
             const BorrowingReference<jsi::Function>& function,
-            double message_id,
-            double index,
             std::function<void(Answer)> cb,
-            Read read) {
+            Read read,
+            Args&&... args) {
         auto fail = [cb](std::string message) {
             Answer answer;
             answer.error = std::move(message);
@@ -181,7 +180,7 @@ namespace {
             return;
         }
         try {
-            jsi::Value result = function->call(runtime, message_id, index);
+            jsi::Value result = function->call(runtime, std::forward<Args>(args)...);
             jsi::Value then = result.isObject()
                                     ? result.asObject(runtime).getProperty(runtime, "then")
                                     : jsi::Value::undefined();
@@ -231,7 +230,7 @@ void HybridSessionBridge::loadHybridMethods() {
     registerHybrids(this, [](Prototype& prototype) {
         prototype.registerRawHybridMethod("setSink", 1, &HybridSessionBridge::setSink);
         prototype.registerRawHybridMethod(
-                "serveMediaFrom", 3, &HybridSessionBridge::serveMediaFrom);
+                "serveMediaFrom", 4, &HybridSessionBridge::serveMediaFrom);
     });
 }
 
@@ -374,15 +373,46 @@ std::shared_ptr<Promise<std::shared_ptr<ArrayBuffer>>> HybridSessionBridge::fetc
             [](::session_bridge::Media media) { return buffer_of(std::move(media.bytes)); });
 }
 
+std::shared_ptr<Promise<NativeMedia>> HybridSessionBridge::fetchRendition(
+        double messageId, double index) {
+    std::shared_ptr<::session_bridge_rn::MediaSource> source = _media;
+    if (!source)
+        return Promise<NativeMedia>::rejected(
+                _opened ? closed_error() : not_open_error("fetchRendition"));
+    return promise_of<NativeMedia, ::session_bridge::Media>(
+            [&](::session_bridge::MediaHandler cb) {
+                source->fetch_rendition(messageId, index, std::move(cb));
+            },
+            [](::session_bridge::Media media) {
+                return NativeMedia{
+                        std::move(media.content_type), buffer_of(std::move(media.bytes))};
+            });
+}
+
+std::shared_ptr<Promise<std::shared_ptr<ArrayBuffer>>> HybridSessionBridge::fetchStagedThumbnail(
+        const std::string& path) {
+    std::shared_ptr<::session_bridge_rn::MediaSource> source = _media;
+    if (!source)
+        return Promise<std::shared_ptr<ArrayBuffer>>::rejected(
+                _opened ? closed_error() : not_open_error("fetchStagedThumbnail"));
+    return promise_of<std::shared_ptr<ArrayBuffer>, ::session_bridge::Media>(
+            [&](::session_bridge::MediaHandler cb) {
+                source->fetch_staged_thumbnail(path, std::move(cb));
+            },
+            [](::session_bridge::Media media) { return buffer_of(std::move(media.bytes)); });
+}
+
 jsi::Value HybridSessionBridge::serveMediaFrom(
         jsi::Runtime& runtime, const jsi::Value&, const jsi::Value* args, size_t count) {
     auto is_function = [&](size_t at) {
         return count > at && args[at].isObject() && args[at].getObject(runtime).isFunction(runtime);
     };
-    if (!is_function(0) || !is_function(1) || !is_function(2))
+    if (!is_function(0) || !is_function(1) || !is_function(2) || !is_function(3) ||
+        !is_function(4))
         throw jsi::JSError(
                 runtime,
-                "serveMediaFrom(fetchMedia, fetchThumbhash, fetchThumbnail) takes three functions");
+                "serveMediaFrom(fetchMedia, fetchThumbhash, fetchThumbnail, fetchRendition,"
+                " fetchStagedThumbnail) takes five functions");
     if (_bridge)
         throw jsi::JSError(runtime, "the bridge is open, and answers the loaders itself");
     if (::session_bridge_rn::media_served_by_another(_served.get()))
@@ -391,11 +421,15 @@ jsi::Value HybridSessionBridge::serveMediaFrom(
     BorrowingReference<jsi::Function> media;
     BorrowingReference<jsi::Function> thumbhash;
     BorrowingReference<jsi::Function> thumbnail;
+    BorrowingReference<jsi::Function> rendition;
+    BorrowingReference<jsi::Function> staged;
     {
         JSICacheReference cache = JSICache::getOrCreateCache(runtime);
         media = cache.makeShared(args[0].getObject(runtime).getFunction(runtime));
         thumbhash = cache.makeShared(args[1].getObject(runtime).getFunction(runtime));
         thumbnail = cache.makeShared(args[2].getObject(runtime).getFunction(runtime));
+        rendition = cache.makeShared(args[3].getObject(runtime).getFunction(runtime));
+        staged = cache.makeShared(args[4].getObject(runtime).getFunction(runtime));
     }
     std::weak_ptr<Dispatcher> dispatcher = Dispatcher::getRuntimeGlobalDispatcher(runtime);
     auto on_js = [dispatcher](std::function<void()> job) {
@@ -406,33 +440,48 @@ jsi::Value HybridSessionBridge::serveMediaFrom(
         return true;
     };
     jsi::Runtime* rt = &runtime;
-    auto ask_media = [rt, media](double id, double index, ::session_bridge::MediaHandler cb) {
-        ask<::session_bridge::Media>(
-                *rt, media, id, index, std::move(cb), [](jsi::Runtime& r, const jsi::Object& o) {
-                    return ::session_bridge::Media{
-                            std::nullopt,
-                            o.getProperty(r, "contentType").asString(r).utf8(r),
-                            copied_field(r, o, "bytes")};
-                });
+    auto read_media = [](jsi::Runtime& r, const jsi::Object& o) {
+        return ::session_bridge::Media{
+                std::nullopt,
+                o.getProperty(r, "contentType").asString(r).utf8(r),
+                copied_field(r, o, "bytes")};
+    };
+    auto ask_media = [rt, media, read_media](
+                             double id, double index, ::session_bridge::MediaHandler cb) {
+        ask<::session_bridge::Media>(*rt, media, std::move(cb), read_media, id, index);
+    };
+    auto ask_rendition = [rt, rendition, read_media](
+                                 double id, double index, ::session_bridge::MediaHandler cb) {
+        ask<::session_bridge::Media>(*rt, rendition, std::move(cb), read_media, id, index);
     };
     auto ask_thumbhash = [rt, thumbhash](double id, double index, ::session_bridge::ThumbhashHandler cb) {
         ask<::session_bridge::Thumbhash>(
-                *rt, thumbhash, id, index, std::move(cb), [](jsi::Runtime& r, const jsi::Object& o) {
+                *rt,
+                thumbhash,
+                std::move(cb),
+                [](jsi::Runtime& r, const jsi::Object& o) {
                     return ::session_bridge::Thumbhash{
                             std::nullopt,
                             o.getProperty(r, "width").asNumber(),
                             o.getProperty(r, "height").asNumber(),
                             copied_field(r, o, "rgba")};
-                });
+                },
+                id,
+                index);
     };
 
-    // Answered with the JPEG's own ArrayBuffer, so the type is said here rather than by JavaScript.
-    auto ask_thumbnail = [rt, thumbnail](double id, double index, ::session_bridge::MediaHandler cb) {
+    // Both answered with the JPEG's own ArrayBuffer, so the type is said here rather than by
+    // JavaScript.
+    auto read_jpeg = [](jsi::Runtime& r, const jsi::Object& o) {
+        return ::session_bridge::Media{std::nullopt, "image/jpeg", copied(r, o, "the thumbnail")};
+    };
+    auto ask_thumbnail = [rt, thumbnail, read_jpeg](
+                                 double id, double index, ::session_bridge::MediaHandler cb) {
+        ask<::session_bridge::Media>(*rt, thumbnail, std::move(cb), read_jpeg, id, index);
+    };
+    auto ask_staged = [rt, staged, read_jpeg](std::string path, ::session_bridge::MediaHandler cb) {
         ask<::session_bridge::Media>(
-                *rt, thumbnail, id, index, std::move(cb), [](jsi::Runtime& r, const jsi::Object& o) {
-                    return ::session_bridge::Media{
-                            std::nullopt, "image/jpeg", copied(r, o, "the thumbnail")};
-                });
+                *rt, staged, std::move(cb), read_jpeg, jsi::String::createFromUtf8(*rt, path));
     };
 
     if (_served) {
@@ -443,7 +492,9 @@ jsi::Value HybridSessionBridge::serveMediaFrom(
             std::move(on_js),
             std::move(ask_media),
             std::move(ask_thumbhash),
-            std::move(ask_thumbnail));
+            std::move(ask_thumbnail),
+            std::move(ask_rendition),
+            std::move(ask_staged));
     ::session_bridge_rn::set_media_source(_served);
     return jsi::Value::undefined();
 }

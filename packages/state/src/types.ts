@@ -51,6 +51,11 @@ export type MessageTransfers = Record<string, AttachmentTransferState>
 export interface SessionState {
   hydrated: boolean
   account: AccountInfo | null
+  /**
+   * The most the file server takes in one upload, encrypted and padded, as libsession says: what
+   * the composer quotes as the size limit. Null until a start has asked.
+   */
+  attachmentUploadLimitBytes: number | null
 
   /**
    * Why the app could not start, or null while it still might.
@@ -120,6 +125,7 @@ export interface StoredAppearance {
 export const emptyState: SessionState = {
   hydrated: false,
   account: null,
+  attachmentUploadLimitBytes: null,
   startupError: null,
   startupClearable: true,
   conversations: [],

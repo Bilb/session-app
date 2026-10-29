@@ -10,12 +10,14 @@ import { AppState, Linking, Platform, Share } from 'react-native'
 import { exportFiles, sweepStagedExports } from './files'
 import { flagOverride } from './flagOverrides'
 import { endingRun, logDirectory, logFiles, logWriter, lowPowerRows, osName } from './logs'
+import { pickers } from './pickers'
 import { restartProcess, terminateProcess } from './processExit'
 import { SessionLogs } from './sessionLogs'
 import { attachmentsBytes, databaseSizes } from './storageSizes'
 import { readDatabaseKey, writeDatabaseKey } from './storage/databaseKey'
 import { plainPath } from './storage/layout'
 import { exportsDirectory, File } from './storage/roots'
+import { sweepStaged } from './storage/staging'
 
 /**
  * Whose servers fast mode would use, which is what the onboarding screen has to name.
@@ -41,6 +43,7 @@ const MEDIA: MediaPort = {
   urlFor: (ref) => mediaUrl('attachment', ref),
   thumbhashUrlFor: (ref) => mediaUrl('thumbhash', ref),
   thumbnailUrlFor: (ref) => mediaUrl('thumbnail', ref),
+  renditionUrlFor: (ref) => mediaUrl('rendition', ref),
 }
 
 // Hex rather than base64: the keychain stores strings, and hex needs no polyfill on either
@@ -226,6 +229,7 @@ const ports = memoryPorts({
 })
 
 sweepStagedExports()
+sweepStaged()
 
 /**
  * In front means `active`. `inactive` -- the app switcher, a call coming in, Control Centre over
@@ -254,8 +258,7 @@ const appFocus = {
 
 setPorts({
   ...ports,
-  // The pickers stay the memory ones until the composer can attach.
-  files: { ...ports.files, ...exportFiles },
+  files: { ...ports.files, ...pickers, ...exportFiles },
   window: {
     ...ports.window,
     ...appFocus,

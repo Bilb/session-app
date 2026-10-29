@@ -22,6 +22,8 @@ export {
   photoFileNames,
   photoNumber,
 } from './media'
+export type { StagedHead } from './media'
+export { decodePlan, fakeDecodePlan } from './decodePlan'
 export { decodeThumbhash } from './thumbhash'
 export { backlog } from './backlog'
 export { driveFakeClock, FAKE_FIXTURES, pickFakeFixture, startDevFake } from './devSetup'

@@ -24,6 +24,9 @@ const CONTROL_NAME: Record<FileRowState, string | undefined> = {
   ready: 'Export',
   failed: 'Retry',
   unavailable: undefined,
+  queued: undefined,
+  uploaded: undefined,
+  unsent: undefined,
 }
 
 /** A picture's row, whose lead square opens it once it is here and fetches it before. */
@@ -62,7 +65,16 @@ function situation(props: FileRowProps): FileRowSituation {
   }
 }
 
-const STATES: FileRowState[] = ['idle', 'fetching', 'ready', 'failed', 'unavailable']
+const STATES: FileRowState[] = [
+  'idle',
+  'fetching',
+  'ready',
+  'failed',
+  'unavailable',
+  'queued',
+  'uploaded',
+  'unsent',
+]
 
 describe('a file row, as a screen reader reaches it on the desktop', () => {
   it.each(STATES)('is what its parts are expected to be while %s', (state) => {
