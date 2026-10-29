@@ -11,6 +11,9 @@ import { sessionTest } from '../harness/sessionTest'
 
 const viewToggle = (name: string) => onDesktop(pressArea({ name }))
 
+/** Below the 701px from which the shell lays the list beside the conversation. */
+const ONE_PANE_WIDTH_PX = 600
+
 /**
  * Reading a set of photographs as rows, because somebody asked to.
  *
@@ -64,6 +67,9 @@ sessionTest({
 /**
  * The choice is libsession's to keep, so leaving the conversation and coming back, which reloads
  * its history from the client, still draws the album as a list.
+ *
+ * Left by its back button, which only a one-pane window has: in two the list sits beside the
+ * conversation instead.
  */
 sessionTest({
   title: 'keeps a gallery read as a list after the conversation is closed',
@@ -78,6 +84,8 @@ sessionTest({
       .poll(async () => alice.count(ELEMENT.conversation.attachmentViewGallery), { timeout: 5_000 })
       .toBe(1)
 
+    if (!(alice instanceof DesktopApp)) throw new Error('alice is not the desktop app')
+    await alice.resize(ONE_PANE_WIDTH_PX, 900)
     await alice.tap(ELEMENT.conversation.back)
     await openFirstConversation(alice)
 
