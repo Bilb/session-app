@@ -412,3 +412,16 @@ export interface AccountInfo {
   displayName?: string
   networkAttached: boolean
 }
+
+/**
+ * Whether the attached network can carry traffic: libsession's `ConnectionStatus`, as
+ * `Network::on_status_changed` reports it.
+ *
+ * `connected` means both the transport and the router are up -- a path exists -- which is the
+ * readiness `AccountInfo.networkAttached` does not say: that one turns true when a network is
+ * attached, before anything has been reached through it. `disconnected` covers both a network
+ * that lost its connections and no network at all: none attached yet, a client opened to stay
+ * offline, or one torn down by a discard. `unknown` is libsession's state before either layer has
+ * reported, and also its answer when the two disagree in a way it cannot name.
+ */
+export type NetworkStatus = 'unknown' | 'connecting' | 'connected' | 'disconnected'

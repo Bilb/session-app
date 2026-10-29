@@ -34,6 +34,7 @@ import {
   type ConversationId,
   type Deletion,
   type Message,
+  type NetworkStatus,
   type OutgoingAttachment,
   type SendPlan,
   type SendState,
@@ -268,7 +269,16 @@ export class FakeAccount {
   readonly sessionId: string
   displayName: string
   haveAccount: boolean
+  /** Only once there is an account to attach it to, as libsession refuses a network before one. */
   networkAttached = false
+  /**
+   * Whether a network was accepted, to attach once there is an account.
+   *
+   * Survives a discard, as the bridge's network options do: the network is the device's choice,
+   * not the account's, so the account made next goes online on it too.
+   */
+  networkPlanned = false
+  networkStatus: NetworkStatus = 'disconnected'
   /**
    * When a restored profile becomes visible, or 0 where there is nothing outstanding.
    *
@@ -358,6 +368,32 @@ export class FakeAccount {
     }
   }
 
+  /** Changes the status and says so, never twice in a row for the same one, as libsession. */
+  setNetworkStatus(status: NetworkStatus): void {
+    if (this.networkStatus === status) return
+    this.networkStatus = status
+    this.emit({ type: 'network-status-changed', status })
+  }
+
+  /**
+   * Attaches the planned network once there is an account, as the bridge does: `unknown` at once,
+   * connecting a tick later and a path a tick after that, on the world's clock. The bridge reports
+   * the status the Network has as soon as it exists, which is libsession's `unknown`: its transport
+   * and router report through its own queue, after the constructor has returned. Nothing where
+   * there is no plan, no account yet, or a network already attached.
+   */
+  goOnline(): void {
+    if (!this.networkPlanned || !this.haveAccount || this.networkAttached) return
+    this.networkAttached = true
+    this.setNetworkStatus('unknown')
+    this.world?.schedule(1, () => {
+      if (this.networkAttached) this.setNetworkStatus('connecting')
+    })
+    this.world?.schedule(2, () => {
+      if (this.networkAttached) this.setNetworkStatus('connected')
+    })
+  }
+
   /**
    * Back to a device with nothing on it, the way discarding an account leaves one.
    *
@@ -367,6 +403,11 @@ export class FakeAccount {
    * `haveAccount` is false, which is what `accountInfo` reports off.
    */
   discard(): void {
+    // The bridge closes the database and the Network with it, which reports going on its way out.
+    if (this.networkAttached) {
+      this.networkAttached = false
+      this.setNetworkStatus('disconnected')
+    }
     this.haveAccount = false
     this.provisional = false
     this.profileArrivesAt = 0

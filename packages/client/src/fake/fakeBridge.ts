@@ -126,6 +126,10 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     type: 'bool',
     value: await client.warmNetworkCache(),
   }),
+  getNetworkStatus: async (client) => ({
+    type: 'networkStatus',
+    status: await client.getNetworkStatus(),
+  }),
   setPushToken: () => unsupported('setPushToken'),
   handlePushPayload: () => unsupported('handlePushPayload'),
 

@@ -48,7 +48,7 @@ const MS_PER_DAY = 86_400_000
  * time. Counted through `Date.UTC` because local midnights are not a whole number of days apart
  * across a daylight-saving change.
  */
-function localDayNumber(date: Date): number {
+export function localDayNumber(date: Date): number {
   return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / MS_PER_DAY
 }
 
@@ -139,4 +139,32 @@ export function formatConversationTime(
 
   if (dateFormat === 'system') return formatter(locale, { dateStyle: 'short' }).format(then)
   return EXPLICIT_DATES[dateFormat](then)
+}
+
+/**
+ * How a date header in a transcript reads: the conversation list's tiers, with the time kept on
+ * every one, since a header marks a point in the conversation rather than how long ago it was.
+ * Today: the time alone. The six days before it: the weekday and the time. Older, or a day ahead of
+ * `nowMs`: the date and the time, with the year only when it is not this year's.
+ */
+export function formatDateHeader(
+  timestampMs: number,
+  nowMs: number,
+  options: ConversationTimeOptions = {},
+): string {
+  const { locale, timeFormat = 'system', dateFormat = 'system' } = options
+  const then = new Date(timestampMs)
+  const now = new Date(nowMs)
+  const daysAgo = localDayNumber(now) - localDayNumber(then)
+  const clock = clockFields(locale, timeFormat)
+
+  if (daysAgo === 0) return formatter(locale, clock).format(then)
+
+  if (daysAgo > 0 && daysAgo < WEEKDAY_SPAN_DAYS)
+    return formatter(locale, { weekday: 'short', ...clock }).format(then)
+
+  if (dateFormat !== 'system')
+    return `${EXPLICIT_DATES[dateFormat](then)} ${formatter(locale, clock).format(then)}`
+  const year = then.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' as const }
+  return formatter(locale, { day: 'numeric', month: 'short', ...year, ...clock }).format(then)
 }

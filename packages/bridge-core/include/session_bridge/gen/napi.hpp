@@ -689,6 +689,38 @@ struct Codec<::session_bridge::ConfigSizesResult> {
 };
 
 template <>
+struct Codec<::session_bridge::NetworkStatus> {
+    static constexpr std::string_view name = "NetworkStatus";
+    static Napi::Value to(Napi::Env env, ::session_bridge::NetworkStatus value) {
+        auto text = ::session_bridge::EnumTraits<::session_bridge::NetworkStatus>::to_string(value);
+        return Napi::String::New(env, text.data(), text.size());
+    }
+    static ::session_bridge::NetworkStatus from(const Napi::Value& value, std::string_view where) {
+        std::string text = Codec<std::string>::from(value, where);
+        auto parsed = ::session_bridge::EnumTraits<::session_bridge::NetworkStatus>::parse(text);
+        if (!parsed)
+            throw std::invalid_argument(std::string{where} + ": \"" + text + "\" is not a NetworkStatus");
+        return *parsed;
+    }
+};
+
+template <>
+struct Codec<::session_bridge::NetworkStatusResult> {
+    static constexpr std::string_view name = "NetworkStatusResult";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::NetworkStatusResult& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::NetworkStatusResult::type_tag.data(), ::session_bridge::NetworkStatusResult::type_tag.size()));
+        obj.Set("status", Codec<::session_bridge::NetworkStatus>::to(env, value.status));
+        return obj;
+    }
+    static ::session_bridge::NetworkStatusResult from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::NetworkStatusResult(
+                Codec<::session_bridge::NetworkStatus>::from(obj.Get("status"), "NetworkStatusResult.status"));
+    }
+};
+
+template <>
 struct Codec<::session_bridge::Result> {
     static constexpr std::string_view name = "Result";
     static Napi::Value to(Napi::Env env, const ::session_bridge::Result& value) {
@@ -731,6 +763,8 @@ struct Codec<::session_bridge::Result> {
             return Codec<::session_bridge::EdgeResult>::from(value, where);
         if (tag == "configSizes")
             return Codec<::session_bridge::ConfigSizesResult>::from(value, where);
+        if (tag == "networkStatus")
+            return Codec<::session_bridge::NetworkStatusResult>::from(value, where);
         throw std::invalid_argument(std::string{where} + ": unknown type \"" + tag + "\"");
     }
 };
@@ -965,6 +999,22 @@ struct Codec<::session_bridge::AttachmentProgressSessionEvent> {
 };
 
 template <>
+struct Codec<::session_bridge::NetworkStatusChangedSessionEvent> {
+    static constexpr std::string_view name = "NetworkStatusChangedSessionEvent";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::NetworkStatusChangedSessionEvent& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::NetworkStatusChangedSessionEvent::type_tag.data(), ::session_bridge::NetworkStatusChangedSessionEvent::type_tag.size()));
+        obj.Set("status", Codec<::session_bridge::NetworkStatus>::to(env, value.status));
+        return obj;
+    }
+    static ::session_bridge::NetworkStatusChangedSessionEvent from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::NetworkStatusChangedSessionEvent(
+                Codec<::session_bridge::NetworkStatus>::from(obj.Get("status"), "NetworkStatusChangedSessionEvent.status"));
+    }
+};
+
+template <>
 struct Codec<::session_bridge::LogSessionEvent> {
     static constexpr std::string_view name = "LogSessionEvent";
     static Napi::Value to(Napi::Env env, const ::session_bridge::LogSessionEvent& value) {
@@ -1015,6 +1065,8 @@ struct Codec<::session_bridge::SessionEvent> {
             return Codec<::session_bridge::HistoryReplacedSessionEvent>::from(value, where);
         if (tag == "attachment-progress")
             return Codec<::session_bridge::AttachmentProgressSessionEvent>::from(value, where);
+        if (tag == "network-status-changed")
+            return Codec<::session_bridge::NetworkStatusChangedSessionEvent>::from(value, where);
         if (tag == "log")
             return Codec<::session_bridge::LogSessionEvent>::from(value, where);
         throw std::invalid_argument(std::string{where} + ": unknown type \"" + tag + "\"");
@@ -1316,6 +1368,21 @@ struct Codec<::session_bridge::WarmNetworkCacheCommand> {
     static ::session_bridge::WarmNetworkCacheCommand from(const Napi::Value& value, std::string_view where) {
         object(value, where);
         return ::session_bridge::WarmNetworkCacheCommand{};
+    }
+};
+
+template <>
+struct Codec<::session_bridge::GetNetworkStatusCommand> {
+    static constexpr std::string_view name = "GetNetworkStatusCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::GetNetworkStatusCommand& value) {
+        (void)value;
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::GetNetworkStatusCommand::type_tag.data(), ::session_bridge::GetNetworkStatusCommand::type_tag.size()));
+        return obj;
+    }
+    static ::session_bridge::GetNetworkStatusCommand from(const Napi::Value& value, std::string_view where) {
+        object(value, where);
+        return ::session_bridge::GetNetworkStatusCommand{};
     }
 };
 
@@ -2057,6 +2124,8 @@ struct Codec<::session_bridge::Command> {
             return Codec<::session_bridge::AttachNetworkCommand>::from(value, where);
         if (tag == "warmNetworkCache")
             return Codec<::session_bridge::WarmNetworkCacheCommand>::from(value, where);
+        if (tag == "getNetworkStatus")
+            return Codec<::session_bridge::GetNetworkStatusCommand>::from(value, where);
         if (tag == "setPollInterval")
             return Codec<::session_bridge::SetPollIntervalCommand>::from(value, where);
         if (tag == "pollOnce")

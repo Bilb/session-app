@@ -9,11 +9,13 @@ export interface Pane {
   besideList: boolean
   /**
    * Which of the window's top corners the pane's top bar runs into, by reading direction: a
-   * resizable iPad window draws its controls in one of them.
+   * resizable iPad window draws its controls in one of them. `none` for a pane with the rail
+   * between it and the window's edge.
    */
-  corners: 'start' | 'end' | 'both'
+  corners: 'start' | 'end' | 'both' | 'none'
 }
 
 export const SOLE_PANE: Pane = { besideList: false, corners: 'both' }
 export const LIST_PANE: Pane = { besideList: false, corners: 'start' }
+export const LIST_BESIDE_RAIL_PANE: Pane = { besideList: false, corners: 'none' }
 export const DETAIL_PANE: Pane = { besideList: true, corners: 'end' }

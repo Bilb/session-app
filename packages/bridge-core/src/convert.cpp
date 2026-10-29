@@ -227,4 +227,15 @@ SendPlan to_bridge(image::SendPlan from) {
     return SendPlan::unreadable;
 }
 
+NetworkStatus to_bridge(::session::network::ConnectionStatus from) {
+    using ::session::network::ConnectionStatus;
+    switch (from) {
+        case ConnectionStatus::unknown: return NetworkStatus::unknown;
+        case ConnectionStatus::connecting: return NetworkStatus::connecting;
+        case ConnectionStatus::connected: return NetworkStatus::connected;
+        case ConnectionStatus::disconnected: return NetworkStatus::disconnected;
+    }
+    return NetworkStatus::unknown;
+}
+
 }  // namespace session_bridge

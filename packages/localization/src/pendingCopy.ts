@@ -93,4 +93,20 @@ export const PENDING_COPY = {
   /** The auto-download prompt's two answers to what Yes fetches. */
   autoDownloadAllFiles: 'All files',
   autoDownloadImagesOnly: 'Images only',
+  /**
+   * The onion path's state, named beside its dot wherever one is drawn: the rail's tooltip, the
+   * Settings row's value. The dot is green or red, which a red-green colour-blind reader cannot
+   * tell apart, so the word is what carries it. The only Connecting in the set is
+   * `callsConnecting`, which is about a call and has an ellipsis. Unknown has a key, `unknown`.
+   */
+  onionRoutingPathConnected: 'Connected',
+  onionRoutingPathConnecting: 'Connecting',
+  /** No path: the network is down, or none is attached. */
+  onionRoutingPathOffline: 'Offline',
+  /**
+   * The light/dark toggle's name: what a press does. Naming the mode the glyph shows instead read
+   * as the mode it would turn on, so Dark Mode while dark was taken for a switch to dark.
+   */
+  changeToLightMode: 'Change to Light Mode',
+  changeToDarkMode: 'Change to Dark Mode',
 } as const

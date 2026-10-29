@@ -9,7 +9,7 @@ export {
   setLocale,
   subscribeLocale,
 } from './localeStore'
-export { formatConversationTime } from './conversationTime'
+export { formatConversationTime, formatDateHeader, localDayNumber } from './conversationTime'
 export { PENDING_COPY } from './pendingCopy'
 export type {
   ConversationTimeOptions,

@@ -5,6 +5,7 @@ import type {
   Conversation,
   ConversationId,
   Message,
+  NetworkStatus,
 } from '@session/client'
 import {
   createContext,
@@ -79,6 +80,12 @@ export function useAppearance(): StoredAppearance | null {
 export function useAttachmentUploadLimit(): number | null {
   const store = useSessionStore()
   return useStore(store, (state) => state.attachmentUploadLimitBytes)
+}
+
+/** Whether the attached network can carry traffic: see `SessionState.networkStatus`. */
+export function useNetworkStatus(): NetworkStatus {
+  const store = useSessionStore()
+  return useStore(store, (state) => state.networkStatus)
 }
 
 /** The whole of what libsession says about the account, or null before the first answer. */

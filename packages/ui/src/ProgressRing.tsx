@@ -8,7 +8,7 @@ import Svg, { Circle } from 'react-native-svg'
  * indistinguishable. The gap is the point: a ring with a piece missing reads as a gauge, where a
  * closed one reads as a spinner that has stopped.
  */
-const SWEEP_DEGREES = 306
+export const TRANSFER_RING_SWEEP_DEGREES = 306
 
 /**
  * Where the arc begins, derived rather than written down.
@@ -20,7 +20,14 @@ const SWEEP_DEGREES = 306
  * For a 306° sweep this is 117° — just left of bottom-centre. The fill then climbs the **left**
  * side, crosses the top and comes down the right, which is the direction the arc is described by.
  */
-const START_DEGREES = (360 - SWEEP_DEGREES) / 2 + 90
+const START_DEGREES = (360 - TRANSFER_RING_SWEEP_DEGREES) / 2 + 90
+
+/**
+ * A transfer's ring: an attachment's download and upload, and the app's own update. Drawn inside
+ * the touch target rather than filling it, so it reads as a gauge and not a button.
+ */
+export const TRANSFER_RING_SIDE_PX = 28
+export const TRANSFER_RING_THICKNESS = 3
 
 interface ProgressRingProps {
   /** How far round, 0 to 1. Clamped, because a ring that has gone past its end reads as a bug. */
@@ -58,7 +65,7 @@ export function ProgressRing({
   const circumference = 2 * Math.PI * radius
   const fraction = Math.min(1, Math.max(0, progress))
   /** The drawn part of the circle. Everything below measures against this, not the whole. */
-  const arc = circumference * (SWEEP_DEGREES / 360)
+  const arc = circumference * (TRANSFER_RING_SWEEP_DEGREES / 360)
   const spin = `rotate(${String(START_DEGREES)} ${String(size / 2)} ${String(size / 2)})`
 
   return (

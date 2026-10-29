@@ -5,6 +5,7 @@ import type {
   ConversationId,
   Message,
   MessageCursor,
+  NetworkStatus,
   TransferProgress,
 } from '@session/client'
 
@@ -104,6 +105,16 @@ export interface SessionState {
    * it.
    */
   appearance: StoredAppearance | null
+
+  /**
+   * Whether the attached network can carry traffic, as libsession last said: asked once by
+   * `hydrate`, then followed by its events. `unknown` until that first answer, which is
+   * libsession's own word for a status nobody has reported yet.
+   *
+   * Not the account's, so nothing that empties the account's state is meant to keep it: every
+   * such reset is followed by a `hydrate`, which asks again.
+   */
+  networkStatus: NetworkStatus
 }
 
 export interface StoredAppearance {
@@ -122,4 +133,5 @@ export const emptyState: SessionState = {
   histories: {},
   transfers: {},
   appearance: null,
+  networkStatus: 'unknown',
 }
