@@ -195,10 +195,11 @@ export interface Attachment {
   /**
    * Whether libsession holds a thumbnail of this attachment: a JPEG of the picture in its own
    * shape, cropped to its centre at 21:9 when it is wider than that either way up, then the
-   * client's thumbnail edge tall and never enlarged. A square tile covers it and crops. Made only
-   * of a displayable image whose bytes are cached, and after them, so it turns true in a later
+   * client's thumbnail edge tall and never enlarged. A square tile covers it and crops. Made of a
+   * displayable image whose bytes are cached, and after them, so it turns true in a later
    * `messages-updated` than the one reporting `cached`; false again once the cache evicts the
-   * file, which takes the thumbnail too.
+   * file, which takes the thumbnail too. One we send has it sooner: made from libsession's own
+   * copy before the upload, and true from then on until the cached file is evicted.
    *
    * What a tile draws, through the media scheme's `thumbnail` path; a viewer draws the file.
    */

@@ -130,7 +130,8 @@ first if the cache does not hold it, and answers with where it landed: a collisi
 The sender's placeholder is an image too, so it comes by the same road: `session-media://thumbhash/`
 answers from `ClientBridge::fetch_thumbhash`, which decodes the ThumbHash on the attachment's row.
 So does the thumbnail a tile draws: `session-media://thumbnail/` answers from
-`ClientBridge::fetch_thumbnail`, the JPEG libsession made of a cached picture, from its cache only.
+`ClientBridge::fetch_thumbnail`, the JPEG libsession made of a cached picture, or of one we send
+from its own copy before the upload; never a download.
 And the copy the viewer draws: `session-media://rendition/` answers from
 `ClientBridge::fetch_rendition`, typed by its bytes as a JPEG or a WebP. One authority per image rather than one URL with a flag, so a file and its stand-ins cache
 separately, and nothing decodes an image in JavaScript on either platform. The sender's content type is a claim,

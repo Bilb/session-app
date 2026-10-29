@@ -174,9 +174,12 @@ const FAKE_THUMBNAIL_EDGE_PX = 720
 /** Every dev photograph is 1600 x 1200, so every thumbnail served is 4:3 at that height. */
 const FAKE_THUMBNAIL_WIDTH_PX = 960
 
-/** libsession makes one of every displayable picture it caches, and drops it on eviction. */
-function thumbnailed(cached: boolean, contentType: string | undefined): boolean {
-  return cached && isDisplayableImage(contentType)
+/**
+ * libsession makes one of every displayable picture it caches, and drops it on eviction; and one
+ * of every picture we send, from its own copy before the upload, which the cached one replaces.
+ */
+function thumbnailed(held: boolean, contentType: string | undefined): boolean {
+  return held && isDisplayableImage(contentType)
 }
 
 /**
@@ -304,8 +307,8 @@ export class FakeAccount {
   private readonly cached = new Set<string>()
   /**
    * Files a send took or copied and has not uploaded yet, by `keyOf`: served from libsession's
-   * outgoing folder until then, but not in the cache, so neither counted in its size nor
-   * thumbnailed. Each with its size, where the world knows it.
+   * outgoing folder until then, but not in the cache, so not counted in its size. A picture's
+   * thumbnail is made from it. Each with its size, where the world knows it.
    */
   private readonly taken = new Map<string, number | undefined>()
   /** The sizes `seedSending` held back from files not up yet, which their upload reports. */
@@ -1004,7 +1007,12 @@ export class FakeAccount {
   }
 
   hasThumbnail(ref: AttachmentRef): boolean {
-    return thumbnailed(this.cached.has(keyOf(ref)), this.locate(ref)?.attachment.contentType)
+    return thumbnailed(this.holdsPicture(keyOf(ref)), this.locate(ref)?.attachment.contentType)
+  }
+
+  /** What a thumbnail is made from: the cached file, or the copy a send holds, sent or not. */
+  private holdsPicture(key: string): boolean {
+    return this.cached.has(key) || this.taken.has(key)
   }
 
   hasRendition(ref: AttachmentRef): boolean {
@@ -1080,7 +1088,7 @@ export class FakeAccount {
           : this.cached.has(key) || this.takenServed(key, message.sendState)
             ? 'cached'
             : (this.verdicts.get(key) ?? 'absent')
-        const thumbnail = thumbnailed(this.cached.has(key), attachment.contentType)
+        const thumbnail = thumbnailed(this.holdsPicture(key), attachment.contentType)
         return {
           ...attachment,
           availability,

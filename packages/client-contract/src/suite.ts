@@ -38,6 +38,8 @@ export interface ContractHarness {
     writeFile: (name: string, sizeBytes: number) => Promise<string>
     /** Deletes a file `writeFile` wrote. */
     removeFile: (path: string) => Promise<void>
+    /** Writes a JPEG libsession decodes, for a send to name, and answers its path. */
+    writePicture: (name: string, widthPx: number, heightPx: number) => Promise<string>
     /** Alice's media source. */
     aliceMedia: MediaSource
   }>
@@ -727,6 +729,43 @@ export function runSessionClientContract(
       expect((await aliceMedia.fetchMedia({ messageId, index: 1 })).bytes.length).toBe(3_000)
       const message = (await alice.getMessages(bobId)).messages.find((m) => m.id === messageId)
       expect(message?.sendState === 'unsendable').toBe(false)
+      seen.stop()
+    })
+
+    it('thumbnails a picture we send before it is up, and never takes that back', async () => {
+      const { alice, bobId, settle, writeFile, writePicture } = await harness.friends()
+      const photo = await writePicture('photo.jpg', 640, 480)
+      const notes = await writeFile('notes.txt', 2_000)
+      const seen = collect(alice)
+
+      const messageId = await alice.sendMessage(bobId, {
+        body: '',
+        attachments: [{ path: photo }, { path: notes }],
+      })
+      // libsession makes it off its loop, and says so by update.
+      const thumbnailed = async () =>
+        (await alice.getMessages(bobId)).messages.find((m) => m.id === messageId)?.attachments[0]
+          ?.hasThumbnail === true
+      for (let round = 0; round < 100 && !(await thumbnailed()); round += 1) {
+        await settle()
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      }
+      await settle()
+
+      // Every announcement from the first with a thumbnail on, including the upload's and the
+      // cached file's own thumbnail taking over.
+      const announced = [
+        ...messagesOf(seen.events, 'messages-added'),
+        ...messagesOf(seen.events, 'messages-updated'),
+      ].filter((m) => m.id === messageId)
+      const from = announced.findIndex((m) => m.attachments[0]?.hasThumbnail === true)
+      expect(from).toBeGreaterThan(-1)
+      expect(announced[from]?.attachments[0]?.uploaded).toBe(false)
+      const after = announced.slice(from).map((m) => m.attachments[0])
+      expect(after.every((a) => a?.hasThumbnail === true && (a.thumbnailWidthPx ?? 0) > 0)).toBe(
+        true,
+      )
+      expect(announced.some((m) => m.attachments[1]?.hasThumbnail === true)).toBe(false)
       seen.stop()
     })
 

@@ -69,6 +69,11 @@ const harness: ContractHarness = {
         world.removeFile(path)
         return Promise.resolve()
       },
+      writePicture: (name) => {
+        const path = `/fake-disk/${name}`
+        world.writeFile(path, 48_000)
+        return Promise.resolve(path)
+      },
       aliceMedia: createFakeMediaSource(
         alice,
         () => Promise.reject(new Error('no photographs here')),
