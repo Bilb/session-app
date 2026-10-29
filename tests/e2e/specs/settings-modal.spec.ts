@@ -49,7 +49,9 @@ test('settings opens over the list, pushes Help, exports logs from it, and asks 
     const page = await app.firstWindow()
 
     await page.getByTestId(ELEMENT.conversationList.screen).first().waitFor({ timeout: 25_000 })
-    await page.getByTestId(ELEMENT.conversationList.settings).first().click()
+    // The window opens wide enough for two panes, where the rail's settings button is the way
+    // in.
+    await page.getByTestId(ELEMENT.rail.settings).first().click()
 
     // The account ID, not the modal frame, is what says the screen arrived.
     await expect(page.getByTestId(ELEMENT.settings.accountId).first()).toBeVisible()

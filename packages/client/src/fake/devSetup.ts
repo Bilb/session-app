@@ -1,6 +1,7 @@
 import { friendsWithAttachments } from './attachments'
 import { backlog } from './backlog'
 import type { FakeSessionClient } from './FakeSessionClient'
+import { dateStates } from './dates'
 import { crowd, newcomer, type FakeSetup } from './fixtures'
 import { photoFileNames, thumbnailFileNames } from './media'
 import { rowShowcase } from './rows'
@@ -23,6 +24,7 @@ export const FAKE_FIXTURES = [
   'newcomer',
   'crowd',
   'rows',
+  'dates',
 ] as const
 
 export type FakeFixture = (typeof FAKE_FIXTURES)[number]
@@ -100,6 +102,8 @@ export function pickFakeFixture(env: FakeDevEnv): FakeSetup & { fixture: FakeFix
       return { fixture, ...crowd({ peers: peers ?? 100, history: history ?? 1 }) }
     case 'rows':
       return { fixture, ...rowShowcase() }
+    case 'dates':
+      return { fixture, ...dateStates() }
     case 'friends':
       return { fixture, ...friendsWithAttachments(['Alice', 'Bob'], { history: 4 }) }
   }
@@ -173,6 +177,11 @@ export function startDevFake(env: FakeDevEnv, photos: DevPhotos): DevFake {
   if (!alice) throw new Error('the fixture did not produce a client')
 
   driveFakeClock(world, env.EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN)
+
+  // The real bridge attaches the network it was opened with as soon as there is an account. The
+  // fake is opened with none, so the dev entry asks here: a fixture with an account goes online at
+  // once, and `newcomer` once onboarding makes one.
+  void alice.attachNetwork({ netid: 'mainnet' })
 
   // The failure screen is otherwise reachable only with a database somebody has already broken.
   // `unopenable` refuses with libsession's own reason and lets a discard through, so the screen's

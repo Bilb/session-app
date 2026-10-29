@@ -5,7 +5,7 @@ import { isExportName, logSpan, type DiagnosticsSnapshot } from '@session/loggin
 import * as Clipboard from 'expo-clipboard'
 import Constants from 'expo-constants'
 import * as Sharing from 'expo-sharing'
-import { Linking, Platform, Share } from 'react-native'
+import { AppState, Linking, Platform, Share } from 'react-native'
 
 import { exportFiles, sweepStagedExports } from './files'
 import { flagOverride } from './flagOverrides'
@@ -231,11 +231,37 @@ const ports = memoryPorts({
 sweepStagedExports()
 sweepStaged()
 
+/**
+ * In front means `active`. `inactive` -- the app switcher, a call coming in, Control Centre over
+ * the top -- is not: nothing on screen is being looked at, which is what read receipts and the
+ * day's wording ask this about.
+ */
+const isActive = (state: string | null | undefined): boolean => state === 'active'
+
+/** Whether the app is in front, and word each time that changes. */
+const appFocus = {
+  isFocused: () => isActive(AppState.currentState),
+  onFocusChange: (handler: (focused: boolean) => void) => {
+    let focused = isActive(AppState.currentState)
+    // Only the changes: AppState also reports `background` straight after `inactive`, which is the
+    // same answer twice.
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (isActive(state) === focused) return
+      focused = isActive(state)
+      handler(focused)
+    })
+    return () => {
+      subscription.remove()
+    }
+  },
+}
+
 setPorts({
   ...ports,
   files: { ...ports.files, ...pickers, ...exportFiles },
   window: {
     ...ports.window,
+    ...appFocus,
     close: endingRun('quit', terminateProcess),
     restart: endingRun('restart', restartProcess),
   },

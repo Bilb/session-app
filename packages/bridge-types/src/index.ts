@@ -38,6 +38,7 @@ export type {
   ExportAttachmentOptions,
   Message,
   MessageCursor,
+  NetworkStatus,
   OutgoingAttachment,
   PixelSize,
   Reply,

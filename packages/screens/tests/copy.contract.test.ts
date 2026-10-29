@@ -162,6 +162,11 @@ describe('screen copy', () => {
       'attachmentRemove',
       'autoDownloadAllFiles',
       'autoDownloadImagesOnly',
+      'onionRoutingPathConnected',
+      'onionRoutingPathConnecting',
+      'onionRoutingPathOffline',
+      'changeToLightMode',
+      'changeToDarkMode',
     ])
   })
 })

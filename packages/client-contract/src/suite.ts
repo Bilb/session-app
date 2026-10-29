@@ -915,6 +915,31 @@ export function runSessionClientContract(
         expect(await failure(() => client.attachNetwork({ ...devnet, router }))).toBeUndefined()
     })
 
+    /**
+     * The half of the network status that holds offline. Whether a path comes up needs service
+     * nodes, which this suite never reaches; the event's shape is the echo test's.
+     */
+    it('reports no network as disconnected', async () => {
+      const { alice } = await harness.friends()
+      expect(await alice.getNetworkStatus()).toBe('disconnected')
+    })
+
+    it('goes nowhere on a network accepted before there is an account', async () => {
+      const { client } = await harness.newcomer()
+      const seen = collect(client)
+      // Accepted and recorded, and attached only once an account exists to attach it to.
+      await client.attachNetwork({
+        netid: 'devnet',
+        router: 'onion-requests',
+        seedNodes: [
+          { ed25519PubkeyHex: 'a'.repeat(64), ip: '10.0.0.1', httpsPort: 1300, omqPort: 1305 },
+        ],
+      })
+      expect(await client.getNetworkStatus()).toBe('disconnected')
+      expect(seen.events.filter((e) => e.type === 'network-status-changed')).toEqual([])
+      seen.stop()
+    })
+
     it('refuses a network it cannot build, and stays where it was', async () => {
       const { alice } = await harness.friends()
       const before = (await alice.getAccountInfo()).networkAttached

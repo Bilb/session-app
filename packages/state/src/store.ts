@@ -61,9 +61,8 @@ export interface SessionActions {
    */
   getConfigSizes: () => Promise<ConfigSize[]>
   /**
-   * Stores the account's theme and accent and shows them.
-   *
-   * Nothing calls it yet. TODO: the Appearance screen.
+   * Stores the account's theme and accent and shows them. The rail's light/dark toggle calls it;
+   * the Appearance screen, once built, will too.
    */
   setAppearance: (appearance: StoredAppearance) => Promise<void>
   /**
@@ -383,12 +382,20 @@ export function createSessionStore(
           : 'no account on this device yet',
       )
 
+      // Applied the moment it is answered rather than with the lists below: a status event that
+      // lands while those are still loading is newer than this answer and must stay on top of it.
+      const askNetworkStatus = async (): Promise<void> => {
+        const networkStatus = await client.getNetworkStatus()
+        store.setState({ networkStatus })
+      }
+
       if (!account.haveAccount) {
         // **Everything derived goes, not just the account.** `setState` merges, so setting only
         // the account left the previous one's conversations, requests and message windows sitting
         // in the store -- which is fine on a first launch, where there were none, and is a leak
         // between accounts the moment onboarding can be backed out of and started again.
         store.setState({ ...emptyState, account, hydrated: true })
+        await askNetworkStatus()
         return
       }
 
@@ -397,6 +404,7 @@ export function createSessionStore(
         client.getMessageRequests(),
         client.getPref(THEME_PREF),
         client.getPref(ACCENT_PREF),
+        askNetworkStatus(),
       ])
 
       // In the same update as `hydrated`, so the screen the account opens on is drawn once, in its

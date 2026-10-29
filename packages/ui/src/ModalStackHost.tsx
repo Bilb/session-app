@@ -20,6 +20,7 @@ import { LABEL_MAX_SCALE } from './fontScaleCaps'
 import { useThemeIsDark } from './UIProvider'
 import { useScreenInsets } from './screenInsets'
 import { useTokenColor } from './useTokenColor'
+import { raisedShadow } from './shadowColour'
 import { useWindowSize } from './useWindowSize'
 
 /** The web style that takes a held screen out of focus and the accessibility tree. */
@@ -165,7 +166,7 @@ export function ModalStackHost({
                       borderRadius: PANEL_RADIUS,
                       borderWidth: 1,
                       borderColor: '$bordersColor',
-                      boxShadow: `0px 0px ${String(PANEL_SHADOW_BLUR[dark ? 'dark' : 'light'])}px 0px ${shadowColor}`,
+                      boxShadow: `0px 0px ${String(PANEL_SHADOW_BLUR[dark ? 'dark' : 'light'])}px 0px ${raisedShadow(shadowColor)}`,
                     }
                   : // Full screen on a narrow window; a height, since a `flex` share depends on
                     // the layer's other children.

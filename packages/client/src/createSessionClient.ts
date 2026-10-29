@@ -8,6 +8,7 @@ import type {
   ConversationId,
   Deletion,
   Frame,
+  NetworkStatus,
   Request,
   Response,
   Result,
@@ -312,6 +313,11 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
 
     async setAutoDownload(id, mode: AutoDownload): Promise<void> {
       await call({ type: 'setAutoDownload', conversationId: id, mode })
+    },
+
+    async getNetworkStatus(): Promise<NetworkStatus> {
+      const response = await call({ type: 'getNetworkStatus' })
+      return resultOf(response, 'networkStatus').status
     },
 
     async getCacheDir(): Promise<string> {
