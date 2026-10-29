@@ -264,6 +264,22 @@ describe('what a row square or an album tile draws', () => {
     expect(leadUri(7, { ...jpeg, hasThumbnail: true }, 'ready')).toBe('thumb://7/2')
   })
 
+  it('draws a JPEG of ours from the file while it uploads, and the thumbnail once up', () => {
+    serving()
+    const sending = {
+      ...attachment(3, 'image/jpeg'),
+      uploaded: false,
+      availability: 'cached' as const,
+    }
+    expect(leadUri(7, sending, 'ready')).toBe('media://7/3')
+    expect(leadUri(7, { ...sending, availability: 'absent' as const }, 'unavailable')).toBe(
+      undefined,
+    )
+    expect(leadUri(7, { ...sending, uploaded: true, hasThumbnail: true }, 'ready')).toBe(
+      'thumb://7/3',
+    )
+  })
+
   it('keeps the placeholder until the file is here', () => {
     serving()
     for (const state of ['idle', 'fetching', 'failed', 'unavailable'] as const)
