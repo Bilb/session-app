@@ -237,13 +237,15 @@ static void FinishThumbnail(
 @end
 
 /// Answers `done` with an original or a rendition decoded, as `type`: a GIF or animated WebP
-/// within the budget animates, and anything else is its first frame, bounded.
+/// within the budget animates, and anything else is its first frame, bounded. One past the
+/// whole-decode ceiling is handed to `standIn` where there is one, and fails otherwise.
 static void FinishPicture(
         std::shared_ptr<::session_bridge::Media> media,
         const std::string& type,
         CGFloat scale,
         NSURL* url,
-        RCTImageLoaderCompletionBlock done) {
+        RCTImageLoaderCompletionBlock done,
+        void (^standIn)(void)) {
     // Not copied: the deallocator holds `media` for as long as ImageIO holds the data.
     NSData* data = [[NSData alloc] initWithBytesNoCopy:media->bytes.data()
                                                 length:media->bytes.size()
@@ -258,7 +260,10 @@ static void FinishPicture(
     const CGSize pixels = SourcePixelSize(imageSource);
     if (::session_bridge::exceeds_whole_decode_ceiling(type, pixels.width, pixels.height)) {
         CFRelease(imageSource);
-        Fail(done, url, "a GIF or PNG too large to decode whole");
+        if (standIn)
+            standIn();
+        else
+            Fail(done, url, "a GIF or PNG too large to decode whole");
         return;
     }
     // `RCTAnimatedImage` decodes every frame at full canvas size, at draw, so only an animation
@@ -452,7 +457,7 @@ RCT_EXPORT_MODULE()
                             Fail(done, imageURL, "a rendition that is not a JPEG or WebP");
                             return;
                         }
-                        FinishPicture(media, *type, scale, imageURL, done);
+                        FinishPicture(media, *type, scale, imageURL, done, nil);
                     });
                 });
     } else {
@@ -471,7 +476,38 @@ RCT_EXPORT_MODULE()
                     Fail(done, imageURL, "not a picture the decoder may be handed");
                     return;
                 }
-                FinishPicture(media, *type, scale, imageURL, done);
+                // As desktop's main process: the rendition, whose fetch asks libsession for one
+                // where there is none yet, and until then the thumbnail. The viewer swaps to the
+                // rendition's own url once it is made.
+                const int64_t messageId = parsed->message_id;
+                const int64_t index = parsed->index;
+                auto thumbnailInstead = ^{
+                    source->fetch_thumbnail(messageId, index, [=](::session_bridge::Media answer) {
+                        auto thumb = std::make_shared<::session_bridge::Media>(std::move(answer));
+                        dispatch_async(drain, ^{
+                            if (!cancelled->load())
+                                FinishThumbnail(thumb, size, scale, nil, key, imageURL, done);
+                        });
+                    });
+                };
+                auto renditionInstead = ^{
+                    source->fetch_rendition(messageId, index, [=](::session_bridge::Media answer) {
+                        auto rendition = std::make_shared<::session_bridge::Media>(std::move(answer));
+                        dispatch_async(drain, ^{
+                            if (cancelled->load())
+                                return;
+                            const auto renditionType =
+                                    rendition->error ? std::nullopt
+                                                     : ::session_bridge::rendition_content_type(
+                                                               rendition->bytes);
+                            if (renditionType)
+                                FinishPicture(rendition, *renditionType, scale, imageURL, done, nil);
+                            else
+                                thumbnailInstead();
+                        });
+                    });
+                };
+                FinishPicture(media, *type, scale, imageURL, done, renditionInstead);
             });
         });
     }
