@@ -95,6 +95,7 @@ function MessageViewer({
       previousTestID={ELEMENT.conversation.mediaViewerPrevious}
       nextTestID={ELEMENT.conversation.mediaViewerNext}
       imageTestID={ELEMENT.conversation.mediaViewerImage}
+      preparingTestID={ELEMENT.conversation.mediaViewerPreparing}
     />
   )
 }

@@ -82,6 +82,7 @@ export const ELEMENT = {
     mediaViewerImage: 'media-viewer-image',
     mediaViewerPrevious: 'media-viewer-previous',
     mediaViewerNext: 'media-viewer-next',
+    mediaViewerPreparing: 'media-viewer-preparing',
     exportAccessDialog: 'export-access-dialog',
     exportAccessSettings: 'export-access-settings',
     exportAccessCancel: 'export-access-cancel',

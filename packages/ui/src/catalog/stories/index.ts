@@ -6,6 +6,7 @@ import { avatar, progressRing, radio } from './indicators'
 import { settingsRow } from './settingsRow'
 import { composerNotice, dropOverlay, stagedTile, stagedTray } from './staging'
 import { textScale } from './text'
+import { mediaViewer } from './viewer'
 
 export const STORIES: readonly AnyStory[] = [
   button,
@@ -24,4 +25,5 @@ export const STORIES: readonly AnyStory[] = [
   stagedTray,
   composerNotice,
   dropOverlay,
+  mediaViewer,
 ]
