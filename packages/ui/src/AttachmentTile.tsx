@@ -172,7 +172,8 @@ export const AttachmentTile = memo(function AttachmentTile({
           justifyContent="center"
           backgroundColor={TILE_SLOT_SCRIM}
         >
-          <Text size="$title" weight="semibold" color="$textPrimary">
+          {/* Light in every theme: the scrim under it is a fixed darkening, not a surface. */}
+          <Text size="$title" weight="semibold" color="$surfaceInverted">
             {overflowLabel}
           </Text>
         </YStack>
