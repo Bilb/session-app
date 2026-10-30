@@ -3,6 +3,7 @@ import type { AnyStory } from '@session/ui/catalog'
 import { COMPOSER_SCENARIOS } from './composer'
 import { MESSAGE_SCENARIOS } from './messages'
 import { RAIL_SCENARIOS } from './rail'
+import { SHEET_SCENARIOS } from './sheet'
 
 export { PicturesProvider, ScenarioProvider } from './ScenarioProvider'
 
@@ -11,4 +12,5 @@ export const SCENARIOS: readonly AnyStory[] = [
   ...MESSAGE_SCENARIOS,
   ...COMPOSER_SCENARIOS,
   ...RAIL_SCENARIOS,
+  ...SHEET_SCENARIOS,
 ]
