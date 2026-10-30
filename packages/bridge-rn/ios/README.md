@@ -17,16 +17,22 @@ The simulator slice is this machine's architecture and no other. `all` adds the 
 Intel Mac running the simulator; it is another 1.6GB of build tree and nothing on an Apple silicon
 machine will ever load it, so it is a release's business rather than the default.
 
+Each slice of libsession is built through the per-machine cache `packages/bridge-core/README.md`
+describes, keyed also by `IPHONEOS_DEPLOYMENT_TARGET`, the Xcode build and the ios-cmake toolchain.
+A clone on a cached libsession skips the build, and a libsession change reuses every dependency.
+libsession's own `utils/ios.sh` then merges the slices and makes the xcframework.
+
 The shim is an xcframework rather than a directory of archives because `vendored_libraries` has
 no per-SDK form: a directory of `.a` files is a directory for exactly one slice, and the two have
 to coexist.
 
 `BUILT.json` beside them records which slices are present, which libsession commit they came
-from, and a hash of the whole source tree. Neither xcframework carries any of that, and a rebuild
+from, and for each slice a hash of the whole source tree it was built from. Neither xcframework carries any of that, and a rebuild
 of one slice against a submodule that has since moved looks exactly like a complete build -- so
 this is the file to read when something links and then behaves like an older libsession.
 
-**The hash matters more than the commit.** The nested submodules routinely carry uncommitted
-patches, and a commit says nothing about them; the hash is over every tracked path's working-tree
-contents, so an uncommitted edit changes it. It is the legacy client's own check, from
-`Scripts/build_libSession_util.sh`.
+**The hashes matter more than the commit.** The nested submodules routinely carry uncommitted
+patches, and a commit says nothing about them; a hash is over the contents and paths of every
+tracked file and every untracked one not ignored, so an uncommitted edit or a new file changes it.
+It is the key the per-machine libsession cache stored that slice under. Slices with different
+hashes were built either side of an edit to libsession.

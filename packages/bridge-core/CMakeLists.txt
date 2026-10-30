@@ -12,11 +12,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(SESSION_BRIDGE_LIBSESSION "${CMAKE_CURRENT_SOURCE_DIR}/../../libsession-util"
     CACHE PATH "Path to the libsession-util submodule")
 
-# A prebuilt libsession, for platforms where building it inside the consumer's CMake project is
-# not how libsession is built. Android is one: its dependencies are cross-compiled by
-# utils/android.sh, which is the only path that gets the NDK toolchain as far as the CMake-based
-# ones - build it in-place there and simdutf comes out targeting the host, which shows up as
-# libstdc++ symbols missing at link time.
+# A prebuilt libsession, which is how every app takes it: the build scripts make it with
+# utils/static-bundle.sh through the per-machine cache in scripts/libsession-cache.sh. On Android
+# that is also the only path that gets the NDK toolchain as far as the CMake-based dependencies -
+# built in-place there, simdutf comes out targeting the host, which shows up as libstdc++ symbols
+# missing at link time.
 set(SESSION_BRIDGE_LIBSESSION_BUNDLE "" CACHE FILEPATH
     "Prebuilt libsession-util.a from utils/static-bundle.sh; built from source when empty")
 
@@ -37,6 +37,7 @@ if(SESSION_BRIDGE_LIBSESSION_BUNDLE)
         "${_ls}/external/session-sqlite/include"
         "${_ls}/external/session-sqlite/SQLiteCpp/include"
         "${_ls}/external/protobuf/src"
+        "${_ls}/proto"
         "${_router}/external/oxen-libquic/include"
         "${_router}/external/oxen-mq/oxen-encoding"
         "${_router}/external/oxen-mq/oxen-logging/fmt/include"
@@ -44,11 +45,19 @@ if(SESSION_BRIDGE_LIBSESSION_BUNDLE)
         "${_router}/external/oxen-mq/oxen-logging/spdlog/include"
         "${_router}/external/nlohmann/single_include"
         "${_bundle_dir}/static-deps/include")
+    # What the bundle's code calls on macOS, which a source build gets from libsession's and
+    # session-deps' targets. cmake-js links with `-undefined dynamic_lookup`, so a missing one
+    # links fine and fails at load: `symbol not found in flat namespace '_OBJC_CLASS_$_NSImage'`.
+    if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        target_link_libraries(session-libsession-prebuilt INTERFACE
+            "-framework Foundation" "-framework AppKit" "-framework CoreFoundation"
+            "-framework CoreServices" "-framework CoreGraphics" "-framework ImageIO"
+            "-framework Security" "-framework SystemConfiguration" iconv resolv)
+    endif()
     add_library(libsession::client ALIAS session-libsession-prebuilt)
     add_library(libsession::protos ALIAS session-libsession-prebuilt)
 elseif(NOT TARGET libsession::client)
-    # Stand-alone build, for compiling the shim on its own. The addon add_subdirectory's this
-    # from a build that has already added libsession.
+    # Stand-alone build, for compiling the shim on its own.
     add_subdirectory(${SESSION_BRIDGE_LIBSESSION} libsession-util)
 endif()
 
