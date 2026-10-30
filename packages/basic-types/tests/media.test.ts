@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  ALBUM_WIDTH,
   contentTypeEssence,
   isDisplayableImage,
   isViewableContentType,
@@ -9,6 +8,7 @@ import {
   isViewableVideo,
   jpegSize,
   mediaKindOf,
+  tallestTilePx,
   thumbnailEdgePxFor,
 } from '#src/media'
 
@@ -105,12 +105,19 @@ describe('a viewable type’s kind', () => {
 })
 
 describe('the edge thumbnails are made at', () => {
-  it('follows the densest display', () => {
-    expect(thumbnailEdgePxFor([1, 2, 1.5])).toBe(ALBUM_WIDTH * 2)
+  it('covers the tallest tile, a 3:4 portrait as wide as a phone’s widest album', () => {
+    expect(tallestTilePx('mobile')).toBe(427)
+    expect(thumbnailEdgePxFor([2], 'mobile')).toBe(854)
   })
 
-  it('makes them at 1x with no display connected', () => {
-    expect(thumbnailEdgePxFor([])).toBe(ALBUM_WIDTH)
+  it('covers a desktop row as tall as its widest album, the lone picture being capped below it', () => {
+    expect(tallestTilePx('desktop')).toBe(480)
+    expect(thumbnailEdgePxFor([1, 2, 1.5], 'desktop')).toBe(960)
+  })
+
+  it('stops at libsession’s 1024 px, and makes them at 1x with no display connected', () => {
+    expect(thumbnailEdgePxFor([3], 'mobile')).toBe(1024)
+    expect(thumbnailEdgePxFor([], 'desktop')).toBe(480)
   })
 })
 
