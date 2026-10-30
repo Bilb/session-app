@@ -147,6 +147,16 @@ describe('alpha', () => {
   })
 })
 
+/** `surface` under an `rgba(...)` overlay, flattened. */
+function held(surface: string, overlay: string): string {
+  const [r, g, b, a] = overlay.match(/[\d.]+/g)!.map(Number)
+  const under = [1, 3, 5].map((i) => parseInt(surface.slice(i, i + 2), 16))
+  return `#${[r, g, b]
+    .map((c, i) => Math.round(c! * a! + under[i]! * (1 - a!)))
+    .map((c) => c.toString(16).padStart(2, '0'))
+    .join('')}`
+}
+
 describe('semantic colours', () => {
   it('keeps danger and warning saturated enough to read as warnings', () => {
     // They are permitted to resemble each other. What neither may be is a colour so dull it reads
@@ -171,6 +181,27 @@ describe('semantic colours', () => {
       }
     }
     expect(shortfalls.length).toBeGreaterThan(0)
+  })
+
+  it('draws danger as text legibly on every surface, authored red or not', () => {
+    for (const theme of ['classic-dark', 'classic-light', 'ocean-dark', 'ocean-light'] as const) {
+      const t = getThemeTokens(theme, 'green')
+      for (const surface of [
+        t.backgroundPrimary,
+        t.backgroundSecondary,
+        t.backgroundTertiary,
+        t.backgroundNested,
+      ]) {
+        expect(contrastRatio(t.dangerText, surface)).toBeGreaterThanOrEqual(4.5)
+      }
+      // A destructive row is held on the page or on a card.
+      for (const surface of [t.backgroundPrimary, t.backgroundSecondary]) {
+        const under = held(surface, t.pressedOverlay)
+        expect(contrastRatio(t.dangerText, under)).toBeGreaterThanOrEqual(4.5)
+      }
+      // A received failure's glyph keeps the red, and a glyph owes 3:1.
+      expect(contrastRatio(t.dangerText, t.messageBubbleIncomingBg)).toBeGreaterThanOrEqual(3)
+    }
   })
 
   it('keeps a DERIVED semantic colour legible on every surface, not just the page', () => {

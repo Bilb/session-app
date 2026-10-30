@@ -138,7 +138,7 @@ describe('a composer notice', () => {
   })
 
   it('keeps its words off the danger colour, which fails 4.5:1 on the composer in dark themes', () => {
-    expect(notice).not.toMatch(/<Text[^>]*\$dangerColor/)
+    expect(notice).not.toMatch(/<Text[^>]*\$danger(Color|Text)/)
     expect(notice).toContain('<Icon name="triangleAlert" size="sm" color="$dangerColor" />')
   })
 })

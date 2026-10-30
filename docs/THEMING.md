@@ -56,9 +56,11 @@ Ask what the thing _is_, not what colour you want.
 | a divider inside a card, a pane edge                          | `separatorColor`                   |
 | a filled accent button, a badge, an avatar, a bubble you sent | `primaryColor`                     |
 | text or a glyph sitting **on** that fill                      | `onAccent`                         |
+| a caption on that fill                                        | `onAccentSecondary`                |
 | a link, an inline emphasis, a large numeral                   | `accentText`                       |
 | an accent button's hover / pressed                            | `accentHover` / `accentPressed`    |
-| destructive text, a destructive outline                       | `dangerColor`                      |
+| a danger fill, a destructive outline, a status dot or glyph   | `dangerColor`                      |
+| destructive or error text                                     | `dangerText`                       |
 | text on a danger fill                                         | `onDanger`                         |
 | a caution line                                                | `warningColor`                     |
 | a switch thumb, a QR panel                                    | `surfaceInverted`                  |
@@ -331,10 +333,18 @@ only the top, which is the part they agree on — the radius itself they disagre
 `borderTopLeftRadius` and `borderTopRightRadius`, never `borderRadius`.
 
 **An opacity on an on-colour spends the ratio that token guarantees.** `$onAccent` and `$onDanger`
-are derived to clear 4.5:1 against their fill; dimming one is the screen giving some of that back,
-and the theme cannot know how much is left. The cheapest check is which theme has least to spend —
-Ocean Light's `onAccent` is a navy, starting at 8.49:1 where the others are near 14 — and 0.85 is
-about the floor at caption size.
+are derived to clear 4.5:1 against their fill, and how much is left to spend depends on the accent:
+Ocean Light's navy starts at 5.5:1 on purple. A caption on the accent is `onAccentSecondary`, which
+the theme fades only as far as 4.5:1 allows; never put an opacity on an on-colour.
+
+**Danger as fill and danger as text are two roles,** like the accent's. The presets author their
+red to be recognised, and the authored reds fall under 4.5:1 on the recessed surfaces, so text takes
+`dangerText`, moved in lightness until it clears every surface, and the page and a card held. No red clears 4.5:1 as text on Ocean
+Dark's incoming bubble, so on a received message a failure is said in the bubble's text and only its
+glyph is red, as on the accent.
+
+**The incoming bubble is a surface muted text is measured on.** A received file's captions sit on
+it, and it is the furthest surface from the page in every theme.
 
 ## Where the two ladders come from
 

@@ -33,6 +33,7 @@ function ShowAll({
   /** Set when a file it hides failed to upload, which nothing in the transcript would show. */
   failedHidden: boolean
 }) {
+  const surface = onAccent ? 'accent' : 'received'
   return (
     <PressArea
       onPress={onPress}
@@ -41,7 +42,7 @@ function ShowAll({
     >
       {() => (
         <XStack alignItems="center" gap="$xs" paddingVertical="$xs">
-          <Text size="$label" weight="semibold" {...inkFor('link', onAccent)} flex={1}>
+          <Text size="$label" weight="semibold" {...inkFor('link', surface)} flex={1}>
             {tr('showAll')}
           </Text>
           {failedHidden ? (
@@ -50,16 +51,16 @@ function ShowAll({
               gap="$3xs"
               testID={ELEMENT.conversation.attachmentShowAllFailed}
             >
-              <Icon name="triangleAlert" size="xs" {...inkFor('primary', onAccent)} />
-              <Text size="$label" weight="semibold" {...inkFor('primary', onAccent)}>
+              <Icon name="triangleAlert" size="xs" {...inkFor('primary', surface)} />
+              <Text size="$label" weight="semibold" {...inkFor('primary', surface)}>
                 {PENDING_COPY.attachmentsFailedCount(1)}
               </Text>
             </XStack>
           ) : null}
-          <Text size="$label" {...inkFor('secondary', onAccent)}>
+          <Text size="$label" {...inkFor('secondary', surface)}>
             {count}
           </Text>
-          <Icon name={forwardChevron()} size="sm" {...inkFor('secondary', onAccent)} />
+          <Icon name={forwardChevron()} size="sm" {...inkFor('secondary', surface)} />
         </XStack>
       )}
     </PressArea>
@@ -103,6 +104,7 @@ export function AttachmentList({
           message={message}
           attachment={attachment}
           onAccent={onAccent}
+          received={!onAccent}
         />
       ))}
       {hidden === 0 || onShowAll === undefined ? null : (

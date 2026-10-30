@@ -25,7 +25,7 @@ export const Text = styled(SizableText, {
     tone: {
       primary: { color: '$textPrimary' },
       secondary: { color: '$textSecondary' },
-      danger: { color: '$dangerColor' },
+      danger: { color: '$dangerText' },
       accent: { color: '$primaryColor' },
       /**
        * Text that names something a person cannot use yet.

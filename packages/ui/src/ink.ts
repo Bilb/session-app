@@ -1,31 +1,33 @@
-/**
- * How far secondary text on an accent fill may dim `$onAccent`.
- *
- * Dimming spends the 4.5:1 the token is derived to clear, and Ocean Light's starts lowest, at
- * 8.49:1; 0.85 is about the floor at caption size. See THEMING.md on dimming an on-colour.
- */
-export const ON_ACCENT_SECONDARY_OPACITY = 0.85
-
 export type InkTone = 'primary' | 'secondary' | 'danger' | 'link'
+
+/** What the ink sits on: the page or a card, a bubble someone else sent, or a bubble you sent. */
+export type InkSurface = 'page' | 'received' | 'accent'
 
 const PAGE_INK = {
   primary: '$textPrimary',
   secondary: '$textSecondary',
-  danger: '$dangerColor',
+  danger: '$dangerText',
   link: '$accentText',
 } as const satisfies Record<InkTone, string>
 
+type Ink =
+  (typeof PAGE_INK)[InkTone] | '$onAccent' | '$onAccentSecondary' | '$messageBubbleIncomingText'
+
 /**
- * The colour of text or a glyph in a given tone, on the page or on an accent fill such as a
- * bubble you sent.
+ * The colour of text or a glyph in a given tone, on `surface`.
  *
- * On the accent every tone is `$onAccent`: red or an accent-coloured link on the accent is
- * unreadable, so a failure has to be said by its words and glyph alone there.
+ * On the accent every tone is an on-colour: red or an accent-coloured link on the accent is
+ * unreadable, so a failure has to be said by its words and glyph alone there. On a received bubble
+ * only the glyph stays red, since no red clears 4.5:1 as text on Ocean Dark's bubble.
  */
 export function inkFor(
   tone: InkTone,
-  onAccent: boolean,
-): { color: (typeof PAGE_INK)[InkTone] | '$onAccent'; opacity: number } {
-  if (!onAccent) return { color: PAGE_INK[tone], opacity: 1 }
-  return { color: '$onAccent', opacity: tone === 'secondary' ? ON_ACCENT_SECONDARY_OPACITY : 1 }
+  surface: InkSurface,
+  mark: 'text' | 'glyph' = 'text',
+): { color: Ink } {
+  if (surface === 'accent')
+    return { color: tone === 'secondary' ? '$onAccentSecondary' : '$onAccent' }
+  if (surface === 'received' && tone === 'danger' && mark === 'text')
+    return { color: '$messageBubbleIncomingText' }
+  return { color: PAGE_INK[tone] }
 }

@@ -203,3 +203,23 @@ describe('a file row’s layout', () => {
     })
   })
 })
+
+describe('a failed file row’s words', () => {
+  const inks = () => ({
+    name: declared(byId(IDS.name).querySelector('span:last-child')!).color,
+    caption: declared(byId(IDS.caption)).color,
+  })
+
+  it('are red as text on the page', () => {
+    renderInUI(<FileRow {...pictureRow('failed')} />)
+    expect(inks()).toEqual({ name: 'var(--dangerText)', caption: 'var(--dangerText)' })
+  })
+
+  it('take the bubble’s text on a bubble someone else sent', () => {
+    renderInUI(<FileRow {...pictureRow('failed', { received: true })} />)
+    expect(inks()).toEqual({
+      name: 'var(--messageBubbleIncomingText)',
+      caption: 'var(--messageBubbleIncomingText)',
+    })
+  })
+})
