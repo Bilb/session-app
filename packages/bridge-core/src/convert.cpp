@@ -91,6 +91,17 @@ bool thumbhash_decodable(const ::session::client::Attachment& a) {
     return !(a.width && a.height) || (plausible_side(*a.width) && plausible_side(*a.height));
 }
 
+namespace {
+
+    // Set exactly when `has_thumbhash` is: the same test decides both.
+    std::optional<double> thumbhash_aspect(const ::session::client::Attachment& a) {
+        if (!thumbhash_decodable(a))
+            return std::nullopt;
+        return image::thumbhash::component_aspect_ratio(*a.thumbhash);
+    }
+
+}  // namespace
+
 Attachment to_bridge(::session::client::Attachment&& from) {
     return Attachment(
             static_cast<double>(from.index),
@@ -101,6 +112,7 @@ Attachment to_bridge(::session::client::Attachment&& from) {
             number(from.width),
             number(from.height),
             thumbhash_decodable(from),
+            thumbhash_aspect(from),
             from.has_thumbnail,
             static_cast<double>(from.thumbnail_width),
             static_cast<double>(from.thumbnail_height),

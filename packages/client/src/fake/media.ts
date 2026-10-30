@@ -12,7 +12,7 @@ import type { MediaSource } from '../types'
 
 import { PHOTO_THUMBHASHES } from './attachments'
 import type { FakeSessionClient } from './FakeSessionClient'
-import { decodeThumbhash, type Decoded } from './thumbhash'
+import { decodeThumbhash, hexBytes, type Decoded } from './thumbhash'
 
 /**
  * What the fake draws for an attachment, the same on every app that runs it: one of the thirty
@@ -85,10 +85,6 @@ function thumbnailFileName(photo: string): string {
 /** Every dev thumbnail's file name, checked at start beside the photographs. */
 export function thumbnailFileNames(): string[] {
   return photoFileNames().map(thumbnailFileName)
-}
-
-function hexBytes(hex: string): Uint8Array {
-  return Uint8Array.from(hex.match(/../g)?.map((b) => parseInt(b, 16)) ?? [])
 }
 
 /**

@@ -193,6 +193,17 @@ export interface Attachment {
    */
   hasThumbhash: boolean
   /**
+   * The ThumbHash's rough record of the picture's shape, width over height: libsession's
+   * `component_aspect_ratio`, the ratio of the hash's DCT component counts, which its encoder picks
+   * in proportion to the source. Set exactly when `hasThumbhash` is.
+   *
+   * Coarse by construction. It is one of 7/n or n/7 for n in 1 to 7 (5/n or n/5 for a hash with
+   * alpha), and saturates there: a 4:3 photo reads 7:5, and every picture wider than 7:1 reads 7.
+   * A last resort for laying a picture out where the sender gave no `width` and `height`, and
+   * never a reason to override them.
+   */
+  thumbhashAspect?: number
+  /**
    * Whether libsession holds a thumbnail of this attachment: a JPEG of the picture in its own
    * shape, cropped to its centre at 21:9 when it is wider than that either way up, then the
    * client's thumbnail edge tall and never enlarged. A square tile covers it and crops. Made of a

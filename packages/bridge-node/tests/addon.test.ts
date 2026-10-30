@@ -527,6 +527,8 @@ describeEcho('the generated converters', () => {
     width: 1600,
     height: 1200,
     hasThumbhash: true,
+    // Not a whole number, so a converter that rounds or truncates cannot pass.
+    thumbhashAspect: 7 / 5,
     hasThumbnail: true,
     // Portrait, so a width and height swapped in the frame cannot pass.
     thumbnailWidthPx: 540,
