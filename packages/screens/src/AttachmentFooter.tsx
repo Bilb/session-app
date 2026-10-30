@@ -1,7 +1,17 @@
 import { formatBytes } from '@session/basic-types'
 import { PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, buttonHeight, Icon, inkFor, ROW_TOUCH_TARGET, Text, XStack } from '@session/ui'
+import {
+  Button,
+  buttonHeight,
+  Icon,
+  type IconName,
+  inkFor,
+  ROW_TOUCH_TARGET,
+  SPACE_SCALE,
+  Text,
+  XStack,
+} from '@session/ui'
 
 import type { AttachmentSet } from './attachmentSet'
 import { sharedCaption } from './attachmentSetCaption'
@@ -36,6 +46,21 @@ export const ROW_OVERHANG = (ROW_HEIGHT - FOOTER_HEIGHT) / 2
 /** Each button takes the row's full height on touch. */
 const ACTION_SLOP = ROW_OVERHANG
 
+/** The least the caption keeps beside the two buttons: a size such as "2.4 MB", or its start. */
+const CAPTION_MIN_WIDTH_PX = 48
+
+/**
+ * The narrowest the footer is drawn: the view switch and the verb as glyphs, and the caption's
+ * least between them. What a message holding one narrow picture is no narrower than.
+ */
+export const FOOTER_MIN_WIDTH_PX = 2 * FOOTER_HEIGHT + 2 * SPACE_SCALE.xs + CAPTION_MIN_WIDTH_PX
+
+/**
+ * Below this the verb is drawn as a glyph rather than a word: room for the switch, a worded verb
+ * of a usual length and the caption's least. A long translation still ellipsises the caption first.
+ */
+export const FOOTER_WORDED_MIN_WIDTH_PX = 200
+
 /**
  * The other shape, as the one button offers it: the gallery from the list, and the list back.
  *
@@ -55,6 +80,12 @@ const SWITCH_TO = {
     testID: ELEMENT.conversation.attachmentViewList,
   },
 } as const
+
+/** The verb's glyph, where the footer is too narrow for its word: what the word would say. */
+function verbIcon(set: AttachmentSet, sending: boolean): IconName {
+  if (sending || set.state === 'failed') return 'rotateCw'
+  return set.state === 'ready' ? 'download' : 'cloudDownload'
+}
 
 function caption(set: AttachmentSet): string {
   const shared = sharedCaption(set)
@@ -98,6 +129,7 @@ export function AttachmentFooter({
   onView,
   onAccent = false,
   sending,
+  compact = false,
 }: {
   set: AttachmentSet
   onAction: () => void
@@ -114,6 +146,8 @@ export function AttachmentFooter({
   /** The shape being drawn. Absent where the reader has no choice about it. */
   view?: AttachmentView | undefined
   onView?: ((view: AttachmentView) => void) | undefined
+  /** Too narrow for the verb's word: it is drawn as its glyph, and named by the word. */
+  compact?: boolean | undefined
 }) {
   const action = sending === undefined ? verb(set) : sending.retryable ? tr('retry') : null
   return (
@@ -150,7 +184,20 @@ export function AttachmentFooter({
       >
         {sending === undefined ? caption(set) : sending.caption}
       </Text>
-      {action === null ? null : (
+      {action === null ? null : compact ? (
+        <Button
+          variant="tonal"
+          size={ACTION_SIZE}
+          circular
+          icon={<Icon name={verbIcon(set, sending !== undefined)} size="sm" color="$textPrimary" />}
+          accessibilityLabel={action}
+          hitSlop={ACTION_SLOP}
+          destructive={sending === undefined && set.state === 'failed'}
+          onAccent={onAccent}
+          onPress={onAction}
+          testID={ELEMENT.conversation.attachmentAction}
+        />
+      ) : (
         <Button
           variant="tonal"
           size={ACTION_SIZE}

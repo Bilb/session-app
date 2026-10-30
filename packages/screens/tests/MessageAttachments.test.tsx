@@ -1,3 +1,4 @@
+import { ALBUM_WIDTH } from '@session/basic-types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { memoryPorts, resetPorts, setPorts } from '@session/app'
@@ -78,7 +79,7 @@ function conversation(): ConversationUi {
 }
 
 function drawn(shown: Message) {
-  return renderScreen(<MessageAttachments message={shown} />, {
+  return renderScreen(<MessageAttachments message={shown} width={ALBUM_WIDTH} />, {
     store: storeWith(shown),
     ui: conversation(),
   })
