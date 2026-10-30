@@ -24,6 +24,12 @@ export function tileRadius(side: number): number {
  */
 export const TILE_SCRIM = 'rgba(0, 0, 0, 0.55)'
 
+/**
+ * Darker under the "+N" slot: there it covers only the next picture's ThumbHash, whose colours are
+ * soft enough to take it, and the count is all the tile has to say.
+ */
+export const TILE_SLOT_SCRIM = 'rgba(0, 0, 0, 0.65)'
+
 /** How much of `TILE_SCRIM` a tile takes under a pointer and while pressed. */
 export const TILE_HOVER_OPACITY = 0.7
 export const TILE_PRESS_OPACITY = 1

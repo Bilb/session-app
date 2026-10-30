@@ -5,7 +5,7 @@ import type { WithMediaThumbhash, WithMediaUri } from '@session/basic-types'
 
 import {
   TILE_HAIRLINE_WIDTH,
-  TILE_SCRIM,
+  TILE_SLOT_SCRIM,
   showsPicture,
   tilePlaceholder,
   tileRadius,
@@ -18,10 +18,15 @@ import type { WithTestID } from './with'
 export type AttachmentTileProps = WithMediaUri &
   WithMediaThumbhash &
   WithTestID & {
-    /** Always square. The album and the list both size it; it never measures anything itself. */
-    side: number
     /**
-     * The count of attachments the album is not drawing, already worded.
+     * The album and the list both size it; it never measures anything itself. A square in the list,
+     * and the picture's own shape, within the album's limits, in the album.
+     */
+    width: number
+    height: number
+    /**
+     * The count of attachments the album is not drawing, already worded. A tile carrying it is the
+     * "+N" slot: it draws the picture's ThumbHash under the count, never the picture.
      *
      * A string rather than a number because the wording is `andMore` in the catalogue and this
      * package cannot reach it -- `@session/ui` imports no sibling but theme-tokens, test-ids and
@@ -31,11 +36,11 @@ export type AttachmentTileProps = WithMediaUri &
   }
 
 /**
- * One attachment, drawn as a rounded square.
+ * One attachment, drawn as a rounded rectangle.
  *
  * The same component serves the album, the list's thumbnails, the quote preview and the viewer's
- * filmstrip, which is what the rounded square is for: one shape to build and one to learn, at two
- * radii and any side length.
+ * filmstrip, which is what the one tile is for: one shape to build and one to learn, at two radii
+ * and any size.
  *
  * **Nothing is drawn on a tile whose bytes are not here.** No download control: the set's own
  * control says what is happening, in the album's corner, and two things promising two futures on
@@ -48,20 +53,24 @@ export type AttachmentTileProps = WithMediaUri &
  * decoded, so one that does not load was evicted under it: the placeholder is the true state.
  */
 export const AttachmentTile = memo(function AttachmentTile({
-  side,
+  width,
+  height,
   uri,
   thumbhash,
   overflowLabel,
   testID,
 }: AttachmentTileProps) {
-  const radius = tileRadius(side)
+  const radius = tileRadius(Math.min(width, height))
   /**
    * Which url's picture has arrived: the load is the only honest report that the bytes are on
    * screen. Keyed on the url, so a new one starts hidden over the placeholder instead of showing an
    * empty frame until it loads.
    */
   const [loadedUri, setLoadedUri] = useState<string | null>(null)
-  const drawable = uri !== undefined && uri !== null
+  // The slot draws the ThumbHash alone, which is there before the download and already a blur: it
+  // never changes when the thumbnail lands, and costs no blur to draw. Without one it is the bare
+  // tile under the scrim.
+  const drawable = overflowLabel === undefined && uri !== undefined && uri !== null
   const here = showsPicture(uri, loadedUri)
   const [failedThumbhash, setFailedThumbhash] = useState<string | null>(null)
   const placeholder = tilePlaceholder(thumbhash, failedThumbhash)
@@ -69,8 +78,8 @@ export const AttachmentTile = memo(function AttachmentTile({
   return (
     <YStack
       position="relative"
-      width={side}
-      height={side}
+      width={width}
+      height={height}
       borderRadius={radius}
       overflow="hidden"
       backgroundColor="$backgroundTertiary"
@@ -86,15 +95,16 @@ export const AttachmentTile = memo(function AttachmentTile({
         <YStack position="absolute" top={0} bottom={0} left={0} right={0}>
           <Image
             uri={placeholder}
-            width={side}
-            height={side}
+            width={width}
+            height={height}
             borderRadius={radius}
             onError={() => {
               setFailedThumbhash(placeholder)
             }}
           />
         </YStack>
-      ) : (
+      ) : overflowLabel !== undefined ? null : (
+        // Not under the count either, which is drawn in the same place and would cross it.
         <YStack
           position="absolute"
           top={0}
@@ -104,7 +114,11 @@ export const AttachmentTile = memo(function AttachmentTile({
           alignItems="center"
           justifyContent="center"
         >
-          <Icon name="image" size={side >= 90 ? 'lg' : 'md'} color="$textSecondary" />
+          <Icon
+            name="image"
+            size={Math.min(width, height) >= 90 ? 'lg' : 'md'}
+            color="$textSecondary"
+          />
         </YStack>
       )}
 
@@ -112,9 +126,10 @@ export const AttachmentTile = memo(function AttachmentTile({
         <YStack opacity={here ? 1 : 0}>
           <Image
             uri={uri}
-            width={side}
-            height={side}
-            // libsession's thumbnail is the picture's own shape; the square tile crops it.
+            width={width}
+            height={height}
+            // libsession's thumbnail is the picture's own shape. A list's square crops it, and an
+            // album's tile only where the picture is past the album's limits.
             fit="cover"
             borderRadius={radius}
             // Fresco's JPEG sample rounding undershoots the view by up to 4/3, which reads as soft.
@@ -155,7 +170,7 @@ export const AttachmentTile = memo(function AttachmentTile({
           right={0}
           alignItems="center"
           justifyContent="center"
-          backgroundColor={TILE_SCRIM}
+          backgroundColor={TILE_SLOT_SCRIM}
         >
           <Text size="$title" weight="semibold" color="$textPrimary">
             {overflowLabel}

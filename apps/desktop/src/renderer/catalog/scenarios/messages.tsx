@@ -32,7 +32,7 @@ export const MESSAGE_SCENARIOS: readonly AnyStory[] = [
     'albumShapes',
     [
       'One picture',
-      'Three: one big, two stacked',
+      'Three: one above two',
       'Twelve, so seven are behind the count',
       'Three with no hash to draw',
       'Five with no hash to draw',
@@ -41,7 +41,7 @@ export const MESSAGE_SCENARIOS: readonly AnyStory[] = [
   ),
   message(
     'albumStates',
-    ['Two, as halves', 'Four, an even grid', 'Five: one big beside a quad', 'Thirty-two'],
+    ['Two side by side', 'Four in two rows', 'Five: two above three', 'Thirty-two'],
     {},
   ),
   message(

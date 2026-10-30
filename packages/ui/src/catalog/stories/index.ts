@@ -1,5 +1,5 @@
 import type { AnyStory } from '../story'
-import { albumFocus } from './album'
+import { albumFocus, albumLone, albumOverflow, albumRows } from './album'
 import { button, buttonOnAccent, buttonSizes } from './button'
 import { fileRow, fileRowOnAccent, fileRowReceived } from './fileRow'
 import { avatar, progressRing, radio } from './indicators'
@@ -19,4 +19,7 @@ export const STORIES: readonly AnyStory[] = [
   progressRing,
   textScale,
   albumFocus,
+  albumLone,
+  albumRows,
+  albumOverflow,
 ]

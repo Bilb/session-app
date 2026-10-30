@@ -49,6 +49,7 @@ export function MessageAttachments({ message }: { message: Message }) {
       {view === 'gallery' ? (
         <MessageAlbum
           message={message}
+          width={ALBUM_WIDTH}
           onAccent={message.outgoing}
           fetchFor={albumFetch}
           setState={set.state}

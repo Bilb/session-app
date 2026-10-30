@@ -27,12 +27,13 @@ export function showcase(names: readonly [FixtureName, FixtureName] = ['Alice', 
   ensureDm(second, first, world)
 
   const messages: Array<[string, Attachment[]]> = [
-    // The album, at every count its layout has a shape for, and one past the cap.
+    // The album at every count up to its cap, and past it. Every dev photograph is 4:3, so the
+    // names say how rows of those fall; the catalog's album stories draw other shapes.
     ['One picture', set(image(1))],
-    ['Two, as halves', set(image(2))],
-    ['Three: one big, two stacked', set(image(3))],
-    ['Four, an even grid', set(image(4))],
-    ['Five: one big beside a quad', set(image(5))],
+    ['Two side by side', set(image(2))],
+    ['Three: one above two', set(image(3))],
+    ['Four in two rows', set(image(4))],
+    ['Five: two above three', set(image(5))],
     ['Twelve, so seven are behind the count', set(image(12))],
     ['Thirty-two', set(image(32))],
 

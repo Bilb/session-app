@@ -45,7 +45,7 @@ async function answer(uri: string, outcome: 'load' | 'error'): Promise<void> {
 }
 
 function tile() {
-  return <AttachmentTile side={120} uri={THUMBNAIL} testID={PICTURE} />
+  return <AttachmentTile width={120} height={120} uri={THUMBNAIL} testID={PICTURE} />
 }
 
 /** The picture's own layer, which the tile shows only once its bytes are on screen. */

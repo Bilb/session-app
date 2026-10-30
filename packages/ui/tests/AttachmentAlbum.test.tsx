@@ -112,7 +112,7 @@ describe('an album tile', () => {
   })
 
   it.each([2, 3])(
-    'carries the tile id on each of %i tiles, lead or not, with its picture’s inside it',
+    'carries the tile id on each of %i tiles, with its picture’s inside it',
     (count) => {
       renderInUI(
         album(
@@ -136,10 +136,31 @@ describe('an album tile', () => {
         {},
       ),
     )
-    const overflow = albumLayout(labels.length, WIDTH).overflow
+    const overflow = albumLayout(
+      labels.map(() => undefined),
+      WIDTH,
+    ).overflow
     expect(overflow).toBeGreaterThan(0)
     expect(nodeOf(ALBUM_TILE_ID, 4)?.name).toBe(`e.jpg and ${String(overflow)} more`)
     expect(nodeOf(ALBUM_TILE_ID, 3)?.name).toBe('d.jpg')
+  })
+})
+
+describe('the "+N" slot', () => {
+  const labels = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((name) => `${name}.jpg`)
+
+  it('is named for what it stands for and opens its picture', async () => {
+    const user = userEvent.setup()
+    const onOpen = vi.fn()
+    renderInUI(
+      album(
+        labels.map((label) => item(label, { hint: 'Open' })),
+        { onOpen },
+      ),
+    )
+    expect(nodeOf(ALBUM_TILE_ID, 4)?.name).toBe('e.jpg and 2 more')
+    await user.click(byId(ALBUM_TILE_ID, 4))
+    expect(onOpen).toHaveBeenCalledWith(4)
   })
 })
 
@@ -156,17 +177,5 @@ describe('the album’s download cloud', () => {
   it('is not drawn where nothing would fetch', () => {
     renderInUI(album([item('a.jpg'), item('b.jpg')], {}))
     expect(nodeOf(FETCH_HINT_ID)).toBeNull()
-  })
-})
-
-describe('the three-up’s cloud', () => {
-  const three = [item('a.jpg'), item('b.jpg'), item('c.jpg', { fetchesOnOpen: true })]
-
-  it('takes a press', async () => {
-    const user = userEvent.setup()
-    const onOpen = vi.fn()
-    renderInUI(album(three, { onOpen }))
-    await user.click(byId(FETCH_HINT_ID))
-    expect(onOpen).toHaveBeenCalledWith(2)
   })
 })
