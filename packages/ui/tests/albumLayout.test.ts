@@ -186,6 +186,118 @@ describe('an album of several', () => {
   })
 })
 
+describe('choosing between layouts', () => {
+  const IPHONE = 9 / 19.5
+  const WIDE = 16 / 9
+  const rowSizes = (layout: AlbumLayout) => layout.rows.map((row) => row.tiles.length)
+  const area = (tile: { width: number; height: number }) => tile.width * tile.height
+
+  /** Fewer than two other tiles larger than the slot past rounding, as the layout counts it. */
+  const slotAmongTwoLargest = (layout: AlbumLayout) => {
+    const areas = tilesOf(layout).map(area)
+    const slot = areas.pop() ?? 0
+    return areas.filter((other) => other > slot * 1.03).length < 2
+  }
+
+  it.each([ALBUM_WIDTH, 320, 480])('keeps four portraits a 2×2 grid at %i px', (width) => {
+    expect(rowSizes(albumLayout(Array<number>(4).fill(PORTRAIT), width))).toEqual([2, 2])
+  })
+
+  it.each([ALBUM_WIDTH, 320, 480])(
+    'does not flatten three pictures into a strip at %i px',
+    (width) => {
+      expect(rowSizes(albumLayout([LANDSCAPE, SQUARE, PORTRAIT], width))).toEqual([1, 2])
+      expect(rowSizes(albumLayout([WIDE, PHONE, PORTRAIT], width))).toEqual([1, 2])
+      expect(rowSizes(albumLayout([SQUARE, WIDE, 4 / 5], width))).toEqual([1, 2])
+    },
+  )
+
+  it.each([
+    [[IPHONE, IPHONE, IPHONE, PORTRAIT, 2 / 3, IPHONE]],
+    [[IPHONE, 2 / 3, PHONE, IPHONE, IPHONE, LANDSCAPE]],
+    [[PHONE, PHONE, PORTRAIT, IPHONE, PORTRAIT, PORTRAIT, IPHONE, SQUARE, LANDSCAPE]],
+  ] as const)('keeps a grid of screenshots and photos a grid on the desktop (%#)', (aspects) => {
+    // Each fits best as two rows half again as tall as wide; one row of five is a third as tall.
+    expect(rowSizes(albumLayout(aspects, 480))).toEqual([2, 3])
+  })
+
+  it.each([ALBUM_WIDTH, 320, 480])(
+    'stacks two landscapes from 1.3:1, and keeps any other pair as nearest the target, at %i px',
+    (width) => {
+      // A landscape needs the album's whole width to be read; two near-squares stacked would not.
+      expect(rowSizes(albumLayout([LANDSCAPE, LANDSCAPE], width))).toEqual([1, 1])
+      expect(rowSizes(albumLayout([LANDSCAPE, WIDE], width))).toEqual([1, 1])
+      expect(rowSizes(albumLayout([3 / 2, 3 / 2], width))).toEqual([1, 1])
+      expect(rowSizes(albumLayout([5 / 4, 5 / 4], width))).toEqual([2])
+      expect(rowSizes(albumLayout([1.04, 1.04], width))).toEqual([2])
+      expect(rowSizes(albumLayout([SQUARE, SQUARE], width))).toEqual([2])
+      expect(rowSizes(albumLayout([PORTRAIT, PORTRAIT], width))).toEqual([2])
+      expect(rowSizes(albumLayout([PORTRAIT, LANDSCAPE], width))).toEqual([2])
+      expect(rowSizes(albumLayout([SQUARE, LANDSCAPE], width))).toEqual([2])
+    },
+  )
+
+  it.each([ALBUM_WIDTH, 320, 480])(
+    'keeps "+N" out of the two largest tiles where another split can, at %i px',
+    (width) => {
+      for (const aspects of [
+        [PORTRAIT, PORTRAIT, PORTRAIT, LANDSCAPE, LANDSCAPE, LANDSCAPE, LANDSCAPE],
+        [LANDSCAPE, LANDSCAPE, PORTRAIT, LANDSCAPE, LANDSCAPE, PORTRAIT, PORTRAIT],
+      ]) {
+        const layout = albumLayout(aspects, width)
+        expect(layout.overflow).toBeGreaterThan(0)
+        expect(slotAmongTwoLargest(layout)).toBe(false)
+      }
+    },
+  )
+
+  it.each([
+    [320, [IPHONE, PORTRAIT, LANDSCAPE, LANDSCAPE]],
+    [320, [PORTRAIT, PHONE, WIDE, WIDE]],
+    [480, [WIDE, PORTRAIT, LANDSCAPE, LANDSCAPE]],
+    [480, [WIDE, PORTRAIT, PORTRAIT, WIDE]],
+  ] as const)(
+    'balances a lopsided set rather than draw one tile over a row of small ones, at %i px',
+    (width, aspects) => {
+      const layout = albumLayout(aspects, width)
+      expect(rowSizes(layout)).toEqual([2, 2])
+      const areas = tilesOf(layout).map(area)
+      expect(Math.max(...areas) / Math.min(...areas)).toBeLessThan(4)
+    },
+  )
+
+  it.each([
+    [ALBUM_WIDTH, [IPHONE, LANDSCAPE, WIDE, PORTRAIT, LANDSCAPE]],
+    [320, [IPHONE, LANDSCAPE, WIDE, PORTRAIT, LANDSCAPE]],
+    [320, [IPHONE, LANDSCAPE, LANDSCAPE, 3 / 2, LANDSCAPE]],
+    [ALBUM_WIDTH, [LANDSCAPE, PORTRAIT, LANDSCAPE, LANDSCAPE, LANDSCAPE]],
+  ] as const)(
+    'crops no more than the layout nearest the target height, at %i px',
+    (width, aspects) => {
+      // Each fits uncropped nearest the target; a split with fewer slivers would crop a row.
+      const layout = albumLayout(aspects, width)
+      for (const row of layout.rows) {
+        const shapes = row.tiles.map((tile) => tileAspect(aspects[tile.at]))
+        const sum = shapes.reduce((total, shape) => total + shape, 0)
+        const filling = (width - ALBUM_SEAM * (shapes.length - 1)) / sum
+        expect(Math.abs(row.height - filling)).toBeLessThanOrEqual(0.5)
+      }
+    },
+  )
+
+  it('gives a strip of screenshots room rather than draw slivers, at the narrowest album', () => {
+    const layout = albumLayout([IPHONE, PORTRAIT, PORTRAIT, IPHONE, IPHONE], ALBUM_WIDTH)
+    expect(rowSizes(layout)).toEqual([2, 3])
+    expect(Math.min(...tilesOf(layout).map((tile) => tile.width))).toBeGreaterThanOrEqual(56)
+  })
+
+  it('does not grow an album past 1.5 times its width to widen its tiles', () => {
+    // One row of four is narrow here, but the 2×2 it could become is 1.6 times as tall as wide.
+    const layout = albumLayout([IPHONE, PORTRAIT, PORTRAIT, IPHONE], ALBUM_WIDTH)
+    expect(layout.height).toBeLessThanOrEqual(1.5 * ALBUM_WIDTH)
+  })
+})
+
 describe('a tile’s shape', () => {
   it('is the picture’s within the limits, and a square where it is unknown', () => {
     expect(tileAspect(LANDSCAPE)).toBe(LANDSCAPE)

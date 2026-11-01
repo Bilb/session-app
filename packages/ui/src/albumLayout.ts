@@ -46,6 +46,31 @@ const CROP_COST_PER_PX = 10
  */
 const SLOT_LARGEST_COST = 1_000_000
 
+/** What a candidate pays when the slot is one of the two largest tiles: still too prominent. */
+const SLOT_TOP_TWO_COST = 300
+
+/** Past this share of the width an album dominates the transcript, so each px costs more. */
+const TALL_FROM_SHARE = 1.5
+const TALL_COST_PER_PX = 10
+
+/** A tile whose shorter side is under this reads as a sliver; each px short costs. */
+const SLIVER_PX = 56
+const SLIVER_COST_PER_PX = 10
+
+/** Past this ratio of the largest tile's area to the smallest, each doubling costs. */
+const SPREAD_FROM = 4
+const SPREAD_COST_PER_DOUBLING = 90
+
+/** Crop px a candidate may exceed the plain choice's by and still count as cropping no more. */
+const CROP_SLACK_PX = 1e-6
+
+/**
+ * From this shape, width over height, two pictures are stacked whatever else fits: a landscape
+ * needs the album's whole width to be read. Squarer pairs keep the nearest fit, as a stack of two
+ * near-squares would be twice as tall as wide.
+ */
+const STACKED_PAIR_MIN_ASPECT = 1.3
+
 /** How close two tiles' areas are to count as the same size, past rounding to whole px. */
 const SAME_AREA_SHARE = 0.03
 
@@ -116,9 +141,12 @@ function tileShapes(aspects: readonly (number | undefined)[], count: number, slo
 
 /**
  * Step 2, the candidates: one row, or two split at every point. The slot never has a row to
- * itself: alone it would stretch the album's width under a row of smaller pictures.
+ * itself: alone it would stretch the album's width under a row of smaller pictures. Two pictures
+ * at least `STACKED_PAIR_MIN_ASPECT` wide are only ever stacked.
  */
-function rowSplits(count: number, slotted: boolean): number[][] {
+function rowSplits(shapes: readonly number[], slotted: boolean): number[][] {
+  const count = shapes.length
+  if (count === 2 && shapes.every((shape) => shape >= STACKED_PAIR_MIN_ASPECT)) return [[1, 1]]
   const splits = [[count]]
   for (let first = 1; first < count; first += 1) {
     if (slotted && first === count - 1) continue
@@ -183,18 +211,36 @@ function placeRows(
   return { rows, height: y - ALBUM_SEAM, cropPx }
 }
 
+const areasOf = (rows: readonly AlbumRow[]) =>
+  rows.flatMap((row) => row.tiles.map((tile) => tile.width * tile.height))
+
 /**
- * Whether the slot is the largest tile, or tied for it past rounding. Not where every tile is the
- * same size, where no layout could do otherwise.
+ * What the slot's size costs: `SLOT_LARGEST_COST` where no tile is larger past rounding, and
+ * `SLOT_TOP_TWO_COST` where one is. Nothing where every tile is the same size, where no layout
+ * could do otherwise.
  */
-function slotIsLargest(rows: readonly AlbumRow[]): boolean {
-  const areas = rows.flatMap((row) => row.tiles.map((tile) => tile.width * tile.height))
-  const slot = areas.pop()
-  if (slot === undefined || areas.length === 0) return false
-  return (
-    slot >= Math.max(...areas) * (1 - SAME_AREA_SHARE) &&
-    slot > Math.min(...areas) * (1 + SAME_AREA_SHARE)
-  )
+function slotCost(rows: readonly AlbumRow[]): number {
+  const areas = areasOf(rows)
+  const slot = areas.pop() ?? 0
+  if (areas.length === 0 || slot <= Math.min(...areas) * (1 + SAME_AREA_SHARE)) return 0
+  const larger = areas.filter((area) => area > slot * (1 + SAME_AREA_SHARE)).length
+  return larger === 0 ? SLOT_LARGEST_COST : larger === 1 ? SLOT_TOP_TWO_COST : 0
+}
+
+/**
+ * What makes a candidate look broken rather than merely off its height: slivers, a wide spread of
+ * tile sizes, and an album taller than `TALL_FROM_SHARE` of its width.
+ */
+function balanceCost(rows: readonly AlbumRow[], height: number, width: number): number {
+  const areas = areasOf(rows)
+  let cost = Math.max(0, height - TALL_FROM_SHARE * width) * TALL_COST_PER_PX
+  for (const row of rows)
+    for (const tile of row.tiles)
+      cost += Math.max(0, SLIVER_PX - Math.min(tile.width, tile.height)) * SLIVER_COST_PER_PX
+  const spread = Math.max(...areas) / Math.min(...areas)
+  if (Number.isFinite(spread))
+    cost += Math.max(0, Math.log2(spread / SPREAD_FROM)) * SPREAD_COST_PER_DOUBLING
+  return cost
 }
 
 /**
@@ -202,12 +248,20 @@ function slotIsLargest(rows: readonly AlbumRow[]): boolean {
  *
  * **Justified rows.** The first `ALBUM_MAX_TILES` pictures are laid out as one row, or as two
  * split at every point, each row at the one height that makes its tiles, at their own shapes, fill
- * the width. The candidate nearest `ALBUM_TARGET_HEIGHT_SHARE` of the width tall wins. One whose
- * rows would fall outside the shortest row or the width is clamped there and pays for the crop, so
- * it wins only where nothing else fits either.
+ * the width. Each pays its distance from `ALBUM_TARGET_HEIGHT_SHARE` of the width; one whose rows
+ * would fall outside the shortest row or the width is clamped there and pays for the crop, so it
+ * wins only where nothing else fits either. The nearest is the plain choice.
+ *
+ * **Balance.** Candidates also pay `balanceCost`, and the cheapest wins, with two limits: none may
+ * crop more than the plain choice, and where the plain choice is two rows, one row is ruled out.
+ * Balancing never costs the album more of its pictures, and never flattens a grid into a strip of
+ * small tiles.
+ *
+ * **Two landscapes** of `STACKED_PAIR_MIN_ASPECT` or wider are always stacked, each the album's
+ * width; see `rowSplits`.
  *
  * **"+N".** Past `ALBUM_MAX_TILES`, the last tile is a square slot carrying the count of the rest,
- * never alone on its row and never the largest tile.
+ * never alone on its row, never the largest tile, and where avoidable not among the two largest.
  *
  * **One picture** keeps its own shape: see `loneTile`. `loneMaxHeightPx` caps its height, as the
  * desktop does; the phone has no cap.
@@ -236,17 +290,27 @@ export function albumLayout(
   const minRowHeightPx = Math.round((ALBUM_MIN_ROW_HEIGHT_PX / ALBUM_WIDTH) * whole)
   const target = whole * ALBUM_TARGET_HEIGHT_SHARE
 
-  // Steps 4 and 5: score each candidate, and keep the cheapest; the first of equals.
-  let best: { score: number; rows: AlbumRow[]; height: number } | undefined
-  for (const sizes of rowSplits(count, slotted)) {
+  // Step 4: place and score every candidate.
+  const candidates = rowSplits(shapes, slotted).map((sizes) => {
     const { rows, height, cropPx } = placeRows(shapes, sizes, whole, minRowHeightPx)
-    const score =
+    const slot = slotted ? slotCost(rows) : 0
+    const plain =
       Math.abs(height - target) +
       cropPx * CROP_COST_PER_PX +
-      (slotted && slotIsLargest(rows) ? SLOT_LARGEST_COST : 0)
-    if (best === undefined || score < best.score) best = { score, rows, height }
-  }
-  return { rows: best?.rows ?? [], overflow, width: whole, height: best?.height ?? 0 }
+      (slot === SLOT_LARGEST_COST ? SLOT_LARGEST_COST : 0)
+    const score = plain + (slot === SLOT_TOP_TWO_COST ? slot : 0) + balanceCost(rows, height, whole)
+    return { rows, height, cropPx, plain, score }
+  })
+  // Step 5: keep the cheapest within the limits, the first of equals.
+  const cheapest = <T>(items: T[], cost: (item: T) => number) =>
+    items.reduce((best, item) => (cost(item) < cost(best) ? item : best))
+  const plain = cheapest(candidates, (candidate) => candidate.plain)
+  const allowed = candidates.filter(
+    (c) =>
+      c.cropPx <= plain.cropPx + CROP_SLACK_PX && (plain.rows.length === 1 || c.rows.length > 1),
+  )
+  const best = cheapest(allowed, (c) => c.score)
+  return { rows: best.rows, overflow, width: whole, height: best.height }
 }
 
 /** The last tile drawn, which is the slot where the album has one. */
