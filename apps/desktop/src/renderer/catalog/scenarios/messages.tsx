@@ -1,4 +1,4 @@
-import { MessageRow } from '@session/screens'
+import { MessageRow, TranscriptWidth } from '@session/screens'
 import { defineStory, type AnyStory } from '@session/ui/catalog'
 
 import { useScenario } from './ScenarioProvider'
@@ -12,7 +12,13 @@ function ScenarioMessage({ body }: ScenarioRow) {
   const scenario = useScenario()
   const messageId = scenario?.messageIds.get(body)
   if (scenario === null || messageId === undefined) return null
-  return <MessageRow conversationId={scenario.conversationId} messageId={messageId} index={0} />
+  // Measured as the conversation measures its transcript, so an album shrinks to fit a narrow cell
+  // rather than drawing at its narrowest wherever it is.
+  return (
+    <TranscriptWidth>
+      <MessageRow conversationId={scenario.conversationId} messageId={messageId} index={0} />
+    </TranscriptWidth>
+  )
 }
 
 const MESSAGE_WIDTH = 420

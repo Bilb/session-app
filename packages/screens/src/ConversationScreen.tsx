@@ -25,7 +25,7 @@ import { conversationTitle } from './conversationTitle'
 import { DateHeaderRow } from './DateHeaderRow'
 import { showsDateHeader } from './dateHeaders'
 import { useTopBarInsets } from './shell/pane'
-import { TranscriptWidthContext } from './albumSize'
+import { TranscriptWidth } from './TranscriptWidth'
 
 /** The messages, oldest first, each under its date where the day changes. */
 function Transcript({
@@ -70,8 +70,6 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
   // One viewer and one sheet for the whole transcript, so two can never be open at once.
   const [viewer, setViewer] = useState<ViewerTarget | null>(null)
   const [sheet, setSheet] = useState<number | null>(null)
-  // The transcript's width, which albums take a share of.
-  const [transcriptWidthPx, setTranscriptWidthPx] = useState<number | null>(null)
 
   // Memoised so typing in the composer does not re-render every message through the context.
   const ui = useMemo(
@@ -139,17 +137,9 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
           }
         >
           {ready ? (
-            // Measured, since an album is as wide as a share of the transcript it is in.
-            <TranscriptWidthContext.Provider value={transcriptWidthPx}>
-              <YStack
-                flex={1}
-                onLayout={(event) => {
-                  setTranscriptWidthPx(event.nativeEvent.layout.width)
-                }}
-              >
-                <Transcript conversationId={conversationId} messages={messages} />
-              </YStack>
-            </TranscriptWidthContext.Provider>
+            <TranscriptWidth flex={1}>
+              <Transcript conversationId={conversationId} messages={messages} />
+            </TranscriptWidth>
           ) : (
             <YStack flex={1} padding="$md">
               <Text tone="secondary">{tr('loading')}</Text>
