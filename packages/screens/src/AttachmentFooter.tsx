@@ -91,12 +91,7 @@ function verbIcon(set: AttachmentSet, sending: boolean): IconName {
 }
 
 function caption(set: AttachmentSet): string {
-  const shared = sharedCaption(set)
-  if (shared !== null) return shared
-  if (set.state === 'fetching') {
-    return `${formatBytes(set.doneBytes)} / ${formatBytes(set.totalBytes)}`
-  }
-  return set.sizeBytes === undefined ? '' : formatBytes(set.sizeBytes)
+  return sharedCaption(set) ?? `${formatBytes(set.doneBytes)} / ${formatBytes(set.totalBytes)}`
 }
 
 /**
