@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest'
 import {
   ALBUM_MAX_ASPECT,
   ALBUM_MAX_TILES,
-  ALBUM_MIN_ASPECT,
   ALBUM_MIN_ROW_HEIGHT_PX,
   ALBUM_SEAM,
   albumLayout,
@@ -13,7 +12,7 @@ import {
   type AlbumLayout,
 } from '#src/albumLayout'
 
-/** The phone's album, a desktop bubble, and an odd width that rounds unevenly. */
+/** The narrowest album, one in the wide layout, and an odd width that rounds unevenly. */
 const WIDTHS = [ALBUM_WIDTH, 420, 301] as const
 
 const SQUARE = 1
@@ -216,10 +215,13 @@ describe('choosing between layouts', () => {
     [[IPHONE, IPHONE, IPHONE, PORTRAIT, 2 / 3, IPHONE]],
     [[IPHONE, 2 / 3, PHONE, IPHONE, IPHONE, LANDSCAPE]],
     [[PHONE, PHONE, PORTRAIT, IPHONE, PORTRAIT, PORTRAIT, IPHONE, SQUARE, LANDSCAPE]],
-  ] as const)('keeps a grid of screenshots and photos a grid on the desktop (%#)', (aspects) => {
-    // Each fits best as two rows half again as tall as wide; one row of five is a third as tall.
-    expect(rowSizes(albumLayout(aspects, 480))).toEqual([2, 3])
-  })
+  ] as const)(
+    'keeps a grid of screenshots and photos a grid at the wide layout’s widest (%#)',
+    (aspects) => {
+      // Each fits best as two rows half again as tall as wide; one row of five is a third as tall.
+      expect(rowSizes(albumLayout(aspects, 480))).toEqual([2, 3])
+    },
+  )
 
   it.each([ALBUM_WIDTH, 320, 480])(
     'stacks two landscapes from 1.3:1, and keeps any other pair as nearest the target, at %i px',
@@ -302,32 +304,32 @@ describe('a tile’s shape', () => {
   it('is the picture’s within the limits, and a square where it is unknown', () => {
     expect(tileAspect(LANDSCAPE)).toBe(LANDSCAPE)
     expect(tileAspect(PANORAMA)).toBe(ALBUM_MAX_ASPECT)
-    expect(tileAspect(ULTRATALL)).toBe(ALBUM_MIN_ASPECT)
+    expect(tileAspect(ULTRATALL)).toBe(1 / ALBUM_MAX_ASPECT)
     expect(tileAspect(undefined)).toBe(1)
   })
 })
 
-describe('an album on the desktop', () => {
-  const DESKTOP = 480
+describe('an album at the wide layout’s widest', () => {
+  const WIDEST = 480
   const CAP = 460
 
   it('draws a lone picture no taller than the cap, narrower rather than cropped', () => {
     const [portrait] =
-      albumLayout([PORTRAIT], DESKTOP, { loneMaxHeightPx: CAP }).rows[0]?.tiles ?? []
+      albumLayout([PORTRAIT], WIDEST, { loneMaxHeightPx: CAP }).rows[0]?.tiles ?? []
     expect(portrait).toMatchObject({ height: CAP, width: Math.round(CAP * PORTRAIT) })
-    const [phone] = albumLayout([PHONE], DESKTOP, { loneMaxHeightPx: CAP }).rows[0]?.tiles ?? []
+    const [phone] = albumLayout([PHONE], WIDEST, { loneMaxHeightPx: CAP }).rows[0]?.tiles ?? []
     expect(phone).toMatchObject({ height: CAP, width: Math.round(CAP * PHONE) })
   })
 
   it('leaves a lone picture under the cap as it is', () => {
-    expect(albumLayout([LANDSCAPE], DESKTOP, { loneMaxHeightPx: CAP }).rows[0]?.tiles[0]).toEqual(
-      albumLayout([LANDSCAPE], DESKTOP).rows[0]?.tiles[0],
+    expect(albumLayout([LANDSCAPE], WIDEST, { loneMaxHeightPx: CAP }).rows[0]?.tiles[0]).toEqual(
+      albumLayout([LANDSCAPE], WIDEST).rows[0]?.tiles[0],
     )
   })
 
   it('scales the shortest row with the width', () => {
-    const layout = albumLayout(Array<number>(5).fill(ULTRAWIDE), DESKTOP)
-    expect(Math.min(...layout.rows.map((row) => row.height))).toBe(shortestRowAt(DESKTOP))
+    const layout = albumLayout(Array<number>(5).fill(ULTRAWIDE), WIDEST)
+    expect(Math.min(...layout.rows.map((row) => row.height))).toBe(shortestRowAt(WIDEST))
   })
 })
 

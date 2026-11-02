@@ -6,12 +6,12 @@ import { defineStory } from '../story'
 import { MESSAGE_FRAME_INSET_PX, MessageFrame } from '../../MessageFrame'
 import { noop } from './shared'
 
-/** A desktop bubble, wider than the phone's album. */
-const DESKTOP_ALBUM_WIDTH = ALBUM_SIZES.wide.maxWidthPx
-/** A phone's widest album, three quarters of a 430 pt transcript. */
-const PHONE_ALBUM_MAX_WIDTH = ALBUM_SIZES.narrow.maxWidthPx
-/** The desktop's cap on a picture alone. */
-const DESKTOP_LONE_MAX_HEIGHT_PX = ALBUM_SIZES.wide.loneMaxHeightPx
+/** The wide layout's widest album: list and conversation side by side. */
+const WIDE_ALBUM_MAX_WIDTH = ALBUM_SIZES.wide.maxWidthPx
+/** The narrow layout's widest album, three quarters of a 430 pt transcript. */
+const NARROW_ALBUM_MAX_WIDTH = ALBUM_SIZES.narrow.maxWidthPx
+/** The wide layout's cap on a picture alone. */
+const WIDE_LONE_MAX_HEIGHT_PX = ALBUM_SIZES.wide.loneMaxHeightPx
 
 const SQUARE = 1
 const PORTRAIT = 3 / 4
@@ -23,7 +23,7 @@ const PANORAMA = 3
 const HALF = 1 / 2
 const NEEDLE = 1 / 5
 const PANORAMA_WIDE = 5
-const VIDEO = 16 / 9
+const WIDESCREEN = 16 / 9
 
 /**
  * Placeholders, with no picture to fetch: what is drawn here is the tiles' rects and rings. An
@@ -85,7 +85,7 @@ export const albumFocus = defineStory<AlbumStory>({
 export const albumLone = defineStory<AlbumStory>({
   component: 'album',
   story: 'lone',
-  width: DESKTOP_ALBUM_WIDTH + 2 * MESSAGE_FRAME_INSET_PX,
+  width: WIDE_ALBUM_MAX_WIDTH + 2 * MESSAGE_FRAME_INSET_PX,
   variants: {
     square: { aspects: [SQUARE], onAccent: false },
     landscape: { aspects: [LANDSCAPE], onAccent: false },
@@ -95,19 +95,24 @@ export const albumLone = defineStory<AlbumStory>({
     veryWide: { aspects: [PANORAMA], onAccent: false },
     noDimensions: { aspects: [undefined], onAccent: false },
     onAccent: { aspects: [LANDSCAPE], onAccent: true },
-    // At a phone's widest album, and at the desktop's, where the 460 px cap narrows a portrait.
-    phoneScreenshotWidestPhone: { aspects: [PHONE], onAccent: false, width: PHONE_ALBUM_MAX_WIDTH },
-    portraitDesktop: {
-      aspects: [PORTRAIT],
-      onAccent: false,
-      width: DESKTOP_ALBUM_WIDTH,
-      loneMaxHeightPx: DESKTOP_LONE_MAX_HEIGHT_PX,
-    },
-    phoneScreenshotDesktop: {
+    // At the narrow layout's widest album, and at the wide layout's, where its 460 px cap narrows
+    // a portrait.
+    phoneScreenshotNarrowWidest: {
       aspects: [PHONE],
       onAccent: false,
-      width: DESKTOP_ALBUM_WIDTH,
-      loneMaxHeightPx: DESKTOP_LONE_MAX_HEIGHT_PX,
+      width: NARROW_ALBUM_MAX_WIDTH,
+    },
+    portraitWide: {
+      aspects: [PORTRAIT],
+      onAccent: false,
+      width: WIDE_ALBUM_MAX_WIDTH,
+      loneMaxHeightPx: WIDE_LONE_MAX_HEIGHT_PX,
+    },
+    phoneScreenshotWide: {
+      aspects: [PHONE],
+      onAccent: false,
+      width: WIDE_ALBUM_MAX_WIDTH,
+      loneMaxHeightPx: WIDE_LONE_MAX_HEIGHT_PX,
     },
   },
   render: inFrame,
@@ -120,7 +125,7 @@ export const albumLone = defineStory<AlbumStory>({
 export const albumRows = defineStory<AlbumStory>({
   component: 'album',
   story: 'rows',
-  width: DESKTOP_ALBUM_WIDTH + 2 * MESSAGE_FRAME_INSET_PX,
+  width: WIDE_ALBUM_MAX_WIDTH + 2 * MESSAGE_FRAME_INSET_PX,
   sensitive: { rtl: true },
   variants: {
     twoSquares: { aspects: [SQUARE, SQUARE], onAccent: false },
@@ -139,10 +144,10 @@ export const albumRows = defineStory<AlbumStory>({
       aspects: [PORTRAIT, LANDSCAPE, SQUARE, ULTRAWIDE, ULTRATALL],
       onAccent: true,
     },
-    fiveMixedDesktop: {
+    fiveMixedWide: {
       aspects: [PORTRAIT, LANDSCAPE, SQUARE, ULTRAWIDE, ULTRATALL],
       onAccent: false,
-      width: DESKTOP_ALBUM_WIDTH,
+      width: WIDE_ALBUM_MAX_WIDTH,
     },
   },
   render: inFrame,
@@ -160,7 +165,7 @@ const ANDROID_SHAPE = 9 / 20
 export const albumOverflow = defineStory<AlbumStory>({
   component: 'album',
   story: 'overflow',
-  width: DESKTOP_ALBUM_WIDTH + 2 * MESSAGE_FRAME_INSET_PX,
+  width: WIDE_ALBUM_MAX_WIDTH + 2 * MESSAGE_FRAME_INSET_PX,
   sensitive: { rtl: true },
   variants: {
     // Five, and the same five with one more: the fifth tile turns into the count.
@@ -190,15 +195,15 @@ export const albumOverflow = defineStory<AlbumStory>({
       onAccent: false,
     },
     widePairThenPhones: {
-      aspects: [3 / 2, 16 / 9, SQUARE, IPHONE_SHAPE, ANDROID_SHAPE, SQUARE, SQUARE],
+      aspects: [3 / 2, WIDESCREEN, SQUARE, IPHONE_SHAPE, ANDROID_SHAPE, SQUARE, SQUARE],
       onAccent: false,
     },
     panoramas: { aspects: Array<number>(7).fill(PANORAMA_WIDE), onAccent: false },
     phones: { aspects: Array<number>(7).fill(IPHONE_SHAPE), onAccent: false },
-    phonesDesktop: {
+    phonesWide: {
       aspects: Array<number>(7).fill(IPHONE_SHAPE),
       onAccent: false,
-      width: DESKTOP_ALBUM_WIDTH,
+      width: WIDE_ALBUM_MAX_WIDTH,
     },
     onAccent: {
       aspects: [PORTRAIT, LANDSCAPE, SQUARE, ULTRAWIDE, ULTRATALL, LANDSCAPE],
@@ -218,34 +223,38 @@ export const albumOverflow = defineStory<AlbumStory>({
 export const albumChoices = defineStory<AlbumStory>({
   component: 'album',
   story: 'choices',
-  width: DESKTOP_ALBUM_WIDTH + 2 * MESSAGE_FRAME_INSET_PX,
+  width: WIDE_ALBUM_MAX_WIDTH + 2 * MESSAGE_FRAME_INSET_PX,
   sensitive: { rtl: true },
   variants: {
     landscapePairStacked: {
       aspects: [LANDSCAPE, LANDSCAPE],
       onAccent: false,
-      width: PHONE_ALBUM_MAX_WIDTH,
+      width: NARROW_ALBUM_MAX_WIDTH,
     },
     nearSquarePairSideBySide: {
       aspects: [5 / 4, 5 / 4],
       onAccent: false,
-      width: PHONE_ALBUM_MAX_WIDTH,
+      width: NARROW_ALBUM_MAX_WIDTH,
     },
-    squarestLandscapePair: { aspects: [1.04, 1.04], onAccent: false, width: PHONE_ALBUM_MAX_WIDTH },
+    squarestLandscapePair: {
+      aspects: [1.04, 1.04],
+      onAccent: false,
+      width: NARROW_ALBUM_MAX_WIDTH,
+    },
     fourPortraitsKeptGrid: {
       aspects: [PORTRAIT, PORTRAIT, PORTRAIT, PORTRAIT],
       onAccent: false,
-      width: PHONE_ALBUM_MAX_WIDTH,
+      width: NARROW_ALBUM_MAX_WIDTH,
     },
     countOutOfTopTwo: {
       aspects: [PORTRAIT, PORTRAIT, PORTRAIT, LANDSCAPE, LANDSCAPE, LANDSCAPE, LANDSCAPE],
       onAccent: false,
-      width: PHONE_ALBUM_MAX_WIDTH,
+      width: NARROW_ALBUM_MAX_WIDTH,
     },
     lopsidedBalanced: {
-      aspects: [VIDEO, PORTRAIT, PORTRAIT, VIDEO],
+      aspects: [WIDESCREEN, PORTRAIT, PORTRAIT, WIDESCREEN],
       onAccent: false,
-      width: DESKTOP_ALBUM_WIDTH,
+      width: WIDE_ALBUM_MAX_WIDTH,
     },
     screenshotStripAsGrid: {
       aspects: [IPHONE_SHAPE, PORTRAIT, PORTRAIT, IPHONE_SHAPE, IPHONE_SHAPE],
@@ -258,7 +267,7 @@ export const albumChoices = defineStory<AlbumStory>({
     tallestKeptGrid: {
       aspects: [IPHONE_SHAPE, IPHONE_SHAPE, IPHONE_SHAPE, PORTRAIT, 2 / 3, IPHONE_SHAPE],
       onAccent: false,
-      width: DESKTOP_ALBUM_WIDTH,
+      width: WIDE_ALBUM_MAX_WIDTH,
     },
   },
   render: inFrame,

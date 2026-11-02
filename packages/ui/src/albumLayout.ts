@@ -7,14 +7,12 @@ export const ALBUM_SEAM = 4
 export const ALBUM_MAX_TILES = 5
 
 /**
- * The narrowest and widest shapes, width over height, a tile keeps. A picture past them is drawn
- * at the limit and cropped to it.
+ * The most elongated shape, width over height, a tile keeps, either way up: a tile is drawn
+ * between 9:21 and 21:9, and a picture past that is drawn at the limit and cropped to it.
  *
- * Both are where libsession crops its thumbnails, 21:9 either way up, so a tile never asks for
- * more of the picture than the thumbnail holds - and every popular phone screenshot, 9:16 to 9:21,
- * keeps its shape.
+ * It is where libsession crops its thumbnails, so a tile never asks for more of the picture than
+ * the thumbnail holds - and every popular phone screenshot, 9:16 to 9:21, keeps its shape.
  */
-export const ALBUM_MIN_ASPECT = 9 / 21
 export const ALBUM_MAX_ASPECT = 21 / 9
 
 /**
@@ -106,12 +104,12 @@ const clamp = (value: number, low: number, high: number) => Math.min(high, Math.
  */
 export function tileAspect(aspect: number | undefined): number {
   if (aspect === undefined || !Number.isFinite(aspect) || aspect <= 0) return 1
-  return clamp(aspect, ALBUM_MIN_ASPECT, ALBUM_MAX_ASPECT)
+  return clamp(aspect, 1 / ALBUM_MAX_ASPECT, ALBUM_MAX_ASPECT)
 }
 
 /**
  * One picture on its own: as wide as the album down to `ALBUM_LONE_MIN_ASPECT`; a taller picture
- * keeps that height and is drawn narrower, down to `ALBUM_MIN_ASPECT`, past which it is cropped.
+ * keeps that height and is drawn narrower, down to 9:21, past which it is cropped.
  * Never taller than `maxHeightPx` either: a picture that would be is drawn that tall and narrower.
  */
 function loneTile(
@@ -264,7 +262,7 @@ function balanceCost(rows: readonly AlbumRow[], height: number, width: number): 
  * never alone on its row, never the largest tile, and where avoidable not among the two largest.
  *
  * **One picture** keeps its own shape: see `loneTile`. `loneMaxHeightPx` caps its height, as the
- * desktop does; the phone has no cap.
+ * wide layout does; the narrow one has no cap.
  *
  * `aspects` are width over height; an absent or unusable one draws a square. Shapes come from the
  * sender's metadata, so the layout is settled before a byte of any picture arrives, and a tile's
