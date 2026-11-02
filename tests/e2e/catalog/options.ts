@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+
 import { ARGOS_SENSITIVITY } from '#catalog/diff'
 
 export const USAGE = `usage: pnpm catalog:compare [base-ref] [options]
@@ -59,19 +61,50 @@ export function parseCompareArgs(argv: readonly string[]): CompareOptions {
   return options
 }
 
+/** The prefix of every variable the desktop build bakes in and its main process reads. */
+const PUBLIC_PREFIX = 'EXPO_PUBLIC_'
+
 /**
- * Names a cached capture. A capture is only reused for the same commit, tier and host, and with
- * the same change applied to make an older base run hidden, since each of those changes a picture.
+ * What a build takes from its environment, as a short hash: the repo-root `.env`, which the build
+ * and desktop main both load (null when there is none, which hashes apart from an empty one), and
+ * every `EXPO_PUBLIC_*` variable set, since the build bakes those in and flags read them.
+ */
+export function buildEnvironmentHash(dotEnv: string | null, env: NodeJS.ProcessEnv): string {
+  const publicVariables = Object.entries(env)
+    .filter(([name, value]) => name.startsWith(PUBLIC_PREFIX) && value !== undefined)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  return createHash('sha256')
+    .update(JSON.stringify({ dotEnv, publicVariables }))
+    .digest('hex')
+    .slice(0, 12)
+}
+
+/**
+ * Names a cached capture. A capture is only reused for the same commit, tier, host and build
+ * environment, and with the same change applied to make an older base run hidden, since each of
+ * those changes a picture.
  */
 export function captureKey(capture: {
   sha: string
   tier: CatalogTier
   platform: string
   arch: string
+  environmentHash: string
   overlayHash?: string | undefined
 }): string {
   const overlay = capture.overlayHash === undefined ? '' : `-hidden-${capture.overlayHash}`
-  return `${capture.sha}-${capture.tier}-${capture.platform}-${capture.arch}${overlay}`
+  return (
+    `${capture.sha}-${capture.tier}-${capture.platform}-${capture.arch}` +
+    `-env-${capture.environmentHash}${overlay}`
+  )
+}
+
+/**
+ * Whether a capture may be cached. A cached capture is reused as whole and sound, so one whose spec
+ * failed, or stopped before every page it listed, is used for this run only.
+ */
+export function cacheable(record: { specPassed: boolean; complete: boolean | null }): boolean {
+  return record.specPassed && record.complete !== false
 }
 
 /** The pages the spec listed and never wrote, in its order. */

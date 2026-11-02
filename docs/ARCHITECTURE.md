@@ -335,13 +335,20 @@ change move?" before a push, on any host, macOS included. It captures the catalo
 machine: at the base (default: the merge base with `origin/main`), in a temporary worktree
 installed from pnpm's store, and in the working tree as it is, uncommitted changes included. Each
 side builds its own desktop app and runs its own `catalog.spec.ts`, as each side's CI build does.
-The two sets are diffed as Argos diffs (odiff's colour measure through pixelmatch, Argos's two
-passes, anti-aliasing ignored, a page that changed size is changed), and
-`test-results/catalog-compare/report/index.html` lists the changed, added and removed pages with
-before, after, a slider and the diff. It exits 0 when nothing differs, 1 when something does and 2
-when it could not compare, so it can gate a script. A capture of a commit is cached under
-`test-results/catalog-compare/cache/`, so a second run against the same base captures only the
-working tree; `--refresh` captures again, `--tier nightly` compares every page.
+The two sets are diffed as Argos diffs (argos-ci.com/docs/diff-algorithm): odiff's colour measure
+through pixelmatch; two pictures of different sizes on a canvas the larger width by the larger
+height, one smaller in both dimensions first enlarged to fit keeping its aspect ratio (sharp's
+`contain`, Lanczos-3), the rest transparent, which odiff takes as white; then Argos's two passes on
+that canvas, anti-aliasing ignored, each with its minimum, the larger count deciding. A change of
+size alone decides nothing. `test-results/catalog-compare/report/index.html` lists the changed,
+added and removed pages with a slider, a flip, side by side and the diff, both sides drawn on one
+canvas so neither shows past the other's edge. It exits 0 when nothing differs, 1 when something
+does and 2 when it could not compare or was interrupted, so it can gate a script. A capture whose
+spec passed and wrote every page it listed is cached under `test-results/catalog-compare/cache/`,
+keyed by commit, tier, host and build environment (the repo-root `.env` and every `EXPO_PUBLIC_*`
+variable), so a second run against the same base captures only the working tree; `--refresh`
+captures again, `--tier nightly` compares every page. Ctrl-C stops the whole command, removing
+the base's worktree and any half-written capture.
 
 Both sides are drawn by this machine, so its fonts and rendering cancel out: the pictures are not
 the ones Argos holds, and a difference only Linux draws (a font fallback, say) is Argos's to find.

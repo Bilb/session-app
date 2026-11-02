@@ -1,4 +1,4 @@
-import { execFileSync, spawn } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import {
   copyFileSync,
@@ -10,11 +10,13 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { countByStatus, decodePng, hasDifferences, isBlank } from '#catalog/diff'
 import {
+  buildEnvironmentHash,
+  cacheable,
   captureKey,
   EXIT,
   missingPages,
@@ -24,6 +26,16 @@ import {
   type CatalogTier,
   type CompareOptions,
 } from '#catalog/options'
+import {
+  CompareFailure,
+  Interrupted,
+  mustStep,
+  seconds,
+  step,
+  stopIfInterrupted,
+  stopOnSignals,
+  wasInterrupted,
+} from '#catalog/steps'
 import { pageIdsIn, writeReport } from '#catalog/writeReport'
 
 /**
@@ -36,6 +48,7 @@ import { pageIdsIn, writeReport } from '#catalog/writeReport'
 const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
 const outRoot = join(repoRoot, 'test-results', 'catalog-compare')
 const cacheRoot = join(outRoot, 'cache')
+const uncachedRoot = join(outRoot, 'uncached')
 
 /** The desktop main source that makes a hidden run; a base without it is given it. */
 const HIDDEN_RUN_SOURCE = 'apps/desktop/src/main/hiddenRun.ts'
@@ -51,9 +64,6 @@ const CAPTURE_LIMIT_MS: Record<CatalogTier, number> = { pr: 15 * 60_000, nightly
 
 /** Builds and captures share the machine with whoever is working on it. */
 const NICE = ['nice', '-n', '10'] as const
-
-/** A step that could not be done: its message is what the developer is told. */
-class CompareFailure extends Error {}
 
 /** Git's output as it printed it: a patch's last line can be a context line of one space. */
 function gitRaw(args: readonly string[], cwd = repoRoot): string {
@@ -71,47 +81,6 @@ function gitSucceeds(args: readonly string[], cwd = repoRoot): boolean {
   } catch {
     return false
   }
-}
-
-function seconds(since: number): string {
-  return `${((Date.now() - since) / 1000).toFixed(0)}s`
-}
-
-/** Whether a step's child is running, which hears an interrupt itself and fails the step. */
-let stepRunning = false
-
-/** Runs a step with its output shown, failing the comparison with `what` if it fails. */
-async function step(
-  what: string,
-  command: readonly string[],
-  options: { cwd: string; env?: NodeJS.ProcessEnv | undefined },
-): Promise<number> {
-  const started = Date.now()
-  console.log(`\n▶ ${what}`)
-  const [program = '', ...args] = command
-  stepRunning = true
-  const code = await new Promise<number>((resolve, reject) => {
-    const child = spawn(program, args, {
-      cwd: options.cwd,
-      env: options.env ?? process.env,
-      stdio: 'inherit',
-    })
-    child.on('error', reject)
-    child.on('exit', (exitCode, signal) => {
-      resolve(exitCode ?? (signal === null ? 1 : 128))
-    })
-  })
-  stepRunning = false
-  console.log(`  ${what}: ${code === 0 ? 'done' : `exit ${String(code)}`} in ${seconds(started)}`)
-  return code
-}
-
-async function mustStep(
-  what: string,
-  command: readonly string[],
-  options: { cwd: string; env?: NodeJS.ProcessEnv | undefined },
-): Promise<void> {
-  if ((await step(what, command, options)) !== 0) throw new CompareFailure(`${what} failed`)
 }
 
 /** What a capture directory holds beside its pictures. */
@@ -234,7 +203,8 @@ async function buildAndCapture(
 
 /**
  * A capture of `sha`, from the cache when there is one. Written beside its final place and moved
- * there once whole, so the cache never holds half a capture.
+ * there only once whole and sound (see `cacheable`), so the cache never holds half a capture or
+ * one whose spec failed; such a capture is moved aside and used for this run alone.
  */
 async function cachedCapture(
   key: string,
@@ -250,11 +220,19 @@ async function cachedCapture(
       cached: true,
     }
   const partial = `${dir}.partial`
-  const record = await make(partial)
+  let record: CaptureRecord
+  try {
+    record = await make(partial)
+  } catch (error) {
+    rmSync(partial, { recursive: true, force: true })
+    throw error
+  }
   writeFileSync(join(partial, 'capture.json'), JSON.stringify(record, null, 2))
-  rmSync(dir, { recursive: true, force: true })
-  renameSync(partial, dir)
-  return { dir, record, cached: false }
+  const destination = cacheable(record) ? dir : join(uncachedRoot, key)
+  rmSync(destination, { recursive: true, force: true })
+  mkdirSync(dirname(destination), { recursive: true })
+  renameSync(partial, destination)
+  return { dir: destination, record, cached: false }
 }
 
 /**
@@ -309,6 +287,7 @@ async function captureBase(
       { cwd: worktree },
     )
     // Both builds read the repo's .env; the same one on both sides, or a flag set in it differs.
+    // Its contents are in both sides' cache keys.
     if (existsSync(join(repoRoot, '.env')))
       copyFileSync(join(repoRoot, '.env'), join(worktree, '.env'))
     await mustStep(
@@ -334,6 +313,8 @@ async function captureBase(
 
 function captureNotes(side: string, record: CaptureRecord, cached: boolean): string[] {
   const notes: string[] = []
+  if (!cacheable(record))
+    notes.push(`The ${side} capture was not cached, so the next run captures it again.`)
   if (record.complete === null && !record.specPassed)
     notes.push(
       `The ${side} spec failed and lists no pages, so its capture cannot be confirmed whole: ` +
@@ -366,12 +347,22 @@ async function main(): Promise<number> {
   const dirty = git(['status', '--porcelain', '--untracked-files=normal']) !== ''
 
   const overlay = hiddenRunOverlay(baseSha)
-  const host = { tier: options.tier, platform: process.platform, arch: process.arch }
+  const dotEnv = join(repoRoot, '.env')
+  const host = {
+    tier: options.tier,
+    platform: process.platform,
+    arch: process.arch,
+    environmentHash: buildEnvironmentHash(
+      existsSync(dotEnv) ? readFileSync(dotEnv, 'utf8') : null,
+      process.env,
+    ),
+  }
   const base = await cachedCapture(
     captureKey({ sha: baseSha, ...host, overlayHash: overlay?.hash }),
     options,
     (dir) => captureBase(baseSha, dir, overlay, options),
   )
+  stopIfInterrupted()
 
   const captureHead = (dir: string) =>
     buildAndCapture(
@@ -420,16 +411,14 @@ async function main(): Promise<number> {
   return hasDifferences(results) ? EXIT.different : EXIT.same
 }
 
-// During a step its child hears the interrupt too and exits, which fails the step and so removes
-// the base's worktree on the way out; between steps there is nothing to wait for.
-process.on('SIGINT', () => {
-  if (!stepRunning) process.exit(130)
-})
+stopOnSignals(EXIT.failed)
 
 main().then(
   (code) => process.exit(code),
   (error: unknown) => {
     if (error instanceof UsageError) console.error(`${error.message}\n\n${USAGE}`)
+    else if (error instanceof Interrupted || wasInterrupted())
+      console.error('\ncatalog:compare stopped by an interrupt, before comparing')
     else
       console.error(
         `\ncatalog:compare failed: ${error instanceof Error ? error.message : String(error)}`,
