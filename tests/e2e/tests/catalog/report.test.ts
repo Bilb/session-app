@@ -66,6 +66,38 @@ describe('the report', () => {
   })
 })
 
+describe('a page that changed size', () => {
+  const resized = renderReport({
+    base: { label: 'base', sha: 'a'.repeat(40) },
+    head: { label: 'working tree', sha: 'b'.repeat(40) },
+    tier: 'pr',
+    sensitivity: 0.5,
+    results: [
+      {
+        id: 'grew',
+        status: 'changed',
+        differingPixels: 10,
+        totalPixels: 1000,
+        before: { width: 200, height: 100 },
+        after: { width: 100, height: 150 },
+      },
+    ],
+    warnings: [],
+  })
+
+  it('draws both sides on one canvas the larger width by the larger height', () => {
+    expect(resized).toContain('class="stage resized" style="--w:200;--h:150"')
+    // Each picture keeps its own size on that canvas, at the top left.
+    expect(resized).toContain('style="width:100.0000%;height:66.6667%" src="before/grew.png"')
+    expect(resized).toContain('style="width:50.0000%;height:100.0000%" src="after/grew.png"')
+    expect(resized).toContain('Dashed outlines mark each picture')
+  })
+
+  it('says what the diff colours mean, anti-aliasing included', () => {
+    expect(resized).toContain('anti-aliasing, which is not counted')
+  })
+})
+
 describe('a change, described', () => {
   it('adds the size change when there was one', () => {
     expect(
@@ -78,5 +110,21 @@ describe('a change, described', () => {
         after: { width: 10, height: 100 },
       }),
     ).toBe('10 pixels differ (1.00%); size 10×10 → 10×100')
+  })
+
+  it('says which side was enlarged to compare, and to what', () => {
+    expect(
+      describeChange({
+        id: 'a',
+        status: 'changed',
+        differingPixels: 10,
+        totalPixels: 1000,
+        before: { width: 10, height: 10 },
+        after: { width: 20, height: 30 },
+        scaled: { side: 'before', to: { width: 20, height: 20 } },
+      }),
+    ).toBe(
+      '10 pixels differ (1.00%); size 10×10 → 20×30; before enlarged to 20×20 to compare, as Argos does',
+    )
   })
 })

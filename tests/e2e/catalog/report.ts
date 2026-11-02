@@ -1,4 +1,4 @@
-import { countByStatus, type PageResult, type PageStatus } from '#catalog/diff'
+import { countByStatus, type PageResult, type PageStatus, type Size } from '#catalog/diff'
 
 /** One side of the comparison, as the report names it. */
 interface ReportSide {
@@ -39,26 +39,70 @@ const HEADINGS: Record<PageStatus, string> = {
   unchanged: 'Unchanged',
 }
 
-/** "12,345 pixels differ (0.42%)", or the size change when there was one. */
+const dimensions = (size: Size) => `${String(size.width)}×${String(size.height)}`
+
+/**
+ * "12,345 pixels differ (0.42%)", then the size change when there was one, and the picture
+ * enlarged to compare when one was.
+ */
 export function describeChange(result: PageResult): string {
   const share = result.totalPixels === 0 ? 0 : (100 * result.differingPixels) / result.totalPixels
-  const pixels = `${result.differingPixels.toLocaleString('en')} pixels differ (${share.toFixed(2)}%)`
-  const { before, after } = result
-  if (
-    before === undefined ||
-    after === undefined ||
-    (before.width === after.width && before.height === after.height)
-  )
-    return pixels
-  return `${pixels}; size ${String(before.width)}×${String(before.height)} → ${String(after.width)}×${String(after.height)}`
+  const parts = [
+    `${result.differingPixels.toLocaleString('en')} pixels differ (${share.toFixed(2)}%)`,
+  ]
+  const { before, after, scaled } = result
+  if (before !== undefined && after !== undefined && !sameSize(before, after))
+    parts.push(`size ${dimensions(before)} → ${dimensions(after)}`)
+  if (scaled !== undefined)
+    parts.push(`${scaled.side} enlarged to ${dimensions(scaled.to)} to compare, as Argos does`)
+  return parts.join('; ')
 }
+
+const sameSize = (a: Size, b: Size) => a.width === b.width && a.height === b.height
 
 function image(kind: ImageKind, id: string, alt: string): string {
   return `<img src="${escapeHtml(imagePath(kind, id))}" alt="${escapeHtml(alt)}" loading="lazy">`
 }
 
+const percent = (part: number, whole: number) => `${((100 * part) / whole).toFixed(4)}%`
+
+/**
+ * One picture on the page's canvas: at the top left, at its own size relative to the canvas, on an
+ * opaque backdrop that fills the canvas so nothing beneath shows past its edge, and outlined when
+ * the two sides differ in size.
+ */
+function layer(kind: ImageKind, id: string, size: Size, canvas: Size, alt: string): string {
+  const box = `width:${percent(size.width, canvas.width)};height:${percent(size.height, canvas.height)}`
+  return `<div class="layer ${kind}"><img style="${box}" src="${escapeHtml(imagePath(kind, id))}" alt="${escapeHtml(alt)}" loading="lazy"><span class="bounds" style="${box}"></span></div>`
+}
+
+/** A canvas the larger width by the larger height, the size both sides are compared on. */
+function stage(result: PageResult, layers: readonly string[], extra = ''): string {
+  const canvas = canvasOf(result)
+  const resized = !sameSize(sizeOr(result.before, canvas), sizeOr(result.after, canvas))
+  return `<div class="stage${resized ? ' resized' : ''}" style="--w:${String(canvas.width)};--h:${String(canvas.height)}"${extra}>${layers.join('')}</div>`
+}
+
+const sizeOr = (size: Size | undefined, fallback: Size) => size ?? fallback
+
+function canvasOf(result: PageResult): Size {
+  const before = result.before ?? result.after ?? { width: 1, height: 1 }
+  const after = result.after ?? before
+  return {
+    width: Math.max(before.width, after.width),
+    height: Math.max(before.height, after.height),
+  }
+}
+
 function changedCard(result: PageResult): string {
   const id = escapeHtml(result.id)
+  const canvas = canvasOf(result)
+  const side = (kind: 'before' | 'after') =>
+    layer(kind, result.id, sizeOr(result[kind], canvas), canvas, `${result.id} ${kind}`)
+  const resized = !sameSize(sizeOr(result.before, canvas), sizeOr(result.after, canvas))
+  const bounds = resized
+    ? ' Dashed outlines mark each picture&#39;s own bounds; the checkerboard lies outside it.'
+    : ''
   return `<article class="page" id="page-${id}" data-mode="slider">
   <header>
     <h3>${id}</h3>
@@ -71,23 +115,24 @@ function changedCard(result: PageResult): string {
     </span>
   </header>
   <div class="view slider">
-    <div class="stack">
-      ${image('before', result.id, `${result.id} before`)}
-      <div class="after">${image('after', result.id, `${result.id} after`)}</div>
-    </div>
+    ${stage(result, [side('before'), side('after')], ' data-split')}
     <label class="range">Before <input type="range" min="0" max="100" value="50" aria-label="Before and after"> After</label>
   </div>
   <div class="view flip">
     <button type="button" class="flipper" aria-label="Show the other side">
       <span class="tag">after</span>
-      <img src="${escapeHtml(imagePath('after', result.id))}" data-before="${escapeHtml(imagePath('before', result.id))}" data-after="${escapeHtml(imagePath('after', result.id))}" alt="${id}, flipping between before and after" loading="lazy">
+      ${stage(result, [side('before'), side('after')], ' data-showing="after"')}
     </button>
   </div>
   <div class="view side">
-    <figure><figcaption>Before</figcaption>${image('before', result.id, `${result.id} before`)}</figure>
-    <figure><figcaption>After</figcaption>${image('after', result.id, `${result.id} after`)}</figure>
+    <figure><figcaption>Before</figcaption>${stage(result, [side('before')])}</figure>
+    <figure><figcaption>After</figcaption>${stage(result, [side('after')])}</figure>
   </div>
-  <div class="view diff">${image('diff', result.id, `${result.id}: what differs, in red`)}</div>
+  <div class="view diff">
+    ${stage(result, [layer('diff', result.id, canvas, canvas, `${result.id}: what differs, in red; anti-aliasing in yellow, not counted`)])}
+  </div>
+  <p class="legend view diff">Red: a pixel that counts as different. Yellow: a pixel that differs only as anti-aliasing, which is not counted. Grey: the after picture, faded. Checkerboard: where the after picture does not reach.</p>
+  ${bounds === '' ? '' : `<p class="legend">${bounds.trim()}</p>`}
 </article>`
 }
 
@@ -125,6 +170,9 @@ const STYLE = `
   --surface: color-mix(in srgb, CanvasText 4%, Canvas);
   --line: color-mix(in srgb, CanvasText 18%, Canvas);
   --checker: color-mix(in srgb, CanvasText 8%, Canvas);
+  --backdrop: repeating-conic-gradient(var(--checker) 0 25%, var(--bg) 0 50%) 0 0 / 16px 16px;
+  --before-bounds: light-dark(darkorange, orange);
+  --after-bounds: light-dark(royalblue, deepskyblue);
   --accent: light-dark(seagreen, mediumaquamarine);
   --changed: light-dark(firebrick, salmon);
   --added: var(--accent);
@@ -153,24 +201,35 @@ h3 { font-size: 15px; margin: 0; font-family: ui-monospace, SFMono-Regular, Menl
 .modes button { font: inherit; font-size: 13px; padding: 2px 10px; border-radius: 6px; cursor: pointer;
   border: 1px solid var(--line); background: transparent; color: var(--text); }
 .modes button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: Canvas; }
-img { display: block; max-width: 100%; height: auto;
-  background: repeating-conic-gradient(var(--checker) 0 25%, transparent 0 50%) 0 0 / 16px 16px; }
+img { display: block; max-width: 100%; height: auto; }
+.single img { background: var(--backdrop); }
 .view { display: none; overflow-x: auto; }
+.view.slider { width: fit-content; max-width: 100%; }
 .page[data-mode="slider"] .view.slider, .page[data-mode="flip"] .view.flip,
 .page[data-mode="side"] .view.side, .page[data-mode="diff"] .view.diff { display: block; }
-.stack { position: relative; display: inline-block; max-width: 100%; }
-.stack .after { position: absolute; inset: 0; clip-path: inset(0 0 0 var(--split, 50%)); }
-.stack::after { content: ''; position: absolute; top: 0; bottom: 0; left: var(--split, 50%);
+.stage { position: relative; width: calc(var(--w) * 1px); max-width: 100%;
+  aspect-ratio: var(--w) / var(--h); }
+.layer { position: absolute; inset: 0; background: var(--backdrop); }
+.layer img, .layer .bounds { position: absolute; top: 0; left: 0; max-width: none; }
+.layer .bounds { display: none; pointer-events: none; }
+.stage.resized .layer:not(.diff) .bounds { display: block; outline-style: dashed; outline-width: 2px;
+  outline-offset: -2px; }
+.layer.before .bounds { outline-color: var(--before-bounds); }
+.layer.after .bounds { outline-color: var(--after-bounds); }
+.stage[data-split] .layer.after { clip-path: inset(0 0 0 var(--split, 50%)); }
+.stage[data-split]::after { content: ''; position: absolute; top: 0; bottom: 0; left: var(--split, 50%);
   width: 2px; margin-left: -1px; background: var(--accent); pointer-events: none; }
-.stack .after img { width: 100%; }
+.stage[data-showing="after"] .layer.before, .stage[data-showing="before"] .layer.after { display: none; }
+.legend { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
 .range { display: flex; align-items: center; gap: 8px; color: var(--muted); margin-top: 8px; }
 .range input { flex: 1; }
 .view.side { display: none; }
-.page[data-mode="side"] .view.side { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-@media (max-width: 700px) { .page[data-mode="side"] .view.side { grid-template-columns: 1fr; } }
+.page[data-mode="side"] .view.side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px; }
+@media (max-width: 700px) { .page[data-mode="side"] .view.side { grid-template-columns: minmax(0, 1fr); } }
 figure { margin: 0; } figcaption { color: var(--muted); font-size: 13px; }
-.flipper { position: relative; display: inline-block; padding: 0; border: 0; background: none; cursor: pointer; max-width: 100%; }
-.flipper .tag { position: absolute; top: 4px; left: 4px; background: var(--accent); color: Canvas;
+.flipper { position: relative; display: block; width: 100%; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; }
+.flipper .tag { position: absolute; z-index: 1; top: 4px; left: 4px; background: var(--accent); color: Canvas;
   font-size: 12px; padding: 0 6px; border-radius: 4px; }
 .unchanged ul { columns: 3 260px; padding-left: 20px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
 .unchanged summary h2 { display: inline; }
@@ -186,15 +245,15 @@ for (const page of document.querySelectorAll('.page[data-mode]')) {
       for (const other of buttons) other.setAttribute('aria-pressed', String(other === button));
     });
   const range = page.querySelector('.range input');
-  const stack = page.querySelector('.stack');
-  range.addEventListener('input', () => stack.style.setProperty('--split', range.value + '%'));
+  const split = page.querySelector('.stage[data-split]');
+  range.addEventListener('input', () => split.style.setProperty('--split', range.value + '%'));
   const flipper = page.querySelector('.flipper');
-  const shown = flipper.querySelector('img');
+  const flipped = flipper.querySelector('.stage');
   const tag = flipper.querySelector('.tag');
   flipper.addEventListener('click', () => {
-    const next = tag.textContent === 'after' ? 'before' : 'after';
+    const next = flipped.dataset.showing === 'after' ? 'before' : 'after';
+    flipped.dataset.showing = next;
     tag.textContent = next;
-    shown.setAttribute('src', shown.dataset[next]);
   });
 }
 `
