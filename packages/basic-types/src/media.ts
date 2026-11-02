@@ -70,14 +70,18 @@ export function mediaKindOf(contentType: string | undefined): MediaKind {
 }
 
 /**
- * The narrowest a message's attachments are drawn, in density-independent pixels: a phone's album
- * before the transcript is measured, and on the narrowest phones. `ALBUM_SIZES` says how wide they
- * are drawn once it is.
+ * The narrowest a message's attachments are drawn, in density-independent pixels: the narrow
+ * layout's album before the transcript is measured, and on the narrowest phones. `ALBUM_SIZES`
+ * says how wide they are drawn once it is.
  */
 export const ALBUM_WIDTH = 240
 
-/** The phones, or the desktop: the two the album is sized for. */
-export type AlbumSurface = 'mobile' | 'desktop'
+/**
+ * The two layouts the album is sized for, by the window's width rather than the platform: `narrow`
+ * is the single-pane layout (a phone, or a desktop window narrowed past the two-pane breakpoint);
+ * `wide` is the list and the conversation side by side (any desktop window past it, a tablet).
+ */
+export type AlbumSurface = 'narrow' | 'wide'
 
 export interface AlbumSize {
   /** The album's width as a share of the transcript it is drawn in. */
@@ -94,8 +98,8 @@ export interface AlbumSize {
  * thumbnails from them, times its display density, before anything is drawn.
  */
 export const ALBUM_SIZES: Readonly<Record<AlbumSurface, AlbumSize>> = {
-  mobile: { widthShare: 0.75, minWidthPx: ALBUM_WIDTH, maxWidthPx: 320 },
-  desktop: { widthShare: 0.6, minWidthPx: 320, maxWidthPx: 480, loneMaxHeightPx: 460 },
+  narrow: { widthShare: 0.75, minWidthPx: ALBUM_WIDTH, maxWidthPx: 320 },
+  wide: { widthShare: 0.6, minWidthPx: 320, maxWidthPx: 480, loneMaxHeightPx: 460 },
 }
 
 /**

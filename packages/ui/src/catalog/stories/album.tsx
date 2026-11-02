@@ -7,11 +7,11 @@ import { MESSAGE_FRAME_INSET_PX, MessageFrame } from '../../MessageFrame'
 import { noop } from './shared'
 
 /** A desktop bubble, wider than the phone's album. */
-const DESKTOP_ALBUM_WIDTH = ALBUM_SIZES.desktop.maxWidthPx
+const DESKTOP_ALBUM_WIDTH = ALBUM_SIZES.wide.maxWidthPx
 /** A phone's widest album, three quarters of a 430 pt transcript. */
-const PHONE_ALBUM_MAX_WIDTH = ALBUM_SIZES.mobile.maxWidthPx
+const PHONE_ALBUM_MAX_WIDTH = ALBUM_SIZES.narrow.maxWidthPx
 /** The desktop's cap on a picture alone. */
-const DESKTOP_LONE_MAX_HEIGHT_PX = ALBUM_SIZES.desktop.loneMaxHeightPx
+const DESKTOP_LONE_MAX_HEIGHT_PX = ALBUM_SIZES.wide.loneMaxHeightPx
 
 const SQUARE = 1
 const PORTRAIT = 3 / 4

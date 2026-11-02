@@ -180,7 +180,7 @@ export async function createBridge(): Promise<BridgeTransport & MediaSource & De
     // soft, one made too large only costs memory. A stored edge (setThumbnailEdge) wins over this.
     thumbnailEdgePx: thumbnailEdgePxFor(
       screen.getAllDisplays().map((display) => display.scaleFactor),
-      'desktop',
+      'wide',
     ),
     // Off unless asked for: it is chatty at anything below warn, and the reason to turn it up is
     // always a specific failure. `warn,network=debug` is what a diagnosis looks like - a flat

@@ -155,7 +155,6 @@ export { AttachmentAlbum } from './AttachmentAlbum'
 export type { AlbumItem, AttachmentAlbumProps } from './AttachmentAlbum'
 export { ALBUM_MAX_TILES, ALBUM_SEAM, albumLayout, lastTile } from './albumLayout'
 export type { AlbumLayout, AlbumRow, AlbumTileRect } from './albumLayout'
-export { DRAWN_ON_DESKTOP } from './surface'
 export { FileRow } from './FileRow'
 export type { FileRowProps, FileRowTestIDs, FileRowThumbnail } from './FileRow'
 export {

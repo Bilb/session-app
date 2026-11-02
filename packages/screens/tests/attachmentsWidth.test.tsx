@@ -38,13 +38,13 @@ function message(attachments: Attachment[], gallery = true): Message {
 
 const IPHONE = picture(0, 1179, 2556)
 
-/** The phone's narrowest album, with a lone picture capped at 320 px. */
-const NARROWING: AlbumGeometry = { ...albumGeometry('mobile', null), loneMaxHeightPx: 320 }
+/** The narrow layout's narrowest album, with a lone picture capped at 320 px. */
+const NARROWING: AlbumGeometry = { ...albumGeometry('narrow', null), loneMaxHeightPx: 320 }
 
 describe('the width a message’s attachments are drawn at', () => {
   it('is the album’s for a lone picture the shipped layout draws full width', () => {
     expect(
-      attachmentsWidthPx(message([picture(0, 1600, 1200)]), albumGeometry('mobile', null)),
+      attachmentsWidthPx(message([picture(0, 1600, 1200)]), albumGeometry('narrow', null)),
     ).toBe(ALBUM_WIDTH)
   })
 
