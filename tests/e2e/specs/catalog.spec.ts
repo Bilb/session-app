@@ -1,5 +1,5 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 import { expect, test } from '@playwright/test'
 import { ELEMENT } from '@session/test-ids'
@@ -12,6 +12,12 @@ import { auditVerdict, describeIssues, issueKey } from '../harness/knownIssues'
 const TIER = process.env['CATALOG_TIER'] === 'nightly' ? 'nightly' : 'pr'
 /** Where each page's PNG is written, for `argos upload`; nothing is written without it. */
 const OUT = process.env['CATALOG_OUT']
+/**
+ * Where the tier's page ids are written as JSON before the first capture, so a reader of `OUT` can
+ * tell a page that was never drawn from one the run did not reach. Kept out of `OUT`, which is
+ * uploaded as it is.
+ */
+const PAGES_OUT = process.env['CATALOG_PAGES_OUT']
 
 /** Wide and tall enough that no page is clipped by the window. */
 const WINDOW = { width: 3000, height: 2400 } as const
@@ -68,6 +74,10 @@ test(`captures and audits the component catalog's ${TIER} pages @catalog`, async
       TIER,
     )
     if (OUT !== undefined) mkdirSync(OUT, { recursive: true })
+    if (PAGES_OUT !== undefined) {
+      mkdirSync(dirname(PAGES_OUT), { recursive: true })
+      writeFileSync(PAGES_OUT, JSON.stringify(pages.map((page) => page.id)))
+    }
 
     const found = new Map<string, AuditIssue>()
     for (const page of pages) {
