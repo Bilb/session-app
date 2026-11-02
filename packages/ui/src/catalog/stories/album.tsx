@@ -2,6 +2,21 @@ import { ALBUM_SIZES, ALBUM_WIDTH } from '@session/basic-types'
 import { ELEMENT } from '@session/test-ids'
 
 import { AttachmentAlbum, type AlbumItem } from '../../AttachmentAlbum'
+import {
+  ANDROID_SCREEN,
+  HALF,
+  IPHONE_SCREEN,
+  LANDSCAPE,
+  NEEDLE,
+  PANORAMA,
+  PANORAMA_WIDE,
+  PHONE,
+  PORTRAIT,
+  SQUARE,
+  ULTRATALL,
+  ULTRAWIDE,
+  WIDESCREEN,
+} from '../albumShapes'
 import { defineStory } from '../story'
 import { MESSAGE_FRAME_INSET_PX, MessageFrame } from '../../MessageFrame'
 import { noop } from './shared'
@@ -12,18 +27,6 @@ const WIDE_ALBUM_MAX_WIDTH = ALBUM_SIZES.wide.maxWidthPx
 const NARROW_ALBUM_MAX_WIDTH = ALBUM_SIZES.narrow.maxWidthPx
 /** The wide layout's cap on a picture alone. */
 const WIDE_LONE_MAX_HEIGHT_PX = ALBUM_SIZES.wide.loneMaxHeightPx
-
-const SQUARE = 1
-const PORTRAIT = 3 / 4
-const LANDSCAPE = 4 / 3
-const PHONE = 9 / 16
-const ULTRAWIDE = 21 / 9
-const ULTRATALL = 9 / 21
-const PANORAMA = 3
-const HALF = 1 / 2
-const NEEDLE = 1 / 5
-const PANORAMA_WIDE = 5
-const WIDESCREEN = 16 / 9
 
 /**
  * Placeholders, with no picture to fetch: what is drawn here is the tiles' rects and rings. An
@@ -153,10 +156,6 @@ export const albumRows = defineStory<AlbumStory>({
   render: inFrame,
 })
 
-/** iPhone and Android screenshots. */
-const IPHONE_SHAPE = 9 / 19.5
-const ANDROID_SHAPE = 9 / 20
-
 /**
  * "+N" past five: a square slot over the next picture's ThumbHash, never alone on its row and
  * never the largest tile, on the sets where that is hardest - the count's picture the widest,
@@ -191,17 +190,17 @@ export const albumOverflow = defineStory<AlbumStory>({
       onAccent: false,
     },
     smallOverSquare: {
-      aspects: [IPHONE_SHAPE, PORTRAIT, IPHONE_SHAPE, SQUARE, PORTRAIT, SQUARE, SQUARE],
+      aspects: [IPHONE_SCREEN, PORTRAIT, IPHONE_SCREEN, SQUARE, PORTRAIT, SQUARE, SQUARE],
       onAccent: false,
     },
     widePairThenPhones: {
-      aspects: [3 / 2, WIDESCREEN, SQUARE, IPHONE_SHAPE, ANDROID_SHAPE, SQUARE, SQUARE],
+      aspects: [3 / 2, WIDESCREEN, SQUARE, IPHONE_SCREEN, ANDROID_SCREEN, SQUARE, SQUARE],
       onAccent: false,
     },
     panoramas: { aspects: Array<number>(7).fill(PANORAMA_WIDE), onAccent: false },
-    phones: { aspects: Array<number>(7).fill(IPHONE_SHAPE), onAccent: false },
+    phones: { aspects: Array<number>(7).fill(IPHONE_SCREEN), onAccent: false },
     phonesWide: {
-      aspects: Array<number>(7).fill(IPHONE_SHAPE),
+      aspects: Array<number>(7).fill(IPHONE_SCREEN),
       onAccent: false,
       width: WIDE_ALBUM_MAX_WIDTH,
     },
@@ -257,7 +256,7 @@ export const albumChoices = defineStory<AlbumStory>({
       width: WIDE_ALBUM_MAX_WIDTH,
     },
     screenshotStripAsGrid: {
-      aspects: [IPHONE_SHAPE, PORTRAIT, PORTRAIT, IPHONE_SHAPE, IPHONE_SHAPE],
+      aspects: [IPHONE_SCREEN, PORTRAIT, PORTRAIT, IPHONE_SCREEN, IPHONE_SCREEN],
       onAccent: false,
     },
     sliverKeptUncropped: {
@@ -265,7 +264,7 @@ export const albumChoices = defineStory<AlbumStory>({
       onAccent: false,
     },
     tallestKeptGrid: {
-      aspects: [IPHONE_SHAPE, IPHONE_SHAPE, IPHONE_SHAPE, PORTRAIT, 2 / 3, IPHONE_SHAPE],
+      aspects: [IPHONE_SCREEN, IPHONE_SCREEN, IPHONE_SCREEN, PORTRAIT, 2 / 3, IPHONE_SCREEN],
       onAccent: false,
       width: WIDE_ALBUM_MAX_WIDTH,
     },

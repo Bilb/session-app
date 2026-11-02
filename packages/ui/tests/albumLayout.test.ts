@@ -11,18 +11,23 @@ import {
   tileAspect,
   type AlbumLayout,
 } from '#src/albumLayout'
+import {
+  HALF,
+  IPHONE_SCREEN,
+  LANDSCAPE,
+  NEEDLE,
+  PANORAMA,
+  PANORAMA_WIDE,
+  PHONE,
+  PORTRAIT,
+  SQUARE,
+  ULTRATALL,
+  ULTRAWIDE,
+  WIDESCREEN,
+} from '#src/catalog/albumShapes'
 
 /** The narrowest album, one in the wide layout, and an odd width that rounds unevenly. */
 const WIDTHS = [ALBUM_WIDTH, 420, 301] as const
-
-const SQUARE = 1
-const PORTRAIT = 3 / 4
-const LANDSCAPE = 4 / 3
-const PHONE = 9 / 16
-const ULTRAWIDE = 21 / 9
-const ULTRATALL = 9 / 21
-const PANORAMA = 3
-const HALF = 1 / 2
 
 /** Every mix the rules have to hold for, one to eight pictures, missing dimensions included. */
 const SETS: Record<string, readonly (number | undefined)[]> = {
@@ -138,7 +143,7 @@ describe('a lone picture', () => {
 
   it('is cropped only past 9:21', () => {
     const tallest = Math.round(ALBUM_WIDTH / ALBUM_LONE_MIN_ASPECT)
-    expect(lone(1 / 5).rows[0]?.tiles[0]?.width).toBe(Math.round(tallest * ULTRATALL))
+    expect(lone(NEEDLE).rows[0]?.tiles[0]?.width).toBe(Math.round(tallest * ULTRATALL))
   })
 
   it('stops at 21:9 the other way, where libsession crops its thumbnail', () => {
@@ -186,8 +191,6 @@ describe('an album of several', () => {
 })
 
 describe('choosing between layouts', () => {
-  const IPHONE = 9 / 19.5
-  const WIDE = 16 / 9
   const rowSizes = (layout: AlbumLayout) => layout.rows.map((row) => row.tiles.length)
   const area = (tile: { width: number; height: number }) => tile.width * tile.height
 
@@ -206,15 +209,15 @@ describe('choosing between layouts', () => {
     'does not flatten three pictures into a strip at %i px',
     (width) => {
       expect(rowSizes(albumLayout([LANDSCAPE, SQUARE, PORTRAIT], width))).toEqual([1, 2])
-      expect(rowSizes(albumLayout([WIDE, PHONE, PORTRAIT], width))).toEqual([1, 2])
-      expect(rowSizes(albumLayout([SQUARE, WIDE, 4 / 5], width))).toEqual([1, 2])
+      expect(rowSizes(albumLayout([WIDESCREEN, PHONE, PORTRAIT], width))).toEqual([1, 2])
+      expect(rowSizes(albumLayout([SQUARE, WIDESCREEN, 4 / 5], width))).toEqual([1, 2])
     },
   )
 
   it.each([
-    [[IPHONE, IPHONE, IPHONE, PORTRAIT, 2 / 3, IPHONE]],
-    [[IPHONE, 2 / 3, PHONE, IPHONE, IPHONE, LANDSCAPE]],
-    [[PHONE, PHONE, PORTRAIT, IPHONE, PORTRAIT, PORTRAIT, IPHONE, SQUARE, LANDSCAPE]],
+    [[IPHONE_SCREEN, IPHONE_SCREEN, IPHONE_SCREEN, PORTRAIT, 2 / 3, IPHONE_SCREEN]],
+    [[IPHONE_SCREEN, 2 / 3, PHONE, IPHONE_SCREEN, IPHONE_SCREEN, LANDSCAPE]],
+    [[PHONE, PHONE, PORTRAIT, IPHONE_SCREEN, PORTRAIT, PORTRAIT, IPHONE_SCREEN, SQUARE, LANDSCAPE]],
   ] as const)(
     'keeps a grid of screenshots and photos a grid at the wide layout’s widest (%#)',
     (aspects) => {
@@ -228,7 +231,7 @@ describe('choosing between layouts', () => {
     (width) => {
       // A landscape needs the album's whole width to be read; two near-squares stacked would not.
       expect(rowSizes(albumLayout([LANDSCAPE, LANDSCAPE], width))).toEqual([1, 1])
-      expect(rowSizes(albumLayout([LANDSCAPE, WIDE], width))).toEqual([1, 1])
+      expect(rowSizes(albumLayout([LANDSCAPE, WIDESCREEN], width))).toEqual([1, 1])
       expect(rowSizes(albumLayout([3 / 2, 3 / 2], width))).toEqual([1, 1])
       expect(rowSizes(albumLayout([5 / 4, 5 / 4], width))).toEqual([2])
       expect(rowSizes(albumLayout([1.04, 1.04], width))).toEqual([2])
@@ -254,10 +257,10 @@ describe('choosing between layouts', () => {
   )
 
   it.each([
-    [320, [IPHONE, PORTRAIT, LANDSCAPE, LANDSCAPE]],
-    [320, [PORTRAIT, PHONE, WIDE, WIDE]],
-    [480, [WIDE, PORTRAIT, LANDSCAPE, LANDSCAPE]],
-    [480, [WIDE, PORTRAIT, PORTRAIT, WIDE]],
+    [320, [IPHONE_SCREEN, PORTRAIT, LANDSCAPE, LANDSCAPE]],
+    [320, [PORTRAIT, PHONE, WIDESCREEN, WIDESCREEN]],
+    [480, [WIDESCREEN, PORTRAIT, LANDSCAPE, LANDSCAPE]],
+    [480, [WIDESCREEN, PORTRAIT, PORTRAIT, WIDESCREEN]],
   ] as const)(
     'balances a lopsided set rather than draw one tile over a row of small ones, at %i px',
     (width, aspects) => {
@@ -269,9 +272,9 @@ describe('choosing between layouts', () => {
   )
 
   it.each([
-    [ALBUM_WIDTH, [IPHONE, LANDSCAPE, WIDE, PORTRAIT, LANDSCAPE]],
-    [320, [IPHONE, LANDSCAPE, WIDE, PORTRAIT, LANDSCAPE]],
-    [320, [IPHONE, LANDSCAPE, LANDSCAPE, 3 / 2, LANDSCAPE]],
+    [ALBUM_WIDTH, [IPHONE_SCREEN, LANDSCAPE, WIDESCREEN, PORTRAIT, LANDSCAPE]],
+    [320, [IPHONE_SCREEN, LANDSCAPE, WIDESCREEN, PORTRAIT, LANDSCAPE]],
+    [320, [IPHONE_SCREEN, LANDSCAPE, LANDSCAPE, 3 / 2, LANDSCAPE]],
     [ALBUM_WIDTH, [LANDSCAPE, PORTRAIT, LANDSCAPE, LANDSCAPE, LANDSCAPE]],
   ] as const)(
     'crops no more than the layout nearest the target height, at %i px',
@@ -288,14 +291,17 @@ describe('choosing between layouts', () => {
   )
 
   it('gives a strip of screenshots room rather than draw slivers, at the narrowest album', () => {
-    const layout = albumLayout([IPHONE, PORTRAIT, PORTRAIT, IPHONE, IPHONE], ALBUM_WIDTH)
+    const layout = albumLayout(
+      [IPHONE_SCREEN, PORTRAIT, PORTRAIT, IPHONE_SCREEN, IPHONE_SCREEN],
+      ALBUM_WIDTH,
+    )
     expect(rowSizes(layout)).toEqual([2, 3])
     expect(Math.min(...tilesOf(layout).map((tile) => tile.width))).toBeGreaterThanOrEqual(56)
   })
 
   it('does not grow an album past 1.5 times its width to widen its tiles', () => {
     // One row of four is narrow here, but the 2×2 it could become is 1.6 times as tall as wide.
-    const layout = albumLayout([IPHONE, PORTRAIT, PORTRAIT, IPHONE], ALBUM_WIDTH)
+    const layout = albumLayout([IPHONE_SCREEN, PORTRAIT, PORTRAIT, IPHONE_SCREEN], ALBUM_WIDTH)
     expect(layout.height).toBeLessThanOrEqual(1.5 * ALBUM_WIDTH)
   })
 })
@@ -334,8 +340,8 @@ describe('an album at the wide layout’s widest', () => {
 })
 
 describe('the tile under "+N"', () => {
-  const SHAPES = [1 / 5, 1 / 3, ULTRATALL, HALF, PHONE, PORTRAIT, SQUARE, LANDSCAPE, 3 / 2]
-  const MORE = [16 / 9, ULTRAWIDE, PANORAMA, 5]
+  const SHAPES = [NEEDLE, 1 / 3, ULTRATALL, HALF, PHONE, PORTRAIT, SQUARE, LANDSCAPE, 3 / 2]
+  const MORE = [WIDESCREEN, ULTRAWIDE, PANORAMA, PANORAMA_WIDE]
   const ALL = [...SHAPES, ...MORE]
 
   /** Every set a seeded generator gives, so a failure names a set that can be replayed. */
@@ -367,9 +373,9 @@ describe('the tile under "+N"', () => {
   })
 
   it.each([
-    ['needles', [1 / 5, 1 / 5, 1 / 5, 1 / 5, 5, LANDSCAPE, LANDSCAPE]],
+    ['needles', [NEEDLE, NEEDLE, NEEDLE, NEEDLE, PANORAMA_WIDE, LANDSCAPE, LANDSCAPE]],
     ['panoramas', Array<number>(7).fill(PANORAMA)],
-    ['phones', Array<number>(7).fill(9 / 19.5)],
+    ['phones', Array<number>(7).fill(IPHONE_SCREEN)],
     ['a row of small ones over a square', [PHONE, PORTRAIT, PHONE, SQUARE, PORTRAIT, SQUARE]],
     ['wide pictures first', [5, LANDSCAPE, ULTRATALL, SQUARE, ULTRAWIDE, SQUARE, SQUARE]],
   ] as const)('never has a row to itself, %s', (_, aspects) => {
@@ -387,12 +393,15 @@ describe('the tile under "+N"', () => {
   })
 
   it('stays the last one, so the count follows the pictures it counts', () => {
-    const layout = albumLayout([...Array<number>(4).fill(1 / 5), 5, LANDSCAPE, LANDSCAPE], 280)
+    const layout = albumLayout(
+      [...Array<number>(4).fill(NEEDLE), PANORAMA_WIDE, LANDSCAPE, LANDSCAPE],
+      280,
+    )
     expect(lastTile(layout)?.at).toBe(ALBUM_MAX_TILES - 1)
   })
 
   it('is as narrow as the pictures beside it when they are all narrow, rather than cropping one', () => {
-    const layout = albumLayout(Array<number>(7).fill(9 / 19.5), ALBUM_WIDTH)
+    const layout = albumLayout(Array<number>(7).fill(IPHONE_SCREEN), ALBUM_WIDTH)
     const widths = layout.rows.at(-1)?.tiles.map((tile) => tile.width) ?? []
     expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1)
   })
