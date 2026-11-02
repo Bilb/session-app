@@ -891,9 +891,10 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   checkerboard, quality 90 - on a worker, and reports it as `Attachment.hasThumbnail` in a later
   `messages-updated`, with its size as `thumbnailWidthPx` and `thumbnailHeightPx` so a tile can be
   shaped before it loads. A staged file's thumbnail is made the same way. Its height is the client's
-  thumbnail edge, which each app opens the bridge with as `ALBUM_WIDTH` times its display density
-  and `setThumbnailEdge` can store over, clamped to 64-1024 so a decoded one stays within about 9.3
-  MiB. A square tile draws it with `fit="cover"`. It lives in the original's cache entry and is
+  thumbnail edge, which each app opens the bridge with as `thumbnailEdgePxFor`: the wide layout's
+  tallest tile times the densest display's scale, since a tablet can switch layout while running.
+  `setThumbnailEdge` can store over it, clamped to 64-1024 so a decoded one stays within about 9.3
+  MiB. A tile draws it with `fit="cover"`. It lives in the original's cache entry and is
   evicted with it. Generating it there rather than in each loader gives every platform the same
   picture from one decoder, libvips under libsession's own loader whitelist, and leaves the loaders
   two paths: a thumbnail, checked to be a JPEG and reduced while decoding but never below its view,
