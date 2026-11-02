@@ -1,4 +1,5 @@
 import { formatBytes } from '@session/basic-types'
+import { isolate } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Progress, Text, TILE_SCRIM, XStack, YStack } from '@session/ui'
 
@@ -9,7 +10,7 @@ import { sharedCaption } from './attachmentSetCaption'
 const PILL_BAR_WIDTH = 44
 
 function label(set: AttachmentSet): string {
-  return sharedCaption(set) ?? formatBytes(set.doneBytes)
+  return sharedCaption(set) ?? isolate(formatBytes(set.doneBytes))
 }
 
 /**

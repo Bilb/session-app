@@ -1,5 +1,5 @@
 import { formatBytes } from '@session/basic-types'
-import { PENDING_COPY, tr } from '@session/localization'
+import { isolate, PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import {
   Button,
@@ -91,7 +91,10 @@ function verbIcon(set: AttachmentSet, sending: boolean): IconName {
 }
 
 function caption(set: AttachmentSet): string {
-  return sharedCaption(set) ?? `${formatBytes(set.doneBytes)} / ${formatBytes(set.totalBytes)}`
+  return (
+    sharedCaption(set) ??
+    `${isolate(formatBytes(set.doneBytes))} / ${isolate(formatBytes(set.totalBytes))}`
+  )
 }
 
 /**

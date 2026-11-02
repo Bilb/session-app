@@ -233,7 +233,7 @@ describe('staging by libsession’s plan', () => {
     expect(staging.files).toEqual([notes])
     const notice = find(ELEMENT.conversation.composerNotice(id))
     expect(notice?.props.message).toBe(message)
-    expect(String(notice?.props.detail)).toMatch(/^photo\.jpg/)
+    expect(String(notice?.props.detail)).toMatch(/^\u2068photo\.jpg\u2069/)
     expect(find('announcement')?.props.text).toContain('photo.jpg')
   })
 

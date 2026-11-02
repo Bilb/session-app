@@ -1,5 +1,5 @@
 import { formatBytes } from '@session/basic-types'
-import { PENDING_COPY, tr } from '@session/localization'
+import { isolate, PENDING_COPY, tr } from '@session/localization'
 
 import type { AttachmentSet } from './attachmentSet'
 
@@ -10,7 +10,9 @@ import type { AttachmentSet } from './attachmentSet'
  */
 function sizeAndCount(set: AttachmentSet): string {
   const count = PENDING_COPY.attachmentCount(set.count)
-  return set.sizeBytes === undefined ? count : `${formatBytes(set.sizeBytes)} · ${count}`
+  return set.sizeBytes === undefined
+    ? count
+    : `${isolate(formatBytes(set.sizeBytes))} · ${isolate(count)}`
 }
 
 /**

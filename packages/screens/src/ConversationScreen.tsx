@@ -7,7 +7,7 @@ import {
   useMessages,
   useSessionActions,
 } from '@session/state'
-import { PENDING_COPY, tr } from '@session/localization'
+import { isolate, PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { DropOverlay, DropZone, List, Screen, Separator, Text, XStack, YStack } from '@session/ui'
 import { useMemo, useState } from 'react'
@@ -129,7 +129,7 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
                 title={tr('attachmentsAdd')}
                 hint={PENDING_COPY.attachmentsDropHint(
                   MAX_ATTACHMENTS_PER_MESSAGE,
-                  formatBytes(uploadLimitBytes),
+                  isolate(formatBytes(uploadLimitBytes)),
                 )}
                 testID={ELEMENT.conversation.dropOverlay}
               />
