@@ -46,7 +46,10 @@ export const ROW_OVERHANG = (ROW_HEIGHT - FOOTER_HEIGHT) / 2
 /** Each button takes the row's full height on touch. */
 const ACTION_SLOP = ROW_OVERHANG
 
-/** The least the caption keeps beside the two buttons: a size such as "2.4 MB", or its start. */
+/**
+ * The least the caption keeps beside the two buttons: a size such as "2.4 MB", which leads any
+ * caption that has one, or its start.
+ */
 const CAPTION_MIN_WIDTH_PX = 48
 
 /**
