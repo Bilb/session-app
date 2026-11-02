@@ -54,7 +54,7 @@ export function MessageAttachments({
     // its names and the footer's total no width at all, and the bubble would resize on a toggle.
     // Capped at the bubble's inside, so where a pane is too narrow the list shrinks instead.
     // The gap clears the footer's overhang, so a tile or row is never under the footer's targets.
-    <YStack gap={SPACE_SCALE['3xs'] + ROW_OVERHANG} width={albumWidth} maxWidth="100%">
+    <YStack gap={SPACE_SCALE['2xs'] + ROW_OVERHANG} width={albumWidth} maxWidth="100%">
       {view === 'gallery' ? (
         // Centred where the footer's least is wider than the one narrow picture above it.
         <YStack alignItems="center">
