@@ -178,9 +178,8 @@ export function AttachmentAlbum({
     { loneMaxHeightPx },
   )
   const overflowAt = layout.overflow > 0 ? lastTile(layout)?.at : undefined
-  // The slot shows the next picture only as its ThumbHash, so its count includes that picture.
-  const counted = layout.overflow + 1
-  const overflowText = overflowAt === undefined ? undefined : overflowLabel(counted)
+  // The pictures the album hides past its tiles: a reader takes the slot's own picture as shown.
+  const overflowText = overflowAt === undefined ? undefined : overflowLabel(layout.overflow)
   const nameOf = (at: number) => {
     const label = items[at]?.label ?? ''
     return at === overflowAt ? overflowName(label, layout.overflow) : label

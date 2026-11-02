@@ -149,7 +149,7 @@ describe('an album tile', () => {
 describe('the "+N" slot', () => {
   const labels = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((name) => `${name}.jpg`)
 
-  it('is named for what it stands for and opens its picture', async () => {
+  it('counts what it hides past its own picture, says so, and opens its picture', async () => {
     const user = userEvent.setup()
     const onOpen = vi.fn()
     renderInUI(
@@ -158,6 +158,7 @@ describe('the "+N" slot', () => {
         { onOpen },
       ),
     )
+    expect(byId(ALBUM_TILE_ID, 4).textContent).toBe('+2')
     expect(nodeOf(ALBUM_TILE_ID, 4)?.name).toBe('e.jpg and 2 more')
     await user.click(byId(ALBUM_TILE_ID, 4))
     expect(onOpen).toHaveBeenCalledWith(4)
