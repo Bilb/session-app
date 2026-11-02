@@ -1,6 +1,6 @@
 import { requirePorts, type PickedFile } from '@session/app'
 import { MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
-import { PENDING_COPY, tr } from '@session/localization'
+import { isolate, PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import {
   Announcement,
@@ -131,24 +131,29 @@ export function Composer({
           previousTestID={ELEMENT.conversation.stagedPrevious}
           nextTestID={ELEMENT.conversation.stagedNext}
         >
-          {staging.files.map((file, index) => (
-            <StagedTile
-              key={file.path}
-              name={file.name}
-              contentType={file.contentType}
-              sizeLabel={sizeOf(file)}
-              previewUrl={file.previewUrl}
-              label={[file.name, sizeOf(file)].filter(Boolean).join(', ')}
-              removeLabel={PENDING_COPY.attachmentRemove(file.name)}
-              onRemove={() => {
-                staging.remove(file.path)
-              }}
-              removeDisabled={sending}
-              testID={ELEMENT.conversation.stagedTile(index)}
-              removeTestID={ELEMENT.conversation.stagedRemove(index)}
-              previewTestID={ELEMENT.conversation.stagedPreview(index)}
-            />
-          ))}
+          {staging.files.map((file, index) => {
+            const size = sizeOf(file)
+            return (
+              <StagedTile
+                key={file.path}
+                name={file.name}
+                contentType={file.contentType}
+                // The tile sets the size in the name's direction, where a right-to-left name would
+                // put the unit before the number.
+                sizeLabel={size === undefined ? undefined : isolate(size)}
+                previewUrl={file.previewUrl}
+                label={[file.name, size].filter(Boolean).join(', ')}
+                removeLabel={PENDING_COPY.attachmentRemove(file.name)}
+                onRemove={() => {
+                  staging.remove(file.path)
+                }}
+                removeDisabled={sending}
+                testID={ELEMENT.conversation.stagedTile(index)}
+                removeTestID={ELEMENT.conversation.stagedRemove(index)}
+                previewTestID={ELEMENT.conversation.stagedPreview(index)}
+              />
+            )
+          })}
         </StagedTray>
       ) : null}
       <XStack gap="$sm" alignItems="center">
