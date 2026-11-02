@@ -58,11 +58,28 @@ export function tilePlaceholder(
   return thumbhash === failedThumbhash ? null : thumbhash
 }
 
+/** What a tile's image last reported, and for which url. */
+export interface PictureReport {
+  uri: string
+  loaded: boolean
+}
+
 /**
- * Whether a tile shows its picture rather than its placeholder: once the image has reported in for
- * this very url. Keyed on the url, so a new one starts hidden rather than inheriting the last one's
- * load. A url that never loads leaves the placeholder, which is what a tile without one draws too.
+ * Whether a tile shows its picture rather than its placeholder: once the image has reported a load
+ * for this very url. Keyed on the url, so a new one starts hidden rather than inheriting the last
+ * one's load. A url that never loads leaves the placeholder, which is what a tile without one draws
+ * too.
+ *
+ * A url that `loadedBefore`, in this tile or another, shows before this image reports, unless it
+ * reports a failure: a tile remounts when the album moves it to another row, and hiding a picture
+ * that is already decoded until the load comes back through JS flashes the placeholder. Nothing
+ * empty shows meanwhile, since the placeholder is drawn under the picture rather than instead.
  */
-export function showsPicture(uri: string | null | undefined, loadedUri: string | null): boolean {
-  return uri !== undefined && uri !== null && uri === loadedUri
+export function showsPicture(
+  uri: string | null | undefined,
+  report: PictureReport | null,
+  loadedBefore: boolean,
+): boolean {
+  if (uri === undefined || uri === null) return false
+  return report?.uri === uri ? report.loaded : loadedBefore
 }

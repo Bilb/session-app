@@ -60,17 +60,25 @@ describe('a tile’s placeholder', () => {
 describe('whether a tile shows its picture', () => {
   const url = 'session-media://thumbnail/1/0'
 
+  const loaded = { uri: url, loaded: true }
+  const failed = { uri: url, loaded: false }
+
   it('does not with no url, and not until the picture reports in', () => {
-    expect(showsPicture(undefined, null)).toBe(false)
-    expect(showsPicture(null, null)).toBe(false)
-    expect(showsPicture(url, null)).toBe(false)
+    expect(showsPicture(undefined, null, false)).toBe(false)
+    expect(showsPicture(null, null, false)).toBe(false)
+    expect(showsPicture(url, null, false)).toBe(false)
   })
 
   it('does once it loaded', () => {
-    expect(showsPicture(url, url)).toBe(true)
+    expect(showsPicture(url, loaded, false)).toBe(true)
   })
 
   it('starts over for a new url rather than inheriting the last one’s load', () => {
-    expect(showsPicture('session-media://thumbnail/2/0', url)).toBe(false)
+    expect(showsPicture('session-media://thumbnail/2/0', loaded, false)).toBe(false)
+  })
+
+  it('does before it reports where the url loaded before, until it reports a failure', () => {
+    expect(showsPicture(url, null, true)).toBe(true)
+    expect(showsPicture(url, failed, true)).toBe(false)
   })
 })

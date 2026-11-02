@@ -4,6 +4,7 @@ import { YStack } from 'tamagui'
 import type { WithMediaThumbhash, WithMediaUri } from '@session/basic-types'
 
 import {
+  type PictureReport,
   TILE_HAIRLINE_WIDTH,
   TILE_SLOT_SCRIM,
   showsPicture,
@@ -12,6 +13,7 @@ import {
 } from './attachmentTileStyle'
 import { Icon } from './Icon'
 import { Image } from './Image'
+import { forgetLoaded, rememberLoaded, wasLoaded } from './loadedPictures'
 import { Text } from './Text'
 import type { WithTestID } from './with'
 
@@ -65,14 +67,14 @@ export const AttachmentTile = memo(function AttachmentTile({
   /**
    * Which url's picture has arrived: the load is the only honest report that the bytes are on
    * screen. Keyed on the url, so a new one starts hidden over the placeholder instead of showing an
-   * empty frame until it loads.
+   * empty frame until it loads - unless it loaded before, which `showsPicture` explains.
    */
-  const [loadedUri, setLoadedUri] = useState<string | null>(null)
+  const [report, setReport] = useState<PictureReport | null>(null)
   // The slot draws the ThumbHash alone, which is there before the download and already a blur: it
   // never changes when the thumbnail lands, and costs no blur to draw. Without one it is the bare
   // tile under the scrim.
   const drawable = overflowLabel === undefined && uri !== undefined && uri !== null
-  const here = showsPicture(uri, loadedUri)
+  const here = drawable && showsPicture(uri, report, wasLoaded(uri))
   const [failedThumbhash, setFailedThumbhash] = useState<string | null>(null)
   const placeholder = tilePlaceholder(thumbhash, failedThumbhash)
 
@@ -136,7 +138,12 @@ export const AttachmentTile = memo(function AttachmentTile({
             // Fresco's JPEG sample rounding undershoots the view by up to 4/3, which reads as soft.
             resizeMultiplier={4 / 3}
             onLoad={() => {
-              setLoadedUri(uri)
+              rememberLoaded(uri)
+              setReport({ uri, loaded: true })
+            }}
+            onError={() => {
+              forgetLoaded(uri)
+              setReport({ uri, loaded: false })
             }}
             testID={testID}
           />
