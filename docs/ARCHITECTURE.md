@@ -326,6 +326,27 @@ accent; `nightly` draws every theme and accent, every night. The desktop app ope
 `tests/e2e/catalog/Dockerfile` pins (fonts, fontconfig, the libraries Electron draws with) so a
 capture is the same on any Linux x86_64 host, and the `catalog` workflow uploads the captures to Argos.
 
+**Comparing the catalog locally.** `pnpm catalog:compare [base-ref]` answers "which pages does my
+change move?" before a push, on any host, macOS included. It captures the catalog twice on this
+machine: at the base (default: the merge base with `origin/main`), in a temporary worktree
+installed from pnpm's store, and in the working tree as it is, uncommitted changes included. Each
+side builds its own desktop app and runs its own `catalog.spec.ts`, as each side's CI build does.
+The two sets are diffed as Argos diffs (odiff's colour measure through pixelmatch, Argos's two
+passes, anti-aliasing ignored, a page that changed size is changed), and
+`test-results/catalog-compare/report/index.html` lists the changed, added and removed pages with
+before, after, a slider and the diff. It exits 0 when nothing differs, 1 when something does and 2
+when it could not compare, so it can gate a script. A capture of a commit is cached under
+`test-results/catalog-compare/cache/`, so a second run against the same base captures only the
+working tree; `--refresh` captures again, `--tier nightly` compares every page.
+
+Both sides are drawn by this machine, so its fonts and rendering cancel out: the pictures are not
+the ones Argos holds, and a difference only Linux draws (a font fallback, say) is Argos's to find.
+Every launch is hidden: `SESSION_E2E_HIDDEN=1` makes desktop main create its window unshown but
+painting, larger than the screen, at 1x, and on macOS out of the Dock so that nothing takes focus
+(`apps/desktop/src/main/hiddenRun.ts`; a packaged build ignores it). The harness stops a build that
+shows its window anyway, and a base from before hidden runs is given that change to desktop main
+before it is built.
+
 `sessionTest` is the only way to declare a test and the only thing that opens or closes a
 client. Its `clients` descriptor decides the platforms _and_ the tags, so a spec asking for two
 clients is tagged `@2-devices` without anyone writing it down.
