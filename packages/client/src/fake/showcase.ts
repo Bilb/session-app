@@ -30,7 +30,7 @@ export function showcase(names: readonly [FixtureName, FixtureName] = ['Alice', 
     // The album at every count up to its cap, and past it. Every dev photograph is 4:3, so the
     // names say how rows of those fall; the catalog's album stories draw other shapes.
     ['One picture', set(image(1))],
-    ['Two side by side', set(image(2))],
+    ['Two, one above the other', set(image(2))],
     ['Three: one above two', set(image(3))],
     ['Four in two rows', set(image(4))],
     ['Five: two above three', set(image(5))],

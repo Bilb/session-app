@@ -6,7 +6,7 @@ import { transferKey, type SessionStore } from '@session/state'
  * message, never one another page draws at rest: the store is shared by every page.
  */
 const PREPARE: Record<string, 'downloaded' | 'downloading' | 'downloadFailed'> = {
-  'Two side by side': 'downloaded',
+  'Two, one above the other': 'downloaded',
   'Four in two rows': 'downloading',
   'Five: two above three': 'downloadFailed',
 }

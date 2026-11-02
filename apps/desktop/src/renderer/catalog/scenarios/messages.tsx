@@ -41,7 +41,7 @@ export const MESSAGE_SCENARIOS: readonly AnyStory[] = [
   ),
   message(
     'albumStates',
-    ['Two side by side', 'Four in two rows', 'Five: two above three', 'Thirty-two'],
+    ['Two, one above the other', 'Four in two rows', 'Five: two above three', 'Thirty-two'],
     {},
   ),
   message(

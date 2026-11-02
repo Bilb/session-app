@@ -23,6 +23,7 @@ const PANORAMA = 3
 const HALF = 1 / 2
 const NEEDLE = 1 / 5
 const PANORAMA_WIDE = 5
+const VIDEO = 16 / 9
 
 /**
  * Placeholders, with no picture to fetch: what is drawn here is the tiles' rects and rings. An
@@ -202,6 +203,62 @@ export const albumOverflow = defineStory<AlbumStory>({
     onAccent: {
       aspects: [PORTRAIT, LANDSCAPE, SQUARE, ULTRAWIDE, ULTRATALL, LANDSCAPE],
       onAccent: true,
+    },
+  },
+  render: inFrame,
+})
+
+/**
+ * What the layout chooses where two layouts fit, one row each: two landscapes from 1.3:1 stacked
+ * and squarer pairs side by side; a grid never flattened into a strip; "+N" kept out of the two
+ * largest tiles; a lopsided set balanced; a strip of screenshot slivers made a grid at the
+ * narrowest album, but never by cropping more than the nearest fit would. The worst case is the
+ * tallest grid it keeps, screenshots at half again the width with their tops cropped.
+ */
+export const albumChoices = defineStory<AlbumStory>({
+  component: 'album',
+  story: 'choices',
+  width: DESKTOP_ALBUM_WIDTH + 2 * MESSAGE_FRAME_INSET_PX,
+  sensitive: { rtl: true },
+  variants: {
+    landscapePairStacked: {
+      aspects: [LANDSCAPE, LANDSCAPE],
+      onAccent: false,
+      width: PHONE_ALBUM_MAX_WIDTH,
+    },
+    nearSquarePairSideBySide: {
+      aspects: [5 / 4, 5 / 4],
+      onAccent: false,
+      width: PHONE_ALBUM_MAX_WIDTH,
+    },
+    squarestLandscapePair: { aspects: [1.04, 1.04], onAccent: false, width: PHONE_ALBUM_MAX_WIDTH },
+    fourPortraitsKeptGrid: {
+      aspects: [PORTRAIT, PORTRAIT, PORTRAIT, PORTRAIT],
+      onAccent: false,
+      width: PHONE_ALBUM_MAX_WIDTH,
+    },
+    countOutOfTopTwo: {
+      aspects: [PORTRAIT, PORTRAIT, PORTRAIT, LANDSCAPE, LANDSCAPE, LANDSCAPE, LANDSCAPE],
+      onAccent: false,
+      width: PHONE_ALBUM_MAX_WIDTH,
+    },
+    lopsidedBalanced: {
+      aspects: [VIDEO, PORTRAIT, PORTRAIT, VIDEO],
+      onAccent: false,
+      width: DESKTOP_ALBUM_WIDTH,
+    },
+    screenshotStripAsGrid: {
+      aspects: [IPHONE_SHAPE, PORTRAIT, PORTRAIT, IPHONE_SHAPE, IPHONE_SHAPE],
+      onAccent: false,
+    },
+    sliverKeptUncropped: {
+      aspects: [LANDSCAPE, PORTRAIT, LANDSCAPE, LANDSCAPE, LANDSCAPE],
+      onAccent: false,
+    },
+    tallestKeptGrid: {
+      aspects: [IPHONE_SHAPE, IPHONE_SHAPE, IPHONE_SHAPE, PORTRAIT, 2 / 3, IPHONE_SHAPE],
+      onAccent: false,
+      width: DESKTOP_ALBUM_WIDTH,
     },
   },
   render: inFrame,
