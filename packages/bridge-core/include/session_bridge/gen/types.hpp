@@ -304,6 +304,10 @@ struct Attachment {
     /// alpha), and saturates there: a 4:3 photo reads 7:5, and every picture wider than 7:1 reads 7.
     /// A last resort for laying a picture out where the sender gave no `width` and `height`, and
     /// never a reason to override them.
+    ///
+    /// libsession's header says it is not the picture's aspect ratio and must never be used to lay one
+    /// out. Here it shapes only a tile with nothing else to go on, and only until the thumbnail lands,
+    /// whose shape `albumAspect` takes instead: the tile moves at most once.
     std::optional<double> thumbhash_aspect;
     /// Whether libsession holds a thumbnail of this attachment: a JPEG of the picture in its own
     /// shape, cropped to its centre at 21:9 when it is wider than that either way up, then the

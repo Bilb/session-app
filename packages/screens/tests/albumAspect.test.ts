@@ -58,6 +58,12 @@ describe('the shape an album tile is laid out at', () => {
     expect(albumAspect(attachment({ hasThumbhash: true, thumbhashAspect: 7 / 5 }))).toBe(7 / 5)
   })
 
+  it('takes the thumbnail’s over the hash’s once it lands, the tile’s one move', () => {
+    const before = attachment({ hasThumbhash: true, thumbhashAspect: 7 / 5 })
+    expect(albumAspect(before)).toBe(7 / 5)
+    expect(albumAspect({ ...before, ...thumbnailOf(4032, 3024) })).toBeCloseTo(4 / 3, 2)
+  })
+
   it('takes the sender’s size and the thumbnail’s over the hash’s', () => {
     const hash = { hasThumbhash: true, thumbhashAspect: 7 / 5 }
     expect(albumAspect(attachment({ ...hash, width: 1600, height: 900 }))).toBe(16 / 9)
