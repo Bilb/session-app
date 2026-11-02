@@ -4,6 +4,8 @@ import { dirname, join } from 'node:path'
 import { expect, test } from '@playwright/test'
 import { ELEMENT } from '@session/test-ids'
 
+import { CAPTURE_WINDOW, windowFor, type WindowSize } from '#catalog/captureWindow'
+
 import { DesktopApp } from '../harness/DesktopApp'
 import type { AuditIssue } from '../harness/ISessionApp'
 import { auditVerdict, describeIssues, issueKey } from '../harness/knownIssues'
@@ -19,9 +21,6 @@ const OUT = process.env['CATALOG_OUT']
  */
 const PAGES_OUT = process.env['CATALOG_PAGES_OUT']
 
-/** Wide and tall enough that no page is clipped by the window. */
-const WINDOW = { width: 3000, height: 2400 } as const
-
 /** A message page waits for every picture in it to decode. */
 const PAGE_READY_MS = 60_000
 
@@ -35,6 +34,48 @@ interface CatalogGlobal {
   sessionCatalog?: { pages: (tier: string) => CatalogPageSummary[] }
   location: { hash: string }
 }
+
+/** How far the page reaches from the document's corner, which the window must cover. */
+async function pageExtent(app: DesktopApp): Promise<WindowSize> {
+  return app.locator(ELEMENT.catalog.page).evaluate((element) => {
+    const { scrollX, scrollY } = globalThis as unknown as { scrollX: number; scrollY: number }
+    const box = (
+      element as unknown as { getBoundingClientRect(): { right: number; bottom: number } }
+    ).getBoundingClientRect()
+    return { width: box.right + scrollX, height: box.bottom + scrollY }
+  })
+}
+
+/**
+ * Sizes the window and waits until the page has laid out and painted in it. `resize` waits on the
+ * width alone, and a page taller than the window grows only the height. A window manager or a
+ * screen that refuses the size fails here, rather than as a capture black below the fold.
+ */
+async function sizeWindow(app: DesktopApp, size: WindowSize): Promise<void> {
+  await app.resize(size.width, size.height)
+  await app.page
+    .waitForFunction(
+      (wanted) => (globalThis as unknown as { innerHeight: number }).innerHeight === wanted.height,
+      size,
+      { timeout: 5_000 },
+    )
+    .catch(() => {
+      throw new Error(
+        `the window did not reach ${String(size.width)}x${String(size.height)}: the screen or ` +
+          'window manager clamped it, so a capture would be cut off',
+      )
+    })
+  await app.page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        const scope = globalThis as unknown as { requestAnimationFrame(run: () => void): void }
+        // One frame to lay out at the new size, one to paint it.
+        scope.requestAnimationFrame(() => scope.requestAnimationFrame(() => resolve()))
+      }),
+  )
+}
+
+const sameSize = (a: WindowSize, b: WindowSize) => a.width === b.width && a.height === b.height
 
 /**
  * A finding on a cell, named by its story and row rather than by its page, theme and state: the
@@ -64,7 +105,8 @@ test(`captures and audits the component catalog's ${TIER} pages @catalog`, async
     },
   })
   try {
-    await app.resize(WINDOW.width, WINDOW.height)
+    await sizeWindow(app, CAPTURE_WINDOW)
+    let windowSize = CAPTURE_WINDOW
     await app.page.emulateMedia({ reducedMotion: 'reduce' })
     await app.page.waitForFunction(
       () => (globalThis as unknown as CatalogGlobal).sessionCatalog !== undefined,
@@ -82,6 +124,12 @@ test(`captures and audits the component catalog's ${TIER} pages @catalog`, async
     const found = new Map<string, AuditIssue>()
     for (const page of pages) {
       const { id } = page
+      // Every page is laid out in the same window whatever came before it, then the window grows to
+      // hold it: a capture paints only what lies inside the window, and the rest comes out black.
+      if (!sameSize(windowSize, CAPTURE_WINDOW)) {
+        await sizeWindow(app, CAPTURE_WINDOW)
+        windowSize = CAPTURE_WINDOW
+      }
       await app.page.evaluate(
         (hash) => {
           ;(globalThis as unknown as CatalogGlobal).location.hash = hash
@@ -89,6 +137,11 @@ test(`captures and audits the component catalog's ${TIER} pages @catalog`, async
         `#/catalog/${TIER}/${encodeURIComponent(id)}`,
       )
       await expect(app.locator(ELEMENT.catalog.ready)).toHaveText(id, { timeout: PAGE_READY_MS })
+      const fits = windowFor(await pageExtent(app))
+      if (!sameSize(windowSize, fits)) {
+        await sizeWindow(app, fits)
+        windowSize = fits
+      }
       const png = await app
         .locator(ELEMENT.catalog.page)
         .screenshot({ animations: 'disabled', caret: 'hide', scale: 'css' })

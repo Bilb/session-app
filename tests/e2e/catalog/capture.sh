@@ -22,6 +22,8 @@ mkdir -p "$out"
 # --init: xvfb-run as the container's first process never hears that Xvfb is ready. No core:
 # a crashing Electron would write hundreds of MB into the checkout, which is the working dir.
 # CATALOG_CGROUP_PARENT lifts a capture out of a daemon-wide parent that throttles a host's CI.
+# The screen holds MAX_CAPTURE_WINDOW in catalog/captureWindow.ts, the window the tallest page
+# grows to, with room for the frame; raise the two together.
 docker run --rm --init ${CATALOG_CGROUP_PARENT:+--cgroup-parent "$CATALOG_CGROUP_PARENT"} \
   --user "$(id -u):$(id -g)" \
   --ulimit core=0 \
@@ -31,4 +33,4 @@ docker run --rm --init ${CATALOG_CGROUP_PARENT:+--cgroup-parent "$CATALOG_CGROUP
   --volume "$repo:$repo" --volume "$out:/out" --volume "$media:/media:ro" \
   --workdir "$repo/tests/e2e" \
   session-catalog \
-  xvfb-run -a -s '-screen 0 3200x2600x24' pnpm exec playwright test --project catalog "$@"
+  xvfb-run -a -s '-screen 0 3800x8200x24' pnpm exec playwright test --project catalog "$@"

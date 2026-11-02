@@ -25,8 +25,9 @@ export interface HiddenRun {
   accessory: boolean
   /**
    * Never shown, and drawn anyway: `paintWhenInitiallyHidden` keeps the renderer active without
-   * a `show()`, and macOS otherwise clamps a resize to the screen, which would leave the catalog's
-   * 3000-pixel layout at the width of a laptop.
+   * a `show()`, and macOS otherwise clamps a resize to the screen in both directions, which would
+   * leave the catalog's 3000-pixel layout at the width of a laptop and cut off a page taller than
+   * the screen.
    */
   window: Pick<
     BrowserWindowConstructorOptions,
