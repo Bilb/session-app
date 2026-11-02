@@ -14,6 +14,7 @@ import { appMenuTemplate } from './appMenu'
 import { createBridge } from './bridge'
 import { editMenuItems } from './editMenu'
 import { serveFiles } from './files'
+import { hiddenRun } from './hiddenRun'
 import { launchColors } from './launchColors'
 import { launchOverridesSwitch } from '../shared/launchOverrides'
 import { finishLogs, logDatabase, logLibsession, openLogs, serveLogs } from './logs'
@@ -54,6 +55,14 @@ app.setName('session-app')
 // Where the name has put it, moved and kept out of backups. See userData.ts.
 placeUserData()
 void excludeUserData()
+
+/** An e2e run that must not put a window on screen; null in every other run. See hiddenRun.ts. */
+const hidden = hiddenRun({ packaged: app.isPackaged, env: process.env, platform: process.platform })
+// Before the app finishes launching: the activation policy decides whether the launch takes focus.
+if (hidden !== null) {
+  for (const [name, value] of hidden.switches) app.commandLine.appendSwitch(name, value)
+  if (hidden.accessory) app.setActivationPolicy('accessory')
+}
 
 // As early as the data directory is known, so the launch marker is the first line of the run.
 void openLogs()
@@ -180,8 +189,9 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
     icon: join(here, '../../resources/icon.png'),
     // Shown straight away rather than on ready-to-show: that event is not dependable on a
     // headless display, and a window that never shows has no layout, which makes every element
-    // in it invisible to a test.
+    // in it invisible to a test. A hidden run is never shown and draws anyway: see hiddenRun.ts.
     show: true,
+    ...hidden?.window,
     // Electron's default is white, which is what showed until the page drew: a flash on every
     // launch, in a default theme that is black.
     backgroundColor: launchColors().background,
@@ -192,6 +202,7 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
       preload: join(here, '../preload/index.cjs'),
       // Like the network settings, a packaged build takes no override from its environment.
       additionalArguments: app.isPackaged ? [] : [launchOverridesSwitch(process.env)],
+      ...hidden?.webPreferences,
     },
   })
 
