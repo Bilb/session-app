@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   classifyPages,
+  containedSize,
   countByStatus,
   decodePng,
   diffPictures,
@@ -81,16 +82,85 @@ describe('diffing two pictures of a page', () => {
     expect(diff.status).toBe('unchanged')
   })
 
-  it('calls a page that changed size changed, counting the area only one side covers', () => {
-    const diff = diffPictures(picture(100, 100), picture(100, 120))
-    expect(diff).toMatchObject({
-      status: 'changed',
-      differingPixels: 2_000,
+  it('draws the unchanged pixels of the after picture, faded, beneath what differs', () => {
+    const grey: Rgba = [100, 100, 100, 255]
+    const lighter: Rgba = [130, 130, 130, 255]
+    // The lighter patch is under both passes' tolerance, so it is drawn faded rather than red.
+    const diff = diffPictures(
+      picture(100, 100, grey, block(60, 60, 10, BLACK)),
+      picture(100, 100, grey, block(10, 10, 10, lighter)),
+    )
+    expect(diff).toMatchObject({ status: 'changed', differingPixels: 100 })
+    const at = (15 * 100 + 15) * 4
+    // pixelmatch fades to a tenth: 255 + (130 - 255) * 0.1 from after, where before gives 239.
+    expect([...(diff.highlight?.data.subarray(at, at + 4) ?? [])]).toEqual([242, 242, 242, 255])
+  })
+})
+
+describe('pages that changed size, as Argos compares them', () => {
+  const NAVY: Rgba = [20, 30, 80, 255]
+
+  it('decides nothing from the size alone: what the larger adds counts only if not white', () => {
+    // odiff takes the transparent padding as white, so a white strip below matches it.
+    expect(diffPictures(picture(100, 100), picture(100, 120))).toMatchObject({
+      status: 'unchanged',
+      differingPixels: 0,
       totalPixels: 12_000,
       before: { width: 100, height: 100 },
       after: { width: 100, height: 120 },
     })
-    expect(diff.highlight).toMatchObject({ width: 100, height: 120 })
+    const darker = diffPictures(picture(100, 100, NAVY), picture(100, 120, NAVY))
+    expect(darker).toMatchObject({ status: 'changed', differingPixels: 2_000, totalPixels: 12_000 })
+    expect(darker.scaled).toBeUndefined()
+  })
+
+  it('enlarges a picture smaller in both dimensions to fit, keeping its aspect ratio', () => {
+    // 50x40 into 100x100: the width fills first, so it is drawn at 100x80 with 20 rows below.
+    const diff = diffPictures(picture(50, 40, NAVY), picture(100, 100, NAVY))
+    expect(diff.scaled).toEqual({ side: 'before', to: { width: 100, height: 80 } })
+    expect(diff).toMatchObject({ status: 'changed', differingPixels: 2_000, totalPixels: 10_000 })
+  })
+
+  it('finds no change in a picture that only grew, once the smaller is enlarged', () => {
+    // A solid page enlarges exactly. A page with sharp edges does not: the kernel softens each
+    // edge over a few pixels, which counts, as it would in Argos.
+    const diff = diffPictures(picture(40, 30, NAVY), picture(80, 60, NAVY))
+    expect(diff.scaled).toEqual({ side: 'before', to: { width: 80, height: 60 } })
+    expect(diff).toMatchObject({ status: 'unchanged', differingPixels: 0, totalPixels: 4_800 })
+  })
+
+  it('leaves alone the corner neither covers when one is wider and the other taller', () => {
+    // 120x100 against 100x120: neither is smaller in both, so neither is scaled. The 20x20 corner
+    // is transparent on both sides and matches; each 20x100 strip one side alone covers is navy
+    // against transparency, so counts.
+    const diff = diffPictures(picture(120, 100, NAVY), picture(100, 120, NAVY))
+    expect(diff.scaled).toBeUndefined()
+    expect(diff).toMatchObject({ status: 'changed', differingPixels: 4_000, totalPixels: 14_400 })
+    const corner = (110 * 120 + 110) * 4
+    expect(diff.highlight?.data[corner + 3]).toBe(0)
+  })
+
+  it('compares same-size pictures as they are', () => {
+    const diff = diffPictures(picture(100, 100, NAVY), picture(100, 100, NAVY))
+    expect(diff).toMatchObject({ status: 'unchanged', totalPixels: 10_000 })
+    expect(diff.scaled).toBeUndefined()
+  })
+})
+
+describe('the size sharp contains a picture in', () => {
+  it('fills the side nearer filling the canvas and rounds the other', () => {
+    // The capture this was found on: 1640x722 against 1720x760.
+    expect(containedSize({ width: 1640, height: 722 }, { width: 1720, height: 760 })).toEqual({
+      width: 1720,
+      height: 757,
+    })
+  })
+
+  it('leaves a picture as it is unless it is smaller in both dimensions', () => {
+    expect(containedSize({ width: 100, height: 50 }, { width: 100, height: 80 })).toEqual({
+      width: 100,
+      height: 50,
+    })
   })
 })
 

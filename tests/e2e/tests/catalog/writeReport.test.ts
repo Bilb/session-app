@@ -25,13 +25,14 @@ describe('writing the report from two folders of captures', () => {
   const beforeDir = captures(join(root, 'before-pages'), {
     same: solid(40, 30, 255),
     darker: solid(40, 30, 255),
-    taller: solid(40, 30, 255),
+    taller: solid(40, 30, 128),
     gone: solid(40, 30, 0),
   })
   const afterDir = captures(join(root, 'after-pages'), {
     same: solid(40, 30, 255),
     darker: solid(40, 30, 0),
-    taller: solid(40, 60, 255),
+    // Not white: Argos takes the padding below the shorter side as white.
+    taller: solid(40, 60, 128),
     new: solid(40, 30, 0),
   })
   const reportDir = join(root, 'report')
