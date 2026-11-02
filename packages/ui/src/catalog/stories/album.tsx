@@ -61,7 +61,9 @@ function Album({ aspects, onAccent, width = ALBUM_WIDTH, loneMaxHeightPx }: Albu
 }
 
 const inFrame = (props: AlbumStory) => (
-  <MessageFrame outgoing={props.onAccent}>
+  // Aligned as the transcript aligns it, so the bubble hugs the album rather than filling a cell
+  // sized for the story's widest row.
+  <MessageFrame outgoing={props.onAccent} alignSelf={props.onAccent ? 'flex-end' : 'flex-start'}>
     <Album {...props} />
   </MessageFrame>
 )
