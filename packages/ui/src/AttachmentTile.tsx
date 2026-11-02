@@ -25,8 +25,9 @@ export type AttachmentTileProps = WithMediaUri &
     width: number
     height: number
     /**
-     * The count of attachments the album is not drawing, already worded. A tile carrying it is the
-     * "+N" slot: it draws the picture's ThumbHash under the count, never the picture.
+     * The count of pictures past the album's tiles, already worded: seven pictures show "+2", the
+     * one under this tile not among them. A tile carrying it is the "+N" slot: it draws the
+     * picture's ThumbHash under the count, never the picture.
      *
      * A string rather than a number because the wording is `andMore` in the catalogue and this
      * package cannot reach it -- `@session/ui` imports no sibling but theme-tokens, test-ids and

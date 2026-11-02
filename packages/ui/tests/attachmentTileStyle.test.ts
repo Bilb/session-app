@@ -10,8 +10,8 @@ import {
 
 describe('a tile’s corner', () => {
   it('takes the larger radius at the sizes an album draws', () => {
-    // The five-up's quarters are about 100 at a desktop bubble's width and about 70 on a phone,
-    // and the three-up's small tiles the same. All of them are the larger corner.
+    // Five squares are rows of about 120 and 80 at the narrowest album and 240 and 160 at the
+    // widest: all the larger corner, which only a tile under 64 on its shorter side misses.
     expect(tileRadius(208)).toBe(RADII.md)
     expect(tileRadius(102)).toBe(RADII.md)
     expect(tileRadius(70)).toBe(RADII.md)

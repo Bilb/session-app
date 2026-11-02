@@ -79,8 +79,8 @@ inline DecodePlan decode_plan(std::string_view type, double width, double height
 
 /// The longest edge to decode a `width` by `height` thumbnail at, to fill a `view_width` by
 /// `view_height` pixel box under a `cover` fit, or zero to decode it whole. Reduced only when the
-/// view needs half of it or less: of an album's tiles, only a single one and a three-up's lead
-/// decode whole.
+/// view needs half of it or less: an album's tile decodes whole where it is more than half as tall
+/// as the tallest tile, as most pictures sent alone are.
 inline double thumbnail_decode_edge(
         double width, double height, double view_width, double view_height) {
     if (!(width > 0 && height > 0 && view_width > 0 && view_height > 0))

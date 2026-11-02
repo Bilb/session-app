@@ -32,8 +32,9 @@ const ALBUM_TARGET_HEIGHT_SHARE = 0.85
 const SLOT_ASPECT = 1
 
 /**
- * What a candidate pays per px a row's height is clamped by. Far more than any height difference
- * costs, so a layout that crops only wins where every layout does.
+ * What a candidate pays per px a row's height is clamped by: as much as 10 px off the target
+ * height. So a small crop can still win over a split much further from the target - 5 px of crop
+ * over one more than 50 px further.
  */
 const CROP_COST_PER_PX = 10
 
@@ -90,7 +91,10 @@ export interface AlbumRow {
 
 export interface AlbumLayout {
   rows: AlbumRow[]
-  /** How many pictures the album is not drawing; the slot counts them. 0 when it draws all. */
+  /**
+   * How many pictures come after the album's last tile, which is the count the slot shows: seven
+   * pictures draw "+2". The picture under the slot is not among them. 0 when it draws all.
+   */
   overflow: number
   width: number
   height: number
@@ -247,8 +251,9 @@ function balanceCost(rows: readonly AlbumRow[], height: number, width: number): 
  * **Justified rows.** The first `ALBUM_MAX_TILES` pictures are laid out as one row, or as two
  * split at every point, each row at the one height that makes its tiles, at their own shapes, fill
  * the width. Each pays its distance from `ALBUM_TARGET_HEIGHT_SHARE` of the width; one whose rows
- * would fall outside the shortest row or the width is clamped there and pays for the crop, so it
- * wins only where nothing else fits either. The nearest is the plain choice.
+ * would fall outside the shortest row or the width is clamped there and pays `CROP_COST_PER_PX`
+ * per px of the crop, so a crop of c px beats only a split more than 10c px further from the
+ * target. The nearest is the plain choice.
  *
  * **Balance.** Candidates also pay `balanceCost`, and the cheapest wins, with two limits: none may
  * crop more than the plain choice, and where the plain choice is two rows, one row is ruled out.
