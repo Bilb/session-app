@@ -11,7 +11,7 @@ import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
 import { STAGED_TILE_SIDE } from './stagingMetrics'
 import { Text } from './Text'
-import { TrayEdgeFade } from './TrayEdgeFade'
+import { edgeFadeOpacity, TrayEdgeFade } from './TrayEdgeFade'
 import { VISUALLY_HIDDEN } from './visuallyHidden'
 
 /** Between tiles, and between the last tile and the add tile. */
@@ -75,8 +75,8 @@ export function StagedTray({
   const rail = useRef<ScrollViewInstance>(null)
   const started = useRef(false)
   const [extent, setExtent] = useState<RailExtent>({ offset: 0, visible: 0, content: 0 })
-  const canGoBack = extent.offset > 1
-  const canGoOn = extent.offset + extent.visible < extent.content - 1
+  const startFade = edgeFadeOpacity(extent.offset)
+  const endFade = edgeFadeOpacity(extent.content - extent.visible - extent.offset)
 
   useEffect(() => {
     if (!isWeb) return
@@ -178,13 +178,13 @@ export function StagedTray({
             )}
           </XStack>
         </ScrollView>
-        {canGoBack ? (
-          <YStack position="absolute" top={0} {...logical({ insetStart: 0 })}>
+        {startFade > 0 ? (
+          <YStack position="absolute" top={0} opacity={startFade} {...logical({ insetStart: 0 })}>
             <TrayEdgeFade side="start" heightPx={STAGED_TILE_SIDE} />
           </YStack>
         ) : null}
-        {canGoOn ? (
-          <YStack position="absolute" top={0} {...logical({ insetEnd: 0 })}>
+        {endFade > 0 ? (
+          <YStack position="absolute" top={0} opacity={endFade} {...logical({ insetEnd: 0 })}>
             <TrayEdgeFade side="end" heightPx={STAGED_TILE_SIDE} />
           </YStack>
         ) : null}
