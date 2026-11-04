@@ -62,7 +62,7 @@ export type AttachmentAlbumProps = WithTestID & {
   fetchTestID: ElementId
   /** On every tile, which is what a test taps; an item's own `testID` is its picture's. */
   tileTestID: ElementId
-  /** How tall a picture sent alone may be drawn: the wide layout's cap; none in the narrow one. */
+  /** How tall a picture sent alone may be drawn: its layout's cap. */
   loneMaxHeightPx?: number | undefined
   /**
    * Drawn on an accent fill, a bubble you sent. Only the focus ring reads it: the ring falls in the

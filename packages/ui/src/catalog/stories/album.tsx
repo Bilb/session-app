@@ -25,8 +25,9 @@ import { noop } from './shared'
 const WIDE_ALBUM_MAX_WIDTH = ALBUM_SIZES.wide.maxWidthPx
 /** The narrow layout's widest album, three quarters of a 430 pt transcript. */
 const NARROW_ALBUM_MAX_WIDTH = ALBUM_SIZES.narrow.maxWidthPx
-/** The wide layout's cap on a picture alone. */
+/** Each layout's cap on a picture alone. */
 const WIDE_LONE_MAX_HEIGHT_PX = ALBUM_SIZES.wide.loneMaxHeightPx
+const NARROW_LONE_MAX_HEIGHT_PX = ALBUM_SIZES.narrow.loneMaxHeightPx
 
 /**
  * Placeholders, with no picture to fetch: what is drawn here is the tiles' rects and rings. An
@@ -100,12 +101,13 @@ export const albumLone = defineStory<AlbumStory>({
     veryWide: { aspects: [PANORAMA], onAccent: false },
     noDimensions: { aspects: [undefined], onAccent: false },
     onAccent: { aspects: [LANDSCAPE], onAccent: true },
-    // At the narrow layout's widest album, and at the wide layout's, where its 460 px cap narrows
+    // At the narrow layout's widest album, and at the wide layout's, where the 340 px cap narrows
     // a portrait.
     phoneScreenshotNarrowWidest: {
       aspects: [PHONE],
       onAccent: false,
       width: NARROW_ALBUM_MAX_WIDTH,
+      loneMaxHeightPx: NARROW_LONE_MAX_HEIGHT_PX,
     },
     portraitWide: {
       aspects: [PORTRAIT],

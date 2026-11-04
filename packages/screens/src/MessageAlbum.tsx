@@ -32,7 +32,7 @@ export function MessageAlbum({
   message: Message
   /** The message's attachments' width, which the album fills. */
   width: number
-  /** How tall a picture sent alone may be drawn: the wide layout's cap; none in the narrow one. */
+  /** How tall a picture sent alone may be drawn: its layout's cap. */
   loneMaxHeightPx?: number | undefined
   /** Takes the attachment's index in the message. */
   onOpen: (index: number) => void
