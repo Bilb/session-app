@@ -64,5 +64,4 @@ describe('the viewer opening and closing', () => {
     rerender(viewerElement([picture], false))
     expect(image(baseElement)).not.toBeNull()
   })
-
 })
