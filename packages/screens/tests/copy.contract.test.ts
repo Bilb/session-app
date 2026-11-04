@@ -167,6 +167,7 @@ describe('screen copy', () => {
       'onionRoutingPathOffline',
       'changeToLightMode',
       'changeToDarkMode',
+      'databaseErrorClearDeviceWarning',
     ])
   })
 })

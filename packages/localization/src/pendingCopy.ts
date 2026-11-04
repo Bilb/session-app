@@ -109,4 +109,14 @@ export const PENDING_COPY = {
    */
   changeToLightMode: 'Change to Light Mode',
   changeToDarkMode: 'Change to Dark Mode',
+  /**
+   * The startup-failure screen's Clear Device confirmation: what is about to go, and that only the
+   * Recovery Password brings the account back. Raised in Crowdin under this name.
+   *
+   * TODO: switch to `tr('databaseErrorClearDeviceWarning')` once the key is in the catalogue.
+   */
+  databaseErrorClearDeviceWarning:
+    'This will delete all messages, attachments, and account data from this device.<br/><br/>' +
+    'Your account can only be restored with your Recovery Password. Without it, your account ' +
+    'will be lost.',
 } as const
