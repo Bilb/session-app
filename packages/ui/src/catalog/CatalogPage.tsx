@@ -72,7 +72,13 @@ function Block({ page, theme, accent, title }: BlockProps) {
         )}
         {Object.entries(page.story.variants).map(([row, props]) => (
           <XStack key={row} gap="$sm" alignItems="center">
-            <Text size="$caption" tone="secondary" width={LABEL_WIDTH} numberOfLines={1}>
+            {/* Wrapped, and broken inside a long camelCase key, so no label is cut short. */}
+            <Text
+              size="$caption"
+              tone="secondary"
+              width={LABEL_WIDTH}
+              style={{ overflowWrap: 'anywhere' }}
+            >
               {row}
             </Text>
             {(['rest', ...states] as const).map((state) => (
