@@ -1,5 +1,5 @@
 import { formatBytes } from '@session/basic-types'
-import { PENDING_COPY } from '@session/localization'
+import { isolate } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { Progress, Text, TILE_SCRIM, XStack, YStack } from '@session/ui'
 
@@ -10,13 +10,7 @@ import { sharedCaption } from './attachmentSetCaption'
 const PILL_BAR_WIDTH = 44
 
 function label(set: AttachmentSet): string {
-  const shared = sharedCaption(set)
-  if (shared !== null) return shared
-  if (set.state === 'fetching') return formatBytes(set.doneBytes)
-  // Idle: how many there are and what they weigh, which is what somebody deciding needs. The
-  // count is the half our aggregate never said, and no catalogue key takes one.
-  const count = PENDING_COPY.attachmentCount(set.count)
-  return set.sizeBytes === undefined ? count : `${count} · ${formatBytes(set.sizeBytes)}`
+  return sharedCaption(set) ?? isolate(formatBytes(set.doneBytes))
 }
 
 /**
@@ -47,7 +41,8 @@ export function AttachmentPill({ set }: { set: AttachmentSet }) {
       pointerEvents="none"
       testID={ELEMENT.conversation.attachmentPill}
     >
-      <Text size="$caption" color="$textPrimary">
+      {/* Light in every theme: the scrim under it is a fixed darkening, not a surface. */}
+      <Text size="$caption" color="$surfaceInverted">
         {label(set)}
       </Text>
       {set.state !== 'fetching' ? null : (

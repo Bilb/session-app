@@ -39,6 +39,27 @@ function readShape(hash: Uint8Array): Shape {
 }
 
 /**
+ * The ratio of the hash's luminance component counts, as `session::image::thumbhash::
+ * component_aspect_ratio` reports it: unclamped, so 1 and 2 are reachable, and refused at 0. What
+ * the shim reports as `thumbhashAspect`.
+ */
+export function componentAspectRatio(hash: Uint8Array): number {
+  if (hash.length < 5) throw new Error('thumbhash: too short')
+  const hasAlpha = ((hash[2] as number) & 0x80) !== 0
+  const landscape = ((hash[4] as number) & 0x80) !== 0
+  const stored = (hash[3] as number) & 7
+  const lx = landscape ? (hasAlpha ? 5 : 7) : stored
+  const ly = landscape ? stored : hasAlpha ? 5 : 7
+  if (ly === 0) throw new Error('thumbhash: invalid component count')
+  return lx / ly
+}
+
+/** A hash written as hex, as the fixtures hold them. */
+export function hexBytes(hex: string): Uint8Array {
+  return Uint8Array.from(hex.match(/../g)?.map((b) => parseInt(b, 16)) ?? [])
+}
+
+/**
  * Decodes `hash` into `width` x `height` pixels.
  *
  * The hash's own ratio is approximate (lx/ly, to one part in seven), so the caller passes the

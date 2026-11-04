@@ -70,15 +70,56 @@ export function mediaKindOf(contentType: string | undefined): MediaKind {
 }
 
 /**
- * How wide a message's attachments are drawn, in density-independent pixels: as wide as a bubble
- * is allowed to be. Here rather than with the screens because each app also asks libsession for
- * thumbnails this wide, times its display density, before anything is drawn.
- *
- * A number and not a constant shared with the bubble, because the bubble's own width is a
- * percentage of the pane and nothing measures it yet. When something does, the album takes it as
- * a prop - the album has never been the thing that decides how wide a message is.
+ * The narrowest a message's attachments are drawn, in density-independent pixels: the narrow
+ * layout's album before the transcript is measured, and on the narrowest phones. `ALBUM_SIZES`
+ * says how wide they are drawn once it is.
  */
 export const ALBUM_WIDTH = 240
+
+/**
+ * The two layouts the album is sized for, by the window's width rather than the platform: `narrow`
+ * is the single-pane layout (a phone, or a desktop window narrowed past the two-pane breakpoint);
+ * `wide` is the list and the conversation side by side (any desktop window past it, a tablet).
+ */
+export type AlbumSurface = 'narrow' | 'wide'
+
+export interface AlbumSize {
+  /** The album's width as a share of the transcript it is drawn in. */
+  widthShare: number
+  minWidthPx: number
+  maxWidthPx: number
+  /** The tallest a picture sent on its own is drawn, where its shape alone would draw it taller. */
+  loneMaxHeightPx?: number | undefined
+}
+
+/**
+ * How wide an album is drawn on each, and how tall a picture alone: a share of the transcript,
+ * within a px range. Here rather than with the screens because each app also sizes libsession's
+ * thumbnails from them, times its display density, before anything is drawn.
+ */
+export const ALBUM_SIZES: Readonly<Record<AlbumSurface, AlbumSize>> = {
+  narrow: { widthShare: 0.75, minWidthPx: ALBUM_WIDTH, maxWidthPx: 320 },
+  wide: { widthShare: 0.6, minWidthPx: 320, maxWidthPx: 480, loneMaxHeightPx: 460 },
+}
+
+/**
+ * The tallest shape, width over height, a picture sent on its own is drawn at as wide as the album:
+ * a phone camera's portrait. A taller one is drawn that tall and narrower, so a screenshot cannot
+ * take a screen of transcript.
+ * Here rather than with the album's layout because thumbnails are made for the tile it gives.
+ */
+export const ALBUM_LONE_MIN_ASPECT = 3 / 4
+
+/**
+ * The tallest any tile is drawn on a surface: a row is never taller than the album is wide, and a
+ * picture alone never taller than a 3:4 portrait as wide as the album, or than its cap.
+ */
+export function tallestTilePx(surface: AlbumSurface): number {
+  const { maxWidthPx, loneMaxHeightPx = Number.POSITIVE_INFINITY } = ALBUM_SIZES[surface]
+  return Math.round(
+    Math.max(maxWidthPx, Math.min(maxWidthPx / ALBUM_LONE_MIN_ASPECT, loneMaxHeightPx)),
+  )
+}
 
 /** How many attachments one message may carry. The legacy clients' limit; libsession sets none. */
 export const MAX_ATTACHMENTS_PER_MESSAGE = 32
@@ -136,10 +177,19 @@ export function jpegSize(bytes: Uint8Array): { width: number; height: number } |
   return null
 }
 
+/** libsession's most for a thumbnail's edge; it clamps a larger one to this. */
+const MAX_THUMBNAIL_EDGE_PX = 1024
+
 /**
  * The edge to make thumbnails at for the densest of these displays. 1 with none connected, since
  * thumbnails are never remade and a headless start would otherwise ask for an edge of -Infinity.
+ *
+ * libsession's edge is a thumbnail's height, so it is the surface's tallest tile's, within
+ * libsession's own most.
  */
-export function thumbnailEdgePxFor(scaleFactors: readonly number[]): number {
-  return Math.round(ALBUM_WIDTH * Math.max(1, ...scaleFactors))
+export function thumbnailEdgePxFor(scaleFactors: readonly number[], surface: AlbumSurface): number {
+  return Math.min(
+    MAX_THUMBNAIL_EDGE_PX,
+    Math.round(tallestTilePx(surface) * Math.max(1, ...scaleFactors)),
+  )
 }

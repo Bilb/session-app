@@ -1,3 +1,4 @@
+import { ALBUM_WIDTH } from '@session/basic-types'
 import { act } from '@testing-library/react'
 import { createElement } from 'react'
 import { userEvent } from '@testing-library/user-event'
@@ -75,6 +76,7 @@ function album(
   return (
     <MessageAlbum
       message={shown}
+      width={ALBUM_WIDTH}
       onOpen={onOpen}
       fetchFor={(attachment) => ({
         state: states[attachment.index] ?? 'idle',

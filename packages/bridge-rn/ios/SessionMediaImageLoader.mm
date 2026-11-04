@@ -116,9 +116,10 @@ static UIImage* _Nullable ThumbhashImage(std::shared_ptr<::session_bridge::Thumb
     return result;
 }
 
-/// A thumbnail, decoded whole for a view that wants about all of libsession's JPEG (a single album
-/// tile or a three-up's lead), and reduced while decoding for one that needs half of it or less,
-/// such as the other album tiles or a file row's glyph.
+/// A thumbnail, decoded whole for a view that wants about all of libsession's JPEG (an album tile
+/// more than half as tall as the tallest, as most pictures sent alone are), and reduced while
+/// decoding for one that needs half of it or less, such as a short row's tiles or a file row's
+/// glyph.
 static UIImage* _Nullable ThumbnailImage(CGImageSourceRef source, CGSize view, CGFloat scale) {
     const CGSize pixels = SourcePixelSize(source);
     const CGFloat edge = ::session_bridge::thumbnail_decode_edge(

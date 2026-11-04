@@ -375,6 +375,8 @@ struct Codec<::session_bridge::Attachment> {
         if (value.height)
             obj.Set("height", Codec<double>::to(env, *value.height));
         obj.Set("hasThumbhash", Codec<bool>::to(env, value.has_thumbhash));
+        if (value.thumbhash_aspect)
+            obj.Set("thumbhashAspect", Codec<double>::to(env, *value.thumbhash_aspect));
         obj.Set("hasThumbnail", Codec<bool>::to(env, value.has_thumbnail));
         obj.Set("thumbnailWidthPx", Codec<double>::to(env, value.thumbnail_width_px));
         obj.Set("thumbnailHeightPx", Codec<double>::to(env, value.thumbnail_height_px));
@@ -400,6 +402,7 @@ struct Codec<::session_bridge::Attachment> {
                 optional<double>(obj.Get("width"), "Attachment.width"),
                 optional<double>(obj.Get("height"), "Attachment.height"),
                 Codec<bool>::from(obj.Get("hasThumbhash"), "Attachment.hasThumbhash"),
+                optional<double>(obj.Get("thumbhashAspect"), "Attachment.thumbhashAspect"),
                 Codec<bool>::from(obj.Get("hasThumbnail"), "Attachment.hasThumbnail"),
                 Codec<double>::from(obj.Get("thumbnailWidthPx"), "Attachment.thumbnailWidthPx"),
                 Codec<double>::from(obj.Get("thumbnailHeightPx"), "Attachment.thumbnailHeightPx"),

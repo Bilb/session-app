@@ -1,10 +1,10 @@
 import {
-  ALBUM_WIDTH,
   netidForTransport,
   parseDevnetConfig,
   parseLogSpec,
   parseNetworkName,
   parseRouterKind,
+  thumbnailEdgePxFor,
 } from '@session/basic-types'
 import { createRefusingTransport, type BridgeTransport, type FetchLike } from '@session/client'
 import { createSessionStore } from '@session/state'
@@ -90,8 +90,10 @@ async function openTransport(): Promise<BridgeTransport> {
     // devnet, which is the only thing a devnet can use.
     ...(router === undefined ? {} : { router }),
     deviceType: Platform.OS === 'ios' ? 'ios' : 'android',
-    // A default: a stored edge (setThumbnailEdge) wins over this at every open.
-    thumbnailEdgePx: Math.round(ALBUM_WIDTH * PixelRatio.get()),
+    // A default: a stored edge (setThumbnailEdge) wins over this at every open. Sized for the wide
+    // layout, which a tablet or a phone turned sideways can switch to while running, because
+    // thumbnails are made once; on a 3x phone both layouts already reach libsession's 1024 px.
+    thumbnailEdgePx: thumbnailEdgePxFor([PixelRatio.get()], 'wide'),
     // Off unless asked for, as on desktop: libsession is chatty below warn, and the reason to turn
     // it up is always a specific failure. It is also the only place the network and the transport
     // actually chosen are reported, which no screen shows.
