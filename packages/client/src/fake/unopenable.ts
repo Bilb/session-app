@@ -1,3 +1,5 @@
+import type { DatabaseKeyError } from '../databaseKey'
+import { SessionClientError } from '../errors'
 import type { SessionClient } from '../types'
 
 /** What a request is refused with while there is no database, worded as the bridge words it. */
@@ -9,10 +11,21 @@ export function noDatabaseOpen(reason: string): string {
  * A client whose database would not open, held the way the real bridge holds one: every request is
  * refused with the reason, except a discard, which replaces the database and lifts the refusal.
  *
+ * `reason` is SQLite's text, refused as the bridge words it; or a `DatabaseKeyError`, refused as
+ * the apps' keyless transport refuses it, with its code. Either way a discard lifts it, as a
+ * confirmed Clear does on the real path.
+ *
  * Wrapped around a working client rather than modelled inside the fake, because what it stands for
  * is the absence of everything the fake models.
  */
-export function unopenable(client: SessionClient, reason: string): SessionClient {
+export function unopenable(
+  client: SessionClient,
+  reason: string | DatabaseKeyError,
+): SessionClient {
+  const refusal = () =>
+    typeof reason === 'string'
+      ? new Error(noDatabaseOpen(reason))
+      : new SessionClientError(reason.message, reason.code)
   let refusing = true
   return new Proxy(client, {
     get(target, property, receiver) {
@@ -27,7 +40,7 @@ export function unopenable(client: SessionClient, reason: string): SessionClient
         }
       }
       return (...args: unknown[]) =>
-        refusing ? Promise.reject(new Error(noDatabaseOpen(reason))) : method.apply(target, args)
+        refusing ? Promise.reject(refusal()) : method.apply(target, args)
     },
   })
 }

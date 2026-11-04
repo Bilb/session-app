@@ -126,7 +126,11 @@ The fake refuses to start without its photographs and names the command that fix
 world it opens is `EXPO_PUBLIC_SESSION_FAKE_FIXTURE` - `friends`, `showcase`, `backlog`,
 `newcomer`, `crowd`, `rows` - with `EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS` and
 `EXPO_PUBLIC_SESSION_FAKE_CROWD_HISTORY` sizing `crowd`, and `EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN=10`
-makes every transfer ten times slower, on both apps.
+makes every transfer ten times slower, on both apps. `EXPO_PUBLIC_SESSION_FAKE_FAILED_START` fails
+the start for the startup-failure screen: `1` (not a database), `corrupt`, `locked`, `full`,
+`key-unavailable` or `key-missing`; anything else refuses to start and lists them.
+`EXPO_PUBLIC_SESSION_FAKE_KEY_CUSTODY=1` makes the fake keep a database key as the real bridge does,
+so the real key resolver and the clear past its failures run against the fake.
 
 Every variable an app reads carries `EXPO_PUBLIC_`, desktop's included: Metro inlines one into the
 bundle only when its name does, and it caches the transform - so a Metro started without it keeps

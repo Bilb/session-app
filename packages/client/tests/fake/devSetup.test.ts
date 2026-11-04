@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { backlog } from '#src/fake/backlog'
+import { createSessionClient } from '#src/createSessionClient'
+import { KEY_MISSING, KEY_UNAVAILABLE } from '#src/databaseKey'
 import {
   driveFakeClock,
   FAKE_TICK_MS,
@@ -8,6 +10,7 @@ import {
   startDevFake,
   type DevPhotos,
 } from '#src/fake/devSetup'
+import { createFakeTransport } from '#src/fake/fakeBridge'
 import { photoFileName, photoFileNames } from '#src/fake/media'
 import { noDatabaseOpen } from '#src/fake/unopenable'
 
@@ -217,5 +220,42 @@ describe('starting a dev fake', () => {
       noDatabaseOpen('file is not a database'),
     )
     await expect(alice.getConversations()).resolves.toBeDefined()
+  })
+
+  it.each([
+    ['corrupt', 'database disk image is malformed'],
+    ['locked', 'database is locked'],
+    ['full', 'database or disk is full'],
+  ])(
+    'fails the open with SQLite’s words on EXPO_PUBLIC_SESSION_FAKE_FAILED_START=%s',
+    async (value, words) => {
+      const { served } = startDevFake({ EXPO_PUBLIC_SESSION_FAKE_FAILED_START: value }, allPhotos)
+      await expect(served.getAccountInfo()).rejects.toThrow(noDatabaseOpen(words))
+    },
+  )
+
+  it.each([
+    ['key-unavailable', KEY_UNAVAILABLE],
+    ['key-missing', KEY_MISSING],
+  ])(
+    'refuses with the key failure’s code across the bridge on %s, until a discard',
+    async (value, code) => {
+      const { served } = startDevFake({ EXPO_PUBLIC_SESSION_FAKE_FAILED_START: value }, allPhotos)
+      const client = createSessionClient(createFakeTransport(served))
+      await expect(client.getAccountInfo()).rejects.toMatchObject({ code })
+      await client.discardAccount()
+      await expect(client.getAccountInfo()).resolves.toBeDefined()
+    },
+  )
+
+  it('refuses a failure it does not know, naming the ones it does', () => {
+    expect(() =>
+      startDevFake({ EXPO_PUBLIC_SESSION_FAKE_FAILED_START: 'lockd' }, allPhotos),
+    ).toThrow(/FAKE_FAILED_START=lockd is not a failure; use one of 1, corrupt, locked, full/)
+  })
+
+  it('starts as usual when the variable is empty', () => {
+    const { alice, served } = startDevFake({ EXPO_PUBLIC_SESSION_FAKE_FAILED_START: '' }, allPhotos)
+    expect(served).toBe(alice)
   })
 })
