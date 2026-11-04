@@ -75,9 +75,11 @@ setPorts(
       libsessionCommit: import.meta.env.EXPO_PUBLIC_SESSION_LIBSESSION_COMMIT,
     },
     window: {
-      // One window, so closing it is quitting, and `window.close()` needs no IPC call to do it.
+      // Through main rather than `window.close()`, which on macOS leaves the process running.
+      // The records waiting here go first, on the same channel, so a Quit's own line is written.
       close: () => {
-        window.close()
+        flushLogRecords()
+        window.sessionDesktop.quit()
       },
       restart: () => {
         flushLogRecords()

@@ -43,8 +43,8 @@ ipcRenderer.on('zoom', (_event, next: unknown) => {
  * `openExternal` exists because the window-open handler refuses everything, so the app needs a way
  * to say "this one, and I meant it" that a `target="_blank"` in content we did not write cannot
  * reach. `copyText` exists because every permission is refused, the clipboard's included.
- * `setLocale` is for what main draws itself, the right-click menu. `restart` is the only way the
- * page can end its own process.
+ * `setLocale` is for what main draws itself, the right-click menu. `restart` and `quit` are the
+ * only ways the page can end its own process.
  */
 contextBridge.exposeInMainWorld('sessionDesktop', {
   openExternal: (url: string) => {
@@ -86,6 +86,9 @@ contextBridge.exposeInMainWorld('sessionDesktop', {
   },
   restart: () => {
     ipcRenderer.send('restart')
+  },
+  quit: () => {
+    ipcRenderer.send('quit')
   },
   /** The content zoom from the View menu: the current one at once, then each change. */
   onZoom: (listener: (zoom: number) => void) => {

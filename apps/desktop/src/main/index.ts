@@ -121,6 +121,13 @@ function installAppMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
+/**
+ * Whether the bridge in hand is one standing in for a start that failed. Nothing is worth keeping
+ * the process alive for then, and a window reopened from the dock would show the same failure from
+ * the same cached bridge, so closing the window quits on macOS too.
+ */
+let startFailed = false
+
 /** A bridge that could not be made, standing in for one: see `createRefusingTransport`. */
 function refusingBridge(reason: string): Bridge {
   const refuse = () => Promise.reject(new Error(`the bridge could not start: ${reason}`))
@@ -150,6 +157,7 @@ function keylessBridge(failure: DatabaseKeyError): Bridge {
   const transport = createKeylessTransport(failure, async () => {
     const replaced = await replaceDatabaseAndCreateBridge()
     opened = replaced
+    startFailed = false
     void openLogs().then(({ logger }) => {
       logger.marker('main', 'database replaced after a key failure')
     })
@@ -201,6 +209,7 @@ async function requireBridge(): Promise<NonNullable<typeof bridge>> {
       void openLogs().then(({ logger }) => {
         logger.error('main', 'the bridge could not start', { reason })
       })
+      startFailed = true
       // A key that could not be had leaves something to clear with; anything else does not.
       return error instanceof DatabaseKeyError ? keylessBridge(error) : refusingBridge(reason)
     })
@@ -304,6 +313,16 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
         app.relaunch()
         app.exit(0)
       })
+  })
+
+  // The window port's `close`: the app's Quit. `app.quit` rather than closing the window, which on
+  // macOS leaves the process running with the bridge it has, and a reopen would show the same
+  // failure from the same bridge: the startup-failure screen's advice to restart has to be true.
+  // `before-quit` and `will-quit` below mark the run as ended and write out what is waiting, the
+  // renderer's last records included: it hands them over first, on this same channel.
+  ipc.on('quit', (event) => {
+    if (!isFromAppFrame(event.senderFrame, appUrl)) return
+    app.quit()
   })
 
   // The menus are drawn here, so they follow the language the person chose in the app.
@@ -449,7 +468,7 @@ app.on('child-process-gone', (_event, details) => {
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
+  if (process.platform !== 'darwin' || startFailed) app.quit()
 })
 
 // The bridge outlives every window, so it is closed here rather than with one of them.
