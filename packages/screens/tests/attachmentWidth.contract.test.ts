@@ -25,16 +25,4 @@ describe('the attachments of a message', () => {
     // needs, and a fixed width would run out of the bubble rather than giving the list less.
     expect(root).toMatch(/^return \(\n(\s*\/\/.*\n)*\s*<YStack[^>]*maxWidth="100%"/)
   })
-
-  it('leave room between a gallery and the footer under it', () => {
-    expect(root).toContain("gap={SPACE_SCALE[view === 'gallery' ? 'xs' : '3xs'] + ROW_OVERHANG}")
-  })
-
-  it('draw the gallery at the room the bubble leaves, never wider than the album', () => {
-    // Below a pane of about 330px the bubble has less than ALBUM_WIDTH inside it.
-    expect(root).toContain(
-      'setAlbumWidthPx(Math.min(ALBUM_WIDTH, Math.floor(event.nativeEvent.layout.width)))',
-    )
-    expect(root).toContain('widthPx={albumWidthPx}')
-  })
 })

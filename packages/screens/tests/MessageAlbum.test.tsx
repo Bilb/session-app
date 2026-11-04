@@ -85,7 +85,6 @@ function album(
       })}
       setState={setState}
       onAccent={false}
-      widthPx={ALBUM_WIDTH}
     />
   )
 }

@@ -66,8 +66,7 @@ export const stagedTile = defineStory<TileRow>({
 
 /** Mostly pictures, with a document every fourth tile, as a real pick tends to be. */
 function trayTile(at: number): TileRow {
-  if (at % 4 === 2)
-    return { name: `notes-${String(at + 1)}.pdf`, contentType: PDF, size: '184 kB' }
+  if (at % 4 === 2) return { name: `notes-${String(at + 1)}.pdf`, contentType: PDF, size: '184 kB' }
   return {
     name: `photo-${String(at + 1).padStart(2, '0')}.jpg`,
     contentType: 'image/jpeg',
