@@ -1,7 +1,7 @@
 import type { AnyStory } from '../story'
 import { albumChoices, albumFocus, albumLone, albumOverflow, albumRows } from './album'
 import { button, buttonOnAccent, buttonSizes } from './button'
-import { fileRow, fileRowOnAccent, fileRowReceived } from './fileRow'
+import { fileRow, fileRowOnAccent, fileRowReceived, fileRowWithoutControl } from './fileRow'
 import { avatar, buttonProgress, progressRing, radio } from './indicators'
 import { settingsRow } from './settingsRow'
 import { stagedTile } from './stagedTile'
@@ -15,6 +15,7 @@ export const STORIES: readonly AnyStory[] = [
   fileRow,
   fileRowOnAccent,
   fileRowReceived,
+  fileRowWithoutControl,
   stagedTile,
   radio,
   avatar,
