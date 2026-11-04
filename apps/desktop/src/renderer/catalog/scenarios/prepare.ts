@@ -22,6 +22,8 @@ const PREPARE: Record<string, 'downloaded' | 'downloadFailed' | Running> = {
   'Ours from another device, for the ring at 0 of 0': { doneBytes: 0, totalBytes: 0 },
   'Ours from another device, for the ring at 40%': { doneBytes: 40, totalBytes: 100 },
   'Ours from another device, for the ring at 95%': { doneBytes: 95, totalBytes: 100 },
+  'One file, caught downloading': { doneBytes: 40, totalBytes: 100 },
+  'One picture as a list, caught downloading': { doneBytes: 40, totalBytes: 100 },
 }
 
 const POLL_MS = 50

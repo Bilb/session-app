@@ -45,10 +45,13 @@ export function SendingRow({
   message,
   attachment,
   onAccent,
+  hasControl,
 }: {
   message: Message
   attachment: Attachment
   onAccent?: boolean | undefined
+  /** False for a message's one file, whose footer carries the message's retry. */
+  hasControl?: boolean | undefined
 }) {
   const actions = useSessionActions()
   const upload = uploadStateOf(message, attachment.index)
@@ -80,6 +83,7 @@ export function SendingRow({
       }
       onAction={retry}
       onAccent={onAccent}
+      hasControl={hasControl}
       testIDs={{
         row: ELEMENT.conversation.attachment,
         name: ELEMENT.conversation.attachmentName,

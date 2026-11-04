@@ -90,6 +90,19 @@ export function showcase(names: readonly [FixtureName, FixtureName] = ['Alice', 
     world.settle()
   }
 
+  // A message's one attachment as a list, whose footer carries its only control: a document, and
+  // a picture its reader switched to the list. The catalog catches one of each downloading.
+  const lone: Array<[string, Attachment[], boolean]> = [
+    ['One file, caught downloading', set(['pdf']), true],
+    ['One picture as a list', set(image(1)), false],
+    ['One picture as a list, caught downloading', set(image(1)), false],
+  ]
+  for (const [body, attachments, gallery] of lone) {
+    const message = first.deliverFrom(second, body, world.now(), attachments)
+    if (!gallery) first.setGallery(message.id, false)
+    world.settle()
+  }
+
   // Ours, caught sending: what the composer's files become once the bridge can carry them.
   const sending: Array<[string, Attachment[], SendState, number]> = [
     [

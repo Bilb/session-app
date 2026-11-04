@@ -56,6 +56,16 @@ describe('showcase', () => {
     }
   })
 
+  it('holds a lone picture its reader switched to a list', async () => {
+    const messages = await showcaseMessages()
+    const lone = messages.find((m) => m.body === 'One picture as a list')
+    expect([lone?.attachments.length, lone?.galleryViewable, lone?.gallery]).toEqual([
+      1,
+      true,
+      false,
+    ])
+  })
+
   it('holds a message of ours whose 31st of 32 files failed, with the thirty before it up', async () => {
     const messages = await showcaseMessages()
     const failed = messages.find((m) => m.body === 'File 31 of 32 failed')

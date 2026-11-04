@@ -65,6 +65,17 @@ export const MESSAGE_SCENARIOS: readonly AnyStory[] = [
     ],
     { accent: true, rtl: true },
   ),
+  // A message's one attachment as a list: no control on the row, the footer's verb or ring alone.
+  message(
+    'loneFile',
+    [
+      'One file',
+      'One file, caught downloading',
+      'One picture as a list',
+      'One picture as a list, caught downloading',
+    ],
+    { rtl: true },
+  ),
   message(
     'files',
     [
