@@ -13,6 +13,7 @@ import {
   tintFloor,
   tintedPole,
 } from './rules'
+import { hexColorToRGB } from './hexColorToRGB'
 import { hexToOklch } from './oklch'
 
 /**
@@ -141,6 +142,12 @@ const SHADOW = { light: 'rgba(0, 0, 0, 0.25)', dark: 'rgba(0, 0, 0, 1)' } as con
  */
 const HOVER_OVERLAY = { light: 'rgba(0, 0, 0, 0.04)', dark: 'rgba(255, 255, 255, 0.05)' } as const
 const PRESSED_OVERLAY = { light: 'rgba(0, 0, 0, 0.08)', dark: 'rgba(255, 255, 255, 0.1)' } as const
+
+/**
+ * How much of the body text a progress ring's track is. Translucent rather than a surface step, so
+ * the track is the same distance from whichever fill the ring is drawn on, as the overlays are.
+ */
+const PROGRESS_TRACK_ALPHA = 0.2
 
 /** What a disabled label still has to manage, on every surface. Below AA on purpose. */
 const DISABLED_FLOOR = 2
@@ -377,6 +384,12 @@ export type ThemeTokens = {
   /** Laid over a control while hovered / held; translucent, so it steps from any surface. */
   hoverOverlay: string
   pressedOverlay: string
+  /**
+   * The unfilled part of a progress ring: the body text, translucent, so it reads as the shape the
+   * fill will take on any surface. `bordersColor` is a step from the page and all but vanishes on
+   * the nested surface a button's ring sits on.
+   */
+  progressTrack: string
 }
 
 /**
@@ -601,6 +614,7 @@ function themeBase(knobs: ThemeKnobs): ThemeBase {
       shadow: SHADOW[polarity],
       hoverOverlay: HOVER_OVERLAY[polarity],
       pressedOverlay: PRESSED_OVERLAY[polarity],
+      progressTrack: `rgba(${hexColorToRGB(text)}, ${String(PROGRESS_TRACK_ALPHA)})`,
     },
     text,
     background,

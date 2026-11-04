@@ -110,3 +110,29 @@ describe('the hover and pressed overlays', () => {
     expect(wrong).toEqual([])
   })
 })
+
+/** The least a track may step from its surface and still read as the ring's shape. */
+const MIN_TRACK_STEP = 1.3
+
+describe('the progress track', () => {
+  /**
+   * It is the shape the fill will take, so it has to show on every surface, and stay quieter than
+   * the accent text fill on the same surface so that it never reads as a second ring.
+   */
+  it('shows on every surface, and stays fainter than the fill drawn along it', () => {
+    const wrong: string[] = []
+    for (const theme of THEMES)
+      for (const accent of ACCENTS) {
+        const t = getThemeTokens(theme, accent)
+        for (const surface of SURFACES) {
+          const step = contrastRatio(t[surface], over(t.progressTrack, t[surface]))
+          const fill = contrastRatio(t[surface], t.accentText)
+          if (step < MIN_TRACK_STEP || step >= fill)
+            wrong.push(
+              `${theme}/${accent} on ${surface}: step ${step.toFixed(2)}, fill ${fill.toFixed(2)}`,
+            )
+        }
+      }
+    expect(wrong).toEqual([])
+  })
+})
