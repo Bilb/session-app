@@ -96,10 +96,14 @@ export interface AlbumSize {
  * How wide an album is drawn on each, and how tall a picture alone: a share of the transcript,
  * within a px range. Here rather than with the screens because each app also sizes libsession's
  * thumbnails from them, times its display density, before anything is drawn.
+ *
+ * The cap on a picture alone keeps its thumbnail within libsession's 1024 px edge on a 3x phone:
+ * 340 x 3 is 1020. A row in the wide layout can still be as tall as its 360 px album, which only a
+ * 3x phone turned into the wide layout draws, a little past the edge.
  */
 export const ALBUM_SIZES: Readonly<Record<AlbumSurface, AlbumSize>> = {
-  narrow: { widthShare: 0.75, minWidthPx: ALBUM_WIDTH, maxWidthPx: 320 },
-  wide: { widthShare: 0.6, minWidthPx: 320, maxWidthPx: 480, loneMaxHeightPx: 460 },
+  narrow: { widthShare: 0.75, minWidthPx: ALBUM_WIDTH, maxWidthPx: 280, loneMaxHeightPx: 340 },
+  wide: { widthShare: 0.6, minWidthPx: 280, maxWidthPx: 360, loneMaxHeightPx: 340 },
 }
 
 /**

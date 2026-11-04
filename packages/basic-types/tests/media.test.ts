@@ -105,20 +105,20 @@ describe('a viewable type’s kind', () => {
 })
 
 describe('the edge thumbnails are made at', () => {
-  it('covers the tallest tile, a 3:4 portrait as wide as the narrow layout’s widest album', () => {
-    expect(tallestTilePx('narrow')).toBe(427)
-    expect(thumbnailEdgePxFor([2], 'narrow')).toBe(854)
+  it('covers the tallest tile, a picture alone at the narrow layout’s cap', () => {
+    expect(tallestTilePx('narrow')).toBe(340)
+    expect(thumbnailEdgePxFor([2], 'narrow')).toBe(680)
   })
 
   it('covers a wide-layout row as tall as its widest album, the lone picture capped below it', () => {
-    expect(tallestTilePx('wide')).toBe(480)
-    expect(thumbnailEdgePxFor([1, 2, 1.5], 'wide')).toBe(960)
+    expect(tallestTilePx('wide')).toBe(360)
+    expect(thumbnailEdgePxFor([1, 2, 1.5], 'wide')).toBe(720)
   })
 
   it('stops at libsession’s 1024 px, and makes them at 1x with no display connected', () => {
-    expect(thumbnailEdgePxFor([3], 'narrow')).toBe(1024)
+    expect(thumbnailEdgePxFor([3], 'narrow')).toBe(1020)
     expect(thumbnailEdgePxFor([3], 'wide')).toBe(1024)
-    expect(thumbnailEdgePxFor([], 'wide')).toBe(480)
+    expect(thumbnailEdgePxFor([], 'wide')).toBe(360)
   })
 })
 

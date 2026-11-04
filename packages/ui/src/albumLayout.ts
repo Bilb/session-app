@@ -266,8 +266,8 @@ function balanceCost(rows: readonly AlbumRow[], height: number, width: number): 
  * **"+N".** Past `ALBUM_MAX_TILES`, the last tile is a square slot carrying the count of the rest,
  * never alone on its row, never the largest tile, and where avoidable not among the two largest.
  *
- * **One picture** keeps its own shape: see `loneTile`. `loneMaxHeightPx` caps its height, as the
- * wide layout does; the narrow one has no cap.
+ * **One picture** keeps its own shape: see `loneTile`. `loneMaxHeightPx` caps its height, as both
+ * layouts do.
  *
  * `aspects` are width over height; an absent or unusable one draws a square. Shapes come from the
  * sender's metadata, so the layout is settled before a byte of any picture arrives, and a tile's
