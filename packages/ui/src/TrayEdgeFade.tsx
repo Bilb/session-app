@@ -9,6 +9,14 @@ import { useTokenColor } from './useTokenColor'
 const TRAY_FADE_WIDTH = 40
 
 /**
+ * How strongly an end fades, from how far the rail is scrolled from that end: none at the end,
+ * whole once a fade's width of tiles is out of sight, so it eases in as the rail moves.
+ */
+export function edgeFadeOpacity(hiddenPx: number): number {
+  return Math.min(1, Math.max(0, hiddenPx / TRAY_FADE_WIDTH))
+}
+
+/**
  * The page's surface fading in over one end of the rail, saying there is more that way. The
  * tray places it over the tiles; it never takes a press meant for them.
  *

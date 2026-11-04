@@ -59,10 +59,10 @@ describe('the staged tray', () => {
   it('fades only the ends that can still scroll, into the surface, in the reading direction', () => {
     const tray = source('StagedTray.tsx')
     expect(tray).toMatch(
-      /\{canGoBack \? \(\s*<YStack position="absolute" top=\{0\} \{\.\.\.logical\(\{ insetStart: 0 \}\)\}>/,
+      /\{startFade > 0 \? \(\s*<YStack[^>]*opacity=\{startFade\}[^>]*\{\.\.\.logical\(\{ insetStart: 0 \}\)\}>/,
     )
     expect(tray).toMatch(
-      /\{canGoOn \? \(\s*<YStack position="absolute" top=\{0\} \{\.\.\.logical\(\{ insetEnd: 0 \}\)\}>/,
+      /\{endFade > 0 \? \(\s*<YStack[^>]*opacity=\{endFade\}[^>]*\{\.\.\.logical\(\{ insetEnd: 0 \}\)\}>/,
     )
     const fade = source('TrayEdgeFade.tsx')
     expect(fade).toContain("useTokenColor('$backgroundPrimary')")

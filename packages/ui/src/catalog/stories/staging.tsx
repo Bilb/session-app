@@ -116,6 +116,8 @@ export const stagedTray = defineStory<TrayRow>({
     overflowing: { count: 8 },
     // Past the start at every width the pages draw and short of the end, so both ends can scroll.
     middle: { count: 16, startOffset: 720 },
+    // Scrolled less than a fade's width: the start's fade is part drawn, as it is mid-drag.
+    justScrolled: { count: 16, startOffset: 16 },
   },
   render: (row) => <Tray {...row} />,
 })
