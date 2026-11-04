@@ -1,14 +1,27 @@
 import type { ConversationId, Message } from '@session/client'
 import { transferKey, type SessionStore } from '@session/state'
 
+/** A running download, as each of a message's files reports it, in encrypted bytes. */
+interface Running {
+  doneBytes: number
+  totalBytes: number
+}
+
 /**
  * What a few rows' messages are put through before any page draws, by body. Each is its own
  * message, never one another page draws at rest: the store is shared by every page.
  */
-const PREPARE: Record<string, 'downloaded' | 'downloading' | 'downloadFailed'> = {
+const PREPARE: Record<string, 'downloaded' | 'downloadFailed' | Running> = {
   'Two, one above the other': 'downloaded',
-  'Four in two rows': 'downloading',
+  'Four in two rows': { doneBytes: 50, totalBytes: 100 },
   'Five: two above three': 'downloadFailed',
+  // The first report of any transfer, which the unsized pair's set has no total to measure by.
+  'A pair for the ring at 0 of 0': { doneBytes: 0, totalBytes: 0 },
+  'A pair for the ring at 40%': { doneBytes: 40, totalBytes: 100 },
+  'A pair for the ring at 95%': { doneBytes: 95, totalBytes: 100 },
+  'Ours from another device, for the ring at 0 of 0': { doneBytes: 0, totalBytes: 0 },
+  'Ours from another device, for the ring at 40%': { doneBytes: 40, totalBytes: 100 },
+  'Ours from another device, for the ring at 95%': { doneBytes: 95, totalBytes: 100 },
 }
 
 const POLL_MS = 50
@@ -59,9 +72,9 @@ export async function prepare(session: SessionStore): Promise<Scenario> {
         [message.id]: Object.fromEntries(
           message.attachments.map(({ index }) => [
             transferKey('download', index),
-            preparation === 'downloading'
-              ? { state: 'running' as const, doneBytes: 50, totalBytes: 100 }
-              : { state: 'failed' as const, doneBytes: 0, totalBytes: 100 },
+            preparation === 'downloadFailed'
+              ? { state: 'failed' as const, doneBytes: 0, totalBytes: 100 }
+              : { state: 'running' as const, ...preparation },
           ]),
         ),
       },

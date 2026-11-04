@@ -157,6 +157,7 @@ describe('screen copy', () => {
       'attachmentQueued',
       'attachmentNotSent',
       'attachmentsUploaded',
+      'attachmentsDownloadProgress',
       'attachmentsFailedCount',
       'attachmentsDropHint',
       'attachmentRemove',

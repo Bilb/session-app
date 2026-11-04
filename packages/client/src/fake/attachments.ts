@@ -225,13 +225,14 @@ const TYPES: Record<Kind, { contentType: string; extension: string }> = {
  * One attachment of a showcase message.
  *
  * `hashed: false` is a sender that supplied no ThumbHash, whose flat surface and glyph has to be
- * as easy to look at as the coloured placeholder.
+ * as easy to look at as the coloured placeholder. `sized: false` is a sender whose pointer declared
+ * no size, so nothing says how big the set is until its bytes are here.
  */
 function showpiece(
   index: number,
   kind: Kind,
   photo: number,
-  options: { hashed?: boolean; expired?: boolean; original?: boolean } = {},
+  options: { hashed?: boolean; expired?: boolean; original?: boolean; sized?: boolean } = {},
 ): Attachment {
   const { contentType, extension } = TYPES[kind]
   const picture = isViewableContentType(contentType)
@@ -247,7 +248,7 @@ function showpiece(
       ? `unsplash-${number}${round === 0 ? '' : `-${String(round + 1)}`}.${extension}`
       : `${kind}-${String(index + 1).padStart(2, '0')}.${extension}`,
     // Spread so a set does not report one bar's worth of progress four times over.
-    sizeBytes: 180_000 + index * 420_000,
+    ...(options.sized === false ? {} : { sizeBytes: 180_000 + index * 420_000 }),
     voiceMessage: false,
     ...(picture ? { width: 1600, height: 1200 } : {}),
     hasThumbhash: picture && options.hashed !== false,
@@ -284,6 +285,7 @@ export function set(
     hashed?: boolean
     expired?: boolean | ((index: number) => boolean)
     original?: boolean
+    sized?: boolean
   } = {},
 ): Attachment[] {
   const { expired, ...rest } = options

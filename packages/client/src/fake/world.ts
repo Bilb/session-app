@@ -951,6 +951,25 @@ export class FakeAccount {
   }
 
   /**
+   * A message of ours sent from another of our devices: sent, every file on the file server, and
+   * none of them in this device's cache, so each downloads as an incoming file does.
+   */
+  seedFromOtherDevice(id: ConversationId, body: string, attachments: Attachment[]): Message {
+    return this.addMessage(id, {
+      id: nextId(),
+      conversationId: id,
+      author: this.sessionId,
+      timestamp: this.world?.now() ?? Date.now(),
+      body,
+      outgoing: true,
+      sendState: 'sent',
+      attachments,
+      galleryViewable: galleryViewable(attachments),
+      gallery: galleryViewable(attachments),
+    })
+  }
+
+  /**
    * libsession's `retry_send`: from `failed` or `interrupted` only, uploading what has no URL yet
    * and keeping what has, then sending, through the same steps a first send takes.
    */

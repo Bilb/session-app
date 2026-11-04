@@ -2,7 +2,7 @@ import type { Attachment, Message } from '@session/client'
 import { SPACE_SCALE, YStack } from '@session/ui'
 import { useSessionActions } from '@session/state'
 
-import { AttachmentFooter, FOOTER_WORDED_MIN_WIDTH_PX, ROW_OVERHANG } from './AttachmentFooter'
+import { AttachmentFooter, ROW_OVERHANG } from './AttachmentFooter'
 import { AttachmentList, LIST_MAX_ROWS } from './AttachmentList'
 import { AttachmentPill } from './AttachmentPill'
 import { attachmentView, canChooseView } from './attachmentView'
@@ -99,7 +99,6 @@ export function MessageAttachments({
         onAccent={message.outgoing}
         onAction={footer.onAction}
         sending={footer.sending}
-        compact={albumWidth < FOOTER_WORDED_MIN_WIDTH_PX}
         view={canChooseView(message) ? view : undefined}
         onView={(chosen) => {
           // Nothing redraws until libsession announces it, so a failure still shows what is stored.

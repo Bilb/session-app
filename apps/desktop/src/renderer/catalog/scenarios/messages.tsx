@@ -50,6 +50,20 @@ export const MESSAGE_SCENARIOS: readonly AnyStory[] = [
     ['Two, one above the other', 'Four in two rows', 'Five: two above three', 'Thirty-two'],
     {},
   ),
+  // The footer's ring in the verb's place, at each reading, on a bubble received and on ours. The
+  // capture asks for reduced motion, so the 0 of 0 ring is held with its arc at the top.
+  message(
+    'albumDownloading',
+    [
+      'A pair for the ring at 0 of 0',
+      'A pair for the ring at 40%',
+      'A pair for the ring at 95%',
+      'Ours from another device, for the ring at 0 of 0',
+      'Ours from another device, for the ring at 40%',
+      'Ours from another device, for the ring at 95%',
+    ],
+    { accent: true, rtl: true },
+  ),
   message(
     'files',
     [

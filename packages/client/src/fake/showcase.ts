@@ -13,7 +13,7 @@ import { FakeWorld, resetFakeIds } from './world'
  * message per case, so a pass over the transcript is a pass over the design.
  *
  * The order is the album's counts first, then the mixes that force a list, then the states a
- * message can be in that have nothing to do with what is attached.
+ * message can be in that have nothing to do with what is attached, then downloads caught running.
  */
 export function showcase(names: readonly [FixtureName, FixtureName] = ['Alice', 'Bob']): FakeSetup {
   resetFakeIds()
@@ -71,6 +71,27 @@ export function showcase(names: readonly [FixtureName, FixtureName] = ['Alice', 
   for (const [body, attachments] of messages) {
     // Nothing is fetched: the conversation has not been asked what to download.
     first.deliverFrom(second, body, world.now(), attachments)
+    world.settle()
+  }
+
+  // A running download at each reading the footer's ring draws, received and ours alike: the
+  // catalog's scenarios give each a transfer of its own. The first pair declares no sizes, so
+  // nothing says how big its set is and the ring cannot read a share of it.
+  const readings: Array<[string, boolean]> = [
+    ['for the ring at 0 of 0', false],
+    ['for the ring at 40%', true],
+    ['for the ring at 95%', true],
+  ]
+  for (const [reading, sized] of readings) {
+    first.deliverFrom(second, `A pair ${reading}`, world.now(), set(image(2), { sized }))
+    world.settle()
+  }
+  for (const [reading, sized] of readings) {
+    first.seedFromOtherDevice(
+      second.sessionId,
+      `Ours from another device, ${reading}`,
+      set(image(2), { sized }),
+    )
     world.settle()
   }
 
