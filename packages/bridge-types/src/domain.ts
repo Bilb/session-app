@@ -193,13 +193,29 @@ export interface Attachment {
    */
   hasThumbhash: boolean
   /**
+   * The ThumbHash's rough record of the picture's shape, width over height: libsession's
+   * `component_aspect_ratio`, the ratio of the hash's DCT component counts, which its encoder picks
+   * in proportion to the source. Set exactly when `hasThumbhash` is.
+   *
+   * Coarse by construction. It is one of 7/n or n/7 for n in 1 to 7 (5/n or n/5 for a hash with
+   * alpha), and saturates there: a 4:3 photo reads 7:5, and every picture wider than 7:1 reads 7.
+   * A last resort for laying a picture out where the sender gave no `width` and `height`, and
+   * never a reason to override them.
+   *
+   * libsession's header says it is not the picture's aspect ratio and must never be used to lay one
+   * out. Here it shapes only a tile with nothing else to go on, and only until the thumbnail lands,
+   * whose shape `albumAspect` takes instead: the tile moves at most once.
+   */
+  thumbhashAspect?: number
+  /**
    * Whether libsession holds a thumbnail of this attachment: a JPEG of the picture in its own
    * shape, cropped to its centre at 21:9 when it is wider than that either way up, then the
-   * client's thumbnail edge tall and never enlarged. A square tile covers it and crops. Made of a
-   * displayable image whose bytes are cached, and after them, so it turns true in a later
-   * `messages-updated` than the one reporting `cached`; false again once the cache evicts the
-   * file, which takes the thumbnail too. One we send has it sooner: made from libsession's own
-   * copy before the upload, and true from then on until the cached file is evicted.
+   * client's thumbnail edge tall and never enlarged. An album's tile takes its shape, within the
+   * same 9:21 to 21:9; a list's square thumbnail covers it and crops. Made of a displayable image
+   * whose bytes are cached, and after them, so it turns true in a later `messages-updated` than the
+   * one reporting `cached`; false again once the cache evicts the file, which takes the thumbnail
+   * too. One we send has it sooner: made from libsession's own copy before the upload, and true
+   * from then on until the cached file is evicted.
    *
    * What a tile draws, through the media scheme's `thumbnail` path; a viewer draws the file.
    */

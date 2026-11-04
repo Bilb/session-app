@@ -1,6 +1,6 @@
 import type { PickedFile } from '@session/app'
 import { MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
-import { PENDING_COPY, tr } from '@session/localization'
+import { isolate, PENDING_COPY, tr } from '@session/localization'
 
 import { sizeOf, type StagingRefusal } from './staging'
 
@@ -19,7 +19,7 @@ function namedDetail(files: readonly PickedFile[]): Pick<RefusalNotice, 'detail'
   const [first] = files
   if (first === undefined) return {}
   const size = sizeOf(first)
-  const named = size === undefined ? first.name : `${first.name} · ${size}`
+  const named = size === undefined ? first.name : `${isolate(first.name)} · ${isolate(size)}`
   return {
     detail:
       files.length === 1 ? named : PENDING_COPY.attachmentNameAndMore(named, files.length - 1),

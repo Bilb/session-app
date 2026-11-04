@@ -8,6 +8,7 @@ import { AttachmentAlbum, type AlbumItem } from '@session/ui'
 import type { Fetch, FetchState } from './attachmentFetch'
 import type { AttachmentSetState } from './attachmentSet'
 import { rowVerb, verbLabel } from './attachmentPress'
+import { albumAspect } from './albumAspect'
 import { albumTileName } from './albumTileName'
 import { useLocale } from './useLocale'
 import { isViewable, leadUri, viewerFit } from './viewableAttachments'
@@ -20,14 +21,19 @@ import { isViewable, leadUri, viewerFit } from './viewableAttachments'
  */
 export function MessageAlbum({
   message,
+  width,
+  loneMaxHeightPx,
   onOpen,
   control,
   fetchFor,
   setState,
   onAccent,
-  widthPx,
 }: {
   message: Message
+  /** The message's attachments' width, which the album fills. */
+  width: number
+  /** How tall a picture sent alone may be drawn: its layout's cap. */
+  loneMaxHeightPx?: number | undefined
   /** Takes the attachment's index in the message. */
   onOpen: (index: number) => void
   /** The set's own control, drawn over the box the layout names. */
@@ -37,8 +43,6 @@ export function MessageAlbum({
   setState: AttachmentSetState
   /** Drawn on a bubble you sent. */
   onAccent: boolean
-  /** `ALBUM_WIDTH`, or less where the bubble has less room inside it. */
-  widthPx: number
 }) {
   // Every picture, those sent as original files included: they draw a tile and export on a tap.
   const viewable = useMemo(() => message.attachments.filter(isViewable), [message])
@@ -62,6 +66,7 @@ export function MessageAlbum({
         fetchesOnOpen: state === 'idle' || state === 'failed',
         testID: ELEMENT.conversation.attachmentImage,
         label: albumTileName(attachment.filename, at, viewable.length),
+        aspect: albumAspect(attachment),
         hint: verb === null ? undefined : verbLabel(verb),
         transferring: state === 'fetching',
       }
@@ -85,7 +90,8 @@ export function MessageAlbum({
   return (
     <AttachmentAlbum
       items={items}
-      width={widthPx}
+      width={width}
+      loneMaxHeightPx={loneMaxHeightPx}
       overflowLabel={(count) => tr('andMore', { count })}
       overflowName={PENDING_COPY.attachmentNameAndMore}
       onOpen={openAt}

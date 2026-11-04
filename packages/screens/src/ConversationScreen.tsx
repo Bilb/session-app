@@ -1,13 +1,13 @@
 import { requirePorts } from '@session/app'
 import { formatBytes, MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
-import type { ConversationId } from '@session/client'
+import type { ConversationId, Message } from '@session/client'
 import {
   useAttachmentUploadLimit,
   useConversation,
   useMessages,
   useSessionActions,
 } from '@session/state'
-import { PENDING_COPY, tr } from '@session/localization'
+import { isolate, PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { DropOverlay, DropZone, List, Screen, Separator, Text, XStack, YStack } from '@session/ui'
 import { useMemo, useState } from 'react'
@@ -25,6 +25,32 @@ import { conversationTitle } from './conversationTitle'
 import { DateHeaderRow } from './DateHeaderRow'
 import { showsDateHeader } from './dateHeaders'
 import { useTopBarInsets } from './shell/pane'
+import { TranscriptWidth } from './TranscriptWidth'
+
+/** The messages, oldest first, each under its date where the day changes. */
+function Transcript({
+  conversationId,
+  messages,
+}: {
+  conversationId: ConversationId
+  messages: readonly Message[]
+}) {
+  return (
+    // No itemHeight: a bubble is as tall as its body wraps to, so the list has to measure.
+    <List
+      data={messages}
+      keyExtractor={(message) => String(message.id)}
+      renderItem={(message, index) => (
+        <YStack paddingHorizontal="$md" paddingBottom="$sm">
+          {showsDateHeader(messages[index - 1], message) ? (
+            <DateHeaderRow timestampMs={message.timestamp} />
+          ) : null}
+          <MessageRow conversationId={conversationId} messageId={message.id} index={index} />
+        </YStack>
+      )}
+    />
+  )
+}
 
 function Conversation({ conversationId }: { conversationId: ConversationId }) {
   const topBarInsets = useTopBarInsets()
@@ -103,7 +129,7 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
                 title={tr('attachmentsAdd')}
                 hint={PENDING_COPY.attachmentsDropHint(
                   MAX_ATTACHMENTS_PER_MESSAGE,
-                  formatBytes(uploadLimitBytes),
+                  isolate(formatBytes(uploadLimitBytes)),
                 )}
                 testID={ELEMENT.conversation.dropOverlay}
               />
@@ -111,23 +137,9 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
           }
         >
           {ready ? (
-            // No itemHeight: a bubble is as tall as its body wraps to, so the list has to measure.
-            <List
-              data={messages}
-              keyExtractor={(message) => String(message.id)}
-              renderItem={(message, index) => (
-                <YStack paddingHorizontal="$md" paddingBottom="$sm">
-                  {showsDateHeader(messages[index - 1], message) ? (
-                    <DateHeaderRow timestampMs={message.timestamp} />
-                  ) : null}
-                  <MessageRow
-                    conversationId={conversationId}
-                    messageId={message.id}
-                    index={index}
-                  />
-                </YStack>
-              )}
-            />
+            <TranscriptWidth flex={1}>
+              <Transcript conversationId={conversationId} messages={messages} />
+            </TranscriptWidth>
           ) : (
             <YStack flex={1} padding="$md">
               <Text tone="secondary">{tr('loading')}</Text>

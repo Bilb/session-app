@@ -39,7 +39,7 @@ describe('what the composer says about a refusal', () => {
       ['pixels', PENDING_COPY.attachmentsErrorImageTooLarge],
     ])
     expect(notices[0]?.detail).toBe(PENDING_COPY.attachmentNameAndMore('gone.pdf', 1))
-    expect(notices[2]?.detail?.startsWith('pano.jpg · ')).toBe(true)
+    expect(notices[2]?.detail?.startsWith('\u2068pano.jpg\u2069 · \u2068')).toBe(true)
     // The name the notice may shorten is the one its detail starts with.
     expect(notices.map((n) => n.detailName)).toEqual(['gone.pdf', 'drone.mov', 'pano.jpg'])
   })
@@ -82,7 +82,7 @@ describe('what the composer says about a refusal', () => {
     const said = refusalAnnouncement(notices)
     const lines = said.split('\n')
     expect(lines[0]).toBe(`${tr('attachmentsErrorSize')}.`)
-    expect(lines[1]?.startsWith('drone.mov · ')).toBe(true)
+    expect(lines[1]?.startsWith('\u2068drone.mov\u2069 · \u2068')).toBe(true)
     expect(lines[1]?.endsWith('.')).toBe(true)
     // A stop where the copy has none, and never a second one after its own.
     expect(lines.slice(2)).toEqual([

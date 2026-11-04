@@ -76,6 +76,7 @@ function album(
   return (
     <MessageAlbum
       message={shown}
+      width={ALBUM_WIDTH}
       onOpen={onOpen}
       fetchFor={(attachment) => ({
         state: states[attachment.index] ?? 'idle',

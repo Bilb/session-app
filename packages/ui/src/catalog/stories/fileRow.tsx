@@ -8,11 +8,10 @@ const PDF = { contentType: 'application/pdf', filename: 'report.pdf' } as const
 const OPENS = { onOpen: noop, openLabel: 'Open' } as const
 
 /**
- * A file of a message of ours, while its set uploads one file at a time. The uploading row's ring
- * stays empty: the bridge reports no upload progress.
+ * The files of a message we are sending that are not the one uploading: nothing to press, so the
+ * control's square holds a marker or nothing.
  */
 const SENDING = {
-  uploading: { ...PDF, caption: 'Uploading', state: 'fetching', actionLabel: 'Uploading' },
   queued: { ...PDF, caption: 'Queued', state: 'queued' },
   uploaded: { ...PDF, caption: '180 kB', state: 'uploaded' },
   unsent: { ...PDF, caption: 'Not sent', state: 'unsent' },
@@ -60,6 +59,7 @@ export const fileRow = defineStory<FileRowProps>({
       onAction: noop,
     },
     unavailable: { ...PDF, caption: 'Attachment expired', state: 'unavailable' },
+    ...SENDING,
     longName: {
       ...PDF,
       filename: 'quarterly-board-meeting-minutes-final-revised-v7.pdf',
@@ -76,7 +76,6 @@ export const fileRow = defineStory<FileRowProps>({
       actionLabel: 'Download',
       onAction: noop,
     },
-    ...SENDING,
   },
   render: (props) => <FileRow {...props} />,
 })
@@ -118,7 +117,14 @@ export const fileRowOnAccent = defineStory<FileRowProps>({
     idle: { ...IN_BUBBLE.idle, onAccent: true },
     fetching: { ...IN_BUBBLE.fetching, onAccent: true },
     failed: { ...IN_BUBBLE.failed, onAccent: true },
-    uploading: { ...SENDING.uploading, onAccent: true },
+    // The bridge reports no upload progress, so an upload holds the empty ring.
+    uploading: {
+      ...PDF,
+      caption: 'Uploading',
+      state: 'fetching',
+      actionLabel: 'Uploading',
+      onAccent: true,
+    },
     queued: { ...SENDING.queued, onAccent: true },
     uploaded: { ...SENDING.uploaded, onAccent: true },
     unsent: { ...SENDING.unsent, onAccent: true },

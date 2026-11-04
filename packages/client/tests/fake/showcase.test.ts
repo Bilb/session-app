@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
+import { PHOTO_THUMBHASHES } from '#src/fake/attachments'
 import { showcase } from '#src/fake/showcase'
+import { componentAspectRatio, hexBytes } from '#src/fake/thumbhash'
 
 async function showcaseMessages() {
   const { world, clients } = showcase()
@@ -11,6 +13,16 @@ async function showcaseMessages() {
 }
 
 describe('showcase', () => {
+  it('reports the shape every dev photograph’s hash records on a hashed picture, and none without', async () => {
+    const shapes = new Set(PHOTO_THUMBHASHES.map((hash) => componentAspectRatio(hexBytes(hash))))
+    expect([...shapes]).toEqual([7 / 5])
+    const messages = await showcaseMessages()
+    const hashed = messages.find((m) => m.body === 'One picture')?.attachments[0]
+    const unhashed = messages.find((m) => m.body === 'Three with no hash to draw')?.attachments[0]
+    expect(hashed?.thumbhashAspect).toBe(7 / 5)
+    expect(unhashed && 'thumbhashAspect' in unhashed).toBe(false)
+  })
+
   it('gives every picture of a message a filename of its own, past the last photo too', async () => {
     const messages = await showcaseMessages()
     const album = messages.find((m) => m.body === 'Thirty-two')

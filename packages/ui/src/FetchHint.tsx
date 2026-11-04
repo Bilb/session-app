@@ -67,6 +67,7 @@ export function FetchHint({
               ...(isWeb ? { role: 'button', 'aria-label': label } : { 'aria-hidden': true }),
             })}
       >
+        {/* Light in every theme, as the scrim it sits on is dark in every theme. */}
         <Icon name="cloudDownload" size={small ? 'xs' : 'md'} color="$surfaceInverted" />
       </YStack>
     </YStack>

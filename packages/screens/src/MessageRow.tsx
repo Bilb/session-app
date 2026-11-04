@@ -6,7 +6,9 @@ import { MessageFrame, ON_ACCENT_SECONDARY_OPACITY, Text, XStack } from '@sessio
 import { memo, useMemo, type ReactNode } from 'react'
 
 import { ConversationUiContext, type ConversationUi } from './conversationUi'
+import { attachmentsWidthPx } from './attachmentsWidth'
 import { MessageAttachments } from './MessageAttachments'
+import { useAlbumGeometry } from './useAlbumGeometry'
 import { isUploadPhase } from './uploadState'
 
 /**
@@ -63,7 +65,11 @@ export const MessageRow = memo(function MessageRow({
 }) {
   const actions = useSessionActions()
   const message = useMessage(conversationId, messageId)
+  const geometry = useAlbumGeometry()
   if (message === undefined) return null
+  // A caption wraps at its attachments' width, so a narrow picture keeps a narrow bubble.
+  const attachmentsWidth =
+    message.attachments.length === 0 ? undefined : attachmentsWidthPx(message, geometry)
 
   const label = message.outgoing ? stateLabel(message) : undefined
   // A set still uploading has its Retry in the attachment footer, beside the count it resumes.
@@ -74,19 +80,24 @@ export const MessageRow = memo(function MessageRow({
     <MessageFrame
       outgoing={message.outgoing}
       alignSelf={message.outgoing ? 'flex-end' : 'flex-start'}
-      maxWidth="80%"
+      // Text wraps at four fifths of the row. Attachments are sized for the transcript already,
+      // as a share of it that fits the row, and their caption wraps at them.
+      maxWidth={attachmentsWidth === undefined ? '80%' : '100%'}
       testID={ELEMENT.conversation.messageRow(index)}
     >
       {message.body.length === 0 ? null : (
         <Text
           size="$body"
           color={message.outgoing ? '$onAccent' : '$messageBubbleIncomingText'}
+          {...(attachmentsWidth === undefined ? {} : { maxWidth: attachmentsWidth })}
           testID={ELEMENT.conversation.messageBody}
         >
           {message.body}
         </Text>
       )}
-      {message.attachments.length === 0 ? null : <MessageAttachments message={message} />}
+      {attachmentsWidth === undefined ? null : (
+        <MessageAttachments message={message} width={attachmentsWidth} />
+      )}
       {label === undefined ? null : (
         <XStack alignItems="center" gap="$xs">
           {/* On the fill, not on the page: a label only ever appears on an outgoing message. */}
