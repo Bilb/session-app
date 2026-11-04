@@ -7,11 +7,16 @@ import electron from 'electron'
 
 const { app, BrowserWindow, Menu, MessageChannelMain, clipboard, session, shell } = electron
 
-import { createRefusingTransport, type Request } from '@session/client'
+import {
+  createKeylessTransport,
+  createRefusingTransport,
+  DatabaseKeyError,
+  type Request,
+} from '@session/client'
 import { isCrowdinLocale, setLocale } from '@session/localization'
 
 import { appMenuTemplate } from './appMenu'
-import { createBridge } from './bridge'
+import { createBridge, replaceDatabaseAndCreateBridge, type Bridge } from './bridge'
 import { editMenuItems } from './editMenu'
 import { serveFiles } from './files'
 import { hiddenRun } from './hiddenRun'
@@ -117,7 +122,7 @@ function installAppMenu(): void {
 }
 
 /** A bridge that could not be made, standing in for one: see `createRefusingTransport`. */
-function refusingBridge(reason: string): Awaited<ReturnType<typeof createBridge>> {
+function refusingBridge(reason: string): Bridge {
   const refuse = () => Promise.reject(new Error(`the bridge could not start: ${reason}`))
   return {
     ...createRefusingTransport(reason),
@@ -128,6 +133,40 @@ function refusingBridge(reason: string): Awaited<ReturnType<typeof createBridge>
     fetchStagedThumbnail: refuse,
     planDecode: () => {
       throw new Error(`the bridge could not start: ${reason}`)
+    },
+  }
+}
+
+/**
+ * A bridge that could not be made for want of its key, standing in for one until a confirmed clear
+ * replaces the database and opens the real one: see `createKeylessTransport`. Media is refused
+ * until then, and served from that bridge after.
+ *
+ * A wrapper rather than a swap of `bridge`: the media scheme and every window's channel hold the
+ * object they were given, and this is it.
+ */
+function keylessBridge(failure: DatabaseKeyError): Bridge {
+  let opened: Bridge | null = null
+  const transport = createKeylessTransport(failure, async () => {
+    const replaced = await replaceDatabaseAndCreateBridge()
+    opened = replaced
+    void openLogs().then(({ logger }) => {
+      logger.marker('main', 'database replaced after a key failure')
+    })
+    return replaced
+  })
+  const refusal = () => new Error(failure.message)
+  return {
+    ...transport,
+    fetchMedia: (...args) => opened?.fetchMedia(...args) ?? Promise.reject(refusal()),
+    fetchThumbhash: (...args) => opened?.fetchThumbhash(...args) ?? Promise.reject(refusal()),
+    fetchThumbnail: (...args) => opened?.fetchThumbnail(...args) ?? Promise.reject(refusal()),
+    fetchRendition: (...args) => opened?.fetchRendition(...args) ?? Promise.reject(refusal()),
+    fetchStagedThumbnail: (...args) =>
+      opened?.fetchStagedThumbnail(...args) ?? Promise.reject(refusal()),
+    planDecode: (...args) => {
+      if (opened === null) throw refusal()
+      return opened.planDecode(...args)
     },
   }
 }
@@ -146,7 +185,7 @@ function refusingBridge(reason: string): Awaited<ReturnType<typeof createBridge>
  * database there instead of carrying on with the one already open, so it is built once, every
  * window is wired to it, and it is closed when the app quits.
  */
-let bridge: Awaited<ReturnType<typeof createBridge>> | null = null
+let bridge: Bridge | null = null
 
 /** Per process, as the scheme's handler is: `protocol.handle` cannot tell windows apart. */
 const previews = new PreviewGrants()
@@ -162,7 +201,8 @@ async function requireBridge(): Promise<NonNullable<typeof bridge>> {
       void openLogs().then(({ logger }) => {
         logger.error('main', 'the bridge could not start', { reason })
       })
-      return refusingBridge(reason)
+      // A key that could not be had leaves something to clear with; anything else does not.
+      return error instanceof DatabaseKeyError ? keylessBridge(error) : refusingBridge(reason)
     })
     logDatabase('open')
     // With the bridge rather than with a window: `protocol.handle` installs one handler for the
