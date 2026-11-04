@@ -4,16 +4,16 @@ import { describe, expect, it } from 'vitest'
 import { albumGeometry, albumWidthPx } from '#src/albumSize'
 
 describe('the width an album is drawn at', () => {
-  it('is three quarters of a narrow-layout transcript, within 240 to 320', () => {
-    expect(albumGeometry('narrow', 390).widthPx).toBe(293)
-    expect(albumGeometry('narrow', 430).widthPx).toBe(320)
+  it('is three quarters of a narrow-layout transcript, within 240 to 280', () => {
+    expect(albumGeometry('narrow', 340).widthPx).toBe(255)
+    expect(albumGeometry('narrow', 390).widthPx).toBe(280)
     expect(albumGeometry('narrow', 320).widthPx).toBe(240)
   })
 
-  it('is three fifths of a wide-layout transcript, within 320 to 480', () => {
-    expect(albumGeometry('wide', 700).widthPx).toBe(420)
-    expect(albumGeometry('wide', 1200).widthPx).toBe(480)
-    expect(albumGeometry('wide', 500).widthPx).toBe(320)
+  it('is three fifths of a wide-layout transcript, within 280 to 340', () => {
+    expect(albumGeometry('wide', 520).widthPx).toBe(312)
+    expect(albumGeometry('wide', 1200).widthPx).toBe(340)
+    expect(albumGeometry('wide', 420).widthPx).toBe(280)
   })
 
   it('is its narrowest before the transcript is measured', () => {
@@ -26,8 +26,8 @@ describe('the width an album is drawn at', () => {
     expect(albumWidthPx(ALBUM_SIZES.wide, 300)).toBe(236)
   })
 
-  it('caps a lone picture at 460 px in the wide layout, and not in the narrow one', () => {
-    expect(albumGeometry('wide', 1200).loneMaxHeightPx).toBe(460)
-    expect(albumGeometry('narrow', 430).loneMaxHeightPx).toBeUndefined()
+  it('caps a lone picture at 340 px in either layout', () => {
+    expect(albumGeometry('wide', 1200).loneMaxHeightPx).toBe(340)
+    expect(albumGeometry('narrow', 430).loneMaxHeightPx).toBe(340)
   })
 })
