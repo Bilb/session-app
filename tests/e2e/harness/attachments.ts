@@ -15,7 +15,7 @@ export async function openFirstConversation(app: ISessionApp): Promise<void> {
  * How many controls offer Export: each row's, and the footer's verb of a message with one
  * attachment, whose row has no control of its own.
  */
-export async function exportsOffered(app: ISessionApp): Promise<number> {
+async function exportsOffered(app: ISessionApp): Promise<number> {
   const footers = await app.count(ELEMENT.conversation.attachmentAction)
   let exporting = 0
   for (let at = 0; at < footers; at++)
