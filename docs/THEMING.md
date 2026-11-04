@@ -59,8 +59,8 @@ Ask what the thing _is_, not what colour you want.
 | a caption on that fill                                        | `onAccentSecondary`                |
 | a link, an inline emphasis, a large numeral                   | `accentText`                       |
 | an accent button's hover / pressed                            | `accentHover` / `accentPressed`    |
-| a danger fill, a destructive outline, a status dot or glyph   | `dangerColor`                      |
-| destructive or error text                                     | `dangerText`                       |
+| a danger fill, a status dot, a glyph on its own               | `dangerColor`                      |
+| destructive or error text, and its outline or glyph           | `dangerText`                       |
 | a danger fill while held                                      | `dangerPressed`                    |
 | text on a danger fill                                         | `onDanger`                         |
 | a caution line                                                | `warningColor`                     |

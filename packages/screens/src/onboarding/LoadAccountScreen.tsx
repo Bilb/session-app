@@ -282,7 +282,7 @@ function PhrasePane({
                 <Icon
                   name={revealed ? 'eyeOff' : 'eye'}
                   size="lg"
-                  color={showing ? '$dangerColor' : '$textSecondary'}
+                  color={showing ? '$dangerText' : '$textSecondary'}
                 />
               }
             />
