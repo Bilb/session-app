@@ -147,7 +147,7 @@ const PRESSED_OVERLAY = { light: 'rgba(0, 0, 0, 0.08)', dark: 'rgba(255, 255, 25
  * How much of the body text a progress ring's track is. Translucent rather than a surface step, so
  * the track is the same distance from whichever fill the ring is drawn on, as the overlays are.
  */
-const PROGRESS_TRACK_ALPHA = 0.2
+const PROGRESS_TRACK_ALPHA = 0.15
 
 /** What a disabled label still has to manage, on every surface. Below AA on purpose. */
 const DISABLED_FLOOR = 2
