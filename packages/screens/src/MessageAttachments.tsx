@@ -4,7 +4,6 @@ import { useSessionActions } from '@session/state'
 
 import { AttachmentFooter, ROW_OVERHANG } from './AttachmentFooter'
 import { AttachmentList, LIST_MAX_ROWS } from './AttachmentList'
-import { AttachmentPill } from './AttachmentPill'
 import { attachmentView, canChooseView } from './attachmentView'
 import { useConversationUi } from './conversationUi'
 import { exportOne } from './exportAttachment'
@@ -77,8 +76,6 @@ export function MessageAttachments({
                 else if (!sending) void exportOne(message, index, actions, feedback)
               } else if (!sending) downloadMissing()
             }}
-            // The pill is the download's: while sending, the footer's count says the same.
-            control={sending ? undefined : <AttachmentPill set={set} />}
           />
         </YStack>
       ) : (

@@ -16,8 +16,8 @@ function sizeAndCount(set: AttachmentSet): string {
 }
 
 /**
- * What a set says wherever it is drawn, or null for a running transfer of known size, which the
- * footer and the pill word differently. The pill is not drawn on a set that has arrived.
+ * What a set's caption says, or null for a running transfer of known size, which the footer words
+ * as both counts.
  */
 export function sharedCaption(set: AttachmentSet): string | null {
   // The first report of any transfer is 0 of 0: the server has not said how big it is yet.

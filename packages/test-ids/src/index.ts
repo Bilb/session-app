@@ -65,7 +65,6 @@ export const ELEMENT = {
     attachmentExport: 'message-attachment-export',
     attachmentRetry: 'message-attachment-retry',
     attachmentShowAllFailed: 'message-attachment-show-all-failed',
-    attachmentPill: 'message-attachment-pill',
     attachmentFetch: 'message-attachment-fetch',
     attachmentFooter: 'message-attachment-footer',
     attachmentAction: 'message-attachment-action',
