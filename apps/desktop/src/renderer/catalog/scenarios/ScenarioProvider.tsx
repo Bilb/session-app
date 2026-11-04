@@ -47,8 +47,8 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * The showcase's photographs for a component story, which has no store of its own. Drawn once
- * they are known, so a page never captures before its pictures are on it.
+ * The showcase's photographs for a component story that declares `pictures`, which has no store
+ * of its own. Drawn once they are known, so a page never captures before its pictures are on it.
  */
 export function PicturesProvider({ children }: { children: ReactNode }) {
   const scenario = usePrepared()

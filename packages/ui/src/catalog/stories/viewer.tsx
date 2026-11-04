@@ -66,6 +66,7 @@ export const mediaViewer = defineStory<ViewerRow>({
   component: 'mediaViewer',
   story: 'states',
   width: VIEWER_WIDTH,
+  pictures: true,
   sensitive: { rtl: true },
   variants: {
     middleOfThree: { set: THREE_PICTURES, index: 1 },

@@ -96,8 +96,10 @@ export default function Catalog() {
         drawn
       ) : SCENARIOS.includes(page.story) ? (
         <ScenarioProvider>{drawn}</ScenarioProvider>
-      ) : (
+      ) : page.story.pictures === true ? (
         <PicturesProvider>{drawn}</PicturesProvider>
+      ) : (
+        drawn
       )}
     </UIProvider>
   )

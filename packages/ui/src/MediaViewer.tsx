@@ -148,11 +148,6 @@ export function MediaViewerBody({
   const [failedUris, setFailedUris] = useState<readonly string[]>([])
   const drawn = current === undefined ? null : drawnUri(current, failedUris)
   const failed = current?.failed === true || (current?.uri != null && drawn === null)
-  const close = (): void => {
-    setFailedUris([])
-    onClose()
-  }
-
   return (
     <YStack flex={1} backgroundColor="$backgroundPrimary" testID={testID}>
       {/* A modal is drawn edge to edge on Android, under the status bar where nothing can be
@@ -162,7 +157,7 @@ export function MediaViewerBody({
           {/* Along the top, and nothing along the bottom: the bottom edge is where a thumb
               rests. */}
           <XStack height={HEADER_HEIGHT} alignItems="center" gap="$xs" paddingHorizontal="$sm">
-            <Control icon="x" label={closeLabel} onPress={close} testID={closeTestID} />
+            <Control icon="x" label={closeLabel} onPress={onClose} testID={closeTestID} />
             <Text size="$label" color="$textSecondary" flex={1}>
               {positionLabel}
             </Text>
@@ -263,12 +258,19 @@ export function MediaViewerBody({
  * it keeps going. In react-native's `Modal` for the reason `Modal` itself is: a child that
  * overflows its parent is clipped on Android, and this one is the size of the window.
  *
- * The body is mounted only while open, so a picture that failed is tried again on the next open.
+ * Each opening draws a fresh body, so a picture that failed is tried again. The body stays mounted
+ * once closed: the modal fades out what it holds, and an empty one fades out its own white.
  */
 export function MediaViewer({ open, onClose, ...body }: MediaViewerProps) {
+  const [opening, setOpening] = useState(0)
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) setOpening((count) => count + 1)
+  }
   return (
     <NativeModal visible={open} transparent={false} animationType="fade" onRequestClose={onClose}>
-      {open ? <MediaViewerBody {...body} onClose={onClose} /> : null}
+      <MediaViewerBody key={opening} {...body} onClose={onClose} />
     </NativeModal>
   )
 }
