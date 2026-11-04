@@ -7,6 +7,8 @@ import {
   InputField,
   type InputFieldHandle,
   RecoveryPasswordMark,
+  SIZE_SCALE,
+  SPACE_SCALE,
   SlidePager,
   TopTabs,
   useFontScale,
@@ -20,6 +22,7 @@ import { WideBackButton } from './OnboardingBackButton'
 import { OnboardingChrome, useStepPadding } from './OnboardingChrome'
 import { OnboardingStepBody } from './OnboardingStep'
 import { ScanQrPane } from './ScanQrPane'
+import { useExportLogs } from '../useExportLogs'
 import { phraseIsTooShort, phraseWords } from './recoveryPhrase'
 import type { RecoveryInput } from './flow'
 
@@ -38,6 +41,9 @@ interface LoadAccountScreenProps {
 
 /** The shield beside the title, at the client's own size rather than a rung. */
 const TITLE_MARK_SIZE = 22
+
+/** How far Export Logs reaches below Continue on the wide design: the gap, then a small button. */
+const EXPORT_OVERHANG = SPACE_SCALE['2xs'] + SIZE_SCALE.xl
 
 /**
  * Entering a recovery phrase.
@@ -75,6 +81,9 @@ export function LoadAccountScreen({
   const [phrase, setPhrase] = useState('')
   const [revealed, setRevealed] = useState(false)
   const field = useRef<InputFieldHandle>(null)
+  // The step draws Export Logs under Continue wherever the build can export; see `StepExportLogs`.
+  const canExport = useExportLogs().canExport
+  const overhang = wide && canExport ? EXPORT_OVERHANG : 0
 
   const cut = flag('disableAnimations')
   // The chrome is not padding this step, so the pane does -- with the chrome's own figures.
@@ -146,26 +155,34 @@ export function LoadAccountScreen({
           {/* One chrome and two panes rather than two screens: the bar, the title and the tabs
               stay put and only what is under them slides, which is what makes the indicator and
               the pane read as one movement. */}
-          <SlidePager
-            index={tab === 'qr' ? 1 : 0}
-            onIndexChange={(page) => {
-              setTab(page === 1 ? 'qr' : 'phrase')
-            }}
-            instant={cut}
-            clip={wide}
-          >
-            {phrasePane}
-            <ScanQrPane
-              showing={tab === 'qr'}
-              fitsPage={fitsPage}
-              onScan={(value) => {
-                // Handed over as it was read. Whether it decodes to a seed is libsession's to say,
-                // and its refusal comes back the same way a typed phrase's does.
-                onContinue({ hexSeed: value })
+          {/* On the wide design the pager clips to the step's reserve, which Export Logs under
+              Continue runs past: the pager reaches that far below it, and the camera stops short
+              of the extra. Negative, so the reserve and the lockup above it stay where they
+              are. */}
+          <YStack flex={1} marginBottom={overhang === 0 ? undefined : -overhang}>
+            <SlidePager
+              index={tab === 'qr' ? 1 : 0}
+              onIndexChange={(page) => {
+                setTab(page === 1 ? 'qr' : 'phrase')
               }}
-              error={rejected ? tr('qrNotRecoveryPassword') : null}
-            />
-          </SlidePager>
+              instant={cut}
+              clip={wide}
+            >
+              {phrasePane}
+              <YStack flex={1} paddingBottom={overhang}>
+                <ScanQrPane
+                  showing={tab === 'qr'}
+                  fitsPage={fitsPage}
+                  onScan={(value) => {
+                    // Handed over as it was read. Whether it decodes to a seed is libsession's to
+                    // say, and its refusal comes back the same way a typed phrase's does.
+                    onContinue({ hexSeed: value })
+                  }}
+                  error={rejected ? tr('qrNotRecoveryPassword') : null}
+                />
+              </YStack>
+            </SlidePager>
+          </YStack>
         </XStack>
       ) : (
         phrasePane

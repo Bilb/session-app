@@ -41,6 +41,7 @@ const PRESS_STYLE = {
   ghost: { backgroundColor: '$pressedOverlay' },
   ghostAccent: { backgroundColor: '$pressedOverlay' },
   simple: { opacity: INTERACTION_OPACITY.dimPressed },
+  subtle: { opacity: INTERACTION_OPACITY.dimPressed },
   tonal: { opacity: 0.7 },
   danger: {
     backgroundColor: '$dangerColor',
@@ -154,6 +155,14 @@ const Frame = styled(XStack, {
         hoverStyle: { opacity: INTERACTION_OPACITY.dimHover },
         pressStyle: PRESS_STYLE.simple,
       },
+      /** `simple` in the secondary text colour, for an action that defers to the one beside it. */
+      subtle: {
+        backgroundColor: 'transparent',
+        borderColor: 'transparent',
+        color: '$textSecondary',
+        hoverStyle: { opacity: INTERACTION_OPACITY.dimHover },
+        pressStyle: PRESS_STYLE.subtle,
+      },
       /**
        * A quiet fill: the nested surface under a plain label, in a rounded rect rather than a pill.
        *
@@ -259,6 +268,7 @@ const PRESSED = {
   ghost: PRESS_STYLE.ghost,
   ghostAccent: PRESS_STYLE.ghostAccent,
   simple: PRESS_STYLE.simple,
+  subtle: PRESS_STYLE.subtle,
   tonal: PRESS_STYLE.tonal,
   danger: withoutColor(PRESS_STYLE.danger),
 } as const
@@ -286,6 +296,7 @@ const LABEL_TONE = {
   ghost: '$textPrimary',
   ghostAccent: '$primaryColor',
   simple: '$textPrimary',
+  subtle: '$textSecondary',
   tonal: '$textPrimary',
   danger: '$dangerColor',
 } as const
@@ -384,6 +395,20 @@ export interface ButtonProps {
  */
 const SIZE_MIN_HEIGHT = { xs: '$lg', sm: '$xl', md: '$2xl', lg: '$3xl' } as const
 
+/**
+ * The variants with no frame: text alone, or a surface only while hovered or held.
+ *
+ * Disabled keeps them frameless. The `disabled` variant draws the border role, which is the
+ * disabled look of a framed button, and on one of these it put an outline round a loading label.
+ */
+const FRAMELESS = new Set(['ghost', 'ghostAccent', 'simple', 'subtle'])
+
+/**
+ * The loading spinner's scale, following the label's text size: the platform's small spinner is
+ * sized for a body label, and over the smaller sizes' label it reads a size too large.
+ */
+const SPINNER_SCALE = { xs: 0.8, sm: 0.8, md: 1, lg: 1 } as const
+
 export function Button({
   children,
   onPress,
@@ -471,6 +496,7 @@ export function Button({
           {...(paddingHorizontal === undefined ? {} : { paddingHorizontal })}
           {...(borderRadius === undefined ? {} : { borderRadius })}
           disabled={inert}
+          {...(inert && FRAMELESS.has(variant) ? { borderColor: 'transparent' } : {})}
           {...PRESS_PASSTHROUGH}
           // The variant's own `hoverStyle`, applied from the wrapper's hover: see `PressArea`.
           {...(hovered && !pressed && !inert ? { forceStyle: 'hover' as const } : {})}
@@ -517,7 +543,9 @@ export function Button({
               justifyContent="center"
               pointerEvents="none"
             >
-              <Spinner size="small" color={nativeLabel} />
+              <YStack scale={SPINNER_SCALE[size]}>
+                <Spinner size="small" color={nativeLabel} />
+              </YStack>
             </YStack>
           ) : null}
         </Frame>

@@ -220,6 +220,7 @@ export const ELEMENT = {
     recoveryPhraseReveal: 'onboarding-recovery-phrase-reveal',
     recoveryPhraseError: 'onboarding-recovery-phrase-error',
     recoveryPhraseTab: 'onboarding-recovery-phrase-tab',
+    exportLogs: 'onboarding-export-logs',
     scanQrTab: 'onboarding-scan-qr-tab',
     scanQrPane: 'onboarding-scan-qr-pane',
     scanQrPreview: 'onboarding-scan-qr-preview',
