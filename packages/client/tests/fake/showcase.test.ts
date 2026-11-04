@@ -54,9 +54,6 @@ describe('showcase', () => {
         [true, 'absent'],
       ])
     }
-    // The first declares no size, so nothing says how big its set is.
-    expect(ours[0]?.attachments.some((a) => 'sizeBytes' in a)).toBe(false)
-    expect(ours[1]?.attachments.every((a) => a.sizeBytes !== undefined)).toBe(true)
   })
 
   it('holds a message of ours whose 31st of 32 files failed, with the thirty before it up', async () => {

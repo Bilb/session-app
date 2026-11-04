@@ -15,7 +15,7 @@ const PREPARE: Record<string, 'downloaded' | 'downloadFailed' | Running> = {
   'Two, one above the other': 'downloaded',
   'Four in two rows': { doneBytes: 50, totalBytes: 100 },
   'Five: two above three': 'downloadFailed',
-  // The first report of any transfer, which the unsized pair's set has no total to measure by.
+  // The first report of every transfer, before a byte is here.
   'A pair for the ring at 0 of 0': { doneBytes: 0, totalBytes: 0 },
   'A pair for the ring at 40%': { doneBytes: 40, totalBytes: 100 },
   'A pair for the ring at 95%': { doneBytes: 95, totalBytes: 100 },

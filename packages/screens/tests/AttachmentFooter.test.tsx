@@ -79,8 +79,12 @@ describe('a running download’s ring', () => {
     expect(nodeOf(FOOTER_ACTION_ID)).toBeNull()
   })
 
-  it('reads nothing while the first report, 0 of 0, has not said how big the set is', () => {
-    renderScreen(<AttachmentFooter set={set('fetching', 3)} onAction={() => {}} />)
+  it.each([
+    ['0 of 0, the first report of every transfer', { doneBytes: 0, totalBytes: 0 }],
+    ['0 of a known total', { doneBytes: 0, totalBytes: RUNNING.totalBytes }],
+    ['bytes of a total some sender never declared', { doneBytes: 5_000, totalBytes: 0 }],
+  ])('reads nothing at %s', (_case, bytes) => {
+    renderScreen(<AttachmentFooter set={set('fetching', 3, bytes)} onAction={() => {}} />)
     expect(nodeOf(FOOTER_PROGRESS_ID)).toMatchObject(attachmentFooterProgress().desktop ?? {})
     const ring = byId(FOOTER_PROGRESS_ID)
     expect(ring.getAttribute('aria-valuenow')).toBeNull()

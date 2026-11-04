@@ -51,7 +51,8 @@ export const MESSAGE_SCENARIOS: readonly AnyStory[] = [
     {},
   ),
   // The footer's ring in the verb's place, at each reading, on a bubble received and on ours. The
-  // capture asks for reduced motion, so the 0 of 0 ring is held with its arc at the top.
+  // capture asks for reduced motion, so the 0 of 0 ring's arc is held at the top of its closed
+  // track.
   message(
     'albumDownloading',
     [

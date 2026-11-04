@@ -112,18 +112,21 @@ function verb(set: AttachmentSet): string | null {
 }
 
 /**
- * A running download, in the verb's frame. Until the server says how big the set is - the first
- * report of any transfer is 0 of 0 - the ring turns rather than reading 0%, and the caption says
- * Downloading.
+ * A running download, in the verb's frame.
+ *
+ * The ring waits, turning round a closed track, until a byte is here: the first report of every
+ * transfer is 0 of 0, which means beginning rather than 0%, and a set some sender declared no size
+ * for has no total to read a share of at all. When bytes arrive its gap opens and the fill starts.
  */
 function DownloadRing({ set }: { set: AttachmentSet }) {
   const shared = {
     size: ACTION_SIZE,
     label: tr('downloading'),
+    still: flag('disableAnimations'),
     testID: ELEMENT.conversation.attachmentProgress,
   } as const
-  if (set.totalBytes === 0)
-    return <ButtonProgress {...shared} indeterminate still={flag('disableAnimations')} />
+  if (set.doneBytes === 0 || set.totalBytes === 0)
+    return <ButtonProgress {...shared} indeterminate />
   return (
     <ButtonProgress
       {...shared}

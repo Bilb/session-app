@@ -75,22 +75,17 @@ export function showcase(names: readonly [FixtureName, FixtureName] = ['Alice', 
   }
 
   // A running download at each reading the footer's ring draws, received and ours alike: the
-  // catalog's scenarios give each a transfer of its own. The first pair declares no sizes, so
-  // nothing says how big its set is and the ring cannot read a share of it.
-  const readings: Array<[string, boolean]> = [
-    ['for the ring at 0 of 0', false],
-    ['for the ring at 40%', true],
-    ['for the ring at 95%', true],
-  ]
-  for (const [reading, sized] of readings) {
-    first.deliverFrom(second, `A pair ${reading}`, world.now(), set(image(2), { sized }))
+  // catalog's scenarios give each a transfer of its own.
+  const readings = ['for the ring at 0 of 0', 'for the ring at 40%', 'for the ring at 95%']
+  for (const reading of readings) {
+    first.deliverFrom(second, `A pair ${reading}`, world.now(), set(image(2)))
     world.settle()
   }
-  for (const [reading, sized] of readings) {
+  for (const reading of readings) {
     first.seedFromOtherDevice(
       second.sessionId,
       `Ours from another device, ${reading}`,
-      set(image(2), { sized }),
+      set(image(2)),
     )
     world.settle()
   }
