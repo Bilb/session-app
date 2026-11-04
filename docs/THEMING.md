@@ -67,6 +67,7 @@ Ask what the thing _is_, not what colour you want.
 | a switch thumb, a QR panel                                    | `surfaceInverted`                  |
 | the modules printed on that panel                             | `surfaceInk`                       |
 | an incoming bubble, and its text                              | `messageBubbleIncomingBg` / `Text` |
+| danger text on an incoming bubble                             | `messageBubbleIncomingDanger`      |
 | the page dimmed behind a dialog or panel                      | `scrim`                            |
 | a raised element's shadow                                     | `shadow`                           |
 | a control hovered / held, laid over whatever it sits on       | `hoverOverlay` / `pressedOverlay`  |
@@ -342,9 +343,10 @@ the theme fades only as far as 4.5:1 allows; never put an opacity on an on-colou
 red to be recognised, and the authored reds fall under 4.5:1 on the recessed surfaces, so text takes
 `dangerText`, moved in lightness until it clears every surface, and the page and a card held. A
 danger button's outline takes the same role as its label, so it reads as one red at rest; its fills
-are `dangerColor` and, held, `dangerPressed`. No red clears 4.5:1 as text on Ocean Dark's incoming
-bubble, so a failed file says so in words at full strength and only its retry glyph is red, on
-every surface alike.
+are `dangerColor` and, held, `dangerPressed`. On the incoming bubble danger text is
+`messageBubbleIncomingDanger`: `dangerText` in the themes where it clears 4.5:1 there, and the
+bubble's text in the dark ones, where no red does. A failed file's caption is red where it can be;
+its name stays the body text, and its retry glyph is red on every surface.
 
 **The incoming bubble is a surface muted text is measured on.** A received file's captions sit on
 it, and it is the furthest surface from the page in every theme.

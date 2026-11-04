@@ -201,6 +201,11 @@ describe('semantic colours', () => {
       }
       // A failure's retry glyph keeps the red on a received bubble, and a glyph owes 3:1.
       expect(contrastRatio(t.dangerText, t.messageBubbleIncomingBg)).toBeGreaterThanOrEqual(3)
+      // Red on the incoming bubble only where it is legible there, the bubble's text elsewhere.
+      expect(
+        contrastRatio(t.messageBubbleIncomingDanger, t.messageBubbleIncomingBg),
+      ).toBeGreaterThanOrEqual(4.5)
+      expect([t.dangerText, t.messageBubbleIncomingText]).toContain(t.messageBubbleIncomingDanger)
       // A danger button's label, at rest on its fill and held on the pressed one.
       expect(contrastRatio(t.onDanger, t.dangerColor)).toBeGreaterThanOrEqual(4.5)
       expect(contrastRatio(t.onDanger, t.dangerPressed)).toBeGreaterThanOrEqual(4.5)

@@ -33,7 +33,7 @@ function ShowAll({
   /** Set when a file it hides failed to upload, which nothing in the transcript would show. */
   failedHidden: boolean
 }) {
-  const surface = onAccent ? 'accent' : 'page'
+  const surface = onAccent ? 'accent' : 'received'
   return (
     <PressArea
       onPress={onPress}
@@ -104,6 +104,7 @@ export function AttachmentList({
           message={message}
           attachment={attachment}
           onAccent={onAccent}
+          received={!onAccent}
         />
       ))}
       {hidden === 0 || onShowAll === undefined ? null : (

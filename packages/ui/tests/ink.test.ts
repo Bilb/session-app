@@ -20,3 +20,12 @@ describe('ink on the page', () => {
     expect(inkFor('link', 'page').color).toBe('$accentText')
   })
 })
+
+describe('ink on a received bubble', () => {
+  it('draws danger text in the bubble’s own danger role, and keeps a glyph the page’s red', () => {
+    expect(inkFor('danger', 'received').color).toBe('$messageBubbleIncomingDanger')
+    expect(inkFor('danger', 'received', 'glyph').color).toBe('$dangerText')
+    for (const tone of TONES.filter((t) => t !== 'danger'))
+      expect(inkFor(tone, 'received')).toEqual(inkFor(tone, 'page'))
+  })
+})

@@ -210,9 +210,18 @@ describe('a failed file row’s words', () => {
     caption: declared(byId(IDS.caption)).color,
   })
 
-  it('are the body text, with only the retry in red', () => {
+  it('keep the name the body text, with the caption and the retry in red', () => {
     renderInUI(<FileRow {...pictureRow('failed')} />)
-    expect(inks()).toEqual({ name: 'var(--textPrimary)', caption: 'var(--textPrimary)' })
+    expect(inks()).toEqual({ name: 'var(--textPrimary)', caption: 'var(--dangerText)' })
+    expect(byId(IDS.download).innerHTML).toContain('var(--dangerText)')
+  })
+
+  it('take the received bubble’s danger for the caption, and keep the retry red', () => {
+    renderInUI(<FileRow {...pictureRow('failed', { received: true })} />)
+    expect(inks()).toEqual({
+      name: 'var(--textPrimary)',
+      caption: 'var(--messageBubbleIncomingDanger)',
+    })
     expect(byId(IDS.download).innerHTML).toContain('var(--dangerText)')
   })
 })

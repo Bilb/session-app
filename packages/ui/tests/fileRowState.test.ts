@@ -69,18 +69,14 @@ describe('a file row’s columns', () => {
 })
 
 describe('a file row’s colours', () => {
-  it('says a failure in words at full strength, and only its retry in red', () => {
-    expect(fileRowTone('failed')).toEqual({
-      name: 'primary',
-      caption: 'primary',
-      control: 'danger',
-    })
+  it('says a failure in its caption and its retry, and leaves the name the body text', () => {
+    expect(fileRowTone('failed')).toEqual({ name: 'primary', caption: 'danger', control: 'danger' })
   })
 
-  it('says a file is unavailable in a caption at rest', () => {
+  it('says a file is unavailable in the caption alone', () => {
     expect(fileRowTone('unavailable')).toEqual({
       name: 'primary',
-      caption: 'secondary',
+      caption: 'danger',
       control: 'primary',
     })
   })

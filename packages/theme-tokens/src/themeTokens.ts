@@ -402,6 +402,11 @@ export type ThemeTokens = {
   separatorColor: string
   messageBubbleIncomingBg: string
   messageBubbleIncomingText: string
+  /**
+   * Danger as text on the incoming bubble: `dangerText` where it clears 4.5:1 there, else the
+   * bubble's own text. No red does on the dark themes' bubbles, Ocean Dark's tops out at 3.8.
+   */
+  messageBubbleIncomingDanger: string
   /** Dims the page behind a dialog or panel. Nothing is read on it, so no contrast rule applies. */
   scrim: string
   /** A raised element's shadow. */
@@ -576,21 +581,22 @@ function themeBase(knobs: ThemeKnobs): ThemeBase {
     hue: t.hue,
   })
 
+  // Measured under the press as well, on the page and a card where rows sit: a destructive row
+  // keeps its red while it is held. No red clears 4.5:1 on Ocean Dark's nested card held.
+  const dangerText = contrastAdjustAll(
+    danger,
+    [...surfaces, pressed(background, polarity), pressed(backgroundSecondary, polarity)],
+    CONTRAST.normal,
+  )
+  const incomingText = contrastPrefer([text, '#000000', '#FFFFFF'], incomingBg, CONTRAST.normal)
+
   const base: ThemeBase = {
     tokens: {
       // Both are nearly always labels, which is normal-size text and owes 4.5:1 -- not the 3:1 a
       // graphic boundary gets. Picking against the fill rather than preferring one anchor is what
       // keeps that true in every theme: white clears 3:1 on a mid red and loses to black on 4.5.
       dangerColor: danger,
-      // Not measured on the incoming bubble: no red clears 4.5:1 on Ocean Dark's, so a failure on
-      // a received message is said in the bubble's text and only its glyph is red.
-      // Measured under the press as well, on the page and a card where rows sit: a destructive row
-      // keeps its red while it is held. No red clears 4.5:1 on Ocean Dark's nested card held.
-      dangerText: contrastAdjustAll(
-        danger,
-        [...surfaces, pressed(background, polarity), pressed(backgroundSecondary, polarity)],
-        CONTRAST.normal,
-      ),
+      dangerText,
       dangerPressed,
       onDanger: contrastPickAll([text, background], [danger, dangerPressed]),
       warningColor: warning,
@@ -639,8 +645,9 @@ function themeBase(knobs: ThemeKnobs): ThemeBase {
         hue: t.hue,
       }),
       messageBubbleIncomingBg: incomingBg,
-      messageBubbleIncomingText: contrastPrefer(
-        [text, '#000000', '#FFFFFF'],
+      messageBubbleIncomingText: incomingText,
+      messageBubbleIncomingDanger: contrastPrefer(
+        [dangerText, incomingText],
         incomingBg,
         CONTRAST.normal,
       ),

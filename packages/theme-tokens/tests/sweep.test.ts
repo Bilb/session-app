@@ -57,6 +57,7 @@ const CHECKS: [keyof ThemeTokens, (t: ThemeTokens) => string[], number][] = [
   ['onAccentSecondary', (t) => [t.primaryColor], 4.5],
   ['onDanger', (t) => [t.dangerColor, t.dangerPressed], 4.5],
   ['messageBubbleIncomingText', (t) => [t.messageBubbleIncomingBg], 4.5],
+  ['messageBubbleIncomingDanger', (t) => [t.messageBubbleIncomingBg], 4.5],
 ]
 
 function shortfalls(tokens: ThemeTokens, label: string): string[] {

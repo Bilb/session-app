@@ -102,6 +102,8 @@ export type FileRowProps = WithFilename &
      * lead square and the thumbnail keep their own fill either way.
      */
     onAccent?: boolean | undefined
+    /** Drawn on a bubble someone else sent, where the red of a failure's caption may not read. */
+    received?: boolean | undefined
   }
 
 /**
@@ -195,7 +197,7 @@ function Trailing({
     return (
       <YStack {...square} aria-hidden>
         {marker === null ? null : (
-          <Icon name={marker} size="sm" {...inkFor('secondary', surface)} />
+          <Icon name={marker} size="sm" {...inkFor('secondary', surface, 'glyph')} />
         )}
       </YStack>
     )
@@ -245,7 +247,11 @@ function Trailing({
       ) : (
         <>
           <StateLayer group="control" tone="ink" borderRadius="$full" />
-          <Icon name={control} size="sm" {...inkFor(fileRowTone(state).control, surface)} />
+          <Icon
+            name={control}
+            size="sm"
+            {...inkFor(fileRowTone(state).control, surface, 'glyph')}
+          />
         </>
       )}
     </YStack>
@@ -280,8 +286,9 @@ export function FileRow({
   onAction,
   testIDs,
   onAccent = false,
+  received = false,
 }: FileRowProps) {
-  const surface: InkSurface = onAccent ? 'accent' : 'page'
+  const surface: InkSurface = onAccent ? 'accent' : received ? 'received' : 'page'
   const format = fileFormat(filename)
   // On the name and the caption together, so the two share an edge.
   const direction = { direction: nameDirection(filename) }
