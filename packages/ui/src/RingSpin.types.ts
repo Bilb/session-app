@@ -7,10 +7,7 @@ export const RING_TURN_MS = 1000
 export interface RingSpinProps {
   /** The layer's side, in px: the ring's. It turns about its centre. */
   size: number
-  /**
-   * Held at its starting angle rather than turning. See the `disableAnimations` flag; a system
-   * asking for reduced motion holds it too.
-   */
+  /** Held at its starting angle rather than turning: the ring has been asked for no motion. */
   still: boolean
   children: ReactNode
 }

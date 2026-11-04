@@ -15,6 +15,8 @@ type Shared = WithTestID & {
   size: ButtonSize
   /** Already worded: what the ring is announced as. */
   label: string
+  /** See `ProgressRing`'s `still`. */
+  still?: boolean | undefined
 }
 
 type Reading = {
@@ -27,8 +29,6 @@ type Reading = {
 /** Nothing yet says how far along: the ring turns, and only the name is announced. */
 type Pending = {
   indeterminate: true
-  /** See `RingSpinProps.still`. */
-  still?: boolean | undefined
 }
 
 export type ButtonProgressProps = Shared & (Reading | Pending)
@@ -66,7 +66,7 @@ function progressBar(label: string, now: number | undefined, text: string | unde
  * text on the nested surface wherever it is drawn.
  */
 export function ButtonProgress(props: ButtonProgressProps) {
-  const { size, label, testID } = props
+  const { size, label, still, testID } = props
   const side = buttonHeight(size)
   const ringSide = Math.round(side * RING_SHARE)
   const ring = {
@@ -74,6 +74,7 @@ export function ButtonProgress(props: ButtonProgressProps) {
     thickness: ringSide * THICKNESS_SHARE,
     color: '$accentText',
     trackColor: '$progressTrack',
+    still,
   }
   const reading = 'progress' in props ? props : null
   const now =
@@ -94,7 +95,7 @@ export function ButtonProgress(props: ButtonProgressProps) {
       testID={testID}
     >
       {reading === null ? (
-        <ProgressRing {...ring} indeterminate still={'still' in props && props.still === true} />
+        <ProgressRing {...ring} indeterminate />
       ) : (
         <ProgressRing {...ring} progress={reading.progress} />
       )}

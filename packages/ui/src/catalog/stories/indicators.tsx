@@ -1,7 +1,7 @@
 import { Avatar } from '../../Avatar'
 import { ButtonProgress } from '../../ButtonProgress'
 import { MessageFrame } from '../../MessageFrame'
-import { ProgressRing } from '../../ProgressRing'
+import { ProgressRing, ProgressRingFrame } from '../../ProgressRing'
 import { RadioIndicator } from '../../RadioIndicator'
 import { SIZE_SCALE } from '../../scales'
 import { defineStory } from '../story'
@@ -37,7 +37,12 @@ interface RingRow {
   /** Absent for a ring that does not know how far along it is. */
   progress?: number | undefined
   trackColor?: string | undefined
+  /** A fixed frame of the gap opening once a reading arrives: the track's sweep, in degrees. */
+  openingSweep?: number | undefined
 }
+
+/** `ProgressRing`'s own default, which the frame is not given. */
+const RING_THICKNESS = 4
 
 export const progressRing = defineStory<RingRow>({
   component: 'progressRing',
@@ -50,12 +55,25 @@ export const progressRing = defineStory<RingRow>({
     half: { progress: 0.5 },
     full: { progress: 1 },
     progressTrack: { progress: 0.4, trackColor: '$progressTrack' },
-    // Held at the top in a capture: the catalog asks for reduced motion and cancels animations.
+    // A closed track, its arc held at the top in a capture: the catalog asks for reduced motion
+    // and cancels animations.
     indeterminate: {},
     indeterminateProgressTrack: { trackColor: '$progressTrack' },
+    // Half way from the closed track to the open one, before any fill is drawn.
+    opening: { openingSweep: 330, trackColor: '$progressTrack' },
   },
-  render: ({ progress, trackColor }) =>
-    progress === undefined ? (
+  render: ({ progress, trackColor, openingSweep }) =>
+    openingSweep !== undefined ? (
+      <ProgressRingFrame
+        size={SIZE_SCALE.xl}
+        thickness={RING_THICKNESS}
+        color="$primaryColor"
+        trackColor={trackColor ?? '$bordersColor'}
+        trackSweepDegrees={openingSweep}
+        reading={null}
+        still
+      />
+    ) : progress === undefined ? (
       <ProgressRing indeterminate size={SIZE_SCALE.xl} trackColor={trackColor} />
     ) : (
       <ProgressRing progress={progress} size={SIZE_SCALE.xl} trackColor={trackColor} />
