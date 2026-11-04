@@ -8,4 +8,9 @@ import { configs } from 'eslint-plugin-pnpm'
  * second one beside Expo's - the exact failure the catalog exists to prevent. The yaml half
  * checks the catalog back: an entry nothing references is an entry that has rotted.
  */
-export default [...configs.json, ...configs.yaml]
+export default [
+  // The catalog compare checks the base out there, with every manifest of its own.
+  { ignores: ['test-results/'] },
+  ...configs.json,
+  ...configs.yaml,
+]
