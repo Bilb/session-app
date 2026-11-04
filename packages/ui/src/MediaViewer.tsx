@@ -90,6 +90,7 @@ function Control({
       {...(isWeb ? {} : { hitSlop: CONTROL_SLOP })}
       testID={testID}
     >
+      {/* Over the picture it sits on the fixed scrim, which is dark in every theme. */}
       <Icon name={icon} size="md" color={overMedia ? '$surfaceInverted' : '$textPrimary'} />
     </YStack>
   )

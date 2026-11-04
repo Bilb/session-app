@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  ALBUM_WIDTH,
   contentTypeEssence,
   isDisplayableImage,
   isViewableContentType,
@@ -9,6 +8,7 @@ import {
   isViewableVideo,
   jpegSize,
   mediaKindOf,
+  tallestTilePx,
   thumbnailEdgePxFor,
 } from '#src/media'
 
@@ -105,12 +105,21 @@ describe('a viewable type’s kind', () => {
 })
 
 describe('the edge thumbnails are made at', () => {
-  it('follows the densest display', () => {
-    expect(thumbnailEdgePxFor([1, 2, 1.5])).toBe(ALBUM_WIDTH * 2)
+  it('covers the tallest tile, a picture alone at the narrow layout’s cap', () => {
+    expect(tallestTilePx('narrow')).toBe(340)
+    expect(thumbnailEdgePxFor([2], 'narrow')).toBe(680)
   })
 
-  it('makes them at 1x with no display connected', () => {
-    expect(thumbnailEdgePxFor([])).toBe(ALBUM_WIDTH)
+  it('covers a wide-layout row as tall as its widest album, the lone picture capped below it', () => {
+    expect(tallestTilePx('wide')).toBe(340)
+    expect(thumbnailEdgePxFor([1, 2, 1.5], 'wide')).toBe(680)
+  })
+
+  it('stays within libsession’s 1024 px at 3x, and makes them at 1x with no display connected', () => {
+    expect(thumbnailEdgePxFor([3], 'narrow')).toBe(1020)
+    expect(thumbnailEdgePxFor([3], 'wide')).toBe(1020)
+    expect(thumbnailEdgePxFor([4], 'wide')).toBe(1024)
+    expect(thumbnailEdgePxFor([], 'wide')).toBe(340)
   })
 })
 

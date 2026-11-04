@@ -325,6 +325,40 @@ accent; `nightly` draws every theme and accent, every night. The desktop app ope
 `componentCatalog` flag; `catalog.spec.ts` captures each page and runs axe over it, inside the image
 `tests/e2e/catalog/Dockerfile` pins (fonts, fontconfig, the libraries Electron draws with) so a
 capture is the same on any Linux x86_64 host, and the `catalog` workflow uploads the captures to Argos.
+A capture paints only what lies inside the window, so each page is laid out in a 3000x2400 window
+and the window then grows to hold the page, the height alone unless the page is wider too
+(`tests/e2e/catalog/captureWindow.ts`). A page past the cap there fails the run rather than coming
+out black below the fold; the Xvfb screen in `capture.sh` is sized to the cap.
+
+**Comparing the catalog locally.** `pnpm catalog:compare [base-ref]` answers "which pages does my
+change move?" before a push, on any host, macOS included. It captures the catalog twice on this
+machine: at the base (default: the merge base with `origin/main`), in a worktree under
+`test-results/catalog-compare/` installed from pnpm's store (inside the repository because pnpm
+uses its store only from the same filesystem, and a tmpfs `/tmp` would download every package into
+memory), and in the working tree as it is, uncommitted changes included. Each
+side builds its own desktop app and runs its own `catalog.spec.ts`, as each side's CI build does.
+The two sets are diffed as Argos diffs (argos-ci.com/docs/diff-algorithm): odiff's colour measure
+through pixelmatch; two pictures of different sizes on a canvas the larger width by the larger
+height, one smaller in both dimensions first enlarged to fit keeping its aspect ratio (sharp's
+`contain`, Lanczos-3), the rest transparent, which odiff takes as white; then Argos's two passes on
+that canvas, anti-aliasing ignored, each with its minimum, the larger count deciding. A change of
+size alone decides nothing. `test-results/catalog-compare/report/index.html` lists the changed,
+added and removed pages with a slider, a flip, side by side and the diff, both sides drawn on one
+canvas so neither shows past the other's edge. It exits 0 when nothing differs, 1 when something
+does and 2 when it could not compare or was interrupted, so it can gate a script. A capture whose
+spec passed and wrote every page it listed is cached under `test-results/catalog-compare/cache/`,
+keyed by commit, tier, host and build environment (the repo-root `.env` and every `EXPO_PUBLIC_*`
+variable), so a second run against the same base captures only the working tree; `--refresh`
+captures again, `--tier nightly` compares every page. Ctrl-C stops the whole command, removing
+the base's worktree and any half-written capture.
+
+Both sides are drawn by this machine, so its fonts and rendering cancel out: the pictures are not
+the ones Argos holds, and a difference only Linux draws (a font fallback, say) is Argos's to find.
+Every launch is hidden: `SESSION_E2E_HIDDEN=1` makes desktop main create its window unshown but
+painting, larger than the screen, at 1x, and on macOS out of the Dock so that nothing takes focus
+(`apps/desktop/src/main/hiddenRun.ts`; a packaged build ignores it). The harness stops a build that
+shows its window anyway, and a base from before hidden runs is given that change to desktop main
+before it is built.
 
 `sessionTest` is the only way to declare a test and the only thing that opens or closes a
 client. Its `clients` descriptor decides the platforms _and_ the tags, so a spec asking for two
@@ -891,9 +925,10 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   checkerboard, quality 90 - on a worker, and reports it as `Attachment.hasThumbnail` in a later
   `messages-updated`, with its size as `thumbnailWidthPx` and `thumbnailHeightPx` so a tile can be
   shaped before it loads. A staged file's thumbnail is made the same way. Its height is the client's
-  thumbnail edge, which each app opens the bridge with as `ALBUM_WIDTH` times its display density
-  and `setThumbnailEdge` can store over, clamped to 64-1024 so a decoded one stays within about 9.3
-  MiB. A square tile draws it with `fit="cover"`. It lives in the original's cache entry and is
+  thumbnail edge, which each app opens the bridge with as `thumbnailEdgePxFor`: the wide layout's
+  tallest tile times the densest display's scale, since a tablet can switch layout while running.
+  `setThumbnailEdge` can store over it, clamped to 64-1024 so a decoded one stays within about 9.3
+  MiB. A tile draws it with `fit="cover"`. It lives in the original's cache entry and is
   evicted with it. Generating it there rather than in each loader gives every platform the same
   picture from one decoder, libvips under libsession's own loader whitelist, and leaves the loaders
   two paths: a thumbnail, checked to be a JPEG and reduced while decoding but never below its view,

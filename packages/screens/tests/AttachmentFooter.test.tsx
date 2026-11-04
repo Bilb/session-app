@@ -35,6 +35,17 @@ describe('an attachment footer’s verb', () => {
     else expect(nodeOf(FOOTER_ACTION_ID)).toMatchObject(expected.desktop)
   })
 
+  it('is named by its word where it is drawn as a glyph, and still runs the action', async () => {
+    const user = userEvent.setup()
+    const onAction = vi.fn()
+    renderScreen(<AttachmentFooter set={set('idle', 1)} onAction={onAction} compact />)
+    expect(nodeOf(FOOTER_ACTION_ID)?.name).toBe(
+      attachmentFooterAction({ state: 'idle', count: 1 }).desktop?.name,
+    )
+    await user.click(byId(FOOTER_ACTION_ID))
+    expect(onAction).toHaveBeenCalledTimes(1)
+  })
+
   it('runs the footer’s action', async () => {
     const user = userEvent.setup()
     const onAction = vi.fn()

@@ -325,7 +325,8 @@ export function FileRow({
       </YStack>
     ) : (
       <AttachmentTile
-        side={FILE_GLYPH_SIDE}
+        width={FILE_GLYPH_SIDE}
+        height={FILE_GLYPH_SIDE}
         uri={thumbnail.uri}
         thumbhash={thumbnail.thumbhash}
         testID={testIDs?.thumbnail}

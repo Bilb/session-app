@@ -1,7 +1,7 @@
 import { toHex } from '@session/basic-types'
 import { describe, expect, it } from 'vitest'
 
-import { decodeThumbhash } from '#src/fake/thumbhash'
+import { componentAspectRatio, decodeThumbhash } from '#src/fake/thumbhash'
 
 function bytes(hex: string): Uint8Array {
   return Uint8Array.from(hex.match(/../g)?.map((b) => parseInt(b, 16)) ?? [])
@@ -60,5 +60,20 @@ describe('the dev ThumbHash decoder', () => {
 
   it('refuses one truncated partway through its coefficients', () => {
     expect(() => decodeThumbhash(bytes('d5280a3d8a'), 8, 6)).toThrow(/truncated/)
+  })
+})
+
+describe('a hash’s component aspect ratio', () => {
+  // libsession's values for the vectors above: lx/ly as stored, unclamped.
+  it('reads a 4:3 photograph as 7:5, a 24x40 portrait as 4:7, and a square with alpha as 1', () => {
+    expect(componentAspectRatio(bytes('d5280a3d8a8577777f76778286e7888c8775705807'))).toBe(7 / 5)
+    expect(componentAspectRatio(bytes('21180a4414e0f66c855788878788013c071878'))).toBe(4 / 7)
+    expect(componentAspectRatio(bytes('df18821d0626f249be44985376024a07187708788888808978'))).toBe(
+      1,
+    )
+  })
+
+  it('refuses a hash too short to have a header', () => {
+    expect(() => componentAspectRatio(bytes('d5280a3d'))).toThrow('thumbhash: too short')
   })
 })

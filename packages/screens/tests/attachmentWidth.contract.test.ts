@@ -17,24 +17,12 @@ describe('the attachments of a message', () => {
   const root = source.slice(source.indexOf('return (\n'))
 
   it('take the album’s width in the list as well as the gallery', () => {
-    expect(root).toMatch(/^return \(\n(\s*\/\/.*\n)*\s*<YStack[^>]*width=\{ALBUM_WIDTH\}/)
+    expect(root).toMatch(/^return \(\n(\s*\/\/.*\n)*\s*<YStack[^>]*width=\{albumWidth\}/)
   })
 
   it('shrink to the bubble’s inside where the pane is too narrow for that width', () => {
     // The bubble is a share of the pane; below about 340 dp that share is less than the album
     // needs, and a fixed width would run out of the bubble rather than giving the list less.
     expect(root).toMatch(/^return \(\n(\s*\/\/.*\n)*\s*<YStack[^>]*maxWidth="100%"/)
-  })
-
-  it('leave room between a gallery and the footer under it', () => {
-    expect(root).toContain("gap={SPACE_SCALE[view === 'gallery' ? 'xs' : '3xs'] + ROW_OVERHANG}")
-  })
-
-  it('draw the gallery at the room the bubble leaves, never wider than the album', () => {
-    // Below a pane of about 330px the bubble has less than ALBUM_WIDTH inside it.
-    expect(root).toContain(
-      'setAlbumWidthPx(Math.min(ALBUM_WIDTH, Math.floor(event.nativeEvent.layout.width)))',
-    )
-    expect(root).toContain('widthPx={albumWidthPx}')
   })
 })

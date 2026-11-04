@@ -226,6 +226,17 @@ export function runMediaSourceContract(
       expect(thumbhash.rgba.length).toBe(thumbhash.width * thumbhash.height * 4)
     })
 
+    it('reports the shape a hash records on a picture sent with one, and none without', async () => {
+      const { client, conversationId, picture, unhashed } = await harness.withAttachments()
+      // Only coarse: one of 7/n or n/7, so all that holds on both sides is that it is a shape.
+      const hashed = await attachmentOf(client, conversationId, picture)
+      expect(hashed?.hasThumbhash).toBe(true)
+      expect(hashed?.thumbhashAspect).toBeGreaterThan(0)
+      const bare = await attachmentOf(client, conversationId, unhashed)
+      expect(bare?.hasThumbhash).toBe(false)
+      expect(bare?.thumbhashAspect).toBeUndefined()
+    })
+
     it('has no thumbhash where the sender sent no hash', async () => {
       const { source, unhashed } = await harness.withAttachments()
       // Exactly this sentence, so a ref that misses the attachment cannot pass on the unknown-ref

@@ -174,6 +174,12 @@ const FAKE_THUMBNAIL_EDGE_PX = 720
 /** Every dev photograph is 1600 x 1200, so every thumbnail served is 4:3 at that height. */
 const FAKE_THUMBNAIL_WIDTH_PX = 960
 
+/**
+ * What every dev photograph's hash says of its shape: a 4:3 photograph's hash keeps seven
+ * luminance components across and five down. The fake draws every hashed picture as one of them.
+ */
+const FAKE_THUMBHASH_ASPECT = 7 / 5
+
 /** libsession's `max_frame_pixels`: past it, it decodes nothing of a picture. */
 const MAX_FRAME_PIXELS = 268_402_689
 
@@ -1120,8 +1126,11 @@ export class FakeAccount {
             ? 'cached'
             : (this.verdicts.get(key) ?? 'absent')
         const thumbnail = thumbnailed(this.holdsPicture(key), attachment)
+        // As the shim does: set exactly when there is a hash to draw.
+        const { thumbhashAspect = FAKE_THUMBHASH_ASPECT, ...rest } = attachment
         return {
-          ...attachment,
+          ...rest,
+          ...(attachment.hasThumbhash ? { thumbhashAspect } : {}),
           availability,
           hasThumbnail: thumbnail,
           thumbnailWidthPx: thumbnail ? FAKE_THUMBNAIL_WIDTH_PX : 0,

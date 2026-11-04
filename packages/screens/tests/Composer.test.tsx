@@ -1,5 +1,5 @@
 import { memoryPorts, resetPorts, setPorts, type PickedFile } from '@session/app'
-import { MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
+import { formatBytes, MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
 import type { SendPlan } from '@session/client'
 import { PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
@@ -170,6 +170,19 @@ describe('the composer while a send is out', () => {
   })
 })
 
+describe('a staged tile', () => {
+  // A right-to-left name sets the tile's direction, which a picture shows only for one name.
+  it('isolates its size, so no name’s direction puts the unit first', async () => {
+    const unsized: PickedFile = { path: '/home/a/notes.txt', name: 'notes.txt' }
+    await render().staging.add([photo, unsized])
+    const { find } = render()
+    const tile = find(ELEMENT.conversation.stagedTile(0))
+    expect(tile?.props.sizeLabel).toBe(`\u2068${formatBytes(PHOTO_BYTES)}\u2069`)
+    expect(tile?.props.label).toBe(`photo.jpg, ${formatBytes(PHOTO_BYTES)}`)
+    expect(find(ELEMENT.conversation.stagedTile(1))?.props.sizeLabel).toBeUndefined()
+  })
+})
+
 describe('the draft after a send went', () => {
   async function sendWhileTyping(sent: string, ...meanwhile: string[]): Promise<unknown> {
     const answer = deferred()
@@ -234,7 +247,7 @@ describe('staging by libsession’s plan', () => {
     expect(staging.files).toEqual([notes])
     const notice = find(ELEMENT.conversation.composerNotice(id))
     expect(notice?.props.message).toBe(message)
-    expect(String(notice?.props.detail)).toMatch(/^photo\.jpg/)
+    expect(String(notice?.props.detail)).toMatch(/^\u2068photo\.jpg\u2069/)
     expect(find('announcement')?.props.text).toContain('photo.jpg')
   })
 

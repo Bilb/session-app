@@ -8,9 +8,9 @@ import { transferKey, type SessionStore } from '@session/state'
  * message, never one another page draws at rest: the store is shared by every page.
  */
 const PREPARE: Record<string, 'downloaded' | 'downloading' | 'downloadFailed'> = {
-  'Two, as halves': 'downloaded',
-  'Four, an even grid': 'downloading',
-  'Five: one big beside a quad': 'downloadFailed',
+  'Two, one above the other': 'downloaded',
+  'Four in two rows': 'downloading',
+  'Five: two above three': 'downloadFailed',
 }
 
 /** Ours, so its uploaded pictures are cached and thumbnailed, as a staged file's picture is. */

@@ -14,20 +14,23 @@ import { noop } from './shared'
 interface TileRow {
   name: string
   contentType: string
-  sizeLabel?: string | undefined
+  size?: string | undefined
   /** Which of the catalog's photographs it draws as its staged thumbnail, if any. */
   picture?: number | undefined
 }
 
-function Tile({ name, contentType, sizeLabel, picture, index }: TileRow & { index: number }) {
+/** A size as the composer passes it, isolated: under a right-to-left name it reads "kB 180". */
+const isolated = (size: string) => `\u2068${size}\u2069`
+
+function Tile({ name, contentType, size, picture, index }: TileRow & { index: number }) {
   const previewUrl = useCatalogPicture(picture)
   return (
     <StagedTile
       name={name}
       contentType={contentType}
-      sizeLabel={sizeLabel}
+      sizeLabel={size === undefined ? undefined : isolated(size)}
       previewUrl={previewUrl}
-      label={[name, sizeLabel].filter(Boolean).join(', ')}
+      label={[name, size].filter(Boolean).join(', ')}
       removeLabel={`Remove ${name}`}
       onRemove={noop}
       testID={ELEMENT.conversation.stagedTile(index)}
@@ -46,28 +49,28 @@ export const stagedTile = defineStory<TileRow>({
   forced: ['hover', 'focus', 'press'],
   sensitive: { rtl: true },
   variants: {
-    picture: { name: 'harbour.jpg', contentType: 'image/jpeg', sizeLabel: '2.4 MB', picture: 0 },
-    noPreviewYet: { name: 'harbour.jpg', contentType: 'image/jpeg', sizeLabel: '2.4 MB' },
-    video: { name: 'ferry.mp4', contentType: 'video/mp4', sizeLabel: '18 MB' },
-    pdf: { name: 'itinerary.pdf', contentType: PDF, sizeLabel: '184 kB' },
+    document: { name: 'report.pdf', contentType: PDF, size: '180 kB' },
+    arabicName: { name: 'تقرير-الربع-الثالث.pdf', contentType: PDF, size: '180 kB' },
+    unsized: { name: 'notes.txt', contentType: 'text/plain' },
     longName: {
       name: 'quarterly-board-meeting-minutes-final-revised-v7.pdf',
       contentType: PDF,
-      sizeLabel: '18.4 MB',
+      size: '18.4 MB',
     },
-    arabicName: { name: 'تقرير-الربع-الثالث.pdf', contentType: PDF, sizeLabel: '2 MB' },
+    picture: { name: 'harbour.jpg', contentType: 'image/jpeg', size: '2.4 MB', picture: 0 },
+    noPreviewYet: { name: 'harbour.jpg', contentType: 'image/jpeg', size: '2.4 MB' },
+    video: { name: 'ferry.mp4', contentType: 'video/mp4', size: '18 MB' },
   },
   render: (row) => <Tile {...row} index={0} />,
 })
 
 /** Mostly pictures, with a document every fourth tile, as a real pick tends to be. */
 function trayTile(at: number): TileRow {
-  if (at % 4 === 2)
-    return { name: `notes-${String(at + 1)}.pdf`, contentType: PDF, sizeLabel: '184 kB' }
+  if (at % 4 === 2) return { name: `notes-${String(at + 1)}.pdf`, contentType: PDF, size: '184 kB' }
   return {
     name: `photo-${String(at + 1).padStart(2, '0')}.jpg`,
     contentType: 'image/jpeg',
-    sizeLabel: '2.4 MB',
+    size: '2.4 MB',
     picture: at,
   }
 }
