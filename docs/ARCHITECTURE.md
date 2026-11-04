@@ -332,8 +332,10 @@ out black below the fold; the Xvfb screen in `capture.sh` is sized to the cap.
 
 **Comparing the catalog locally.** `pnpm catalog:compare [base-ref]` answers "which pages does my
 change move?" before a push, on any host, macOS included. It captures the catalog twice on this
-machine: at the base (default: the merge base with `origin/main`), in a temporary worktree
-installed from pnpm's store, and in the working tree as it is, uncommitted changes included. Each
+machine: at the base (default: the merge base with `origin/main`), in a worktree under
+`test-results/catalog-compare/` installed from pnpm's store (inside the repository because pnpm
+uses its store only from the same filesystem, and a tmpfs `/tmp` would download every package into
+memory), and in the working tree as it is, uncommitted changes included. Each
 side builds its own desktop app and runs its own `catalog.spec.ts`, as each side's CI build does.
 The two sets are diffed as Argos diffs (argos-ci.com/docs/diff-algorithm): odiff's colour measure
 through pixelmatch; two pictures of different sizes on a canvas the larger width by the larger

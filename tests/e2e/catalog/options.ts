@@ -10,7 +10,7 @@ an HTML report of the pages that differ. base-ref defaults to the merge base wit
   --tier pr|nightly     which pages to capture (default pr, as a pull request's build)
   --sensitivity <0-1>   Argos's threshold: 0 counts any pixel, 1 doubles every tolerance (default ${String(ARGOS_SENSITIVITY)})
   --refresh             capture again even where a capture of the same commit is cached
-  --keep-worktree       leave the base's temporary worktree in place, to look into a failure
+  --keep-worktree       leave the base's worktree, under test-results/catalog-compare/, in place
 
 Exits 0 when nothing differs, 1 when something does, 2 when the comparison could not be made.`
 

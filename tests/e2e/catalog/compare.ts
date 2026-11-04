@@ -9,7 +9,6 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs'
-import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -236,8 +235,14 @@ async function cachedCapture(
 }
 
 /**
- * The base, checked out in a temporary worktree beside the repository, installed from pnpm's
- * store (cloned, so it costs neither the network nor the disk), built and captured.
+ * The base, checked out in a worktree under the output folder, installed from pnpm's store, built
+ * and captured.
+ *
+ * **Inside the repository rather than in the temporary folder**, because pnpm uses its store only
+ * from the same filesystem and otherwise makes a new one at that filesystem's root. Where the
+ * temporary folder is a tmpfs, the default on several Linux distributions, the base's install
+ * downloaded every package into memory. Beside the repository it links or clones from the store
+ * the working tree was installed from.
  */
 async function captureBase(
   sha: string,
@@ -245,7 +250,7 @@ async function captureBase(
   overlay: { patch: string } | null,
   options: CompareOptions,
 ): Promise<CaptureRecord> {
-  const worktree = join(tmpdir(), `session-catalog-base-${sha.slice(0, 12)}`)
+  const worktree = join(outRoot, `base-${sha.slice(0, 12)}`)
   git(['worktree', 'prune'])
   if (existsSync(worktree)) {
     if (!gitSucceeds(['worktree', 'remove', '--force', worktree]))

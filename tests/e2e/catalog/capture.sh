@@ -23,7 +23,7 @@ mkdir -p "$out"
 # a crashing Electron would write hundreds of MB into the checkout, which is the working dir.
 # CATALOG_CGROUP_PARENT lifts a capture out of a daemon-wide parent that throttles a host's CI.
 # The screen holds MAX_CAPTURE_WINDOW in catalog/captureWindow.ts, the window the tallest page
-# grows to, with room for the frame; raise the two together.
+# grows to, with 200 px to spare in case anything is drawn around the page; raise the two together.
 docker run --rm --init ${CATALOG_CGROUP_PARENT:+--cgroup-parent "$CATALOG_CGROUP_PARENT"} \
   --user "$(id -u):$(id -g)" \
   --ulimit core=0 \
