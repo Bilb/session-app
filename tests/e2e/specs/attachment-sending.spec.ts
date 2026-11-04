@@ -6,6 +6,7 @@ import { _electron, expect, test } from '@playwright/test'
 import { ELEMENT } from '@session/test-ids'
 
 import { FAKE_LAUNCH_ENV } from '../harness/fakeEnv'
+import { scrollUntilMounted } from '../harness/transcriptScroll'
 
 const repoRoot = join(import.meta.dirname, '../../..')
 
@@ -41,6 +42,7 @@ test('says a hidden upload failed, opens on it, and resumes the message on Retry
     const message = page
       .getByTestId(/^message-row-\d+$/)
       .filter({ hasText: 'File 31 of 32 failed' })
+    await scrollUntilMounted(page.getByTestId(ELEMENT.conversation.screen).first(), message)
     await message.scrollIntoViewIfNeeded()
     await expect(message.getByTestId(ELEMENT.conversation.attachmentState).last()).toHaveText(
       '30 of 32 uploaded',
