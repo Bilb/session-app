@@ -111,14 +111,15 @@ describe('the edge thumbnails are made at', () => {
   })
 
   it('covers a wide-layout row as tall as its widest album, the lone picture capped below it', () => {
-    expect(tallestTilePx('wide')).toBe(360)
-    expect(thumbnailEdgePxFor([1, 2, 1.5], 'wide')).toBe(720)
+    expect(tallestTilePx('wide')).toBe(340)
+    expect(thumbnailEdgePxFor([1, 2, 1.5], 'wide')).toBe(680)
   })
 
-  it('stops at libsession’s 1024 px, and makes them at 1x with no display connected', () => {
+  it('stays within libsession’s 1024 px at 3x, and makes them at 1x with no display connected', () => {
     expect(thumbnailEdgePxFor([3], 'narrow')).toBe(1020)
-    expect(thumbnailEdgePxFor([3], 'wide')).toBe(1024)
-    expect(thumbnailEdgePxFor([], 'wide')).toBe(360)
+    expect(thumbnailEdgePxFor([3], 'wide')).toBe(1020)
+    expect(thumbnailEdgePxFor([4], 'wide')).toBe(1024)
+    expect(thumbnailEdgePxFor([], 'wide')).toBe(340)
   })
 })
 

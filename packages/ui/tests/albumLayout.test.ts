@@ -316,7 +316,7 @@ describe('a tile’s shape', () => {
 })
 
 describe('an album at the wide layout’s widest', () => {
-  const WIDEST = 360
+  const WIDEST = 340
   const CAP = 340
 
   it('draws a lone picture no taller than the cap, narrower rather than cropped', () => {
