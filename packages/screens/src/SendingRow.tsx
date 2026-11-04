@@ -45,12 +45,10 @@ export function SendingRow({
   message,
   attachment,
   onAccent,
-  received,
 }: {
   message: Message
   attachment: Attachment
   onAccent?: boolean | undefined
-  received?: boolean | undefined
 }) {
   const actions = useSessionActions()
   const upload = uploadStateOf(message, attachment.index)
@@ -82,7 +80,6 @@ export function SendingRow({
       }
       onAction={retry}
       onAccent={onAccent}
-      received={received}
       testIDs={{
         row: ELEMENT.conversation.attachment,
         name: ELEMENT.conversation.attachmentName,

@@ -61,6 +61,7 @@ Ask what the thing _is_, not what colour you want.
 | an accent button's hover / pressed                            | `accentHover` / `accentPressed`    |
 | a danger fill, a destructive outline, a status dot or glyph   | `dangerColor`                      |
 | destructive or error text                                     | `dangerText`                       |
+| a danger fill while held                                      | `dangerPressed`                    |
 | text on a danger fill                                         | `onDanger`                         |
 | a caution line                                                | `warningColor`                     |
 | a switch thumb, a QR panel                                    | `surfaceInverted`                  |
@@ -339,9 +340,11 @@ the theme fades only as far as 4.5:1 allows; never put an opacity on an on-colou
 
 **Danger as fill and danger as text are two roles,** like the accent's. The presets author their
 red to be recognised, and the authored reds fall under 4.5:1 on the recessed surfaces, so text takes
-`dangerText`, moved in lightness until it clears every surface, and the page and a card held. No red clears 4.5:1 as text on Ocean
-Dark's incoming bubble, so on a received message a failure is said in the bubble's text and only its
-glyph is red, as on the accent.
+`dangerText`, moved in lightness until it clears every surface, and the page and a card held. A
+danger button's outline takes the same role as its label, so it reads as one red at rest; its fills
+are `dangerColor` and, held, `dangerPressed`. No red clears 4.5:1 as text on Ocean Dark's incoming
+bubble, so a failed file says so in words at full strength and only its retry glyph is red, on
+every surface alike.
 
 **The incoming bubble is a surface muted text is measured on.** A received file's captions sit on
 it, and it is the furthest surface from the page in every theme.

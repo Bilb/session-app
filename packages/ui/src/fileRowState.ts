@@ -97,8 +97,9 @@ export type FileRowTone = 'primary' | 'secondary' | 'danger'
 /**
  * The colour of each part of a row, which follows from the state.
  *
- * A failure is red throughout, because it is the row somebody has to act on. An unavailable file
- * says so in its caption alone: there is nothing to act on, so the name and control stay quiet.
+ * A failure is said in words at full strength and its retry glyph is red: red words would need a
+ * red that clears 4.5:1 on every surface a row sits on, and none does on Ocean Dark's incoming
+ * bubble. An unavailable file says so in its caption alone, as there is nothing to act on.
  */
 export function fileRowTone(state: FileRowState): {
   name: FileRowTone
@@ -107,8 +108,8 @@ export function fileRowTone(state: FileRowState): {
 } {
   const failed = state === 'failed'
   return {
-    name: failed ? 'danger' : 'primary',
-    caption: failed || state === 'unavailable' ? 'danger' : 'secondary',
+    name: 'primary',
+    caption: failed ? 'primary' : 'secondary',
     control: failed ? 'danger' : 'primary',
   }
 }

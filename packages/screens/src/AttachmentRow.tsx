@@ -52,8 +52,6 @@ interface RowProps {
   attachment: Attachment
   /** Drawn on a bubble you sent; absent in the sheet, which draws its rows on the page. */
   onAccent?: boolean | undefined
-  /** Drawn on a bubble someone else sent. */
-  received?: boolean | undefined
 }
 
 /** One attachment as a row: its upload while ours is being sent, its download otherwise. */
@@ -61,7 +59,7 @@ export function AttachmentRow(props: RowProps) {
   return isUploadPhase(props.message) ? <SendingRow {...props} /> : <SettledRow {...props} />
 }
 
-function SettledRow({ message, attachment, onAccent, received }: RowProps) {
+function SettledRow({ message, attachment, onAccent }: RowProps) {
   const actions = useSessionActions()
   const feedback = useExportFeedback()
   const ui = useConversationUi()
@@ -134,7 +132,6 @@ function SettledRow({ message, attachment, onAccent, received }: RowProps) {
       }
       onAction={control === null ? undefined : perform[control]}
       onAccent={onAccent}
-      received={received}
       testIDs={{
         row: ELEMENT.conversation.attachment,
         name: ELEMENT.conversation.attachmentName,

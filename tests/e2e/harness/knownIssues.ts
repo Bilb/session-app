@@ -20,7 +20,6 @@ const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, Known>>> = {
     'color-contrast button.variants ghostAccent': 'the same ink as outlineAccent: down to 2.0:1',
     'color-contrast button.variants simple': 'its label on the ocean-light page: 3.3:1',
     'color-contrast button.onAccent cell': "a cell's pressed label on the red accent's fill: 2.6:1",
-    'color-contrast button.variants danger': 'the pressed label on the danger fill: 3.7 to 4.2:1',
     'color-contrast button.variants solid':
       "the label on the red accent's fill, ocean themes: 4.0:1",
     'color-contrast button.variants long': 'the same, on the long label',

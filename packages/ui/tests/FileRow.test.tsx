@@ -210,16 +210,9 @@ describe('a failed file row’s words', () => {
     caption: declared(byId(IDS.caption)).color,
   })
 
-  it('are red as text on the page', () => {
+  it('are the body text, with only the retry in red', () => {
     renderInUI(<FileRow {...pictureRow('failed')} />)
-    expect(inks()).toEqual({ name: 'var(--dangerText)', caption: 'var(--dangerText)' })
-  })
-
-  it('take the bubble’s text on a bubble someone else sent', () => {
-    renderInUI(<FileRow {...pictureRow('failed', { received: true })} />)
-    expect(inks()).toEqual({
-      name: 'var(--messageBubbleIncomingText)',
-      caption: 'var(--messageBubbleIncomingText)',
-    })
+    expect(inks()).toEqual({ name: 'var(--textPrimary)', caption: 'var(--textPrimary)' })
+    expect(byId(IDS.download).innerHTML).toContain('var(--dangerText)')
   })
 })

@@ -42,11 +42,11 @@ const PRESS_STYLE = {
   ghostAccent: { backgroundColor: '$pressedOverlay' },
   simple: { opacity: INTERACTION_OPACITY.dimPressed },
   tonal: { opacity: 0.7 },
+  // A new fill rather than a fade: faded, the label falls under 4.5:1 on it.
   danger: {
-    backgroundColor: '$dangerColor',
-    borderColor: '$dangerColor',
+    backgroundColor: '$dangerPressed',
+    borderColor: '$dangerPressed',
     color: '$onDanger',
-    opacity: INTERACTION_OPACITY.filledPressed,
   },
 } as const
 
@@ -172,7 +172,8 @@ const Frame = styled(XStack, {
       /** Danger text on a transparent ground, filling on hover. The table's destructive row. */
       danger: {
         backgroundColor: 'transparent',
-        borderColor: '$dangerColor',
+        // The label's colour, so the button reads as one red at rest.
+        borderColor: '$dangerText',
         color: '$dangerText',
         hoverStyle: {
           backgroundColor: '$dangerColor',

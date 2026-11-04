@@ -7,7 +7,7 @@ import { ELEMENT } from '@session/test-ids'
 import { Button } from '#src/Button'
 import { Icon } from '#src/Icon'
 
-import { byId, nodeOf } from '@session/render-tier'
+import { byId, declared, nodeOf } from '@session/render-tier'
 import { renderInUI } from './support/render'
 
 const ID = ELEMENT.settings.back
@@ -55,5 +55,19 @@ describe('a loading Button', () => {
     expect(nodeOf(ID)).toMatchObject(
       pressArea({ name: 'Saving', disabled: true, busy: true }).desktop!,
     )
+  })
+})
+
+describe('a danger Button', () => {
+  it('draws its outline in its label’s red, so it reads as one colour at rest', () => {
+    renderInUI(
+      <Button variant="danger" onPress={() => {}} testID={ID}>
+        Delete
+      </Button>,
+    )
+    expect(declared(frame())).toMatchObject({
+      'border-top-color': 'var(--dangerText)',
+      color: 'var(--dangerText)',
+    })
   })
 })

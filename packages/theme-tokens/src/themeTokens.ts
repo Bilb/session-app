@@ -349,6 +349,8 @@ export type ThemeTokens = {
    * the authored reds fall under 4.5:1 on the recessed surfaces.
    */
   dangerText: string
+  /** The danger fill while held: stepped from it as `accentPressed` is from the accent. */
+  dangerPressed: string
   warningColor: string
   backgroundPrimary: string
   backgroundSecondary: string
@@ -559,6 +561,7 @@ function themeBase(knobs: ThemeKnobs): ThemeBase {
   const danger = semantic?.danger ?? contrastAdjustAll(DANGER_BASE, surfaces, CONTRAST.normal)
   const warning =
     semantic?.warning ?? contrastAdjustAll(WARNING_BASE[polarity], surfaces, CONTRAST.normal)
+  const dangerPressed = step(danger, 2, background)
   // A bubble is a surface, but it is one of the things a theme is recognised by, so it carries the
   // emphasis chroma. That is the difference between Ocean's blue bubbles and a tinted grey.
   //
@@ -588,7 +591,8 @@ function themeBase(knobs: ThemeKnobs): ThemeBase {
         [...surfaces, pressed(background, polarity), pressed(backgroundSecondary, polarity)],
         CONTRAST.normal,
       ),
-      onDanger: contrastPickAll([text, background], [danger]),
+      dangerPressed,
+      onDanger: contrastPickAll([text, background], [danger, dangerPressed]),
       warningColor: warning,
       backgroundPrimary: background,
       backgroundSecondary,

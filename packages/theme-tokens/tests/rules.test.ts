@@ -199,8 +199,11 @@ describe('semantic colours', () => {
         const under = held(surface, t.pressedOverlay)
         expect(contrastRatio(t.dangerText, under)).toBeGreaterThanOrEqual(4.5)
       }
-      // A received failure's glyph keeps the red, and a glyph owes 3:1.
+      // A failure's retry glyph keeps the red on a received bubble, and a glyph owes 3:1.
       expect(contrastRatio(t.dangerText, t.messageBubbleIncomingBg)).toBeGreaterThanOrEqual(3)
+      // A danger button's label, at rest on its fill and held on the pressed one.
+      expect(contrastRatio(t.onDanger, t.dangerColor)).toBeGreaterThanOrEqual(4.5)
+      expect(contrastRatio(t.onDanger, t.dangerPressed)).toBeGreaterThanOrEqual(4.5)
     }
   })
 
