@@ -63,7 +63,14 @@ export const MESSAGE_SCENARIOS: readonly AnyStory[] = [
       'Ours from another device, for the ring at 40%',
       'Ours from another device, for the ring at 95%',
     ],
-    { accent: true, rtl: true },
+    { rtl: true },
+  ),
+  // The ring in every accent, on one received pair and one of ours: all six in every accent is a
+  // page past the capture's height.
+  message(
+    'albumDownloadingAccent',
+    ['A pair for the ring at 40%', 'Ours from another device, for the ring at 40%'],
+    { accent: true },
   ),
   // A message's one attachment as a list: no control on the row, the footer's verb or ring alone.
   message(
