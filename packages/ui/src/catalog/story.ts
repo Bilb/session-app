@@ -22,6 +22,8 @@ export interface Story<P> {
   sensitive?: Sensitivity | undefined
   /** The cell's width, in px, where the page does not set one. */
   width: number
+  /** Reads `CatalogPictures`, so its page waits for the showcase's photographs. */
+  pictures?: boolean | undefined
   render: (props: P) => ReactNode
 }
 

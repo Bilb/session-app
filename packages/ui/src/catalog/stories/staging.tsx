@@ -46,6 +46,7 @@ export const stagedTile = defineStory<TileRow>({
   component: 'stagedTile',
   story: 'faces',
   width: STAGED_TILE_SIDE,
+  pictures: true,
   forced: ['hover', 'focus', 'press'],
   sensitive: { rtl: true },
   variants: {
@@ -106,6 +107,7 @@ export const stagedTray = defineStory<TrayRow>({
   component: 'stagedTray',
   story: 'counts',
   width: 560,
+  pictures: true,
   sensitive: { rtl: true, responsive: true },
   variants: {
     one: { count: 1 },
