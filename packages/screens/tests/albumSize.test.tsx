@@ -10,9 +10,9 @@ describe('the width an album is drawn at', () => {
     expect(albumGeometry('narrow', 320).widthPx).toBe(240)
   })
 
-  it('is three fifths of a wide-layout transcript, within 280 to 360', () => {
+  it('is three fifths of a wide-layout transcript, within 280 to 340', () => {
     expect(albumGeometry('wide', 520).widthPx).toBe(312)
-    expect(albumGeometry('wide', 1200).widthPx).toBe(360)
+    expect(albumGeometry('wide', 1200).widthPx).toBe(340)
     expect(albumGeometry('wide', 420).widthPx).toBe(280)
   })
 
