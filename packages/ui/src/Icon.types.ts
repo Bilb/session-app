@@ -60,6 +60,7 @@ export type IconName =
   | 'pin'
   | 'play'
   | 'plus'
+  | 'reply'
   | 'rotateCw'
   | 'search'
   | 'settings'

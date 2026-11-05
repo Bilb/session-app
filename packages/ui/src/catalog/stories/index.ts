@@ -1,6 +1,7 @@
 import type { AnyStory } from '../story'
 import { albumChoices, albumFocus, albumLone, albumOverflow, albumRows } from './album'
 import { button, buttonOnAccent, buttonSizes } from './button'
+import { contextMenu } from './contextMenu'
 import { fileRow, fileRowOnAccent, fileRowReceived } from './fileRow'
 import { avatar, progressRing, radio } from './indicators'
 import { settingsRow } from './settingsRow'
@@ -30,4 +31,5 @@ export const STORIES: readonly AnyStory[] = [
   composerNotice,
   dropOverlay,
   mediaViewer,
+  contextMenu,
 ]
