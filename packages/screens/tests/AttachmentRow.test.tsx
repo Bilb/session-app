@@ -87,6 +87,7 @@ function conversation(): ConversationUi {
     requestAutoDownloadPrompt: vi.fn(),
     openViewer: vi.fn(),
     openSheet: vi.fn(),
+    openMenu: vi.fn(),
   }
 }
 

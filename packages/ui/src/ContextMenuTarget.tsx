@@ -19,9 +19,16 @@ function selectsTextIn(element: Element): boolean {
  * **Not over a text selection inside it.** There the click is left to the window, whose own menu
  * copies what was selected; the app's menu acts on the whole message.
  */
-export function ContextMenuTarget({ onOpen, children }: ContextMenuTargetProps) {
+export function ContextMenuTarget({
+  onOpen,
+  alignSelf,
+  maxWidth,
+  children,
+}: ContextMenuTargetProps) {
   return (
     <YStack
+      {...(alignSelf === undefined ? {} : { alignSelf })}
+      {...(maxWidth === undefined ? {} : { maxWidth })}
       onContextMenu={(event: MouseEvent) => {
         if (selectsTextIn(event.currentTarget)) return
         event.preventDefault()

@@ -11,9 +11,15 @@ export type { ContextMenuTargetProps }
  * wrapper would hide its children from VoiceOver. A control inside takes the touch first, so a long
  * press that starts on one does not open the menu.
  */
-export function ContextMenuTarget({ onOpen, children }: ContextMenuTargetProps) {
+export function ContextMenuTarget({
+  onOpen,
+  alignSelf,
+  maxWidth,
+  children,
+}: ContextMenuTargetProps) {
   return (
     <Pressable
+      style={{ alignSelf, maxWidth }}
       accessible={false}
       onLongPress={(event) => {
         onOpen({ kind: 'point', x: event.nativeEvent.pageX, y: event.nativeEvent.pageY })
