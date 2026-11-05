@@ -55,7 +55,7 @@ export const KINDS: readonly ContextMenuEntry[] = [
   action('delete', 'Delete', { icon: 'trash', destructive: true }),
 ]
 
-const LONG_LABELS: readonly ContextMenuEntry[] = [
+export const LONG_LABELS: readonly ContextMenuEntry[] = [
   action('long', LONG, { icon: 'copy' }),
   action('short', 'Copy', { icon: 'copy' }),
   {

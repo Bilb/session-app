@@ -4,7 +4,10 @@
    declarations reach this package's own program and no other, so every consumer that typechecks
    these sources -- screens and both apps -- fails on the .png and .ttf imports below. */
 /// <reference path="./assets.d.ts" />
+import { RADII } from '@session/theme-tokens'
+
 import { config } from './config'
+import { ROUNDED_SCROLL_ATTRIBUTE } from './roundedScroll'
 import { BUNDLED_FACES } from './fontAssets'
 
 /**
@@ -70,7 +73,8 @@ const SCROLLBAR = `::-webkit-scrollbar { width: 6px; height: 6px; }
   border-radius: 20px;
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--textSecondary); }
-::-webkit-scrollbar-corner { background: transparent; }`
+::-webkit-scrollbar-corner { background: transparent; }
+[${ROUNDED_SCROLL_ATTRIBUTE}]::-webkit-scrollbar-track { margin-block: ${String(RADII.md)}px; }`
 
 /**
  * Each text's direction from its own first letter, its alignment from the layout.

@@ -97,6 +97,11 @@ describe('a context menu', () => {
     expect(tabStops()).toEqual([ITEM('copy')])
   })
 
+  it('marks its scroll view, so the scrollbar is inset by the rounded corners', () => {
+    layer(AT_POINTER)
+    expect(byId(IDS.menu).querySelectorAll('[data-rounded-scroll]')).toHaveLength(1)
+  })
+
   it('keeps the first row a tab stop from a pointer, so a scrolling menu is reachable', () => {
     layer(AT_POINTER)
     expect(tabStops()).toEqual([ITEM('reply')])

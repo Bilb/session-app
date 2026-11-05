@@ -14,6 +14,7 @@ import { SIZE_SCALE } from './scales'
 import { raisedShadow } from './shadowColour'
 import { Text } from './Text'
 import { LABEL_MAX_SCALE, useGlyphScale } from './fontScaleCaps'
+import { ROUNDED_SCROLL_ATTRIBUTE } from './roundedScroll'
 import { useTokenColor } from './useTokenColor'
 
 /** A pointer's row on the desktop, a finger's on a phone. */
@@ -31,6 +32,16 @@ export const MENU_PADDING_Y = SPACING['2xs']
 
 /** Separators are hairlines between groups, not rows: the keys and a screen reader skip them. */
 const SEPARATOR = 1
+
+/**
+ * Tags the scrolling element so the global scrollbar rule insets its track by the panel's corners.
+ * Web only, and set on the element because the scroll view passes no data attribute through.
+ */
+function markRoundedScroll(node: unknown): void {
+  if (!isWeb || node === null) return
+  const scrollable = (node as { getScrollableNode?: () => unknown }).getScrollableNode?.() ?? node
+  if (scrollable instanceof HTMLElement) scrollable.setAttribute(ROUNDED_SCROLL_ATTRIBUTE, '')
+}
 
 /** What a view's key handlers take, in react-native's types; attached on the web only. */
 type KeyHandler = NonNullable<ViewProps['onKeyDown']>
@@ -143,7 +154,11 @@ export function ContextMenuPanel({
       boxShadow={`0px 4px 12px 0px ${raisedShadow(shadow)}`}
       testID={testID}
     >
-      <ScrollView bounces={false} contentContainerStyle={{ paddingVertical: MENU_PADDING_Y }}>
+      <ScrollView
+        ref={markRoundedScroll}
+        bounces={false}
+        contentContainerStyle={{ paddingVertical: MENU_PADDING_Y }}
+      >
         {entries.map((entry, index) =>
           isMenuRow(entry) ? (
             <MenuRowPress

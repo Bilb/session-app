@@ -7,7 +7,7 @@ import type { MenuAnchor } from '../../contextMenuPlacement'
 import { isLayoutRtl } from '../../layoutDirection'
 import { logical } from '../../logicalEdges'
 import { defineStory } from '../story'
-import { action, KINDS } from './contextMenu'
+import { action, KINDS, LONG_LABELS } from './contextMenu'
 import { noop } from './shared'
 
 /** The widest window drawn, which is the cell. */
@@ -177,6 +177,8 @@ export const contextMenuPlacement = defineStory<PlacementCase>({
     keyboardTrailingBubble: { element: { start: 300, y: 40, ...BUBBLE } },
     keyboardAbove: { element: { start: 40, y: 270, ...BUBBLE } },
     keyboardOver: { element: { start: 40, y: 30, width: BUBBLE.width, height: 300 } },
+    // Wide rows, so neither side of the parent holds the submenu: it lies over the parent instead.
+    submenuNoRoom: { pointer: { start: 160, y: 40 }, entries: LONG_LABELS, initialPath: ['more'] },
   },
   render: (props) => <PlacementCell {...props} />,
 })
