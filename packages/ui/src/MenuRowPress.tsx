@@ -19,6 +19,7 @@ const ROW_RING = focusRing({ onAccent: false, offset: -2, radius: '$sm' })
  */
 export function MenuRowPress({
   active,
+  tabStop,
   disabled,
   expanded,
   onActivate,
@@ -32,7 +33,7 @@ export function MenuRowPress({
     <YStack
       ref={nodeRef as never}
       role="menuitem"
-      tabIndex={active ? 0 : -1}
+      tabIndex={tabStop ? 0 : -1}
       aria-disabled={disabled}
       {...(expanded === undefined ? {} : { 'aria-haspopup': 'menu', 'aria-expanded': expanded })}
       userSelect="none"

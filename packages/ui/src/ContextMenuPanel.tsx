@@ -84,6 +84,7 @@ export function ContextMenuPanel({
   testID,
 }: ContextMenuPanelProps) {
   const shadow = useTokenColor('$shadow')
+  const firstRowIndex = entries.findIndex(isMenuRow)
   const nodes = useRef(new Map<number, HTMLElement>())
   const panel = useRef<HTMLElement | null>(null)
 
@@ -148,6 +149,7 @@ export function ContextMenuPanel({
             <MenuRowPress
               key={entry.id}
               active={index === active}
+              tabStop={index === (active === -1 ? firstRowIndex : active)}
               disabled={entry.disabled === true}
               expanded={entry.kind === 'submenu' ? openSubmenu === entry.id : undefined}
               onActivate={() => {

@@ -16,7 +16,7 @@ const CELL_HEIGHT = 340
 /** Where the pointer was, from the cell's leading corner. */
 const POINTER = 12
 
-function action(
+export function action(
   id: string,
   label: string,
   extra: Partial<ContextMenuEntry> = {},
@@ -34,7 +34,7 @@ function action(
 const separator = (id: string): ContextMenuEntry => ({ id, kind: 'separator' })
 
 /** Every kind of entry: icons, a separator, a disabled row, a destructive one, a submenu. */
-const KINDS: readonly ContextMenuEntry[] = [
+export const KINDS: readonly ContextMenuEntry[] = [
   action('reply', 'Reply', { icon: 'reply' }),
   action('copy', 'Copy', { icon: 'copy' }),
   action('save', 'Save', { icon: 'download', disabled: true }),

@@ -11,6 +11,11 @@ export interface MenuRowPressProps {
    * tab stop. On native only the catalog sets it, to draw a forced state.
    */
   active: boolean
+  /**
+   * The menu's one tab stop: the active row, or the first while none is, so a menu that scrolls
+   * always holds something the keyboard can reach. Web only.
+   */
+  tabStop: boolean
   disabled: boolean
   /** Set for a row that opens a submenu, with whether that submenu is open. */
   expanded?: boolean | undefined

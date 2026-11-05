@@ -84,12 +84,22 @@ describe('a context menu', () => {
     expect(document.querySelectorAll('[role="separator"]')).toHaveLength(1)
   })
 
-  it('is one tab stop: only the active row takes Tab', () => {
+  const tabStops = () =>
+    [...document.querySelectorAll('[role="menuitem"]')]
+      .filter((row) => row.getAttribute('tabindex') === '0')
+      .map((row) => row.getAttribute('data-testid'))
+
+  it('is one tab stop: the active row', async () => {
+    const user = userEvent.setup()
     layer(AT_ELEMENT)
-    const stops = [...document.querySelectorAll('[role="menuitem"]')].filter(
-      (row) => row.getAttribute('tabindex') === '0',
-    )
-    expect(stops.map((row) => row.getAttribute('data-testid'))).toEqual([ITEM('reply')])
+    expect(tabStops()).toEqual([ITEM('reply')])
+    await user.keyboard('{ArrowDown}')
+    expect(tabStops()).toEqual([ITEM('copy')])
+  })
+
+  it('keeps the first row a tab stop from a pointer, so a scrolling menu is reachable', () => {
+    layer(AT_POINTER)
+    expect(tabStops()).toEqual([ITEM('reply')])
   })
 
   it('focuses its first row when opened from the keyboard, and none from a pointer', () => {
