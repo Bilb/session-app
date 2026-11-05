@@ -120,4 +120,10 @@ export const PENDING_COPY = {
    * catalogue string either, and `reply` already names the action that starts one.
    */
   messageQuoteHint: 'Shows the original message',
+  /**
+   * The transcript's floating button, in its two states: no client has a way back after a jump, and
+   * nothing in the catalogue names the button that goes to the newest message.
+   */
+  messageScrollToLatest: 'Scroll to latest message',
+  messageBackToReply: 'Back to reply',
 } as const

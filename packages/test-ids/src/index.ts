@@ -57,6 +57,7 @@ export const ELEMENT = {
     messageQuote: 'message-quote',
     messageQuoteThumbnail: 'message-quote-thumbnail',
     messageHighlight: 'message-highlight',
+    scrollToLatest: 'conversation-scroll-to-latest',
     attachment: 'message-attachment',
     attachmentTile: 'message-attachment-tile',
     attachmentLead: 'message-attachment-lead',

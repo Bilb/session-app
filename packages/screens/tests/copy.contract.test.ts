@@ -169,6 +169,8 @@ describe('screen copy', () => {
       'changeToLightMode',
       'changeToDarkMode',
       'messageQuoteHint',
+      'messageScrollToLatest',
+      'messageBackToReply',
     ])
   })
 })

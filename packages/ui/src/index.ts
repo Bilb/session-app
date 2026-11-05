@@ -76,6 +76,7 @@ export {
   ComposerReply,
   type ComposerReplyProps,
 } from './ComposerReply'
+export { ScrollToLatest, type ScrollToLatestProps } from './ScrollToLatest'
 export { MessageQuote, QUOTE_THUMB_SIDE_PX, type MessageQuoteProps } from './MessageQuote'
 export {
   quoteAccessibleName,

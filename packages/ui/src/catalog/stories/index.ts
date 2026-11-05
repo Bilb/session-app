@@ -6,6 +6,7 @@ import { fileRow, fileRowOnAccent, fileRowReceived } from './fileRow'
 import { messageFrameHighlight } from './messageFrame'
 import { avatar, progressRing, radio } from './indicators'
 import { messageQuote, messageQuoteAuthors, messageQuoteFiles, messageQuotePictures } from './quote'
+import { scrollToLatest } from './scrollToLatest'
 import { settingsRow } from './settingsRow'
 import { composerNotice, dropOverlay, stagedTile, stagedTray } from './staging'
 import { textScale } from './text'
@@ -39,4 +40,5 @@ export const STORIES: readonly AnyStory[] = [
   messageQuoteAuthors,
   composerReply,
   messageFrameHighlight,
+  scrollToLatest,
 ]
