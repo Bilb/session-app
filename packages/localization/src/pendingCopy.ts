@@ -47,6 +47,12 @@ export const PENDING_COPY = {
   attachmentImagePosition: (position: number, count: number): string =>
     `Image ${String(position)} of ${String(count)}`,
   /**
+   * Which of a message's pictures the viewer is showing, in its header. Words rather than "2 / 3",
+   * so each locale orders the two numbers as it reads them.
+   */
+  attachmentViewerPosition: (position: number, count: number): string =>
+    `${String(position)} of ${String(count)}`,
+  /**
    * What a screen reader calls the tile under "+N": its own name and the count it stands for. One
    * string, so each locale orders and punctuates both parts itself; `andMore` is only the "+N".
    */

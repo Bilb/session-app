@@ -87,7 +87,7 @@ function MessageViewer({
       onExport={() => {
         if (attachment !== undefined) void exportOne(message, attachment.index, actions, feedback)
       }}
-      positionLabel={`${String(at + 1)} / ${String(items.length)}`}
+      positionLabel={PENDING_COPY.attachmentViewerPosition(at + 1, items.length)}
       unavailableLabel={tr('attachmentsErrorNotSupported')}
       failedLabel={tr('attachmentsErrorOpen')}
       preparingLabel={tr('loading')}
@@ -101,6 +101,7 @@ function MessageViewer({
       previousTestID={ELEMENT.conversation.mediaViewerPrevious}
       nextTestID={ELEMENT.conversation.mediaViewerNext}
       imageTestID={ELEMENT.conversation.mediaViewerImage}
+      preparingTestID={ELEMENT.conversation.mediaViewerPreparing}
     />
   )
 }

@@ -11,11 +11,9 @@ describe('the staging components’ test ids', () => {
     // @ts-expect-error -- an id the registry does not have
     const tray: StagedTrayProps['testID' | 'clearTestID' | 'addTestID'] = adHoc
     // @ts-expect-error -- an id the registry does not have
-    const paging: StagedTrayProps['previousTestID' | 'nextTestID'] = adHoc
-    // @ts-expect-error -- an id the registry does not have
     const notice: ComposerNoticeProps['testID' | 'dismissTestID'] = adHoc
     // @ts-expect-error -- an id the registry does not have
     const overlay: DropOverlayProps['testID'] = adHoc
-    expect([tray, paging, notice, overlay]).toHaveLength(4)
+    expect([tray, notice, overlay]).toHaveLength(3)
   })
 })

@@ -17,21 +17,23 @@ import { isUploadPhase } from './uploadState'
  * A function rather than a table, because `tr` reads the locale when it is called: a table built
  * at module scope would be resolved once, on import, and keep whatever locale was in use then.
  */
-function stateLabel(message: Message): string | undefined {
+export function stateLabel(message: Message): string | undefined {
   switch (message.sendState) {
     case 'pending':
     case 'sending':
       return tr('sending')
     case 'uploading':
       return tr('uploading')
+    // Interrupted is a send the app stopped in the middle of; to its sender it did not send, and
+    // Retry resumes it as it does a failed one.
     case 'failed':
+    case 'interrupted':
       return tr('messageStatusFailedToSend')
     // A file the message needs is gone, or too large to send even re-encoded, which the
     // catalogue's "Error sending file" covers. Without attachments there is no key for either
     // state, so they say nothing rather than English only.
     case 'unsendable':
       return message.attachments.length > 0 ? tr('attachmentsErrorSending') : undefined
-    case 'interrupted':
     default:
       return undefined
   }

@@ -19,8 +19,12 @@ const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, Known>>> = {
       'textSecondary at caption size on a received bubble is 3.5 to 4.1:1 in every theme, under AA',
     'color-contrast message-attachment': 'the format line under a lead square: the same ink',
     'color-contrast message-attachment-show-all': "the roll's Show all count: the same ink",
+    'color-contrast message-state':
+      "our message's send state on a purple sent bubble, ocean themes, as fileRow.onAccent: 4.2:1",
     'color-contrast message-attachment-action':
       "a failed file's retry, the danger ink on a received bubble in a light theme: 4.0:1",
+    'color-contrast message-attachment-name':
+      "a failed file's name in the danger ink on the attachment sheet, classic-light: 4.3:1",
     'color-contrast button.variants outlineAccent':
       'the accent as ink on a light page: 1.4 to 2.3:1, worst in yellow',
     'color-contrast button.variants ghostAccent': 'the same ink as outlineAccent: down to 2.0:1',
@@ -34,6 +38,10 @@ const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, Known>>> = {
     'color-contrast fileRow.onAccent idle':
       'the caption on a purple sent bubble, ocean themes: 4.2:1',
     'color-contrast fileRow.onAccent failed': 'the same',
+    'color-contrast fileRow.onAccent uploading': 'the same',
+    'color-contrast fileRow.onAccent queued': 'the same',
+    'color-contrast fileRow.onAccent uploaded': 'the same',
+    'color-contrast fileRow.onAccent unsent': 'the same',
     'color-contrast fileRow.received idle':
       'the caption on a received bubble, as message-attachment-state: 4.1:1',
     'color-contrast fileRow.received fetching': 'the same',

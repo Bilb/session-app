@@ -5,10 +5,14 @@ import { MediaViewer, type MediaViewerItem } from '#src/MediaViewer'
 
 import { renderInUI } from './support/render'
 
-function viewer(items: readonly MediaViewerItem[]) {
-  return renderInUI(
+function viewer(items: readonly MediaViewerItem[], open = true) {
+  return renderInUI(viewerElement(items, open))
+}
+
+function viewerElement(items: readonly MediaViewerItem[], open: boolean) {
+  return (
     <MediaViewer
-      open
+      open={open}
       items={items}
       index={0}
       onIndex={() => {}}
@@ -28,7 +32,7 @@ function viewer(items: readonly MediaViewerItem[]) {
       previousTestID={ELEMENT.conversation.mediaViewerPrevious}
       nextTestID={ELEMENT.conversation.mediaViewerNext}
       imageTestID={ELEMENT.conversation.mediaViewerImage}
-    />,
+    />
   )
 }
 
@@ -48,5 +52,16 @@ describe('the viewer on a picture still being made', () => {
   it('says a picture with no resolver is not supported, rather than loading', () => {
     const { getByText } = viewer([{ uri: null }])
     expect(getByText('Not supported')).toBeTruthy()
+  })
+})
+
+describe('the viewer opening and closing', () => {
+  const picture: MediaViewerItem = { uri: 'file:///harbour.jpg' }
+  const image = (base: HTMLElement) => base.querySelector('img[src="file:///harbour.jpg"]')
+
+  it('still draws its picture as it closes, so the fade has something to fade', () => {
+    const { baseElement, rerender } = viewer([picture])
+    rerender(viewerElement([picture], false))
+    expect(image(baseElement)).not.toBeNull()
   })
 })

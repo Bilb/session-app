@@ -1,12 +1,12 @@
 import { memoryPorts, resetPorts, setPorts, type PickedFile } from '@session/app'
-import { formatBytes } from '@session/basic-types'
+import { formatBytes, MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
 import type { SendPlan } from '@session/client'
 import { PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import type * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { Composer } from '#src/Composer'
+import { Composer, DetachedComposer, type ComposerSeed } from '#src/Composer'
 import { PLAN_GIVES_UP_AFTER_MS, useStaging, type StagingState } from '#src/useStaging'
 
 /**
@@ -389,5 +389,44 @@ describe('staging by libsession’s plan', () => {
     answers[0]?.('reencoded')
     await Promise.all([first, second])
     expect(render().staging.files).toEqual([photo, notes])
+  })
+})
+
+describe('the detached composer', () => {
+  const notes: PickedFile = { path: '/home/a/notes.pdf', name: 'notes.pdf', size: PHOTO_BYTES }
+
+  function detached(seed: ComposerSeed) {
+    hooks.nextSlot = 0
+    const elements = hostElements(DetachedComposer({ seed }))
+    return {
+      elements,
+      find: (testID: string) => elements.find((element) => element.props.testID === testID),
+    }
+  }
+
+  it('draws a tile for each file it is seeded with, and no tray with none', () => {
+    expect(detached({ files: [] }).find(ELEMENT.conversation.stagedTray)).toBeUndefined()
+    const { elements } = detached({ files: [photo, notes] })
+    expect(elements.filter((element) => element.type === 'StagedTile')).toHaveLength(2)
+  })
+
+  it('draws a notice for each refusal it is seeded with', () => {
+    const { elements } = detached({ files: [photo], refused: { tooLarge: [notes], overLimit: 3 } })
+    expect(
+      elements.filter((element) => element.type === 'ComposerNotice').map((n) => n.props.message),
+    ).toEqual([
+      tr('attachmentsErrorSize'),
+      PENDING_COPY.attachmentsErrorLimit(MAX_ATTACHMENTS_PER_MESSAGE),
+    ])
+  })
+
+  it('takes the add tile away and disables + once full', () => {
+    const full = Array.from({ length: MAX_ATTACHMENTS_PER_MESSAGE }, (_, at) => ({
+      path: `/home/a/${String(at)}.jpg`,
+      name: `${String(at)}.jpg`,
+    }))
+    const { find } = detached({ files: full })
+    expect(find(ELEMENT.conversation.stagedTray)?.props.onAdd).toBeUndefined()
+    expect(find(ELEMENT.conversation.attachButton)?.props.disabled).toBe(true)
   })
 })

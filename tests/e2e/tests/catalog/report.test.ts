@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import type { PageResult } from '#catalog/diff'
-import { describeChange, imagePath, renderReport } from '#catalog/report'
+import { describeChange, imagePath, renderReport, type ReportPage } from '#catalog/report'
 
 const size = { width: 100, height: 50 }
-const results: PageResult[] = [
+const results: ReportPage[] = [
   {
     id: 'album-focus',
     status: 'changed',
@@ -12,9 +11,10 @@ const results: PageResult[] = [
     totalPixels: 5000,
     before: size,
     after: size,
+    pictures: 'album-focus-1',
   },
-  { id: 'button-<new>', status: 'added', differingPixels: 0, totalPixels: 0 },
-  { id: 'text-gone', status: 'removed', differingPixels: 0, totalPixels: 0 },
+  { id: 'button-<new>', status: 'added', differingPixels: 0, totalPixels: 0, pictures: 'new-1' },
+  { id: 'text-gone', status: 'removed', differingPixels: 0, totalPixels: 0, pictures: 'gone-1' },
   {
     id: 'settings-row',
     status: 'unchanged',
@@ -22,6 +22,7 @@ const results: PageResult[] = [
     totalPixels: 5000,
     before: size,
     after: size,
+    pictures: 'settings-row-1',
   },
 ]
 
@@ -61,6 +62,26 @@ describe('the report', () => {
     expect(html).toContain('The base capture is from the cache')
   })
 
+  it('offers one view switch for every changed page, as well as one per page', () => {
+    expect(html).toContain('class="view-all"')
+    expect(html.match(/<button type="button" data-mode="flip"/g)).toHaveLength(2)
+  })
+
+  it('names the side the flip view shows in the card header, where it stays in sight', () => {
+    expect(html).toMatch(/<header>[\s\S]*class="tag"[\s\S]*<\/header>/)
+  })
+
+  it('lets every changed, added or removed page be marked seen, against its pictures', () => {
+    expect(html.match(/class="seen-toggle"/g)).toHaveLength(3)
+    expect(html).toContain('data-seen-key="album-focus-1"')
+    expect(html).toContain('aria-label="Seen: button-&lt;new&gt;"')
+    expect(html).toContain('class="seen-progress"')
+  })
+
+  it('offers full screen on two quick clicks as an option, unticked', () => {
+    expect(html).toMatch(/<label class="full-screen-option"><input type="checkbox">/)
+  })
+
   it('stands alone: no script or style fetched from anywhere', () => {
     expect(html).not.toMatch(/<(script|link)[^>]+(src|href)=/)
   })
@@ -80,6 +101,7 @@ describe('a page that changed size', () => {
         totalPixels: 1000,
         before: { width: 200, height: 100 },
         after: { width: 100, height: 150 },
+        pictures: 'grew-1',
       },
     ],
     warnings: [],
@@ -91,6 +113,20 @@ describe('a page that changed size', () => {
     expect(resized).toContain('style="width:100.0000%;height:66.6667%" src="before/grew.png"')
     expect(resized).toContain('style="width:50.0000%;height:100.0000%" src="after/grew.png"')
     expect(resized).toContain('Dashed outlines mark each picture')
+  })
+
+  it('has no page-wide view switch without a changed page', () => {
+    const quiet = renderReport({
+      base: { label: 'base', sha: 'a'.repeat(40) },
+      head: { label: 'working tree', sha: 'b'.repeat(40) },
+      tier: 'pr',
+      sensitivity: 0.5,
+      results: [
+        { id: 'new', status: 'added', differingPixels: 0, totalPixels: 0, pictures: 'new-1' },
+      ],
+      warnings: [],
+    })
+    expect(quiet).not.toContain('class="view-all"')
   })
 
   it('says what the diff colours mean, anti-aliasing included', () => {
