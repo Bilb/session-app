@@ -1,5 +1,11 @@
 import { countByStatus, type PageResult, type PageStatus, type Size } from '#catalog/diff'
 
+/** A page as the report shows it. */
+export interface ReportPage extends PageResult {
+  /** Identifies the pictures both sides drew, so a Seen mark lasts exactly as long as they do. */
+  pictures: string
+}
+
 /** One side of the comparison, as the report names it. */
 interface ReportSide {
   /** What it was asked for as: a ref, or "working tree". */
@@ -16,7 +22,7 @@ export interface ReportInput {
   head: ReportSide
   tier: string
   sensitivity: number
-  results: readonly PageResult[]
+  results: readonly ReportPage[]
   /** Said at the top: a capture that could not be confirmed complete, for instance. */
   warnings: readonly string[]
 }
@@ -94,7 +100,19 @@ function canvasOf(result: PageResult): Size {
   }
 }
 
-function changedCard(result: PageResult): string {
+const seenToggle = (id: string) =>
+  `<label class="seen-toggle"><input type="checkbox" aria-label="Seen: ${escapeHtml(id)}"> Seen</label>`
+
+const cardAttributes = (result: ReportPage) => `data-seen-key="${escapeHtml(result.pictures)}"`
+
+const MODE_BUTTONS = `<span class="modes" role="group" aria-label="View">
+      <button type="button" data-mode="slider" aria-pressed="true">Slider</button>
+      <button type="button" data-mode="flip" aria-pressed="false">Flip</button>
+      <button type="button" data-mode="side" aria-pressed="false">Side by side</button>
+      <button type="button" data-mode="diff" aria-pressed="false">Diff</button>
+    </span>`
+
+function changedCard(result: ReportPage): string {
   const id = escapeHtml(result.id)
   const canvas = canvasOf(result)
   const side = (kind: 'before' | 'after') =>
@@ -103,16 +121,13 @@ function changedCard(result: PageResult): string {
   const bounds = resized
     ? ' Dashed outlines mark each picture&#39;s own bounds; the checkerboard lies outside it.'
     : ''
-  return `<article class="page" id="page-${id}" data-mode="slider">
+  return `<article class="page" id="page-${id}" ${cardAttributes(result)} data-mode="slider">
   <header>
+    ${seenToggle(result.id)}
     <h3>${id}</h3>
     <span class="detail">${escapeHtml(describeChange(result))}</span>
-    <span class="modes" role="group" aria-label="View">
-      <button type="button" data-mode="slider" aria-pressed="true">Slider</button>
-      <button type="button" data-mode="flip" aria-pressed="false">Flip</button>
-      <button type="button" data-mode="side" aria-pressed="false">Side by side</button>
-      <button type="button" data-mode="diff" aria-pressed="false">Diff</button>
-    </span>
+    <button type="button" class="tag" aria-label="Showing after; show before">after</button>
+    ${MODE_BUTTONS}
   </header>
   <div class="view slider">
     ${stage(result, [side('before'), side('after')], ' data-split')}
@@ -120,7 +135,6 @@ function changedCard(result: PageResult): string {
   </div>
   <div class="view flip">
     <button type="button" class="flipper" aria-label="Show the other side">
-      <span class="tag">after</span>
       ${stage(result, [side('before'), side('after')], ' data-showing="after"')}
     </button>
   </div>
@@ -136,15 +150,15 @@ function changedCard(result: PageResult): string {
 </article>`
 }
 
-function singleCard(result: PageResult, kind: 'before' | 'after'): string {
+function singleCard(result: ReportPage, kind: 'before' | 'after'): string {
   const id = escapeHtml(result.id)
-  return `<article class="page single" id="page-${id}">
-  <header><h3>${id}</h3><span class="detail">${kind === 'after' ? 'only in the working side' : 'only in the base'}</span></header>
+  return `<article class="page single" id="page-${id}" ${cardAttributes(result)}>
+  <header>${seenToggle(result.id)}<h3>${id}</h3><span class="detail">${kind === 'after' ? 'only in the working side' : 'only in the base'}</span></header>
   ${image(kind, result.id, `${result.id} ${kind}`)}
 </article>`
 }
 
-function section(status: PageStatus, results: readonly PageResult[]): string {
+function section(status: PageStatus, results: readonly ReportPage[]): string {
   const pages = results.filter((result) => result.status === status)
   if (pages.length === 0) return ''
   const heading = `<h2>${HEADINGS[status]} <span class="count">${String(pages.length)}</span></h2>`
@@ -195,8 +209,20 @@ h3 { font-size: 15px; margin: 0; font-family: ui-monospace, SFMono-Regular, Menl
 .count { color: var(--muted); font-weight: normal; }
 .page { background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
   padding: 12px; margin: 0 0 16px; }
-.page header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 12px; }
+/* Sticky so a long card's view can be switched without scrolling back to its title. */
+.page header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: -12px -12px 12px;
+  padding: 12px; position: sticky; top: 0; z-index: 2; background: var(--surface);
+  border-radius: 10px 10px 0 0; border-bottom: 1px solid var(--line); }
 .detail { color: var(--muted); }
+.view-all { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--muted); margin: 16px 0 0; }
+.view-all .modes { margin-left: 0; }
+.seen-progress { color: var(--muted); margin: 8px 0 0; }
+.full-screen-option { display: flex; align-items: center; gap: 4px; color: var(--muted); margin: 8px 0 0; cursor: pointer; }
+.seen-toggle { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 13px; cursor: pointer; }
+/* Outranks the per-mode rules that show the current view. */
+.page.seen > :not(header) { display: none !important; }
+.page.seen header { margin-bottom: -12px; border-bottom: 0; border-radius: 10px; }
+.page.seen h3 { color: var(--muted); }
 .modes { display: inline-flex; gap: 4px; margin-left: auto; }
 .modes button { font: inherit; font-size: 13px; padding: 2px 10px; border-radius: 6px; cursor: pointer;
   border: 1px solid var(--line); background: transparent; color: var(--text); }
@@ -223,38 +249,111 @@ img { display: block; max-width: 100%; height: auto; }
 .legend { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
 .range { display: flex; align-items: center; gap: 8px; color: var(--muted); margin-top: 8px; }
 .range input { flex: 1; }
+.page > :not(header) { user-select: none; }
+.page:fullscreen { margin: 0; border: 0; border-radius: 0; overflow: auto; }
+/* An overflowing view is a scroll container of its own, and would hold the range's stickiness. */
+.page:fullscreen .view { overflow: visible; }
+.page:fullscreen .range { position: sticky; bottom: 0; z-index: 2; margin: 8px -12px -12px; padding: 8px 12px;
+  background: var(--surface); border-top: 1px solid var(--line); }
 .view.side { display: none; }
 .page[data-mode="side"] .view.side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px; }
 @media (max-width: 700px) { .page[data-mode="side"] .view.side { grid-template-columns: minmax(0, 1fr); } }
 figure { margin: 0; } figcaption { color: var(--muted); font-size: 13px; }
 .flipper { position: relative; display: block; width: 100%; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; }
-.flipper .tag { position: absolute; z-index: 1; top: 4px; left: 4px; background: var(--accent); color: Canvas;
-  font-size: 12px; padding: 0 6px; border-radius: 4px; }
+.tag { display: none; font: inherit; font-size: 13px; padding: 2px 10px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: Canvas; }
+.page[data-mode="flip"] .tag { display: inline-block; }
 .unchanged ul { columns: 3 260px; padding-left: 20px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
 .unchanged summary h2 { display: inline; }
 a { color: var(--accent); }
 `
 
 const SCRIPT = `
+// Every card above changes height with what this does; keep the clicked control where it was.
+function keepInPlace(control, change) {
+  const top = control.getBoundingClientRect().top;
+  change();
+  window.scrollBy(0, control.getBoundingClientRect().top - top);
+}
+const STORED_SEEN = 'catalog-compare-seen';
+const cards = [...document.querySelectorAll('.page[data-seen-key]')];
+const seenKey = (card) => card.dataset.seenKey;
+let seen = new Set();
+try { seen = new Set(JSON.parse(localStorage.getItem(STORED_SEEN) || '[]')); } catch {}
+const progress = document.querySelector('.seen-progress');
+function showProgress() {
+  const count = cards.filter((card) => card.classList.contains('seen')).length;
+  progress.textContent = count + ' of ' + cards.length + ' seen';
+}
+for (const card of cards) {
+  const box = card.querySelector('.seen-toggle input');
+  const mark = (on) => {
+    box.checked = on;
+    card.classList.toggle('seen', on);
+  };
+  mark(seen.has(seenKey(card)));
+  box.addEventListener('change', () => {
+    keepInPlace(box, () => mark(box.checked));
+    if (box.checked) seen.add(seenKey(card)); else seen.delete(seenKey(card));
+    try { localStorage.setItem(STORED_SEEN, JSON.stringify([...seen])); } catch {}
+    showProgress();
+  });
+}
+if (progress) showProgress();
+// Off unless asked for: two quick flips would otherwise take the card full screen.
+const STORED_FULL_SCREEN = 'catalog-compare-full-screen';
+const fullScreenBox = document.querySelector('.full-screen-option input');
+try { fullScreenBox.checked = localStorage.getItem(STORED_FULL_SCREEN) === 'on'; } catch {}
+fullScreenBox?.addEventListener('change', () => {
+  try { localStorage.setItem(STORED_FULL_SCREEN, fullScreenBox.checked ? 'on' : 'off'); } catch {}
+});
+// Tighter than the system's double click, which is usually 400-500 ms and fires on a deliberate
+// pair of flips. Both clicks still act, so a flip card flips twice and is left as it was.
+const FULL_SCREEN_CLICKS_MS = 250;
+for (const card of cards) {
+  let lastClickMs = -Infinity;
+  card.addEventListener('click', (event) => {
+    if (event.target.closest('header, input')) return;
+    if (!fullScreenBox.checked && document.fullscreenElement !== card) return;
+    const quick = event.timeStamp - lastClickMs < FULL_SCREEN_CLICKS_MS;
+    lastClickMs = quick ? -Infinity : event.timeStamp;
+    if (!quick) return;
+    if (document.fullscreenElement === card) document.exitFullscreen();
+    else card.requestFullscreen().catch(() => {});
+  });
+}
+const MODES = ['slider', 'flip', 'side', 'diff'];
+const STORED_MODE = 'catalog-compare-view';
+function showMode(mode) {
+  for (const page of document.querySelectorAll('.page[data-mode]')) page.dataset.mode = mode;
+  for (const button of document.querySelectorAll('.modes button'))
+    button.setAttribute('aria-pressed', String(button.dataset.mode === mode));
+}
+for (const button of document.querySelectorAll('.modes button'))
+  button.addEventListener('click', () => {
+    keepInPlace(button, () => showMode(button.dataset.mode));
+    try { localStorage.setItem(STORED_MODE, button.dataset.mode); } catch {}
+  });
+try {
+  const stored = localStorage.getItem(STORED_MODE);
+  if (MODES.includes(stored)) showMode(stored);
+} catch {}
 for (const page of document.querySelectorAll('.page[data-mode]')) {
-  const buttons = page.querySelectorAll('.modes button');
-  for (const button of buttons)
-    button.addEventListener('click', () => {
-      page.dataset.mode = button.dataset.mode;
-      for (const other of buttons) other.setAttribute('aria-pressed', String(other === button));
-    });
   const range = page.querySelector('.range input');
   const split = page.querySelector('.stage[data-split]');
   range.addEventListener('input', () => split.style.setProperty('--split', range.value + '%'));
   const flipper = page.querySelector('.flipper');
   const flipped = flipper.querySelector('.stage');
-  const tag = flipper.querySelector('.tag');
-  flipper.addEventListener('click', () => {
+  const tag = page.querySelector('header .tag');
+  const flip = () => {
     const next = flipped.dataset.showing === 'after' ? 'before' : 'after';
     flipped.dataset.showing = next;
     tag.textContent = next;
-  });
+    tag.setAttribute('aria-label', 'Showing ' + next + '; show ' + (next === 'after' ? 'before' : 'after'));
+  };
+  flipper.addEventListener('click', flip);
+  tag.addEventListener('click', flip);
 }
 `
 
@@ -288,6 +387,13 @@ export function renderReport(input: ReportInput): string {
     .map((status) => `<li class="${status}"><b>${String(counts[status])}</b> ${status}</li>`)
     .join('')}</ul>
 ${warnings}
+${counts.changed === 0 ? '' : `<p class="view-all">View for every changed page ${MODE_BUTTONS}</p>`}
+${
+  counts.changed + counts.added + counts.removed === 0
+    ? ''
+    : `<p class="seen-progress" aria-live="polite"></p>
+<label class="full-screen-option"><input type="checkbox"> Two clicks within 250 ms open a page full screen</label>`
+}
 ${statuses.map((status) => section(status, input.results)).join('\n')}
 </main>
 <script>${SCRIPT}</script>
