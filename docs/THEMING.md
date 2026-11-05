@@ -42,34 +42,33 @@ is read from the base's lightness; the tint hue comes from whichever pick carrie
 
 Ask what the thing _is_, not what colour you want.
 
-| you are drawing                                                | use                                |
-| -------------------------------------------------------------- | ---------------------------------- |
-| the page                                                       | `backgroundPrimary`                |
-| a card, a list panel, a recessed pane                          | `backgroundSecondary`              |
-| a selected row, a filled input                                 | `backgroundTertiary`               |
-| a card **inside** a card                                       | `backgroundNested`                 |
-| body text                                                      | `textPrimary`                      |
-| a caption, a timestamp, a section label, a snippet             | `textSecondary`                    |
-| a disabled label                                               | `textDisabled`                     |
-| an input's edge, an illustration frame, a divider rail         | `bordersColor`                     |
-| an outline button's edge                                       | `textPrimary`                      |
-| a divider inside a card, a pane edge                           | `separatorColor`                   |
-| a filled accent button, a badge, an avatar, a bubble you sent  | `primaryColor`                     |
-| text or a glyph sitting **on** that fill                       | `onAccent`                         |
-| a caption on that fill                                         | `onAccentSecondary`                |
-| a link, an inline emphasis, a large numeral                    | `accentText`                       |
-| an accent button's hover / pressed                             | `accentHover` / `accentPressed`    |
-| destructive or error text, its outline or glyph, a danger fill | `dangerColor`                      |
-| a danger fill while held                                       | `dangerPressed`                    |
-| text on a danger fill                                          | `onDanger`                         |
-| a caution line                                                 | `warningColor`                     |
-| a switch thumb, a QR panel                                     | `surfaceInverted`                  |
-| the modules printed on that panel                              | `surfaceInk`                       |
-| an incoming bubble, and its text                               | `messageBubbleIncomingBg` / `Text` |
-| danger text on an incoming bubble                              | `messageBubbleIncomingDanger`      |
-| the page dimmed behind a dialog or panel                       | `scrim`                            |
-| a raised element's shadow                                      | `shadow`                           |
-| a control hovered / held, laid over whatever it sits on        | `hoverOverlay` / `pressedOverlay`  |
+| you are drawing                                               | use                                |
+| ------------------------------------------------------------- | ---------------------------------- |
+| the page                                                      | `backgroundPrimary`                |
+| a card, a list panel, a recessed pane                         | `backgroundSecondary`              |
+| a selected row, a filled input                                | `backgroundTertiary`               |
+| a card **inside** a card                                      | `backgroundNested`                 |
+| body text                                                     | `textPrimary`                      |
+| a caption, a timestamp, a section label, a snippet            | `textSecondary`                    |
+| a disabled label                                              | `textDisabled`                     |
+| an input's edge, an illustration frame, a divider rail        | `bordersColor`                     |
+| an outline button's edge                                      | `textPrimary`                      |
+| a divider inside a card, a pane edge                          | `separatorColor`                   |
+| a filled accent button, a badge, an avatar, a bubble you sent | `primaryColor`                     |
+| text or a glyph sitting **on** that fill                      | `onAccent`                         |
+| a caption on that fill                                        | `onAccentSecondary`                |
+| a link, an inline emphasis, a large numeral                   | `accentText`                       |
+| an accent button's hover / pressed                            | `accentHover` / `accentPressed`    |
+| destructive text, a destructive outline                       | `dangerColor`                      |
+| text on a danger fill                                         | `onDanger`                         |
+| a caution line                                                | `warningColor`                     |
+| a switch thumb, a QR panel                                    | `surfaceInverted`                  |
+| the modules printed on that panel                             | `surfaceInk`                       |
+| an incoming bubble, and its text                              | `messageBubbleIncomingBg` / `Text` |
+| a danger glyph on an incoming bubble                          | `messageBubbleIncomingDanger`      |
+| the page dimmed behind a dialog or panel                      | `scrim`                            |
+| a raised element's shadow                                     | `shadow`                           |
+| a control hovered / held, laid over whatever it sits on       | `hoverOverlay` / `pressedOverlay`  |
 
 No hex outside `@session/theme-tokens`. `pnpm --filter @session/ui test` fails on a token name that
 does not exist, because tamagui resolves a missing token to `0` silently.
@@ -163,7 +162,7 @@ stays saturated where a yellow turns olive. The two values are the ones the clie
 because they already clear the floor. Elsewhere the same value is adapted rather than replaced.
 
 No preset overrides `warning` any more. All four author only their `danger`, whose reds are
-recognisable: the derivation keeps an authored red's hue and moves only its lightness.
+recognisable and which the derivation would otherwise place visibly elsewhere.
 
 **A divider is not a border.** These were one role until a capture of the real app settled it:
 Ocean Light's row dividers measure `#cddce3` (1.31 from the card, surface chroma) while its authored
@@ -338,17 +337,11 @@ are derived to clear 4.5:1 against their fill, and how much is left to spend dep
 Ocean Light's navy starts at 5.5:1 on purple. A caption on the accent is `onAccentSecondary`, which
 the theme fades only as far as 4.5:1 allows; never put an opacity on an on-colour.
 
-**Danger is one red,** unlike the accent. `dangerColor` is the preset's red moved in lightness
-until it clears 4.5:1 on every surface, on the page and a card held, and on the incoming bubble, so
-text, outline, glyph and fill all draw it and a danger button reads as one red at rest and held.
-Held, its fill is `dangerPressed`: the same red under `pressedOverlay`, flattened, since a fill
-cannot stack two colours. Where no red clears the incoming bubble (Ocean Dark), danger text there
-is `messageBubbleIncomingDanger`, the bubble's own text; elsewhere it is `dangerColor`. A failed
-file's caption is red where it can be; its name stays the body text, and its retry glyph is red on
-every surface.
-
 **The incoming bubble is a surface muted text is measured on.** A received file's captions sit on
-it, and it is the furthest surface from the page in every theme.
+it, and it is the furthest surface from the page in every theme. A failed file says so in that
+caption, at the muted text's contrast; only its retry glyph is red. A glyph owes 3:1, which the red
+clears on every bubble but Ocean Dark's, so on a received bubble it is `messageBubbleIncomingDanger`:
+`dangerColor` where it clears 3:1 there, the bubble's text elsewhere.
 
 ## Where the two ladders come from
 

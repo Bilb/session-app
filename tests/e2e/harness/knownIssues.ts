@@ -23,7 +23,10 @@ const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, Known>>> = {
     'color-contrast button.variants solid':
       "the label on the red accent's fill, ocean themes: 4.0:1",
     'color-contrast button.variants long': 'the same, on the long label',
+    'color-contrast button.variants danger': 'the pressed label on the danger fill: 3.7 to 4.2:1',
     'aria-progressbar-name button.variants loading': 'the spinner has no accessible name',
+    'color-contrast catalog-settings-row-destructive':
+      "the danger ink on a light theme's pressed row: 3.6:1",
     'color-contrast avatar.sizes xl': 'white initials on a light avatar colour: 1.4 to 2.3:1',
     'color-contrast avatar.sizes 2xl': 'the same',
     'color-contrast avatar.sizes 3xl': 'the same',

@@ -205,23 +205,18 @@ describe('a file row’s layout', () => {
 })
 
 describe('a failed file row’s words', () => {
-  const inks = () => ({
-    name: declared(byId(IDS.name).querySelector('span:last-child')!).color,
-    caption: declared(byId(IDS.caption)).color,
-  })
-
-  it('keep the name the body text, with the caption and the retry in red', () => {
+  it('keep the name and the caption in their usual inks, with only the retry in red', () => {
     renderInUI(<FileRow {...pictureRow('failed')} />)
-    expect(inks()).toEqual({ name: 'var(--textPrimary)', caption: 'var(--dangerColor)' })
+    expect({
+      name: declared(byId(IDS.name).querySelector('span:last-child')!).color,
+      caption: declared(byId(IDS.caption)).color,
+    }).toEqual({ name: 'var(--textPrimary)', caption: 'var(--textSecondary)' })
     expect(byId(IDS.download).innerHTML).toContain('var(--dangerColor)')
   })
 
-  it('take the received bubble’s danger for the caption, and keep the retry red', () => {
+  it('draw the retry in the received bubble’s danger ink on a bubble someone else sent', () => {
     renderInUI(<FileRow {...pictureRow('failed', { received: true })} />)
-    expect(inks()).toEqual({
-      name: 'var(--textPrimary)',
-      caption: 'var(--messageBubbleIncomingDanger)',
-    })
-    expect(byId(IDS.download).innerHTML).toContain('var(--dangerColor)')
+    expect(byId(IDS.download).innerHTML).toContain('var(--messageBubbleIncomingDanger)')
+    expect(declared(byId(IDS.caption)).color).toBe('var(--textSecondary)')
   })
 })

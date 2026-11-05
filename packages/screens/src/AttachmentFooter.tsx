@@ -178,7 +178,7 @@ export function AttachmentFooter({
       )}
       <Text
         size="$caption"
-        {...inkFor('secondary', onAccent ? 'accent' : 'received')}
+        {...inkFor('secondary', onAccent)}
         flex={1}
         numberOfLines={1}
         testID={ELEMENT.conversation.attachmentState}

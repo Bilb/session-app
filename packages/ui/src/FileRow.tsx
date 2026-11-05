@@ -35,7 +35,7 @@ import {
 import { FetchHint } from './FetchHint'
 import { FileName } from './FileName'
 import { Icon } from './Icon'
-import { inkFor, type InkSurface } from './ink'
+import { inkFor } from './ink'
 import { useForcedFocus } from './interactionOverride'
 import { focusRing, heldButton, keyboardPress } from './keyboardPress'
 import { pressHint } from './pressHint'
@@ -102,7 +102,7 @@ export type FileRowProps = WithFilename &
      * lead square and the thumbnail keep their own fill either way.
      */
     onAccent?: boolean | undefined
-    /** Drawn on a bubble someone else sent, where the red of a failure's caption may not read. */
+    /** Drawn on a bubble someone else sent, where the red of a failure's retry may not read. */
     received?: boolean | undefined
   }
 
@@ -170,17 +170,23 @@ function Trailing({
   actionLabel,
   onAction,
   testID,
-  surface,
+  onAccent,
+  received,
 }: {
   state: FileRowState
   progress?: number | undefined
   actionLabel?: string | undefined
   onAction?: (() => void) | undefined
   testID?: ElementId | undefined
-  surface: InkSurface
+  onAccent: boolean
+  received: boolean
 }) {
-  const onAccent = surface === 'accent'
   const control = fileRowControl(state)
+  const tone = fileRowTone(state)
+  const controlInk =
+    received && tone === 'danger'
+      ? { color: '$messageBubbleIncomingDanger' as const }
+      : inkFor(tone, onAccent)
   const forcedFocus = useForcedFocus()
 
   // The square is held whatever the state, so the name's width does not change when a transfer
@@ -197,7 +203,7 @@ function Trailing({
     return (
       <YStack {...square} aria-hidden>
         {marker === null ? null : (
-          <Icon name={marker} size="sm" {...inkFor('secondary', surface, 'glyph')} />
+          <Icon name={marker} size="sm" {...inkFor('secondary', onAccent)} />
         )}
       </YStack>
     )
@@ -247,11 +253,7 @@ function Trailing({
       ) : (
         <>
           <StateLayer group="control" tone="ink" borderRadius="$full" />
-          <Icon
-            name={control}
-            size="sm"
-            {...inkFor(fileRowTone(state).control, surface, 'glyph')}
-          />
+          <Icon name={control} size="sm" {...controlInk} />
         </>
       )}
     </YStack>
@@ -288,12 +290,10 @@ export function FileRow({
   onAccent = false,
   received = false,
 }: FileRowProps) {
-  const surface: InkSurface = onAccent ? 'accent' : received ? 'received' : 'page'
   const format = fileFormat(filename)
   // On the name and the caption together, so the two share an edge.
   const direction = { direction: nameDirection(filename) }
-  const tone = fileRowTone(state)
-  const nameInk = inkFor(tone.name, surface)
+  const nameInk = inkFor('primary', onAccent)
   const fontScale = useFontScale()
   const forcedFocus = useForcedFocus()
   // While fetching, the lead square stays a disabled button rather than losing its stop, which
@@ -403,7 +403,7 @@ export function FileRow({
         {format === '' ? null : (
           <Text
             size="$caption"
-            {...inkFor('secondary', surface)}
+            {...inkFor('secondary', onAccent)}
             weight="semibold"
             numberOfLines={1}
           >
@@ -418,7 +418,7 @@ export function FileRow({
             own alignment of a line of text. */}
         <Text
           size="$caption"
-          {...inkFor(tone.caption, surface)}
+          {...inkFor('secondary', onAccent)}
           numberOfLines={1}
           alignSelf="flex-start"
           maxWidth="100%"
@@ -435,7 +435,8 @@ export function FileRow({
         actionLabel={actionLabel}
         onAction={onAction}
         testID={testIDs?.action}
-        surface={surface}
+        onAccent={onAccent}
+        received={received}
       />
     </XStack>
   )

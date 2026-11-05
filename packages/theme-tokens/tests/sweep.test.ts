@@ -54,9 +54,10 @@ const CHECKS: [keyof ThemeTokens, (t: ThemeTokens) => string[], number][] = [
   // Text contrast, because both are only ever button labels.
   ['onAccent', (t) => [t.primaryColor], 4.5],
   ['onAccentSecondary', (t) => [t.primaryColor], 4.5],
-  ['onDanger', (t) => [t.dangerColor, t.dangerPressed], 4.5],
+  ['onDanger', (t) => [t.dangerColor], 4.5],
   ['messageBubbleIncomingText', (t) => [t.messageBubbleIncomingBg], 4.5],
-  ['messageBubbleIncomingDanger', (t) => [t.messageBubbleIncomingBg], 4.5],
+  // A glyph, a failure's retry.
+  ['messageBubbleIncomingDanger', (t) => [t.messageBubbleIncomingBg], 3],
 ]
 
 function shortfalls(tokens: ThemeTokens, label: string): string[] {

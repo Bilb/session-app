@@ -42,11 +42,11 @@ const PRESS_STYLE = {
   ghostAccent: { backgroundColor: '$pressedOverlay' },
   simple: { opacity: INTERACTION_OPACITY.dimPressed },
   tonal: { opacity: 0.7 },
-  // A new fill rather than a fade: faded, the label falls under 4.5:1 on it.
   danger: {
-    backgroundColor: '$dangerPressed',
-    borderColor: '$dangerPressed',
+    backgroundColor: '$dangerColor',
+    borderColor: '$dangerColor',
     color: '$onDanger',
+    opacity: INTERACTION_OPACITY.filledPressed,
   },
 } as const
 

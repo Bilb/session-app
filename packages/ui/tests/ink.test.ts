@@ -7,25 +7,16 @@ const TONES: InkTone[] = ['primary', 'secondary', 'danger', 'link']
 describe('ink on an accent fill', () => {
   it('is an on-colour in every tone, whatever the tone draws on the page', () => {
     for (const tone of TONES.filter((t) => t !== 'secondary'))
-      expect(inkFor(tone, 'accent').color).toBe('$onAccent')
-    expect(inkFor('secondary', 'accent').color).toBe('$onAccentSecondary')
+      expect(inkFor(tone, true).color).toBe('$onAccent')
+    expect(inkFor('secondary', true).color).toBe('$onAccentSecondary')
   })
 })
 
 describe('ink on the page', () => {
-  it('is the tone’s own role, and danger is the text role, not the fill', () => {
-    expect(inkFor('primary', 'page').color).toBe('$textPrimary')
-    expect(inkFor('secondary', 'page').color).toBe('$textSecondary')
-    expect(inkFor('danger', 'page').color).toBe('$dangerColor')
-    expect(inkFor('link', 'page').color).toBe('$accentText')
-  })
-})
-
-describe('ink on a received bubble', () => {
-  it('draws danger text in the bubble’s own danger role, and keeps a glyph the page’s red', () => {
-    expect(inkFor('danger', 'received').color).toBe('$messageBubbleIncomingDanger')
-    expect(inkFor('danger', 'received', 'glyph').color).toBe('$dangerColor')
-    for (const tone of TONES.filter((t) => t !== 'danger'))
-      expect(inkFor(tone, 'received')).toEqual(inkFor(tone, 'page'))
+  it('is the tone’s own role, and never an on-colour', () => {
+    expect(inkFor('primary', false).color).toBe('$textPrimary')
+    expect(inkFor('secondary', false).color).toBe('$textSecondary')
+    expect(inkFor('danger', false).color).toBe('$dangerColor')
+    expect(inkFor('link', false).color).toBe('$accentText')
   })
 })

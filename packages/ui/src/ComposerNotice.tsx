@@ -20,7 +20,7 @@ export interface ComposerNoticeProps {
   dismissTestID: ElementId
 }
 
-const DETAIL_INK = inkFor('secondary', 'page')
+const DETAIL_INK = inkFor('secondary', false)
 
 function DetailRun({ text }: { text: string }) {
   if (text.length === 0) return null

@@ -92,8 +92,7 @@ export type ThemeKnobs = {
    * overriding `dangerColor` after the fact would leave `onDanger` picked against a red the theme
    * no longer uses.
    *
-   * All four presets author their `danger`; none authors a `warning`. An authored red keeps its
-   * hue; its lightness still moves until it is legible everywhere a red is drawn.
+   * All four presets author their `danger`; none authors a `warning`.
    *
    * The reds are worth pinning: they are recognisable, they predate any rule, and the derivation
    * puts them somewhere visibly different. The ambers are not. Once the pair stopped having to
@@ -152,13 +151,6 @@ function over(ink: string, fill: string, opacity: number): string {
     .map((c, i) => Math.round(c * opacity + under[i]! * (1 - opacity)))
     .map((c) => c.toString(16).padStart(2, '0'))
     .join('')}`
-}
-
-/** `surface` with the pressed overlay laid over it, as a held row draws it. */
-function pressed(surface: string, polarity: keyof typeof PRESSED_OVERLAY): string {
-  const [r, g, b, a] = PRESSED_OVERLAY[polarity].match(/[\d.]+/g)!.map(Number)
-  const ink = `#${[r, g, b].map((c) => c!.toString(16).padStart(2, '0')).join('')}`
-  return over(ink, surface, a!)
 }
 
 /** What a disabled label still has to manage, on every surface. Below AA on purpose. */
@@ -342,14 +334,7 @@ export type ThemeTokens = {
   accentText: string
   accentHover: string
   accentPressed: string
-  /**
-   * The one red: destructive or error text, its outline and glyph, and the danger fill. The
-   * preset's red moved in lightness until it clears 4.5:1 on every surface, held or not, and on the
-   * incoming bubble, so no use of it needs a red of its own.
-   */
   dangerColor: string
-  /** The danger fill while held: `dangerColor` under `pressedOverlay`, flattened to one colour. */
-  dangerPressed: string
   warningColor: string
   backgroundPrimary: string
   backgroundSecondary: string
@@ -402,8 +387,8 @@ export type ThemeTokens = {
   messageBubbleIncomingBg: string
   messageBubbleIncomingText: string
   /**
-   * Danger as text on the incoming bubble: `dangerColor` where it clears 4.5:1 there, else the
-   * bubble's own text. No red does on Ocean Dark's bubble, which tops out at 3.8.
+   * A danger glyph on the incoming bubble, which owes 3:1: `dangerColor` where it clears that
+   * there, else the bubble's own text. Ocean Dark's red reaches 2.4 on its bubble.
    */
   messageBubbleIncomingDanger: string
   /** Dims the page behind a dialog or panel. Nothing is read on it, so no contrast rule applies. */
@@ -560,8 +545,9 @@ function themeBase(knobs: ThemeKnobs): ThemeBase {
   /** The two QR slots, fed by the same pair of roles with the assignment swapped by polarity. */
   const ink = polarity === 'light' ? text : backgroundSecondary
   const panel = polarity === 'light' ? backgroundSecondary : text
-  // The warning no longer yields to the danger red, so it is simply the most saturated version of
-  // itself that clears text contrast on every surface.
+  // Neither yields to the other any more, so both are simply the most saturated version of
+  // themselves that clears text contrast on every surface.
+  const danger = semantic?.danger ?? contrastAdjustAll(DANGER_BASE, surfaces, CONTRAST.normal)
   const warning =
     semantic?.warning ?? contrastAdjustAll(WARNING_BASE[polarity], surfaces, CONTRAST.normal)
   // A bubble is a surface, but it is one of the things a theme is recognised by, so it carries the
@@ -577,21 +563,6 @@ function themeBase(knobs: ThemeKnobs): ThemeBase {
     chroma: t.emphasis,
     hue: t.hue,
   })
-
-  // One red for text, outline, glyph and fill. Measured under the press as well, on the page and a
-  // card where rows sit, so a destructive row keeps its red while held. No red clears 4.5:1 on
-  // Ocean Dark's nested card held, nor on its incoming bubble; there the best available is taken.
-  const danger = contrastAdjustAll(
-    semantic?.danger ?? DANGER_BASE,
-    [
-      ...surfaces,
-      pressed(background, polarity),
-      pressed(backgroundSecondary, polarity),
-      incomingBg,
-    ],
-    CONTRAST.normal,
-  )
-  const dangerPressed = pressed(danger, polarity)
   const incomingText = contrastPrefer([text, '#000000', '#FFFFFF'], incomingBg, CONTRAST.normal)
 
   const base: ThemeBase = {
@@ -600,8 +571,7 @@ function themeBase(knobs: ThemeKnobs): ThemeBase {
       // graphic boundary gets. Picking against the fill rather than preferring one anchor is what
       // keeps that true in every theme: white clears 3:1 on a mid red and loses to black on 4.5.
       dangerColor: danger,
-      dangerPressed,
-      onDanger: contrastPickAll([text, background], [danger, dangerPressed]),
+      onDanger: contrastPickAll([text, background], [danger]),
       warningColor: warning,
       backgroundPrimary: background,
       backgroundSecondary,
@@ -649,11 +619,7 @@ function themeBase(knobs: ThemeKnobs): ThemeBase {
       }),
       messageBubbleIncomingBg: incomingBg,
       messageBubbleIncomingText: incomingText,
-      messageBubbleIncomingDanger: contrastPrefer(
-        [danger, incomingText],
-        incomingBg,
-        CONTRAST.normal,
-      ),
+      messageBubbleIncomingDanger: contrastPrefer([danger, incomingText], incomingBg, CONTRAST.ui),
       scrim: SCRIM[polarity],
       shadow: SHADOW[polarity],
       hoverOverlay: HOVER_OVERLAY[polarity],
