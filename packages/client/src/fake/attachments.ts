@@ -210,7 +210,7 @@ export const PHOTO_THUMBHASHES: readonly string[] = [
   '61491a15846579787f878889788888777692700709', // 29
   '90e7050d82488745976a77508a5767994795600309', // 30
 ]
-export type Kind = MediaKind | 'pdf' | 'zip' | 'sheet' | 'audio'
+export type Kind = MediaKind | 'pdf' | 'zip' | 'sheet' | 'audio' | 'apng'
 
 const TYPES: Record<Kind, { contentType: string; extension: string }> = {
   image: { contentType: 'image/jpeg', extension: 'jpg' },
@@ -219,6 +219,8 @@ const TYPES: Record<Kind, { contentType: string; extension: string }> = {
   zip: { contentType: 'application/zip', extension: 'zip' },
   sheet: { contentType: 'application/vnd.ms-excel', extension: 'xlsx' },
   audio: { contentType: 'audio/mpeg', extension: 'mp3' },
+  // Not displayable, so a file: libsession shows an APNG only when it is labelled a PNG.
+  apng: { contentType: 'image/apng', extension: 'png' },
 }
 
 /**

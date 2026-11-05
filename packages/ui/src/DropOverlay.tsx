@@ -57,6 +57,7 @@ export function DropOverlay({ title, hint, testID }: DropOverlayProps) {
         alignItems="center"
         justifyContent="center"
         gap="$md"
+        paddingHorizontal="$lg"
       >
         <Fill color="$primaryColor" opacity={ACCENT_TINT_OPACITY} radius="$xl" />
         <YStack
@@ -69,10 +70,12 @@ export function DropOverlay({ title, hint, testID }: DropOverlayProps) {
         >
           <Icon name="filePlus" size="lg" color="$onAccent" />
         </YStack>
-        <Text size="$heading" weight="semibold">
+        <Text size="$heading" weight="semibold" textAlign="center">
           {title}
         </Text>
-        <Text size="$body">{hint}</Text>
+        <Text size="$body" textAlign="center">
+          {hint}
+        </Text>
       </YStack>
     </YStack>
   )

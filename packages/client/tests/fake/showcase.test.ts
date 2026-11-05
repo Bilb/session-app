@@ -52,6 +52,48 @@ describe('showcase', () => {
     expect(failed?.attachments[30]?.uploaded).toBe(false)
   })
 
+  it('holds a message of ours caught in each state a send stops in, with what each had up', async () => {
+    const messages = await showcaseMessages()
+    const sent = (body: string) => {
+      const found = messages.find((m) => m.body === body)
+      if (found === undefined) throw new Error(`the showcase has no message "${body}"`)
+      expect(found.outgoing).toBe(true)
+      return { state: found.sendState, up: found.attachments.map((a) => a.uploaded) }
+    }
+    expect(sent('Nothing up yet, the first uploading')).toEqual({
+      state: 'uploading',
+      up: [false, false, false],
+    })
+    expect(sent('Failed before any file was up')).toEqual({
+      state: 'failed',
+      up: [false, false, false],
+    })
+    expect(sent('Interrupted with one file up')).toEqual({
+      state: 'interrupted',
+      up: [true, false, false],
+    })
+    expect(sent('Only text, and it failed')).toEqual({ state: 'failed', up: [] })
+    expect(sent('Pictures only, and one cannot be sent')).toEqual({
+      state: 'unsendable',
+      up: [false, false],
+    })
+  })
+
+  it('holds an APNG as a file, which no gallery shows', async () => {
+    const messages = await showcaseMessages()
+    const apng = messages.find((m) => m.body === 'An animated PNG, as a file')
+    expect(apng?.attachments.map((a) => a.contentType)).toEqual(['image/apng'])
+    expect(apng?.galleryViewable).toBe(false)
+    expect(apng?.gallery).toBe(false)
+  })
+
+  it('holds a set of pictures its reader switched to a list', async () => {
+    const messages = await showcaseMessages()
+    const listed = messages.find((m) => m.body === 'Shown as a list by its reader')
+    expect(listed?.galleryViewable).toBe(true)
+    expect(listed?.gallery).toBe(false)
+  })
+
   it('resumes a failed send the way libsession does: the rest upload and it is sent', async () => {
     const { world, clients } = showcase()
     const alice = clients['Alice']

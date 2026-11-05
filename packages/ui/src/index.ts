@@ -74,8 +74,8 @@ export { MESSAGE_FRAME_INSET_PX, MessageFrame, type MessageFrameProps } from './
 export { Modal } from './Modal'
 /** What a row of small controls grows to on touch, and 0 with a pointer. */
 export { ROW_TOUCH_TARGET } from './rowTouchTarget'
-export { Sheet } from './Sheet'
-export type { SheetProps } from './Sheet'
+export { Sheet, SheetSurface } from './Sheet'
+export type { SheetProps, SheetSurfaceProps } from './Sheet'
 export { ModalStackProvider, useModalNavigation, useModals } from './ModalsProvider'
 export type { Modals, ModalPresentation, ModalScreen } from './ModalsProvider'
 export { ModalStackHost } from './ModalStackHost'

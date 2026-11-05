@@ -19,7 +19,7 @@ const EDGE = 2
 const ROUNDING = 1
 
 /** The most the row may start below what is above it: the line's gap, or the sheet's rule. */
-const MAX_CLEARANCE = SPACING['3xs'] + ROUNDING
+const MAX_CLEARANCE = SPACING['2xs'] + ROUNDING
 
 const FOOTER = ELEMENT.conversation.attachmentFooter
 

@@ -4,8 +4,9 @@ import { button, buttonOnAccent, buttonSizes } from './button'
 import { fileRow, fileRowOnAccent, fileRowReceived } from './fileRow'
 import { avatar, progressRing, radio } from './indicators'
 import { settingsRow } from './settingsRow'
-import { stagedTile } from './stagedTile'
+import { composerNotice, dropOverlay, stagedTile, stagedTray } from './staging'
 import { textScale } from './text'
+import { mediaViewer } from './viewer'
 
 export const STORIES: readonly AnyStory[] = [
   button,
@@ -25,4 +26,8 @@ export const STORIES: readonly AnyStory[] = [
   albumRows,
   albumOverflow,
   albumChoices,
+  stagedTray,
+  composerNotice,
+  dropOverlay,
+  mediaViewer,
 ]

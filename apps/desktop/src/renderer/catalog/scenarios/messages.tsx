@@ -63,4 +63,36 @@ export const MESSAGE_SCENARIOS: readonly AnyStory[] = [
     ],
     { rtl: true },
   ),
+  // Ours, so drawn on the accent.
+  message(
+    'sending',
+    [
+      'Still uploading, one at a time',
+      'File 31 of 32 failed',
+      'Gallery whose 31st failed',
+      'A file of this one went missing',
+    ],
+    { accent: true, rtl: true },
+  ),
+  message(
+    'sendStops',
+    [
+      'Nothing up yet, the first uploading',
+      'Failed before any file was up',
+      'Interrupted with one file up',
+      'Only text, and it failed',
+      'Pictures only, and one cannot be sent',
+    ],
+    { accent: true },
+  ),
+  message(
+    'fileForms',
+    [
+      'An animated PNG, as a file',
+      'Shown as a list by its reader',
+      'Two photos sent as the originals',
+      'A photo sent as the original, and the paperwork',
+    ],
+    {},
+  ),
 ]
