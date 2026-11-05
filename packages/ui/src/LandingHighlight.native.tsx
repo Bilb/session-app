@@ -10,8 +10,13 @@ import { useTokenColor } from './useTokenColor'
  * The native half: one fade on the native driver, or under reduced motion shown and then removed.
  * The glow is iOS's alone: Android's elevation shadow takes no colour, so there it is the ring.
  */
-export function LandingHighlight({ serial, still = false, radiusPx }: LandingHighlightProps) {
-  const accent = useTokenColor('$primaryColor')
+export function LandingHighlight({
+  serial,
+  still = false,
+  outgoing,
+  radiusPx,
+}: LandingHighlightProps) {
+  const ring = useTokenColor(outgoing ? '$textPrimary' : '$primaryColor')
   const opacity = useRef(new Animated.Value(still ? 1 : 0)).current
 
   useEffect(() => {
@@ -63,10 +68,10 @@ export function LandingHighlight({ serial, still = false, radiusPx }: LandingHig
           flex: 1,
           borderRadius: radiusPx + LANDING_RING_PX,
           borderWidth: LANDING_RING_PX,
-          borderColor: accent,
+          borderColor: ring,
           opacity: LANDING_ALPHA,
           ...(Platform.OS === 'ios'
-            ? { shadowColor: accent, shadowOpacity: 1, shadowRadius: LANDING_GLOW_PX }
+            ? { shadowColor: ring, shadowOpacity: 1, shadowRadius: LANDING_GLOW_PX }
             : {}),
         }}
       />

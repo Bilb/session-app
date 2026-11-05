@@ -21,7 +21,12 @@ function prefersReducedMotion(): boolean {
  * The web half: the ring is drawn at full strength for one frame, then a CSS transition takes it
  * out. Under reduced motion it is shown for the same time and removed with no fade.
  */
-export function LandingHighlight({ serial, still = false, radiusPx }: LandingHighlightProps) {
+export function LandingHighlight({
+  serial,
+  still = false,
+  outgoing,
+  radiusPx,
+}: LandingHighlightProps) {
   const [played, setPlayed] = useState<{ serial: number | undefined; phase: Phase }>({
     serial,
     phase: serial === undefined ? 'gone' : 'shown',
@@ -71,10 +76,10 @@ export function LandingHighlight({ serial, still = false, radiusPx }: LandingHig
         flex={1}
         borderRadius={radiusPx + LANDING_RING_PX}
         borderWidth={LANDING_RING_PX}
-        borderColor="$primaryColor"
+        borderColor={outgoing ? '$textPrimary' : '$primaryColor'}
         opacity={LANDING_ALPHA}
         style={{
-          boxShadow: `0 0 ${String(LANDING_GLOW_PX)}px ${String(LANDING_GLOW_SPREAD_PX)}px var(--primaryColor)`,
+          boxShadow: `0 0 ${String(LANDING_GLOW_PX)}px ${String(LANDING_GLOW_SPREAD_PX)}px var(--${outgoing ? 'textPrimary' : 'primaryColor'})`,
         }}
       />
     </YStack>
