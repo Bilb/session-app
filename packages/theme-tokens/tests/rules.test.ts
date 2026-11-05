@@ -170,20 +170,17 @@ describe('semantic colours', () => {
     }
   })
 
-  it('records that the shipped reds do not clear text contrast on their own cards', () => {
-    // Not a failure to fix: the presets author these because they are recognisable, and this is
-    // the cost of that choice, pinned so it cannot change unnoticed.
-    const shortfalls: string[] = []
+  it('keeps a preset’s authored red recognisable, moving only its lightness', () => {
     for (const theme of ['classic-dark', 'classic-light', 'ocean-dark', 'ocean-light'] as const) {
-      const t = getThemeTokens(theme, 'green')
-      for (const surface of [t.backgroundTertiary, t.backgroundNested]) {
-        if (contrastRatio(t.dangerColor, surface) < 4.5) shortfalls.push(`${theme} danger`)
-      }
+      const authored = getThemeKnobs(theme).semantic?.danger
+      expect(authored).toBeDefined()
+      if (authored === undefined) continue
+      const { dangerColor } = getThemeTokens(theme, 'green')
+      expect(Math.abs(hexToOklch(dangerColor).h - hexToOklch(authored).h)).toBeLessThan(3)
     }
-    expect(shortfalls.length).toBeGreaterThan(0)
   })
 
-  it('draws danger as text legibly on every surface, authored red or not', () => {
+  it('draws one red, legible as text on every surface and as a fill under its label', () => {
     for (const theme of ['classic-dark', 'classic-light', 'ocean-dark', 'ocean-light'] as const) {
       const t = getThemeTokens(theme, 'green')
       for (const surface of [
@@ -192,20 +189,22 @@ describe('semantic colours', () => {
         t.backgroundTertiary,
         t.backgroundNested,
       ]) {
-        expect(contrastRatio(t.dangerText, surface)).toBeGreaterThanOrEqual(4.5)
+        expect(contrastRatio(t.dangerColor, surface)).toBeGreaterThanOrEqual(4.5)
       }
       // A destructive row is held on the page or on a card.
       for (const surface of [t.backgroundPrimary, t.backgroundSecondary]) {
         const under = held(surface, t.pressedOverlay)
-        expect(contrastRatio(t.dangerText, under)).toBeGreaterThanOrEqual(4.5)
+        expect(contrastRatio(t.dangerColor, under)).toBeGreaterThanOrEqual(4.5)
       }
       // A failure's retry glyph keeps the red on a received bubble, and a glyph owes 3:1.
-      expect(contrastRatio(t.dangerText, t.messageBubbleIncomingBg)).toBeGreaterThanOrEqual(3)
+      expect(contrastRatio(t.dangerColor, t.messageBubbleIncomingBg)).toBeGreaterThanOrEqual(3)
       // Red on the incoming bubble only where it is legible there, the bubble's text elsewhere.
       expect(
         contrastRatio(t.messageBubbleIncomingDanger, t.messageBubbleIncomingBg),
       ).toBeGreaterThanOrEqual(4.5)
-      expect([t.dangerText, t.messageBubbleIncomingText]).toContain(t.messageBubbleIncomingDanger)
+      expect([t.dangerColor, t.messageBubbleIncomingText]).toContain(t.messageBubbleIncomingDanger)
+      // Held, the fill is the same red under the overlay every held control draws.
+      expect(t.dangerPressed.toLowerCase()).toBe(held(t.dangerColor, t.pressedOverlay))
       // A danger button's label, at rest on its fill and held on the pressed one.
       expect(contrastRatio(t.onDanger, t.dangerColor)).toBeGreaterThanOrEqual(4.5)
       expect(contrastRatio(t.onDanger, t.dangerPressed)).toBeGreaterThanOrEqual(4.5)

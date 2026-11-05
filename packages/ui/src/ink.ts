@@ -6,7 +6,7 @@ export type InkSurface = 'page' | 'received' | 'accent'
 const PAGE_INK = {
   primary: '$textPrimary',
   secondary: '$textSecondary',
-  danger: '$dangerText',
+  danger: '$dangerColor',
   link: '$accentText',
 } as const satisfies Record<InkTone, string>
 

@@ -66,8 +66,8 @@ describe('a danger Button', () => {
       </Button>,
     )
     expect(declared(frame())).toMatchObject({
-      'border-top-color': 'var(--dangerText)',
-      color: 'var(--dangerText)',
+      'border-top-color': 'var(--dangerColor)',
+      color: 'var(--dangerColor)',
     })
   })
 })

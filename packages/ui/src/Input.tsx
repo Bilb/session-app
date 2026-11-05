@@ -66,7 +66,7 @@ export function Input({
       // surface behind it read as a different control -- one that belongs to a card rather than to
       // the screen.
       backgroundColor="transparent"
-      borderColor={error ? '$dangerText' : '$bordersColor'}
+      borderColor={error ? '$dangerColor' : '$bordersColor'}
       // The focus ring wins while the field is focused, so the two are never drawn at once -- a
       // red border inside a green one reads as two separate states arguing. The red returns on
       // blur, because the value still has not been accepted.
@@ -74,8 +74,8 @@ export function Input({
       // This exists only because there *is* a focus ring: the legacy client has none. If the ring
       // goes before this merges, delete this line and the red border becomes unconditional again.
       {...(error ? { focusStyle: { borderColor: '$primaryColor' } } : {})}
-      color={errorText ? '$dangerText' : '$textPrimary'}
-      placeholderTextColor={error ? '$dangerText' : '$textSecondary'}
+      color={errorText ? '$dangerColor' : '$textPrimary'}
+      placeholderTextColor={error ? '$dangerColor' : '$textSecondary'}
       borderRadius="$lg"
       // Taller and more generously padded than a list field: the desktop client pads its
       // onboarding input by 20px on every side, which is most of why its fields read as roomy.

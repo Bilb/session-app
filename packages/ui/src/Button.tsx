@@ -172,9 +172,8 @@ const Frame = styled(XStack, {
       /** Danger text on a transparent ground, filling on hover. The table's destructive row. */
       danger: {
         backgroundColor: 'transparent',
-        // The label's colour, so the button reads as one red at rest.
-        borderColor: '$dangerText',
-        color: '$dangerText',
+        borderColor: '$dangerColor',
+        color: '$dangerColor',
         hoverStyle: {
           backgroundColor: '$dangerColor',
           borderColor: '$dangerColor',
@@ -211,13 +210,13 @@ const Frame = styled(XStack, {
      */
     destructive: {
       true: {
-        color: '$dangerText',
+        color: '$dangerColor',
         // **Colour only, in every state.** What a press does to the surface is the variant's
         // business -- `ghost` lights a background, `simple` dims itself -- and this only has to
         // stop that variant's own colour winning. An opacity here is inherited by the subtree, so
         // it fades the label along with the fill.
-        hoverStyle: { color: '$dangerText' },
-        pressStyle: { color: '$dangerText' },
+        hoverStyle: { color: '$dangerColor' },
+        pressStyle: { color: '$dangerColor' },
       },
     },
     /**
@@ -288,7 +287,7 @@ const LABEL_TONE = {
   ghostAccent: '$primaryColor',
   simple: '$textPrimary',
   tonal: '$textPrimary',
-  danger: '$dangerText',
+  danger: '$dangerColor',
 } as const
 
 /**
@@ -411,7 +410,7 @@ export function Button({
    * hover on a touch screen, so a resting colour is the whole story.
    */
   const nativeLabel =
-    disabled || loading ? '$textDisabled' : destructive ? '$dangerText' : LABEL_TONE[variant]
+    disabled || loading ? '$textDisabled' : destructive ? '$dangerColor' : LABEL_TONE[variant]
 
   /**
    * The label while held.
@@ -426,7 +425,7 @@ export function Button({
    * inheriting.
    */
   const pressedLabel =
-    destructive && !INVERTS_ON_PRESS.has(variant) ? '$dangerText' : PRESSED_LABEL[variant]
+    destructive && !INVERTS_ON_PRESS.has(variant) ? '$dangerColor' : PRESSED_LABEL[variant]
 
   const inert = disabled || loading
   /**

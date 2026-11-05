@@ -49,7 +49,6 @@ const CHECKS: [keyof ThemeTokens, (t: ThemeTokens) => string[], number][] = [
   ['textSecondary', (t) => [...surfaces(t), t.messageBubbleIncomingBg], 4.5],
   ['accentText', surfaces, 4.5],
   ['dangerColor', surfaces, 4.5],
-  ['dangerText', surfaces, 4.5],
   ['warningColor', surfaces, 4.5],
   ['textDisabled', surfaces, 2],
   // Text contrast, because both are only ever button labels.

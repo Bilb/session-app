@@ -99,7 +99,7 @@ export function SettingsRow({
   testID,
 }: SettingsRowProps) {
   const inert = disabled || onPress === undefined
-  const tone = disabled ? '$textDisabled' : destructive ? '$dangerText' : '$textPrimary'
+  const tone = disabled ? '$textDisabled' : destructive ? '$dangerColor' : '$textPrimary'
   // `accentText`, not the accent: as a glyph the accent is too faint on a light ground.
   const iconTone = accentIcon && !disabled ? '$accentText' : tone
   const content = {

@@ -12,8 +12,8 @@ describe('an Input in an error state', () => {
   it('draws its edge in its text’s red, so the field reads as one red', () => {
     renderInUI(<Input value="word" onChangeText={() => {}} error errorText testID={ID} />)
     expect(declared(byId(ID))).toMatchObject({
-      'border-top-color': 'var(--dangerText)',
-      color: 'var(--dangerText)',
+      'border-top-color': 'var(--dangerColor)',
+      color: 'var(--dangerColor)',
     })
   })
 })
