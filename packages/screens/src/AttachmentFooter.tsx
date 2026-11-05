@@ -46,6 +46,12 @@ const ROW_HEIGHT = Math.max(FOOTER_HEIGHT, ROW_TOUCH_TARGET)
  */
 export const ROW_OVERHANG = (ROW_HEIGHT - FOOTER_HEIGHT) / 2
 
+/**
+ * The space above the footer's line, wherever it is drawn: under an album or a list in a message,
+ * and under the sheet's list, so the two look alike. It clears the overhang too.
+ */
+export const FOOTER_CLEARANCE = SPACE_SCALE['2xs'] + ROW_OVERHANG
+
 /** Each button takes the row's full height on touch. */
 const ACTION_SLOP = ROW_OVERHANG
 

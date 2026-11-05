@@ -5,7 +5,7 @@ import { ELEMENT } from '@session/test-ids'
 import { fileRowHeight, List, Sheet, useFontScale, YStack } from '@session/ui'
 import { useCallback, useRef, type ReactNode } from 'react'
 
-import { AttachmentFooter, ROW_OVERHANG } from './AttachmentFooter'
+import { AttachmentFooter, FOOTER_CLEARANCE } from './AttachmentFooter'
 import { AttachmentRow } from './AttachmentRow'
 import { firstFailedPosition } from './uploadState'
 import { useAttachmentFooter } from './useAttachmentFooter'
@@ -17,7 +17,7 @@ function SheetFooter({ message }: { message: Message }) {
   const { set, onAction, sending } = useAttachmentFooter(message, useAttachmentSet(message))
   // Inside the sheet's footer, so the overhang lies over this padding and not over the rows.
   return (
-    <YStack paddingTop={ROW_OVERHANG}>
+    <YStack paddingTop={FOOTER_CLEARANCE}>
       <AttachmentFooter set={set} onAction={onAction} sending={sending} />
     </YStack>
   )
