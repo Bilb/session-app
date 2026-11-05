@@ -28,7 +28,11 @@ const PREPARE: Record<string, 'downloaded' | 'downloadFailed' | Running> = {
   'One picture as a list, caught downloading': { doneBytes: 40, totalBytes: 100 },
 }
 
-/** Ours, so its uploaded pictures are cached and thumbnailed, as a staged file's picture is. */
+/**
+ * Ours, so its uploaded pictures are cached and thumbnailed, as a staged file's picture is. Its
+ * thirty uploaded pictures take the fake's photo counter thirty times running, so they are every
+ * dev photograph once, whatever the showcase draws before it.
+ */
 const PICTURES_FROM = 'File 31 of 32 failed'
 
 const POLL_MS = 50
@@ -92,13 +96,13 @@ export async function prepare(session: SessionStore): Promise<Scenario> {
 
   const { media } = requirePorts()
   const source = byBody(PICTURES_FROM)
-  const pictures = source.attachments.flatMap(({ index, uploaded, contentType }) => {
-    const url =
-      uploaded && isDisplayableImage(contentType)
-        ? media.thumbnailUrlFor({ messageId: source.id, index })
-        : null
-    return url === null ? [] : [url]
-  })
+  // In filename order rather than the message's: the fake names a picture for its photograph, and
+  // the counter's starting photo moves whenever the showcase gains a picture above this message.
+  const pictures = source.attachments
+    .filter(({ uploaded, contentType }) => uploaded && isDisplayableImage(contentType))
+    .sort((a, b) => (a.filename ?? '').localeCompare(b.filename ?? ''))
+    .map(({ index }) => media.thumbnailUrlFor({ messageId: source.id, index }))
+    .filter((url): url is string => url !== null)
 
   return {
     conversationId,
