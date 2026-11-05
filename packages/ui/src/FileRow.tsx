@@ -102,7 +102,7 @@ export type FileRowProps = WithFilename &
      * lead square and the thumbnail keep their own fill either way.
      */
     onAccent?: boolean | undefined
-    /** Drawn on a bubble someone else sent, where the red of a failure's retry may not read. */
+    /** Drawn on a bubble someone else sent, where a failure's retry is the body text. */
     received?: boolean | undefined
   }
 
@@ -182,11 +182,8 @@ function Trailing({
   received: boolean
 }) {
   const control = fileRowControl(state)
-  const tone = fileRowTone(state)
-  const controlInk =
-    received && tone === 'danger'
-      ? { color: '$messageBubbleIncomingDanger' as const }
-      : inkFor(tone, onAccent)
+  // Red only on the page: on either bubble a failure's retry is the bubble's ink, like its others.
+  const controlInk = inkFor(received ? 'primary' : fileRowTone(state), onAccent)
   const forcedFocus = useForcedFocus()
 
   // The square is held whatever the state, so the name's width does not change when a transfer

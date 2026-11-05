@@ -173,24 +173,6 @@ describe('semantic colours', () => {
     expect(shortfalls.length).toBeGreaterThan(0)
   })
 
-  it('keeps the red on the incoming bubble only where a glyph in it reads', () => {
-    const red: Record<string, boolean> = {}
-    for (const theme of ['classic-dark', 'classic-light', 'ocean-dark', 'ocean-light'] as const) {
-      const t = getThemeTokens(theme, 'green')
-      expect(
-        contrastRatio(t.messageBubbleIncomingDanger, t.messageBubbleIncomingBg),
-      ).toBeGreaterThanOrEqual(3)
-      expect([t.dangerColor, t.messageBubbleIncomingText]).toContain(t.messageBubbleIncomingDanger)
-      red[theme] = t.messageBubbleIncomingDanger === t.dangerColor
-    }
-    expect(red).toEqual({
-      'classic-dark': true,
-      'classic-light': true,
-      'ocean-dark': false,
-      'ocean-light': true,
-    })
-  })
-
   it('keeps a DERIVED semantic colour legible on every surface, not just the page', () => {
     // The warning is measured against the page but rendered inside a card, and adjusting it
     // against the page alone made it disappear on the card.

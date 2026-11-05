@@ -65,7 +65,6 @@ Ask what the thing _is_, not what colour you want.
 | a switch thumb, a QR panel                                    | `surfaceInverted`                  |
 | the modules printed on that panel                             | `surfaceInk`                       |
 | an incoming bubble, and its text                              | `messageBubbleIncomingBg` / `Text` |
-| a danger glyph on an incoming bubble                          | `messageBubbleIncomingDanger`      |
 | the page dimmed behind a dialog or panel                      | `scrim`                            |
 | a raised element's shadow                                     | `shadow`                           |
 | a control hovered / held, laid over whatever it sits on       | `hoverOverlay` / `pressedOverlay`  |
@@ -339,9 +338,8 @@ the theme fades only as far as 4.5:1 allows; never put an opacity on an on-colou
 
 **The incoming bubble is a surface muted text is measured on.** A received file's captions sit on
 it, and it is the furthest surface from the page in every theme. A failed file says so in that
-caption, at the muted text's contrast; only its retry glyph is red. A glyph owes 3:1, which the red
-clears on every bubble but Ocean Dark's, so on a received bubble it is `messageBubbleIncomingDanger`:
-`dangerColor` where it clears 3:1 there, the bubble's text elsewhere.
+caption, at the muted text's contrast. Its retry glyph is red on the page only; on a bubble it is
+the bubble's ink, like the row's other glyphs, since the red falls to 2.4:1 on Ocean Dark's.
 
 ## Where the two ladders come from
 

@@ -214,9 +214,10 @@ describe('a failed file row’s words', () => {
     expect(byId(IDS.download).innerHTML).toContain('var(--dangerColor)')
   })
 
-  it('draw the retry in the received bubble’s danger ink on a bubble someone else sent', () => {
+  it('draw the retry in the body text on a bubble someone else sent', () => {
     renderInUI(<FileRow {...pictureRow('failed', { received: true })} />)
-    expect(byId(IDS.download).innerHTML).toContain('var(--messageBubbleIncomingDanger)')
+    expect(byId(IDS.download).innerHTML).toContain('var(--textPrimary)')
+    expect(byId(IDS.download).innerHTML).not.toContain('var(--dangerColor)')
     expect(declared(byId(IDS.caption)).color).toBe('var(--textSecondary)')
   })
 })

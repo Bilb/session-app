@@ -386,11 +386,6 @@ export type ThemeTokens = {
   separatorColor: string
   messageBubbleIncomingBg: string
   messageBubbleIncomingText: string
-  /**
-   * A danger glyph on the incoming bubble, which owes 3:1: `dangerColor` where it clears that
-   * there, else the bubble's own text. Ocean Dark's red reaches 2.4 on its bubble.
-   */
-  messageBubbleIncomingDanger: string
   /** Dims the page behind a dialog or panel. Nothing is read on it, so no contrast rule applies. */
   scrim: string
   /** A raised element's shadow. */
@@ -563,7 +558,6 @@ function themeBase(knobs: ThemeKnobs): ThemeBase {
     chroma: t.emphasis,
     hue: t.hue,
   })
-  const incomingText = contrastPrefer([text, '#000000', '#FFFFFF'], incomingBg, CONTRAST.normal)
 
   const base: ThemeBase = {
     tokens: {
@@ -618,8 +612,11 @@ function themeBase(knobs: ThemeKnobs): ThemeBase {
         hue: t.hue,
       }),
       messageBubbleIncomingBg: incomingBg,
-      messageBubbleIncomingText: incomingText,
-      messageBubbleIncomingDanger: contrastPrefer([danger, incomingText], incomingBg, CONTRAST.ui),
+      messageBubbleIncomingText: contrastPrefer(
+        [text, '#000000', '#FFFFFF'],
+        incomingBg,
+        CONTRAST.normal,
+      ),
       scrim: SCRIM[polarity],
       shadow: SHADOW[polarity],
       hoverOverlay: HOVER_OVERLAY[polarity],

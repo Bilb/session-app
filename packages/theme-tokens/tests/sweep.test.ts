@@ -56,8 +56,6 @@ const CHECKS: [keyof ThemeTokens, (t: ThemeTokens) => string[], number][] = [
   ['onAccentSecondary', (t) => [t.primaryColor], 4.5],
   ['onDanger', (t) => [t.dangerColor], 4.5],
   ['messageBubbleIncomingText', (t) => [t.messageBubbleIncomingBg], 4.5],
-  // A glyph, a failure's retry.
-  ['messageBubbleIncomingDanger', (t) => [t.messageBubbleIncomingBg], 3],
 ]
 
 function shortfalls(tokens: ThemeTokens, label: string): string[] {
