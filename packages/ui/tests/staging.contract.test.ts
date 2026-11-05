@@ -59,12 +59,11 @@ describe('the staged tray', () => {
   it('fades only the ends that can still scroll, into the surface, in the reading direction', () => {
     const tray = source('StagedTray.tsx')
     expect(tray).toMatch(
-      /\{startFade > 0 \? \(\s*<YStack[^>]*opacity=\{startFade\}[^>]*\{\.\.\.logical\(\{ insetStart: 0 \}\)\}>/,
+      /\{startFade > 0 \? \(\s*<TrayEdgeFade side="start"[^>]*opacity=\{startFade\}/,
     )
-    expect(tray).toMatch(
-      /\{endFade > 0 \? \(\s*<YStack[^>]*opacity=\{endFade\}[^>]*\{\.\.\.logical\(\{ insetEnd: 0 \}\)\}>/,
-    )
+    expect(tray).toMatch(/\{endFade > 0 \? \(\s*<TrayEdgeFade side="end"[^>]*opacity=\{endFade\}/)
     const fade = source('TrayEdgeFade.tsx')
+    expect(fade).toContain("logical(side === 'start' ? { insetStart: 0 } : { insetEnd: 0 })")
     expect(fade).toContain("useTokenColor('$backgroundPrimary')")
     expect(fade).toContain("const opaqueAtZero = (side === 'start') !== isLayoutRtl()")
   })

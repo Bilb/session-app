@@ -3,6 +3,7 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg'
 import { YStack } from 'tamagui'
 
 import { isLayoutRtl } from './layoutDirection'
+import { logical } from './logicalEdges'
 import { useTokenColor } from './useTokenColor'
 
 /** How far in from the edge the fade reaches. */
@@ -17,13 +18,22 @@ export function edgeFadeOpacity(hiddenPx: number): number {
 }
 
 /**
- * The page's surface fading in over one end of the rail, saying there is more that way. The
- * tray places it over the tiles; it never takes a press meant for them.
+ * The page's surface fading in over one end of the rail, saying there is more that way. It places
+ * itself over that end of the tiles, inside a positioned parent, and never takes a press, a swipe
+ * or a wheel meant for them.
  *
  * The surface rather than a fixed black, so it reads as the tiles running out of sight in a light
  * theme as in a dark one.
  */
-export function TrayEdgeFade({ side, heightPx }: { side: 'start' | 'end'; heightPx: number }) {
+export function TrayEdgeFade({
+  side,
+  heightPx,
+  opacity,
+}: {
+  side: 'start' | 'end'
+  heightPx: number
+  opacity: number
+}) {
   const color = useTokenColor('$backgroundPrimary')
   // An SVG id is document-wide on the web, and useId's colons are not valid in url(#...).
   const id = `trayFade${useId().replace(/:/g, '')}`
@@ -31,7 +41,16 @@ export function TrayEdgeFade({ side, heightPx }: { side: 'start' | 'end'; height
   // in RTL, and at x = 1 otherwise.
   const opaqueAtZero = (side === 'start') !== isLayoutRtl()
   return (
-    <YStack width={TRAY_FADE_WIDTH} height={heightPx} pointerEvents="none">
+    // On the outermost view: one that takes none lets its parent take them all the same.
+    <YStack
+      position="absolute"
+      top={0}
+      {...logical(side === 'start' ? { insetStart: 0 } : { insetEnd: 0 })}
+      width={TRAY_FADE_WIDTH}
+      height={heightPx}
+      opacity={opacity}
+      pointerEvents="none"
+    >
       <Svg width={TRAY_FADE_WIDTH} height={heightPx}>
         <Defs>
           <LinearGradient id={id} x1={opaqueAtZero ? 0 : 1} y1={0} x2={opaqueAtZero ? 1 : 0} y2={0}>

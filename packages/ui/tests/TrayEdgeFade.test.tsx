@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import { edgeFadeOpacity } from '#src/TrayEdgeFade'
+import { edgeFadeOpacity, TrayEdgeFade } from '#src/TrayEdgeFade'
+
+import { renderInUI } from './support/render'
 
 describe('a staged tray end’s fade', () => {
   it('is absent at the end, and eases in as tiles scroll out of sight', () => {
@@ -13,5 +15,16 @@ describe('a staged tray end’s fade', () => {
     expect(edgeFadeOpacity(40)).toBe(1)
     expect(edgeFadeOpacity(400)).toBe(1)
     expect(edgeFadeOpacity(-3)).toBe(0)
+  })
+
+  it('takes no pointer events from its outermost view in, so the tiles under it get them', () => {
+    const { container } = renderInUI(<TrayEdgeFade side="end" heightPx={112} opacity={0.5} />)
+    const outermost = container.querySelector('.is_View')
+    expect(outermost).not.toBeNull()
+    if (outermost === null) return
+    expect(outermost.querySelector('svg')).not.toBeNull()
+    // Tamagui's atomic classes: jsdom does not apply the rules they name.
+    expect(outermost.classList).toContain('_pe-none')
+    expect(outermost.classList).toContain('_pos-absolute')
   })
 })

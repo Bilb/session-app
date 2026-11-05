@@ -138,3 +138,81 @@ test('fetches a staged preview once, and not again after the send @desktop @medi
     rmSync(dataDir, { recursive: true, force: true })
   }
 })
+
+/** The DOM a spec's page functions read, which the e2e package is typed without. */
+interface DomNode {
+  parentElement: DomNode | null
+  offsetParent: DomNode | null
+  scrollWidth: number
+  clientWidth: number
+  scrollLeft: number
+  getAttribute: (name: string) => string | null
+  closest: (selector: string) => DomNode | null
+}
+
+interface PageDom {
+  document: { elementFromPoint: (x: number, y: number) => DomNode | null }
+}
+
+/** The tile, by its own id, that a point on the page reaches, or null where something else does. */
+function tileAt(page: Page, x: number, y: number): Promise<string | null> {
+  return page.evaluate(
+    ([px, py]) => {
+      const { document } = globalThis as unknown as PageDom
+      for (let at = document.elementFromPoint(px!, py!); at !== null; at = at.parentElement) {
+        const id = at.getAttribute('data-testid')
+        if (id !== null && /^composer-staged-\d+$/.test(id)) return id
+      }
+      return null
+    },
+    [x, y],
+  )
+}
+
+/**
+ * The fade over a tray end that can still scroll draws over the tiles there, placed against the
+ * tray rather than the page, and a press, a swipe or a wheel over it still reaches them and the
+ * rail.
+ */
+test('lets presses and the wheel through the staged tray’s edge fade @desktop @medium-risk', async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), 'session-staged-fade-'))
+  const files = Array.from({ length: 16 }, (_, index) => sized(dataDir, `notes-${index}.zip`, 2048))
+  const { app, page } = await launch(dataDir).catch((error: unknown) => {
+    rmSync(dataDir, { recursive: true, force: true })
+    throw error
+  })
+  try {
+    await pick(page, ...files)
+    await expect(page.getByTestId(ELEMENT.conversation.stagedTile(15))).toHaveCount(1)
+    const fadeHolder = await page
+      .locator('svg:has(linearGradient[id^="trayFade"])')
+      .first()
+      .evaluate((svg) => {
+        const holder = (svg as unknown as DomNode).parentElement?.offsetParent ?? null
+        return holder?.closest('[data-testid="composer-staged"]') === null ? 'page' : 'tray'
+      })
+    expect(fadeHolder).toBe('tray')
+
+    const tray = await page.getByTestId(ELEMENT.conversation.stagedTray).boundingBox()
+    const tile = await page.getByTestId(ELEMENT.conversation.stagedTile(0)).boundingBox()
+    if (tray === null || tile === null) throw new Error('the staged tray is not drawn')
+    // Inside the end fade, which is 40px wide and as tall as a tile.
+    const x = tray.x + tray.width - 20
+    const y = tile.y + tile.height / 2
+    expect(await tileAt(page, x, y)).not.toBeNull()
+
+    const railOffset = () =>
+      page.getByTestId(ELEMENT.conversation.stagedTile(0)).evaluate((tileNode) => {
+        let rail = (tileNode as unknown as DomNode).parentElement
+        while (rail !== null && rail.scrollWidth <= rail.clientWidth) rail = rail.parentElement
+        return rail === null ? Number.NaN : rail.scrollLeft
+      })
+    expect(await railOffset()).toBe(0)
+    await page.mouse.move(x, y)
+    await page.mouse.wheel(0, 120)
+    await expect.poll(railOffset).toBeGreaterThan(0)
+  } finally {
+    await app.close()
+    rmSync(dataDir, { recursive: true, force: true })
+  }
+})
