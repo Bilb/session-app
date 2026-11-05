@@ -3,6 +3,7 @@ import { albumChoices, albumFocus, albumLone, albumOverflow, albumRows } from '.
 import { button, buttonOnAccent, buttonSizes } from './button'
 import { composerReply } from './composerReply'
 import { fileRow, fileRowOnAccent, fileRowReceived } from './fileRow'
+import { messageFrameHighlight } from './messageFrame'
 import { avatar, progressRing, radio } from './indicators'
 import { messageQuote, messageQuoteAuthors, messageQuoteFiles, messageQuotePictures } from './quote'
 import { settingsRow } from './settingsRow'
@@ -37,4 +38,5 @@ export const STORIES: readonly AnyStory[] = [
   messageQuoteFiles,
   messageQuoteAuthors,
   composerReply,
+  messageFrameHighlight,
 ]

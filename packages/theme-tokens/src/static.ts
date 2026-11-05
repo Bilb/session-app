@@ -104,7 +104,7 @@ export const INTERACTION_OPACITY = {
 // All durations in milliseconds.
 export const DURATION = {
   default: 250,
-  messageHighlight: 1000,
+  messageHighlight: 1600,
   typingAnimation: 1600,
   sessionSpinner: 600,
   spinner: 3000,

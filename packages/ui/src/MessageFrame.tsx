@@ -1,6 +1,8 @@
-import { SPACING } from '@session/theme-tokens'
+import { RADII, SPACING } from '@session/theme-tokens'
 import type { ReactNode } from 'react'
 import { YStack } from 'tamagui'
+
+import { LandingHighlight } from './LandingHighlight'
 
 /** The frame's inset at each side, so content of a fixed width can be given room for it. */
 export const MESSAGE_FRAME_INSET_PX = SPACING.md
@@ -11,6 +13,13 @@ export interface MessageFrameProps {
   /** Where it sits in the conversation; unset, it fills what it is given. */
   alignSelf?: 'flex-start' | 'flex-end' | undefined
   maxWidth?: number | `${number}%` | undefined
+  /**
+   * Changes each time a jump lands on this message, which plays the highlight once more: a ring
+   * fading over 1.6 s, or under reduced motion shown and removed. Absent: never landed on.
+   */
+  highlightSerial?: number | undefined
+  /** The highlight at full strength and held, for a picture of a landing. */
+  highlightHeld?: boolean | undefined
   testID?: string | undefined
   children: ReactNode
 }
@@ -23,6 +32,8 @@ export function MessageFrame({
   outgoing,
   alignSelf,
   maxWidth,
+  highlightSerial,
+  highlightHeld = false,
   testID,
   children,
 }: MessageFrameProps) {
@@ -30,6 +41,7 @@ export function MessageFrame({
     <YStack
       {...(alignSelf === undefined ? {} : { alignSelf })}
       {...(maxWidth === undefined ? {} : { maxWidth })}
+      position="relative"
       backgroundColor={outgoing ? '$primaryColor' : '$messageBubbleIncomingBg'}
       borderRadius="$lg"
       paddingHorizontal={MESSAGE_FRAME_INSET_PX}
@@ -37,6 +49,9 @@ export function MessageFrame({
       gap="$2xs"
       testID={testID}
     >
+      {highlightSerial === undefined && !highlightHeld ? null : (
+        <LandingHighlight serial={highlightSerial} still={highlightHeld} radiusPx={RADII.lg} />
+      )}
       {children}
     </YStack>
   )

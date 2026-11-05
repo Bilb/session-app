@@ -43,13 +43,15 @@ describe('an absolutely positioned child', () => {
    * which were **measured clean** on a running desktop app -- nothing in them resolves against the
    * page. A dialog's close button belongs to the surface the dialog itself puts up, the
    * scanner's frame to the camera pane, a tooltip's arrow to its bubble, which is itself
-   * absolute, and a staged tray end's fade to the tray's rail; naming a nearer parent here would
+   * absolute, a staged tray end's fade to the tray's rail, and a landing's ring to the message
+   * frame it is drawn round; naming a nearer parent here would
    * move them.
    *
    * Adding a file to this list means having run that measurement. It is not a place to put
    * something that has not been looked at.
    */
   const CONTAINED_ELSEWHERE = [
+    'LandingHighlight.tsx',
     'LanguagePicker.tsx',
     'Modal.tsx',
     'ScanQrPane.tsx',

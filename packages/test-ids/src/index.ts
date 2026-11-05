@@ -56,6 +56,7 @@ export const ELEMENT = {
     messageRetry: 'message-retry',
     messageQuote: 'message-quote',
     messageQuoteThumbnail: 'message-quote-thumbnail',
+    messageHighlight: 'message-highlight',
     attachment: 'message-attachment',
     attachmentTile: 'message-attachment-tile',
     attachmentLead: 'message-attachment-lead',
