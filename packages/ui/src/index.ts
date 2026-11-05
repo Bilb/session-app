@@ -71,6 +71,11 @@ export type {
 export { List } from './List'
 export { MessageBubble, type MessageBubbleProps } from './MessageBubble'
 export { MESSAGE_FRAME_INSET_PX, MessageFrame, type MessageFrameProps } from './MessageFrame'
+export {
+  COMPOSER_REPLY_THUMB_SIDE_PX,
+  ComposerReply,
+  type ComposerReplyProps,
+} from './ComposerReply'
 export { MessageQuote, QUOTE_THUMB_SIDE_PX, type MessageQuoteProps } from './MessageQuote'
 export {
   quoteAccessibleName,
