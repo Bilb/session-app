@@ -17,9 +17,18 @@ export const button = defineStory<ButtonProps>({
     ghost: { variant: 'ghost', children: 'Continue', onPress: noop },
     ghostAccent: { variant: 'ghostAccent', children: 'Continue', onPress: noop },
     simple: { variant: 'simple', children: 'Continue', onPress: noop },
+    subtle: { variant: 'subtle', children: 'Export Logs', onPress: noop },
     danger: { variant: 'danger', children: 'Delete', onPress: noop },
     disabled: { variant: 'solid', children: 'Continue', disabled: true, onPress: noop },
     loading: { variant: 'solid', children: 'Continue', loading: true, onPress: noop },
+    // A frameless button loading, which draws no outline, with the spinner at its smaller scale.
+    subtleLoading: {
+      variant: 'subtle',
+      size: 'sm',
+      children: 'Export Logs',
+      loading: true,
+      onPress: noop,
+    },
     long: { variant: 'solid', children: LONG, onPress: noop },
   },
   render: (props) => <Button {...props} />,
@@ -58,6 +67,9 @@ export const buttonSizes = defineStory<ButtonProps>({
     sm: { size: 'sm', children: 'Continue', onPress: noop },
     md: { size: 'md', children: 'Continue', onPress: noop },
     lg: { size: 'lg', children: 'Continue', onPress: noop },
+    // The spinner follows the label's size: smaller under the two smaller sizes.
+    smLoading: { size: 'sm', children: 'Continue', loading: true, onPress: noop },
+    mdLoading: { size: 'md', children: 'Continue', loading: true, onPress: noop },
   },
   render: (props) => <Button {...props} />,
 })
