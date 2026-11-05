@@ -44,7 +44,7 @@ const ROW_HEIGHT = Math.max(FOOTER_HEIGHT, ROW_TOUCH_TARGET)
  * The footer's targets cover the overhang and win over anything drawn under it, so whatever holds
  * the footer leaves at least this much empty above the line.
  */
-export const ROW_OVERHANG = (ROW_HEIGHT - FOOTER_HEIGHT) / 2
+const ROW_OVERHANG = (ROW_HEIGHT - FOOTER_HEIGHT) / 2
 
 /**
  * The space above the footer's line, wherever it is drawn: under an album or a list in a message,
