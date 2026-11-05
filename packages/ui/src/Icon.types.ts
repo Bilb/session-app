@@ -14,6 +14,7 @@ import type { Plus } from '@tamagui/lucide-icons-2/icons/Plus'
  * second time somebody reaches for it.
  */
 export type IconName =
+  | 'ban'
   | 'bellOff'
   | 'bookmark'
   | 'check'
@@ -54,12 +55,14 @@ export type IconName =
   | 'mail'
   | 'messageSquare'
   | 'messageSquareWarning'
+  | 'mic'
   | 'moon'
   | 'packageCheck'
   | 'paintbrush'
   | 'pin'
   | 'play'
   | 'plus'
+  | 'reply'
   | 'rotateCw'
   | 'search'
   | 'settings'

@@ -12,3 +12,12 @@ export function useCatalogPicture(at: number | undefined): string | undefined {
   if (at === undefined || pictures.length === 0) return undefined
   return pictures[at % pictures.length]
 }
+
+/** The senders' ThumbHashes of those photographs, in the same order, from the same app. */
+export const CatalogPlaceholders = createContext<readonly string[]>([])
+
+export function useCatalogPlaceholder(at: number | undefined): string | undefined {
+  const placeholders = useContext(CatalogPlaceholders)
+  if (at === undefined || placeholders.length === 0) return undefined
+  return placeholders[at % placeholders.length]
+}

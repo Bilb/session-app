@@ -64,6 +64,7 @@ export function PressArea({
   fill = false,
   hitSlop,
   accessibilityLabel,
+  accessibilityHint,
   role = 'button',
   checked,
   busy = false,
@@ -95,6 +96,7 @@ export function PressArea({
       onPress={onPress}
       {...(hitSlop === undefined || hitSlop === 0 ? {} : { hitSlop })}
       accessibilityLabel={accessibilityLabel}
+      {...(accessibilityHint === undefined ? {} : { accessibilityHint })}
       // Stated whole: passing a state replaces the one Pressable derives from `disabled`.
       accessibilityState={{ disabled, busy, ...(checked === undefined ? {} : { checked }) }}
       testID={testID}

@@ -1,7 +1,7 @@
 import { DetachedMessages } from '@session/screens'
 import { SessionStoreProvider } from '@session/state'
 import { ModalStackProvider, ToastProvider } from '@session/ui'
-import { CatalogPictures } from '@session/ui/catalog'
+import { CatalogPictures, CatalogPlaceholders } from '@session/ui/catalog'
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 
 import { store } from '../../store'
@@ -36,9 +36,11 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
       <DetachedMessages conversationId={scenario.conversationId}>
         <ScenarioContext.Provider value={scenario}>
           <CatalogPictures.Provider value={scenario.pictures}>
-            <ModalStackProvider>
-              <ToastProvider>{children}</ToastProvider>
-            </ModalStackProvider>
+            <CatalogPlaceholders.Provider value={scenario.placeholders}>
+              <ModalStackProvider>
+                <ToastProvider>{children}</ToastProvider>
+              </ModalStackProvider>
+            </CatalogPlaceholders.Provider>
           </CatalogPictures.Provider>
         </ScenarioContext.Provider>
       </DetachedMessages>
@@ -53,5 +55,11 @@ export function ScenarioProvider({ children }: { children: ReactNode }) {
 export function PicturesProvider({ children }: { children: ReactNode }) {
   const scenario = usePrepared()
   if (scenario === null) return null
-  return <CatalogPictures.Provider value={scenario.pictures}>{children}</CatalogPictures.Provider>
+  return (
+    <CatalogPictures.Provider value={scenario.pictures}>
+      <CatalogPlaceholders.Provider value={scenario.placeholders}>
+        {children}
+      </CatalogPlaceholders.Provider>
+    </CatalogPictures.Provider>
+  )
 }

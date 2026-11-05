@@ -3,6 +3,7 @@ import { albumChoices, albumFocus, albumLone, albumOverflow, albumRows } from '.
 import { button, buttonOnAccent, buttonSizes } from './button'
 import { fileRow, fileRowOnAccent, fileRowReceived } from './fileRow'
 import { avatar, progressRing, radio } from './indicators'
+import { messageQuote, messageQuoteAuthors, messageQuoteFiles, messageQuotePictures } from './quote'
 import { settingsRow } from './settingsRow'
 import { composerNotice, dropOverlay, stagedTile, stagedTray } from './staging'
 import { textScale } from './text'
@@ -30,4 +31,8 @@ export const STORIES: readonly AnyStory[] = [
   composerNotice,
   dropOverlay,
   mediaViewer,
+  messageQuote,
+  messageQuotePictures,
+  messageQuoteFiles,
+  messageQuoteAuthors,
 ]

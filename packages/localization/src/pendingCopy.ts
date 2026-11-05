@@ -115,4 +115,9 @@ export const PENDING_COPY = {
    */
   changeToLightMode: 'Change to Light Mode',
   changeToDarkMode: 'Change to Dark Mode',
+  /**
+   * What a press on a reply's quote does, said after its name. Android's "Reply to message" is no
+   * catalogue string either, and `reply` already names the action that starts one.
+   */
+  messageQuoteHint: 'Shows the original message',
 } as const

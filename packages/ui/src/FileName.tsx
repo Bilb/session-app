@@ -2,13 +2,12 @@ import type { ElementId } from '@session/test-ids'
 import { XStack } from 'tamagui'
 
 import { nameDirection, splitFilename } from './attachmentFile'
-import type { inkFor } from './ink'
-import { Text, type TextSize } from './Text'
+import { Text, type TextProps, type TextSize } from './Text'
 
 export interface FileNameProps {
   name: string
   size: TextSize
-  ink?: ReturnType<typeof inkFor> | undefined
+  ink?: { color: TextProps['color']; opacity: number } | undefined
   /** Semibold where the name heads its row; regular inside a line of detail. */
   weight?: 'regular' | 'semibold' | undefined
   testID?: ElementId | undefined

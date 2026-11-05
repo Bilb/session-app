@@ -168,6 +168,7 @@ describe('screen copy', () => {
       'onionRoutingPathOffline',
       'changeToLightMode',
       'changeToDarkMode',
+      'messageQuoteHint',
     ])
   })
 })

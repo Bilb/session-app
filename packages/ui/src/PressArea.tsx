@@ -4,6 +4,7 @@ import { YStack } from 'tamagui'
 import { InteractionOverride, useForcedFocus } from './interactionOverride'
 
 import { focusRing, keyboardPress, type FocusRingShape } from './keyboardPress'
+import { pressHint } from './pressHint'
 import type { PressAreaProps } from './PressArea.types'
 
 export type { PressAreaProps }
@@ -32,6 +33,7 @@ export function PressArea({
   disabled = false,
   fill = false,
   accessibilityLabel,
+  accessibilityHint,
   role = 'button',
   checked,
   ring = PAGE_RING,
@@ -54,6 +56,7 @@ export function PressArea({
       {...keyboardPress(press, focusRing(ring))}
       {...(press === undefined ? {} : forcedFocus)}
       aria-label={accessibilityLabel}
+      {...pressHint(accessibilityHint)}
       aria-busy={busy}
       testID={testID}
     >

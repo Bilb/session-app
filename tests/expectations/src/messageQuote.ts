@@ -1,0 +1,31 @@
+import { ELEMENT } from '@session/test-ids'
+
+import type { Expected } from './node'
+
+export const MESSAGE_QUOTE_ID = ELEMENT.conversation.messageQuote
+
+/**
+ * A reply's quote: one button named "{author}: {summary}" that jumps to the original, busy while it
+ * is read in. A quote of one not found is no button: on the web its words are read where they
+ * stand, and on native it is one element saying them.
+ */
+export function messageQuote({
+  name,
+  hint,
+  pressable,
+  busy = false,
+}: {
+  name: string
+  hint: string | null
+  /** Found, and offered a press. */
+  pressable: boolean
+  busy?: boolean | undefined
+}): Expected {
+  if (!pressable)
+    return {
+      desktop: { role: 'none', name: null, focusable: false },
+      native: { role: 'text', name },
+    }
+  const node = { role: 'button', name, hint, busy, disabled: false, focusable: true } as const
+  return { desktop: node, native: node }
+}

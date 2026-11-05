@@ -28,6 +28,8 @@ export interface Scenario {
   messageIds: Map<string, number>
   /** Thumbnails of dev photographs that draw without a download, for files the catalog stages. */
   pictures: string[]
+  /** Their senders' ThumbHashes, in the same order, for a story drawing a picture not yet here. */
+  placeholders: string[]
 }
 
 export async function prepare(session: SessionStore): Promise<Scenario> {
@@ -77,17 +79,27 @@ export async function prepare(session: SessionStore): Promise<Scenario> {
 
   const { media } = requirePorts()
   const source = byBody(PICTURES_FROM)
-  const pictures = source.attachments.flatMap(({ index, uploaded, contentType }) => {
-    const url =
-      uploaded && isDisplayableImage(contentType)
-        ? media.thumbnailUrlFor({ messageId: source.id, index })
-        : null
-    return url === null ? [] : [url]
-  })
+  const shown = source.attachments.filter(
+    ({ uploaded, contentType }) => uploaded && isDisplayableImage(contentType),
+  )
+  const urls = (
+    attachments: typeof shown,
+    urlFor: (ref: { messageId: number; index: number }) => string | null,
+  ) =>
+    attachments.flatMap(({ index }) => {
+      const url = urlFor({ messageId: source.id, index })
+      return url === null ? [] : [url]
+    })
+  const pictures = urls(shown, (ref) => media.thumbnailUrlFor(ref))
+  const placeholders = urls(
+    shown.filter(({ hasThumbhash }) => hasThumbhash),
+    (ref) => media.thumbhashUrlFor(ref),
+  )
 
   return {
     conversationId,
     messageIds: new Map(messages.map((message) => [message.body, message.id])),
     pictures,
+    placeholders,
   }
 }
