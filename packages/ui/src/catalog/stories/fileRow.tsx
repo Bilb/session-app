@@ -71,6 +71,21 @@ const STATES = {
     actionLabel: 'Download',
     onAction: noop,
   },
+  // A message's one row, whose footer carries its only control: the name takes the square's room.
+  longNameWithoutControl: {
+    ...PDF,
+    filename: 'quarterly-board-meeting-minutes-final-revised-v7.pdf',
+    caption: '18.4 MB',
+    state: 'idle',
+    hasControl: false,
+  },
+  arabicNameWithoutControl: {
+    ...PDF,
+    filename: 'تقرير-الربع-الثالث.pdf',
+    caption: '2 MB',
+    state: 'idle',
+    hasControl: false,
+  },
 } as const satisfies Record<string, FileRowProps>
 
 export const fileRow = defineStory<FileRowProps>({
@@ -80,22 +95,6 @@ export const fileRow = defineStory<FileRowProps>({
   forced: ['hover', 'focus'],
   sensitive: { rtl: true, responsive: true },
   variants: STATES,
-  render: (props) => <FileRow {...props} />,
-})
-
-/**
- * The same states as a message's one row, whose footer carries its only control: no trailing
- * square in any state, and the name takes its room.
- */
-export const fileRowWithoutControl = defineStory<FileRowProps>({
-  component: 'fileRow',
-  story: 'withoutControl',
-  width: 360,
-  forced: ['hover', 'focus'],
-  sensitive: { rtl: true, responsive: true },
-  variants: Object.fromEntries(
-    Object.entries(STATES).map(([name, row]) => [name, { ...row, hasControl: false }]),
-  ),
   render: (props) => <FileRow {...props} />,
 })
 
