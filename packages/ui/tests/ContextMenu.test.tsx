@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { byId, nodeOf } from '@session/render-tier'
 import { ELEMENT } from '@session/test-ids'
 
-import { ContextMenu, ContextMenuLayer } from '#src/ContextMenu'
+import { ContextMenu, ContextMenuLayer, elementMenuAnchor } from '#src/ContextMenu'
 import type { ContextMenuEntry } from '#src/contextMenuEntries'
 import type { MenuAnchor } from '#src/contextMenuPlacement'
 
@@ -212,5 +212,17 @@ describe('an open ContextMenu', () => {
     await act(async () => {})
     expect(order).toEqual(['reply with menu gone'])
     expect(document.activeElement).toBe(opener)
+  })
+})
+
+describe('an element anchor', () => {
+  it('is the element\u2019s rectangle, read at once', () => {
+    const element = document.createElement('div')
+    element.getBoundingClientRect = () => new DOMRect(10, 20, 300, 40)
+    let anchor: MenuAnchor | null = null
+    elementMenuAnchor(element, (measured) => {
+      anchor = measured
+    })
+    expect(anchor).toEqual({ kind: 'element', rect: { x: 10, y: 20, width: 300, height: 40 } })
   })
 })

@@ -100,6 +100,16 @@ function measureNow(node: unknown, onMeasured: (rect: AnchorRect | null) => void
   measureAnchor(node, onMeasured)
 }
 
+/**
+ * The anchor for opening the menu against an element rather than at a pointer: the keyboard's
+ * Menu key or Shift+F10 on a focused message. Null when it cannot be measured.
+ */
+export function elementMenuAnchor(node: unknown, onAnchor: (anchor: MenuAnchor | null) => void) {
+  measureNow(node, (rect) => {
+    onAnchor(rect === null ? null : { kind: 'element', rect })
+  })
+}
+
 function firstRow(entries: readonly ContextMenuEntry[]): number {
   return entries.findIndex(isMenuRow)
 }
