@@ -29,9 +29,12 @@
     "@session/test-ids": "workspace:*",
     "@session/theme-tokens": "workspace:*",
     "@tamagui/lucide-icons-2": "catalog:",
+    "react-native-gesture-handler": "catalog:",
     "react-native-keyboard-controller": "catalog:",
+    "react-native-reanimated": "catalog:",
     "react-native-safe-area-context": "catalog:",
     "react-native-screens": "catalog:",
+    "react-native-worklets": "catalog:",
     "tamagui": "catalog:"
   },
   "peerDependencies": {

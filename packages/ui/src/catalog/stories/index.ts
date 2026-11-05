@@ -9,6 +9,7 @@ import { messageQuote, messageQuoteAuthors, messageQuoteFiles, messageQuotePictu
 import { scrollToLatest } from './scrollToLatest'
 import { settingsRow } from './settingsRow'
 import { composerNotice, dropOverlay, stagedTile, stagedTray } from './staging'
+import { swipeToReply } from './swipeToReply'
 import { textScale } from './text'
 import { mediaViewer } from './viewer'
 
@@ -41,4 +42,5 @@ export const STORIES: readonly AnyStory[] = [
   composerReply,
   messageFrameHighlight,
   scrollToLatest,
+  swipeToReply,
 ]

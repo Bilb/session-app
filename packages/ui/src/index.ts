@@ -76,6 +76,10 @@ export {
   ComposerReply,
   type ComposerReplyProps,
 } from './ComposerReply'
+export { type Haptics, HapticsProvider, useHaptics } from './haptics'
+export { REPLY_ACTION, replyAction } from './replyAction'
+export { SwipeToReply, type SwipeToReplyProps } from './SwipeToReply'
+export { SWIPE_REPLY_THRESHOLD_PX } from './swipeMetrics'
 export { ScrollToLatest, type ScrollToLatestProps } from './ScrollToLatest'
 export { MessageQuote, QUOTE_THUMB_SIDE_PX, type MessageQuoteProps } from './MessageQuote'
 export {

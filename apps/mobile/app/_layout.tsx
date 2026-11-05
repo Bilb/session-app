@@ -11,11 +11,13 @@ import { SessionStoreProvider, type SessionStore } from '@session/state'
 import {
   DirectionRoot,
   FONT_ASSETS,
+  HapticsProvider,
   ModalStackProvider,
   ToastProvider,
   UIProvider,
 } from '@session/ui'
 import { useFonts } from 'expo-font'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { KeyboardProvider } from 'react-native-keyboard-controller'
 import { useEffect, useState } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
@@ -23,11 +25,25 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { mobileBackdropBlur } from '../src/backdrop'
 import { mobileGlass } from '../src/glass'
 import { MobileCameraProvider } from '../src/camera'
+import { mobileHaptics } from '../src/haptics'
 import { MobileNavProvider } from '../src/nav'
 import { MobileShell } from '../src/shell'
 import { HideSplashOnMount } from '../src/splash'
 import { storePromise } from '../src/store'
 import { WindowControlsInsetRoot } from '../src/windowControls'
+
+const FILL = { flex: 1 } as const
+
+export default function RootLayout() {
+  return (
+    // Gesture handler needs its root above every detector; a message row's swipe is one.
+    <GestureHandlerRootView style={FILL}>
+      <HapticsProvider value={mobileHaptics}>
+        <AppTree />
+      </HapticsProvider>
+    </GestureHandlerRootView>
+  )
+}
 
 /**
  * The app shell.
@@ -35,7 +51,7 @@ import { WindowControlsInsetRoot } from '../src/windowControls'
  * The store is created asynchronously because opening the bridge is, so this waits for it
  * before rendering anything that would read from it.
  */
-export default function RootLayout() {
+function AppTree() {
   // Subscribes the whole tree to the app's language -- see the note on the desktop root. It has to
   // be the component that creates the subtree, not a provider wrapped around one.
   // And which way that language reads, which `DirectionRoot` below mirrors the tree to.
