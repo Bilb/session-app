@@ -7,7 +7,6 @@ import { isWeb, XStack, YStack } from 'tamagui'
 import { Button } from './Button'
 import { Icon } from './Icon'
 import { isLayoutRtl } from './layoutDirection'
-import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
 import { STAGED_TILE_SIDE } from './stagingMetrics'
 import { Text } from './Text'
@@ -179,14 +178,10 @@ export function StagedTray({
           </XStack>
         </ScrollView>
         {startFade > 0 ? (
-          <YStack position="absolute" top={0} opacity={startFade} {...logical({ insetStart: 0 })}>
-            <TrayEdgeFade side="start" heightPx={STAGED_TILE_SIDE} />
-          </YStack>
+          <TrayEdgeFade side="start" heightPx={STAGED_TILE_SIDE} opacity={startFade} />
         ) : null}
         {endFade > 0 ? (
-          <YStack position="absolute" top={0} opacity={endFade} {...logical({ insetEnd: 0 })}>
-            <TrayEdgeFade side="end" heightPx={STAGED_TILE_SIDE} />
-          </YStack>
+          <TrayEdgeFade side="end" heightPx={STAGED_TILE_SIDE} opacity={endFade} />
         ) : null}
       </YStack>
     </YStack>
