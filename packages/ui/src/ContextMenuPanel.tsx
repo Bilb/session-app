@@ -132,8 +132,8 @@ export function ContextMenuPanel({
       minWidth={MENU_MIN_WIDTH}
       maxWidth={MENU_MAX_WIDTH}
       {...(maxHeight === undefined ? {} : { maxHeight })}
-      // The card surface, where destructive text clears 4.5:1; the tertiary one leaves it at 3.9
-      // in Classic Light. The border carries the edge where the card is authored flat on the base.
+      // The card surface, as a settings row's: the danger ink is 4.3:1 on it in Classic Light and
+      // 3.9:1 on the tertiary one. The border carries the edge where the card is flat on the base.
       backgroundColor="$backgroundSecondary"
       borderWidth={1}
       borderColor="$bordersColor"
