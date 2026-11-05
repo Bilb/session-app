@@ -84,9 +84,12 @@ describe('a sheet', () => {
     const scrim = /<YStack\s+fullscreen[^>]*onPress=\{onClose\}[^>]*\/>/.exec(sheet)
     expect(scrim).not.toBeNull()
     const scrimEnd = (scrim?.index ?? 0) + (scrim?.[0].length ?? 0)
-    const surfaceTagEnd = sheet.indexOf('>\n', sheet.indexOf('testID={testID}'))
-    expect(surfaceTagEnd).toBeGreaterThan(scrimEnd)
-    expect(sheet.slice(scrimEnd, surfaceTagEnd)).not.toContain('onPress')
+    const surfacePlaced = sheet.indexOf('<SheetSurface', scrimEnd)
+    expect(surfacePlaced).toBeGreaterThan(scrimEnd)
+    expect(sheet.slice(scrimEnd, surfacePlaced)).not.toContain('onPress')
+    expect(
+      openingTag(sheet, '<YStack', sheet.indexOf('export function SheetSurface')),
+    ).not.toContain('onPress')
     expect(sheet).not.toContain('stopPropagation')
     // The frame that places the surface covers the scrim, so it must let touches through to it.
     expect(openingTag(sheet, '<YStack', scrimEnd)).toContain('pointerEvents="box-none"')

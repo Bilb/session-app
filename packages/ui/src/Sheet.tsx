@@ -22,8 +22,8 @@ const SHEET_TRANSITION_MS = 250
 
 const cubic = (t: number) => t * t * t
 
-export interface SheetProps {
-  open: boolean
+/** The surface itself: what a sheet draws, wherever it is placed. */
+export interface SheetSurfaceProps {
   onClose: () => void
   title: string
   /** Names the close control for a screen reader, since it is drawn as a cross. */
@@ -37,15 +37,98 @@ export interface SheetProps {
   bodyIsList?: boolean | undefined
   /** Held at the bottom edge, outside the scroll, so it is reachable from anywhere in the body. */
   footer?: ReactNode | undefined
+  testID: ElementId
+  closeTestID: ElementId
+}
+
+export interface SheetProps extends SheetSurfaceProps {
+  open: boolean
   /**
    * Drawn inside this sheet's own modal, above it: where anything opened from the sheet has to
    * go. iOS presents a modal from its parent's view controller, and a sibling's is already busy
    * presenting this one, so a modal rendered beside the sheet never appears while it is open.
    */
   overlay?: ReactNode | undefined
-  testID: ElementId
-  closeTestID: ElementId
   scrimTestID: ElementId
+}
+
+/**
+ * The header, the scrolling body and the pinned footer, rounded as a dialog when `wide` and as a
+ * bottom sheet, square along the bottom and clear of `bottomInset`, when not. `Sheet` places it in
+ * its modal; the catalog draws it on a page.
+ */
+export function SheetSurface({
+  onClose,
+  title,
+  closeLabel,
+  children,
+  bodyIsList = false,
+  footer,
+  testID,
+  closeTestID,
+  wide,
+  bottomInset = 0,
+}: SheetSurfaceProps & { wide: boolean; bottomInset?: number | undefined }) {
+  return (
+    <YStack
+      width="100%"
+      maxHeight={SHEET_MAX_HEIGHT}
+      {...(wide ? { maxWidth: SHEET_MAX_WIDTH } : {})}
+      borderTopLeftRadius={SHEET_RADIUS}
+      borderTopRightRadius={SHEET_RADIUS}
+      // Square against the bottom of the window on a phone, because there is nothing under it
+      // to round away from.
+      {...(wide
+        ? { borderBottomLeftRadius: SHEET_RADIUS, borderBottomRightRadius: SHEET_RADIUS }
+        : { paddingBottom: bottomInset })}
+      backgroundColor="$backgroundSecondary"
+      testID={testID}
+    >
+      <XStack alignItems="center" gap="$xs" paddingHorizontal="$md" paddingVertical="$sm">
+        <Text flex={1} size="$bodyLarge" weight="bold" numberOfLines={1} userSelect="none">
+          {title}
+        </Text>
+        <Button
+          variant="ghost"
+          size="md"
+          circular
+          accessibilityLabel={closeLabel}
+          testID={closeTestID}
+          onPress={onClose}
+          icon={<Icon name="x" size="lg" color="$textPrimary" />}
+        />
+      </XStack>
+
+      {/* The body scrolls and the footer does not, so a long set cannot push the one control
+        that acts on all of it off the bottom of the screen.
+
+        Chrome makes a scroller with no tab-focusable children focusable itself, and the
+        rows are `role="button"` without a tabindex - so the body took focus and drew the
+        UA's ring round all of it. */}
+      {bodyIsList ? (
+        children
+      ) : (
+        <ScrollView outlineStyle="none">
+          <YStack paddingHorizontal="$md" paddingBottom="$sm">
+            {children}
+          </YStack>
+        </ScrollView>
+      )}
+
+      {footer === undefined ? null : (
+        // A rule above it, because the body scrolls under: without one the row cut off at the
+        // scroll boundary runs straight into the footer and reads as a broken row.
+        <YStack
+          paddingHorizontal="$md"
+          paddingBottom="$sm"
+          borderTopWidth={1}
+          borderTopColor="$bordersColor"
+        >
+          {footer}
+        </YStack>
+      )}
+    </YStack>
+  )
 }
 
 /**
@@ -135,64 +218,19 @@ export function Sheet({
           {...(wide ? { padding: '$xl' } : {})}
           pointerEvents="box-none"
         >
-          <YStack
-            width="100%"
-            maxHeight={SHEET_MAX_HEIGHT}
-            {...(wide ? { maxWidth: SHEET_MAX_WIDTH } : {})}
-            borderTopLeftRadius={SHEET_RADIUS}
-            borderTopRightRadius={SHEET_RADIUS}
-            // Square against the bottom of the window on a phone, because there is nothing under it
-            // to round away from.
-            {...(wide
-              ? { borderBottomLeftRadius: SHEET_RADIUS, borderBottomRightRadius: SHEET_RADIUS }
-              : { paddingBottom: insets.bottom })}
-            backgroundColor="$backgroundSecondary"
+          <SheetSurface
+            onClose={onClose}
+            title={title}
+            closeLabel={closeLabel}
+            bodyIsList={bodyIsList}
+            footer={footer}
             testID={testID}
+            closeTestID={closeTestID}
+            wide={wide}
+            bottomInset={insets.bottom}
           >
-            <XStack alignItems="center" gap="$xs" paddingHorizontal="$md" paddingVertical="$sm">
-              <Text flex={1} size="$bodyLarge" weight="bold" numberOfLines={1} userSelect="none">
-                {title}
-              </Text>
-              <Button
-                variant="ghost"
-                size="md"
-                circular
-                accessibilityLabel={closeLabel}
-                testID={closeTestID}
-                onPress={onClose}
-                icon={<Icon name="x" size="lg" color="$textPrimary" />}
-              />
-            </XStack>
-
-            {/* The body scrolls and the footer does not, so a long set cannot push the one control
-              that acts on all of it off the bottom of the screen.
-
-              Chrome makes a scroller with no tab-focusable children focusable itself, and the
-              rows are `role="button"` without a tabindex - so the body took focus and drew the
-              UA's ring round all of it. */}
-            {bodyIsList ? (
-              children
-            ) : (
-              <ScrollView outlineStyle="none">
-                <YStack paddingHorizontal="$md" paddingBottom="$sm">
-                  {children}
-                </YStack>
-              </ScrollView>
-            )}
-
-            {footer === undefined ? null : (
-              // A rule above it, because the body scrolls under: without one the row cut off at the
-              // scroll boundary runs straight into the footer and reads as a broken row.
-              <YStack
-                paddingHorizontal="$md"
-                paddingBottom="$sm"
-                borderTopWidth={1}
-                borderTopColor="$bordersColor"
-              >
-                {footer}
-              </YStack>
-            )}
-          </YStack>
+            {children}
+          </SheetSurface>
         </YStack>
       </Animated.View>
       {overlay}

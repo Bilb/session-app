@@ -16,7 +16,7 @@ import { createSessionStore, type SessionStore } from '@session/state'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 
-import { AttachmentSheet } from '#src/AttachmentSheet'
+import { AttachmentSheet, DetachedAttachmentSheet } from '#src/AttachmentSheet'
 import { LIST_MAX_ROWS } from '#src/AttachmentList'
 import type { ConversationUi } from '#src/conversationUi'
 import { MessageAttachments } from '#src/MessageAttachments'
@@ -166,6 +166,17 @@ describe('attachments on a bubble you sent', () => {
       />,
       { store: storeWith(shown), ui: conversation() },
     )
+    expect(colour(byId(IDS.name).querySelector('span:last-child'))).toBe('var(--textPrimary)')
+  })
+
+  it('are drawn in the same sheet on the page, out of any modal', () => {
+    const shown = message(PAPERWORK, true)
+    renderScreen(<DetachedAttachmentSheet conversationId={CONVERSATION} messageId={MESSAGE_ID} />, {
+      store: storeWith(shown),
+      ui: conversation(),
+    })
+    expect(byId(ELEMENT.conversation.attachmentSheet)).toBeTruthy()
+    expect(byId(ELEMENT.conversation.attachmentSheetList)).toBeTruthy()
     expect(colour(byId(IDS.name).querySelector('span:last-child'))).toBe('var(--textPrimary)')
   })
 })

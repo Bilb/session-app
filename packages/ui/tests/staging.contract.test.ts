@@ -38,10 +38,34 @@ describe('the staged tray', () => {
     expect(tile).toContain('testID={previewTestID}')
   })
 
-  it('edges the remove disc, so it shows on a dark picture as on a light one', () => {
+  it('draws the remove disc on the page surface with a shadow, which shows on any picture', () => {
     expect(source('StagedTile.tsx')).toMatch(
-      /backgroundColor=\{TILE_SCRIM\}\s*(\/\/[^\n]*\n\s*)?borderWidth=\{TILE_HAIRLINE_WIDTH\}\s*borderColor="\$surfaceInverted"/,
+      /backgroundColor="\$backgroundPrimary"\s+shadowColor="\$shadow"/,
     )
+  })
+
+  it('rings the remove disc itself, inside the tile, and shows its hover and press', () => {
+    const tile = source('StagedTile.tsx')
+    // The tile clips to its rounded corner, which would cut a ring drawn around the corner square.
+    expect(tile).toContain('ring={REMOVE_RING}')
+    expect(tile).toContain('offset: -((REMOVE_TARGET - REMOVE_DISC) / 2 - 2)')
+    expect(tile).toMatch(/alignItems="center"\s+justifyContent="center"\s+group="control"/)
+    expect(tile).toContain(
+      '<DiscState color="$hoverOverlay" on={hovered && !pressed} when="hover" />',
+    )
+    expect(tile).toContain('<DiscState color="$pressedOverlay" on={pressed} when="press" />')
+  })
+
+  it('fades only the ends that can still scroll, into the surface, in the reading direction', () => {
+    const tray = source('StagedTray.tsx')
+    expect(tray).toMatch(
+      /\{startFade > 0 \? \(\s*<TrayEdgeFade side="start"[^>]*opacity=\{startFade\}/,
+    )
+    expect(tray).toMatch(/\{endFade > 0 \? \(\s*<TrayEdgeFade side="end"[^>]*opacity=\{endFade\}/)
+    const fade = source('TrayEdgeFade.tsx')
+    expect(fade).toContain("logical(side === 'start' ? { insetStart: 0 } : { insetEnd: 0 })")
+    expect(fade).toContain("useTokenColor('$backgroundPrimary')")
+    expect(fade).toContain("const opaqueAtZero = (side === 'start') !== isLayoutRtl()")
   })
 
   it('says its count as words, which "3 / 32" is not', () => {
@@ -66,23 +90,28 @@ describe('the staged tray', () => {
     expect(source('StagedTray.tsx')).toMatch(/disabled=\{clearDisabled\}\s+onPress=\{onClear\}/)
     const tile = source('StagedTile.tsx')
     expect(tile).toMatch(/onPress=\{onRemove\}\s+disabled=\{removeDisabled\}/)
-    expect(tile).toMatch(/color="\$surfaceInverted"\s+opacity=\{removeDisabled \? 0\.35 : 1\}/)
+    expect(tile).toMatch(/color="\$textPrimary"\s+opacity=\{removeDisabled \? 0\.35 : 1\}/)
     expect(tile).not.toContain('$textDisabled')
   })
 
-  it('pages a right-to-left rail the way Chromium counts it', () => {
+  it('scrolls by its scrollbar, and a right-to-left rail the way Chromium counts it', () => {
     const tray = source('StagedTray.tsx')
-    expect(tray).toContain('offset: Math.abs(contentOffset.x)')
-    expect(tray).toContain('x: isLayoutRtl() ? -x : x')
-    // The buttons sit at the reading edges, not at left and right.
-    expect(tray).toContain('logical({ insetStart: 0 })')
-    expect(tray).toContain('logical({ insetEnd: 0 })')
+    expect(tray).toMatch(/horizontal\s+showsHorizontalScrollIndicator\s/)
+    expect(tray).toContain('x: isLayoutRtl() ? -startOffset : startOffset')
+    expect(tray).toContain('left: isLayoutRtl() ? -event.deltaY : event.deltaY')
   })
 })
 
 describe('a composer notice', () => {
   const notice = source('ComposerNotice.tsx')
   const announcement = source('Announcement.tsx')
+
+  it('shortens a file name in its detail as a file row does, keeping the extension', () => {
+    expect(notice).toContain('<FileName name={name} size="$label" weight="regular"')
+    expect(notice).toContain('style={{ direction: nameDirection(detail) }}')
+    // Its own direction inside, the layout's start edge outside, so it sits under the message.
+    expect(notice).toMatch(/alignSelf="flex-start"\s+maxWidth="100%"/)
+  })
 
   it('is drawn only, leaving what is said to one announcement for all of them', () => {
     expect(notice).not.toContain('role="alert"')
@@ -128,5 +157,11 @@ describe('a drop zone that is not accepting', () => {
 describe('the drop overlay', () => {
   it('outlines in the accent text, which keeps 3:1 on its tint in the light themes', () => {
     expect(source('DropOverlay.tsx')).toContain('borderColor="$accentText"')
+  })
+
+  it('wraps its words centred and clear of the outline on a narrow window', () => {
+    const overlay = source('DropOverlay.tsx')
+    expect(overlay).toContain('paddingHorizontal="$lg"')
+    expect(overlay.match(/textAlign="center"/g)).toHaveLength(2)
   })
 })

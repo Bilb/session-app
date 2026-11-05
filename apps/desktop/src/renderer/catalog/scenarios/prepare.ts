@@ -1,3 +1,5 @@
+import { requirePorts } from '@session/app'
+import { isDisplayableImage } from '@session/basic-types'
 import type { ConversationId, Message } from '@session/client'
 import { transferKey, type SessionStore } from '@session/state'
 
@@ -26,6 +28,9 @@ const PREPARE: Record<string, 'downloaded' | 'downloadFailed' | Running> = {
   'One picture as a list, caught downloading': { doneBytes: 40, totalBytes: 100 },
 }
 
+/** Ours, so its uploaded pictures are cached and thumbnailed, as a staged file's picture is. */
+const PICTURES_FROM = 'File 31 of 32 failed'
+
 const POLL_MS = 50
 
 async function until(ready: () => boolean): Promise<void> {
@@ -36,6 +41,8 @@ async function until(ready: () => boolean): Promise<void> {
 export interface Scenario {
   conversationId: ConversationId
   messageIds: Map<string, number>
+  /** Thumbnails of dev photographs that draw without a download, for files the catalog stages. */
+  pictures: string[]
 }
 
 export async function prepare(session: SessionStore): Promise<Scenario> {
@@ -83,8 +90,19 @@ export async function prepare(session: SessionStore): Promise<Scenario> {
     }))
   }
 
+  const { media } = requirePorts()
+  const source = byBody(PICTURES_FROM)
+  const pictures = source.attachments.flatMap(({ index, uploaded, contentType }) => {
+    const url =
+      uploaded && isDisplayableImage(contentType)
+        ? media.thumbnailUrlFor({ messageId: source.id, index })
+        : null
+    return url === null ? [] : [url]
+  })
+
   return {
     conversationId,
     messageIds: new Map(messages.map((message) => [message.body, message.id])),
+    pictures,
   }
 }

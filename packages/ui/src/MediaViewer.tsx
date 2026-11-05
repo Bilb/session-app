@@ -44,7 +44,11 @@ export interface MediaViewerProps {
   previousTestID: ElementId
   nextTestID: ElementId
   imageTestID: ElementId
+  /** On the line saying an item is being prepared. */
+  preparingTestID?: ElementId | undefined
 }
+
+export type MediaViewerBodyProps = Omit<MediaViewerProps, 'open'>
 
 /**
  * Grows a control drawn at `$xl` to Android's 48 target, which clears Apple's 44. Touch only, and
@@ -102,12 +106,8 @@ function Control({
 const HEADER_HEIGHT = isWeb ? SIZE_SCALE.xl + SPACING.sm : SIZE_SCALE['3xl']
 
 /**
- * One picture, full screen, over whatever was on screen.
- *
- * **A layer rather than a route.** It covers the conversation instead of navigating away, so
- * dismissing it restores the transcript's scroll position for nothing and anything playing above
- * it keeps going. In react-native's `Modal` for the reason `Modal` itself is: a child that
- * overflows its parent is clipped on Android, and this one is the size of the window.
+ * The viewer's chrome, picture and chevrons, filling its parent. `MediaViewer` shows it over the
+ * window; on its own it is what a page draws a viewer state in.
  *
  * Deliberately the least ambitious thing that makes a gallery mean something. **No zoom of any
  * kind** - a pinch needs a gesture arbiter between the pager and the image, and getting that wrong
@@ -117,8 +117,7 @@ const HEADER_HEIGHT = isWeb ? SIZE_SCALE.xl + SPACING.sm : SIZE_SCALE['3xl']
  * media history, and they stop at the ends rather than wrapping - wrapping hides how many there
  * are.
  */
-export function MediaViewer({
-  open,
+export function MediaViewerBody({
   items,
   index,
   onIndex,
@@ -138,7 +137,8 @@ export function MediaViewer({
   previousTestID,
   nextTestID,
   imageTestID,
-}: MediaViewerProps) {
+  preparingTestID,
+}: MediaViewerBodyProps) {
   const { width, height } = useWindowSize()
   // The box the picture gets, measured, since the safe area's insets are the platform's to know.
   const [box, setBox] = useState({ width, height: Math.max(height - HEADER_HEIGHT, 0) })
@@ -148,116 +148,129 @@ export function MediaViewer({
   const [failedUris, setFailedUris] = useState<readonly string[]>([])
   const drawn = current === undefined ? null : drawnUri(current, failedUris)
   const failed = current?.failed === true || (current?.uri != null && drawn === null)
-  const close = (): void => {
-    setFailedUris([])
-    onClose()
-  }
-
   return (
-    <NativeModal visible={open} transparent={false} animationType="fade" onRequestClose={close}>
-      <YStack flex={1} backgroundColor="$backgroundPrimary" testID={testID}>
-        {/* A modal is drawn edge to edge on Android, under the status bar where nothing can be
-            tapped, so the chrome keeps clear of it like any screen. */}
-        <SafeArea>
-          <YStack position="relative" flex={1}>
-            {/* Along the top, and nothing along the bottom: the bottom edge is where a thumb
-                rests. */}
-            <XStack height={HEADER_HEIGHT} alignItems="center" gap="$xs" paddingHorizontal="$sm">
-              <Control icon="x" label={closeLabel} onPress={close} testID={closeTestID} />
-              <Text size="$label" color="$textSecondary" flex={1}>
-                {positionLabel}
-              </Text>
-              <Control
-                icon="download"
-                label={exportLabel}
-                onPress={onExport}
-                testID={exportTestID}
-              />
-            </XStack>
+    <YStack flex={1} backgroundColor="$backgroundPrimary" testID={testID}>
+      {/* A modal is drawn edge to edge on Android, under the status bar where nothing can be
+          tapped, so the chrome keeps clear of it like any screen. */}
+      <SafeArea>
+        <YStack position="relative" flex={1}>
+          {/* Along the top, and nothing along the bottom: the bottom edge is where a thumb
+              rests. */}
+          <XStack height={HEADER_HEIGHT} alignItems="center" gap="$xs" paddingHorizontal="$sm">
+            <Control icon="x" label={closeLabel} onPress={onClose} testID={closeTestID} />
+            <Text size="$label" color="$textSecondary" flex={1}>
+              {positionLabel}
+            </Text>
+            <Control icon="download" label={exportLabel} onPress={onExport} testID={exportTestID} />
+          </XStack>
 
-            {/* The chevrons are laid over this box rather than the whole screen, so they centre on
-                the picture and not on a height that includes the header. */}
-            <YStack
-              position="relative"
-              flex={1}
-              alignItems="center"
-              justifyContent="center"
-              onLayout={(event) => {
-                const measured = event.nativeEvent.layout
-                setBox({ width: measured.width, height: measured.height })
-              }}
-            >
-              {drawn === null && current?.preparing != null ? (
-                <>
-                  <Text size="$body" color="$textSecondary">
-                    {preparingLabel}
-                  </Text>
-                  {/* Out of sight: loading it is the ask, and what it draws is not this. */}
-                  <YStack position="absolute" width={1} height={1} opacity={0} aria-hidden>
-                    <Image uri={current.preparing} width={1} height={1} fit="contain" />
-                  </YStack>
-                </>
-              ) : drawn === null ? (
-                <Text size="$body" color="$textSecondary">
-                  {failed ? failedLabel : unavailableLabel}
+          {/* The chevrons are laid over this box rather than the whole screen, so they centre on
+              the picture and not on a height that includes the header. */}
+          <YStack
+            position="relative"
+            flex={1}
+            alignItems="center"
+            justifyContent="center"
+            onLayout={(event) => {
+              const measured = event.nativeEvent.layout
+              setBox({ width: measured.width, height: measured.height })
+            }}
+          >
+            {drawn === null && current?.preparing != null ? (
+              <>
+                <Text size="$body" color="$textSecondary" testID={preparingTestID}>
+                  {preparingLabel}
                 </Text>
-              ) : (
-                // The box below the header, not the window: sized to the window it overflows the
-                // column it is in, and what gets squeezed out is the chrome above it. `contain`
-                // because this is somebody being shown their own picture - a crop here would be
-                // hiding part of the thing they opened.
-                <Image
-                  uri={drawn}
-                  width={box.width}
-                  height={box.height}
-                  fit="contain"
-                  testID={imageTestID}
-                  onError={() => {
-                    setFailedUris((was) => [...was, drawn])
+                {/* Out of sight: loading it is the ask, and what it draws is not this. */}
+                <YStack position="absolute" width={1} height={1} opacity={0} aria-hidden>
+                  <Image uri={current.preparing} width={1} height={1} fit="contain" />
+                </YStack>
+              </>
+            ) : drawn === null ? (
+              <Text size="$body" color="$textSecondary">
+                {failed ? failedLabel : unavailableLabel}
+              </Text>
+            ) : (
+              // The box below the header, not the window: sized to the window it overflows the
+              // column it is in, and what gets squeezed out is the chrome above it. `contain`
+              // because this is somebody being shown their own picture - a crop here would be
+              // hiding part of the thing they opened.
+              <Image
+                uri={drawn}
+                width={box.width}
+                height={box.height}
+                fit="contain"
+                testID={imageTestID}
+                onError={() => {
+                  setFailedUris((was) => [...was, drawn])
+                }}
+              />
+            )}
+            {items.length < 2 ? null : (
+              <XStack
+                position="absolute"
+                top={0}
+                bottom={0}
+                left={0}
+                right={0}
+                alignItems="center"
+                justifyContent="space-between"
+                paddingHorizontal="$xs"
+                pointerEvents="box-none"
+              >
+                {/* The glyph follows reading order, the index does not: previous is always
+                index - 1, and in a mirrored layout it is the chevron on the right that draws
+                it. */}
+                <Control
+                  icon={backChevron()}
+                  label={previousLabel}
+                  disabled={index <= 0}
+                  overMedia
+                  testID={previousTestID}
+                  onPress={() => {
+                    onIndex(index - 1)
                   }}
                 />
-              )}
-              {items.length < 2 ? null : (
-                <XStack
-                  position="absolute"
-                  top={0}
-                  bottom={0}
-                  left={0}
-                  right={0}
-                  alignItems="center"
-                  justifyContent="space-between"
-                  paddingHorizontal="$xs"
-                  pointerEvents="box-none"
-                >
-                  {/* The glyph follows reading order, the index does not: previous is always
-                  index - 1, and in a mirrored layout it is the chevron on the right that draws
-                  it. */}
-                  <Control
-                    icon={backChevron()}
-                    label={previousLabel}
-                    disabled={index <= 0}
-                    overMedia
-                    testID={previousTestID}
-                    onPress={() => {
-                      onIndex(index - 1)
-                    }}
-                  />
-                  <Control
-                    icon={forwardChevron()}
-                    label={nextLabel}
-                    disabled={index >= items.length - 1}
-                    overMedia
-                    testID={nextTestID}
-                    onPress={() => {
-                      onIndex(index + 1)
-                    }}
-                  />
-                </XStack>
-              )}
-            </YStack>
+                <Control
+                  icon={forwardChevron()}
+                  label={nextLabel}
+                  disabled={index >= items.length - 1}
+                  overMedia
+                  testID={nextTestID}
+                  onPress={() => {
+                    onIndex(index + 1)
+                  }}
+                />
+              </XStack>
+            )}
           </YStack>
-        </SafeArea>
-      </YStack>
+        </YStack>
+      </SafeArea>
+    </YStack>
+  )
+}
+
+/**
+ * One picture, full screen, over whatever was on screen.
+ *
+ * **A layer rather than a route.** It covers the conversation instead of navigating away, so
+ * dismissing it restores the transcript's scroll position for nothing and anything playing above
+ * it keeps going. In react-native's `Modal` for the reason `Modal` itself is: a child that
+ * overflows its parent is clipped on Android, and this one is the size of the window.
+ *
+ * Each opening draws a fresh body, so a picture that failed is tried again. The body stays mounted
+ * once closed: the modal fades out what it holds, and an empty one fades out its own white.
+ */
+export function MediaViewer({ open, onClose, ...body }: MediaViewerProps) {
+  const [opening, setOpening] = useState(0)
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) setOpening((count) => count + 1)
+  }
+  return (
+    <NativeModal visible={open} transparent={false} animationType="fade" onRequestClose={onClose}>
+      <MediaViewerBody key={opening} {...body} onClose={onClose} />
     </NativeModal>
   )
 }

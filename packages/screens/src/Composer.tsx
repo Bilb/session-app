@@ -19,19 +19,20 @@ import { useRef, useState } from 'react'
 import { AttachMenu } from './AttachMenu'
 import { draftAfterSend, followSent } from './draftAfterSend'
 import { refusalAnnouncement, refusalNotices } from './refusalNotices'
-import { isFull, sizeOf } from './staging'
-import type { StagingState } from './useStaging'
+import { isFull, sizeOf, type StagingRefusal } from './staging'
+import { NOTHING_REFUSED, type StagingState } from './useStaging'
 
 function Notices({ staging }: { staging: StagingState }) {
   const notices = refusalNotices(staging.refused)
   return (
     <>
       <Announcement text={refusalAnnouncement(notices)} announceKey={staging.refusal} />
-      {notices.map(({ kind, id, message, detail }) => (
+      {notices.map(({ kind, id, message, detail, detailName }) => (
         <ComposerNotice
           key={kind}
           message={message}
           detail={detail}
+          detailName={detailName}
           dismissLabel={tr('close')}
           onDismiss={() => {
             staging.dismiss(kind)
@@ -123,13 +124,9 @@ export function Composer({
           clearDisabled={sending}
           addLabel={tr('attachmentsAdd')}
           onAdd={full || sending ? undefined : attach}
-          previousLabel={PENDING_COPY.previous}
-          nextLabel={tr('next')}
           testID={ELEMENT.conversation.stagedTray}
           clearTestID={ELEMENT.conversation.stagedClear}
           addTestID={ELEMENT.conversation.stagedAdd}
-          previousTestID={ELEMENT.conversation.stagedPrevious}
-          nextTestID={ELEMENT.conversation.stagedNext}
         >
           {staging.files.map((file, index) => {
             const size = sizeOf(file)
@@ -203,4 +200,44 @@ export function Composer({
       ) : null}
     </YStack>
   )
+}
+
+/**
+ * What a detached composer holds: staged files and what was refused. Never a send in flight, which
+ * lasts only until libsession stores the message and is not a state anybody sees.
+ */
+export interface ComposerSeed {
+  files: PickedFile[]
+  refused?: Partial<StagingRefusal> | undefined
+}
+
+const ignore = () => {}
+
+/** A send that never answers, so pressing Send in the catalog changes nothing. */
+const neverAnswered = () => new Promise<void>(ignore)
+
+function seededStaging({ files, refused }: ComposerSeed): StagingState {
+  return {
+    files,
+    refused: { ...NOTHING_REFUSED, ...refused },
+    refusal: 0,
+    sending: false,
+    planning: false,
+    beginSend: ignore,
+    add: () => Promise.resolve(),
+    take: () => Promise.resolve(),
+    remove: ignore,
+    clear: ignore,
+    handOff: ignore,
+    refuseSend: ignore,
+    dismiss: ignore,
+  }
+}
+
+/**
+ * The composer holding what it is given outright rather than picked, which nothing changes and
+ * nothing sends. For the component catalog, as `DetachedMessages` is for rows.
+ */
+export function DetachedComposer({ seed }: { seed: ComposerSeed }) {
+  return <Composer staging={seededStaging(seed)} onSend={neverAnswered} />
 }
