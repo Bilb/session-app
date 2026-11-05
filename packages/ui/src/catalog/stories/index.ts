@@ -7,6 +7,7 @@ import { messageFrameHighlight } from './messageFrame'
 import { avatar, progressRing, radio } from './indicators'
 import { messageQuote, messageQuoteAuthors, messageQuoteFiles, messageQuotePictures } from './quote'
 import { scrollToLatest } from './scrollToLatest'
+import { messageQuoteReplies } from './replies'
 import { settingsRow } from './settingsRow'
 import { composerNotice, dropOverlay, stagedTile, stagedTray } from './staging'
 import { swipeToReply } from './swipeToReply'
@@ -43,4 +44,5 @@ export const STORIES: readonly AnyStory[] = [
   messageFrameHighlight,
   scrollToLatest,
   swipeToReply,
+  messageQuoteReplies,
 ]

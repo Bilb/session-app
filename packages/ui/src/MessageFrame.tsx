@@ -6,6 +6,8 @@ import { LandingHighlight } from './LandingHighlight'
 
 /** The frame's inset at each side, so content of a fixed width can be given room for it. */
 export const MESSAGE_FRAME_INSET_PX = SPACING.md
+/** The frame's inset above and below its content. */
+export const MESSAGE_FRAME_INSET_BLOCK_PX = SPACING.sm
 
 export interface MessageFrameProps {
   /** Ours, on the accent; otherwise theirs, on the incoming surface. */
@@ -45,12 +47,17 @@ export function MessageFrame({
       backgroundColor={outgoing ? '$primaryColor' : '$messageBubbleIncomingBg'}
       borderRadius="$lg"
       paddingHorizontal={MESSAGE_FRAME_INSET_PX}
-      paddingVertical="$sm"
+      paddingVertical={MESSAGE_FRAME_INSET_BLOCK_PX}
       gap="$2xs"
       testID={testID}
     >
       {highlightSerial === undefined && !highlightHeld ? null : (
-        <LandingHighlight serial={highlightSerial} still={highlightHeld} radiusPx={RADII.lg} />
+        <LandingHighlight
+          serial={highlightSerial}
+          still={highlightHeld}
+          outgoing={outgoing}
+          radiusPx={RADII.lg}
+        />
       )}
       {children}
     </YStack>

@@ -6,7 +6,7 @@ import { Button } from './Button'
 import { Icon } from './Icon'
 import { inkFor } from './ink'
 import { QuoteLines } from './MessageQuote'
-import { quotePreview, type QuoteLabels, type QuotedMessage } from './quotePreview'
+import { isQuotable, quotePreview, type QuoteLabels, type QuotedMessage } from './quotePreview'
 import { QuoteThumb } from './QuoteThumb'
 
 /** Smaller than the quote's square: the bar holds one line of summary, not two. */
@@ -20,7 +20,10 @@ export interface ComposerReplyProps {
   replyingToLabel: string
   /** Already worded: the nickname, display name or short account id, or "You". */
   author: string
-  /** Absent: the message being answered is no longer here. The send still goes. */
+  /**
+   * Absent or deleted: the message being answered is gone, and the bar with it. The text being
+   * written is the composer's, and stays.
+   */
   message: QuotedMessage | undefined
   labels: QuoteLabels
   onClose: () => void
@@ -46,6 +49,7 @@ export function ComposerReply({
   closeTestID,
   thumbnailTestID,
 }: ComposerReplyProps) {
+  if (!isQuotable(message)) return null
   const preview = quotePreview(message, labels)
   return (
     <XStack
@@ -65,14 +69,16 @@ export function ComposerReply({
           secondary={inkFor('secondary', false)}
           stripe="$primaryColor"
           summaryLines={1}
+          thumb={
+            <QuoteThumb
+              visual={preview.visual}
+              sidePx={COMPOSER_REPLY_THUMB_SIDE_PX}
+              ink="$textPrimary"
+              testID={thumbnailTestID}
+            />
+          }
         />
       </XStack>
-      <QuoteThumb
-        visual={preview.visual}
-        sidePx={COMPOSER_REPLY_THUMB_SIDE_PX}
-        ink="$textPrimary"
-        testID={thumbnailTestID}
-      />
       <Button
         variant="ghost"
         size="sm"

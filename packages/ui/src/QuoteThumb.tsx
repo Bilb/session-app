@@ -16,8 +16,8 @@ const BADGE_RADIUS_PX = 4
 export const QUOTE_GLYPH_TILE_OPACITY = 0.1
 
 /**
- * The trailing square of a quote: its picture, through the same tile the album draws (thumbnail,
- * then ThumbHash, then the flat tile), or a glyph on a plain tile.
+ * A quote's square, after the stripe: its picture, through the same tile the album draws
+ * (thumbnail, then ThumbHash, then the flat tile), or a glyph on a plain tile.
  *
  * `busy` replaces what is there with a spinner, so the quote keeps its size while it pages.
  */
@@ -84,29 +84,6 @@ export function QuoteThumb({
         thumbhash={visual.thumbhash}
         testID={testID}
       />
-      {visual.play === true ? (
-        <YStack
-          position="absolute"
-          top={0}
-          bottom={0}
-          left={0}
-          right={0}
-          alignItems="center"
-          justifyContent="center"
-        >
-          <YStack
-            width="$md"
-            height="$md"
-            borderRadius="$full"
-            backgroundColor={TILE_SCRIM}
-            alignItems="center"
-            justifyContent="center"
-          >
-            {/* Light in every theme: it sits on a fixed darkening, not a surface. */}
-            <Icon name="play" size="xs" color="$surfaceInverted" />
-          </YStack>
-        </YStack>
-      ) : null}
       {visual.badge === undefined ? null : (
         <YStack
           position="absolute"

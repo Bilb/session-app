@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  isQuotable,
   quoteAccessibleName,
   quotePreview,
   type QuotedAttachment,
@@ -15,7 +16,6 @@ const LABELS: QuoteLabels = {
   audio: 'Audio',
   voiceMessage: 'Voice Message',
   document: 'Document',
-  notFound: 'Original message not found',
   andMore: (count) => `+${String(count)}`,
 }
 
@@ -28,7 +28,6 @@ function quoted(body: string, attachments: QuotedAttachment[] = []): QuotedMessa
 describe('what a quote says', () => {
   it('is the body, on two lines, for text', () => {
     expect(quotePreview(quoted('Are we still on?'), LABELS)).toMatchObject({
-      found: true,
       kind: 'text',
       text: 'Are we still on?',
       lines: 2,
@@ -77,19 +76,23 @@ describe('what a quote says', () => {
     })
   })
 
+  it('folds line breaks and runs of spaces into one space', () => {
+    expect(quotePreview(quoted('Hey\n this is audric\n\n  how are you?'), LABELS).text).toBe(
+      'Hey this is audric how are you?',
+    )
+  })
+})
+
+describe('whether a reply draws a quote', () => {
+  it('does for an original held here', () => {
+    expect(isQuotable(quoted('Hi'))).toBe(true)
+  })
+
   it.each([
     ['held nowhere', undefined],
     ['deleted', { ...quoted('Gone'), deleted: true }],
-  ])('is "not found", with nothing beside it, for an original %s', (_why, message) => {
-    expect(quotePreview(message, LABELS)).toEqual({
-      found: false,
-      kind: 'text',
-      text: 'Original message not found',
-      isFileName: false,
-      more: null,
-      lines: 1,
-      visual: null,
-    })
+  ])('does not for an original %s', (_why, message) => {
+    expect(isQuotable(message)).toBe(false)
   })
 })
 
@@ -116,15 +119,12 @@ describe('what a quote shows beside its words', () => {
     expect(quotePreview(quoted('', [gif]), LABELS).visual).toMatchObject({ badge: 'GIF' })
   })
 
-  it('draws a video’s glyph until libsession has a still of it, then the still with play', () => {
-    const video = { contentType: 'video/mp4', voiceMessage: false }
+  it('draws a video’s glyph, since nothing makes a still of one yet', () => {
+    const video = { contentType: 'video/mp4', voiceMessage: false, uri: 'thumb://1' }
     expect(quotePreview(quoted('', [video]), LABELS).visual).toEqual({
       type: 'glyph',
       icon: 'video',
     })
-    expect(quotePreview(quoted('', [{ ...video, uri: 'thumb://1' }]), LABELS).visual).toMatchObject(
-      { type: 'picture', play: true },
-    )
   })
 
   it.each([
@@ -158,11 +158,5 @@ describe('the name a screen reader gives a quote', () => {
     expect(
       quoteAccessibleName('Bob', quotePreview(quoted('Beach day', [JPEG, JPEG]), LABELS)),
     ).toBe('Bob: Beach day +1')
-  })
-
-  it('says not found under the author, who is always known', () => {
-    expect(quoteAccessibleName('Bob', quotePreview(undefined, LABELS))).toBe(
-      'Bob: Original message not found',
-    )
   })
 })

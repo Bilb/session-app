@@ -16,7 +16,6 @@ const LABELS: QuoteLabels = {
   audio: 'Audio',
   voiceMessage: 'Voice Message',
   document: 'Document',
-  notFound: 'Original message not found',
   andMore: (count) => `+${String(count)}`,
 }
 
@@ -55,13 +54,12 @@ describe('a quote, as a screen reader reaches it on the desktop', () => {
     )
   })
 
-  it('is no button when the original is not found', () => {
-    renderInUI(<MessageQuote {...quote({ message: undefined })} />)
-    expect(nodeOf(MESSAGE_QUOTE_ID)).toMatchObject(
-      messageQuote({ name: 'Bob: Original message not found', hint: null, pressable: false })
-        .desktop!,
-    )
-    expect(byId(MESSAGE_QUOTE_ID).textContent).toBe('BobOriginal message not found')
+  it.each([
+    ['held nowhere', undefined],
+    ['deleted', { id: 3, outgoing: false, body: 'Gone', attachments: [], deleted: true }],
+  ])('is not drawn at all for an original %s', (_why, message) => {
+    renderInUI(<MessageQuote {...quote({ message })} />)
+    expect(nodeOf(MESSAGE_QUOTE_ID)).toBeNull()
   })
 
   it('is no button where nothing is offered a press', () => {
@@ -79,13 +77,5 @@ describe('a press on a quote', () => {
     byId(MESSAGE_QUOTE_ID).focus()
     await user.keyboard('{Enter}')
     expect(onPress).toHaveBeenCalledTimes(2)
-  })
-
-  it('still reaches the caller on one not found, for the toast that says so', async () => {
-    const user = userEvent.setup()
-    const onPress = vi.fn()
-    renderInUI(<MessageQuote {...quote({ onPress, message: undefined })} />)
-    await user.click(byId(MESSAGE_QUOTE_ID))
-    expect(onPress).toHaveBeenCalledTimes(1)
   })
 })

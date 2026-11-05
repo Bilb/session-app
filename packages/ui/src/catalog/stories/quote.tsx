@@ -16,7 +16,6 @@ export const QUOTE_LABELS: QuoteLabels = {
   audio: 'Audio',
   voiceMessage: 'Voice Message',
   document: 'Document',
-  notFound: 'Original message not found',
   andMore: (count) => `+${String(count)}`,
 }
 
@@ -28,20 +27,17 @@ type CatalogAttachment = Omit<QuotedAttachment, 'uri' | 'thumbhash'> & {
 
 export interface QuoteRow {
   author: string
-  /** Absent: the original is not on this device. */
-  quoted?:
-    | (Omit<QuotedMessage, 'id' | 'outgoing' | 'attachments'> & {
-        attachments?: readonly CatalogAttachment[] | undefined
-      })
-    | undefined
+  quoted: Omit<QuotedMessage, 'id' | 'outgoing' | 'attachments' | 'deleted'> & {
+    attachments?: readonly CatalogAttachment[] | undefined
+  }
   reply: string
   busy?: boolean | undefined
 }
 
 const JPEG = { contentType: 'image/jpeg', voiceMessage: false } as const
 
-function useQuoted(row: QuoteRow): QuotedMessage | undefined {
-  const attachments = row.quoted?.attachments ?? []
+function useQuoted(row: QuoteRow): QuotedMessage {
+  const attachments = row.quoted.attachments ?? []
   // A story draws at most two pictures per quote, so the hooks are called a fixed number of times.
   const pictures = [
     useCatalogPicture(attachments[0]?.picture),
@@ -51,12 +47,10 @@ function useQuoted(row: QuoteRow): QuotedMessage | undefined {
     useCatalogPlaceholder(attachments[0]?.placeholder),
     useCatalogPlaceholder(attachments[1]?.placeholder),
   ]
-  if (row.quoted === undefined) return undefined
   return {
     id: 1,
     outgoing: false,
     body: row.quoted.body,
-    deleted: row.quoted.deleted,
     attachments: attachments.map(
       ({ picture: _picture, placeholder: _placeholder, ...rest }, at) => ({
         ...rest,
@@ -117,17 +111,16 @@ export const messageQuote = defineStory<QuoteRow>({
     text: { author: 'Bob', quoted: { body: 'Are we still on for Thursday?' }, reply: 'Yes, 7pm' },
     longText: { author: 'You', quoted: { body: LONG_BODY }, reply: 'Skip that one' },
     replyToReply: { author: 'Bob', quoted: { body: 'Skip that one' }, reply: 'Agreed' },
-    notFound: { author: 'Bob', reply: 'What did it say?' },
-    deleted: {
-      author: 'Bob',
-      quoted: { body: 'Gone now', deleted: true },
-      reply: 'What did it say?',
-    },
     busy: {
       author: 'Bob',
       quoted: { body: 'Are we still on for Thursday?' },
       reply: 'Yes, 7pm',
       busy: true,
+    },
+    lineBreaks: {
+      author: 'Bob',
+      quoted: { body: 'Hey\n this is audric\n\nhow are you?' },
+      reply: 'Hi!',
     },
   },
   render: (row) => <Pair {...row} />,
@@ -177,14 +170,6 @@ export const messageQuotePictures = defineStory<QuoteRow>({
     video: {
       author: 'Bob',
       quoted: { body: '', attachments: [{ contentType: 'video/mp4', voiceMessage: false }] },
-      reply: 'Watching now',
-    },
-    videoStill: {
-      author: 'Bob',
-      quoted: {
-        body: '',
-        attachments: [{ contentType: 'video/mp4', voiceMessage: false, picture: 1 }],
-      },
       reply: 'Watching now',
     },
     mixed: {

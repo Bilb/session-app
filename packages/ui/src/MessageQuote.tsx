@@ -1,13 +1,16 @@
 import type { ReactNode } from 'react'
-import { isWeb, XStack, YStack } from 'tamagui'
+import { SPACING } from '@session/theme-tokens'
+import { XStack, YStack } from 'tamagui'
 
 import type { ElementId } from '@session/test-ids'
 
 import { FileName } from './FileName'
 import { ON_ACCENT_SECONDARY_OPACITY, type inkFor } from './ink'
+import { MESSAGE_FRAME_INSET_BLOCK_PX, MESSAGE_FRAME_INSET_PX } from './MessageFrame'
 import { PressArea } from './PressArea'
 import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import {
+  isQuotable,
   quoteAccessibleName,
   quotePreview,
   type QuoteInk,
@@ -22,16 +25,26 @@ import type { WithTestID } from './with'
 
 /**
  * The quote's metrics, measured off the plan's mock rather than taken from the ladder: the
- * trailing square is the 44 pt target on its own, so the quote is never shorter than one.
+ * square is the 44 pt target on its own, so the quote is never shorter than one.
  */
 export const QUOTE_THUMB_SIDE_PX = 44
 const QUOTE_INSET_PX = 6
 const STRIPE_WIDTH_PX = 3
 
+/**
+ * How far the quote sits from its bubble's edges, closer than the bubble's own text: it heads
+ * the bubble, as the legacy clients draw it, rather than sitting inside its padding.
+ */
+const QUOTE_EDGE_PX = SPACING['2xs']
+const QUOTE_HEAD = {
+  marginHorizontal: QUOTE_EDGE_PX - MESSAGE_FRAME_INSET_PX,
+  marginTop: QUOTE_EDGE_PX - MESSAGE_FRAME_INSET_BLOCK_PX,
+} as const
+
 /** How far a quote tints its bubble towards the bubble's ink, which works in either polarity. */
 const QUOTE_TINT_OPACITY = { incoming: 0.07, outgoing: 0.1 } as const
 
-/** The stripe, the author and the summary, beside the trailing square: what the bar draws too. */
+/** The stripe, the square after it, the author and the summary: what the bar draws too. */
 export function QuoteLines({
   heading,
   preview,
@@ -39,6 +52,7 @@ export function QuoteLines({
   secondary,
   stripe,
   summaryLines,
+  thumb,
 }: {
   /** The author, or the bar's "Replying to" with the author. */
   heading: string
@@ -48,10 +62,13 @@ export function QuoteLines({
   stripe: '$onAccent' | '$primaryColor'
   /** The quote wraps a body to two lines; the composer's bar holds every summary to one. */
   summaryLines: 1 | 2
+  /** The picture or glyph, between the stripe and the words. */
+  thumb: ReactNode
 }) {
   return (
     <>
       <YStack width={STRIPE_WIDTH_PX} borderRadius="$full" backgroundColor={stripe} />
+      {thumb}
       <YStack flex={1} minWidth={0} justifyContent="center">
         <Text size="$label" weight="semibold" color={ink} numberOfLines={1}>
           {heading}
@@ -81,21 +98,18 @@ export function QuoteLines({
 export type MessageQuoteProps = WithTestID & {
   /** Already worded: the nickname, display name or short account id, or "You". */
   author: string
-  /** Absent: the reply points at a message this device does not hold. */
+  /** Absent or deleted: the original is not here, and nothing is drawn. */
   message: QuotedMessage | undefined
   labels: QuoteLabels
   /** Drawn on a bubble you sent. */
   onAccent: boolean
-  /**
-   * Jumps to the original. A quote of one not found is no button, but a pointer or a tap still
-   * calls this, for the toast that says so.
-   */
+  /** Jumps to the original. Absent, the quote is no button. */
   onPress?: (() => void) | undefined
   /** Already worded, for what a press does, after the name. */
   hint?: string | undefined
   /** The original is being read in. */
   busy?: boolean | undefined
-  /** Addresses the picture in the trailing square, so a test can ask whether it arrived. */
+  /** Addresses the picture in the square, so a test can ask whether it arrived. */
   thumbnailTestID?: ElementId | undefined
 }
 
@@ -148,21 +162,24 @@ function QuoteBody({
         secondary={{ color: ink, opacity: ON_ACCENT_SECONDARY_OPACITY }}
         stripe={onAccent ? '$onAccent' : '$primaryColor'}
         summaryLines={2}
-      />
-      <QuoteThumb
-        visual={preview.visual}
-        sidePx={QUOTE_THUMB_SIDE_PX}
-        ink={ink}
-        busy={busy}
-        testID={thumbnailTestID}
+        thumb={
+          <QuoteThumb
+            visual={preview.visual}
+            sidePx={QUOTE_THUMB_SIDE_PX}
+            ink={ink}
+            busy={busy}
+            testID={thumbnailTestID}
+          />
+        }
       />
     </XStack>
   )
 }
 
 /**
- * The message a reply quotes, at the top of the reply's bubble: one press target that jumps to
- * the original, named "{author}: {summary}" for a screen reader, the picture's words included.
+ * The message a reply quotes, heading the reply's bubble: one press target that jumps to the
+ * original, named "{author}: {summary}" for a screen reader, the picture's words included. A reply
+ * whose original is not here draws no quote at all.
  */
 export function MessageQuote({
   author,
@@ -175,15 +192,22 @@ export function MessageQuote({
   thumbnailTestID,
   testID,
 }: MessageQuoteProps) {
+  if (!isQuotable(message)) return null
   const preview = quotePreview(message, labels)
-  const name = quoteAccessibleName(author, preview)
   const shared = { author, preview, onAccent, busy, thumbnailTestID }
 
-  if (preview.found && onPress !== undefined)
+  if (onPress === undefined)
     return (
+      <YStack {...QUOTE_HEAD} testID={testID}>
+        <QuoteBody {...shared} pressable={false} />
+      </YStack>
+    )
+
+  return (
+    <YStack {...QUOTE_HEAD}>
       <PressArea
         onPress={onPress}
-        accessibilityLabel={name}
+        accessibilityLabel={quoteAccessibleName(author, preview)}
         accessibilityHint={hint}
         busy={busy}
         ring={{ onAccent, offset: 2, radius: '$sm' }}
@@ -191,16 +215,6 @@ export function MessageQuote({
       >
         {(pressed) => <QuoteBody {...shared} pressable pressed={pressed} />}
       </PressArea>
-    )
-
-  return (
-    <YStack
-      onPress={onPress}
-      // One element on native, as the button is; on the web its words are read where they stand.
-      {...(isWeb ? {} : { accessible: true, 'aria-label': name })}
-      testID={testID}
-    >
-      <QuoteBody {...shared} pressable={false} />
     </YStack>
   )
 }

@@ -27,7 +27,7 @@ export interface QuotedMessage {
   outgoing: boolean
   body: string
   attachments: readonly QuotedAttachment[]
-  /** Deleted here or everywhere; drawn as not found, since nothing is left to show. */
+  /** Deleted here or everywhere: the reply then draws no quote, as for one never held. */
   deleted?: boolean | undefined
 }
 
@@ -39,7 +39,6 @@ export interface QuoteLabels {
   audio: string
   voiceMessage: string
   document: string
-  notFound: string
   /** `andMore`: "+4". */
   andMore: (count: number) => string
 }
@@ -49,20 +48,17 @@ export type QuoteInk = '$onAccent' | '$messageBubbleIncomingText' | '$textPrimar
 
 export type QuoteKind = 'text' | 'image' | 'gif' | 'video' | 'voice' | 'audio' | 'file'
 
-/** What sits on the trailing side: a picture, a glyph on a plain tile, or nothing. */
+/** What sits after the stripe: a picture, a glyph on a plain tile, or nothing. */
 export type QuoteVisual =
   | (WithMediaUri &
       WithMediaThumbhash & {
         type: 'picture'
         /** Over the picture's corner: the album's "+4", or "GIF". */
         badge?: string | undefined
-        /** A video's still, which carries the play glyph. */
-        play?: boolean | undefined
       })
   | { type: 'glyph'; icon: IconName }
 
 export interface QuotePreview {
-  found: boolean
   kind: QuoteKind
   /** The body, the kind's label, or a file's name. */
   text: string
@@ -72,7 +68,7 @@ export interface QuotePreview {
    * The rest of a message's attachments, "+4": over an album's picture, or after a file's name.
    */
   more: string | null
-  /** The body wraps to two lines; a label or a name takes one. */
+  /** The body, line breaks folded into spaces, wraps to two lines; a label or a name takes one. */
   lines: 1 | 2
   visual: QuoteVisual | null
 }
@@ -104,11 +100,9 @@ function visualOf(
       return { ...picture, badge: more ?? undefined }
     case 'gif':
       return { ...picture, badge: more ?? labels.gif }
-    // No still exists until libsession makes one, so a video without a thumbnail is its glyph.
+    // Nothing makes a still of a video yet, so a video is its glyph.
     case 'video':
-      return hasPicture(first)
-        ? { ...picture, badge: more ?? undefined, play: true }
-        : { type: 'glyph', icon: 'video' }
+      return { type: 'glyph', icon: 'video' }
     case 'voice':
       return { type: 'glyph', icon: 'mic' }
     case 'audio':
@@ -118,40 +112,28 @@ function visualOf(
   }
 }
 
-/** What a quote of `message` says and shows. Absent is a reference we hold no message for. */
-export function quotePreview(
-  message: QuotedMessage | undefined,
-  labels: QuoteLabels,
-): QuotePreview {
-  if (message === undefined || message.deleted === true)
-    return {
-      found: false,
-      kind: 'text',
-      text: labels.notFound,
-      isFileName: false,
-      more: null,
-      lines: 1,
-      visual: null,
-    }
+/** Whether a reply draws a quote at all: never for an original not held, or deleted. */
+export function isQuotable(message: QuotedMessage | undefined): message is QuotedMessage {
+  return message !== undefined && message.deleted !== true
+}
 
-  const body = message.body.trim()
+/** A body on one run: line breaks and runs of spaces read as one space. */
+function oneLine(body: string): string {
+  return body.replace(/\s+/g, ' ').trim()
+}
+
+/** What a quote of `message` says and shows. */
+export function quotePreview(message: QuotedMessage, labels: QuoteLabels): QuotePreview {
+  const body = oneLine(message.body)
   const first = message.attachments[0]
   if (first === undefined)
-    return {
-      found: true,
-      kind: 'text',
-      text: body,
-      isFileName: false,
-      more: null,
-      lines: 2,
-      visual: null,
-    }
+    return { kind: 'text', text: body, isFileName: false, more: null, lines: 2, visual: null }
 
   const kind = kindOf(first)
   const count = message.attachments.length
   const more = count > 1 ? labels.andMore(count - 1) : null
   const visual = visualOf(kind, first, more, labels)
-  const shown = { found: true, kind, more, visual } as const
+  const shown = { kind, more, visual } as const
   if (body !== '') return { ...shown, text: body, isFileName: false, lines: 2 }
 
   const named = kind === 'file' || kind === 'audio' ? first.filename : undefined

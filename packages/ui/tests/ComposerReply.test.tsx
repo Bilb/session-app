@@ -17,7 +17,6 @@ const LABELS: QuoteLabels = {
   audio: 'Audio',
   voiceMessage: 'Voice Message',
   document: 'Document',
-  notFound: 'Original message not found',
   andMore: (count) => `+${String(count)}`,
 }
 
@@ -47,9 +46,9 @@ describe('the composer’s reply bar', () => {
     expect(byId(IDS.bar).textContent).toContain('Are we still on?')
   })
 
-  it('says not found once the message it answers is gone', () => {
+  it('goes once the message it answers is gone', () => {
     renderInUI(<ComposerReply {...bar({ message: undefined })} />)
-    expect(byId(IDS.bar).textContent).toContain('Original message not found')
+    expect(nodeOf(IDS.bar)).toBeNull()
   })
 
   it('stops replying from its close button, by the pointer or by the keyboard', async () => {

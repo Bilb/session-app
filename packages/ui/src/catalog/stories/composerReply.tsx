@@ -9,21 +9,17 @@ import { noop } from './shared'
 
 interface ReplyRow {
   author: string
-  /** Absent: what is being answered was deleted while the reply was written. */
-  quoted?: (Omit<QuotedMessage, 'id' | 'outgoing'> & { picture?: number | undefined }) | undefined
+  quoted: Omit<QuotedMessage, 'id' | 'outgoing'> & { picture?: number | undefined }
 }
 
 function Bar({ author, quoted }: ReplyRow) {
-  const uri = useCatalogPicture(quoted?.picture)
-  const message =
-    quoted === undefined
-      ? undefined
-      : {
-          id: 1,
-          outgoing: false,
-          body: quoted.body,
-          attachments: quoted.attachments.map((attachment) => ({ ...attachment, uri })),
-        }
+  const uri = useCatalogPicture(quoted.picture)
+  const message = {
+    id: 1,
+    outgoing: false,
+    body: quoted.body,
+    attachments: quoted.attachments.map((attachment) => ({ ...attachment, uri })),
+  }
   return (
     <ComposerReply
       replyingToLabel="Replying to"
@@ -79,8 +75,11 @@ export const composerReply = defineStory<ReplyRow>({
       author: 'Bob',
       quoted: { body: '', attachments: [{ contentType: 'audio/aac', voiceMessage: true }] },
     },
-    notFound: { author: 'Bob' },
     arabic: { author: 'أنت', quoted: { body: 'هل وصلت الطرود اليوم؟', attachments: [] } },
+    lineBreaks: {
+      author: 'Bob',
+      quoted: { body: 'Hey\n this is audric\n\nhow are you?', attachments: [] },
+    },
   },
   render: (row) => <Bar {...row} />,
 })
