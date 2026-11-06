@@ -26,7 +26,8 @@ import type { WithTestID } from './with'
  * square is the 44 pt target on its own, so the quote is never shorter than one.
  */
 export const QUOTE_THUMB_SIDE_PX = 44
-const STRIPE_WIDTH_PX = 3
+/** Legacy iOS's accent line: square-ended, so it reads as a rule rather than a pill. */
+const STRIPE_WIDTH_PX = 4
 
 /**
  * The stripe or the square, then the author and the summary: what the bar draws too. A quote of
@@ -55,7 +56,7 @@ export function QuoteLines({
   return (
     <>
       {preview.visual === null ? (
-        <YStack width={STRIPE_WIDTH_PX} borderRadius="$full" backgroundColor={stripe} />
+        <YStack width={STRIPE_WIDTH_PX} backgroundColor={stripe} />
       ) : null}
       {thumb}
       <YStack flex={1} minWidth={0} justifyContent="center">
