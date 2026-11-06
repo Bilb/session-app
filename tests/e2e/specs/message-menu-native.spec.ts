@@ -30,8 +30,16 @@ for (const platform of MOBILE_PLATFORMS) {
   })
 }
 
-/** The window's top corner, under the status bar: a tap there only reaches the menu's backdrop. */
-const OUTSIDE = { x: 4, y: 4 }
+/** How far beside the menu a tap lands to reach only its backdrop. */
+const BESIDE_PX = 8
+
+/** Taps the backdrop just beside the open menu, on whichever side has room. */
+async function tapBesideMenu(app: MobileApp): Promise<void> {
+  const menu = await app.frame(MENU.menu)
+  if (menu === null) throw new Error('the menu is not open')
+  const x = menu.x > 2 * BESIDE_PX ? menu.x - BESIDE_PX : menu.x + menu.width + BESIDE_PX
+  await app.tapPoint(x, menu.y + menu.height / 2)
+}
 
 for (const platform of MOBILE_PLATFORMS) {
   test(`opens a message’s menu on a long press of its attachments, without opening them @${platform} @medium-risk`, async () => {
@@ -43,7 +51,7 @@ for (const platform of MOBILE_PLATFORMS) {
         await app.waitForVisible(MENU.menu)
         expect(await app.isVisible(MENU.item('export')), part).toBe(true)
         expect(await app.isVisible(ELEMENT.conversation.mediaViewer), part).toBe(false)
-        await app.tapPoint(OUTSIDE.x, OUTSIDE.y)
+        await tapBesideMenu(app)
         await expect.poll(() => app.isVisible(MENU.menu), { timeout: CLOSE_MS }).toBe(false)
       }
     } finally {
