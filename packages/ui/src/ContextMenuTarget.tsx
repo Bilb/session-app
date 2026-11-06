@@ -2,6 +2,7 @@ import type { MouseEvent } from 'react'
 import { YStack } from 'tamagui'
 
 import type { ContextMenuTargetProps } from './ContextMenuTarget.types'
+import { ContextMenuOpener } from './menuLongPress'
 import { currentPageZoom } from './pageZoom'
 
 export type { ContextMenuTargetProps }
@@ -26,18 +27,21 @@ export function ContextMenuTarget({
   children,
 }: ContextMenuTargetProps) {
   return (
-    <YStack
-      {...(alignSelf === undefined ? {} : { alignSelf })}
-      {...(maxWidth === undefined ? {} : { maxWidth })}
-      onContextMenu={(event: MouseEvent) => {
-        if (selectsTextIn(event.currentTarget)) return
-        event.preventDefault()
-        // In the window's pixels, as `measureAnchor` reads them, and placed inside the zoomed page.
-        const zoom = currentPageZoom()
-        onOpen({ kind: 'point', x: event.clientX / zoom, y: event.clientY / zoom })
-      }}
-    >
-      {children}
-    </YStack>
+    // Provided on the web too, so a control reads one contract on both; only native acts on it.
+    <ContextMenuOpener.Provider value={onOpen}>
+      <YStack
+        {...(alignSelf === undefined ? {} : { alignSelf })}
+        {...(maxWidth === undefined ? {} : { maxWidth })}
+        onContextMenu={(event: MouseEvent) => {
+          if (selectsTextIn(event.currentTarget)) return
+          event.preventDefault()
+          // In the window's pixels, as `measureAnchor` reads them, placed inside the zoomed page.
+          const zoom = currentPageZoom()
+          onOpen({ kind: 'point', x: event.clientX / zoom, y: event.clientY / zoom })
+        }}
+      >
+        {children}
+      </YStack>
+    </ContextMenuOpener.Provider>
   )
 }

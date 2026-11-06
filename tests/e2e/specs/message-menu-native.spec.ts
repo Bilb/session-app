@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { ALBUM_TILE_ID, ATTACHMENT_ROW_IDS } from '@session/expectations'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 
@@ -23,6 +24,28 @@ for (const platform of MOBILE_PLATFORMS) {
 
       await app.tap(MENU.item('copy'))
       await expect.poll(() => app.isVisible(MENU.menu), { timeout: CLOSE_MS }).toBe(false)
+    } finally {
+      await app.close()
+    }
+  })
+}
+
+/** The window's top corner, under the status bar: a tap there only reaches the menu's backdrop. */
+const OUTSIDE = { x: 4, y: 4 }
+
+for (const platform of MOBILE_PLATFORMS) {
+  test(`opens a message’s menu on a long press of its attachments, without opening them @${platform} @medium-risk`, async () => {
+    const app = await MobileApp.launch(platform, 'alice')
+    try {
+      await openFirstConversation(app)
+      for (const part of [ALBUM_TILE_ID, ATTACHMENT_ROW_IDS.row, ATTACHMENT_ROW_IDS.lead]) {
+        await app.longPress(part)
+        await app.waitForVisible(MENU.menu)
+        expect(await app.isVisible(MENU.item('export')), part).toBe(true)
+        expect(await app.isVisible(ELEMENT.conversation.mediaViewer), part).toBe(false)
+        await app.tapPoint(OUTSIDE.x, OUTSIDE.y)
+        await expect.poll(() => app.isVisible(MENU.menu), { timeout: CLOSE_MS }).toBe(false)
+      }
     } finally {
       await app.close()
     }

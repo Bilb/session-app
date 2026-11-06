@@ -7,6 +7,7 @@ import {
   MessageFrame,
   ON_ACCENT_SECONDARY_OPACITY,
   Text,
+  useMenuLongPress,
   XStack,
 } from '@session/ui'
 import { memo, useMemo, type ReactNode } from 'react'
@@ -43,6 +44,24 @@ export function stateLabel(message: Message): string | undefined {
     default:
       return undefined
   }
+}
+
+/** A failed send's Retry, inside the message's menu target so its long press opens the menu. */
+function RetryLink({ onPress }: { onPress: () => void }) {
+  const menuLongPress = useMenuLongPress()
+  return (
+    <Text
+      size="$caption"
+      color="$onAccent"
+      weight="semibold"
+      textDecorationLine="underline"
+      testID={ELEMENT.conversation.messageRetry}
+      {...menuLongPress}
+      onPress={onPress}
+    >
+      {tr('retry')}
+    </Text>
+  )
 }
 
 /**
@@ -107,20 +126,13 @@ export const MessageRow = memo(function MessageRow({
               {label}
             </Text>
             {retryable ? (
-              <Text
-                size="$caption"
-                color="$onAccent"
-                weight="semibold"
-                textDecorationLine="underline"
-                testID={ELEMENT.conversation.messageRetry}
+              <RetryLink
                 onPress={() => {
                   // Resumes rather than restarts. The state comes back as an update, so
                   // there is nothing to do here.
                   void actions.retry(message.id)
                 }}
-              >
-                {tr('retry')}
-              </Text>
+              />
             ) : null}
           </XStack>
         )}

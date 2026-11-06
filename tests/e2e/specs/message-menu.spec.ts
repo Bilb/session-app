@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { ALBUM_TILE_ID, ATTACHMENT_ROW_IDS } from '@session/expectations'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 
@@ -63,6 +64,23 @@ test('copies a message’s text from its menu @desktop @medium-risk', async () =
     await app.locator(MENU.item('copy')).click()
     await expect(app.locator(MENU.menu)).toHaveCount(0)
     expect(await app.readClipboard()).toBe(text)
+  } finally {
+    await app.close()
+  }
+})
+
+test('opens a message’s menu from its attachments too, without doing their own press @desktop @medium-risk', async () => {
+  const app = await DesktopApp.launch('alice')
+  try {
+    await openFirstConversation(app)
+    for (const part of [ALBUM_TILE_ID, ATTACHMENT_ROW_IDS.row, ATTACHMENT_ROW_IDS.lead]) {
+      await app.locator(part).first().click({ button: 'right' })
+      await expect(app.locator(MENU.menu), part).toBeVisible()
+      await expect(app.locator(MENU.item('export')), part).toBeVisible()
+      await app.page.keyboard.press('Escape')
+      await expect(app.locator(MENU.menu), part).toHaveCount(0)
+      await expect(app.locator(ELEMENT.conversation.mediaViewer), part).toHaveCount(0)
+    }
   } finally {
     await app.close()
   }
