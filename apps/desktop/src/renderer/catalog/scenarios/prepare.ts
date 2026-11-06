@@ -3,7 +3,7 @@ import { isDisplayableImage } from '@session/basic-types'
 import type { ConversationId, Message } from '@session/client'
 import { transferKey, type SessionStore } from '@session/state'
 
-/** A running download, as each of a message's files reports it, in encrypted bytes. */
+/** A running transfer, as a file reports it, in encrypted bytes. */
 interface Running {
   doneBytes: number
   totalBytes: number
@@ -26,6 +26,20 @@ const PREPARE: Record<string, 'downloaded' | 'downloadFailed' | Running> = {
   'Ours from another device, for the ring at 95%': { doneBytes: 95, totalBytes: 100 },
   'One file, caught downloading': { doneBytes: 40, totalBytes: 100 },
   'One picture as a list, caught downloading': { doneBytes: 40, totalBytes: 100 },
+}
+
+/** Four tenths of a 3 MB file, so a caption reads in the sizes a real one would. */
+const UPLOAD_AT_40: Running = { doneBytes: 1_258_291, totalBytes: 3_145_728 }
+
+/**
+ * Ours, caught uploading: the upload each reports for its first file not up, which libsession
+ * uploads one at a time in order. As `PREPARE`, never a message another page draws at rest.
+ */
+const UPLOADING: Record<string, Running> = {
+  'Still uploading, one at a time': UPLOAD_AT_40,
+  'One file, caught uploading': UPLOAD_AT_40,
+  'The last of three uploading': UPLOAD_AT_40,
+  'A pair, the second uploading': UPLOAD_AT_40,
 }
 
 /**
@@ -90,6 +104,18 @@ export async function prepare(session: SessionStore): Promise<Scenario> {
               : { state: 'running' as const, ...preparation },
           ]),
         ),
+      },
+    }))
+  }
+
+  for (const [body, running] of Object.entries(UPLOADING)) {
+    const message = byBody(body)
+    const moving = message.attachments.find(({ uploaded }) => !uploaded)
+    if (moving === undefined) throw new Error(`"${body}" has no file left to upload`)
+    session.setState((state) => ({
+      transfers: {
+        ...state.transfers,
+        [message.id]: { [transferKey('upload', moving.index)]: { state: 'running', ...running } },
       },
     }))
   }

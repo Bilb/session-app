@@ -104,9 +104,65 @@ describe('a running download’s ring', () => {
       <AttachmentFooter
         set={set('fetching', 2, RUNNING)}
         onAction={() => {}}
-        sending={{ caption: '1 of 2 uploaded', retryable: false }}
+        sending={{ caption: '1 of 2 uploaded', retryable: false, uploading: undefined }}
       />,
     )
     expect(nodeOf(FOOTER_PROGRESS_ID)).toBeNull()
+  })
+})
+
+describe('a running upload’s ring', () => {
+  const UPLOADING = { doneBytes: 1_200_000, totalBytes: 3_000_000 }
+  const sending = (uploading: { doneBytes: number; totalBytes: number }) => ({
+    caption: '',
+    retryable: false,
+    uploading,
+  })
+
+  it('is a progress bar named for the upload, reading the bytes so far of the total', () => {
+    renderScreen(
+      <AttachmentFooter set={set('idle', 1)} onAction={() => {}} sending={sending(UPLOADING)} />,
+    )
+    expect(nodeOf(FOOTER_PROGRESS_ID)).toMatchObject(
+      attachmentFooterProgress('upload').desktop ?? {},
+    )
+    const ring = byId(FOOTER_PROGRESS_ID)
+    expect(ring.getAttribute('aria-valuenow')).toBe('40')
+    expect(ring.getAttribute('aria-valuetext')).toBe(
+      PENDING_COPY.attachmentsDownloadProgress(
+        isolate(formatBytes(UPLOADING.doneBytes)),
+        isolate(formatBytes(UPLOADING.totalBytes)),
+      ),
+    )
+    expect(nodeOf(FOOTER_ACTION_ID)).toBeNull()
+  })
+
+  it.each([
+    ['0 of 0, the first report of a file', { doneBytes: 0, totalBytes: 0 }],
+    ['bytes of a set with a file not yet begun', { doneBytes: 5_000, totalBytes: 0 }],
+  ])('reads nothing at %s', (_case, bytes) => {
+    renderScreen(
+      <AttachmentFooter set={set('idle', 3)} onAction={() => {}} sending={sending(bytes)} />,
+    )
+    expect(nodeOf(FOOTER_PROGRESS_ID)).toMatchObject(
+      attachmentFooterProgress('upload').desktop ?? {},
+    )
+    const ring = byId(FOOTER_PROGRESS_ID)
+    expect(ring.getAttribute('aria-valuenow')).toBeNull()
+    expect(ring.getAttribute('aria-valuetext')).toBeNull()
+  })
+
+  it('gives way to the retry once the upload has stopped', () => {
+    renderScreen(
+      <AttachmentFooter
+        set={set('idle', 2)}
+        onAction={() => {}}
+        sending={{ caption: '1 of 2 uploaded', retryable: true, uploading: undefined }}
+      />,
+    )
+    expect(nodeOf(FOOTER_PROGRESS_ID)).toBeNull()
+    expect(nodeOf(FOOTER_ACTION_ID)).toMatchObject(
+      attachmentFooterAction({ state: 'failed', count: 2 }).desktop ?? {},
+    )
   })
 })

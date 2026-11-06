@@ -72,7 +72,8 @@ export const MESSAGE_SCENARIOS: readonly AnyStory[] = [
     ['A pair for the ring at 40%', 'Ours from another device, for the ring at 40%'],
     { accent: true },
   ),
-  // A message's one attachment as a list: no control on the row, the footer's verb or ring alone.
+  // A message's one attachment as a list: no control on the row, the footer's verb or ring alone,
+  // ours uploading included.
   message(
     'loneFile',
     [
@@ -80,6 +81,7 @@ export const MESSAGE_SCENARIOS: readonly AnyStory[] = [
       'One file, caught downloading',
       'One picture as a list',
       'One picture as a list, caught downloading',
+      'One file, caught uploading',
     ],
     { rtl: true },
   ),
@@ -96,7 +98,8 @@ export const MESSAGE_SCENARIOS: readonly AnyStory[] = [
     ],
     { rtl: true },
   ),
-  // Ours, so drawn on the accent.
+  // Ours, so drawn on the accent. Uploading, the moving file's row fills its ring; the footer's
+  // ring waits while a file after it has not begun, since only then is the set's size known.
   message(
     'sending',
     [
@@ -107,6 +110,11 @@ export const MESSAGE_SCENARIOS: readonly AnyStory[] = [
     ],
     { accent: true, rtl: true },
   ),
+  // The footer's ring at a reading, once the last file is moving: a list and an album. Apart from
+  // `sending`, which in every accent already fills the capture's height.
+  message('uploading', ['The last of three uploading', 'A pair, the second uploading'], {
+    rtl: true,
+  }),
   message(
     'sendStops',
     [

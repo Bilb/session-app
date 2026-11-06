@@ -19,6 +19,7 @@ import type { AttachmentSet } from './attachmentSet'
 import { sharedCaption } from './attachmentSetCaption'
 import { layoutLine } from './layoutLine'
 import type { AttachmentView } from './attachmentView'
+import type { SendingFooter } from './useAttachmentFooter'
 
 const ACTION_SIZE = 'sm'
 
@@ -118,28 +119,36 @@ function verb(set: AttachmentSet): string | null {
 }
 
 /**
- * A running download, in the verb's frame.
+ * A running download or upload, in the verb's frame.
  *
- * The ring waits, turning round a closed track, until a byte is here: the first report of every
+ * The ring waits, turning round a closed track, until a byte has moved: the first report of a
  * transfer is 0 of 0, which means beginning rather than 0%, and a set some sender declared no size
- * for has no total to read a share of at all. When bytes arrive its gap opens and the fill starts.
+ * for, or ours with a file whose upload has not begun, has no total to read a share of at all.
+ * When bytes move its gap opens and the fill starts.
  */
-function DownloadRing({ set }: { set: AttachmentSet }) {
+function TransferRing({
+  doneBytes,
+  totalBytes,
+  label,
+}: {
+  doneBytes: number
+  totalBytes: number
+  label: string
+}) {
   const shared = {
     size: ACTION_SIZE,
-    label: tr('downloading'),
+    label,
     still: flag('disableAnimations'),
     testID: ELEMENT.conversation.attachmentProgress,
   } as const
-  if (set.doneBytes === 0 || set.totalBytes === 0)
-    return <ButtonProgress {...shared} indeterminate />
+  if (doneBytes === 0 || totalBytes === 0) return <ButtonProgress {...shared} indeterminate />
   return (
     <ButtonProgress
       {...shared}
-      progress={set.doneBytes / set.totalBytes}
+      progress={doneBytes / totalBytes}
       valueText={PENDING_COPY.attachmentsDownloadProgress(
-        isolate(formatBytes(set.doneBytes)),
-        isolate(formatBytes(set.totalBytes)),
+        isolate(formatBytes(doneBytes)),
+        isolate(formatBytes(totalBytes)),
       )}
     />
   )
@@ -167,12 +176,13 @@ export function AttachmentFooter({
   onAction: () => void
   /**
    * Set while our message's files are still uploading or failed to: the line is then about the
-   * upload, and its one verb is the message's retry.
+   * upload, its ring stands in the verb's place while it runs, and its one verb is the message's
+   * retry.
    *
    * That Retry is not drawn destructive: the danger colour on the tonal fill is 3.3 to 4.1:1 in
    * the four themes. The caption and the message's own state already say it failed.
    */
-  sending?: { caption: string; retryable: boolean } | undefined
+  sending?: SendingFooter | undefined
   /** Drawn on a bubble you sent rather than on the page; the buttons keep their own fill. */
   onAccent?: boolean | undefined
   /** The shape being drawn. Absent where the reader has no choice about it. */
@@ -215,7 +225,17 @@ export function AttachmentFooter({
         {sending === undefined ? caption(set) : sending.caption}
       </Text>
       {sending === undefined && set.state === 'fetching' ? (
-        <DownloadRing set={set} />
+        <TransferRing
+          doneBytes={set.doneBytes}
+          totalBytes={set.totalBytes}
+          label={tr('downloading')}
+        />
+      ) : sending?.uploading !== undefined ? (
+        <TransferRing
+          doneBytes={sending.uploading.doneBytes}
+          totalBytes={sending.uploading.totalBytes}
+          label={tr('uploading')}
+        />
       ) : action === null ? null : (
         // A glyph at every width, named by its word: the footer never has to choose between the
         // word and the caption, and the line is the same at every width a message is drawn.

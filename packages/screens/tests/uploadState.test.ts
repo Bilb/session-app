@@ -1,9 +1,11 @@
 import type { Attachment, Message } from '@session/client'
+import type { MessageTransfers } from '@session/state'
 import { describe, expect, it } from 'vitest'
 
 import {
   failsPast,
   isUploadPhase,
+  uploadProgress,
   uploadStateOf,
   uploadSummary,
   whileSending,
@@ -75,6 +77,58 @@ describe('a message being sent, file by file', () => {
     } as unknown as Message
     expect(uploadStateOf(message, 1)).toBe('uploading')
     expect(uploadStateOf(message, 2)).toBe('queued')
+  })
+
+  it('moves on as soon as a file’s upload reports done, before its message says so', () => {
+    const uploads: MessageTransfers = {
+      'upload:0': { state: 'done', doneBytes: 900, totalBytes: 900 },
+      'upload:1': { state: 'running', doneBytes: 10, totalBytes: 600 },
+    }
+    const message = sending('uploading', 3, 0)
+    expect(message.attachments.map((a) => uploadStateOf(message, a.index, uploads))).toEqual([
+      'uploaded',
+      'uploading',
+      'queued',
+    ])
+  })
+})
+
+describe('how far a message’s files have got together', () => {
+  it('sums every file, a finished one at its whole and a running one as far as it has got', () => {
+    const uploads: MessageTransfers = {
+      'upload:0': { state: 'done', doneBytes: 900, totalBytes: 900 },
+      'upload:1': { state: 'running', doneBytes: 300, totalBytes: 600 },
+    }
+    expect(uploadProgress(sending('uploading', 2, 0), uploads)).toEqual({
+      doneBytes: 1_200,
+      totalBytes: 1_500,
+    })
+  })
+
+  it('counts a file up before the reports began at its own size', () => {
+    const message = sending('uploading', 2, 1)
+    const up = message.attachments[0]
+    if (up === undefined) throw new Error('unreachable')
+    const upBytes = 700
+    const sized = {
+      ...message,
+      attachments: [{ ...up, sizeBytes: upBytes }, ...message.attachments.slice(1)],
+    }
+    const uploads: MessageTransfers = {
+      'upload:1': { state: 'running', doneBytes: 100, totalBytes: 400 },
+    }
+    expect(uploadProgress(sized, uploads)).toEqual({ doneBytes: 800, totalBytes: 1_100 })
+  })
+
+  it.each<[string, MessageTransfers]>([
+    ['before any report', {}],
+    ['at a file’s 0 of 0', { 'upload:0': { state: 'running', doneBytes: 0, totalBytes: 0 } }],
+    [
+      'while a file after the running one has not begun',
+      { 'upload:0': { state: 'running', doneBytes: 300, totalBytes: 600 } },
+    ],
+  ])('has no total %s', (_case, uploads) => {
+    expect(uploadProgress(sending('uploading', 2, 0), uploads).totalBytes).toBe(0)
   })
 })
 
