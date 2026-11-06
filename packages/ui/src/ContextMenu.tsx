@@ -110,6 +110,17 @@ export function elementMenuAnchor(node: unknown, onAnchor: (anchor: MenuAnchor |
   })
 }
 
+function rowAt(root: readonly ContextMenuEntry[], path: readonly string[]) {
+  const parent = entriesAt(root, path.slice(0, -1))
+  const row = parent.find((entry) => entry.id === path[path.length - 1])
+  return row !== undefined && isMenuRow(row) ? row : undefined
+}
+
+/** Ids are unique only among siblings, so a row is remembered under its level too. */
+function rowKey(levelKey: string, id: string): string {
+  return JSON.stringify([levelKey, id])
+}
+
 function firstRow(entries: readonly ContextMenuEntry[]): number {
   return entries.findIndex(isMenuRow)
 }
@@ -226,7 +237,7 @@ export function ContextMenuLayer({
             setSpots((placed) => ({ ...placed, [level.key]: { ...spot, ...size } }))
             return
           }
-          measureNow(rows.current.get(path[depth - 1]!), (row) => {
+          measureNow(rows.current.get(rowKey(levels[depth - 1]!.key, path[depth - 1]!)), (row) => {
             if (row === null) return
             const inLayer: AnchorRect = { ...row, x: row.x - origin.x, y: row.y - origin.y }
             const spot = placeSubmenu(inLayer, parent, size, geometry, OVERLAP, MENU_PADDING_Y)
@@ -366,8 +377,8 @@ export function ContextMenuLayer({
               nested={level.nested}
               maxHeight={spot?.maxHeight}
               rowRef={(id, node) => {
-                if (node === null) rows.current.delete(id)
-                else rows.current.set(id, node)
+                if (node === null) rows.current.delete(rowKey(level.key, id))
+                else rows.current.set(rowKey(level.key, id), node)
               }}
               panelRef={(node) => {
                 if (node === null) panels.current.delete(level.key)
@@ -380,12 +391,6 @@ export function ContextMenuLayer({
       })}
     </YStack>
   )
-}
-
-function rowAt(root: readonly ContextMenuEntry[], path: readonly string[]) {
-  const parent = entriesAt(root, path.slice(0, -1))
-  const row = parent.find((entry) => entry.id === path[path.length - 1])
-  return row !== undefined && isMenuRow(row) ? row : undefined
 }
 
 export interface ContextMenuProps extends ContextMenuShared {

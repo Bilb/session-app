@@ -27,9 +27,11 @@ function row(
 }
 
 /**
- * The single attachment the menu can write out, or undefined. A set has no "the" file and
- * `FilesPort` cannot export a whole one yet (see `exportOne`); a file still uploading or not on
+ * The single attachment the menu can write out, or undefined: a file still uploading or not on
  * this device has nothing to write.
+ *
+ * TODO: on a set, save the attachment that was pressed, as legacy Desktop does; the menu is not
+ * told which one yet.
  */
 function exportable(message: Message): number | undefined {
   const [only, ...rest] = message.attachments

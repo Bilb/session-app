@@ -27,6 +27,16 @@ const MANY: readonly ContextMenuEntry[] = Array.from({ length: 12 }, (_, at) =>
   action(`row-${String(at)}`, `Row ${String(at + 1)}`, { icon: 'copy' }),
 )
 
+/** A submenu holding an entry with its opener's id, which ids unique among siblings allow. */
+const REPEATED_ID: readonly ContextMenuEntry[] = KINDS.map((entry) =>
+  entry.kind === 'submenu'
+    ? {
+        ...entry,
+        entries: [action(entry.id, 'Repeats Its Opener', { icon: 'copy' }), ...entry.entries],
+      }
+    : entry,
+)
+
 /** A rectangle measured from the window's leading edge, so a right-to-left page mirrors it. */
 interface LeadingRect {
   start: number
@@ -179,6 +189,11 @@ export const contextMenuPlacement = defineStory<PlacementCase>({
     keyboardOver: { element: { start: 40, y: 30, width: BUBBLE.width, height: 300 } },
     // Wide rows, so neither side of the parent holds the submenu: it lies over the parent instead.
     submenuNoRoom: { pointer: { start: 160, y: 40 }, entries: LONG_LABELS, initialPath: ['more'] },
+    submenuRepeatsId: {
+      pointer: { start: 60, y: 120 },
+      entries: REPEATED_ID,
+      initialPath: ['more'],
+    },
   },
   render: (props) => <PlacementCell {...props} />,
 })
