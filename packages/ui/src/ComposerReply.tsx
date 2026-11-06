@@ -16,10 +16,11 @@ export const COMPOSER_REPLY_THUMB_SIDE_PX = 36
 const CLOSE_HIT_SLOP_PX = 8
 
 export interface ComposerReplyProps {
-  /** `messageReplyingTo`, already worded. */
-  replyingToLabel: string
-  /** Already worded: the nickname, display name or short account id, or "You". */
-  author: string
+  /**
+   * `messageReplyingTo` and the author, composed by the caller with the author bidi-isolated: a
+   * name ending in a neutral ("Bob!") otherwise draws that neutral on the wrong side in RTL.
+   */
+  heading: string
   /**
    * Absent or deleted: the message being answered is gone, and the bar with it. The text being
    * written is the composer's, and stays.
@@ -39,8 +40,7 @@ export interface ComposerReplyProps {
  * the X that stops replying. Esc is the composer's to handle, since it is the input that has focus.
  */
 export function ComposerReply({
-  replyingToLabel,
-  author,
+  heading,
   message,
   labels,
   onClose,
@@ -63,7 +63,7 @@ export function ComposerReply({
     >
       <XStack flex={1} minWidth={0} alignSelf="stretch" gap="$xs">
         <QuoteLines
-          heading={`${replyingToLabel} ${author}`}
+          heading={heading}
           preview={preview}
           ink="$textPrimary"
           secondary={inkFor('secondary', false)}

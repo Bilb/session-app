@@ -27,8 +27,7 @@ const IDS = {
 
 function bar(over: Partial<ComposerReplyProps> = {}): ComposerReplyProps {
   return {
-    replyingToLabel: 'Replying to',
-    author: 'Bob',
+    heading: 'Replying to Bob',
     message: { id: 3, outgoing: false, body: 'Are we still on?', attachments: [] },
     labels: LABELS,
     onClose: () => {},

@@ -12,6 +12,9 @@ interface ReplyRow {
   quoted: Omit<QuotedMessage, 'id' | 'outgoing'> & { picture?: number | undefined }
 }
 
+/** What `isolate()` in `@session/localization` does, which `ui` cannot import. */
+const heading = (author: string) => `Replying to \u2068${author}\u2069`
+
 function Bar({ author, quoted }: ReplyRow) {
   const uri = useCatalogPicture(quoted.picture)
   const message = {
@@ -22,8 +25,7 @@ function Bar({ author, quoted }: ReplyRow) {
   }
   return (
     <ComposerReply
-      replyingToLabel="Replying to"
-      author={author}
+      heading={heading(author)}
       message={message}
       labels={QUOTE_LABELS}
       onClose={noop}
@@ -79,6 +81,10 @@ export const composerReply = defineStory<ReplyRow>({
     lineBreaks: {
       author: 'Bob',
       quoted: { body: 'Hey\n this is audric\n\nhow are you?', attachments: [] },
+    },
+    punctuatedName: {
+      author: 'Bob (work)!',
+      quoted: { body: 'Are we still on for Thursday?', attachments: [] },
     },
   },
   render: (row) => <Bar {...row} />,
