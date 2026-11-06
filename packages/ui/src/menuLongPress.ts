@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useMemo } from 'react'
 import type { GestureResponderEvent } from 'react-native'
 import { isWeb } from 'tamagui'
 
@@ -26,17 +26,20 @@ const NONE: MenuLongPressProps = {}
  */
 export function useMenuLongPress(): MenuLongPressProps {
   const open = useContext(ContextMenuOpener)
-  if (isWeb || open === null) return NONE
-  return {
-    onLongPress: (event) => {
-      const { pageX, pageY } = event.nativeEvent
-      if (typeof pageX === 'number' && typeof pageY === 'number') {
-        open({ kind: 'point', x: pageX, y: pageY })
-        return
-      }
-      measureAnchor(event.currentTarget, (rect) => {
-        if (rect !== null) open({ kind: 'element', rect })
-      })
-    },
-  }
+  // The same props for the same opener, so a memoised control is not re-rendered by them.
+  return useMemo(() => {
+    if (isWeb || open === null) return NONE
+    return {
+      onLongPress: (event: GestureResponderEvent) => {
+        const { pageX, pageY } = event.nativeEvent
+        if (typeof pageX === 'number' && typeof pageY === 'number') {
+          open({ kind: 'point', x: pageX, y: pageY })
+          return
+        }
+        measureAnchor(event.currentTarget, (rect) => {
+          if (rect !== null) open({ kind: 'element', rect })
+        })
+      },
+    }
+  }, [open])
 }

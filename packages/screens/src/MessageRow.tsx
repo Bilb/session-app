@@ -4,13 +4,14 @@ import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import {
   ContextMenuTarget,
+  type MenuAnchor,
   MessageFrame,
   ON_ACCENT_SECONDARY_OPACITY,
   Text,
   useMenuLongPress,
   XStack,
 } from '@session/ui'
-import { memo, useMemo, type ReactNode } from 'react'
+import { memo, useCallback, useMemo, type ReactNode } from 'react'
 
 import { ConversationUiContext, useConversationUi, type ConversationUi } from './conversationUi'
 import { attachmentsWidthPx } from './attachmentsWidth'
@@ -82,6 +83,15 @@ export const MessageRow = memo(function MessageRow({
   const ui = useConversationUi()
   const message = useMessage(conversationId, messageId)
   const geometry = useAlbumGeometry()
+  const { openMenu } = ui
+  // Stable across the message's own updates: every control inside reads it through context, so a
+  // new one would re-render a memoised tile on each progress tick.
+  const openMyMenu = useCallback(
+    (anchor: MenuAnchor) => {
+      openMenu(messageId, anchor)
+    },
+    [openMenu, messageId],
+  )
   if (message === undefined) return null
   // A caption wraps at its attachments' width, so a narrow picture keeps a narrow bubble.
   const attachmentsWidth =
@@ -92,9 +102,7 @@ export const MessageRow = memo(function MessageRow({
 
   return (
     <ContextMenuTarget
-      onOpen={(anchor) => {
-        ui.openMenu(message.id, anchor)
-      }}
+      onOpen={openMyMenu}
       alignSelf={message.outgoing ? 'flex-end' : 'flex-start'}
       // Text wraps at four fifths of the row. Attachments are sized for the transcript already,
       // as a share of it that fits the row, and their caption wraps at them.

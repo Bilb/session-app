@@ -1,6 +1,6 @@
 import { act } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { byId, nodeOf } from '@session/render-tier'
@@ -8,6 +8,8 @@ import { ELEMENT } from '@session/test-ids'
 
 import { ContextMenu, ContextMenuLayer, elementMenuAnchor } from '#src/ContextMenu'
 import type { ContextMenuEntry } from '#src/contextMenuEntries'
+import { ContextMenuTarget } from '#src/ContextMenuTarget'
+import { useMenuLongPress } from '#src/menuLongPress'
 import type { MenuAnchor } from '#src/contextMenuPlacement'
 
 import { renderInUI } from './support/render'
@@ -239,5 +241,27 @@ describe('an element anchor', () => {
       anchor = measured
     })
     expect(anchor).toEqual({ kind: 'element', rect: { x: 10, y: 20, width: 300, height: 40 } })
+  })
+})
+
+describe('a context menu target', () => {
+  it('re-renders no memoised control inside while its opener stays the same', () => {
+    const renders = vi.fn()
+    const Control = memo(function Control() {
+      useMenuLongPress()
+      renders()
+      return null
+    })
+    const control = <Control />
+    const open = () => {}
+    const target = (label: string) => (
+      <ContextMenuTarget onOpen={open}>
+        {control}
+        {label}
+      </ContextMenuTarget>
+    )
+    const { rerender } = renderInUI(target('first'))
+    rerender(target('second'))
+    expect(renders).toHaveBeenCalledTimes(1)
   })
 })
