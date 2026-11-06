@@ -324,11 +324,10 @@ namespace {
 
     /// A send's upload reports, held until its message id is known.
     ///
-    /// libsession answers `send_message` with the id from Core's loop once the row is stored, but
-    /// a file that fails at once is reported inside the call that stores it, before that answer,
-    /// and progress arrives from the network's loop. Every report and the answer take `lock`, and
-    /// what they emit is emitted under it: the held reports go out in the order they came, after
-    /// the answer, and nothing from the network's loop can slip in between.
+    /// libsession answers `send_message` with the id once the row is stored, and its header allows
+    /// a report before that answer. Every report and the answer run on Core's loop, so nothing here
+    /// is shared between threads: a report before the id waits here, and the answer sends the held
+    /// ones after itself, in the order they came.
     struct HeldUploads {
         struct Report {
             size_t index;
@@ -337,7 +336,6 @@ namespace {
             std::optional<Expected<void>> result;
         };
 
-        std::mutex lock;
         std::optional<int64_t> message_id;
         std::vector<Report> held;
     };
@@ -767,8 +765,8 @@ struct ClientBridge::Impl {
     }
 
     /// The upload handler for a message whose id is already known, as a retry's is. libsession
-    /// orders one file's reports itself, progress on the network's loop and then the outcome on
-    /// Core's, so they can go to the stream as they come.
+    /// reports one file's progress and then its outcome, all on Core's loop, so they can go to the
+    /// stream as they come.
     client::Conversation::upload_progress report_upload(int64_t message_id) {
         return [this, message_id](
                        size_t index,
@@ -1172,7 +1170,6 @@ struct ClientBridge::Impl {
                                 int64_t sent,
                                 int64_t total,
                                 std::optional<Expected<void>> result) {
-                            std::lock_guard lock{uploads->lock};
                             if (!uploads->message_id) {
                                 uploads->held.push_back({index, sent, total, std::move(result)});
                                 return;
@@ -1186,7 +1183,6 @@ struct ClientBridge::Impl {
                                     result);
                         },
                         on(id, [this, id, uploads](int64_t message_id) {
-                            std::lock_guard lock{uploads->lock};
                             respond(id, MessageIdResult{static_cast<double>(message_id)});
                             uploads->message_id = message_id;
                             for (const auto& r : uploads->held)
