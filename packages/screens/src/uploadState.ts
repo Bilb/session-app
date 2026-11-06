@@ -1,5 +1,5 @@
 import type { Attachment, Message, TransferProgress } from '@session/client'
-import { transferKey, type MessageTransfers } from '@session/state'
+import { transferKey, type AttachmentTransferState, type MessageTransfers } from '@session/state'
 
 import type { Fetch } from './attachmentFetch'
 
@@ -91,34 +91,40 @@ export function uploadSummary(message: Message): UploadSummary {
 }
 
 /**
- * How far a message's files have got together while it is uploading, in bytes summed over every
- * file, so the reading never goes backwards as one file hands over to the next.
+ * How far one file has got, in its own bytes: a report counts the encrypted bytes being moved, so
+ * its fraction is spent against `sizeBytes`, as a download's is. Null where the size is unknown.
+ */
+export function uploadedBytes(
+  attachment: Attachment,
+  report: AttachmentTransferState | undefined,
+): number | null {
+  if (attachment.sizeBytes === undefined) return null
+  if (attachment.uploaded || report?.state === 'done') return attachment.sizeBytes
+  if (report?.state === 'running' && report.totalBytes > 0)
+    return (attachment.sizeBytes * report.doneBytes) / report.totalBytes
+  return 0
+}
+
+/**
+ * How far a message's files have got together while it is uploading, in their own bytes summed
+ * over every file, so the reading never goes backwards as one file hands over to the next.
  *
- * A file up counts as all of itself, a running one as far as its report says, both in the
- * encrypted bytes reports count; a file up before this session's reports began counts its
- * `sizeBytes`, which is smaller by the encryption's framing alone. `totalBytes` is 0 while any
- * file's size is unknown, which is what indeterminate means: libsession sets an outgoing file's
- * size only once it is up, and a file's report says how big it is only once its upload has begun,
- * so a set of several is indeterminate until its last file starts.
+ * libsession records each file's size as the send stores it, so the total is known before the
+ * first byte moves. `totalBytes` is 0 only where a size is missing, which is what indeterminate
+ * means.
  */
 export function uploadProgress(message: Message, uploads: MessageTransfers): TransferProgress {
-  let doneBytes = 0
+  let done = 0
   let totalBytes = 0
-  let known = true
   for (const attachment of message.attachments) {
-    const report = uploads[transferKey('upload', attachment.index)]
-    if (report?.state === 'done') {
-      doneBytes += report.totalBytes
-      totalBytes += report.totalBytes
-    } else if (attachment.uploaded && attachment.sizeBytes !== undefined) {
-      doneBytes += attachment.sizeBytes
-      totalBytes += attachment.sizeBytes
-    } else if (report?.state === 'running' && report.totalBytes > 0) {
-      doneBytes += report.doneBytes
-      totalBytes += report.totalBytes
-    } else known = false
+    const progress = uploadedBytes(attachment, uploads[transferKey('upload', attachment.index)])
+    if (progress === null || attachment.sizeBytes === undefined)
+      return { doneBytes: 0, totalBytes: 0 }
+    done += progress
+    totalBytes += attachment.sizeBytes
   }
-  return { doneBytes, totalBytes: known ? totalBytes : 0 }
+  // Rounded once, at the end, as a download set's is: a sum of fractions is not a byte count.
+  return { doneBytes: Math.round(done), totalBytes }
 }
 
 /** Whether a file past the first `shown` failed, for a "Show All" that hides it. */

@@ -94,40 +94,38 @@ describe('a message being sent, file by file', () => {
 })
 
 describe('how far a message’s files have got together', () => {
-  it('sums every file, a finished one at its whole and a running one as far as it has got', () => {
+  /** A sending message whose files have the sizes libsession recorded as it stored them. */
+  function sized(uploaded: number, ...sizes: number[]): Message {
+    const message = sending('uploading', sizes.length, uploaded)
+    return {
+      ...message,
+      attachments: message.attachments.map((a, index) => ({ ...a, sizeBytes: sizes[index] ?? 0 })),
+    }
+  }
+
+  it('knows the total before any file has started', () => {
+    expect(uploadProgress(sized(0, 1_000, 2_000), {})).toEqual({ doneBytes: 0, totalBytes: 3_000 })
+  })
+
+  it('counts in the files’ own sizes, spending a running report’s fraction against its file', () => {
     const uploads: MessageTransfers = {
-      'upload:0': { state: 'done', doneBytes: 900, totalBytes: 900 },
+      'upload:0': { state: 'done', doneBytes: 1_100, totalBytes: 1_100 },
       'upload:1': { state: 'running', doneBytes: 300, totalBytes: 600 },
     }
-    expect(uploadProgress(sending('uploading', 2, 0), uploads)).toEqual({
-      doneBytes: 1_200,
-      totalBytes: 1_500,
+    expect(uploadProgress(sized(0, 1_000, 2_000), uploads)).toEqual({
+      doneBytes: 2_000,
+      totalBytes: 3_000,
     })
   })
 
-  it('counts a file up before the reports began at its own size', () => {
-    const message = sending('uploading', 2, 1)
-    const up = message.attachments[0]
-    if (up === undefined) throw new Error('unreachable')
-    const upBytes = 700
-    const sized = {
-      ...message,
-      attachments: [{ ...up, sizeBytes: upBytes }, ...message.attachments.slice(1)],
-    }
-    const uploads: MessageTransfers = {
-      'upload:1': { state: 'running', doneBytes: 100, totalBytes: 400 },
-    }
-    expect(uploadProgress(sized, uploads)).toEqual({ doneBytes: 800, totalBytes: 1_100 })
+  it('counts a file up before the reports began as all of itself', () => {
+    expect(uploadProgress(sized(1, 700, 400), {})).toEqual({ doneBytes: 700, totalBytes: 1_100 })
   })
 
-  it.each<[string, MessageTransfers]>([
-    ['before any report', {}],
-    ['at a file’s 0 of 0', { 'upload:0': { state: 'running', doneBytes: 0, totalBytes: 0 } }],
-    [
-      'while a file after the running one has not begun',
-      { 'upload:0': { state: 'running', doneBytes: 300, totalBytes: 600 } },
-    ],
-  ])('has no total %s', (_case, uploads) => {
+  it('has no total while a file’s size is missing', () => {
+    const uploads: MessageTransfers = {
+      'upload:0': { state: 'running', doneBytes: 300, totalBytes: 600 },
+    }
     expect(uploadProgress(sending('uploading', 2, 0), uploads).totalBytes).toBe(0)
   })
 })

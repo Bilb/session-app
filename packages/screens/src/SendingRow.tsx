@@ -12,7 +12,7 @@ import { ELEMENT } from '@session/test-ids'
 import { FileRow, type FileRowState, type FileRowThumbnail } from '@session/ui'
 
 import { fetchOf } from './attachmentFetch'
-import { uploadStateOf, type UploadState } from './uploadState'
+import { uploadedBytes, uploadStateOf, type UploadState } from './uploadState'
 import { leadUri, leadsWithPicture } from './viewableAttachments'
 
 const ROW_STATE: Record<UploadState, FileRowState> = {
@@ -25,13 +25,23 @@ const ROW_STATE: Record<UploadState, FileRowState> = {
 }
 
 /** The file's own upload while it is running and its size is known, as a download's row has. */
+/**
+ * A running upload's reading, in the file's own bytes as the footer's total is, from its first
+ * byte on; before that the row says a word, as a download's does.
+ */
 function running(
+  attachment: Attachment,
   state: UploadState,
   report: AttachmentTransferState | undefined,
 ): TransferProgress | undefined {
-  return state === 'uploading' && report?.state === 'running' && report.totalBytes > 0
-    ? report
-    : undefined
+  if (state !== 'uploading' || report?.state !== 'running' || report.doneBytes === 0)
+    return undefined
+  const done = uploadedBytes(attachment, report)
+  return done === null || attachment.sizeBytes === undefined
+    ? report.totalBytes > 0
+      ? report
+      : undefined
+    : { doneBytes: Math.round(done), totalBytes: attachment.sizeBytes }
 }
 
 function caption(
@@ -77,7 +87,7 @@ export function SendingRow({
   const actions = useSessionActions()
   const uploads = useMessageTransfers(message.id)
   const upload = uploadStateOf(message, attachment.index, uploads)
-  const progress = running(upload, uploads[transferKey('upload', attachment.index)])
+  const progress = running(attachment, upload, uploads[transferKey('upload', attachment.index)])
   const ref = { messageId: message.id, index: attachment.index }
   // libsession keeps a thumbnail of what we send, so a picture leads with it here too.
   const thumbnail: FileRowThumbnail | undefined = leadsWithPicture(attachment)

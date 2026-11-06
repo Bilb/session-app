@@ -351,8 +351,6 @@ export class FakeAccount {
    * thumbnail is made from it. Each with its size, where the world knows it.
    */
   private readonly taken = new Map<string, number | undefined>()
-  /** The sizes `seedSending` held back from files not up yet, which their upload reports. */
-  private readonly unreportedSizes = new Map<string, number>()
   /** Renditions a viewer asked for, by `keyOf`, and those made since. */
   private readonly renditionsAsked = new Set<string>()
   private readonly renditions = new Set<string>()
@@ -831,6 +829,8 @@ export class FakeAccount {
         renditionRefused: false,
         // Flagged by libsession as that file's upload starts, when it converts it.
         originalFile: false,
+        // Recorded by libsession as the send stores the file, before any upload.
+        ...(sizes[index] === undefined ? {} : { sizeBytes: sizes[index] }),
         uploaded: false,
         availability: 'absent',
         fetchDoneBytes: 0,
@@ -944,7 +944,6 @@ export class FakeAccount {
         // As libsession: what we sent is kept in the cache, and its size is known once it is up.
         this.cached.add(keyOf({ messageId, index }))
         this.taken.delete(keyOf({ messageId, index }))
-        this.unreportedSizes.delete(keyOf({ messageId, index }))
         const { sizeBytes, originalFile, reencodedAs } = upload
         const attachments = current.attachments.map((a) => {
           if (a.index !== index) return a
@@ -994,10 +993,9 @@ export class FakeAccount {
         this.cached.add(key)
         return { ...attachment, uploaded: true }
       }
-      const { sizeBytes, ...rest } = attachment
-      if (sendState !== 'unsendable') this.taken.set(key, sizeBytes)
-      if (sizeBytes !== undefined) this.unreportedSizes.set(key, sizeBytes)
-      return { ...rest, uploaded: false }
+      // Its size kept, as libsession records a file's size when the send stores it.
+      if (sendState !== 'unsendable') this.taken.set(key, attachment.sizeBytes)
+      return { ...attachment, uploaded: false }
     })
     return this.addMessage(id, {
       id: messageId,
@@ -1060,14 +1058,12 @@ export class FakeAccount {
 
   /**
    * The uploads of a message `seedSending` made, which no send handed files to: each carries the
-   * size it reports once up.
+   * size recorded for its file.
    */
   private seededUploads(message: Message): Upload[] {
     return message.attachments.map((attachment) => ({
       path: '',
-      sizeBytes: this.unreportedSizes.get(
-        keyOf({ messageId: message.id, index: attachment.index }),
-      ),
+      sizeBytes: attachment.sizeBytes,
       originalFile: attachment.originalFile,
       reencodedAs: undefined,
     }))
