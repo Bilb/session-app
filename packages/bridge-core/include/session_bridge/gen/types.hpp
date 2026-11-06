@@ -825,8 +825,8 @@ struct AttachmentOutcome {
 ///
 /// An upload names the message id `sendMessage` answers, and none of a send's reaches the stream
 /// before that answer does: the bridge holds any that come first. A file whose upload never
-/// started, because one before it failed, gets no report at all. An upload's first report may
-/// already carry bytes: libsession sends no 0 of 0 for one.
+/// started, because one before it failed, gets no report at all. Like a download, an upload's
+/// first report is 0 of 0, meaning it has started.
 struct AttachmentProgressSessionEvent {
     static constexpr std::string_view type_tag = "attachment-progress";
 
