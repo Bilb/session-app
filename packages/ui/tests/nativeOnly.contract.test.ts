@@ -185,7 +185,8 @@ describe('a swipe to reply on native', () => {
 
   it('gives the touch up to a vertical move, so the transcript still scrolls', () => {
     // Appium's swipe is a straight line, which never starts vertical and turns.
-    expect(swipe).toContain('failOffsetY: [-SWIPE_FAIL_Y_PX, SWIPE_FAIL_Y_PX]')
+    expect(swipe).toContain('const FAIL_OFFSET_Y = [-SWIPE_FAIL_Y_PX, SWIPE_FAIL_Y_PX]')
+    expect(swipe).toContain('failOffsetY: FAIL_OFFSET_Y')
   })
 })
 

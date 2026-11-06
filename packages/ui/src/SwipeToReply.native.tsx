@@ -1,5 +1,6 @@
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
 import { StyleSheet } from 'react-native'
-import { GestureDetector, usePanGesture } from 'react-native-gesture-handler'
+import { GestureDetector, type PanGestureConfig, usePanGesture } from 'react-native-gesture-handler'
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -21,6 +22,8 @@ import type { SwipeToReplyProps } from './SwipeToReply.types'
 
 export type { SwipeToReplyProps }
 
+const FAIL_OFFSET_Y = [-SWIPE_FAIL_Y_PX, SWIPE_FAIL_Y_PX]
+
 /**
  * Towards the leading edge, mirrored in RTL: the other way is the back swipe, which from iOS 26
  * starts anywhere on screen. A vertical move first gives the touch up, so the transcript scrolls.
@@ -31,32 +34,45 @@ export function SwipeToReply({ onReply, enabled = true, children }: SwipeToReply
   const offset = useSharedValue(0)
   const armed = useSharedValue(false)
 
-  const tap = () => {
-    haptics?.threshold()
-  }
-
-  const pan = usePanGesture({
-    enabled,
-    activeOffsetX: toward * SWIPE_ACTIVATE_PX,
-    failOffsetY: [-SWIPE_FAIL_Y_PX, SWIPE_FAIL_Y_PX],
-    onUpdate: (event) => {
-      'worklet'
-      const travel = event.translationX * toward
-      offset.value = swipeDrawn(travel) * toward
-      const past = travel >= SWIPE_REPLY_THRESHOLD_PX
-      if (past && !armed.value) scheduleOnRN(tap)
-      armed.value = past
-    },
-    onDeactivate: (event) => {
-      'worklet'
-      if (armed.value && !event.canceled) scheduleOnRN(onReply)
-    },
-    onFinalize: () => {
-      'worklet'
-      armed.value = false
-      offset.value = withSpring(0)
-    },
+  // The pan's config must keep its identity across renders: RNGH re-sends a new one to native and
+  // rebuilds its handlers, and a message row re-renders on every send, progress and reaction tick.
+  const latestOnReply = useRef(onReply)
+  useLayoutEffect(() => {
+    latestOnReply.current = onReply
   })
+  const reply = useCallback(() => {
+    latestOnReply.current()
+  }, [])
+  const tap = useCallback(() => {
+    haptics?.threshold()
+  }, [haptics])
+
+  const config = useMemo(
+    (): PanGestureConfig => ({
+      enabled,
+      activeOffsetX: toward * SWIPE_ACTIVATE_PX,
+      failOffsetY: FAIL_OFFSET_Y,
+      onUpdate: (event) => {
+        'worklet'
+        const travel = event.translationX * toward
+        offset.value = swipeDrawn(travel) * toward
+        const past = travel >= SWIPE_REPLY_THRESHOLD_PX
+        if (past && !armed.value) scheduleOnRN(tap)
+        armed.value = past
+      },
+      onDeactivate: (event) => {
+        'worklet'
+        if (armed.value && !event.canceled) scheduleOnRN(reply)
+      },
+      onFinalize: () => {
+        'worklet'
+        armed.value = false
+        offset.value = withSpring(0)
+      },
+    }),
+    [enabled, toward, offset, armed, tap, reply],
+  )
+  const pan = usePanGesture(config)
 
   const row = useAnimatedStyle(() => ({ transform: [{ translateX: offset.value }] }))
   const cue = useAnimatedStyle(() => {
