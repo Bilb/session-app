@@ -149,9 +149,11 @@ export function showcase(names: readonly [FixtureName, FixtureName] = ['Alice', 
   first.setGallery(listed.id, false)
   world.settle()
 
+  resetPhotos()
+
   // Ours, caught uploading where the footer's ring has a total to read: a message's one file, and
-  // sets whose last file is the one moving. After everything else, so no other row's photograph
-  // moves. The catalog's scenarios give each running file a reading.
+  // sets whose last file is the one moving. The catalog's scenarios give each running file a
+  // reading.
   const lastUploading: Array<[string, Attachment[], number]> = [
     ['One file, caught uploading', set(['pdf']), 0],
     ['The last of three uploading', set(['image', 'pdf', 'zip']), 2],
