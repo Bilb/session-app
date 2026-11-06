@@ -1,6 +1,6 @@
 import { FONT_SIZE, LINE_HEIGHT_RATIO } from '@session/theme-tokens'
 import type { ReactNode } from 'react'
-import { Spinner, XStack, YStack } from 'tamagui'
+import { isWeb, Spinner, XStack, YStack } from 'tamagui'
 
 import type { ElementId } from '@session/test-ids'
 
@@ -220,7 +220,11 @@ export function MessageQuote({
 
   if (onPress === undefined)
     return (
-      <YStack testID={testID}>
+      // The web reads the words where they stand; native would stop on author and summary apart.
+      <YStack
+        testID={testID}
+        {...(isWeb ? {} : { accessible: true, 'aria-label': quoteAccessibleName(author, preview) })}
+      >
         <QuoteBody {...shared} pressable={false} />
       </YStack>
     )

@@ -24,7 +24,7 @@ export function messageQuote({
   if (!pressable)
     return {
       desktop: { role: 'none', name: null, focusable: false },
-      native: { role: 'text', name },
+      native: { role: 'none', name },
     }
   const node = { role: 'button', name, hint, busy, disabled: false, focusable: true } as const
   return { desktop: node, native: node }
