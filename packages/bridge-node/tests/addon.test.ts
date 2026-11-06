@@ -724,6 +724,18 @@ describeEcho('the generated converters', () => {
         outcome: { ok: true },
       },
     },
+    {
+      type: 'event',
+      event: {
+        type: 'attachment-progress',
+        transfer: 'upload',
+        messageId: 43,
+        index: 2,
+        doneBytes: 0,
+        totalBytes: 0,
+        outcome: { ok: false, error: 'network.unavailable' },
+      },
+    },
     { type: 'event', event: { type: 'log', message: 'm', category: 'c', level: 'info' } },
     { type: 'event', event: { type: 'network-status-changed', status: 'connected' } },
     { type: 'event', event: { type: 'network-status-changed', status: 'disconnected' } },
