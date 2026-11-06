@@ -22,7 +22,7 @@ import type { SwipeToReplyProps } from './SwipeToReply.types'
 
 export type { SwipeToReplyProps }
 
-const FAIL_OFFSET_Y = [-SWIPE_FAIL_Y_PX, SWIPE_FAIL_Y_PX]
+const FAIL_OFFSET_Y = [-SWIPE_FAIL_Y_PX, SWIPE_FAIL_Y_PX] as [number, number]
 
 /**
  * Towards the leading edge, mirrored in RTL: the other way is the back swipe, which from iOS 26
