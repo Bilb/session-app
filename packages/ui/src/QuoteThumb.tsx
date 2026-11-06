@@ -12,11 +12,11 @@ import type { WithTestID } from './with'
 const BADGE_INSET_PX = 3
 const BADGE_RADIUS_PX = 4
 
-/** How far a glyph's tile tints its bubble towards its ink: the quote's own tint, once more. */
+/** How far a glyph's tile tints its bubble towards its ink. */
 export const QUOTE_GLYPH_TILE_OPACITY = 0.1
 
 /**
- * A quote's square, after the stripe: its picture, through the same tile the album draws
+ * A quote's square, in the stripe's place: its picture, through the same tile the album draws
  * (thumbnail, then ThumbHash, then the flat tile), or a glyph on a plain tile.
  *
  * `busy` replaces what is there with a spinner, so the quote keeps its size while it pages.

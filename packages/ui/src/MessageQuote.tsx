@@ -1,12 +1,10 @@
 import type { ReactNode } from 'react'
-import { SPACING } from '@session/theme-tokens'
 import { XStack, YStack } from 'tamagui'
 
 import type { ElementId } from '@session/test-ids'
 
 import { FileName } from './FileName'
 import { ON_ACCENT_SECONDARY_OPACITY, type inkFor } from './ink'
-import { MESSAGE_FRAME_INSET_BLOCK_PX, MESSAGE_FRAME_INSET_PX } from './MessageFrame'
 import { PressArea } from './PressArea'
 import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import {
@@ -28,23 +26,12 @@ import type { WithTestID } from './with'
  * square is the 44 pt target on its own, so the quote is never shorter than one.
  */
 export const QUOTE_THUMB_SIDE_PX = 44
-const QUOTE_INSET_PX = 6
 const STRIPE_WIDTH_PX = 3
 
 /**
- * How far the quote sits from its bubble's edges, closer than the bubble's own text: it heads
- * the bubble, as the legacy clients draw it, rather than sitting inside its padding.
+ * The stripe or the square, then the author and the summary: what the bar draws too. A quote of
+ * an attachment leads with its square and no stripe, as legacy iOS draws it.
  */
-const QUOTE_EDGE_PX = SPACING['2xs']
-const QUOTE_HEAD = {
-  marginHorizontal: QUOTE_EDGE_PX - MESSAGE_FRAME_INSET_PX,
-  marginTop: QUOTE_EDGE_PX - MESSAGE_FRAME_INSET_BLOCK_PX,
-} as const
-
-/** How far a quote tints its bubble towards the bubble's ink, which works in either polarity. */
-const QUOTE_TINT_OPACITY = { incoming: 0.07, outgoing: 0.1 } as const
-
-/** The stripe, the square after it, the author and the summary: what the bar draws too. */
 export function QuoteLines({
   heading,
   preview,
@@ -62,12 +49,14 @@ export function QuoteLines({
   stripe: '$onAccent' | '$primaryColor'
   /** The quote wraps a body to two lines; the composer's bar holds every summary to one. */
   summaryLines: 1 | 2
-  /** The picture or glyph, between the stripe and the words. */
+  /** The picture or glyph, in the stripe's place, for a quote of an attachment. */
   thumb: ReactNode
 }) {
   return (
     <>
-      <YStack width={STRIPE_WIDTH_PX} borderRadius="$full" backgroundColor={stripe} />
+      {preview.visual === null ? (
+        <YStack width={STRIPE_WIDTH_PX} borderRadius="$full" backgroundColor={stripe} />
+      ) : null}
       {thumb}
       <YStack flex={1} minWidth={0} justifyContent="center">
         <Text size="$label" weight="semibold" color={ink} numberOfLines={1}>
@@ -137,21 +126,11 @@ function QuoteBody({
       {...(pressable ? { group: 'quote' as const, ...PRESS_PASSTHROUGH } : {})}
       position="relative"
       minHeight={QUOTE_THUMB_SIDE_PX}
-      padding={QUOTE_INSET_PX}
       gap="$xs"
       borderRadius="$sm"
       overflow="hidden"
       {...(pressable ? { '$platform-web': { cursor: 'pointer' as const } } : {})}
     >
-      <YStack
-        position="absolute"
-        top={0}
-        bottom={0}
-        left={0}
-        right={0}
-        backgroundColor={ink}
-        opacity={onAccent ? QUOTE_TINT_OPACITY.outgoing : QUOTE_TINT_OPACITY.incoming}
-      />
       {pressable ? (
         <StateLayer group="quote" tone="ink" borderRadius="$sm" pressed={pressed} />
       ) : null}
@@ -177,9 +156,9 @@ function QuoteBody({
 }
 
 /**
- * The message a reply quotes, heading the reply's bubble: one press target that jumps to the
- * original, named "{author}: {summary}" for a screen reader, the picture's words included. A reply
- * whose original is not here draws no quote at all.
+ * The message a reply quotes, heading the reply's bubble inside its padding, with no box of its
+ * own: one press target that jumps to the original, named "{author}: {summary}" for a screen
+ * reader, the picture's words included. A reply whose original is not here draws no quote at all.
  */
 export function MessageQuote({
   author,
@@ -198,23 +177,21 @@ export function MessageQuote({
 
   if (onPress === undefined)
     return (
-      <YStack {...QUOTE_HEAD} testID={testID}>
+      <YStack testID={testID}>
         <QuoteBody {...shared} pressable={false} />
       </YStack>
     )
 
   return (
-    <YStack {...QUOTE_HEAD}>
-      <PressArea
-        onPress={onPress}
-        accessibilityLabel={quoteAccessibleName(author, preview)}
-        accessibilityHint={hint}
-        busy={busy}
-        ring={{ onAccent, offset: 2, radius: '$sm' }}
-        {...(testID === undefined ? {} : { testID })}
-      >
-        {(pressed) => <QuoteBody {...shared} pressable pressed={pressed} />}
-      </PressArea>
-    </YStack>
+    <PressArea
+      onPress={onPress}
+      accessibilityLabel={quoteAccessibleName(author, preview)}
+      accessibilityHint={hint}
+      busy={busy}
+      ring={{ onAccent, offset: 2, radius: '$sm' }}
+      {...(testID === undefined ? {} : { testID })}
+    >
+      {(pressed) => <QuoteBody {...shared} pressable pressed={pressed} />}
+    </PressArea>
   )
 }
