@@ -33,6 +33,7 @@ export function QuoteThumb({
   ink: QuoteInk
   busy?: boolean | undefined
 }) {
+  if (visual === null) return null
   const radius = tileRadius(sidePx)
 
   if (busy)
@@ -47,8 +48,6 @@ export function QuoteThumb({
         <Spinner size="small" color={ink} />
       </YStack>
     )
-
-  if (visual === null) return null
 
   if (visual.type === 'glyph')
     return (

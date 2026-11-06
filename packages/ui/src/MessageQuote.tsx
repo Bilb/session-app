@@ -1,5 +1,6 @@
+import { FONT_SIZE, LINE_HEIGHT_RATIO } from '@session/theme-tokens'
 import type { ReactNode } from 'react'
-import { XStack, YStack } from 'tamagui'
+import { Spinner, XStack, YStack } from 'tamagui'
 
 import type { ElementId } from '@session/test-ids'
 
@@ -30,6 +31,11 @@ export const QUOTE_THUMB_SIDE_PX = 44
 const STRIPE_WIDTH_PX = 4
 const QUOTE_INSET_PX = 6
 
+/** The author's line: a text quote's busy spinner is held to it, so the quote keeps its height. */
+const HEADING_LINE_PX = FONT_SIZE.label * LINE_HEIGHT_RATIO
+/** Shrinks the 20 px small spinner to the author's line. */
+const HEADING_SPINNER_SCALE = 0.7
+
 /** How far a quote tints its bubble towards the bubble's ink, which works in either polarity. */
 const QUOTE_TINT_OPACITY = { incoming: 0.07, outgoing: 0.1 } as const
 
@@ -45,6 +51,7 @@ export function QuoteLines({
   stripe,
   summaryLines,
   thumb,
+  busy = false,
 }: {
   /** The author, or the bar's "Replying to" with the author. */
   heading: string
@@ -56,15 +63,37 @@ export function QuoteLines({
   summaryLines: 1 | 2
   /** The picture or glyph, in the stripe's place, for a quote of an attachment. */
   thumb: ReactNode
+  /**
+   * A spinner after the author, for a quote with no square to turn into one: beside the summary
+   * it would narrow the summary and could wrap it to a second line.
+   */
+  busy?: boolean | undefined
 }) {
+  const author = (
+    <Text size="$label" weight="semibold" color={ink} numberOfLines={1} flexShrink={1}>
+      {heading}
+    </Text>
+  )
   return (
     <>
       {preview.visual === null ? <YStack width={STRIPE_WIDTH_PX} backgroundColor={stripe} /> : null}
       {thumb}
       <YStack flex={1} minWidth={0} justifyContent="center" gap="$2xs">
-        <Text size="$label" weight="semibold" color={ink} numberOfLines={1}>
-          {heading}
-        </Text>
+        {busy ? (
+          <XStack minWidth={0} alignItems="center" gap="$2xs">
+            {author}
+            <YStack
+              height={HEADING_LINE_PX}
+              justifyContent="center"
+              scale={HEADING_SPINNER_SCALE}
+              aria-hidden
+            >
+              <Spinner size="small" color={ink} />
+            </YStack>
+          </XStack>
+        ) : (
+          author
+        )}
         {preview.isFileName ? (
           <XStack minWidth={0} gap="$2xs">
             {/* A column, which gives the name a width to lose its middle from. */}
@@ -154,12 +183,13 @@ function QuoteBody({
         secondary={{ color: ink, opacity: ON_ACCENT_SECONDARY_OPACITY }}
         stripe={onAccent ? '$onAccent' : '$primaryColor'}
         summaryLines={2}
+        busy={busy && preview.visual === null}
         thumb={
           <QuoteThumb
             visual={preview.visual}
             sidePx={QUOTE_THUMB_SIDE_PX}
             ink={ink}
-            busy={busy}
+            busy={busy && preview.visual !== null}
             testID={thumbnailTestID}
           />
         }
