@@ -28,6 +28,10 @@ import type { WithTestID } from './with'
 export const QUOTE_THUMB_SIDE_PX = 44
 /** Legacy iOS's accent line: square-ended, so it reads as a rule rather than a pill. */
 const STRIPE_WIDTH_PX = 4
+const QUOTE_INSET_PX = 6
+
+/** How far a quote tints its bubble towards the bubble's ink, which works in either polarity. */
+const QUOTE_TINT_OPACITY = { incoming: 0.07, outgoing: 0.1 } as const
 
 /**
  * The stripe or the square, then the author and the summary: what the bar draws too. A quote of
@@ -55,11 +59,9 @@ export function QuoteLines({
 }) {
   return (
     <>
-      {preview.visual === null ? (
-        <YStack width={STRIPE_WIDTH_PX} backgroundColor={stripe} />
-      ) : null}
+      {preview.visual === null ? <YStack width={STRIPE_WIDTH_PX} backgroundColor={stripe} /> : null}
       {thumb}
-      <YStack flex={1} minWidth={0} justifyContent="center">
+      <YStack flex={1} minWidth={0} justifyContent="center" gap="$2xs">
         <Text size="$label" weight="semibold" color={ink} numberOfLines={1}>
           {heading}
         </Text>
@@ -127,11 +129,21 @@ function QuoteBody({
       {...(pressable ? { group: 'quote' as const, ...PRESS_PASSTHROUGH } : {})}
       position="relative"
       minHeight={QUOTE_THUMB_SIDE_PX}
+      padding={QUOTE_INSET_PX}
       gap="$xs"
       borderRadius="$sm"
       overflow="hidden"
       {...(pressable ? { '$platform-web': { cursor: 'pointer' as const } } : {})}
     >
+      <YStack
+        position="absolute"
+        top={0}
+        bottom={0}
+        left={0}
+        right={0}
+        backgroundColor={ink}
+        opacity={onAccent ? QUOTE_TINT_OPACITY.outgoing : QUOTE_TINT_OPACITY.incoming}
+      />
       {pressable ? (
         <StateLayer group="quote" tone="ink" borderRadius="$sm" pressed={pressed} />
       ) : null}
@@ -157,7 +169,7 @@ function QuoteBody({
 }
 
 /**
- * The message a reply quotes, heading the reply's bubble inside its padding, with no box of its
+ * The message a reply quotes, heading the reply's bubble inside its padding on a tint of its
  * own: one press target that jumps to the original, named "{author}: {summary}" for a screen
  * reader, the picture's words included. A reply whose original is not here draws no quote at all.
  */
