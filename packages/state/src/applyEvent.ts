@@ -89,12 +89,18 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
  *
  * By message, because a report names no conversation. A report that arrives between a message
  * being announced and it landing in a window is dropped; the bar starts on the next one.
+ *
+ * An upload is kept only while its message is `uploading`. libsession reports a file that fails
+ * at once before the send has an id to report it by, so the bridge holds that report until after
+ * the message has already been announced failed, and the failure is the message's to say.
  */
 function recordTransfer(
   state: SessionState,
   event: Extract<SessionEvent, { type: 'attachment-progress' }>,
 ): SessionState {
-  if (!isLoaded(state, event.messageId)) return state
+  const message = loadedMessage(state, event.messageId)
+  if (message === undefined) return state
+  if (event.transfer === 'upload' && message.sendState !== 'uploading') return state
 
   const entry: AttachmentTransferState = {
     // An outcome ends a transfer; `doneBytes === totalBytes` does not, and arrives before it.
@@ -152,11 +158,14 @@ function sameTransfer(
   )
 }
 
-/** Whether any loaded window holds this message, which is what makes a report worth keeping. */
-function isLoaded(state: SessionState, messageId: number): boolean {
-  return Object.values(state.histories).some(
-    (window) => window.ready && window.messages.some((m) => m.id === messageId),
-  )
+/** The message as a loaded window holds it, which is what makes a report worth keeping. */
+function loadedMessage(state: SessionState, messageId: number): Message | undefined {
+  for (const window of Object.values(state.histories)) {
+    if (!window.ready) continue
+    const message = window.messages.find((m) => m.id === messageId)
+    if (message !== undefined) return message
+  }
+  return undefined
 }
 
 /** The transfers without those of the messages a dropped window held. */
@@ -252,23 +261,32 @@ function upsertMessage(
   return {
     ...state,
     histories: { ...state.histories, [conversationId]: updated },
-    transfers: withoutFinishedDownloads(state.transfers, message),
+    transfers: withoutSettledTransfers(state.transfers, message),
   }
 }
 
 /**
  * A message's finished downloads, dropped once the message itself is announced: from then on its
  * `availability` says what they left, and a report kept past that would outlive an eviction.
+ *
+ * Its uploads go too once it is announced in any state but `uploading`: they were one attempt's,
+ * `uploaded` says what that attempt left, and a retry reports its own from the start.
  */
-function withoutFinishedDownloads(
+function withoutSettledTransfers(
   transfers: SessionState['transfers'],
   message: Message,
 ): SessionState['transfers'] {
   const own = transfers[message.id]
   if (own === undefined) return transfers
-  const finished = message.attachments
-    .map((a) => transferKey('download', a.index))
-    .filter((key) => own[key]?.state === 'done')
+  const uploadsOver = message.sendState !== 'uploading'
+  const finished = message.attachments.flatMap((a) => {
+    const download = transferKey('download', a.index)
+    const upload = transferKey('upload', a.index)
+    return [
+      ...(own[download]?.state === 'done' ? [download] : []),
+      ...(uploadsOver && upload in own ? [upload] : []),
+    ]
+  })
   if (finished.length === 0) return transfers
   const kept = { ...own }
   for (const key of finished) delete kept[key]
