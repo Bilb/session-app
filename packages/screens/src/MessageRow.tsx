@@ -4,20 +4,20 @@ import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import {
   ContextMenuTarget,
-  type MenuAnchor,
   MessageFrame,
   ON_ACCENT_SECONDARY_OPACITY,
   Text,
   useMenuLongPress,
   XStack,
 } from '@session/ui'
-import { memo, useCallback, useMemo, type ReactNode } from 'react'
+import { memo, useMemo, type ReactNode } from 'react'
 
-import { ConversationUiContext, useConversationUi, type ConversationUi } from './conversationUi'
+import { ConversationUiContext, type ConversationUi } from './conversationUi'
 import { attachmentsWidthPx } from './attachmentsWidth'
 import { MessageAttachments } from './MessageAttachments'
 import { useAlbumGeometry } from './useAlbumGeometry'
 import { offersRetry } from './messageRetry'
+import { useMessageMenuOpener } from './useMessageMenuOpener'
 
 /**
  * What a send state is called on screen. Only the ones worth showing say anything.
@@ -80,18 +80,9 @@ export const MessageRow = memo(function MessageRow({
   index: number
 }) {
   const actions = useSessionActions()
-  const ui = useConversationUi()
   const message = useMessage(conversationId, messageId)
   const geometry = useAlbumGeometry()
-  const { openMenu } = ui
-  // Stable across the message's own updates: every control inside reads it through context, so a
-  // new one would re-render a memoised tile on each progress tick.
-  const openMyMenu = useCallback(
-    (anchor: MenuAnchor) => {
-      openMenu(messageId, anchor)
-    },
-    [openMenu, messageId],
-  )
+  const openMyMenu = useMessageMenuOpener(messageId)
   if (message === undefined) return null
   // A caption wraps at its attachments' width, so a narrow picture keeps a narrow bubble.
   const attachmentsWidth =
