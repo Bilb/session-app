@@ -122,6 +122,17 @@ describe('a context menu', () => {
     expect(focused()).toBe(ITEM('reply'))
   })
 
+  it('highlights a hovered row without focusing it, and the arrow keys go on from there', async () => {
+    const user = userEvent.setup()
+    layer(AT_ELEMENT)
+    await user.hover(byId(ITEM('info')))
+    await act(async () => {})
+    expect(focused()).toBe(IDS.menu)
+    expect(tabStops()).toEqual([ITEM('info')])
+    await user.keyboard('{ArrowDown}')
+    expect(focused()).toBe(ITEM('more'))
+  })
+
   it('moves with the arrow keys, onto the disabled row, past the separator, round the end', async () => {
     const user = userEvent.setup()
     layer(AT_ELEMENT)
