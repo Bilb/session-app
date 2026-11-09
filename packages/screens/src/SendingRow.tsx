@@ -12,6 +12,7 @@ import { ELEMENT } from '@session/test-ids'
 import { FileRow, type FileRowState, type FileRowThumbnail } from '@session/ui'
 
 import { fetchOf } from './attachmentFetch'
+import { layoutLine } from './layoutLine'
 import { uploadedBytes, uploadStateOf, type UploadState } from './uploadState'
 import { leadUri, leadsWithPicture } from './viewableAttachments'
 
@@ -56,7 +57,7 @@ function caption(
       // A word until the report says how big the file is, as a download's row says one.
       return progress === undefined
         ? tr('uploading')
-        : `${formatBytes(progress.doneBytes)} / ${formatBytes(progress.totalBytes)}`
+        : layoutLine(' / ', formatBytes(progress.doneBytes), formatBytes(progress.totalBytes))
     case 'queued':
       return PENDING_COPY.attachmentQueued
     case 'failed':
