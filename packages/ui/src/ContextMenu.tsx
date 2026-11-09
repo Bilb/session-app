@@ -355,10 +355,9 @@ export function ContextMenuLayer({
             {...logical({
               insetStart: spot === undefined ? 0 : leadingInset(spot.x, spot.width, geometry),
             })}
-            // Swallows the press, so a tap inside the menu does not reach the backdrop.
-            onPress={(event) => {
-              event.stopPropagation()
-            }}
+            // iOS lays this out down to the bottom of the layer, not at the panel's height: only
+            // the panel may take a touch, or the strip under it never reaches the backdrop.
+            pointerEvents="box-none"
           >
             <ContextMenuPanel
               entries={level.entries}
@@ -449,16 +448,31 @@ export function ContextMenu({ anchor, onDismiss, ...shared }: ContextMenuProps) 
     >
       <YStack
         flex={1}
-        onPress={onDismiss}
         {...(isWeb
           ? {
+              // Keeps the window's own menu from opening over this one.
               onContextMenu: (event: { preventDefault: () => void }) => {
                 event.preventDefault()
-                onDismiss()
               },
             }
           : {})}
       >
+        {/* Beside the panels rather than around them, so a press on a panel never reaches it.
+            TODO: legacy mobile dims or blurs under its menu; add that with the reaction bar,
+            around the lifted message, rather than over the message the menu acts on. */}
+        <YStack
+          position="absolute"
+          fullscreen
+          onPress={onDismiss}
+          {...(isWeb
+            ? {
+                onContextMenu: (event: { preventDefault: () => void }) => {
+                  event.preventDefault()
+                  onDismiss()
+                },
+              }
+            : {})}
+        />
         {anchor === null ? null : (
           <ContextMenuLayer
             {...shared}

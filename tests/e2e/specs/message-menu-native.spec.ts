@@ -59,3 +59,22 @@ for (const platform of MOBILE_PLATFORMS) {
     }
   })
 }
+
+for (const platform of MOBILE_PLATFORMS) {
+  test(`closes a message’s menu on a tap just below it @${platform} @medium-risk`, async () => {
+    const app = await MobileApp.launch(platform, 'alice')
+    try {
+      await openFirstConversation(app)
+      // The latest message sits low on the screen, so its menu opens above the finger.
+      const last = (await app.count(ELEMENT.conversation.messageBody)) - 1
+      await app.longPress(ELEMENT.conversation.messageBody, last)
+      await app.waitForVisible(MENU.menu)
+      const menu = await app.frame(MENU.menu)
+      if (menu === null) throw new Error('the menu is not open')
+      await app.tapPoint(menu.x + menu.width / 2, menu.y + menu.height + BESIDE_PX)
+      await expect.poll(() => app.isVisible(MENU.menu), { timeout: CLOSE_MS }).toBe(false)
+    } finally {
+      await app.close()
+    }
+  })
+}
