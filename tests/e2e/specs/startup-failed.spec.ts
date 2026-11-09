@@ -11,7 +11,7 @@ import { join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 
 import { _electron, expect, test } from '@playwright/test'
-import { PENDING_COPY, tr } from '@session/localization'
+import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 
 import { FAKE_LAUNCH_ENV } from '../harness/fakeEnv'
@@ -116,7 +116,7 @@ test('a failed start shows why, exports logs, asks before clearing, and recovers
     // leaves everything where it was.
     await page.getByTestId(ELEMENT.startupFailed.clear).first().click()
     await expect(page.getByTestId(ELEMENT.startupFailed.confirmClear).first()).toContainText(
-      drawn(PENDING_COPY.databaseErrorClearDeviceWarning),
+      drawn(tr('databaseErrorClearDeviceWarning')),
     )
     await expect(page.getByTestId(ELEMENT.startupFailed.confirmClearButton).first()).toBeVisible()
     await page.getByTestId(ELEMENT.startupFailed.cancelClear).first().click()
