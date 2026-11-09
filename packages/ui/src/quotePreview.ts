@@ -46,7 +46,7 @@ export interface QuoteLabels {
 /** The colour a quote's words and glyphs take on what it is drawn on. */
 export type QuoteInk = '$onAccent' | '$messageBubbleIncomingText' | '$textPrimary'
 
-export type QuoteKind = 'text' | 'image' | 'gif' | 'video' | 'voice' | 'audio' | 'file'
+type QuoteKind = 'text' | 'image' | 'gif' | 'video' | 'voice' | 'audio' | 'file'
 
 /** What sits after the stripe: a picture, a glyph on a plain tile, or nothing. */
 export type QuoteVisual =

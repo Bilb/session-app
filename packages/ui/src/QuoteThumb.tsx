@@ -13,7 +13,7 @@ const BADGE_INSET_PX = 3
 const BADGE_RADIUS_PX = 4
 
 /** How far a glyph's tile tints its bubble towards its ink. */
-export const QUOTE_GLYPH_TILE_OPACITY = 0.1
+const QUOTE_GLYPH_TILE_OPACITY = 0.1
 
 /**
  * A quote's square, in the stripe's place: its picture, through the same tile the album draws

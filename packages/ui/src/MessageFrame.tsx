@@ -7,7 +7,7 @@ import { LandingHighlight } from './LandingHighlight'
 /** The frame's inset at each side, so content of a fixed width can be given room for it. */
 export const MESSAGE_FRAME_INSET_PX = SPACING.md
 /** The frame's inset above and below its content. */
-export const MESSAGE_FRAME_INSET_BLOCK_PX = SPACING.sm
+const MESSAGE_FRAME_INSET_BLOCK_PX = SPACING.sm
 
 export interface MessageFrameProps {
   /** Ours, on the accent; otherwise theirs, on the incoming surface. */

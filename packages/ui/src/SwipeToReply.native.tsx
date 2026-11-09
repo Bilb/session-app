@@ -11,17 +11,15 @@ import { scheduleOnRN } from 'react-native-worklets'
 
 import { useHaptics } from './haptics'
 import { isLayoutRtl } from './layoutDirection'
-import {
-  SWIPE_ACTIVATE_PX,
-  SWIPE_FAIL_Y_PX,
-  SWIPE_REPLY_THRESHOLD_PX,
-  swipeDrawn,
-} from './swipeMetrics'
+import { SWIPE_REPLY_THRESHOLD_PX, swipeDrawn } from './swipeMetrics'
 import { SwipeReplyCue } from './SwipeReplyCue'
 import type { SwipeToReplyProps } from './SwipeToReply.types'
 
 export type { SwipeToReplyProps }
 
+/** Sideways travel before the swipe takes the touch, and the vertical travel that gives it up. */
+const SWIPE_ACTIVATE_PX = 10
+const SWIPE_FAIL_Y_PX = 10
 const FAIL_OFFSET_Y = [-SWIPE_FAIL_Y_PX, SWIPE_FAIL_Y_PX] as [number, number]
 
 /**
