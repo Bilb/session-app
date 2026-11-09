@@ -51,11 +51,13 @@ function logPress(control: string, kind: StartupFailureKind): void {
  * stays up and neither ever ends. Drawn in the default theme, which is what the launch screen was
  * drawn in -- the theme is a preference in the database that just failed to open.
  *
- * **Clearing is the only way forward offered**, and it leads to onboarding (through a relaunch if
- * an account had been loaded: see `clearAfterStartupFailure`), where somebody either starts again
- * or enters their recovery phrase. No Retry: what lands here is a request the open database
- * refused, and asking it again gets the same answer. Where the bridge itself could not be made,
- * for any reason but its key, there is nothing to clear with, and Quit is all that is left.
+ * **Clearing is the only fix the screen performs**, for a failure no restart gets past. It leads to
+ * onboarding (through a relaunch if an account had been loaded: see `clearAfterStartupFailure`),
+ * where somebody either starts again or enters their recovery phrase. A transient failure is told
+ * to restart instead, which Quit makes possible by ending the process. No Retry: what lands here
+ * is a request the open database refused, and asking it again in the same process gets the same
+ * answer. Where the bridge itself could not be made, for any reason but its key, there is nothing
+ * to clear with, and Quit is all that is left.
  */
 export function StartupFailedScreen({ error, kind }: StartupFailedScreenProps) {
   const actions = useSessionActions()
