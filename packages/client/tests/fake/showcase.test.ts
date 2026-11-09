@@ -43,6 +43,29 @@ describe('showcase', () => {
     ])
   })
 
+  it('holds pairs of ours from another device, sent and fetched as a received pair is', async () => {
+    const messages = await showcaseMessages()
+    const ours = messages.filter((m) => m.body.startsWith('Ours from another device'))
+    expect(ours).toHaveLength(3)
+    for (const message of ours) {
+      expect([message.outgoing, message.sendState]).toEqual([true, 'sent'])
+      expect(message.attachments.map((a) => [a.uploaded, a.availability])).toEqual([
+        [true, 'absent'],
+        [true, 'absent'],
+      ])
+    }
+  })
+
+  it('holds a lone picture its reader switched to a list', async () => {
+    const messages = await showcaseMessages()
+    const lone = messages.find((m) => m.body === 'One picture as a list')
+    expect([lone?.attachments.length, lone?.galleryViewable, lone?.gallery]).toEqual([
+      1,
+      true,
+      false,
+    ])
+  })
+
   it('holds a message of ours whose 31st of 32 files failed, with the thirty before it up', async () => {
     const messages = await showcaseMessages()
     const failed = messages.find((m) => m.body === 'File 31 of 32 failed')

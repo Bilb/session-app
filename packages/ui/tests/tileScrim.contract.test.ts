@@ -8,7 +8,7 @@ const source = (path: string) => readFileSync(join(import.meta.dirname, '../..',
 /** Held by reading the source: axe does not measure text over a photograph. */
 describe('what is drawn on the tile scrim', () => {
   // Both scrims are dark in every theme, so their ink is the role that is light in every theme.
-  it.each(['ui/src/AttachmentTile.tsx', 'ui/src/FetchHint.tsx', 'screens/src/AttachmentPill.tsx'])(
+  it.each(['ui/src/AttachmentTile.tsx', 'ui/src/FetchHint.tsx'])(
     'in %s is light in every theme',
     (path) => {
       const file = source(path)

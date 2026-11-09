@@ -1,7 +1,8 @@
 import { formatBytes } from '@session/basic-types'
-import { isolate, PENDING_COPY, tr } from '@session/localization'
+import { PENDING_COPY, tr } from '@session/localization'
 
 import type { AttachmentSet } from './attachmentSet'
+import { layoutLine } from './layoutLine'
 
 /**
  * What it weighs and how many there are, before a fetch and after one alike. The size leads, so a
@@ -10,14 +11,12 @@ import type { AttachmentSet } from './attachmentSet'
  */
 function sizeAndCount(set: AttachmentSet): string {
   const count = PENDING_COPY.attachmentCount(set.count)
-  return set.sizeBytes === undefined
-    ? count
-    : `${isolate(formatBytes(set.sizeBytes))} · ${isolate(count)}`
+  return set.sizeBytes === undefined ? count : layoutLine(' · ', formatBytes(set.sizeBytes), count)
 }
 
 /**
- * What a set says wherever it is drawn, or null for a running transfer of known size, which the
- * footer and the pill word differently. The pill is not drawn on a set that has arrived.
+ * What a set's caption says, or null for a running transfer of known size, which the footer words
+ * as both counts.
  */
 export function sharedCaption(set: AttachmentSet): string | null {
   // The first report of any transfer is 0 of 0: the server has not said how big it is yet.

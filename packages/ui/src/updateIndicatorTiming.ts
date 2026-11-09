@@ -38,7 +38,7 @@ const SHRINK_SHARE = 0.7
 /** How far past full size the new glyph pops before settling. */
 const POP_OVERSHOOT = 1.15
 
-const easeOut = (x: number) => 1 - Math.pow(1 - x, 3)
+export const easeOut = (x: number) => 1 - Math.pow(1 - x, 3)
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x))
 

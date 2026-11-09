@@ -86,6 +86,11 @@ export const PENDING_COPY = {
   /** A sending set's footer. Counts in English only, as `attachmentCount` does. */
   attachmentsUploaded: (uploaded: number, count: number): string =>
     `${String(uploaded)} of ${String(count)} uploaded`,
+  /**
+   * A running download's reading as a screen reader says it, beside the "12 MB / 30 MB" the footer
+   * shows. Both sizes arrive already formatted. One string, so each locale orders the two itself.
+   */
+  attachmentsDownloadProgress: (done: string, total: string): string => `${done} of ${total}`,
   /** Beside Show All when a file it hides failed. */
   attachmentsFailedCount: (count: number): string => `${String(count)} failed`,
   /**

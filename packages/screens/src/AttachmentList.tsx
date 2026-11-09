@@ -73,7 +73,9 @@ function ShowAll({
  * only the documents would be the second half of a message whose first half is a gallery.
  *
  * Each row carries its own state, its own progress and its own control - which is what the album
- * cannot do, because a tile has nowhere to put one.
+ * cannot do, because a tile has nowhere to put one. **Except a message's one row**: its footer's
+ * verb is already the one control for that file, as it is under an album of one picture, so the
+ * row leaves its own out and the control stays where it was when the view switches.
  */
 export function AttachmentList({
   message,
@@ -94,6 +96,7 @@ export function AttachmentList({
   const capped =
     onShowAll === undefined ? message.attachments : message.attachments.slice(0, LIST_MAX_ROWS)
   const hidden = message.attachments.length - capped.length
+  const alone = message.attachments.length === 1
 
   return (
     <YStack>
@@ -103,6 +106,7 @@ export function AttachmentList({
           message={message}
           attachment={attachment}
           onAccent={onAccent}
+          hasControl={!alone}
         />
       ))}
       {hidden === 0 || onShowAll === undefined ? null : (

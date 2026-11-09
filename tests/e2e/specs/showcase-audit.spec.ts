@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { ELEMENT } from '@session/test-ids'
 
 import { openFirstConversation } from '../harness/attachments'
@@ -6,45 +6,11 @@ import { DesktopApp } from '../harness/DesktopApp'
 import type { AuditIssue } from '../harness/ISessionApp'
 import { auditVerdict, describeIssues, issueKey } from '../harness/knownIssues'
 import { MobileApp, type FormFactor, type MobilePlatform } from '../harness/MobileApp'
+import { MAX_SCROLL_STEPS, scrollStep } from '../harness/transcriptScroll'
 
 /** Narrow is near the window's 380 floor, where a bubble is at its tightest; wide is a laptop. */
 const WIDTHS = { narrow: 420, wide: 1280 } as const
 const HEIGHT = 800
-
-/** Far more steps than the showcase is tall at the narrowest width. */
-const MAX_SCROLL_STEPS = 60
-
-/**
- * Scrolls the tallest scrolled box under `screen` by most of its height, `direction` -1 towards its
- * start; false when it was already at that end.
- */
-async function scrollStep(screen: Locator, direction: -1 | 1): Promise<boolean> {
-  const moved = await screen.evaluate((root, sign) => {
-    interface Box {
-      scrollTop: number
-      scrollHeight: number
-      clientHeight: number
-      querySelectorAll(selector: string): ArrayLike<Box>
-    }
-    const boxes = Array.from((root as unknown as Box).querySelectorAll('*')).filter(
-      (box) => box.scrollHeight > box.clientHeight + 1,
-    )
-    const box = boxes.sort((a, b) => b.scrollHeight - a.scrollHeight)[0]
-    if (box === undefined) return false
-    const before = box.scrollTop
-    box.scrollTop += sign * box.clientHeight * 0.8
-    return box.scrollTop !== before
-  }, direction)
-  // Two frames: one for the windowed list to mount the rows now in view, one for them to draw.
-  await screen.page().evaluate(
-    () =>
-      new Promise<void>((resolve) => {
-        const g = globalThis as unknown as { requestAnimationFrame: (callback: () => void) => void }
-        g.requestAnimationFrame(() => g.requestAnimationFrame(resolve))
-      }),
-  )
-  return moved
-}
 
 /**
  * The showcase conversation at two widths, every bubble the audit reaches, in the default theme:

@@ -13,7 +13,7 @@ import { FakeWorld, resetFakeIds } from './world'
  * message per case, so a pass over the transcript is a pass over the design.
  *
  * The order is the album's counts first, then the mixes that force a list, then the states a
- * message can be in that have nothing to do with what is attached.
+ * message can be in that have nothing to do with what is attached, then downloads caught running.
  */
 export function showcase(names: readonly [FixtureName, FixtureName] = ['Alice', 'Bob']): FakeSetup {
   resetFakeIds()
@@ -74,6 +74,43 @@ export function showcase(names: readonly [FixtureName, FixtureName] = ['Alice', 
     world.settle()
   }
 
+  // Each section starts again from the first photograph, so a message added to one moves no picture
+  // in any other, and no catalog page changes for a message it does not draw.
+  resetPhotos()
+
+  // A running download at each reading the footer's ring draws, received and ours alike: the
+  // catalog's scenarios give each a transfer of its own.
+  const readings = ['for the ring at 0 of 0', 'for the ring at 40%', 'for the ring at 95%']
+  for (const reading of readings) {
+    first.deliverFrom(second, `A pair ${reading}`, world.now(), set(image(2)))
+    world.settle()
+  }
+  for (const reading of readings) {
+    first.seedFromOtherDevice(
+      second.sessionId,
+      `Ours from another device, ${reading}`,
+      set(image(2)),
+    )
+    world.settle()
+  }
+
+  resetPhotos()
+
+  // A message's one attachment as a list, whose footer carries its only control: a document, and
+  // a picture its reader switched to the list. The catalog catches one of each downloading.
+  const lone: Array<[string, Attachment[], boolean]> = [
+    ['One file, caught downloading', set(['pdf']), true],
+    ['One picture as a list', set(image(1)), false],
+    ['One picture as a list, caught downloading', set(image(1)), false],
+  ]
+  for (const [body, attachments, gallery] of lone) {
+    const message = first.deliverFrom(second, body, world.now(), attachments)
+    if (!gallery) first.setGallery(message.id, false)
+    world.settle()
+  }
+
+  resetPhotos()
+
   // Ours, caught sending: what the composer's files become once the bridge can carry them.
   const sending: Array<[string, Attachment[], SendState, number]> = [
     [
@@ -97,7 +134,9 @@ export function showcase(names: readonly [FixtureName, FixtureName] = ['Alice', 
     world.settle()
   }
 
-  // After the sends, so the rows above keep their photographs and their place.
+  resetPhotos()
+
+  // After the sends, so the rows above keep their place.
   first.deliverFrom(second, 'An animated PNG, as a file', world.now(), set(['apng']))
   world.settle()
   const listed = first.deliverFrom(
