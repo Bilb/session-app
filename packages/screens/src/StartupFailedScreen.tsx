@@ -1,5 +1,5 @@
 import { appLog, requirePorts } from '@session/app'
-import { PENDING_COPY, tr } from '@session/localization'
+import { tr } from '@session/localization'
 import { useAccount, useSessionActions, type StartupFailureKind } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { Button, Icon, Screen, Text, useModals, XStack, YStack, type Modals } from '@session/ui'
@@ -179,8 +179,7 @@ function confirmClear(modals: Modals, kind: StartupFailureKind, clear: () => Pro
       title: tr('clearDevice'),
       render: () => (
         <LocalizedText
-          // TODO: tr('databaseErrorClearDeviceWarning') once the key reaches the catalogue.
-          text={PENDING_COPY.databaseErrorClearDeviceWarning}
+          text={tr('databaseErrorClearDeviceWarning')}
           size="$body"
           textAlign="center"
         />

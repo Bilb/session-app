@@ -10,7 +10,7 @@ import {
   type SessionClient,
 } from '@session/client'
 import { createFakeTransport, friends } from '@session/client/fake'
-import { PENDING_COPY, tr } from '@session/localization'
+import { tr } from '@session/localization'
 import { createSessionStore, type SessionStore } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { ModalStackRoot } from '@session/ui'
@@ -129,7 +129,7 @@ describe('the startup-failure screen', () => {
     await failedStart(refusing('database is locked'))
 
     await user.click(byId(ELEMENT.startupFailed.clear))
-    const warning = PENDING_COPY.databaseErrorClearDeviceWarning.replaceAll('<br/>', '\n')
+    const warning = tr('databaseErrorClearDeviceWarning').replaceAll('<br/>', '\n')
     expect(byId(ELEMENT.startupFailed.confirmClear).textContent).toContain(warning)
     expect(byId(ELEMENT.startupFailed.confirmClearButton).textContent).toBe(tr('clear'))
     expect(byId(ELEMENT.startupFailed.cancelClear).textContent).toBe(tr('cancel'))
