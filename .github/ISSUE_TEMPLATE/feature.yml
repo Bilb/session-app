@@ -1,5 +1,5 @@
 name: Feature request
-description: Something you would like Session 2.0 to do
+description: Something you would like Session to do
 labels: [feature, triage]
 body:
   - type: textarea
