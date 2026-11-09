@@ -10,6 +10,7 @@ import { FetchHint } from './FetchHint'
 import { tileRadius } from './attachmentTileStyle'
 import { useForcedFocus } from './interactionOverride'
 import { focusRing, heldButton, keyboardPress } from './keyboardPress'
+import { useListTabIndex } from './listFocus'
 import { pressHint } from './pressHint'
 import { StateLayer } from './StateLayer'
 import type { WithTestID } from './with'
@@ -100,6 +101,7 @@ const AlbumTile = memo(function AlbumTile({
   onAccent: boolean
 }) {
   const forcedFocus = useForcedFocus()
+  const tabIndex = useListTabIndex()
   const menuLongPress = useMenuLongPress()
   if (item === undefined) return null
   // A tile that would fetch is the whole set's, so it dims with the album, and at rest on touch
@@ -115,13 +117,13 @@ const AlbumTile = memo(function AlbumTile({
   return (
     <YStack
       {...(held
-        ? heldButton(name, ring)
+        ? heldButton(name, ring, tabIndex)
         : {
             role: item.hint === undefined ? ('img' as const) : ('button' as const),
             'aria-label': name,
           })}
       {...pressHint(item.hint)}
-      {...keyboardPress(held || item.hint === undefined ? undefined : press, ring)}
+      {...keyboardPress(held || item.hint === undefined ? undefined : press, ring, tabIndex)}
       {...forcedFocus}
       aria-disabled={held}
       // tamagui makes a native view an accessibility element only for this. On iOS that hides
