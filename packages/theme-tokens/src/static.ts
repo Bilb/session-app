@@ -99,6 +99,11 @@ export const INTERACTION_OPACITY = {
   dimPressed: 0.55,
   /** A filled control held down: the fill fades a little toward what is behind it. */
   filledPressed: 0.82,
+  /**
+   * A label that brightens under a pointer, held down: eased back a little from the hover, so a
+   * click shows, without falling back to the colour it rests at.
+   */
+  brightenedPressed: 0.8,
 } as const
 
 // All durations in milliseconds.

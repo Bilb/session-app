@@ -41,7 +41,7 @@ const PRESS_STYLE = {
   ghost: { backgroundColor: '$pressedOverlay' },
   ghostAccent: { backgroundColor: '$pressedOverlay' },
   simple: { opacity: INTERACTION_OPACITY.dimPressed },
-  subtle: { opacity: INTERACTION_OPACITY.dimPressed },
+  subtle: { color: '$textPrimary', opacity: INTERACTION_OPACITY.brightenedPressed },
   tonal: { opacity: 0.7 },
   danger: {
     backgroundColor: '$dangerColor',
@@ -155,12 +155,16 @@ const Frame = styled(XStack, {
         hoverStyle: { opacity: INTERACTION_OPACITY.dimHover },
         pressStyle: PRESS_STYLE.simple,
       },
-      /** `simple` in the secondary text colour, for an action that defers to the one beside it. */
+      /**
+       * A quiet label in the secondary text colour, for an action that defers to the one beside
+       * it. It brightens to the primary colour under a pointer rather than fading as `simple`
+       * does: faded, the secondary colour falls below the contrast floor in a light theme.
+       */
       subtle: {
         backgroundColor: 'transparent',
         borderColor: 'transparent',
         color: '$textSecondary',
-        hoverStyle: { opacity: INTERACTION_OPACITY.dimHover },
+        hoverStyle: { color: '$textPrimary' },
         pressStyle: PRESS_STYLE.subtle,
       },
       /**
@@ -313,6 +317,7 @@ const PRESSED_LABEL: Partial<Record<keyof typeof LABEL_TONE, string>> = {
   outline: '$backgroundPrimary',
   outlineAccent: '$onAccent',
   danger: '$onDanger',
+  subtle: '$textPrimary',
 }
 
 /** On the web the `PressArea` round the frame is the button; a second role inside it is noise. */
