@@ -85,18 +85,18 @@ describe('the startup-failure screen', () => {
     [
       'a database the key does not open',
       () => refusing('file is not a database'),
-      'databaseErrorGeneric',
+      'shareExtensionDatabaseError',
     ],
     [
       'a malformed database',
       () => refusing('database disk image is malformed'),
-      'databaseErrorGeneric',
+      'shareExtensionDatabaseError',
     ],
     [
       'a key that is gone',
       () =>
         keyless(createKeylessTransport(keyMissing(), () => Promise.reject(new Error('unused')))),
-      'databaseErrorGeneric',
+      'shareExtensionDatabaseError',
     ],
     ['a locked database', () => refusing('database is locked'), 'shareExtensionDatabaseError'],
     ['a full disk', () => refusing('database or disk is full'), 'shareExtensionDatabaseError'],

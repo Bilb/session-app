@@ -107,9 +107,10 @@ test('a failed start shows why, exports logs, asks before clearing, and recovers
     expect(text).toContain('>>> export')
     expect(text).toMatch(/pressed export logs kind=unreadable/)
 
-    // A database the key does not open: restarting will not help, so it is not suggested.
+    // A database the key does not open is told to restart too, never to reinstall: Clear Device
+    // is the way past it, and its confirmation carries the warning.
     await expect(page.getByTestId(ELEMENT.startupFailed.explanation).first()).toHaveText(
-      drawn(tr('databaseErrorGeneric')),
+      drawn(tr('shareExtensionDatabaseError')),
     )
 
     // Clearing asks first, saying what goes and what brings the account back, with a Cancel that
@@ -195,7 +196,7 @@ test('a key gone from beside its database is not remade, and Clear starts again 
       'the database key is missing, but a database exists',
     )
     await expect(page.getByTestId(ELEMENT.startupFailed.explanation).first()).toHaveText(
-      drawn(tr('databaseErrorGeneric')),
+      drawn(tr('shareExtensionDatabaseError')),
     )
     expect(existsSync(join(networkDir, 'db-key.bin'))).toBe(false)
     expect(existsSync(join(networkDir, 'session.db'))).toBe(true)

@@ -19,14 +19,19 @@ interface StartupFailedScreenProps {
 }
 
 /**
- * The explanation for each kind. A restart may get past a transient failure, and saying so is only
- * true because Quit ends the process on every platform, macOS included. With no bridge nothing was
- * opened, so it is not a database error.
+ * The explanation for each kind.
+ *
+ * Every database failure is told to restart, an unreadable one included, as the current clients
+ * now say. The generic database error says to reinstall and restore, and a reinstall deletes the
+ * database: for a failure a restart would have got past -- a keychain that reported an existing
+ * key as missing -- that loses the account. Where a restart cannot help, Clear Device is offered,
+ * and its confirmation says the Recovery Password is the only way back. Telling anyone to restart
+ * is only true because Quit ends the process on every platform, macOS included. With no bridge
+ * nothing was opened, so it is not a database error.
  */
 function explanation(kind: StartupFailureKind): string {
   switch (kind) {
     case 'unreadable':
-      return tr('databaseErrorGeneric')
     case 'transient':
       return tr('shareExtensionDatabaseError')
     case 'noBridge':
@@ -53,11 +58,11 @@ function logPress(control: string, kind: StartupFailureKind): void {
  *
  * **Clearing is the only fix the screen performs**, for a failure no restart gets past. It leads to
  * onboarding (through a relaunch if an account had been loaded: see `clearAfterStartupFailure`),
- * where somebody either starts again or enters their recovery phrase. A transient failure is told
- * to restart instead, which Quit makes possible by ending the process. No Retry: what lands here
- * is a request the open database refused, and asking it again in the same process gets the same
- * answer. Where the bridge itself could not be made, for any reason but its key, there is nothing
- * to clear with, and Quit is all that is left.
+ * where somebody either starts again or enters their recovery phrase. The explanation tells every
+ * database failure to restart first, which Quit makes possible by ending the process. No Retry:
+ * what lands here is a request the open database refused, and asking it again in the same process
+ * gets the same answer. Where the bridge itself could not be made, for any reason but its key,
+ * there is nothing to clear with, and Quit is all that is left.
  */
 export function StartupFailedScreen({ error, kind }: StartupFailedScreenProps) {
   const actions = useSessionActions()
