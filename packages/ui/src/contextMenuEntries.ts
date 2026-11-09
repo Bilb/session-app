@@ -14,7 +14,7 @@ interface MenuRowShared {
   testID: string
 }
 
-export interface MenuActionVariant {
+interface MenuActionVariant {
   kind: 'action'
   /** Called after the menu has closed, so what it opens is not stacked under the menu. */
   onSelect: () => void
@@ -22,12 +22,12 @@ export interface MenuActionVariant {
   destructive?: boolean | undefined
 }
 
-export interface MenuSubmenuVariant {
+interface MenuSubmenuVariant {
   kind: 'submenu'
   entries: readonly ContextMenuEntry[]
 }
 
-export interface MenuSeparatorVariant {
+interface MenuSeparatorVariant {
   kind: 'separator'
 }
 

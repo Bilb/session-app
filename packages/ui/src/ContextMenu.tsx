@@ -28,7 +28,7 @@ import { isLayoutRtl } from './layoutDirection'
 import { logical } from './logicalEdges'
 import { useWindowSize } from './useWindowSize'
 
-export type { ContextMenuEntry, ContextMenuRow, MenuAnchor }
+export type { ContextMenuEntry, MenuAnchor }
 
 /** Kept clear between the menu and the window's edge. */
 const MARGIN = SPACING.xs

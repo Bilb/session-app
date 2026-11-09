@@ -23,7 +23,7 @@ const ROW_MIN_HEIGHT = Math.max(SIZE_SCALE['2xl'], ROW_TOUCH_TARGET)
 const ICON_SIZE = SIZE_SCALE.md
 
 /** Wide enough that a short menu does not look like a tooltip. */
-export const MENU_MIN_WIDTH = 200
+const MENU_MIN_WIDTH = 200
 /** Past this a label wraps rather than stretching the menu across the window. */
 export const MENU_MAX_WIDTH = 280
 
