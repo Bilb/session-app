@@ -152,14 +152,14 @@ export function LoadAccountScreen({
 
               On a phone the chrome's bar draws it, so this is the wide design's only. */}
           {wide ? <WideBackButton onPress={onBack} disabled={backDisabled} /> : null}
-          {/* One chrome and two panes rather than two screens: the bar, the title and the tabs
-              stay put and only what is under them slides, which is what makes the indicator and
-              the pane read as one movement. */}
           {/* On the wide design the pager clips to the step's reserve, which Export Logs under
               Continue runs past: the pager reaches that far below it, and the camera stops short
               of the extra. Negative, so the reserve and the lockup above it stay where they
               are. */}
           <YStack flex={1} marginBottom={overhang === 0 ? undefined : -overhang}>
+            {/* One chrome and two panes rather than two screens: the bar, the title and the tabs
+                stay put and only what is under them slides, which is what makes the indicator
+                and the pane read as one movement. */}
             <SlidePager
               index={tab === 'qr' ? 1 : 0}
               onIndexChange={(page) => {
