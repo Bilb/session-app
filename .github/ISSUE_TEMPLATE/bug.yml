@@ -21,7 +21,6 @@ body:
     id: version
     attributes:
       label: App version
-      description: At the bottom of Settings. Copy everything shown there.
   - type: textarea
     id: logs
     attributes:
