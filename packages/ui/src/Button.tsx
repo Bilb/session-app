@@ -542,6 +542,9 @@ export function Button({
               alignItems="center"
               justifyContent="center"
               pointerEvents="none"
+              // The button already says it is busy and carries its label as its name, so the
+              // spinner has nothing to add, and a progress bar with no name is an error.
+              aria-hidden
             >
               <YStack scale={SPINNER_SCALE[size]}>
                 <Spinner size="small" color={nativeLabel} />

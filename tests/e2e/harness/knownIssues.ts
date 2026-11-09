@@ -47,7 +47,6 @@ const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, Known>>> = {
     'color-contrast fileRow.received fetching': 'the same',
     'color-contrast fileRow.received failed':
       'the danger ink on a received bubble in a light theme, as message-attachment-action: 3.6:1',
-    'aria-progressbar-name button.variants loading': 'the spinner has no accessible name',
     'color-contrast catalog-settings-row-trailing':
       'a secondary value on a pressed row, classic-light: 4.1:1',
     'color-contrast catalog-settings-row-arabic': 'its trailing value on a pressed row: the same',
