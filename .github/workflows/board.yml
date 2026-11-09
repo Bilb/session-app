@@ -1,0 +1,59 @@
+name: Sync the project board
+
+on:
+  issues:
+    types: [opened, closed, reopened, milestoned, demilestoned]
+  pull_request:
+    types:
+      [opened, reopened, closed, ready_for_review, converted_to_draft, review_requested, edited]
+  pull_request_review:
+    types: [submitted, dismissed]
+  # A milestone made, renamed or removed changes the Release options; one closing folds the fixes
+  # made since the last release (the closed issues of Next) into it.
+  milestone:
+    types: [created, edited, deleted, closed]
+  schedule:
+    # Hourly for blocked-by links, which fire no event; Monday 09:00 UTC for the progress update.
+    - cron: '17 * * * *'
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+# One sync at a time, so two events never write the same card.
+concurrency:
+  group: board-sync
+
+# The workflow's own token only checks out the script: it cannot write an organization's project,
+# so the writes use a token from the board's GitHub App.
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      # Every step is skipped, rather than failed, until the app's secrets and the project number are
+      # set, and on pull requests from forks, which get no secrets.
+      CONFIGURED: ${{ secrets.BOARD_APP_ID != '' && secrets.BOARD_APP_KEY != '' && vars.BOARD_PROJECT_NUMBER != '' }}
+    steps:
+      - id: app-token
+        if: env.CONFIGURED == 'true'
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.BOARD_APP_ID }}
+          private-key: ${{ secrets.BOARD_APP_KEY }}
+          owner: ${{ github.repository_owner }}
+      - uses: actions/checkout@v5
+        if: env.CONFIGURED == 'true'
+        with:
+          sparse-checkout: .github/scripts
+      - name: Sync
+        if: env.CONFIGURED == 'true'
+        run: python3 .github/scripts/sync_board.py
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: ${{ github.repository }}
+          PROJECT_OWNER: ${{ github.repository_owner }}
+          PROJECT_OWNER_KIND: organization
+          PROJECT_NUMBER: ${{ vars.BOARD_PROJECT_NUMBER }}
+          POST_STATUS: ${{ github.event.schedule == '0 9 * * 1' && '1' || '0' }}
+          FOLD_INTO: ${{ github.event_name == 'milestone' && github.event.action == 'closed' && github.event.milestone.title || '' }}
