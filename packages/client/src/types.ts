@@ -137,10 +137,14 @@ export interface SessionClient {
   ): Promise<MessagePage>
   /**
    * Resolves as soon as libsession has stored the row, which is before it is sent. The states
-   * that follow arrive as message-updated.
+   * that follow arrive as message-updated, and each file's upload as attachment-progress of
+   * transfer `upload`, none of them before this resolves.
    */
   sendMessage(id: ConversationId, message: OutgoingMessage): Promise<number>
-  /** Resumes a send that failed, and answers whether there was anything left to resume. */
+  /**
+   * Resumes a send that failed, and answers whether there was anything left to resume. The files
+   * it uploads report as `sendMessage`'s do.
+   */
   retrySend(messageId: number): Promise<boolean>
   /**
    * Stores, on this device, whether a message is shown as a gallery, announced as messages-updated

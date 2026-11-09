@@ -137,7 +137,14 @@ test(`captures and audits the component catalog's ${TIER} pages @catalog`, async
         `#/catalog/${TIER}/${encodeURIComponent(id)}`,
       )
       await expect(app.locator(ELEMENT.catalog.ready)).toHaveText(id, { timeout: PAGE_READY_MS })
-      const fits = windowFor(await pageExtent(app))
+      const extent = await pageExtent(app)
+      let fits: WindowSize
+      try {
+        fits = windowFor(extent)
+      } catch (error) {
+        // The size alone does not say which story to split.
+        throw new Error(`${id}: ${(error as Error).message}`, { cause: error })
+      }
       if (!sameSize(windowSize, fits)) {
         await sizeWindow(app, fits)
         windowSize = fits

@@ -148,6 +148,16 @@ function messagesOf(
 }
 
 /** What a `messages-updated` event says about one attachment, if it mentions it. */
+type ProgressEvent = Extract<SessionEvent, { type: 'attachment-progress' }>
+
+/** A message's upload reports, in the order they arrived. */
+function uploadsOf(events: SessionEvent[], messageId: number): ProgressEvent[] {
+  return events.filter(
+    (e): e is ProgressEvent =>
+      e.type === 'attachment-progress' && e.transfer === 'upload' && e.messageId === messageId,
+  )
+}
+
 function announcedAvailability(
   event: SessionEvent,
   messageId: number,
@@ -579,6 +589,70 @@ export function runSessionClientContract(
       }
       expect(messagesOf(seen.events, 'messages-updated').some((m) => m.id === messageId)).toBe(true)
       expect(['sent', 'failed']).toContain(last())
+      // The retry's upload reports as the first send's would have, ending once either way.
+      const outcomes = uploadsOf(seen.events, messageId).filter((e) => e.outcome !== undefined)
+      expect(outcomes.map((e) => [e.index, e.outcome?.ok])).toEqual([[0, last() === 'sent']])
+      seen.stop()
+    })
+
+    it('reports each upload against the id the send answered, and ends it once', async () => {
+      const { alice, bobId, settle, writeFile } = await harness.friends()
+      const first = await writeFile('first.txt', 40_000)
+      const second = await writeFile('second.txt', 1_200)
+      const seen = collect(alice)
+
+      const messageId = await alice.sendMessage(bobId, {
+        body: '',
+        attachments: [
+          { path: first, contentType: 'text/plain' },
+          { path: second, contentType: 'text/plain' },
+        ],
+      })
+      // Every event up to the answer, at least: a report among them was sent before the id was.
+      const answered = seen.events.length
+      expect(
+        seen.events
+          .slice(0, answered)
+          .filter((e) => e.type === 'attachment-progress' && e.transfer === 'upload'),
+      ).toEqual([])
+
+      const last = () =>
+        messagesOf(seen.events, 'messages-updated')
+          .filter((m) => m.id === messageId)
+          .at(-1)?.sendState
+      const terminal = new Set(['sent', 'failed'])
+      for (let round = 0; round < 50 && !terminal.has(last() ?? ''); round += 1) {
+        await settle()
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      }
+      const state = last()
+      expect(['sent', 'failed']).toContain(state)
+
+      // Nothing names another message: the send's own id, never a guess at it.
+      const reports = seen.events.filter(
+        (e): e is ProgressEvent => e.type === 'attachment-progress' && e.transfer === 'upload',
+      )
+      expect(reports.every((e) => e.messageId === messageId)).toBe(true)
+      // Per file: at most one outcome, and nothing after it.
+      for (const index of [0, 1]) {
+        const own = reports.filter((e) => e.index === index)
+        const ended = own.filter((e) => e.outcome !== undefined)
+        expect(ended.length <= 1 && (ended.length === 0 || own.at(-1) === ended[0])).toBe(true)
+      }
+      const outcomes = reports.flatMap((e) => (e.outcome === undefined ? [] : [e]))
+      if (state === 'sent') {
+        // Both up, in order: libsession uploads a message's files one at a time.
+        expect(outcomes.map((e) => [e.index, e.outcome?.ok])).toEqual([
+          [0, true],
+          [1, true],
+        ])
+      } else {
+        // Offline, as the addon runs: the first fails, with its reason, and the second is never
+        // tried, so it reports nothing at all.
+        expect(outcomes.map((e) => [e.index, e.outcome?.ok])).toEqual([[0, false]])
+        expect(typeof outcomes[0]?.outcome?.error).toBe('string')
+        expect(reports.some((e) => e.index === 1)).toBe(false)
+      }
       seen.stop()
     })
 

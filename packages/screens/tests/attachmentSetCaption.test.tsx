@@ -6,8 +6,11 @@ import { sharedCaption } from '#src/attachmentSetCaption'
 /** FIRST STRONG ISOLATE and POP DIRECTIONAL ISOLATE: what keeps a part whole in RTL text. */
 const FSI = '\u2068'
 const PDI = '\u2069'
+/** LEFT-TO-RIGHT MARK and RIGHT-TO-LEFT MARK: what starts the line from the layout's edge. */
+const LRM = '\u200E'
+const RLM = '\u200F'
 
-const visible = (text: string | null) => text?.replace(/[\u2068\u2069]/g, '')
+const visible = (text: string | null) => text?.replace(/[\u2068\u2069\u200E\u200F]/g, '')
 
 function set(
   state: AttachmentSet['state'],
@@ -30,7 +33,20 @@ describe('a set’s caption', () => {
   // The RTL page shows the order the marks make, but a picture cannot tell them from luck.
   it('isolates the size and the count, so neither is reordered inside the other', () => {
     expect(sharedCaption(set('ready', 1, 180_000))).toBe(
-      `${FSI}180 kB${PDI} · ${FSI}1 attachment${PDI}`,
+      `${LRM}${FSI}180 kB${PDI} · ${FSI}1 attachment${PDI}`,
     )
+  })
+
+  // Every part is a figure or a Latin word, so without the mark the line would read left to right
+  // in a right-to-left layout too.
+  it('starts from the right in a right-to-left layout', () => {
+    document.documentElement.dir = 'rtl'
+    try {
+      expect(sharedCaption(set('ready', 1, 180_000))).toBe(
+        `${RLM}${FSI}180 kB${PDI} · ${FSI}1 attachment${PDI}`,
+      )
+    } finally {
+      document.documentElement.dir = 'ltr'
+    }
   })
 })

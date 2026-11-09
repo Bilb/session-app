@@ -322,6 +322,24 @@ namespace {
         return g;
     }
 
+    /// A send's upload reports, held until its message id is known.
+    ///
+    /// libsession answers `send_message` with the id once the row is stored, and its header allows
+    /// a report before that answer. Every report and the answer run on Core's loop, so nothing here
+    /// is shared between threads: a report before the id waits here, and the answer sends the held
+    /// ones after itself, in the order they came.
+    struct HeldUploads {
+        struct Report {
+            size_t index;
+            int64_t sent;
+            int64_t total;
+            std::optional<Expected<void>> result;
+        };
+
+        std::optional<int64_t> message_id;
+        std::vector<Report> held;
+    };
+
 }  // namespace
 
 namespace {
@@ -721,19 +739,42 @@ struct ClientBridge::Impl {
     /// giving it, because the same one is reported against repeatedly.
     void attachment_progress(
             AttachmentTransfer transfer, const client::AttachmentProgress& p) {
+        transfer_progress(transfer, p.message_id, p.index, p.done, p.total, p.result);
+    }
+
+    void transfer_progress(
+            AttachmentTransfer transfer,
+            int64_t message_id,
+            size_t index,
+            int64_t done,
+            int64_t total,
+            const std::optional<Expected<void>>& result) {
         event(AttachmentProgressSessionEvent{
                 transfer,
-                static_cast<double>(p.message_id),
-                static_cast<double>(p.index),
-                static_cast<double>(p.done),
-                static_cast<double>(p.total),
+                static_cast<double>(message_id),
+                static_cast<double>(index),
+                static_cast<double>(done),
+                static_cast<double>(total),
                 // One report per transfer carries an outcome; the rest are still running.
-                p.result ? std::optional{AttachmentOutcome{
-                                   p.result->has_value(),
-                                   p.result->has_value()
-                                           ? std::nullopt
-                                           : std::optional{std::string{p.result->error().code}}}}
-                         : std::nullopt});
+                result ? std::optional{AttachmentOutcome{
+                                 result->has_value(),
+                                 result->has_value()
+                                         ? std::nullopt
+                                         : std::optional{std::string{result->error().code}}}}
+                       : std::nullopt});
+    }
+
+    /// The upload handler for a message whose id is already known, as a retry's is. libsession
+    /// reports one file's progress and then its outcome, all on Core's loop, so they can go to the
+    /// stream as they come.
+    client::Conversation::upload_progress report_upload(int64_t message_id) {
+        return [this, message_id](
+                       size_t index,
+                       int64_t sent,
+                       int64_t total,
+                       std::optional<Expected<void>> result) {
+            transfer_progress(AttachmentTransfer::upload, message_id, index, sent, total, result);
+        };
     }
 
     /// The progress handler a command passes libsession, which reports to the stream rather than
@@ -1118,14 +1159,42 @@ struct ClientBridge::Impl {
                 msg.attachments.push_back(std::move(out));
             }
         }
-        // TODO: pass an upload handler, for per-file upload progress and to name the file behind
-        // `attachment_file_missing` by its index. Until then a sending set counts its files by
-        // `uploaded` on the message, and a file gone before libsession copied it fails the message
-        // unnamed.
+        // A send that libsession refuses leaves its held reports unsent: with no id they name no
+        // message, and the refusal is the request's answer.
+        auto uploads = std::make_shared<HeldUploads>();
         convo(cmd.conversation_id)
-                .send_message(std::move(msg), on(id, [this, id](int64_t message_id) {
-                                  respond(id, MessageIdResult{static_cast<double>(message_id)});
-                              }));
+                .send_message(
+                        std::move(msg),
+                        [this, uploads](
+                                size_t index,
+                                int64_t sent,
+                                int64_t total,
+                                std::optional<Expected<void>> result) {
+                            if (!uploads->message_id) {
+                                uploads->held.push_back({index, sent, total, std::move(result)});
+                                return;
+                            }
+                            transfer_progress(
+                                    AttachmentTransfer::upload,
+                                    *uploads->message_id,
+                                    index,
+                                    sent,
+                                    total,
+                                    result);
+                        },
+                        on(id, [this, id, uploads](int64_t message_id) {
+                            respond(id, MessageIdResult{static_cast<double>(message_id)});
+                            uploads->message_id = message_id;
+                            for (const auto& r : uploads->held)
+                                transfer_progress(
+                                        AttachmentTransfer::upload,
+                                        message_id,
+                                        r.index,
+                                        r.sent,
+                                        r.total,
+                                        r.result);
+                            uploads->held.clear();
+                        }));
     }
 
     void handle(double id, AttachmentSendPlanCommand& cmd) {
@@ -1139,12 +1208,9 @@ struct ClientBridge::Impl {
 
     void handle(double id, const RetrySendCommand& cmd) {
         const int64_t message_id = whole<int64_t>(cmd.message_id, "retrySend.messageId");
-        // The callback form takes an upload handler and there is no overload without one, so it
-        // is passed empty - which libsession reads as "report nothing" rather than calling a
-        // handler with an empty body. Nothing about a transfer crosses this bridge.
         client->retry_send(
                 message_id,
-                nullptr,
+                report_upload(message_id),
                 on(id, [this, id](bool started) { respond(id, BoolResult{started}); }));
     }
 
