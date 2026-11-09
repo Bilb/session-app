@@ -1,3 +1,4 @@
+import { AccountIdPrefix } from '@session/basic-types'
 import type { Message } from '@session/client'
 import { PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
@@ -43,8 +44,8 @@ function exportable(message: Message): number | undefined {
  * A message's context menu, in legacy Desktop's order.
  *
  * An entry that only applies to some messages is left out of the others, as legacy does: Resend
- * for a failed send, Save for attachments, Copy for a body, Copy Account ID for someone else's.
- * An entry whose feature is not built is drawn disabled rather than hidden.
+ * for a failed send, Export for attachments, Copy for a body, Copy Account ID for someone else's
+ * standard account ID. An entry whose feature is not built is drawn disabled rather than hidden.
  */
 export function messageMenuEntries(
   message: Message,
@@ -64,7 +65,9 @@ export function messageMenuEntries(
     message.body.length > 0 && row('copy', tr('copy'), 'copy', { onSelect: actions.copyBody }),
     row('info', tr('info'), 'info', NOT_BUILT),
     row('select', tr('select'), 'circleCheck', NOT_BUILT),
+    // A community author is blinded (15, 25), and a blinded ID finds nobody.
     !message.outgoing &&
+      message.author.startsWith(AccountIdPrefix.standard) &&
       row('copyAccountId', tr('accountIDCopy'), 'copy', { onSelect: actions.copyAuthor }),
     { id: 'destructive', kind: 'separator' },
     row('delete', tr('delete'), 'trash', { ...NOT_BUILT, destructive: true }),

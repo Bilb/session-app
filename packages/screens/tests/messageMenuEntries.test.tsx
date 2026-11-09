@@ -6,11 +6,12 @@ import { describe, expect, it, vi } from 'vitest'
 import { messageMenuEntries } from '#src/messageMenuEntries'
 
 const ITEM = ELEMENT.contextMenu.item
+const STANDARD = `05${'a'.repeat(64)}`
 
 function message(overrides: Partial<Message> = {}): Message {
   return {
     id: 7,
-    author: '05aa',
+    author: STANDARD,
     body: 'Hello',
     outgoing: false,
     sendState: 'sent',
@@ -56,6 +57,13 @@ describe('a message’s context menu', () => {
     const entries = messageMenuEntries(message({ outgoing: true, sendState: 'failed' }), actions())
     expect(shape(entries)[0]).toBe('retry')
     expect(shape(entries)).not.toContain('copyAccountId')
+  })
+
+  it('offers no Copy Account ID for a blinded author', () => {
+    for (const prefix of ['15', '25'])
+      expect(
+        shape(messageMenuEntries(message({ author: `${prefix}${'a'.repeat(64)}` }), actions())),
+      ).not.toContain('copyAccountId')
   })
 
   it('leaves Copy off a message with no text', () => {
