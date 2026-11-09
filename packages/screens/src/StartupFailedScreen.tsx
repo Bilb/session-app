@@ -1,6 +1,6 @@
 import { appLog, requirePorts } from '@session/app'
 import { tr } from '@session/localization'
-import { useAccount, useSessionActions, type StartupFailureKind } from '@session/state'
+import { isClearable, useAccount, useSessionActions, type StartupFailureKind } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { Button, Icon, Screen, Text, useModals, XStack, YStack, type Modals } from '@session/ui'
 import { useState } from 'react'
@@ -62,7 +62,7 @@ export function StartupFailedScreen({ error, kind }: StartupFailedScreenProps) {
   const modals = useModals()
   const close = requirePorts().window.close
   const logs = useExportLogs()
-  const clearable = kind !== 'noBridge'
+  const clearable = isClearable(kind)
   const accountLoaded = useAccount()?.haveAccount === true
 
   return (

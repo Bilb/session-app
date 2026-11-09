@@ -21,7 +21,7 @@ export {
   useStartupError,
   useUnreadRequestCount,
 } from './hooks'
-export { classifyStartupFailure } from './startupFailure'
+export { classifyStartupFailure, isClearable } from './startupFailure'
 export type { StartupFailureKind } from './startupFailure'
 export { emptyState, transferKey } from './types'
 export type {

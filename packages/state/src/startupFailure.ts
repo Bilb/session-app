@@ -13,6 +13,21 @@ import { BRIDGE_UNAVAILABLE, KEY_INVALID, KEY_MISSING, KEY_UNAVAILABLE } from '@
 export type StartupFailureKind = 'unreadable' | 'transient' | 'noBridge'
 
 /**
+ * Whether clearing is offered for this kind: only where a bridge was made, since clearing is done
+ * through it. A switch rather than a comparison, so a new kind does not compile until somebody
+ * decides.
+ */
+export function isClearable(kind: StartupFailureKind): boolean {
+  switch (kind) {
+    case 'unreadable':
+    case 'transient':
+      return true
+    case 'noBridge':
+      return false
+  }
+}
+
+/**
  * SQLite's own words, as `sqlite3_errstr` gives them, for the failures no restart gets past:
  * `SQLITE_NOTADB` (a wrong key reads as one) and `SQLITE_CORRUPT`. The bridge keeps only the text
  * of what libsession threw, so the text is what there is to go on; these are stable across SQLite

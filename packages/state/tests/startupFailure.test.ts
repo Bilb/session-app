@@ -1,7 +1,7 @@
 import { BRIDGE_UNAVAILABLE, KEY_INVALID, KEY_MISSING, KEY_UNAVAILABLE } from '@session/client'
 import { describe, expect, it } from 'vitest'
 
-import { classifyStartupFailure, type StartupFailureKind } from '#src/startupFailure'
+import { classifyStartupFailure, isClearable, type StartupFailureKind } from '#src/startupFailure'
 
 /** What the store is handed, as the bridge or a key resolver words it, and what it is. */
 const CASES: [message: string, code: string | undefined, kind: StartupFailureKind][] = [
@@ -61,5 +61,13 @@ const CASES: [message: string, code: string | undefined, kind: StartupFailureKin
 describe('a failed start', () => {
   it.each(CASES)('"%s" (%s) is %s', (message, code, kind) => {
     expect(classifyStartupFailure(message, code)).toBe(kind)
+  })
+})
+
+describe('clearing a failed start', () => {
+  it('is offered wherever a bridge was made, and nowhere else', () => {
+    expect(isClearable('unreadable')).toBe(true)
+    expect(isClearable('transient')).toBe(true)
+    expect(isClearable('noBridge')).toBe(false)
   })
 })
