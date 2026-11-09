@@ -762,15 +762,21 @@ struct HistoryReplacedSessionEvent {
 /// separately and ends each with its own outcome, so one attachment can be downloading and exporting
 /// at once. An export of a file over libsession's `requested_cache_max_size` runs a transfer of its
 /// own that nothing joins; the bridge leaves that size unset.
+///
+/// `upload` is a file of a message of ours going to the file server, reported for `sendMessage`
+/// and `retrySend` alike. libsession uploads a message's files one at a time in index order, and
+/// only those not yet up: a retry reports nothing for a file an earlier attempt finished. An upload
+/// that fails ends the message's attempt, so the files after it report nothing at all.
 enum class AttachmentTransfer {
     download,
     export_,
+    upload,
 };
 
 template <>
 struct EnumTraits<AttachmentTransfer> {
     static constexpr std::string_view name = "AttachmentTransfer";
-    static constexpr std::array<std::string_view, 2> names{"download", "export"};
+    static constexpr std::array<std::string_view, 3> names{"download", "export", "upload"};
 
     static constexpr std::string_view to_string(AttachmentTransfer value) {
         return names[static_cast<std::size_t>(value)];
@@ -789,7 +795,7 @@ struct EnumTraits<AttachmentTransfer> {
 /// Two fields rather than a code with a success value, because "it worked" and "here is which of
 /// several ways it failed" are different questions and only one of them has an answer to match on.
 struct AttachmentOutcome {
-    /// The bytes arrived and verified.
+    /// The bytes arrived and verified; for an upload, the file server accepted the file.
     bool ok;
     /// Why it failed. Unset when `ok`.
     std::optional<std::string> error;
@@ -816,6 +822,11 @@ struct AttachmentOutcome {
 ///
 /// Both count *encrypted* bytes - what is actually being moved - and so do not agree with
 /// `Attachment.sizeBytes`, which is the plaintext length.
+///
+/// An upload names the message id `sendMessage` answers, and none of a send's reaches the stream
+/// before that answer does: the bridge holds any that come first. A file whose upload never
+/// started, because one before it failed, gets no report at all. Like a download, an upload's
+/// first report is 0 of 0, meaning it has started.
 struct AttachmentProgressSessionEvent {
     static constexpr std::string_view type_tag = "attachment-progress";
 
@@ -1335,7 +1346,8 @@ struct OutgoingAttachment {
 
 /// Stores the message and answers its id; it is then announced like any other. With attachments
 /// it is `uploading` until every file is on the file server, and goes on to the ordinary states
-/// from there. Refused, storing nothing, when a file is not a readable, non-empty file.
+/// from there. Refused, storing nothing, when a file is not a readable, non-empty file. Each
+/// file's upload reports as an `attachment-progress` of transfer `upload`.
 struct SendMessageCommand {
     static constexpr std::string_view type_tag = "sendMessage";
 
@@ -1369,6 +1381,8 @@ struct GetAttachmentUploadLimitCommand {
     static constexpr std::string_view type_tag = "getAttachmentUploadLimit";
 };
 
+/// Resumes a send that failed, uploading the files not yet up first. Each of those reports as an
+/// `attachment-progress` of transfer `upload`, as `sendMessage`'s do.
 struct RetrySendCommand {
     static constexpr std::string_view type_tag = "retrySend";
 

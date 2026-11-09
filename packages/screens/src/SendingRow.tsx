@@ -1,31 +1,63 @@
 import { formatBytes } from '@session/basic-types'
 import { requirePorts } from '@session/app'
-import type { Attachment, Message } from '@session/client'
+import type { Attachment, Message, TransferProgress } from '@session/client'
 import { PENDING_COPY, tr } from '@session/localization'
-import { useSessionActions } from '@session/state'
+import {
+  transferKey,
+  useMessageTransfers,
+  useSessionActions,
+  type AttachmentTransferState,
+} from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { FileRow, type FileRowState, type FileRowThumbnail } from '@session/ui'
 
 import { fetchOf } from './attachmentFetch'
-import { uploadStateOf, type UploadState } from './uploadState'
+import { layoutLine } from './layoutLine'
+import { uploadedBytes, uploadStateOf, type UploadState } from './uploadState'
 import { leadUri, leadsWithPicture } from './viewableAttachments'
 
 const ROW_STATE: Record<UploadState, FileRowState> = {
   uploaded: 'uploaded',
-  // The held ring: the bridge reports no upload progress yet, so it stays empty and the caption
-  // says what it is doing.
+  // The held ring, filled as the upload's reports say.
   uploading: 'fetching',
   queued: 'queued',
   failed: 'failed',
   notSent: 'unsent',
 }
 
-function caption(attachment: Attachment, state: UploadState): string {
+/** The file's own upload while it is running and its size is known, as a download's row has. */
+/**
+ * A running upload's reading, in the file's own bytes as the footer's total is, from its first
+ * byte on; before that the row says a word, as a download's does.
+ */
+function running(
+  attachment: Attachment,
+  state: UploadState,
+  report: AttachmentTransferState | undefined,
+): TransferProgress | undefined {
+  if (state !== 'uploading' || report?.state !== 'running' || report.doneBytes === 0)
+    return undefined
+  const done = uploadedBytes(attachment, report)
+  return done === null || attachment.sizeBytes === undefined
+    ? report.totalBytes > 0
+      ? report
+      : undefined
+    : { doneBytes: Math.round(done), totalBytes: attachment.sizeBytes }
+}
+
+function caption(
+  attachment: Attachment,
+  state: UploadState,
+  progress: TransferProgress | undefined,
+): string {
   switch (state) {
     case 'uploaded':
       return attachment.sizeBytes === undefined ? '' : formatBytes(attachment.sizeBytes)
     case 'uploading':
-      return tr('uploading')
+      // A word until the report says how big the file is, as a download's row says one.
+      return progress === undefined
+        ? tr('uploading')
+        : layoutLine(' / ', formatBytes(progress.doneBytes), formatBytes(progress.totalBytes))
     case 'queued':
       return PENDING_COPY.attachmentQueued
     case 'failed':
@@ -54,7 +86,9 @@ export function SendingRow({
   hasControl?: boolean | undefined
 }) {
   const actions = useSessionActions()
-  const upload = uploadStateOf(message, attachment.index)
+  const uploads = useMessageTransfers(message.id)
+  const upload = uploadStateOf(message, attachment.index, uploads)
+  const progress = running(attachment, upload, uploads[transferKey('upload', attachment.index)])
   const ref = { messageId: message.id, index: attachment.index }
   // libsession keeps a thumbnail of what we send, so a picture leads with it here too.
   const thumbnail: FileRowThumbnail | undefined = leadsWithPicture(attachment)
@@ -76,8 +110,9 @@ export function SendingRow({
       filename={attachment.filename ?? tr('attachment')}
       contentType={attachment.contentType}
       thumbnail={thumbnail}
-      caption={caption(attachment, upload)}
+      caption={caption(attachment, upload, progress)}
       state={ROW_STATE[upload]}
+      progress={progress === undefined ? undefined : progress.doneBytes / progress.totalBytes}
       actionLabel={
         upload === 'uploading' ? tr('uploading') : retry === undefined ? undefined : tr('retry')
       }

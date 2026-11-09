@@ -88,7 +88,8 @@ export const PENDING_COPY = {
     `${String(uploaded)} of ${String(count)} uploaded`,
   /**
    * A running download's reading as a screen reader says it, beside the "12 MB / 30 MB" the footer
-   * shows. Both sizes arrive already formatted. One string, so each locale orders the two itself.
+   * shows, and an upload's alike. Both sizes arrive already formatted. One string, so each locale
+   * orders the two itself.
    */
   attachmentsDownloadProgress: (done: string, total: string): string => `${done} of ${total}`,
   /** Beside Show All when a file it hides failed. */

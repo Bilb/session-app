@@ -36,10 +36,14 @@ export function attachmentFooterAction({
 }
 
 /**
- * A running download's ring, in the verb's place: a progress bar named for what it is doing, and
- * no stop, because there is nothing to do to it until the bridge can cancel a transfer.
+ * A running transfer's ring, in the verb's place: a progress bar named for what it is doing, a
+ * download or our own message's upload, and no stop, because there is nothing to do to it until
+ * the bridge can cancel a transfer.
  */
-export function attachmentFooterProgress(): Expected {
-  const node = { role: 'progressbar', name: tr('downloading') } as const
+export function attachmentFooterProgress(transfer: 'download' | 'upload' = 'download'): Expected {
+  const node = {
+    role: 'progressbar',
+    name: tr(transfer === 'upload' ? 'uploading' : 'downloading'),
+  } as const
   return { desktop: { ...node, focusable: false }, native: node }
 }
