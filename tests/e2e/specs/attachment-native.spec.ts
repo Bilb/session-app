@@ -57,7 +57,11 @@ async function expectCustomActions(app: MobileApp, verbs: readonly string[]): Pr
 /** The percentage the row's value says, and the one its caption's bytes come to. */
 async function progress(app: MobileApp): Promise<{ said: number; counted: number } | null> {
   const value = await app.accessibilityValue(ATTACHMENT_ROW_IDS.row, RECEIPT_ROW)
-  const name = (await app.describe(ATTACHMENT_ROW_IDS.row, RECEIPT_ROW))?.name ?? ''
+  // Without the marks that order the caption's parts, which have no glyph.
+  const name = ((await app.describe(ATTACHMENT_ROW_IDS.row, RECEIPT_ROW))?.name ?? '').replace(
+    /[‎‏⁨⁩]/g,
+    '',
+  )
   const said = /(\d+)%/.exec(value ?? '')?.[1]
   const bytes = /([\d.]+) kB \/ ([\d.]+) kB/.exec(name)
   if (said === undefined || bytes === null) return null

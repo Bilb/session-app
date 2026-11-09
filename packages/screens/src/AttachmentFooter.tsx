@@ -17,6 +17,7 @@ import {
 
 import type { AttachmentSet } from './attachmentSet'
 import { sharedCaption } from './attachmentSetCaption'
+import { layoutLine } from './layoutLine'
 import type { AttachmentView } from './attachmentView'
 
 const ACTION_SIZE = 'sm'
@@ -95,8 +96,7 @@ function verbIcon(set: AttachmentSet, sending: boolean): IconName {
 
 function caption(set: AttachmentSet): string {
   return (
-    sharedCaption(set) ??
-    `${isolate(formatBytes(set.doneBytes))} / ${isolate(formatBytes(set.totalBytes))}`
+    sharedCaption(set) ?? layoutLine(' / ', formatBytes(set.doneBytes), formatBytes(set.totalBytes))
   )
 }
 

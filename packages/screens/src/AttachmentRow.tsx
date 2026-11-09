@@ -14,6 +14,7 @@ import { fetchOf, type Fetch } from './attachmentFetch'
 import { controlVerb, rowVerb, verbLabel, type AttachmentVerb } from './attachmentPress'
 import { useConversationUi } from './conversationUi'
 import { exportOne } from './exportAttachment'
+import { layoutLine } from './layoutLine'
 import { SendingRow } from './SendingRow'
 import { isUploadPhase } from './uploadState'
 import { useExportFeedback } from './useExportFeedback'
@@ -33,7 +34,7 @@ function caption(
   if (state === 'fetching') {
     // Indeterminate until the server says how big it is, which is what a total of 0 means.
     if (fetched.totalBytes === 0) return tr('downloading')
-    return `${formatBytes(fetched.doneBytes)} / ${formatBytes(fetched.totalBytes)}`
+    return layoutLine(' / ', formatBytes(fetched.doneBytes), formatBytes(fetched.totalBytes))
   }
   if (exporting === 'running') return PENDING_COPY.exporting
   if (exporting === 'failed') return PENDING_COPY.exportFailed
