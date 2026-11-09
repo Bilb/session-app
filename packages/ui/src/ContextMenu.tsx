@@ -1,5 +1,12 @@
 import { SPACING } from '@session/theme-tokens'
-import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from 'react'
 import { Modal, Platform } from 'react-native'
 import { isWeb, YStack } from 'tamagui'
 
@@ -426,6 +433,30 @@ export function ContextMenu({ anchor, onDismiss, ...shared }: ContextMenuProps) 
     }
   }, [open])
 
+  const content = useRef<HTMLElement | null>(null)
+
+  /**
+   * A right-click outside the menu closes it and goes on to whatever is under the pointer, as a
+   * native menu does: on another message, that message's menu opens in its place.
+   */
+  const passContextClickOn = (event: ReactMouseEvent) => {
+    event.preventDefault()
+    onDismiss()
+    const modal = content.current
+    const under = document
+      .elementsFromPoint(event.clientX, event.clientY)
+      .find((node) => modal === null || !(modal.contains(node) || node.contains(modal)))
+    under?.dispatchEvent(
+      new MouseEvent('contextmenu', {
+        bubbles: true,
+        cancelable: true,
+        button: 2,
+        clientX: event.clientX,
+        clientY: event.clientY,
+      }),
+    )
+  }
+
   const runPending = () => {
     const action = pending.current
     pending.current = null
@@ -447,6 +478,9 @@ export function ContextMenu({ anchor, onDismiss, ...shared }: ContextMenuProps) 
       navigationBarTranslucent
     >
       <YStack
+        ref={(node: unknown) => {
+          content.current = node as HTMLElement | null
+        }}
         flex={1}
         {...(isWeb
           ? {
@@ -466,15 +500,14 @@ export function ContextMenu({ anchor, onDismiss, ...shared }: ContextMenuProps) 
           onPress={onDismiss}
           {...(isWeb
             ? {
-                onContextMenu: (event: { preventDefault: () => void }) => {
-                  event.preventDefault()
-                  onDismiss()
-                },
+                onContextMenu: passContextClickOn,
               }
             : {})}
         />
         {anchor === null ? null : (
           <ContextMenuLayer
+            // A menu reopened elsewhere starts afresh: no submenu open, no row active.
+            key={JSON.stringify(anchor)}
             {...shared}
             anchor={anchor}
             bounds={window}

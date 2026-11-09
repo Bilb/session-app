@@ -85,3 +85,26 @@ test('opens a message’s menu from its attachments too, without doing their own
     await app.close()
   }
 })
+
+test('moves the menu to another message on a right-click there @desktop @medium-risk', async () => {
+  const app = await DesktopApp.launch('alice')
+  try {
+    await openFirstConversation(app)
+    const bodies = app.locator(ELEMENT.conversation.messageBody)
+    await bodies.first().click({ button: 'right' })
+    await expect(app.locator(MENU.menu)).toBeVisible()
+
+    // By position: the menu's backdrop covers the message, which is what this is about.
+    const other = bodies.nth(1)
+    const text = await other.innerText()
+    const box = await other.boundingBox()
+    if (box === null) throw new Error('the second message body is not drawn')
+    await app.page.mouse.click(box.x + INTO_BODY_PX, box.y + INTO_BODY_PX, { button: 'right' })
+    await expect(app.locator(MENU.menu)).toHaveCount(1)
+    await app.locator(MENU.item('copy')).click()
+    await expect(app.locator(MENU.menu)).toHaveCount(0)
+    expect(await app.readClipboard()).toBe(text)
+  } finally {
+    await app.close()
+  }
+})
