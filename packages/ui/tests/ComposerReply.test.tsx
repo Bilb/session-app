@@ -18,6 +18,7 @@ const LABELS: QuoteLabels = {
   voiceMessage: 'Voice Message',
   document: 'Document',
   andMore: (count) => `+${String(count)}`,
+  notFound: 'Original message not found',
 }
 
 const IDS = {

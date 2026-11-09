@@ -27,7 +27,7 @@ export interface QuotedMessage {
   outgoing: boolean
   body: string
   attachments: readonly QuotedAttachment[]
-  /** Deleted here or everywhere: the reply then draws no quote, as for one never held. */
+  /** Deleted here or everywhere: quoted as not found, since nothing is left to show. */
   deleted?: boolean | undefined
 }
 
@@ -41,6 +41,8 @@ export interface QuoteLabels {
   document: string
   /** `andMore`: "+4". */
   andMore: (count: number) => string
+  /** `messageErrorOriginal`: what a quote of a deleted or never-received original says. */
+  notFound: string
 }
 
 /** The colour a quote's words and glyphs take on what it is drawn on. */
@@ -59,6 +61,8 @@ export type QuoteVisual =
   | { type: 'glyph'; icon: IconName }
 
 export interface QuotePreview {
+  /** False for an original deleted or never received: the quote then only says so. */
+  found: boolean
   kind: QuoteKind
   /** The body, the kind's label, or a file's name. */
   text: string
@@ -112,7 +116,7 @@ function visualOf(
   }
 }
 
-/** Whether a reply draws a quote at all: never for an original not held, or deleted. */
+/** Whether the original is here to show: neither deleted nor never received. */
 export function isQuotable(message: QuotedMessage | undefined): message is QuotedMessage {
   return message !== undefined && message.deleted !== true
 }
@@ -123,17 +127,39 @@ function oneLine(body: string): string {
 }
 
 /** What a quote of `message` says and shows. */
-export function quotePreview(message: QuotedMessage, labels: QuoteLabels): QuotePreview {
+export function quotePreview(
+  message: QuotedMessage | undefined,
+  labels: QuoteLabels,
+): QuotePreview {
+  if (!isQuotable(message))
+    return {
+      found: false,
+      kind: 'text',
+      text: labels.notFound,
+      isFileName: false,
+      more: null,
+      lines: 1,
+      visual: null,
+    }
+
   const body = oneLine(message.body)
   const first = message.attachments[0]
   if (first === undefined)
-    return { kind: 'text', text: body, isFileName: false, more: null, lines: 2, visual: null }
+    return {
+      found: true,
+      kind: 'text',
+      text: body,
+      isFileName: false,
+      more: null,
+      lines: 2,
+      visual: null,
+    }
 
   const kind = kindOf(first)
   const count = message.attachments.length
   const more = count > 1 ? labels.andMore(count - 1) : null
   const visual = visualOf(kind, first, more, labels)
-  const shown = { kind, more, visual } as const
+  const shown = { found: true, kind, more, visual } as const
   if (body !== '') return { ...shown, text: body, isFileName: false, lines: 2 }
 
   const named = kind === 'file' || kind === 'audio' ? first.filename : undefined
@@ -152,7 +178,7 @@ export function quotePreview(message: QuotedMessage, labels: QuoteLabels): Quote
 }
 
 /** "Bob: Image +4", the one name a screen reader gives the whole quote. */
-export function quoteAccessibleName(author: string, preview: QuotePreview): string {
-  const said = `${author}: ${preview.text}`
+export function quoteAccessibleName(author: string | undefined, preview: QuotePreview): string {
+  const said = author === undefined ? preview.text : `${author}: ${preview.text}`
   return preview.more === null ? said : `${said} ${preview.more}`
 }

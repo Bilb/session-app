@@ -17,6 +17,7 @@ export const QUOTE_LABELS: QuoteLabels = {
   voiceMessage: 'Voice Message',
   document: 'Document',
   andMore: (count) => `+${String(count)}`,
+  notFound: 'Original message not found',
 }
 
 /** Which of the catalog's photographs an attachment draws, as its thumbnail or its ThumbHash. */
@@ -26,18 +27,22 @@ type CatalogAttachment = Omit<QuotedAttachment, 'uri' | 'thumbhash'> & {
 }
 
 export interface QuoteRow {
-  author: string
-  quoted: Omit<QuotedMessage, 'id' | 'outgoing' | 'attachments' | 'deleted'> & {
-    attachments?: readonly CatalogAttachment[] | undefined
-  }
+  /** Absent: not even the author of the original is known. */
+  author?: string | undefined
+  /** Absent: the original was deleted or never received. */
+  quoted?:
+    | (Omit<QuotedMessage, 'id' | 'outgoing' | 'attachments'> & {
+        attachments?: readonly CatalogAttachment[] | undefined
+      })
+    | undefined
   reply: string
   busy?: boolean | undefined
 }
 
 const JPEG = { contentType: 'image/jpeg', voiceMessage: false } as const
 
-function useQuoted(row: QuoteRow): QuotedMessage {
-  const attachments = row.quoted.attachments ?? []
+function useQuoted(row: QuoteRow): QuotedMessage | undefined {
+  const attachments = row.quoted?.attachments ?? []
   // A story draws at most two pictures per quote, so the hooks are called a fixed number of times.
   const pictures = [
     useCatalogPicture(attachments[0]?.picture),
@@ -47,10 +52,12 @@ function useQuoted(row: QuoteRow): QuotedMessage {
     useCatalogPlaceholder(attachments[0]?.placeholder),
     useCatalogPlaceholder(attachments[1]?.placeholder),
   ]
+  if (row.quoted === undefined) return undefined
   return {
     id: 1,
     outgoing: false,
     body: row.quoted.body,
+    deleted: row.quoted.deleted,
     attachments: attachments.map(
       ({ picture: _picture, placeholder: _placeholder, ...rest }, at) => ({
         ...rest,
@@ -122,6 +129,8 @@ export const messageQuote = defineStory<QuoteRow>({
       quoted: { body: 'Hey\n this is audric\n\nhow are you?' },
       reply: 'Hi!',
     },
+    notFound: { author: 'Bob', reply: 'What did it say?' },
+    notFoundAuthorUnknown: { reply: 'What did it say?' },
   },
   render: (row) => <Pair {...row} />,
 })

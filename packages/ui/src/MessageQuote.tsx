@@ -9,7 +9,6 @@ import { ON_ACCENT_SECONDARY_OPACITY, type inkFor } from './ink'
 import { PressArea } from './PressArea'
 import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import {
-  isQuotable,
   quoteAccessibleName,
   quotePreview,
   type QuoteInk,
@@ -53,8 +52,8 @@ export function QuoteLines({
   thumb,
   busy = false,
 }: {
-  /** The author, or the bar's "Replying to" with the author. */
-  heading: string
+  /** The author, or the bar's "Replying to" with the author. Absent: no author line. */
+  heading: string | undefined
   preview: QuotePreview
   ink: QuoteInk
   secondary: { color: QuoteInk | ReturnType<typeof inkFor>['color']; opacity: number }
@@ -69,11 +68,12 @@ export function QuoteLines({
    */
   busy?: boolean | undefined
 }) {
-  const author = (
-    <Text size="$label" weight="semibold" color={ink} numberOfLines={1} flexShrink={1}>
-      {heading}
-    </Text>
-  )
+  const author =
+    heading === undefined ? null : (
+      <Text size="$label" weight="semibold" color={ink} numberOfLines={1} flexShrink={1}>
+        {heading}
+      </Text>
+    )
   return (
     <>
       {preview.visual === null ? <YStack width={STRIPE_WIDTH_PX} backgroundColor={stripe} /> : null}
@@ -117,14 +117,20 @@ export function QuoteLines({
 }
 
 export type MessageQuoteProps = WithTestID & {
-  /** Already worded: the nickname, display name or short account id, or "You". */
-  author: string
-  /** Absent or deleted: the original is not here, and nothing is drawn. */
+  /**
+   * Already worded: the nickname, display name or short account id, or "You". Absent where not
+   * even the author is known, for an original never received.
+   */
+  author: string | undefined
+  /** Absent or deleted: the original is not here, and the quote says only that. */
   message: QuotedMessage | undefined
   labels: QuoteLabels
   /** Drawn on a bubble you sent. */
   onAccent: boolean
-  /** Jumps to the original. Absent, the quote is no button. */
+  /**
+   * Jumps to the original. Absent, the quote is no button. A quote of one not found is no button
+   * either, but a pointer or a tap still calls this, for the toast that says so.
+   */
   onPress?: (() => void) | undefined
   /** Already worded, for what a press does, after the name. */
   hint?: string | undefined
@@ -143,7 +149,7 @@ function QuoteBody({
   pressed = false,
   thumbnailTestID,
 }: {
-  author: string
+  author: string | undefined
   preview: QuotePreview
   onAccent: boolean
   busy: boolean
@@ -201,7 +207,8 @@ function QuoteBody({
 /**
  * The message a reply quotes, heading the reply's bubble inside its padding on a tint of its
  * own: one press target that jumps to the original, named "{author}: {summary}" for a screen
- * reader, the picture's words included. A reply whose original is not here draws no quote at all.
+ * reader, the picture's words included. One whose original was deleted or never received says
+ * "Original message not found" under its author, with nothing else.
  */
 export function MessageQuote({
   author,
@@ -214,16 +221,17 @@ export function MessageQuote({
   thumbnailTestID,
   testID,
 }: MessageQuoteProps) {
-  if (!isQuotable(message)) return null
   const preview = quotePreview(message, labels)
-  const shared = { author, preview, onAccent, busy, thumbnailTestID }
+  const name = quoteAccessibleName(author, preview)
+  const shared = { author, preview, onAccent, busy: busy && preview.found, thumbnailTestID }
 
-  if (onPress === undefined)
+  if (!preview.found || onPress === undefined)
     return (
       // The web reads the words where they stand; native would stop on author and summary apart.
       <YStack
+        {...(onPress === undefined ? {} : { onPress })}
+        {...(isWeb ? {} : { accessible: true, 'aria-label': name })}
         testID={testID}
-        {...(isWeb ? {} : { accessible: true, 'aria-label': quoteAccessibleName(author, preview) })}
       >
         <QuoteBody {...shared} pressable={false} />
       </YStack>
@@ -232,7 +240,7 @@ export function MessageQuote({
   return (
     <PressArea
       onPress={onPress}
-      accessibilityLabel={quoteAccessibleName(author, preview)}
+      accessibilityLabel={name}
       accessibilityHint={hint}
       busy={busy}
       ring={{ onAccent, offset: 2, radius: '$sm' }}

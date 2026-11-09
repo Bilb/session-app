@@ -17,6 +17,7 @@ const LABELS: QuoteLabels = {
   voiceMessage: 'Voice Message',
   document: 'Document',
   andMore: (count) => `+${String(count)}`,
+  notFound: 'Original message not found',
 }
 
 const JPEG: QuotedAttachment = { contentType: 'image/jpeg', voiceMessage: false }
@@ -83,17 +84,29 @@ describe('what a quote says', () => {
   })
 })
 
-describe('whether a reply draws a quote', () => {
-  it('does for an original held here', () => {
+describe('a quote of an original that is not here', () => {
+  it('is the original itself when held here', () => {
     expect(isQuotable(quoted('Hi'))).toBe(true)
   })
 
   it.each([
-    ['held nowhere', undefined],
+    ['never received', undefined],
     ['deleted', { ...quoted('Gone'), deleted: true }],
-  ])('does not for an original %s', (_why, message) => {
-    expect(isQuotable(message)).toBe(false)
-  })
+  ])(
+    'says only "not found", on one line and with nothing beside it, for one %s',
+    (_why, message) => {
+      expect(isQuotable(message)).toBe(false)
+      expect(quotePreview(message, LABELS)).toEqual({
+        found: false,
+        kind: 'text',
+        text: 'Original message not found',
+        isFileName: false,
+        more: null,
+        lines: 1,
+        visual: null,
+      })
+    },
+  )
 })
 
 describe('what a quote shows beside its words', () => {

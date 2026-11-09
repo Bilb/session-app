@@ -6,8 +6,8 @@ export const MESSAGE_QUOTE_ID = ELEMENT.conversation.messageQuote
 
 /**
  * A reply's quote: one button named "{author}: {summary}" that jumps to the original, busy while it
- * is read in. One offered no press is no button: on the web its words are read where they stand,
- * and on native it is one element saying them.
+ * is read in. One of an original not found, or offered no press, is no button: on the web its
+ * words are read where they stand, and on native it is one element saying them.
  */
 export function messageQuote({
   name,
@@ -17,7 +17,7 @@ export function messageQuote({
 }: {
   name: string
   hint: string | null
-  /** Offered a press. */
+  /** Found, and offered a press. */
   pressable: boolean
   busy?: boolean | undefined
 }): Expected {
