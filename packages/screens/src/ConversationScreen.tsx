@@ -28,6 +28,8 @@ import { showsDateHeader } from './dateHeaders'
 import { useTopBarInsets } from './shell/pane'
 import { TranscriptWidth } from './TranscriptWidth'
 
+const messageKey = (message: Message) => String(message.id)
+
 /** The messages, oldest first, each under its date where the day changes. */
 function Transcript({
   conversationId,
@@ -40,7 +42,8 @@ function Transcript({
     // No itemHeight: a bubble is as tall as its body wraps to, so the list has to measure.
     <List
       data={messages}
-      keyExtractor={(message) => String(message.id)}
+      keyExtractor={messageKey}
+      rovingFocus="last"
       renderItem={(message, index) => (
         <YStack paddingHorizontal="$md" paddingBottom="$sm">
           {showsDateHeader(messages[index - 1], message) ? (

@@ -6,6 +6,7 @@ import { crowd, newcomer, type FakeSetup } from './fixtures'
 import { photoFileNames, thumbnailFileNames } from './media'
 import { rowShowcase } from './rows'
 import { showcase } from './showcase'
+import { transcripts } from './transcripts'
 import type { SessionClient } from '../types'
 import { unopenable } from './unopenable'
 import type { FakeWorld } from './world'
@@ -25,6 +26,7 @@ export const FAKE_FIXTURES = [
   'crowd',
   'rows',
   'dates',
+  'transcripts',
 ] as const
 
 export type FakeFixture = (typeof FAKE_FIXTURES)[number]
@@ -104,6 +106,8 @@ export function pickFakeFixture(env: FakeDevEnv): FakeSetup & { fixture: FakeFix
       return { fixture, ...rowShowcase() }
     case 'dates':
       return { fixture, ...dateStates() }
+    case 'transcripts':
+      return { fixture, ...transcripts() }
     case 'friends':
       return { fixture, ...friendsWithAttachments(['Alice', 'Bob'], { history: 4 }) }
   }
