@@ -61,7 +61,11 @@ grouped by milestone can only be ordered by due date, and milestones have none.
   if that pull request is closed unmerged or stops saying it fixes the issue. The sync records the
   Status it last set in a hidden **Synced status** field, which is how it tells the two apart.
 - **An issue follows the pull request that will close it** (`Fixes #12` in its description, which
-  can be added after it is opened).
+  can be added after it is opened). Use a closing keyword only when the pull request finishes the
+  issue: merging closes it as Done.
+- **A pull request that does part of an issue mentions it without a closing keyword** (`Part of #12`).
+  The mention shows on the issue's timeline without closing it on merge; update the issue's
+  **Progress** section (what's built, what's left) when it merges.
 - **Some changes take up to an hour to show:** blocked-by links, adding or removing the `area`
   label, and transferring an issue fire no event the sync runs on, so its hourly run picks them up.
   Everything else shows within a minute or so.
