@@ -24,6 +24,9 @@ Four documents, none of which repeats another:
 
 Start with STATUS. It tells you which of the rest you need.
 
+How the work is planned on the project board, and what the board does for itself, is in
+[docs/PROJECT.md](docs/PROJECT.md).
+
 Each package with anything surprising in it has its own README -
 [bridge-core](packages/bridge-core/README.md) for the C++ shim,
 [bridge-node](packages/bridge-node/README.md) for the Electron addon,
