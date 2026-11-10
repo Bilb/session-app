@@ -20,6 +20,11 @@ export function useShowsBack(): boolean {
   return !useContext(PaneContext).besideList
 }
 
+/** Whether this pane is drawn beside the list, which gives its top bar the list's surface. */
+export function useBesideList(): boolean {
+  return useContext(PaneContext).besideList
+}
+
 /**
  * A top bar's padding on whichever physical side the window's controls would otherwise cover its
  * content, and nothing elsewhere -- spread after the bar's own padding, so it wins only there.

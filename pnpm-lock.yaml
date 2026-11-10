@@ -286,6 +286,9 @@ importers:
       '@session/state':
         specifier: workspace:*
         version: link:../../packages/state
+      '@session/test-ids':
+        specifier: workspace:*
+        version: link:../../packages/test-ids
       '@session/theme-tokens':
         specifier: workspace:*
         version: link:../../packages/theme-tokens
