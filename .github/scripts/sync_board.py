@@ -176,7 +176,8 @@ def sync_release_options():
     def shape(o):
         return (o.get('id'), o['name'], o.get('description') or '')
 
-    if [shape(o) for o in options] != [shape(o) for o in field['options']]:
+    # With no milestones yet there is nothing to mirror, and a single select can't be left empty.
+    if options and [shape(o) for o in options] != [shape(o) for o in field['options']]:
         updated = gql('mutation($f:ID!,$o:[ProjectV2SingleSelectFieldOptionInput!]!){updateProjectV2Field('
                       'input:{fieldId:$f,singleSelectOptions:$o}){projectV2Field{... on '
                       'ProjectV2SingleSelectField{options{id name color description}}}}}',
