@@ -98,10 +98,13 @@ export function ContextMenuPanel({
   const firstRowIndex = entries.findIndex(isMenuRow)
   const nodes = useRef(new Map<number, HTMLElement>())
   const panel = useRef<HTMLElement | null>(null)
+  // Focus follows the keys, not the pointer: Chromium rings a scripted focus unless focus last
+  // moved by a click, so a hovered row would draw the keyboard's ring.
+  const pointerMoved = useRef(false)
 
   useEffect(() => {
     if (!isWeb || !focused) return
-    const target = active === -1 ? panel.current : nodes.current.get(active)
+    const target = active === -1 || pointerMoved.current ? panel.current : nodes.current.get(active)
     target?.focus()
   }, [active, focused])
 
@@ -116,6 +119,7 @@ export function ContextMenuPanel({
     if (action === null) return
     event.preventDefault()
     event.stopPropagation()
+    pointerMoved.current = false
     if (action.kind === 'move') onActiveChange(action.index)
     else onAction(action)
   }
@@ -176,6 +180,7 @@ export function ContextMenuPanel({
                 )
               }}
               onHover={() => {
+                pointerMoved.current = true
                 onActiveChange(index)
               }}
               nodeRef={(node) => {
