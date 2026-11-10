@@ -59,33 +59,58 @@ RANK_STATUS = ['Approved', 'In review', 'In progress', 'Ready', 'Backlog', 'Done
 RANK_PRIORITY = ['P0', 'P1', 'P2']
 
 
-def gh(args, payload=None, allow_fail=False):
+def graphql_errors_reply(stdout):
+    try:
+        reply = json.loads(stdout)
+    except ValueError:
+        return None
+    return reply if isinstance(reply, dict) and reply.get('errors') else None
+
+
+def gh(args, payload=None):
     for attempt in range(4):
         out = subprocess.run(['gh', *args], input=None if payload is None else json.dumps(payload),
                              capture_output=True, text=True)
+        failed_graphql = out.returncode != 0 and args[:2] == ['api', 'graphql']
+        reply = graphql_errors_reply(out.stdout) if failed_graphql else None
         # GitHub's GraphQL endpoint fails now and then with a generic error that a retry clears. Only
-        # a failed call is retried: a successful response can quote the phrase in an issue's text.
-        if out.returncode != 0 and 'Something went wrong' in out.stdout + out.stderr and attempt < 3:
+        # the errors are searched: data, partial or whole, can quote the phrase in an issue's text.
+        failure = ' '.join(e.get('message') or '' for e in reply['errors']) if reply else out.stdout + out.stderr
+        if out.returncode != 0 and 'Something went wrong' in failure and attempt < 3:
             time.sleep(3 * (attempt + 1))
             continue
+        # gh exits 1 on any GraphQL error, even beside partial data: gql_partial judges the errors.
+        if reply:
+            return out.stdout
         if out.returncode != 0:
-            if allow_fail:
-                print(f'warning: gh {" ".join(args[:3])} failed: {out.stderr.strip()}')
-                return None
             sys.exit(f'gh {" ".join(args[:3])} failed: {out.stdout} {out.stderr}')
         return out.stdout
 
 
-def gql(query, **variables):
+def on_tolerated_node(error, tolerated):
+    """Whether the error is on one node of a connection named in tolerated (<field>/nodes/<n>/...).
+    One on the connection itself nulls the whole parent, since the field is non-null."""
+    path = error.get('path') or []
+    return any(field in tolerated and path[at + 1:at + 2] == ['nodes'] and len(path) > at + 2
+               for at, field in enumerate(path))
+
+
+def gql_partial(query, tolerated, **variables):
+    """The data, where an error on a single node of a connection named in tolerated leaves that node
+    null. Any other error fails the run."""
     data = json.loads(gh(['api', 'graphql', '--input', '-'], {'query': query, 'variables': variables}))
-    if data.get('errors'):
-        sys.exit(json.dumps(data['errors']))
+    errors = data.get('errors') or []
+    if fatal := [e for e in errors if not on_tolerated_node(e, tolerated)]:
+        sys.exit(json.dumps(fatal))
     return data['data']
 
 
-def rest(path, allow_fail=False):
-    out = gh(['api', '--paginate', '--slurp', path], allow_fail=allow_fail)
-    return [] if out is None else json.loads(out)
+def gql(query, **variables):
+    return gql_partial(query, (), **variables)
+
+
+def rest(path):
+    return json.loads(gh(['api', '--paginate', '--slurp', path]))
 
 
 PROJECT = gql(
@@ -111,7 +136,8 @@ ITEMS_QUERY = '''query($p:ID!,$after:String){node(id:$p){... on ProjectV2{items(
     synced:fieldValueByName(name:"Synced status"){... on ProjectV2ItemFieldTextValue{text}}
     content{
       ... on Issue{__typename id number state repository{nameWithOwner} milestone{title}
-        labels(first:20){nodes{name}}}
+        labels(first:20){nodes{name}}
+        blockedBy(first:50){totalCount nodes{number title state repository{nameWithOwner}}}}
       ... on PullRequest{__typename id number state isDraft reviewDecision repository{nameWithOwner}
         closingIssuesReferences(first:20){nodes{number repository{nameWithOwner}}}}}}}}}}'''
 
@@ -119,7 +145,8 @@ ITEMS_QUERY = '''query($p:ID!,$after:String){node(id:$p){... on ProjectV2{items(
 def items():
     found, after = [], None
     while True:
-        page = gql(ITEMS_QUERY, p=PID, after=after)['node']['items']
+        # A blocker in a repository the app can't read comes back as a null node, which sync() reports.
+        page = gql_partial(ITEMS_QUERY, ('blockedBy',), p=PID, after=after)['node']['items']
         found += [i for i in page['nodes'] if i['content']]
         if not page['pageInfo']['hasNextPage']:
             return found
@@ -303,17 +330,20 @@ def sync():
         elif AREA_LABEL in [l['name'] for l in content['labels']['nodes']]:
             continue
         else:
-            # Another repository's issue may be one the app can't read: that costs its blockers, not
-            # the whole run.
-            blockers = [] if content['state'] != 'OPEN' else [
-                b for page in rest(f'repos/{repo}/issues/{content["number"]}/dependencies/blocked_by?per_page=100',
-                                   allow_fail=repo != REPO)
-                for b in page if b['state'] == 'open']
-            waiting = ', '.join(
-                f'{ref(b["repository_url"].split("/repos/", 1)[1], b["number"])} {b["title"][:48]}'
-                for b in blockers)
+            blocked_by = content['blockedBy'] or {'totalCount': 0, 'nodes': []}
+            nodes = blocked_by['nodes'] if content['state'] == 'OPEN' else []
+            if content['state'] == 'OPEN' and blocked_by['totalCount'] > len(nodes):
+                print(f'warning: {ref(repo, content["number"])}: only the first {len(nodes)} '
+                      f'of its {blocked_by["totalCount"]} blockers are read')
+            blockers = [b for b in nodes if b and b['state'] == 'OPEN']
+            # Counted as open: whether it is closed is unknown, and Ready would claim it is.
+            if unreadable := nodes.count(None):
+                print(f'warning: {ref(repo, content["number"])}: cannot read {unreadable} of its blockers')
+            waiting = ', '.join([f'{ref(repo_of(b), b["number"])} {b["title"][:48]}' for b in blockers]
+                                + ([f"{unreadable} blocker{'s' if unreadable > 1 else ''} the app can't read"]
+                                   if unreadable else []))
             for b in blockers:
-                key = (b['repository_url'].split('/repos/', 1)[1], b['number'])
+                key = (repo_of(b), b['number'])
                 unblocks[key] = unblocks.get(key, 0) + 1
             prs = closing.get((repo, content['number']))
             decided = True
@@ -325,7 +355,7 @@ def sync():
                 # Set by hand, for work started before there is a pull request: left, and not recorded
                 # as the sync's, so it stays until someone moves it or a pull request takes over.
                 wanted, decided = current, False
-            elif blockers or content['milestone'] is None:
+            elif blockers or unreadable or content['milestone'] is None:
                 wanted = 'Backlog'
             else:
                 wanted = 'Ready'
@@ -336,7 +366,7 @@ def sync():
             set_text(item, SYNCED, wanted)
         if waiting != ((item['waiting'] or {}).get('text') or ''):
             set_text(item, 'Waiting on', waiting)
-        ranked.append((item, wanted, len(blockers) if content['__typename'] == 'Issue' else 0))
+        ranked.append((item, wanted, len(blockers) + unreadable if content['__typename'] == 'Issue' else 0))
 
     for item, status, blockers in ranked:
         content = item['content']
