@@ -73,7 +73,7 @@ test('moves through a transcript as one tab stop, Up and Down between its messag
       await expect(app.locator(ROW(index))).toHaveAttribute('tabindex', '-1')
     }
     // A message's own controls are stops only while it is the list's.
-    await expect(app.locator(CONVERSATION.attachmentDownload)).toHaveAttribute('tabindex', '-1')
+    await expect(app.locator(CONVERSATION.attachmentAction)).toHaveAttribute('tabindex', '-1')
 
     await press(app, 'Tab')
     await expectFocusOn(app, CONVERSATION.attachButton)
@@ -84,16 +84,14 @@ test('moves through a transcript as one tab stop, Up and Down between its messag
     await expectMessageFocused(app, WITH_FILE)
     await expect(app.locator(ROW(WITH_FILE))).toBeInViewport()
 
-    // Tab goes through the focused message's controls, then out of the list.
-    await press(app, 'Tab')
-    await expectFocusOn(app, CONVERSATION.attachmentDownload)
+    // Tab goes through the focused message's control, then out of the list.
     await press(app, 'Tab')
     await expectFocusOn(app, CONVERSATION.attachmentAction)
     await press(app, 'Tab')
     await expectFocusOn(app, CONVERSATION.attachButton)
 
-    // Back in on the message last focused, through its controls.
-    await press(app, 'Shift+Tab', 3)
+    // Back in on the message last focused, through its control.
+    await press(app, 'Shift+Tab', 2)
     await expectMessageFocused(app, WITH_FILE)
 
     // No wrapping at either end.
@@ -105,7 +103,7 @@ test('moves through a transcript as one tab stop, Up and Down between its messag
     // From a control inside a message, Up and Down move for the message.
     await press(app, 'ArrowUp', NEWEST - WITH_FILE)
     await press(app, 'Tab')
-    await expectFocusOn(app, CONVERSATION.attachmentDownload)
+    await expectFocusOn(app, CONVERSATION.attachmentAction)
     await press(app, 'ArrowUp')
     await expectMessageFocused(app, WITH_FILE - 1)
 
@@ -147,11 +145,11 @@ test('opens the focused message’s menu from the keyboard, against the message,
     // control.
     await press(app, 'ArrowUp', NEWEST - 1 - WITH_FILE)
     await press(app, 'Tab')
-    await expectFocusOn(app, CONVERSATION.attachmentDownload)
+    await expectFocusOn(app, CONVERSATION.attachmentAction)
     await press(app, 'Shift+F10')
     await expectMenuAgainst(app, WITH_FILE)
     await press(app, 'Escape')
-    await expectFocusOn(app, CONVERSATION.attachmentDownload)
+    await expectFocusOn(app, CONVERSATION.attachmentAction)
   } finally {
     await app.close()
   }
