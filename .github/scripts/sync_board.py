@@ -26,8 +26,9 @@ made between releases ship with the release that follows them. That run does onl
 milestones it changes start ordinary syncs.
 
 - "Rank" orders the work for the views that sort by it, lowest first: by Status (what's nearly done
-  first, then what can be picked up, then what's waiting), then Priority, then the fewest open
-  blockers, then the most open issues it unblocks, then the easiest.
+  first, then what can be picked up, then what's waiting), then release (in the Release field's
+  order), then Priority, then the fewest open blockers, then the most open issues it unblocks, then
+  the easiest.
 - An archived item is left alone, since GitHub refuses any change to one, unless its issue or pull
   request is open: anything open is work, so it is unarchived and kept in step again.
 
@@ -147,17 +148,19 @@ def set_number(item, field, number):
         p=PID, i=item['id'], f=FIELDS[field]['id'], n=number)
 
 
-def rank(status, priority, difficulty, blockers, unblocks):
+def rank(status, release, priority, difficulty, blockers, unblocks):
     """
     One number for an order a view can't express itself, lowest first. Each part has its own digits,
-    so an earlier part always outweighs every later one: status, priority, open blockers (fewest
-    first), open issues it unblocks (most first), difficulty (easiest first).
+    so an earlier part always outweighs every later one: status, release (its place in the Release
+    field's order, so a later release's P0 never comes before the next one's P1), priority, open
+    blockers (fewest first), open issues it unblocks (most first), difficulty (easiest first).
     """
     s = RANK_STATUS.index(status) if status in RANK_STATUS else len(RANK_STATUS)
     p = next((at for at, name in enumerate(RANK_PRIORITY) if (priority or '').startswith(name)),
              len(RANK_PRIORITY))
     d = int(difficulty[0]) if difficulty and difficulty[0].isdigit() else 6
-    return s * 10**6 + p * 10**5 + min(blockers, 99) * 10**3 + (99 - min(unblocks, 99)) * 10 + d
+    return (s * 10**8 + min(release, 99) * 10**6 + p * 10**5 + min(blockers, 99) * 10**3
+            + (99 - min(unblocks, 99)) * 10 + d)
 
 
 def repo_of(content):
@@ -278,7 +281,7 @@ def sync():
             for issue in pr['closingIssuesReferences']['nodes']:
                 closing.setdefault((repo_of(issue), issue['number']), []).append(pr)
 
-    release_options, _ = sync_release_options()
+    release_options, release_order = sync_release_options()
     for item in board:
         content = item['content']
         if content['__typename'] != 'Issue' or repo_of(content) != REPO:
@@ -337,8 +340,12 @@ def sync():
 
     for item, status, blockers in ranked:
         content = item['content']
-        value = rank(status, (item['priority'] or {}).get('name'), (item['difficulty'] or {}).get('name'),
-                     blockers, unblocks.get((repo_of(content), content['number']), 0))
+        # Unscheduled work, another repository's issues and pull requests come after every release
+        milestone = (content.get('milestone') or {}).get('title') if repo_of(content) == REPO else None
+        release = release_order.index(milestone) if milestone in release_order else len(release_order)
+        value = rank(status, release, (item['priority'] or {}).get('name'),
+                     (item['difficulty'] or {}).get('name'), blockers,
+                     unblocks.get((repo_of(content), content['number']), 0))
         if value != (item['rank'] or {}).get('number'):
             set_number(item, RANK, value)
 

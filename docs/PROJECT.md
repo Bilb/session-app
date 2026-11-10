@@ -83,10 +83,12 @@ A view sorts by one field, and "most important, least blocked" isn't one, so the
 
 1. **Status**: Approved, In review, In progress, Ready, Backlog, Done. What's nearly finished comes
    first, then what can be picked up, then what's waiting.
-2. **Priority**: P0, P1, P2, then no priority.
-3. **Open blockers**: fewest first.
-4. **Open issues it unblocks**: most first, since finishing it frees the most work.
-5. **Difficulty**: easiest first, which matters most where no priority is set.
+2. **Release**: in the order of the Release field's options (the dragged order), then unscheduled
+   work. A later release's P0 never comes before the next release's P1.
+3. **Priority**: P0, P1, P2, then no priority.
+4. **Open blockers**: fewest first.
+5. **Open issues it unblocks**: most first, since finishing it frees the most work.
+6. **Difficulty**: easiest first, which matters most where no priority is set.
 
 Priority is relative to the issue's milestone: P0 means that release isn't done without it, P1 that
 it can slip to the next release, P2 that it's for when there's room.
