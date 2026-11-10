@@ -17,6 +17,8 @@ const ROLES: Partial<Record<string, ExpectedRole>> = {
   link: 'link',
   textbox: 'textbox',
   progressbar: 'progressbar',
+  menu: 'menu',
+  menuitem: 'menuitem',
 }
 
 function focusable(element: Element): boolean {

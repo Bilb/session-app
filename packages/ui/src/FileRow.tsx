@@ -44,6 +44,7 @@ import { StateLayer } from './StateLayer'
 import { Text } from './Text'
 import { useFontScale } from './useFontScale'
 import { tileRadius } from './attachmentTileStyle'
+import { useMenuLongPress } from './menuLongPress'
 
 export interface FileRowTestIDs {
   row?: ElementId | undefined
@@ -186,6 +187,7 @@ function Trailing({
   onAccent: boolean
 }) {
   const control = fileRowControl(state)
+  const menuLongPress = useMenuLongPress()
   const forcedFocus = useForcedFocus()
 
   // The square is held whatever the state, so the name's width does not change when a transfer
@@ -232,6 +234,7 @@ function Trailing({
             })}
       {...forcedFocus}
       {...(isWeb ? { 'aria-disabled': held } : {})}
+      {...menuLongPress}
       onPress={
         held
           ? undefined
@@ -297,6 +300,7 @@ export function FileRow({
   const nameInk = inkFor(tone.name, onAccent)
   const fontScale = useFontScale()
   const forcedFocus = useForcedFocus()
+  const menuLongPress = useMenuLongPress()
   // While fetching, the lead square stays a disabled button rather than losing its stop, which
   // would drop focus on it to the page.
   const held = state === 'fetching'
@@ -343,7 +347,9 @@ export function FileRow({
       // A group in every state: tamagui remounts a view that gains or drops one, dropping focus.
       group="row"
       testID={testIDs?.row}
-      {...(onPress === undefined ? {} : { '$platform-web': { cursor: 'pointer' }, onPress })}
+      {...(onPress === undefined
+        ? {}
+        : { '$platform-web': { cursor: 'pointer' }, onPress, ...menuLongPress })}
       {...nativeRowElement({
         name: fileRowAccessibleName(filename, format, caption),
         actions,
@@ -381,6 +387,7 @@ export function FileRow({
             group="tile"
             $platform-web={{ cursor: 'pointer' }}
             testID={testIDs?.lead}
+            {...menuLongPress}
             onPress={
               leadHeld
                 ? undefined

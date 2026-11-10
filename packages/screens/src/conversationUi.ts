@@ -1,4 +1,5 @@
 import type { ConversationId } from '@session/client'
+import type { MenuAnchor } from '@session/ui'
 import { createContext, useContext } from 'react'
 
 /**
@@ -14,6 +15,8 @@ export interface ConversationUi {
   /** `index` is the attachment's index in the message, not its place among the viewable ones. */
   openViewer: (messageId: number, index: number) => void
   openSheet: (messageId: number) => void
+  /** A right-click or a long press on a message, or the keyboard on a focused one. */
+  openMenu: (messageId: number, anchor: MenuAnchor) => void
 }
 
 export const ConversationUiContext = createContext<ConversationUi | null>(null)

@@ -13,6 +13,7 @@ import { focusRing, heldButton, keyboardPress } from './keyboardPress'
 import { pressHint } from './pressHint'
 import { StateLayer } from './StateLayer'
 import type { WithTestID } from './with'
+import { useMenuLongPress } from './menuLongPress'
 
 export type AlbumItem = WithMediaUri &
   WithMediaThumbhash &
@@ -92,6 +93,7 @@ const AlbumTile = memo(function AlbumTile({
   onAccent: boolean
 }) {
   const forcedFocus = useForcedFocus()
+  const menuLongPress = useMenuLongPress()
   if (item === undefined) return null
   // A tile that would fetch is the whole set's, so it dims with the album, and at rest on touch
   // under the album's cloud. One that is here opens its own picture, so it answers on its own.
@@ -122,6 +124,7 @@ const AlbumTile = memo(function AlbumTile({
       position="relative"
       $platform-web={{ cursor: 'pointer' }}
       onPress={held ? undefined : press}
+      {...menuLongPress}
       // A group in every state: tamagui remounts a view that gains or drops one, dropping focus.
       group="tile"
     >

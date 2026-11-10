@@ -233,6 +233,14 @@ export const ELEMENT = {
 
     loadingScreen: 'onboarding-loading-screen',
   },
+  /** Whichever context menu is open: only one ever is. */
+  contextMenu: {
+    menu: 'context-menu',
+    submenu: 'context-menu-submenu',
+    back: 'context-menu-back',
+    /** A row, by its entry's id: `reply`, `copy`, `delete`. */
+    item: (id: string) => `context-menu-item-${id}` as const,
+  },
   catalog: {
     page: 'catalog-page',
     ready: 'catalog-ready',
