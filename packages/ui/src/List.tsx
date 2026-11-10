@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
 import { FlatList } from 'react-native'
+import { isWeb } from 'tamagui'
 
 import { SPACING } from '@session/theme-tokens'
 
@@ -46,9 +47,9 @@ export interface ListProps<T> {
   /** The row to open on. Only with `itemHeight`, which is what places it before it is drawn. */
   initialScrollIndex?: number | undefined
   /**
-   * Makes the list one tab stop on the desktop, with Up and Down moving between rows. The stop is
-   * whatever in each row calls `useListStop`; this says which row Tab enters on before any has
-   * been focused.
+   * Makes the list one tab stop on the desktop, with Up and Down moving between rows; a no-op on
+   * native. The stop is whatever in each row calls `useListStop`; this says which row Tab enters
+   * on before any has been focused.
    */
   rovingFocus?: ListFocusEntry | undefined
 }
@@ -72,7 +73,7 @@ export function List<T>({
   rovingFocus,
 }: ListProps<T>) {
   const [focus] = useState(() =>
-    rovingFocus === undefined ? null : new ListFocus(rovingFocus, inverted ?? false),
+    rovingFocus === undefined || !isWeb ? null : new ListFocus(rovingFocus, inverted ?? false),
   )
 
   useLayoutEffect(() => {
