@@ -6,7 +6,7 @@ import { FakeWorld, resetFakeIds } from './world'
 type Line = readonly ['in' | 'out', string] | readonly ['in', string, 'file']
 
 /** Each peer's conversation, oldest first. The last seeded is the newest, so it lists first. */
-export const TRANSCRIPTS: readonly (readonly [FixtureName, readonly Line[]])[] = [
+const TRANSCRIPTS: readonly (readonly [FixtureName, readonly Line[]])[] = [
   [
     'Dracula',
     [
