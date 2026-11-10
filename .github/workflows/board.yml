@@ -18,9 +18,11 @@ on:
     - cron: '0 9 * * 1'
   workflow_dispatch:
 
-# One sync at a time, so two events never write the same card.
+# One sync at a time, so two events never write the same card. A run waiting behind another is
+# cancelled by the next event, which is harmless for a sync, since any later one does the same
+# work; so the two one-off runs, a milestone's fold and the Monday update, have groups of their own.
 concurrency:
-  group: board-sync
+  group: board-${{ github.event_name == 'milestone' && github.event.action == 'closed' && format('fold-{0}', github.event.milestone.number) || github.event.schedule == '0 9 * * 1' && 'status' || 'sync' }}
 
 # The workflow's own token only checks out the script: it cannot write an organization's project,
 # so the writes use a token from the board's GitHub App.

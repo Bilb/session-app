@@ -6,17 +6,17 @@ the sync does, and the few things it can't do.
 
 ## How it is structured
 
-| Question                  | Where it lives                                                 | Why                                                                     |
-| ------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| What is the work?         | One **issue** per feature, bug or piece of groundwork          | Pull requests close them (`Fixes #12`), and the board follows           |
-| Which release is it in?   | The issue's **milestone**                                      | A milestone shows its own % complete, with no delivery date to maintain |
-| Which area?               | A **sub-issue** of the area's issue (Media, Groups...)         | The area issue shows a progress bar, and the board can group by parent  |
-| What kind of work?        | A **label**: `feature`, `design`, `architecture`, `bug`        | The issue forms set it, so a report arrives already labelled            |
-| Does it need libsession?  | The **`libsession`** label, and a **blocked by** link          | The workstream issue it is blocked by says what libsession is missing   |
-| What has to happen first? | **Blocked by** links between issues                            | Shown on the issue and on the board as **Waiting on**                   |
-| How important is it?      | The board's **Priority** field, then the order within a column | The milestone says _when_; priority says what goes first within it      |
-| How big is it?            | The board's **Difficulty** field, 1 Trivial to 5 Very high     |                                                                         |
-| Where is it up to?        | The board's **Status** field                                   | Set by the sync; see below                                              |
+| Question                  | Where it lives                                                                     | Why                                                                     |
+| ------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| What is the work?         | One **issue** per feature, bug or piece of groundwork                              | Pull requests close them (`Fixes #12`), and the board follows           |
+| Which release is it in?   | The issue's **milestone**                                                          | A milestone shows its own % complete, with no delivery date to maintain |
+| Which area?               | A **sub-issue** of the area's issue (Media, Groups...), which has the `area` label | The area issue shows a progress bar, and the board can group by parent  |
+| What kind of work?        | A **label**: `feature`, `design`, `architecture`, `bug`                            | The issue forms set it, so a report arrives already labelled            |
+| Does it need libsession?  | The **`libsession`** label, and a **blocked by** link                              | The workstream issue it is blocked by says what libsession is missing   |
+| What has to happen first? | **Blocked by** links between issues                                                | Shown on the issue and on the board as **Waiting on**                   |
+| How important is it?      | The board's **Priority** field, then the order within a column                     | The milestone says _when_; priority says what goes first within it      |
+| How big is it?            | The board's **Difficulty** field, 1 Trivial to 5 Very high                         |                                                                         |
+| Where is it up to?        | The board's **Status** field                                                       | Set by the sync; see below                                              |
 
 There are no dates. A release's progress is its milestone's % complete.
 
@@ -54,12 +54,17 @@ grouped by milestone can only be ordered by due date, and milestones have none.
 | Done        | Merged or closed                                                     | The sync                                  |
 
 - **Only In progress is ever set by hand**, for work started before a pull request exists. The sync
-  leaves it there. A card dragged to any other column is moved back on the next run. Area issues
-  are the exception: the sync leaves their Status alone.
+  leaves it there. A card dragged to any other column is moved back on the next run. Area issues,
+  which the sync knows by the `area` label, are the exception: their Status is left alone, and only
+  they are listed in the weekly update.
+- **An issue the sync moved to In progress for a draft pull request goes back** to Ready or Backlog
+  if that pull request is closed unmerged or stops saying it fixes the issue. The sync records the
+  Status it last set in a hidden **Synced status** field, which is how it tells the two apart.
 - **An issue follows the pull request that will close it** (`Fixes #12` in its description, which
   can be added after it is opened).
-- **Blocked-by changes take up to an hour to show.** Adding or removing a link fires no event, so
-  the sync picks them up on its hourly run. Everything else shows within a minute or so.
+- **Some changes take up to an hour to show:** blocked-by links, adding or removing the `area`
+  label, and transferring an issue fire no event the sync runs on, so its hourly run picks them up.
+  Everything else shows within a minute or so.
 
 ## Triage
 
@@ -87,6 +92,20 @@ priority, or closes it. That is the one step the board can't do for itself.
 - hourly, for blocked-by links;
 - Mondays at 09:00 UTC, to post a progress update to the project instead.
 
+Syncs never overlap. Closing a milestone runs only the fold, and the Monday run only posts the
+update; each has a run of its own that a later event can't cancel. A sync can be started by hand
+from the Actions tab.
+
+Issues and pull requests from other repositories can go on the board too. Each is looked up in its
+own repository, but only this repository's issues are added automatically, and only they get a
+Release. One whose repository the app can't read gets no blockers, and the run logs a warning.
+
 It writes with a token from the board's GitHub App, set by the `BOARD_APP_ID` and `BOARD_APP_KEY`
 secrets, and the `BOARD_PROJECT_NUMBER` variable says which project. Until all three are set, it
-skips. Runs never overlap, and one can be started by hand from the Actions tab.
+skips. The project needs these fields, or the sync stops and names the missing ones:
+
+- **Status**, single select: Backlog, Ready, In progress, In review, Approved, Done;
+- **Release**, single select, whose options the sync fills from the milestones;
+- **Waiting on**, text;
+- **Synced status**, text, hidden from every view;
+- **Priority** and **Difficulty**, single select, which the sync doesn't touch.
