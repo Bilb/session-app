@@ -44,14 +44,14 @@ grouped by milestone can only be ordered by due date, and milestones have none.
 
 ## Status, and what moves it
 
-| Status      | Means                                                                | Set by                                    |
-| ----------- | -------------------------------------------------------------------- | ----------------------------------------- |
-| Backlog     | Not scheduled (no milestone), or waiting on something still open     | The sync                                  |
-| Ready       | Nothing blocking it, and scheduled in Next or a release              | The sync                                  |
-| In progress | Someone has started: a draft pull request, or changes were requested | The sync, or by hand before there is a PR |
-| In review   | A pull request is ready for review; review includes testing it       | The sync                                  |
-| Approved    | Approved; the author merges                                          | The sync                                  |
-| Done        | Merged or closed                                                     | The sync                                  |
+| Status      | Means                                                                                   | Set by                                    |
+| ----------- | --------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Backlog     | Not scheduled (no milestone), or waiting on something still open                        | The sync                                  |
+| Ready       | Nothing blocking it, and scheduled in Next or a release                                 | The sync                                  |
+| In progress | Someone has started: a draft pull request, or changes were requested                    | The sync, or by hand before there is a PR |
+| In review   | A pull request awaits review, or review again after changes; review includes testing it | The sync                                  |
+| Approved    | Approved; the author merges                                                             | The sync                                  |
+| Done        | Merged or closed                                                                        | The sync                                  |
 
 - **Only In progress is ever set by hand**, for work started before a pull request exists. The sync
   leaves it there. A card dragged to any other column is moved back on the next run. Area issues,
@@ -66,6 +66,11 @@ grouped by milestone can only be ordered by due date, and milestones have none.
 - **A pull request that does part of an issue mentions it without a closing keyword**
   (`Part of #12`). The mention shows on the issue's timeline without closing it on merge; update the
   issue's **Progress** section (what's built, what's left) when it merges.
+- **A pull request goes back to In review when everyone who requested changes is asked again**
+  (the re-request button by their name on the pull request), not when the changes are pushed.
+  Another reviewer's approval does not clear a request for changes, on GitHub or on the board: the
+  reviewer who made it reviews again, or the review is dismissed with a note saying why, and then
+  the card moves to Approved.
 - **Some changes take up to an hour to show:** blocked-by links, adding or removing the `area`
   label, and transferring an issue fire no event the sync runs on, so its hourly run picks them up.
   Everything else shows within a minute or so.
@@ -97,7 +102,9 @@ it can slip to the next release, P2 that it's for when there's room.
 
 - **Releases**: every issue grouped by release in the dragged order, sorted by Rank. Unscheduled
   issues are in the group with no release.
-- **Board**: every issue by Status, sorted by Rank within each column.
+- **Board**: every issue and pull request by Status, sorted by Rank within each column. A pull
+  request that fixes an issue sits beside it; one that does part of an issue is the only place its
+  review shows. With no release or priority, pull requests sort after the issues in each column.
 - **Areas**: the area issues, each with its progress bar.
 - **Up next**: Ready issues sorted by Rank, for picking up something to do.
 - **My reviews**: pull requests waiting on your review. One leaves it when you approve or request
