@@ -14,7 +14,7 @@ the sync does, and the few things it can't do.
 | What kind of work?        | A **label**: `feature`, `design`, `architecture`, `bug`                            | The issue forms set it, so a report arrives already labelled            |
 | Does it need libsession?  | The **`libsession`** label, and a **blocked by** link                              | The workstream issue it is blocked by says what libsession is missing   |
 | What has to happen first? | **Blocked by** links between issues                                                | Shown on the issue and on the board as **Waiting on**                   |
-| How important is it?      | The board's **Priority** field, then the order within a column                     | The milestone says _when_; priority says what goes first within it      |
+| How important is it?      | The board's **Priority** field, which the sync folds into **Rank**                 | The milestone says _when_; priority says what goes first within it      |
 | How big is it?            | The board's **Difficulty** field, 1 Trivial to 5 Very high                         |                                                                         |
 | Where is it up to?        | The board's **Status** field                                                       | Set by the sync; see below                                              |
 
@@ -101,11 +101,31 @@ it can slip to the next release, P2 that it's for when there's room.
 
 ## Done, and archiving
 
-Closed issues stay on the board, in Done, until they're archived. The project's **Auto-archive
-items** workflow (Project settings → Workflows) does it, for example with the filter
-`is:closed updated:<@today-14d`. An archived card disappears from every view but still counts
+Closed issues and pull requests stay on the board, in Done, until they're archived. The project's
+**Auto-archive items** workflow (Project settings → Workflows) does it, for example with the
+filter `is:closed updated:<@today-14d`. An archived card disappears from every view but still counts
 towards its release's progress. GitHub refuses any change to an archived card, so the sync leaves
-them alone, and unarchives one whose issue is reopened.
+them alone.
+
+**Anything open is always on the board.** The sync unarchives the card of any open issue or pull
+request, whether it was reopened or archived by hand while open, so open work is never hidden. To
+take an issue off the board, close it as not planned; an idea that isn't scheduled can stay open
+with no milestone, where Planning lists it.
+
+### The project's other workflows
+
+The sync sets Status, so GitHub's own workflows that set it stay off: two writers would undo each
+other.
+
+| Workflow                       | State | Why                                                                                                          |
+| ------------------------------ | ----- | ------------------------------------------------------------------------------------------------------------ |
+| Auto-add sub-issues to project | On    | A sub-issue from another repository, such as libsession, joins the board                                     |
+| Auto-archive items             | On    | Keeps Done short; see above                                                                                  |
+| Item added to project          | Off   | The sync sets the first Status                                                                               |
+| Item closed                    | Off   | The sync moves closed issues to Done                                                                         |
+| Pull request merged            | Off   | The sync moves merged pull requests to Done                                                                  |
+| Pull request linked to issue   | Off   | The sync gives an issue its pull request's Status                                                            |
+| Auto-close issue               | Off   | It would close an issue whose card is dragged to Done, the reverse of the rule that Status follows the issue |
 
 ## The sync
 

@@ -28,8 +28,8 @@ milestones it changes start ordinary syncs.
 - "Rank" orders the work for the views that sort by it, lowest first: by Status (what's nearly done
   first, then what can be picked up, then what's waiting), then Priority, then the fewest open
   blockers, then the most open issues it unblocks, then the easiest.
-- An archived item is left alone, since GitHub refuses any change to one, unless its issue has been
-  reopened: then it is unarchived and kept in step again.
+- An archived item is left alone, since GitHub refuses any change to one, unless its issue or pull
+  request is open: anything open is work, so it is unarchived and kept in step again.
 
 Blocked-by links fire no event, so the workflow also runs on a schedule. With POST_STATUS=1 it
 posts a progress update to the project instead.
@@ -261,8 +261,9 @@ def sync():
     board = items()
     for item in board:
         content = item['content']
-        if item['isArchived'] and content['__typename'] == 'Issue' and content['state'] == 'OPEN':
-            # Reopened since it was archived, so it is work again
+        if item['isArchived'] and content['state'] == 'OPEN':
+            # Anything open is work, so it is always on the board: reopened since it was archived, or
+            # archived by hand while open
             gql('mutation($p:ID!,$i:ID!){unarchiveProjectV2Item(input:{projectId:$p,itemId:$i}){item{id}}}',
                 p=PID, i=item['id'])
             item['isArchived'] = False
