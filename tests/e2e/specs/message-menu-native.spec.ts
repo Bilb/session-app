@@ -60,14 +60,26 @@ for (const platform of MOBILE_PLATFORMS) {
   })
 }
 
+/** The index of the lowest message body that ends above the composer. */
+async function lowestOnScreen(app: MobileApp): Promise<number> {
+  const composer = await app.frame(ELEMENT.conversation.composerInput)
+  if (composer === null) throw new Error('the composer is not on screen')
+  const count = await app.count(ELEMENT.conversation.messageBody)
+  for (let at = count - 1; at >= 0; at--) {
+    const body = await app.frame(ELEMENT.conversation.messageBody, at)
+    if (body !== null && body.y + body.height < composer.y) return at
+  }
+  throw new Error('no message is on screen')
+}
+
 for (const platform of MOBILE_PLATFORMS) {
   test(`closes a message’s menu on a tap just below it @${platform} @medium-risk`, async () => {
     const app = await MobileApp.launch(platform, 'alice')
     try {
       await openFirstConversation(app)
-      // The latest message sits low on the screen, so its menu opens above the finger.
-      const last = (await app.count(ELEMENT.conversation.messageBody)) - 1
-      await app.longPress(ELEMENT.conversation.messageBody, last)
+      // The lowest message on screen, so its menu opens above the finger. iOS's tree also holds
+      // rows the list keeps rendered below the composer, off screen.
+      await app.longPress(ELEMENT.conversation.messageBody, await lowestOnScreen(app))
       await app.waitForVisible(MENU.menu)
       const menu = await app.frame(MENU.menu)
       if (menu === null) throw new Error('the menu is not open')
