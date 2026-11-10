@@ -43,6 +43,8 @@ function Transcript({
     <List
       data={messages}
       keyExtractor={messageKey}
+      // TODO: enter on the oldest unread message once libsession reports where reading stopped;
+      // it only gives a conversation's unread count.
       rovingFocus="last"
       renderItem={(message, index) => (
         <YStack paddingHorizontal="$md" paddingBottom="$sm">

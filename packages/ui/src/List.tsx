@@ -113,6 +113,7 @@ export function List<T>({
     <FlatList
       style={fitsContent ? FITS_CONTENT : FILLS}
       {...(contentContainerStyle === undefined ? {} : { contentContainerStyle })}
+      {...(focus === null ? {} : { ref: focus.attach })}
       data={data}
       renderItem={renderRow}
       keyExtractor={keyExtractor}

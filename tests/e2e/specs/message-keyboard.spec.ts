@@ -9,9 +9,12 @@ import { DesktopApp } from '../harness/DesktopApp'
 const CONVERSATION = ELEMENT.conversation
 const MENU = ELEMENT.contextMenu
 const ROW = CONVERSATION.messageRow
-/** The `transcripts` fixture: five messages in each conversation, the third carrying a file. */
+/** The `transcripts` fixture: five messages in Bob's and Charlie's, the third carrying a file. */
 const NEWEST = 4
 const WITH_FILE = 2
+/** Dracula's, long enough to scroll. */
+const LONG_NEWEST = 34
+const LONG_ROW = 2
 /** Between a message and a menu opened against it. */
 const MENU_GAP_PX = SPACING['2xs']
 const SLACK_PX = 1
@@ -39,6 +42,12 @@ async function expectMessageFocused(app: DesktopApp, index: number): Promise<voi
 async function enterFromComposer(app: DesktopApp): Promise<void> {
   await app.locator(CONVERSATION.attachButton).focus()
   await app.page.keyboard.press('Shift+Tab')
+}
+
+/** Focused as the keyboard focuses, with its ring, rather than by the pointer. */
+async function expectRing(app: DesktopApp, index: number): Promise<void> {
+  await expectMessageFocused(app, index)
+  await expect(app.locator(ROW(index)).and(app.page.locator(':focus-visible'))).toHaveCount(1)
 }
 
 async function press(app: DesktopApp, key: string, times = 1): Promise<void> {
@@ -150,6 +159,43 @@ test('opens the focused message’s menu from the keyboard, against the message,
     await expectMenuAgainst(app, WITH_FILE)
     await press(app, 'Escape')
     await expectFocusOn(app, CONVERSATION.attachmentAction)
+  } finally {
+    await app.close()
+  }
+})
+
+test('enters a transcript on a message on screen, or the one a click chose @desktop @medium-risk', async () => {
+  const app = await launch()
+  try {
+    await app.tap(ELEMENT.conversationList.row(LONG_ROW))
+    await expect(app.locator(CONVERSATION.headerName)).toHaveText('Dracula')
+    await app.locator(ROW(0)).scrollIntoViewIfNeeded()
+    await expect(app.locator(ROW(LONG_NEWEST))).not.toBeInViewport()
+
+    // Tab does not scroll away from what is being read.
+    await enterFromComposer(app)
+    const entered = await app.focusedStop()
+    expect(entered?.testID).toMatch(/^message-row-/)
+    await expect(app.locator(ROW(0))).toBeInViewport()
+    await expect(app.page.locator(':focus')).toBeInViewport()
+
+    // A click on a message, then Tab: the ring on that message.
+    await app.tap(ROW(3))
+    await press(app, 'Tab')
+    await expectRing(app, 3)
+    await press(app, 'Tab')
+    await expectFocusOn(app, CONVERSATION.attachButton)
+
+    // A click beside a message, off its bubble, on the side with room: the same.
+    const bubble = await app.locator(ROW(4)).boundingBox()
+    const pane = await app.locator(CONVERSATION.attachButton).boundingBox()
+    if (bubble === null || pane === null)
+      throw new Error('the message or the composer is not drawn')
+    const roomBefore = bubble.x - pane.x
+    const x = roomBefore > 80 ? pane.x + roomBefore / 2 : bubble.x + bubble.width + 40
+    await app.page.mouse.click(x, bubble.y + bubble.height / 2)
+    await press(app, 'Tab')
+    await expectRing(app, 4)
   } finally {
     await app.close()
   }
