@@ -72,17 +72,40 @@ New reports come in through the issue forms with the `triage` label and no miles
 Backlog. Triage gives each one a milestone (Next or a release), leaves it in Backlog with a
 priority, or closes it. That is the one step the board can't do for itself.
 
+## The order work is listed in
+
+A view sorts by one field, and "most important, least blocked" isn't one, so the sync keeps a hidden
+**Rank** number for every card, and the working views sort by it, lowest first. It orders by:
+
+1. **Status**: Approved, In review, In progress, Ready, Backlog, Done. What's nearly finished comes
+   first, then what can be picked up, then what's waiting.
+2. **Priority**: P0, P1, P2, then no priority.
+3. **Open blockers**: fewest first.
+4. **Open issues it unblocks**: most first, since finishing it frees the most work.
+5. **Difficulty**: easiest first, which matters most where no priority is set.
+
+Priority is relative to the issue's milestone: P0 means that release isn't done without it, P1 that
+it can slip to the next release, P2 that it's for when there's room.
+
 ## Views
 
-- **Releases**: every issue grouped by release in the dragged order, sorted by Priority. Unscheduled
+- **Releases**: every issue grouped by release in the dragged order, sorted by Rank. Unscheduled
   issues are in the group with no release.
-- **Board**: every issue by Status.
+- **Board**: every issue by Status, sorted by Rank within each column.
 - **Areas**: the area issues, each with its progress bar.
-- **Up next**: Ready issues at the top priority, for picking up something to do.
+- **Up next**: Ready issues sorted by Rank, for picking up something to do.
 - **My reviews**: pull requests waiting on your review. One leaves it when you approve or request
   changes.
 - **Planning**: open issues with no milestone, to group by Priority when choosing what goes into the
   next release.
+
+## Done, and archiving
+
+Closed issues stay on the board, in Done, until they're archived. The project's **Auto-archive
+items** workflow (Project settings → Workflows) does it, for example with the filter
+`is:closed updated:<@today-14d`. An archived card disappears from every view but still counts
+towards its release's progress. GitHub refuses any change to an archived card, so the sync leaves
+them alone, and unarchives one whose issue is reopened.
 
 ## The sync
 
@@ -109,4 +132,5 @@ skips. The project needs these fields, or the sync stops and names the missing o
 - **Release**, single select, whose options the sync fills from the milestones;
 - **Waiting on**, text;
 - **Synced status**, text, hidden from every view;
+- **Rank**, number, hidden from every view and sorted by;
 - **Priority** and **Difficulty**, single select, which the sync doesn't touch.
