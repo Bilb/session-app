@@ -114,20 +114,19 @@ export const ListFocusContext = createContext<ListFocus | null>(null)
 /** The key of the list row being drawn, for whatever inside it is that row's stop. */
 export const ListRowKey = createContext<string | null>(null)
 
-const noStop = () => null
 const noSubscription = () => () => {}
 
 /** Whether the row drawing this is its list's tab stop; null outside a list with roving focus. */
 function useIsStop(): boolean | null {
   const focus = useContext(ListFocusContext)
   const key = useContext(ListRowKey)
-  const stop = useSyncExternalStore(
-    focus?.subscribe ?? noSubscription,
-    focus?.currentStop ?? noStop,
-    focus?.currentStop ?? noStop,
+  // Per row, so only the two rows whose answer flips re-render when the stop moves.
+  const isStopNow = useCallback(
+    () => (focus === null || key === null ? null : focus.currentStop() === key),
+    [focus, key],
   )
-  if (!isWeb || focus === null || key === null) return null
-  return stop === key
+  const isStop = useSyncExternalStore(focus?.subscribe ?? noSubscription, isStopNow, isStopNow)
+  return isWeb ? isStop : null
 }
 
 /**

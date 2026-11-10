@@ -7,7 +7,7 @@ import { byId, nodeOf } from '@session/render-tier'
 import { ELEMENT } from '@session/test-ids'
 
 import { List } from '#src/List'
-import type { ListFocusEntry } from '#src/listFocus'
+import { useListTabIndex, type ListFocusEntry } from '#src/listFocus'
 import { MessageFrame } from '#src/MessageFrame'
 import { PressArea } from '#src/PressArea'
 import { Text } from '#src/Text'
@@ -21,6 +21,15 @@ interface Item {
   id: string
   /** Carries a control of its own, as a message with a file does. */
   control?: boolean
+}
+
+/** Renders of each row's own subscription, by item id; its parent's renders are not counted. */
+const renders = new Map<string, number>()
+
+function RenderCount({ id }: { id: string }) {
+  useListTabIndex()
+  renders.set(id, (renders.get(id) ?? 0) + 1)
+  return null
 }
 
 const items = (...ids: string[]): Item[] => ids.map((id) => ({ id, control: id === 'c' }))
@@ -43,6 +52,7 @@ function Transcript({
       renderItem={(item, index) => (
         <MessageFrame outgoing={false} focusable onMenuKey={onMenuKey} testID={ROW(index)}>
           <Text>{item.id}</Text>
+          <RenderCount id={item.id} />
           {item.control === true ? (
             <PressArea onPress={() => {}} accessibilityLabel="Download" testID={CONTROL}>
               {() => <Text>Download</Text>}
@@ -81,6 +91,15 @@ describe('List with roving focus', () => {
     expect(document.activeElement).toBe(byId(ROW(0)))
     await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}')
     expect(document.activeElement).toBe(byId(ROW(2)))
+  })
+
+  it('re-renders only the two rows whose stop changes when it moves', async () => {
+    const user = userEvent.setup()
+    renderInUI(<Transcript data={items('a', 'b', 'c', 'd')} />)
+    await user.tab()
+    renders.clear()
+    await user.keyboard('{ArrowUp}')
+    expect(Object.fromEntries(renders)).toEqual({ c: 1, d: 1 })
   })
 
   it('leaves Up and Down with a modifier alone', () => {
