@@ -31,6 +31,8 @@ export function MessageMenu({
   const message = useMessage(conversationId, target?.messageId ?? -1)
   // A message deleted while its menu is open closes the menu with it.
   const open = target !== null && message !== undefined
+  // TODO: legacy mobile shows the message's time beside a lifted copy of its bubble; add it with
+  // that copy and the reaction bar.
   return (
     <ContextMenu
       anchor={open ? target.anchor : null}
