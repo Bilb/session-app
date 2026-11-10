@@ -1,4 +1,4 @@
-import { useAccount, useHydrated, useStartupError } from '@session/state'
+import { useAccount, useHydrated, useStartupError, useStartupFailureKind } from '@session/state'
 import { useState, type ReactNode } from 'react'
 
 import { ConversationListScreen } from '../ConversationListScreen'
@@ -31,6 +31,7 @@ export function SessionShell({
 }) {
   const hydrated = useHydrated()
   const startupError = useStartupError()
+  const startupFailureKind = useStartupFailureKind()
   const account = useAccount()
   const [onboarding, setOnboarding] = useState(false)
   // Here rather than at the root, which creates the store provider and so cannot read from it.
@@ -38,7 +39,8 @@ export function SessionShell({
 
   // Asked before `hydrated`, because both are false when a start has failed and only one of them
   // says so. The other order leaves the launch screen up over a failure that is already known.
-  if (startupError !== null) return <StartupFailedScreen error={startupError} />
+  if (startupError !== null)
+    return <StartupFailedScreen error={startupError} kind={startupFailureKind ?? 'transient'} />
   if (!hydrated) return <StartingScreen />
 
   // Onboarding takes the whole window rather than a pane: there is no list to sit beside it,

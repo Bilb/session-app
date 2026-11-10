@@ -4,6 +4,18 @@ export type { FetchLike } from './discoverSeedNodes'
 export { serveNativeMediaFrom } from './nativeMedia'
 export { createNativeBridgeTransport } from './nativeTransport'
 export { BRIDGE_UNAVAILABLE, createRefusingTransport } from './refusingTransport'
+export { createKeylessTransport } from './keylessTransport'
+export {
+  DatabaseKeyError,
+  KEY_INVALID,
+  KEY_MISSING,
+  KEY_UNAVAILABLE,
+  isDatabaseKeyCode,
+  keyInvalid,
+  keyMissing,
+  keyUnavailable,
+} from './databaseKey'
+export type { DatabaseKeyCode } from './databaseKey'
 export {
   ATTACHMENT_FILE_MISSING,
   ATTACHMENT_NOT_FOUND,

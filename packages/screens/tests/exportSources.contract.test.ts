@@ -44,7 +44,11 @@ describe('exporting logs', () => {
   })
 
   it('is started through useExportLogs on every screen with the button', () => {
-    for (const screen of ['StartupFailedScreen.tsx', 'settings/HelpPage.tsx']) {
+    for (const screen of [
+      'StartupFailedScreen.tsx',
+      'settings/HelpPage.tsx',
+      'onboarding/OnboardingStep.tsx',
+    ]) {
       const source = parse(screen)
       expect(findCalls(source, 'useExportLogs')).not.toHaveLength(0)
       expect(findCalls(source, 'exportLogs')).toHaveLength(0)

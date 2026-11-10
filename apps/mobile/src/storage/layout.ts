@@ -66,6 +66,14 @@ export function databaseFiles(dbPath: string): string[] {
 }
 
 /**
+ * What a discard removes from one network's directory, as the bridge's own discard does: the
+ * database and its two files, and the attachment cache. The service-node cache beside them stays.
+ */
+export function discardedPaths(networkDir: string): string[] {
+  return [...databaseFiles(`${networkDir}/session.db`), `${networkDir}/attachments`]
+}
+
+/**
  * Whether a root is as it should be: excluded from backup, and readable once the device has been
  * unlocked since boot but not before.
  *

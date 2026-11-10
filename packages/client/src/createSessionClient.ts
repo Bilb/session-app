@@ -16,6 +16,7 @@ import type {
   SessionEvent,
 } from '@session/bridge-types'
 
+import { isDatabaseKeyCode } from './databaseKey'
 import { BridgeClosedError, SessionClientError } from './errors'
 import { BRIDGE_UNAVAILABLE } from './refusingTransport'
 import type {
@@ -75,9 +76,10 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       if (!waiting) return
       pending.delete(response.id)
       if (response.error !== undefined) {
-        // A refusal from a bridge that could not be made is not about the command that met it.
+        // A refusal from a bridge that could not be made, for want of a key or otherwise, is not
+        // about the command that met it.
         const message =
-          response.code === BRIDGE_UNAVAILABLE
+          response.code === BRIDGE_UNAVAILABLE || isDatabaseKeyCode(response.code)
             ? response.error
             : `${waiting.command}: ${response.error}`
         waiting.reject(new SessionClientError(message, response.code))
