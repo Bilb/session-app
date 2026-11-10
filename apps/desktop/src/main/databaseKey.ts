@@ -13,6 +13,8 @@ export interface KeySealer {
 
 const KEY_FILE = 'db-key.bin'
 const KEY_BYTES = 32
+/** How a key is sealed: hex, as mobile stores it in the keychain. */
+const HEX_KEY = /^[0-9a-f]{64}$/i
 
 /** What the bridge is opened with in `dir`, and so what a discard there has to remove. */
 export function databasePaths(dir: string): { dbPath: string; cacheDir: string } {
@@ -29,7 +31,8 @@ function errorCode(error: unknown): string {
  * The database key for `dir`.
  *
  * libsession accepts a key but neither derives nor stores one, so custody is ours. A random
- * 32 bytes at first boot, sealed with safeStorage and kept beside the database. The renderer
+ * 32 bytes at first boot, sealed with safeStorage as hex and kept beside the database. Keys made
+ * by earlier builds were sealed as base64, and are still read. The renderer
  * never sees it: it lives in the main process, which is also the only process that can load
  * the addon.
  *
@@ -72,7 +75,8 @@ export function resolveDatabaseKey(dir: string, sealer: KeySealer): Uint8Array {
   } catch (error) {
     throw keyUnavailable(`safeStorage could not unseal ${KEY_FILE} (${errorCode(error)})`)
   }
-  const key = Buffer.from(encoded, 'base64')
+  // Hex first: Node's base64 decoder accepts a hex string too, and reads it as the wrong bytes.
+  const key = HEX_KEY.test(encoded) ? Buffer.from(encoded, 'hex') : Buffer.from(encoded, 'base64')
   if (key.length !== KEY_BYTES) {
     throw keyInvalid(`${String(key.length)} bytes, not ${String(KEY_BYTES)}`)
   }
@@ -87,7 +91,7 @@ function mintDatabaseKey(dir: string, sealer: KeySealer): Uint8Array {
   const key = randomBytes(KEY_BYTES)
   writeFileSync(
     join(dir, KEY_FILE),
-    sealer.isEncryptionAvailable() ? sealer.encryptString(key.toString('base64')) : key,
+    sealer.isEncryptionAvailable() ? sealer.encryptString(key.toString('hex')) : key,
     { mode: 0o600, flag: 'wx' },
   )
   return new Uint8Array(key)

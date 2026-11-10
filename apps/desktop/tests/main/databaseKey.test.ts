@@ -46,8 +46,17 @@ describe('the desktop database key', () => {
     const dir = dataDir()
     const key = resolveDatabaseKey(dir, keyring())
     expect(key).toHaveLength(32)
-    expect(readFileSync(keyFile(dir)).toString()).toMatch(/^sealed:/)
+    expect(readFileSync(keyFile(dir)).toString()).toBe(`sealed:${Buffer.from(key).toString('hex')}`)
     expect(resolveDatabaseKey(dir, keyring())).toEqual(key)
+  })
+
+  it('is still read when an earlier build sealed it as base64', () => {
+    const dir = dataDir()
+    const key = Buffer.alloc(32, 0xab)
+    writeFileSync(keyFile(dir), `sealed:${key.toString('base64')}`)
+    writeFileSync(database(dir), 'pages')
+    expect(resolveDatabaseKey(dir, keyring())).toEqual(new Uint8Array(key))
+    expect(readFileSync(keyFile(dir)).toString()).toBe(`sealed:${key.toString('base64')}`)
   })
 
   it('is kept in plaintext where there is no keyring, and read back after', () => {
