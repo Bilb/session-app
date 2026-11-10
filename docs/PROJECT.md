@@ -44,14 +44,14 @@ grouped by milestone can only be ordered by due date, and milestones have none.
 
 ## Status, and what moves it
 
-| Status      | Means                                                                | Set by                                    |
-| ----------- | -------------------------------------------------------------------- | ----------------------------------------- |
-| Backlog     | Not scheduled (no milestone), or waiting on something still open     | The sync                                  |
-| Ready       | Nothing blocking it, and scheduled in Next or a release              | The sync                                  |
-| In progress | Someone has started: a draft pull request, or changes were requested | The sync, or by hand before there is a PR |
-| In review   | A pull request is ready for review; review includes testing it       | The sync                                  |
-| Approved    | Approved; the author merges                                          | The sync                                  |
-| Done        | Merged or closed                                                     | The sync                                  |
+| Status      | Means                                                                                   | Set by                                    |
+| ----------- | --------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Backlog     | Not scheduled (no milestone), or waiting on something still open                        | The sync                                  |
+| Ready       | Nothing blocking it, and scheduled in Next or a release                                 | The sync                                  |
+| In progress | Someone has started: a draft pull request, or changes were requested                    | The sync, or by hand before there is a PR |
+| In review   | A pull request awaits review, or review again after changes; review includes testing it | The sync                                  |
+| Approved    | Approved; the author merges                                                             | The sync                                  |
+| Done        | Merged or closed                                                                        | The sync                                  |
 
 - **Only In progress is ever set by hand**, for work started before a pull request exists. The sync
   leaves it there. A card dragged to any other column is moved back on the next run. Area issues,

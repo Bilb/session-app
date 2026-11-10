@@ -139,6 +139,7 @@ ITEMS_QUERY = '''query($p:ID!,$after:String){node(id:$p){... on ProjectV2{items(
         labels(first:20){nodes{name}}
         blockedBy(first:50){totalCount nodes{number title state repository{nameWithOwner}}}}
       ... on PullRequest{__typename id number state isDraft reviewDecision repository{nameWithOwner}
+        reviewRequests(first:1){totalCount}
         closingIssuesReferences(first:20){nodes{number repository{nameWithOwner}}}}}}}}}}'''
 
 
@@ -264,10 +265,14 @@ def set_release(item, option):
 def pr_status(pr):
     if pr['state'] != 'OPEN':
         return 'Done'
-    if pr['isDraft'] or pr['reviewDecision'] == 'CHANGES_REQUESTED':
+    if pr['isDraft']:
         return 'In progress'
     if pr['reviewDecision'] == 'APPROVED':
         return 'Approved'
+    # GitHub keeps a request for changes as the decision until that reviewer reviews again, so a
+    # review asked for since then is what says the author has answered it.
+    if pr['reviewDecision'] == 'CHANGES_REQUESTED' and not pr['reviewRequests']['totalCount']:
+        return 'In progress'
     return 'In review'
 
 
