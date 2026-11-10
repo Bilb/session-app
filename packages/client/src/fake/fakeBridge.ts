@@ -1,6 +1,7 @@
 import { utf8Decode } from '@session/basic-types'
 import type { Command, Frame, Request, Result } from '@session/bridge-types'
 
+import { SessionClientError } from '../errors'
 import type { BridgeTransport, SessionClient } from '../types'
 
 /**
@@ -22,7 +23,10 @@ export function createFakeTransport(client: SessionClient): BridgeTransport {
     sink?.({ type: 'event', event })
   })
 
-  function respond(id: number, outcome: { result: Result } | { error: string }): void {
+  function respond(
+    id: number,
+    outcome: { result: Result } | { error: string; code?: string },
+  ): void {
     sink?.({ type: 'response', response: { id, ...outcome } })
   }
 
@@ -30,7 +34,7 @@ export function createFakeTransport(client: SessionClient): BridgeTransport {
     send(request: Request): void {
       void handle(client, request.command)
         .then((result) => respond(request.id, { result }))
-        .catch((error: unknown) => respond(request.id, { error: describe(error) }))
+        .catch((error: unknown) => respond(request.id, refusal(error)))
     },
 
     setSink(onFrame: (frame: Frame) => void): void {
@@ -45,8 +49,11 @@ export function createFakeTransport(client: SessionClient): BridgeTransport {
   }
 }
 
-function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
+/** The error as the shim answers one: its text, and its dotted code where it carries one. */
+function refusal(error: unknown): { error: string; code?: string } {
+  if (!(error instanceof Error)) return { error: String(error) }
+  const code = error instanceof SessionClientError ? error.code : undefined
+  return code === undefined ? { error: error.message } : { error: error.message, code }
 }
 
 const empty: Result = { type: 'empty' }

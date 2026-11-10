@@ -1,0 +1,31 @@
+name: Bug report
+description: Something in Session is broken
+labels: [bug, triage]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options: [iOS, Android, macOS, Windows, Linux]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (optional)
+      description: >-
+        If you're happy to share them: Settings > Help > Export Logs, then drag the file here or
+        click below the box to attach it. Sensitive details are removed from exported logs, and
+        they help us find the cause.

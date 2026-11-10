@@ -63,6 +63,8 @@ declare global {
       setLocale(locale: string): void
       /** Ends this process and starts the app again in a fresh one. */
       restart(): void
+      /** Ends this process on every platform: macOS too, where closing the window does not. */
+      quit(): void
       /** The content zoom from the View menu: called with the current one, then on each change. */
       onZoom(listener: (zoom: number) => void): void
       /** Main's clock, which times the renderer's lines; see `LogSession` in main's logs.ts. */

@@ -532,6 +532,101 @@ describe('attachment transfers', () => {
     expect(announced.transfers[1]?.['export:0']?.state).toBe('done')
   })
 
+  describe('an upload', () => {
+    const file = (index: number, uploaded: boolean) => ({
+      index,
+      voiceMessage: false,
+      hasThumbhash: false,
+      hasThumbnail: false,
+      thumbnailWidthPx: 0,
+      thumbnailHeightPx: 0,
+      hasRendition: false,
+      renditionRefused: false,
+      originalFile: false,
+      uploaded,
+      availability: 'cached' as const,
+      fetchDoneBytes: 0,
+      fetchTotalBytes: 0,
+    })
+    const sending = (sendState: Message['sendState'], uploaded = [false, false]) =>
+      message({
+        outgoing: true,
+        sendState,
+        attachments: uploaded.map((up, index) => file(index, up)),
+      })
+    const upload = (
+      overrides: Partial<Extract<SessionEvent, { type: 'attachment-progress' }>> = {},
+    ) => progress({ transfer: 'upload', ...overrides })
+
+    it('is kept by file beside the downloads, while its message is uploading', () => {
+      const state = replay(
+        [
+          upload({ index: 0, doneBytes: 900, totalBytes: 900, outcome: { ok: true } }),
+          upload({ index: 1, doneBytes: 300, totalBytes: 1200 }),
+        ],
+        loaded([sending('uploading')]),
+      )
+      expect(state.transfers[1]).toEqual({
+        'upload:0': { state: 'done', doneBytes: 900, totalBytes: 900 },
+        'upload:1': { state: 'running', doneBytes: 300, totalBytes: 1200 },
+      })
+    })
+
+    it('outlives its message being announced while it is still uploading', () => {
+      const running = replay(
+        [upload({ index: 0, doneBytes: 900, totalBytes: 900, outcome: { ok: true } })],
+        loaded([sending('uploading')]),
+      )
+      const announced = applyEvent(running, {
+        type: 'messages-updated',
+        messages: [sending('uploading', [true, false])],
+      })
+      expect(announced.transfers[1]?.['upload:0']?.state).toBe('done')
+    })
+
+    it('is dropped once its message is announced past uploading, whatever it reached', () => {
+      const running = replay(
+        [
+          upload({ index: 0, doneBytes: 900, totalBytes: 900, outcome: { ok: true } }),
+          upload({ index: 1, doneBytes: 0, totalBytes: 0, outcome: { ok: false } }),
+        ],
+        loaded([sending('uploading')]),
+      )
+      const failed = applyEvent(running, {
+        type: 'messages-updated',
+        messages: [sending('failed', [true, false])],
+      })
+      expect(failed.transfers[1]).toEqual({})
+    })
+
+    it('is not recorded for a message that has already left uploading', () => {
+      // A file that fails at once is reported after its message has been announced failed.
+      const state = replay(
+        [upload({ index: 0, outcome: { ok: false, error: 'attachment.unreadable' } })],
+        loaded([sending('failed')]),
+      )
+      expect(state.transfers).toEqual({})
+    })
+
+    it('starts afresh on a retry', () => {
+      const first = replay(
+        [upload({ index: 1, doneBytes: 600, totalBytes: 1200 })],
+        loaded([sending('uploading', [true, false])]),
+      )
+      const retried = replay(
+        [
+          { type: 'messages-updated', messages: [sending('failed', [true, false])] },
+          { type: 'messages-updated', messages: [sending('uploading', [true, false])] },
+          upload({ index: 1, doneBytes: 0, totalBytes: 0 }),
+        ],
+        first,
+      )
+      expect(retried.transfers[1]).toEqual({
+        'upload:1': { state: 'running', doneBytes: 0, totalBytes: 0 },
+      })
+    })
+  })
+
   it('keeps a failed download when its message is announced', () => {
     // Availability cannot say a fetch failed transiently, so this report is the only record.
     const withFile = message({

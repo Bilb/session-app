@@ -12,6 +12,7 @@ import { Directory as ExpoDirectory, File as ExpoFile } from 'expo-file-system'
 
 import {
   databaseFiles,
+  discardedPaths,
   fileUri,
   plainPath,
   libsessionPaths,
@@ -172,6 +173,36 @@ export function sessionFiles(network: NetworkName): {
     throw new Error('databaseFiles names three files')
   }
   return { database: [database, wal, shm], attachments: new Directory(fileUri(paths.cacheDir)) }
+}
+
+/**
+ * Each network's directory under the data root, whichever networks this device has used. The key
+ * is one for all of them, so whether a key may be made, and what a clear past a lost one deletes,
+ * is a question about every one.
+ */
+function networkDirectories(): string[] {
+  const root = new ExpoDirectory(fileUri(roots.data))
+  if (!root.exists) return []
+  return root
+    .list()
+    .filter((entry) => entry instanceof ExpoDirectory)
+    .map((entry) => plainPath(entry.uri).replace(/\/$/, ''))
+}
+
+/** Whether any network has a database, which a key would have to open. */
+export function anyDatabaseExists(): boolean {
+  return networkDirectories().some((dir) => new ExpoFile(fileUri(`${dir}/session.db`)).exists)
+}
+
+/**
+ * The clear past a database key that could not be had: deletes every network's database, its -wal
+ * and -shm, and its attachment cache, as the bridge's own discard does for one. Every database was
+ * under the one key, so none of them could be opened by the key that replaces it.
+ */
+export function discardDatabases(): void {
+  for (const dir of networkDirectories()) {
+    for (const path of discardedPaths(dir)) removeIfPresent(path)
+  }
 }
 
 /** Where libsession keeps one network's database and attachments, both created if missing. */

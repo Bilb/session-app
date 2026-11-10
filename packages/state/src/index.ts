@@ -17,10 +17,12 @@ export {
   useNetworkStatus,
   useRequests,
   useSessionActions,
-  useStartupClearable,
+  useStartupFailureKind,
   useStartupError,
   useUnreadRequestCount,
 } from './hooks'
+export { classifyStartupFailure, isClearable } from './startupFailure'
+export type { StartupFailureKind } from './startupFailure'
 export { emptyState, transferKey } from './types'
 export type {
   AttachmentTransferState,

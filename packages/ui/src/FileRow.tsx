@@ -104,6 +104,14 @@ export type FileRowProps = WithFilename &
      * lead square and the thumbnail keep their own fill either way.
      */
     onAccent?: boolean | undefined
+    /**
+     * False leaves the trailing control out in every state, its marker and progress ring included,
+     * and the name takes the room: for the one row of a message, whose footer's verb is its only
+     * control so that it stays where the album's would be. The row's press and the lead square's
+     * open still work; `actionLabel` and `onAction` are ignored, and the keyboard reaches the verb
+     * in the footer. Absent means the control is drawn.
+     */
+    hasControl?: boolean | undefined
   }
 
 /**
@@ -263,9 +271,10 @@ function Trailing({
  * most likely to be read on a bad day - a transfer that failed, a file somebody needs off the
  * device and into a folder.
  *
- * **Every state draws the same three columns at the same height.** A row that grew a progress bar
+ * **Every state draws the same columns at the same height.** A row that grew a progress bar
  * while it downloaded would move everything below it in the transcript, at the moment somebody is
- * reading it; only the glyph, the words and the trailing control change.
+ * reading it; only the glyph, the words and the trailing control change. A row drawn without its
+ * control has two columns in every state rather than three.
  *
  * The caption is the size at rest, both counts while fetching, and the reason when there is one.
  */
@@ -284,6 +293,7 @@ export function FileRow({
   onAction,
   testIDs,
   onAccent = false,
+  hasControl = true,
 }: FileRowProps) {
   const format = fileFormat(filename)
   // On the name and the caption together, so the two share an edge.
@@ -305,7 +315,7 @@ export function FileRow({
     pressLabel,
     onOpen,
     openLabel,
-    onAction: control === null || control === 'progress' ? undefined : onAction,
+    onAction: !hasControl || control === null || control === 'progress' ? undefined : onAction,
     actionLabel,
   })
 
@@ -430,14 +440,16 @@ export function FileRow({
         </Text>
       </YStack>
 
-      <Trailing
-        state={state}
-        progress={progress}
-        actionLabel={actionLabel}
-        onAction={onAction}
-        testID={testIDs?.action}
-        onAccent={onAccent}
-      />
+      {hasControl ? (
+        <Trailing
+          state={state}
+          progress={progress}
+          actionLabel={actionLabel}
+          onAction={onAction}
+          testID={testIDs?.action}
+          onAccent={onAccent}
+        />
+      ) : null}
     </XStack>
   )
 }

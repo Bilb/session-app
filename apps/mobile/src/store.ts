@@ -6,14 +6,20 @@ import {
   parseRouterKind,
   thumbnailEdgePxFor,
 } from '@session/basic-types'
-import { createRefusingTransport, type BridgeTransport, type FetchLike } from '@session/client'
+import {
+  createKeylessTransport,
+  createRefusingTransport,
+  DatabaseKeyError,
+  type BridgeTransport,
+  type FetchLike,
+} from '@session/client'
 import { createSessionStore } from '@session/state'
 import { PixelRatio, Platform } from 'react-native'
 
 import { mobileClient } from './client'
 import { libsessionLog, storeLog, watchStore } from './logs'
-import { resolveDatabaseKey } from './storage/databaseKey'
-import { protectDatabase, sessionPaths } from './storage/roots'
+import { replaceDatabaseKey, resolveDatabaseKey } from './storage/databaseKey'
+import { anyDatabaseExists, discardDatabases, protectDatabase, sessionPaths } from './storage/roots'
 
 /**
  * `fetch` with a deadline, because Hermes has no `AbortSignal.timeout` and a seed node that
@@ -41,6 +47,11 @@ async function openTransport(): Promise<BridgeTransport> {
   // however the dev script was invoked. Drop the prefix and the fake check below falls through
   // silently, taking the Nitro module and real libsession on a run meant to be fake.
   if (process.env['EXPO_PUBLIC_SESSION_FAKE'] === '1') {
+    // The fake opens no database and needs no key. Asked to, it keeps one anyway, so key custody
+    // and the clear past its failures can be driven without the native bridge.
+    if (process.env['EXPO_PUBLIC_SESSION_FAKE_KEY_CUSTODY'] === '1') {
+      await resolveDatabaseKey(anyDatabaseExists)
+    }
     const { createFakeBridge } = await import('./dev/fakeBridge')
     return createFakeBridge()
   }
@@ -64,6 +75,8 @@ async function openTransport(): Promise<BridgeTransport> {
 
   const { createNativeBridgeTransport, discoverSeedNodes } = await import('@session/client')
   const paths = sessionPaths(name)
+  // Before the seed nodes are asked for: a key that cannot be had fails the start at once.
+  const rawKeyHex = await resolveDatabaseKey(anyDatabaseExists)
 
   const seedNodes =
     devnet === undefined
@@ -75,7 +88,7 @@ async function openTransport(): Promise<BridgeTransport> {
 
   const transport = createNativeBridgeTransport({
     ...paths,
-    rawKeyHex: await resolveDatabaseKey(),
+    rawKeyHex,
     // Onboarding has to be asked. Without this libsession creates an account as the database
     // opens, and the first screen is a conversation list for an identity nobody chose.
     deferAccount: true,
@@ -117,9 +130,21 @@ async function openTransport(): Promise<BridgeTransport> {
 const ATTACHMENT_CACHE_LIMIT_BYTES = 500_000_000
 
 /**
+ * The startup-failure screen's clear, for a bridge that could not be made for want of its key:
+ * every database the key opened goes, a new key is stored, and the bridge opens on it.
+ */
+async function replaceDatabaseAndOpen(): Promise<BridgeTransport> {
+  discardDatabases()
+  await replaceDatabaseKey()
+  storeLog('warn', 'session', 'database replaced after a key failure')
+  return openTransport()
+}
+
+/**
  * The bridge, or one that refuses everything with why it could not be made. Either way there is a
  * store, so a bridge that will not start reaches the startup-failure screen rather than leaving the
  * launch screen up for good -- nothing waits on a promise that rejected with no one to hear it.
+ * A key that could not be had leaves something to clear with; anything else does not.
  */
 async function openTransportOrRefusal(): Promise<BridgeTransport> {
   try {
@@ -127,7 +152,9 @@ async function openTransportOrRefusal(): Promise<BridgeTransport> {
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error)
     storeLog('error', 'session', `the bridge could not start: ${reason}`)
-    return createRefusingTransport(reason)
+    return error instanceof DatabaseKeyError
+      ? createKeylessTransport(error, replaceDatabaseAndOpen)
+      : createRefusingTransport(reason)
   }
 }
 

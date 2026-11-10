@@ -1,8 +1,10 @@
 export { ALBUM_PICTURE_ID, ALBUM_TILE_ID, albumTile } from './albumTile'
 export {
   attachmentFooterAction,
+  attachmentFooterProgress,
   FOOTER_ACTION_ID,
   FOOTER_ID,
+  FOOTER_PROGRESS_ID,
   type AttachmentSetState,
 } from './attachmentFooter'
 export { FETCH_HINT_ID, fetchHint, setFetchName } from './fetchHint'

@@ -267,11 +267,11 @@ function showpiece(
 }
 
 /**
- * A running number over the whole showcase, so pictures repeat as rarely as the photos allow.
+ * A running number over a run of messages, so pictures repeat as rarely as the photos allow.
  *
- * Reset with the fixture rather than per message: there are more pictures than photos, so it
- * wraps, and a wrap between messages is much less noticeable than two identical tiles side by
- * side. Only a message with more pictures than there are photos repeats one within itself.
+ * Reset per section of the showcase rather than per message: there are more pictures than photos,
+ * so it wraps, and a wrap between messages is much less noticeable than two identical tiles side
+ * by side. Only a message with more pictures than there are photos repeats one within itself.
  */
 let nextPhoto = 0
 

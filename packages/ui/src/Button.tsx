@@ -41,6 +41,7 @@ const PRESS_STYLE = {
   ghost: { backgroundColor: '$pressedOverlay' },
   ghostAccent: { backgroundColor: '$pressedOverlay' },
   simple: { opacity: INTERACTION_OPACITY.dimPressed },
+  subtle: { color: '$textPrimary', opacity: INTERACTION_OPACITY.brightenedPressed },
   tonal: { opacity: 0.7 },
   danger: {
     backgroundColor: '$dangerColor',
@@ -155,6 +156,18 @@ const Frame = styled(XStack, {
         pressStyle: PRESS_STYLE.simple,
       },
       /**
+       * A quiet label in the secondary text colour, for an action that defers to the one beside
+       * it. It brightens to the primary colour under a pointer rather than fading as `simple`
+       * does: faded, the secondary colour falls below the contrast floor in a light theme.
+       */
+      subtle: {
+        backgroundColor: 'transparent',
+        borderColor: 'transparent',
+        color: '$textSecondary',
+        hoverStyle: { color: '$textPrimary' },
+        pressStyle: PRESS_STYLE.subtle,
+      },
+      /**
        * A quiet fill: the nested surface under a plain label, in a rounded rect rather than a pill.
        *
        * Legacy iOS's non-primary rounded rect, for a control among content -- an attachment's
@@ -259,6 +272,7 @@ const PRESSED = {
   ghost: PRESS_STYLE.ghost,
   ghostAccent: PRESS_STYLE.ghostAccent,
   simple: PRESS_STYLE.simple,
+  subtle: PRESS_STYLE.subtle,
   tonal: PRESS_STYLE.tonal,
   danger: withoutColor(PRESS_STYLE.danger),
 } as const
@@ -286,6 +300,7 @@ const LABEL_TONE = {
   ghost: '$textPrimary',
   ghostAccent: '$primaryColor',
   simple: '$textPrimary',
+  subtle: '$textSecondary',
   tonal: '$textPrimary',
   danger: '$dangerColor',
 } as const
@@ -302,6 +317,7 @@ const PRESSED_LABEL: Partial<Record<keyof typeof LABEL_TONE, string>> = {
   outline: '$backgroundPrimary',
   outlineAccent: '$onAccent',
   danger: '$onDanger',
+  subtle: '$textPrimary',
 }
 
 /** On the web the `PressArea` round the frame is the button; a second role inside it is noise. */
@@ -383,6 +399,20 @@ export interface ButtonProps {
  * button keeps the variant's fixed height, since its width is taken from it.
  */
 const SIZE_MIN_HEIGHT = { xs: '$lg', sm: '$xl', md: '$2xl', lg: '$3xl' } as const
+
+/**
+ * The variants with no frame: text alone, or a surface only while hovered or held.
+ *
+ * Disabled keeps them frameless. The `disabled` variant draws the border role, which is the
+ * disabled look of a framed button, and on one of these it put an outline round a loading label.
+ */
+const FRAMELESS = new Set(['ghost', 'ghostAccent', 'simple', 'subtle'])
+
+/**
+ * The loading spinner's scale, following the label's text size: the platform's small spinner is
+ * sized for a body label, and over the smaller sizes' label it reads a size too large.
+ */
+const SPINNER_SCALE = { xs: 0.8, sm: 0.8, md: 1, lg: 1 } as const
 
 export function Button({
   children,
@@ -471,6 +501,7 @@ export function Button({
           {...(paddingHorizontal === undefined ? {} : { paddingHorizontal })}
           {...(borderRadius === undefined ? {} : { borderRadius })}
           disabled={inert}
+          {...(inert && FRAMELESS.has(variant) ? { borderColor: 'transparent' } : {})}
           {...PRESS_PASSTHROUGH}
           // The variant's own `hoverStyle`, applied from the wrapper's hover: see `PressArea`.
           {...(hovered && !pressed && !inert ? { forceStyle: 'hover' as const } : {})}
@@ -516,8 +547,13 @@ export function Button({
               alignItems="center"
               justifyContent="center"
               pointerEvents="none"
+              // The button already says it is busy and carries its label as its name, so the
+              // spinner has nothing to add, and a progress bar with no name is an error.
+              aria-hidden
             >
-              <Spinner size="small" color={nativeLabel} />
+              <YStack scale={SPINNER_SCALE[size]}>
+                <Spinner size="small" color={nativeLabel} />
+              </YStack>
             </YStack>
           ) : null}
         </Frame>

@@ -5,6 +5,7 @@ import { MESSAGE_SCENARIOS } from './messages'
 import { RAIL_SCENARIOS } from './rail'
 import { SETTINGS_SCENARIOS } from './settings'
 import { SHEET_SCENARIOS } from './sheet'
+import { STARTUP_FAILED_SCENARIOS } from './startupFailed'
 
 export { PicturesProvider, ScenarioProvider } from './ScenarioProvider'
 
@@ -15,4 +16,5 @@ export const SCENARIOS: readonly AnyStory[] = [
   ...RAIL_SCENARIOS,
   ...SHEET_SCENARIOS,
   ...SETTINGS_SCENARIOS,
+  ...STARTUP_FAILED_SCENARIOS,
 ]

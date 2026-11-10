@@ -3,17 +3,50 @@ import { isDisplayableImage } from '@session/basic-types'
 import type { ConversationId, Message } from '@session/client'
 import { transferKey, type SessionStore } from '@session/state'
 
+/** A running transfer, as a file reports it, in encrypted bytes. */
+interface Running {
+  doneBytes: number
+  totalBytes: number
+}
+
 /**
  * What a few rows' messages are put through before any page draws, by body. Each is its own
  * message, never one another page draws at rest: the store is shared by every page.
  */
-const PREPARE: Record<string, 'downloaded' | 'downloading' | 'downloadFailed'> = {
+const PREPARE: Record<string, 'downloaded' | 'downloadFailed' | Running> = {
   'Two, one above the other': 'downloaded',
-  'Four in two rows': 'downloading',
+  'Four in two rows': { doneBytes: 50, totalBytes: 100 },
   'Five: two above three': 'downloadFailed',
+  // The first report of every transfer, before a byte is here.
+  'A pair for the ring at 0 of 0': { doneBytes: 0, totalBytes: 0 },
+  'A pair for the ring at 40%': { doneBytes: 40, totalBytes: 100 },
+  'A pair for the ring at 95%': { doneBytes: 95, totalBytes: 100 },
+  'Ours from another device, for the ring at 0 of 0': { doneBytes: 0, totalBytes: 0 },
+  'Ours from another device, for the ring at 40%': { doneBytes: 40, totalBytes: 100 },
+  'Ours from another device, for the ring at 95%': { doneBytes: 95, totalBytes: 100 },
+  'One file, caught downloading': { doneBytes: 40, totalBytes: 100 },
+  'One picture as a list, caught downloading': { doneBytes: 40, totalBytes: 100 },
 }
 
-/** Ours, so its uploaded pictures are cached and thumbnailed, as a staged file's picture is. */
+/** Four tenths of a 3 MB file, so a caption reads in the sizes a real one would. */
+const UPLOAD_AT_40: Running = { doneBytes: 1_258_291, totalBytes: 3_145_728 }
+
+/**
+ * Ours, caught uploading: the upload each reports for its first file not up, which libsession
+ * uploads one at a time in order. As `PREPARE`, never a message another page draws at rest.
+ */
+const UPLOADING: Record<string, Running> = {
+  'Still uploading, one at a time': UPLOAD_AT_40,
+  'One file, caught uploading': UPLOAD_AT_40,
+  'The last of three uploading': UPLOAD_AT_40,
+  'A pair, the second uploading': UPLOAD_AT_40,
+}
+
+/**
+ * Ours, so its uploaded pictures are cached and thumbnailed, as a staged file's picture is. Its
+ * thirty uploaded pictures take the fake's photo counter thirty times running, so they are every
+ * dev photograph once, whatever the showcase draws before it.
+ */
 const PICTURES_FROM = 'File 31 of 32 failed'
 
 const POLL_MS = 50
@@ -66,24 +99,36 @@ export async function prepare(session: SessionStore): Promise<Scenario> {
         [message.id]: Object.fromEntries(
           message.attachments.map(({ index }) => [
             transferKey('download', index),
-            preparation === 'downloading'
-              ? { state: 'running' as const, doneBytes: 50, totalBytes: 100 }
-              : { state: 'failed' as const, doneBytes: 0, totalBytes: 100 },
+            preparation === 'downloadFailed'
+              ? { state: 'failed' as const, doneBytes: 0, totalBytes: 100 }
+              : { state: 'running' as const, ...preparation },
           ]),
         ),
       },
     }))
   }
 
+  for (const [body, running] of Object.entries(UPLOADING)) {
+    const message = byBody(body)
+    const moving = message.attachments.find(({ uploaded }) => !uploaded)
+    if (moving === undefined) throw new Error(`"${body}" has no file left to upload`)
+    session.setState((state) => ({
+      transfers: {
+        ...state.transfers,
+        [message.id]: { [transferKey('upload', moving.index)]: { state: 'running', ...running } },
+      },
+    }))
+  }
+
   const { media } = requirePorts()
   const source = byBody(PICTURES_FROM)
-  const pictures = source.attachments.flatMap(({ index, uploaded, contentType }) => {
-    const url =
-      uploaded && isDisplayableImage(contentType)
-        ? media.thumbnailUrlFor({ messageId: source.id, index })
-        : null
-    return url === null ? [] : [url]
-  })
+  // In filename order rather than the message's: the fake names a picture for its photograph, and
+  // the counter's starting photo moves whenever the showcase gains a picture above this message.
+  const pictures = source.attachments
+    .filter(({ uploaded, contentType }) => uploaded && isDisplayableImage(contentType))
+    .sort((a, b) => (a.filename ?? '').localeCompare(b.filename ?? ''))
+    .map(({ index }) => media.thumbnailUrlFor({ messageId: source.id, index }))
+    .filter((url): url is string => url !== null)
 
   return {
     conversationId,
