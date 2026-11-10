@@ -24,5 +24,8 @@ body:
   - type: textarea
     id: logs
     attributes:
-      label: Logs
-      description: Settings > Help > Export Logs, then attach the file.
+      label: Logs (optional)
+      description: >-
+        If you're happy to share them: Settings > Help > Export Logs, then drag the file here or
+        click below the box to attach it. Sensitive details are removed from exported logs, and
+        they help us find the cause.
