@@ -139,7 +139,9 @@ ITEMS_QUERY = '''query($p:ID!,$after:String){node(id:$p){... on ProjectV2{items(
         labels(first:20){nodes{name}}
         blockedBy(first:50){totalCount nodes{number title state repository{nameWithOwner}}}}
       ... on PullRequest{__typename id number state isDraft reviewDecision repository{nameWithOwner}
-        reviewRequests(first:1){totalCount}
+        latestOpinionatedReviews(first:20){nodes{state author{login}}}
+        reviewRequests(first:20){nodes{requestedReviewer{... on User{login} ... on Bot{login}
+          ... on Mannequin{login}}}}
         closingIssuesReferences(first:20){nodes{number repository{nameWithOwner}}}}}}}}}}'''
 
 
@@ -269,10 +271,15 @@ def pr_status(pr):
         return 'In progress'
     if pr['reviewDecision'] == 'APPROVED':
         return 'Approved'
-    # GitHub keeps a request for changes as the decision until that reviewer reviews again, so a
-    # review asked for since then is what says the author has answered it.
-    if pr['reviewDecision'] == 'CHANGES_REQUESTED' and not pr['reviewRequests']['totalCount']:
-        return 'In progress'
+    if pr['reviewDecision'] == 'CHANGES_REQUESTED':
+        # GitHub keeps a request for changes as the decision until its reviewer reviews again or the
+        # review is dismissed. Asking that reviewer again is what says the author has answered it;
+        # a request still open for someone else does not.
+        asked = {(r['requestedReviewer'] or {}).get('login') for r in pr['reviewRequests']['nodes']}
+        owed = {(r['author'] or {}).get('login') for r in pr['latestOpinionatedReviews']['nodes']
+                if r['state'] == 'CHANGES_REQUESTED'}
+        if not owed or not owed <= asked:
+            return 'In progress'
     return 'In review'
 
 

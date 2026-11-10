@@ -66,6 +66,11 @@ grouped by milestone can only be ordered by due date, and milestones have none.
 - **A pull request that does part of an issue mentions it without a closing keyword**
   (`Part of #12`). The mention shows on the issue's timeline without closing it on merge; update the
   issue's **Progress** section (what's built, what's left) when it merges.
+- **A pull request goes back to In review when everyone who requested changes is asked again**
+  (the re-request button by their name on the pull request), not when the changes are pushed.
+  Another reviewer's approval does not clear a request for changes, on GitHub or on the board: the
+  reviewer who made it reviews again, or the review is dismissed with a note saying why, and then
+  the card moves to Approved.
 - **Some changes take up to an hour to show:** blocked-by links, adding or removing the `area`
   label, and transferring an issue fire no event the sync runs on, so its hourly run picks them up.
   Everything else shows within a minute or so.
