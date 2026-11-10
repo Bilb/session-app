@@ -102,7 +102,9 @@ it can slip to the next release, P2 that it's for when there's room.
 
 - **Releases**: every issue grouped by release in the dragged order, sorted by Rank. Unscheduled
   issues are in the group with no release.
-- **Board**: every issue by Status, sorted by Rank within each column.
+- **Board**: every issue and pull request by Status, sorted by Rank within each column. A pull
+  request that fixes an issue sits beside it; one that does part of an issue is the only place its
+  review shows. With no release or priority, pull requests sort after the issues in each column.
 - **Areas**: the area issues, each with its progress bar.
 - **Up next**: Ready issues sorted by Rank, for picking up something to do.
 - **My reviews**: pull requests waiting on your review. One leaves it when you approve or request
