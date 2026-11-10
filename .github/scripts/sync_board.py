@@ -2,7 +2,8 @@
 """
 Keeps the project board in step with the repo, so nobody moves cards by hand.
 
-- Every issue and pull request is on the board.
+- Every issue is on the board, and every pull request from when it is open: one closed before the
+  board existed is history nobody plans with.
 - A pull request's Status follows it: draft or changes requested is In progress, ready is In review,
   approved is Approved, merged or closed is Done.
 - An issue with an open pull request that will close it takes that pull request's Status.
@@ -17,8 +18,8 @@ Keeps the project board in step with the repo, so nobody moves cards by hand.
   end, one that is gone loses its option, and a renamed one keeps its option and place.
 
 Items from other repositories are kept in step too, each looked up in its own repository. Only this
-repository's issues are added automatically, and only they have a Release, which mirrors this
-repository's milestones.
+repository's issues and open pull requests are added automatically, and only its issues have a
+Release, which mirrors this repository's milestones.
 
 Closing a release's milestone folds the closed issues of Next into it (FOLD_INTO=<title>): fixes
 made between releases ship with the release that follows them. That run does only the fold: the
@@ -213,6 +214,9 @@ def sync():
     added = False
     for page in rest(f'repos/{REPO}/issues?state=all&per_page=100'):
         for issue in page:
+            # The issues endpoint lists pull requests too
+            if 'pull_request' in issue and issue['state'] != 'open':
+                continue
             if issue['node_id'] not in on_board:
                 gql('mutation($p:ID!,$c:ID!){addProjectV2ItemById(input:{projectId:$p,contentId:$c}){item{id}}}',
                     p=PID, c=issue['node_id'])

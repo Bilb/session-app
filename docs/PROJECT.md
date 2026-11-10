@@ -97,8 +97,9 @@ update; each has a run of its own that a later event can't cancel. A sync can be
 from the Actions tab.
 
 Issues and pull requests from other repositories can go on the board too. Each is looked up in its
-own repository, but only this repository's issues are added automatically, and only they get a
-Release. One whose repository the app can't read gets no blockers, and the run logs a warning.
+own repository, but only this repository's issues, and its pull requests while they're open, are
+added automatically, and only its issues get a Release. One whose repository the app can't read
+gets no blockers, and the run logs a warning.
 
 It writes with a token from the board's GitHub App, set by the `BOARD_APP_ID` and `BOARD_APP_KEY`
 secrets, and the `BOARD_PROJECT_NUMBER` variable says which project. Until all three are set, it
