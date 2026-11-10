@@ -1,21 +1,29 @@
-import { BarRule, XStack } from '@session/ui'
+import { BarRule, Text, XStack } from '@session/ui'
 import type { ReactNode } from 'react'
 
 import { useBesideList, useTopBarInsets } from './pane'
 
 /**
- * The bar's row height: a 44-point control, the smallest touch target, is the tallest thing either
- * pane's bar holds. A floor rather than what each bar's content happens to measure, so the list's
- * bar and the conversation's beside it are always the same height and their rules meet.
+ * The height of every pane's top bar, inside its padding: the list's, the conversation's and the
+ * requests'. One value rather than whatever each bar holds, so bars drawn side by side are the same
+ * height and their rules meet. Text set larger than the default can still grow it.
  */
-const ROW_MIN_HEIGHT_PX = 44
+const BAR_HEIGHT_PX = 44
 
 /**
- * A centred bar's ends share what the title leaves, so with no floor a long title squeezes them to
- * nothing and runs under their controls. Each end holds one 44-point control at most; one that
- * holds two needs this doubled.
+ * A control in a pane's top bar: the 44-point target Apple asks for. A centred bar's ends each keep
+ * room for one, so a long title truncates rather than running under them.
  */
-const END_MIN_WIDTH_PX = 44
+export const BAR_CONTROL_SIZE_PX = 44
+
+/** A pane's title, where it starts the bar rather than sitting centred in it. */
+export function PaneTitle({ children }: { children: ReactNode }) {
+  return (
+    <Text size="$title" weight="bold">
+      {children}
+    </Text>
+  )
+}
 
 /**
  * A pane's top bar and the rule under it (on the desktop only, as `BarRule` says), shared by the
@@ -52,13 +60,13 @@ export function PaneTopBar({
         testID={testID}
         {...topBarInsets}
       >
-        <XStack flex={1} minHeight={ROW_MIN_HEIGHT_PX} gap="$sm" alignItems="center">
+        <XStack flex={1} minHeight={BAR_HEIGHT_PX} gap="$sm" alignItems="center">
           {centred ? (
             <>
               <XStack
                 flex={1}
                 flexBasis={0}
-                minWidth={END_MIN_WIDTH_PX}
+                minWidth={BAR_CONTROL_SIZE_PX}
                 alignItems="center"
                 gap="$xs"
               >
@@ -71,7 +79,7 @@ export function PaneTopBar({
               <XStack
                 flex={1}
                 flexBasis={0}
-                minWidth={END_MIN_WIDTH_PX}
+                minWidth={BAR_CONTROL_SIZE_PX}
                 alignItems="center"
                 justifyContent="flex-end"
                 gap="$xs"

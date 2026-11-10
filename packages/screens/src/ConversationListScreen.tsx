@@ -33,7 +33,7 @@ import { conversationTitle } from './conversationTitle'
 import { useOpenSettings } from './settings/SettingsRootPage'
 import { pathStatusTone } from './pathStatus'
 import { useBesideRail } from './shell/pane'
-import { PaneTopBar } from './shell/PaneTopBar'
+import { BAR_CONTROL_SIZE_PX, PaneTitle, PaneTopBar } from './shell/PaneTopBar'
 import { useTimeFormats } from './timeFormats'
 import { useToday } from './today'
 import { useHeldSelection } from './useHeldSelection'
@@ -88,8 +88,8 @@ function SettingsAvatarButton({ onPress }: { onPress: () => void }) {
     // The hit area is the stack rather than the avatar: 32pt is under the 44pt a finger
     // needs, and a target that small is one people miss rather than one they cannot see.
     <XStack
-      width={44}
-      height={44}
+      width={BAR_CONTROL_SIZE_PX}
+      height={BAR_CONTROL_SIZE_PX}
       alignItems="center"
       justifyContent="center"
       $platform-web={{ cursor: 'pointer' }}
@@ -180,9 +180,7 @@ export function ConversationListScreen({
         }
         title={
           <NetworkOverlay>
-            <Text size="$title" weight="bold">
-              {tr('messages')}
-            </Text>
+            <PaneTitle>{tr('messages')}</PaneTitle>
           </NetworkOverlay>
         }
         trailing={
@@ -208,8 +206,8 @@ export function ConversationListScreen({
             {/* Writing to somebody who has not written first was impossible before this: the
               only way into a conversation was replying to a request. */}
             <XStack
-              width={44}
-              height={44}
+              width={BAR_CONTROL_SIZE_PX}
+              height={BAR_CONTROL_SIZE_PX}
               alignItems="center"
               justifyContent="center"
               $platform-web={{ cursor: 'pointer' }}

@@ -70,7 +70,7 @@ const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, Known>>> = {
   },
   'showcase-android': {
     'target-size conversation-back': {
-      why: 'drawn at 32dp; its hitSlop reaches MIN_HIT_TARGET, 40, which is under 48 and not in the bounds',
+      why: 'a bar button, drawn at 40dp: under 48 and not in the bounds',
       only: 'phone',
     },
     'target-size message-attachment-view-list':
@@ -83,7 +83,7 @@ const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, Known>>> = {
     'XCUIAccessibilityAuditTypeSufficientElementDescription message-attachment-tile':
       "a tile is named by its filename, which Apple's audit reads as no human-readable label",
     'target-size conversation-back': {
-      why: 'drawn at 32pt; its hitSlop reaches MIN_HIT_TARGET, 40, which is under 44 and not in the bounds',
+      why: 'a bar button, drawn at 40pt: under 44 and not in the bounds',
       only: 'phone',
     },
     'target-size message-attachment-view-list':

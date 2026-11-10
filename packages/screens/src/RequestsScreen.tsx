@@ -3,11 +3,11 @@ import type { Conversation } from '@session/client'
 import { tr } from '@session/localization'
 import { useRequests, useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
-import { Avatar, Button, List, Screen, Separator, Text, XStack, YStack } from '@session/ui'
+import { Avatar, Button, List, Screen, Text, XStack, YStack } from '@session/ui'
 
 import { BackButton } from './BackButton'
 import { conversationTitle } from './conversationTitle'
-import { useTopBarInsets } from './shell/pane'
+import { PaneTitle, PaneTopBar } from './shell/PaneTopBar'
 
 /**
  * One row's height, for the same reason the conversation list has one: it lets the list place a
@@ -27,26 +27,15 @@ const ROW_HEIGHT = 60
  * on a fresh account.
  */
 export function RequestsScreen() {
-  const topBarInsets = useTopBarInsets()
   const requests = useRequests()
   const nav = useNav()
 
   return (
     <Screen testID={ELEMENT.requests.screen}>
-      <XStack
-        paddingHorizontal="$md"
-        paddingVertical="$sm"
-        alignItems="center"
-        gap="$sm"
-        {...topBarInsets}
-      >
-        <BackButton testID={ELEMENT.requests.back} />
-        <Text size="$title" weight="bold">
-          {tr('sessionMessageRequests')}
-        </Text>
-      </XStack>
-
-      <Separator borderColor="$bordersColor" />
+      <PaneTopBar
+        leading={<BackButton testID={ELEMENT.requests.back} />}
+        title={<PaneTitle>{tr('sessionMessageRequests')}</PaneTitle>}
+      />
 
       <List
         data={requests}
