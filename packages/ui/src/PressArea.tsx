@@ -1,4 +1,4 @@
-import { useContext } from 'react'
+import { useContext, useEffect, useRef } from 'react'
 import { YStack } from 'tamagui'
 
 import { InteractionOverride, useForcedFocus } from './interactionOverride'
@@ -36,14 +36,20 @@ export function PressArea({
   checked,
   ring = PAGE_RING,
   busy = false,
+  focusOnMount = false,
   testID,
   children,
 }: PressAreaProps) {
   const press = disabled ? undefined : onPress
   const forced = useContext(InteractionOverride)
   const forcedFocus = useForcedFocus()
+  const element = useRef<HTMLElement | null>(null)
+  useEffect(() => {
+    if (focusOnMount) element.current?.focus()
+  }, [focusOnMount])
   return (
     <YStack
+      ref={element as never}
       {...(fill ? { flex: 1 } : {})}
       role={role}
       {...(checked === undefined ? {} : { 'aria-checked': checked })}
