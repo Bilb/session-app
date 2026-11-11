@@ -31,6 +31,23 @@ export const avatar = defineStory<{ name: string; size: 'xl' | '2xl' | '3xl' }>(
   render: ({ name, size }) => <Avatar id={`05${name}`} name={name} size={size} />,
 })
 
+/** The display picture at the top of Settings, and the same picture enlarged. */
+const PROFILE_AVATAR_PX = 90
+const ENLARGED_AVATAR_PX = 190
+
+/** Past the top of the type ramp, where the initials keep growing with the disc. */
+export const avatarLarge = defineStory<{ name: string; size: number }>({
+  component: 'avatar',
+  story: 'large',
+  width: ENLARGED_AVATAR_PX,
+  variants: {
+    profile: { name: 'Alice Smith', size: PROFILE_AVATAR_PX },
+    enlarged: { name: 'Alice Smith', size: ENLARGED_AVATAR_PX },
+    enlargedOneLetter: { name: 'Q', size: ENLARGED_AVATAR_PX },
+  },
+  render: ({ name, size }) => <Avatar id={`05${name}`} name={name} size={size} />,
+})
+
 interface RingRow {
   /** Absent for a ring that does not know how far along it is. */
   progress?: number | undefined
