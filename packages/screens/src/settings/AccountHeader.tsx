@@ -17,25 +17,23 @@ import { useState } from 'react'
 import { AccountIdControls } from './AccountIdControls'
 import { ShareableQrCode } from './ShareableQrCode'
 
-/** The legacy clients' size for the display picture at the top of Settings. */
 const PROFILE_AVATAR_PX = 90
 /**
- * The legacy desktop client's enlarged display picture, and its QR code, which takes the same room
- * so the page below moves once rather than twice on the way from one to the other.
+ * The enlarged display picture, and the QR code, which takes the same room so the page below
+ * moves once rather than twice on the way from one to the other.
  */
 const ENLARGED_PX = 190
 
 /**
- * Where the QR badge sits on the display picture, as shares of its diameter: the legacy desktop
- * client's, which brings it in from the corner as the picture grows so it stays on the circle's
- * edge rather than floating off it.
+ * Where the QR badge sits on the display picture, as shares of its diameter. It comes in from the
+ * corner as the picture grows, so it stays on the circle's edge rather than floating off it.
  */
 const QR_BADGE_INSET = {
   resting: { top: 0.03, end: 0 },
   enlarged: { top: 0.04, end: 0.09 },
 } as const
 
-/** How far the back badge overhangs the code's corner, as the legacy desktop client puts it. */
+/** How far the back badge overhangs the code's corner. */
 const BACK_BADGE_OVERHANG_PX = -15
 
 /** A circle round the circle, for the keyboard. */
@@ -101,8 +99,8 @@ function SwapBadge({
  * so it wraps rather than truncates, with a copy control beside it; on desktop the ID copies when
  * pressed too.
  *
- * The name goes while the code shows, as on the legacy desktop client: the code stands for the ID,
- * which stays. The picture keeps its size across a trip to the code and back.
+ * The name goes while the code shows: the code stands for the ID, which stays. The picture keeps
+ * its size across a trip to the code and back.
  */
 export function AccountHeader({
   sessionId,
