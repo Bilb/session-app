@@ -2,6 +2,7 @@ import { existsSync, readFileSync, realpathSync, statSync, writeFileSync } from 
 import { basename, dirname, join, resolve } from 'node:path'
 
 import { bareFileName, MAX_SUGGESTED_NAME_CHARS } from '@session/app/exportFileName'
+import { MAX_QR_TEXT_CHARS, qrCodePng } from '@session/app/qrCodePng'
 import type { Frame, OutgoingAttachment, Request } from '@session/client'
 
 // Named imports do not survive the ESM loader here; see the note in index.ts.
@@ -10,7 +11,6 @@ import electron from 'electron'
 import type { BrowserWindow } from 'electron'
 
 import type { PreviewGrants } from './previewGrants'
-import { MAX_QR_TEXT_CHARS, qrCodePng } from './qrCodePng'
 import { isFromAppFrame } from './security'
 
 const { app, dialog, shell } = electron
@@ -286,7 +286,6 @@ export function serveFiles(
     if (typeof value !== 'string' || value.length === 0 || value.length > MAX_QR_TEXT_CHARS)
       return false
     const answer = await dialog.showSaveDialog(window, {
-      // The legacy desktop client's name for the same file.
       defaultPath: dialogDefaultPath(
         'session-qr-code.png',
         process.platform,

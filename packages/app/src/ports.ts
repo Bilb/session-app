@@ -235,6 +235,12 @@ export interface SharePort {
    * Null rather than a no-op, so a screen leaves out what would only send through it.
    */
   shareText: ((text: string) => Promise<void>) | null
+  /**
+   * Hands a QR code of `value` to the share sheet as a PNG, from which it can be saved to Files,
+   * or null where there is no sheet (the desktop saves it instead: `files.saveQrCode`). Never to
+   * the photo library, which backs itself up to the cloud.
+   */
+  shareQrCode: ((value: string) => Promise<void>) | null
 }
 
 export interface WindowPort {

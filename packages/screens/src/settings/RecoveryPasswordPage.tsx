@@ -4,6 +4,8 @@ import { useSessionActions, type RecoveryPassword, type SessionActions } from '@
 import { ELEMENT } from '@session/test-ids'
 import {
   Button,
+  ContextMenu,
+  ContextMenuTarget,
   PressArea,
   QrCode,
   QrViewer,
@@ -15,6 +17,7 @@ import {
   useWindowSize,
   XStack,
   YStack,
+  type MenuAnchor,
   type Modals,
 } from '@session/ui'
 import { useEffect, useState } from 'react'
@@ -237,6 +240,9 @@ export function RecoveryPasswordPage({
   // The desktop's full-screen code, and its Save, as the legacy desktop client offers them. Both
   // where a file can be saved, which is the desktop alone.
   const saveQrCode = ports.files.saveQrCode
+  // The phones' long-press: the share sheet, from which the code can be saved to Files.
+  const shareQrCode = ports.share.shareQrCode
+  const [shareMenu, setShareMenu] = useState<MenuAnchor | null>(null)
   const qrSizePx = Math.min(QR_SIZE_PX, window.width - QR_INSET_PX)
   const qr = (
     <QrCode
@@ -267,7 +273,11 @@ export function RecoveryPasswordPage({
           {showingQr ? (
             <>
               {saveQrCode === null ? (
-                qr
+                shareQrCode === null ? (
+                  qr
+                ) : (
+                  <ContextMenuTarget onOpen={setShareMenu}>{qr}</ContextMenuTarget>
+                )
               ) : (
                 <PressArea
                   accessibilityLabel={tr('qrCode')}
@@ -333,6 +343,29 @@ export function RecoveryPasswordPage({
         />
       </SettingsGroup>
 
+      {shareQrCode === null ? null : (
+        <ContextMenu
+          anchor={shareMenu}
+          onDismiss={() => {
+            setShareMenu(null)
+          }}
+          entries={[
+            {
+              id: 'share',
+              kind: 'action',
+              label: tr('share'),
+              icon: 'share2',
+              testID: ELEMENT.contextMenu.item('share'),
+              onSelect: () => {
+                void shareQrCode(secret.seedHex)
+              },
+            },
+          ]}
+          accessibilityLabel={tr('qrCode')}
+          backLabel={tr('back')}
+          testIDs={ELEMENT.contextMenu}
+        />
+      )}
       {saveQrCode === null ? null : (
         <QrViewer
           value={fullScreen ? secret.seedHex : null}

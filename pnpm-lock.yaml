@@ -313,9 +313,6 @@ importers:
       react-router:
         specifier: 'catalog:'
         version: 8.3.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      uqr:
-        specifier: 'catalog:'
-        version: 0.1.3
     devDependencies:
       '@session/build-stamp':
         specifier: workspace:*
@@ -519,6 +516,9 @@ importers:
       '@session/logging':
         specifier: workspace:*
         version: link:../logging
+      uqr:
+        specifier: 'catalog:'
+        version: 0.1.3
     devDependencies:
       '@session/client-contract':
         specifier: workspace:*

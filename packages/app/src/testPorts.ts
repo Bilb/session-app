@@ -82,7 +82,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
     },
     // Null, not a no-op, for the same reason as `openAppSettings`: a screen reads it to decide
     // whether to offer Share at all. The phones install their own.
-    share: { shareText: null },
+    share: { shareText: null, shareQrCode: null },
     build: {
       version: '0.0.0',
       commit: null,

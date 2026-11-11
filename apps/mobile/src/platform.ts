@@ -1,5 +1,6 @@
 import { memoryPorts, setPorts, type MediaPort, type NotificationsPort } from '@session/app'
 import { mediaUrl } from '@session/app/mediaUrl'
+import { qrCodePng } from '@session/app/qrCodePng'
 import { parseNetworkName } from '@session/basic-types'
 import { isExportName, logSpan, type DiagnosticsSnapshot } from '@session/logging'
 import * as Clipboard from 'expo-clipboard'
@@ -19,6 +20,9 @@ import { SecureScreen } from './secureScreen'
 import { plainPath } from './storage/layout'
 import { exportsDirectory, File } from './storage/roots'
 import { sweepStaged } from './storage/staging'
+
+/** The legacy desktop client's name for a saved QR code; the share sheet offers it as the name. */
+const QR_CODE_FILE = 'session-qr-code.png'
 
 /**
  * Whose servers fast mode would use, which is what the onboarding screen has to name.
@@ -163,6 +167,15 @@ const ports = memoryPorts({
     // The platform's sheet, with the text alone: no title or subject, which iOS would drop and
     // Android would show as a heading above what was shared.
     shareText: (text) => Share.share({ message: text }).then(() => undefined),
+    // A file in the exports directory, as an exported log is, so Android's sheet can take it
+    // through expo-sharing's content provider. The last one goes first, for the same reason the
+    // logs keep one: an app it was shared to may still be reading it.
+    shareQrCode: async (value) => {
+      const out = new File(exportsDirectory(), QR_CODE_FILE)
+      if (out.exists) out.delete()
+      await out.write(qrCodePng(value))
+      await Sharing.shareAsync(out.uri, { mimeType: 'image/png', UTI: 'public.png' })
+    },
   },
   clipboard: {
     setString: (value) => Clipboard.setStringAsync(value).then(() => undefined),
