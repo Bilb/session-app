@@ -1,7 +1,7 @@
 import { requireOptionalNativeModule } from 'expo'
 
 interface SecureScreenModule {
-  setSecure(secure: boolean): void
+  setSecure(secure: boolean): Promise<void>
   copySensitive(text: string): Promise<void>
 }
 

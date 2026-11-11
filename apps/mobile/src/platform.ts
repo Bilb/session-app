@@ -262,12 +262,24 @@ const appFocus = {
 }
 
 /** Android's secure window flag; null where the module is not in the build. */
+/** How long the flag outlasts its last holder: long enough for a screen to mount again. */
+const SECURE_RELEASE_MS = 500
 const secureScreen = SecureScreen
+let secureHolders = 0
+let secureRelease: ReturnType<typeof setTimeout> | null = null
 const secureWindow =
   secureScreen === null
     ? null
-    : (prevented: boolean): void => {
-        secureScreen.setSecure(prevented)
+    : (prevented: boolean): Promise<void> => {
+        secureHolders = Math.max(0, secureHolders + (prevented ? 1 : -1))
+        if (secureRelease !== null) clearTimeout(secureRelease)
+        secureRelease = null
+        if (secureHolders > 0) return secureScreen.setSecure(true)
+        secureRelease = setTimeout(() => {
+          secureRelease = null
+          if (secureHolders === 0) void secureScreen.setSecure(false)
+        }, SECURE_RELEASE_MS)
+        return Promise.resolve()
       }
 
 setPorts({

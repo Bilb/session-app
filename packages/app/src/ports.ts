@@ -266,8 +266,12 @@ export interface WindowPort {
    * Keeps whatever is on screen out of screenshots, recordings and the recents thumbnail while
    * `true`, or null where the platform is not asked to. Android's secure window flag; a screen
    * that shows a secret sets it on the way in and clears it on the way out.
+   *
+   * Resolves once the window has it, for whatever then has to be drawn after. Counted: the flag
+   * clears a moment after the last `true` is matched by a `false`, so a screen that is mounted
+   * again in place never leaves a gap with it off.
    */
-  preventScreenCapture: ((prevented: boolean) => void) | null
+  preventScreenCapture: ((prevented: boolean) => Promise<void>) | null
   isFocused(): boolean
   /** Drives read receipts and whether a notification is worth showing. */
   onFocusChange(handler: (focused: boolean) => void): () => void

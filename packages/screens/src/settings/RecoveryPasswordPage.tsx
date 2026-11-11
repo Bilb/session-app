@@ -193,15 +193,20 @@ export function RecoveryPasswordPage({
   }, [actions])
 
   // Out of screenshots, recordings and the recents thumbnail while it is on screen, where the
-  // platform offers that (Android).
+  // platform offers that (Android). The modal host is drawn afresh after: on a tablet Settings is
+  // in react-native's `Modal` dialog, which takes the flag only when it is made, and keeps it
+  // until Settings closes.
   const preventCapture = ports.window.preventScreenCapture
   useEffect(() => {
     if (preventCapture === null) return
-    preventCapture(true)
+    // After the flag is on: a dialog made before it would not copy it.
+    void preventCapture(true).then(() => {
+      modals.secureHost()
+    })
     return () => {
-      preventCapture(false)
+      void preventCapture(false)
     }
-  }, [preventCapture])
+  }, [preventCapture, modals])
 
   // The desktop's full-screen code, and its Save, as the legacy desktop client offers them. Both
   // where a file can be saved, which is the desktop alone.
