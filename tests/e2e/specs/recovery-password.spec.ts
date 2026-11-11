@@ -63,8 +63,15 @@ test('shows the recovery password as words and a QR code, saves the code, and hi
     await expect.poll(() => existsSync(saved), { timeout: 10_000 }).toBe(true)
     expect([...readFileSync(saved).subarray(0, 8)]).toEqual(PNG_SIGNATURE)
 
-    await page.keyboard.press('Escape')
-    await expect(fullScreen).toHaveCount(0)
+    // Escape is the full-screen modal's own: react-native-web gives it to the topmost modal that
+    // has finished opening, which is the menu until the menu has finished closing. Pressed again
+    // only while the code is still up, so a press never reaches Settings underneath.
+    await expect(async () => {
+      if ((await fullScreen.count()) > 0) await page.keyboard.press('Escape')
+      await expect(fullScreen).toHaveCount(0, { timeout: 1_000 })
+    }).toPass({ timeout: 10_000 })
+    // One level only: still on the recovery password, not back in Settings.
+    await expect(page.getByTestId(ELEMENT.recoveryPassword.viewWords).first()).toBeVisible()
     await page.getByTestId(ELEMENT.recoveryPassword.viewWords).first().click()
     await expect(words).toBeVisible()
 

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Modal as NativeModal } from 'react-native'
-import { isWeb, YStack } from 'tamagui'
+import { YStack } from 'tamagui'
 
 import { ContextMenu, type ContextMenuTestIDs } from './ContextMenu'
 import type { ContextMenuEntry } from './contextMenuEntries'
@@ -34,27 +34,13 @@ export interface QrViewerProps {
 /**
  * A QR code filling most of the window, for a camera held at a distance: a press anywhere or
  * Escape closes it. No logo, unlike the code on the page, so nothing covers modules a distant or
- * blurry camera may need.
+ * blurry camera may need. Escape is the platform modal's own `onRequestClose`, as for the host.
  */
 export function QrViewer({ value, onClose, accessibilityLabel, menu, testID }: QrViewerProps) {
   const window = useWindowSize()
   const [anchor, setAnchor] = useState<MenuAnchor | null>(null)
   const sizePx = Math.floor(Math.min(window.width, window.height) * WINDOW_SHARE)
-  const open = value !== null
 
-  // Escape closes it on the desktop: react-native-web's Modal does not report Escape as a request
-  // to close, which is what `onRequestClose` means on Android's back button. Left to the menu
-  // while one is open, where Escape closes the menu first.
-  useEffect(() => {
-    if (!isWeb || !open || anchor !== null) return
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open, anchor, onClose])
   const code =
     value === null ? null : (
       <QrCode value={value} sizePx={sizePx} accessibilityLabel={accessibilityLabel} />
