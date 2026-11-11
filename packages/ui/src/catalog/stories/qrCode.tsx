@@ -24,6 +24,7 @@ export const qrCode = defineStory<QrRow>({
   component: 'qrCode',
   story: 'recoveryPassword',
   width: 280,
+  sensitive: { theme: true },
   variants: {
     short: { value: SHORT_SEED, sizePx: PAGE_PX, logo: true },
     long: { value: LONG_SEED, sizePx: PAGE_PX, logo: true },

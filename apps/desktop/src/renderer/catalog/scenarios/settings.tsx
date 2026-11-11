@@ -23,7 +23,7 @@ export const SETTINGS_SCENARIOS: readonly AnyStory[] = [
     component: 'settings',
     story: 'recoveryPassword',
     width: SECTION_WIDTH,
-    sensitive: { rtl: true },
+    sensitive: { rtl: true, theme: true },
     variants: { words: { view: 'words' }, qr: { view: 'qr' } },
     render: ({ view }) => <RecoveryPasswordPage initialView={view} />,
   }),
