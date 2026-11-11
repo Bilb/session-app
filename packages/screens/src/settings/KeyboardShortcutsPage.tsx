@@ -4,7 +4,6 @@ import {
   SettingsGroup,
   SettingsRow,
   SettingsSection,
-  XStack,
   YStack,
   type KeyNames,
 } from '@session/ui'
@@ -25,7 +24,8 @@ export function KeyboardShortcutsPage({ names }: { names: KeyNames }) {
                 label={shortcut.label}
                 wideTrailing
                 trailing={
-                  <XStack gap="$sm" flexWrap="wrap" justifyContent="flex-end">
+                  // A line each, so two ways to do it never read as one combination.
+                  <YStack gap="$2xs" alignItems="flex-end">
                     {shortcut.combos.map((keys, index) => (
                       <KeyCombo
                         key={keys.join('+')}
@@ -34,7 +34,7 @@ export function KeyboardShortcutsPage({ names }: { names: KeyNames }) {
                         testID={ELEMENT.keyboardShortcuts.combo(shortcut.name, index)}
                       />
                     ))}
-                  </XStack>
+                  </YStack>
                 }
                 testID={ELEMENT.keyboardShortcuts.row(shortcut.name)}
               />

@@ -30,6 +30,7 @@ export function useKeyboardShortcutsCommand(): void {
         return
       }
       openId.current = modals.present({
+        fit: true,
         initial: {
           title: tr('keyboardShortcuts'),
           render: () => <KeyboardShortcutsPage names={shortcuts.keyNames} />,

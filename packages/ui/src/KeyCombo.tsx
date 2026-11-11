@@ -1,5 +1,7 @@
 import { XStack, YStack } from 'tamagui'
 
+import { Icon } from './Icon'
+import type { IconName } from './Icon.types'
 import { SIZE_SCALE } from './scales'
 import { Text } from './Text'
 
@@ -25,6 +27,9 @@ export type KeyName =
   | 'minus'
   | 'zero'
   | 'slash'
+
+/** The arrows as icons: as characters they are a hairline at caption size. */
+const ICONS: Partial<Record<KeyName, IconName>> = { up: 'arrowUp', down: 'arrowDown' }
 
 /** Legends as the keyboards print them, which no locale translates; the catalogue has none. */
 const SHARED: Record<Exclude<KeyName, 'mod' | 'ctrl' | 'shift' | 'alt'>, string> = {
@@ -61,24 +66,31 @@ export interface KeyComboProps {
 export function KeyCombo({ keys, names, testID }: KeyComboProps) {
   return (
     <XStack direction="ltr" gap="$2xs" testID={testID}>
-      {keys.map((key) => (
-        <YStack
-          key={key}
-          minWidth={SIZE_SCALE.lg}
-          minHeight={SIZE_SCALE.lg}
-          paddingHorizontal="$xs"
-          alignItems="center"
-          justifyContent="center"
-          borderRadius="$sm"
-          borderWidth={1}
-          borderColor="$bordersColor"
-          backgroundColor="$backgroundNested"
-        >
-          <Text size="$caption" weight="semibold">
-            {LEGENDS[names][key]}
-          </Text>
-        </YStack>
-      ))}
+      {keys.map((key) => {
+        const icon = ICONS[key]
+        return (
+          <YStack
+            key={key}
+            minWidth={SIZE_SCALE.lg}
+            minHeight={SIZE_SCALE.lg}
+            paddingHorizontal="$xs"
+            alignItems="center"
+            justifyContent="center"
+            borderRadius="$sm"
+            borderWidth={1}
+            borderColor="$bordersColor"
+            backgroundColor="$backgroundNested"
+          >
+            {icon === undefined ? (
+              <Text size="$caption" weight="semibold">
+                {LEGENDS[names][key]}
+              </Text>
+            ) : (
+              <Icon name={icon} size="sm" color="$textPrimary" />
+            )}
+          </YStack>
+        )
+      })}
     </XStack>
   )
 }

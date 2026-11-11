@@ -5,7 +5,7 @@ interface KeyboardShortcut {
   /** Addresses the row in tests. */
   name: string
   label: string
-  /** Each one does it; most shortcuts have one. */
+  /** Each one does it, drawn a line each; most shortcuts have one. */
   combos: readonly (readonly KeyName[])[]
 }
 
@@ -30,7 +30,8 @@ export function keyboardShortcuts(names: KeyNames): readonly KeyboardShortcutGro
       name: 'messages',
       title: tr('messages'),
       shortcuts: [
-        { name: 'navigate', label: PENDING_COPY.messageNavigate, combos: [['up'], ['down']] },
+        // One pair, as apps list the arrows: either key, each its own way.
+        { name: 'navigate', label: PENDING_COPY.messageNavigate, combos: [['up', 'down']] },
         {
           name: 'menu',
           label: tr('openMessageContextMenu'),
