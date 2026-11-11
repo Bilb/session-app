@@ -157,6 +157,19 @@ describe('List with roving focus', () => {
     expect(onMenuKey.mock.calls).toEqual([[byId(ROW(1))], [byId(ROW(1))]])
   })
 
+  it.each([
+    ['Enter', { key: 'Enter' }],
+    ['Space', { key: ' ' }],
+  ])('hands %s the frame on the frame only, leaving it to a control inside', (_, keys) => {
+    const onMenuKey = vi.fn()
+    renderInUI(<Transcript data={items('b', 'c')} onMenuKey={onMenuKey} />)
+    expect(fireEvent.keyDown(byId(ROW(1)), keys)).toBe(false)
+    // The control presses itself; the menu is not asked for.
+    fireEvent.keyDown(byId(CONTROL), keys)
+    expect(fireEvent.keyDown(byId(ROW(1)), { ...keys, ctrlKey: true })).toBe(true)
+    expect(onMenuKey.mock.calls).toEqual([[byId(ROW(1))]])
+  })
+
   it('takes no stop and no keys without roving focus', () => {
     renderInUI(<Transcript data={items('a', 'b', 'c')} rovingFocus={null} />)
     expect(tabIndexes(3)).toEqual([null, null, null])

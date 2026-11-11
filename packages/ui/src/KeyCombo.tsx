@@ -19,9 +19,9 @@ export type KeyName =
   | 'alt'
   | 'up'
   | 'down'
-  | 'menu'
+  | 'enter'
+  | 'space'
   | 'f'
-  | 'f10'
   | 'f11'
   | 'plus'
   | 'minus'
@@ -32,12 +32,13 @@ export type KeyName =
 const ICONS: Partial<Record<KeyName, IconName>> = { up: 'arrowUp', down: 'arrowDown' }
 
 /** Legends as the keyboards print them, which no locale translates; the catalogue has none. */
-const SHARED: Record<Exclude<KeyName, 'mod' | 'ctrl' | 'shift' | 'alt'>, string> = {
+const SHARED: Record<
+  Exclude<KeyName, 'mod' | 'ctrl' | 'shift' | 'alt' | 'enter' | 'space'>,
+  string
+> = {
   up: '↑',
   down: '↓',
-  menu: 'Menu',
   f: 'F',
-  f10: 'F10',
   f11: 'F11',
   plus: '+',
   minus: '-',
@@ -46,8 +47,16 @@ const SHARED: Record<Exclude<KeyName, 'mod' | 'ctrl' | 'shift' | 'alt'>, string>
 }
 
 const LEGENDS: Record<KeyNames, Record<KeyName, string>> = {
-  mac: { ...SHARED, mod: '⌘', ctrl: '⌃', shift: '⇧', alt: '⌥' },
-  pc: { ...SHARED, mod: 'Ctrl', ctrl: 'Ctrl', shift: 'Shift', alt: 'Alt' },
+  mac: { ...SHARED, mod: '⌘', ctrl: '⌃', shift: '⇧', alt: '⌥', enter: 'Return', space: 'Space' },
+  pc: {
+    ...SHARED,
+    mod: 'Ctrl',
+    ctrl: 'Ctrl',
+    shift: 'Shift',
+    alt: 'Alt',
+    enter: 'Enter',
+    space: 'Space',
+  },
 }
 
 export interface KeyComboProps {

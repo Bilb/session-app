@@ -19,9 +19,13 @@ export const keyCombo = defineStory<KeyComboProps>({
       testID: 'catalog-key-combo-mac-longest',
     },
     pc: { keys: ['mod', 'slash'], names: 'pc', testID: 'catalog-key-combo-pc' },
-    pcLongest: { keys: ['shift', 'f10'], names: 'pc', testID: 'catalog-key-combo-pc-longest' },
+    pcLongest: {
+      keys: ['ctrl', 'shift', 'f'],
+      names: 'pc',
+      testID: 'catalog-key-combo-pc-longest',
+    },
     arrow: { keys: ['up'], names: 'pc', testID: 'catalog-key-combo-arrow' },
-    word: { keys: ['menu'], names: 'pc', testID: 'catalog-key-combo-word' },
+    word: { keys: ['enter'], names: 'mac', testID: 'catalog-key-combo-word' },
   },
   render: (props) => <KeyCombo {...props} />,
 })

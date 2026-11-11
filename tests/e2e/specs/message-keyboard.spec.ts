@@ -135,7 +135,7 @@ test('opens the focused message’s menu from the keyboard, against the message,
     await press(app, 'ArrowUp')
     await expectMessageFocused(app, NEWEST - 1)
 
-    await press(app, 'Shift+F10')
+    await press(app, 'Enter')
     await expectMenuAgainst(app, NEWEST - 1)
     // Opened by the keyboard, the first row has focus.
     await expectFocusOn(app, MENU.item('reply'))
@@ -143,7 +143,7 @@ test('opens the focused message’s menu from the keyboard, against the message,
     await expect(app.locator(MENU.menu)).toHaveCount(0)
     await expectMessageFocused(app, NEWEST - 1)
 
-    await press(app, 'ContextMenu')
+    await press(app, 'Space')
     await expectMenuAgainst(app, NEWEST - 1)
     // Tab closes the menu as Escape does.
     await press(app, 'Tab')
@@ -159,6 +159,13 @@ test('opens the focused message’s menu from the keyboard, against the message,
     await expectMenuAgainst(app, WITH_FILE)
     await press(app, 'Escape')
     await expectFocusOn(app, CONVERSATION.attachmentAction)
+    // The platform's Menu key works as well, though the list teaches Enter.
+    await press(app, 'ContextMenu')
+    await expectMenuAgainst(app, WITH_FILE)
+    await press(app, 'Escape')
+    // Enter inside the message is the control's, not the menu's.
+    await press(app, 'Enter')
+    await expect(app.locator(MENU.menu)).toHaveCount(0)
   } finally {
     await app.close()
   }

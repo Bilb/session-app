@@ -19,8 +19,7 @@ export interface KeyboardShortcutGroup {
  * Every key the desktop app handles beyond typing and Tab, as each platform presses it.
  *
  * Only what is handled: the transcript's keys (`listFocus` and `MessageFrame` in `@session/ui`)
- * and the menu bar's accelerators (`appMenu.ts` in the desktop app). A Mac keyboard has no Menu
- * key, so Shift+F10 is its only way to a message's menu; full screen is Electron's own
+ * and the menu bar's accelerators (`appMenu.ts` in the desktop app). Full screen is Electron's own
  * accelerator, ⌃⌘F on a Mac and F11 elsewhere. Built per call, so the labels follow the language.
  */
 export function keyboardShortcuts(names: KeyNames): readonly KeyboardShortcutGroup[] {
@@ -32,11 +31,8 @@ export function keyboardShortcuts(names: KeyNames): readonly KeyboardShortcutGro
       shortcuts: [
         // One pair, as apps list the arrows: either key, each its own way.
         { name: 'navigate', label: PENDING_COPY.messageNavigate, combos: [['up', 'down']] },
-        {
-          name: 'menu',
-          label: tr('openMessageContextMenu'),
-          combos: mac ? [['shift', 'f10']] : [['menu'], ['shift', 'f10']],
-        },
+        // Shift+F10 and the Menu key work too, as the platform's, but are not what to learn.
+        { name: 'menu', label: tr('openMessageContextMenu'), combos: [['enter'], ['space']] },
       ],
     },
     {

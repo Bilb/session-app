@@ -52,7 +52,7 @@ test('the Help menu and Help in settings open the keyboard shortcuts @desktop', 
     await chooseFromHelpMenu(app)
     await expect(list.first()).toBeVisible()
     await expect(page.getByTestId(ELEMENT.keyboardShortcuts.combo('menu', 0)).first()).toHaveText(
-      'Menu',
+      'Enter',
     )
     await expect(
       page.getByTestId(ELEMENT.keyboardShortcuts.combo('full-screen', 0)).first(),

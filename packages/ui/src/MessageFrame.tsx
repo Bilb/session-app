@@ -24,8 +24,9 @@ export interface MessageFrameProps {
    */
   focusable?: boolean | undefined
   /**
-   * The Menu key or Shift+F10 on the frame or anything inside it, with the frame to anchor a menu
-   * to. The key's own context menu is cancelled.
+   * The keys that open the message's menu, with the frame to anchor it to: Enter or Space on the
+   * frame itself, and the Menu key or Shift+F10 on the frame or anything inside it, whose own
+   * context menu is cancelled.
    */
   onMenuKey?: ((frame: unknown) => void) | undefined
   testID?: string | undefined
@@ -34,12 +35,25 @@ export interface MessageFrameProps {
 
 interface MenuKeyEvent {
   key: string
+  altKey: boolean
+  ctrlKey: boolean
+  metaKey: boolean
   shiftKey: boolean
+  target: unknown
+  currentTarget: unknown
   preventDefault: () => void
 }
 
+/**
+ * Enter or Space as legacy Session Desktop had them, on the frame only: inside it they press the
+ * control that has focus. The Menu key and Shift+F10 are the platform's, from anywhere in it.
+ */
 function isMenuKey(event: MenuKeyEvent): boolean {
-  return event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)
+  if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) return true
+  const plain = !(event.altKey || event.ctrlKey || event.metaKey || event.shiftKey)
+  return (
+    plain && (event.key === 'Enter' || event.key === ' ') && event.target === event.currentTarget
+  )
 }
 
 /**
