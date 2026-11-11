@@ -21,8 +21,21 @@ import { plainPath } from './storage/layout'
 import { exportsDirectory, File } from './storage/roots'
 import { sweepStaged } from './storage/staging'
 
-/** The legacy desktop client's name for a saved QR code; the share sheet offers it as the name. */
+/** The name the share sheet offers for a QR code. */
 const QR_CODE_FILE = 'session-qr-code.png'
+
+/**
+ * A QR code a share left behind when the app was killed while its sheet was open. It may be a
+ * recovery password's, which is the seed, so it does not wait for the next share to be replaced.
+ */
+function sweepSharedQrCode(): void {
+  try {
+    const left = new File(exportsDirectory(), QR_CODE_FILE)
+    if (left.exists) left.delete()
+  } catch {
+    // Nothing to sweep is the common case.
+  }
+}
 
 /**
  * Whose servers fast mode would use, which is what the onboarding screen has to name.
@@ -168,13 +181,19 @@ const ports = memoryPorts({
     // Android would show as a heading above what was shared.
     shareText: (text) => Share.share({ message: text }).then(() => undefined),
     // A file in the exports directory, as an exported log is, so Android's sheet can take it
-    // through expo-sharing's content provider. The last one goes first, for the same reason the
-    // logs keep one: an app it was shared to may still be reading it.
+    // through expo-sharing's content provider. Unlike a log it is deleted once the sheet is done
+    // with it: a recovery password's code is the seed, and no copy of it may outlive the share.
+    // The sheet resolves once the app it went to has taken it on iOS, and once Session is back in
+    // front on Android.
     shareQrCode: async (value) => {
       const out = new File(exportsDirectory(), QR_CODE_FILE)
       if (out.exists) out.delete()
       await out.write(qrCodePng(value))
-      await Sharing.shareAsync(out.uri, { mimeType: 'image/png', UTI: 'public.png' })
+      try {
+        await Sharing.shareAsync(out.uri, { mimeType: 'image/png', UTI: 'public.png' })
+      } finally {
+        if (out.exists) out.delete()
+      }
     },
   },
   clipboard: {
@@ -248,6 +267,7 @@ const ports = memoryPorts({
 
 sweepStagedExports()
 sweepStaged()
+sweepSharedQrCode()
 
 /**
  * In front means `active`. `inactive` -- the app switcher, a call coming in, Control Centre over
