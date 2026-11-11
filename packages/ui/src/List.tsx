@@ -1,7 +1,10 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
 import { FlatList } from 'react-native'
+import { isWeb } from 'tamagui'
 
 import { SPACING } from '@session/theme-tokens'
+
+import { ListFocus, ListFocusContext, ListRowKey, type ListFocusEntry } from './listFocus'
 
 /**
  * A long list, drawn a screenful at a time.
@@ -43,6 +46,12 @@ export interface ListProps<T> {
   paddingHorizontal?: keyof typeof SPACING
   /** The row to open on. Only with `itemHeight`, which is what places it before it is drawn. */
   initialScrollIndex?: number | undefined
+  /**
+   * Makes the list one tab stop on the desktop, with Up and Down moving between rows; a no-op on
+   * native. The stop is whatever in each row calls `useListStop`; this says which row Tab enters
+   * on before any has been focused.
+   */
+  rovingFocus?: ListFocusEntry | undefined
 }
 
 const FILLS = { flex: 1 } as const
@@ -61,10 +70,26 @@ export function List<T>({
   fitsContent = false,
   paddingHorizontal,
   initialScrollIndex,
+  rovingFocus,
 }: ListProps<T>) {
+  const [focus] = useState(() =>
+    rovingFocus === undefined || !isWeb ? null : new ListFocus(rovingFocus, inverted ?? false),
+  )
+
+  useLayoutEffect(() => {
+    focus?.setKeys(data.map(keyExtractor))
+  }, [focus, data, keyExtractor])
+
   const renderRow = useCallback(
-    ({ item, index }: { item: T; index: number }) => renderItem(item, index),
-    [renderItem],
+    ({ item, index }: { item: T; index: number }) =>
+      focus === null ? (
+        renderItem(item, index)
+      ) : (
+        <ListRowKey.Provider value={keyExtractor(item, index)}>
+          {renderItem(item, index)}
+        </ListRowKey.Provider>
+      ),
+    [focus, renderItem, keyExtractor],
   )
 
   const contentContainerStyle = useMemo(
@@ -84,7 +109,7 @@ export function List<T>({
     [itemHeight],
   )
 
-  return (
+  const list = (
     <FlatList
       style={fitsContent ? FITS_CONTENT : FILLS}
       {...(contentContainerStyle === undefined ? {} : { contentContainerStyle })}
@@ -107,5 +132,10 @@ export function List<T>({
       {...(testID === undefined ? {} : { testID })}
       {...(onEndReached === undefined ? {} : { onEndReached, onEndReachedThreshold: 0.5 })}
     />
+  )
+  return focus === null ? (
+    list
+  ) : (
+    <ListFocusContext.Provider value={focus}>{list}</ListFocusContext.Provider>
   )
 }

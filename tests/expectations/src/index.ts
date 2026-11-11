@@ -15,6 +15,7 @@ export {
   type FileRowSituation,
   type FileRowState,
 } from './fileRow'
+export { MESSAGE_FRAME } from './messageFrame'
 export { MESSAGE_QUOTE_ID, messageQuote } from './messageQuote'
 export { type Expected, type ExpectedNode, type ExpectedRole, type Platform } from './node'
 export { pressArea } from './pressArea'

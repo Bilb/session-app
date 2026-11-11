@@ -38,6 +38,7 @@ import { Icon } from './Icon'
 import { inkFor } from './ink'
 import { useForcedFocus } from './interactionOverride'
 import { focusRing, heldButton, keyboardPress } from './keyboardPress'
+import { useListTabIndex } from './listFocus'
 import { pressHint } from './pressHint'
 import { ProgressRing, TRANSFER_RING_SIDE_PX, TRANSFER_RING_THICKNESS } from './ProgressRing'
 import { StateLayer } from './StateLayer'
@@ -189,6 +190,7 @@ function Trailing({
   const control = fileRowControl(state)
   const menuLongPress = useMenuLongPress()
   const forcedFocus = useForcedFocus()
+  const tabIndex = useListTabIndex()
 
   // The square is held whatever the state, so the name's width does not change when a transfer
   // ends and the controls stay in one column down a list of rows.
@@ -226,11 +228,11 @@ function Trailing({
       {...(!isWeb
         ? {}
         : held
-          ? heldButton(actionLabel, ring)
+          ? heldButton(actionLabel, ring, tabIndex)
           : {
               role: 'button' as const,
               ...(actionLabel === undefined ? {} : { 'aria-label': actionLabel }),
-              ...keyboardPress(onAction, ring),
+              ...keyboardPress(onAction, ring, tabIndex),
             })}
       {...forcedFocus}
       {...(isWeb ? { 'aria-disabled': held } : {})}
@@ -300,6 +302,7 @@ export function FileRow({
   const nameInk = inkFor(tone.name, onAccent)
   const fontScale = useFontScale()
   const forcedFocus = useForcedFocus()
+  const tabIndex = useListTabIndex()
   const menuLongPress = useMenuLongPress()
   // While fetching, the lead square stays a disabled button rather than losing its stop, which
   // would drop focus on it to the page.
@@ -378,9 +381,9 @@ export function FileRow({
                   role: 'button' as const,
                   'aria-label': filename,
                   ...pressHint(openLabel),
-                  ...keyboardPress(onOpen, leadRing),
+                  ...keyboardPress(onOpen, leadRing, tabIndex),
                 })}
-            {...(leadHeld && isWeb ? heldButton(filename, leadRing) : {})}
+            {...(leadHeld && isWeb ? heldButton(filename, leadRing, tabIndex) : {})}
             {...forcedFocus}
             {...(isWeb ? { 'aria-disabled': leadHeld } : {})}
             position="relative"

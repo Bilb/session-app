@@ -5,7 +5,7 @@ import { composerReply } from './composerReply'
 import { contextMenu } from './contextMenu'
 import { contextMenuPlacement } from './contextMenuPlacement'
 import { fileRow, fileRowOnAccent, fileRowReceived } from './fileRow'
-import { messageFrameHighlight } from './messageFrame'
+import { messageFrameFocus, messageFrameHighlight } from './messageFrame'
 import { avatar, progressRing, radio } from './indicators'
 import { messageQuote, messageQuoteAuthors, messageQuoteFiles, messageQuotePictures } from './quote'
 import { scrollToLatest } from './scrollToLatest'
@@ -40,6 +40,7 @@ export const STORIES: readonly AnyStory[] = [
   mediaViewer,
   contextMenu,
   contextMenuPlacement,
+  messageFrameFocus,
   messageQuote,
   messageQuotePictures,
   messageQuoteFiles,

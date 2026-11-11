@@ -4,13 +4,14 @@ import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import {
   ContextMenuTarget,
+  elementMenuAnchor,
   MessageFrame,
   ON_ACCENT_SECONDARY_OPACITY,
   Text,
   useMenuLongPress,
   XStack,
 } from '@session/ui'
-import { memo, useMemo, type ReactNode } from 'react'
+import { memo, useCallback, useMemo, type ReactNode } from 'react'
 
 import { ConversationUiContext, type ConversationUi } from './conversationUi'
 import { attachmentsWidthPx } from './attachmentsWidth'
@@ -83,6 +84,14 @@ export const MessageRow = memo(function MessageRow({
   const message = useMessage(conversationId, messageId)
   const geometry = useAlbumGeometry()
   const openMyMenu = useMessageMenuOpener(messageId)
+  const openMenuAgainst = useCallback(
+    (frame: unknown) => {
+      elementMenuAnchor(frame, (anchor) => {
+        if (anchor !== null) openMyMenu(anchor)
+      })
+    },
+    [openMyMenu],
+  )
   if (message === undefined) return null
   // A caption wraps at its attachments' width, so a narrow picture keeps a narrow bubble.
   const attachmentsWidth =
@@ -99,7 +108,12 @@ export const MessageRow = memo(function MessageRow({
       // as a share of it that fits the row, and their caption wraps at them.
       maxWidth={attachmentsWidth === undefined ? '80%' : '100%'}
     >
-      <MessageFrame outgoing={message.outgoing} testID={ELEMENT.conversation.messageRow(index)}>
+      <MessageFrame
+        outgoing={message.outgoing}
+        focusable
+        onMenuKey={openMenuAgainst}
+        testID={ELEMENT.conversation.messageRow(index)}
+      >
         {message.body.length === 0 ? null : (
           <Text
             size="$body"
