@@ -265,7 +265,10 @@ export interface WindowPort {
 export interface KeyboardShortcutsPort {
   /** Whether the keys are named as a Mac's keyboard prints them (⌘ ⇧) or as a PC's (Ctrl Shift). */
   keyNames: 'mac' | 'pc'
-  /** The menu command that opens the list, Ctrl+/ or ⌘/, chosen by the person. */
+  /**
+   * Called when the person picks Help > Keyboard Shortcuts, from the menu bar or with Ctrl+/ (⌘/
+   * on a Mac).
+   */
   onOpenList(handler: () => void): () => void
 }
 

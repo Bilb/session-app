@@ -38,19 +38,20 @@ const key = (item: Item) => item.id
 function Transcript({
   data,
   rovingFocus = 'last',
-  onMenuKey,
+  onRowMenu,
 }: {
   data: readonly Item[]
   rovingFocus?: ListFocusEntry | null
-  onMenuKey?: (frame: unknown) => void
+  onRowMenu?: (key: string, row: unknown) => void
 }) {
   return (
     <List
       data={data}
       keyExtractor={key}
       rovingFocus={rovingFocus ?? undefined}
+      onRowMenu={onRowMenu}
       renderItem={(item, index) => (
-        <MessageFrame outgoing={false} focusable onMenuKey={onMenuKey} testID={ROW(index)}>
+        <MessageFrame outgoing={false} focusable testID={ROW(index)}>
           <Text>{item.id}</Text>
           <RenderCount id={item.id} />
           {item.control === true ? (
@@ -149,25 +150,28 @@ describe('List with roving focus', () => {
   it.each([
     ['the Menu key', { key: 'ContextMenu' }],
     ['Shift+F10', { key: 'F10', shiftKey: true }],
-  ])('hands %s the frame to anchor to, from the frame or inside it', (_, keys) => {
-    const onMenuKey = vi.fn()
-    renderInUI(<Transcript data={items('b', 'c')} onMenuKey={onMenuKey} />)
+  ])('opens the row’s menu on %s, from the row or inside it', (_, keys) => {
+    const onRowMenu = vi.fn()
+    renderInUI(<Transcript data={items('b', 'c')} onRowMenu={onRowMenu} />)
     expect(fireEvent.keyDown(byId(ROW(1)), keys)).toBe(false)
     fireEvent.keyDown(byId(CONTROL), keys)
-    expect(onMenuKey.mock.calls).toEqual([[byId(ROW(1))], [byId(ROW(1))]])
+    expect(onRowMenu.mock.calls).toEqual([
+      ['c', byId(ROW(1))],
+      ['c', byId(ROW(1))],
+    ])
   })
 
   it.each([
     ['Enter', { key: 'Enter' }],
     ['Space', { key: ' ' }],
-  ])('hands %s the frame on the frame only, leaving it to a control inside', (_, keys) => {
-    const onMenuKey = vi.fn()
-    renderInUI(<Transcript data={items('b', 'c')} onMenuKey={onMenuKey} />)
+  ])('opens the row’s menu on %s on the row only, leaving it to a control inside', (_, keys) => {
+    const onRowMenu = vi.fn()
+    renderInUI(<Transcript data={items('b', 'c')} onRowMenu={onRowMenu} />)
     expect(fireEvent.keyDown(byId(ROW(1)), keys)).toBe(false)
     // The control presses itself; the menu is not asked for.
     fireEvent.keyDown(byId(CONTROL), keys)
     expect(fireEvent.keyDown(byId(ROW(1)), { ...keys, ctrlKey: true })).toBe(true)
-    expect(onMenuKey.mock.calls).toEqual([[byId(ROW(1))]])
+    expect(onRowMenu.mock.calls).toEqual([['c', byId(ROW(1))]])
   })
 
   it('takes no stop and no keys without roving focus', () => {

@@ -4,7 +4,13 @@ import { isWeb } from 'tamagui'
 
 import { SPACING } from '@session/theme-tokens'
 
-import { ListFocus, ListFocusContext, ListRowKey, type ListFocusEntry } from './listFocus'
+import {
+  ListFocus,
+  ListFocusContext,
+  ListRowKey,
+  type ListFocusEntry,
+  type ListRowMenu,
+} from './listFocus'
 
 /**
  * A long list, drawn a screenful at a time.
@@ -52,6 +58,11 @@ export interface ListProps<T> {
    * on before any has been focused.
    */
   rovingFocus?: ListFocusEntry | undefined
+  /**
+   * With `rovingFocus`: opens a row's menu, against the element that is its stop, on Enter or
+   * Space on that element, or the Menu key or Shift+F10 anywhere in the row.
+   */
+  onRowMenu?: ListRowMenu | undefined
 }
 
 const FILLS = { flex: 1 } as const
@@ -71,6 +82,7 @@ export function List<T>({
   paddingHorizontal,
   initialScrollIndex,
   rovingFocus,
+  onRowMenu,
 }: ListProps<T>) {
   // TODO(#533): keyboard on iPad and the iPad app on Mac. Full Keyboard Access reaches a row only
   // as a full-width accessibility element with the button trait, which hides the row's own
@@ -83,6 +95,10 @@ export function List<T>({
   useLayoutEffect(() => {
     focus?.setKeys(data.map(keyExtractor))
   }, [focus, data, keyExtractor])
+
+  useLayoutEffect(() => {
+    if (focus !== null) focus.rowMenu = onRowMenu ?? null
+  }, [focus, onRowMenu])
 
   const renderRow = useCallback(
     ({ item, index }: { item: T; index: number }) =>

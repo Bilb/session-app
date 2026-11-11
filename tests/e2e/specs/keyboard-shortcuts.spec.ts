@@ -18,7 +18,9 @@ async function chooseFromHelpMenu(app: ElectronApplication): Promise<void> {
     const help = Menu.getApplicationMenu()?.items.find((menu) => menu.role === 'help')
     const item = help?.submenu?.items.find((candidate) => candidate.accelerator === 'CmdOrCtrl+/')
     if (item === undefined) throw new Error('no Keyboard Shortcuts in the Help menu')
-    item.click(undefined, BrowserWindow.getAllWindows()[0], undefined)
+    // Electron types `click` as a bare `Function`; this is the signature it calls it with.
+    const click = item.click as (event: unknown, window: unknown, contents: unknown) => void
+    click(undefined, BrowserWindow.getAllWindows()[0], undefined)
   })
 }
 
