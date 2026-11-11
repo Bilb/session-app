@@ -1,6 +1,6 @@
 import { requirePorts } from '@session/app'
 import { tr } from '@session/localization'
-import { useSessionActions, type RecoveryPassword } from '@session/state'
+import { useSessionActions, type RecoveryPassword, type SessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import {
   Button,
@@ -154,43 +154,69 @@ function Words({ words }: { words: string[] }) {
 }
 
 /**
- * The recovery password: the words, or the QR code of the seed they encode, and hiding it for
- * good. A child screen; the settings modal supplies the chrome.
+ * Opens the recovery password once it has loaded, as legacy iOS does: the page arrives laid out
+ * rather than growing when the words come, and a failure is said in place of it.
  *
- * The words and the seed are held here only, never in the store or a log: a string in JavaScript
- * cannot be wiped, so the fewer places hold one the better.
+ * The words and the seed are held by the page alone, never in the store or a log: a string in
+ * JavaScript cannot be wiped, so the fewer places hold one the better.
+ */
+export function openRecoveryPassword(modals: Modals, actions: SessionActions): void {
+  actions.getRecoveryPassword().then(
+    (secret) => {
+      modals.push({
+        title: tr('sessionRecoveryPassword'),
+        render: () => <RecoveryPasswordPage secret={secret} />,
+      })
+    },
+    () => {
+      const id = modals.present({
+        kind: 'alert',
+        testID: ELEMENT.recoveryPassword.loadError,
+        initial: {
+          title: tr('theError'),
+          render: () => (
+            <Text size="$body" textAlign="center">
+              {tr('recoveryPasswordErrorLoad')}
+            </Text>
+          ),
+          footer: () => (
+            <Button
+              variant="ghost"
+              fill
+              borderRadius="$none"
+              onPress={() => {
+                modals.dismiss(id)
+              }}
+            >
+              {tr('okay')}
+            </Button>
+          ),
+        },
+      })
+    },
+  )
+}
+
+/**
+ * The recovery password: the words, or the QR code of the seed they encode, and hiding it for
+ * good. A child screen; the settings modal supplies the chrome. See `openRecoveryPassword`.
  */
 export function RecoveryPasswordPage({
+  secret,
   initialView = 'words',
 }: {
+  secret: RecoveryPassword
   /** Which the page opens on. The QR code is for the catalog, which has no press to get there. */
   initialView?: 'words' | 'qr' | undefined
-} = {}) {
+}) {
   // TODO: the legacy desktop client asks for the app password before showing this, where one is
   // set. There is no app password yet; ask for it here once there is.
   const actions = useSessionActions()
   const modals = useModals()
   const window = useWindowSize()
   const ports = requirePorts()
-  const [secret, setSecret] = useState<RecoveryPassword | null>(null)
-  const [failed, setFailed] = useState(false)
   const [showingQr, setShowingQr] = useState(initialView === 'qr')
   const [fullScreen, setFullScreen] = useState(false)
-
-  useEffect(() => {
-    let live = true
-    actions.getRecoveryPassword().then(
-      (loaded) => {
-        if (live) setSecret(loaded)
-      },
-      () => {
-        if (live) setFailed(true)
-      },
-    )
-    return () => {
-      live = false
-    }
-  }, [actions])
 
   // Out of screenshots, recordings and the recents thumbnail while it is on screen, where the
   // platform offers that (Android). The modal host is drawn afresh after: on a tablet Settings is
@@ -212,16 +238,15 @@ export function RecoveryPasswordPage({
   // where a file can be saved, which is the desktop alone.
   const saveQrCode = ports.files.saveQrCode
   const qrSizePx = Math.min(QR_SIZE_PX, window.width - QR_INSET_PX)
-  const qr =
-    secret === null ? null : (
-      <QrCode
-        value={secret.seedHex}
-        sizePx={qrSizePx}
-        logo={RecoveryPasswordMark}
-        accessibilityLabel={tr('qrCode')}
-        testID={ELEMENT.recoveryPassword.qr}
-      />
-    )
+  const qr = (
+    <QrCode
+      value={secret.seedHex}
+      sizePx={qrSizePx}
+      logo={RecoveryPasswordMark}
+      accessibilityLabel={tr('qrCode')}
+      testID={ELEMENT.recoveryPassword.qr}
+    />
+  )
 
   return (
     <YStack padding="$md" gap="$lg">
@@ -239,11 +264,7 @@ export function RecoveryPasswordPage({
             alignSelf="stretch"
           />
 
-          {failed ? (
-            <Text size="$body" color="$dangerColor" testID={ELEMENT.recoveryPassword.loadError}>
-              {tr('recoveryPasswordErrorLoad')}
-            </Text>
-          ) : secret === null ? null : showingQr ? (
+          {showingQr ? (
             <>
               {saveQrCode === null ? (
                 qr
@@ -314,7 +335,7 @@ export function RecoveryPasswordPage({
 
       {saveQrCode === null ? null : (
         <QrViewer
-          value={fullScreen && secret !== null ? secret.seedHex : null}
+          value={fullScreen ? secret.seedHex : null}
           onClose={() => {
             setFullScreen(false)
           }}
@@ -329,7 +350,7 @@ export function RecoveryPasswordPage({
                 icon: 'download',
                 testID: ELEMENT.contextMenu.item('save'),
                 onSelect: () => {
-                  if (secret !== null) void saveQrCode(secret.seedHex)
+                  void saveQrCode(secret.seedHex)
                 },
               },
             ],

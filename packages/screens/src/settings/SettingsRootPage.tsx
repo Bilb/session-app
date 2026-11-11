@@ -30,7 +30,7 @@ import { AccountIdControls } from './AccountIdControls'
 import { confirmLink } from './confirmLink'
 import { ConversationsPage } from './ConversationsPage'
 import { HelpPage } from './HelpPage'
-import { RecoveryPasswordPage } from './RecoveryPasswordPage'
+import { openRecoveryPassword } from './RecoveryPasswordPage'
 import { SessionInfo } from './SessionInfo'
 import { endAfterClear } from '../endAfterClear'
 import { LocalizedText } from '../LocalizedText'
@@ -294,10 +294,7 @@ export function SettingsRootPage() {
               icon: RecoveryPasswordShield,
               testID: row('recovery-password'),
               onPress: () => {
-                modals.push({
-                  title: tr('sessionRecoveryPassword'),
-                  render: () => <RecoveryPasswordPage />,
-                })
+                openRecoveryPassword(modals, actions)
               },
             } satisfies RowSpec,
           ]),

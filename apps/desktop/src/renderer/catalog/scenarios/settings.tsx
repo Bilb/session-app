@@ -1,6 +1,15 @@
 import { AttachmentCacheSection, RecoveryPasswordPage } from '@session/screens'
 import { defineStory, type AnyStory } from '@session/ui/catalog'
 
+/** Made up, never an account's: the fake's thirteen words and a 16-byte seed. */
+const CATALOG_SECRET = {
+  words:
+    'letters mumble ordeal jaded womanly framed jailed sifting january nurse gutter estate jaded'.split(
+      ' ',
+    ),
+  seedHex: '0123456789abcdef0123456789abcdef',
+}
+
 /** A phone's width, as the settings row's own story draws at. */
 const SECTION_WIDTH = 390
 
@@ -25,6 +34,6 @@ export const SETTINGS_SCENARIOS: readonly AnyStory[] = [
     width: SECTION_WIDTH,
     sensitive: { rtl: true, theme: true },
     variants: { words: { view: 'words' }, qr: { view: 'qr' } },
-    render: ({ view }) => <RecoveryPasswordPage initialView={view} />,
+    render: ({ view }) => <RecoveryPasswordPage secret={CATALOG_SECRET} initialView={view} />,
   }),
 ]
