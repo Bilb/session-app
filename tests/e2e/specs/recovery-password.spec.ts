@@ -75,6 +75,14 @@ test('shows the recovery password as words and a QR code, saves the code, and hi
     await page.getByTestId(ELEMENT.recoveryPassword.viewWords).first().click()
     await expect(words).toBeVisible()
 
+    // From the keyboard, the focus follows each swap to the button that swaps back, rather than
+    // falling to the page with the button that was pressed.
+    await page.getByTestId(ELEMENT.recoveryPassword.viewQr).first().focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByTestId(ELEMENT.recoveryPassword.viewWords).first()).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(page.getByTestId(ELEMENT.recoveryPassword.viewQr).first()).toBeFocused()
+
     // Two confirmations, the second with Cancel where the first had Continue.
     await page.getByTestId(ELEMENT.recoveryPassword.hide).first().click()
     const proceed = page.getByTestId(ELEMENT.recoveryPassword.hideContinue).first()

@@ -214,6 +214,9 @@ export function RecoveryPasswordPage({
   const window = useWindowSize()
   const ports = requirePorts()
   const [showingQr, setShowingQr] = useState(initialView === 'qr')
+  // Whether the words and the code have swapped since the page opened: the button that swaps back
+  // takes the focus then, and only then, so opening the page does not move it.
+  const [swapped, setSwapped] = useState(false)
 
   // Out of screenshots, recordings and the recents thumbnail while it is on screen, where the
   // platform offers that (Android). The modal host is drawn afresh after: on a tablet Settings is
@@ -264,8 +267,10 @@ export function RecoveryPasswordPage({
                   variant="outline"
                   fill
                   testID={ELEMENT.recoveryPassword.viewWords}
+                  focusOnMount={swapped}
                   onPress={() => {
                     setShowingQr(false)
+                    setSwapped(true)
                   }}
                 >
                   {tr('recoveryPasswordView')}
@@ -281,8 +286,10 @@ export function RecoveryPasswordPage({
                   variant="outline"
                   fill
                   testID={ELEMENT.recoveryPassword.viewQr}
+                  focusOnMount={swapped}
                   onPress={() => {
                     setShowingQr(true)
+                    setSwapped(true)
                   }}
                 >
                   {tr('qrView')}
