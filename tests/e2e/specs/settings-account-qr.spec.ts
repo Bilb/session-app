@@ -85,6 +85,14 @@ test('swaps the display picture for the account QR code, opens it full screen, a
     await expect(name).toBeVisible()
     await expect(page.getByTestId(ELEMENT.settings.accountQr)).toHaveCount(0)
 
+    // From the keyboard, the focus follows each swap to the badge that swaps back, rather than
+    // falling to the page with the badge that was pressed.
+    await page.getByTestId(ELEMENT.settings.qrToggle).first().focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByTestId(ELEMENT.settings.qrBack).first()).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(page.getByTestId(ELEMENT.settings.qrToggle).first()).toBeFocused()
+
     expect((await avatar.boundingBox())?.width).toBe(RESTING_PX)
     await avatar.click()
     await expect.poll(async () => (await avatar.boundingBox())?.width).toBe(ENLARGED_PX)

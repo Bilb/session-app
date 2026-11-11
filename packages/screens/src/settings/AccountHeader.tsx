@@ -73,11 +73,13 @@ function SwapBadge({
   icon,
   accessibilityLabel,
   testID,
+  focusOnMount,
   onPress,
 }: {
   icon: 'qrCode' | 'userRound'
   accessibilityLabel: string
   testID: string
+  focusOnMount: boolean
   onPress: () => void
 }) {
   return (
@@ -87,6 +89,7 @@ function SwapBadge({
       circular
       accessibilityLabel={accessibilityLabel}
       testID={testID}
+      focusOnMount={focusOnMount}
       onPress={onPress}
       icon={<Icon name={icon} size="md" color="$onAccent" />}
     />
@@ -114,6 +117,9 @@ export function AccountHeader({
 }) {
   const [showingQr, setShowingQr] = useState(initialView === 'qr')
   const [enlarged, setEnlarged] = useState(initialView === 'enlargedAvatar')
+  // Whether the picture and the code have swapped since the header was drawn: the badge that swaps
+  // back takes the focus then, and only then, so opening Settings does not move it.
+  const [swapped, setSwapped] = useState(false)
   const avatarPx = enlarged ? ENLARGED_PX : PROFILE_AVATAR_PX
   const inset = QR_BADGE_INSET[enlarged ? 'enlarged' : 'resting']
 
@@ -146,8 +152,10 @@ export function AccountHeader({
               // No catalogue string says "show the display picture"; this names what comes back.
               accessibilityLabel={tr('profileDisplayPicture')}
               testID={ELEMENT.settings.qrBack}
+              focusOnMount={swapped}
               onPress={() => {
                 setShowingQr(false)
+                setSwapped(true)
               }}
             />
           </YStack>
@@ -177,8 +185,10 @@ export function AccountHeader({
               icon="qrCode"
               accessibilityLabel={tr('qrView')}
               testID={ELEMENT.settings.qrToggle}
+              focusOnMount={swapped}
               onPress={() => {
                 setShowingQr(true)
+                setSwapped(true)
               }}
             />
           </YStack>
