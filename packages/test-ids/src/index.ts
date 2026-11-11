@@ -265,6 +265,11 @@ export const ELEMENT = {
     /** A row, by its entry's id: `reply`, `copy`, `delete`. */
     item: (id: string) => `context-menu-item-${id}` as const,
   },
+  /** Whichever full-screen QR code is open: only one ever is. */
+  qrViewer: {
+    /** The button under the code that hands it to the share sheet, on the phones. */
+    share: 'qr-viewer-share',
+  },
   catalog: {
     page: 'catalog-page',
     ready: 'catalog-ready',

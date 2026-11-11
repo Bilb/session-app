@@ -20,9 +20,10 @@ type ShareableQrCodeProps = Pick<
 }
 
 /**
- * A QR code with what each platform can do with it, as the legacy clients offer: on desktop a
- * press opens it full screen, where a right-click saves it; on the phones a long press opens the
- * share sheet, from which it can be saved to Files. A platform with neither draws the code alone.
+ * A QR code with what each platform can do with it. A press opens it full screen. On desktop a
+ * right-click there saves it; on the phones a Share button under it, or a long press on the code
+ * on the page, opens the share sheet, from which it can be saved to Files. A platform with neither
+ * draws the code alone.
  *
  * The menu and the full-screen viewer are platform modals, so where this sits in a layout places
  * only the code.
@@ -94,7 +95,32 @@ export function ShareableQrCode({
 
   return (
     <>
-      <ContextMenuTarget onOpen={setShareMenu}>{qr}</ContextMenuTarget>
+      <ContextMenuTarget onOpen={setShareMenu}>
+        <PressArea
+          accessibilityLabel={accessibilityLabel}
+          onPress={() => {
+            setFullScreen(true)
+          }}
+        >
+          {() => qr}
+        </PressArea>
+      </ContextMenuTarget>
+      <QrViewer
+        value={fullScreen ? value : null}
+        onClose={() => {
+          setFullScreen(false)
+        }}
+        accessibilityLabel={accessibilityLabel}
+        testID={fullScreenTestID}
+        action={{
+          label: tr('share'),
+          icon: 'share2',
+          testID: ELEMENT.qrViewer.share,
+          onPress: () => {
+            void shareQrCode(value)
+          },
+        }}
+      />
       <ContextMenu
         anchor={shareMenu}
         onDismiss={() => {

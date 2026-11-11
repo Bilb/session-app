@@ -5,7 +5,7 @@ import { contextMenu } from './contextMenu'
 import { contextMenuPlacement } from './contextMenuPlacement'
 import { fileRow, fileRowOnAccent, fileRowReceived } from './fileRow'
 import { avatar, avatarLarge, progressRing, radio } from './indicators'
-import { qrCode } from './qrCode'
+import { qrCode, qrViewer } from './qrCode'
 import { settingsRow } from './settingsRow'
 import { composerNotice, dropOverlay, stagedTile, stagedTray } from './staging'
 import { textScale } from './text'
@@ -37,4 +37,5 @@ export const STORIES: readonly AnyStory[] = [
   contextMenu,
   contextMenuPlacement,
   qrCode,
+  qrViewer,
 ]
