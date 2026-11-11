@@ -25,7 +25,7 @@ import type { WithTestID } from './with'
  * The quote's metrics, measured off the plan's mock rather than taken from the ladder: the
  * square is the 44 pt target on its own, so the quote is never shorter than one.
  */
-export const QUOTE_THUMB_SIDE_PX = 44
+const QUOTE_THUMB_SIDE_PX = 44
 /** Legacy iOS's accent line: square-ended, so it reads as a rule rather than a pill. */
 const STRIPE_WIDTH_PX = 4
 const QUOTE_INSET_PX = 6
@@ -52,8 +52,8 @@ export function QuoteLines({
   thumb,
   busy = false,
 }: {
-  /** The author, or the bar's "Replying to" with the author. Absent: no author line. */
-  heading: string | undefined
+  /** The author, or the bar's "Replying to" with the author. */
+  heading: string
   preview: QuotePreview
   ink: QuoteInk
   secondary: { color: QuoteInk | ReturnType<typeof inkFor>['color']; opacity: number }
@@ -68,12 +68,11 @@ export function QuoteLines({
    */
   busy?: boolean | undefined
 }) {
-  const author =
-    heading === undefined ? null : (
-      <Text size="$label" weight="semibold" color={ink} numberOfLines={1} flexShrink={1}>
-        {heading}
-      </Text>
-    )
+  const author = (
+    <Text size="$label" weight="semibold" color={ink} numberOfLines={1} flexShrink={1}>
+      {heading}
+    </Text>
+  )
   return (
     <>
       {preview.visual === null ? <YStack width={STRIPE_WIDTH_PX} backgroundColor={stripe} /> : null}
@@ -118,10 +117,10 @@ export function QuoteLines({
 
 export type MessageQuoteProps = WithTestID & {
   /**
-   * Already worded: the nickname, display name or short account id, or "You". Absent where not
-   * even the author is known, for an original never received.
+   * Already worded: the nickname, display name or short account id, or "You". A reply carries its
+   * original's author, so it is known even when the original never arrived.
    */
-  author: string | undefined
+  author: string
   /** Absent or deleted: the original is not here, and the quote says only that. */
   message: QuotedMessage | undefined
   labels: QuoteLabels
@@ -149,7 +148,7 @@ function QuoteBody({
   pressed = false,
   thumbnailTestID,
 }: {
-  author: string | undefined
+  author: string
   preview: QuotePreview
   onAccent: boolean
   busy: boolean

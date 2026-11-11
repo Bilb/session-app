@@ -27,8 +27,7 @@ type CatalogAttachment = Omit<QuotedAttachment, 'uri' | 'thumbhash'> & {
 }
 
 export interface QuoteRow {
-  /** Absent: not even the author of the original is known. */
-  author?: string | undefined
+  author: string
   /** Absent: the original was deleted or never received. */
   quoted?:
     | (Omit<QuotedMessage, 'id' | 'outgoing' | 'attachments'> & {
@@ -130,7 +129,6 @@ export const messageQuote = defineStory<QuoteRow>({
       reply: 'Hi!',
     },
     notFound: { author: 'Bob', reply: 'What did it say?' },
-    notFoundAuthorUnknown: { reply: 'What did it say?' },
   },
   render: (row) => <Pair {...row} />,
 })

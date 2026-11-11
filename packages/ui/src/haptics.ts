@@ -13,7 +13,10 @@ const HapticsContext = createContext<Haptics | null>(null)
 
 export const HapticsProvider = HapticsContext.Provider
 
-/** Null where nothing taps back: the desktop client, and a test. */
+/**
+ * Null where nothing taps back: the desktop client, and a test.
+ * @public Read only by `.native` files, which knip does not scan.
+ */
 export function useHaptics(): Haptics | null {
   return useContext(HapticsContext)
 }

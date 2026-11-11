@@ -5,13 +5,10 @@ import { isWeb, YStack } from 'tamagui'
 import { useForcedFocus } from './interactionOverride'
 import { focusRing } from './keyboardPress'
 import { useListStop } from './listFocus'
-
 import { LandingHighlight } from './LandingHighlight'
 
 /** The frame's inset at each side, so content of a fixed width can be given room for it. */
 export const MESSAGE_FRAME_INSET_PX = SPACING.md
-/** The frame's inset above and below its content. */
-const MESSAGE_FRAME_INSET_BLOCK_PX = SPACING.sm
 
 /** Outside the bubble, so it shows against the page beside an accent fill as well. */
 const RING = focusRing({ onAccent: false, offset: 2, radius: '$lg' })
@@ -65,7 +62,7 @@ export function MessageFrame({
       backgroundColor={outgoing ? '$primaryColor' : '$messageBubbleIncomingBg'}
       borderRadius="$lg"
       paddingHorizontal={MESSAGE_FRAME_INSET_PX}
-      paddingVertical={MESSAGE_FRAME_INSET_BLOCK_PX}
+      paddingVertical="$sm"
       gap="$2xs"
       {...(web
         ? {

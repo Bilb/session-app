@@ -178,7 +178,7 @@ export function quotePreview(
 }
 
 /** "Bob: Image +4", the one name a screen reader gives the whole quote. */
-export function quoteAccessibleName(author: string | undefined, preview: QuotePreview): string {
-  const said = author === undefined ? preview.text : `${author}: ${preview.text}`
+export function quoteAccessibleName(author: string, preview: QuotePreview): string {
+  const said = `${author}: ${preview.text}`
   return preview.more === null ? said : `${said} ${preview.more}`
 }

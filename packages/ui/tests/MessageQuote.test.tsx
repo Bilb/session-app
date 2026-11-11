@@ -67,11 +67,6 @@ describe('a quote, as a screen reader reaches it on the desktop', () => {
     expect(byId(MESSAGE_QUOTE_ID).textContent).toBe('BobOriginal message not found')
   })
 
-  it('names the not-found quote by its words alone where the author is not known', () => {
-    renderInUI(<MessageQuote {...quote({ author: undefined, message: undefined })} />)
-    expect(byId(MESSAGE_QUOTE_ID).textContent).toBe('Original message not found')
-  })
-
   it('is no button where nothing is offered a press', () => {
     renderInUI(<MessageQuote {...quote({ onPress: undefined })} />)
     expect(byId(MESSAGE_QUOTE_ID).getAttribute('role')).toBeNull()

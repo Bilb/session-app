@@ -149,9 +149,8 @@ const GLYPHS = {
  *
  * The test is what the direction *refers to*, which splits three ways. Reading order mirrors: a
  * list is a picture of text, bullets on the leading edge, so in a mirrored layout the bullets
- * belong on the other side, and `reply` points back towards what was said before. A media
- * timeline does not: `play` points along the recording, and the platforms' own players keep it
- * pointing the same way in every locale, so mirroring it would make
+ * belong on the other side. A media timeline does not: `play` points along the recording, and the
+ * platforms' own players keep it pointing the same way in every locale, so mirroring it would make
  * this the only app on the device that disagrees. A picture of an object never does - a folded
  * page corner is a convention, not a direction. `reply` points back up the conversation toward the
  * message answered, which is reading order.

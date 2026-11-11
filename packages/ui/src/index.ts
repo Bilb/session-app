@@ -76,19 +76,13 @@ export { List } from './List'
 export type { ListFocusEntry } from './listFocus'
 export { MessageBubble, type MessageBubbleProps } from './MessageBubble'
 export { MESSAGE_FRAME_INSET_PX, MessageFrame, type MessageFrameProps } from './MessageFrame'
-export {
-  COMPOSER_REPLY_THUMB_SIDE_PX,
-  ComposerReply,
-  type ComposerReplyProps,
-} from './ComposerReply'
-export { type Haptics, HapticsProvider, useHaptics } from './haptics'
-export { REPLY_ACTION, replyAction } from './replyAction'
+export { ComposerReply, type ComposerReplyProps } from './ComposerReply'
+export { type Haptics, HapticsProvider } from './haptics'
+export { replyAction } from './replyAction'
 export { SwipeToReply, type SwipeToReplyProps } from './SwipeToReply'
-export { SWIPE_REPLY_THRESHOLD_PX } from './swipeMetrics'
 export { ScrollToLatest, type ScrollToLatestProps } from './ScrollToLatest'
-export { MessageQuote, QUOTE_THUMB_SIDE_PX, type MessageQuoteProps } from './MessageQuote'
+export { MessageQuote, type MessageQuoteProps } from './MessageQuote'
 export {
-  quoteAccessibleName,
   quotePreview,
   type QuotedAttachment,
   type QuotedMessage,

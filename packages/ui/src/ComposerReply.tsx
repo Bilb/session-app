@@ -10,7 +10,7 @@ import { isQuotable, quotePreview, type QuoteLabels, type QuotedMessage } from '
 import { QuoteThumb } from './QuoteThumb'
 
 /** Smaller than the quote's square: the bar holds one line of summary, not two. */
-export const COMPOSER_REPLY_THUMB_SIDE_PX = 36
+const COMPOSER_REPLY_THUMB_SIDE_PX = 36
 
 /** Takes the X's 32 px to the 48 a finger needs; a pointer needs no slop. */
 const CLOSE_HIT_SLOP_PX = 8
