@@ -18,9 +18,9 @@ export interface KeyboardShortcutGroup {
 /**
  * Every key the desktop app handles beyond typing and Tab, as each platform presses it.
  *
- * Only what is handled: the transcript's keys (`listFocus` and `MessageFrame` in `@session/ui`)
- * and the menu bar's accelerators (`appMenu.ts` in the desktop app). Full screen is Electron's own
- * accelerator, ⌃⌘F on a Mac and F11 elsewhere. Built per call, so the labels follow the language.
+ * Only what is handled: the transcript's keys (`listFocus.ts` in `@session/ui`) and the menu bar's
+ * accelerators (`appMenu.ts` in the desktop app). Full screen is Electron's own accelerator, ⌃⌘F
+ * on a Mac and F11 elsewhere. Built per call, so the labels follow the language.
  */
 export function keyboardShortcuts(names: KeyNames): readonly KeyboardShortcutGroup[] {
   const mac = names === 'mac'

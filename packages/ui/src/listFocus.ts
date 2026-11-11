@@ -201,7 +201,10 @@ export class ListFocus {
     if (key !== null) this.focused(key)
   }
 
-  /** Up and Down from a row or anything in it, and the keys that open its menu. */
+  /**
+   * Up and Down from a row or anything in it, and the keys that open its menu. A key added here
+   * goes in the list of shortcuts too, `keyboardShortcuts.ts` in the screens package.
+   */
   private readonly onRowKeyDown = (event: KeyboardEvent) => {
     const key = this.rowOf(event.target)
     const row = key === null ? undefined : this.drawn.get(key)
