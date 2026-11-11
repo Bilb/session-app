@@ -63,6 +63,7 @@ const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, Known>>> = {
     'color-contrast avatar.sizes arabic': 'the same',
     'color-contrast rail-settings': "the rail's avatar, drawn by the same component: 2.3:1",
     'color-contrast conversation-header-avatar': "the conversation header's avatar: the same",
+    'color-contrast settings-avatar': 'the avatar at the top of Settings: the same, 2.3:1',
   },
   'showcase-desktop': {
     'color-contrast message-attachment-state':

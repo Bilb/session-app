@@ -123,6 +123,14 @@ export const ELEMENT = {
     themeOption: (name: string) => `settings-theme-${name}` as const,
     accentOption: (name: string) => `settings-accent-${name}` as const,
     displayName: 'settings-display-name',
+    /** The account's display picture, which enlarges in place when pressed. */
+    avatar: 'settings-avatar',
+    /** The badge on the display picture that puts the account's QR code in its place. */
+    qrToggle: 'settings-qr-toggle',
+    /** The badge on the QR code that brings the display picture back. */
+    qrBack: 'settings-qr-back',
+    accountQr: 'settings-account-qr',
+    accountQrFullScreen: 'settings-account-qr-full-screen',
     accountId: 'settings-account-id',
     copyAccountId: 'settings-copy-account-id',
     shareAccountId: 'settings-share-account-id',
