@@ -253,6 +253,20 @@ export interface WindowPort {
   isFocused(): boolean
   /** Drives read receipts and whether a notification is worth showing. */
   onFocusChange(handler: (focused: boolean) => void): () => void
+  /**
+   * The list of keyboard shortcuts, or null where the app handles none.
+   *
+   * Null on the phones and tablets: React Native hands JavaScript no key events on iOS, so the keys
+   * the screens handle work in the desktop app only (#533).
+   */
+  keyboardShortcuts: KeyboardShortcutsPort | null
+}
+
+export interface KeyboardShortcutsPort {
+  /** Whether the keys are named as a Mac's keyboard prints them (⌘ ⇧) or as a PC's (Ctrl Shift). */
+  keyNames: 'mac' | 'pc'
+  /** The menu command that opens the list, Ctrl+/ or ⌘/, chosen by the person. */
+  onOpenList(handler: () => void): () => void
 }
 
 export interface NetworkPort {

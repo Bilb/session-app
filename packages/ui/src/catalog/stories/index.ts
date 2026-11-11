@@ -4,6 +4,7 @@ import { button, buttonOnAccent, buttonSizes } from './button'
 import { contextMenu } from './contextMenu'
 import { contextMenuPlacement } from './contextMenuPlacement'
 import { fileRow, fileRowOnAccent, fileRowReceived } from './fileRow'
+import { keyCombo } from './keyCombo'
 import { avatar, progressRing, radio } from './indicators'
 import { messageFrameFocus } from './messageFrame'
 import { settingsRow } from './settingsRow'
@@ -36,4 +37,5 @@ export const STORIES: readonly AnyStory[] = [
   contextMenu,
   contextMenuPlacement,
   messageFrameFocus,
+  keyCombo,
 ]

@@ -5,6 +5,7 @@ import { ConversationListScreen } from '../ConversationListScreen'
 import { OnboardingFlow } from '../onboarding/OnboardingFlow'
 import { StartingScreen } from '../StartingScreen'
 import { StartupFailedScreen } from '../StartupFailedScreen'
+import { useKeyboardShortcutsCommand } from '../settings/useKeyboardShortcutsCommand'
 import { usePersistedLocale } from '../usePersistedLocale'
 import { ActionRail } from './ActionRail'
 import { AdaptiveShell } from './AdaptiveShell'
@@ -36,6 +37,7 @@ export function SessionShell({
   const [onboarding, setOnboarding] = useState(false)
   // Here rather than at the root, which creates the store provider and so cannot read from it.
   usePersistedLocale()
+  useKeyboardShortcutsCommand()
 
   // Asked before `hydrated`, because both are false when a start has failed and only one of them
   // says so. The other order leaves the launch screen up over a failure that is already known.

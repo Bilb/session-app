@@ -1,0 +1,47 @@
+import { ELEMENT } from '@session/test-ids'
+import {
+  KeyCombo,
+  SettingsGroup,
+  SettingsRow,
+  SettingsSection,
+  XStack,
+  YStack,
+  type KeyNames,
+} from '@session/ui'
+
+import { keyboardShortcuts } from '../keyboardShortcuts'
+
+/** The keys the app handles, named as this platform's keyboards print them. */
+export function KeyboardShortcutsPage({ names }: { names: KeyNames }) {
+  return (
+    <YStack padding="$md" gap="$lg" testID={ELEMENT.keyboardShortcuts.page}>
+      {keyboardShortcuts(names).map((group) => (
+        <YStack key={group.name}>
+          <SettingsSection label={group.title} />
+          <SettingsGroup>
+            {group.shortcuts.map((shortcut) => (
+              <SettingsRow
+                key={shortcut.name}
+                label={shortcut.label}
+                wideTrailing
+                trailing={
+                  <XStack gap="$sm" flexWrap="wrap" justifyContent="flex-end">
+                    {shortcut.combos.map((keys, index) => (
+                      <KeyCombo
+                        key={keys.join('+')}
+                        keys={keys}
+                        names={names}
+                        testID={ELEMENT.keyboardShortcuts.combo(shortcut.name, index)}
+                      />
+                    ))}
+                  </XStack>
+                }
+                testID={ELEMENT.keyboardShortcuts.row(shortcut.name)}
+              />
+            ))}
+          </SettingsGroup>
+        </YStack>
+      ))}
+    </YStack>
+  )
+}
