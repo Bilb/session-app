@@ -31,6 +31,7 @@
     "@session/logging": "workspace:*",
     "@session/screens": "workspace:*",
     "@session/state": "workspace:*",
+    "@session/test-ids": "workspace:*",
     "@session/theme-tokens": "workspace:*",
     "@session/ui": "workspace:*",
     "react": "catalog:",

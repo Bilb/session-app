@@ -17,7 +17,6 @@ import {
   List,
   logical,
   Screen,
-  Separator,
   SIZE_SCALE,
   SPACE_SCALE,
   StatusDot,
@@ -33,7 +32,8 @@ import { conversationRowState, type UnreadBadge, type UnreadTone } from './conve
 import { conversationTitle } from './conversationTitle'
 import { useOpenSettings } from './settings/SettingsRootPage'
 import { pathStatusTone } from './pathStatus'
-import { useBesideRail, useTopBarInsets } from './shell/pane'
+import { useBesideRail } from './shell/pane'
+import { BAR_CONTROL_SIZE_PX, PaneTitle, PaneTopBar } from './shell/PaneTopBar'
 import { useTimeFormats } from './timeFormats'
 import { useToday } from './today'
 import { useHeldSelection } from './useHeldSelection'
@@ -88,8 +88,8 @@ function SettingsAvatarButton({ onPress }: { onPress: () => void }) {
     // The hit area is the stack rather than the avatar: 32pt is under the 44pt a finger
     // needs, and a target that small is one people miss rather than one they cannot see.
     <XStack
-      width={44}
-      height={44}
+      width={BAR_CONTROL_SIZE_PX}
+      height={BAR_CONTROL_SIZE_PX}
       alignItems="center"
       justifyContent="center"
       $platform-web={{ cursor: 'pointer' }}
@@ -161,7 +161,6 @@ export function ConversationListScreen({
   /** The conversation showing beside the list, where one is: its row is drawn selected. */
   openConversationId?: string | undefined
 }) {
-  const topBarInsets = useTopBarInsets()
   const conversations = useConversations()
   const unreadRequests = useUnreadRequestCount()
   const nav = useNav()
@@ -172,65 +171,57 @@ export function ConversationListScreen({
 
   return (
     <Screen testID={ELEMENT.conversationList.screen}>
-      <XStack
-        paddingHorizontal="$md"
-        paddingVertical="$sm"
-        alignItems="center"
-        justifyContent="space-between"
-        {...topBarInsets}
-      >
-        {/* Shrinks first, so that at a large text size the title wraps rather than pushing the
-            controls after it off the edge. */}
-        <XStack alignItems="center" gap="$xs" flexShrink={1}>
-          {/* Settings had a route and no way to reach it, which made the account ID - the one
-              thing someone else needs in order to write to this device - unreachable too. On the
-              leading side, before the title. */}
-          {besideRail ? null : <SettingsAvatarButton onPress={openSettings} />}
+      <PaneTopBar
+        leading={
+          // Settings had a route and no way to reach it, which made the account ID - the one thing
+          // someone else needs in order to write to this device - unreachable too. On the leading
+          // side, before the title.
+          besideRail ? null : <SettingsAvatarButton onPress={openSettings} />
+        }
+        title={
           <NetworkOverlay>
-            <Text size="$title" weight="bold">
-              {tr('messages')}
-            </Text>
+            <PaneTitle>{tr('messages')}</PaneTitle>
           </NetworkOverlay>
-        </XStack>
-        <XStack alignItems="center" gap="$sm">
-          {unreadRequests > 0 ? (
+        }
+        trailing={
+          <>
+            {unreadRequests > 0 ? (
+              <XStack
+                backgroundColor="$primaryColor"
+                borderRadius="$full"
+                paddingHorizontal="$xs"
+                minWidth={20}
+                height={20}
+                alignItems="center"
+                justifyContent="center"
+                testID={ELEMENT.requests.badge}
+                onPress={() => nav.push(routes.requests())}
+              >
+                <Text size="$caption" weight="bold" color="$onAccent">
+                  {unreadRequests}
+                </Text>
+              </XStack>
+            ) : null}
+
+            {/* Writing to somebody who has not written first was impossible before this: the
+              only way into a conversation was replying to a request. */}
             <XStack
-              backgroundColor="$primaryColor"
-              borderRadius="$full"
-              paddingHorizontal="$xs"
-              minWidth={20}
-              height={20}
+              width={BAR_CONTROL_SIZE_PX}
+              height={BAR_CONTROL_SIZE_PX}
               alignItems="center"
               justifyContent="center"
-              testID={ELEMENT.requests.badge}
-              onPress={() => nav.push(routes.requests())}
+              $platform-web={{ cursor: 'pointer' }}
+              hoverStyle={{ backgroundColor: '$hoverOverlay' }}
+              pressStyle={{ backgroundColor: '$pressedOverlay' }}
+              borderRadius="$full"
+              testID={ELEMENT.conversationList.newConversation}
+              onPress={() => nav.push(routes.newConversation())}
             >
-              <Text size="$caption" weight="bold" color="$onAccent">
-                {unreadRequests}
-              </Text>
+              <Icon name="plus" size="lg" color="$textSecondary" />
             </XStack>
-          ) : null}
-
-          {/* Writing to somebody who has not written first was impossible before this: the
-              only way into a conversation was replying to a request. */}
-          <XStack
-            width={44}
-            height={44}
-            alignItems="center"
-            justifyContent="center"
-            $platform-web={{ cursor: 'pointer' }}
-            hoverStyle={{ backgroundColor: '$hoverOverlay' }}
-            pressStyle={{ backgroundColor: '$pressedOverlay' }}
-            borderRadius="$full"
-            testID={ELEMENT.conversationList.newConversation}
-            onPress={() => nav.push(routes.newConversation())}
-          >
-            <Icon name="plus" size="lg" color="$textSecondary" />
-          </XStack>
-        </XStack>
-      </XStack>
-
-      <Separator borderColor="$bordersColor" />
+          </>
+        }
+      />
 
       <List
         data={conversations}
