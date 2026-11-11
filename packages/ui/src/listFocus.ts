@@ -295,8 +295,8 @@ export function useListStop() {
     onFocus: () => {
       focus.focused(key)
     },
-    // TODO: list these keys and the message menu's in a keyboard shortcuts screen, so they can
-    // be found without reading the code.
+    // Listed for people in `keyboardShortcuts.ts` in the screens package; a key added here goes
+    // there too.
     onKeyDown: (raw: unknown) => {
       const event = raw as ListStopKeyEvent
       if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return

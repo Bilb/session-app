@@ -28,7 +28,10 @@ export type KeyName =
   | 'zero'
   | 'slash'
 
-/** The arrows as icons: as characters they are a hairline at caption size. */
+/**
+ * The arrows as icons: as characters they are a hairline at caption size. The cap is named with
+ * the character, which screen readers read as the arrow's name.
+ */
 const ICONS: Partial<Record<KeyName, IconName>> = { up: 'arrowUp', down: 'arrowDown' }
 
 /** Legends as the keyboards print them, which no locale translates; the catalogue has none. */
@@ -85,6 +88,7 @@ export function KeyCombo({ keys, names, testID }: KeyComboProps) {
             paddingHorizontal="$xs"
             alignItems="center"
             justifyContent="center"
+            {...(icon === undefined ? {} : { role: 'img', 'aria-label': LEGENDS[names][key] })}
             borderRadius="$sm"
             borderWidth={1}
             borderColor="$bordersColor"

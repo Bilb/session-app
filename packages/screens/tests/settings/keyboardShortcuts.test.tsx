@@ -1,4 +1,10 @@
-import { memoryPorts, resetPorts, setPorts, type KeyboardShortcutsPort } from '@session/app'
+import {
+  memoryPorts,
+  requirePorts,
+  resetPorts,
+  setPorts,
+  type KeyboardShortcutsPort,
+} from '@session/app'
 import { friends } from '@session/client/fake'
 import { createSessionStore, type SessionStore } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
@@ -8,7 +14,7 @@ import { userEvent } from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { HelpPage } from '#src/settings/HelpPage'
-import { useKeyboardShortcutsCommand } from '#src/settings/useKeyboardShortcutsCommand'
+import { KeyboardShortcutsCommand } from '#src/settings/KeyboardShortcutsCommand'
 
 import { renderScreen } from '../support/render'
 
@@ -59,9 +65,16 @@ function Probe() {
   return null
 }
 
+/** As the shell mounts it, where the port is. */
 function Command() {
-  useKeyboardShortcutsCommand()
-  return <Probe />
+  const shortcuts = requirePorts().window.keyboardShortcuts
+  if (shortcuts === null) throw new Error('no keyboard shortcuts port')
+  return (
+    <>
+      <KeyboardShortcutsCommand shortcuts={shortcuts} />
+      <Probe />
+    </>
+  )
 }
 
 afterEach(() => {

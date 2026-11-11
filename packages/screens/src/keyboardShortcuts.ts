@@ -29,8 +29,7 @@ export function keyboardShortcuts(names: KeyNames): readonly KeyboardShortcutGro
       name: 'messages',
       title: tr('messages'),
       shortcuts: [
-        // One pair, as apps list the arrows: either key, each its own way.
-        { name: 'navigate', label: PENDING_COPY.messageNavigate, combos: [['up', 'down']] },
+        { name: 'navigate', label: PENDING_COPY.messageNavigate, combos: [['up'], ['down']] },
         // Shift+F10 and the Menu key work too, as the platform's, but are not what to learn.
         { name: 'menu', label: tr('openMessageContextMenu'), combos: [['enter'], ['space']] },
       ],
