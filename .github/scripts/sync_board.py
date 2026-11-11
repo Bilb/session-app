@@ -25,6 +25,13 @@ Closing a release's milestone folds the closed issues of Next into it (FOLD_INTO
 made between releases ship with the release that follows them. That run does only the fold: the
 milestones it changes start ordinary syncs.
 
+- "Rank" orders the work for the views that sort by it, lowest first: by Status (what's nearly done
+  first, then what can be picked up, then what's waiting), then release (in the Release field's
+  order), then Priority, then the fewest open blockers, then the most open issues it unblocks, then
+  the easiest.
+- An archived item is left alone, since GitHub refuses any change to one, unless its issue or pull
+  request is open: anything open is work, so it is unarchived and kept in step again.
+
 Blocked-by links fire no event, so the workflow also runs on a schedule. With POST_STATUS=1 it
 posts a progress update to the project instead.
 """
@@ -45,36 +52,65 @@ ORDER = ['Backlog', 'Ready', 'In progress', 'In review', 'Approved', 'Done']
 # A hidden text field holding the Status the sync last decided for an issue, which is how an In
 # progress set by hand is told from one the sync set for a pull request.
 SYNCED = 'Synced status'
-REQUIRED_FIELDS = ['Status', 'Waiting on', 'Release', SYNCED]
+RANK = 'Rank'
+REQUIRED_FIELDS = ['Status', 'Waiting on', 'Release', SYNCED, RANK]
+# Rank's order, lowest first. Approved and In review are nearly done, so they lead.
+RANK_STATUS = ['Approved', 'In review', 'In progress', 'Ready', 'Backlog', 'Done']
+RANK_PRIORITY = ['P0', 'P1', 'P2']
 
 
-def gh(args, payload=None, allow_fail=False):
+def graphql_errors_reply(stdout):
+    try:
+        reply = json.loads(stdout)
+    except ValueError:
+        return None
+    return reply if isinstance(reply, dict) and reply.get('errors') else None
+
+
+def gh(args, payload=None):
     for attempt in range(4):
         out = subprocess.run(['gh', *args], input=None if payload is None else json.dumps(payload),
                              capture_output=True, text=True)
+        failed_graphql = out.returncode != 0 and args[:2] == ['api', 'graphql']
+        reply = graphql_errors_reply(out.stdout) if failed_graphql else None
         # GitHub's GraphQL endpoint fails now and then with a generic error that a retry clears. Only
-        # a failed call is retried: a successful response can quote the phrase in an issue's text.
-        if out.returncode != 0 and 'Something went wrong' in out.stdout + out.stderr and attempt < 3:
+        # the errors are searched: data, partial or whole, can quote the phrase in an issue's text.
+        failure = ' '.join(e.get('message') or '' for e in reply['errors']) if reply else out.stdout + out.stderr
+        if out.returncode != 0 and 'Something went wrong' in failure and attempt < 3:
             time.sleep(3 * (attempt + 1))
             continue
+        # gh exits 1 on any GraphQL error, even beside partial data: gql_partial judges the errors.
+        if reply:
+            return out.stdout
         if out.returncode != 0:
-            if allow_fail:
-                print(f'warning: gh {" ".join(args[:3])} failed: {out.stderr.strip()}')
-                return None
             sys.exit(f'gh {" ".join(args[:3])} failed: {out.stdout} {out.stderr}')
         return out.stdout
 
 
-def gql(query, **variables):
+def on_tolerated_node(error, tolerated):
+    """Whether the error is on one node of a connection named in tolerated (<field>/nodes/<n>/...).
+    One on the connection itself nulls the whole parent, since the field is non-null."""
+    path = error.get('path') or []
+    return any(field in tolerated and path[at + 1:at + 2] == ['nodes'] and len(path) > at + 2
+               for at, field in enumerate(path))
+
+
+def gql_partial(query, tolerated, **variables):
+    """The data, where an error on a single node of a connection named in tolerated leaves that node
+    null. Any other error fails the run."""
     data = json.loads(gh(['api', 'graphql', '--input', '-'], {'query': query, 'variables': variables}))
-    if data.get('errors'):
-        sys.exit(json.dumps(data['errors']))
+    errors = data.get('errors') or []
+    if fatal := [e for e in errors if not on_tolerated_node(e, tolerated)]:
+        sys.exit(json.dumps(fatal))
     return data['data']
 
 
-def rest(path, allow_fail=False):
-    out = gh(['api', '--paginate', '--slurp', path], allow_fail=allow_fail)
-    return [] if out is None else json.loads(out)
+def gql(query, **variables):
+    return gql_partial(query, (), **variables)
+
+
+def rest(path):
+    return json.loads(gh(['api', '--paginate', '--slurp', path]))
 
 
 PROJECT = gql(
@@ -90,22 +126,30 @@ OPTION = {o['name']: o['id'] for o in STATUS['options']}
 
 ITEMS_QUERY = '''query($p:ID!,$after:String){node(id:$p){... on ProjectV2{items(first:100,after:$after){
   pageInfo{hasNextPage endCursor}
-  nodes{id
+  nodes{id isArchived
     status:fieldValueByName(name:"Status"){... on ProjectV2ItemFieldSingleSelectValue{name}}
+    priority:fieldValueByName(name:"Priority"){... on ProjectV2ItemFieldSingleSelectValue{name}}
+    difficulty:fieldValueByName(name:"Difficulty"){... on ProjectV2ItemFieldSingleSelectValue{name}}
+    rank:fieldValueByName(name:"Rank"){... on ProjectV2ItemFieldNumberValue{number}}
     waiting:fieldValueByName(name:"Waiting on"){... on ProjectV2ItemFieldTextValue{text}}
     release:fieldValueByName(name:"Release"){... on ProjectV2ItemFieldSingleSelectValue{optionId}}
     synced:fieldValueByName(name:"Synced status"){... on ProjectV2ItemFieldTextValue{text}}
     content{
       ... on Issue{__typename id number state repository{nameWithOwner} milestone{title}
-        labels(first:20){nodes{name}}}
+        labels(first:20){nodes{name}}
+        blockedBy(first:50){totalCount nodes{number title state repository{nameWithOwner}}}}
       ... on PullRequest{__typename id number state isDraft reviewDecision repository{nameWithOwner}
+        latestOpinionatedReviews(first:20){nodes{state author{login}}}
+        reviewRequests(first:20){nodes{requestedReviewer{... on User{login} ... on Bot{login}
+          ... on Mannequin{login}}}}
         closingIssuesReferences(first:20){nodes{number repository{nameWithOwner}}}}}}}}}}'''
 
 
 def items():
     found, after = [], None
     while True:
-        page = gql(ITEMS_QUERY, p=PID, after=after)['node']['items']
+        # A blocker in a repository the app can't read comes back as a null node, which sync() reports.
+        page = gql_partial(ITEMS_QUERY, ('blockedBy',), p=PID, after=after)['node']['items']
         found += [i for i in page['nodes'] if i['content']]
         if not page['pageInfo']['hasNextPage']:
             return found
@@ -126,6 +170,27 @@ def set_text(item, field, text):
     else:
         gql('mutation($p:ID!,$i:ID!,$f:ID!){clearProjectV2ItemFieldValue(input:{projectId:$p,itemId:$i,'
             'fieldId:$f}){projectV2Item{id}}}', p=PID, i=item['id'], f=FIELDS[field]['id'])
+
+
+def set_number(item, field, number):
+    gql('mutation($p:ID!,$i:ID!,$f:ID!,$n:Float!){updateProjectV2ItemFieldValue(input:{projectId:$p,'
+        'itemId:$i,fieldId:$f,value:{number:$n}}){projectV2Item{id}}}',
+        p=PID, i=item['id'], f=FIELDS[field]['id'], n=number)
+
+
+def rank(status, release, priority, difficulty, blockers, unblocks):
+    """
+    One number for an order a view can't express itself, lowest first. Each part has its own digits,
+    so an earlier part always outweighs every later one: status, release (its place in the Release
+    field's order, so a later release's P0 never comes before the next one's P1), priority, open
+    blockers (fewest first), open issues it unblocks (most first), difficulty (easiest first).
+    """
+    s = RANK_STATUS.index(status) if status in RANK_STATUS else len(RANK_STATUS)
+    p = next((at for at, name in enumerate(RANK_PRIORITY) if (priority or '').startswith(name)),
+             len(RANK_PRIORITY))
+    d = int(difficulty[0]) if difficulty and difficulty[0].isdigit() else 6
+    return (s * 10**8 + min(release, 99) * 10**6 + p * 10**5 + min(blockers, 99) * 10**3
+            + (99 - min(unblocks, 99)) * 10 + d)
 
 
 def repo_of(content):
@@ -202,10 +267,19 @@ def set_release(item, option):
 def pr_status(pr):
     if pr['state'] != 'OPEN':
         return 'Done'
-    if pr['isDraft'] or pr['reviewDecision'] == 'CHANGES_REQUESTED':
+    if pr['isDraft']:
         return 'In progress'
     if pr['reviewDecision'] == 'APPROVED':
         return 'Approved'
+    if pr['reviewDecision'] == 'CHANGES_REQUESTED':
+        # GitHub keeps a request for changes as the decision until its reviewer reviews again or the
+        # review is dismissed. Asking that reviewer again is what says the author has answered it;
+        # a request still open for someone else does not.
+        asked = {(r['requestedReviewer'] or {}).get('login') for r in pr['reviewRequests']['nodes']}
+        owed = {(r['author'] or {}).get('login') for r in pr['latestOpinionatedReviews']['nodes']
+                if r['state'] == 'CHANGES_REQUESTED'}
+        if not owed or not owed <= asked:
+            return 'In progress'
     return 'In review'
 
 
@@ -227,6 +301,17 @@ def sync():
     if added:
         time.sleep(5)
     board = items()
+    for item in board:
+        content = item['content']
+        if item['isArchived'] and content['state'] == 'OPEN':
+            # Anything open is work, so it is always on the board: reopened since it was archived, or
+            # archived by hand while open
+            gql('mutation($p:ID!,$i:ID!){unarchiveProjectV2Item(input:{projectId:$p,itemId:$i}){item{id}}}',
+                p=PID, i=item['id'])
+            item['isArchived'] = False
+            print(f'unarchived {ref(repo_of(content), content["number"])}')
+    # GitHub refuses any change to an archived item
+    board = [i for i in board if not i['isArchived']]
     # Keyed by repository and number: the board can hold another repository's issues and PRs.
     closing = {}
     for i in board:
@@ -235,7 +320,7 @@ def sync():
             for issue in pr['closingIssuesReferences']['nodes']:
                 closing.setdefault((repo_of(issue), issue['number']), []).append(pr)
 
-    release_options, _ = sync_release_options()
+    release_options, release_order = sync_release_options()
     for item in board:
         content = item['content']
         if content['__typename'] != 'Issue' or repo_of(content) != REPO:
@@ -244,6 +329,8 @@ def sync():
         if wanted != (item['release'] or {}).get('optionId'):
             set_release(item, wanted)
 
+    ranked = []                     # (item, status, open blocker count)
+    unblocks = {}                   # (repo, number) -> how many open issues it blocks
     for item in board:
         content = item['content']
         repo = repo_of(content)
@@ -255,15 +342,21 @@ def sync():
         elif AREA_LABEL in [l['name'] for l in content['labels']['nodes']]:
             continue
         else:
-            # Another repository's issue may be one the app can't read: that costs its blockers, not
-            # the whole run.
-            blockers = [] if content['state'] != 'OPEN' else [
-                b for page in rest(f'repos/{repo}/issues/{content["number"]}/dependencies/blocked_by?per_page=100',
-                                   allow_fail=repo != REPO)
-                for b in page if b['state'] == 'open']
-            waiting = ', '.join(
-                f'{ref(b["repository_url"].split("/repos/", 1)[1], b["number"])} {b["title"][:48]}'
-                for b in blockers)
+            blocked_by = content['blockedBy'] or {'totalCount': 0, 'nodes': []}
+            nodes = blocked_by['nodes'] if content['state'] == 'OPEN' else []
+            if content['state'] == 'OPEN' and blocked_by['totalCount'] > len(nodes):
+                print(f'warning: {ref(repo, content["number"])}: only the first {len(nodes)} '
+                      f'of its {blocked_by["totalCount"]} blockers are read')
+            blockers = [b for b in nodes if b and b['state'] == 'OPEN']
+            # Counted as open: whether it is closed is unknown, and Ready would claim it is.
+            if unreadable := nodes.count(None):
+                print(f'warning: {ref(repo, content["number"])}: cannot read {unreadable} of its blockers')
+            waiting = ', '.join([f'{ref(repo_of(b), b["number"])} {b["title"][:48]}' for b in blockers]
+                                + ([f"{unreadable} blocker{'s' if unreadable > 1 else ''} the app can't read"]
+                                   if unreadable else []))
+            for b in blockers:
+                key = (repo_of(b), b['number'])
+                unblocks[key] = unblocks.get(key, 0) + 1
             prs = closing.get((repo, content['number']))
             decided = True
             if content['state'] != 'OPEN':
@@ -274,7 +367,7 @@ def sync():
                 # Set by hand, for work started before there is a pull request: left, and not recorded
                 # as the sync's, so it stays until someone moves it or a pull request takes over.
                 wanted, decided = current, False
-            elif blockers or content['milestone'] is None:
+            elif blockers or unreadable or content['milestone'] is None:
                 wanted = 'Backlog'
             else:
                 wanted = 'Ready'
@@ -285,6 +378,18 @@ def sync():
             set_text(item, SYNCED, wanted)
         if waiting != ((item['waiting'] or {}).get('text') or ''):
             set_text(item, 'Waiting on', waiting)
+        ranked.append((item, wanted, len(blockers) + unreadable if content['__typename'] == 'Issue' else 0))
+
+    for item, status, blockers in ranked:
+        content = item['content']
+        # Unscheduled work, another repository's issues and pull requests come after every release
+        milestone = (content.get('milestone') or {}).get('title') if repo_of(content) == REPO else None
+        release = release_order.index(milestone) if milestone in release_order else len(release_order)
+        value = rank(status, release, (item['priority'] or {}).get('name'),
+                     (item['difficulty'] or {}).get('name'), blockers,
+                     unblocks.get((repo_of(content), content['number']), 0))
+        if value != (item['rank'] or {}).get('number'):
+            set_number(item, RANK, value)
 
 
 def post_status():

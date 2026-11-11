@@ -9,12 +9,13 @@ import {
 } from '@session/state'
 import { isolate, PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { DropOverlay, DropZone, List, Screen, Separator, Text, XStack, YStack } from '@session/ui'
+import { DropOverlay, DropZone, List, Screen, Text, YStack } from '@session/ui'
 import { useMemo, useState } from 'react'
 
 import { AttachmentSheet } from './AttachmentSheet'
 import { Composer } from './Composer'
 import { outgoingAttachment } from './staging'
+import { useShowAfter } from './useShowAfter'
 import { useStaging } from './useStaging'
 import { ConversationUiContext, type ConversationUi } from './conversationUi'
 import { MessageMediaViewer, type ViewerTarget } from './MessageMediaViewer'
@@ -22,10 +23,10 @@ import { MessageMenu, type MessageMenuTarget } from './MessageMenu'
 import { MessageRow } from './MessageRow'
 import { AutoDownloadPrompt } from './AutoDownloadPrompt'
 import { BackButton } from './BackButton'
+import { ConversationHeader } from './ConversationHeader'
 import { conversationTitle } from './conversationTitle'
 import { DateHeaderRow } from './DateHeaderRow'
 import { showsDateHeader } from './dateHeaders'
-import { useTopBarInsets } from './shell/pane'
 import { TranscriptWidth } from './TranscriptWidth'
 
 const messageKey = (message: Message) => String(message.id)
@@ -59,9 +60,9 @@ function Transcript({
 }
 
 function Conversation({ conversationId }: { conversationId: ConversationId }) {
-  const topBarInsets = useTopBarInsets()
   const conversation = useConversation(conversationId)
   const { messages, ready } = useMessages(conversationId)
+  const showLoading = useShowAfter(!ready)
   const actions = useSessionActions()
   const staging = useStaging((file) => actions.attachmentSendPlan(file.path, file.contentType))
   const [dropping, setDropping] = useState(false)
@@ -104,26 +105,11 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
   return (
     <ConversationUiContext.Provider value={ui}>
       <Screen testID={ELEMENT.conversation.screen}>
-        <XStack
-          paddingHorizontal="$md"
-          paddingVertical="$sm"
-          gap="$sm"
-          alignItems="center"
-          testID={ELEMENT.conversation.header}
-          {...topBarInsets}
-        >
-          <BackButton testID={ELEMENT.conversation.back} />
-          <Text
-            size="$bodyLarge"
-            weight="semibold"
-            numberOfLines={1}
-            testID={ELEMENT.conversation.headerName}
-          >
-            {title}
-          </Text>
-        </XStack>
-
-        <Separator borderColor="$bordersColor" />
+        <ConversationHeader
+          id={conversationId}
+          title={title}
+          back={<BackButton testID={ELEMENT.conversation.back} />}
+        />
 
         <DropZone
           // Refused while a send is out, as the tray's + is: the tray is the message's until then.
@@ -151,8 +137,8 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
               <Transcript conversationId={conversationId} messages={messages} />
             </TranscriptWidth>
           ) : (
-            <YStack flex={1} padding="$md">
-              <Text tone="secondary">{tr('loading')}</Text>
+            <YStack flex={1} padding="$md" alignItems="center" justifyContent="center">
+              {showLoading ? <Text tone="secondary">{tr('loading')}</Text> : null}
             </YStack>
           )}
 

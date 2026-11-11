@@ -48,6 +48,7 @@ export const ELEMENT = {
     screen: 'conversation',
     header: 'conversation-header',
     headerName: 'conversation-header-name',
+    headerAvatar: 'conversation-header-avatar',
     back: 'conversation-back',
     messageRow: (index: number) => `message-row-${index}` as const,
     dateHeader: 'conversation-date-header',

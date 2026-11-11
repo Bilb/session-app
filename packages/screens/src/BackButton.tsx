@@ -1,7 +1,7 @@
 import { useNav } from '@session/app'
 import { tr } from '@session/localization'
 import type { ElementId } from '@session/test-ids'
-import { backChevron, Button, Icon } from '@session/ui'
+import { backChevron, BarButton } from '@session/ui'
 
 import { useShowsBack } from './shell/pane'
 
@@ -16,6 +16,9 @@ import { useShowsBack } from './shell/pane'
  * `tr('back')` has not gone away, it has moved to the accessibility label - the word is still what
  * a screen reader should say, and an icon-only control that announces nothing is a control some
  * people cannot use.
+ *
+ * A bar button, so on iOS 26 it sits on glass like the system's own back, and elsewhere is the
+ * desktop's circle, as onboarding's back already is.
  */
 export function BackButton({ testID }: { testID: ElementId }) {
   const nav = useNav()
@@ -23,13 +26,11 @@ export function BackButton({ testID }: { testID: ElementId }) {
 
   if (!showsBack) return null
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onPress={() => nav.back()}
-      testID={testID}
+    <BarButton
+      icon={backChevron()}
       accessibilityLabel={tr('back')}
-      icon={<Icon name={backChevron()} size="md" color="$textPrimary" />}
+      testID={testID}
+      onPress={() => nav.back()}
     />
   )
 }
