@@ -18,6 +18,7 @@ import { outgoingAttachment } from './staging'
 import { useStaging } from './useStaging'
 import { ConversationUiContext, type ConversationUi } from './conversationUi'
 import { MessageMediaViewer, type ViewerTarget } from './MessageMediaViewer'
+import { MessageMenu, type MessageMenuTarget } from './MessageMenu'
 import { MessageRow } from './MessageRow'
 import { AutoDownloadPrompt } from './AutoDownloadPrompt'
 import { BackButton } from './BackButton'
@@ -70,6 +71,7 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
   // One viewer and one sheet for the whole transcript, so two can never be open at once.
   const [viewer, setViewer] = useState<ViewerTarget | null>(null)
   const [sheet, setSheet] = useState<number | null>(null)
+  const [menu, setMenu] = useState<MessageMenuTarget | null>(null)
 
   // Memoised so typing in the composer does not re-render every message through the context.
   const ui = useMemo(
@@ -82,6 +84,9 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
         setViewer({ messageId, index })
       },
       openSheet: setSheet,
+      openMenu: (messageId, anchor) => {
+        setMenu({ messageId, anchor })
+      },
     }),
     [conversationId, autoDownload],
   )
@@ -175,6 +180,13 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
                 }}
                 onClose={() => {
                   setViewer(null)
+                }}
+              />
+              <MessageMenu
+                conversationId={conversationId}
+                target={menu}
+                onClose={() => {
+                  setMenu(null)
                 }}
               />
               {conversation === undefined ? null : (

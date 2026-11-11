@@ -14,6 +14,7 @@ import { fetchOf, type Fetch } from './attachmentFetch'
 import { controlVerb, rowVerb, verbLabel, type AttachmentVerb } from './attachmentPress'
 import { useConversationUi } from './conversationUi'
 import { exportOne } from './exportAttachment'
+import { layoutLine } from './layoutLine'
 import { SendingRow } from './SendingRow'
 import { isUploadPhase } from './uploadState'
 import { useExportFeedback } from './useExportFeedback'
@@ -33,7 +34,7 @@ function caption(
   if (state === 'fetching') {
     // Indeterminate until the server says how big it is, which is what a total of 0 means.
     if (fetched.totalBytes === 0) return tr('downloading')
-    return `${formatBytes(fetched.doneBytes)} / ${formatBytes(fetched.totalBytes)}`
+    return layoutLine(' / ', formatBytes(fetched.doneBytes), formatBytes(fetched.totalBytes))
   }
   if (exporting === 'running') return PENDING_COPY.exporting
   if (exporting === 'failed') return PENDING_COPY.exportFailed
@@ -52,6 +53,8 @@ interface RowProps {
   attachment: Attachment
   /** Drawn on a bubble you sent; absent in the sheet, which draws its rows on the page. */
   onAccent?: boolean | undefined
+  /** False for a message's one row, whose footer's verb is its only control. See `FileRow`. */
+  hasControl?: boolean | undefined
 }
 
 /** One attachment as a row: its upload while ours is being sent, its download otherwise. */
@@ -59,7 +62,7 @@ export function AttachmentRow(props: RowProps) {
   return isUploadPhase(props.message) ? <SendingRow {...props} /> : <SettledRow {...props} />
 }
 
-function SettledRow({ message, attachment, onAccent }: RowProps) {
+function SettledRow({ message, attachment, onAccent, hasControl }: RowProps) {
   const actions = useSessionActions()
   const feedback = useExportFeedback()
   const ui = useConversationUi()
@@ -132,6 +135,7 @@ function SettledRow({ message, attachment, onAccent }: RowProps) {
       }
       onAction={control === null ? undefined : perform[control]}
       onAccent={onAccent}
+      hasControl={hasControl}
       testIDs={{
         row: ELEMENT.conversation.attachment,
         name: ELEMENT.conversation.attachmentName,

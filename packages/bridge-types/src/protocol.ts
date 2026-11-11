@@ -223,7 +223,8 @@ export type Command =
   /**
    * Stores the message and answers its id; it is then announced like any other. With attachments
    * it is `uploading` until every file is on the file server, and goes on to the ordinary states
-   * from there. Refused, storing nothing, when a file is not a readable, non-empty file.
+   * from there. Refused, storing nothing, when a file is not a readable, non-empty file. Each
+   * file's upload reports as an `attachment-progress` of transfer `upload`.
    */
   | {
       type: 'sendMessage'
@@ -245,6 +246,10 @@ export type Command =
    * attached it is libsession's default for the built-in servers.
    */
   | { type: 'getAttachmentUploadLimit' }
+  /**
+   * Resumes a send that failed, uploading the files not yet up first. Each of those reports as an
+   * `attachment-progress` of transfer `upload`, as `sendMessage`'s do.
+   */
   | { type: 'retrySend'; messageId: number }
   | { type: 'deleteMessage'; messageId: number; scope: Deletion }
   /**
@@ -459,6 +464,11 @@ export type SessionEvent =
    *
    * Both count *encrypted* bytes - what is actually being moved - and so do not agree with
    * `Attachment.sizeBytes`, which is the plaintext length.
+   *
+   * An upload names the message id `sendMessage` answers, and none of a send's reaches the stream
+   * before that answer does: the bridge holds any that come first. A file whose upload never
+   * started, because one before it failed, gets no report at all. Like a download, an upload's
+   * first report is 0 of 0, meaning it has started.
    */
   | {
       type: 'attachment-progress'

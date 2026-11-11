@@ -2,6 +2,8 @@ import type { AnyStory } from '../story'
 import { albumChoices, albumFocus, albumLone, albumOverflow, albumRows } from './album'
 import { button, buttonOnAccent, buttonSizes } from './button'
 import { composerReply } from './composerReply'
+import { contextMenu } from './contextMenu'
+import { contextMenuPlacement } from './contextMenuPlacement'
 import { fileRow, fileRowOnAccent, fileRowReceived } from './fileRow'
 import { messageFrameHighlight } from './messageFrame'
 import { avatar, progressRing, radio } from './indicators'
@@ -36,6 +38,8 @@ export const STORIES: readonly AnyStory[] = [
   composerNotice,
   dropOverlay,
   mediaViewer,
+  contextMenu,
+  contextMenuPlacement,
   messageQuote,
   messageQuotePictures,
   messageQuoteFiles,

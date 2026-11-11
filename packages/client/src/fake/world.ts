@@ -107,6 +107,12 @@ const TRANSFER_STEPS = 20
  */
 const TICKS_PER_MEGABYTE = 20
 
+/**
+ * How many rounds `settle` runs before giving up on a queue that keeps refilling itself. Well past
+ * any real transfer: the showcase's retry uploads two 13 MB files one after the other, about 260.
+ */
+const SETTLE_ROUNDS = 1_000
+
 /** The smallest a transfer can be, so a tiny file still reports a beginning and an end. */
 const MIN_TRANSFER_TICKS = 2
 
@@ -345,13 +351,16 @@ export class FakeAccount {
    * thumbnail is made from it. Each with its size, where the world knows it.
    */
   private readonly taken = new Map<string, number | undefined>()
-  /** The sizes `seedSending` held back from files not up yet, which their upload reports. */
-  private readonly unreportedSizes = new Map<string, number>()
   /** Renditions a viewer asked for, by `keyOf`, and those made since. */
   private readonly renditionsAsked = new Set<string>()
   private readonly renditions = new Set<string>()
   /** What a send's files were sent as, by message id, for a retry to upload the rest of. */
   private readonly uploadsOf = new Map<number, readonly Upload[]>()
+  /**
+   * The attempt each message's uploads belong to, by message id: a step scheduled by an attempt a
+   * restart failed reports nothing once a retry has started another.
+   */
+  private readonly uploadAttempts = new Map<number, symbol>()
   /**
    * Transfers in flight, by `keyOf`, so a second request for a file joins its transfer rather than
    * starting another - a download and an export alike, as libsession keys both by the file.
@@ -820,6 +829,8 @@ export class FakeAccount {
         renditionRefused: false,
         // Flagged by libsession as that file's upload starts, when it converts it.
         originalFile: false,
+        // Recorded by libsession as the send stores the file, before any upload.
+        ...(sizes[index] === undefined ? {} : { sizeBytes: sizes[index] }),
         uploaded: false,
         availability: 'absent',
         fetchDoneBytes: 0,
@@ -854,23 +865,48 @@ export class FakeAccount {
     for (const file of outgoing) if (file.takeFile === true) this.world?.removeFile(file.path)
     if (uploading) {
       this.uploadsOf.set(message.id, uploads)
-      this.uploadNext(id, message.id, uploads)
+      this.startUploads(id, message.id, uploads)
     } else this.world?.scheduleSend(this, id, message)
     return message.id
   }
 
-  /** Uploads the first file not up yet, a step from now, then the next, then sends. */
-  private uploadNext(id: ConversationId, messageId: number, uploads: readonly Upload[]): void {
+  /** Starts an attempt at a message's uploads, which any earlier attempt then stays out of. */
+  private startUploads(id: ConversationId, messageId: number, uploads: readonly Upload[]): void {
+    const attempt = Symbol(`uploads of ${String(messageId)}`)
+    this.uploadAttempts.set(messageId, attempt)
+    this.uploadNext(id, messageId, uploads, attempt)
+  }
+
+  /**
+   * Uploads the first file not up yet, a step from now, then the next, then sends.
+   *
+   * Each file reports as libsession's upload handler does: 0 of 0 as it starts, then encrypted
+   * bytes on the world's clock, then one report with the outcome. Nothing is reported before the
+   * send has answered, since the first step is a tick away.
+   */
+  private uploadNext(
+    id: ConversationId,
+    messageId: number,
+    uploads: readonly Upload[],
+    attempt: symbol,
+  ): void {
     const world = this.world
     if (world === undefined) return
-    world.schedule(1, () => {
+    // A restart failed it, it was deleted, or a retry started another attempt.
+    const live = (): Message | undefined => {
       const message = this.messages(id).find((m) => m.id === messageId)
-      // A restart failed it, or it was deleted, while this was waiting its turn.
-      if (message?.sendState !== 'uploading') return
+      return message?.sendState === 'uploading' && this.uploadAttempts.get(messageId) === attempt
+        ? message
+        : undefined
+    }
+    world.schedule(1, () => {
+      const message = live()
+      if (message === undefined) return
       const at = message.attachments.findIndex((a) => !a.uploaded)
       const attachment = message.attachments[at]
       if (attachment === undefined) {
         this.uploadsOf.delete(messageId)
+        this.uploadAttempts.delete(messageId)
         this.updateMessage(id, messageId, {
           sendState: 'pending',
           ...(message.syncState === undefined ? {} : { syncState: 'pending' }),
@@ -880,30 +916,57 @@ export class FakeAccount {
       }
       const upload = uploads[at]
       if (upload === undefined) return
-      // As libsession: what we sent is kept in the cache, and its size is known once it is up.
-      this.cached.add(keyOf({ messageId, index: attachment.index }))
-      this.taken.delete(keyOf({ messageId, index: attachment.index }))
-      this.unreportedSizes.delete(keyOf({ messageId, index: attachment.index }))
-      const { sizeBytes, originalFile, reencodedAs } = upload
-      const attachments = message.attachments.map((a, index) => {
-        if (index !== at) return a
-        const up: Attachment = {
-          ...a,
-          uploaded: true,
-          originalFile,
-          ...(sizeBytes === undefined ? {} : { sizeBytes }),
-        }
-        return reencodedAs === undefined ? up : reencoded(up, reencodedAs)
+      const index = attachment.index
+      const report = (doneBytes: number, totalBytes: number, outcome?: AttachmentOutcome): void => {
+        this.emit({
+          type: 'attachment-progress',
+          transfer: 'upload',
+          messageId,
+          index,
+          doneBytes,
+          totalBytes,
+          ...(outcome === undefined ? {} : { outcome }),
+        })
+      }
+      const totalBytes = encryptedSize(upload.sizeBytes ?? 0)
+      report(0, 0)
+
+      const span = transferTicks(totalBytes)
+      for (let i = 1; i < TRANSFER_STEPS; i += 1) {
+        world.schedule((span * i) / TRANSFER_STEPS, () => {
+          if (live() !== undefined)
+            report(Math.round((totalBytes * i) / TRANSFER_STEPS), totalBytes)
+        })
+      }
+      world.schedule(span, () => {
+        const current = live()
+        if (current === undefined) return
+        // As libsession: what we sent is kept in the cache, and its size is known once it is up.
+        this.cached.add(keyOf({ messageId, index }))
+        this.taken.delete(keyOf({ messageId, index }))
+        const { sizeBytes, originalFile, reencodedAs } = upload
+        const attachments = current.attachments.map((a) => {
+          if (a.index !== index) return a
+          const up: Attachment = {
+            ...a,
+            uploaded: true,
+            originalFile,
+            ...(sizeBytes === undefined ? {} : { sizeBytes }),
+          }
+          return reencodedAs === undefined ? up : reencoded(up, reencodedAs)
+        })
+        const viewable = galleryViewable(attachments)
+        // Recorded before it is reported, as libsession records the file's URL first.
+        this.updateMessage(id, messageId, {
+          attachments,
+          galleryViewable: viewable,
+          // As libsession: only the conversion that makes the set viewable turns the gallery on;
+          // once it was viewable, the stored choice is the reader's.
+          ...(viewable && !current.galleryViewable ? { gallery: true } : {}),
+        })
+        report(totalBytes, totalBytes, { ok: true })
+        this.uploadNext(id, messageId, uploads, attempt)
       })
-      const viewable = galleryViewable(attachments)
-      this.updateMessage(id, messageId, {
-        attachments,
-        galleryViewable: viewable,
-        // As libsession: only the conversion that makes the set viewable turns the gallery on;
-        // once it was viewable, the stored choice is the reader's.
-        ...(viewable && !message.galleryViewable ? { gallery: true } : {}),
-      })
-      this.uploadNext(id, messageId, uploads)
     })
   }
 
@@ -930,10 +993,9 @@ export class FakeAccount {
         this.cached.add(key)
         return { ...attachment, uploaded: true }
       }
-      const { sizeBytes, ...rest } = attachment
-      if (sendState !== 'unsendable') this.taken.set(key, sizeBytes)
-      if (sizeBytes !== undefined) this.unreportedSizes.set(key, sizeBytes)
-      return { ...rest, uploaded: false }
+      // Its size kept, as libsession records a file's size when the send stores it.
+      if (sendState !== 'unsendable') this.taken.set(key, attachment.sizeBytes)
+      return { ...attachment, uploaded: false }
     })
     return this.addMessage(id, {
       id: messageId,
@@ -947,6 +1009,25 @@ export class FakeAccount {
       galleryViewable: galleryViewable(seeded),
       gallery: galleryViewable(seeded),
       syncState: sendState,
+    })
+  }
+
+  /**
+   * A message of ours sent from another of our devices: sent, every file on the file server, and
+   * none of them in this device's cache, so each downloads as an incoming file does.
+   */
+  seedFromOtherDevice(id: ConversationId, body: string, attachments: Attachment[]): Message {
+    return this.addMessage(id, {
+      id: nextId(),
+      conversationId: id,
+      author: this.sessionId,
+      timestamp: this.world?.now() ?? Date.now(),
+      body,
+      outgoing: true,
+      sendState: 'sent',
+      attachments,
+      galleryViewable: galleryViewable(attachments),
+      gallery: galleryViewable(attachments),
     })
   }
 
@@ -969,7 +1050,7 @@ export class FakeAccount {
         this.world?.scheduleSend(this, id, { ...message, sendState: 'pending' })
         return true
       }
-      this.uploadNext(id, messageId, this.uploadsOf.get(messageId) ?? this.seededUploads(message))
+      this.startUploads(id, messageId, this.uploadsOf.get(messageId) ?? this.seededUploads(message))
       return true
     }
     return false
@@ -977,14 +1058,12 @@ export class FakeAccount {
 
   /**
    * The uploads of a message `seedSending` made, which no send handed files to: each carries the
-   * size it reports once up.
+   * size recorded for its file.
    */
   private seededUploads(message: Message): Upload[] {
     return message.attachments.map((attachment) => ({
       path: '',
-      sizeBytes: this.unreportedSizes.get(
-        keyOf({ messageId: message.id, index: attachment.index }),
-      ),
+      sizeBytes: attachment.sizeBytes,
       originalFile: attachment.originalFile,
       reencodedAs: undefined,
     }))
@@ -1476,7 +1555,7 @@ export class FakeWorld {
   /** Runs the queue out, however many rounds it takes. */
   settle(): void {
     let guard = 0
-    while (this.queue.length > 0 && guard < 100) {
+    while (this.queue.length > 0 && guard < SETTLE_ROUNDS) {
       this.advance()
       guard += 1
     }

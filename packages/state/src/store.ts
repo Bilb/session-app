@@ -8,10 +8,11 @@ import type {
   SendPlan,
   SessionClient,
 } from '@session/client'
-import { BRIDGE_UNAVAILABLE, SessionClientError } from '@session/client'
+import { SessionClientError } from '@session/client'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
 import { applyEvent, mergePages, recordRefusal, withoutHistory } from './applyEvent'
+import { classifyStartupFailure, type StartupFailureKind } from './startupFailure'
 import { emptyState, type MessageWindow, type SessionState, type StoredAppearance } from './types'
 
 /** Where the account's theme and accent are kept, as libsession preferences. */
@@ -303,9 +304,16 @@ export function createSessionStore(
     }
   }
 
+  /** A refusal as the failure screen takes it: libsession's words, and what kind they are. */
+  function startupFailure(error: unknown): { message: string; kind: StartupFailureKind } {
+    const message = error instanceof Error ? error.message : String(error)
+    const code = error instanceof SessionClientError ? error.code : undefined
+    return { message, kind: classifyStartupFailure(message, code) }
+  }
+
   const actions: SessionActions = {
     async start(): Promise<void> {
-      store.setState({ startupError: null, startupClearable: true })
+      store.setState({ startupError: null, startupFailureKind: null })
       try {
         await actions.hydrate()
       } catch (error) {
@@ -314,10 +322,9 @@ export function createSessionStore(
         // arrives here -- which is what makes "it did not start" a state the screens can render
         // rather than a promise nobody was holding. Left uncaught it was an unhandled rejection
         // and a launch screen that never went away, identical from the outside to a slow start.
-        const message = error instanceof Error ? error.message : String(error)
-        log('error', 'session', `could not start: ${message}`)
-        const noBridge = error instanceof SessionClientError && error.code === BRIDGE_UNAVAILABLE
-        store.setState({ startupError: message, startupClearable: !noBridge })
+        const { message, kind } = startupFailure(error)
+        log('error', 'session', `could not start (${kind}): ${message}`)
+        store.setState({ startupError: message, startupFailureKind: kind })
       }
     },
 
@@ -334,9 +341,9 @@ export function createSessionStore(
         // nothing above it can carry on, so it lands where every other one does, with its own
         // reason. Rejects as well, so a caller that goes on to something only a clear allows --
         // ending the process -- does not.
-        const message = error instanceof Error ? error.message : String(error)
-        log('error', 'session', `could not clear the device: ${message}`)
-        store.setState({ startupError: message })
+        const { message, kind } = startupFailure(error)
+        log('error', 'session', `could not clear the device (${kind}): ${message}`)
+        store.setState({ startupError: message, startupFailureKind: kind })
         throw error
       }
       store.setState({ ...emptyState })

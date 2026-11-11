@@ -1,7 +1,15 @@
-import { friends, friendsWithAttachments, type FakeWorld } from '@session/client/fake'
 import {
+  createFakeTransport,
+  friends,
+  friendsWithAttachments,
+  type FakeWorld,
+} from '@session/client/fake'
+import {
+  createKeylessTransport,
   createRefusingTransport,
   createSessionClient,
+  keyMissing,
+  keyUnavailable,
   SessionClientError,
   type Frame,
   type MessagePage,
@@ -196,7 +204,7 @@ describe('a start with no bridge behind it', () => {
     const refused = createSessionStore(createSessionClient(createRefusingTransport('no module')))
     await refused.actions.start()
     expect(refused.getState().startupError).toMatch(/the bridge could not start: no module/)
-    expect(refused.getState().startupClearable).toBe(false)
+    expect(refused.getState().startupFailureKind).toBe('noBridge')
 
     const { clients } = friends(['Alice', 'Bob'])
     const alice = clients['Alice']
@@ -204,7 +212,40 @@ describe('a start with no bridge behind it', () => {
     const store = createSessionStore(alice)
     alice.getAccountInfo = () => Promise.reject(new SessionClientError('file is not a database'))
     await store.actions.start()
-    expect(store.getState().startupClearable).toBe(true)
+    expect(store.getState().startupFailureKind).toBe('unreadable')
+  })
+})
+
+describe('a start with no database key', () => {
+  it('is told apart by its code, and a confirmed clear opens a bridge and starts in place', async () => {
+    const { clients } = friends(['Alice', 'Bob'])
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    let cleared = 0
+    const transport = createKeylessTransport(keyMissing(), () => {
+      cleared += 1
+      return Promise.resolve(createFakeTransport(alice))
+    })
+    const store = createSessionStore(createSessionClient(transport))
+
+    await store.actions.start()
+    expect(store.getState().startupError).toBe(keyMissing().message)
+    expect(store.getState().startupFailureKind).toBe('unreadable')
+    expect(cleared).toBe(0)
+
+    await store.actions.clearDeviceData()
+    expect(cleared).toBe(1)
+    expect(store.getState().startupError).toBeNull()
+    expect(store.getState().hydrated).toBe(true)
+  })
+
+  it('calls a key the keychain will not give up now transient', async () => {
+    const transport = createKeylessTransport(keyUnavailable('locked'), () =>
+      Promise.reject(new Error('unused')),
+    )
+    const store = createSessionStore(createSessionClient(transport))
+    await store.actions.start()
+    expect(store.getState().startupFailureKind).toBe('transient')
   })
 })
 
@@ -223,6 +264,7 @@ describe('a clear that fails', () => {
 
     await expect(store.actions.clearDeviceData()).rejects.toThrow('disk full')
     expect(store.getState().startupError).toBe('disk full')
+    expect(store.getState().startupFailureKind).toBe('transient')
   })
 })
 

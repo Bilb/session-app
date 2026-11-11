@@ -443,6 +443,11 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser 
     )
   }
 
+  /** What the app last copied, read in the main process: the renderer may not read it. */
+  async readClipboard(): Promise<string> {
+    return this.app.evaluate(({ clipboard }) => clipboard.readText())
+  }
+
   /** The page's own size, in CSS px: the window's frame is the window manager's. */
   async resize(width: number, height: number): Promise<void> {
     await this.app.evaluate(

@@ -19,6 +19,7 @@ import {
 import { useStore } from 'zustand'
 
 import { selectAttachmentTransfer, selectMessage, selectMessageTransfers } from './selectors'
+import type { StartupFailureKind } from './startupFailure'
 import type { SessionActions, SessionStore } from './store'
 import type {
   AttachmentTransferState,
@@ -64,10 +65,10 @@ export function useStartupError(): string | null {
   return useStore(store, (state) => state.startupError)
 }
 
-/** Whether clearing the device could get past a failed start: see `startupClearable`. */
-export function useStartupClearable(): boolean {
+/** What kind of failed start `useStartupError` is, or null while there is none. */
+export function useStartupFailureKind(): StartupFailureKind | null {
   const store = useSessionStore()
-  return useStore(store, (state) => state.startupClearable)
+  return useStore(store, (state) => state.startupFailureKind)
 }
 
 /** The theme and accent the account chose, as stored, or null where it has not chosen one. */

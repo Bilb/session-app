@@ -1,5 +1,5 @@
 import { requirePorts } from '@session/app'
-import { useCallback, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
 import type { Attachment, Message } from '@session/client'
 import { PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
@@ -24,7 +24,6 @@ export function MessageAlbum({
   width,
   loneMaxHeightPx,
   onOpen,
-  control,
   fetchFor,
   setState,
   onAccent,
@@ -36,8 +35,6 @@ export function MessageAlbum({
   loneMaxHeightPx?: number | undefined
   /** Takes the attachment's index in the message. */
   onOpen: (index: number) => void
-  /** The set's own control, drawn over the box the layout names. */
-  control?: ReactNode | undefined
   fetchFor: (attachment: Attachment) => Fetch
   /** The whole set's state, whose verb the cloud says, as the footer does. */
   setState: AttachmentSetState
@@ -95,7 +92,6 @@ export function MessageAlbum({
       overflowLabel={(count) => tr('andMore', { count })}
       overflowName={PENDING_COPY.attachmentNameAndMore}
       onOpen={openAt}
-      control={control}
       fetchLabel={setState === 'failed' ? tr('retry') : tr('download')}
       fetchTestID={ELEMENT.conversation.attachmentFetch}
       tileTestID={ELEMENT.conversation.attachmentTile}

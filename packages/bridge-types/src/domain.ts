@@ -73,8 +73,13 @@ export type SendPlan =
  * separately and ends each with its own outcome, so one attachment can be downloading and exporting
  * at once. An export of a file over libsession's `requested_cache_max_size` runs a transfer of its
  * own that nothing joins; the bridge leaves that size unset.
+ *
+ * `upload` is a file of a message of ours going to the file server, reported for `sendMessage`
+ * and `retrySend` alike. libsession uploads a message's files one at a time in index order, and
+ * only those not yet up: a retry reports nothing for a file an earlier attempt finished. An upload
+ * that fails ends the message's attempt, so the files after it report nothing at all.
  */
-export type AttachmentTransfer = 'download' | 'export'
+export type AttachmentTransfer = 'download' | 'export' | 'upload'
 
 /**
  * Whether an attachment's bytes are here, on their way, or neither.
@@ -155,7 +160,7 @@ export const FILE_SAVE_FAILED: AttachmentError = 'file.save_failed'
  * several ways it failed" are different questions and only one of them has an answer to match on.
  */
 export interface AttachmentOutcome {
-  /** The bytes arrived and verified. */
+  /** The bytes arrived and verified; for an upload, the file server accepted the file. */
   ok: boolean
   /** Why it failed. Unset when `ok`. */
   error?: AttachmentError

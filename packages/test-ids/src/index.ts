@@ -69,7 +69,6 @@ export const ELEMENT = {
     attachmentExport: 'message-attachment-export',
     attachmentRetry: 'message-attachment-retry',
     attachmentShowAllFailed: 'message-attachment-show-all-failed',
-    attachmentPill: 'message-attachment-pill',
     attachmentFetch: 'message-attachment-fetch',
     attachmentFooter: 'message-attachment-footer',
     attachmentAction: 'message-attachment-action',
@@ -181,6 +180,7 @@ export const ELEMENT = {
 
   startupFailed: {
     screen: 'startup-failed',
+    explanation: 'startup-failed-explanation',
     reason: 'startup-failed-reason',
     copyReason: 'startup-failed-copy-reason',
     exportLogs: 'startup-failed-export-logs',
@@ -226,6 +226,7 @@ export const ELEMENT = {
     recoveryPhraseReveal: 'onboarding-recovery-phrase-reveal',
     recoveryPhraseError: 'onboarding-recovery-phrase-error',
     recoveryPhraseTab: 'onboarding-recovery-phrase-tab',
+    exportLogs: 'onboarding-export-logs',
     scanQrTab: 'onboarding-scan-qr-tab',
     scanQrPane: 'onboarding-scan-qr-pane',
     scanQrPreview: 'onboarding-scan-qr-preview',
@@ -238,6 +239,14 @@ export const ELEMENT = {
     notificationsOption: (mode: string) => `onboarding-notifications-${mode}` as const,
 
     loadingScreen: 'onboarding-loading-screen',
+  },
+  /** Whichever context menu is open: only one ever is. */
+  contextMenu: {
+    menu: 'context-menu',
+    submenu: 'context-menu-submenu',
+    back: 'context-menu-back',
+    /** A row, by its entry's id: `reply`, `copy`, `delete`. */
+    item: (id: string) => `context-menu-item-${id}` as const,
   },
   catalog: {
     page: 'catalog-page',

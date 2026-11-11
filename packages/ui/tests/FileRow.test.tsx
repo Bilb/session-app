@@ -203,3 +203,29 @@ describe('a file row’s layout', () => {
     })
   })
 })
+
+describe('a file row drawn without its control', () => {
+  it.each(['idle', 'fetching', 'ready', 'failed'] as const)(
+    'leaves it out when %s, and keeps the lead square’s open and the row’s press',
+    async (state) => {
+      const user = userEvent.setup()
+      const onOpen = vi.fn()
+      const onPress = vi.fn()
+      const onAction = vi.fn()
+      renderInUI(
+        <FileRow
+          {...pictureRow(state, { onOpen, onAction, hasControl: false })}
+          onPress={onPress}
+        />,
+      )
+      expect(nodeOf(IDS.download)).toBeNull()
+      if (state !== 'fetching') {
+        await user.click(byId(IDS.lead))
+        expect(onOpen).toHaveBeenCalledTimes(1)
+      }
+      await user.click(byId(IDS.name))
+      expect(onPress).toHaveBeenCalledTimes(1)
+      expect(onAction).not.toHaveBeenCalled()
+    },
+  )
+})

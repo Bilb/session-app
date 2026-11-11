@@ -1,9 +1,11 @@
 import type { Attachment, Message } from '@session/client'
+import type { MessageTransfers } from '@session/state'
 import { describe, expect, it } from 'vitest'
 
 import {
   failsPast,
   isUploadPhase,
+  uploadProgress,
   uploadStateOf,
   uploadSummary,
   whileSending,
@@ -75,6 +77,56 @@ describe('a message being sent, file by file', () => {
     } as unknown as Message
     expect(uploadStateOf(message, 1)).toBe('uploading')
     expect(uploadStateOf(message, 2)).toBe('queued')
+  })
+
+  it('moves on as soon as a file’s upload reports done, before its message says so', () => {
+    const uploads: MessageTransfers = {
+      'upload:0': { state: 'done', doneBytes: 900, totalBytes: 900 },
+      'upload:1': { state: 'running', doneBytes: 10, totalBytes: 600 },
+    }
+    const message = sending('uploading', 3, 0)
+    expect(message.attachments.map((a) => uploadStateOf(message, a.index, uploads))).toEqual([
+      'uploaded',
+      'uploading',
+      'queued',
+    ])
+  })
+})
+
+describe('how far a message’s files have got together', () => {
+  /** A sending message whose files have the sizes libsession recorded as it stored them. */
+  function sized(uploaded: number, ...sizes: number[]): Message {
+    const message = sending('uploading', sizes.length, uploaded)
+    return {
+      ...message,
+      attachments: message.attachments.map((a, index) => ({ ...a, sizeBytes: sizes[index] ?? 0 })),
+    }
+  }
+
+  it('knows the total before any file has started', () => {
+    expect(uploadProgress(sized(0, 1_000, 2_000), {})).toEqual({ doneBytes: 0, totalBytes: 3_000 })
+  })
+
+  it('counts in the files’ own sizes, spending a running report’s fraction against its file', () => {
+    const uploads: MessageTransfers = {
+      'upload:0': { state: 'done', doneBytes: 1_100, totalBytes: 1_100 },
+      'upload:1': { state: 'running', doneBytes: 300, totalBytes: 600 },
+    }
+    expect(uploadProgress(sized(0, 1_000, 2_000), uploads)).toEqual({
+      doneBytes: 2_000,
+      totalBytes: 3_000,
+    })
+  })
+
+  it('counts a file up before the reports began as all of itself', () => {
+    expect(uploadProgress(sized(1, 700, 400), {})).toEqual({ doneBytes: 700, totalBytes: 1_100 })
+  })
+
+  it('has no total while a file’s size is missing', () => {
+    const uploads: MessageTransfers = {
+      'upload:0': { state: 'running', doneBytes: 300, totalBytes: 600 },
+    }
+    expect(uploadProgress(sending('uploading', 2, 0), uploads).totalBytes).toBe(0)
   })
 })
 

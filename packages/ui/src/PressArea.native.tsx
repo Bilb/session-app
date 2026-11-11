@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Pressable, type GestureResponderEvent, type PointerEvent } from 'react-native'
 
 import type { PressAreaProps } from './PressArea.types'
+import { useMenuLongPress } from './menuLongPress'
 
 export type { PressAreaProps }
 
@@ -72,6 +73,7 @@ export function PressArea({
   children,
 }: PressAreaProps) {
   const [hovered, setHovered] = useState(false)
+  const menuLongPress = useMenuLongPress()
   const pendingLeave = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const pressing = useRef(false)
   const leftDuringPress = useRef(false)
@@ -94,6 +96,7 @@ export function PressArea({
       accessibilityRole={role}
       disabled={disabled}
       onPress={onPress}
+      {...menuLongPress}
       {...(hitSlop === undefined || hitSlop === 0 ? {} : { hitSlop })}
       accessibilityLabel={accessibilityLabel}
       {...(accessibilityHint === undefined ? {} : { accessibilityHint })}

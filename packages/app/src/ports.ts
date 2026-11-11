@@ -234,8 +234,9 @@ export interface WindowPort {
    * and names have sat in JavaScript strings, which nothing can scrub, and only the end of the
    * process gives that memory back.
    *
-   * Desktop closes its window, which with one window is quitting. The phones end the process at
-   * once, without the teardown `exit()` runs -- see `modules/process-exit` in the mobile app. Null
+   * Desktop quits through main, which ends the process on macOS too, where closing the last window
+   * does not. The phones end the process at once, without the teardown `exit()` runs -- see
+   * `modules/process-exit` in the mobile app. Null
    * where a phone build predates that module, so a screen omits the control rather than offering
    * one that does nothing.
    */

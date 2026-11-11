@@ -2,14 +2,22 @@ import type { ConversationId, Message } from '@session/client'
 import { useMessage, useSessionActions } from '@session/state'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { MessageFrame, ON_ACCENT_SECONDARY_OPACITY, Text, XStack } from '@session/ui'
+import {
+  ContextMenuTarget,
+  MessageFrame,
+  ON_ACCENT_SECONDARY_OPACITY,
+  Text,
+  useMenuLongPress,
+  XStack,
+} from '@session/ui'
 import { memo, useMemo, type ReactNode } from 'react'
 
 import { ConversationUiContext, type ConversationUi } from './conversationUi'
 import { attachmentsWidthPx } from './attachmentsWidth'
 import { MessageAttachments } from './MessageAttachments'
 import { useAlbumGeometry } from './useAlbumGeometry'
-import { isUploadPhase } from './uploadState'
+import { offersRetry } from './messageRetry'
+import { useMessageMenuOpener } from './useMessageMenuOpener'
 
 /**
  * What a send state is called on screen. Only the ones worth showing say anything.
@@ -39,15 +47,23 @@ export function stateLabel(message: Message): string | undefined {
   }
 }
 
-/**
- * Which states are worth offering a retry for.
- *
- * `failed` and `interrupted` are worth another attempt - something was unreachable, or a picture
- * could not be read this time. `unsendable` is not: libsession keeps it apart precisely so a client
- * knows which failures to offer a retry for, and it means a file is gone or too large to send, so
- * retrying fails identically every time.
- */
-const RETRYABLE: readonly Message['sendState'][] = ['failed', 'interrupted']
+/** A failed send's Retry, inside the message's menu target so its long press opens the menu. */
+function RetryLink({ onPress }: { onPress: () => void }) {
+  const menuLongPress = useMenuLongPress()
+  return (
+    <Text
+      size="$caption"
+      color="$onAccent"
+      weight="semibold"
+      textDecorationLine="underline"
+      testID={ELEMENT.conversation.messageRetry}
+      {...menuLongPress}
+      onPress={onPress}
+    >
+      {tr('retry')}
+    </Text>
+  )
+}
 
 /**
  * One message, read by id so an event that changes one message re-renders one row.
@@ -66,68 +82,61 @@ export const MessageRow = memo(function MessageRow({
   const actions = useSessionActions()
   const message = useMessage(conversationId, messageId)
   const geometry = useAlbumGeometry()
+  const openMyMenu = useMessageMenuOpener(messageId)
   if (message === undefined) return null
   // A caption wraps at its attachments' width, so a narrow picture keeps a narrow bubble.
   const attachmentsWidth =
     message.attachments.length === 0 ? undefined : attachmentsWidthPx(message, geometry)
 
   const label = message.outgoing ? stateLabel(message) : undefined
-  // A set still uploading has its Retry in the attachment footer, beside the count it resumes.
-  const retryable =
-    message.outgoing && RETRYABLE.includes(message.sendState) && !isUploadPhase(message)
+  const retryable = offersRetry(message)
 
   return (
-    <MessageFrame
-      outgoing={message.outgoing}
+    <ContextMenuTarget
+      onOpen={openMyMenu}
       alignSelf={message.outgoing ? 'flex-end' : 'flex-start'}
       // Text wraps at four fifths of the row. Attachments are sized for the transcript already,
       // as a share of it that fits the row, and their caption wraps at them.
       maxWidth={attachmentsWidth === undefined ? '80%' : '100%'}
-      testID={ELEMENT.conversation.messageRow(index)}
     >
-      {message.body.length === 0 ? null : (
-        <Text
-          size="$body"
-          color={message.outgoing ? '$onAccent' : '$messageBubbleIncomingText'}
-          {...(attachmentsWidth === undefined ? {} : { maxWidth: attachmentsWidth })}
-          testID={ELEMENT.conversation.messageBody}
-        >
-          {message.body}
-        </Text>
-      )}
-      {attachmentsWidth === undefined ? null : (
-        <MessageAttachments message={message} width={attachmentsWidth} />
-      )}
-      {label === undefined ? null : (
-        <XStack alignItems="center" gap="$xs">
-          {/* On the fill, not on the page: a label only ever appears on an outgoing message. */}
+      <MessageFrame outgoing={message.outgoing} testID={ELEMENT.conversation.messageRow(index)}>
+        {message.body.length === 0 ? null : (
           <Text
-            size="$caption"
-            color="$onAccent"
-            opacity={ON_ACCENT_SECONDARY_OPACITY}
-            testID={ELEMENT.conversation.messageState}
+            size="$body"
+            color={message.outgoing ? '$onAccent' : '$messageBubbleIncomingText'}
+            {...(attachmentsWidth === undefined ? {} : { maxWidth: attachmentsWidth })}
+            testID={ELEMENT.conversation.messageBody}
           >
-            {label}
+            {message.body}
           </Text>
-          {retryable ? (
+        )}
+        {attachmentsWidth === undefined ? null : (
+          <MessageAttachments message={message} width={attachmentsWidth} />
+        )}
+        {label === undefined ? null : (
+          <XStack alignItems="center" gap="$xs">
+            {/* On the fill, not on the page: a label only ever appears on an outgoing message. */}
             <Text
               size="$caption"
               color="$onAccent"
-              weight="semibold"
-              textDecorationLine="underline"
-              testID={ELEMENT.conversation.messageRetry}
-              onPress={() => {
-                // Resumes rather than restarts. The state comes back as an update, so
-                // there is nothing to do here.
-                void actions.retry(message.id)
-              }}
+              opacity={ON_ACCENT_SECONDARY_OPACITY}
+              testID={ELEMENT.conversation.messageState}
             >
-              {tr('retry')}
+              {label}
             </Text>
-          ) : null}
-        </XStack>
-      )}
-    </MessageFrame>
+            {retryable ? (
+              <RetryLink
+                onPress={() => {
+                  // Resumes rather than restarts. The state comes back as an update, so
+                  // there is nothing to do here.
+                  void actions.retry(message.id)
+                }}
+              />
+            ) : null}
+          </XStack>
+        )}
+      </MessageFrame>
+    </ContextMenuTarget>
   )
 })
 
@@ -150,6 +159,7 @@ export function DetachedMessages({
       requestAutoDownloadPrompt: ignore,
       openViewer: ignore,
       openSheet: ignore,
+      openMenu: ignore,
     }),
     [conversationId],
   )

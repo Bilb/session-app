@@ -1,4 +1,4 @@
-import { memo, type ReactNode } from 'react'
+import { memo } from 'react'
 import { isWeb, XStack, YStack } from 'tamagui'
 
 import type { WithFetchesOnOpen, WithMediaThumbhash, WithMediaUri } from '@session/basic-types'
@@ -13,6 +13,7 @@ import { focusRing, heldButton, keyboardPress } from './keyboardPress'
 import { pressHint } from './pressHint'
 import { StateLayer } from './StateLayer'
 import type { WithTestID } from './with'
+import { useMenuLongPress } from './menuLongPress'
 
 export type AlbumItem = WithMediaUri &
   WithMediaThumbhash &
@@ -50,13 +51,6 @@ export type AttachmentAlbumProps = WithTestID & {
    */
   overflowName: (label: string, count: number) => string
   onOpen: (at: number) => void
-  /**
-   * The set's own badge, drawn in the album's corner.
-   *
-   * The corner rather than the middle of a tile: a badge on a tile reads as that tile's state,
-   * and this one is about the whole message, including the attachments behind "+N".
-   */
-  control?: ReactNode | undefined
   /** Already worded; what the cloud that fetches the set is announced as. */
   fetchLabel: string
   fetchTestID: ElementId
@@ -99,6 +93,7 @@ const AlbumTile = memo(function AlbumTile({
   onAccent: boolean
 }) {
   const forcedFocus = useForcedFocus()
+  const menuLongPress = useMenuLongPress()
   if (item === undefined) return null
   // A tile that would fetch is the whole set's, so it dims with the album, and at rest on touch
   // under the album's cloud. One that is here opens its own picture, so it answers on its own.
@@ -129,6 +124,7 @@ const AlbumTile = memo(function AlbumTile({
       position="relative"
       $platform-web={{ cursor: 'pointer' }}
       onPress={held ? undefined : press}
+      {...menuLongPress}
       // A group in every state: tamagui remounts a view that gains or drops one, dropping focus.
       group="tile"
     >
@@ -154,9 +150,7 @@ const AlbumTile = memo(function AlbumTile({
  * Every picture on one message, as one object.
  *
  * The geometry is `albumLayout`'s, from the shapes the items carry, so this places and never
- * measures. The set's own control is handed in rather than built here: what it says is a fact about
- * the message's transfers, which this package knows nothing about, and where it sits is a fact
- * about the shape, which the layout already answered.
+ * measures. What the set's transfers are doing is the footer's to say, under the album.
  */
 export function AttachmentAlbum({
   items,
@@ -164,7 +158,6 @@ export function AttachmentAlbum({
   overflowLabel,
   overflowName,
   onOpen,
-  control,
   fetchLabel,
   fetchTestID,
   tileTestID,
@@ -189,7 +182,7 @@ export function AttachmentAlbum({
   const fetchAt = items.findIndex((item) => item.fetchesOnOpen === true)
 
   return (
-    // `relative`, so the control resolves against the album and not the page.
+    // `relative`, so the cloud resolves against the album and not the page.
     // As wide as the layout, which a lone portrait can draw narrower than `width`.
     <YStack position="relative" group="album" width={layout.width} testID={testID}>
       {/* Rows rather than absolute rects, so the tiles mirror with the reading direction. Each
@@ -226,23 +219,6 @@ export function AttachmentAlbum({
           label={fetchLabel}
           testID={fetchTestID}
         />
-      )}
-
-      {control === undefined ? null : (
-        // The album owns the corner; the control owns what it says. `flex-end` rather than an
-        // inline inset, so it mirrors with the layout and nothing has to ask which way it reads.
-        <YStack
-          position="absolute"
-          top={0}
-          bottom={0}
-          left={0}
-          right={0}
-          alignItems="flex-end"
-          padding="$xs"
-          pointerEvents="box-none"
-        >
-          {control}
-        </YStack>
       )}
     </YStack>
   )

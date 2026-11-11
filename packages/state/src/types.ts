@@ -9,6 +9,8 @@ import type {
   TransferProgress,
 } from '@session/client'
 
+import type { StartupFailureKind } from './startupFailure'
+
 /**
  * One conversation's loaded history.
  *
@@ -67,10 +69,10 @@ export interface SessionState {
    */
   startupError: string | null
   /**
-   * Whether clearing the device could get past `startupError`. False when the bridge itself could
-   * not be made: every request is refused, the discard a clear makes included.
+   * What kind of failure `startupError` is, which decides what the screen explains and whether it
+   * offers a clear; null exactly when `startupError` is. See `classifyStartupFailure`.
    */
-  startupClearable: boolean
+  startupFailureKind: StartupFailureKind | null
 
   /**
    * Complete lists, in the order libsession sent them. libsession sends whole state, so partial
@@ -127,7 +129,7 @@ export const emptyState: SessionState = {
   account: null,
   attachmentUploadLimitBytes: null,
   startupError: null,
-  startupClearable: true,
+  startupFailureKind: null,
   conversations: [],
   requests: [],
   histories: {},

@@ -4,9 +4,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { memoryPorts, resetPorts, setPorts } from '@session/app'
 import type { Attachment, ConversationId, Message } from '@session/client'
 import { friends } from '@session/client/fake'
-import { ALBUM_PICTURE_ID, ALBUM_TILE_ID, ATTACHMENT_ROW_IDS as IDS } from '@session/expectations'
-import { byId, declared } from '@session/render-tier'
+import {
+  ALBUM_PICTURE_ID,
+  ALBUM_TILE_ID,
+  ATTACHMENT_ROW_IDS as IDS,
+  attachmentFooterAction,
+  FOOTER_ACTION_ID,
+} from '@session/expectations'
+import { byId, declared, nodeOf } from '@session/render-tier'
 import { createSessionStore, type SessionStore } from '@session/state'
+import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 
 import { AttachmentSheet, DetachedAttachmentSheet } from '#src/AttachmentSheet'
@@ -75,6 +82,7 @@ function conversation(): ConversationUi {
     requestAutoDownloadPrompt: vi.fn(),
     openViewer: vi.fn(),
     openSheet: vi.fn(),
+    openMenu: vi.fn(),
   }
 }
 
@@ -236,5 +244,54 @@ describe('which picture each place draws', () => {
     expect(sourceOf(byId(ELEMENT.conversation.mediaViewerImage))).toBe(
       `file://${String(MESSAGE_ID)}/0`,
     )
+  })
+})
+
+/** Every row control there is, by what it currently means. */
+const rowControls = () =>
+  [IDS.download, IDS.export, ELEMENT.conversation.attachmentRetry].filter(
+    (id) => nodeOf(id) !== null,
+  )
+
+/**
+ * A message's one attachment has one control, its footer's verb, in list view as under an album,
+ * so switching views never moves it. Two or more keep a control on every row.
+ */
+describe('the controls of a message drawn as a list', () => {
+  it('leave a lone document’s row without one, and give the footer’s verb its name', () => {
+    drawn(message([document(0)], false))
+    expect(nodeOf(IDS.row)).not.toBeNull()
+    expect(rowControls()).toEqual([])
+    expect(nodeOf(FOOTER_ACTION_ID)).toMatchObject(
+      attachmentFooterAction({ state: 'idle', count: 1 }).desktop ?? {},
+    )
+  })
+
+  it('leave a lone picture’s row without one when it is switched to a list', () => {
+    drawn({ ...message([picture(0)], false), gallery: false })
+    expect(nodeOf(IDS.lead)).not.toBeNull()
+    expect(rowControls()).toEqual([])
+    expect(nodeOf(FOOTER_ACTION_ID)).toMatchObject(
+      attachmentFooterAction({ state: 'idle', count: 1 }).desktop ?? {},
+    )
+  })
+
+  it('keep one on each of two rows, beside the footer’s download of both', () => {
+    drawn(message([document(0), document(1)], false))
+    expect(nodeOf(IDS.download, 0)).not.toBeNull()
+    expect(nodeOf(IDS.download, 1)).not.toBeNull()
+    expect(nodeOf(FOOTER_ACTION_ID)).toMatchObject(
+      attachmentFooterAction({ state: 'idle', count: 2 }).desktop ?? {},
+    )
+  })
+
+  it('leave the retry of our lone file that failed to send to the footer', () => {
+    drawn({
+      ...message([document(0)], true),
+      sendState: 'failed',
+      attachments: [{ ...document(0), uploaded: false }],
+    })
+    expect(rowControls()).toEqual([])
+    expect(nodeOf(FOOTER_ACTION_ID)?.name).toBe(tr('retry'))
   })
 })
