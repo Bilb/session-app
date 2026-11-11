@@ -1,4 +1,4 @@
-import { BarRule, Text, XStack } from '@session/ui'
+import { BarRule, Text, useScreenInsets, XStack, YStack } from '@session/ui'
 import type { ReactNode } from 'react'
 
 import { useBesideList, useTopBarInsets } from './pane'
@@ -50,58 +50,66 @@ export function PaneTopBar({
 }) {
   const topBarInsets = useTopBarInsets()
   const besideList = useBesideList()
+  const { top } = useScreenInsets()
 
   return (
     <>
-      <XStack
-        paddingHorizontal="$md"
-        paddingVertical="$sm"
-        {...(besideList ? { backgroundColor: '$backgroundSecondary' } : {})}
-        testID={testID}
-        {...topBarInsets}
+      <YStack
+        {...(besideList
+          ? {
+              backgroundColor: '$backgroundSecondary',
+              // The screen holds its content clear of the status bar with padding in the page's
+              // colour. Reaching up into it carries the bar's colour behind the status bar on a
+              // tablet, so the strip above the conversation matches the one above the list.
+              marginTop: -top,
+              paddingTop: top,
+            }
+          : {})}
       >
-        <XStack flex={1} minHeight={BAR_HEIGHT_PX} gap="$sm" alignItems="center">
-          {centred ? (
-            <>
-              <XStack
-                flex={1}
-                flexBasis={0}
-                minWidth={BAR_CONTROL_SIZE_PX}
-                alignItems="center"
-                gap="$xs"
-              >
-                {leading}
-              </XStack>
-              {/* Shrinks first, so a long name truncates rather than pushing either end off. */}
-              <XStack flexShrink={1} justifyContent="center">
-                {title}
-              </XStack>
-              <XStack
-                flex={1}
-                flexBasis={0}
-                minWidth={BAR_CONTROL_SIZE_PX}
-                alignItems="center"
-                justifyContent="flex-end"
-                gap="$xs"
-              >
-                {trailing}
-              </XStack>
-            </>
-          ) : (
-            <>
-              {/* Shrinks first, so that at a large text size the title wraps rather than pushing
+        <XStack paddingHorizontal="$md" paddingVertical="$sm" testID={testID} {...topBarInsets}>
+          <XStack flex={1} minHeight={BAR_HEIGHT_PX} gap="$sm" alignItems="center">
+            {centred ? (
+              <>
+                <XStack
+                  flex={1}
+                  flexBasis={0}
+                  minWidth={BAR_CONTROL_SIZE_PX}
+                  alignItems="center"
+                  gap="$xs"
+                >
+                  {leading}
+                </XStack>
+                {/* Shrinks first, so a long name truncates rather than pushing either end off. */}
+                <XStack flexShrink={1} justifyContent="center">
+                  {title}
+                </XStack>
+                <XStack
+                  flex={1}
+                  flexBasis={0}
+                  minWidth={BAR_CONTROL_SIZE_PX}
+                  alignItems="center"
+                  justifyContent="flex-end"
+                  gap="$xs"
+                >
+                  {trailing}
+                </XStack>
+              </>
+            ) : (
+              <>
+                {/* Shrinks first, so that at a large text size the title wraps rather than pushing
                   the controls after it off the edge. */}
-              <XStack alignItems="center" gap="$xs" flexShrink={1}>
-                {leading}
-                {title}
-              </XStack>
-              <XStack flex={1} alignItems="center" justifyContent="flex-end" gap="$sm">
-                {trailing}
-              </XStack>
-            </>
-          )}
+                <XStack alignItems="center" gap="$xs" flexShrink={1}>
+                  {leading}
+                  {title}
+                </XStack>
+                <XStack flex={1} alignItems="center" justifyContent="flex-end" gap="$sm">
+                  {trailing}
+                </XStack>
+              </>
+            )}
+          </XStack>
         </XStack>
-      </XStack>
+      </YStack>
 
       <BarRule />
     </>
