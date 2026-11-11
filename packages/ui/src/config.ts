@@ -11,6 +11,7 @@ import {
   SPACE_SCALE,
   Z_INDEX_SCALE,
 } from './scales'
+import { BODY_FONT_FACES } from './bodyFace'
 import { MONO_FAMILY } from './monoFamily'
 import { DEFAULT_THEME, initialThemes, themeName } from './themes'
 
@@ -32,6 +33,8 @@ const bodyFont = createFont({
    * unlinked font resolving to a serif there too.
    */
   family: 'Roboto, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+  // See `ANDROID_BODY_FACES`: without it, semibold draws as regular on Android.
+  face: BODY_FONT_FACES,
   size: FONT_SIZE_SCALE,
   lineHeight: LINE_HEIGHT_SCALE,
   weight: FONT_WEIGHT_SCALE,

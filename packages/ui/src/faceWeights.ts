@@ -19,6 +19,9 @@ export const FACE_WEIGHTS = {
   sanFrancisco: { regular: '400', semibold: '600', bold: '700' },
 } as const satisfies Record<string, Record<WeightName, string>>
 
+/** A font's face for each weight that needs a family of its own, as tamagui's `face` takes. */
+export type BodyFontFaces = Partial<Record<500, { normal: string }>>
+
 /** A face the body can be drawn in. */
 export type Face = keyof typeof FACE_WEIGHTS
 
