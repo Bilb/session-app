@@ -1,3 +1,5 @@
+import { ArrowDown } from '@tamagui/lucide-icons-2/icons/ArrowDown'
+import { ArrowUp } from '@tamagui/lucide-icons-2/icons/ArrowUp'
 import { Ban } from '@tamagui/lucide-icons-2/icons/Ban'
 import { BellOff } from '@tamagui/lucide-icons-2/icons/BellOff'
 import { Bookmark } from '@tamagui/lucide-icons-2/icons/Bookmark'
@@ -76,6 +78,8 @@ import { isLayoutRtl } from './layoutDirection'
  * the values are: every name has a glyph, and a glyph nobody named does not compile.
  */
 const GLYPHS = {
+  arrowDown: ArrowDown,
+  arrowUp: ArrowUp,
   ban: Ban,
   bellOff: BellOff,
   bookmark: Bookmark,

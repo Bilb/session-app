@@ -1,5 +1,5 @@
 import { RADII, SPACING } from '@session/theme-tokens'
-import { useCallback, useRef, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { isWeb, YStack } from 'tamagui'
 
 import { useForcedFocus } from './interactionOverride'
@@ -34,23 +34,8 @@ export interface MessageFrameProps {
    * ringed while focused. Desktop only; a phone's reader moves between messages by itself.
    */
   focusable?: boolean | undefined
-  /**
-   * The Menu key or Shift+F10 on the frame or anything inside it, with the frame to anchor a menu
-   * to. The key's own context menu is cancelled.
-   */
-  onMenuKey?: ((frame: unknown) => void) | undefined
   testID?: string | undefined
   children: ReactNode
-}
-
-interface MenuKeyEvent {
-  key: string
-  shiftKey: boolean
-  preventDefault: () => void
-}
-
-function isMenuKey(event: MenuKeyEvent): boolean {
-  return event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)
 }
 
 /**
@@ -64,27 +49,16 @@ export function MessageFrame({
   highlightSerial,
   highlightHeld = false,
   focusable = false,
-  onMenuKey,
   testID,
   children,
 }: MessageFrameProps) {
   const stop = useListStop()
   const forcedFocus = useForcedFocus()
-  const node = useRef<unknown>(null)
   const web = isWeb && focusable
-  const drawStop = web ? stop?.ref : undefined
-  // Stable, or each render would take the row out of its list's stops and put it back.
-  const ref = useCallback(
-    (element: unknown) => {
-      node.current = element
-      drawStop?.(element)
-    },
-    [drawStop],
-  )
 
   return (
     <YStack
-      ref={ref}
+      {...(web && stop !== null ? { ref: stop.ref } : {})}
       {...(alignSelf === undefined ? {} : { alignSelf })}
       {...(maxWidth === undefined ? {} : { maxWidth })}
       position="relative"
@@ -98,16 +72,7 @@ export function MessageFrame({
             role: 'article',
             focusVisibleStyle: RING,
             ...forcedFocus,
-            ...(stop === null ? {} : { tabIndex: stop.tabIndex, onFocus: stop.onFocus }),
-            onKeyDown: (raw: unknown) => {
-              const event = raw as MenuKeyEvent
-              if (onMenuKey !== undefined && isMenuKey(event)) {
-                event.preventDefault()
-                onMenuKey(node.current)
-                return
-              }
-              stop?.onKeyDown(raw)
-            },
+            ...(stop === null ? {} : { tabIndex: stop.tabIndex }),
           }
         : {})}
       testID={testID}

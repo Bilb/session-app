@@ -14,6 +14,8 @@ import type { Plus } from '@tamagui/lucide-icons-2/icons/Plus'
  * second time somebody reaches for it.
  */
 export type IconName =
+  | 'arrowDown'
+  | 'arrowUp'
   | 'ban'
   | 'bellOff'
   | 'bookmark'

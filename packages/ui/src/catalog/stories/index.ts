@@ -5,6 +5,7 @@ import { composerReply } from './composerReply'
 import { contextMenu } from './contextMenu'
 import { contextMenuPlacement } from './contextMenuPlacement'
 import { fileRow, fileRowOnAccent, fileRowReceived } from './fileRow'
+import { keyCombo } from './keyCombo'
 import { messageFrameFocus, messageFrameHighlight } from './messageFrame'
 import { avatar, progressRing, radio } from './indicators'
 import { messageQuote, messageQuoteAuthors, messageQuoteFiles, messageQuotePictures } from './quote'
@@ -41,6 +42,7 @@ export const STORIES: readonly AnyStory[] = [
   contextMenu,
   contextMenuPlacement,
   messageFrameFocus,
+  keyCombo,
   messageQuote,
   messageQuotePictures,
   messageQuoteFiles,

@@ -4,6 +4,7 @@ import { ELEMENT } from '@session/test-ids'
 import {
   Button,
   Icon,
+  KeyCombo,
   SettingsGroup,
   SettingsRow,
   SettingsSection,
@@ -13,6 +14,7 @@ import {
 
 import { useExportLogs } from '../useExportLogs'
 import { confirmLink } from './confirmLink'
+import { KeyboardShortcutsPage } from './KeyboardShortcutsPage'
 
 /**
  * `feedback` goes to `URLS.survey`, not `URLS.feedback`, matching the shipping clients so support
@@ -30,10 +32,14 @@ const LINKS = [
   { name: 'support', label: 'helpSupport', description: 'supportDescription', url: URLS.support },
 ] as const
 
-/** Help: report a bug, and four links. A child screen; the settings modal supplies the chrome. */
+/**
+ * Help: report a bug, four links, and the keyboard shortcuts where the app has any. A child screen;
+ * the settings modal supplies the chrome.
+ */
 export function HelpPage() {
   const modals = useModals()
   const logs = useExportLogs()
+  const shortcuts = requirePorts().window.keyboardShortcuts
 
   return (
     <YStack padding="$md" gap="$lg">
@@ -85,6 +91,29 @@ export function HelpPage() {
           ))}
         </SettingsGroup>
       </YStack>
+
+      {shortcuts === null ? null : (
+        <SettingsGroup>
+          <SettingsRow
+            label={tr('keyboardShortcuts')}
+            // The command that opens it, so the row teaches it too.
+            trailing={
+              <KeyCombo
+                keys={['mod', 'slash']}
+                names={shortcuts.keyNames}
+                testID={ELEMENT.keyboardShortcuts.combo('help', 0)}
+              />
+            }
+            testID={ELEMENT.help.keyboardShortcuts}
+            onPress={() => {
+              modals.push({
+                title: tr('keyboardShortcuts'),
+                render: () => <KeyboardShortcutsPage names={shortcuts.keyNames} />,
+              })
+            }}
+          />
+        </SettingsGroup>
+      )}
     </YStack>
   )
 }

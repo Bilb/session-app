@@ -48,6 +48,7 @@ export const ELEMENT = {
     screen: 'conversation',
     header: 'conversation-header',
     headerName: 'conversation-header-name',
+    headerAvatar: 'conversation-header-avatar',
     back: 'conversation-back',
     messageRow: (index: number) => `message-row-${index}` as const,
     dateHeader: 'conversation-date-header',
@@ -155,6 +156,14 @@ export const ELEMENT = {
     reportABug: 'help-report-a-bug',
     exportLogs: 'help-export-logs',
     link: (name: string) => `help-link-${name}` as const,
+    keyboardShortcuts: 'help-keyboard-shortcuts',
+  },
+  keyboardShortcuts: {
+    page: 'keyboard-shortcuts',
+    /** A shortcut's row, by what it does; see `keyboardShortcuts` in the screens package. */
+    row: (name: string) => `keyboard-shortcut-${name}` as const,
+    /** One of a row's key combinations, in the order drawn. */
+    combo: (name: string, index: number) => `keyboard-shortcut-${name}-${String(index)}` as const,
   },
   toast: {
     item: 'toast',

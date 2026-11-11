@@ -6,6 +6,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
+import { useWindowDimensions } from 'react-native'
 import { XStack, YStack } from 'tamagui'
 
 import type { MarkProps } from './Brand'
@@ -13,6 +14,7 @@ import { Icon } from './Icon'
 import type { IconName } from './Icon.types'
 import type { FocusRingShape } from './keyboardPress'
 import { logical } from './logicalEdges'
+import { usePageZoom } from './pageZoom'
 import { PressArea } from './PressArea'
 import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import { SIZE_SCALE, SPACE_SCALE } from './scales'
@@ -40,10 +42,14 @@ const ICON_SIZE = SIZE_SCALE.lg
 const STACK_TRAILING_FROM_SCALE = 1.5
 
 /**
- * Half a pixel: a whole one lands on one device pixel or two depending on
- * position, so one group's lines would draw at different weights.
+ * One device pixel, under the desktop's zoom too. A fixed length lands on one device pixel or two
+ * depending on position, and a fraction of one is rounded to nothing at some positions, so one
+ * group's lines would draw at different weights or not at all.
  */
-const SEPARATOR = 0.5
+function useSeparatorHeight(): number {
+  const { scale } = useWindowDimensions()
+  return 1 / (scale * usePageZoom())
+}
 
 export interface SettingsRowProps {
   label: string
@@ -289,12 +295,13 @@ function Mark({
  */
 export function SettingsGroup({ children }: { children: ReactNode }) {
   const rows = Children.toArray(children)
+  const separator = useSeparatorHeight()
   return (
     <YStack borderRadius="$md" overflow="hidden" backgroundColor="$backgroundSecondary">
       {rows.map((row, at) => (
         <Fragment key={at}>
           {at === 0 ? null : (
-            <YStack height={SEPARATOR} marginHorizontal="$md" backgroundColor="$separatorColor" />
+            <YStack height={separator} marginHorizontal="$md" backgroundColor="$separatorColor" />
           )}
           {row}
         </Fragment>

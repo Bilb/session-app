@@ -5,11 +5,19 @@ import { FakeWorld, resetFakeIds } from './world'
 
 type Line = readonly ['in' | 'out', string] | readonly ['in', string, 'file']
 
+/** Enough to scroll: a transcript whose oldest and newest messages are never on screen together. */
+const LONG: readonly Line[] = Array.from({ length: 30 }, (_, night) =>
+  night % 2 === 0
+    ? ['in', `Night ${night + 1} at the castle`]
+    : ['out', `Noted, night ${night + 1}`],
+)
+
 /** Each peer's conversation, oldest first. The last seeded is the newest, so it lists first. */
 const TRANSCRIPTS: readonly (readonly [FixtureName, readonly Line[]])[] = [
   [
     'Dracula',
     [
+      ...LONG,
       ['in', 'Good evening'],
       ['out', 'Evening'],
       ['in', 'Do you have the keys to the cellar?'],
@@ -40,8 +48,9 @@ const TRANSCRIPTS: readonly (readonly [FixtureName, readonly Line[]])[] = [
 ]
 
 /**
- * Alice with three conversations of a few messages each, one of them carrying a file: what moving
- * through a transcript by keyboard needs, a message with controls of its own among plain ones.
+ * Alice with three conversations, one of them carrying a file and one long enough to scroll: what
+ * moving through a transcript by keyboard needs, a message with controls of its own among plain
+ * ones, and messages off screen.
  */
 export function transcripts(): FakeSetup {
   resetFakeIds()
