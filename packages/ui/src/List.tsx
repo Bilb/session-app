@@ -72,6 +72,10 @@ export function List<T>({
   initialScrollIndex,
   rovingFocus,
 }: ListProps<T>) {
+  // TODO(#533): keyboard on iPad and the iPad app on Mac. Full Keyboard Access reaches a row only
+  // as a full-width accessibility element with the button trait, which hides the row's own
+  // controls (they would become custom actions); a bubble-shaped highlight and Up/Down need
+  // native code.
   const [focus] = useState(() =>
     rovingFocus === undefined || !isWeb ? null : new ListFocus(rovingFocus, inverted ?? false),
   )
