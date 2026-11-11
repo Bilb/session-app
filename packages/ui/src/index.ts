@@ -22,6 +22,8 @@ export {
 export { HeroImage } from './HeroImage'
 export { KeyboardAvoiding } from './KeyboardAvoiding'
 export { PressArea } from './PressArea'
+export { QrCode, type QrCodeProps } from './QrCode'
+export { QrViewer, type QrViewerMenu, type QrViewerProps } from './QrViewer'
 export { RadioIndicator } from './RadioIndicator'
 export { Reveal } from './Reveal'
 export { ScannerFrame } from './ScannerFrame'

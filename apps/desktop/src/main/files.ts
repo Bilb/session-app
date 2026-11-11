@@ -10,6 +10,7 @@ import electron from 'electron'
 import type { BrowserWindow } from 'electron'
 
 import type { PreviewGrants } from './previewGrants'
+import { MAX_QR_TEXT_CHARS, qrCodePng } from './qrCodePng'
 import { isFromAppFrame } from './security'
 
 const { app, dialog, shell } = electron
@@ -276,6 +277,30 @@ export function serveFiles(
     writeLastFolder(lastFolderFile, lastFolder)
     gate.grant(answer.filePath, existsSync(answer.filePath))
     return answer.filePath
+  })
+
+  // Takes the text, never bytes: main draws the picture, so all the page can have written is a QR
+  // code, and only where the person chose.
+  ipc.handle('files:save-qr-code', async (event, value: unknown): Promise<boolean> => {
+    if (!isFromAppFrame(event.senderFrame, appUrl)) return false
+    if (typeof value !== 'string' || value.length === 0 || value.length > MAX_QR_TEXT_CHARS)
+      return false
+    const answer = await dialog.showSaveDialog(window, {
+      // The legacy desktop client's name for the same file.
+      defaultPath: dialogDefaultPath(
+        'session-qr-code.png',
+        process.platform,
+        lastFolder,
+        app.getPath('downloads'),
+      ),
+      filters: [{ name: 'PNG', extensions: ['png'] }],
+      properties: ['showOverwriteConfirmation', 'createDirectory'],
+    })
+    if (answer.canceled || answer.filePath === '') return false
+    lastFolder = dirname(answer.filePath)
+    writeLastFolder(lastFolderFile, lastFolder)
+    writeFileSync(answer.filePath, qrCodePng(value))
+    return true
   })
 
   // The path comes from the preload's `webUtils.getPathForFile`, never from the page.

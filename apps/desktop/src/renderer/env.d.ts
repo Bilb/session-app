@@ -50,6 +50,8 @@ declare global {
     readonly sessionDesktop: {
       openExternal(url: string): void
       chooseExportLocation(suggestedName: string): Promise<string | null>
+      /** Main draws the PNG and asks where to save it; false when cancelled or refused. */
+      saveQrCode(value: string): Promise<boolean>
       /** False when main refused a path outside the folders chosen this run. */
       revealInFolder(path: string): Promise<boolean>
       /** Empty for a file that is not on disk. */

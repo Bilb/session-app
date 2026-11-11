@@ -90,6 +90,12 @@ export interface FilesPort {
    * path, and neither a photo library nor a picked folder is one.
    */
   revealInFolder(path: string): Promise<void>
+  /**
+   * Saves a QR code of `value` as a PNG wherever the person chooses, or null where there is no
+   * file to save it to. Desktop only, as in the legacy desktop client, which offers it on the
+   * recovery password's full-screen QR. Resolves false when the person cancelled.
+   */
+  saveQrCode: ((value: string) => Promise<boolean>) | null
 }
 
 /**
@@ -188,6 +194,12 @@ export interface NotificationsPort {
 export interface ClipboardPort {
   setString(value: string): Promise<void>
   /**
+   * Copies something secret, such as the recovery password. Marked sensitive where the OS has a
+   * flag for it -- Android 13 and later, whose clipboard preview then hides it -- and copied as
+   * `setString` would anywhere else.
+   */
+  setSecret(value: string): Promise<void>
+  /**
    * Whether the OS says so itself when something is copied, so the app should not as well.
    * Android 13 and later show a clipboard preview on every copy.
    */
@@ -250,6 +262,12 @@ export interface WindowPort {
    * so it is null there and the caller falls back to `close`.
    */
   restart: (() => void) | null
+  /**
+   * Keeps whatever is on screen out of screenshots, recordings and the recents thumbnail while
+   * `true`, or null where the platform is not asked to. Android's secure window flag; a screen
+   * that shows a secret sets it on the way in and clears it on the way out.
+   */
+  preventScreenCapture: ((prevented: boolean) => void) | null
   isFocused(): boolean
   /** Drives read receipts and whether a notification is worth showing. */
   onFocusChange(handler: (focused: boolean) => void): () => void

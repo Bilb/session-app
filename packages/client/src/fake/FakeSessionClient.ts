@@ -109,8 +109,8 @@ export class FakeSessionClient implements SessionClient {
     this.assertOpen()
     // The shim rejects a seed it cannot decode rather than guessing at one, so onboarding sees
     // the same refusal here as it will against libsession.
-    if ('hexSeed' in from && !/^[0-9a-fA-F]{64}$/.test(from.hexSeed))
-      return Promise.reject(new Error('hexSeed must be 32 bytes of hex'))
+    if ('hexSeed' in from && !/^(?:[0-9a-fA-F]{32}){1,2}$/.test(from.hexSeed))
+      return Promise.reject(new Error('hexSeed must be 16 or 32 bytes of hex'))
     // A phrase, though, is taken on trust: libsession refuses an unknown word by name and a
     // checksum that does not add up, and neither check can be made without its word list, which
     // is a megabyte of data this has no business carrying. So the refusal half of the recovery
@@ -150,6 +150,12 @@ export class FakeSessionClient implements SessionClient {
     this.assertOpen()
     this.account.provisional = false
     return Promise.resolve()
+  }
+
+  getSeedHex(): Promise<string> {
+    this.assertOpen()
+    // The 16-byte form, as for every 13-word account: the length is the edge a QR code depends on.
+    return Promise.resolve('0123456789abcdef0123456789abcdef')
   }
 
   getSeedMnemonic(): Promise<string[]> {

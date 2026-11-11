@@ -113,6 +113,7 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     type: 'mnemonic',
     words: await client.getSeedMnemonic(cmd.language),
   }),
+  getSeedHex: async (client) => ({ type: 'hex', hex: await client.getSeedHex() }),
   setDisplayName: async (client, cmd) => {
     await client.setDisplayName(cmd.name)
     return empty

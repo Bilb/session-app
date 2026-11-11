@@ -170,6 +170,10 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       return resultOf(response, 'mnemonic').words
     },
 
+    async getSeedHex(): Promise<string> {
+      return resultOf(await call({ type: 'getSeedHex' }), 'hex').hex
+    },
+
     async setDisplayName(name): Promise<void> {
       await call({ type: 'setDisplayName', name })
     },

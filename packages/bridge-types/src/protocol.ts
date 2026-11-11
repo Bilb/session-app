@@ -105,6 +105,11 @@ export type Command =
    * the app's memory and a second copy of the same secret buys nothing.
    */
   | { type: 'checkRecoveryPhrase'; phrase: SecretBytes; language?: string }
+  /**
+   * Restore from a seed in hex: 16 bytes (32 characters), as every recovery password QR code
+   * carries, or the full 32 bytes. A 16-byte seed is the lower half, the upper half zero -- the
+   * same seed the 13 words decode to.
+   */
   | { type: 'restoreAccountFromSeed'; hexSeed: string }
   /**
    * Throws away the account and everything stored under it, and starts again from nothing.
@@ -137,6 +142,16 @@ export type Command =
    */
   | { type: 'keepAccount' }
   | { type: 'getSeedMnemonic'; language?: string }
+  /**
+   * The account seed as lowercase hex, answered with a `hex` result: what a recovery password's
+   * QR code carries.
+   *
+   * **16 bytes (32 characters) when the seed's upper half is zero**, which is every account the
+   * 13 words describe, and 32 bytes otherwise. The short form is the one every existing client
+   * puts in that QR and reads back from it, so a code drawn from this scans anywhere.
+   * `restoreAccountFromSeed` takes either length.
+   */
+  | { type: 'getSeedHex' }
   | { type: 'setDisplayName'; name: string }
   /**
    * Attach a network, or replace the one attached. Declining to attach is how an app stays

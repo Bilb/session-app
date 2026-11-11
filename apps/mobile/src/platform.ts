@@ -15,6 +15,7 @@ import { restartProcess, terminateProcess } from './processExit'
 import { SessionLogs } from './sessionLogs'
 import { attachmentsBytes, databaseSizes } from './storageSizes'
 import { readDatabaseKey, writeDatabaseKey } from './storage/databaseKey'
+import { SecureScreen } from './secureScreen'
 import { plainPath } from './storage/layout'
 import { exportsDirectory, File } from './storage/roots'
 import { sweepStaged } from './storage/staging'
@@ -165,6 +166,10 @@ const ports = memoryPorts({
   },
   clipboard: {
     setString: (value) => Clipboard.setStringAsync(value).then(() => undefined),
+    setSecret: (value) =>
+      SecureScreen === null
+        ? Clipboard.setStringAsync(value).then(() => undefined)
+        : SecureScreen.copySensitive(value),
     // Android 13 (API 33) added the system's own preview of what was copied.
     confirmsCopy: Platform.OS === 'android' && Number(Platform.Version) >= 33,
   },
@@ -256,6 +261,15 @@ const appFocus = {
   },
 }
 
+/** Android's secure window flag; null where the module is not in the build. */
+const secureScreen = SecureScreen
+const secureWindow =
+  secureScreen === null
+    ? null
+    : (prevented: boolean): void => {
+        secureScreen.setSecure(prevented)
+      }
+
 setPorts({
   ...ports,
   files: { ...ports.files, ...pickers, ...exportFiles },
@@ -264,5 +278,6 @@ setPorts({
     ...appFocus,
     close: endingRun('quit', terminateProcess),
     restart: endingRun('restart', restartProcess),
+    preventScreenCapture: secureWindow,
   },
 })

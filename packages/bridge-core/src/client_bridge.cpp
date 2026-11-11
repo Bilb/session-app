@@ -822,9 +822,13 @@ struct ClientBridge::Impl {
     }
 
     void handle(double id, const RestoreAccountFromSeedCommand& cmd) {
-        auto raw = hex_bytes(cmd.hex_seed, 32, "hexSeed");
-        b32 seed;
-        std::memcpy(seed.data(), raw.data(), seed.size());
+        // A recovery password QR code carries 16 bytes: the lower half, the upper half zero.
+        const auto length = cmd.hex_seed.size();
+        if ((length != 32 && length != 64) || !oxenc::is_hex(cmd.hex_seed))
+            throw std::invalid_argument{"hexSeed must be 16 or 32 bytes of hex"};
+        auto raw = oxenc::from_hex(cmd.hex_seed);
+        b32 seed{};
+        std::memcpy(seed.data(), raw.data(), raw.size());
         mark_provisional();
         client->core.globals.restore_account(core::predefined_seed{std::span{seed}}, session::await);
         on_account();
@@ -939,6 +943,17 @@ struct ClientBridge::Impl {
         for (const auto& word : opened)
             out.emplace_back(word);
         respond(id, MnemonicResult{std::move(out)});
+    }
+
+    void handle(double id, const GetSeedHexCommand&) {
+        auto access = client->core.globals.account_seed();
+        auto seed = access.seed();
+        // The short form whenever it is the whole seed, as the 13 words are: it is what every
+        // client's QR code holds, and what each one reads back.
+        const bool short_form = std::all_of(
+                seed.begin() + 16, seed.end(), [](std::byte b) { return b == std::byte{0}; });
+        const auto end = short_form ? seed.begin() + 16 : seed.end();
+        respond(id, HexResult{oxenc::to_hex(seed.begin(), end)});
     }
 
     void handle(double id, const AttachNetworkCommand& cmd) {

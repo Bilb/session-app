@@ -37,6 +37,8 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
       chooseExportLocation: () => Promise.resolve(null),
       openPath: () => Promise.resolve(),
       revealInFolder: () => Promise.resolve(),
+      // Null, not a no-op: a screen offers Save only where there is somewhere to save to.
+      saveQrCode: null,
     },
     // No resolver in a test process, so callers draw the file form rather than a broken picture.
     media: {
@@ -67,6 +69,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
     },
     clipboard: {
       setString: () => Promise.resolve(),
+      setSecret: () => Promise.resolve(),
       confirmsCopy: false,
     },
     linking: {
@@ -92,6 +95,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
       // this port whether to offer the door at all -- see `WindowPort` in `./ports`.
       close: null,
       restart: null,
+      preventScreenCapture: null,
       isFocused: () => true,
       onFocusChange: (handler) => {
         focusHandlers.add(handler)

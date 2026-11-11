@@ -18,6 +18,14 @@ import { emptyState, type MessageWindow, type SessionState, type StoredAppearanc
 /** Where the account's theme and accent are kept, as libsession preferences. */
 const THEME_PREF = 'appearance.theme'
 const ACCENT_PREF = 'appearance.accent'
+/** Set to `true` once the recovery password is hidden on this device; never unset. */
+const RECOVERY_PASSWORD_HIDDEN_PREF = 'recoveryPassword.hidden'
+
+/** What the recovery password screen shows: the words, and the seed its QR code carries. */
+export interface RecoveryPassword {
+  words: string[]
+  seedHex: string
+}
 
 export interface CacheSettings {
   /** Empty when the bridge was opened without one. */
@@ -66,6 +74,13 @@ export interface SessionActions {
    * the Appearance screen, once built, will too.
    */
   setAppearance: (appearance: StoredAppearance) => Promise<void>
+  /**
+   * The recovery password, handed straight to the caller and never kept in the store: a string in
+   * JavaScript cannot be wiped, so the fewer places hold it the better, and none of them a log.
+   */
+  getRecoveryPassword: () => Promise<RecoveryPassword>
+  /** Hides the recovery password on this device for good. See `recoveryPasswordHidden`. */
+  hideRecoveryPassword: () => Promise<void>
   /**
    * Subscribes first, then asks - never the other way round.
    *
@@ -406,18 +421,25 @@ export function createSessionStore(
         return
       }
 
-      const [conversations, requests, theme, accent] = await Promise.all([
+      const [conversations, requests, theme, accent, hidden] = await Promise.all([
         client.getConversations(),
         client.getMessageRequests(),
         client.getPref(THEME_PREF),
         client.getPref(ACCENT_PREF),
+        client.getPref(RECOVERY_PASSWORD_HIDDEN_PREF),
         askNetworkStatus(),
       ])
 
       // In the same update as `hydrated`, so the screen the account opens on is drawn once, in its
       // theme. Both or neither: an accent without its theme is half a choice.
       const appearance = theme === undefined || accent === undefined ? null : { theme, accent }
-      store.setState({ conversations, requests, appearance, hydrated: true })
+      store.setState({
+        conversations,
+        requests,
+        appearance,
+        recoveryPasswordHidden: hidden === 'true',
+        hydrated: true,
+      })
     },
 
     async setAppearance(appearance): Promise<void> {
@@ -425,6 +447,17 @@ export function createSessionStore(
       await client.setPref(THEME_PREF, appearance.theme)
       await client.setPref(ACCENT_PREF, appearance.accent)
       store.setState({ appearance })
+    },
+
+    async getRecoveryPassword(): Promise<RecoveryPassword> {
+      const [words, seedHex] = await Promise.all([client.getSeedMnemonic(), client.getSeedHex()])
+      return { words, seedHex }
+    },
+
+    async hideRecoveryPassword(): Promise<void> {
+      if (store.getState().account?.haveAccount !== true) return
+      await client.setPref(RECOVERY_PASSWORD_HIDDEN_PREF, 'true')
+      store.setState({ recoveryPasswordHidden: true })
     },
 
     async loadHistory(id): Promise<void> {

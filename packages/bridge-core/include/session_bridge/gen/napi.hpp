@@ -1247,6 +1247,21 @@ struct Codec<::session_bridge::GetSeedMnemonicCommand> {
 };
 
 template <>
+struct Codec<::session_bridge::GetSeedHexCommand> {
+    static constexpr std::string_view name = "GetSeedHexCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::GetSeedHexCommand& value) {
+        (void)value;
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::GetSeedHexCommand::type_tag.data(), ::session_bridge::GetSeedHexCommand::type_tag.size()));
+        return obj;
+    }
+    static ::session_bridge::GetSeedHexCommand from(const Napi::Value& value, std::string_view where) {
+        object(value, where);
+        return ::session_bridge::GetSeedHexCommand{};
+    }
+};
+
+template <>
 struct Codec<::session_bridge::SetDisplayNameCommand> {
     static constexpr std::string_view name = "SetDisplayNameCommand";
     static Napi::Value to(Napi::Env env, const ::session_bridge::SetDisplayNameCommand& value) {
@@ -2123,6 +2138,8 @@ struct Codec<::session_bridge::Command> {
             return Codec<::session_bridge::KeepAccountCommand>::from(value, where);
         if (tag == "getSeedMnemonic")
             return Codec<::session_bridge::GetSeedMnemonicCommand>::from(value, where);
+        if (tag == "getSeedHex")
+            return Codec<::session_bridge::GetSeedHexCommand>::from(value, where);
         if (tag == "setDisplayName")
             return Codec<::session_bridge::SetDisplayNameCommand>::from(value, where);
         if (tag == "attachNetwork")

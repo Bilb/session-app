@@ -970,6 +970,9 @@ struct CheckRecoveryPhraseCommand {
             phrase{std::move(phrase_)}, language{std::move(language_)} {}
 };
 
+/// Restore from a seed in hex: 16 bytes (32 characters), as every recovery password QR code
+/// carries, or the full 32 bytes. A 16-byte seed is the lower half, the upper half zero -- the
+/// same seed the 13 words decode to.
 struct RestoreAccountFromSeedCommand {
     static constexpr std::string_view type_tag = "restoreAccountFromSeed";
 
@@ -1018,6 +1021,17 @@ struct GetSeedMnemonicCommand {
 
     explicit GetSeedMnemonicCommand(std::optional<std::string> language_) :
             language{std::move(language_)} {}
+};
+
+/// The account seed as lowercase hex, answered with a `hex` result: what a recovery password's
+/// QR code carries.
+///
+/// **16 bytes (32 characters) when the seed's upper half is zero**, which is every account the
+/// 13 words describe, and 32 bytes otherwise. The short form is the one every existing client
+/// puts in that QR and reads back from it, so a code drawn from this scans anywhere.
+/// `restoreAccountFromSeed` takes either length.
+struct GetSeedHexCommand {
+    static constexpr std::string_view type_tag = "getSeedHex";
 };
 
 struct SetDisplayNameCommand {
@@ -1613,6 +1627,7 @@ using Command = std::variant<
         DiscardAccountCommand,
         KeepAccountCommand,
         GetSeedMnemonicCommand,
+        GetSeedHexCommand,
         SetDisplayNameCommand,
         AttachNetworkCommand,
         WarmNetworkCacheCommand,

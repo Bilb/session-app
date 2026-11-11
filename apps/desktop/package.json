@@ -38,7 +38,8 @@
     "react-dom": "catalog:",
     "react-native-svg": "catalog:",
     "react-native-web": "catalog:",
-    "react-router": "catalog:"
+    "react-router": "catalog:",
+    "uqr": "catalog:"
   },
   "devDependencies": {
     "@session/client-contract": "workspace:*",

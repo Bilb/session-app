@@ -1,6 +1,11 @@
 import { requirePorts, URLS, useDebugMode, useNav, routes } from '@session/app'
 import { toPlainText, tr } from '@session/localization'
-import { useAccount, useNetworkStatus, useSessionActions } from '@session/state'
+import {
+  useAccount,
+  useNetworkStatus,
+  useRecoveryPasswordHidden,
+  useSessionActions,
+} from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import {
   Avatar,
@@ -25,6 +30,7 @@ import { AccountIdControls } from './AccountIdControls'
 import { confirmLink } from './confirmLink'
 import { ConversationsPage } from './ConversationsPage'
 import { HelpPage } from './HelpPage'
+import { RecoveryPasswordPage } from './RecoveryPasswordPage'
 import { SessionInfo } from './SessionInfo'
 import { endAfterClear } from '../endAfterClear'
 import { LocalizedText } from '../LocalizedText'
@@ -197,6 +203,7 @@ export function SettingsRootPage() {
   const name = account.displayName ?? ''
   const shareText = requirePorts().share.shareText
   const debugMode = useDebugMode()
+  const recoveryPasswordHidden = useRecoveryPasswordHidden()
 
   const row = ELEMENT.settings.row
   // Rows without `onPress` draw disabled: their screens are not built yet.
@@ -278,11 +285,22 @@ export function SettingsRootPage() {
       { label: tr('preferences'), icon: 'settings', testID: row('preferences') },
     ],
     [
-      {
-        label: tr('sessionRecoveryPassword'),
-        icon: RecoveryPasswordShield,
-        testID: row('recovery-password'),
-      },
+      // Gone once hidden on this device, as on every legacy client.
+      ...(recoveryPasswordHidden
+        ? []
+        : [
+            {
+              label: tr('sessionRecoveryPassword'),
+              icon: RecoveryPasswordShield,
+              testID: row('recovery-password'),
+              onPress: () => {
+                modals.push({
+                  title: tr('sessionRecoveryPassword'),
+                  render: () => <RecoveryPasswordPage />,
+                })
+              },
+            } satisfies RowSpec,
+          ]),
       {
         label: tr('sessionHelp'),
         icon: 'circleHelp',

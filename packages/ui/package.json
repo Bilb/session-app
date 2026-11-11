@@ -32,7 +32,8 @@
     "react-native-keyboard-controller": "catalog:",
     "react-native-safe-area-context": "catalog:",
     "react-native-screens": "catalog:",
-    "tamagui": "catalog:"
+    "tamagui": "catalog:",
+    "uqr": "catalog:"
   },
   "peerDependencies": {
     "react": "catalog:",

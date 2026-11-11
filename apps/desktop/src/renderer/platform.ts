@@ -33,6 +33,7 @@ setPorts(
       revealInFolder: async (path) => {
         await window.sessionDesktop.revealInFolder(path)
       },
+      saveQrCode: (value) => window.sessionDesktop.saveQrCode(value),
     },
     // Main owns the files, compresses with zlib, and asks where to save; see main/logs.ts.
     logs: {
@@ -85,6 +86,8 @@ setPorts(
         flushLogRecords()
         window.sessionDesktop.restart()
       },
+      // Not asked for here: blocking capture of a secret screen is Android's alone, for now.
+      preventScreenCapture: null,
       isFocused: () => document.hasFocus(),
       onFocusChange: (handler) => {
         const onFocus = () => handler(true)
@@ -118,6 +121,8 @@ setPorts(
     },
     clipboard: {
       setString: (value) => window.sessionDesktop.copyText(value),
+      // No sensitive flag on a desktop clipboard.
+      setSecret: (value) => window.sessionDesktop.copyText(value),
       confirmsCopy: false,
     },
   }),

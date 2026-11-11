@@ -84,6 +84,12 @@ export interface SessionClient {
   keepAccount(): Promise<void>
   /** libsession owns the word list, so onboarding needs no mnemonic library of its own. */
   getSeedMnemonic(language?: string): Promise<string[]>
+  /**
+   * The seed as lowercase hex, for a recovery password's QR code: 16 bytes when that is the whole
+   * seed, as for every account the 13 words describe, and 32 otherwise. `restoreAccount` takes
+   * either length back.
+   */
+  getSeedHex(): Promise<string>
   setDisplayName(name: string): Promise<void>
   /**
    * Attach a network, or replace the one attached. Refused whole: a network that will not build
