@@ -11,6 +11,9 @@ interface QrRow {
 /** Made-up seeds, never an account's: one 16 bytes long, as a 13-word account's is, one 32. */
 const SHORT_SEED = '0123456789abcdef0123456789abcdef'
 const LONG_SEED = `${SHORT_SEED}fedcba9876543210fedcba9876543210`
+/** The legacy desktop client's size for the code on the page, and a narrow phone's. */
+const PAGE_PX = 260
+const NARROW_PX = 180
 
 /**
  * Dark modules on a light panel in every theme, which is the point of `surfaceInk` and
@@ -22,10 +25,10 @@ export const qrCode = defineStory<QrRow>({
   story: 'recoveryPassword',
   width: 280,
   variants: {
-    short: { value: SHORT_SEED, sizePx: 260, logo: true },
-    long: { value: LONG_SEED, sizePx: 260, logo: true },
-    noLogo: { value: SHORT_SEED, sizePx: 260, logo: false },
-    narrow: { value: SHORT_SEED, sizePx: 180, logo: true },
+    short: { value: SHORT_SEED, sizePx: PAGE_PX, logo: true },
+    long: { value: LONG_SEED, sizePx: PAGE_PX, logo: true },
+    noLogo: { value: SHORT_SEED, sizePx: PAGE_PX, logo: false },
+    narrow: { value: SHORT_SEED, sizePx: NARROW_PX, logo: true },
   },
   render: ({ value, sizePx, logo }) => (
     <QrCode
