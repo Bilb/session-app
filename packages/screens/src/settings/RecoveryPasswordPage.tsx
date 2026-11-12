@@ -29,10 +29,6 @@ const QR_SIZE_PX = 260
 const QR_INSET_PX = 64
 
 /**
- * The second confirmation, with Cancel where the first had Continue, as the legacy iOS and desktop
- * clients put it: a second tap in the same place cancels rather than hiding for good.
- */
-/**
  * The final Yes: held while hiding, then back to Settings, where the row has gone, as every legacy
  * client does. A hide that fails closes the dialog and stays on the page, which still shows the
  * password, and says so.
@@ -56,6 +52,10 @@ export function hideAndLeave(
   )
 }
 
+/**
+ * The second confirmation, with Cancel where the first had Continue, as the legacy iOS and desktop
+ * clients put it: a second tap in the same place cancels rather than hiding for good.
+ */
 function confirmHideAgain(modals: Modals, hide: () => Promise<void>, failed: () => void): void {
   const id = modals.present({
     kind: 'alert',
