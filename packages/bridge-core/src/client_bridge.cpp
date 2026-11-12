@@ -1367,6 +1367,10 @@ struct ClientBridge::Impl {
     }
 
     void handle(double id, const SetPrefCommand& cmd) {
+        // The hidden flag shares the preference store but only HideRecoveryPassword may write it:
+        // through here it could be set back to false and the seed read out again.
+        if (cmd.key == RECOVERY_PASSWORD_HIDDEN_KEY)
+            return fail(id, "recoveryPassword.hidden is set only by hideRecoveryPassword");
         client->core.globals.set(cmd.key, cmd.value);
         ok(id);
     }

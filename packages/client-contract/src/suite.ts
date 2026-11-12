@@ -370,6 +370,11 @@ export function runSessionClientContract(
       expect(await client.getSeedMnemonic()).toBe(null)
       expect(await client.getSeedHex()).toBe(null)
       expect((await client.getAccountInfo()).sessionId).toBe(sessionId)
+
+      // Not undone through the generic preference store, which shares the flag's key.
+      expect(await failure(() => client.setPref('recoveryPassword.hidden', 'false'))).toBeDefined()
+      expect(await client.getRecoveryPasswordHidden()).toBe(true)
+      expect(await client.getSeedMnemonic()).toBe(null)
     })
 
     it('refuses a phrase of the wrong length, and still makes nothing', async () => {

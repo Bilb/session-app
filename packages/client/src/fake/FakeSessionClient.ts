@@ -528,6 +528,12 @@ export class FakeSessionClient implements SessionClient {
 
   setPref(key: string, value: string): Promise<void> {
     this.assertOpen()
+    // As the bridge refuses it: only hideRecoveryPassword writes the hidden flag.
+    if (key === RECOVERY_PASSWORD_HIDDEN_KEY) {
+      return Promise.reject(
+        new Error('recoveryPassword.hidden is set only by hideRecoveryPassword'),
+      )
+    }
     this.account.setPref(key, value)
     return Promise.resolve()
   }
