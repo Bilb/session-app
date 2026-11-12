@@ -294,12 +294,12 @@ const appFocus = {
   },
 }
 
-/** Android's secure window flag; null where the module is not in the build. */
 /** How long the flag outlasts its last holder: long enough for a screen to mount again. */
 const SECURE_RELEASE_MS = 500
 const secureScreen = SecureScreen
 let secureHolders = 0
 let secureRelease: ReturnType<typeof setTimeout> | null = null
+/** Android's secure window flag; null where the module is not in the build. */
 const secureWindow =
   secureScreen === null
     ? null
