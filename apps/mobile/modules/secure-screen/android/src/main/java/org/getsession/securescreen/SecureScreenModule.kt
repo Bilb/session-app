@@ -1,15 +1,33 @@
 package org.getsession.securescreen
 
+import android.app.Activity
+import android.app.ActivityManager
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
+import android.graphics.Color
 import android.os.Build
 import android.os.PersistableBundle
 import android.view.WindowManager
 import expo.modules.kotlin.functions.Queues
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+
+// The app-switcher card is left blank rather than showing the app; this colours the blank black,
+// bars included, to match the loading screen. From Android 13: the builder that sets the
+// background colour is 13's, and before 13 the secure flag's blank card is the system's own.
+private fun coverRecents(activity: Activity) {
+  if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+  activity.setRecentsScreenshotEnabled(false)
+  activity.setTaskDescription(
+    ActivityManager.TaskDescription.Builder()
+      .setBackgroundColor(Color.BLACK)
+      .setStatusBarColor(Color.BLACK)
+      .setNavigationBarColor(Color.BLACK)
+      .build()
+  )
+}
 
 class SecureScreenModule : Module() {
   // Whether a screen has asked for the secure flag (the recovery password), which the app-switcher
@@ -39,18 +57,14 @@ class SecureScreenModule : Module() {
     // in place before the app is first put in the background.
     OnCreate {
       val activity = appContext.currentActivity ?: return@OnCreate
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        activity.runOnUiThread { activity.setRecentsScreenshotEnabled(false) }
-      }
+      activity.runOnUiThread { coverRecents(activity) }
     }
 
     // On the main thread, which these events don't arrive on and a window's flags need.
     OnActivityEntersForeground {
       val activity = appContext.currentActivity ?: return@OnActivityEntersForeground
       activity.runOnUiThread {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-          activity.setRecentsScreenshotEnabled(false)
-        }
+        coverRecents(activity)
         if (!held) activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
       }
     }
