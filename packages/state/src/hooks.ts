@@ -18,7 +18,6 @@ import {
 } from 'react'
 import { useStore } from 'zustand'
 
-import { coalesced, type ReadableStore } from './coalesce'
 import {
   conversationSelector,
   selectAttachmentTransfer,
@@ -32,7 +31,6 @@ import type {
   AttachmentTransferState,
   MessageTransfers,
   MessageWindow,
-  SessionState,
   StoredAppearance,
 } from './types'
 
@@ -53,26 +51,13 @@ function useSessionStore(): SessionStore {
   return store
 }
 
-// One per store rather than per hook, so every component is told of a burst in the same pass.
-const drawnFrom = new WeakMap<SessionStore, ReadableStore<SessionState>>()
-
-/** What a component draws from the store: read as it is now, told of a burst of changes once. */
-function useSessionState<U>(selector: (state: SessionState) => U): U {
-  const store = useSessionStore()
-  let drawn = drawnFrom.get(store)
-  if (!drawn) {
-    drawn = coalesced(store)
-    drawnFrom.set(store, drawn)
-  }
-  return useStore(drawn, selector)
-}
-
 export function useSessionActions(): SessionActions {
   return useSessionStore().actions
 }
 
 export function useHydrated(): boolean {
-  return useSessionState((state) => state.hydrated)
+  const store = useSessionStore()
+  return useStore(store, (state) => state.hydrated)
 }
 
 /**
@@ -82,32 +67,38 @@ export function useHydrated(): boolean {
  * a failed start used to be invisible.
  */
 export function useStartupError(): string | null {
-  return useSessionState((state) => state.startupError)
+  const store = useSessionStore()
+  return useStore(store, (state) => state.startupError)
 }
 
 /** What kind of failed start `useStartupError` is, or null while there is none. */
 export function useStartupFailureKind(): StartupFailureKind | null {
-  return useSessionState((state) => state.startupFailureKind)
+  const store = useSessionStore()
+  return useStore(store, (state) => state.startupFailureKind)
 }
 
 /** The theme and accent the account chose, as stored, or null where it has not chosen one. */
 export function useAppearance(): StoredAppearance | null {
-  return useSessionState((state) => state.appearance)
+  const store = useSessionStore()
+  return useStore(store, (state) => state.appearance)
 }
 
 /** The file server's limit on one upload, encrypted and padded, or null before a start asked. */
 export function useAttachmentUploadLimit(): number | null {
-  return useSessionState((state) => state.attachmentUploadLimitBytes)
+  const store = useSessionStore()
+  return useStore(store, (state) => state.attachmentUploadLimitBytes)
 }
 
 /** Whether the attached network can carry traffic: see `SessionState.networkStatus`. */
 export function useNetworkStatus(): NetworkStatus {
-  return useSessionState((state) => state.networkStatus)
+  const store = useSessionStore()
+  return useStore(store, (state) => state.networkStatus)
 }
 
 /** The whole of what libsession says about the account, or null before the first answer. */
 export function useAccount(): AccountInfo | null {
-  return useSessionState((state) => state.account)
+  const store = useSessionStore()
+  return useStore(store, (state) => state.account)
 }
 
 /**
@@ -117,15 +108,21 @@ export function useAccount(): AccountInfo | null {
  * notification that did not change it hands back the same reference.
  */
 export function useConversations(): Conversation[] {
-  return useSessionState((state) => state.conversations)
+  const store = useSessionStore()
+  return useStore(store, (state) => state.conversations)
 }
 
 export function useRequests(): Conversation[] {
-  return useSessionState((state) => state.requests)
+  const store = useSessionStore()
+  return useStore(store, (state) => state.requests)
 }
 
 export function useConversation(id: ConversationId | undefined): Conversation | undefined {
-  return useSessionState(useMemo(() => conversationSelector(id), [id]))
+  const store = useSessionStore()
+  return useStore(
+    store,
+    useMemo(() => conversationSelector(id), [id]),
+  )
 }
 
 const EMPTY_WINDOW: MessageWindow = {
@@ -148,7 +145,7 @@ export function useMessages(id: ConversationId | undefined): {
   loadOlder: () => void
 } {
   const store = useSessionStore()
-  const window = useSessionState((state) =>
+  const window = useStore(store, (state) =>
     id === undefined ? EMPTY_WINDOW : (state.histories[id] ?? EMPTY_WINDOW),
   )
 
@@ -196,7 +193,8 @@ export function useAttachmentTransfer(
   transfer: AttachmentTransfer,
   ref: AttachmentRef,
 ): AttachmentTransferState | undefined {
-  return useSessionState((state) => selectAttachmentTransfer(state, transfer, ref))
+  const store = useSessionStore()
+  return useStore(store, (state) => selectAttachmentTransfer(state, transfer, ref))
 }
 
 /**
@@ -207,7 +205,8 @@ export function useAttachmentTransfer(
  * not re-render this one.
  */
 export function useMessageTransfers(messageId: number): MessageTransfers {
-  return useSessionState((state) => selectMessageTransfers(state, messageId))
+  const store = useSessionStore()
+  return useStore(store, (state) => selectMessageTransfers(state, messageId))
 }
 
 /**
@@ -217,10 +216,12 @@ export function useMessageTransfers(messageId: number): MessageTransfers {
  * a neighbour does.
  */
 export function useMessage(conversationId: ConversationId, messageId: number): Message | undefined {
-  return useSessionState((state) => selectMessage(state, conversationId, messageId))
+  const store = useSessionStore()
+  return useStore(store, (state) => selectMessage(state, conversationId, messageId))
 }
 
 /** Unread requests, which is not the same as the number of requests. */
 export function useUnreadRequestCount(): number {
-  return useSessionState(selectUnreadRequestCount)
+  const store = useSessionStore()
+  return useStore(store, selectUnreadRequestCount)
 }
