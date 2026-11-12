@@ -18,7 +18,13 @@ import {
 } from 'react'
 import { useStore } from 'zustand'
 
-import { selectAttachmentTransfer, selectMessage, selectMessageTransfers } from './selectors'
+import {
+  conversationSelector,
+  selectAttachmentTransfer,
+  selectMessage,
+  selectMessageTransfers,
+  selectUnreadRequestCount,
+} from './selectors'
 import type { StartupFailureKind } from './startupFailure'
 import type { SessionActions, SessionStore } from './store'
 import type {
@@ -113,10 +119,9 @@ export function useRequests(): Conversation[] {
 
 export function useConversation(id: ConversationId | undefined): Conversation | undefined {
   const store = useSessionStore()
-  return useStore(store, (state) =>
-    id === undefined
-      ? undefined
-      : (state.conversations.find((c) => c.id === id) ?? state.requests.find((c) => c.id === id)),
+  return useStore(
+    store,
+    useMemo(() => conversationSelector(id), [id]),
   )
 }
 
@@ -218,5 +223,5 @@ export function useMessage(conversationId: ConversationId, messageId: number): M
 /** Unread requests, which is not the same as the number of requests. */
 export function useUnreadRequestCount(): number {
   const store = useSessionStore()
-  return useStore(store, (state) => state.requests.filter((c) => c.unreadCount > 0).length)
+  return useStore(store, selectUnreadRequestCount)
 }
