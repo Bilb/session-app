@@ -72,12 +72,12 @@ export interface KeyComboProps {
 /**
  * One key combination, a cap per key.
  *
- * Left to right in every language, as the keys are pressed and as each platform's own menus print
- * them. Caps with no `+` between them: `Ctrl` `+` `+` would make the separator a key.
+ * In reading order, so right to left in a right-to-left language. Caps with no `+` between them:
+ * `Ctrl` `+` `+` would make the separator a key.
  */
 export function KeyCombo({ keys, names, testID }: KeyComboProps) {
   return (
-    <XStack direction="ltr" gap="$2xs" testID={testID}>
+    <XStack gap="$2xs" testID={testID}>
       {keys.map((key) => {
         const icon = ICONS[key]
         return (
