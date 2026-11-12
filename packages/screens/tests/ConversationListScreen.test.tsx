@@ -2,7 +2,8 @@ import { memoryPorts, NavProvider, resetPorts, setPorts, type NavPort } from '@s
 import { createFakeTransport, friends } from '@session/client/fake'
 import { createSessionClient } from '@session/client'
 import { createSessionStore } from '@session/state'
-import { act } from '@testing-library/react'
+import { ELEMENT } from '@session/test-ids'
+import { act, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import { ConversationListScreen } from '#src/ConversationListScreen'
@@ -66,4 +67,40 @@ it('draws only the row that changed', async () => {
   expect(changed?.unreadCount).toBe(bob.unreadCount + 1)
   expect(drawn.mock.calls.length).toBeGreaterThan(0)
   expect(drawn.mock.calls.every(([row]) => row === changed)).toBe(true)
+})
+
+it('draws a muted row as loud once its mute lapses, though nothing about the row changed', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+  try {
+    const { world, clients } = friends(['Alice', 'Bob'])
+    const fake = clients['Alice']
+    if (!fake) throw new Error('fixture did not produce a client')
+    const [bob] = await fake.getConversations()
+    if (!bob) throw new Error('expected a conversation with Bob')
+    world
+      .account('Alice')
+      .upsertConversation({ ...bob, muteUntil: Date.now() + 60_000 }, { announce: false })
+
+    const store = createSessionStore(createSessionClient(createFakeTransport(fake)))
+    await store.actions.hydrate()
+    renderScreen(
+      <NavProvider nav={NAV}>
+        <ConversationListScreen />
+      </NavProvider>,
+      { store },
+    )
+    const muted = (): number => screen.queryAllByTestId(ELEMENT.conversationList.rowMuted).length
+
+    expect(muted()).toBe(1)
+    act(() => {
+      vi.advanceTimersByTime(59_000)
+    })
+    expect(muted()).toBe(1)
+    act(() => {
+      vi.advanceTimersByTime(1_000)
+    })
+    expect(muted()).toBe(0)
+  } finally {
+    vi.useRealTimers()
+  }
 })

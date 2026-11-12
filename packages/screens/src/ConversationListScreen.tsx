@@ -1,4 +1,4 @@
-import { routes, useNav } from '@session/app'
+import { requirePorts, routes, useNav } from '@session/app'
 import type { Conversation } from '@session/client'
 import {
   useAccount,
@@ -340,15 +340,38 @@ function conversationKey(conversation: Conversation): string {
 /** setTimeout's longest delay; a longer one fires at once. */
 const LONGEST_TIMER_MS = 2 ** 31 - 1
 
-/** Draws the component again once the clock reaches `atMs`, which changes no prop of a row. */
+/**
+ * Draws the component again once the clock reaches `atMs`, which changes no prop of a row.
+ *
+ * Aimed again each time rather than trusted once: a timer can fire a little early, cannot wait
+ * longer than `LONGEST_TIMER_MS`, and does not run while the app is suspended, which coming back
+ * to the front makes up for.
+ */
 function useRedrawAt(atMs: number | undefined): void {
   const [, redraw] = useState(0)
   useEffect(() => {
-    if (atMs === undefined) return undefined
-    const wait = atMs - Date.now()
-    if (wait <= 0 || wait > LONGEST_TIMER_MS) return undefined
-    const timer = setTimeout(() => redraw((n) => n + 1), wait)
-    return () => clearTimeout(timer)
+    if (atMs === undefined || atMs <= Date.now()) return undefined
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let reached = false
+    const aim = (): void => {
+      if (reached) return
+      clearTimeout(timer)
+      const waitMs = atMs - Date.now()
+      if (waitMs > 0) {
+        timer = setTimeout(aim, Math.min(waitMs, LONGEST_TIMER_MS))
+        return
+      }
+      reached = true
+      redraw((n) => n + 1)
+    }
+    aim()
+    const stopFocus = requirePorts().window.onFocusChange((focused) => {
+      if (focused) aim()
+    })
+    return () => {
+      clearTimeout(timer)
+      stopFocus()
+    }
   }, [atMs])
 }
 

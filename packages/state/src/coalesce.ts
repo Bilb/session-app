@@ -14,9 +14,9 @@ declare const clearTimeout: (timer: unknown) => void
  * is N store updates and, told of each, N renders. The store itself stays current after every
  * event, which is what its ordering relies on: only the telling is held back.
  *
- * The first change of a burst is told at once. Changes after it are held until a timer of no
- * delay fires, which is after the frames already queued behind the render the first one caused,
- * so a burst is drawn about as often as it can be drawn and a lone change is never kept waiting.
+ * The first change of a burst is told at once. Changes after it are held for a timer of no
+ * delay, so a burst is drawn about as often as it can be drawn. How long that timer takes is the
+ * platform's: Chromium runs it after the frames already queued, React Native on its next frame.
  */
 export function coalesced<T>(store: StoreApi<T>, holdMs = 0): ReadableStore<T> {
   const listeners = new Set<(state: T, previous: T) => void>()
@@ -34,15 +34,19 @@ export function coalesced<T>(store: StoreApi<T>, holdMs = 0): ReadableStore<T> {
     return true
   }
 
+  // The timer is set before the telling in both: a listener that changes the store comes back
+  // into `onChange`, which must find the hold already on rather than start a second one.
   function closeWindow(): void {
+    timer = setTimeout(closeWindow, holdMs)
+    if (tell()) return
+    clearTimeout(timer)
     timer = undefined
-    if (tell()) timer = setTimeout(closeWindow, holdMs)
   }
 
   function onChange(): void {
     if (timer !== undefined) return
-    tell()
     timer = setTimeout(closeWindow, holdMs)
+    tell()
   }
 
   return {

@@ -69,6 +69,26 @@ describe('coalesced', () => {
     stop()
   })
 
+  it('holds a change a listener makes while being told, on one timer', () => {
+    const store = createStore(() => ({ n: 0 }))
+    const told: number[] = []
+    const stop = coalesced(store, 16).subscribe((state) => {
+      told.push(state.n)
+      if (state.n === 2) store.setState({ n: 3 })
+    })
+
+    store.setState({ n: 1 })
+    store.setState({ n: 2 })
+    vi.advanceTimersByTime(16)
+    expect(told).toEqual([1, 2])
+    expect(vi.getTimerCount()).toBe(1)
+
+    vi.advanceTimersByTime(16)
+    expect(told).toEqual([1, 2, 3])
+    stop()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
   it('tells nobody after the last listener left', () => {
     const { set, told, stop } = watched()
     set(1)
