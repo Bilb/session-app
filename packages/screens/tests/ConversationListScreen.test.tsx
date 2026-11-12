@@ -4,7 +4,7 @@ import { createSessionClient } from '@session/client'
 import { createSessionStore } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { act, screen } from '@testing-library/react'
-import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ConversationListScreen } from '#src/ConversationListScreen'
 import type * as RowState from '#src/conversationRowState'
@@ -69,9 +69,16 @@ it('draws only the row that changed', async () => {
   expect(drawn.mock.calls.every(([row]) => row === changed)).toBe(true)
 })
 
-it('draws a muted row as loud once its mute lapses, though nothing about the row changed', async () => {
-  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
-  try {
+describe('a muted row whose mute lapses, with nothing about the row changing', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  /** The list with Bob muted for `muteMs`, and how many rows it draws as muted. */
+  async function drawMutedFor(muteMs: number): Promise<() => number> {
     const { world, clients } = friends(['Alice', 'Bob'])
     const fake = clients['Alice']
     if (!fake) throw new Error('fixture did not produce a client')
@@ -79,7 +86,7 @@ it('draws a muted row as loud once its mute lapses, though nothing about the row
     if (!bob) throw new Error('expected a conversation with Bob')
     world
       .account('Alice')
-      .upsertConversation({ ...bob, muteUntil: Date.now() + 60_000 }, { announce: false })
+      .upsertConversation({ ...bob, muteUntil: Date.now() + muteMs }, { announce: false })
 
     const store = createSessionStore(createSessionClient(createFakeTransport(fake)))
     await store.actions.hydrate()
@@ -89,18 +96,67 @@ it('draws a muted row as loud once its mute lapses, though nothing about the row
       </NavProvider>,
       { store },
     )
-    const muted = (): number => screen.queryAllByTestId(ELEMENT.conversationList.rowMuted).length
+    return () => screen.queryAllByTestId(ELEMENT.conversationList.rowMuted).length
+  }
+
+  function advance(ms: number): void {
+    act(() => {
+      vi.advanceTimersByTime(ms)
+    })
+  }
+
+  it('is drawn loud when the mute ends', async () => {
+    const muted = await drawMutedFor(60_000)
 
     expect(muted()).toBe(1)
-    act(() => {
-      vi.advanceTimersByTime(59_000)
+    advance(59_000)
+    expect(muted()).toBe(1)
+    advance(1_000)
+    expect(muted()).toBe(0)
+  })
+
+  it('waits again when its timer fires before the mute has ended', async () => {
+    const muted = await drawMutedFor(60_000)
+
+    // The wall clock steps back, as a time sync does: the timer still fires 60 s after it was set.
+    vi.setSystemTime(Date.now() - 30_000)
+    advance(60_000)
+    expect(muted()).toBe(1)
+    advance(30_000)
+    expect(muted()).toBe(0)
+  })
+
+  it('outlasts the longest wait a timer can be given', async () => {
+    const longestMs = 2 ** 31 - 1
+    const muted = await drawMutedFor(longestMs + 5_000)
+
+    advance(longestMs)
+    expect(muted()).toBe(1)
+    advance(5_000)
+    expect(muted()).toBe(0)
+  })
+
+  it('is drawn loud on coming back to the front after a mute that ended while suspended', async () => {
+    const ports = memoryPorts()
+    const onFocus = new Set<(focused: boolean) => void>()
+    setPorts({
+      ...ports,
+      window: {
+        ...ports.window,
+        onFocusChange: (handler) => {
+          onFocus.add(handler)
+          return () => onFocus.delete(handler)
+        },
+      },
     })
+    const muted = await drawMutedFor(60_000)
+
+    // Suspended: the clock moves and no timer runs.
+    vi.setSystemTime(Date.now() + 120_000)
     expect(muted()).toBe(1)
     act(() => {
-      vi.advanceTimersByTime(1_000)
+      for (const handler of onFocus) handler(true)
     })
     expect(muted()).toBe(0)
-  } finally {
-    vi.useRealTimers()
-  }
+  })
 })

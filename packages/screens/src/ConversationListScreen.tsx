@@ -350,7 +350,7 @@ const LONGEST_TIMER_MS = 2 ** 31 - 1
 function useRedrawAt(atMs: number | undefined): void {
   const [, redraw] = useState(0)
   useEffect(() => {
-    if (atMs === undefined || atMs <= Date.now()) return undefined
+    if (atMs === undefined) return undefined
     let timer: ReturnType<typeof setTimeout> | undefined
     let reached = false
     const aim = (): void => {
@@ -394,9 +394,10 @@ const ConversationRow = memo(function ConversationRow({
   const selected = useHeldSelection(open)
   // Read for its change: a row that says a weekday or the time alone is redrawn when the day turns.
   useToday()
-  useRedrawAt(conversation.muteUntil)
   const nowMs = Date.now()
   const row = conversationRowState(conversation, nowMs)
+  // The mute as this render judged it, not as the clock reads by the time the effect runs.
+  useRedrawAt(row.muted ? conversation.muteUntil : undefined)
   const time =
     conversation.lastActivity > 0
       ? formatConversationTime(conversation.lastActivity, nowMs, timeFormats)
