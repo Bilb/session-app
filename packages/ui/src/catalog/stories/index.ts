@@ -10,7 +10,6 @@ import { qrCode, qrViewer } from './qrCode'
 import { messageFrameFocus } from './messageFrame'
 import { settingsRow } from './settingsRow'
 import { composerNotice, dropOverlay, stagedTile, stagedTray } from './staging'
-import { swap } from './swap'
 import { textScale } from './text'
 import { mediaViewer } from './viewer'
 
@@ -42,5 +41,4 @@ export const STORIES: readonly AnyStory[] = [
   qrViewer,
   messageFrameFocus,
   keyCombo,
-  swap,
 ]
