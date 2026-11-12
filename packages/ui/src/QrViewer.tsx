@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Modal as NativeModal } from 'react-native'
-import { YStack } from 'tamagui'
+import { XStack, YStack } from 'tamagui'
 
 import { Button } from './Button'
 import { ContextMenu, type ContextMenuTestIDs } from './ContextMenu'
@@ -13,6 +13,7 @@ import { PressArea } from './PressArea'
 import { QrCode } from './QrCode'
 import { useScreenInsets } from './screenInsets'
 import { useWindowSize } from './useWindowSize'
+import { useTopBarControlsPadding } from './windowControls'
 
 /** The code's share of the window's shorter side. */
 const WINDOW_SHARE = 0.75
@@ -38,6 +39,9 @@ export interface QrViewerProps {
   onClose: () => void
   /** Names the code for a screen reader, and the press that closes it. */
   accessibilityLabel: string
+  /** Names the close button. */
+  closeLabel: string
+  closeTestID?: string | undefined
   /** Opened on the code with a right-click or a long press; omitted where it offers nothing. */
   menu?: QrViewerMenu | undefined
   action?: QrViewerAction | undefined
@@ -48,10 +52,13 @@ export interface QrViewerBodyProps {
   value: string
   width: number
   height: number
-  /** What the hardware takes from the bottom of the window, so the action clears it. */
+  /** What the hardware takes from the top and bottom of the window, so the controls clear it. */
+  topInsetPx: number
   bottomInsetPx: number
   onClose: () => void
   accessibilityLabel: string
+  closeLabel: string
+  closeTestID?: string | undefined
   /** Where a right-click or long press on the code opens the menu; omitted where there is none. */
   onMenu?: ((anchor: MenuAnchor) => void) | undefined
   action?: QrViewerAction | undefined
@@ -61,20 +68,25 @@ export interface QrViewerBodyProps {
 /**
  * What the viewer draws, at a given size: apart from its modal so the catalog can draw it.
  *
- * The action sits beside the press area rather than inside it: on the web a click inside would
- * reach the press area too, and close the viewer as it acted.
+ * The close button and the action sit beside the press area rather than inside it: on the web a
+ * click inside would reach the press area too, and close the viewer as it acted. The close button
+ * is there because a press anywhere closing it is not something anyone can see.
  */
 export function QrViewerBody({
   value,
   width,
   height,
+  topInsetPx,
   bottomInsetPx,
   onClose,
   accessibilityLabel,
+  closeLabel,
+  closeTestID,
   onMenu,
   action,
   testID,
 }: QrViewerBodyProps) {
+  const controlsPadding = useTopBarControlsPadding()
   const sizePx = Math.floor(Math.min(width, height) * WINDOW_SHARE)
   const code = <QrCode value={value} sizePx={sizePx} accessibilityLabel={accessibilityLabel} />
   return (
@@ -100,6 +112,29 @@ export function QrViewerBody({
           </YStack>
         )}
       </PressArea>
+      {/* Along the top at the start, clear of a window's own controls where an iPad draws them
+          over the app. The bar lets presses beside the button through to close the viewer. */}
+      <XStack
+        position="absolute"
+        top={topInsetPx}
+        left={0}
+        right={0}
+        paddingHorizontal="$sm"
+        paddingVertical="$sm"
+        {...(controlsPadding.left === undefined ? {} : { paddingLeft: controlsPadding.left })}
+        {...(controlsPadding.right === undefined ? {} : { paddingRight: controlsPadding.right })}
+        pointerEvents="box-none"
+      >
+        <Button
+          variant="ghost"
+          size="md"
+          circular
+          accessibilityLabel={closeLabel}
+          {...(closeTestID === undefined ? {} : { testID: closeTestID })}
+          onPress={onClose}
+          icon={<Icon name="x" size="lg" color="$textPrimary" />}
+        />
+      </XStack>
       {action === undefined ? null : (
         // Only as wide as the button, centred by the parent, so a press beside it still closes.
         <YStack position="absolute" bottom={bottomInsetPx} padding="$lg">
@@ -118,15 +153,17 @@ export function QrViewerBody({
 }
 
 /**
- * A QR code filling most of the window, for a camera held at a distance: a press anywhere but the
- * action, or Escape, closes it. No logo, unlike the code on the page, so nothing covers modules a
- * distant or blurry camera may need. Escape is the platform modal's own `onRequestClose`, as for
- * the host.
+ * A QR code filling most of the window, for a camera held at a distance: the close button, a press
+ * anywhere but the action, or Escape closes it. No logo, unlike the code on the page, so nothing
+ * covers modules a distant or blurry camera may need. Escape is the platform modal's own
+ * `onRequestClose`, as for the host.
  */
 export function QrViewer({
   value,
   onClose,
   accessibilityLabel,
+  closeLabel,
+  closeTestID,
   menu,
   action,
   testID,
@@ -147,9 +184,12 @@ export function QrViewer({
           value={value}
           width={window.width}
           height={window.height}
+          topInsetPx={insets.top}
           bottomInsetPx={insets.bottom}
           onClose={onClose}
           accessibilityLabel={accessibilityLabel}
+          closeLabel={closeLabel}
+          closeTestID={closeTestID}
           onMenu={menu === undefined ? undefined : setAnchor}
           action={action}
           testID={testID}

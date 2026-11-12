@@ -267,6 +267,7 @@ export const ELEMENT = {
   },
   /** Whichever full-screen QR code is open: only one ever is. */
   qrViewer: {
+    close: 'qr-viewer-close',
     /** The button under the code that hands it to the share sheet, on the phones. */
     share: 'qr-viewer-share',
   },

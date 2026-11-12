@@ -69,6 +69,8 @@ export function ShareableQrCode({
             setFullScreen(false)
           }}
           accessibilityLabel={accessibilityLabel}
+          closeLabel={tr('close')}
+          closeTestID={ELEMENT.qrViewer.close}
           testID={fullScreenTestID}
           menu={{
             entries: [
@@ -111,6 +113,8 @@ export function ShareableQrCode({
           setFullScreen(false)
         }}
         accessibilityLabel={accessibilityLabel}
+        closeLabel={tr('close')}
+        closeTestID={ELEMENT.qrViewer.close}
         testID={fullScreenTestID}
         action={{
           label: tr('share'),

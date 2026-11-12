@@ -80,6 +80,13 @@ test('swaps the display picture for the account QR code, opens it full screen, a
     // One level only: Settings is still open, on the code.
     await expect(qr).toBeVisible()
 
+    // And the close button, which says it can be closed at all.
+    await qr.click()
+    await expect(fullScreen).toBeVisible()
+    await page.getByTestId(ELEMENT.qrViewer.close).first().click()
+    await expect(fullScreen).toHaveCount(0)
+    await expect(qr).toBeVisible()
+
     await page.getByTestId(ELEMENT.settings.qrBack).first().click()
     await expect(avatar).toBeVisible()
     await expect(name).toBeVisible()

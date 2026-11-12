@@ -45,9 +45,10 @@ export const qrCode = defineStory<QrRow>({
 
 /** A made-up Account ID, never an account's. */
 const ACCOUNT_ID = `05${SHORT_SEED}${SHORT_SEED}`
-/** A phone's window, and the home indicator's strip at its foot. */
+/** A phone's window, with the status bar across its top and the home indicator at its foot. */
 const PHONE_WIDTH = 390
 const PHONE_HEIGHT = 640
+const STATUS_BAR_PX = 47
 const HOME_INDICATOR_PX = 34
 
 /** The code full screen: alone, as on desktop, and with the phones' Share button under it. */
@@ -64,9 +65,11 @@ export const qrViewer = defineStory<{ share: boolean }>({
       value={ACCOUNT_ID}
       width={PHONE_WIDTH}
       height={PHONE_HEIGHT}
+      topInsetPx={STATUS_BAR_PX}
       bottomInsetPx={HOME_INDICATOR_PX}
       onClose={noop}
       accessibilityLabel="QR code"
+      closeLabel="Close"
       action={share ? { label: 'Share', icon: 'share2', onPress: noop } : undefined}
     />
   ),
