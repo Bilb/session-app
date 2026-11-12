@@ -30,7 +30,7 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 
 import { NetworkOverlay } from './NetworkOverlay'
 import { conversationRowState, type UnreadBadge, type UnreadTone } from './conversationRowState'
-import { conversationTitle } from './conversationTitle'
+import { conversationAvatarName, conversationTitle } from './conversationTitle'
 import { useOpenSettings } from './settings/SettingsRootPage'
 import { pathStatusTone } from './pathStatus'
 import { useBesideRail } from './shell/pane'
@@ -437,7 +437,11 @@ const ConversationRow = memo(function ConversationRow({
 
       {/* TODO: draw a group as its first two members stacked, with Avatar's `members`, once the
           bridge carries a group's member list. */}
-      <Avatar id={conversation.id} name={title} size={layout.avatarPx} />
+      <Avatar
+        id={conversation.id}
+        name={conversationAvatarName(conversation)}
+        size={layout.avatarPx}
+      />
 
       <YStack flex={1} gap="$2xs">
         <XStack minHeight={LINE_HEIGHT} alignItems="center" gap="$2xs">

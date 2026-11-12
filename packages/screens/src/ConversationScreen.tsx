@@ -24,7 +24,7 @@ import { MessageRow } from './MessageRow'
 import { AutoDownloadPrompt } from './AutoDownloadPrompt'
 import { BackButton } from './BackButton'
 import { ConversationHeader } from './ConversationHeader'
-import { conversationTitle } from './conversationTitle'
+import { conversationAvatarName, conversationTitle } from './conversationTitle'
 import { DateHeaderRow } from './DateHeaderRow'
 import { showsDateHeader } from './dateHeaders'
 import { TranscriptWidth } from './TranscriptWidth'
@@ -111,7 +111,8 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
   // The id stands in for the conversation as well as for the name: opening one from a route
   // beats the store hydrating it, and a header that says nothing for a moment is a header
   // that flickers.
-  const title = conversationTitle(conversation ?? { id: conversationId })
+  const named = conversation ?? { id: conversationId }
+  const title = conversationTitle(named)
 
   return (
     <ConversationUiContext.Provider value={ui}>
@@ -119,6 +120,7 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
         <ConversationHeader
           id={conversationId}
           title={title}
+          avatarName={conversationAvatarName(named)}
           back={<BackButton testID={ELEMENT.conversation.back} />}
         />
 
