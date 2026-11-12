@@ -295,7 +295,7 @@ export function RecoveryPasswordPage({
             alignSelf="stretch"
           />
 
-          {/* Swapped as legacy Android swaps them: the one fades out as the other fades in, and
+          {/* Swapped as legacy Android swaps them: the arriving one fades in, held in place, as
               the box grows or shrinks between their heights. */}
           <Swap swapKey={showingQr ? 'qr' : 'words'} instant={flag('disableAnimations')}>
             {showingQr ? (

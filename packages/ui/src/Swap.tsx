@@ -28,8 +28,12 @@ export interface SwapProps {
  * page under a full-screen code rather than the code.
  *
  * **While it moves, the new content is laid over the box**, pinned to its top, so the box's height
- * is the only thing in flow. Its own height is measured on the frame it mounts, before anything
- * moves; the old one's was measured while it was settled.
+ * is the only thing in flow and the content is uncovered downwards. Its own height is measured on
+ * the frame it mounts, before anything moves.
+ *
+ * **The height a swap starts from is the one the box has**, which is not always one a layout
+ * event reported: a box that settles at the height its animation ended on has not changed size,
+ * so nothing fires; and a swap that interrupts another starts from wherever that one had reached.
  *
  * **Once it has finished, the content lays out normally** and the box takes whatever height it asks
  * for, so a block that re-wraps later is not clipped to the height it had when it arrived.
@@ -39,16 +43,22 @@ export function Swap({ swapKey, children, instant = false }: SwapProps) {
   const [heights, setHeights] = useState<{ from: number; to: number | null } | null>(null)
   const settledHeight = useRef(0)
   const progress = useRef(new Animated.Value(1)).current
+  // The animation's current height, read when a swap interrupts it.
+  const movingHeight = useRef<number | null>(null)
 
   if (swapKey !== shownKey) {
     setShownKey(swapKey)
-    if (!instant) setHeights({ from: settledHeight.current, to: null })
+    if (!instant) setHeights({ from: movingHeight.current ?? settledHeight.current, to: null })
   }
 
+  const from = heights?.from ?? 0
   const to = heights?.to ?? null
   useEffect(() => {
     if (to === null) return
     progress.setValue(0)
+    const listener = progress.addListener(({ value }) => {
+      movingHeight.current = from + (to - from) * value
+    })
     const run = Animated.timing(progress, {
       toValue: 1,
       duration: DURATION_MS,
@@ -57,13 +67,17 @@ export function Swap({ swapKey, children, instant = false }: SwapProps) {
       useNativeDriver: false,
     })
     run.start(({ finished }) => {
-      if (finished) setHeights(null)
+      if (!finished) return
+      settledHeight.current = to
+      movingHeight.current = null
+      setHeights(null)
     })
     // Stopped rather than left running: a swap that is itself swapped starts afresh from here.
     return () => {
       run.stop()
+      progress.removeListener(listener)
     }
-  }, [to, progress])
+  }, [from, to, progress])
 
   const measuring = heights !== null && heights.to === null
   // One tree throughout, keyed by what it shows, so the arriving content is not mounted again
