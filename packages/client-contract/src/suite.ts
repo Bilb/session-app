@@ -26,6 +26,8 @@ import {
   type SessionEvent,
 } from '@session/client'
 
+import { recoveryHex, recoveryWords } from './seed'
+
 export interface ContractHarness {
   /** Two clients that already know each other, with no history and no attachments. */
   friends(): Promise<{
@@ -344,15 +346,30 @@ export function runSessionClientContract(
       // Every existing client reads 16 bytes there, so a 13-word account must come out short.
       const first = await harness.newcomer()
       await first.client.createAccount()
-      const hexSeed = await first.client.getSeedHex()
+      const hexSeed = await recoveryHex(first.client)
       expect(/^(?:[0-9a-f]{32}){1,2}$/.test(hexSeed)).toBe(true)
-      if ((await first.client.getSeedMnemonic()).length === 13) expect(hexSeed.length).toBe(32)
+      if ((await recoveryWords(first.client)).length === 13) expect(hexSeed.length).toBe(32)
       const { sessionId } = await first.client.getAccountInfo()
 
       const second = await harness.newcomer()
       await second.client.restoreAccount({ hexSeed })
 
       expect((await second.client.getAccountInfo()).sessionId).toBe(sessionId)
+    })
+
+    it('stops giving the seed out once the recovery password is hidden, and keeps the account', async () => {
+      // Hiding is for good, and enforced below the app: neither form of the seed comes back.
+      const { client } = await harness.newcomer()
+      await client.createAccount()
+      const { sessionId } = await client.getAccountInfo()
+      expect(await client.getRecoveryPasswordHidden()).toBe(false)
+
+      await client.hideRecoveryPassword()
+
+      expect(await client.getRecoveryPasswordHidden()).toBe(true)
+      expect(await client.getSeedMnemonic()).toBe(null)
+      expect(await client.getSeedHex()).toBe(null)
+      expect((await client.getAccountInfo()).sessionId).toBe(sessionId)
     })
 
     it('refuses a phrase of the wrong length, and still makes nothing', async () => {

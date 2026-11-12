@@ -24,8 +24,6 @@ import {
 /** Where the account's theme and accent are kept, as libsession preferences. */
 const THEME_PREF = 'appearance.theme'
 const ACCENT_PREF = 'appearance.accent'
-/** Set to `true` once the recovery password is hidden on this device; never unset. */
-const RECOVERY_PASSWORD_HIDDEN_PREF = 'recoveryPassword.hidden'
 
 /** What the recovery password screen shows: the words, and the seed its QR code carries. */
 export interface RecoveryPassword {
@@ -477,7 +475,7 @@ export function createSessionStore(
       const [theme, accent, hidden] = await Promise.all([
         client.getPref(THEME_PREF),
         client.getPref(ACCENT_PREF),
-        client.getPref(RECOVERY_PASSWORD_HIDDEN_PREF),
+        client.getRecoveryPasswordHidden(),
         readList('conversations'),
         readList('requests'),
         askNetworkStatus(),
@@ -486,7 +484,7 @@ export function createSessionStore(
       // In the same update as `hydrated`, so the screen the account opens on is drawn once, in its
       // theme. Both or neither: an accent without its theme is half a choice.
       const appearance = theme === undefined || accent === undefined ? null : { theme, accent }
-      store.setState({ appearance, recoveryPasswordHidden: hidden === 'true', hydrated: true })
+      store.setState({ appearance, recoveryPasswordHidden: hidden, hydrated: true })
     },
 
     async setAppearance(appearance): Promise<void> {
@@ -498,12 +496,18 @@ export function createSessionStore(
 
     async getRecoveryPassword(): Promise<RecoveryPassword> {
       const [words, seedHex] = await Promise.all([client.getSeedMnemonic(), client.getSeedHex()])
+      // Hidden on this device: there is nothing to show, which the page reports as a failed load.
+      if (words === null || seedHex === null) throw new Error('The recovery password is hidden')
       return { words, seedHex }
     },
 
     async hideRecoveryPassword(): Promise<void> {
       if (store.getState().account?.haveAccount !== true) return
-      await client.setPref(RECOVERY_PASSWORD_HIDDEN_PREF, 'true')
+      await client.hideRecoveryPassword()
+      // Read back, not assumed: the page goes back to Settings only once it is gone for good.
+      if (!(await client.getRecoveryPasswordHidden())) {
+        throw new Error('The recovery password was not hidden')
+      }
       store.setState({ recoveryPasswordHidden: true })
     },
 

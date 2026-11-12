@@ -580,6 +580,21 @@ struct Codec<::session_bridge::BoolResult> {
 };
 
 template <>
+struct Codec<::session_bridge::SeedHiddenResult> {
+    static constexpr std::string_view name = "SeedHiddenResult";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::SeedHiddenResult& value) {
+        (void)value;
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::SeedHiddenResult::type_tag.data(), ::session_bridge::SeedHiddenResult::type_tag.size()));
+        return obj;
+    }
+    static ::session_bridge::SeedHiddenResult from(const Napi::Value& value, std::string_view where) {
+        object(value, where);
+        return ::session_bridge::SeedHiddenResult{};
+    }
+};
+
+template <>
 struct Codec<::session_bridge::PathResult> {
     static constexpr std::string_view name = "PathResult";
     static Napi::Value to(Napi::Env env, const ::session_bridge::PathResult& value) {
@@ -758,6 +773,8 @@ struct Codec<::session_bridge::Result> {
             return Codec<::session_bridge::PrefResult>::from(value, where);
         if (tag == "bool")
             return Codec<::session_bridge::BoolResult>::from(value, where);
+        if (tag == "seedHidden")
+            return Codec<::session_bridge::SeedHiddenResult>::from(value, where);
         if (tag == "path")
             return Codec<::session_bridge::PathResult>::from(value, where);
         if (tag == "byteCount")
@@ -1264,6 +1281,36 @@ struct Codec<::session_bridge::GetSeedHexCommand> {
     static ::session_bridge::GetSeedHexCommand from(const Napi::Value& value, std::string_view where) {
         object(value, where);
         return ::session_bridge::GetSeedHexCommand{};
+    }
+};
+
+template <>
+struct Codec<::session_bridge::HideRecoveryPasswordCommand> {
+    static constexpr std::string_view name = "HideRecoveryPasswordCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::HideRecoveryPasswordCommand& value) {
+        (void)value;
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::HideRecoveryPasswordCommand::type_tag.data(), ::session_bridge::HideRecoveryPasswordCommand::type_tag.size()));
+        return obj;
+    }
+    static ::session_bridge::HideRecoveryPasswordCommand from(const Napi::Value& value, std::string_view where) {
+        object(value, where);
+        return ::session_bridge::HideRecoveryPasswordCommand{};
+    }
+};
+
+template <>
+struct Codec<::session_bridge::GetRecoveryPasswordHiddenCommand> {
+    static constexpr std::string_view name = "GetRecoveryPasswordHiddenCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::GetRecoveryPasswordHiddenCommand& value) {
+        (void)value;
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::GetRecoveryPasswordHiddenCommand::type_tag.data(), ::session_bridge::GetRecoveryPasswordHiddenCommand::type_tag.size()));
+        return obj;
+    }
+    static ::session_bridge::GetRecoveryPasswordHiddenCommand from(const Napi::Value& value, std::string_view where) {
+        object(value, where);
+        return ::session_bridge::GetRecoveryPasswordHiddenCommand{};
     }
 };
 
@@ -2146,6 +2193,10 @@ struct Codec<::session_bridge::Command> {
             return Codec<::session_bridge::GetSeedMnemonicCommand>::from(value, where);
         if (tag == "getSeedHex")
             return Codec<::session_bridge::GetSeedHexCommand>::from(value, where);
+        if (tag == "hideRecoveryPassword")
+            return Codec<::session_bridge::HideRecoveryPasswordCommand>::from(value, where);
+        if (tag == "getRecoveryPasswordHidden")
+            return Codec<::session_bridge::GetRecoveryPasswordHiddenCommand>::from(value, where);
         if (tag == "setDisplayName")
             return Codec<::session_bridge::SetDisplayNameCommand>::from(value, where);
         if (tag == "attachNetwork")

@@ -70,6 +70,12 @@ const FAKE_PROFILE_DELAY_MS = 2500
  * them. Delivery and send-state transitions only happen when the world's clock is advanced,
  * so a test decides when time passes.
  */
+/**
+ * Where the bridge keeps the hidden flag: a globals key beside the app's preferences, so a device
+ * that hid it as a preference is still hidden. Kept in the same place here, and wiped with them.
+ */
+const RECOVERY_PASSWORD_HIDDEN_KEY = 'recoveryPassword.hidden'
+
 export class FakeSessionClient implements SessionClient {
   private closed = false
   private readonly unsubscribes: Array<() => void> = []
@@ -152,14 +158,31 @@ export class FakeSessionClient implements SessionClient {
     return Promise.resolve()
   }
 
-  getSeedHex(): Promise<string> {
+  getSeedHex(): Promise<string | null> {
     this.assertOpen()
+    if (this.recoveryPasswordHidden()) return Promise.resolve(null)
     // The 16-byte form, as for every 13-word account: the length is the edge a QR code depends on.
     return Promise.resolve('0123456789abcdef0123456789abcdef')
   }
 
-  getSeedMnemonic(): Promise<string[]> {
+  hideRecoveryPassword(): Promise<void> {
     this.assertOpen()
+    this.account.setPref(RECOVERY_PASSWORD_HIDDEN_KEY, 'true')
+    return Promise.resolve()
+  }
+
+  getRecoveryPasswordHidden(): Promise<boolean> {
+    this.assertOpen()
+    return Promise.resolve(this.recoveryPasswordHidden())
+  }
+
+  private recoveryPasswordHidden(): boolean {
+    return this.account.getPref(RECOVERY_PASSWORD_HIDDEN_KEY) === 'true'
+  }
+
+  getSeedMnemonic(): Promise<string[] | null> {
+    this.assertOpen()
+    if (this.recoveryPasswordHidden()) return Promise.resolve(null)
     // libsession owns the real word list; the shape is what onboarding is written against.
     return Promise.resolve(
       'letters mumble ordeal jaded womanly framed jailed sifting january nurse gutter estate jaded'.split(

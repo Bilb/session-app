@@ -915,7 +915,26 @@ struct ClientBridge::Impl {
         ok(id);
     }
 
+    // The globals key the hidden flag is stored under. The app stored it as a plain preference before
+    // the bridge enforced it, so a device that hid its recovery password then is still hidden.
+    static constexpr std::string_view RECOVERY_PASSWORD_HIDDEN_KEY = "recoveryPassword.hidden";
+
+    bool recovery_password_hidden() {
+        return client->core.globals.get_text(RECOVERY_PASSWORD_HIDDEN_KEY) == "true";
+    }
+
+    void handle(double id, const HideRecoveryPasswordCommand&) {
+        client->core.globals.set(RECOVERY_PASSWORD_HIDDEN_KEY, std::string_view{"true"});
+        ok(id);
+    }
+
+    void handle(double id, const GetRecoveryPasswordHiddenCommand&) {
+        respond(id, BoolResult{recovery_password_hidden()});
+    }
+
     void handle(double id, const GetSeedMnemonicCommand& cmd) {
+        if (recovery_password_hidden())
+            return respond(id, SeedHiddenResult{});
         auto words = client->core.globals.seed_mnemonic(
                 cmd.language ? std::string_view{*cmd.language} : std::string_view{"English"});
         std::vector<std::string> out;
@@ -928,6 +947,8 @@ struct ClientBridge::Impl {
     }
 
     void handle(double id, const GetSeedHexCommand&) {
+        if (recovery_password_hidden())
+            return respond(id, SeedHiddenResult{});
         auto access = client->core.globals.account_seed();
         auto seed = access.seed();
         // The short form whenever it is the whole seed, as the 13 words are: it is what every
