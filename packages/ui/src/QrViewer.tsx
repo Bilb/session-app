@@ -1,34 +1,21 @@
 import { useState } from 'react'
-import { Modal as NativeModal, Platform } from 'react-native'
-import { XStack, YStack } from 'tamagui'
+import { YStack } from 'tamagui'
 
-import { BarButton } from './BarButton'
 import { Button } from './Button'
 import { ContextMenu, type ContextMenuTestIDs } from './ContextMenu'
 import type { ContextMenuEntry } from './contextMenuEntries'
 import type { MenuAnchor } from './contextMenuPlacement'
 import { ContextMenuTarget } from './ContextMenuTarget'
+import { FullScreenBar, FullScreenModal } from './FullScreen'
 import { Icon } from './Icon'
 import type { IconName } from './Icon.types'
 import { PressArea } from './PressArea'
 import { QrCode, type QrCodeProps } from './QrCode'
-import { SIZE_SCALE } from './scales'
 import { useScreenInsets } from './screenInsets'
 import { useWindowSize } from './useWindowSize'
-import { useTopBarControlsPadding } from './windowControls'
 
 /** The code's share of the window's shorter side. */
 const WINDOW_SHARE = 0.75
-
-/**
- * The platform's navigation bar, which draws the close of a modal on the native stack: iOS's 44 pt
- * bar with its 44 pt glass button, Android's 56 dp toolbar. The viewer's close is laid out to the
- * same so the two sit in one place; both put the button 16 in from the start edge.
- */
-const SYSTEM_BAR = {
-  height: Platform.OS === 'ios' ? 44 : SIZE_SCALE['4xl'],
-  glassDiameter: 44,
-} as const
 
 export interface QrViewerMenu {
   entries: readonly ContextMenuEntry[]
@@ -102,7 +89,6 @@ export function QrViewerBody({
   action,
   testID,
 }: QrViewerBodyProps) {
-  const controlsPadding = useTopBarControlsPadding()
   const sizePx = Math.floor(Math.min(width, height) * WINDOW_SHARE)
   const code = (
     <QrCode value={value} sizePx={sizePx} logo={logo} accessibilityLabel={accessibilityLabel} />
@@ -130,29 +116,10 @@ export function QrViewerBody({
           </YStack>
         )}
       </PressArea>
-      {/* Where the platform's bar puts a modal's close, so it sits where Settings' did, clear of
-          a window's own controls where an iPad draws them over the app. The bar lets presses
-          beside the button through to close the viewer. */}
-      <XStack
-        position="absolute"
-        top={topInsetPx}
-        left={0}
-        right={0}
-        height={SYSTEM_BAR.height}
-        alignItems="center"
-        paddingHorizontal="$md"
-        {...(controlsPadding.left === undefined ? {} : { paddingLeft: controlsPadding.left })}
-        {...(controlsPadding.right === undefined ? {} : { paddingRight: controlsPadding.right })}
-        pointerEvents="box-none"
-      >
-        <BarButton
-          icon="x"
-          accessibilityLabel={closeLabel}
-          onPress={onClose}
-          glassDiameter={SYSTEM_BAR.glassDiameter}
-          testID={closeTestID}
-        />
-      </XStack>
+      {/* Over the code rather than above it, so the code centres on the window. */}
+      <YStack position="absolute" top={topInsetPx} left={0} right={0} pointerEvents="box-none">
+        <FullScreenBar onClose={onClose} closeLabel={closeLabel} closeTestID={closeTestID} />
+      </YStack>
       {action === undefined ? null : (
         // Only as wide as the button, centred by the parent, so a press beside it still closes.
         <YStack position="absolute" bottom={bottomInsetPx} padding="$lg">
@@ -189,18 +156,12 @@ export function QrViewer({
   const window = useWindowSize()
   const insets = useScreenInsets()
   const [anchor, setAnchor] = useState<MenuAnchor | null>(null)
-  // The last code shown, still drawn while the modal fades out. Without it the body goes the moment
-  // the viewer is closed and the modal's own background, which is white, fades out in its place.
+  // The last code shown, still drawn while the modal fades out (see `FullScreenModal`).
   const [drawn, setDrawn] = useState(value)
   if (value !== null && value !== drawn) setDrawn(value)
 
   return (
-    <NativeModal
-      visible={value !== null}
-      transparent={false}
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <FullScreenModal open={value !== null} onClose={onClose}>
       {drawn === null ? null : (
         <QrViewerBody
           value={drawn}
@@ -230,6 +191,6 @@ export function QrViewer({
           testIDs={menu.testIDs}
         />
       )}
-    </NativeModal>
+    </FullScreenModal>
   )
 }
