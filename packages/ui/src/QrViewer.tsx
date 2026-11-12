@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Modal as NativeModal } from 'react-native'
+import { Modal as NativeModal, Platform } from 'react-native'
 import { XStack, YStack } from 'tamagui'
 
+import { BarButton } from './BarButton'
 import { Button } from './Button'
 import { ContextMenu, type ContextMenuTestIDs } from './ContextMenu'
 import type { ContextMenuEntry } from './contextMenuEntries'
@@ -11,12 +12,23 @@ import { Icon } from './Icon'
 import type { IconName } from './Icon.types'
 import { PressArea } from './PressArea'
 import { QrCode } from './QrCode'
+import { SIZE_SCALE } from './scales'
 import { useScreenInsets } from './screenInsets'
 import { useWindowSize } from './useWindowSize'
 import { useTopBarControlsPadding } from './windowControls'
 
 /** The code's share of the window's shorter side. */
 const WINDOW_SHARE = 0.75
+
+/**
+ * The platform's navigation bar, which draws the close of a modal on the native stack: iOS's 44 pt
+ * bar with its 44 pt glass button, Android's 56 dp toolbar. The viewer's close is laid out to the
+ * same so the two sit in one place; both put the button 16 in from the start edge.
+ */
+const SYSTEM_BAR = {
+  height: Platform.OS === 'ios' ? 44 : SIZE_SCALE['4xl'],
+  glassDiameter: 44,
+} as const
 
 export interface QrViewerMenu {
   entries: readonly ContextMenuEntry[]
@@ -112,27 +124,27 @@ export function QrViewerBody({
           </YStack>
         )}
       </PressArea>
-      {/* Along the top at the start, clear of a window's own controls where an iPad draws them
-          over the app. The bar lets presses beside the button through to close the viewer. */}
+      {/* Where the platform's bar puts a modal's close, so it sits where Settings' did, clear of
+          a window's own controls where an iPad draws them over the app. The bar lets presses
+          beside the button through to close the viewer. */}
       <XStack
         position="absolute"
         top={topInsetPx}
         left={0}
         right={0}
-        paddingHorizontal="$sm"
-        paddingVertical="$sm"
+        height={SYSTEM_BAR.height}
+        alignItems="center"
+        paddingHorizontal="$md"
         {...(controlsPadding.left === undefined ? {} : { paddingLeft: controlsPadding.left })}
         {...(controlsPadding.right === undefined ? {} : { paddingRight: controlsPadding.right })}
         pointerEvents="box-none"
       >
-        <Button
-          variant="ghost"
-          size="md"
-          circular
+        <BarButton
+          icon="x"
           accessibilityLabel={closeLabel}
-          {...(closeTestID === undefined ? {} : { testID: closeTestID })}
           onPress={onClose}
-          icon={<Icon name="x" size="lg" color="$textPrimary" />}
+          glassDiameter={SYSTEM_BAR.glassDiameter}
+          testID={closeTestID}
         />
       </XStack>
       {action === undefined ? null : (
