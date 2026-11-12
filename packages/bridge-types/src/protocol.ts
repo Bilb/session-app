@@ -6,7 +6,9 @@ import type {
   ConfigSize,
   Conversation,
   ConversationId,
+  ConversationList,
   Deletion,
+  ListPlacement,
   Message,
   MessageCursor,
   NetworkStatus,
@@ -50,7 +52,7 @@ interface TestAttachment {
  *
  * Responses ride the same stream as change events rather than resolving on a separate channel,
  * because their relative order is load-bearing. libsession's contract is that a display can be
- * built by asking once and then applying events; that only holds if a list_replaced produced
+ * built by asking once and then applying events; that only holds if a placement produced
  * before the answer to getConversations is also applied before it. Two channels - a promise and
  * a callback - give no such guarantee across an IPC or JSI boundary, and the failure would be a
  * stale row that reappears on a race nobody can reproduce. One FIFO stream carries libsession's
@@ -141,10 +143,14 @@ export type Command =
    * onboards calls this once after `createAccount` and is done.
    */
   | { type: 'keepAccount' }
+  /**
+   * The recovery password's words, answered with a `mnemonic` result, or `seedHidden` once
+   * `hideRecoveryPassword` has been called on this device.
+   */
   | { type: 'getSeedMnemonic'; language?: string }
   /**
    * The account seed as lowercase hex, answered with a `hex` result: what a recovery password's
-   * QR code carries.
+   * QR code carries. `seedHidden` instead once `hideRecoveryPassword` has been called.
    *
    * **16 bytes (32 characters) when the seed's upper half is zero**, which is every account the
    * 13 words describe, and 32 bytes otherwise. The short form is the one every existing client
@@ -152,6 +158,15 @@ export type Command =
    * `restoreAccountFromSeed` takes either length.
    */
   | { type: 'getSeedHex' }
+  /**
+   * Hides the recovery password on this device for good, answered with an empty result once it is
+   * stored. From then on `getSeedMnemonic` and `getSeedHex` answer `seedHidden`, so nothing above
+   * the bridge can read the seed back out; the account itself, and every key derived from the
+   * seed, carry on as before. There is no way back, as on every legacy client.
+   */
+  | { type: 'hideRecoveryPassword' }
+  /** Whether `hideRecoveryPassword` has been called on this device, answered with a `bool`. */
+  | { type: 'getRecoveryPasswordHidden' }
   | { type: 'setDisplayName'; name: string }
   /**
    * Attach a network, or replace the one attached. Declining to attach is how an app stays
@@ -397,6 +412,8 @@ export type Result =
   | { type: 'hex'; hex: string }
   | { type: 'pref'; value?: string }
   | { type: 'bool'; value: boolean }
+  /** The answer to a seed read once the recovery password is hidden: see `hideRecoveryPassword`. */
+  | { type: 'seedHidden' }
   /**
    * Where an export landed, which is not always where it was asked to go: a collision becomes
    * `name (1)`.
@@ -430,9 +447,11 @@ export interface Response {
  * Change notifications, one per libsession callback, and what `SessionClient.onEvent` delivers.
  *
  * Every one of these carries the whole new state rather than an id to go and fetch. That is what
- * makes a display bindable, applying the same event twice harmless, and startup race-free:
- * whatever arrives between construction and the first query lands on top of the answer without
- * contradicting it.
+ * makes a display bindable and applying the same event twice harmless.
+ *
+ * A conversation's place in its list is the exception: `placement` puts it after another row, so
+ * the lists are only right when every event is applied, in the order the stream gives, on top of
+ * an answer to `getConversations` and `getMessageRequests` read earlier on the same stream.
  *
  * The shim emits these and the app reads them, with nothing in between rewriting an arm - which
  * is why there is one type rather than a wire one and an app one.
@@ -441,11 +460,10 @@ export interface Response {
  * carry: libsession stores nothing about one in flight, and the report is the only record there is.
  */
 export type SessionEvent =
-  | { type: 'conversation-added'; conversation: Conversation }
-  | { type: 'conversation-updated'; conversation: Conversation }
-  | { type: 'conversation-removed'; conversationId: ConversationId }
-  | { type: 'conversation-list-replaced'; conversations: Conversation[] }
-  | { type: 'request-list-replaced'; conversations: Conversation[] }
+  | { type: 'conversation-added'; conversation: Conversation; placement: ListPlacement }
+  | { type: 'conversation-updated'; conversation: Conversation; placement: ListPlacement }
+  /** `list` is the one the app was last told it is in: `none` when it was never shown in one. */
+  | { type: 'conversation-removed'; conversationId: ConversationId; list: ConversationList }
   /**
    * Messages arrived or changed, oldest first.
    *

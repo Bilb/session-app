@@ -9,15 +9,15 @@ import {
 } from '@session/state'
 import { isolate, PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { DropOverlay, DropZone, List, Screen, Text, YStack } from '@session/ui'
-import { useMemo, useState } from 'react'
+import { DropOverlay, DropZone, elementMenuAnchor, List, Screen, Text, YStack } from '@session/ui'
+import { useCallback, useMemo, useState } from 'react'
 
 import { AttachmentSheet } from './AttachmentSheet'
 import { Composer } from './Composer'
 import { outgoingAttachment } from './staging'
 import { useShowAfter } from './useShowAfter'
 import { useStaging } from './useStaging'
-import { ConversationUiContext, type ConversationUi } from './conversationUi'
+import { ConversationUiContext, useConversationUi, type ConversationUi } from './conversationUi'
 import { MessageMediaViewer, type ViewerTarget } from './MessageMediaViewer'
 import { MessageMenu, type MessageMenuTarget } from './MessageMenu'
 import { MessageRow } from './MessageRow'
@@ -29,6 +29,8 @@ import { DateHeaderRow } from './DateHeaderRow'
 import { showsDateHeader } from './dateHeaders'
 import { TranscriptWidth } from './TranscriptWidth'
 
+const messageKey = (message: Message) => String(message.id)
+
 /** The messages, oldest first, each under its date where the day changes. */
 function Transcript({
   conversationId,
@@ -37,11 +39,25 @@ function Transcript({
   conversationId: ConversationId
   messages: readonly Message[]
 }) {
+  const { openMenu } = useConversationUi()
+  // A row's key is its message's id; see `messageKey`.
+  const openRowMenu = useCallback(
+    (key: string, row: unknown) => {
+      elementMenuAnchor(row, (anchor) => {
+        if (anchor !== null) openMenu(Number(key), anchor)
+      })
+    },
+    [openMenu],
+  )
   return (
     // No itemHeight: a bubble is as tall as its body wraps to, so the list has to measure.
     <List
       data={messages}
-      keyExtractor={(message) => String(message.id)}
+      keyExtractor={messageKey}
+      onRowMenu={openRowMenu}
+      // TODO: enter on the oldest unread message once libsession reports where reading stopped;
+      // it only gives a conversation's unread count.
+      rovingFocus="last"
       renderItem={(message, index) => (
         <YStack paddingHorizontal="$md" paddingBottom="$sm">
           {showsDateHeader(messages[index - 1], message) ? (

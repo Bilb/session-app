@@ -1,4 +1,4 @@
-import type { Conversation, Frame, Message } from '@session/client'
+import type { Conversation, Frame, ListPlacement, Message } from '@session/client'
 
 import { mulberry32, words } from './text'
 
@@ -92,17 +92,24 @@ export function makeCorpus(options: {
   return { accounts, conversations, messages }
 }
 
-export function conversationListFrame(conversations: Conversation[]): Frame {
-  return { type: 'event', event: { type: 'conversation-list-replaced', conversations } }
+/** One batch of messages, the largest event a poll produces now that no list is sent whole. */
+export function messagesAddedFrame(messages: Message[]): Frame {
+  return { type: 'event', event: { type: 'messages-added', messages } }
 }
 
 export function messageAddedFrame(message: Message): Frame {
   return { type: 'event', event: { type: 'messages-added', messages: [message] } }
 }
 
-/** A single-conversation update - the event a poll produces when an unread count moves. */
-export function conversationUpdatedFrame(conversation: Conversation): Frame {
-  return { type: 'event', event: { type: 'conversation-updated', conversation } }
+/**
+ * A single-conversation update - the event a poll produces when an unread count moves - placed
+ * first in the conversation list unless told otherwise.
+ */
+export function conversationUpdatedFrame(
+  conversation: Conversation,
+  placement: ListPlacement = { from: 'conversations', to: 'conversations' },
+): Frame {
+  return { type: 'event', event: { type: 'conversation-updated', conversation, placement } }
 }
 
 /** A Response frame the size a small command's answer really is. */

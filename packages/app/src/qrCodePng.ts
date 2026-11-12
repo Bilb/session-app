@@ -3,8 +3,12 @@ import { encode } from 'uqr'
 
 import { rasterizeMark } from './markRaster'
 
-/** The longest text drawn: a recovery password's seed is 32 or 64 characters. */
-export const MAX_QR_TEXT_CHARS = 256
+/**
+ * The longest text drawn: a community's full URL at libsession's limit
+ * (`community::FULL_URL_MAX_LENGTH`, less its terminator). A recovery password's seed is 32 or 64
+ * characters.
+ */
+export const MAX_QR_TEXT_CHARS = 410
 
 /** Pixels per module, so a saved code prints and scans at any reasonable size. */
 const MODULE_PX = 16

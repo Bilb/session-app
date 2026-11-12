@@ -4,6 +4,7 @@ import { YStack } from 'tamagui'
 import { InteractionOverride, useForcedFocus } from './interactionOverride'
 
 import { focusRing, keyboardPress, type FocusRingShape } from './keyboardPress'
+import { useListTabIndex } from './listFocus'
 import type { PressAreaProps } from './PressArea.types'
 
 export type { PressAreaProps }
@@ -43,6 +44,7 @@ export function PressArea({
   const press = disabled ? undefined : onPress
   const forced = useContext(InteractionOverride)
   const forcedFocus = useForcedFocus()
+  const tabIndex = useListTabIndex()
   const element = useRef<HTMLElement | null>(null)
   useEffect(() => {
     if (focusOnMount) element.current?.focus()
@@ -57,7 +59,7 @@ export function PressArea({
       userSelect="none"
       disabled={disabled}
       onPress={press}
-      {...keyboardPress(press, focusRing(ring))}
+      {...keyboardPress(press, focusRing(ring), tabIndex)}
       {...(press === undefined ? {} : forcedFocus)}
       aria-label={accessibilityLabel}
       aria-busy={busy}

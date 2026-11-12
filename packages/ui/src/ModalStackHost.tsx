@@ -92,6 +92,8 @@ export function ModalStackHost({
       {entries.map((entry, index) => {
         const screen = entry.stack.at(-1)
         const frontmost = entry === top
+        // Sized by its content only where a panel is drawn: a narrow window gives it the screen.
+        const fitted = wide && entry.fit
         const dismiss = entry.dismissible
           ? () => {
               modals.dismiss(entry.id)
@@ -152,7 +154,11 @@ export function ModalStackHost({
             <YStack
               fullscreen
               alignItems="center"
-              {...(wide ? { paddingHorizontal: '$lg', paddingTop: inset } : {})}
+              {...(wide
+                ? entry.fit
+                  ? { paddingHorizontal: '$lg', paddingVertical: inset, justifyContent: 'center' }
+                  : { paddingHorizontal: '$lg', paddingTop: inset }
+                : {})}
               // Only the frontmost layer takes presses, or a tap on the top scrim reaches a row
               // underneath. `box-none` passes a touch outside the panel down to the backdrop.
               pointerEvents={frontmost ? 'box-none' : 'none'}
@@ -163,8 +169,8 @@ export function ModalStackHost({
                   ? {
                       maxWidth: PANEL_WIDTH[entry.width],
                       // One height for every screen, anchored to the top, so a push does not
-                      // move the panel's edges.
-                      height: panelHeight,
+                      // move the panel's edges; or the content's, for a panel nothing is pushed on.
+                      ...(entry.fit ? { maxHeight: panelHeight } : { height: panelHeight }),
                       borderRadius: PANEL_RADIUS,
                       borderWidth: 1,
                       borderColor: '$bordersColor',
@@ -241,13 +247,15 @@ export function ModalStackHost({
                     state); only the frontmost is visible. */}
                 {/* `relative`: on the web a stack is `static` by default, so absolute children
                     would resolve against the page. See `containingBlock.contract.test.ts`. */}
-                <YStack flex={1} position="relative">
+                <YStack {...(fitted ? { flexShrink: 1 } : { flex: 1 })} position="relative">
                   {entry.stack.map((held, at) => {
                     const showing = at === entry.stack.length - 1
                     return (
                       <YStack
                         key={held.key}
-                        fullscreen
+                        // A fitted panel takes its height from the screen showing, so that one
+                        // stays in the flow.
+                        {...(fitted && showing ? { flexShrink: 1 } : { fullscreen: true })}
                         opacity={showing ? 1 : 0}
                         pointerEvents={showing ? 'auto' : 'none'}
                         aria-hidden={!showing}
@@ -258,7 +266,7 @@ export function ModalStackHost({
                         {...(Platform.OS === 'web' ? { style: hiddenUnless(showing) } : {})}
                       >
                         <ScrollView
-                          flex={1}
+                          {...(fitted ? { flexGrow: 0, flexShrink: 1 } : { flex: 1 })}
                           // On the web the modal focuses this scroller on open and the browser
                           // rings the whole body. The style, not the width: `outline-style: auto`
                           // ignores the width. It stays focusable and keyboard-scrollable.

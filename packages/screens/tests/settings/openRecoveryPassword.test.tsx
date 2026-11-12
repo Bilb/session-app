@@ -4,7 +4,7 @@ import { memoryPorts, resetPorts, setPorts } from '@session/app'
 import type { RecoveryPassword, SessionActions } from '@session/state'
 import type { Modals } from '@session/ui'
 
-import { openRecoveryPassword } from '#src/settings/RecoveryPasswordPage'
+import { hideAndLeave, openRecoveryPassword } from '#src/settings/RecoveryPasswordPage'
 
 const SECRET: RecoveryPassword = { words: ['one', 'two'], seedHex: '00'.repeat(16) }
 
@@ -59,5 +59,41 @@ describe('openRecoveryPassword', () => {
     load(SECRET)
     await vi.waitFor(() => expect(modals.push).toHaveBeenCalled())
     expect(modals.push).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('hideAndLeave', () => {
+  function stack() {
+    const calls: string[] = []
+    const modals = {
+      lock: vi.fn(() => calls.push('lock')),
+      dismiss: vi.fn(() => calls.push('dismiss')),
+      pop: vi.fn(() => calls.push('pop')),
+    } as unknown as Modals
+    return { calls, modals }
+  }
+
+  it('goes back to Settings once hidden', async () => {
+    const { calls, modals } = stack()
+    hideAndLeave(
+      modals,
+      'alert',
+      () => Promise.resolve(),
+      () => calls.push('failed'),
+    )
+    await vi.waitFor(() => expect(calls).toContain('pop'))
+    expect(calls).toEqual(['lock', 'dismiss', 'pop'])
+  })
+
+  it('stays on the page and says so when hiding fails', async () => {
+    const { calls, modals } = stack()
+    hideAndLeave(
+      modals,
+      'alert',
+      () => Promise.reject(new Error('not stored')),
+      () => calls.push('failed'),
+    )
+    await vi.waitFor(() => expect(calls).toContain('failed'))
+    expect(calls).toEqual(['lock', 'dismiss', 'failed'])
   })
 })

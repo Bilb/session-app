@@ -38,6 +38,12 @@ ipcRenderer.on('zoom', (_event, next: unknown) => {
   zoomListener?.(next)
 })
 
+/** Whoever is listening for the Help menu's Keyboard Shortcuts, which main sends to the page. */
+let keyboardShortcutsListener: (() => void) | null = null
+ipcRenderer.on('keyboard-shortcuts', () => {
+  keyboardShortcutsListener?.()
+})
+
 /**
  * The whole of what the page may ask for: one argument each, checked by the main process.
  *
@@ -114,6 +120,15 @@ contextBridge.exposeInMainWorld('sessionDesktop', {
   exportLogs: (name: string, parts: unknown): Promise<boolean> =>
     ipcRenderer.invoke('log:export', name, parts),
   diagnostics: (): Promise<unknown> => ipcRenderer.invoke('log:diagnostics'),
+  /** Which operating system, for naming the keys as its keyboards print them. */
+  platform: process.platform,
+  /** The Help menu's Keyboard Shortcuts, until the returned function is called. */
+  onKeyboardShortcuts: (listener: () => void) => {
+    keyboardShortcutsListener = listener
+    return () => {
+      if (keyboardShortcutsListener === listener) keyboardShortcutsListener = null
+    }
+  },
   /** The flag overrides main read at launch; see `launchOverrides.ts`. */
   launchOverrides: readLaunchOverrides(process.argv),
 })

@@ -144,6 +144,7 @@ describe('screen copy', () => {
       'attachmentViewGallery',
       'attachmentViewList',
       'export',
+      'recoveryPasswordHiddenOnDevice',
       'exporting',
       'exportFailed',
       'previous',
@@ -169,6 +170,7 @@ describe('screen copy', () => {
       'onionRoutingPathOffline',
       'changeToLightMode',
       'changeToDarkMode',
+      'messageNavigate',
     ])
   })
 })

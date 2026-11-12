@@ -3,6 +3,7 @@ import type {
   AttachmentTransfer,
   Conversation,
   ConversationId,
+  ConversationList,
   Message,
   MessageCursor,
   NetworkStatus,
@@ -10,6 +11,9 @@ import type {
 } from '@session/client'
 
 import type { StartupFailureKind } from './startupFailure'
+
+/** One of the two lists a conversation can be in, named as the state field holding it. */
+export type ListName = Exclude<ConversationList, 'none'>
 
 /**
  * One conversation's loaded history.
@@ -75,8 +79,8 @@ export interface SessionState {
   startupFailureKind: StartupFailureKind | null
 
   /**
-   * Complete lists, in the order libsession sent them. libsession sends whole state, so partial
-   * copies would only rot.
+   * Complete lists, in libsession's order: read once, then kept by its placements. A placement
+   * names the row it follows, so a partial copy would have nowhere to put one.
    *
    * A list and nothing beside it. libsession orders both queries in SQL and does not order them
    * the same way - conversations are `priority DESC, last_activity DESC, id`, requests are
@@ -87,6 +91,12 @@ export interface SessionState {
    */
   conversations: Conversation[]
   requests: Conversation[]
+  /**
+   * Which lists an event placed a row in after a row they do not hold, so they no longer match
+   * libsession's and no later placement can put them right. The store reads that list again,
+   * and the answer clears it.
+   */
+  listsOutOfStep: Record<ListName, boolean>
 
   histories: Record<ConversationId, MessageWindow>
 
@@ -138,6 +148,7 @@ export const emptyState: SessionState = {
   startupFailureKind: null,
   conversations: [],
   requests: [],
+  listsOutOfStep: { conversations: false, requests: false },
   histories: {},
   transfers: {},
   appearance: null,

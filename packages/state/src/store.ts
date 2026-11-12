@@ -13,13 +13,17 @@ import { createStore, type StoreApi } from 'zustand/vanilla'
 
 import { applyEvent, mergePages, recordRefusal, withoutHistory } from './applyEvent'
 import { classifyStartupFailure, type StartupFailureKind } from './startupFailure'
-import { emptyState, type MessageWindow, type SessionState, type StoredAppearance } from './types'
+import {
+  emptyState,
+  type ListName,
+  type MessageWindow,
+  type SessionState,
+  type StoredAppearance,
+} from './types'
 
 /** Where the account's theme and accent are kept, as libsession preferences. */
 const THEME_PREF = 'appearance.theme'
 const ACCENT_PREF = 'appearance.accent'
-/** Set to `true` once the recovery password is hidden on this device; never unset. */
-const RECOVERY_PASSWORD_HIDDEN_PREF = 'recoveryPassword.hidden'
 
 /** What the recovery password screen shows: the words, and the seed its QR code carries. */
 export interface RecoveryPassword {
@@ -84,9 +88,9 @@ export interface SessionActions {
   /**
    * Subscribes first, then asks - never the other way round.
    *
-   * Anything that arrives between the two is applied on top of the answer, which is safe
-   * precisely because every event carries whole state. Asking first and subscribing after
-   * is what loses a change that lands in the gap.
+   * What arrives before an answer is already in it, and what arrives after is applied on top of
+   * it: responses and events share one ordered stream. Asking first and subscribing after is
+   * what loses a change that lands in the gap.
    */
   hydrate: () => Promise<void>
   loadHistory: (id: ConversationId) => Promise<void>
@@ -246,6 +250,7 @@ export interface SessionStoreOptions {
 }
 
 const PAGE = 30
+const LIST_NAMES: readonly ListName[] = ['conversations', 'requests']
 
 export function createSessionStore(
   client: SessionClient,
@@ -253,6 +258,50 @@ export function createSessionStore(
 ): SessionStore {
   const log = options.log ?? ((): void => undefined)
   const store = createStore<SessionState>(() => ({ ...emptyState }))
+
+  /**
+   * One list, read and stored the moment it is answered, which also puts it back in step.
+   *
+   * A placement is relative to the list it lands on, so it has to land on the answer it came
+   * after. Responses and events share one ordered stream, and every transport delivers each frame
+   * as its own callback with the microtask queue drained in between, so storing an answer in the
+   * continuation of its own promise puts it under everything that followed it. Waiting for a
+   * second answer first would let a placement that arrived in between land on the old list and
+   * then be overwritten.
+   */
+  async function readList(list: ListName): Promise<void> {
+    if (list === 'conversations') {
+      const conversations = await client.getConversations()
+      store.setState((state) => ({
+        conversations,
+        listsOutOfStep: { ...state.listsOutOfStep, conversations: false },
+      }))
+    } else {
+      const requests = await client.getMessageRequests()
+      store.setState((state) => ({
+        requests,
+        listsOutOfStep: { ...state.listsOutOfStep, requests: false },
+      }))
+    }
+  }
+
+  /**
+   * A read already running is not asked again: the placement that failed during it came before
+   * its answer on the stream, so the answer already covers it.
+   */
+  const rereading = new Set<ListName>()
+  function rereadListsOutOfStep(): void {
+    const { listsOutOfStep } = store.getState()
+    for (const list of LIST_NAMES) {
+      if (!listsOutOfStep[list] || rereading.has(list)) continue
+      rereading.add(list)
+      readList(list)
+        .catch((error: unknown) => {
+          log('warn', 'session', `could not read the ${list} list again: ${String(error)}`)
+        })
+        .finally(() => rereading.delete(list))
+    }
+  }
 
   const unsubscribe = client.onEvent((event) => {
     // libsession's own logging, when the bridge was asked for it. Passed straight through
@@ -263,6 +312,8 @@ export function createSessionStore(
       return
     }
     store.setState((state) => applyEvent(state, event))
+    // Before the first read a placement has nothing to land on, and that read clears it.
+    if (store.getState().hydrated) rereadListsOutOfStep()
   })
 
   // A page that lands after its window was forgotten must not bring it back, even when a new load
@@ -421,25 +472,19 @@ export function createSessionStore(
         return
       }
 
-      const [conversations, requests, theme, accent, hidden] = await Promise.all([
-        client.getConversations(),
-        client.getMessageRequests(),
+      const [theme, accent, hidden] = await Promise.all([
         client.getPref(THEME_PREF),
         client.getPref(ACCENT_PREF),
-        client.getPref(RECOVERY_PASSWORD_HIDDEN_PREF),
+        client.getRecoveryPasswordHidden(),
+        readList('conversations'),
+        readList('requests'),
         askNetworkStatus(),
       ])
 
       // In the same update as `hydrated`, so the screen the account opens on is drawn once, in its
       // theme. Both or neither: an accent without its theme is half a choice.
       const appearance = theme === undefined || accent === undefined ? null : { theme, accent }
-      store.setState({
-        conversations,
-        requests,
-        appearance,
-        recoveryPasswordHidden: hidden === 'true',
-        hydrated: true,
-      })
+      store.setState({ appearance, recoveryPasswordHidden: hidden, hydrated: true })
     },
 
     async setAppearance(appearance): Promise<void> {
@@ -451,12 +496,18 @@ export function createSessionStore(
 
     async getRecoveryPassword(): Promise<RecoveryPassword> {
       const [words, seedHex] = await Promise.all([client.getSeedMnemonic(), client.getSeedHex()])
+      // Hidden on this device: there is nothing to show, which the page reports as a failed load.
+      if (words === null || seedHex === null) throw new Error('The recovery password is hidden')
       return { words, seedHex }
     },
 
     async hideRecoveryPassword(): Promise<void> {
       if (store.getState().account?.haveAccount !== true) return
-      await client.setPref(RECOVERY_PASSWORD_HIDDEN_PREF, 'true')
+      await client.hideRecoveryPassword()
+      // Read back, not assumed: the page goes back to Settings only once it is gone for good.
+      if (!(await client.getRecoveryPasswordHidden())) {
+        throw new Error('The recovery password was not hidden')
+      }
       store.setState({ recoveryPasswordHidden: true })
     },
 

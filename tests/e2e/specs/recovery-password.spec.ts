@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { _electron, expect, test } from '@playwright/test'
+import { PENDING_COPY } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 
 import { FAKE_LAUNCH_ENV } from '../harness/fakeEnv'
@@ -95,9 +96,12 @@ test('shows the recovery password as words and a QR code, saves the code, and hi
     expect(cancelAt?.x).toBe(continueAt?.x)
     await page.getByTestId(ELEMENT.recoveryPassword.hideYes).first().click()
 
-    // Back at Settings, where the row has gone.
+    // Back at Settings, where the row has gone and a line in its place says so.
     await expect(page.getByTestId(ELEMENT.settings.accountId).first()).toBeVisible()
     await expect(page.getByTestId(ELEMENT.settings.row('recovery-password'))).toHaveCount(0)
+    await expect(
+      page.getByTestId(ELEMENT.settings.row('recovery-password-hidden')).first(),
+    ).toHaveText(PENDING_COPY.recoveryPasswordHiddenOnDevice)
   } finally {
     await app.close()
   }
