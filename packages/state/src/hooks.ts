@@ -18,13 +18,21 @@ import {
 } from 'react'
 import { useStore } from 'zustand'
 
-import { selectAttachmentTransfer, selectMessage, selectMessageTransfers } from './selectors'
+import { coalesced, type ReadableStore } from './coalesce'
+import {
+  conversationSelector,
+  selectAttachmentTransfer,
+  selectMessage,
+  selectMessageTransfers,
+  selectUnreadRequestCount,
+} from './selectors'
 import type { StartupFailureKind } from './startupFailure'
 import type { SessionActions, SessionStore } from './store'
 import type {
   AttachmentTransferState,
   MessageTransfers,
   MessageWindow,
+  SessionState,
   StoredAppearance,
 } from './types'
 
@@ -45,13 +53,26 @@ function useSessionStore(): SessionStore {
   return store
 }
 
+// One per store rather than per hook, so every component is told of a burst in the same pass.
+const drawnFrom = new WeakMap<SessionStore, ReadableStore<SessionState>>()
+
+/** What a component draws from the store: read as it is now, told of a burst of changes once. */
+function useSessionState<U>(selector: (state: SessionState) => U): U {
+  const store = useSessionStore()
+  let drawn = drawnFrom.get(store)
+  if (!drawn) {
+    drawn = coalesced(store)
+    drawnFrom.set(store, drawn)
+  }
+  return useStore(drawn, selector)
+}
+
 export function useSessionActions(): SessionActions {
   return useSessionStore().actions
 }
 
 export function useHydrated(): boolean {
-  const store = useSessionStore()
-  return useStore(store, (state) => state.hydrated)
+  return useSessionState((state) => state.hydrated)
 }
 
 /**
@@ -61,38 +82,32 @@ export function useHydrated(): boolean {
  * a failed start used to be invisible.
  */
 export function useStartupError(): string | null {
-  const store = useSessionStore()
-  return useStore(store, (state) => state.startupError)
+  return useSessionState((state) => state.startupError)
 }
 
 /** What kind of failed start `useStartupError` is, or null while there is none. */
 export function useStartupFailureKind(): StartupFailureKind | null {
-  const store = useSessionStore()
-  return useStore(store, (state) => state.startupFailureKind)
+  return useSessionState((state) => state.startupFailureKind)
 }
 
 /** The theme and accent the account chose, as stored, or null where it has not chosen one. */
 export function useAppearance(): StoredAppearance | null {
-  const store = useSessionStore()
-  return useStore(store, (state) => state.appearance)
+  return useSessionState((state) => state.appearance)
 }
 
 /** The file server's limit on one upload, encrypted and padded, or null before a start asked. */
 export function useAttachmentUploadLimit(): number | null {
-  const store = useSessionStore()
-  return useStore(store, (state) => state.attachmentUploadLimitBytes)
+  return useSessionState((state) => state.attachmentUploadLimitBytes)
 }
 
 /** Whether the attached network can carry traffic: see `SessionState.networkStatus`. */
 export function useNetworkStatus(): NetworkStatus {
-  const store = useSessionStore()
-  return useStore(store, (state) => state.networkStatus)
+  return useSessionState((state) => state.networkStatus)
 }
 
 /** The whole of what libsession says about the account, or null before the first answer. */
 export function useAccount(): AccountInfo | null {
-  const store = useSessionStore()
-  return useStore(store, (state) => state.account)
+  return useSessionState((state) => state.account)
 }
 
 /**
@@ -102,22 +117,15 @@ export function useAccount(): AccountInfo | null {
  * notification that did not change it hands back the same reference.
  */
 export function useConversations(): Conversation[] {
-  const store = useSessionStore()
-  return useStore(store, (state) => state.conversations)
+  return useSessionState((state) => state.conversations)
 }
 
 export function useRequests(): Conversation[] {
-  const store = useSessionStore()
-  return useStore(store, (state) => state.requests)
+  return useSessionState((state) => state.requests)
 }
 
 export function useConversation(id: ConversationId | undefined): Conversation | undefined {
-  const store = useSessionStore()
-  return useStore(store, (state) =>
-    id === undefined
-      ? undefined
-      : (state.conversations.find((c) => c.id === id) ?? state.requests.find((c) => c.id === id)),
-  )
+  return useSessionState(useMemo(() => conversationSelector(id), [id]))
 }
 
 const EMPTY_WINDOW: MessageWindow = {
@@ -140,7 +148,7 @@ export function useMessages(id: ConversationId | undefined): {
   loadOlder: () => void
 } {
   const store = useSessionStore()
-  const window = useStore(store, (state) =>
+  const window = useSessionState((state) =>
     id === undefined ? EMPTY_WINDOW : (state.histories[id] ?? EMPTY_WINDOW),
   )
 
@@ -188,8 +196,7 @@ export function useAttachmentTransfer(
   transfer: AttachmentTransfer,
   ref: AttachmentRef,
 ): AttachmentTransferState | undefined {
-  const store = useSessionStore()
-  return useStore(store, (state) => selectAttachmentTransfer(state, transfer, ref))
+  return useSessionState((state) => selectAttachmentTransfer(state, transfer, ref))
 }
 
 /**
@@ -200,8 +207,7 @@ export function useAttachmentTransfer(
  * not re-render this one.
  */
 export function useMessageTransfers(messageId: number): MessageTransfers {
-  const store = useSessionStore()
-  return useStore(store, (state) => selectMessageTransfers(state, messageId))
+  return useSessionState((state) => selectMessageTransfers(state, messageId))
 }
 
 /**
@@ -211,12 +217,10 @@ export function useMessageTransfers(messageId: number): MessageTransfers {
  * a neighbour does.
  */
 export function useMessage(conversationId: ConversationId, messageId: number): Message | undefined {
-  const store = useSessionStore()
-  return useStore(store, (state) => selectMessage(state, conversationId, messageId))
+  return useSessionState((state) => selectMessage(state, conversationId, messageId))
 }
 
 /** Unread requests, which is not the same as the number of requests. */
 export function useUnreadRequestCount(): number {
-  const store = useSessionStore()
-  return useStore(store, (state) => state.requests.filter((c) => c.unreadCount > 0).length)
+  return useSessionState(selectUnreadRequestCount)
 }

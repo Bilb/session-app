@@ -187,7 +187,11 @@ export function withoutHistory(
  * that never touched it.
  */
 function without(list: Conversation[], id: ConversationId): Conversation[] {
-  return list.some((c) => c.id === id) ? list.filter((c) => c.id !== id) : list
+  const at = list.findIndex((c) => c.id === id)
+  if (at === -1) return list
+  const rest = list.slice()
+  rest.splice(at, 1)
+  return rest
 }
 
 /**
@@ -195,7 +199,9 @@ function without(list: Conversation[], id: ConversationId): Conversation[] {
  *
  * Both lists are searched rather than the placement's `from`, which is where libsession last
  * *reported* the row: a row the app read with `getConversations` and has not heard about since
- * is one libsession never reported, so its `from` is `none` while the app holds it.
+ * is one libsession never reported, so its `from` is `none` while the app holds it. Both, even
+ * once one is found to hold it: a list read after a row crossed, with the placement that crossed
+ * it still to come, leaves the row in both until that placement lands.
  *
  * An `after` this store does not hold has no right answer, and appending would leave the row
  * somewhere plausible and wrong with nothing to correct it. It is appended all the same, so it
@@ -206,22 +212,39 @@ function placeConversation(
   conversation: Conversation,
   { to, after }: ListPlacement,
 ): SessionState {
-  const conversations = without(state.conversations, conversation.id)
-  const requests = without(state.requests, conversation.id)
-  if (to === 'none') return { ...state, conversations, requests }
+  const { id } = conversation
+  if (to === 'none') {
+    return {
+      ...state,
+      conversations: without(state.conversations, id),
+      requests: without(state.requests, id),
+    }
+  }
 
-  const lists: Record<ListName, Conversation[]> = { conversations, requests }
-  const list = lists[to]
-  const at = after === undefined ? 0 : list.findIndex((c) => c.id === after) + 1
-  const found = at > 0 || after === undefined
-  const placed = found
-    ? [...list.slice(0, at), conversation, ...list.slice(at)]
-    : [...list, conversation]
+  const other: ListName = to === 'conversations' ? 'requests' : 'conversations'
+  const list = state[to]
+
+  // Most changes leave a row where it is: a read receipt, a snippet, an unread count.
+  const at = list.findIndex((c) => c.id === id)
+  if (at !== -1 && (after === undefined ? at === 0 : list[at - 1]?.id === after)) {
+    const kept = list.slice()
+    kept[at] = conversation
+    return { ...state, [to]: kept, [other]: without(state[other], id) }
+  }
+
+  const anchor = after === undefined ? -1 : list.findIndex((c) => c.id === after)
+  // A row placed after itself names no row.
+  const found = after === undefined || (anchor !== -1 && anchor !== at)
+  const placed = list.slice()
+  if (at !== -1) placed.splice(at, 1)
+  // The anchor moved up one when the row came out from above it.
+  const below = at !== -1 && at < anchor ? anchor : anchor + 1
+  placed.splice(found ? below : placed.length, 0, conversation)
 
   return {
     ...state,
-    ...lists,
     [to]: placed,
+    [other]: without(state[other], id),
     listsOutOfStep: found ? state.listsOutOfStep : { ...state.listsOutOfStep, [to]: true },
   }
 }

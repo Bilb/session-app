@@ -296,6 +296,79 @@ describe('applyEvent', () => {
     expect(state.conversations.find((c) => c.id === 'b')?.unreadCount).toBe(3)
   })
 
+  it('hands back the same row objects when one row changes in place', () => {
+    const seeded = seededList('a', 'b', 'c')
+    const state = applyEvent(
+      seeded,
+      updated(conversation({ id: 'a', unreadCount: 3 }), { from: 'none', to: 'conversations' }),
+    )
+
+    // First with no `after`, and already first: replaced where it is.
+    expect(ids(state.conversations)).toEqual(['a', 'b', 'c'])
+    expect(state.conversations[0]?.unreadCount).toBe(3)
+    expect(state.conversations[1]).toBe(seeded.conversations[1])
+    expect(state.conversations[2]).toBe(seeded.conversations[2])
+    expect(state.conversations).not.toBe(seeded.conversations)
+    expect(state.requests).toBe(seeded.requests)
+  })
+
+  it('takes a row out of both lists when both hold it', () => {
+    // A list read after a row crossed, while the placement that crossed it is still to come,
+    // holds the row the other list has not given up yet.
+    const row = conversation({ id: 'x' })
+    const both: SessionState = {
+      ...emptyState,
+      conversations: [row, conversation({ id: 'a' })],
+      requests: [conversation({ id: 'r', request: true }), { ...row, request: true }],
+    }
+
+    // In place in the list it belongs in, which must not stop the other being searched.
+    const inPlace = applyEvent(both, updated(row, { from: 'requests', to: 'conversations' }))
+    expect(ids(inPlace.conversations)).toEqual(['x', 'a'])
+    expect(ids(inPlace.requests)).toEqual(['r'])
+
+    const moved = applyEvent(
+      both,
+      updated(row, { from: 'requests', to: 'conversations', after: 'a' }),
+    )
+    expect(ids(moved.conversations)).toEqual(['a', 'x'])
+    expect(ids(moved.requests)).toEqual(['r'])
+
+    const hidden = applyEvent(both, updated(row, { from: 'requests', to: 'none' }))
+    expect(ids(hidden.conversations)).toEqual(['a'])
+    expect(ids(hidden.requests)).toEqual(['r'])
+  })
+
+  it('moves a row down as well as up, and to the end', () => {
+    const seeded = seededList('a', 'b', 'c')
+    const place = (id: string, after?: string): string[] =>
+      ids(
+        applyEvent(
+          seeded,
+          updated(conversation({ id }), {
+            from: 'conversations',
+            to: 'conversations',
+            ...(after === undefined ? {} : { after }),
+          }),
+        ).conversations,
+      )
+
+    expect(place('a', 'b')).toEqual(['b', 'a', 'c'])
+    expect(place('a', 'c')).toEqual(['b', 'c', 'a'])
+    expect(place('c')).toEqual(['c', 'a', 'b'])
+    expect(place('b', 'c')).toEqual(['a', 'c', 'b'])
+  })
+
+  it('flags a row placed after itself, which names no row', () => {
+    const state = applyEvent(
+      seededList('a', 'b'),
+      updated(conversation({ id: 'a' }), { from: 'none', to: 'conversations', after: 'a' }),
+    )
+
+    expect(ids(state.conversations)).toEqual(['b', 'a'])
+    expect(state.listsOutOfStep.conversations).toBe(true)
+  })
+
   it('leaves the other list alone when the conversation was never in it', () => {
     const seeded = replay([added(conversation({ id: 'req', request: true }))])
 
